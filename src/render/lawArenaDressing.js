@@ -52,6 +52,7 @@ import {
   buildConductivityGraph,
 } from '../systems/stormLatticeArena.js';
 import { WORKS_FURNACE_HEAT } from './industrialMaterialFamilies.js';
+import { addHazardBand, addWorkLamp, arenaMaterials, machinedBoxGeometry } from './arenaFinish.js';
 
 const LAW_ARENA_IDS = new Set([LAGRANGE_ARENA_ID, CINDER_ARENA_ID, CRYO_ARENA_ID, STORM_ARENA_ID]);
 const BOSS_DRESSING_KINDS = new Set([
@@ -92,18 +93,18 @@ let _shared = null;
 
 function sharedAssets() {
   if (_shared) return _shared;
-  const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+  // X1 style bible §3: arena machinery wears the same three-value, chamfered, manufactured
+  // finish as a Forge hull. One machined unit box replaces the sharp primitive, so every
+  // existing `scale.set(w, h, d)` keeps its datum and the silhouette gains a chamfer for free.
+  const boxGeo = machinedBoxGeometry();
   const cylGeo = new THREE.CylinderGeometry(1, 1, 1, 20);
   const torusGeo = new THREE.TorusGeometry(1, 0.09, 8, 28);
-  const darkMat = new THREE.MeshStandardMaterial({
-    color: 0x14181e, metalness: 0.66, roughness: 0.66,
-  });
-  const metalMat = new THREE.MeshStandardMaterial({
-    color: 0x6f7880, metalness: 0.9, roughness: 0.38,
-  });
-  const plateMat = new THREE.MeshStandardMaterial({
-    color: 0x9aa4ae, metalness: 0.88, roughness: 0.32,
-  });
+  const finish = arenaMaterials();
+  const darkMat = finish.dark;
+  const metalMat = finish.mid;
+  const plateMat = finish.light;
+  const paintMat = finish.paint;
+  const hazardMat = finish.hazard;
   const emberMat = new THREE.MeshStandardMaterial({
     color: 0x1d1008,
     emissive: new THREE.Color(WORKS_FURNACE_HEAT.emberHex),
@@ -128,10 +129,10 @@ function sharedAssets() {
     emissiveIntensity: 0.08,
     metalness: 0.25, roughness: 0.62,
   });
-  for (const res of [boxGeo, cylGeo, torusGeo, darkMat, metalMat, plateMat, emberMat, tideMat, amberMat, broodMat]) {
+  for (const res of [cylGeo, torusGeo, emberMat, tideMat, amberMat, broodMat]) {
     res.userData.spacefaceSharedAsset = true;
   }
-  _shared = { boxGeo, cylGeo, torusGeo, darkMat, metalMat, plateMat, emberMat, tideMat, amberMat, broodMat };
+  _shared = { boxGeo, cylGeo, torusGeo, darkMat, metalMat, plateMat, paintMat, hazardMat, emberMat, tideMat, amberMat, broodMat };
   return _shared;
 }
 
@@ -176,6 +177,10 @@ function buildFieldAnchor(field, sink) {
   base.scale.set(44, 6, 44);
   base.position.y = 3;
   root.add(base);
+  // X1 finish: a safety band and a work lamp give the base a working-machine read at the
+  // chase camera. Two draws, shared materials, no per-frame cost.
+  addHazardBand(root, { width: 38, height: 1.1, depth: 1.2, y: 4.2, z: 22.1 });
+  addWorkLamp(root, { width: 6, height: 1.2, depth: 1.2, y: 7.4, z: 22.1 });
   const collar = new THREE.Group();
   collar.name = 'law_pylon_collar';
   for (let i = 0; i < 3; i++) {
@@ -230,6 +235,12 @@ function buildShutterBar(toy, sink) {
     post.scale.set(9, 16, 12);
     post.position.set(side * (len / 2), 6, 0);
     root.add(post);
+    addHazardBand(root, {
+      width: 9, height: 1.4, depth: 1.2, x: side * (len / 2), y: 7, z: 6.1,
+    });
+    addWorkLamp(root, {
+      width: 3.2, height: 1, depth: 1, x: side * (len / 2), y: 13, z: 6.1,
+    });
   }
   const cutter = mesh(shared.boxGeo, seam, 'law_shutter_cutter');
   cutter.scale.set(10, 7.5, 9.5);
@@ -276,6 +287,10 @@ function buildCrusherPress(toy, sink) {
   anvilBlock.scale.set(10, 18, 44);
   anvilBlock.position.set(stroke + 8, 7, 0);
   root.add(anvilBlock);
+  addHazardBand(root, {
+    width: 1.2, height: 40, depth: 1.6, x: stroke + 2.8, y: 8, z: 0, rotationY: Math.PI / 2,
+  });
+  addWorkLamp(root, { width: 2.4, height: 1.2, depth: 3, x: stroke + 8, y: 16.4, z: 0 });
   const jaw = new THREE.Group();
   jaw.name = 'law_crusher_jaw';
   const face = mesh(shared.boxGeo, shared.plateMat, 'law_crusher_face');
@@ -342,6 +357,8 @@ function buildCurrentMouth(toy, isCinder, sink) {
   sill.scale.set(30, 3, 34);
   sill.position.set(-10, 1.5, 0);
   root.add(sill);
+  addHazardBand(root, { width: 26, height: 0.8, depth: 1, x: -10, y: 2.4, z: 17.1 });
+  addWorkLamp(root, { width: 4, height: 0.9, depth: 1, x: -10, y: 2.4, z: -17.1 });
   const throat = mesh(shared.boxGeo, seam, 'law_mouth_throat');
   throat.scale.set(2.2, 4.5, 26);
   throat.position.set(-14, 5, 0);
@@ -457,6 +474,7 @@ function buildBankPlate(toy, sink) {
   foot.scale.set(14, 3, half * 2 + 8);
   foot.position.set(-4, 1.5, 0);
   root.add(foot);
+  addWorkLamp(root, { width: 3, height: 1, depth: 1.2, x: -4, y: 3.4, z: half + 4.1 });
   return {
     root,
     mover(elapsed, dt, reduced, calmFlash, pulse) {

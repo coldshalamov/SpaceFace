@@ -37,6 +37,16 @@ export const CombatDoctrineId = Object.freeze({
 });
 
 export const DOCTRINE_TELEGRAPH_TICKS = 30;
+// S7 — the Crucible Swarm character sheet promises every dangerous ability a visible tell at
+// least 0.6 s (36 fixed ticks) before it lands. Cohort hulls carry data.ai.swarmTellFloor
+// (stamped at swarm materialization); their cue beats stretch to the floor while adventure
+// hulls keep the authored 30-tick beat.
+export const SWARM_TELL_FLOOR_TICKS = 36;
+function cueTicksFor(record) {
+  return record && record.swarmTellFloor === true
+    ? Math.max(DOCTRINE_TELEGRAPH_TICKS, SWARM_TELL_FLOOR_TICKS)
+    : DOCTRINE_TELEGRAPH_TICKS;
+}
 
 const IDS = new Set(Object.values(CombatDoctrineId));
 const INTERCEPTOR_STRIKE_MIN_TICKS = 24;
@@ -408,6 +418,8 @@ export class CombatDoctrineRuntime {
     }
     record.lastTick = tick;
     record.ramAuthorized = self && self.ramAuthorized === true;
+    record.swarmTellFloor = !!(self && (self.swarmTellFloor === true
+      || (self.ai && self.ai.swarmTellFloor === true)));
     record.outcome = null;
     record.fallbackRearmed = false;
     record.telegraphStartedTick = null;
@@ -622,7 +634,7 @@ function updateInterceptor(record, tick, self, target, distance, dispatched = fa
   } else if (record.phase === 'engine_flare' && runCorridorEscaped(record, tick, self, target)) {
     // The announced lane is dead before the pass began — wave off into the authored egress.
     beginEgress(record, 'extend', tick, self, target, 'corridor_escaped');
-  } else if (record.phase === 'engine_flare' && age >= DOCTRINE_TELEGRAPH_TICKS) {
+  } else if (record.phase === 'engine_flare' && age >= cueTicksFor(record)) {
     record.closestDistance = distance;
     enter(record, 'strike', tick, null);
   } else if (record.phase === 'strike') {
@@ -658,7 +670,7 @@ function updateBrawler(record, tick, self, target, distance) {
   } else if (record.phase === 'engine_flare' && runCorridorEscaped(record, tick, self, target)) {
     // The announced lane is dead before the charge began — wave off into the authored egress.
     beginEgress(record, 'breakaway', tick, self, target, 'corridor_escaped');
-  } else if (record.phase === 'engine_flare' && age >= DOCTRINE_TELEGRAPH_TICKS) {
+  } else if (record.phase === 'engine_flare' && age >= cueTicksFor(record)) {
     record.closestDistance = distance;
     // Mass commitment: the run drives at a fixed world point — the target's forecast position
     // extended past it — so the charge cannot re-plan around a late sidestep. Overshoot and a
@@ -695,7 +707,7 @@ function updateDetonator(record, tick, self, target, distance) {
   const age = tick - record.phaseStartedTick;
   if (record.phase === 'ingress' && distance <= DETONATOR_FUSE_RANGE_WU) {
     enter(record, 'fuse_cue', tick, 'detonator_fuse', DETONATOR_TELEGRAPH_TICKS);
-  } else if (record.phase === 'fuse_cue' && age >= DETONATOR_FUSE_TICKS) {
+  } else if (record.phase === 'fuse_cue' && age >= Math.max(DETONATOR_FUSE_TICKS, cueTicksFor(record))) {
     record.closestDistance = distance;
     enter(record, 'commit', tick, null);
   } else if (record.phase === 'commit') {
@@ -717,7 +729,7 @@ function updateTetherRaider(record, tick, entityId, perception, self, target, di
   const age = tick - record.phaseStartedTick;
   const tether = ownedTether(perception, entityId, target.id);
   if (record.phase === 'flank' && distance <= 140) enter(record, 'spool_cue', tick, 'attach_spool');
-  else if (record.phase === 'spool_cue' && age >= DOCTRINE_TELEGRAPH_TICKS) enter(record, 'attach_window', tick, null);
+  else if (record.phase === 'spool_cue' && age >= cueTicksFor(record)) enter(record, 'attach_window', tick, null);
   else if (record.phase === 'attach_window' && tether) enter(record, 'control', tick, null);
   // "Contested" means another ship's control line is already ON this hull, so my attach would be a
   // second lasso on the same body. It does NOT mean the target is holding a line of its own. The
@@ -776,7 +788,7 @@ function updateScissorwake(record, tick, perception, self, target) {
 function updateFieldAnchor(record, tick, self, target, distance) {
   const age = tick - record.phaseStartedTick;
   if (record.phase === 'approach' && distance <= 540) enter(record, 'field_spool', tick, 'field_spool');
-  else if (record.phase === 'field_spool' && age >= DOCTRINE_TELEGRAPH_TICKS) enter(record, 'anchor_hold', tick, null);
+  else if (record.phase === 'field_spool' && age >= cueTicksFor(record)) enter(record, 'anchor_hold', tick, null);
   else if (record.phase === 'anchor_hold' && (age >= FIELD_ANCHOR_HOLD_TICKS || distance < 220)) {
     beginEgress(record, 'recover', tick, self, target, 'field_cycle_complete');
   } else if (record.phase === 'recover' && age >= FIELD_ANCHOR_RECOVER_TICKS &&
@@ -857,7 +869,7 @@ function updateEscort(record, tick, perception, self, target, distance) {
       ? pointWithin(self, record.flightPoint, ESCORT_APPROACH_RANGE_WU)
       : distance <= 420;
     if (inPosition || age >= ESCORT_APPROACH_TICKS) enter(record, 'screen_deploy', tick, 'engine_flare');
-  } else if (record.phase === 'screen_deploy' && age >= DOCTRINE_TELEGRAPH_TICKS) {
+  } else if (record.phase === 'screen_deploy' && age >= cueTicksFor(record)) {
     enter(record, 'screen_hold', tick, null);
   } else if (record.phase === 'screen_hold') {
     if (escortBreached(perception, ward)) {
@@ -1076,7 +1088,7 @@ function updateRanged(record, tick, self, target, distance) {
     // lateral dodge or a line-of-sight break during the cue actually beats the volley.
     record.aimCommitBearing = corridorBearing(self, target);
   }
-  else if (record.phase === 'charge_cue' && age >= DOCTRINE_TELEGRAPH_TICKS) enter(record, 'fire_window', tick, null);
+  else if (record.phase === 'charge_cue' && age >= cueTicksFor(record)) enter(record, 'fire_window', tick, null);
   else if (record.phase === 'fire_window' && age >= RANGED_FIRE_TICKS) {
     // While the announced corridor is still outside every mount cone the hull is mid-slew onto
     // the committed line — the window holds open so the volley releases the moment the guns
@@ -1351,7 +1363,7 @@ function retreatFleePoint(self, target) {
 function updateSwarmPack(record, tick, self, target, distance) {
   const age = tick - record.phaseStartedTick;
   if (record.phase === 'ingress' && distance <= SWARM_INGRESS_RANGE_WU) enter(record, 'engine_flare', tick, 'engine_flare');
-  else if (record.phase === 'engine_flare' && age >= DOCTRINE_TELEGRAPH_TICKS) {
+  else if (record.phase === 'engine_flare' && age >= cueTicksFor(record)) {
     record.closestDistance = distance;
     enter(record, 'strike', tick, null);
   } else if (record.phase === 'strike') {
@@ -1376,7 +1388,7 @@ function updateSwarmPack(record, tick, self, target, distance) {
 function updateMineLayer(record, tick, self, target, distance) {
   const age = tick - record.phaseStartedTick;
   if (record.phase === 'flank' && distance <= MINE_FLANK_RANGE_WU) enter(record, 'wake_cue', tick, 'wake_mines');
-  else if (record.phase === 'wake_cue' && age >= DOCTRINE_TELEGRAPH_TICKS) enter(record, 'mine_drop', tick, null);
+  else if (record.phase === 'wake_cue' && age >= cueTicksFor(record)) enter(record, 'mine_drop', tick, null);
   else if (record.phase === 'mine_drop' && age >= MINE_DROP_TICKS) {
     beginEgress(record, 'disengage', tick, self, target, 'wake_seeded');
   } else if (record.phase === 'disengage' && age >= MINE_DISENGAGE_TICKS &&
@@ -1395,7 +1407,7 @@ function updateMineLayer(record, tick, self, target, distance) {
 function updateShieldBreaker(record, tick, self, target, distance) {
   const age = tick - record.phaseStartedTick;
   if (record.phase === 'close' && distance <= SHIELD_CLOSE_RANGE_WU) enter(record, 'lance_cue', tick, 'shield_lance');
-  else if (record.phase === 'lance_cue' && age >= DOCTRINE_TELEGRAPH_TICKS) {
+  else if (record.phase === 'lance_cue' && age >= cueTicksFor(record)) {
     record.closestDistance = distance;
     enter(record, 'lance', tick, null);
   } else if (record.phase === 'lance') {
@@ -1460,10 +1472,11 @@ function enter(record, phase, tick, telegraphKind, telegraphTicks) {
   record.phaseStartedTick = tick;
   record.phaseChangedTick = tick;
   // telegraphTicks defaults to the cue beat alone; a doctrine whose announce IS the whole
-  // armed window (the kamikaze fuse) declares the honest duration instead.
+  // armed window (the kamikaze fuse) declares the honest duration instead. A cohort hull's
+  // tell floor stretches whichever beat it is handed, explicit or default.
   const durationTicks = Number.isFinite(telegraphTicks)
-    ? Math.max(1, Math.floor(telegraphTicks))
-    : DOCTRINE_TELEGRAPH_TICKS;
+    ? Math.max(1, Math.floor(telegraphTicks), record.swarmTellFloor === true ? cueTicksFor(record) : 1)
+    : cueTicksFor(record);
   record.telegraph = telegraphKind
     ? Object.freeze({ kind: telegraphKind, durationTicks, startedTick: tick })
     : null;

@@ -130,6 +130,31 @@ ${A} .sf-cru-card .sf-cru-verb { display:block !important; grid-column:2 !import
 ${A} .sf-cru-card .sf-cru-key, ${A} .orr-rail-scale, ${A} .orr-rail-wallet { display:none !important; }
 ${A} .sf-cru-card.is-lit { background:linear-gradient(90deg,rgb(242 185 80 / .09),transparent) !important; }
 ${A} .sf-cru-card.is-lit::before { content:'' !important; display:block !important; position:absolute !important; left:0 !important; top:14px !important; bottom:14px !important; width:2px !important; background:var(--dp-hand) !important; }
+/* S11 — the dealt three: tall authored cards above the shelf, ~360px wide and tall enough to
+   hold the glyph, the verb, the name, one sentence and the price. One click picks and fits;
+   the shelf rail stays a dense browse surface behind Browse all. */
+${A} .sf-cru-dealt { display:grid !important; grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:14px !important; flex:none !important; margin:0 0 16px !important; }
+${A} .sf-cru-dealt[hidden] { display:none !important; }
+${A} .sf-cru-dealt .sf-cru-card.sf-cru-card--dealt { display:flex !important; flex-direction:column !important; align-items:stretch !important; gap:6px !important; min-height:360px !important; height:auto !important; width:100% !important; padding:14px 16px 12px !important; margin:0 !important; border:1px solid var(--dp-line) !important; border-radius:2px !important; background:rgb(12 13 16 / .55) !important; text-align:left !important; cursor:pointer !important; }
+${A} .sf-cru-dealt .sf-cru-card--dealt:hover, ${A} .sf-cru-dealt .sf-cru-card--dealt:focus-visible { border-color:var(--dp-hand) !important; }
+${A} .sf-cru-dealt .sf-cru-dealtface { display:grid !important; place-items:center !important; min-height:150px !important; flex:1 1 auto !important; border-bottom:1px solid var(--dp-line-faint) !important; margin-bottom:4px !important; }
+${A} .sf-cru-dealt .sf-cru-dealtface > .orr-equipment-glyph, ${A} .sf-cru-dealt .sf-cru-dealtface > svg { width:132px !important; height:132px !important; opacity:.92; }
+${A} .sf-cru-dealt .sf-cru-cardhead { display:flex !important; align-items:baseline !important; gap:10px !important; margin:0 !important; }
+${A} .sf-cru-dealt .sf-cru-key { display:inline !important; font:500 12px/1 var(--dp-face-numeral) !important; color:var(--dp-ink-dim) !important; margin:0 !important; }
+${A} .sf-cru-dealt .sf-cru-verb { flex:1 1 auto !important; font:600 13px/1.2 var(--dp-face-label) !important; letter-spacing:.14em !important; color:var(--dp-hand) !important; margin:0 !important; }
+${A} .sf-cru-dealt .sf-cru-price { font:600 15px/1 var(--dp-face-numeral) !important; color:var(--dp-ink) !important; margin:0 !important; }
+${A} .sf-cru-dealt .sf-cru-name { font:700 clamp(18px,1.5vw,24px)/1.1 var(--dp-face-display,'Archivo') !important; letter-spacing:-.015em !important; color:var(--dp-ink) !important; margin:2px 0 !important; overflow-wrap:anywhere !important; }
+${A} .sf-cru-dealt .sf-cru-blurb { display:block !important; font:400 14px/1.45 var(--dp-face-body,'Instrument Sans'),sans-serif !important; color:var(--dp-ink-dim) !important; margin:0 !important; }
+${A} .sf-cru-dealt .sf-cru-slot, ${A} .sf-cru-dealt .sf-cru-afford, ${A} .sf-cru-dealt .sf-cru-activation { display:block !important; margin:2px 0 0 !important; }
+${A} .sf-cru-dealt .sf-cru-slot { font:400 12px/1.4 var(--dp-face-label) !important; color:var(--dp-ink-dim) !important; }
+${A} .sf-cru-dealt .sf-cru-card--dealt.is-unavail { opacity:.55 !important; }
+${A} .sf-cru-dealt .sf-cru-card--dealt.is-fitted { border-color:var(--dp-line-faint) !important; opacity:.6 !important; }
+/* S15 — the synthesis is the room's golden row: a card that only exists because the build's own
+   parts combined. Gold hairline + warm wash on both the shelf row and a dealt card. */
+${A} .sf-cru-card.sf-cru-card--evo { border-color:var(--dp-hand) !important; background:linear-gradient(180deg, rgb(214 175 55 / .14), rgb(12 13 16 / .55) 55%) !important; box-shadow:0 0 0 1px rgb(214 175 55 / .22), 0 6px 22px -12px rgb(214 175 55 / .45) !important; }
+${A} .sf-cru-card.sf-cru-card--evo .sf-cru-name { color:var(--dp-hand) !important; }
+${A} .sf-cru-card.sf-cru-card--evo .sf-cru-verb::after { content:' synthesis'; }
+${A} .sf-cru-stage > .sf-cru-cards[hidden] { display:none !important; }
 ${A} .orr-rail-divider { font:500 12px/1.4 var(--dp-face-label) !important; letter-spacing:.12em; color:var(--dp-ink-dim) !important; margin:14px 0 4px 12px !important; }
 /* Doubled .orr-armory-reading.orr-armory-reading is a deliberate specificity bump so these !important reading rules win over earlier stage layout. */
 ${A} .orr-armory-reading.orr-armory-reading { pointer-events:auto !important; grid-column:2 !important; grid-row:2 !important; position:relative !important; inset:auto !important; width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important; display:grid !important; grid-template-columns:minmax(180px,.9fr) minmax(0,1.1fr) !important; grid-template-rows:minmax(0,1fr) !important; gap:24px !important; overflow:auto !important; padding:14px 2px 14px 16px !important; border-left:1px solid var(--dp-line-faint); }
@@ -782,6 +807,59 @@ ${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-slottag { color:rgb
   ${RD} > .sf-cru-stage.orr-hull--on .orr-hp__spare-stat { flex:1 0 100% !important; }
   /* the "N of 8 fitted" engraving sat under the two-row foot; it rides just above it */
   ${RD} > .sf-cru-stage.orr-hull--on .orr-hull-fitcount { bottom:var(--orr-hull-count-bottom, 228px) !important; }
+}
+
+/* ── Armory polish (2026-11-06 frontend pass) ───────────────────────────────────────────────────────
+   1. Dealt cards share one skeleton. The art face is a fixed band (it flexed, so a card with a short
+      blurb grew a taller face and its name sat lower than its neighbours'); the blurb takes the slack and
+      the facts pin to the card's foot.
+   2. The head: key and price share the top line and the verb gets its own full line. Squeezed beside them
+      the verb was cut to "SC…", "SU…", "CO…" — a status name is never truncated (STATION_STANDARD §6).
+   3. The shortcut hint on the amber primary key reads dark-on-amber (it was pale-on-amber, ~1.3:1).
+   4. Demo / Hold are real keys (hairline box, hover, focus), not two bare words over a rule.
+   5. The reading's two columns keep a real gutter so the schematic's labels never touch the words. */
+${A} .sf-cru-dealt .sf-cru-dealtface { flex:0 0 auto !important; min-height:140px !important; }
+${A} .sf-cru-dealt .sf-cru-blurb { flex:1 1 auto !important; }
+${A} .sf-cru-dealt .sf-cru-cardhead { flex-wrap:wrap !important; row-gap:2px !important; align-items:center !important; }
+${A} .sf-cru-dealt .sf-cru-cardhead .sf-cru-price { margin-left:auto !important; }
+${A} .sf-cru-dealt .sf-cru-cardhead .sf-cru-verb { order:3; flex:1 0 100% !important; white-space:normal !important;
+  overflow:visible !important; text-overflow:clip !important; letter-spacing:.06em !important; }
+${A} .k-word--primary .sf-cru-kbd { color:rgb(11 13 16 / .88) !important; background:rgb(11 13 16 / .10) !important;
+  border-color:rgb(11 13 16 / .42) !important; }
+${A} :is(.orr-armory-reading__demo-word, .orr-armory-reading__hold-word) {
+  display:inline-flex !important; align-items:center; box-sizing:border-box; min-height:34px !important; padding:0 14px !important;
+  font:600 13px/1 var(--dp-face-read, "Instrument Sans", system-ui, sans-serif) !important; letter-spacing:.04em; text-transform:uppercase;
+  color:rgb(${BONE} / .92) !important; background:rgb(${BONE} / .05) !important;
+  border:1px solid rgb(${BONE} / .36) !important; border-radius:2px !important; margin:0 8px 8px 0 !important; }
+${A} :is(.orr-armory-reading__demo-word, .orr-armory-reading__hold-word):is(:hover, :focus-visible) {
+  color:#fff !important; background:rgb(${BONE} / .12) !important; border-color:rgb(${BONE} / .75) !important; }
+${A} .orr-armory-reading { gap:40px !important; }
+/* a footer key that cannot be used (Re-roll with none left) must look disabled, not merely refuse a click */
+${A} .k-foot .k-word:is(:disabled, [aria-disabled="true"]) { opacity:.45 !important; cursor:not-allowed !important; }
+/* ── Crucible entry (the door), 821–960px tall ─────────────────────────────────────────────────────
+   Mode, stake, arena and zone need ~650px; the panel has ~570 at 900. The Zone row was entirely hidden
+   below the scroll edge and the arena names were cut mid-word, with nothing to say more was there.
+   The ≤820 band below already trims tiles; this is the same grammar one step gentler, so all four rows
+   are on screen at once. */
+@media (min-height:821px) and (max-height:960px) {
+  ${D}.sf-crucible-door .orr-prep-settings.orr-prep-settings.orr-prep-settings { gap:8px !important; }
+  ${D} .k-row > .k-row__name { margin-bottom:4px !important; }
+  ${D}.sf-crucible-door :is(.sf-crd-mode-sub, .sf-crd-stake-sub, .sf-crd-arena-sub, .sf-crd-hull-sub) { margin-top:4px !important; }
+  ${D} .sf-crd-modes button.fh-tile.orr-tile { min-height:78px !important; padding:8px 8px 6px !important; }
+  ${D} .sf-crd-modes .fh-tile-art, ${D} .sf-crd-modes .fh-tile-art svg { height:36px !important; }
+  ${D} .sf-crd-stakes .orr-tile { min-height:0 !important; padding:7px 8px !important; gap:3px !important; }
+  ${D} .sf-crd-stake .fh-tile-art { display:none !important; }
+  ${D} .orr-prep-stake-number { font-size:25px !important; }
+  ${D} .sf-crd-arenas .orr-tile { min-height:0 !important; padding:4px 6px 6px !important; gap:4px !important; }
+  ${D} .sf-crd-arenas .fh-tile-art, ${D} .sf-crd-arenas .fh-tile-art img { height:28px !important; }
+}
+/* a 900px-tall window: the centre column (pip spanner, glyph disc, label, hull jig) needs ~600px and had
+   ~560, so the hull schematic was cropped by the footer. The disc and the jig are trimmed to fit. */
+@media (max-height:960px) {
+  ${A} .orr-armory-visual { gap:14px; }
+  ${A} .orr-armory-item { min-height:170px; height:190px; }
+  ${A} .orr-armory-item > .orr-equipment-glyph { width:140px; height:140px; }
+  ${A} .orr-armory-reading__jig { height:200px !important; min-height:160px; }
 }
 `;
 export function injectCruciblePreparation(doc = globalThis.document) {

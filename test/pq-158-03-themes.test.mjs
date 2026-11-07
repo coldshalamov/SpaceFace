@@ -47,8 +47,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const MEASURE_SEED = 15803;
 
-test(`seed ${MEASURE_SEED}: four state themes, each with a hummable motif and authored stem weights`, () => {
-  assert.deepEqual([...THEME_STATES], ['travel', 'combat', 'station', 'wanted']);
+test(`seed ${MEASURE_SEED}: five state themes, each with a hummable motif and authored stem weights`, () => {
+  assert.deepEqual([...THEME_STATES], ['travel', 'combat', 'station', 'wanted', 'boss']);
   const distinct = themeMotifsAreDistinct();
   assert.equal(distinct.motifs, true);
   assert.equal(distinct.beds, true);
@@ -235,7 +235,13 @@ test(`seed ${MEASURE_SEED}: authored travel WAV is the phrase a stranger hums`, 
   const decoded = decodePcmWav(readFileSync(file));
   assert.ok(decoded, 'theme_travel is not a PCM WAV');
   const hummed = humMelodyFromPcm(decoded.pcm, decoded.sampleRate);
-  assert.deepEqual(hummed, ['A', 'C', 'E', 'A'], `authored stem hummed ${hummed.join(' ') || '(silence)'}`);
+  // X4 authored a 16 s loop: the four-note phrase repeats across it. The stranger must hear the
+  // same motif on every pass, not a drifting one.
+  assert.ok(hummed.length >= 4, `authored stem hummed ${hummed.join(' ') || '(silence)'}`);
+  assert.deepEqual(hummed.slice(0, 4), ['A', 'C', 'E', 'A'], `authored stem opened ${hummed.slice(0, 4).join(' ')}`);
+  for (let i = 4; i + 4 <= hummed.length; i += 4) {
+    assert.deepEqual(hummed.slice(i, i + 4), ['A', 'C', 'E', 'A'], `repeat at ${i}`);
+  }
   for (const asset of THEME_ASSETS) {
     const row = SAMPLE_MANIFEST.get(asset.id);
     assert.ok(row, `${asset.id} missing from SAMPLE_MANIFEST`);

@@ -121,8 +121,8 @@ export const SWARM_BROOD_FAMILIES = Object.freeze([
     // player's swing while the body is held on the line. Bare `{kind,mass,radius}` is plain
     // thrown mass that keeps flying until it despawns.
     remains: { kind: 'husk_shards', name: 'Husk shards', mass: 6, radius: 2.6 },
-    bodyColor: [0.62, 0.30, 0.16],
-    bodyEmissive: [0.55, 0.14, 0.05],
+    bodyColor: [1.00, 0.38, 0.05],
+    bodyEmissive: [0.85, 0.26, 0.02],
   },
   {
     id: 'spitter',
@@ -141,8 +141,8 @@ export const SWARM_BROOD_FAMILIES = Object.freeze([
     counter: 'It lobs acid. Dodge the marker, work the throw.',
     deathLeaves: 'acid sac (a thrown sac splashes)',
     remains: { kind: 'acid_sac', name: 'Acid sac', mass: 14, radius: 4, splashRadius: 30 },
-    bodyColor: [0.18, 0.46, 0.22],
-    bodyEmissive: [0.10, 0.34, 0.10],
+    bodyColor: [0.45, 1.00, 0.08],
+    bodyEmissive: [0.28, 0.85, 0.04],
   },
   {
     id: 'spore_drift',
@@ -167,8 +167,8 @@ export const SWARM_BROOD_FAMILIES = Object.freeze([
     slowRadius: 26,
     slowAccel: 34,
     deathLeaves: 'nothing; it clears',
-    bodyColor: [0.16, 0.52, 0.22],
-    bodyEmissive: [0.06, 0.34, 0.10],
+    bodyColor: [0.52, 0.95, 0.16],
+    bodyEmissive: [0.34, 0.80, 0.08],
   },
   {
     id: 'charger',
@@ -187,8 +187,8 @@ export const SWARM_BROOD_FAMILIES = Object.freeze([
     counter: 'It lines a dash. Sidestep — feed it a rock.',
     deathLeaves: 'horn plate (heavy throwable)',
     remains: { kind: 'horn_plate', name: 'Horn plate', mass: 60, radius: 6 },
-    bodyColor: [0.50, 0.16, 0.16],
-    bodyEmissive: [0.40, 0.06, 0.04],
+    bodyColor: [1.00, 0.48, 0.04],
+    bodyEmissive: [0.90, 0.34, 0.02],
   },
   {
     id: 'lantern_cyst',
@@ -214,8 +214,8 @@ export const SWARM_BROOD_FAMILIES = Object.freeze([
     burstRadius: 90,
     burstDv: 120,
     deathLeaves: 'spore burst (shoves everything)',
-    bodyColor: [0.55, 0.62, 0.14],
-    bodyEmissive: [0.55, 0.50, 0.08],
+    bodyColor: [1.00, 0.10, 0.55],
+    bodyEmissive: [0.90, 0.05, 0.42],
   },
   {
     id: 'leecher',
@@ -234,8 +234,8 @@ export const SWARM_BROOD_FAMILIES = Object.freeze([
     counter: 'It latches and slows you. Scrape a wall to shed it.',
     deathLeaves: 'the leech, still sticky (glue ammunition)',
     remains: { kind: 'leech_glue', name: 'Still leech', mass: 9, radius: 3.2, glueS: 3 },
-    bodyColor: [0.36, 0.20, 0.52],
-    bodyEmissive: [0.22, 0.10, 0.38],
+    bodyColor: [0.62, 0.18, 1.00],
+    bodyEmissive: [0.46, 0.10, 0.85],
   },
   {
     id: 'glassback',
@@ -260,8 +260,8 @@ export const SWARM_BROOD_FAMILIES = Object.freeze([
     shardDamage: 14,
     deathLeaves: 'glass shards (they shatter on impact, splash damage)',
     remains: { kind: 'glass_shards', name: 'Glass shards', mass: 20, radius: 5, splashRadius: 40 },
-    bodyColor: [0.55, 0.62, 0.58],
-    bodyEmissive: [0.20, 0.30, 0.26],
+    bodyColor: [1.00, 0.82, 0.42],
+    bodyEmissive: [0.80, 0.60, 0.18],
   },
   {
     id: 'wake_eel',
@@ -286,8 +286,8 @@ export const SWARM_BROOD_FAMILIES = Object.freeze([
     wrapS: 6,
     deathLeaves: 'the eel body — a whip while held',
     remains: { kind: 'eel_body', name: 'Eel body', mass: 30, radius: 5, whipMult: 1.9 },
-    bodyColor: [0.22, 0.44, 0.50],
-    bodyEmissive: [0.08, 0.24, 0.30],
+    bodyColor: [0.55, 0.22, 1.00],
+    bodyEmissive: [0.38, 0.12, 0.80],
   },
   {
     id: 'bellows',
@@ -312,8 +312,8 @@ export const SWARM_BROOD_FAMILIES = Object.freeze([
     burstRadius: 110,
     burstDv: 150,
     deathLeaves: 'a shockwave that shoves the pack',
-    bodyColor: [0.42, 0.30, 0.14],
-    bodyEmissive: [0.34, 0.20, 0.06],
+    bodyColor: [0.95, 0.72, 0.28],
+    bodyEmissive: [0.78, 0.52, 0.12],
   },
 ]);
 

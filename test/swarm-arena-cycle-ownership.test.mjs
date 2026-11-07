@@ -211,12 +211,12 @@ test('wave 2 deals furnace_active everywhere — and installs seven different ro
 });
 
 test('boss waves deal the boss token — each law arena authors its own champion room', () => {
-  const wave = 10;
+  const wave = 5;
   assert.equal(swarmArenaPhase(wave), 'boss');
   const notes = new Set();
   for (const arenaId of LAW_ARENA_IDS) {
     const plan = planFor(arenaId, wave);
-    assert.equal(plan.arenaPhase, 'boss', `${arenaId} wave 10 is the boss beat`);
+    assert.equal(plan.arenaPhase, 'boss', `${arenaId} wave 5 is the boss beat`);
     const install = installFor(arenaId, plan.arenaPhase, wave);
     assert.notEqual(install.note, 'inert room');
     notes.add(install.note);
@@ -228,7 +228,7 @@ test('boss waves deal the boss token — each law arena authors its own champion
 
 test('shutter_alternating still overrides the dealt token — cycle, act and arena alike', () => {
   for (const arenaId of [FOUNDRY_ARENA_ID, CINDER_ARENA_ID, HIVE_ARENA_ID]) {
-    for (const wave of [1, 2, 6, 25]) {
+    for (const wave of [1, 2, 6, 10]) {
       const plan = planFor(arenaId, wave, ['shutter_alternating']);
       assert.notEqual(plan.ok, false, `${arenaId} wave ${wave} plans under the pact`);
       assert.equal(

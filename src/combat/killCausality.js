@@ -19,6 +19,15 @@ export const KillCause = Object.freeze({
 const DIRECT_IMPACT_TAGS = new Set(['direct_contact', 'ram_plate', 'tow_flail']);
 const INDIRECT_IMPACT_TAGS = new Set(['massline_throw', 'massline', 'rope_throw', 'massline_whip']);
 
+/**
+ * "You threw what hit them": the impulse tags a body carries when the Massline set it flying.
+ * The law card's indirect class reads this set; physical owners that answer a thrown body
+ * (the mine fence's strike fuze) read the same set instead of keeping a copy.
+ */
+export function isThrownMassTag(tag) {
+  return typeof tag === 'string' && INDIRECT_IMPACT_TAGS.has(tag);
+}
+
 const CANONICAL_CAUSES = new Set(Object.values(KillCause));
 
 // The surfaces the collision-consequence receipt admits (src/systems/collisionConsequences.js

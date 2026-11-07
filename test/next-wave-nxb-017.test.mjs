@@ -1,4 +1,4 @@
-// NXB-017 — the three-round act (waves 25–27, 'mooring_line').
+// NXB-017 — the three-round act (waves 26–28, 'mooring_line').
 //
 // The packet's three acceptance asks, pinned against the real plan output:
 //   1. Each round has a different describable physical decision, not a different enemy count.
@@ -42,7 +42,7 @@ function stagedEntries(plan) {
 
 test('the three adjacent swarm slots carry the authored act; neighbours do not', () => {
   const questions = [];
-  for (const [wave, round, phase] of [[25, 1, 'loose_plate'], [26, 2, 'furnace_active'], [27, 3, 'shutter_slow']]) {
+  for (const [wave, round, phase] of [[26, 1, 'loose_plate'], [27, 2, 'furnace_active'], [28, 3, 'shutter_slow']]) {
     const plan = swarmPlan(wave);
     assert.ok(!plan.error, `wave ${wave} plans clean`);
     assert.equal(plan.swarm.act.id, SWARM_ACT_ID);
@@ -57,15 +57,15 @@ test('the three adjacent swarm slots carry the authored act; neighbours do not',
     questions.push(plan.swarm.act.question);
   }
   assert.equal(new Set(questions).size, 3, 'each round asks a different question');
-  for (const wave of [23, 24, 28, 29]) {
+  for (const wave of [23, 24, 25, 29]) {
     const plan = swarmPlan(wave);
     assert.ok(!plan.error);
     assert.equal(plan.swarm.act, undefined, `wave ${wave} stays a generated wave`);
   }
 });
 
-test('round 1 (wave 25): loose mass against an exposed hull', () => {
-  const plan = swarmPlan(25);
+test('round 1 (wave 26): loose mass against an exposed hull', () => {
+  const plan = swarmPlan(26);
   const opening = plan.packages.filter((pkg) => pkg.staged !== true);
   // The opening is ammunition: every unstaged group fields a light-pursuer role.
   for (const pkg of opening) {
@@ -83,8 +83,8 @@ test('round 1 (wave 25): loose mass against an exposed hull', () => {
   assert.ok(MASS_BY_ID.bruiser_brawler >= 70, 'the exposed hull is too heavy to shove — mass is the lever');
 });
 
-test('round 2 (wave 26): one specialist contests the use, staged like a debut', () => {
-  const plan = swarmPlan(26);
+test('round 2 (wave 27): one specialist contests the use, staged like a debut', () => {
+  const plan = swarmPlan(27);
   const staged = plan.packages.filter((pkg) => pkg.staged === true);
   assert.equal(staged.length, 1);
   assert.equal(staged[0].enemyId, 'tether_control_raider');
@@ -96,8 +96,8 @@ test('round 2 (wave 26): one specialist contests the use, staged like a debut', 
   assert.ok(opening.some((pkg) => SWARM_FODDER_ROLES.includes(pkg.role)));
 });
 
-test('round 3 (wave 27): heavy anchor plus the specialist on one bearing', () => {
-  const plan = swarmPlan(27);
+test('round 3 (wave 28): heavy anchor plus the specialist on one bearing', () => {
+  const plan = swarmPlan(28);
   const staged = plan.packages.filter((pkg) => pkg.staged === true);
   const anchor = staged.find((pkg) => pkg.enemyId === 'field_anchor_controller');
   const specialist = staged.find((pkg) => pkg.enemyId === 'tether_control_raider');
@@ -109,7 +109,7 @@ test('round 3 (wave 27): heavy anchor plus the specialist on one bearing', () =>
 });
 
 test('the act stays inside the wave contracts — budgets, quota, draft interval', () => {
-  for (const wave of [25, 26, 27]) {
+  for (const wave of [26, 27, 28]) {
     const plan = swarmPlan(wave);
     assert.ok(swarmOpeningCount(plan.packages) <= SPAWN_BUDGET_DEFAULT_MAX,
       `wave ${wave} burst inside the shared spawn budget`);
@@ -127,7 +127,7 @@ test('staged act bodies ride the owed-body law — early kills cannot strand the
   // Acceptance 3: the counterexample is termination honesty. A staged body that the spawn
   // budget refused must be re-queued, not dropped — so the flag reaches the schedule entry
   // survivalWave.js owes, and the wave still cannot clear on pending work.
-  for (const wave of [25, 26, 27]) {
+  for (const wave of [26, 27, 28]) {
     const plan = swarmPlan(wave);
     const staged = stagedEntries(plan);
     assert.ok(staged.length >= 1, `wave ${wave} stages at least one owed body`);
@@ -140,7 +140,7 @@ test('staged act bodies ride the owed-body law — early kills cannot strand the
 });
 
 test('NXI-065 — every act round keeps a useful opening lane', () => {
-  for (const wave of [25, 26, 27]) {
+  for (const wave of [26, 27, 28]) {
     const plan = swarmPlan(wave);
     const used = new Set(plan.packages.map((pkg) => pkg.gateGroup));
     assert.ok(used.size >= 2, `wave ${wave} does not stack its whole opening on one bearing`);
@@ -153,7 +153,7 @@ test('NXI-066 — a dishonest act spec is rejected before it plans', () => {
     id: SWARM_ACT_ID, round: 1,
     packages: [{ enemyId: 'wasp_swarmer', count: SPAWN_BUDGET_DEFAULT_MAX + 1, gateIndex: 0, atTick: 0 }],
   };
-  assert.ok(swarmActIssues(25, overBudget).some((issue) => /exceeds budget/.test(issue.message)));
+  assert.ok(swarmActIssues(26, overBudget).some((issue) => /exceeds budget/.test(issue.message)));
 
   const earlyDebut = {
     id: SWARM_ACT_ID, round: 1,
@@ -163,24 +163,24 @@ test('NXI-066 — a dishonest act spec is rejected before it plans', () => {
     'a body the wave has not unlocked cannot be authored in');
 
   // `gate: 'free'` sweeps every bearing — eight of them block the whole ring on any wave
-  // (a wave-26 ring walk alone only reaches four).
+  // (a wave-27 ring walk alone only reaches four).
   const everyGate = {
     id: SWARM_ACT_ID, round: 1,
     packages: Array.from({ length: 8 }, () => (
       { enemyId: 'wasp_swarmer', count: 1, gate: 'free', atTick: 0 }
     )),
   };
-  assert.ok(swarmActIssues(26, everyGate).some((issue) => /every gate/.test(issue.message)),
+  assert.ok(swarmActIssues(27, everyGate).some((issue) => /every gate/.test(issue.message)),
     'blocking all eight gates leaves no opening lane');
 
   // The shipped table is honest — the planner's own gate agrees.
-  for (const wave of [25, 26, 27]) assert.deepEqual(swarmActIssues(wave), []);
+  for (const wave of [26, 27, 28]) assert.deepEqual(swarmActIssues(wave), []);
 });
 
 test('NXI-068 — the specialist introduction never reprises on a later wave', () => {
   // After the act, the tether raider is ordinary roster stock: later waves field it through
   // the stream with no staged tell, no banner, no second introduction.
-  for (const wave of [28, 29, 30, 40]) {
+  for (const wave of [29, 30, 35, 40]) {
     const plan = swarmPlan(wave);
     assert.ok(!plan.error);
     const reprise = plan.packages.filter((pkg) => pkg.enemyId === 'tether_control_raider' && pkg.staged === true);
@@ -190,14 +190,14 @@ test('NXI-068 — the specialist introduction never reprises on a later wave', (
 });
 
 test('the mutator owns the room — heavies_only suppresses the act outright', () => {
-  const plan = swarmPlan(26, { mutators: ['heavies_only'] });
+  const plan = swarmPlan(27, { mutators: ['heavies_only'] });
   assert.ok(!plan.error);
   assert.equal(plan.swarm.act, undefined, 'an authored composition cannot survive a room the mutator owns');
   assert.ok(plan.packages.every((pkg) => pkg.enemyId !== 'wasp_swarmer'));
 });
 
 test('build pressure still outranks the act stream bend', () => {
-  const plan = swarmPlan(26, { buildSummary: { dominant: 'collision' } });
+  const plan = swarmPlan(27, { buildSummary: { dominant: 'collision' } });
   assert.ok(!plan.error);
   assert.equal(plan.swarm.buildPressure, 'collision');
   assert.equal(plan.swarm.pressureLine, 'The pack brought anchors for the rope.');
@@ -207,10 +207,10 @@ test('build pressure still outranks the act stream bend', () => {
 });
 
 test('the opening line names the round question inside the wave banner', () => {
-  const plan = swarmPlan(25);
-  const line = waveOpeningLine(25, plan);
+  const plan = swarmPlan(26);
+  const line = waveOpeningLine(26, plan);
   assert.ok(line.includes(plan.swarm.act.question), `banner carries the round's question: ${line}`);
-  assert.ok(line.includes('Wave 25.'));
-  const plain = swarmPlan(28);
-  assert.ok(!waveOpeningLine(28, plain).includes('mooring'), 'ordinary waves carry no act line');
+  assert.ok(line.includes('Wave 26.'));
+  const plain = swarmPlan(29);
+  assert.ok(!waveOpeningLine(29, plain).includes('mooring'), 'ordinary waves carry no act line');
 });

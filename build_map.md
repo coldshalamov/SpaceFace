@@ -727,6 +727,23 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | places-people | free | one-off census tool, new Orphaned Shift encounter owners (one per sitting, on the Morrow and Rubric pattern), `data/sectorWayOfLife.js` readers, canon cast hooks in their owners (§34.3, §34.8) | 505, 540, 542, 506 |
 | cadence | devin-thirty-oct22 | `systems/encounterDirector.js` cooldowns and rhythm phases, `systems/tensionDirector.js`, adventure swarm-pocket shape (§33 row 497) | 497 |
 | audit-50 | claude-beta-oct23 | reads anywhere; writes only fixes inside the owning seam's files, or one demo-ledger row (§34 row 548) | 548 |
+| swarm-fight | SWARM lane F (2026-11-05) | SWARM Lane F file list in `design/program/finish/swarm/LANES.md` (feel profile, character sheet, arenas, waves, staples, bosses — sim side) (§36) | 568, 569, 570, 571, 572, 573, 574, 575, 576, 577 |
+| swarm-show | SWARM lane S (2026-11-05) | SWARM Lane S file list in `design/program/finish/swarm/LANES.md` (glass, credit, title button, controls, horde readability, shop, payoff, VFX, combo cards — presentation side) (§36) | 578, 579, 580, 581, 582, 583, 584, 585, 586, 587, 588 |
+| pipeline | master Lane 1 (2026-11-06) | sim↔render transport, frame loop, platform shells, boot/loading — `presentationRunner.js`, `simLaneMain.js`, `wholeSimBrowserWorker.js`, `electron/`, `vercel.json`, loaders (§36) | 589, 590, 591, 592 |
+| sim-core | master Lane 2 (2026-11-06) | simulation systems, physics usage, entity store, scheduler — not SWARM F files until F lands S1/S7 (§36) | 593, 594, 595 |
+| renderer-rebuild | master Lane 3 (2026-11-06) | renderer, residency, materials, shaders, batching — coordinate with Codex perf files in flight (§36) | 596, 597 |
+| ship-sheet | master Lane 4 (2026-11-06) | ship screens, stat model, parts content, progression — not `crucible.js`/`crucibleDraft.js` (§36) | 598, 599, 600 |
+| journey | master Lane 5 (2026-11-06) | story, missions, encounters, sectors, contacts, onboarding (§36) | 601, 602, 603, 604, 605 |
+| look-sound | master Lane 6 (2026-11-06) | art direction, asset production, audio/music, Adventure HUD, controls — HUD files after SWARM S lands S2/S5 (§36) | 606, 607, 608, 609, 610 |
+| quality-verdicts | master Lane 7 (2026-11-06) | census, review gate, test tiers, route walks, razor, native-engine verdict — edits other files only with the owning lane (§36) | 611, 612, 613, 614, 615, 616 |
+| chaos-weight | free | collision consequences/crumple, heavy-hull ram identity, station breakables, volatile chains, wrecks, rock fracture, `shipjack.js`, cargo trains — see `design/program/finish/chaos/LANES.md` C1 (§36) | 617, 618, 619, 620, 621, 622, 623, 624, 625, 626, 627 |
+| chaos-react | free | traffic behaviour, personalities, panic, law/heat/police, witnesses, factions, barks, station reactions, NPC states, persistence — see `chaos/LANES.md` C2 (§36) | 628, 629, 630, 631, 632, 633, 634, 635, 636, 637, 638, 639, 640, 641, 642, 643, 644, 645, 646 |
+| chaos-play | free | chaos director, activities, chaos economy/notoriety, respawn, context prompts, radial, opportunity map, control feel, Adventure camera (after SWARM S6) — see `chaos/LANES.md` C3 (§36) | 647, 648, 649, 650, 651, 652, 653, 654, 655, 656 |
+| hotspots | free | Hotspot specs `design/program/finish/hotspots/`, placement, crowds, activities hosted through existing owners — prompt in `DIRECTION.md` §10; Helios first (§36) | 657, 658, 659, 660, 661, 662, 663, 664, 665, 666, 667, 668, 669, 670, 671, 672 |
+| kit | free | KIT catalog, socket vocabulary, runtime mounter, variant factory, livery/wear layers, breakable parts, place kit — Forge route only; prompt in `KIT.md` §6 (§36) | 673, 674, 675, 676, 677, 678, 679, 680, 681 |
+| light | free | `src/render/bloom.js` composite (agree with master Lane 3), `src/data/lookMoods.js`, look-bench, light pool, haze/shaft layers — prompt in `bible/LANES.md` (§36) | 682, 683, 684, 685, 686, 687, 688 |
+| feel-layer | free | presentation cues reading sim state: hull pose, RCS/retro/ignition VFX, camera weight, strain/impact/damage audio — `feel.js`/camera after SWARM S; prompt in `bible/LANES.md` (§36) | 689, 690, 691, 692, 693, 694 |
+| refinery | free | asset refinery scripts and release stage (never authored GLBs), census, manifests via the Forge publish route — prompt in `bible/LANES.md` (§36) | 695, 696, 697, 698, 699, 700, 701, 702, 703, 704, 705, 706 |
 
 **Research-to-production intake:** [bounded repair briefs](design/archive/program/research-2026-10-02/ADMITTED_REPAIRS.md)
 are attached to their canonical rows below; the linked [discussion list](design/archive/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
@@ -1253,6 +1270,154 @@ attention rows fill the surfaces).
 | 565 | X-07 | Mining payoff surface — seam/overheat skill variance | BUILD | landed f903289329 devin-lanea (audit✓3 plan✓3 impl✓3 — 3 successive clean reviews) |
 | 566 | X-08 | Sling income verb — authored thrown-mass kill payoff | BUILD | landed 414d4ea94b devin-lanea (audit✓3 plan✓3 impl✓3 — 3 successive clean reviews) |
 | 567 | X-09 | Per-cause death lessons beyond massline-snap (joint with ledger V-04) | BUILD | landed 94909073cd + v3 ab3bab5eba devin-lanea (audit✓3 plan✓3 impl✓3 — 3 successive clean reviews) |
+
+### Q. The November programs — SWARM, master plan, CHAOS, Hotspots, KIT, bible (owner direction 2026-11-05/06)
+
+The current priority. Design record: [§36](#36-the-november-programs--swarm-the-master-plan-chaos-the-bible-owner-direction-2026-11-0506).
+Each row names its spec; read the spec's taste bar ([`bible/QUALITY.md`](design/program/finish/bible/QUALITY.md))
+before starting. Rows marked *in flight* belong to a running lane agent — take a `free` seam instead.
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 568 | S1 | Swarm feel profile — bowling-pin contacts, gravity yank, shove punch, instant small kills, fodder melts (design/program/finish/swarm/PLANS.md S1) | BUILD | OPEN — in flight: SWARM lane F (launched 2026-11-05) |
+| 569 | S7 | Enemy character — the character sheet as data, distinct silhouettes/hues/abilities/tells, debut rule (design/program/finish/swarm/PLANS.md S7; bible/BESTIARY.md) | BUILD | OPEN — in flight: SWARM lane F (launched 2026-11-05) |
+| 570 | S8-sim | Heavy break-up into throwable chunks + shockwave impulse (design/program/finish/swarm/PLANS.md S8, sim half) | BUILD | OPEN — in flight: SWARM lane F (launched 2026-11-05) |
+| 571 | S9 | Arenas are friend and foe — one signature hazard each, round matches menu art (design/program/finish/swarm/PLANS.md S9; bible/ARENAS.md) | BUILD | OPEN — in flight: SWARM lane F (launched 2026-11-05) |
+| 572 | S10 | Shape of a round — visible gate arrivals, last three come to you, 60–90 s rounds (design/program/finish/swarm/PLANS.md S10) | BUILD | OPEN — in flight: SWARM lane F (launched 2026-11-05) |
+| 573 | S12 | Zombies staples with ceremony — drops, call-ins, special rounds, perks, Fortify (design/program/finish/swarm/PLANS.md S12) | BUILD | OPEN — in flight: SWARM lane F (launched 2026-11-05) |
+| 574 | S14 | Bosses — first boss at wave 5, readable phases, death into ammunition (design/program/finish/swarm/PLANS.md S14; bible/BESTIARY.md Part 4) | BUILD | OPEN — in flight: SWARM lane F (launched 2026-11-05) |
+| 575 | S17 | In-arena depots (Zombies wall-buys) — after S16 (design/program/finish/swarm/PLANS.md S17) | BUILD | OPEN — in flight: SWARM lane F (launched 2026-11-05) |
+| 576 | S18 | Named wave recipes, gates and lanes — after S16 (design/program/finish/swarm/PLANS.md S18; bible/ARENAS.md recipe book) | BUILD | OPEN — in flight: SWARM lane F (launched 2026-11-05) |
+| 577 | S19 | The arena escalates at waves 10 and 15 — after S16 (design/program/finish/swarm/PLANS.md S19; bible/ARENAS.md) | BUILD | OPEN — in flight: SWARM lane F (launched 2026-11-05) |
+| 578 | S2 | Quiet glass — no chatter/jargon in a Swarm round, ≤ 3 callouts of ≤ 3 words (design/program/finish/swarm/PLANS.md S2) | BUILD | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 579 | S3 | Fair credit — chain and callouts only for what the player caused (design/program/finish/swarm/PLANS.md S3) | FIX | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 580 | S4 | One press to the fight — SWARM on the title, prompts once per machine (design/program/finish/swarm/PLANS.md S4) | BUILD | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 581 | S5 | Swarm controls — compact set, powers stay on 1–5, icon power bar (design/program/finish/swarm/PLANS.md S5) | BUILD | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 582 | S6 | A readable horde — Brood size/colour/death pop, enemy hues, throwable outlines, spectator camera (design/program/finish/swarm/PLANS.md S6) | BUILD | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 583 | S8-look | Explosions and deaths — instant kill bursts, break-up fire/rings/light, global flash cap (design/program/finish/swarm/PLANS.md S8, look half) | BUILD | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 584 | S11 | Pick one of three cards between rounds; catalog behind Browse all (design/program/finish/swarm/PLANS.md S11) | BUILD | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 585 | S13 | Payoff ladder and the sound of Swarm (design/program/finish/swarm/PLANS.md S13) | BUILD | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 586 | S14-UI | Boss name card and victory screen (design/program/finish/swarm/PLANS.md S14) | BUILD | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 587 | S15 | Combo cards — evolutions from existing parts (design/program/finish/swarm/PLANS.md S15) | BUILD | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 588 | S16 | Full-run rehearsal until one recorded run has no findings (design/program/finish/swarm/PLANS.md S16) | BUILD | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 589 | E10 | Frame-truth dashboard + JSON trace (design/program/finish/MASTER_PLAN.md E10) | BUILD | OPEN — in flight: master-plan Lane 1 (launched 2026-11-06) |
+| 590 | E1 | Playout buffer — the ship can never freeze or blip (design/program/finish/MASTER_PLAN.md E1; bible/ENGINE.md) | BUILD | OPEN — in flight: master-plan Lane 1 (launched 2026-11-06) |
+| 591 | E5 | Shared memory everywhere, Electron-first (design/program/finish/MASTER_PLAN.md E5) | BUILD | OPEN — in flight: master-plan Lane 1 (launched 2026-11-06) |
+| 592 | E9 | Load in seconds (design/program/finish/MASTER_PLAN.md E9) | BUILD | OPEN — in flight: master-plan Lane 1 (launched 2026-11-06) |
+| 593 | E3 | Mode-scoped simulation + simulation LOD (design/program/finish/MASTER_PLAN.md E3) | BUILD | OPEN — in flight: master-plan Lane 2 (launched 2026-11-06) |
+| 594 | E2 | Diagnose-and-replace the sim hot path: worker step p95 ≤ 8 ms (design/program/finish/MASTER_PLAN.md E2) | BUILD | OPEN — in flight: master-plan Lane 2 (launched 2026-11-06) |
+| 595 | E4 | Data-oriented core — SoA entity store, facade, Rust/WASM gate (design/program/finish/MASTER_PLAN.md E4; bible/ENGINE.md §2) | BUILD | OPEN — in flight: master-plan Lane 2 (launched 2026-11-06) |
+| 596 | E6 | Nothing appears before it's ready — residency manager, no pop-in (design/program/finish/MASTER_PLAN.md E6) | BUILD | OPEN — in flight: master-plan Lane 3 (launched 2026-11-06) |
+| 597 | E7 | The renderer that knows its world + WebGPU / render-worker spikes (design/program/finish/MASTER_PLAN.md E7; bible/ENGINE.md §1) | BUILD | OPEN — in flight: master-plan Lane 3 (launched 2026-11-06) |
+| 598 | P1 | The Ship Sheet — six plain stats, deltas on hover, build identity (design/program/finish/MASTER_PLAN.md P1; bible/SHIPS.md) | BUILD | OPEN — in flight: master-plan Lane 4 (launched 2026-11-06) |
+| 599 | P2 | Parts that explain themselves (design/program/finish/MASTER_PLAN.md P2) | BUILD | OPEN — in flight: master-plan Lane 4 (launched 2026-11-06) |
+| 600 | P3 | One pilot, one progression — design doc for owner approval first (design/program/finish/MASTER_PLAN.md P3) | BUILD | OPEN — in flight: master-plan Lane 4 (launched 2026-11-06) |
+| 601 | W1 | The Journey — arrange the game into acts; owner approves the doc (design/program/finish/MASTER_PLAN.md W1; bible/WORLD.md §3) | BUILD | OPEN — in flight: master-plan Lane 5 (launched 2026-11-06) |
+| 602 | W5 | The first hour, Gold (design/program/finish/MASTER_PLAN.md W5) | BUILD | OPEN — in flight: master-plan Lane 5 (launched 2026-11-06) |
+| 603 | W2 | Levels with shape — forty hand-crafted missions as situations (CH-40) (design/program/finish/MASTER_PLAN.md W2) | BUILD | OPEN — in flight: master-plan Lane 5 (launched 2026-11-06) |
+| 604 | W3 | Sectors with identity (design/program/finish/MASTER_PLAN.md W3; bible/WORLD.md §1) | BUILD | OPEN — in flight: master-plan Lane 5 (launched 2026-11-06) |
+| 605 | W4 | Characters who remember you (design/program/finish/MASTER_PLAN.md W4) | BUILD | OPEN — in flight: master-plan Lane 5 (launched 2026-11-06) |
+| 606 | X1 | One art direction — style bible + lineup; owner approves (design/program/finish/MASTER_PLAN.md X1) | ART | OPEN — in flight: master-plan Lane 6 (launched 2026-11-06) |
+| 607 | X2 | Asset production campaign — image-verified (design/program/finish/MASTER_PLAN.md X2; DIRECTION.md §8) | ART | OPEN — in flight: master-plan Lane 6 (launched 2026-11-06) |
+| 608 | X4 | Sound and music — adaptive score, impact sound by mass (design/program/finish/MASTER_PLAN.md X4) | BUILD | OPEN — in flight: master-plan Lane 6 (launched 2026-11-06) |
+| 609 | X3 | Adventure glass — carry the Swarm glass policy (design/program/finish/MASTER_PLAN.md X3) | BUILD | OPEN — in flight: master-plan Lane 6 (launched 2026-11-06) |
+| 610 | X5 | Controls and input contexts (design/program/finish/MASTER_PLAN.md X5) | BUILD | OPEN — in flight: master-plan Lane 6 (launched 2026-11-06) |
+| 611 | Q1 | Switched-off and placeholder census, decided and executed (design/program/finish/MASTER_PLAN.md Q1) | FIX | OPEN — in flight: master-plan Lane 7 (launched 2026-11-06) |
+| 612 | Q3 | The taste gate — one rubric and review habit (design/program/finish/MASTER_PLAN.md Q3; bible/QUALITY.md) | BUILD | OPEN — in flight: master-plan Lane 7 (launched 2026-11-06) |
+| 613 | Q5 | Tests that protect the game — tiers, reference versioning tool (design/program/finish/MASTER_PLAN.md Q5) | BUILD | OPEN — in flight: master-plan Lane 7 (launched 2026-11-06) |
+| 614 | Q2 | Route walkers — every journey walked, defects filed; keeps bible/MOMENTS.md status (design/program/finish/MASTER_PLAN.md Q2) | BUILD | OPEN — in flight: master-plan Lane 7 (launched 2026-11-06) |
+| 615 | Q4 | The razor — fewer, deeper systems (design/program/finish/MASTER_PLAN.md Q4) | FIX | OPEN — in flight: master-plan Lane 7 (launched 2026-11-06) |
+| 616 | E8 | Native-engine verdict — Swarm slice with fixed kill criteria, after E1/E2 (design/program/finish/MASTER_PLAN.md E8) | BUILD | OPEN — in flight: master-plan Lane 7 (launched 2026-11-06) |
+| 617 | CH-02 | Ram damage for everyone by closing speed and mass ratio (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 618 | CH-01 | Juggernaut handling — the tank fantasy (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 619 | CH-07 | Domino docking queues (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 620 | CH-04 | Chain reactions — volatile cargo and fuel tanks (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 621 | CH-03 | Breakable stations with consequences (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 622 | CH-05 | Wreckage that stays and matters (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 623 | CH-06 | Rocks that break into throwable pieces (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 624 | CH-30 | Hijack anything, anytime (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 625 | CH-31 | Ships with one signature verb each (design/program/finish/chaos/IDEAS.md; bible/SHIPS.md) | BUILD | OPEN |
+| 626 | CH-32 | Cargo trains you can cut and steal (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 627 | CH-33 | Call your ship (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 628 | CH-10 | The reaction matrix — create chaos/MATRIX_STATUS.md and fill every cell (design/program/finish/chaos/IDEAS.md; chaos/README.md §3) | BUILD | OPEN |
+| 629 | CH-61 | Pilots with personality (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 630 | CH-12 | Horns and near-misses (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 631 | CH-11 | Panic that spreads (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 632 | CH-13 | Road rage (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 633 | CH-14 | Vultures on spilled cargo (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 634 | CH-16 | Visible witnesses you can stop (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 635 | CH-20 | The heat ladder, everywhere (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 636 | CH-21 | Losing the heat — search cones, hiding (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 637 | CH-22 | Police with physics — tow, box, ram, mines, blockades (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 638 | CH-23 | Getting caught isn't game over (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 639 | CH-24 | Hunters with names who adapt (design/program/finish/chaos/IDEAS.md; bible/BESTIARY.md Part 3) | BUILD | OPEN |
+| 640 | CH-15 | Have-a-go heroes (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 641 | CH-17 | Light the fuse on a turf war (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 642 | CH-18 | The station reacts (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 643 | CH-62 | Barks that fit the moment; wire unused voice lines (design/program/finish/chaos/IDEAS.md; bible/WORLD.md §4) | BUILD | OPEN |
+| 644 | CH-64 | Every ship tells you what it's doing (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 645 | CH-63 | Stations as places with routines (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 646 | CH-65 | Consequences that persist across save/continue (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 647 | CH-53 | Fail fast — death to control ≤ 8 s (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 648 | CH-51 | Context prompts at the target (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 649 | CH-54 | One radial for everything quick (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 650 | CH-52 | A map that shows opportunity + route line (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 651 | CH-42 | Things happening on the road — the chaos director, with the CH-60 life count (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 652 | CH-41 | Activities with physics (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 653 | CH-43 | Chaos pays — gains and costs ledger (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 654 | CH-44 | Notoriety — outlaw ↔ hero (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 655 | CH-56 | Controls that feel arcade-right (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 656 | CH-50 | A camera for chaos (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 657 | HS-01 | The Big Dig — Helios (design/program/finish/bible/HOTSPOTS.md #1) | BUILD | OPEN |
+| 658 | HS-02 | Helios Station rush hour (design/program/finish/bible/HOTSPOTS.md #2) | BUILD | OPEN |
+| 659 | HS-03 | The Ring Circuit — Helios (design/program/finish/bible/HOTSPOTS.md #3) | BUILD | OPEN |
+| 660 | HS-04 | The Shipbreaker — Ceres (design/program/finish/bible/HOTSPOTS.md #4) | BUILD | OPEN |
+| 661 | HS-05 | The Throughline — Ceres (design/program/finish/bible/HOTSPOTS.md #5) | BUILD | OPEN |
+| 662 | HS-06 | Junction Market — Tethys (design/program/finish/bible/HOTSPOTS.md #6) | BUILD | OPEN |
+| 663 | HS-07 | The Split Station — Tethys (design/program/finish/bible/HOTSPOTS.md #7) | BUILD | OPEN |
+| 664 | HS-08 | The Forge — Vesta (design/program/finish/bible/HOTSPOTS.md #8) | BUILD | OPEN |
+| 665 | HS-09 | Red Cable Yard — Vesta (design/program/finish/bible/HOTSPOTS.md #9) | BUILD | OPEN |
+| 666 | HS-10 | The Drift Derby — Pallas (design/program/finish/bible/HOTSPOTS.md #10) | BUILD | OPEN |
+| 667 | HS-11 | The Shepherd's Ring — Io (design/program/finish/bible/HOTSPOTS.md #11) | BUILD | OPEN |
+| 668 | HS-12 | The Hull Garden — Charon (design/program/finish/bible/HOTSPOTS.md #12) | BUILD | OPEN |
+| 669 | HS-13 | The Pirate Citadel — Sker Haven (design/program/finish/bible/HOTSPOTS.md #13) | BUILD | OPEN |
+| 670 | HS-14 | The Lighthouse — Veil (design/program/finish/bible/HOTSPOTS.md #14) | BUILD | OPEN |
+| 671 | HS-15 | The Towed Moonlet — Ashfall (design/program/finish/bible/HOTSPOTS.md #15) | BUILD | OPEN |
+| 672 | HS-16 | The Gladiator Pit — Ashfall (design/program/finish/bible/HOTSPOTS.md #16) | BUILD | OPEN |
+| 673 | K1 | Part census with parallel vision tagging (design/program/finish/KIT.md K1) | ART | OPEN |
+| 674 | K2 | The mount standard — sockets on every hull, a visual for every fitting (design/program/finish/KIT.md K2) | BUILD | OPEN |
+| 675 | K3 | Visible loadout — the Freelancer moment; muzzles are real (design/program/finish/KIT.md K3; replaces master P4) | BUILD | OPEN |
+| 676 | K5 | Livery and wear layers; earned paint (design/program/finish/KIT.md K5) | ART | OPEN |
+| 677 | K4 | The variant factory — ≥ 3 variants per role per faction (design/program/finish/KIT.md K4) | BUILD | OPEN |
+| 678 | K6 | Parts that break off (design/program/finish/KIT.md K6) | BUILD | OPEN |
+| 679 | K7 | Places from parts — station/Hotspot module kit (design/program/finish/KIT.md K7) | ART | OPEN |
+| 680 | K9 | Fill the real gaps after the census (design/program/finish/KIT.md K9; DIRECTION.md §8) | ART | OPEN |
+| 681 | K8 | Vision QA swarm — standing two-review gate on every asset (design/program/finish/KIT.md K8) | ART | OPEN |
+| 682 | LT-1 | Golden frames (12) + look-values probe + squint test — capture the BEFORE set (design/program/finish/bible/LOOK.md §3, §6) | BUILD | OPEN |
+| 683 | LT-2 | Tone-mapping A/B: ACES vs AgX vs Khronos Neutral (design/program/finish/bible/LOOK.md §4.1) | BUILD | OPEN |
+| 684 | LT-3 | Energy-conserving mip-chain bloom with final mix — glow without blur, ≤ 1.5 ms (design/program/finish/bible/LOOK.md §4.2) | BUILD | OPEN |
+| 685 | LT-4 | Exposure adaptation with a glow budget (design/program/finish/bible/LOOK.md §4.3) | BUILD | OPEN |
+| 686 | LT-5 | Light that lands — engine/weapon light pools, explosion flash lights, light cards (design/program/finish/bible/LOOK.md §4.4) | BUILD | OPEN |
+| 687 | LT-6 | Air that holds light — haze, dust motes, authored light shafts, heat shimmer (design/program/finish/bible/LOOK.md §4.5) | BUILD | OPEN |
+| 688 | LT-7 | Per-sector grades and key/fill lights (design/program/finish/bible/LOOK.md §4.7; bible/WORLD.md §1) | BUILD | OPEN |
+| 689 | FL-1 | Engine set — redline shake, RCS puffs, retro burn, ignition (design/program/finish/bible/FEEL.md §2) | BUILD | OPEN |
+| 690 | FL-2 | Mass set — pitch on thrust, settle, heavy inertia lag, mass-scaled camera (design/program/finish/bible/FEEL.md §1, §6) | BUILD | OPEN |
+| 691 | FL-3 | Strain set — rope creak, hull groan, winch whine (design/program/finish/bible/FEEL.md §3) | BUILD | OPEN |
+| 692 | FL-4 | Impact set — scrape, crumple, impact framing, tuned hit-stop/trauma by mass (design/program/finish/bible/FEEL.md §4) | BUILD | OPEN |
+| 693 | FL-5 | Damage set — wobble, creak (design/program/finish/bible/FEEL.md §5) | BUILD | OPEN |
+| 694 | FL-6 | Sound weight — class voices, Doppler, occlusion, haptics (design/program/finish/bible/FEEL.md §7) | BUILD | OPEN |
+| 695 | RF-0 | Asset census + dashboard (design/program/finish/bible/ASSETS.md §2) | ART | OPEN |
+| 696 | RF-A1 | Hidden geometry removal by visibility bake (design/program/finish/bible/ASSETS.md A1) | ART | OPEN |
+| 697 | RF-A2 | Joint cleanup at part overlaps (design/program/finish/bible/ASSETS.md A2) | ART | OPEN |
+| 698 | RF-A3 | Merge by material, keep swappable/breakable parts (design/program/finish/bible/ASSETS.md A3) | ART | OPEN |
+| 699 | RF-A4 | Shared family materials and trim sheets (design/program/finish/bible/ASSETS.md A4) | ART | OPEN |
+| 700 | RF-A5 | LOD chains and impostors (design/program/finish/bible/ASSETS.md A5) | ART | OPEN |
+| 701 | RF-A6 | Textures — KTX2, texel density, bakes (design/program/finish/bible/ASSETS.md A6) | ART | OPEN |
+| 702 | RF-A10 | Collision proxies per part (design/program/finish/bible/ASSETS.md A10) | ART | OPEN |
+| 703 | RF-A9 | Scale normalisation (design/program/finish/bible/ASSETS.md A9) | ART | OPEN |
+| 704 | RF-A7 | Emissive pass — light strips, windows, cores on every asset (design/program/finish/bible/ASSETS.md A7; design/program/finish/bible/LOOK.md §4.3) | ART | OPEN |
+| 705 | RF-A8 | Value and colour pass — no near-black hulls (design/program/finish/bible/ASSETS.md A8; design/program/finish/bible/LOOK.md §3) | ART | OPEN |
+| 706 | RF-A11 | Style punch-up for weak silhouettes (design/program/finish/bible/ASSETS.md A11; bible/SHIPS.md) | ART | OPEN |
 
 ### Landed rows index (consolidated 2026-10-15)
 
@@ -6847,3 +7012,29 @@ existing ending IDs but supersedes the outcome constraint in §34 rows 522/536 t
 interventions must leave every future material condition unchanged. Historical Pit harm can remain
 irreversible; actual rescue, relief and repair must survive into visible local and ending aftermath.
 Implement source readers and save compatibility together; prose alone changes no runtime behavior.
+
+## 36. The November programs — SWARM, the master plan, CHAOS, the bible (owner direction 2026-11-05/06)
+
+**Owner, 2026-11-05/06:** Swarm is the mode to perfect ("like Zombies was to Black Ops"); the game must
+run and feel like a real professional game (no freezes, real mass, luminous light, not dark-on-dark);
+the open world should have the physics-chaos feeling of GTA; agents must stop doing minor tweaks on the
+wrong architecture; and Claude was asked to own the creative direction and fill in the blanks so agents
+know what to build and when they are finished. These rows (§1C sub-section Q, rows 568–706) are that plan.
+
+**Where the taste and specs live** (read before taking a row):
+
+- [Creative direction](design/program/finish/DIRECTION.md) — the game, three ways to fly, the 30 moments, Hotspots, asset plan.
+- [The bible](design/program/finish/bible/README.md) — QUALITY rubrics (done = ≥ 4 from an independent reviewer), MOMENTS, VERBS, SHIPS, BESTIARY, ARENAS, HOTSPOTS, WORLD, LOOK, FEEL, ASSETS, ENGINE.
+- [SWARM program](design/program/finish/swarm/README.md) — vision, configuration audit, plans S1–S19, lanes F and S.
+- [Master plan](design/program/finish/MASTER_PLAN.md) — Part 0 agent rules (diagnose before tweaking; no tunnel vision; 90%-correct-and-wonky is a defect), engine E1–E10, ship P1–P3, world W1–W5, look X1–X5, process Q1–Q5; [seven lanes](design/program/finish/MASTER_LANES.md).
+- [CHAOS](design/program/finish/chaos/README.md) — GTA-style reaction matrix, ~45 units, lanes C1–C3.
+- [KIT](design/program/finish/KIT.md) — hull + kit + fit + livery + wear; visible loadouts; vision QA.
+
+**Order law:** smoothness (pipeline, sim-core, renderer-rebuild) runs throughout; Swarm (swarm-fight,
+swarm-show) is the first mode to reach the bar; Helios Hotspots before other sectors ("one place perfect
+before ten places okay"); breadth last. **Supersedes for these areas:** row 482's "guns are the nudge"
+and "enemy physics weapons stay rare" for Swarm (see `swarm/README.md` §6); master P4 moves to KIT K3.
+
+**How a row is done:** its spec's checklist passes; captures on the ordinary route with the Browser pane
+visible; an independent reviewer scores ≥ 4 on the applicable `bible/QUALITY.md` rubrics; the moment(s)
+it enables are recorded in `bible/MOMENTS.md`. Delete the row in the landing commit (board law).

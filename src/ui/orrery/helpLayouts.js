@@ -593,6 +593,25 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help-factions__orbit .orr-crest:not(.is-chosen, :hover, :focus-visible) .orr-crest__name { visibility:hidden; }
 }
 
+/* ui-polish-357: narrow Help section row (phone / ≤480). At 390×844 COMMODITIES sat half under the
+   scroll-edge fade (solidPx 47/119; 17/119 at 360) so the first paint read as "COMMODITI" with Ores
+   and Factions off-frame. Densify gap + tracking and tuck side pad so the four leading words clear
+   the fade; Ores/Factions stay the scroll peek (still reachable at end). Type floor stays 12px. */
+@media (max-width:480px) and (min-height:461px) {
+  ${HD} { padding-left:12px !important; padding-right:12px !important; }
+  ${HD} .orr-help__tabs { gap:6px !important; }
+  ${HD} .orr-help__tabs .sf-tab { letter-spacing:.05em !important; min-height:32px !important; padding:4px 0 2px !important; }
+}
+@media (max-width:412px) and (min-height:461px) {
+  ${HD} .orr-help__tabs { gap:4px !important; }
+  ${HD} .orr-help__tabs .sf-tab { letter-spacing:.04em !important; }
+}
+@media (max-width:360px) and (min-height:461px) {
+  ${HD} { padding-left:10px !important; padding-right:10px !important; }
+  ${HD} .orr-help__tabs { gap:2px !important; }
+  ${HD} .orr-help__tabs .sf-tab { letter-spacing:.02em !important; }
+}
+
 /* ui-polish-171: the section row on a narrow window and on the phone. A fixed right fade sat over the
    last word even once the row was scrolled to its end, and the left edge cut mid-word ("OOPS") with no
    fade at all; the phone row cut hard on both sides. Where the row scrolls, each edge fades only while
@@ -626,6 +645,16 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help__tabs .sf-tab[aria-selected="true"]::after { content:"" !important; display:block !important; position:absolute !important; left:0 !important; top:8px !important; bottom:8px !important;
     width:2px !important; height:auto !important; margin:0 !important; border-radius:2px !important; background:rgb(${HOT} / .9) !important; }
   ${HD}[data-tab="controls"] .orr-help__tabs .sf-tab[aria-selected="true"]::after { background:var(--dp-hand, #f2b950) !important; box-shadow:0 0 8px rgb(242 185 80 / .45) !important; }
+}
+
+/* Keyboard focus remains legible at either end of the responsive tab strip. Pointer users
+   retain the scroll-edge hint; keyboard users see the complete focused word and its outline. */
+${H} .orr-help__tabs { scroll-padding-inline:12px; }
+${H} > .k-hang:focus-within, ${H} .orr-help__tabs:focus-within {
+  -webkit-mask-image:none !important; mask-image:none !important;
+}
+${H} .orr-help__tabs .sf-tab:focus-visible {
+  outline:2px solid var(--dp-hand, #f2b950) !important; outline-offset:-2px !important;
 }
 
 /* UI polish: no 1080p zoom on Help — EVERY KEY + rebound footnote tangle under 1.12; contrast/foot rail carry the pass */

@@ -1,0 +1,2683 @@
+// src/data/missionsData.js — the pure mission DATA (restored verbatim from the pre-overwrite
+// src/data/missions.js after the working-tree file was replaced by a systems-file copy).
+// Canonical data only: no imports, no system code. data/missions.js re-exports this module.
+// Exports: MISSION_TYPES (17), SET_PIECE_MISSIONS (6), AUTHORED_SET_PIECES (11),
+// STORY_BEATS (8), OFFER_MIX, MISSION_TUNING. Capital boss is its own type, not an 11th authored row.
+// PQ-152.03 twist clauses live in missionConditions.js and stamp onto these types; they do not
+// add an 11th authored row or a second capital type.
+// Pure data, no imports.
+
+export const MISSION_TUNING = {
+  BASE: {
+    // Generated compatibility values. economyMissionTerms is the canonical live quote.
+    cargo_delivery: 411,
+    bulk_trade: 453,
+    bounty_hunt: 303,
+    mining_quota: 677,
+    salvage_retrieval: 614,
+    escort: 598,
+    patrol_clear: 656,
+    smuggling_run: 494,
+    passenger_transport: 453,
+    recon_scan: 552,
+    tow_recovery: 697,
+    demolition: 635,
+    rescue_under_fire: 739,
+    race: 370,
+    authored_set_piece: 863,
+    capital_boss: 1237,
+  },
+  RISK_MULT: [1,1.146809,1.358636,1.6905,2.24],
+  BASE_REP: {
+    cargo_delivery: 3, bulk_trade: 3, bounty_hunt: 5, mining_quota: 2,
+    salvage_retrieval: 3, escort: 4, patrol_clear: 5, smuggling_run: 4,
+    passenger_transport: 2, recon_scan: 4,
+    tow_recovery: 3, demolition: 4, rescue_under_fire: 5,
+    authored_set_piece: 5, capital_boss: 6,
+    race: 3,
+  },
+  distDivisor: 2000,
+  valueDivisor: 8000,
+  faction: { friendlyThreshold: 25, loyaltyBonus: 1.15 },
+  rush: { fTime: 1.35, slackMult: 0.5 },
+  cruiseSpeedRef: 140,
+  slackDefault: 2.2,
+  collateralPct: 0.25,
+  refreshSec: 300,
+  maxActive: 8,
+  // Daily featured contract: one rolled offer per station per real-calendar day pays a fixed
+  // premium and a small standing bonus. The day key joins the board hash only at the
+  // generation/settlement seams — never a per-tick wall-clock read.
+  featured: { rewardMult: 1.75, repBonus: 3 },
+};
+
+/**
+ * Head money: what an ordinary board bounty writ pays on top of the wage-derived quote.
+ *
+ * The board prices a writ at its boarding board's local rate (D59), which is the right place to
+ * stop standing and destination danger from re-paying the same loop. What that quote cannot see is
+ * the hunter's own overhead: a mark is a round trip through the gates (the 90-minute cohort hunter
+ * spent half of its gross on gate tolls and another sixth on repairs), return fire is repaired at a
+ * dock, and a countered writ pays nothing. Measured before this premium, a starter hunter netted
+ * 51 / 119 / 130 cr/min at 30 / 60 / 90 minutes while the hauler netted 289 / 550 / 1102.
+ * At the foothold and specialist rates those fixed costs are most of the wage, so the premium is
+ * largest there and tapers to nothing at the top rate, where the wage itself dwarfs the overhead
+ * and D59's runaway lived. Indexed by the writ's pay tier (the same index as
+ * ECONOMY_BALANCE.phases).
+ *
+ * The size is bounded by the declared hunter band, not by taste: 1.4 bought the Wasp inside 90
+ * minutes but pushed the luckiest held-out seed to 437 cr/min, past CAREER_BANDS.hunter.hi (400);
+ * 1.25 keeps that seed at 367. The cohort check pins the resulting income inside the band.
+ *
+ * Applies to rolled board writs (the board roller, first-hour choice, story-branch intros and
+ * chained follow-ups). Authored set pieces, origin writs, ghost-convoy rumors and field-contract
+ * posters price themselves and keep their own pay.
+ */
+export const BOUNTY_HEAD_MONEY = Object.freeze({
+  payMultByTier: Object.freeze([1.25, 1.25, 1.15, 1.05, 1.0]),
+});
+
+/** Head-money multiplier for a bounty writ priced at `payTier`; 1 when the tier carries none. */
+export function bountyHeadMoneyMult(payTier) {
+  const table = BOUNTY_HEAD_MONEY.payMultByTier;
+  const i = Math.max(0, Math.min(table.length - 1, Math.floor(Number(payTier) || 0)));
+  const mult = Number(table[i]);
+  return Number.isFinite(mult) && mult > 0 ? mult : 1;
+}
+
+/**
+ * Re-quote a bounty writ's economy terms with head money. Pure: returns the input object when the
+ * tier carries no premium, otherwise a copy whose rewardCr and expected-net figures agree with the
+ * paid number, plus the multiplier so the dossier can name it.
+ */
+export function withBountyHeadMoney(terms, payTier) {
+  const mult = bountyHeadMoneyMult(payTier);
+  if (!terms || mult === 1) return terms;
+  const rewardCr = Math.ceil(terms.rewardCr * mult);
+  const extraNet = (Number(terms.successProbability) || 0) * (rewardCr - terms.rewardCr);
+  const expectedNetCr = (Number(terms.expectedNetCr) || 0) + extraNet;
+  const durationS = Number(terms.expectedDurationS) || 0;
+  return {
+    ...terms,
+    rewardCr,
+    expectedNetCr,
+    expectedNetCrPerHour: durationS > 0 ? expectedNetCr * 3600 / durationS : terms.expectedNetCrPerHour,
+    headMoneyMult: mult,
+  };
+}
+
+// Mission families whose generated payload must fit in free hold at accept time. The simulation
+// and station preflight import this same set so a contract cannot look ready and then fail after
+// its collateral has been charged.
+export const ONE_LOAD_CARGO_TYPES = new Set([
+  'cargo_delivery',
+  'salvage_retrieval',
+  'smuggling_run',
+]);
+
+// Mission families whose ONLY settlement is a dock at `destStationId` (the cargo family
+// consumes the load there; escort waits for that dock; bulk trades sell at the named
+// buyer; bulk hauls deliver at the named refinery). The sim's berth-admission accept
+// gate and the dossier preflight import this same set. Physical ops
+// (tow_recovery, authored_set_piece, demolition, ...) complete on latch/release/throw
+// physics anywhere near the site, so their destination berth is scenery, not a door —
+// and rescue_under_fire stays out: its corridor_pull path reels a pod home without
+// ever docking at the destination berth. Membership asserts the contract can ONLY
+// settle at the named berth: a type that carries destStationId as flavor while
+// settling physically must not join this set (the accept gate would falsely refuse it).
+export const DOCK_SETTLED_TYPES = new Set([
+  'cargo_delivery',
+  'passenger_transport',
+  'salvage_retrieval',
+  'smuggling_run',
+  'escort',
+  'bulk_trade',
+  'bulk_haul',
+]);
+
+// Services that mean "this station hosts a contract desk" — the board the pilot reads and
+// the desk a posted offer pretends to sit on. A fieldwork/bounty/lead emit picking
+// `services.includes('missions')` alone would skip a black-market-only desk and post the
+// row at a berth with no office; share this predicate anywhere a desk is being chosen.
+export const CONTRACT_DESK_SERVICES = new Set(['missions', 'black_market']);
+export const hasContractsDesk = (services) => Array.isArray(services)
+  && services.some((s) => CONTRACT_DESK_SERVICES.has(s));
+
+export const MISSION_STANDING_LADDER = [
+  {
+    minRep: -149,
+    maxRisk: 1,
+    name: 'Recovery Work',
+    short: 'Disliked+',
+    unlocks: 'R0-R1 local hauling, mining, courier, and recovery contracts',
+  },
+  {
+    minRep: -29,
+    maxRisk: 2,
+    name: 'Neutral Board',
+    short: 'Neutral+',
+    unlocks: 'R2 standard trade, recon, bounty, and patrol postings',
+  },
+  {
+    minRep: 30,
+    maxRisk: 3,
+    name: 'Accepted Contracts',
+    short: 'Accepted+',
+    unlocks: 'R3 higher-risk escorts, smuggling, and combat contracts',
+  },
+  {
+    minRep: 150,
+    maxRisk: 4,
+    name: 'Trusted Work',
+    short: 'Trusted+',
+    unlocks: 'R4 severe contracts and loyalty-grade payouts',
+  },
+  {
+    minRep: 400,
+    maxRisk: 4,
+    name: 'Allied Retainers',
+    short: 'Allied+',
+    unlocks: 'the Drift allied retainer quota, posted on Collective desks',
+    aspirational: true,
+  },
+];
+
+export function missionStandingGateForRisk(riskTier) {
+  const risk = Math.max(0, Math.min(4, Math.round(Number(riskTier) || 0)));
+  for (const gate of MISSION_STANDING_LADDER) {
+    if (risk <= gate.maxRisk) return gate;
+  }
+  return MISSION_STANDING_LADDER[MISSION_STANDING_LADDER.length - 2];
+}
+
+export function missionStandingGateForMinRep(minRep) {
+  const rep = Math.round(Number(minRep) || 0);
+  let gate = MISSION_STANDING_LADDER[0];
+  for (const candidate of MISSION_STANDING_LADDER) {
+    if (rep >= candidate.minRep) gate = candidate;
+  }
+  return gate;
+}
+
+export function missionMinRepForRisk(riskTier) {
+  const gate = missionStandingGateForRisk(riskTier);
+  return gate ? gate.minRep : 0;
+}
+
+// One standing row per faction. Most post at the first named rank. The Choir row waits
+// for step 2, the Free Captains row for step 3, and the Drift row waits for allied
+// standing (400) — the retainer the ladder names. Not a second reputation number.
+const RANK_STEP_BY_FACTION = Object.freeze({
+  faction_choir: 2,
+  faction_free: 3,
+});
+const ALLIED_RETAINER_FACTION = 'faction_dmc';
+const RANK_CONTRACT_FACTIONS = Object.freeze([
+  ['faction_scn', 'Concord cleared escort', 'escort'],
+  ['faction_mts', 'Meridian known haul', 'cargo_delivery'],
+  ['faction_dmc', 'Drift shift quota', 'mining_quota'],
+  ['faction_reach', 'Reach crew run', 'bounty_hunt'],
+  ['faction_quiet', 'Quiet known exchange', 'smuggling_run'],
+  ['faction_vael', 'Vael noticed survey', 'recon_scan'],
+  ['faction_free', 'Frontier known patrol', 'patrol_clear'],
+  ['faction_choir', 'Choir heard escort', 'escort'],
+  ['faction_archive', 'Archive filed reading', 'recon_scan'],
+  ['faction_understory', 'Understory carried load', 'cargo_delivery'],
+  ['faction_helix', 'Helix sample run', 'recon_scan'],
+  ['faction_fulfillment', 'Fulfillment listed delivery', 'cargo_delivery'],
+  ['faction_pitborn', 'Pitborn known weld', 'tow_recovery'],
+  ['faction_verge_layers', 'Verge noticed sounding', 'recon_scan'],
+]);
+
+export const RANK_GATED_CONTRACTS = Object.freeze(RANK_CONTRACT_FACTIONS.map(([factionId, title, type]) => {
+  const allied = factionId === ALLIED_RETAINER_FACTION;
+  return Object.freeze({
+    id: `rank_contract_${factionId}`,
+    factionId,
+    type,
+    title: allied ? 'Drift allied retainer quota' : title,
+    minRankStep: RANK_STEP_BY_FACTION[factionId] || 1,
+    minRep: allied ? 400 : -29,
+    rankGated: true,
+  });
+}));
+
+// The board row's dedupe/settle identity — one stable source tag for the whole catalog so
+// ensureBoard's sync can tell a faction's rank row from an ordinary procedural roll.
+export const RANK_CONTRACT_SOURCE = 'rankContract';
+
+export const RANK_CONTRACT_BY_FACTION = new Map(
+  RANK_GATED_CONTRACTS.map((def) => [def.factionId, def]),
+);
+
+export const STORY_BRANCH_INTRO_TAG = 'story.branch_intro';
+export const STORY_BRANCH_INTRO_MIN_REP = -29;
+
+export const STORY_BRANCH_INTROS = [
+  {
+    branch: 'traders',
+    factionId: 'faction_mts',
+    type: 'bulk_trade',
+    title: 'Meridian Charter Trial',
+  },
+  {
+    branch: 'patrol',
+    factionId: 'faction_scn',
+    type: 'patrol_clear',
+    title: 'Concord Patrol Trial',
+  },
+  {
+    branch: 'free',
+    factionId: 'faction_free',
+    type: 'smuggling_run',
+    title: 'Free Captain Intro Run',
+  },
+];
+
+/**
+ * The physical verb a generated mission of this type asks the player to perform —
+ * stamped onto offer params so boards, step records, and campaign receipts name the
+ * same action the authored set-piece types already name inline in _rollParams.
+ */
+export const MISSION_TYPE_PHYSICAL_VERB = Object.freeze({
+  bulk_trade: 'deliver',
+  patrol_clear: 'clear',
+  smuggling_run: 'run',
+});
+
+/** Headline verb each live branch's intro/chain work performs (derived, never duplicated). */
+export const BRANCH_HEADLINE_VERBS = Object.freeze(Object.fromEntries(
+  STORY_BRANCH_INTROS.map((intro) => [intro.branch, MISSION_TYPE_PHYSICAL_VERB[intro.type]]),
+));
+
+export const MISSION_TYPES = [
+  // BLACK FLAG authored entries only (blackFlagMissions posts them from the ledger); the mix
+  // never rolls one — structural zero like capital_boss/authored_set_piece above.
+  { type:'vessel_recovery',riskTierRange:[0,4],chainable:false,proceduralWeight:0,
+    completionEvent:'shipjack:settled (exact vessel returned intact to claimant)',
+    rewardFormula:'receiving yard quote; mission records standing',timeFormula:'no deadline',taskTime:120,
+    failureCondition:'target destroyed or sold; registry and salvage persist',constraints:{authoredOnly:true,physicalVerb:'recover'} },
+  {
+    type: 'cargo_delivery', riskTierRange: [0, 4], chainable: true,
+    completionEvent: 'cargo.delivered',
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 20,
+    failureCondition: 'timer OR cargo lost (ship destroyed)',
+    constraints: { needsCargoSpace: true },
+  },
+  {
+    type: 'bulk_trade', riskTierRange: [0, 4], chainable: true, collateral: true,
+    completionEvent: 'trade.sold (aggregated to quota)',
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 'quotaQty*1.5',
+    failureCondition: 'timer OR fail to sell quota; collateral forfeited',
+    constraints: { collateralPct: 0.25 },
+  },
+  {
+    // R1+ keeps "first blood" / early board writs reachable before standing climbs to R2.
+    type: 'bounty_hunt', riskTierRange: [1, 4], chainable: true,
+    completionEvent: 'enemy.killed (entityId==targetId)',
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 60,
+    failureCondition: 'timer OR target despawns/flees sector',
+    constraints: { fValueIsTargetStrength: true },
+  },
+  {
+    type: 'mining_quota', riskTierRange: [0, 4], chainable: true,
+    completionEvent: 'mining.yield (aggregated to quota)',
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 'quotaQty*3',
+    failureCondition: 'timer',
+    constraints: {},
+  },
+  {
+    type: 'salvage_retrieval', riskTierRange: [0, 4], chainable: true,
+    completionEvent: 'cargo.delivered (itemId==salvageId)',
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 30,
+    failureCondition: 'timer OR wreck destroyed before pickup',
+    constraints: {},
+  },
+  {
+    type: 'escort', riskTierRange: [2, 4], chainable: false,
+    completionEvent: 'dock.entered@dest with escortee.alive',
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 90,
+    failureCondition: 'escortee destroyed OR abandoned (player leaves sector)',
+    constraints: { fValueIsTargetStrength: true },
+  },
+  {
+    type: 'patrol_clear', riskTierRange: [2, 4], chainable: true,
+    completionEvent: 'all spawn-tagged enemy.killed (clearCount reached)',
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 'clearCount*45',
+    failureCondition: 'timer expires with hostiles remaining',
+    constraints: { fValueIsTargetStrength: true },
+  },
+  {
+    type: 'smuggling_run', riskTierRange: [2, 4], chainable: false, collateral: true,
+    completionEvent: 'cargo.delivered (itemId==contrabandId) covertly',
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 20,
+    failureCondition: 'scanned with contraband OR timer; collateral forfeited on bust',
+    constraints: { collateralPct: 0.25, repToLawFaction: -3 },
+  },
+  {
+    type: 'passenger_transport', riskTierRange: [0, 4], chainable: true,
+    completionEvent: 'dock.entered@dest',
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 20,
+    failureCondition: 'timer OR ship destroyed (passenger lost)',
+    constraints: {},
+  },
+  {
+    type: 'recon_scan', riskTierRange: [0, 4], chainable: true,
+    completionEvent: 'scan.completed (targetId in objective set)',
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 'scanTargets*25',
+    failureCondition: 'timer OR scan-target despawns',
+    constraints: { fValueIsScanTargets: true },
+  },
+  {
+    // PQ-152.00 — long tow. Headline is TOW, not fly-there. Two solutions: keep the slag core
+    // on the line into the yard, or sling it in with a throw / clean release.
+    type: 'tow_recovery', riskTierRange: [0, 4], chainable: true,
+    completionEvent: 'dock:docked@dest while latched (tow_in) OR massline:throw / clean release of the core (sling_in)',
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 40,
+    failureCondition: 'timer OR slag core destroyed',
+    constraints: { physicalVerb: 'tow' },
+  },
+  {
+    // PQ-152.00 — wrecking-ball demolition. Headline is KNOCK DOWN. Two solutions: put mass
+    // through the tower, or cut it down with guns.
+    type: 'demolition', riskTierRange: [0, 4], chainable: true,
+    completionEvent: 'tether:whipImpact / massline:throw on the tower (wrecking_ball) OR entity:killed (cut_down)',
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 50,
+    failureCondition: 'timer',
+    constraints: { physicalVerb: 'knock_down', fValueIsTargetStrength: true },
+  },
+  {
+    // PQ-152.00 — pod rescue under fire. Headline is PULL. Two solutions: tow a pod home through
+    // the field, or open a corridor then reel the group from stand-off.
+    type: 'rescue_under_fire', riskTierRange: [2, 4], chainable: false,
+    completionEvent: 'dock:docked@dest while latched to a pod (stage_tow) OR escorts down + tether:reel on a pod (corridor_pull)',
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 70,
+    failureCondition: 'timer OR all life pods destroyed',
+    constraints: { physicalVerb: 'pull', fValueIsTargetStrength: true },
+  },
+  {
+    // FB-066 — the race archetype. A timed gate course on real lane geometry or a field ring:
+    // ordered positional terms, gate order enforced, time scored into three pay bands.
+    type: 'race', riskTierRange: [0, 3], chainable: true,
+    completionEvent: 'race.gatesClearedInOrder (all course gates crossed in order, timed)',
+    rewardFormula: 'economyTerms.rewardCr',
+    timeFormula: 'economyTerms.deadlineS', taskTime: 80,
+    failureCondition: 'timer expires with gates uncleared; a skipped gate never scores',
+    constraints: { courseSector: 'lane or scenic sectors only' },
+  },
+  {
+    // PQ-152.01 — ten authored physical set pieces. AUTHORED-ONLY, never procedurally rolled.
+    // Weight is structural zero the same way heist is: OFFER_MIX positional rows stay 10 long,
+    // named physical keys stay on those rows, and `_pickType` reads `weights[last] || 0`.
+    // `missions._syncAuthoredSetPieceOffers` is the only poster. heist_intercept stays last.
+    type: 'authored_set_piece', riskTierRange: [1, 3], chainable: false, proceduralWeight: 0,
+    completionEvent: 'physical method receipt (two reachable solutions per piece)',
+    rewardFormula: 'authored flat payout (AUTHORED_SET_PIECES.rewardCr)',
+    timeFormula: 'round((distance/140 + 60) * slack)', taskTime: 60,
+    failureCondition: 'timer OR the named physical target is lost',
+    constraints: { authoredOnly: true, physicalVerb: 'authored' },
+  },
+  {
+    // PQ-152.02 — capital boss. Own type + encounter, not an 11th AUTHORED_SET_PIECES row.
+    // Authored-only / structural zero. heist_intercept stays last.
+    type: 'capital_boss', riskTierRange: [2, 4], chainable: false, proceduralWeight: 0,
+    completionEvent: 'entity:killed on the capital (throw_the_capital from thrown mass, or outgun_the_capital)',
+    rewardFormula: 'authored flat payout (CAPITAL_BOSS.rewardCr)',
+    timeFormula: 'round((distance/140 + 80) * slack)', taskTime: 80,
+    failureCondition: 'timer OR the capital hull is lost without a player kill',
+    constraints: { authoredOnly: true, physicalVerb: 'throw' },
+  },
+  {
+    // BREAKAWAY — The Third Shift: lawful recovery of the SP-07 flywheel assembly through the Tethys
+    // launcher schedule and the physical capture fork. AUTHORED-ONLY, structural zero weight exactly
+    // like the heist, and deliberately placed BEFORE heist_intercept so "heist stays last" holds and
+    // `_pickType` reads `weights[15] || 0` = 0. `missions._syncBreakawayOffer` is the only poster.
+    type: 'breakaway_recovery', riskTierRange: [2, 2], chainable: false, proceduralWeight: 0,
+    completionEvent: 'heist terminal receipt (lawful_arrival_observed) from a settled capture-fork custody commit',
+    rewardFormula: 'authored flat payout (src/data/heistMission.js BREAKAWAY_HEIST_TUNING.rewardCr) + bounded condition bonus',
+    timeFormula: 'none — the run window is an arbitrated `expired` candidate, not a mission deadline',
+    taskTime: 0,
+    failureCondition: 'any terminal outcome other than a settled lawful delivery into the fork',
+    constraints: { authoredOnly: true },
+  },
+  {
+    // SF-143 — The Counterweight: a yard watch over the physical gate/cradle/tug scene beside the
+    // Tethys launcher. AUTHORED-ONLY, structural zero weight exactly like the heist, placed BEFORE
+    // heist_intercept so "heist stays last" holds and `_pickType` reads `weights[i] || 0` = 0.
+    // `missions._syncCounterweightOffer` is the only poster. `chainable: false` so completing the
+    // watch cannot mint a procedural sequel; no `duration_s` — the window is the runtime's armed
+    // clock, not a mission deadline.
+    type: 'counterweight_watch', riskTierRange: [2, 2], chainable: false, proceduralWeight: 0,
+    completionEvent: 'counterweight manifest resolved (every crate delivered or lost) with legsDone >= legsRequired',
+    rewardFormula: 'delivered legs × COUNTERWEIGHT_WATCH_TUNING.rewardPerLegCr (+ completionBonusCr on a full manifest)',
+    timeFormula: 'none — the watch window is the runtime armedTick clock, not a mission deadline',
+    taskTime: 0,
+    failureCondition: 'window expiry under the required legs, or the whole manifest lost',
+    constraints: { authoredOnly: true, physicalVerb: 'hold' },
+  },
+  {
+    // SF-139 — The Split Manifest: a broken freighter's two real cargo nets, caught and
+    // landed at the Forge yard. AUTHORED-ONLY, structural zero weight exactly like the
+    // heist, placed BEFORE heist_intercept so "heist stays last" holds and `_pickType`
+    // reads `weights[i] || 0` = 0. `missions._syncYardContractOffers` is the only poster.
+    // `chainable: false` keeps a settled split from minting a procedural sequel. Lots are
+    // counted by physical possession at the yard sink, never by a flag — see
+    // src/data/yardContracts.js.
+    type: 'split_manifest', riskTierRange: [1, 1], chainable: false, proceduralWeight: 0,
+    completionEvent: 'each net physically inside the yard dock ring; settled on what actually landed',
+    rewardFormula: 'authored flat payout (YARD_CONTRACTS SPLIT_MANIFEST_TUNING) by delivered lot count',
+    timeFormula: 'none — the urgent net\'s fast clock is a scene bonus, not a mission deadline',
+    taskTime: 0,
+    failureCondition: 'all lots lost OR mission expiry',
+    constraints: { authoredOnly: true, physicalVerb: 'deliver' },
+  },
+  {
+    // SF-142 — The Quiet Berth: a dead yard lighter parked off the west berth, best
+    // solved by observation + tow/assist, costly to solve with guns. AUTHORED-ONLY,
+    // structural zero weight exactly like the heist, placed BEFORE heist_intercept so
+    // "heist stays last" holds and `_pickType` reads `weights[i] || 0` = 0.
+    // `missions._syncYardContractOffers` is the only poster. `chainable: false` so the
+    // cleared berth cannot mint a procedural sequel.
+    type: 'quiet_berth', riskTierRange: [1, 1], chainable: false, proceduralWeight: 0,
+    completionEvent: 'the lighter hull physically inside the berth ring with its load pool intact',
+    rewardFormula: 'authored flat payout (YARD_CONTRACTS QUIET_BERTH_TUNING.rewardCr) — zero on a dead hull',
+    timeFormula: 'none — the scene is a watch, not a race',
+    taskTime: 0,
+    failureCondition: 'the hull destroyed (berth clears but the contract pays nothing), or expiry',
+    constraints: { authoredOnly: true, physicalVerb: 'berth' },
+  },
+  {
+    // PQ-019C — the authored physical capsule heist. AUTHORED-ONLY, never procedurally rolled.
+    //
+    // Procedural weight is zero STRUCTURALLY rather than by a table entry: every OFFER_MIX row is
+    // 10 long (the original procedural columns). PQ-152.00's three types ride as *named* keys on
+    // the same row so the positional hunter/junction pins stay valid. This remains the last type,
+    // so `missions._pickType` reads `weights[last] || 0` = 0. `missions._syncHeistOffer` is the
+    // only thing that ever puts it on a board.
+    //
+    // `chainable: false` keeps `_instanceFromOffer` from minting a chainNextSeed, so completing a
+    // heist cannot auto-offer a procedural sequel. No `collateral`: see src/data/heistMission.js.
+    type: 'heist_intercept', riskTierRange: [3, 3], chainable: false, proceduralWeight: 0,
+    completionEvent: 'heist terminal receipt (fenced_success) from the pure outcome arbiter',
+    rewardFormula: 'authored flat payout (src/data/heistMission.js PQ019C_HEIST_TUNING.payoutCr)',
+    timeFormula: 'none — the run window is an arbitrated `expired` candidate, not a mission deadline',
+    taskTime: 0,
+    failureCondition: 'any terminal outcome other than fenced_success',
+    constraints: { authoredOnly: true },
+  },
+];
+
+// SP1 — authored set-piece chains compiled into ordinary sequential mission offers.
+// These are definitions, not persistent run state: boards, active missions, their cause records,
+// and canonical receipts remain the only save authority. A route consists of commonStages followed
+// by exactly one of two branch stage lists. Every route is intentionally 3-4 accepted missions.
+// Original three (long_read, witness_run, hearing) plus depth-shape expansion (blockade_run,
+// investigation_chain): each multiplies board variety via stage *graphs*, not single-threshold
+// reskins. lung_run is the kind rotation into emergency/response — the chain family's first
+// rescue spine, and the first authored work hosted by Charon Expanse.
+function setPieceCopyRefs(archetypeId, stageId) {
+  const root = `mission.sp1.${archetypeId}.${stageId}`;
+  return {
+    instructionRef: `${root}.instruction`,
+    successRef: `${root}.success`,
+    failureRef: `${root}.failure`,
+    recoveryRef: `${root}.recovery`,
+  };
+}
+
+/**
+ * G1: set-piece scan stages whose world target is an authored unique wreck. A generic sector
+ * pulse must never complete these — only a scan that fixes the placed wreck's bearing does
+ * (missions.js routes `uniqueWreck:bearingFixed` into them). `long_read_rumor_survey` is the
+ * dynamic-target precedent; the other four name their chain's dedicated wreck.
+ */
+export const WRECK_BOUND_SET_PIECE_OBJECTIVES = new Set([
+  'long_read_rumor_survey',
+  'investigation_scan_wreck',
+  'blockade_map_cordon',
+  'witness_compare_aliases',
+  'hearing_open_hearing',
+  'choir_first_light',
+]);
+
+// G1: home sector of each chain-dedicated authored wreck (D13-D16 in uniqueWrecks.js, plus the
+// SF-149 Choir-Tender vigil). Kept as pure data here so the catalog validator can require the
+// opening stage to run in the wreck's home sector; the focused G1 test cross-checks this table
+// against the wreck registry itself.
+export const SET_PIECE_WRECK_SECTORS = Object.freeze({
+  wreck_mts_quadrille: 'sector_io_reach',
+  wreck_isc_double_entry: 'sector_tethys_junction',
+  wreck_dmc_first_notch: 'sector_vesta_forge',
+  wreck_mts_regular: 'sector_pallas_drift',
+  wreck_choir_tender: 'sector_helios_prime',
+});
+
+export const SET_PIECE_MISSIONS = [
+  {
+    id: 'long_read',
+    title: 'The Long Read',
+    startStationId: 'station_drift',
+    repeatable: true,
+    commonStages: [
+      {
+        id: 'rumor_survey',
+        title: 'Buy the Bad Coordinates',
+        type: 'recon_scan',
+        boardStationId: 'station_drift',
+        destSectorId: 'sector_io_reach',
+        factionId: 'faction_mts',
+        riskTier: 1,
+        rewardCr: 620,
+        collateralCr: 0,
+        upfrontCostCr: 180,
+        durationS: 1800,
+        distance: 2400,
+        params: {
+          scanTargets: 2,
+          setPieceObjective: 'long_read_rumor_survey',
+          rumorPurchased: false,
+          bearingFixed: false,
+        },
+        clauseIds: [],
+        ...setPieceCopyRefs('long_read', 'rumor_survey'),
+      },
+      {
+        id: 'hold_the_cutters',
+        title: 'Recover Under Pressure',
+        type: 'salvage_retrieval',
+        boardStationId: 'station_reach',
+        destSectorId: 'sector_io_reach',
+        factionId: 'faction_free',
+        riskTier: 2,
+        rewardCr: 1180,
+        collateralCr: 260,
+        durationS: 1800,
+        distance: 900,
+        params: {
+          setPieceObjective: 'long_read_salvage',
+          complicationObserved: false,
+          salvageDecisionReady: false,
+        },
+        clauseIds: ['no_kills'],
+        ...setPieceCopyRefs('long_read', 'hold_the_cutters'),
+      },
+    ],
+    branches: [
+      {
+        id: 'lawful',
+        label: 'File the Evidence',
+        tradeoff: 'Take the legible price and make the recovered record public.',
+        stages: [
+          {
+            id: 'file_the_evidence',
+            title: 'File the Evidence',
+            type: 'salvage_retrieval',
+            boardStationId: 'station_reach',
+            destSectorId: 'sector_io_reach',
+            factionId: 'faction_scn',
+            riskTier: 2,
+            rewardCr: 1540,
+            collateralCr: 420,
+            durationS: 900,
+            distance: 3100,
+            params: {
+              setPieceObjective: 'long_read_fence',
+              wreckChoiceId: 'authority_handover',
+            },
+            clauseIds: [],
+            ...setPieceCopyRefs('long_read', 'file_the_evidence'),
+          },
+        ],
+      },
+      {
+        id: 'quiet',
+        label: 'Erase the Origin',
+        tradeoff: 'Take the quiet price and let Nyx remove the recovered record’s provenance.',
+        stages: [
+          {
+            id: 'erase_the_origin',
+            title: 'Erase the Origin',
+            type: 'salvage_retrieval',
+            boardStationId: 'station_reach',
+            destSectorId: 'sector_io_reach',
+            factionId: 'faction_quiet',
+            riskTier: 3,
+            rewardCr: 2240,
+            collateralCr: 620,
+            durationS: 900,
+            distance: 3600,
+            params: {
+              setPieceObjective: 'long_read_fence',
+              wreckChoiceId: 'claim_hardware',
+            },
+            clauseIds: [],
+            ...setPieceCopyRefs('long_read', 'erase_the_origin'),
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'witness_run',
+    title: 'The Witness Run',
+    startStationId: 'station_customs',
+    repeatable: true,
+    // D14: the alias comparison happens ON the dual-registry hull itself.
+    wreckId: 'wreck_isc_double_entry',
+    witnesses: [
+      {
+        id: 'dorin',
+        displayName: 'Dorin Vale',
+        travelLineRefs: [
+          'mission.sp1.witness_run.travel.dorin.01',
+          'mission.sp1.witness_run.travel.dorin.02',
+          'mission.sp1.witness_run.travel.dorin.03',
+          'mission.sp1.witness_run.travel.dorin.04',
+        ],
+      },
+      {
+        id: 'kell',
+        displayName: 'Kell Orr',
+        travelLineRefs: [
+          'mission.sp1.witness_run.travel.kell.01',
+          'mission.sp1.witness_run.travel.kell.02',
+          'mission.sp1.witness_run.travel.kell.03',
+          'mission.sp1.witness_run.travel.kell.04',
+        ],
+      },
+    ],
+    commonStages: [
+      {
+        id: 'compare_aliases',
+        title: 'Compare the Aliases',
+        type: 'recon_scan',
+        boardStationId: 'station_customs',
+        destSectorId: 'sector_tethys_junction',
+        factionId: 'faction_scn',
+        riskTier: 1,
+        rewardCr: 560,
+        collateralCr: 0,
+        distance: 700,
+        params: { scanTargets: 3, setPieceObjective: 'witness_compare_aliases' },
+        clauseIds: [],
+        ...setPieceCopyRefs('witness_run', 'compare_aliases'),
+      },
+      {
+        id: 'extract_the_witness',
+        title: 'Extract the Witness',
+        type: 'passenger_transport',
+        boardStationId: 'station_customs',
+        destStationId: 'station_drift',
+        destSectorId: 'sector_pallas_drift',
+        factionId: 'faction_scn',
+        riskTier: 2,
+        rewardCr: 1080,
+        collateralCr: 260,
+        distance: 2600,
+        params: { passengerCount: 1, witnessSelector: 'seeded_chain_actor' },
+        clauseIds: [],
+        ...setPieceCopyRefs('witness_run', 'extract_the_witness'),
+      },
+    ],
+    branches: [
+      {
+        id: 'publish',
+        label: 'Publish the Testimony',
+        tradeoff: 'Give the witness public custody and make the retaliation window visible.',
+        stages: [
+          {
+            id: 'transfer_public_custody',
+            title: 'Transfer Public Custody',
+            type: 'passenger_transport',
+            boardStationId: 'station_drift',
+            destStationId: 'station_coalition',
+            destSectorId: 'sector_helios_prime',
+            factionId: 'faction_scn',
+            riskTier: 2,
+            rewardCr: 1480,
+            collateralCr: 420,
+            distance: 2900,
+            params: { passengerCount: 1, witnessSelector: 'chain_actor' },
+            clauseIds: ['no_kills'],
+            ...setPieceCopyRefs('witness_run', 'transfer_public_custody'),
+          },
+          {
+            id: 'file_the_testimony',
+            title: 'File the Testimony',
+            type: 'cargo_delivery',
+            boardStationId: 'station_coalition',
+            destStationId: 'station_tethys',
+            destSectorId: 'sector_tethys_junction',
+            factionId: 'faction_scn',
+            riskTier: 2,
+            rewardCr: 1880,
+            collateralCr: 520,
+            distance: 1900,
+            preloadedCargo: true,
+            params: { cmdtyId: 'cmdty_classified_salvage', qty: 1 },
+            clauseIds: ['cargo_intact'],
+            ...setPieceCopyRefs('witness_run', 'file_the_testimony'),
+          },
+        ],
+      },
+      {
+        id: 'shelter',
+        label: 'Shelter the Witness',
+        tradeoff: 'Keep the source alive and useful by making the record unavailable.',
+        stages: [
+          {
+            id: 'run_the_shelter_key',
+            title: 'Run the Shelter Key',
+            type: 'smuggling_run',
+            boardStationId: 'station_drift',
+            destStationId: 'station_nyx_march',
+            destSectorId: 'sector_nyx_march',
+            factionId: 'faction_quiet',
+            riskTier: 3,
+            rewardCr: 1840,
+            collateralCr: 560,
+            distance: 1800,
+            preloadedCargo: true,
+            params: { cmdtyId: 'cmdty_classified_salvage', qty: 1 },
+            clauseIds: ['no_scan'],
+            ...setPieceCopyRefs('witness_run', 'run_the_shelter_key'),
+          },
+          {
+            id: 'verify_quiet_handoffs',
+            title: 'Verify the Quiet Handoffs',
+            type: 'recon_scan',
+            boardStationId: 'station_nyx_march',
+            destSectorId: 'sector_nyx_march',
+            factionId: 'faction_quiet',
+            riskTier: 3,
+            rewardCr: 2360,
+            collateralCr: 620,
+            distance: 800,
+            params: { scanTargets: 3 },
+            clauseIds: ['no_scan'],
+            ...setPieceCopyRefs('witness_run', 'verify_quiet_handoffs'),
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'hearing',
+    title: 'The Hearing',
+    startStationId: 'station_forge',
+    repeatable: true,
+    // D15: the hearing opens over the siege's first kill, held as evidence in the approach.
+    wreckId: 'wreck_dmc_first_notch',
+    commonStages: [
+      {
+        id: 'open_the_hearing',
+        title: 'Open the Hearing',
+        type: 'recon_scan',
+        boardStationId: 'station_forge',
+        destSectorId: 'sector_vesta_forge',
+        factionId: 'faction_dmc',
+        riskTier: 2,
+        rewardCr: 880,
+        collateralCr: 220,
+        distance: 800,
+        params: { scanTargets: 3, setPieceObjective: 'hearing_open_hearing' },
+        clauseIds: [],
+        ...setPieceCopyRefs('hearing', 'open_the_hearing'),
+      },
+    ],
+    branches: [
+      {
+        id: 'defend',
+        label: 'Defend the Station',
+        tradeoff: 'Buy repair time first, then break only the marked siege screen.',
+        stages: [
+          {
+            id: 'escort_the_tender',
+            title: 'Escort the Repair Tender',
+            type: 'escort',
+            boardStationId: 'station_forge',
+            destStationId: 'station_depot3',
+            destSectorId: 'sector_vesta_forge',
+            factionId: 'faction_dmc',
+            riskTier: 2,
+            rewardCr: 1420,
+            collateralCr: 420,
+            distance: 1100,
+            params: { targetStrength: 1.25 },
+            clauseIds: ['no_kills'],
+            ...setPieceCopyRefs('hearing', 'escort_the_tender'),
+          },
+          {
+            id: 'break_the_screen',
+            title: 'Break the Siege Screen',
+            type: 'patrol_clear',
+            boardStationId: 'station_depot3',
+            destSectorId: 'sector_vesta_forge',
+            factionId: 'faction_dmc',
+            riskTier: 2,
+            rewardCr: 2040,
+            collateralCr: 520,
+            distance: 900,
+            params: { clearCount: 3, targetStrength: 1.35 },
+            clauseIds: [],
+            ...setPieceCopyRefs('hearing', 'break_the_screen'),
+          },
+        ],
+      },
+      {
+        id: 'expedite',
+        label: 'Expedite the Siege',
+        tradeoff: 'Make the target deck precise and let the firing schedule become the verdict.',
+        stages: [
+          {
+            id: 'deliver_target_deck',
+            title: 'Deliver the Target Deck',
+            type: 'cargo_delivery',
+            boardStationId: 'station_forge',
+            destStationId: 'station_depot3',
+            destSectorId: 'sector_vesta_forge',
+            factionId: 'faction_choir',
+            riskTier: 3,
+            rewardCr: 1860,
+            collateralCr: 620,
+            distance: 1100,
+            preloadedCargo: true,
+            params: { cmdtyId: 'cmdty_classified_salvage', qty: 1 },
+            clauseIds: ['no_scan'],
+            ...setPieceCopyRefs('hearing', 'deliver_target_deck'),
+          },
+          {
+            id: 'file_firing_corrections',
+            title: 'File the Firing Corrections',
+            type: 'recon_scan',
+            boardStationId: 'station_depot3',
+            destSectorId: 'sector_vesta_forge',
+            factionId: 'faction_choir',
+            riskTier: 3,
+            rewardCr: 2320,
+            collateralCr: 680,
+            distance: 900,
+            params: { scanTargets: 3 },
+            clauseIds: ['no_scan'],
+            ...setPieceCopyRefs('hearing', 'file_firing_corrections'),
+          },
+        ],
+      },
+    ],
+  },
+  // ── Depth shapes: multi-stage graphs with distinct verb sequences ──────────
+  {
+    id: 'blockade_run',
+    title: 'The Blockade Run',
+    startStationId: 'station_customs',
+    repeatable: true,
+    // D16: mapping the cordon means reading its latest kill — the Regular's graveyard on the
+    // Drift approach, where both blockade_run routes terminate.
+    wreckId: 'wreck_mts_regular',
+    commonStages: [
+      {
+        id: 'map_the_cordon',
+        title: 'Map the Cordon',
+        type: 'recon_scan',
+        boardStationId: 'station_customs',
+        destSectorId: 'sector_pallas_drift',
+        factionId: 'faction_scn',
+        riskTier: 2,
+        rewardCr: 720,
+        collateralCr: 0,
+        durationS: 1500,
+        distance: 2400,
+        params: {
+          scanTargets: 3,
+          setPieceObjective: 'blockade_map_cordon',
+        },
+        clauseIds: [],
+        ...setPieceCopyRefs('blockade_run', 'map_the_cordon'),
+      },
+      {
+        id: 'hold_course_under_fire',
+        title: 'Hold Course Under Fire',
+        type: 'cargo_delivery',
+        boardStationId: 'station_customs',
+        destStationId: 'station_tethys',
+        destSectorId: 'sector_tethys_junction',
+        factionId: 'faction_mts',
+        riskTier: 2,
+        rewardCr: 1180,
+        collateralCr: 280,
+        durationS: 1800,
+        distance: 1100,
+        preloadedCargo: true,
+        params: {
+          cmdtyId: 'cmdty_classified_salvage',
+          qty: 1,
+          setPieceObjective: 'blockade_hold_course',
+        },
+        clauseIds: ['cargo_intact'],
+        ...setPieceCopyRefs('blockade_run', 'hold_course_under_fire'),
+      },
+    ],
+    branches: [
+      {
+        id: 'pay_the_toll',
+        label: 'Pay the Quiet Toll',
+        tradeoff: 'Lose mass and pride; keep the route legally invisible.',
+        stages: [
+          {
+            id: 'run_the_quiet_tithe',
+            title: 'Run the Quiet Tithe',
+            type: 'smuggling_run',
+            boardStationId: 'station_tethys',
+            destStationId: 'station_smuggler',
+            destSectorId: 'sector_pallas_drift',
+            factionId: 'faction_quiet',
+            riskTier: 3,
+            rewardCr: 1640,
+            collateralCr: 480,
+            durationS: 1600,
+            distance: 2400,
+            preloadedCargo: true,
+            params: {
+              cmdtyId: 'cmdty_classified_salvage',
+              qty: 1,
+              setPieceObjective: 'blockade_quiet_tithe',
+            },
+            clauseIds: ['no_scan'],
+            ...setPieceCopyRefs('blockade_run', 'run_the_quiet_tithe'),
+          },
+        ],
+      },
+      {
+        id: 'break_the_guns',
+        label: 'Break the Guns',
+        tradeoff: 'Clear the cordon ships and force a public arrival.',
+        stages: [
+          {
+            id: 'clear_the_cordon',
+            title: 'Clear the Cordon Screen',
+            type: 'patrol_clear',
+            boardStationId: 'station_tethys',
+            destSectorId: 'sector_tethys_junction',
+            factionId: 'faction_scn',
+            riskTier: 3,
+            rewardCr: 1720,
+            collateralCr: 520,
+            durationS: 1700,
+            distance: 1000,
+            params: {
+              clearCount: 3,
+              targetStrength: 1.3,
+              setPieceObjective: 'blockade_clear_cordon',
+            },
+            clauseIds: [],
+            ...setPieceCopyRefs('blockade_run', 'clear_the_cordon'),
+          },
+          {
+            id: 'dock_through_wreckage',
+            title: 'Dock Through the Wreckage',
+            type: 'cargo_delivery',
+            boardStationId: 'station_tethys',
+            destStationId: 'station_drift',
+            destSectorId: 'sector_pallas_drift',
+            factionId: 'faction_mts',
+            riskTier: 2,
+            rewardCr: 2100,
+            collateralCr: 560,
+            durationS: 1400,
+            distance: 2600,
+            preloadedCargo: true,
+            params: {
+              cmdtyId: 'cmdty_classified_salvage',
+              qty: 1,
+              setPieceObjective: 'blockade_public_dock',
+            },
+            clauseIds: ['cargo_intact'],
+            ...setPieceCopyRefs('blockade_run', 'dock_through_wreckage'),
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'investigation_chain',
+    title: 'The Investigation Chain',
+    startStationId: 'station_reach',
+    repeatable: true,
+    // D13: the silent wreck is the Quadrille herself — scanned, then boarded for the box.
+    wreckId: 'wreck_mts_quadrille',
+    commonStages: [
+      {
+        id: 'scan_the_silent_wreck',
+        title: 'Scan the Silent Wreck',
+        type: 'recon_scan',
+        boardStationId: 'station_reach',
+        destSectorId: 'sector_io_reach',
+        factionId: 'faction_free',
+        riskTier: 2,
+        rewardCr: 680,
+        collateralCr: 0,
+        durationS: 1500,
+        distance: 1200,
+        params: {
+          scanTargets: 3,
+          setPieceObjective: 'investigation_scan_wreck',
+        },
+        clauseIds: [],
+        ...setPieceCopyRefs('investigation_chain', 'scan_the_silent_wreck'),
+      },
+      {
+        id: 'recover_the_black_box',
+        title: 'Recover the Black Box',
+        type: 'salvage_retrieval',
+        boardStationId: 'station_reach',
+        destSectorId: 'sector_io_reach',
+        factionId: 'faction_free',
+        riskTier: 2,
+        rewardCr: 1240,
+        collateralCr: 300,
+        durationS: 1800,
+        distance: 900,
+        params: {
+          setPieceObjective: 'investigation_recover_box',
+        },
+        clauseIds: ['no_kills'],
+        ...setPieceCopyRefs('investigation_chain', 'recover_the_black_box'),
+      },
+    ],
+    branches: [
+      {
+        id: 'file_public',
+        label: 'File It Public',
+        tradeoff: 'Hand the log to Concord and make the names legible.',
+        stages: [
+          {
+            id: 'file_the_log',
+            title: 'File the Log at Customs',
+            type: 'cargo_delivery',
+            boardStationId: 'station_reach',
+            destStationId: 'station_customs',
+            destSectorId: 'sector_tethys_junction',
+            factionId: 'faction_scn',
+            riskTier: 2,
+            rewardCr: 1680,
+            collateralCr: 440,
+            durationS: 1500,
+            distance: 2800,
+            preloadedCargo: true,
+            params: {
+              cmdtyId: 'cmdty_classified_salvage',
+              qty: 1,
+              setPieceObjective: 'investigation_file_log',
+            },
+            clauseIds: ['cargo_intact'],
+            ...setPieceCopyRefs('investigation_chain', 'file_the_log'),
+          },
+        ],
+      },
+      {
+        id: 'sell_quiet',
+        label: 'Sell It Quiet',
+        tradeoff: 'Sell the log to Quiet and erase who found it first.',
+        stages: [
+          {
+            id: 'sell_the_log',
+            title: 'Sell the Log Off-Book',
+            type: 'smuggling_run',
+            boardStationId: 'station_reach',
+            destStationId: 'station_nyx_march',
+            destSectorId: 'sector_nyx_march',
+            factionId: 'faction_quiet',
+            riskTier: 3,
+            rewardCr: 2140,
+            collateralCr: 580,
+            durationS: 1600,
+            distance: 2200,
+            preloadedCargo: true,
+            params: {
+              cmdtyId: 'cmdty_classified_salvage',
+              qty: 1,
+              setPieceObjective: 'investigation_sell_log',
+            },
+            clauseIds: ['no_scan'],
+            ...setPieceCopyRefs('investigation_chain', 'sell_the_log'),
+          },
+        ],
+      },
+    ],
+  },
+  // The Lung Run — the chain family's first emergency/response kind, and the first authored
+  // work Charon Expanse ever hosts (its board profile is the writ wall: bounty_board). A DMC
+  // intake haul broke up on the radiation lane the locals call the Lung. Assess the break-up,
+  // pull the crews off it under raider fire (the family's first rescue_under_fire stage —
+  // stage_tow or corridor_pull both stay honest because the stage carries no kill clause),
+  // then choose who keeps the crews: the company tender home clean (escort, no_kills), or
+  // their sealed indenture ledger to the Nyx Fence (smuggling, no_scan) so the Quiet erases
+  // the debt. No wreckId: the scene is the break-up line, not a reserved hull.
+  {
+    id: 'lung_run',
+    title: 'The Lung Run',
+    startStationId: 'station_expanse',
+    repeatable: true,
+    commonStages: [
+      {
+        id: 'read_the_break',
+        title: 'Read the Break-Up',
+        type: 'recon_scan',
+        boardStationId: 'station_expanse',
+        destSectorId: 'sector_charon_expanse',
+        factionId: 'faction_dmc',
+        riskTier: 2,
+        rewardCr: 780,
+        collateralCr: 0,
+        durationS: 1500,
+        distance: 900,
+        params: {
+          scanTargets: 3,
+        },
+        clauseIds: [],
+        ...setPieceCopyRefs('lung_run', 'read_the_break'),
+      },
+      {
+        id: 'pull_the_crews',
+        title: 'Pull the Crews Off the Lung',
+        type: 'rescue_under_fire',
+        boardStationId: 'station_expanse',
+        destStationId: 'station_expanse',
+        destSectorId: 'sector_charon_expanse',
+        factionId: 'faction_dmc',
+        riskTier: 2,
+        rewardCr: 1320,
+        collateralCr: 300,
+        durationS: 1800,
+        distance: 800,
+        params: {
+          podCount: 3,
+          escortCount: 2,
+        },
+        clauseIds: [],
+        ...setPieceCopyRefs('lung_run', 'pull_the_crews'),
+      },
+    ],
+    branches: [
+      {
+        id: 'tender',
+        label: 'Keep Them On the Books',
+        tradeoff: 'Escort the collection tender home clean. The crews stay on the intake rolls, and so does your standing with the refinery.',
+        stages: [
+          {
+            id: 'run_the_tender',
+            title: 'Run the Company Tender',
+            type: 'escort',
+            boardStationId: 'station_expanse',
+            destStationId: 'station_expanse',
+            destSectorId: 'sector_charon_expanse',
+            factionId: 'faction_dmc',
+            riskTier: 2,
+            rewardCr: 1560,
+            collateralCr: 420,
+            durationS: 1800,
+            distance: 700,
+            params: {
+              convoySize: 2,
+              ambushSize: 3,
+              targetStrength: 1.2,
+            },
+            clauseIds: ['no_kills'],
+            ...setPieceCopyRefs('lung_run', 'run_the_tender'),
+          },
+        ],
+      },
+      {
+        id: 'march',
+        label: 'Lose Them in the March',
+        tradeoff: 'Run the crews sealed ledger to the Nyx Fence. The Quiet erases the debt, the crews vanish free, and the refinery never learns your name.',
+        stages: [
+          {
+            id: 'march_the_ledger',
+            title: 'March the Ledger to Nyx',
+            type: 'smuggling_run',
+            boardStationId: 'station_expanse',
+            destStationId: 'station_nyx_march',
+            destSectorId: 'sector_nyx_march',
+            factionId: 'faction_quiet',
+            riskTier: 3,
+            rewardCr: 2150,
+            collateralCr: 560,
+            durationS: 2000,
+            distance: 2600,
+            preloadedCargo: true,
+            params: {
+              cmdtyId: 'cmdty_classified_salvage',
+              qty: 1,
+            },
+            clauseIds: ['no_scan'],
+            ...setPieceCopyRefs('lung_run', 'march_the_ledger'),
+          },
+        ],
+      },
+    ],
+  },
+
+  // SF-149 — the Choir vigil: three physically different visits to the same small place.
+  // First light is the survey visit (scan the bearing ring into a fixed site). The long night
+  // is the disruption visit — the warm wreck's own reactor verdict, driven through the same
+  // live-salvage objective as long_read's recovery stage. The third visit is a return to the
+  // changed site: accepting it files the named outcome into the durable bearing, and the
+  // stage only completes when the player physically stands inside the recovered site again.
+  // Late arrivals reconcile: a bearing already fixed, a wreck already decided, or a site
+  // already salvaged settles at accept instead of demanding the world be undone.
+  {
+    id: 'choir_vigil',
+    title: 'The Choir Vigil',
+    startStationId: 'station_helios',
+    repeatable: true,
+    wreckId: 'wreck_choir_tender',
+    commonStages: [
+      {
+        id: 'first_light',
+        title: 'First Light at the Wreck',
+        type: 'recon_scan',
+        boardStationId: 'station_helios',
+        destSectorId: 'sector_helios_prime',
+        factionId: 'faction_choir',
+        riskTier: 1,
+        rewardCr: 720,
+        collateralCr: 0,
+        durationS: 1800,
+        distance: 900,
+        params: {
+          scanTargets: 1,
+          setPieceObjective: 'choir_first_light',
+          bearingFixed: false,
+          rumorPurchased: false,
+        },
+        clauseIds: [],
+        ...setPieceCopyRefs('choir_vigil', 'first_light'),
+      },
+      {
+        id: 'the_long_night',
+        title: 'The Long Night Beside Mercy',
+        type: 'salvage_retrieval',
+        boardStationId: 'station_helios',
+        destSectorId: 'sector_helios_prime',
+        factionId: 'faction_choir',
+        riskTier: 2,
+        rewardCr: 1380,
+        collateralCr: 300,
+        durationS: 1800,
+        distance: 900,
+        params: {
+          setPieceObjective: 'choir_long_night',
+          complicationObserved: false,
+          salvageDecisionReady: false,
+        },
+        clauseIds: ['no_kills'],
+        ...setPieceCopyRefs('choir_vigil', 'the_long_night'),
+      },
+    ],
+    branches: [
+      {
+        id: 'return_the_claim',
+        label: 'Return the Relief Claim',
+        tradeoff: 'Hand the surviving systems back to the Choir attendant. The berth gets its crew home, and the site files a recovery.',
+        stages: [
+          {
+            id: 'walk_the_recovery',
+            title: 'Walk the Recovery',
+            type: 'salvage_retrieval',
+            boardStationId: 'station_helios',
+            destSectorId: 'sector_helios_prime',
+            factionId: 'faction_choir',
+            riskTier: 2,
+            rewardCr: 1640,
+            collateralCr: 420,
+            durationS: 900,
+            distance: 900,
+            params: {
+              setPieceObjective: 'choir_what_remains',
+              wreckChoiceId: 'authority_handover',
+              outcomeFiled: false,
+            },
+            clauseIds: [],
+            ...setPieceCopyRefs('choir_vigil', 'walk_the_recovery'),
+          },
+        ],
+      },
+      {
+        id: 'keep_the_claim',
+        label: 'Keep the Recovery Claim',
+        tradeoff: 'File the surviving systems under your own name and go back to read what the site became.',
+        stages: [
+          {
+            id: 'read_the_placard',
+            title: 'Read the Placard',
+            type: 'salvage_retrieval',
+            boardStationId: 'station_helios',
+            destSectorId: 'sector_helios_prime',
+            factionId: 'faction_choir',
+            riskTier: 3,
+            rewardCr: 1980,
+            collateralCr: 520,
+            durationS: 900,
+            distance: 900,
+            params: {
+              setPieceObjective: 'choir_what_remains',
+              wreckChoiceId: 'claim_hardware',
+              outcomeFiled: false,
+            },
+            clauseIds: [],
+            ...setPieceCopyRefs('choir_vigil', 'read_the_placard'),
+          },
+        ],
+      },
+    ],
+  },
+];
+
+const SET_PIECE_ARCHETYPE_IDS = [
+  'long_read',
+  'witness_run',
+  'hearing',
+  'blockade_run',
+  'investigation_chain',
+  'lung_run',
+  'choir_vigil',
+];
+const SET_PIECE_CLAUSE_IDS = new Set(['no_kills', 'cargo_intact', 'no_scan']);
+const SET_PIECE_COMMODITY_IDS = new Set(['cmdty_classified_salvage']);
+
+export function validateSetPieceMissionCatalog(catalog = SET_PIECE_MISSIONS) {
+  const errors = [];
+  const definitions = Array.isArray(catalog) ? catalog : [];
+  const missionTypes = new Set(MISSION_TYPES.map((entry) => entry.type));
+  const archetypeIds = new Set();
+  const copyRefs = new Set();
+  let playableRoutes = 0;
+
+  if (!Array.isArray(catalog)) errors.push('SET_PIECE_MISSIONS must be an array.');
+  if (definitions.length !== SET_PIECE_ARCHETYPE_IDS.length) {
+    errors.push(`Expected ${SET_PIECE_ARCHETYPE_IDS.length} SP1 archetypes; found ${definitions.length}.`);
+  }
+
+  for (const definition of definitions) {
+    const root = definition && definition.id || '<missing-archetype>';
+    if (!definition || typeof definition !== 'object') {
+      errors.push('Every SP1 archetype must be an object.');
+      continue;
+    }
+    if (!SET_PIECE_ARCHETYPE_IDS.includes(definition.id)) errors.push(`${root}: unexpected archetype id.`);
+    if (archetypeIds.has(definition.id)) errors.push(`${root}: duplicate archetype id.`);
+    archetypeIds.add(definition.id);
+    if (typeof definition.title !== 'string' || definition.title.length < 8) errors.push(`${root}: authored title required.`);
+    if (typeof definition.startStationId !== 'string' || !definition.startStationId.startsWith('station_')) {
+      errors.push(`${root}: canonical startStationId required.`);
+    }
+    if (!Array.isArray(definition.commonStages) || definition.commonStages.length < 1) {
+      errors.push(`${root}: at least one common stage required.`);
+    }
+    if (!Array.isArray(definition.branches) || definition.branches.length !== 2) {
+      errors.push(`${root}: exactly two branches required.`);
+    }
+    const stageIds = new Set();
+    const commonStages = Array.isArray(definition.commonStages) ? definition.commonStages : [];
+    const branches = Array.isArray(definition.branches) ? definition.branches : [];
+    const branchIds = new Set();
+    for (const branch of branches) {
+      playableRoutes += 1;
+      const branchRoot = `${root}/${branch && branch.id || '<missing-branch>'}`;
+      if (!branch || typeof branch !== 'object') {
+        errors.push(`${root}: branch must be an object.`);
+        continue;
+      }
+      if (!branch.id || branchIds.has(branch.id)) errors.push(`${branchRoot}: unique branch id required.`);
+      branchIds.add(branch.id);
+      if (typeof branch.label !== 'string' || branch.label.length < 4) errors.push(`${branchRoot}: visible label required.`);
+      if (Object.hasOwn(branch, 'branches')) errors.push(`${branchRoot}: nested branches are forbidden.`);
+      const branchStages = Array.isArray(branch.stages) ? branch.stages : [];
+      const routeLength = commonStages.length + branchStages.length;
+      if (routeLength < 3 || routeLength > 4) errors.push(`${branchRoot}: route must contain 3-4 stages.`);
+      if (branchStages.length < 1) errors.push(`${branchRoot}: branch stages required.`);
+      if (branchStages[0] && !(branchStages[0].collateralCr > 0)) {
+        errors.push(`${branchRoot}: branch entry requires a recoverable collateral stake.`);
+      }
+      if (![...commonStages, ...branchStages].some((stage) => stage && stage.clauseIds && stage.clauseIds.length)) {
+        errors.push(`${branchRoot}: route must exercise at least one contract clause.`);
+      }
+    }
+
+    const allStages = [...commonStages, ...branches.flatMap((branch) => Array.isArray(branch.stages) ? branch.stages : [])];
+    for (const stage of allStages) {
+      const stageRoot = `${root}/${stage && stage.id || '<missing-stage>'}`;
+      if (!stage || typeof stage !== 'object') {
+        errors.push(`${root}: stage must be an object.`);
+        continue;
+      }
+      if (!stage.id || stageIds.has(stage.id)) errors.push(`${stageRoot}: unique stage id required.`);
+      stageIds.add(stage.id);
+      if (typeof stage.title !== 'string' || stage.title.length < 6) errors.push(`${stageRoot}: authored title required.`);
+      if (!missionTypes.has(stage.type)) errors.push(`${stageRoot}: unknown mission type ${stage.type}.`);
+      if (typeof stage.boardStationId !== 'string' || !stage.boardStationId.startsWith('station_')) {
+        errors.push(`${stageRoot}: canonical boardStationId required.`);
+      }
+      if (stage.destStationId != null && (typeof stage.destStationId !== 'string' || !stage.destStationId.startsWith('station_'))) {
+        errors.push(`${stageRoot}: invalid destStationId.`);
+      }
+      if (typeof stage.destSectorId !== 'string' || !stage.destSectorId.startsWith('sector_')) {
+        errors.push(`${stageRoot}: canonical destSectorId required.`);
+      }
+      if (typeof stage.factionId !== 'string' || !stage.factionId.startsWith('faction_')) {
+        errors.push(`${stageRoot}: canonical factionId required.`);
+      }
+      if (!Number.isInteger(stage.riskTier) || stage.riskTier < 0 || stage.riskTier > 4) {
+        errors.push(`${stageRoot}: riskTier must be 0-4.`);
+      }
+      if (Object.hasOwn(stage, 'minRep')) errors.push(`${stageRoot}: minRep overrides are forbidden.`);
+      if (!(Number.isFinite(stage.rewardCr) && stage.rewardCr > 0)) errors.push(`${stageRoot}: positive rewardCr required.`);
+      if (!(Number.isFinite(stage.collateralCr) && stage.collateralCr >= 0)) errors.push(`${stageRoot}: nonnegative collateralCr required.`);
+      if (!stage.params || typeof stage.params !== 'object' || Array.isArray(stage.params)) errors.push(`${stageRoot}: params object required.`);
+      if (stage.params && stage.params.cmdtyId && !SET_PIECE_COMMODITY_IDS.has(stage.params.cmdtyId)) {
+        errors.push(`${stageRoot}: unapproved SP1 commodity ${stage.params.cmdtyId}.`);
+      }
+      if (!Array.isArray(stage.clauseIds) || stage.clauseIds.length > 1) {
+        errors.push(`${stageRoot}: clauseIds must be an array with at most one clause.`);
+      } else {
+        for (const clauseId of stage.clauseIds) {
+          if (!SET_PIECE_CLAUSE_IDS.has(clauseId)) errors.push(`${stageRoot}: unsupported clause ${clauseId}.`);
+        }
+      }
+      for (const key of ['instructionRef', 'successRef', 'failureRef', 'recoveryRef']) {
+        const ref = stage[key];
+        if (typeof ref !== 'string' || !ref.startsWith(`mission.sp1.${root}.${stage.id}.`)) {
+          errors.push(`${stageRoot}: canonical ${key} required.`);
+        } else if (copyRefs.has(ref)) {
+          errors.push(`${stageRoot}: duplicate copy ref ${ref}.`);
+        } else {
+          copyRefs.add(ref);
+        }
+      }
+    }
+
+    if (definition.id === 'witness_run') {
+      if (!Array.isArray(definition.witnesses) || definition.witnesses.length !== 2) {
+        errors.push(`${root}: exactly two seeded witness voices required.`);
+      }
+      for (const witness of definition.witnesses || []) {
+        if (!witness.id || !witness.displayName || !Array.isArray(witness.travelLineRefs)
+            || witness.travelLineRefs.length < 3) {
+          errors.push(`${root}/${witness.id}: each witness requires identity and transit lines.`);
+          continue;
+        }
+        for (const ref of witness.travelLineRefs) {
+          if (typeof ref !== 'string' || !ref.startsWith(`mission.sp1.witness_run.travel.${witness.id}.`)) {
+            errors.push(`${root}/${witness.id}: invalid travel-line ref.`);
+          }
+        }
+      }
+    }
+
+    // G1: a chain bound to an authored wreck must open on its wreck-bound scan stage, and that
+    // stage must run in the wreck's home sector so the placed hull is reachable from the board.
+    if (definition.wreckId != null) {
+      const opening = commonStages[0];
+      const openingObjective = opening && opening.params && opening.params.setPieceObjective;
+      if (!WRECK_BOUND_SET_PIECE_OBJECTIVES.has(openingObjective)) {
+        errors.push(`${root}: wreck-bound chain must open on a wreck-bound scan stage.`);
+      }
+      const wreckSector = SET_PIECE_WRECK_SECTORS[definition.wreckId];
+      if (!wreckSector) {
+        errors.push(`${root}: wreckId ${definition.wreckId} is not an authored unique wreck.`);
+      } else if (opening && opening.destSectorId !== wreckSector) {
+        errors.push(`${root}: opening stage sector ${opening.destSectorId} must match wreck sector ${wreckSector}.`);
+      }
+    }
+  }
+
+  for (const id of SET_PIECE_ARCHETYPE_IDS) {
+    if (!archetypeIds.has(id)) errors.push(`Missing SP1 archetype ${id}.`);
+  }
+
+  return {
+    ok: errors.length === 0,
+    errors,
+    archetypes: definitions.length,
+    playableRoutes,
+  };
+}
+
+// Offer-mix weights by station type.
+// Positional columns stay 10 long and match POSITIONAL_OFFER_TYPES:
+// [cargo, trade, bounty, mining, salvage, escort, patrol, smuggling, passenger, recon]
+// PQ-152.00 physical types join the SAME row as named keys so hunter/junction length pins
+// (Charon / Tethys) keep their first-ten identity. `_pickType` reads named keys first, then
+// the named positional column — never `weights[i]` — so inserting a MISSION_TYPES row cannot
+// shift later types onto the wrong column or zero them.
+export const POSITIONAL_OFFER_TYPES = Object.freeze([
+  'cargo_delivery',
+  'bulk_trade',
+  'bounty_hunt',
+  'mining_quota',
+  'salvage_retrieval',
+  'escort',
+  'patrol_clear',
+  'smuggling_run',
+  'passenger_transport',
+  'recon_scan',
+]);
+
+function withNamedColumns(row) {
+  for (let i = 0; i < POSITIONAL_OFFER_TYPES.length; i++) {
+    const typeId = POSITIONAL_OFFER_TYPES[i];
+    if (!Number.isFinite(row[typeId])) row[typeId] = Number(row[i]) || 0;
+  }
+  return row;
+}
+
+function withPhysicalMix(row, tow, demolition, rescue, race = 0) {
+  withNamedColumns(row);
+  row.tow_recovery = tow;
+  row.demolition = demolition;
+  row.rescue_under_fire = rescue;
+  row.race = race;
+  return row;
+}
+
+export const PHYSICAL_MISSION_TYPES = Object.freeze([
+  'tow_recovery',
+  'demolition',
+  'rescue_under_fire',
+]);
+
+// FB-067 — the physical archetypes get a second ROW, not a fifth type. A variant is a different
+// physical problem on the same contract verb: different body, different complication, different
+// authored clause set. The variant id rides `params.variant`; the pick is hashed off the offer
+// identity (never the board rng stream) so ordinary rolls stay bit-identical.
+export const PHYSICAL_MISSION_VARIANTS = Object.freeze({
+  tow_recovery: Object.freeze([
+    Object.freeze({
+      id: 'slag_core',
+      titleVerb: 'slag core',
+      scanLabel: 'SLAG CORE',
+      clauseIds: Object.freeze([]),
+    }),
+    Object.freeze({
+      id: 'drift_hulk',
+      titleVerb: 'dead freighter',
+      scanLabel: 'DEAD FREIGHTER',
+      // A heavier hull off the drift: same tow verb, a longer, colder problem.
+      massMult: 1.7,
+      bodyRadius: 22,
+      clauseIds: Object.freeze(['no_slack']),
+    }),
+  ]),
+  demolition: Object.freeze([
+    Object.freeze({
+      id: 'dead_tower',
+      clauseIds: Object.freeze([]),
+    }),
+    Object.freeze({
+      id: 'guarded_tower',
+      // The mass-through problem now has a crew sitting on it: same knock-down verb.
+      escortCount: 2,
+      clauseIds: Object.freeze(['mass_on_target']),
+    }),
+  ]),
+  rescue_under_fire: Object.freeze([
+    Object.freeze({
+      id: 'open_pull',
+      clauseIds: Object.freeze([]),
+    }),
+    Object.freeze({
+      id: 'pocket_pull',
+      // Pods clustered in a tight pocket, heavier cover on it: same pull verb.
+      escortCount: 3,
+      podSpreadWu: 90,
+      clauseIds: Object.freeze(['soft_berth']),
+    }),
+  ]),
+});
+
+/** Stable variant row for a physical type; unknown/blank ids fall back to row zero. */
+export function physicalMissionVariantFor(typeId, variantId) {
+  const rows = PHYSICAL_MISSION_VARIANTS[typeId];
+  if (!rows || !rows.length) return null;
+  for (const row of rows) if (row.id === variantId) return row;
+  return rows[0];
+}
+
+// FB-066 — the race archetype's course vocabulary (gate radius, gate count, pay bands, course
+// derivation) lives in src/data/raceCourses.js: courses are derived from frozen lane/sector
+// data, which this file deliberately does not import.
+export const RACE_MISSION_TYPE = 'race';
+
+// PQ-152.03 — mid-run twist clauses. Catalog ids live in missionConditions.js.
+// This map is the board-facing type each clause is allowed to stamp onto.
+export const TWIST_CLAUSE_LIVE_TYPES = Object.freeze({
+  escort_turns: Object.freeze(['escort']),
+  cargo_volatile: Object.freeze(['cargo_delivery', 'smuggling_run', 'bulk_trade']),
+  buyer_is_the_law: Object.freeze(['cargo_delivery', 'smuggling_run', 'bulk_trade']),
+  wreck_wakes: Object.freeze(['salvage_retrieval']),
+  pods_are_bait: Object.freeze(['rescue_under_fire', 'escort']),
+});
+
+export const AUTHORED_SET_PIECE_TYPE = 'authored_set_piece';
+export const AUTHORED_SET_PIECE_SOURCE = 'authoredSetPiece';
+export const AUTHORED_SET_PIECE_HEADLINE = /^(Knock|Pull|Tow|Catch|Jam|Slip|Throw|Bowl|Yank|Feed)\b/;
+
+const AUTHORED_SET_PIECE_ROWS = [
+  {
+    id: 'wrecking_ball',
+    title: 'Knock the dead tower',
+    brief: 'Swing mass through the tower, or cut it down.',
+    physicalVerb: 'knock_down',
+    startStationId: 'station_forge',
+    destStationId: 'station_forge',
+    destSectorId: 'sector_vesta_forge',
+    factionId: 'faction_dmc',
+    riskTier: 2,
+    rewardCr: 2100,
+    collateralCr: 280,
+    durationS: 1800,
+    distance: 800,
+    twistClauseId: 'mass_on_target',
+    encounterId: 'set_piece_wrecking_ball',
+    methods: ['wrecking_ball', 'cut_down'],
+    primaryRole: 'demolition_tower',
+    methodHooks: {
+      wrecking_ball: { on: ['whip', 'throw'], role: 'demolition_tower' },
+      cut_down: { on: ['kill'], role: 'demolition_tower' },
+    },
+  },
+  {
+    id: 'pod_rescue',
+    title: 'Pull the pods off the hauler',
+    brief: 'Tow a pod home, or open a corridor and reel from stand-off.',
+    physicalVerb: 'pull',
+    startStationId: 'station_beltout',
+    destStationId: 'station_beltout',
+    destSectorId: 'sector_ceres_belt',
+    factionId: 'faction_dmc',
+    riskTier: 2,
+    rewardCr: 1980,
+    collateralCr: 260,
+    durationS: 1800,
+    distance: 700,
+    twistClauseId: 'clean_release',
+    encounterId: 'set_piece_pod_rescue',
+    methods: ['stage_tow', 'corridor_pull'],
+    primaryRole: 'life_pod',
+    methodHooks: {
+      stage_tow: { on: ['latch_dock'], role: 'life_pod' },
+      corridor_pull: { on: ['reel_clear'], role: 'life_pod', clearRole: 'rescue_escort' },
+    },
+  },
+  {
+    id: 'long_tow',
+    title: 'Tow the slag core',
+    brief: 'Keep the core on the line into the yard, or sling it in.',
+    physicalVerb: 'tow',
+    startStationId: 'station_beltout',
+    destStationId: 'station_ceres',
+    destSectorId: 'sector_ceres_belt',
+    factionId: 'faction_dmc',
+    riskTier: 1,
+    rewardCr: 1720,
+    collateralCr: 220,
+    durationS: 1800,
+    distance: 900,
+    twistClauseId: 'no_slack',
+    encounterId: 'set_piece_long_tow',
+    methods: ['tow_in', 'sling_in'],
+    primaryRole: 'slag_core',
+    methodHooks: {
+      tow_in: { on: ['latch_dock'], role: 'slag_core' },
+      sling_in: { on: ['throw_berth', 'release_berth'], role: 'slag_core' },
+    },
+  },
+  {
+    id: 'convoy_defence',
+    title: 'Catch the stolen cargo',
+    brief: 'Recatch the stripped pod, or drive the raiders off the lane.',
+    physicalVerb: 'catch',
+    startStationId: 'station_tethys',
+    destStationId: 'station_tethys',
+    destSectorId: 'sector_tethys_junction',
+    factionId: 'faction_mts',
+    riskTier: 2,
+    rewardCr: 2240,
+    collateralCr: 320,
+    durationS: 1800,
+    distance: 1100,
+    twistClauseId: 'mass_on_target',
+    encounterId: 'set_piece_convoy_defence',
+    methods: ['recatch_pods', 'drive_off'],
+    primaryRole: 'cargo_pod',
+    methodHooks: {
+      recatch_pods: { on: ['latch_dock'], role: 'cargo_pod' },
+      drive_off: { on: ['hostiles_clear'], role: 'convoy_raider' },
+    },
+  },
+  {
+    id: 'station_door_jam',
+    title: 'Jam the docking ring',
+    brief: 'Park the hulk on the approach, or swing it through the wedge.',
+    physicalVerb: 'jam',
+    startStationId: 'station_tethys',
+    destStationId: 'station_tethys',
+    destSectorId: 'sector_tethys_junction',
+    factionId: 'faction_scn',
+    riskTier: 2,
+    rewardCr: 2060,
+    collateralCr: 280,
+    durationS: 1800,
+    distance: 900,
+    twistClauseId: 'throw_it',
+    encounterId: 'set_piece_station_door_jam',
+    facilityRole: 'jam_hulk',
+    methods: ['park_the_hulk', 'swing_the_wedge'],
+    primaryRole: 'jam_hulk',
+    methodHooks: {
+      park_the_hulk: { on: ['throw_berth', 'latch_dock'], role: 'jam_hulk' },
+      swing_the_wedge: { on: ['whip'], role: 'jam_hulk' },
+    },
+  },
+  {
+    id: 'impound_break',
+    title: 'Slip the locked hull',
+    brief: 'Reel the cradle quiet, or put mass through the lock.',
+    physicalVerb: 'slip',
+    startStationId: 'station_smuggler',
+    destStationId: 'station_tethys',
+    destSectorId: 'sector_tethys_junction',
+    factionId: 'faction_quiet',
+    riskTier: 2,
+    rewardCr: 2480,
+    collateralCr: 360,
+    durationS: 1800,
+    distance: 1800,
+    twistClauseId: 'quiet_approach',
+    encounterId: 'set_piece_impound_break',
+    facilityRole: 'cradle_lock',
+    methods: ['slip_the_gap', 'breach_the_lock'],
+    primaryRole: 'cradle_lock',
+    methodHooks: {
+      slip_the_gap: { on: ['reel'], role: 'cradle_lock' },
+      breach_the_lock: { on: ['whip', 'throw'], role: 'cradle_lock' },
+    },
+  },
+  {
+    id: 'ace_duel',
+    title: 'Throw the ace off the lane',
+    brief: 'Put mass on the ace, or outgun the ace. No immunity.',
+    physicalVerb: 'throw',
+    startStationId: 'station_coalition',
+    destStationId: 'station_coalition',
+    destSectorId: 'sector_helios_prime',
+    factionId: 'faction_scn',
+    riskTier: 2,
+    rewardCr: 2360,
+    collateralCr: 340,
+    durationS: 1600,
+    distance: 700,
+    twistClauseId: 'throw_it',
+    encounterId: 'set_piece_ace_duel',
+    methods: ['throw_the_ace', 'outgun_the_ace'],
+    primaryRole: 'ace_pilot',
+    methodHooks: {
+      throw_the_ace: { on: ['whip', 'throw'], role: 'ace_pilot' },
+      outgun_the_ace: { on: ['kill'], role: 'ace_pilot' },
+    },
+  },
+  {
+    id: 'reef_clearance',
+    title: 'Bowl the mine reef',
+    brief: 'Bowl mass through the mines, or reel the line open.',
+    physicalVerb: 'bowl',
+    startStationId: 'station_veil',
+    destStationId: 'station_veil',
+    destSectorId: 'sector_veil_nebula',
+    factionId: 'faction_free',
+    riskTier: 2,
+    rewardCr: 2180,
+    collateralCr: 300,
+    durationS: 1800,
+    distance: 800,
+    twistClauseId: 'throw_it',
+    encounterId: 'set_piece_reef_clearance',
+    methods: ['bowl_the_chain', 'reel_the_line'],
+    primaryRole: 'reef_mine',
+    methodHooks: {
+      bowl_the_chain: { on: ['throw'], role: 'reef_mine' },
+      reel_the_line: { on: ['reel'], role: 'reef_mine' },
+    },
+  },
+  {
+    id: 'loud_heist',
+    title: 'Yank the vault hatch',
+    brief: 'Yank the hatch off its pins, or smash it with thrown mass.',
+    physicalVerb: 'yank',
+    startStationId: 'station_smuggler',
+    destStationId: 'station_tethys',
+    destSectorId: 'sector_tethys_junction',
+    factionId: 'faction_quiet',
+    riskTier: 2,
+    rewardCr: 2680,
+    collateralCr: 400,
+    durationS: 1800,
+    distance: 1800,
+    twistClauseId: 'weapons_cold',
+    encounterId: 'set_piece_loud_heist',
+    facilityRole: 'vault_hatch',
+    methods: ['yank_the_hatch', 'smash_the_door'],
+    primaryRole: 'vault_hatch',
+    methodHooks: {
+      yank_the_hatch: { on: ['reel', 'latch'], role: 'vault_hatch' },
+      smash_the_door: { on: ['whip', 'throw'], role: 'vault_hatch' },
+    },
+  },
+  {
+    id: 'ore_crusher',
+    title: 'Feed the crusher jaws',
+    brief: 'Throw the charge into the jaws, or cut the feed belt.',
+    physicalVerb: 'feed',
+    startStationId: 'station_forge',
+    destStationId: 'station_forge',
+    destSectorId: 'sector_vesta_forge',
+    factionId: 'faction_dmc',
+    riskTier: 1,
+    rewardCr: 1880,
+    collateralCr: 240,
+    durationS: 1600,
+    distance: 700,
+    twistClauseId: 'mass_on_target',
+    encounterId: 'set_piece_ore_crusher',
+    methods: ['feed_the_jaws', 'cut_the_belt'],
+    primaryRole: 'crusher_jaws',
+    methodHooks: {
+      feed_the_jaws: { on: ['throw'], role: 'crusher_jaws' },
+      cut_the_belt: { on: ['whip', 'kill'], role: 'crusher_belt' },
+    },
+  },
+  {
+    // INF-082 — the Frame Coupler proving job. A 200-mass core is the coupler's own
+    // number ("a 200-mass tow turns with you"): without a winched hitch it pendulums
+    // all the way in, with one it is ordinary tow work. No mission-side buff anywhere —
+    // the heaviness is a real spawned mass and the capability is the fitted head.
+    id: 'heavy_tow',
+    title: 'Tow the dead-weight core',
+    // Brief must stay short enough that the stamped clause suffix survives CONDITION_BRIEF_MAX.
+    brief: 'A 200-mass core. Fit a frame coupler (shipworks, Tractor Systems) or fight the pendulum in.',
+    physicalVerb: 'tow',
+    startStationId: 'station_beltout',
+    destStationId: 'station_ceres',
+    destSectorId: 'sector_ceres_belt',
+    factionId: 'faction_dmc',
+    riskTier: 2,
+    rewardCr: 2400,
+    collateralCr: 300,
+    durationS: 1800,
+    distance: 900,
+    twistClauseId: 'no_slack',
+    encounterId: 'set_piece_heavy_tow',
+    methods: ['tow_in', 'sling_in'],
+    primaryRole: 'slag_core',
+    methodHooks: {
+      tow_in: { on: ['latch_dock'], role: 'slag_core' },
+      sling_in: { on: ['throw_berth', 'release_berth'], role: 'slag_core' },
+    },
+  },
+  // ── Far-out jobs ────────────────────────────────────────────────────────────────────────
+  // The first eleven pieces cluster on Belt Outpost, Tethys, Forge and Veil. These six give every
+  // station in Io Reach, Charon Expanse, Sker Haven, Ashfall Reach and Pallas Drift a physical
+  // job of its own, each on a verb the board already runs. Each row's hooks key on a distinct
+  // event + role so the first matching method is never the wrong one.
+  {
+    // Sker's black bazaar: a barge that must come in without drawing the lamps' eye.
+    id: 'ore_barge_tow',
+    title: 'Tow the ore barge off the shelf',
+    brief: 'Keep the barge on the line into the bazaar, or sling it in.',
+    physicalVerb: 'tow',
+    startStationId: 'station_sker',
+    destStationId: 'station_sker',
+    destSectorId: 'sector_sker_haven',
+    factionId: 'faction_reach',
+    riskTier: 2,
+    rewardCr: 2260,
+    collateralCr: 320,
+    durationS: 1800,
+    distance: 800,
+    twistClauseId: 'quiet_approach',
+    encounterId: 'set_piece_ore_barge_tow',
+    methods: ['tow_the_barge', 'sling_the_barge'],
+    primaryRole: 'slag_core',
+    methodHooks: {
+      tow_the_barge: { on: ['latch_dock'], role: 'slag_core' },
+      sling_the_barge: { on: ['throw_berth', 'release_berth'], role: 'slag_core' },
+    },
+  },
+  {
+    // Io Reach homestead: a crewed skiff tumbling slow, scavengers circling it.
+    id: 'skiff_tether_rescue',
+    title: 'Pull the drifting skiff home',
+    brief: 'Tow the skiff in on the line, or clear the scavengers and reel it free.',
+    physicalVerb: 'pull',
+    startStationId: 'station_reach',
+    destStationId: 'station_reach',
+    destSectorId: 'sector_io_reach',
+    factionId: 'faction_free',
+    riskTier: 1,
+    rewardCr: 1840,
+    collateralCr: 240,
+    durationS: 1800,
+    distance: 700,
+    twistClauseId: 'no_slack',
+    encounterId: 'set_piece_skiff_tether_rescue',
+    methods: ['tow_it_home', 'reel_it_free'],
+    primaryRole: 'life_pod',
+    methodHooks: {
+      tow_it_home: { on: ['latch_dock'], role: 'life_pod' },
+      reel_it_free: { on: ['reel_clear'], role: 'life_pod', clearRole: 'skiff_scavenger' },
+    },
+  },
+  {
+    // The Mercenary Outpost range: a deserter the contract wants off the lane.
+    id: 'deserter_throw',
+    title: 'Throw the deserter off the range',
+    brief: 'Put mass on the deserter, or outgun the deserter. No immunity.',
+    physicalVerb: 'throw',
+    startStationId: 'station_io_merc',
+    destStationId: 'station_io_merc',
+    destSectorId: 'sector_io_reach',
+    factionId: 'faction_free',
+    riskTier: 2,
+    rewardCr: 2300,
+    collateralCr: 340,
+    durationS: 1600,
+    distance: 800,
+    twistClauseId: 'throw_it',
+    encounterId: 'set_piece_deserter_throw',
+    methods: ['throw_the_deserter', 'outgun_the_deserter'],
+    primaryRole: 'range_deserter',
+    methodHooks: {
+      throw_the_deserter: { on: ['whip', 'throw'], role: 'range_deserter' },
+      outgun_the_deserter: { on: ['kill'], role: 'range_deserter' },
+    },
+  },
+  {
+    // Expanse Refinery: the Forge crusher's cousin, on a hot radiation lane.
+    id: 'refinery_hopper',
+    title: 'Feed the hopper before the slurry sets',
+    brief: 'Throw the charge into the hopper jaws, or cut the slurry feed.',
+    physicalVerb: 'feed',
+    startStationId: 'station_expanse',
+    destStationId: 'station_expanse',
+    destSectorId: 'sector_charon_expanse',
+    factionId: 'faction_dmc',
+    riskTier: 2,
+    rewardCr: 2100,
+    collateralCr: 260,
+    durationS: 1600,
+    distance: 700,
+    twistClauseId: 'clean_release',
+    encounterId: 'set_piece_refinery_hopper',
+    methods: ['feed_the_hopper', 'cut_the_slurry'],
+    primaryRole: 'hopper_jaws',
+    methodHooks: {
+      feed_the_hopper: { on: ['throw'], role: 'hopper_jaws' },
+      cut_the_slurry: { on: ['whip', 'kill'], role: 'slurry_feed' },
+    },
+  },
+  {
+    // Drift Market: a rail-mounted toll gate with a warden on it.
+    id: 'toll_gate_ram',
+    title: 'Knock the toll gate off its rail',
+    brief: 'Ram the gate with swung mass, or cut it down. The warden is watching.',
+    physicalVerb: 'knock_down',
+    startStationId: 'station_drift',
+    destStationId: 'station_drift',
+    destSectorId: 'sector_pallas_drift',
+    factionId: 'faction_mts',
+    riskTier: 2,
+    rewardCr: 2000,
+    collateralCr: 280,
+    durationS: 1800,
+    distance: 800,
+    twistClauseId: 'mass_on_target',
+    encounterId: 'set_piece_toll_gate_ram',
+    methods: ['ram_the_gate', 'cut_the_gate'],
+    primaryRole: 'toll_gate',
+    methodHooks: {
+      ram_the_gate: { on: ['whip', 'throw'], role: 'toll_gate' },
+      cut_the_gate: { on: ['kill'], role: 'toll_gate' },
+    },
+  },
+  {
+    // Ashcache: the dead liner's sealed locker, still hot, nothing near it forgives a spark.
+    id: 'liner_locker',
+    title: 'Slip the sealed locker out of the liner',
+    brief: 'Reel the locker out quiet, or put mass through its seal.',
+    physicalVerb: 'slip',
+    startStationId: 'station_ashcache',
+    destStationId: 'station_ashcache',
+    destSectorId: 'sector_ashfall_reach',
+    factionId: 'faction_vael',
+    riskTier: 2,
+    rewardCr: 2160,
+    collateralCr: 300,
+    durationS: 1800,
+    distance: 900,
+    twistClauseId: 'weapons_cold',
+    encounterId: 'set_piece_liner_locker',
+    methods: ['slip_the_locker', 'breach_the_seal'],
+    primaryRole: 'liner_locker',
+    methodHooks: {
+      slip_the_locker: { on: ['reel'], role: 'liner_locker' },
+      breach_the_seal: { on: ['whip', 'throw'], role: 'liner_locker' },
+    },
+  },
+];
+
+export const AUTHORED_SET_PIECES = AUTHORED_SET_PIECE_ROWS.map((row) => Object.freeze({
+  ...row,
+  methods: Object.freeze([...row.methods]),
+  methodHooks: Object.freeze(Object.fromEntries(
+    Object.entries(row.methodHooks).map(([method, hook]) => [method, Object.freeze({
+      ...hook,
+      on: Object.freeze([...hook.on]),
+    })]),
+  )),
+}));
+
+const AUTHORED_SET_PIECE_BY_ID = new Map(AUTHORED_SET_PIECES.map((row) => [row.id, row]));
+
+export function authoredSetPieceById(id) {
+  return AUTHORED_SET_PIECE_BY_ID.get(id) || null;
+}
+
+export function buildAuthoredSetPieceOffer(definition, epoch = 0) {
+  const def = typeof definition === 'string' ? authoredSetPieceById(definition) : definition;
+  if (!def) return null;
+  const fingerprint = `asp:${def.id}:${Math.max(0, Math.trunc(Number(epoch) || 0))}`;
+  return {
+    id: `offer_${fingerprint.replace(/[^a-zA-Z0-9_-]+/g, '_')}`,
+    type: AUTHORED_SET_PIECE_TYPE,
+    source: AUTHORED_SET_PIECE_SOURCE,
+    stationId: def.startStationId,
+    factionId: def.factionId,
+    reward_cr: def.rewardCr,
+    collateral_cr: def.collateralCr,
+    riskTier: def.riskTier,
+    destStationId: def.destStationId,
+    destSectorId: def.destSectorId,
+    distance: def.distance,
+    duration_s: def.durationS,
+    title: def.title,
+    brief: def.brief,
+    summary: def.brief,
+    stageId: def.id,
+    params: {
+      authoredSetPieceId: def.id,
+      physicalVerb: def.physicalVerb,
+      completionMethods: [...def.methods],
+      twistClauseId: def.twistClauseId,
+      encounterId: def.encounterId,
+      primaryRole: def.primaryRole,
+      facilityRole: def.facilityRole || null,
+      fValue: 1,
+      taskTime: 60,
+    },
+    expiresAtEpoch: null,
+    storyTag: null,
+    epochPosted: Math.max(0, Math.trunc(Number(epoch) || 0)),
+    cause: {
+      tag: 'pq152-authored-set-piece',
+      archetypeId: def.id,
+      encounterId: def.encounterId,
+      fingerprint,
+    },
+  };
+}
+
+// The catalog may grow; it may not shrink below the pieces that give the far sectors a job.
+export const AUTHORED_SET_PIECE_MIN_COUNT = 14;
+
+export function validateAuthoredSetPieceCatalog(catalog = AUTHORED_SET_PIECES) {
+  const errors = [];
+  const rows = Array.isArray(catalog) ? catalog : [];
+  const ids = new Set();
+  if (rows.length < AUTHORED_SET_PIECE_MIN_COUNT) {
+    errors.push(`Expected at least ${AUTHORED_SET_PIECE_MIN_COUNT} authored set pieces; found ${rows.length}.`);
+  }
+  for (const row of rows) {
+    const root = row && row.id || '<missing>';
+    if (!row || typeof row !== 'object') {
+      errors.push('Every authored set piece must be an object.');
+      continue;
+    }
+    if (!row.id || ids.has(row.id)) errors.push(`${root}: unique id required.`);
+    ids.add(row.id);
+    if (!AUTHORED_SET_PIECE_HEADLINE.test(row.title || '')) {
+      errors.push(`${root}: headline verb must be physical (${row.title}).`);
+    }
+    if (!Array.isArray(row.methods) || row.methods.length !== 2) {
+      errors.push(`${root}: exactly two solutions required.`);
+    }
+    if (!row.methodHooks || row.methods.some((method) => !row.methodHooks[method])) {
+      errors.push(`${root}: both methods need reachable hooks.`);
+    } else {
+      // A hook is an event + role. Two methods that answer the same pair make the second one
+      // unreachable (the first match wins), so each pair must belong to one method only.
+      const claimed = new Map();
+      for (const method of row.methods) {
+        const hook = row.methodHooks[method];
+        if (!hook || !hook.role || !Array.isArray(hook.on) || !hook.on.length) {
+          errors.push(`${root}: ${method} needs a role and at least one event.`);
+          continue;
+        }
+        for (const on of hook.on) {
+          const key = `${on}/${hook.role}`;
+          if (claimed.has(key) && claimed.get(key) !== method) {
+            errors.push(`${root}: ${method} and ${claimed.get(key)} both answer ${key}.`);
+          }
+          claimed.set(key, method);
+        }
+      }
+    }
+    if (!row.startStationId || !String(row.startStationId).startsWith('station_')) {
+      errors.push(`${root}: canonical startStationId required.`);
+    }
+    if (!row.destStationId || !String(row.destStationId).startsWith('station_')
+      || !row.destSectorId || !String(row.destSectorId).startsWith('sector_')) {
+      errors.push(`${root}: canonical destStationId and destSectorId required.`);
+    }
+    if (!row.factionId || !(Number(row.rewardCr) > 0)) {
+      errors.push(`${root}: faction and a positive reward required.`);
+    }
+    if (row.startStationId === 'station_helios') {
+      errors.push(`${root}: do not post on Helios; 47-A owns that board.`);
+    }
+    if (!row.twistClauseId) errors.push(`${root}: twist clause required.`);
+    if (!row.encounterId) errors.push(`${root}: encounter id required.`);
+    if (!row.primaryRole) errors.push(`${root}: primary physical role required.`);
+  }
+  return { ok: errors.length === 0, errors, count: rows.length };
+}
+
+export const CAPITAL_BOSS_TYPE = 'capital_boss';
+export const CAPITAL_BOSS_SOURCE = 'capitalBoss';
+export const CAPITAL_BOSS_ENCOUNTER_ID = 'capital_boss_hulk';
+
+export const CAPITAL_BOSS = Object.freeze({
+  id: 'capital_boss',
+  title: 'Throw the capital down',
+  brief: 'Put mass through the heavy. Guns are the slow way. No immunity.',
+  physicalVerb: 'throw',
+  startStationId: 'station_coalition',
+  destStationId: 'station_coalition',
+  destSectorId: 'sector_helios_prime',
+  factionId: 'faction_scn',
+  riskTier: 2,
+  rewardCr: 4200,
+  collateralCr: 480,
+  durationS: 1800,
+  distance: 900,
+  twistClauseId: 'throw_it',
+  encounterId: CAPITAL_BOSS_ENCOUNTER_ID,
+  methods: Object.freeze(['throw_the_capital', 'outgun_the_capital']),
+  primaryRole: 'capital_hull',
+  subsystemRoles: Object.freeze({
+    thrusters: 'subsystem_drive',
+    turrets: 'subsystem_weapon',
+    bays: 'subsystem_tether_spool',
+  }),
+  // One event/role pair per method (the first match wins in authoredMethodFor): thrown and
+  // whipped mass is the throw solution's credit, the hull dying is the gunnery solution's. A
+  // capital that dies after mass landed still settles as a throw through the hit ledger in
+  // _completeCapitalBossFromKill; the hook table must not claim 'kill' for both.
+  methodHooks: Object.freeze({
+    throw_the_capital: Object.freeze({ on: Object.freeze(['whip', 'throw']), role: 'capital_hull' }),
+    outgun_the_capital: Object.freeze({ on: Object.freeze(['kill']), role: 'capital_hull' }),
+  }),
+});
+
+export const CAPITAL_BOSS_TOLLMAN = Object.freeze({
+  id: 'capital_boss_tollman',
+  title: 'Throw the Tollman down',
+  brief: 'Put mass through the ex-patrol capital. Guns are the slow way. No immunity.',
+  physicalVerb: 'throw',
+  startStationId: 'station_sker',
+  destStationId: 'station_sker',
+  destSectorId: 'sector_sker_haven',
+  factionId: 'faction_reach',
+  riskTier: 3,
+  rewardCr: 6400,
+  collateralCr: 720,
+  durationS: 2100,
+  distance: 1100,
+  twistClauseId: 'throw_it',
+  encounterId: 'capital_boss_tollman',
+  methods: Object.freeze(['throw_the_capital', 'outgun_the_capital']),
+  primaryRole: 'capital_hull',
+  endgame: true,
+  victimFactionId: 'faction_scn',
+  subsystemRoles: CAPITAL_BOSS.subsystemRoles,
+  methodHooks: CAPITAL_BOSS.methodHooks,
+});
+
+export const CAPITAL_BOSS_ALA = Object.freeze({
+  id: 'capital_boss_ala',
+  title: 'Throw ALA down',
+  brief: 'Put mass through the Ashfall dreadnought. Guns are the slow way. No immunity.',
+  physicalVerb: 'throw',
+  startStationId: 'station_ashcache',
+  destStationId: 'station_ashcache',
+  destSectorId: 'sector_ashfall_reach',
+  factionId: 'faction_vael',
+  riskTier: 4,
+  rewardCr: 7800,
+  collateralCr: 860,
+  durationS: 2400,
+  distance: 1400,
+  twistClauseId: 'throw_it',
+  encounterId: 'capital_boss_ala',
+  methods: Object.freeze(['throw_the_capital', 'outgun_the_capital']),
+  primaryRole: 'capital_hull',
+  endgame: true,
+  victimFactionId: 'faction_reach',
+  subsystemRoles: CAPITAL_BOSS.subsystemRoles,
+  methodHooks: CAPITAL_BOSS.methodHooks,
+});
+
+export const CAPITAL_BOSSES = Object.freeze([CAPITAL_BOSS, CAPITAL_BOSS_TOLLMAN, CAPITAL_BOSS_ALA]);
+const CAPITAL_BOSS_BY_ID = new Map(CAPITAL_BOSSES.map((row) => [row.id, row]));
+
+export function capitalBossById(id) {
+  return CAPITAL_BOSS_BY_ID.get(id) || null;
+}
+
+export function buildCapitalBossOffer(definition = CAPITAL_BOSS, epoch = 0) {
+  const def = definition && definition.id ? definition : CAPITAL_BOSS;
+  const fingerprint = `cboss:${def.id}:${Math.max(0, Math.trunc(Number(epoch) || 0))}`;
+  return {
+    id: `offer_${fingerprint.replace(/[^a-zA-Z0-9_-]+/g, '_')}`,
+    type: CAPITAL_BOSS_TYPE,
+    source: CAPITAL_BOSS_SOURCE,
+    stationId: def.startStationId,
+    factionId: def.factionId,
+    reward_cr: def.rewardCr,
+    collateral_cr: def.collateralCr,
+    riskTier: def.riskTier,
+    destStationId: def.destStationId,
+    destSectorId: def.destSectorId,
+    distance: def.distance,
+    duration_s: def.durationS,
+    title: def.title,
+    brief: def.brief,
+    summary: def.brief,
+    stageId: def.id,
+    params: {
+      capitalBossId: def.id,
+      physicalVerb: def.physicalVerb,
+      completionMethods: [...def.methods],
+      twistClauseId: def.twistClauseId,
+      encounterId: def.encounterId,
+      primaryRole: def.primaryRole,
+      subsystemRoles: { ...def.subsystemRoles },
+      endgame: !!def.endgame,
+      victimFactionId: def.victimFactionId || null,
+      fValue: 1,
+      taskTime: 80,
+    },
+    expiresAtEpoch: null,
+    storyTag: null,
+    epochPosted: Math.max(0, Math.trunc(Number(epoch) || 0)),
+    cause: {
+      tag: def.endgame ? 'pq170-capital-boss' : 'pq152-capital-boss',
+      archetypeId: def.id,
+      encounterId: def.encounterId,
+      fingerprint,
+    },
+  };
+}
+
+export const MEGA_HEIST_SOURCE = 'megaHeist';
+
+function megaHeistRow(spec) {
+  return Object.freeze({
+    ...spec,
+    methods: Object.freeze(spec.methods),
+    methodHooks: Object.freeze(Object.fromEntries(
+      Object.entries(spec.methodHooks).map(([key, hook]) => [key, Object.freeze({
+        on: Object.freeze(hook.on),
+        role: hook.role,
+      })]),
+    )),
+    endgame: true,
+  });
+}
+
+export const MEGA_HEISTS = Object.freeze([
+  megaHeistRow({
+    id: 'mega_heist_tessera_core',
+    title: 'Yank the Tessera core',
+    brief: 'Yank the 47-A routing core off the archive barge, or smash the bay with slag.',
+    physicalVerb: 'yank',
+    startStationId: 'station_ashcache',
+    destStationId: 'station_ashcache',
+    destSectorId: 'sector_ashfall_reach',
+    factionId: 'faction_vael',
+    riskTier: 3,
+    rewardCr: 5600,
+    collateralCr: 640,
+    durationS: 2100,
+    distance: 900,
+    twistClauseId: 'weapons_cold',
+    encounterId: 'mega_heist_tessera_core',
+    methods: ['yank_the_hatch', 'smash_the_door'],
+    primaryRole: 'vault_hatch',
+    victimFactionId: 'faction_scn',
+    methodHooks: {
+      yank_the_hatch: { on: ['reel', 'latch'], role: 'vault_hatch' },
+      smash_the_door: { on: ['whip', 'throw'], role: 'vault_hatch' },
+    },
+  }),
+  megaHeistRow({
+    id: 'mega_heist_choir_reliquary',
+    title: 'Yank the Pattern reliquary',
+    brief: 'Yank the spinning reliquary off its clamps, or bowl iron through the pins.',
+    physicalVerb: 'yank',
+    startStationId: 'station_veil',
+    destStationId: 'station_veil',
+    destSectorId: 'sector_veil_nebula',
+    factionId: 'faction_free',
+    riskTier: 3,
+    rewardCr: 6100,
+    collateralCr: 680,
+    durationS: 2100,
+    distance: 1000,
+    twistClauseId: 'weapons_cold',
+    encounterId: 'mega_heist_choir_reliquary',
+    methods: ['yank_the_hatch', 'smash_the_door'],
+    primaryRole: 'vault_hatch',
+    victimFactionId: 'faction_choir',
+    methodHooks: {
+      yank_the_hatch: { on: ['reel', 'latch'], role: 'vault_hatch' },
+      smash_the_door: { on: ['whip', 'throw'], role: 'vault_hatch' },
+    },
+  }),
+]);
+const MEGA_HEIST_BY_ID = new Map(MEGA_HEISTS.map((row) => [row.id, row]));
+
+export function megaHeistById(id) {
+  return MEGA_HEIST_BY_ID.get(id) || null;
+}
+
+export function buildMegaHeistOffer(definition, epoch = 0) {
+  const def = typeof definition === 'string' ? megaHeistById(definition) : definition;
+  if (!def) return null;
+  const fingerprint = `mheist:${def.id}:${Math.max(0, Math.trunc(Number(epoch) || 0))}`;
+  return {
+    id: `offer_${fingerprint.replace(/[^a-zA-Z0-9_-]+/g, '_')}`,
+    type: AUTHORED_SET_PIECE_TYPE,
+    source: MEGA_HEIST_SOURCE,
+    stationId: def.startStationId,
+    factionId: def.factionId,
+    reward_cr: def.rewardCr,
+    collateral_cr: def.collateralCr,
+    riskTier: def.riskTier,
+    destStationId: def.destStationId,
+    destSectorId: def.destSectorId,
+    distance: def.distance,
+    duration_s: def.durationS,
+    title: def.title,
+    brief: def.brief,
+    summary: def.brief,
+    stageId: def.id,
+    params: {
+      authoredSetPieceId: def.id,
+      megaHeistId: def.id,
+      physicalVerb: def.physicalVerb,
+      completionMethods: [...def.methods],
+      twistClauseId: def.twistClauseId,
+      encounterId: def.encounterId,
+      primaryRole: def.primaryRole,
+      endgame: true,
+      victimFactionId: def.victimFactionId || null,
+      fValue: 1,
+      taskTime: 70,
+    },
+    expiresAtEpoch: null,
+    storyTag: null,
+    epochPosted: Math.max(0, Math.trunc(Number(epoch) || 0)),
+    cause: {
+      tag: 'pq170-mega-heist',
+      archetypeId: def.id,
+      encounterId: def.encounterId,
+      fingerprint,
+    },
+  };
+}
+
+export function validateCapitalBossCatalog(row = CAPITAL_BOSS) {
+  const errors = [];
+  if (!row || typeof row !== 'object') errors.push('Capital boss definition required.');
+  if (row && row.id !== 'capital_boss') errors.push('Capital boss id must stay capital_boss.');
+  if (row && row.encounterId !== CAPITAL_BOSS_ENCOUNTER_ID) {
+    errors.push('Capital boss encounter id mismatch.');
+  }
+  if (row && (!Array.isArray(row.methods) || row.methods.length !== 2)) {
+    errors.push('Capital boss needs exactly two solutions.');
+  }
+  if (row && row.startStationId === 'station_helios') {
+    errors.push('Do not post the capital boss on Helios.');
+  }
+  return { ok: errors.length === 0, errors };
+}
+
+export function validateEndgamePullCatalog() {
+  const errors = [];
+  if (CAPITAL_BOSSES.length !== 3) errors.push('Endgame capital catalog must keep the Coalition boss plus two post-ending heavies.');
+  if (MEGA_HEISTS.length !== 2) errors.push('Two mega-heists required.');
+  const ids = new Set();
+  for (const row of [...CAPITAL_BOSSES, ...MEGA_HEISTS]) {
+    if (!row?.id || ids.has(row.id)) errors.push(`duplicate/missing endgame pull id ${row && row.id}`);
+    ids.add(row.id);
+    if (!Array.isArray(row.methods) || row.methods.length !== 2) {
+      errors.push(`${row.id}: exactly two physical solutions.`);
+    }
+    if (row.startStationId === 'station_helios') errors.push(`${row.id}: Helios is 47-A's board.`);
+    if (row.endgame && row.id === 'capital_boss') errors.push('Coalition capital stays midgame.');
+    if (!row.endgame && row.id !== 'capital_boss') errors.push(`${row.id}: post-ending pulls must be marked endgame.`);
+    if (row.endgame && !row.victimFactionId) errors.push(`${row.id}: endgame pull needs a victim faction.`);
+    if (!AUTHORED_SET_PIECE_HEADLINE.test(row.title)) {
+      errors.push(`${row.id}: title must open on a physical verb.`);
+    }
+  }
+  return { ok: errors.length === 0, errors };
+}
+
+/** Named OFFER_MIX weight, with positional fallback only for the original ten columns by NAME. */
+export function offerMixWeight(weights, typeId) {
+  if (!weights || !typeId) return 0;
+  const named = weights[typeId];
+  if (Number.isFinite(named)) return named;
+  const pos = POSITIONAL_OFFER_TYPES.indexOf(typeId);
+  if (pos >= 0 && Number.isFinite(weights[pos])) return weights[pos];
+  return 0;
+}
+
+export function validateOfferMix(mix = OFFER_MIX, types = MISSION_TYPES) {
+  const errors = [];
+  const procedural = (types || []).filter((row) => row && (row.proceduralWeight == null || row.proceduralWeight > 0));
+  for (const [profile, weights] of Object.entries(mix || {})) {
+    if (!weights) {
+      errors.push(`${profile}: missing mix row`);
+      continue;
+    }
+    if (weights.length !== POSITIONAL_OFFER_TYPES.length) {
+      errors.push(`${profile}: positional mix must stay ${POSITIONAL_OFFER_TYPES.length} columns.`);
+    }
+    for (const row of procedural) {
+      if (!Number.isFinite(weights[row.type])) {
+        errors.push(`${profile} has no named weight for ${row.type}`);
+      }
+    }
+  }
+  return { ok: errors.length === 0, errors };
+}
+
+// Generated by the station workload shares; authored-only types remain structural zero.
+export const OFFER_MIX = {
+  mining: withPhysicalMix([3,2,1,4,3,1,1,0,1,2], 4, 2, 1, 1),
+  refinery: withPhysicalMix([4,4,1,2,4,1,1,0,1,1], 3, 1, 1, 1),
+  fab: withPhysicalMix([3,3,1,1,3,1,1,0,1,2], 2, 4, 1, 1),
+  trade_hub: withPhysicalMix([4,4,2,3,2,3,1,1,3,2], 2, 1, 1, 2),
+  military: withPhysicalMix([1,1,4,0,2,3,4,0,1,3], 1, 2, 3, 0),
+  research: withPhysicalMix([2,1,1,1,3,1,1,0,1,4], 1, 1, 2, 1),
+  blackmarket: withPhysicalMix([2,1,3,1,3,1,2,4,1,2], 2, 2, 2, 1),
+  bounty_board: withPhysicalMix([1,0,7,0,5,1,5,1,0,3], 0, 0, 0, 1),
+  contracts_hub: withPhysicalMix([5,4,2,0,1,5,3,1,3,3], 0, 0, 0, 2),
+};
+
+/**
+ * Offer history scaling (program-compass mid-game fix). A station's OFFER_MIX is the local
+ * identity; this table is the player's career overlay on top of it. Multipliers are applied to a
+ * type's weight after `offerMixWeight`, so an empty row (starter) is byte-identical to the
+ * shipped mix. Tiers are pure score bands computed by the missions system from durable history
+ * (completed contracts, sectors visited, trades, story beat, fields worked) — no wall time.
+ */
+export const OFFER_HISTORY_TIERS = Object.freeze([
+  Object.freeze({ id: 'starter', minScore: 0, label: 'First contracts' }),
+  Object.freeze({ id: 'working', minScore: 3, label: 'Working spacer' }),
+  Object.freeze({ id: 'established', minScore: 10, label: 'Established' }),
+  Object.freeze({ id: 'veteran', minScore: 24, label: 'Veteran' }),
+]);
+
+export const OFFER_HISTORY_MIX = Object.freeze({
+  starter: Object.freeze({}),
+  working: Object.freeze({
+    cargo_delivery: 0.8, bulk_trade: 0.85,
+    mining_quota: 1.15, salvage_retrieval: 1.2, bounty_hunt: 1.15, recon_scan: 1.1,
+  }),
+  established: Object.freeze({
+    cargo_delivery: 0.55, bulk_trade: 0.6,
+    mining_quota: 1.3, salvage_retrieval: 1.45, bounty_hunt: 1.5,
+    patrol_clear: 1.4, escort: 1.35, smuggling_run: 1.3, recon_scan: 1.2,
+  }),
+  veteran: Object.freeze({
+    cargo_delivery: 0.35, bulk_trade: 0.45,
+    mining_quota: 1.25, salvage_retrieval: 1.5, bounty_hunt: 1.8, patrol_clear: 1.7,
+    escort: 1.6, smuggling_run: 1.6, recon_scan: 1.3,
+    demolition: 1.4, rescue_under_fire: 1.4, tow_recovery: 1.3,
+  }),
+});
+
+/** The desk label for a history score. Score 0 is 'First contracts'. */
+export function offerHistoryTierLabel(score) {
+  const id = offerHistoryTierFor(score);
+  const tier = OFFER_HISTORY_TIERS.find((row) => row.id === id) || OFFER_HISTORY_TIERS[0];
+  return tier.label;
+}
+
+/** Pure score→tier band. The score itself is computed by the owning system from durable state. */
+export function offerHistoryTierFor(score) {
+  const s = Number(score);
+  const value = Number.isFinite(s) ? Math.max(0, s) : 0;
+  let tier = OFFER_HISTORY_TIERS[0];
+  for (const candidate of OFFER_HISTORY_TIERS) {
+    if (value >= candidate.minScore) tier = candidate;
+  }
+  return tier.id;
+}
+
+/** Weight multiplier for one mission type at a history tier; 1 when the tier carries no opinion. */
+export function offerHistoryMultiplier(tierId, typeId) {
+  const row = OFFER_HISTORY_MIX[tierId];
+  if (!row || !typeId) return 1;
+  const mult = Number(row[typeId]);
+  return Number.isFinite(mult) && mult > 0 ? mult : 1;
+}
+
+/** Structural guard: every authored history override must name a real mission type. */
+export function validateOfferHistoryMix(mix = OFFER_HISTORY_MIX, types = MISSION_TYPES) {
+  const errors = [];
+  const known = new Set((types || []).map((t) => t && t.type).filter(Boolean));
+  for (const [tier, row] of Object.entries(mix || {})) {
+    if (!OFFER_HISTORY_TIERS.some((t) => t.id === tier)) {
+      errors.push(`unknown history tier ${tier}`);
+    }
+    for (const typeId of Object.keys(row || {})) {
+      if (!known.has(typeId)) errors.push(`${tier}: unknown mission type ${typeId}`);
+      const mult = Number(row[typeId]);
+      if (!(mult > 0)) errors.push(`${tier}.${typeId}: multiplier must be > 0`);
+    }
+  }
+  return { ok: errors.length === 0, errors };
+}
+
+// 8-beat story spine FSM.
+// cold_start.objective is longform spine copy for Mission Log / post-tutorial story tracker —
+// on-demand context, not the first-flight B0 verb. During B0 the HUD mission tracker owns the
+// single persistent actionable line (onboarding waypoint reason: "Contract 47-A: thrust to the beacon.").
+export const STORY_BEATS = [
+  { beat: 0, id: 'cold_start',     objective: 'Contract 47-A: sample the 12.4t mass discrepancy, dock Helios. Payment withheld. Status pending.',
+    headlineVerb: 'mine',
+    reward: { credits: 400, rp: 4, rep: { faction: 'home', amount: 5 }, unlock: 'mod_mining_laser_s' }, introduces: 'mining', next: 1 },
+  // W-BOOKS-0-2 (§34.7): B1/B2 play the 06 script's ordered mission list — the sealed
+  // alloy run, the Scale 4 weigh, and the infested hauler's furnace detail, then the
+  // cinder board, the Compost Run, the Nest, and the register contract on Elroy. The
+  // physical contracts post one at a time from embodiedMissions.bookContracts; the world
+  // steps between them record through the systems that already emit their signals.
+  { beat: 1, id: 'honest_work',    objective: 'Run the sealed alloys to Tycho, weigh the crate on Scale 4, and feed the infested hauler\'s pods to the CR-FEED intake.',
+    headlineVerb: 'weigh', setPiece: 'alloy run + Scale 4 + infested hauler furnace detail',
+    reward: { credits: 600, unlock: 'trade_tutorial' }, introduces: 'weighing', next: 2 },
+  { beat: 2, id: 'first_blood',    objective: 'Run the cinder board, feed a garden its first stage, meet the Nest — then take the name on the register.',
+    headlineVerb: 'hunt', setPiece: 'cinder board + compost run + the nest + register contract',
+    reward: { credits: 800, unlock: 'wpn_pulse_laser_s' }, introduces: 'bounty_board', next: 3 },
+  { beat: 3, id: 'bigger_boat',    objective: 'Take delivery of VARIANCE ADJUSTMENT at Slate\u2019s berth, feed the Furnace maw, and settle the Foreman\u2019s yard feud.',
+    headlineVerb: 'tow', setPiece: 'variance adjustment + feed the maw + foreman', physicalType: 'tow_recovery', authoredSetPieceId: 'long_tow',
+    reward: { credits: 1000, milestone: 'cargo+20u' }, introduces: 'long_tow', next: 4 },
+  { beat: 4, id: 'pick_a_side',    objective: 'Pick a door at the clearing station, then run its operation — Spine Break, the Weighing, or Barn Raising.',
+    headlineVerbs: BRANCH_HEADLINE_VERBS,
+    reward: { credits: 1200, rep: { chosen: 15, opposing: -10 } }, introduces: 'factions', next: 5 },
+  { beat: 5, id: 'proving_ground', objective: 'Complete your faction chain: MTS trade runs, SCN patrol clears, or Free Captain smuggling jobs.',
+    headlineVerbs: BRANCH_HEADLINE_VERBS,
+    reward: { credits: 2500, unlock: 'module_unlock' }, introduces: 'chaining+passive_preview', next: 6 },
+  { beat: 6, id: 'empire_seed',    objective: 'Deploy a drone, then assign the program selected by the Elroy outcome.',
+    headlineVerb: 'deploy',
+    reward: { credits: 3000, unlock: 'passive_income' }, introduces: 'passive_income', next: 7 },
+  { beat: 7, id: 'deep_reach',     objective: 'The Deep Reach climax: run the blockade, siege the tower, or tow the evidence, then review final dispositions.',
+    // Matches embodiedMissions DEEP_REACH_CLIMAX per-branch ops; the validator asserts parity.
+    headlineVerbs: { patrol: 'jam', traders: 'knock', free: 'tow' },
+    reward: { credits: 5000, unlock: 'newgame_plus' }, introduces: 'endgame', next: null },
+];
+
+/** PQ-032.00 — the spine's authored physical set pieces. W-BOOKS-0-2 (§34.7): B1/B2 now
+ *  play the 06 script's ordered book lists, so only B3's long tow remains in this table —
+ *  the filter keys on the authored fields themselves, not the beat range. */
+export const PQ032_BEAT_SET_PIECES = Object.freeze(
+  STORY_BEATS.filter((beat) => beat.physicalType != null && beat.authoredSetPieceId != null).map((beat) => Object.freeze({
+    beat: beat.beat,
+    id: beat.id,
+    headlineVerb: beat.headlineVerb,
+    setPiece: beat.setPiece,
+    physicalType: beat.physicalType,
+    authoredSetPieceId: beat.authoredSetPieceId,
+  })),
+);
+
+export function listPq032SpineSetPieces() {
+  return PQ032_BEAT_SET_PIECES.slice();
+}
