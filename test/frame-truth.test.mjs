@@ -106,6 +106,31 @@ test('frame truth measures the presented rate, carries 1 Hz probes and classifie
   });
   assert.equal(recorder.heldStreak, 0, 'below the speed threshold a still pose is not a freeze');
 
+  // A docked/paused body can retain velocity while the world is frozen. `timeScale === 0`
+  // (or the docked flag) must end the streak, not record a fake freeze.
+  recorder.ingestFrame({
+    frameDtMs: 16.7, rawFrameDtMs: 16.7, simTimeS: 2 / 60, tick: 2,
+    timeScale: 0, docked: true,
+    playerRow: { pos: { x: 0, z: 0 }, vx: 100, vz: 0 },
+  });
+  assert.equal(recorder.lastFrame.heldPoseFrames, 0, 'a paused body is not a held frame');
+  assert.equal(recorder.heldStreak, 0);
+  assert.equal(recorder.lastFrame.heldMs, 0);
+
+  // Wall-time truth: one 2.6 s callback is one held FRAME but 2600 ms of frozen picture.
+  recorder.ingestFrame({
+    frameDtMs: 250, rawFrameDtMs: 2600, playbackRate: 1, timeScale: 1,
+    playerRow: { pos: { x: 0, z: 0 }, vx: 100, vz: 0 },
+  });
+  assert.equal(recorder.lastFrame.heldPoseFrames, 1);
+  assert.ok(recorder.lastFrame.heldMs >= 2600,
+    `held wall time records the real callback: ${recorder.lastFrame.heldMs}`);
+  assert.ok(recorder.exportJSON({ download: false }).summary.maxHeldMs >= 2600,
+    'the summary carries maxHeldMs');
+  // The jump bar uses the PRESENTED (clamped) frame dt, not the raw 2.6 s callback.
+  assert.ok(Math.abs(recorder.lastFrame.jumpBarWu - 2 * 100 * 0.25) < 1e-9,
+    `jump bar uses the clamped presented dt: ${recorder.lastFrame.jumpBarWu}`);
+
   // The jump bar uses the PRESENTED rate: 100 wu/s body at 0.1x playback is 10 wu/s drawn.
   recorder.ingestFrame({
     frameDtMs: 16.7, rawFrameDtMs: 16.7, playbackRate: 0.1, timeScale: 1,
@@ -136,7 +161,17 @@ test('frame truth measures the presented rate, carries 1 Hz probes and classifie
 
 test('frame truth export carries provenance, timeline events and the live fence', async () => {
   const { ensureFrameTruth } = await import('../src/core/frameTruth.js');
-  const state = { mode: 'flight', world: { currentSectorId: 'helios' } };
+  const state = {
+    mode: 'flight',
+    world: { currentSectorId: 'helios' },
+    meta: { seed: 4242 },
+    save: { currentSlot: 'slot-2' },
+    settings: {
+      graphicsPreset: 'high',
+      video: { quality: 'high', motionReduce: true },
+      accessibility: { flashReduce: true, reducedMotion: false },
+    },
+  };
   const recorder = ensureFrameTruth(state);
   const fakeFence = { getPlayoutDiagnostics: () => ({ leadMs: 42, poseEpoch: 9 }) };
   recorder.fenceProvider = () => fakeFence;
@@ -144,7 +179,8 @@ test('frame truth export carries provenance, timeline events and the live fence'
   recorder.noteEvent('poseEpoch', { from: 0, to: 9 });
   recorder.ingestFrame({
     frameDtMs: 16.7, rawFrameDtMs: 16.7, playbackRate: 0.5, timeScale: 1,
-    poseEpoch: 9, poseSource: 'presented',
+    poseEpoch: 9, poseSource: 'presented', lane: 'worker', transport: 'worker-local',
+    sector: 'helios', simGapApplications: 3, simGapHeldFrames: 12,
     playerRow: { pos: { x: 0, z: 0 }, vx: 100, vz: 0 },
   });
   const trace = recorder.exportJSON({ download: false });
@@ -155,16 +191,36 @@ test('frame truth export carries provenance, timeline events and the live fence'
   assert.equal(trace.sector, 'helios');
   assert.deepEqual(trace.fence, { leadMs: 42, poseEpoch: 9 },
     'the hotkey/default export reads the live fence diagnostics');
+  // The fence is honestly nullable before the first fence exists.
+  assert.equal(recorder.exportJSON({ download: false, fence: null }).fence, null,
+    'trace.fence is null when no fence exists');
   assert.equal(trace.playbackRate, 0.5);
   assert.equal(trace.timeScale, 1);
   assert.equal(trace.poseEpoch, 9);
   assert.equal(trace.poseSource, 'presented');
+  // Provenance: a real app version (not the unproduced __SF_BUILD__ claim), seed, slot and
+  // the small settings summary, plus the E1 gap-harness counters.
+  assert.equal(typeof trace.appVersion, 'string');
+  assert.equal(trace.seed, 4242);
+  assert.equal(trace.saveSlot, 'slot-2');
+  assert.equal(trace.settings.graphicsPreset, 'high');
+  assert.equal(trace.settings.motionReduce, true);
+  assert.equal(Object.hasOwn(trace, 'build'), false, 'the unproduced build claim is gone');
+  assert.equal(trace.buildStamp, null);
+  assert.deepEqual(trace.simGap, { applications: 3, heldFrames: 12 });
   assert.ok(trace.events.some((event) => event.kind === 'poseEpoch'
     && event.from === 0 && event.to === 9), 'the timeline carries the epoch change');
   for (const field of ['rawFrameDtMs', 'wallEpochMs', 'playbackRate', 'timeScale',
-    'presentedSpeed', 'jumpBarWu', 'jumpRatio', 'allocBytesPerSec', 'popIn', 'poseEpoch']) {
+    'presentedSpeed', 'jumpBarWu', 'jumpRatio', 'allocBytesPerSec', 'popIn', 'poseEpoch',
+    'heldMs', 'poseSourceCode', 'laneCode', 'transportCode', 'sectorCode']) {
     assert.ok(Object.hasOwn(trace.columns, field), `column ${field} exists`);
   }
+  // Per-frame provenance columns carry the last frame's values and a legend.
+  assert.equal(trace.columns.poseSourceCode.at(-1), 2);
+  assert.equal(trace.columns.laneCode.at(-1), 2);
+  assert.equal(trace.columns.transportCode.at(-1), 2);
+  const sectorCode = trace.columns.sectorCode.at(-1);
+  assert.equal(trace.provenanceLegend.sector[sectorCode], 'helios');
   // No document in Node: {download:false} must bypass the download path without throwing.
   assert.doesNotThrow(() => recorder.exportJSON({ download: false }));
 });

@@ -19,11 +19,11 @@ const MAX_CONTINUITY_SPAN_WU = 400;
 // Reused scratch for the fence read (one anchor at a time; never retained).
 const _fencePoseScratch = { x: 0, y: 0, z: 0, rot: 0, valid: false };
 
-function fencePresentedPose(entity) {
+function fencePresentedPose(entity, slotHint = -1) {
   if (!entity || !Number.isSafeInteger(entity.id)) return null;
   const fence = getLatestSnapshotFence();
   if (!fence || typeof fence.presentedPose !== 'function') return null;
-  const pose = fence.presentedPose(entity.id, _fencePoseScratch);
+  const pose = fence.presentedPose(entity.id, _fencePoseScratch, slotHint);
   return pose && pose.valid === true ? pose : null;
 }
 
@@ -32,9 +32,13 @@ function fencePresentedPose(entity) {
  * same heading the hull uses); falls back to the newest-tick prevPos→pos blend only when no
  * presented sample exists. out must be caller-owned ({x, z}); it is always written so a call
  * can never read a stale scratch.
+ *
+ * `slotHint` (optional) is the entity's presentation-world slot. Passing it resolves the
+ * bracket rows through the pack's slot table instead of the entityId column; callers that do
+ * not know the slot still get a per-pack probe cache in the fence, never a per-call scan.
  */
-export function presentedAnchorXZ(entity, alpha, out) {
-  const presented = fencePresentedPose(entity);
+export function presentedAnchorXZ(entity, alpha, out, slotHint = -1) {
+  const presented = fencePresentedPose(entity, slotHint);
   if (presented) {
     out.x = presented.x;
     out.z = presented.z;
@@ -60,8 +64,8 @@ export function presentedAnchorXZ(entity, alpha, out) {
  * The entity's heading at the drawn moment. The fence's presented heading is the one the
  * hull actually drew; the prevRot→rot shortest-path blend is the no-fence fallback.
  */
-export function presentedAnchorRot(entity, alpha) {
-  const presented = fencePresentedPose(entity);
+export function presentedAnchorRot(entity, alpha, slotHint = -1) {
+  const presented = fencePresentedPose(entity, slotHint);
   if (presented) return presented.rot;
   const rot = entity && Number.isFinite(entity.rot) ? entity.rot : 0;
   if (!Number.isFinite(alpha) || alpha >= 1) return rot;

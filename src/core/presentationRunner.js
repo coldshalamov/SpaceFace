@@ -456,6 +456,11 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   // E10/E1: scratch for the fence's presented player pose — reused, never allocated per frame.
   const frameTruthPoseScratch = { x: 0, y: 0, z: 0 };
   const frameTruthPoseScratchProxy = { pos: frameTruthPoseScratch, vx: 0, vz: 0 };
+  // E10: caller-owned scratch for the fence/lane probes read once per presented frame. The
+  // recorder and the playout diagnostics fill these in place; no per-frame object churn.
+  const frameTruthLaneScratch = {};
+  const frameTruthPlayoutScratch = {};
+  let frameTruthLastGapResets = 0;
   function captureWitness() {
     try {
       const sample = witness.observe(state, {
@@ -1554,10 +1559,22 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         // E10 frame truth: one preallocated ring row per presented frame. Every probe
         // read here already exists; a missing one records as 0 and never aborts the loop.
         if (renderedSnapshot || diagnostics.stepsThisFrame > 0) {
-          const laneSample = simulationRunner.getFrameTruthSample?.() || null;
+          const laneSample = simulationRunner.getFrameTruthSample?.(frameTruthLaneScratch) || null;
           const fence = getLatestSnapshotFence();
           const playout = fence && typeof fence.getPlayoutDiagnostics === 'function'
-            ? fence.getPlayoutDiagnostics() : null;
+            ? fence.getPlayoutDiagnostics(frameTruthPlayoutScratch) : null;
+          if (playout && Number.isFinite(playout.gapResets)
+            && playout.gapResets > frameTruthLastGapResets) {
+            // E1: a forward-gap re-seat is a presentation discontinuity worth a trace event.
+            const resets = playout.gapResets - frameTruthLastGapResets;
+            frameTruthLastGapResets = playout.gapResets;
+            frameTruth.noteEvent('playoutGapReset', {
+              count: resets,
+              gapMs: playout.lastGapResetGapMs,
+              rawFrameMs: playout.lastGapResetRawElapsedMs,
+              simTimeS: playout.lastGapResetSimTimeS,
+            });
+          }
           const renderInfo = state.render && state.render.diagnostics
             ? state.render.diagnostics.info : null;
           // performance.memory builds a MemoryInfo (~50–90 µs in Chromium) — sample it at 1 Hz,
@@ -1617,6 +1634,10 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
             timeScale: Number(state.timeScale) || 0,
             poseEpoch: playout ? playout.poseEpoch : null,
             poseSource,
+            presentedTimeS: playout ? playout.presentedTimeS : null,
+            docked: !!(state.ui && state.ui.docked === true),
+            simGapApplications: diagnostics.simGapApplications,
+            simGapHeldFrames: diagnostics.simGapHeldFrames,
             playerRow: presentedPoseRow,
             drawCalls: renderInfo && renderInfo.render ? renderInfo.render.calls : null,
             trianglesK: renderInfo && renderInfo.render ? renderInfo.render.triangles / 1000 : null,

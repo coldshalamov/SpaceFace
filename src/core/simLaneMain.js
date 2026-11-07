@@ -2282,17 +2282,18 @@ export function createSimLaneRuntime({
       + (completedOverflow ? completedRecordCount(completedOverflow) : 0),
     isClosed: () => laneClosed,
     close,
-    // E10 frame truth: a per-presented-frame sampler that allocates one small object instead
-    // of the full getDiagnostics() shape (which builds nested maps per call).
-    getFrameTruthSample() {
-      return {
-        workerWorkMs: workerLastReplyWork ? workerLastReplyWork.workMs : null,
-        workerStepsMs: workerLastReplyWork ? workerLastReplyWork.stepsMs : null,
-        workerPackMs: workerLastReplyWork ? workerLastReplyWork.packMs : null,
-        applyMs: workerApplyMs,
-        stallMs: workerLastReplyWork ? workerLastReplyWork.stallMs : null,
-        replyAgeMs: lastAppliedAtMs >= 0 ? Math.max(0, nowMs() - lastAppliedAtMs) : null,
-      };
+    // E10 frame truth: a per-presented-frame sampler that fills caller-owned scratch instead
+    // of allocating the full getDiagnostics() shape (which builds nested maps per call).
+    getFrameTruthSample(out = {}) {
+      const sample = out && typeof out === 'object' ? out : {};
+      const work = workerLastReplyWork || null;
+      sample.workerWorkMs = work ? work.workMs : null;
+      sample.workerStepsMs = work ? work.stepsMs : null;
+      sample.workerPackMs = work ? work.packMs : null;
+      sample.applyMs = workerApplyMs;
+      sample.stallMs = work ? work.stallMs : null;
+      sample.replyAgeMs = lastAppliedAtMs >= 0 ? Math.max(0, nowMs() - lastAppliedAtMs) : null;
+      return sample;
     },
     getDiagnostics() {
       return {

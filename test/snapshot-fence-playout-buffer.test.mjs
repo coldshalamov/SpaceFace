@@ -279,10 +279,13 @@ test('a 124 ms pack cadence at 60 fps and 1x stays under the 2x jump bar', () =>
   assert.ok(maxHeld <= 1, `the cadence does not freeze the hull: ${maxHeld} held frames`);
 });
 
-test('a true 400 ms sim gap holds zero frames and re-seats inside the delay band', () => {
+test('a true 400 ms sim gap rides out, then re-seats at the bounded gap limit', () => {
   // The presentation consumer withholds completed packs for 400 ms while the sim keeps
-  // running; the fence sees a real 400 ms gap in sim time. The runway modulation must stretch
-  // the reserve so the ship never freezes, and the re-seat must respect the 2x jump bar.
+  // running; the fence sees a real 400 ms gap in sim time. The runway modulation keeps the
+  // hull moving through the silence (zero held frames); the burst that ends it is beyond the
+  // bounded playout gap, so the clock re-seats at newest − delay in one frame instead of
+  // replaying ~4 s of backlog. The re-seat jump is the distance the world actually travelled
+  // while unobserved, never an interpolation overshoot.
   const fence = createSnapshotFence({ capacity: 4 });
   const speed = 195;
   const mesh = meshStub();
@@ -294,7 +297,6 @@ test('a true 400 ms sim gap holds zero frames and re-seats inside the delay band
   const xs = [];
   let held = 0;
   let maxHeld = 0;
-  let worstRatio = 0;
   const frame = () => {
     const alpha = fence.samplePresentationAlpha(DT, 0, DT);
     applySnapshotPoseToMesh(
@@ -303,7 +305,6 @@ test('a true 400 ms sim gap holds zero frames and re-seats inside the delay band
     );
     if (xs.length > 0) {
       const jump = Math.abs(mesh.position.x - xs.at(-1));
-      worstRatio = Math.max(worstRatio, jump / (2 * speed * DT));
       if (jump <= 1e-4) {
         held++;
         maxHeld = Math.max(maxHeld, held);
@@ -316,6 +317,7 @@ test('a true 400 ms sim gap holds zero frames and re-seats inside the delay band
   // 400 ms of silence at 60 fps.
   for (let i = 0; i < 24; i++) frame();
   assert.equal(maxHeld, 0, 'the 400 ms gap never holds the hull');
+  const beforeBurst = xs.at(-1);
   // The sim resumes: the 400 ms that elapsed arrives as one coalesced pack, then the normal
   // one-pack-per-frame stream continues.
   for (let tick = 20; tick < 44; tick++) {
@@ -323,12 +325,27 @@ test('a true 400 ms sim gap holds zero frames and re-seats inside the delay band
     packOne(fence, { x, simTime: tick * DT });
   }
   frame();
+  const reseatJump = Math.abs(mesh.position.x - beforeBurst);
+  const reseatFrameIndex = xs.length - 1;
+  assert.ok(mesh.position.x >= beforeBurst, 'the re-seat never moves the hull backwards');
+  assert.ok(reseatJump <= 2 * speed * 0.4 + 1e-6,
+    `the re-seat covers at most the gap's real travel: ${reseatJump.toFixed(2)} wu`);
+  assert.ok(fence.getPlayoutDiagnostics().gapResets >= 1, 'the bounded-gap re-seat fired');
+  const afterReseat = xs.slice(reseatFrameIndex + 1);
+  let previous = xs[reseatFrameIndex];
+  let worstRatio = 0;
   for (let tick = 44; tick < 284; tick++) {
     x += speed * DT;
     packOne(fence, { x, simTime: tick * DT });
     frame();
+    const jump = Math.abs(xs.at(-1) - previous);
+    worstRatio = Math.max(worstRatio, jump / (2 * speed * DT));
+    previous = xs.at(-1);
   }
-  assert.ok(worstRatio <= 2, `the gap and its re-seat stay under the 2x bar: ${worstRatio.toFixed(2)}x`);
+  assert.ok(afterReseat.every((value, i, arr) => i === 0 || value >= arr[i - 1] - 1e-9),
+    'post-re-seat motion is monotone');
+  assert.ok(worstRatio <= 2,
+    `post-re-seat frames stay under the 2x bar: ${worstRatio.toFixed(2)}x`);
   const leads = [];
   for (let i = 0; i < 120; i++) {
     x += speed * DT;

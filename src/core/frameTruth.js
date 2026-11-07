@@ -4,12 +4,16 @@
 // timings, sim-lane reply work, the snapshot fence's presented clock, the mirrored player
 // row) and records them in preallocated typed rings so a live session can always answer
 // "where did the frame go, and what did the ship do". The per-frame path reuses one value
-// object; only trace export and rare timeline events allocate.
+// object and caller-owned fence/lane scratch; only trace export, the 1 Hz overlay and rare
+// timeline events allocate.
+
+import { CREDITS } from '../data/credits.js';
 
 const RING_FRAMES = 1800;          // ~30 s at 60 Hz
 const RING_REPLIES = 2048;         // 2–10 Hz replies → 3–6 minutes of arrivals
 const OVERLAY_UPDATE_MS = 100;
 const TIMELINE_EVENTS_MAX = 64;
+const APP_VERSION = typeof CREDITS?.version === 'string' ? CREDITS.version : null;
 
 const FRAME_FIELDS = Object.freeze([
   'wallMs',          // ms since recorder start (monotonic)
@@ -26,10 +30,10 @@ const FRAME_FIELDS = Object.freeze([
   'workerStepsMs',
   'workerPackMs',
   'applyMs',         // main-thread apply cost of the newest reply
-  'playoutDelayMs',  // presented clock behind the newest pack (fence)
-  'extrapolateMs',   // presented clock past the newest pack (fence)
+  'playoutDelayMs',  // presented clock behind the wall-paced sim moment (fence)
+  'extrapolateMs',   // presented clock past the wall-paced sim moment (fence)
   'bufferDepthPacks',// bracket depth: commits between the presented bracket and the newest
-  'playbackRate',    // measured sim-seconds per presented wall second
+  'playbackRate',    // measured sim-seconds per TIME-SCALED presented second (not wall)
   'timeScale',       // game time scale at present
   'poseEpoch',       // fence pose epoch of the presented sample
   'playerX',         // presented-or-mirrored player pose
@@ -37,14 +41,19 @@ const FRAME_FIELDS = Object.freeze([
   'playerSpeed',     // authoritative body speed (wu/s)
   'presentedSpeed',  // measured presented-pose speed (wu/s)
   'poseJumpWu',      // per-frame presented pose delta (0 when the pose repeats)
-  'jumpBarWu',       // 2 * bodySpeed * playbackRate * timeScale * dt — the presented-rate bar
+  'jumpBarWu',       // 2 * bodySpeed * playbackRate * timeScale * clampedDt — presented-rate bar
   'jumpRatio',       // poseJumpWu / jumpBarWu
-  'heldPoseFrames',  // consecutive repeat-pose frames while speed > HELD_SPEED (1 during a streak)
+  'heldPoseFrames',  // consecutive repeat-pose frames while moving and unpaused (1 during a streak)
+  'heldMs',          // wall duration of the current held streak (a 2.6 s callback is 2600 ms)
   'drawCalls',
   'trianglesK',
   'heapMB',
   'allocBytesPerSec',
   'popIn',           // visible-unready drawables (residency), 0 when the probe is absent
+  'poseSourceCode',  // 1 mirrored / 2 presented (legend in the export)
+  'laneCode',        // 1 main / 2 worker
+  'transportCode',   // 1 main / 2 worker-local / 3 worker-pump
+  'sectorCode',      // FNV-1a of the sector id; `sectorLegend` maps it back
 ]);
 
 const REPLY_FIELDS = Object.freeze([
@@ -64,6 +73,25 @@ function percentile(sorted, q) {
   if (!sorted.length) return 0;
   const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(q * sorted.length) - 1));
   return sorted[index];
+}
+
+// Per-frame provenance columns are numeric so they ride the preallocated rings. The export
+// carries these legends; a string column per frame would allocate on every presented frame.
+const POSE_SOURCE_CODES = Object.freeze({ mirrored: 1, presented: 2 });
+const LANE_CODES = Object.freeze({ main: 1, worker: 2 });
+const TRANSPORT_CODES = Object.freeze({ main: 1, 'worker-local': 2, 'worker-pump': 3 });
+
+function codeFor(table, value) {
+  return typeof value === 'string' && Object.hasOwn(table, value) ? table[value] : 0;
+}
+
+function hashSectorCode(value) {
+  if (typeof value !== 'string' || value === '') return 0;
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i++) {
+    hash = Math.imul(hash ^ value.charCodeAt(i), 16777619);
+  }
+  return hash >>> 0 || 1;
 }
 
 function makeRing(size, fields) {
@@ -158,8 +186,8 @@ function installHotkeys(recorder) {
     } else if (key === 'j') {
       event.preventDefault();
       // The hotkey export carries the live fence AND the perf report regardless of how the
-      // recorder was minted, so `trace.fence` is never null and per-system attribution rides
-      // the same evidence export.
+      // recorder was minted. `trace.fence` is honestly null before the first fence exists;
+      // per-system attribution rides the same evidence export.
       const extra = {};
       try {
         const report = recorder.state?.perfRuntime?.getReport?.();
@@ -198,6 +226,23 @@ function readLocation() {
   } catch (_) {
     return null;
   }
+}
+
+// Export-only: the settings facts a performance trace needs to be reproducible. Never
+// serialize the whole settings tree (it carries unrelated preferences).
+function readSettingsSummary(state) {
+  if (!state || typeof state !== 'object') return null;
+  const video = state.settings && state.settings.video ? state.settings.video : null;
+  const accessibility = state.settings && state.settings.accessibility
+    ? state.settings.accessibility : null;
+  return {
+    graphicsPreset: typeof state.settings?.graphicsPreset === 'string'
+      ? state.settings.graphicsPreset : null,
+    quality: video && typeof video.quality === 'string' ? video.quality : null,
+    motionReduce: video ? video.motionReduce === true : null,
+    flashReduce: accessibility ? accessibility.flashReduce === true : null,
+    reducedMotion: accessibility ? accessibility.reducedMotion === true : null,
+  };
 }
 
 /**
@@ -283,6 +328,14 @@ export function ensureFrameTruth(state) {
     frameValues: {},
     lastReplyWallMs: -1,
     heldStreak: 0,
+    heldWallMs: 0,
+    maxHeldMs: 0,
+    lastSimGapApplications: 0,
+    lastSimGapHeldFrames: 0,
+    lastPresentedTimeS: NaN,
+    lastSectorName: null,
+    lastSectorCode: 0,
+    sectorLegend: {},
     overlayVisible: false,
     overlayEl: null,
     overlayTimer: null,
@@ -372,28 +425,38 @@ export function ensureFrameTruth(state) {
     if (poseFinite && hasPreviousPose) {
       jump = Math.hypot(px - recorder.lastPlayerX, pz - recorder.lastPlayerZ);
     }
+    const rawDtMs = Number.isFinite(sample.rawFrameDtMs)
+      ? sample.rawFrameDtMs : sample.frameDtMs;
+    const frameDtMs = Number.isFinite(sample.frameDtMs) ? sample.frameDtMs : rawDtMs;
+    // The presented clock advances on the CLAMPED frame delta; using the raw 2.6 s callback
+    // gave a catch-up jump a 2.6 s-wide bar and hid it. FPS/raw columns keep the unclamped
+    // value for hitch truth.
+    const dtS = Number.isFinite(frameDtMs) && frameDtMs > 0 ? frameDtMs / 1000 : 0;
+    const playbackRate = Number.isFinite(sample.playbackRate) ? sample.playbackRate : 1;
+    const timeScale = Number.isFinite(sample.timeScale) ? sample.timeScale : 1;
+    const paused = !(timeScale > 0) || sample.docked === true;
     // The E1 verify metric's raw material: a pose that repeats while the body's own
     // velocity is non-zero is the hold-then-jump signature, counted per frame. The first
-    // frame has no previous pose and can never be a held frame; a pose that goes
-    // non-finite, or a body at/below the speed threshold, ends the streak.
+    // frame has no previous pose and can never be a held frame; a non-finite pose, a body
+    // at/below the speed threshold, or a paused/docked present ends the streak. A docked
+    // hull can keep its last velocity while the world is frozen — that is not a freeze.
     let heldFrame = 0;
-    if (!poseFinite || !hasPreviousPose || !(speed > HELD_SPEED)) {
+    if (!poseFinite || !hasPreviousPose || !(speed > HELD_SPEED) || paused) {
       recorder.heldStreak = 0;
+      recorder.heldWallMs = 0;
     } else if (jump <= HELD_EPSILON_WU) {
       recorder.heldStreak++;
       heldFrame = 1;
+      // Wall-time truth: one 2.6 s callback is one held FRAME but 2600 ms of frozen picture.
+      recorder.heldWallMs += Number.isFinite(rawDtMs) && rawDtMs > 0 ? rawDtMs : 0;
+      if (recorder.heldWallMs > recorder.maxHeldMs) recorder.maxHeldMs = recorder.heldWallMs;
     } else {
       recorder.heldStreak = 0;
+      recorder.heldWallMs = 0;
     }
     recorder.lastPlayerX = poseFinite ? px : NaN;
     recorder.lastPlayerZ = poseFinite ? pz : NaN;
 
-    const rawDtMs = Number.isFinite(sample.rawFrameDtMs)
-      ? sample.rawFrameDtMs : sample.frameDtMs;
-    const frameDtMs = Number.isFinite(sample.frameDtMs) ? sample.frameDtMs : rawDtMs;
-    const dtS = Number.isFinite(rawDtMs) && rawDtMs > 0 ? rawDtMs / 1000 : 0;
-    const playbackRate = Number.isFinite(sample.playbackRate) ? sample.playbackRate : 1;
-    const timeScale = Number.isFinite(sample.timeScale) ? sample.timeScale : 1;
     const presentedSpeed = dtS > 0 ? jump / dtS
       : (Number.isFinite(sample.presentedSpeed) ? sample.presentedSpeed : 0);
     // The E1 jump bar is measured against the PRESENTED rate, not the authoritative body
@@ -435,6 +498,24 @@ export function ensureFrameTruth(state) {
       recorder.noteEvent('transport', { from: recorder.lastTransport, to: transport });
       recorder.lastTransport = transport;
     }
+    // E1 gap-harness counters: prove in the exported file that the gate withheld packs.
+    if (Number.isFinite(sample.simGapApplications)) {
+      recorder.lastSimGapApplications = sample.simGapApplications;
+    }
+    if (Number.isFinite(sample.simGapHeldFrames)) {
+      recorder.lastSimGapHeldFrames = sample.simGapHeldFrames;
+    }
+    // Per-frame sector identity: a numeric code rides the ring; the legend maps it back.
+    const sectorName = typeof sample.sector === 'string' && sample.sector
+      ? sample.sector : recorder.lastSectorName;
+    if (sectorName !== recorder.lastSectorName) {
+      recorder.lastSectorName = sectorName;
+      recorder.lastSectorCode = hashSectorCode(sectorName);
+      if (sectorName) recorder.sectorLegend[recorder.lastSectorCode] = sectorName;
+    }
+    if (Number.isFinite(sample.presentedTimeS)) {
+      recorder.lastPresentedTimeS = sample.presentedTimeS;
+    }
 
     const values = recorder.frameValues;
     values.wallMs = now - recorder.startedAtMs;
@@ -465,11 +546,16 @@ export function ensureFrameTruth(state) {
     values.jumpBarWu = jumpBarWu;
     values.jumpRatio = jumpRatio;
     values.heldPoseFrames = heldFrame;
+    values.heldMs = recorder.heldWallMs;
     values.drawCalls = sample.drawCalls;
     values.trianglesK = sample.trianglesK;
     values.heapMB = heapMB;
     values.allocBytesPerSec = allocBytesPerSec;
     values.popIn = sample.popIn;
+    values.poseSourceCode = codeFor(POSE_SOURCE_CODES, recorder.lastPoseSource);
+    values.laneCode = codeFor(LANE_CODES, lane);
+    values.transportCode = codeFor(TRANSPORT_CODES, transport);
+    values.sectorCode = recorder.lastSectorCode;
     ringPush(recorder.frames, values);
     recorder.lastFrame = values;
   };
@@ -504,6 +590,7 @@ export function ensureFrameTruth(state) {
       },
       allocBytesPerSec: recorder.lastAllocBytesPerSec,
       heldPoseStreak: recorder.heldStreak,
+      maxHeldMs: recorder.maxHeldMs,
     };
   };
 
@@ -523,14 +610,34 @@ export function ensureFrameTruth(state) {
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
       location: readLocation(),
       note: recorder.note,
-      build: typeof options.build === 'string' ? options.build
+      // The generated credits version is a real app identity; a git/build hash only exists
+      // when the host produces one (options.build or a boot producer). `build` used to be a
+      // permanent null because `__SF_BUILD__` had no producer — do not claim a build stamp.
+      appVersion: APP_VERSION,
+      buildStamp: typeof options.build === 'string' ? options.build
         : (typeof globalThis !== 'undefined' && typeof globalThis.__SF_BUILD__ === 'string'
           ? globalThis.__SF_BUILD__ : null),
+      seed: recorder.state && recorder.state.meta && Number.isFinite(recorder.state.meta.seed)
+        ? recorder.state.meta.seed | 0 : null,
+      saveSlot: recorder.state && recorder.state.save
+        && typeof recorder.state.save.currentSlot === 'string'
+        ? recorder.state.save.currentSlot : null,
+      settings: readSettingsSummary(recorder.state),
       crossOriginIsolated: typeof globalThis !== 'undefined'
         ? globalThis.crossOriginIsolated === true : false,
       sharedArrayBuffer: typeof SharedArrayBuffer === 'function',
       frameCount: recorder.frames.count,
       columns,
+      provenanceLegend: {
+        poseSource: POSE_SOURCE_CODES,
+        lane: LANE_CODES,
+        transport: TRANSPORT_CODES,
+        sector: recorder.sectorLegend,
+      },
+      simGap: {
+        applications: recorder.lastSimGapApplications,
+        heldFrames: recorder.lastSimGapHeldFrames,
+      },
       replies: {
         count: recorder.replies.count,
         wallMs: ringToArray(recorder.replies, 'wallMs'),

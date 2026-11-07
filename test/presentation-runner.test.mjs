@@ -1048,6 +1048,11 @@ test('the simGap harness withholds completed packs for the requested wall time',
     raf.flushOne(1400);
     assert.equal(consumes, 1, 'the runner consumes the held pack once the gap elapses');
     assert.equal(controller.getDiagnostics().simGapApplications, 1);
+    // The exported file proves the gate fired: the counters ride the frame-truth trace, not
+    // only the live diagnostics object.
+    const trace = state.frameTruth.exportJSON({ download: false });
+    assert.equal(trace.simGap.applications, 1);
+    assert.ok(trace.simGap.heldFrames >= 1);
   } finally {
     controller.destroy();
     if (previousLocation === undefined) delete globalThis.location;

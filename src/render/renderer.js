@@ -19503,7 +19503,20 @@ export const render = {
     onBus('camera:zoom', ({ delta, level }) => { if (level != null) cam.setZoom(level); else cam.setZoom(state.camera.zoom + (delta || 0)); });
     onBus('game:started', () => { if (cam.endDeathCam) cam.endDeathCam(); if (cam.snapToPlayer) cam.snapToPlayer(); });
     onBus('save:loaded', () => { if (cam.endDeathCam) cam.endDeathCam(); if (cam.snapToPlayer) cam.snapToPlayer(); });
-    onBus('player:respawn', () => { if (cam.endDeathCam) cam.endDeathCam(); if (cam.snapToPlayer) cam.snapToPlayer(); });
+    onBus('player:respawn', () => {
+      if (cam.endDeathCam) cam.endDeathCam();
+      if (cam.snapToPlayer) cam.snapToPlayer();
+      // E1: a respawn relocates the player's body inside one pack. Bump the pose epoch so
+      // the fence never blends the death pose into the spawn pose (the near-relocation guard
+      // is the second line of defence for hops under the teleport bar).
+      this._posePackEpoch = (this._posePackEpoch | 0) + 1;
+    });
+    // E1: docking/undocking teleports the player between the station interior and space.
+    // Same-epoch relocation is possible for a near pad, so flag the discontinuity here as
+    // well as relying on the fence's hop guard.
+    onBus('dock:undocked', () => {
+      this._posePackEpoch = (this._posePackEpoch | 0) + 1;
+    });
     globalShipMicroMotion.bindEvents(bus);
     globalAsteroidMotion.bindEvents(bus);
     globalPickupMotion.bindEvents(bus);
@@ -28475,6 +28488,16 @@ export const render = {
         // A clean render root still needs a validity check against the latest completed fence. The
         // check is an index lookup only; pose writes remain dirty/delta-gated below.
         let posed = this._hasCompletedPresentationPose(slot, entityId);
+        // E1 stop freeze-short: a row whose sim bytes stopped changing is not necessarily at
+        // rest — the presented clock may still be 1–3 ticks behind the authoritative stop.
+        // The fence's per-slot presented-sample token moves while that sample changes, so a
+        // clean row is re-posed until the drawn pose reaches the stop, then left alone.
+        const presentedToken = this._snapshotFence
+          && typeof this._snapshotFence.presentedSampleToken === 'function'
+          ? this._snapshotFence.presentedSampleToken(slot, entityId) : 0;
+        const tokenChanged = presentedToken !== 0
+          && (userData.sfPresentedSampleToken !== presentedToken
+            || userData.sfPresentedSampleEntityId !== entityId);
         const isPlayer = !!(packedFlags & PRESENTATION_FLAGS.PLAYER)
           || entityId === this.state.playerId
           || !!(entity && entity.id === this.state.playerId);
@@ -28491,13 +28514,17 @@ export const render = {
         // here so the draw guard/manager can never hide it for the rest of this binding.
         if (protectedRoot && mesh.__sfResidencyProtected !== true) mesh.__sfResidencyProtected = true;
         if ((dirty & (PRESENTATION_DIRTY.TRANSFORM | PRESENTATION_DIRTY.BINDING
-          | PRESENTATION_DIRTY.VISIBILITY)) !== 0 || world.poseHasDelta(slot)) {
+          | PRESENTATION_DIRTY.VISIBILITY)) !== 0 || world.poseHasDelta(slot) || tokenChanged) {
           posed = this._applyPresentationPose(slot, mesh, alpha);
           poseApplied = !!posed;
           if (!posed && !protectedRoot) {
             if (applyEntityMeshVisibility(mesh, false)) {
               this._persistentSubmitLanes.markDirty(entityId, 'visibility');
             }
+          }
+          if (posed && presentedToken !== 0) {
+            userData.sfPresentedSampleToken = presentedToken;
+            userData.sfPresentedSampleEntityId = entityId;
           }
           if (posed) this._persistentSubmitLanes.markDirty(entityId, 'transform');
           transformed++;

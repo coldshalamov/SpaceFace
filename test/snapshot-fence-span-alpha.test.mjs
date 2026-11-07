@@ -218,15 +218,17 @@ test('worker silence keeps motion continuous, bounded, and eases back without re
   // silence, so the extrapolation window is reached later than before, not sooner).
   assert.ok(xs.at(-1) <= 100 + 200 * 0.15 + 1e-6, 'never beyond 150 ms of velocity');
   assert.ok(xs.at(-1) > 100, 'ran past the completed pose');
-  // A real reply lands that is BEHIND the extrapolated pose: hold/ease, never snap back.
-  // The new pair's measured velocity is slightly lower (198 vs 200 wu/s), so the correct
-  // re-seat can step the POSE back by a fraction of a world unit while the CLOCK never
-  // rewinds; bound that velocity-step correction instead of demanding exact monotonicity.
+  // A real reply lands that is BEHIND the extrapolated pose. E1's contract is no rewind: the
+  // presented clock re-seats smoothly and the hull never steps backwards, even by a fraction
+  // of a world unit (the old assertion allowed 0.5 wu, which hid a real backward blend).
   const before = xs.at(-1);
   packOne(fence, { x: 103.3, simTime: 0.5 + DT });
   for (let i = 0; i < 6; i++) frame(0.016);
   for (let i = xs.length - 6; i < xs.length; i++) {
-    assert.ok(xs[i] >= before - 0.5, `eased without a snap: ${xs.slice(-6)}`);
+    assert.ok(xs[i] >= before - 1e-9, `no backward pose step: ${xs.slice(-6)}`);
+  }
+  for (let i = xs.length - 5; i < xs.length; i++) {
+    assert.ok(xs[i] >= xs[i - 1] - 1e-9, `the re-seat is monotone: ${xs.slice(-6)}`);
   }
 });
 
