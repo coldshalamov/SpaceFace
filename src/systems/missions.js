@@ -99,6 +99,7 @@ import {
   RANK_CONTRACT_BY_FACTION,
   RANK_CONTRACT_SOURCE,
 } from '../data/missions.js';
+import { journeyActForBeat } from '../data/journeyActs.js';
 import {
   SET_PIECE_FOLLOW_ON_SOURCE,
   setPieceFollowOnBody,
@@ -1502,10 +1503,12 @@ export function campaign47aOutcomeKey(state) {
 }
 
 export const missions = {
-  ...missionBoardOps,
-  ...missionObjectiveOps,
-  ...missionSpawningOps,
-  ...missionStoryOps,
+  // The ops spreads live in init, not the literal: each ops module imports this composite
+  // (missions.foo() inside method bodies), so an eager spread reads their exports while the
+  // import cycle still has them uninitialized. Attaching in init keeps every consumer's
+  // `missions.x()` identical while letting the cycle resolve. Precedence is preserved:
+  // first-wins iteration from last-spread to first-spread matches the literal order, and
+  // keys the literal already declares (overrides like _adoptLiveMissionTargets) still win.
   name: 'missions',
 
   _adoptLiveMissionTargets(m) {
@@ -1656,6 +1659,9 @@ export const missions = {
   },
 
   init(ctx) {
+    for (const ops of [missionStoryOps, missionSpawningOps, missionObjectiveOps, missionBoardOps]) {
+      for (const key of Object.keys(ops)) if (!Object.hasOwn(this, key)) this[key] = ops[key];
+    }
     this._racingSetPieces?.stop('reinitialize');
     this._racingSetPieces = null;
     this._adventureSpeedSetPieces?.dispose();
@@ -7023,11 +7029,14 @@ function storyBeatTitle(beat) {
   if (!beat) return 'Story Objective';
   const hint = BEAT_HINT[beat.beat] || '';
   const colon = hint.indexOf(':');
-  if (colon > 0) return hint.slice(0, colon);
-  return String(beat.id || `Beat ${beat.beat}`)
+  const beatName = colon > 0 ? hint.slice(0, colon) : String(beat.id || `Beat ${beat.beat}`)
     .replace(/^b\d+_?/i, '')
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase());
+  // W1 Journey framing: the act names where the pilot is in the whole story. The beat name stays
+  // the actionable part; the act only prefixes the label, never the instruction lines.
+  const act = journeyActForBeat(beat.beat);
+  return act ? `${act.title} · ${beatName}` : beatName;
 }
 
 function hasActiveMissionEntityIndex(state) {

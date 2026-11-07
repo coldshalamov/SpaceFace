@@ -274,6 +274,10 @@ function applyLaneSaveStorageOps(ops, relayFallback = null, failedWrites = null,
  *                      request that cannot be honored keeps the warn-and-
  *                      fallback transfer channel; the quiet default just
  *                      declines to the same fallback.
+ *   ?simStall=60,60,60,400
+ *                    — E1 stall-injection harness: a repeating cycle of worker-side
+ *                      stalls (ms, blocking the worker event loop like a heavy step)
+ *                      applied per local-clock tick. Diagnostic only; absent = none.
  *   localStorage sf.domainProfile or the diagnostic Electron environment
  *   SPACEFACE_DOMAIN_PROFILE may select the history-bearing commodity profile.
  * Returns { lane, sab, domainProfile, warnings[] }.
@@ -320,8 +324,7 @@ export function resolveSimLaneFlags(search) {
     warnings.push('simSab=1 requested but crossOriginIsolated/SharedArrayBuffer unavailable — transfer channel');
     sab = false;
   }
-  let requestedDomainProfile = params && params.get('domainProfile');
-  if (requestedDomainProfile == null && typeof localStorage !== 'undefined') {
+  let requestedDomainProfile = params && params.get('domainProfile');  if (requestedDomainProfile == null && typeof localStorage !== 'undefined') {
     try { requestedDomainProfile = localStorage.getItem('sf.domainProfile'); } catch (_) { /* storage gated */ }
   }
   requestedDomainProfile = typeof requestedDomainProfile === 'string'
@@ -332,8 +335,26 @@ export function resolveSimLaneFlags(search) {
   } else if (requestedDomainProfile) {
     warnings.push(`unrecognized domainProfile='${requestedDomainProfile}' — station profile serves by default`);
   }
+  // E1 stall harness: a repeating cycle of worker-side stalls in ms, one entry per
+  // local-clock tick. `?simStall=400` stalls every tick; `60,60,60,400` stalls one in four.
+  const stallParam = params ? params.get('simStall') : null;
+  let simStall = null;
+  if (stallParam != null && stallParam !== '') {
+    const cycle = [];
+    for (const raw of stallParam.split(',')) {
+      const ms = Number(raw);
+      if (!Number.isFinite(ms) || ms < 0 || ms > 2000) {
+        warnings.push(`unrecognized simStall entry '${raw}' — ignored`);
+        continue;
+      }
+      if (cycle.length < 16) cycle.push(ms);
+    }
+    if (cycle.length) simStall = cycle;
+    else warnings.push(`simStall='${stallParam}' produced no usable entries — no stalls injected`);
+  }
   return {
-    lane, sab, domainProfile, domainProfileRequested: requestedDomainProfile || null, warnings,
+    lane, sab, domainProfile, domainProfileRequested: requestedDomainProfile || null,
+    simStall, warnings,
   };
 }
 
@@ -650,6 +671,7 @@ export function createSimLaneRuntime({
   let ready = false;
   let replyCount = 0;
   let workerLastReplyWork = null;
+  let workerSystemProfile = null;
   let postedDirectives = 0;
   let postedSteps = 0;
   let droppedEnvelopes = 0;
@@ -919,7 +941,12 @@ export function createSimLaneRuntime({
     if (workerClockMode === 'worker-local') {
       // Input/UI batches are a valid projection boundary. RPC-only batches
       // deliberately stay projection-free and preserve the command FIFO.
-      flushDirectives({ projectCursor: d.kind === 'domEvent' });
+      // High-rate DOM streams flush on a short coalescing window — the paired
+      // mousemove/pointermove listeners and drag-resizes otherwise mint one
+      // transport post per raw event. Discrete user actions (keys, buttons,
+      // blur) stay zero-latency and drag queued stream rows along.
+      if (d.kind === 'domEvent' && DOM_COALESCED_TYPES.has(d.d?.type)) scheduleDomEventFlush();
+      else flushDirectives({ projectCursor: d.kind === 'domEvent' });
     }
     // Input/UI descriptors should not wait for the next render callback while the worker owns
     // the clock. A single disposable zero-delay wake preserves FIFO order and coalesces pointer
@@ -1012,15 +1039,26 @@ export function createSimLaneRuntime({
     const cost = (value) => Number.isFinite(value) && value >= 0 ? value : null;
     workerLastReplyWork = {
       workMs: cost(msg.workMs),
+      drainMs: cost(msg.drainMs),
+      stepsMs: cost(msg.stepsMs),
+      tailMs: cost(msg.tailMs),
       packMs: cost(msg.packMs),
       domainDiffMs: cost(msg.domainDiffMs),
       boundaryMs: cost(msg.boundaryMs),
       journalRecords: Number.isSafeInteger(msg.pack?.count) ? msg.pack.count : 0,
+      stepsExecuted: Number.isSafeInteger(msg.stepsExecuted) ? msg.stepsExecuted : null,
+      stepsRequested: Number.isSafeInteger(msg.stepsRequested) ? msg.stepsRequested : null,
       entityVitals: Array.isArray(msg.entityVitals) ? msg.entityVitals.length : 0,
       domainUpdates: Array.isArray(msg.domainUpdates) ? msg.domainUpdates.length : 0,
       domainShipBytes: cost(msg.domainShipBytes),
       events: Array.isArray(msg.events) ? msg.events.length : 0,
     };
+    // E2 per-system profile rides a bounded summary, one per simulated second, only when the
+    // worker realm was asked to measure (`?simProfile=1`). Kept beside the cost block so
+    // `simLaneDiag()` is the single place a probe reads worker truth from.
+    if (msg.systemProfile && typeof msg.systemProfile === 'object') {
+      workerSystemProfile = msg.systemProfile;
+    }
     if (Number.isSafeInteger(msg.stateTick)) lastShippedTick = msg.stateTick;
 
     // Apply worker save bytes before any mirrored domains or replayed events. Synchronous save
@@ -1045,6 +1083,7 @@ export function createSimLaneRuntime({
     let journalLo = -1;
     let journalHi = -1;
     let rebuildApplied = false;
+    const phaseStart = nowMs();
     if (msg.journalFullRebuild === true && msg.pack) {
       rebuildApplied = journal.applyRebuildPack({ start: msg.journalStart, end: msg.journalEnd, pack: msg.pack });
       journalLo = msg.journalStart; journalHi = msg.journalEnd;
@@ -1072,7 +1111,9 @@ export function createSimLaneRuntime({
     if (Array.isArray(msg.auxRemovals) && msg.auxRemovals.length) applyAuxRemovals(readModel, msg.auxRemovals);
     applyDomainUpdates(msg.domainUpdates);
     if (msg.timeEffectsSnapshot) applyRemoteTimeEffectsSnapshot(state, 'simulation', msg.timeEffectsSnapshot);
+    const mirrorDone = nowMs();
     reconcileEntities();
+    const reconcileDone = nowMs();
 
     // Worker-emitted sim-bus events replay onto the main bus with forwarding
     // suppressed — otherwise a forwarded type would echo right back.
@@ -1141,6 +1182,9 @@ export function createSimLaneRuntime({
         }
       }
     }
+    workerLastReplyWork.applyFoldMs = Math.max(0, mirrorDone - phaseStart);
+    workerLastReplyWork.applyReconcileMs = Math.max(0, reconcileDone - mirrorDone);
+    workerLastReplyWork.applyEventsMs = Math.max(0, nowMs() - reconcileDone);
 
     if (Array.isArray(msg.rpcAcks) && msg.rpcAcks.length) {
       for (const ack of msg.rpcAcks) {
@@ -1180,6 +1224,7 @@ export function createSimLaneRuntime({
         pendingCommands: bounded(d.pendingCommands, 4096),
         appliedCommandSequence: bounded(d.appliedCommandSequence),
         awaitingAck: d.awaitingAck === true,
+        unacked: bounded(d.unacked, 64),
         backpressured: d.backpressured === true,
         retainedRows: bounded(d.retainedRows),
         retainedVitals: bounded(d.retainedVitals),
@@ -1187,7 +1232,11 @@ export function createSimLaneRuntime({
         backpressureEpisodes: bounded(d.backpressureEpisodes),
         backpressureMs: bounded(d.backpressureMs, Number.MAX_SAFE_INTEGER),
         shedEvents: bounded(d.shedEvents),
+        shedInputPublishes: bounded(d.shedInputPublishes),
+        shedCommands: bounded(d.shedCommands),
         staleAckRecoveries: bounded(d.staleAckRecoveries),
+        stallApplications: bounded(d.stallApplications),
+        stallTotalMs: bounded(d.stallTotalMs, Number.MAX_SAFE_INTEGER),
       };
     }
 
@@ -1332,6 +1381,20 @@ export function createSimLaneRuntime({
   const FREEZE_GAP_MS = 350;
   const FREEZE_SAMPLE_MS = 250;
   const FREEZE_EPISODE_LIMIT = 24;
+  // DOM events each used to ship their own clockCommand post — and each post
+  // pays a gamepad sample, cursor raycast, camera payload, and postMessage.
+  // OS key repeats run ~30 Hz per held key, so holding thrust + turn + pointer
+  // motion saturated the main thread and starved reply application. Batches
+  // now coalesce onto a short window: the first event still posts immediately
+  // (edge latency preserved) and the trailing burst ships once per window.
+  const DOM_EVENT_FLUSH_MIN_MS = 8;
+  const DOM_COALESCED_TYPES = new Set(['mousemove', 'pointermove', 'resize', 'touchFrame']);
+  // Held-key repeats only matter to the worker as a kbm-liveness stamp (a quiet
+  // pad must not steal the helm mid-hold). One repeat per heartbeat window keeps
+  // the stamp fresh without paying full transport cost at OS repeat rate.
+  const DOM_REPEAT_HEARTBEAT_MS = 150;
+  let domEventFlushTimer = null;
+  let lastDomEventFlushAtMs = -Infinity;
   const freezeEpisodes = [];
   if (typeof window !== 'undefined') window.__SF_FREEZE_LOG__ = freezeEpisodes;
   // -1 is "no reply applied yet": 0 is a valid early timestamp (page boot, or a
@@ -1586,6 +1649,21 @@ export function createSimLaneRuntime({
       if (workerApplyMs > workerApplyMaxMs) workerApplyMaxMs = workerApplyMs;
       if (workerApplyMs > 100) workerApplyOver100++;
       lastAppliedAtMs = nowMs();
+      // E10 frame truth: the authoritative cost chain recorded per reply (2–10 Hz).
+      const frameTruth = state && state.frameTruth;
+      if (frameTruth && frameTruth.__frameTruthV1) {
+        const work = workerLastReplyWork || {};
+        frameTruth.noteWorkerReply({
+          wallMs: lastAppliedAtMs,
+          workMs: work.workMs,
+          stepsMs: work.stepsMs,
+          packMs: work.packMs,
+          applyMs: workerApplyMs,
+          steps: Number.isSafeInteger(msg.stepsExecuted) ? msg.stepsExecuted : null,
+          journalRecords: work.journalRecords,
+          events: work.events,
+        });
+      }
     }
   }
 
@@ -1636,7 +1714,10 @@ export function createSimLaneRuntime({
 
     // Same displayed-camera transport as the main-clock flush: only real
     // command batches carry it — a bare clock ack never forces one into being.
-    appendCameraFrame(commands, cameraFrame || sampleCameraFrame());
+    // Unchanged frames are pure overhead (envelope build + worker apply + a
+    // commandAck row per post): the per-frame presentation flush picks the
+    // changed camera up within a frame anyway.
+    if (hasCameraChange) appendCameraFrame(commands, cameraFrame || sampleCameraFrame());
     const ack = workerClockAckPending;
     // A worker reply can have advanced its retained journal beyond the last
     // presentation ACK by the time a queued command is ready. Keep the larger
@@ -1688,6 +1769,24 @@ export function createSimLaneRuntime({
       watchFlight(commandFlight);
     }
     postLaneDirective(msg);
+  }
+
+  function scheduleDomEventFlush() {
+    if (laneClosed || !ready) return;
+    const now = nowMs();
+    const delay = DOM_EVENT_FLUSH_MIN_MS - (now - lastDomEventFlushAtMs);
+    if (delay <= 0) {
+      lastDomEventFlushAtMs = now;
+      flushDirectives({ projectCursor: true });
+      return;
+    }
+    if (domEventFlushTimer !== null) return;
+    domEventFlushTimer = setTimeout(() => {
+      domEventFlushTimer = null;
+      if (laneClosed) return;
+      lastDomEventFlushAtMs = nowMs();
+      flushDirectives({ projectCursor: true });
+    }, delay);
   }
 
   function flushDirectives(options = {}) {
@@ -1830,12 +1929,21 @@ export function createSimLaneRuntime({
       laneDomEvent({ type: 'resize' });
       laneViewport(viewportSize().w, viewportSize().h);
     });
+    let lastKeyRepeatShipAtMs = -Infinity;
     listen(window, 'keydown', (e) => {
+      const repeat = e.repeat === true;
+      if (repeat) {
+        // Held-key repeats only carry the kbm-liveness stamp worker-side; a
+        // heartbeat keeps it fresh without posting at OS repeat rate.
+        const now = nowMs();
+        if (now - lastKeyRepeatShipAtMs < DOM_REPEAT_HEARTBEAT_MS) return;
+        lastKeyRepeatShipAtMs = now;
+      }
       laneDomEvent({
         type: 'keydown',
         code: eventCode(e),
         pressed: true,
-        repeat: e.repeat === true,
+        repeat,
         blocked: modalInputActive()
           || isTextEntryTarget(e.target)
           || isUiCommandTarget(e.target),
@@ -2166,6 +2274,17 @@ export function createSimLaneRuntime({
       + (completedOverflow ? completedRecordCount(completedOverflow) : 0),
     isClosed: () => laneClosed,
     close,
+    // E10 frame truth: a per-presented-frame sampler that allocates one small object instead
+    // of the full getDiagnostics() shape (which builds nested maps per call).
+    getFrameTruthSample() {
+      return {
+        workerWorkMs: workerLastReplyWork ? workerLastReplyWork.workMs : null,
+        workerStepsMs: workerLastReplyWork ? workerLastReplyWork.stepsMs : null,
+        workerPackMs: workerLastReplyWork ? workerLastReplyWork.packMs : null,
+        applyMs: workerApplyMs,
+        replyAgeMs: lastAppliedAtMs >= 0 ? Math.max(0, nowMs() - lastAppliedAtMs) : null,
+      };
+    },
     getDiagnostics() {
       return {
         closed: laneClosed,
@@ -2197,9 +2316,11 @@ export function createSimLaneRuntime({
         workerPumpShedSteps,
         domainProfile: resolved.domainProfile || 'station',
         domainProfileRequested: resolved.domainProfileRequested,
+        simStallCycle: resolved.simStall || null,
         laneReady: ready,
         replyCount,
         workerLastReplyWork,
+        workerSystemProfile,
         workerApplyMs,
         workerApplyMaxMs,
         workerApplyOver100,
@@ -2275,6 +2396,18 @@ export function createSimLaneRuntime({
     // worker binds it for journal packs. Attach locally so busy-bit release
     // works on evicted SAB-backed packs.
     sabArena: resolved.sab ? createLaneSabJournalArena() : null,
+    // E1 stall harness: the worker blocks its event loop for these ms values in cycle
+    // (one per local-clock tick) — the faithful emulation of a heavy authoritative step.
+    simStall: Array.isArray(resolved.simStall) ? resolved.simStall : null,
+    // E2 profiler: `?simProfile=1` asks the worker realm to measure per-system step time and
+    // allocation and ride a bounded summary back on the reply (one per simulated second).
+    systemProfile: (() => {
+      try {
+        return typeof globalThis !== 'undefined' && globalThis.location
+          ? new URLSearchParams(globalThis.location.search).get('simProfile') === '1'
+          : false;
+      } catch (_) { return false; }
+    })(),
   };
   const readyPromise = new Promise((resolve, reject) => {
     pending.set(initSeq, { kind: 'init', resolve, reject });
@@ -2308,6 +2441,10 @@ export function createSimLaneRuntime({
     if (freezeSampler !== null) {
       clearTimeout(freezeSampler);
       freezeSampler = null;
+    }
+    if (domEventFlushTimer !== null) {
+      clearTimeout(domEventFlushTimer);
+      domEventFlushTimer = null;
     }
     workerClockCommandFlight = null;
     workerClockLatestCommandFlight = null;

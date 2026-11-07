@@ -3,15 +3,58 @@
 
 import { createPresentationSnapshot, SNAPSHOT_COLUMNS } from './presentationSnapshot.js';
 
-export const SNAPSHOT_FENCE_BUFFERS = 3;
+// E1 playout buffer: the presented moment plays at NEWEST − playoutDelay, so arrival
+// jitter (worker replies at 2–10 Hz under load) lands inside history instead of on the
+// drawn frame. 18 buffers ≈ 300 ms of packs at pack-per-tick — the delay plus the
+// extrapolation window always have real history to interpolate against.
+export const SNAPSHOT_FENCE_BUFFERS = 18;
 /** Longest the presented moment may run past the latest completed pack (worker silence). */
-export const PRESENTATION_EXTRAPOLATION_S = 0.1;
-/** Per-frame fraction of the gap to the reply-derived moment closed when the clock lags. */
-const PRESENTATION_CATCHUP_GAIN = 0.25;
+export const PRESENTATION_EXTRAPOLATION_S = 0.15;
+/**
+ * Adaptive playout delay (33–100 ms, start 50 ms). The target moment is the newest pack's
+ * sim time minus this delay; the delay grows when the buffer runs dry (the presented clock
+ * reached the newest sample before the next pack arrived) and shrinks while history shows
+ * comfortable headroom. This is the number the player feels as input latency, so it is
+ * bounded and measured, never unbounded.
+ */
+export const PLAYOUT_DELAY_MIN_S = 0.033;
+export const PLAYOUT_DELAY_MAX_S = 0.1;
+export const PLAYOUT_DELAY_START_S = 0.05;
+/**
+ * Gap-closing time constant for the presented clock catching up to its delayed target.
+ * A no-overshoot (critically damped equivalent) exponential: ~95 % of the gap closes in
+ * 3τ ≈ 90 ms, never overshooting into a rewind. The old per-frame 0.25 gain was
+ * frame-rate dependent and snapped after long stalls.
+ */
+export const PLAYOUT_CORRECTION_TAU_S = 0.03;
+/** Delay adjustments per commit: dry buffer +8 ms, comfortable history −2 ms. */
+const PLAYOUT_DRY_STEP_S = 0.008;
+const PLAYOUT_HEALTHY_STEP_S = 0.002;
+/**
+ * Rate modulation: the presented clock slows proportionally once less than this much
+ * runway (history + extrapolation) remains ahead of it, flooring at PLAYOUT_RATE_MIN.
+ */
+const PLAYOUT_RUNWAY_TARGET_S = 0.2;
+const PLAYOUT_RATE_MIN = 0.15;
 const PRESENTATION_RATE_WINDOW_S = 0.2;
 const PRESENTATION_RATE_MAX = 1.25;
 /** Max extrapolated travel (world units) per entity; larger means a teleport, not motion. */
 const EXTRAPOLATION_MAX_WU = 40;
+
+// E1 diagnostic kill-switch: `?playout=0` restores the pre-playout clock (chase the newest
+// pack, fixed 100 ms extrapolation cap, no delay, no rate modulation) so the SAME binary can
+// show the before/after of the stall pattern side by side. Diagnostic only; absent = playout on.
+function playoutDisabledByParam() {
+  try {
+    if (typeof globalThis.location === 'undefined') return false;
+    return new URLSearchParams(globalThis.location.search).get('playout') === '0';
+  } catch (_) {
+    return false;
+  }
+}
+const PLAYOUT_DISABLED = playoutDisabledByParam();
+const LEGACY_EXTRAPOLATION_S = 0.1;
+const LEGACY_CATCHUP_GAIN = 0.25;
 
 /** Bytes written into the packed columns for one entity. All column kinds are 4-byte. */
 export const PACKED_BYTES_PER_ENTITY = Object.values(SNAPSHOT_COLUMNS)
@@ -20,6 +63,14 @@ export const PACKED_BYTES_PER_ENTITY = Object.values(SNAPSHOT_COLUMNS)
 export const PACKED_BYTES_PER_JOURNAL_EVENT = 12;
 /** Commits of byte counts kept for p50/p95 reporting. Preallocated — no per-frame allocation. */
 export const PACK_BYTES_RING = 64;
+
+// E10/E1 diagnostic seam: the fence instance lives inside the renderer, so the most recent
+// fence registers itself here for the frame-truth recorder (and any future probe). Read-only —
+// registration must never affect presentation.
+let latestCreatedFence = null;
+export function getLatestSnapshotFence() {
+  return latestCreatedFence;
+}
 
 function readonlyColumns(columns) {
   // Ownership is the immutability boundary: only the writer slot can call
@@ -186,8 +237,41 @@ export function createSnapshotFence(options = {}) {
   let presentationRate = 1;
   let rateWallS = 0;
   let rateSimS = 0;
+  // E1 playout state: the adaptive delay and the buffer pair the presented moment
+  // interpolates between (buffer indices, re-resolved every sample).
+  let playoutDelayS = PLAYOUT_DELAY_START_S;
+  let playoutDelayTargetS = PLAYOUT_DELAY_START_S;
+  let presentedPair = null;          // { a: olderBufferIndex, b: newerBufferIndex, alpha }
+  let presentedValid = false;        // a presented sample has run at least once
+  let playoutDryEvents = 0;          // commits that landed with the buffer already dry
+  // Scratch for the newest→oldest sealed-buffer ordering (no per-frame allocation).
+  const bracketOrder = new Int32Array(SNAPSHOT_FENCE_BUFFERS);
 
-  return {
+  // Sealed buffers ordered newest→oldest by commit sequence (n ≤ SNAPSHOT_FENCE_BUFFERS).
+  function orderedSealedBuffers() {
+    let count = 0;
+    for (let i = 0; i < buffers.length; i++) {
+      const buffer = buffers[i];
+      if (buffer.sealed && buffer.sequence > 0) bracketOrder[count++] = i;
+    }
+    for (let i = 1; i < count; i++) {
+      const value = bracketOrder[i];
+      let j = i - 1;
+      while (j >= 0 && buffers[bracketOrder[j]].sequence < buffers[value].sequence) {
+        bracketOrder[j + 1] = bracketOrder[j];
+        j--;
+      }
+      bracketOrder[j + 1] = value;
+    }
+    return count;
+  }
+
+  function sameEpochPair(olderIdx, newerIdx) {
+    return olderIdx >= 0 && newerIdx >= 0
+      && buffers[olderIdx].poseEpoch === buffers[newerIdx].poseEpoch;
+  }
+
+  const fence = {
     beginPack(expectedCount, simTime = 0, poseEpoch = 0, slotCapacity = 0) {
       const buffer = buffers[write];
       buffer.writable.beginFrame(expectedCount, slotCapacity);
@@ -238,14 +322,42 @@ export function createSnapshotFence(options = {}) {
       packBytesRing[packBytesIndex] = lastBytesPacked;
       packBytesIndex = (packBytesIndex + 1) % PACK_BYTES_RING;
       if (packBytesCount < PACK_BYTES_RING) packBytesCount++;
+      // E1 adaptive playout delay. The pack that just landed prices the delay it needed:
+      // a presented clock at/past the PREVIOUS newest means history ran dry and the world
+      // was extrapolating — grow the delay. Comfortable headroom eases it back down.
+      // Paused clocks (presented not advancing) never read as dry: their packs do not
+      // advance either, so the headroom stays at the applied delay.
+      if (Number.isFinite(buffer.simTime) && presentedValid && Number.isFinite(presentedTime)) {
+        if (buffer.poseEpoch !== presentedEpoch) {
+          presentedPair = null;
+        } else {
+          const headroomS = buffer.simTime - presentedTime;
+          if (headroomS <= 0.004) {
+            playoutDelayTargetS = Math.min(PLAYOUT_DELAY_MAX_S, playoutDelayTargetS + PLAYOUT_DRY_STEP_S);
+            playoutDryEvents++;
+          } else if (headroomS >= 0.06) {
+            playoutDelayTargetS = Math.max(PLAYOUT_DELAY_MIN_S, playoutDelayTargetS - PLAYOUT_HEALTHY_STEP_S);
+          }
+        }
+      }
       return sequence;
     },
+    /**
+     * The newer pack of the pair the presented moment currently interpolates between
+     * (E1 playout). Falls back to the newest committed pack before the first presented
+     * sample. The PACK WRITERS must not consume this — they need `newestSnapshot()`.
+     */
     latestSnapshot() {
+      if (presentedValid && presentedPair && presentedPair.b >= 0
+          && buffers[presentedPair.b].sealed) {
+        return buffers[presentedPair.b].published;
+      }
       if (latest < 0) return null;
       return buffers[latest].published;
     },
     /**
-     * The interpolation source for the latest pack, or null when there is none.
+     * The older pack of the presented pair, or null when there is none. Guards the pose
+     * epoch like the pack-stream predecessor it replaces.
      *
      * A sector jump teleports every body thousands of world units and reassigns mirror slots, so
      * the pack taken before the jump is not a pose the pack after it may be blended against.
@@ -254,41 +366,132 @@ export function createSnapshotFence(options = {}) {
      * rest of the session. Packs only interpolate inside one continuous pose epoch.
      */
     previousSnapshot() {
+      if (presentedValid && presentedPair && presentedPair.a >= 0 && presentedPair.b >= 0
+          && buffers[presentedPair.a].sealed && buffers[presentedPair.b].sealed
+          && sameEpochPair(presentedPair.a, presentedPair.b)) {
+        return buffers[presentedPair.a].published;
+      }
       if (packCount < 2 || previous < 0 || latest < 0) return null;
       if (buffers[previous].poseEpoch !== buffers[latest].poseEpoch) return null;
       return buffers[previous].published;
     },
+    /** The true newest committed pack — the pack writers' copy base. */
+    newestSnapshot() {
+      if (latest < 0) return null;
+      return buffers[latest].published;
+    },
+    /**
+     * The PRESENTED pose of one entity: the presented bracket pair blended at the presented
+     * alpha (extrapolation included — alpha > 1 extends along A→B). This is what the meshes
+     * drew this frame; the mirrored facade row answers the newest authoritative pose instead,
+     * so diagnostics that mean "what the player saw" must read here (E10/E1).
+     */
+    presentedRowPose(entityId, out = {}) {
+      if (!presentedValid || !presentedPair || presentedPair.b < 0) return null;
+      const b = buffers[presentedPair.b];
+      if (!b || !b.sealed) return null;
+      const index = snapshotIndexOf(b.published, entityId);
+      if (index < 0) return null;
+      const p = index * 3;
+      let x = b.published.columns.position[p];
+      const y = b.published.columns.position[p + 1];
+      let z = b.published.columns.position[p + 2];
+      const alpha = Number.isFinite(presentedPair.alpha) ? presentedPair.alpha : 1;
+      if (presentedPair.a >= 0 && alpha !== 1) {
+        const a = buffers[presentedPair.a];
+        if (a && a.sealed && a.poseEpoch === b.poseEpoch) {
+          const prevIndex = snapshotIndexOf(a.published, entityId);
+          if (prevIndex >= 0) {
+            const ap = prevIndex * 3;
+            x = a.published.columns.position[ap] + (x - a.published.columns.position[ap]) * alpha;
+            z = a.published.columns.position[ap + 2] + (z - a.published.columns.position[ap + 2]) * alpha;
+          }
+        }
+      }
+      out.x = x;
+      out.y = y;
+      out.z = z;
+      return out;
+    },
     // Sample once per drawn frame (elapsedS = wall frame time already scaled by the game time
-    // scale). The presented moment is a wall-clock-driven playout clock, NOT a function of the
-    // last reply's accumulator: the worker can go silent for 100-600 ms between replies and the
-    // accumulator/snapshots then stay frozen. Per frame:
-    //   1. presentedTime advances by elapsed * rate, where rate is the measured sim-seconds per
-    //      presented-second (EMA over ~0.2 s windows), so a worker running at 0.67x is drawn as
-    //      smooth 0.67x motion instead of run-then-hold bursts;
-    //   2. if it fell behind the reply-derived moment (latest.simTime + acc - fixedDt) it closes
-    //      the gap exponentially (no snap), and it never moves backwards;
-    //   3. it may run past latest.simTime by at most PRESENTATION_EXTRAPOLATION_S: the returned
-    //      alpha then exceeds 1 and applySnapshotPoseToMesh extrapolates each pose along its
-    //      previous->latest velocity. When a real reply lands behind the extrapolated moment the
-    //      clock decelerates (QUARTER rate) instead of rewinding, so the hull eases back.
-    // Presentation only: the simulation stays authoritative.
+    // scale). E1 playout buffer: the presented moment is a wall-clock-driven playback of
+    // RECORDED history, NOT a chase of the newest state. Per frame:
+    //   1. presentedTime advances by elapsed * rate (rate = measured sim-seconds per
+    //      presented-second, EMA over ~0.2 s windows) — a worker running at 0.67x draws as
+    //      smooth 0.67x motion;
+    //   2. the target moment is `newestPackSimTime − playoutDelay` (adaptive 33–100 ms), so a
+    //      late reply lands INSIDE history and the drawn world never notices;
+    //   3. the gap to that target closes with a no-overshoot exponential of fixed horizon
+    //      (PLAYOUT_CORRECTION_TAU_S ≈ 90 ms to settle) — after extrapolation the clock
+    //      re-seats smoothly; it never rewinds and never snaps;
+    //   4. it may run past the newest sample by at most PRESENTATION_EXTRAPOLATION_S (150 ms):
+    //      the returned alpha then exceeds 1 and applySnapshotPoseToMesh extrapolates each pose
+    //      along its previous->latest velocity, bounded per row by EXTRAPOLATION_MAX_WU.
+    // The pair of history packs bracketing the presented moment is what latestSnapshot()/
+    // previousSnapshot() serve until the next sample. Presentation only: the simulation stays
+    // authoritative.
     samplePresentationAlpha(elapsedS, accumulatorS, fixedDt, fallbackAlpha = 1) {
       if (latest < 0) return fallbackAlpha;
       const current = buffers[latest].published;
-      const prior = this.previousSnapshot();
-      const span = prior ? current.simTime - prior.simTime : 0;
-      const raw = poseSpanAlpha(current, prior, accumulatorS, fixedDt, fallbackAlpha);
-      const target = span > 0 ? prior.simTime + span * raw : current.simTime;
-      const elapsed = Number.isFinite(elapsedS) ? Math.max(0, elapsedS) : 0;
+      const elapsed = Number.isFinite(elapsedS) ? Math.max(0, Math.min(elapsedS, 0.25)) : 0;
+      if (PLAYOUT_DISABLED) {
+        // Legacy clock (the "before"): chase newest.simTime + accumulator − fixedDt with the
+        // per-frame catch-up gain and a fixed 100 ms extrapolation cap. Present for the
+        // diagnostic comparison only.
+        const prior = this.previousSnapshot();
+        const span = prior ? current.simTime - prior.simTime : 0;
+        const raw = poseSpanAlpha(current, prior, accumulatorS, fixedDt, fallbackAlpha);
+        const target = span > 0 ? prior.simTime + span * raw : current.simTime;
+        const reset = presentedEpoch !== current.poseEpoch
+          || current.simTime < presentedSnapshotTime || !Number.isFinite(presentedTime);
+        if (reset) {
+          presentedTime = target;
+          presentationRate = 1;
+          rateWallS = 0;
+          rateSimS = 0;
+        } else {
+          rateWallS += elapsed;
+          rateSimS += current.simTime - presentedSnapshotTime;
+          if (rateWallS >= PRESENTATION_RATE_WINDOW_S) {
+            const sample = rateSimS / rateWallS;
+            presentationRate += (Math.max(0, Math.min(PRESENTATION_RATE_MAX, sample))
+              - presentationRate) * 0.5;
+            rateWallS = 0;
+            rateSimS = 0;
+          }
+          const cap = current.simTime + LEGACY_EXTRAPOLATION_S;
+          let next = presentedTime + elapsed * presentationRate;
+          if (target > next) next += (target - next) * LEGACY_CATCHUP_GAIN;
+          if (next > cap) next = cap;
+          presentedTime = Math.max(presentedTime, next);
+        }
+        presentedSequence = current.sequence;
+        presentedEpoch = current.poseEpoch;
+        presentedSnapshotTime = current.simTime;
+        presentedValid = true;
+        if (!(span > 0)) {
+          presentedPair = { a: -1, b: latest, alpha: 1 };
+          return 1;
+        }
+        const alpha = (presentedTime - prior.simTime) / span;
+        presentedPair = { a: previous, b: latest, alpha: alpha < 0 ? 0 : alpha };
+        return alpha < 0 ? 0 : alpha;
+      }
       const reset = presentedEpoch !== current.poseEpoch
         || current.simTime < presentedSnapshotTime || !Number.isFinite(presentedTime);
       if (reset) {
-        presentedTime = target;
+        // Teleport / rebuild / clock rewind: snap to the delayed target (the sim flagged the
+        // discontinuity via the pose epoch — this is the sanctioned snap).
+        playoutDelayS = playoutDelayTargetS = PLAYOUT_DELAY_START_S;
+        presentedTime = current.simTime - playoutDelayS;
+        presentedPair = null;
         presentationRate = 1;
         rateWallS = 0;
         rateSimS = 0;
       } else {
-        // Rate window: sim-time the latest pack gained vs wall time presented in the same window.
+        // Ease the applied delay toward its adaptive target.
+        playoutDelayS += (playoutDelayTargetS - playoutDelayS) * Math.min(1, elapsed * 6);
+        // Rate window: sim-time the newest pack gained vs wall time presented in the window.
         rateWallS += elapsed;
         rateSimS += current.simTime - presentedSnapshotTime;
         if (rateWallS >= PRESENTATION_RATE_WINDOW_S) {
@@ -298,22 +501,163 @@ export function createSnapshotFence(options = {}) {
           rateWallS = 0;
           rateSimS = 0;
         }
+        const target = current.simTime - playoutDelayS;
+        // The delay may reach back past the recorded history (boot, after a rewind/reset,
+        // or a fixture with shallow history): the clock then plays from the oldest pack
+        // instead of holding before it. Live play keeps > 250 ms of packs, so the clamp
+        // only releases once real history exists to play.
+        let oldestSameEpoch = current.simTime;
+        for (let i = 0; i < buffers.length; i++) {
+          const buffer = buffers[i];
+          if (buffer.sealed && buffer.sequence > 0 && buffer.poseEpoch === current.poseEpoch
+              && buffer.simTime < oldestSameEpoch) {
+            oldestSameEpoch = buffer.simTime;
+          }
+        }
+        const boundedTarget = Math.max(target, oldestSameEpoch);
+        // Playback rate modulation: as the runway ahead of the presented clock drains
+        // (history + the extrapolation window), play the remaining motion SLOWER instead of
+        // arriving at a hard hold. A deep stall then reads as brief slow motion — never as a
+        // frozen ship — and a healthy buffer plays at full rate.
+        const runwayS = (current.simTime + PRESENTATION_EXTRAPOLATION_S) - presentedTime;
+        const runwayFactor = Number.isFinite(runwayS)
+          ? Math.max(PLAYOUT_RATE_MIN, Math.min(1, runwayS / PLAYOUT_RUNWAY_TARGET_S))
+          : 1;
+        let next = presentedTime + elapsed * presentationRate * runwayFactor;
+        const gap = boundedTarget - next;
+        // Critically damped re-seat: close the gap with no overshoot over a fixed horizon.
+        if (gap > 0) next += gap * (1 - Math.exp(-elapsed / PLAYOUT_CORRECTION_TAU_S));
+        // Past the newest sample by more than the extrapolation window the clock holds; the
+        // sim catches up to it. It never rewinds.
         const cap = current.simTime + PRESENTATION_EXTRAPOLATION_S;
-        let next = presentedTime + elapsed * presentationRate;
-        if (target > next) next += (target - next) * PRESENTATION_CATCHUP_GAIN;
-        // Past the extrapolation window (silence, or a reply landed behind the extrapolated
-        // moment) the clock holds; the sim catches up to it. It never rewinds.
         if (next > cap) next = cap;
         presentedTime = Math.max(presentedTime, next);
       }
       presentedSequence = current.sequence;
       presentedEpoch = current.poseEpoch;
       presentedSnapshotTime = current.simTime;
-      if (!(span > 0)) return 1;
-      const alpha = (presentedTime - prior.simTime) / span;
-      return alpha < 0 ? 0 : alpha;
+      presentedValid = true;
+      const alpha = this.resolvePresentedBracket(presentedTime, fallbackAlpha);
+      // The fence's sequence reads as the PRESENTED bracket's commit sequence while a
+      // presented sample is active: the pose-apply compares this against the served
+      // snapshot's sequence to choose the presented alpha (renderer contract, unchanged).
+      if (presentedPair && presentedPair.b >= 0) {
+        presentedSequence = buffers[presentedPair.b].sequence;
+      }
+      return alpha;
     },
-    get sequence() { return sequence; },
+
+    /**
+     * Resolve the history pair bracketing the presented moment and return the blend parameter.
+     * Past the newest sample the NEWEST pair blends (freshest velocity) with alpha > 1;
+     * behind all history the oldest pair serves at alpha 0 until the clock catches up.
+     */
+    resolvePresentedBracket(timeS, fallbackAlpha = 1) {
+      const count = orderedSealedBuffers();
+      if (count === 0) {
+        presentedPair = null;
+        return fallbackAlpha;
+      }
+      const newestIdx = bracketOrder[0];
+      const newest = buffers[newestIdx];
+      // The newest pack's same-epoch predecessor, if any (freshest known velocity pair).
+      let priorOfNewest = -1;
+      for (let i = 1; i < count; i++) {
+        if (sameEpochPair(bracketOrder[i], newestIdx)) { priorOfNewest = bracketOrder[i]; break; }
+      }
+      if (priorOfNewest < 0) {
+        // No blend source in this epoch (boot, or the first pack after a teleport):
+        // draw the arriving pose exactly instead of guessing.
+        presentedPair = { a: -1, b: newestIdx, alpha: 1 };
+        return 1;
+      }
+      if (!(timeS < newest.simTime)) {
+        // Extrapolation zone: the newest pair carries the freshest known velocity.
+        const span = newest.simTime - buffers[priorOfNewest].simTime;
+        const alpha = span > 0 ? 1 + (timeS - newest.simTime) / span : 1;
+        presentedPair = { a: priorOfNewest, b: newestIdx, alpha };
+        return alpha;
+      }
+      for (let i = 0; i < count - 1; i++) {
+        const newerIdx = bracketOrder[i];
+        const olderIdx = bracketOrder[i + 1];
+        if (!sameEpochPair(olderIdx, newerIdx)) continue;
+        const newer = buffers[newerIdx];
+        const older = buffers[olderIdx];
+        if (timeS >= older.simTime && timeS <= newer.simTime) {
+          const span = newer.simTime - older.simTime;
+          const alpha = span > 0 ? (timeS - older.simTime) / span : 1;
+          presentedPair = { a: olderIdx, b: newerIdx, alpha };
+          return alpha;
+        }
+      }
+      // Behind all history (clock lagged past the ring after a long hold): serve the oldest
+      // same-epoch pair at alpha 0; the catch-up term above re-seats within ~90 ms.
+      let oldestIdx = -1;
+      let olderStillIdx = -1;
+      for (let i = count - 1; i >= 0; i--) {
+        const idx = bracketOrder[i];
+        if (buffers[idx].simTime <= timeS || oldestIdx < 0) {
+          if (oldestIdx >= 0 && sameEpochPair(idx, oldestIdx)) olderStillIdx = idx;
+          if (oldestIdx < 0) oldestIdx = idx;
+        }
+      }
+      if (oldestIdx >= 0) {
+        presentedPair = { a: olderStillIdx, b: oldestIdx, alpha: 0 };
+        return 0;
+      }
+      presentedPair = { a: -1, b: newestIdx, alpha: 1 };
+      return 1;
+    },
+  // E10 playout telemetry: the presented clock's latency behind the newest pack, the
+  // extrapolation past it, the depth of history under the presented moment, and the
+  // adaptive playout delay state.
+  getPlayoutDiagnostics() {
+    const current = latest >= 0 ? buffers[latest].published : null;
+    if (!current) {
+      return {
+        delayMs: null,
+        extrapolateMs: null,
+        bufferDepthPacks: 0,
+        playoutDelayMs: playoutDelayS * 1000,
+        playoutDelayTargetMs: playoutDelayTargetS * 1000,
+        playoutDryEvents,
+        presentedTimeS: NaN,
+        latestSimTimeS: NaN,
+        playbackRate: presentationRate,
+        packCount,
+      };
+    }
+    const presented = Number.isFinite(presentedTime) ? presentedTime : current.simTime;
+    // History depth: packs between the presented bracket's newer member and the newest
+    // (both inclusive), measured in commit order.
+    let depth = 0;
+    if (presentedPair && presentedPair.b >= 0) {
+      const bracketSequence = buffers[presentedPair.b].sequence;
+      depth = Math.max(0, current.sequence - bracketSequence);
+    }
+    return {
+      delayMs: Math.max(0, (current.simTime - presented) * 1000),
+      extrapolateMs: Math.max(0, (presented - current.simTime) * 1000),
+      bufferDepthPacks: depth,
+      playoutDelayMs: playoutDelayS * 1000,
+      playoutDelayTargetMs: playoutDelayTargetS * 1000,
+      playoutDryEvents,
+      presentedTimeS: presented,
+      latestSimTimeS: current.simTime,
+      playbackRate: presentationRate,
+      packCount,
+    };
+  },
+    // The presented bracket's commit sequence while a presented sample is active (see
+    // samplePresentationAlpha); the raw commit counter otherwise.
+    get sequence() {
+      if (presentedValid && presentedPair && presentedPair.b >= 0
+          && buffers[presentedPair.b].sealed) {
+        return presentedSequence;
+      }
+      return sequence;
+    },
     get packCount() { return packCount; },
     /** Bytes packed by the most recent commit. 0 before the first pack. */
     get lastBytesPacked() { return lastBytesPacked; },
@@ -337,6 +681,8 @@ export function createSnapshotFence(options = {}) {
       };
     },
   };
+  latestCreatedFence = fence;
+  return fence;
 }
 
 export function snapshotIndexOf(snapshot, entityId) {
@@ -493,7 +839,13 @@ export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previo
  * (test doubles) get null and run the classic walk.
  */
 function fastPackPrevious(world, fence, poseEpoch) {
-  const previous = typeof fence.latestSnapshot === 'function' ? fence.latestSnapshot() : null;
+  // The pack base is always the TRUE newest commit — never the presented bracket the
+  // pose-apply accessors serve (E1): copying clean rows from a playout-delayed pack
+  // would move them backwards in time.
+  const previous = typeof fence.newestSnapshot === 'function'
+    ? (fence.newestSnapshot() || (typeof fence.latestSnapshot === 'function'
+      ? fence.latestSnapshot() : null))
+    : (typeof fence.latestSnapshot === 'function' ? fence.latestSnapshot() : null);
   if (!previous || previous.poseEpoch !== poseEpoch || !previous.slotRows) return null;
   const stamp = fence.packMembership;
   if (!stamp || typeof world.getDiagnostics !== 'function') return null;
@@ -593,10 +945,13 @@ export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoc
   // copy them verbatim instead of re-reading a dozen columns + re-deriving the
   // yaw pair + re-stamping lean. The latest pack must share this pack's pose
   // epoch: a slot remap (sector jump, mirror rebuild) teleports every row and
-  // always falls back to the full write. (latestSnapshot is the pack minted
-  // last frame — previousSnapshot is two packs back and would reintroduce
-  // poses dirtied since.)
-  const previous = typeof fence.latestSnapshot === 'function' ? fence.latestSnapshot() : null;
+  // always falls back to the full write. (newestSnapshot is the pack minted
+  // last frame — the presented bracket the pose accessors serve is playout-delayed
+  // and would reintroduce poses dirtied since.)
+  const previous = typeof fence.newestSnapshot === 'function'
+    ? (fence.newestSnapshot() || (typeof fence.latestSnapshot === 'function'
+      ? fence.latestSnapshot() : null))
+    : (typeof fence.latestSnapshot === 'function' ? fence.latestSnapshot() : null);
   const previousIndex = previous && previous.poseEpoch === poseEpoch
     ? (previous.indexByEntityId || null) : null;
   let packed = 0;
@@ -750,7 +1105,12 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
     // row re-packs — byte-identical to the atomic output, just paced.
   }
   const snapshot = fence.beginPack(Math.max(1, active), simTime, poseEpoch, slotCap);
-  const previous = typeof fence.latestSnapshot === 'function' ? fence.latestSnapshot() : null;
+  // Same rule as the fast pack: copy base is the TRUE newest commit, never the
+  // playout-delayed presented bracket.
+  const previous = typeof fence.newestSnapshot === 'function'
+    ? (fence.newestSnapshot() || (typeof fence.latestSnapshot === 'function'
+      ? fence.latestSnapshot() : null))
+    : (typeof fence.latestSnapshot === 'function' ? fence.latestSnapshot() : null);
   const previousIndex = previous && previous.poseEpoch === poseEpoch
     ? (previous.indexByEntityId || null) : null;
   let packed = 0;

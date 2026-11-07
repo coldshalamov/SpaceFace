@@ -19,6 +19,9 @@
 //   swarm:bossDown     { name, wave } — slow-mo + payout beat
 //   swarm:chainTier    { name, at, chain } — IGNITION/FLARE/NOVA/SUPERNOVA/SINGULARITY
 //   swarm:chainShatter { chain, best } — a broken chain is loud, never silent
+//   swarm:announce     { kind: 'overdrive', text, count } — the chain's score cap opens its one
+//                      overdrive window (guns cycle ×rate while the chain holds); the call names
+//                      the gear change when it opens and when the break takes it away
 //
 // It also gives each big moment its own sound as `audio:cue` (SWARM_MOMENT_CUES): the round slam
 // (boss round heavier), one tick per tally row on the HUD's stagger then a resolve chord, the
@@ -167,6 +170,10 @@ export const swarmJuice = {
     this._unsubs.push(this.bus.on('capitalBoss:start', (p) => this._onCapitalBoss(p)));
     this._unsubs.push(this.bus.on('swarm:chain', (p) => this._onChain(p)));
     this._unsubs.push(this.bus.on('swarm:chainBroken', (p) => this._onChainBroken(p)));
+    // inf-overdrive-voice — the chain owner opens its one overdrive window at the score cap and
+    // closes it on the break; the receipt had no consumer, so the triple-rate guns arrived and
+    // left in silence.
+    this._unsubs.push(this.bus.on('swarm:overdrive', (p) => this._onOverdrive(p)));
     // inf-storm-discharge — the lattice firing is a room moment, so it speaks through the
     // one-voice announcer like every other named beat (the arena emits the receipt; the
     // juice layer decides whether it is worth a word).
@@ -227,6 +234,7 @@ export const swarmJuice = {
     this._bestChain = 0;            // the run's chain high-water, for the tally
     this._lastChain = 0;            // the live chain — hit-stop scales on its tier
     this._maxTierAt = 0;            // last announced tier mark — menus never re-announce
+    this._overdriveLive = false;    // an opened overdrive window this juice layer has named
     this._bossWave = 0;
     this._boss = new Map();         // entity ref -> { dead } — identity, never ids
     this._bossAlive = 0;
@@ -531,6 +539,46 @@ export const swarmJuice = {
       gain: Math.min(0.9, 0.4 + 0.01 * ended),
     });
     this._maxTierAt = 0;
+  },
+
+  /**
+   * inf-overdrive-voice — the chain's score cap is where the reward changes kind: the bonus
+   * stops climbing and the guns start cycling at the overdrive rate for as long as the chain
+   * holds. That gear change used to happen in silence on both edges. Opening it gets the
+   * announcer's word with the rate the weapons actually read, the climb's top chime (the
+   * octave no tier mark uses, so it never reads as another rung) and the chain's own dip;
+   * the break that takes it away says so, so a sudden slow gun is never a mystery. Only a
+   * window this layer saw open is closed out loud, and a run that ended closes nothing.
+   */
+  _onOverdrive(payload) {
+    if (!payload) return;
+    const run = liveSwarmRun(this.state);
+    if (payload.active === true) {
+      if (!run || this._overdriveLive) return;
+      this._overdriveLive = true;
+      const rate = Number.isFinite(payload.rate) && payload.rate > 1 ? payload.rate : null;
+      const chain = Number.isFinite(payload.chain) ? payload.chain : this._lastChain;
+      this._emit('swarm:announce', {
+        kind: 'overdrive',
+        text: rate ? `OVERDRIVE · GUNS ×${rate}` : 'OVERDRIVE',
+        count: chain,
+      });
+      this._emit('audio:cue', {
+        id: SWARM_MOMENT_CUES.chainTier,
+        gain: 0.9,
+        rate: swarmClimbRate(SWARM_CLIMB_RATES.length - 1),
+      });
+      this._requestHitStop(run);
+      return;
+    }
+    if (payload.active !== false || !this._overdriveLive) return;
+    this._overdriveLive = false;
+    if (!run) return;
+    this._emit('swarm:announce', {
+      kind: 'overdrive',
+      text: 'OVERDRIVE SPENT',
+      count: Number.isFinite(payload.chain) ? payload.chain : 0,
+    });
   },
 
   // --- the sound of the moments --------------------------------------------------------

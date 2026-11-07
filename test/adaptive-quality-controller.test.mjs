@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import { createGameState } from '../src/core/gameState.js';
 import {
+  adaptiveFloorForCombinedScale,
   adaptiveFrameBudgetMs,
   adaptiveResolutionEligibleForState,
   adaptiveResolutionEnabledForSettings,
@@ -130,6 +131,37 @@ test('isolated stalls are ignored but sustained 130 ms frames adapt and revert w
   assert.equal(controller.getScale(), 0.9, 'a sustained slow window is still measured');
   feed(controller, 0.13, 28, { eligible: true, targetMs: 1000 / 60 });
   assert.equal(controller.getScale(), 1, 'a non-beneficial band is restored after the trial');
+});
+
+test('a borderline sustained miss parks at a shallow band instead of grinding to the floor', () => {
+  // The far-zoom regression: the wider submit box used to walk every band on the same mild
+  // miss, so a ~20-40% overage presented the readability floor. Deeper bands now demand a
+  // progressively worse sustained miss — this ~1.4x load sheds one band and settles.
+  const controller = createAdaptiveResolution({ floor: 0.5 });
+  feed(controller, 0.0233, 90, { eligible: true, targetMs: 1000 / 60 });
+  assert.equal(controller.getScale(), 0.9, 'a real but mild miss still sheds the first band');
+  feed(controller, 0.0222, 500, { eligible: true, targetMs: 1000 / 60 });
+  assert.equal(controller.getScale(), 0.9, 'the deeper gate refuses a ~1.33x sustained miss');
+
+  const borderline = createAdaptiveResolution({ floor: 0.5 });
+  feed(borderline, 0.0208, 600, { eligible: true, targetMs: 1000 / 60 });
+  assert.equal(borderline.getScale(), 1, 'a ~1.25x miss never reaches even the first band');
+});
+
+test('raster relief raises the adaptive floor — combined scale stays readable', () => {
+  assert.equal(adaptiveFloorForCombinedScale(0.6, 1), 0.6,
+    'no relief means the plain tier floor');
+  assert.ok(Math.abs(adaptiveFloorForCombinedScale(0.6, 0.8) - 0.75) < 1e-9,
+    'hitch relief 0.8 lifts the discrete floor to 0.75');
+  assert.ok(Math.abs(adaptiveFloorForCombinedScale(0.5, 0.72) - (0.6 / 0.72)) < 1e-9,
+    'integrated + hitch relief lifts the integrated floor to ~0.83');
+
+  const controller = createAdaptiveResolution({ floor: 0.5 });
+  controller.syncScale(0.5);
+  controller.setFloor(0.8);
+  assert.equal(controller.getScale(), 0.8, 'a raised floor lifts the live scale at once');
+  controller.setFloor(0.5);
+  assert.equal(controller.getScale(), 0.8, 'a lowered floor leaves the recovered scale alone');
 });
 
 test('isolated 330 ms stalls are ignored but sustained 330 ms frames adapt and revert without benefit', () => {

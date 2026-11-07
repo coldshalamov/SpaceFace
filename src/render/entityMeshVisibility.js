@@ -19,6 +19,9 @@ export function shouldSubmitEntityMesh(options = {}) {
   const protectedRoot = isProtectedEntityMesh(options);
   if (options.snapshotMissing === true && !protectedRoot) return false;
   if (protectedRoot) return true;
+  // Held by the residency manager until its geometry is on the GPU. The root never enters
+  // the submit list early, so "visible" always means "has resident data to draw".
+  if (options.residencyHeld === true) return false;
   // Stand-in contract: the caller passes standInResident when this root is already drawing a
   // resident, already-linked low-detail proxy. Pending gates then must not blank the picture;
   // the glass/tier verdicts below still apply.

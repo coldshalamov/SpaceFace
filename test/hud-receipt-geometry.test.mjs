@@ -93,8 +93,13 @@ function fixture({ mode = 'shared', cards = 1, captionHeight = 56, captionSlot =
   const slot = { x: 12, width: 400, ...(captionSlot ? { captionSlot: { x: 12, width: 120 } } : {}) };
   let externalPlacements = 0;
   let published = [];
+  let performanceNow = 0;
+  const pendingTimers = [];
   const context = {
     Set,
+    performance: { now: () => performanceNow },
+    setTimeout: (fn) => { pendingTimers.push(fn); return pendingTimers.length; },
+    clearTimeout: (id) => { if (id > 0 && id <= pendingTimers.length) pendingTimers[id - 1] = null; },
     root: { querySelectorAll: () => [obstacle], querySelector: () => true },
     document: { querySelectorAll: () => [], getElementById: id => id === 'toasts' ? laneRoot : null },
     window: { innerWidth: 1000, innerHeight: 720 },
@@ -122,6 +127,9 @@ function fixture({ mode = 'shared', cards = 1, captionHeight = 56, captionSlot =
       'invalidateAndPlaceHudOverlays'].includes(name)).map(([, code]) => code).join('\n') : '';
   const api = runInNewContext(`let receiptPlacementMode = ${JSON.stringify(mode)};
     let receiptGeometryRects = new Map();
+    let flightTextObstacleSnapshotAt = -Infinity;
+    let flightTextObstacleRetry = null;
+    const FLIGHT_TEXT_OBSTACLE_MIN_MS = 100;
     ${owners.join('\n')}; ${extraCode}; ({ freeOverlayBands, flushReceiptLane, placeReceiptLane, readReceiptRect,
       placeCaptionInSafeSlot, ${owners.some(s => s.startsWith('function setReceiptPlacementMode')) ? 'setReceiptPlacementMode,' : ''}
       ${owners.some(s => s.startsWith('function setReceiptStyle')) ? 'setReceiptStyle,' : ''}
@@ -129,6 +137,8 @@ function fixture({ mode = 'shared', cards = 1, captionHeight = 56, captionSlot =
       cacheActive: () => receiptGeometryRects !== null })`, context);
   return { ...api, context, slot, layout, obstacle, control, caption, laneRoot, receiptCards, reads, events,
     read, element, resetMeasurements() { reads.clear(); events.length = 0; dirty = false; flushes = 0; },
+    advanceNow(ms) { performanceNow += ms; },
+    flushTimers() { for (const fn of pendingTimers.splice(0)) { if (fn) fn(); } },
     get published() { return published; },
     get flushes() { return flushes; }, get externalPlacements() { return externalPlacements; } };
 }
@@ -343,7 +353,9 @@ test('responsive resize, moving obstacles and arriving/refreshed/released critic
   fx.flushReceiptLane();
   assert.ok(Number.parseFloat(notice.style.top) >= 408, 'a moving/growing obstacle is remeasured on the next flush');
   assert.equal(fx.releaseExternalFlightCaption(notice), true);
+  fx.advanceNow(150);
   fx.flushReceiptLane();
+  fx.flushTimers();
   assert.equal(notice.style.top, '', 'release restores caller placement');
   assert.equal(fx.published.some(entry => entry.owner === 'flight-caption'), false);
   assert.equal(fx.context.externalCaptionOpacity.size, 0);

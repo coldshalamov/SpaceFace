@@ -11,7 +11,7 @@
 // settlement, news:publish for the headline. No timer HUD, no scripted stop at N
 // metres — completion is a function of the crucible's own velocity, nothing else.
 import { occupantGenerationOf } from '../core/entity.js';
-import { physicsBodyNativeReady, readPhysicsTelemetry } from '../core/physicsAuthority.js';
+import { physicsBodyNativeReady, readPhysicsTelemetry, requestPhysicsTelemetry } from '../core/physicsAuthority.js';
 import { kilnbackPhysicalBody, KILNBACK_RADIUS } from '../data/kilnbackBody.js';
 
 const DRIFT_SPEED = 24;           // WU/s authored closing speed — ~90-100 s of work on the ring
@@ -30,6 +30,8 @@ const TRANSPORT = new WeakMap();
 
 function bindCrucible(live, entity, restored = null, nativeRequired = false) {
   BINDINGS.set(live, { entity, data: entity.data, generation: occupantGenerationOf(entity), restored, nativeRequired, initialMotion: projectedMotion(entity) });
+  // E2: the completion rule reads this hull's measured post-solve state.
+  requestPhysicsTelemetry(entity);
 }
 
 function ownedCrucible(state, live) {

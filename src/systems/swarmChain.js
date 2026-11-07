@@ -328,6 +328,13 @@ export const swarmChain = {
    * same continue/step logic an entity kill uses, so a 40-body room wipe climbs the chain
    * exactly as 40 ship kills would. The receipt is the once-only accounting: the engine kills
    * each body once, and nothing else consumes brood deaths.
+   *
+   * inf-brood-chain-open: each body IS a kill at `now`, and stamps it before the next body
+   * reads the window — exactly what N same-tick ship kills do, each through _onKilled. The
+   * stamp used to land only after the whole batch, so a wipe that OPENED a chain read the old
+   * kill time for every body after the first: each one "lapsed", broke the one-body chain it
+   * had just started and began again at one — a 40-mite opener counted 1 and threw 39 broken-
+   * chain receipts. Mid-chain batches were never affected (their window was already live).
    */
   _onBroodKills(payload) {
     const run = liveSwarmRun(this.state);
@@ -344,8 +351,8 @@ export const swarmChain = {
       this._chain = continues ? this._chain + step : step;
       this._lastCause = cause;
       this._lastStep = step;
+      this._lastKillAt = now;
     }
-    this._lastKillAt = now;
     this._warned = false;
     if (this._chain > this._best) this._best = this._chain;
 
