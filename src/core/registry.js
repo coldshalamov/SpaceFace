@@ -298,6 +298,7 @@ import { spectrum } from '../systems/spectrum/index.js';
 import { createLiveMercyServiceSystem } from '../response/mercyService/live.js';
 import { createWreckCourtSystem } from '../systems/wreckCourt.js';
 import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
+import { getSimStepProfiler } from './simStepProfiler.js';
 import { runRenderUpdatePhase } from './renderUpdatePhase.js';
 import { resolveRuntimeManifest } from '../runtime/resolveRuntimeManifest.js';
 import { getSystemCapability, isNodeSafeSystemId } from '../runtime/authoritativeSystemManifest.js';
@@ -940,7 +941,16 @@ export function createRegistry(ctx) {
       // host contention (see perfCounters.js header).
       const tier1 = perf.tier1;
       const countSystems = !!tier1 && tier1.isEnabled();
-      const measureSystems = perf.shouldMeasureSystemsThisStep(state.tick);
+      // One profiler for both realms: enabling the E2 per-system profile on the main lane takes
+      // the measured path (which already times each system) instead of adding a second clock.
+      const stepProfiler = getSimStepProfiler();
+      const stepProfilerActive = stepProfiler.active;
+      const measureSystems = perf.shouldMeasureSystemsThisStep(state.tick) || stepProfilerActive;
+      if (stepProfilerActive) stepProfiler.beginTick();
+      const recordSystem = (name, elapsedMs) => {
+        perf.recordSystem(name, elapsedMs);
+        if (stepProfilerActive) stepProfiler.record(name, elapsedMs * 1e6);
+      };
       if (!measureSystems) {
         try {
           if (countSystems) tier1.countSystemInvocation('core.preStep');
@@ -969,12 +979,12 @@ export function createRegistry(ctx) {
       let t = perfNow();
       if (countSystems) tier1.countSystemInvocation('core.preStep');
       try { core.preStep(dt, state); }
-      finally { perf.recordSystem('core.preStep', perfNow() - t); }
+      finally { recordSystem('core.preStep', perfNow() - t); }
       if (input.update) {
         if (countSystems) tier1.countSystemInvocation(input.name || 'input');
         t = perfNow();
         try { input.update(dt, state); }
-        finally { perf.recordSystem(input.name, perfNow() - t); }
+        finally { recordSystem(input.name, perfNow() - t); }
       }
       if (tickBoundary && typeof tickBoundary.publishInputCommand === 'function') {
         tickBoundary.publishInputCommand(state.input, state.tick,
@@ -982,19 +992,20 @@ export function createRegistry(ctx) {
       }
       t = perfNow();
       try { postInputPartitions.drainStep(dt, state); }
-      finally { perf.recordSystem('core.tickDrains', perfNow() - t); }
+      finally { recordSystem('core.tickDrains', perfNow() - t); }
       for (const s of updateQueueForThisStep(postInputPartitions, state)) {
         if (countSystems) tier1.countSystemInvocation(s.name);
         t = perfNow();
         try { s.update(postInputPartitions.updateDt(s, dt, state), state); }
-        finally { perf.recordSystem(s.name, perfNow() - t); }
+        finally { recordSystem(s.name, perfNow() - t); }
       }
       t = perfNow();
       if (countSystems) tier1.countSystemInvocation('core.lifetimeSweep');
       try { core.lifetimeSweep(dt, state); }
       finally {
-        perf.recordSystem('core.lifetimeSweep', perfNow() - t);
+        recordSystem('core.lifetimeSweep', perfNow() - t);
         perf.recordStepTotal(perfNow() - stepStart);
+        if (stepProfilerActive) stepProfiler.endTick();
       }
     },
     renderUpdate(alpha, frameDt, presentationFrame = null) {

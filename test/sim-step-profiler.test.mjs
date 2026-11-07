@@ -2,6 +2,31 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createSimStepProfiler } from '../src/core/simStepProfiler.js';
+import { createSimulation } from '../src/core/sim.js';
+import { getSimStepProfiler } from '../src/core/simStepProfiler.js';
+import { economy } from '../src/systems/economy.js';
+
+test('the main-lane registry feeds the same per-system profiler', () => {
+  const profiler = getSimStepProfiler();
+  profiler.reset();
+  profiler.setEnabled(true);
+  const sim = createSimulation({ seed: 123, systems: [economy] });
+  try {
+    sim.step(1 / 60);
+    sim.step(1 / 60);
+    const report = profiler.snapshot();
+    assert.ok(report.ticksMeasured >= 1, 'the main lane measured a tick');
+    const ids = new Set(report.systems.map((row) => row.id));
+    assert.ok(ids.has('core.preStep'), 'core pre-step is ranked');
+    assert.ok(ids.has('core.tickDrains'), 'the per-tick drain is ranked');
+    assert.ok(ids.has('core.lifetimeSweep'), 'the lifetime sweep is ranked');
+    assert.equal(report.systems.find((row) => row.id === 'core.tickDrains').nested, false);
+  } finally {
+    profiler.setEnabled(false);
+    profiler.reset();
+    sim.dispose();
+  }
+});
 
 test('the profiler ranks top-level systems and tags sub-phases instead of double-counting them', () => {
   const profiler = createSimStepProfiler();
