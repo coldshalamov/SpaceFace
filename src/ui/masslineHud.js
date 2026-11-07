@@ -78,8 +78,15 @@ const VERDICT_CAUSE_COPY = Object.freeze({
   swing: 'NEEDED MORE SPEED',
   unobserved: 'UNGRADED',
 });
-export function releaseVerdictCopy(rating) {
+export function releaseVerdictCopy(rating, { plain = false } = {}) {
   if (!rating || typeof rating !== 'object') return '';
+  // X3 Adventure glass: one plain word at the body. The measured cause and the kept-share
+  // percentage belong to the details surfaces, not the flight glass.
+  if (plain) {
+    if (rating.broke === true) return 'BROKE';
+    if (rating.severed === true) return 'CUT';
+    return VERDICT_GRADE_COPY[rating.classification] || 'RELEASED';
+  }
   // A failure snap is not a grade. Ordinary release keeps the crest/swing copy below.
   if (rating.broke === true) return 'LINE BROKE';
   if (rating.severed === true) return 'LINE CUT';
@@ -1660,7 +1667,7 @@ export const masslineHud = {
       ? 'break'
       : (VERDICT_GRADE_COPY[verdict.classification] ? verdict.classification : 'messy');
     const earned = !failed && (grade === 'razor' || grade === 'clean');
-    const text = releaseVerdictCopy(verdict);
+    const text = releaseVerdictCopy(verdict, { plain: isAdventureFlight(state) });
     const placed = placeHudBracketWords(this, dom.previewEl, text,
       { x: cueX, y: cueY }, player, w2s, { w: viewportWidth, h: viewportHeight });
     setStyle(dom.previewMark, 'display', 'block');

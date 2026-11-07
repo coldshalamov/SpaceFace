@@ -126,7 +126,8 @@ export function createDiscoveryPlate(ctx) {
       const now = performance.now();
       if (now < nextReceiptAt) return;
       const rec = queue[0];
-      if (presentReceipt({ text: `Discovery: ${rec.title} · saved to Codex`, kind: 'info', ttl: 4, silent: true })) {
+      const text = `Discovery: ${rec.title} · saved to Codex`;
+      if (presentReceipt({ text, kind: 'info', source: 'discovery', channel: 'discovery', ttl: 4, silent: true })) {
         queue.shift();
         nextReceiptAt = now + RECEIPT_SPACING_MS;
       }

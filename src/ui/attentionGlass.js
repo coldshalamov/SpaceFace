@@ -5,7 +5,8 @@
 // difference is scope — S2's `isSwarmGlass` is false for Adventure, so Adventure had no policy.
 //
 // Rules (design/program/finish/campaigns/X3/DIAGNOSIS.md):
-//   - Adventure flight admits fight, objective, system and error receipts;
+//   - Adventure flight admits only actionable receipts: combat, objective, system, error,
+//     danger and warning; an unknown source stays off the glass;
 //   - prose sources (bark, chatter, news, landmark, codex, discovery, faction, contract, lore)
 //     do not draw over the action; they belong to the bar, codex or station;
 //   - a stunt/massline callout must be plain words: ≤ 3 words, no mass/tonnage/strain jargon,
@@ -16,27 +17,54 @@
 
 import { isSwarmGlass, swarmCalloutText } from './swarmGlass.js';
 
-/** The Adventure flight transient stack: S2's three-word rule, no new budget. */
-export const ADVENTURE_CALLOUT_WORDS = 3;
-export const ADVENTURE_TRANSIENT_MAX = 3;
+// The transient stack is the receipt lane's own `RECEIPT_MAX` (2), which already sits inside
+// S2's three-line budget; there is no second Adventure constant to keep in sync.
 
-// Sources whose copy is world texture, not something the player must act on mid-flight.
-const QUIET_SOURCES = new Set([
-  'bark', 'chatter', 'news', 'landmark', 'codex', 'discovery', 'faction', 'contract',
-  'lore', 'radio', 'ambient', 'flavor', 'briefing',
+// Adventure glass is an ALLOWLIST, like S2's: a receipt draws only when its source is one the
+// player must act on mid-flight. An unknown source (a new rumor/market feed, a future narrator)
+// therefore stays off the glass by default instead of leaking through a denylist.
+const ACTIONABLE_SOURCES = new Set([
+  'combat', 'objective', 'system', 'error', 'danger', 'warning',
+  // A capital-boss receipt is a fight receipt; Adventure has capital encounters too.
+  'boss',
 ]);
-
-// Kinds whose copy is actionable even in flight.
-const ACTIONABLE_KINDS = new Set(['error', 'danger', 'warning']);
+// Kinds whose copy is actionable even in flight. 'warn' is the legacy spelling of 'warning'.
+const ACTIONABLE_KINDS = new Set(['error', 'danger', 'warning', 'warn']);
+// Kinds that describe mechanical feedback rather than a narrative channel. A receipt that names
+// no channel but carries one of these is a system receipt, so it keeps drawing.
+const MECHANICAL_KINDS = new Set(['success', 'good', 'credits', 'rep', 'info']);
 // A sentence with more than one clause is prose, not a flight callout. The store-page tagline
 // ("Light ships are ammunition. Swing a rock. Keep the speed.") is the test case: the lesson
 // stays in onboarding, but it does not draw over the action.
 const MULTI_SENTENCE = /[.!?]\s+[A-Z]/;
 
+/** The policy source a receipt carries: an explicit channel, a boss, or its mechanical kind. */
+export function receiptSource(kind, channel) {
+  if (channel === 'capitalBoss') return 'boss';
+  const channelText = String(channel || '');
+  if (channelText) return channelText;
+  const k = String(kind || 'info');
+  return MECHANICAL_KINDS.has(k) ? 'system' : k;
+}
+
+function mapScreenOpen(state) {
+  const ui = state && state.ui;
+  if (!ui) return false;
+  // X5's map context predicate; the map owns the screen, so the flight glass abstains.
+  if (ui.mapOpen === true || ui.screen === 'map') return true;
+  const stack = Array.isArray(ui.screenStack) ? ui.screenStack : [];
+  return stack.some((screen) => {
+    const id = typeof screen === 'string' ? screen : (screen && (screen.id || screen.screenId));
+    return id === 'map' || id === 'galaxyMap' || id === 'localmap' || id === 'starmap';
+  });
+}
+
 export function isAdventureFlight(state) {
   if (!state || state.mode !== 'flight') return false;
   if (isSwarmGlass(state)) return false;
   if (state.ui && state.ui.docked === true) return false;
+  // A chart overlay keeps mode 'flight' underneath; it is a map screen, not the flight glass.
+  if (mapScreenOpen(state)) return false;
   return true;
 }
 
@@ -53,9 +81,10 @@ export function attentionAdmits(state, { source = '', kind = 'info', text = '' }
   if (!isAdventureFlight(state)) return true;
   const k = String(kind || 'info');
   const s = String(source || '');
-  if (ACTIONABLE_KINDS.has(k)) return true;
+  // A stunt/massline line is a fight receipt only when it reads as a plain callout.
   if (k === 'stunt' || s === 'stunt' || s === 'massline') return plainCallout(text) != null;
-  if (QUIET_SOURCES.has(s) || QUIET_SOURCES.has(k)) return false;
-  if (k === 'info' && MULTI_SENTENCE.test(String(text || ''))) return false;
-  return true;
+  if (ACTIONABLE_KINDS.has(k)) return true;
+  // Prose never draws even when it arrives on an otherwise actionable channel.
+  if (MULTI_SENTENCE.test(String(text || ''))) return false;
+  return ACTIONABLE_SOURCES.has(s);
 }

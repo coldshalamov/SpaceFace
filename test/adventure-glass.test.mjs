@@ -23,12 +23,13 @@ test('Adventure flight is the flight glass, not the station or map', () => {
   assert.equal(isAdventureFlight({ mode: 'map', run: null }), false);
 });
 
-test('Adventure flight keeps fight, objective and error; it drops prose sources', () => {
+test('Adventure flight is an actionable allowlist; prose and unknown sources stay off', () => {
   const st = flight();
-  for (const source of ['combat', 'objective', 'mission', 'system', 'error']) {
+  for (const source of ['combat', 'objective', 'system', 'error', 'danger', 'warning']) {
     assert.equal(attentionAdmits(st, { source, text: 'Taking fire' }), true, source);
   }
-  for (const source of ['bark', 'chatter', 'news', 'landmark', 'codex', 'discovery', 'faction', 'contract']) {
+  for (const source of ['bark', 'chatter', 'news', 'landmark', 'codex', 'discovery', 'faction',
+    'contract', 'rumor', 'market']) {
     assert.equal(attentionAdmits(st, { source, text: 'The desk is open.' }), false, source);
   }
   assert.equal(attentionAdmits(st, { kind: 'error', text: 'Docking denied' }), true);
@@ -69,8 +70,8 @@ test('a multi-sentence tagline is prose, not a flight callout', () => {
     kind: 'info',
     state: st,
   }).admit, false);
-  // A one-sentence result still draws.
-  assert.equal(attentionAdmits(st, { kind: 'info', text: 'Refit complete.' }), true);
+  // A one-sentence result still draws on an actionable channel.
+  assert.equal(attentionAdmits(st, { kind: 'info', source: 'system', text: 'Refit complete.' }), true);
 });
 
 test('station screens keep their own words', () => {

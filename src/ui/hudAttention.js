@@ -7,7 +7,7 @@ import { isVoiceOwnedAlertToast } from './alerts.js';
 import { getPromptDevice } from './bindings.js';
 import { controlPrompt } from './controlPrompts.js';
 import { isSwarmGlass, swarmGlassAdmits, swarmCalloutText } from './swarmGlass.js';
-import { attentionAdmits, isAdventureFlight, plainCallout } from './attentionGlass.js';
+import { attentionAdmits, isAdventureFlight, plainCallout, receiptSource } from './attentionGlass.js';
 
 export const RECEIPT_MAX = 2;
 export const VITAL_NUMERIC_LOW = 0.5;
@@ -64,13 +64,16 @@ export function admitReceipt({
 } = {}) {
   const line = String(text || '').trim();
   if (!line) return { admit: false, reason: 'empty' };
+  // A validated Charon approach/milestone cue is a system receipt with an authoritative
+  // observation behind it; it survives the prose gate, and combat still quiets it below.
+  const charonDiscovery = charonApproach != null && validCharonApproachReceipt(state, { text, charonApproach });
   // Swarm glass (design/program/finish/swarm S2): a live Swarm round admits only fight
   // sources — chatter, news, codex, discovery, target cards and massline telemetry never
   // draw. Errors stay admitted (actionable failures like a denied purchase); boss-channel
   // receipts read as 'boss'; stunt receipts must also be a readable plain callout.
   if (isSwarmGlass(state)) {
     const k0 = String(kind || 'info');
-    const source = channel === 'capitalBoss' ? 'boss' : (channel || k0);
+    const source = receiptSource(k0, channel);
     if (k0 === 'stunt') {
       // Stunt receipts are a fight source gated by the callout's readability instead.
       if (!swarmCalloutText(line)) return { admit: false, reason: 'swarm-glass' };
@@ -83,8 +86,10 @@ export function admitReceipt({
   // screens are untouched.
   if (isAdventureFlight(state)) {
     const k0 = String(kind || 'info');
-    const source = channel === 'capitalBoss' ? 'boss' : (channel || k0);
-    if (k0 === 'stunt' || source === 'stunt') {
+    const source = receiptSource(k0, channel);
+    if (charonDiscovery) {
+      // admitted: a validated system cue, not chatter
+    } else if (k0 === 'stunt' || source === 'stunt') {
       if (!plainCallout(line)) return { admit: false, reason: 'adventure-glass' };
     } else if (!attentionAdmits(state, { source, kind: k0, text: line })) {
       return { admit: false, reason: 'adventure-glass' };
@@ -100,7 +105,6 @@ export function admitReceipt({
   if (CONTROL_LAUNDRY.test(line) || BIND_WALL.test(line)) {
     return { admit: false, reason: 'key-laundry' };
   }
-  const charonDiscovery = charonApproach != null && validCharonApproachReceipt(state, { text, charonApproach });
   if (charonApproach != null && !charonDiscovery) return { admit: false, reason: 'stale-charon-approach' };
   if (RADIO_CHATTER.test(line) && !charonDiscovery) {
     return { admit: false, reason: 'radio-chatter' };

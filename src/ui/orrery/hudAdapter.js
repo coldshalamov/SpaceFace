@@ -19,6 +19,7 @@ import { weaponHeatSummary } from '../weaponHeat.js';
 import { BOMB_SLOT_INDEX, readRailModel, RAIL_SLOTS, SUPPORT_SLOTS, railSlotTip, resolveSlotKeys, resolveSlotLabels, slotDescription } from '../powerRail.js';
 import { createArsenalPresentation, readArsenalBindings } from '../../data/arsenalPresentation.js';
 import { masslineInstrumentReadout } from '../hudAttention.js';
+import { isAdventureFlight } from '../attentionGlass.js';
 import { massDeclarationForTarget, physicalMassT } from '../../systems/cargoCustody.js';
 import { SHIPS } from '../../data/ships.js';
 import { resolveGovernedCombatSpeed, resolvePropulsionProfile } from '../../core/flight/propulsionCatalog.js';
@@ -350,6 +351,9 @@ export function readClusterModel(state, p, { tracker = null, ordnance = null, bi
     // burning, not recovering: the dial's DRIVE tag and halo belong to a spooling or engaged drive only
     driveActive: !!(drive && (drive.state === 'spooling' || drive.state === 'engaged')),
     drift,
+    // X3 Adventure glass: the beam and strain dial are instruments, the payload's
+    // label/tonnage/strain words are telemetry. The Cluster drops only the words.
+    quietTelemetry: isAdventureFlight(state),
     ordnance: ordnance || readOrdnanceModel(state, tracker, bindings),
     tether: tetherModel,
   };

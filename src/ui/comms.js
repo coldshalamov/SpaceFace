@@ -28,6 +28,7 @@ import { createCommsRadial } from './commsRadial.js';
 import { createEndingEpilogue } from './endingEpilogue.js';
 import { createCommsTrace } from './effects/commsTrace.js';
 import { openingInstructionSolo } from './hudAttention.js';
+import { isAdventureFlight } from './attentionGlass.js';
 import { isSwarmGlass } from './swarmGlass.js';
 
 const COMMS_STYLE_ID = 'sf-comms-style';
@@ -372,7 +373,9 @@ export function createComms(ctx) {
     if (!p || !p.text) return;
     // Swarm glass (design/program/finish/swarm S2): a live Swarm round never shows the
     // comms feed — the whole channel is narrative chatter, not the fight.
-    if (isSwarmGlass(state)) return;
+    // X3 Adventure glass: ordinary flight is the same case. The left-edge feed is prose
+    // texture; it belongs to the bar, codex or station, not over the action.
+    if (isSwarmGlass(state) || isAdventureFlight(state)) return;
     traceHoldUntilMs = Math.max(traceHoldUntilMs, nowMs() + 320);
     traceFactionId = resolveCommsFactionId(p, state, traceFactionId);
     const fromQueue = delivery === true || !!(delivery && delivery.fromQueue);

@@ -12,6 +12,7 @@ import {
   releaseBottomLaneClaim,
 } from './hudLayout.js';
 import { GYRE_SNARE } from '../data/gyreSnare.js';
+import { isAdventureFlight } from './attentionGlass.js';
 
 // DMG× telegraph: the stamped scale clamps at launchImpactScaleMax, which a
 // ~576 t clump already pegs — the yield arc would flat-line for the last ~75%
@@ -106,6 +107,9 @@ export const gyreHud = {
     const dom = this._ensureDom();
     if (!dom) return;
     if (state.mode !== 'flight' || (state.ui && state.ui.docked)) { this._hide(dom); return; }
+    // X3 Adventure glass: the pill is mass/count/strain telemetry. The Gyre still works and
+    // its audio/world feedback still reads; the words stay behind the details surfaces.
+    if (isAdventureFlight(state)) { this._hide(dom); return; }
     const g = state.gyreSnare || null;
     const { text, cls, strain, fuse, mass, row } = this._resolve(g, Number.isFinite(state.simTime) ? state.simTime : 0);
     if (!text) { this._hide(dom); return; }

@@ -131,15 +131,15 @@ test('CV-THROW-1 the verdict pill renders the grade, anchors on the body, and ex
     const preview = findByClass(root, 'ml2-preview');
     const mark = findByClass(root, 'ml2-preview-mark');
     assert.equal(preview.style.display, 'block', 'the verdict owns the pill slot while it lives');
-    assert.equal(preview.textContent, 'RAZOR · AT THE APEX',
-      'the pill names the grade and the cause in the bracket grammar');
+    assert.equal(preview.textContent, 'RAZOR',
+      'Adventure reads one plain grade word; the cause stays in details copy');
     assert.equal(preview.attributes['data-bracket-state'], 'verdict');
     assert.equal(preview.attributes['data-target-id'], String(rock.id));
     assert.equal(preview.classList.contains('ml2-preview-verdict'), true);
     assert.equal(preview.classList.contains('ml2-verdict-razor'), true);
     assert.equal(mark.classList.contains('ml2-shape-can'), true,
       'an earned cut keeps the solid diamond — the mark is a result, not a denial');
-    assert.equal(mark.attributes['aria-label'], 'RAZOR · AT THE APEX');
+    assert.equal(mark.attributes['aria-label'], 'RAZOR');
     assert.equal(mark.style.transform, 'translate3d(420px, 260px, 0)', 'the stamped live body anchors the mark');
 
     // A messy cut reads differently — weaker shape, warn grade.
@@ -148,8 +148,8 @@ test('CV-THROW-1 the verdict pill renders the grade, anchors on the body, and ex
       targetId: rock.id, classification: 'messy', technique: 'tow', deliberate: true, ...receiptFacts(rock),
     });
     hud.update(1 / 60, state);
-    assert.equal(preview.textContent, 'MESSY · NEVER SWUNG',
-      'the cause names why the cut graded low — that is the teaching');
+    assert.equal(preview.textContent, 'MESSY',
+      'Adventure keeps the grade word; the measured cause is details copy');
     assert.equal(preview.classList.contains('ml2-verdict-messy'), true);
     assert.equal(preview.classList.contains('ml2-verdict-razor'), false,
       'a new grade must not inherit the previous grade class');

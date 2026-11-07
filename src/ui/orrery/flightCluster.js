@@ -197,6 +197,9 @@ const CSS = `
 .orr-cluster.is-ship-under .orr-cluster__next,
 .orr-cluster.is-ship-under .orr-cluster__payload { opacity:.16; }
 .orr-cluster__payload { position:absolute; display:flex; flex-direction:column; gap:3px; white-space:nowrap; }
+/* X3 Adventure glass: the line's beam and strain dial stay; its "Body · on the line" / tonnage /
+   strain words are telemetry for the details surfaces, not the flight glass. */
+.orr-cluster__payload.is-quiet { display:none; }
 .orr-cluster__payload .orr-counter { font-family:var(--dp-face-numeral); font-weight:320; font-size:26px; color:var(--dp-phos, #dfeeff); }
 .orr-cluster__payload small { font-family:var(--dp-face-label); font-stretch:112%; font-weight:600; font-size: 12px; letter-spacing:.12em; color:var(--dp-ink-dim, #b7b4a6); }
 .orr-cluster__beam { stroke-dasharray:1 5; }
@@ -799,6 +802,10 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     }
     // tether
     const t = d.tether || null;
+    // X3 Adventure glass: the payload readout is mass/strain prose. The beam, the strain dial
+    // and the target still draw; only the words retire.
+    const quietPayload = d.quietTelemetry === true;
+    if (changed('quietPayload', quietPayload)) payload.classList.toggle('is-quiet', quietPayload);
     // The instrument answers the line, not the scale: tonnage is earned by the loaded
     // dwell, so before the measurement the tether still draws and live strain still reads —
     // only the mass numeral sits at the honest empty mark instead of a fabricated count.
