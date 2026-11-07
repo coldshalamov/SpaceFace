@@ -96,27 +96,48 @@ export const wreckChoicePrompt = {
     })) : [{
       id: 'take', label: 'TAKE THE CONTRACT', title: 'Commit to the claim and fly the recovery.',
     }]).concat([{ id: 'leave', label: 'LEAVE IT', cancel: true }]);
-    const podDueAt = isPod && offer.survivorPod && Number.isFinite(offer.survivorPod.oxygenDueAt)
-      ? offer.survivorPod.oxygenDueAt : null;
     const deckId = deckIdFor(offer.id);
     this._live.set(deckId, {
       offerId: offer.id,
       salvagePointId: offer.salvagePointId || (offer.params && offer.params.salvagePointId) || null,
       pod: isPod,
+      oxygenDueAt: offer.survivorPod?.oxygenDueAt,
+      statusFlag: isPod ? 'LIFE SIGNS · CHOOSE' : 'CONTRACT SIGNAL',
     });
     return deck.offerDecision({
       id: deckId,
       kind: isPod ? 'warn' : 'info',
       sender: String(offer.giver || 'WRECK TRANSMITTER'),
-      statusFlag: isPod ? 'LIFE SIGNS · CHOOSE' : 'CONTRACT SIGNAL',
+      statusFlag: isPod ? this._podStatus(deckId) : 'CONTRACT SIGNAL',
       headline: String(offer.title || 'Wreck claim'),
       detail: String((offer.choice && offer.choice.prompt) || offer.summary || 'A contract rides on this wreck.'),
-      // The pod's oxygen clock is the real deadline (producer-owned); other offers stand.
-      deadlineAt: podDueAt,
+      // Promoted pods remain stable after oxygen depletion; only the payout decays.
+      // Show the owner clock without turning it into a terminal decision deadline.
+      deadlineAt: null,
+      onTick: isPod ? () => this._refreshPodStatus(deckId) : null,
       choices,
       onChoose: (choiceId, source) => this._choose(offer.id, choiceId, source),
       onExpire: () => { this._live.delete(deckId); },
     });
+  },
+
+  _podStatus(deckId) {
+    const tracked = this._live.get(deckId);
+    if (!tracked) return null;
+    const rec = this._state?.survivorPod?.promotedByPoint?.[tracked.salvagePointId];
+    const dueAt = rec?.oxygenDueAt ?? tracked.oxygenDueAt;
+    const left = Number.isFinite(dueAt) ? Math.max(0, Math.ceil(dueAt - (this._state?.simTime || 0))) : null;
+    const air = left == null ? null : left > 0 ? `AIR ${left}s` : 'SURVIVOR STABLE · PAYOUT DECAYING';
+    return [tracked.statusFlag, air].filter(Boolean).join(' · ');
+  },
+
+  _refreshPodStatus(deckId) {
+    const tracked = this._live.get(deckId);
+    if (!tracked?.pod) return;
+    const statusFlag = this._podStatus(deckId);
+    if (tracked.lastStatus === statusFlag) return;
+    tracked.lastStatus = statusFlag;
+    getPromptDeck()?.updateDecision(deckId, { statusFlag });
   },
 
   _choose(offerId, choiceId, source) {
@@ -186,7 +207,9 @@ export const wreckChoicePrompt = {
       : 'Latch the pod to your massline first, then tow it out.';
     for (const [deckId, rec] of [...this._live]) {
       if (rec.salvagePointId !== payload.salvagePointId) continue;
-      deck.updateDecision(deckId, { statusFlag: flag, detail });
+      rec.statusFlag = flag;
+      rec.lastStatus = this._podStatus(deckId);
+      deck.updateDecision(deckId, { statusFlag: rec.lastStatus, detail });
     }
   },
 
