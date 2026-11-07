@@ -78,18 +78,24 @@ are now cadence-relative:
 | Budget-relative hitch truth in witness/probe/governor | a healthy 30 fps present is no longer reported as a hitch | `hitch-classifier` + witness suites: focused 266/266 |
 | Initial ship LOD only for <32 px specks | readable contacts keep the authored body | `ordinary-ship-lod` / policy 72/72 |
 
-## Open bottlenecks (ranked)
+## Open bottlenecks (ranked, post-fix)
 
-1. **Scene render** — normal-flight render p95 is still 25–39 ms depending on host load; the stress
-   scene (6 enemies/10 rocks) is the pole. Draw submission/program switches (E7: setProgram 5.7 ms,
-   drawPreparedFrame 15.75 ms), 52k stress-scene points, and 32 visible light slots are the candidates.
-   No whole-ship LOD substitution.
-2. **HUD** — the always-mounted HUD remains 12–17 ms p95 under load; the receipt lane fix targets the
-   largest single flush, then contact marks / radar / ORRERY springs.
-3. **Admission wall** — cold first flight still stages authored bodies late. Fast paths reduce the
-   warm path; the cold decode/compile lane and fallback disposal are the next fixes.
-4. **Host contention** — every claim here must be a matched/median result; single runs at 59 % CPU
-   are samples only.
+1. **Draw submission (E7)** — the frame is CPU/submit-bound, not fill-bound. `drawPreparedFrame`
+   15.75 ms / `prepareFrame` 8.19 / `setProgram` 5.72 at 152 draws / 86.7 switches. The staged plan
+   is ready: root-wide player cohort, per-entry batch fallback, per-instance color, damage-scoped
+   static merge, material-coherent order, release-time COLOR_0 bake, retained view list. This is the
+   next real frame-time program.
+2. **Worker reply / ACK tail** — E10 measured reply work p50 8 / p95 58 / p99 105 / max 458 ms. A
+   freeze-hunt episode showed `awaitingAck:true`, `commandInFlight 2662 ms`, `workerSteps`
+   advancing: the worker retains the next pack until the main thread ACKs, so a main-thread stall
+   freezes the picture. The fence clock fix removes the steady drift; ACK decoupling from rAF is
+   the next candidate (protocol change, needs focused proof).
+3. **Admission wall** — cold first flight is ~15 s now; a mid-flight subject admission can still
+   land a 135 ms sync slice (stress route `admission` p95 208 / max 1065 ms on a 59 % host). Cold
+   decode/compile slicing and fallback disposal remain.
+4. **HUD** — 11–18 ms p95 under load; the receipt-lane reuse and callout cache are in. Contact
+   marks, radar and ORRERY springs are the next cuts.
+5. **Host contention** — every claim here must be a matched/median result.
 
 ## Resolution is not the frame pole (same-session slope, 2026-11-07)
 
@@ -197,6 +203,25 @@ and stamps it on the presented frame; the renderer feeds that to the fence. Live
 
 This is presentation-only and deterministic: same elapsed source, accumulated; no sim state or
 ownership changed.
+
+## The tether turn hitch: held W+A crossed the retro hemisphere (2026-11-07)
+
+Tethering disables velocity vectoring, and the unvectored cruise bound only engaged inside the
+closing-speed window near combat cruise. A held W+A from rest crossed 90° of slip *before* that
+window, aimed full thrust backwards and repeated the retro-burn stop every ~2 s — the owner's
+"hitches when I tether or turn while accelerating". Kernel reproduction before the fix: min speed
+8.7 of a 195 WU/s cruise, 151° slip.
+
+Fixed in `flightV3` / `propulsionKernel`:
+
+- the unvectored assisted bound applies at every speed above the dead band;
+- it holds its 90° lead allowance instead of releasing there (the vectoring weld still releases at
+  90° for deliberate flips);
+- a tethered **non-orbiting** player gets the bound; an active orbit assist still owns the turn.
+
+Focused proof: `test/velocity-vectoring.test.mjs` new from-rest held-turn case — stays above half
+combat speed and out of the full retro hemisphere for 15 s; velocity-vectoring 18/18, flightV3 spec
++ governed reverse 13/13, `test:fast` 39/39, `check:playable` 18/18.
 
 ## Rules
 
