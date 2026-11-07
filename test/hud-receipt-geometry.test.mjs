@@ -127,6 +127,7 @@ function fixture({ mode = 'shared', cards = 1, captionHeight = 56, captionSlot =
       'invalidateAndPlaceHudOverlays'].includes(name)).map(([, code]) => code).join('\n') : '';
   const api = runInNewContext(`let receiptPlacementMode = ${JSON.stringify(mode)};
     let receiptGeometryRects = new Map();
+    let receiptGeometryReusable = false;
     let flightTextObstacleSnapshotAt = -Infinity;
     let flightTextObstacleRetry = null;
     const FLIGHT_TEXT_OBSTACLE_MIN_MS = 100;

@@ -14,7 +14,7 @@ import {
 } from './simulationRunner.js';
 import { mustRescheduleAfterFrame } from './frameLiveness.js';
 import { collectJournalPresentationEntities, collectJournalPresentationEntitiesChunked } from '../world/presentationSources.js';
-import { resolveFrameCap } from '../render/adaptiveQuality.js';
+import { autoPresentationCapFor, resolveFrameCap } from '../render/adaptiveQuality.js';
 import { shouldSkipFullTickSystems } from './presentationFreeze.js';
 import { PRESENTATION_LISTENER_DRAIN_BUDGET, SECTOR_ENTER_DRAIN_BUDGET, SECTOR_ENTER_LISTENER_BUDGET } from './eventBus.js';
 import { syncFocusLossHold } from './focusLossHold.js';
@@ -1376,7 +1376,11 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       const fixedDt = Number.isFinite(simulationRunner.fixedDt)
         ? simulationRunner.fixedDt
         : LOOP_FIXED_DT;
-      const frameBudgetMs = fixedDt * 1000;
+      // The budget is the cadence the loop is actually on: 30 Hz on the integrated profile, an
+      // uncapped/60 Hz route otherwise. Backlog and hitch attribution compare against this, never a
+      // hardcoded 60 Hz when the player sees 30.
+      const liveCap = Number(state.render && state.render.frameCap) || 0;
+      const frameBudgetMs = liveCap > 0 ? 1000 / liveCap : fixedDt * 1000;
       perf.beginFrame(
         frameDt,
         callbackStart,
@@ -1444,7 +1448,11 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         }
       }
       const displayHz = Number(state.render && state.render.displayHz) || 60;
-      _frameCapArgs.cap = video.frameCap;
+      // An integrated GPU on the Auto policy gets a stable 30 Hz presentation cadence. The authored
+      // picture is unchanged (bloom, Nocturne and particles all stay); the cap only stops the loop
+      // from presenting frames it cannot finish. A Manual preset or any explicit frame cap wins.
+      const autoIntegratedCap = autoPresentationCapFor(state.render && state.render.gpu, video);
+      _frameCapArgs.cap = autoIntegratedCap || video.frameCap;
       _frameCapArgs.vsync = video.vsync !== false;
       _frameCapArgs.displayHz = displayHz;
       const effectiveCap = restoring
