@@ -121,6 +121,48 @@ Re-test only on a quiet host, with the admission stage spans as the matched metr
 candidates remain the serial admission wall (per-hull compile/upload paced waits) and the four
 permanently `missing` opening roots.
 
+## Tether / boost / turn hitch: an in-frame shader link, fixed (2026-11-07)
+
+The owner's "world hitches but UI keeps animating" symptom was a GPU brick, not frame cost. The
+saved `freeze-hunt` witness showed:
+
+- `[GPU brick] bloomScene 241.2 / 241.0 / 485.4 ms` on a tether run
+- `programsAfter 185 → 197 → 200`, no new geometries
+- `unstampedVisible`: `VFXBatch` root `SF_ActionAnswers`, plus `sf-energy-massline` cylinders
+
+The tether/action VFX were created lazily on the first event and were absent from the first-flight
+effect cook, so their programs linked inside a presented frame. `SF_ActionAnswers` is now minted
+during `_initPools` (behind the loading shell), and the tether/action roots are in the live
+first-flight effect cohort (`latePipelineAdmission.js`): massline energy ribbon, swing trace, latch
+rim, chain readout, action answers. Focused proof:
+`test/post-opening-pipeline-admission.test.mjs`.
+
+Re-run with `--tether-boost-stress --turn-stress` under the same contended host: **no `[GPU brick]`**,
+`bloomScene` p95 24.7 / **max 36.4 ms** (was max 486), and the first-visible-draw identity gate
+now passes. The remaining admitted-subject stall in that stress route is 208 ms p95 / 1065 ms max
+on `admission` (new ship entering the glass on a 59 % busy host); that is the admission lane, not
+the tether VFX.
+
+## Visual quality restored (2026-11-07)
+
+The owner reported pixelation on zoom-out. Three cuts had stacked:
+
+1. the auto preset wrote `renderScale 0.75`;
+2. dyn-res could take content scale to 0.8;
+3. the hitch governor could take raster to 0.8.
+
+0.75 × 0.8 × 0.8 ≈ **0.48** of display. Fixed:
+
+- `low.renderScale` is now **0.85** (the integrated-authored scale); the same-session slope says
+  the 0.75 cut bought ~0–1 ms.
+- `COMBINED_READABILITY_FLOOR` is **0.7** (was 0.6), and the auto preset's own scale participates
+  in the product.
+- The hitch governor stops at level 2 (post-FX) and **never drops the raster**; `HITCH_RELIEF_SCALE`
+  is retained only for a deliberate future policy.
+
+The authored bloom, Nocturne, trails, atmosphere and post-FX stay on. Resolution is not used as a
+performance lever for this top-down picture.
+
 ## Rules
 
 - Do not lower the bar or rename a hitch; fix the frame or name the residual.

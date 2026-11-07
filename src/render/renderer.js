@@ -34524,7 +34524,10 @@ const HITCH_RELIEF_UP_COUNT = 2;
 const HITCH_RELIEF_DOWN_COOLDOWN_MS = 2500;
 const HITCH_RELIEF_UP_COOLDOWN_MS = 8000;
 const HITCH_RELIEF_SCALE = 0.8;
-const HITCH_RELIEF_MAX_LEVEL = 3;
+// Raster is the last rung and the one the owner sees as pixelation. Render p95 is flat across
+// 0.60-0.90 on this game's submission-bound frame, so dropping the buffer buys no time; the
+// emergency ladder stops at post-FX and never softens the picture.
+const HITCH_RELIEF_MAX_LEVEL = 2;
 // Automatic raster relief for integrated GPUs on the Auto quality policy — applyRendererSize
 // caps the configured scale here; _adaptiveFloorForRelief folds the same value into the
 // dyn-res floor so the two reductions never compound past the readability floor.

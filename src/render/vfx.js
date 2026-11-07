@@ -2507,6 +2507,15 @@ export const vfx = {
     if (!scene) { this._scene = null; return; } // render not up yet (e.g. unit test) — degrade to no-op
     this._scene = scene;
     this._ensureOverflowJets();
+    // Action answers (tether/boost/turn receipts) used to mint this batch lazily on the first
+    // event, so its swept-surface/particle programs were never in the first-flight cook and the
+    // first draw linked 12-15 programs inside bloomScene (241 ms / 485 ms Intel bricks,
+    // freeze-hunt 2026-11-07). Mint it behind the loading shell; `_onActionVfx` keeps the lazy
+    // fallback for non-boot harnesses.
+    if (!this._actionVfx) {
+      this._actionVfx = new ActionVfx(this._scene,
+        this._combatBeamLocalizer || ((x, z, out) => this._toLocalXZ(x, z, out)));
+    }
 
     const q = (state.settings.video && state.settings.video.particleQuality) || 'high';
     const cap = PARTICLE_CAP[q] || PARTICLE_CAP.high;
