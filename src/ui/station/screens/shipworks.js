@@ -3484,7 +3484,27 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       } else obstacles.push(gaugesRect);
     }
     const npRect = nameplateInkRect();
-    const nameplateZone = npRect ? stageLocalRect(npRect, stageRect, 6) : null;
+    let nameplateZone = npRect ? stageLocalRect(npRect, stageRect, 6) : null;
+    // Phone-band nameplate (≤700 in-flow relative card): ink alone is narrower/shorter than the
+    // opaque band, so hardpoint cards (Thrusters / Drive) still print under its right edge.
+    // Union the full band box so the solver clears the glass — the absolute floating crest keeps
+    // ink-only keep-out (its pad-right is a 420px ghost that must not starve the hull).
+    if (nameplateEl && nameplateEl.isConnected) {
+      const npCs = getComputedStyle(nameplateEl);
+      if (npCs.position === 'relative') {
+        const full = stageLocalRect(nameplateEl.getBoundingClientRect(), stageRect, 8);
+        if (full) {
+          nameplateZone = nameplateZone
+            ? {
+                left: Math.min(nameplateZone.left, full.left),
+                top: Math.min(nameplateZone.top, full.top),
+                right: Math.max(nameplateZone.right, full.right),
+                bottom: Math.max(nameplateZone.bottom, full.bottom),
+              }
+            : full;
+        }
+      }
+    }
     if (nameplateZone) obstacles.push(nameplateZone);
     if (livePath) {
       for (const sel of ['.sx-sw__camera', '.sx-sw__dragcue']) {
