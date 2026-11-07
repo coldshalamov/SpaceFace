@@ -1,6 +1,6 @@
 // 1 Hz flight recorder for agents. Source inspection cannot see a frozen canvas or a hitch.
 // window.__SF_WITNESS__ is the live surface; probes write a plain-language report from it.
-import { FRAME_DT_CLAMP_MS } from '../render/hitchClassifier.js';
+import { FRAME_DT_CLAMP_MS, hitchThresholdForBudget } from '../render/hitchClassifier.js';
 
 export const RUNTIME_WITNESS_SCHEMA = 'spaceface.runtimeWitness.v1';
 export const RUNTIME_WITNESS_RING = 32;
@@ -384,9 +384,18 @@ export function collectRuntimeWitnessSample(state, extras = {}, wallMs = Date.no
   sample.fieldCount = readLiveFieldCount(state);
   sample.tetherCount = readLiveTetherCount(state);
   sample.trafficCount = readLiveTrafficCount(state);
-  sample.hitch = Math.max(callbackMs, sample.callbackIntervalMs) >= 33.4;
+  sample.hitch = Math.max(callbackMs, sample.callbackIntervalMs) >= witnessHitchThresholdMs(state);
   sample.costs = costs;
   return sample;
+}
+
+// A witness "hitch" is a missed present on the cadence the player is actually on. The old fixed
+// 33.4 ms threshold described a 60 Hz budget and counted every healthy 30 Hz frame as a hitch.
+export function witnessHitchThresholdMs(state) {
+  const cap = Number(state?.render?.frameCap) || 0;
+  const displayHz = Number(state?.render?.displayHz) || 60;
+  const budgetMs = cap > 0 ? 1000 / cap : 1000 / displayHz;
+  return hitchThresholdForBudget(budgetMs);
 }
 
 function delta(last, first, key) {
