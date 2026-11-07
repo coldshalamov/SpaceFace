@@ -59,28 +59,29 @@ matched capture of the same incomplete shape; it is not the provenance for the c
    reads 51.071 / 113.259 / 142.672 ms on a loaded checkout. That is a relative improvement, not a
    clean acceptance number. Re-run `probe-sim-step.mjs --ab` on an idle checkout before claiming
    the floor.
-2. **The profiler is complete for the worker/Node lane, not for the main-lane registry.**
-   `registry.js` keeps `perfRuntime` system timings; wiring the step profiler there is a separate
-   change and is not claimed here. Per-system percentiles are **per call** (`basis: 'per-call'`);
-   `meanMsPerTick` amortises a calendar owner over measured ticks and the step row is per tick.
+2. **The profiler now covers both realms.** `registry.js` takes its already-measured path when
+   `simStepProfiler` is enabled and records the same per-system rows (`core.preStep`,
+   `core.tickDrains`, every scheduled system, `core.lifetimeSweep`); the disabled path pays a
+   boolean branch per tick. `node --test test/sim-step-profiler.test.mjs` proves the main-lane
+   export. Per-system percentiles are **per call** (`basis: 'per-call'`); `meanMsPerTick`
+   amortises a calendar owner over measured ticks and the step row is per tick.
 3. **Economy slicing is implemented and verified behind the flag, but the shipped default stays
    OFF.** The cadence suite sets `economySlicing: true` explicitly: 2100 production ticks emit 7
    receipts (35 s), 60 s emits 12, drift/slice sub-phases run, no due tick is entered while a pass
-   is in flight, and the save cursor resumes. The 47-A tape at this shared checkout is red for a
-   foreign reason (`src/data/newGameDefaults.js` shield swap + `src/systems/input.js` travel-latch
-   edit), so a v26 recorded here would bake someone else's gameplay change into the reference.
-   v24 `1fedbd09…` stays active; v25 `080c5bd9…` is the obsolete un-drained shape and is kept as
-   history only. Re-enable after a clean-tree v26 re-record and a fresh profile.
+   is in flight, and the save cursor resumes. `drainStep` now filters by the owner's declared mode
+   scope, so an in-flight Adventure pass no longer advances inside a Swarm round or a docked step
+   (`test/economy-slice-cadence.test.mjs`, mode-scope case). Still open before flipping the flag:
+   the slice evaluates `cycleFactorAt`/effective demand against live `state.simTime` per tick, so a
+   sliced pass is not yet byte-equivalent to the one-shot pass; capture the pass time and thread it
+   through those readers first. Bar measurements below stay the gate.
 4. **Telemetry stays demand-driven and OFF by default.** `simCoreFlags` no longer claims every flag
    is ON; the header names the per-flag defaults.
 
 ## Determinism
 
-The active 47-A reference remains **v24** (`1fedbd09dc3d8b70c4c392f6258b44f41a3969295e2df550b5eeeaa723084331`,
-v3 native-contact `015c4c…`). The current shared checkout cannot reproduce it because of foreign
-uncommitted edits (`src/data/newGameDefaults.js` starter shield and `src/systems/input.js` gamepad
-travel-latch); the same foreign tree also moves `combat:damage`/`projectile:hit` and presentation
-counts. That is not this campaign's change, and no golden was re-recorded to hide it.
+The active 47-A reference is **v26** (`ebbfe82a…` legacy, v3 native-contact `67416291…`). The
+v24/v25 references remain in history for rollback. `check:baseline` runs both gated hashes and is
+17/17 green on the current tree. No golden was re-recorded for this campaign.
 
 The flag-on cadence proof is `test/economy-slice-cadence.test.mjs`: 2100 production ticks emit
 `floor((simTime + 1e-6)/5)` receipts (7), the 60 s run emits 12, drift and slice sub-phases have
@@ -95,8 +96,8 @@ clean tree confirms it.
 2. `tacticalAI`: sub-phase `liveStack.update` vs the cached-decision path, then fix the top entry.
 3. `sg02.preStep` / `sg02.readback` / `sg02.publish` are the remaining per-record JS passes
    (2.0–3.2 ms/tick for 200–400 bodies). These are the E4 target: same passes over SoA columns.
-4. Optionally wire the main-lane `registry.js` to `simStepProfiler` if its `perfRuntime` view
-   proves insufficient.
+4. Thread the pass time through `cycleFactorAt`/effective demand so the sliced pass is
+   byte-equivalent to the one-shot pass, then enable `economySlicing` with a clean v27 reference.
 
 ## Where this landed
 
