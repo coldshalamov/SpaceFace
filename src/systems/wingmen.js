@@ -278,6 +278,9 @@ export const wingmen = {
    */
   _feelWingmanLoss(fs, orderedFleet, lostName) {
     const state = this.state;
+    // A harness may call update() before init(); the loss ledger is transient, so an absent map
+    // is an empty ledger, not a crash that takes the whole wing system down.
+    if (!(this._wingDeaths instanceof Map)) this._wingDeaths = new Map();
     const now = Number(state.simTime) || 0;
     const death = this._wingDeaths.get(fs.id) || null;
     this._wingDeaths.delete(fs.id);

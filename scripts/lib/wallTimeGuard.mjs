@@ -33,6 +33,11 @@ export const ALLOWED_WALL_TIME_FILES = new Map([
   // Instrumentation seam: the exported wall clock for diagnostics. physics.js / flightV3.js /
   // flight.js call perfNow() for _diag.tickMs instead of touching wall time themselves.
   ['src/core/perfRuntime.js', 'perf instrumentation clock; perfNow() is the sanctioned diagnostic seam'],
+  // E10 recorder: frame deltas, reply ages and wall-epoch correlation are measurement columns.
+  // It reads no sim outcome and never writes gameplay state.
+  ['src/core/frameTruth.js', 'frame-truth recorder: measurement timestamps only; no gameplay state'],
+  // E2 profiler: per-system wall time and heap sampling are diagnostics, not sim inputs.
+  ['src/core/simStepProfiler.js', 'per-system step profiler: measurement clock only; no gameplay state'],
   ['src/core/loop.js', 'frame driver: wall/elapsed stamps only feed the fixed-step accumulator'],
   // Worker transport owns its fixed-step timer just as loop.js owns the main-thread driver.
   // localNowMs measures timer deadlines/elapsed input; gameplay still advances by fixed dt
