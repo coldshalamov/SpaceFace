@@ -237,25 +237,29 @@ export function phaseStemWeights(phase, intensity, aftermathT = 0) {
   const i = clamp01(intensity);
   switch (phase) {
     case 'fight':
-      return Object.freeze({ A: 0.35 - 0.25 * i, B: 0.55 - 0.3 * i, C: 0.55 + 0.45 * i, D: 0 });
+      return Object.freeze({ A: 0.35 - 0.25 * i, B: 0.55 - 0.3 * i, C: 0.55 + 0.45 * i, D: 0, E: 0 });
     case 'threat':
-      return Object.freeze({ A: 0.6 - 0.4 * i, B: 0.45 + 0.55 * i, C: 0.25 * i, D: 0 });
+      return Object.freeze({ A: 0.6 - 0.4 * i, B: 0.45 + 0.55 * i, C: 0.25 * i, D: 0, E: 0 });
     case 'aftermath': {
       const t = clamp01(aftermathT);
-      return Object.freeze({ A: 0.45 + 0.55 * t, B: 0.25 * (1 - t), C: 0.35 * (1 - t) * (1 - t), D: 0 });
+      return Object.freeze({ A: 0.45 + 0.55 * t, B: 0.25 * (1 - t), C: 0.35 * (1 - t) * (1 - t), D: 0, E: 0 });
     }
     case 'dock':
-      return Object.freeze({ A: 0.12, B: 0, C: 0, D: 0.7 + 0.3 * (1 - i) });
+      return Object.freeze({ A: 0.12, B: 0, C: 0, D: 0.7 + 0.3 * (1 - i), E: 0 });
     case 'departure':
-      return Object.freeze({ A: 0.85, B: 0, C: 0, D: 0.3 });
+      return Object.freeze({ A: 0.85, B: 0, C: 0, D: 0.3, E: 0 });
     case 'arrival':
-      return Object.freeze({ A: 0.7, B: 0.1, C: 0, D: 0 });
+      return Object.freeze({ A: 0.7, B: 0.1, C: 0, D: 0, E: 0 });
     case 'work':
-      return Object.freeze({ A: 0.8, B: 0.12, C: 0, D: 0 });
+      return Object.freeze({ A: 0.8, B: 0.12, C: 0, D: 0, E: 0 });
     default:
-      return Object.freeze({ A: 0.75 + 0.25 * i, B: 0, C: 0, D: 0 });
+      return Object.freeze({ A: 0.75 + 0.25 * i, B: 0, C: 0, D: 0, E: 0 });
   }
 }
+
+// X4: the boss read. The fight row, with the boss stem leading and the combat drums thinned
+// underneath it — a different piece on the same grid, not a louder fight.
+export const BOSS_STEM_WEIGHTS = Object.freeze({ A: 0.05, B: 0.2, C: 0.3, D: 0, E: 1 });
 
 // Room-tone mix for the place layer. The room is the first thing back after a fight and the
 // first thing to step aside for one; arrival opens the room from closed.
@@ -377,9 +381,13 @@ export function createScoreDirector(options = {}) {
     const musicState = phaseMusicState(phase);
     const barLen = (60 / bpm) * BEATS_PER_BAR;
     const barIndex = Math.floor(Math.max(0, now - mem.anchor) / barLen);
+    // X4: a live boss is its own authored stem on the same phase grid. The phase still reads
+    // "fight" for the room, the ducking and the aftermath clock; only the music lead changes.
+    const boss = input.bossActive === true && phase === 'fight';
     mem.frame = Object.freeze({
       schema: SCORE_DIRECTOR_SCHEMA,
       phase,
+      boss,
       previousPhase: prevPhase,
       changed: phase !== prevPhase,
       since: mem.phaseSince,
@@ -388,11 +396,11 @@ export function createScoreDirector(options = {}) {
       intensity: mem.intensity,
       target,
       musicState,
-      stem: PHASE_STEM[phase],
+      stem: boss ? 'E' : PHASE_STEM[phase],
       bpm,
       barIndex,
       phraseBar: barIndex % BARS_PER_PHRASE,
-      stemWeights: phaseStemWeights(phase, mem.intensity, aftermathT),
+      stemWeights: boss ? BOSS_STEM_WEIGHTS : phaseStemWeights(phase, mem.intensity, aftermathT),
       room: phaseRoomMix(phase, mem.intensity, phase === 'aftermath' ? aftermathT : phaseT, input.workPresence),
       identity: identityRow,
       chord: scoreChordForBar(identityRow, musicState, barIndex),

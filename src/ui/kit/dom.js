@@ -10,7 +10,21 @@ export function el(tag, className = '', text = '') {
 }
 
 function enabled(element) { return !element.disabled && element.getAttribute('aria-disabled') !== 'true'; }
-function roving(root, elements, { row = false, onMove } = {}) {
+function roving(root, elements, { row = false, followLayout = false, onMove } = {}) {
+  // Responsive tab lists switch between a ladder and a row without rebuilding their buttons.
+  // Read their current CSS axis on interaction; no resize listener or observer outlives the list.
+  const horizontal = () => {
+    const view = root.ownerDocument?.defaultView || globalThis;
+    const direction = followLayout && typeof view.getComputedStyle === 'function'
+      ? view.getComputedStyle(root).flexDirection : '';
+    const isRow = direction ? direction.startsWith('row') : row;
+    if (followLayout && root.getAttribute('role') === 'tablist') {
+      root.setAttribute('aria-orientation', isRow ? 'horizontal' : 'vertical');
+    }
+    return isRow;
+  };
+  // Callers add the tablist role and mount the list synchronously after words() returns.
+  if (followLayout && typeof queueMicrotask === 'function') queueMicrotask(horizontal);
   const items = () => elements().filter(enabled);
   const focusEntry = preferred => {
     const all = items();
@@ -20,6 +34,7 @@ function roving(root, elements, { row = false, onMove } = {}) {
   };
   focusEntry(items().find(item => item.getAttribute('aria-current') === 'true' || item.getAttribute('aria-selected') === 'true'));
   root.addEventListener('focusin', event => {
+    horizontal();
     const item = items().find(candidate => candidate === event.target || candidate.contains(event.target));
     if (item) focusEntry(item);
   });
@@ -28,7 +43,7 @@ function roving(root, elements, { row = false, onMove } = {}) {
     if (!all.length) return;
     const index = all.findIndex(item => item === document.activeElement || item.contains(document.activeElement));
     if (index < 0) return;
-    const keys = row ? ['ArrowLeft', 'ArrowRight'] : ['ArrowUp', 'ArrowDown'];
+    const keys = horizontal() ? ['ArrowLeft', 'ArrowRight'] : ['ArrowUp', 'ArrowDown'];
     let next = index;
     if (event.key === keys[0]) next = Math.max(0, index - 1);
     else if (event.key === keys[1]) next = Math.min(all.length - 1, index + 1);
@@ -36,12 +51,20 @@ function roving(root, elements, { row = false, onMove } = {}) {
     else if (event.key === 'End') next = all.length - 1;
     else return;
     event.preventDefault();
-    if (next !== index) { focusEntry(all[next]).focus(); cue('move'); onMove?.(all[next]); }
+    if (next !== index) {
+      const target = focusEntry(all[next]);
+      target.focus();
+      // Reveal only keyboard moves. A pointer's focus must not move its key before pointerup.
+      if (followLayout && typeof target.scrollIntoView === 'function') {
+        target.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+      }
+      cue('move'); onMove?.(target);
+    }
   });
 }
 
 /** Buttons keep native Enter/Space activation. Roving focus has exactly one Tab stop. */
-export function words(items, { row = false, onPick, onMove, size = 'menu', ariaLabel = 'Actions', system = 'kit' } = {}) {
+export function words(items, { row = false, followLayout = false, onPick, onMove, size = 'menu', ariaLabel = 'Actions', system = 'kit' } = {}) {
   if (!['menu', 'emph', 'body', 'fine'].includes(size)) throw new RangeError('Invalid word size');
   if (items.filter(item => item.primary).length > 1) throw new Error('A words group has at most one primary action');
   // `system:'dp'` emits Deckplate classes INSTEAD of the kit's, not alongside them. Alongside would
@@ -118,7 +141,7 @@ export function words(items, { row = false, onPick, onMove, size = 'menu', ariaL
     if (item.sub) li.append(el('div', lit ? 'dp-lit__note' : dp ? 'dp-menu__note' : 'k-word-sub', item.sub));
     list.append(li);
   }
-  roving(list, () => buttons, { row, onMove: button => onMove?.(button.dataset.action, button) });
+  roving(list, () => buttons, { row, followLayout, onMove: button => onMove?.(button.dataset.action, button) });
   return list;
 }
 

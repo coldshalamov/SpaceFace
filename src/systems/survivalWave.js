@@ -60,6 +60,7 @@ import {
 } from './waveMaterialization.js';
 import { SWARM_THREAT_MARK_SCALE } from '../data/swarmThreatMark.js';
 import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
+import { turretLossCount } from '../combat/turretSubsystems.js';
 
 export const SURVIVAL_WAVE_OWNER_PREFIX = 'survival-wave:';
 
@@ -103,6 +104,13 @@ const SWARM_RETURN_FIRE_S = 2;
 // still suppressing owed work after it is not a breath — it is the D195 stall, and the owner
 // lifts it rather than let a finite round starve on a quota nothing can deliver.
 export const SWARM_STALL_RELEASE_TICKS = 9 * 60;
+
+// S7 — the reaver's pack call: the caller announces, then its Wasps ride the ordinary stream
+// through a lit gate. 48 ticks (0.8 s) keeps the tell inside the sheet's 0.6 s floor.
+const SWARM_PACK_CALL_LEAD_TICKS = 48;
+// Called batches seed and gate off a namespace that can never collide with the plan schedule
+// or the reinforcement stream's indices.
+const SWARM_PACK_CALL_SEED_OFFSET = 0x4000;
 
 /**
  * SWARM REINFORCEMENT (PQ-135).
@@ -256,6 +264,7 @@ export const survivalWave = {
     this._commitLastThree();
     this._commitStragglers();
     this._commitLastStand();
+    this._swarmPackCalls();
     this._tickCircuitObjective();
     this._publishWaveProgress();
     this._checkCleared(run);
@@ -530,6 +539,20 @@ export const survivalWave = {
     this._noteCircuitResolution(entry);
     this._bossIds.delete(id);
     this._resolved += 1;
+    // S7 — the reaver's counter ships: its called Wasps scatter when it dies. The authored
+    // forceFlee egress is the existing owner — they break off and fly out, and the
+    // out-of-fight seam resolves them so the round closes on the rout, not a hunt.
+    const pack = entry.entity && entry.entity.data && entry.entity.data.calledPack;
+    if (this._swarm && Array.isArray(pack)) {
+      for (const waspId of pack) {
+        const wasp = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+          ? this.state.entities.get(waspId) : null;
+        if (!wasp || wasp.alive === false || !wasp.data) continue;
+        wasp.data.ai = wasp.data.ai || {};
+        wasp.data.ai.forceFlee = true;
+        wasp.data.ai.swarmPanicked = true;
+      }
+    }
     this._publishThreat();
   },
 
@@ -1066,6 +1089,23 @@ export const survivalWave = {
         const member = { role: entry.role, entity: admitted };
         this._markCircuitMember(member);
         this._cohort.set(id, member);
+        // S7 — a called body remembers its caller so the counter can ship: the caller's
+        // ledger records it, and if the caller already died during the call beat the late
+        // arrival reads the rout and scatters with the rest of its pack.
+        if (entry.callerId != null && admitted) {
+          admitted.data = admitted.data || {};
+          admitted.data.calledBy = entry.callerId;
+          const caller = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+            ? this.state.entities.get(entry.callerId) : null;
+          if (caller && caller.data) {
+            (caller.data.calledPack = caller.data.calledPack || []).push(id);
+          }
+          if (!caller || caller.alive === false) {
+            admitted.data.ai = admitted.data.ai || {};
+            admitted.data.ai.forceFlee = true;
+            admitted.data.ai.swarmPanicked = true;
+          }
+        }
         // The champion is the wave's WORK, not one more body in the count. Remembering which hulls
         // they are means a kill quota met on chaff cannot end a boss wave with the boss still
         // flying — and because the marker is a FLAG rather than an enemy id, a wave can owe a wing
@@ -1756,6 +1796,61 @@ export const survivalWave = {
       if (!swarmKillRound && (data.missionTag === 'capital_boss' || data.bossDressing != null)) continue;
       data.ai.combatDoctrineId = SWARM_LAST_STAND_DOCTRINE;
       data.ai.swarmLastStand = true;
+    }
+  },
+
+  /**
+   * S7 — the reaver's pack call, live-route. The authored `data.reinforcements` contract is
+   * read here by the wave owner itself (the single writer of cohort spawns — the legacy
+   * ai.js consumer cannot run under the tactical backend). A caller wounded past its
+   * authored threshold announces once, then its Wasps ride the ordinary stream through a
+   * lit gate — same arrival contract as every scheduled group. `callerId` rides the pending
+   * entry so admission can stamp `data.calledBy`; the counter ("kill it and its Wasps
+   * scatter") lives in _resolveCohort through the authored forceFlee egress.
+   */
+  _swarmPackCalls() {
+    if (!this._swarm || !this._cohort || this._cohort.size === 0) return;
+    if (!Array.isArray(this._pending)) return;
+    const entities = this.state && this.state.entities;
+    if (!entities || typeof entities.get !== 'function') return;
+    const run = liveSurvivalRun(this.state);
+    const seed = run && Number.isInteger(run.seed) ? run.seed : 1;
+    for (const [id, member] of this._cohort.entries()) {
+      const entity = this._resolveCohortEntity(id, member);
+      if (!entity || entity.alive === false) continue;
+      const data = entity.data;
+      const call = data && data.reinforcements;
+      if (!call || data.swarmPackCalled === true) continue;
+      if (Number.isFinite(call.turretsLostAtLeast)) {
+        const runtime = this.state.combat && this.state.combat.entities
+          && this.state.combat.entities[String(id)];
+        if (turretLossCount(runtime) < call.turretsLostAtLeast) continue;
+      }
+      const threshold = Number.isFinite(call.hullThreshold) ? call.hullThreshold : 0.3;
+      const hullMax = Number.isFinite(entity.hullMax) && entity.hullMax > 0 ? entity.hullMax : 1;
+      if (!Number.isFinite(entity.hull) || entity.hull / hullMax > threshold) continue;
+      data.swarmPackCalled = true;
+      const index = (this._packCallIndex = (this._packCallIndex || 0) + 1);
+      const rng = mulberry32(swarmStreamSeed(seed, this._wave, SWARM_PACK_CALL_SEED_OFFSET + index));
+      const range = Array.isArray(call.count) && call.count.length >= 2 ? call.count : [1, 2];
+      const lo = Number.isFinite(range[0]) ? Math.max(1, Math.floor(range[0])) : 1;
+      const hi = Number.isFinite(range[1]) ? Math.max(lo, Math.floor(range[1])) : lo;
+      const count = lo + Math.floor(rng() * (hi - lo + 1));
+      const type = typeof call.type === 'string' ? call.type : 'wasp_swarmer';
+      const rosterRow = this._swarm && Array.isArray(this._swarm.roster)
+        ? this._swarm.roster.find((row) => row && row.enemyId === type) : null;
+      this._emit('alert', { key: 'swarm-pack-call', sev: 'danger',
+        text: 'ENEMY CALLING REINFORCEMENTS', ttl: 3 });
+      this._emit('ai:telegraph', { entityId: id, kind: 'pack_call',
+        durationTicks: SWARM_PACK_CALL_LEAD_TICKS, tick: this._cursor });
+      this._pending.push({ entry: {
+        atTick: this._cursor + SWARM_PACK_CALL_LEAD_TICKS,
+        count,
+        enemyId: type,
+        role: rosterRow && rosterRow.role,
+        gateGroup: swarmGateFor(this._wave, SWARM_PACK_CALL_SEED_OFFSET + index),
+        callerId: id,
+      }, index: SWARM_PACK_CALL_SEED_OFFSET + index });
     }
   },
 

@@ -66,7 +66,7 @@ import { Masks } from '../core/entity.js';
 import { readPhysicsTelemetry, requestPhysicsTelemetry, writePhysicsControl, queuePhysicsImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { ensureCombatant } from '../combat/runtime.js';
 import { getCombatKernel } from '../combat/kernel.js';
-import { terrainCrumpleDamage, readRecentImpulseProvenance } from '../combat/impulseKernel.js';
+import { terrainCrumpleDamage, readRecentImpulseProvenance, TERRAIN_CRUMPLE_LAW } from '../combat/impulseKernel.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { CRYO_LOCK_DURATION_TICKS, CRYO_LOCK_STATUS_ID } from '../combat/cryoLock.js';
 import { BURNING_STATUS_ID } from '../combat/thermalShock.js';
@@ -1369,20 +1369,19 @@ export const survivalArena = {
     this._releaseRoundFields(st);
     if (this._swarmEvents) this._swarmEvents.update(_dt, st);
     this._tickToys(_dt, st);
+    this._tickPlayerSlams(st);
   },
 
   // ---- install --------------------------------------------------------------
 
-  /** SEED-SW-04..07 — a bought call-in charge deploys as soon as the ledger records it. */
+  /** SEED-SW-04..07 / S5 — a bought call-in charge queues for the player's Q press. */
   _onCallinRecorded(payload) {
     const record = payload && payload.record;
     if (!record || record.kind !== 'swarm_callin') return;
     const called = record.callinId === 'turret_drop' || record.callinId === 'drone_wing'
       || record.callinId === 'shield_dome' || record.callinId === 'decoy';
     if (!called || !this._callins) return;
-    const run = this._liveSwarmRun ? this._liveSwarmRun(this.state) : (this.state && this.state.run);
-    if (!run) return;
-    this._callins.callIn(this.state, run, record.callinId);
+    this._callins.queueCallin(record.callinId);
   },
 
   _onWavePlanned(payload) {
@@ -1926,11 +1925,16 @@ export const survivalArena = {
    * the collision law gives a hull meeting terrain at that speed — routed through the combat
    * kernel with the last shover's impulse provenance as the attacker, so a hull the pilot
    * threw into the jaws is the pilot's kill, and one the room itself closed is nobody's
-   * bounty. The player is exempt, exactly as collisionConsequences exempts the player from
-   * the terrain-crumple path: the jaws still shove the pilot around, they never crumple them.
+   * bounty. In an Adventure room the player is exempt, exactly as collisionConsequences
+   * exempts the player from the terrain-crumple path: the jaws still shove the pilot
+   * around, they never crumple them. In a Swarm run the jaws are the signature hazard
+   * the spec names — friend and foe — and a pilot drifted in at crumple speed takes the
+   * same mass-scaled reading as everything else the room catches.
    */
   _crushBody(entity, toy, crush, state) {
-    if (!entity || entity.alive === false || entity.id === state.playerId) return;
+    if (!entity || entity.alive === false) return;
+    const run = liveSurvivalRun(state);
+    if (entity.id === state.playerId && !(run && isSwarmRuleset(run.ruleset))) return;
     if (entity.type !== 'ship' && entity.type !== 'drone') return;
     const tick = state.tick | 0;
     const data = entity.data || (entity.data = {});
@@ -1982,6 +1986,79 @@ export const survivalArena = {
       t: simTimeOf(state),
       tick,
     });
+  },
+
+  /**
+   * S9 — the room is friend AND foe. Static room furniture (plates, pylons, shutter rails,
+   * machinery housings — anything the install stamped `roomDynamic: false`) is terrain-class
+   * for the pilot in a Swarm run: meet it at crumple closing speed and the collision law's own
+   * reading applies, routed through the kernel like the crusher's bite. Adventure keeps the
+   * global exemption untouched (collisionConsequences spares the player everywhere), and the
+   * radial-closing gate means a tangential skim under 30 WU/s never bites. Dynamic props are
+   * exempt on purpose — a coolant tank gives way instead of being an anvil.
+   */
+  _tickPlayerSlams(state) {
+    const run = liveSurvivalRun(state);
+    if (!run || !isSwarmRuleset(run.ruleset)) return;
+    const solids = this._roomSolids;
+    if (!solids || solids.size === 0) return;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || player.alive === false || !player.pos || !player.vel) return;
+    const vx = finiteOf(player.vel.x, 0), vz = finiteOf(player.vel.z, 0);
+    const tick = state.tick | 0;
+    const data = player.data || (player.data = {});
+    const last = Number(data.arenaSlamAt);
+    if (Number.isFinite(last) && tick - last < CRUSH_RECEIPT_COOLDOWN_TICKS) return;
+    const kernel = this.ctx ? getCombatKernel(this.ctx) : null;
+    const routeDamage = kernel && typeof kernel.routeDamage === 'function' ? kernel.routeDamage
+      : (this.ctx && this.ctx.helpers && typeof this.ctx.helpers.routeCombatDamage === 'function'
+        ? this.ctx.helpers.routeCombatDamage : null);
+    if (!routeDamage) return;
+    for (const [toyId, solid] of solids) {
+      if (!solid || solid.alive === false || !solid.pos) continue;
+      if (!solid.data || solid.data.roomDynamic === true) continue;
+      const dx = solid.pos.x - player.pos.x;
+      const dz = solid.pos.z - player.pos.z;
+      const dist = Math.hypot(dx, dz);
+      const reach = Math.max(4, finiteOf(solid.radius, 8)) + Math.max(1, finiteOf(player.radius, 8)) + 2;
+      if (dist > reach) continue;
+      const closing = dist > 1e-6 ? (vx * dx + vz * dz) / dist : 0;
+      if (closing < TERRAIN_CRUMPLE_LAW.threshold) continue;
+      const bodySpec = resolvePhysicsBodySpec(player);
+      const mass = bodySpec && Number.isFinite(bodySpec.mass) ? bodySpec.mass
+        : (Number.isFinite(player.mass) ? player.mass : 1);
+      const damage = terrainCrumpleDamage(closing, mass);
+      if (!(damage > 0)) continue;
+      data.arenaSlamAt = tick;
+      const provenance = readRecentImpulseProvenance(player, tick);
+      const attackerId = provenance && provenance.actorId != null ? provenance.actorId
+        : (state.run && state.run.arenaId) || 'survival_arena';
+      const approach = { x: dx / dist, z: dz / dist };
+      const packet = scalarHitToDamagePacket({
+        damage,
+        damageType: 'kinetic',
+        pos: { x: finiteOf(player.pos.x, 0), z: finiteOf(player.pos.z, 0) },
+        approach,
+        source: { kind: 'arena_slam', hullId: toyId != null ? String(toyId) : 'solid' },
+      });
+      routeDamage({
+        attackerId,
+        targetId: player.id,
+        packet,
+        origin: { kind: 'arena_slam', id: toyId != null ? String(toyId) : 'solid' },
+      });
+      this._emit('combat:crushed', {
+        entityId: player.id,
+        toyId: toyId != null ? toyId : null,
+        damage,
+        speed: closing,
+        attackerId,
+        t: simTimeOf(state),
+        tick,
+      });
+      return;
+    }
   },
 
   /**

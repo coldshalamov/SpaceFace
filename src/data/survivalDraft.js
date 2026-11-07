@@ -404,7 +404,9 @@ function offerDraftInner(input) {
   const authoredPool = src.ruleset === SWARM_RULESET
     ? SURVIVAL_DRAFT_OFFERS.concat(SWARM_DRAFT_OFFERS)
     : SURVIVAL_DRAFT_OFFERS;
-  const pool = src.ruleset === SWARM_RULESET
+  // S11 — `pool: 'authored'` deals only the written verb/number cards; the generated catalog
+  // stays stocked for the same input without the option, so its draw is byte-identical.
+  const pool = src.ruleset === SWARM_RULESET && src.pool !== 'authored'
     ? authoredPool.concat(swarmCatalogOffers(new Set(authoredPool.map((offer) => offer.defId))))
     : authoredPool;
 

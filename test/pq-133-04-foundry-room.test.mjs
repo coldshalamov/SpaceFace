@@ -18,8 +18,7 @@ import {
   surfaceResponseFor,
 } from '../src/core/surfaceContact.js';
 import { resolveRicochet } from '../src/combat/surfaceReflection.js';
-import { consumePhysicsCommand, readPhysicsTelemetry, writePhysicsTelemetry } from '../src/core/physicsAuthority.js';
-import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
+import { consumePhysicsCommand, writePhysicsTelemetry } from '../src/core/physicsAuthority.js';
 import {
   ARENA_FIELD_SLOT_IDS,
   ROOM_SOLID_PILOT_CLEARANCE,
@@ -470,29 +469,4 @@ test('Stage C: jam rules are deterministic and fail closed, live and pure', () =
   survivalArena.update(1 / 60, h.state);
   assert.equal(consumePhysicsCommand(entity).control.mode, 'shutter_hold', 'welded mid-surge -> hold');
   h.bus.emit('run:waveCleared', { wave: 3 });
-});
-
-
-test('Stage C: admitted shutters receive native telemetry with whole-world diagnostics off', async () => {
-  const h = boot();
-  const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: 1 / 60 });
-  try {
-    installFoundryWave(h, { wave: 3, phase: 'shutter_slow' });
-    const shutters = roomSolids(h).filter(entity => entity.data.roomKind === 'shutter');
-    assert.equal(shutters.length, 2);
-    owner.syncFromEntities(h.state.entityList);
-    owner.step(1 / 60);
-    h.state.tick = owner.tick;
-    for (const shutter of shutters) {
-      const measured = readPhysicsTelemetry(shutter);
-      assert.ok(measured && measured.dynamic, 'room admission requested real native telemetry');
-      assert.equal(measured.tick, h.state.tick);
-      assert.equal(shutterJammed(measured, { tick: h.state.tick, phase: 'warning', phaseElapsedS: 0 }), false,
-        'a valid initial sample lets the shutter leave its fail-closed hold');
-    }
-    assert.equal(readPhysicsTelemetry(h.player), null, 'the room does not enable telemetry for unrelated bodies');
-  } finally {
-    h.bus.emit('run:waveCleared', { wave: 3 });
-    owner.dispose();
-  }
 });

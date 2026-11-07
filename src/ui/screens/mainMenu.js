@@ -19,6 +19,8 @@ import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
 import { injectTitleAsideLayouts } from '../orrery/titleAsideLayouts.js';
 import { shouldOfferFirstLight, applyFirstLightPreset } from '../accessibility.js';
+import { crucibleSetupFor, freshSeed, requestCrucibleRun } from '../crucibleLaunch.js';
+import { swarmQuickStartExtras, SWARM_QUICK_START } from '../../data/swarmQuickStart.js';
 import { laneWriteSetting } from '../../core/simLaneCommands.js';
 import { confirm, dismissConfirm, isConfirmOpen } from '../confirm.js';
 import {
@@ -344,6 +346,7 @@ export function titlePrimaryAction(hasSave) {
  * already promised ("the scored ten-wave Survival run", "the authored intro cinematics").
  */
 export const MENU_MODE_GLOSSES = Object.freeze({
+  swarm: 'One press to round one — the horde arena',
   crucible: 'A scored ten-wave survival run',
   archive: 'Authored intro reels, in the Codex',
   circuits: 'Logic circuit sandbox',
@@ -352,7 +355,7 @@ export const MENU_MODE_GLOSSES = Object.freeze({
 });
 
 export function titleVerbOrder() {
-  return ['continue', 'newGame', 'load', 'crucible', 'settings', 'quit'];
+  return ['continue', 'swarm', 'newGame', 'load', 'crucible', 'settings', 'quit'];
 }
 
 /** The title's Tab order, in reading order: the verb ladder, the reference line, the fine line —
@@ -419,6 +422,10 @@ export const mainMenuScreen = {
       newGame: coreText('newGame'),
       continue: coreText('continue'),
       load: 'Load',
+      // "Swarm" — the mode the title sells (S4): one press straight into round 1 through the
+      // ordinary New Game route. The authored armory opening is skipped for this entry only;
+      // every later wave drafts normally, so the shop is never more than a round away.
+      swarm: 'Swarm',
       // "Crucible" — the scored ten-wave Survival run (PQ-133 §12.2: direct main-menu entry). It
       // launches through the ordinary New Game path and never touches the Adventure save.
       crucible: 'Crucible',
@@ -719,6 +726,18 @@ export const mainMenuScreen = {
       }
       case 'newGame': pushWhenReady(ctx, 'newGame', 'New Game'); return;
       case 'load': pushWhenReady(ctx, 'saveLoad', 'Load Game'); return;
+      case 'swarm': {
+        // S4 — one press to the fight. The quick-start record names the arena, the stake and
+        // the starter build; `crucibleSetupFor` validates them into the same setup the door
+        // hands `requestCrucibleRun`, so the launch IS the ordinary route — only the opening
+        // armory is declined. If the record or its ids ever stop validating, the verb falls
+        // back to the door rather than dying silent on the title.
+        const extras = swarmQuickStartExtras();
+        const setup = extras && crucibleSetupFor({ ...extras, seed: freshSeed() });
+        if (setup && setup.ok && requestCrucibleRun(ctx.bus, setup, SWARM_QUICK_START.ruleset)) return;
+        pushWhenReady(ctx, 'crucible', 'Crucible');
+        return;
+      }
       case 'crucible': pushWhenReady(ctx, 'crucible', 'Crucible'); return;
       case 'help': pushWhenReady(ctx, 'help', 'Help'); return;
       case 'archive': requestCodexTab('Archive'); pushWhenReady(ctx, 'codex', 'Signal Archive'); return;

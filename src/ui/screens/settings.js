@@ -648,7 +648,7 @@ export const settingsScreen = {
     rail.setAttribute('aria-hidden', 'true');
     hang.appendChild(rail);
     const bar = words(TABS.map((t) => ({ action: 'tab:' + t, label: t, current: t === 'Audio' })), {
-      size: 'menu', ariaLabel: 'Settings categories',
+      size: 'menu', ariaLabel: 'Settings categories', followLayout: true,
       onPick: (action) => this._select(ctx, action.slice('tab:'.length)),
     });
     bar.classList.add('sf-tabbar');

@@ -179,6 +179,17 @@ ${FOOT} :is(.k-kbd, .dp-kbd, .sf-cru-kbd) { background:none !important; border:0
   font-size:12px !important; letter-spacing:.14em !important; }
 ${FOOT} :is(.k-kbd, .dp-kbd, .sf-cru-kbd) .k-kbd__paren { color:rgb(${BONE} / .3) !important; }
 /* The back key keeps the prep sheet's bordered keycap; other foot hints remain bare. */
+/* TRAINING / QUICK PLAY are keys, not bare words floating beside the primary key (STATION_STANDARD §5) */
+${D} .sf-crd-foot .k-words > li > button.k-word.orr-key:not(.k-word--primary) {
+  display:inline-flex !important; align-items:center; box-sizing:border-box; min-height:36px !important; height:auto !important; padding:0 14px !important;
+  font:600 13px/1 var(--dp-face-read, "Instrument Sans", system-ui, sans-serif) !important; letter-spacing:.04em !important; text-transform:uppercase;
+  color:rgb(${BONE} / .92) !important; background:rgb(${BONE} / .05) !important; background-image:none !important;
+  border:1px solid rgb(${BONE} / .34) !important; border-radius:2px !important; }
+${D} .sf-crd-foot .k-words > li > button.k-word.orr-key:not(.k-word--primary):is(:hover, :focus-visible) {
+  color:#fff !important; background:rgb(${BONE} / .12) !important; border-color:rgb(${BONE} / .75) !important; }
+/* a toggle that is ON reads lit (amber is "armed"), so the state is not carried by its label alone */
+${D} .sf-crd-foot .k-words > li > button.k-word.orr-key[aria-pressed="true"]:not(.k-word--primary) {
+  color:var(--dp-lamp-hot, #ffd98c) !important; background:rgb(242 185 80 / .10) !important; border-color:rgb(242 185 80 / .8) !important; }
 /* a short hero: the purse hairline collides with the arena line above it — the words climb and
    the rule retires (the 750 numeral still carries the purse) */
 @media (max-height:820px) {

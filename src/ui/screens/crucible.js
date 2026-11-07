@@ -416,6 +416,13 @@ const ARENA_TILE = Object.freeze({
   cryo_drift: 'assets/tiles/tile.arena.cryo-drift.png',
   storm_lattice: 'assets/tiles/tile.arena.storm-lattice.png',
 });
+// S9 — untiled arenas never wear another room's picture. An arena with no authored tile
+// art yet presents its own glyph; the hero panel shows the active mode's art instead of
+// a mislabeled Foundry still.
+const ARENA_GLYPH = Object.freeze({
+  asteroid_mill: 'asteroid',
+  the_hive: 'seed',
+});
 
 /** A kit word (`button.k-word`). The caller appends it. */
 function word(label, className) {
@@ -880,7 +887,7 @@ export const crucibleScreen = {
       let shown = null;
       let heroTurn = 0;
       paintHero = (id, name, line) => {
-        const src = kitUrl((ARENA_TILE[id] || ARENA_TILE.helios_core).replace(/\.png$/, '@2x.png'));
+        const src = kitUrl((ARENA_TILE[id] || MODE_TILE[ruleset] || MODE_TILE.swarm).replace(/\.png$/, '@2x.png'));
         const reduce = document.documentElement
           && document.documentElement.classList.contains('sf-reduce-motion');
         if (shown === src) {
@@ -1663,7 +1670,9 @@ export const crucibleScreen = {
       armEmbarkSpec();
     };
     for (const arena of COMBAT_LAB_ARENAS.filter(entry => arenaDescriptions[entry.id])) {
-      const button = choiceTile(arenaDescriptions[arena.id][0], 'sf-crd-arena-choice', kitUrl(ARENA_TILE[arena.id] || ARENA_TILE.helios_core));
+      const button = choiceTile(arenaDescriptions[arena.id][0], 'sf-crd-arena-choice',
+        ARENA_TILE[arena.id] ? kitUrl(ARENA_TILE[arena.id]) : null,
+        ARENA_TILE[arena.id] ? null : ARENA_GLYPH[arena.id]);
       button.dataset.arenaId = arena.id;
       button.addEventListener('click', () => {
         if (arenaLockedFor(arena.id)) {
@@ -2882,6 +2891,19 @@ function resultVersion(owner) {
   return resultSignature(result);
 }
 
+/**
+ * S14 — the run's first fallen champion leaves a pending stamp on run telemetry; the results
+ * plate reads it as a live-run victory beat. Only a pending stamp qualifies — a settled
+ * result at run end must never be shadowed by a milestone the fight already played.
+ */
+function swarmFirstBossMilestone(state) {
+  const run = state && state.run;
+  if (!run || run.ruleset !== SWARM_RULESET) return null;
+  const stamp = run.telemetry && run.telemetry.firstBossDown;
+  if (!stamp || stamp.pending !== true) return null;
+  return stamp;
+}
+
 /** The band name for a section. The damage band means something different after a clear. */
 export function sectionTitle(id, outcome) {
   if (id === 'story') return 'The run';
@@ -3643,6 +3665,16 @@ export const crucibleResultsScreen = {
     this._root = rootEl;
     this._resultSig = resultVersion(owner);
     rootEl.dataset.stamp = resultStamp(result);
+
+    // S14 — the first fallen champion is a victory beat, not a defeat: IRON MAW DOWN plays
+    // the Run Over plate's own geometry with the score's authored lesson, and three ways
+    // back out. The run underneath is still live — Keep going hands it back.
+    const milestone = swarmFirstBossMilestone(ctx && ctx.state);
+    if (milestone) {
+      this._mountBossMilestone(rootEl, ctx, milestone);
+      return;
+    }
+
     rootEl.dataset.outcome = (result && result.outcome) || 'empty';
 
     // Seal the kill-cam tape once, engraved with the run's seed; the stage's own seal is
@@ -3899,6 +3931,86 @@ export const crucibleResultsScreen = {
     rootEl.dataset.kReady = '1';
     if (typeof again.focus === 'function') {
       try { again.focus(); } catch { /* focus is best-effort */ }
+    }
+  },
+
+  // S14 — the victory variant of this plate: the champion's name in the title, its authored
+  // lesson in the band, the same three ways out. Keep going is the focused word because the
+  // run underneath is still live; Again and Main menu share the ordinary record's wiring.
+  _mountBossMilestone(rootEl, ctx, milestone) {
+    const bossName = String(milestone.name || 'BOSS').toUpperCase();
+    rootEl.dataset.outcome = 'milestone';
+
+    const head = el('header', 'k-head');
+    const h = el('h1', 'sf-crd-title', `${bossName} DOWN`);
+    h.id = 'sf-crucible-results-title';
+    head.appendChild(h);
+    rootEl.appendChild(head);
+    rootEl.appendChild(el('p', 'k-stamp sf-crd-stamp', 'CRUCIBLE / FIRST CHAMPION DOWN'));
+
+    const story = el('section', 'k-band k-band--story');
+    story.appendChild(el('p', 'k-sentence', milestone.line || `${bossName} is salvage.`));
+    if (milestone.lesson) story.appendChild(el('p', 'k-sentence k-t-fine', milestone.lesson));
+    rootEl.appendChild(story);
+
+    const foot = el('footer', 'k-foot sf-crd-foot');
+    const footWords = el('ul', 'k-words k-words--row');
+    footWords.setAttribute('aria-label', 'After the run');
+    const addWord = (button) => {
+      const li = el('li');
+      li.appendChild(button);
+      footWords.appendChild(li);
+      return button;
+    };
+
+    const keepGoing = addWord(word('Keep going', 'k-word--emph k-word--primary'));
+    keepGoing.addEventListener('click', () => ctx.bus.emit('ui:popScreen', {}));
+
+    const again = addWord(word('Run it again — same seed', 'k-word--emph'));
+    again.addEventListener('click', () => {
+      try { clearKillcamTape(); } catch { /* the replay is optional */ }
+      const retry = buildCrucibleRetryRequest();
+      if (!retry) {
+        ctx.bus.emit('ui:replaceScreen', { id: 'crucible' });
+        return;
+      }
+      const setup = retry.setup;
+      if (setup.dailyDateKey || setup.weeklyMutatorId) {
+        queueSurvivalChallenge({
+          seed: setup.seed,
+          ruleset: retry.ruleset,
+          mutators: setup.weeklyMutatorId ? [setup.weeklyMutatorId] : [],
+          dailyDateKey: setup.dailyDateKey,
+          weeklyMutatorId: setup.weeklyMutatorId,
+          ghostHash: setup.ghostHash,
+        });
+      } else if (setup.ghostHash != null) {
+        queueGhostPlayback(setup.ghostHash);
+      }
+      requestSharedCrucibleRun(ctx.bus, setup, retry.ruleset);
+    });
+
+    const hangar = addWord(word('Back to the hangar', 'k-word--emph'));
+    hangar.addEventListener('click', () => ctx.bus.emit('ui:replaceScreen', { id: 'crucible' }));
+
+    const menu = addWord(word('Main menu', 'k-word--emph k-word--danger'));
+    menu.addEventListener('click', () => {
+      ctx.bus.emit('game:over:dismissed', {});
+      ctx.bus.emit('game:exitToMenu', { source: 'crucible_results' });
+      ctx.bus.emit('ui:closeAll', {});
+      ctx.bus.emit('ui:pushScreen', { id: 'mainMenu' });
+    });
+
+    foot.appendChild(footWords);
+    rootEl.appendChild(foot);
+
+    // Mounting the plate IS the acknowledgement — clear the pending stamp so the run's real
+    // end renders the ordinary record instead of a milestone already played.
+    ctx.bus.emit('swarm:bossMilestoneAck', { wave: milestone.wave });
+    this._regions = { title: h, story, ledger: story, foot, again: keepGoing };
+    rootEl.dataset.kReady = '1';
+    if (typeof keepGoing.focus === 'function') {
+      try { keepGoing.focus(); } catch { /* focus is best-effort */ }
     }
   },
 
