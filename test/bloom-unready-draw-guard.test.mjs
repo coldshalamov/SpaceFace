@@ -5,6 +5,7 @@ import { WebGLPrograms } from 'three/src/renderers/webgl/WebGLPrograms.js';
 import { spacefaceSelectedProgramDeferred } from '../vendor/three.module.js';
 
 import { createUnreadyDrawableGuard, programWrapperDead } from '../src/render/bloom.js';
+import { createResidencyManager, RESIDENCY_INLINE_UPLOAD_BYTES } from '../src/render/residencyManager.js';
 import { bumpPackageDetachSerial, packageDetachSerialNow } from '../src/render/imageSourceDedupe.js';
 import {
   createPackageDetachManifest,
@@ -756,22 +757,79 @@ test('without disarmOnSettle the guard keeps the wrapped draw path when settled'
   await Promise.resolve();
 });
 
-test('a drawable whose program never links fails open after the bounded window and is counted', () => {
+test('a drawable whose program never links fails open at a wall deadline and counts every refusal', () => {
   const { renderer, draws } = rendererHarness();
+  let now = 0;
+  renderer.__sfDrawGuardNow = () => now;
   const guard = createUnreadyDrawableGuard(renderer);
   const scene = { traverse() {} };
   const material = { userData: {} };
   const mesh = { isMesh: true };
   guard.hide(scene);
   try {
-    for (let i = 0; i < 90; i++) {
+    for (let i = 0; i < 10; i++) {
+      now = i * 100;
       assert.equal(renderer.renderBufferDirect(null, scene, null, material, mesh, null), undefined);
     }
+    assert.equal(renderer.__sfCompileRefusalCount, 10, 'every refusal is published, not only the fail-open');
+    now = 1501;
     assert.equal(renderer.renderBufferDirect(null, scene, null, material, mesh, null), 'drawn',
-      'a stuck admission lane must not hide the body forever');
+      'a stuck admission lane must not hide the body past 1.5 s');
     assert.equal(renderer.__sfCompileFailOpen, 1, 'the fail-open is counted for the probes');
+    assert.equal(renderer.__sfCompileRefusalCount, 10, 'the fail-open draw is not itself a refusal');
     assert.equal(draws.length, 1);
   } finally {
     guard.restore();
   }
+});
+
+test('an already-drawn object keeps its proven material while a new one links', () => {
+  const { renderer, draws, compile } = rendererHarness();
+  const scene = { traverse() {} };
+  const oldMaterial = canonStampedMaterial();
+  const newMaterial = { userData: {} };
+  compile(oldMaterial, { program: {}, isReady: () => true });
+  const mesh = { isMesh: true, material: oldMaterial };
+  const geometry = {};
+  const guard = createUnreadyDrawableGuard(renderer);
+  guard.hide(scene);
+  try {
+    assert.equal(renderer.renderBufferDirect(null, scene, geometry, oldMaterial, mesh, null), 'drawn');
+    mesh.material = newMaterial;
+    assert.equal(renderer.renderBufferDirect(null, scene, geometry, newMaterial, mesh, null), 'drawn',
+      'the already-drawn body keeps the old material instead of blanking');
+    assert.equal(renderer.__sfCompileFallbacks, 1);
+    assert.equal(renderer.__sfCompileRefusalCount | 0, 0, 'a fallback draw is not a refusal');
+    assert.deepEqual(draws, [mesh, mesh]);
+  } finally {
+    guard.restore();
+  }
+});
+
+test('a refused presented draw reports the honest draw-point residency counter', () => {
+  const { renderer } = rendererHarness();
+  const manager = createResidencyManager({ requestRoots: () => {} });
+  renderer.__sfResidencyManager = manager;
+  const guard = createUnreadyDrawableGuard(renderer);
+  const scene = { traverse() {} };
+  const material = canonStampedMaterial();
+  const geometry = {
+    userData: {},
+    attributes: { position: { array: new Float32Array(RESIDENCY_INLINE_UPLOAD_BYTES * 8 / 4) } },
+  };
+  const mesh = {
+    isMesh: true, material, geometry, userData: {}, parent: null, visible: true,
+    __sfPresentedOnce: true,
+  };
+  guard.hide(scene);
+  try {
+    assert.equal(renderer.renderBufferDirect(null, scene, geometry, material, mesh, null), undefined);
+  } finally {
+    guard.restore();
+  }
+  const snap = manager.snapshot();
+  assert.equal(snap.heldDraws, 1, 'the hold path still counts its refusal');
+  assert.equal(snap.refusedDraws, 1, 'the draw point counts the refusal');
+  assert.equal(snap.visibleUnreadyDraws, 1,
+    'a previously presented drawable is counted as a blink at the draw point');
 });

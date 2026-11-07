@@ -4077,14 +4077,14 @@ function entityIsOnDeadlineGlass(entity, state) {
  * existing approach-aware time-to-glass query (relative velocity, ledger rows, camera lead) so
  * there is one predictor, not two.
  */
-function entityPredictedOnDeadlineGlass(entity, state) {
+function entityPredictedOnDeadlineGlass(entity, state, env = null) {
   if (!entity || entity.alive === false || !state) return false;
   if (entityIsOnDeadlineGlass(entity, state)) return true;
   let seconds = Infinity;
   try {
     seconds = entityTimeToGlassSeconds(
       entity,
-      renderAdmissionEnv(state),
+      env || renderAdmissionEnv(state),
       state,
       RESIDENCY_LOOKAHEAD_S,
     );
@@ -4101,15 +4101,30 @@ function entityPredictedOnDeadlineGlass(entity, state) {
  */
 function entityIsOnDeadlineGlassScan(entity, state, scan) {
   if (entityIsOnDeadlineGlassScanImpl(entity, state, scan)) return true;
-  return entityPredictedOnDeadlineGlass(entity, state);
+  // Reuse the scan's env: re-deriving renderAdmissionEnv per queue row was the whole cost
+  // of the prediction tail inside a refused late frame.
+  return entityPredictedOnDeadlineGlass(entity, state, scan && scan.env);
 }
 
 /**
- * Does the pending build queue hold anything the player is about to see? Bounded head scan —
- * this answers the late-frame gate, so it must stay cheap even with a 70-row backlog.
+ * The in-frame heavy-admission gate admits only drawables already on the readable glass.
+ * Prediction stays in ordering/hoisting (`entityIsOnDeadlineGlassScan`); starting a heavy
+ * build for a body that is merely approaching is what the late-frame gate exists to refuse.
+ * The strict scan verdict (published glass set / R0 tier) joins the geometric readable band,
+ * so a sim-declared glass body at a stale pose still counts as present.
+ */
+function entityIsOnInFrameGlassScan(entity, state, scan) {
+  return entityIsOnDeadlineGlassScanImpl(entity, state, scan)
+    || entityIsOnReadableGlassScan(entity, state, scan);
+}
+
+/**
+ * Does the pending build queue hold anything the player can already read? Bounded head scan —
+ * this answers the late-frame gate, so it must stay cheap even with a 70-row backlog. Only the
+ * on-readable-glass verdict belongs here; the 2 s prediction horizon is ordering work.
  */
 const MESH_BUILD_DEADLINE_SCAN_LIMIT = 64;
-function meshBuildQueueHasDeadlineWork(owner, state) {
+function meshBuildQueueHasInFrameGlassWork(owner, state) {
   const queue = owner && owner._meshBuildQueue;
   if (!queue || !state) return false;
   const start = owner._meshBuildQueueHead | 0;
@@ -4118,7 +4133,7 @@ function meshBuildQueueHasDeadlineWork(owner, state) {
   const scan = makeHoldExemptScanContext(state);
   for (let i = start; i < end; i++) {
     const entity = resolveWorldPresentationEntity(state, queue[i]);
-    if (entityIsOnDeadlineGlassScan(entity, state, scan)) return true;
+    if (entityIsOnInFrameGlassScan(entity, state, scan)) return true;
   }
   return false;
 }
@@ -8377,6 +8392,9 @@ export function retireAppearanceGpuGeneration(owner, reason = 'renderer-destroye
 export function disposeRendererOwnedResources(owner, options = {}) {
   if (!owner || owner._rendererResourcesDisposed === true) return false;
   owner._rendererResourcesDisposed = true;
+  // Stop the residency drain first: its timer must not outlive this renderer generation,
+  // and every hold it owns must be released before the scene below is retired.
+  try { owner._releaseResidencyManager?.(); } catch (_) { /* cleanup only */ }
   owner._releaseLivePackageCpuPayloads?.();
   owner._orientationResizeRelease?.();
   owner._orientationResizeRelease = null;
@@ -9834,6 +9852,10 @@ export const render = {
         this._contextRestoreReceipt?.cancel?.();
         this._contextRestoreReceipt = null;
         publishContextLostState(this, true);
+        // The manager's stamps and in-flight uploads belong to the lost context. Release
+        // every hold and stop its timer now; the restore path installs a fresh manager after
+        // the whole-scene re-upload stamps the restored resources.
+        this._releaseResidencyManager();
         dropGeometryGpuResidencyLedger(renderer);
         retireScenePipelineReadinessPrograms(renderer);
         invalidateMachineryPresentation(state);
@@ -10237,6 +10259,12 @@ export const render = {
                   console.error('[render] context-restore rebuild failed', restored.error);
                 }
                 return;
+              }
+              // The rebuild re-uploaded the whole live scene before this point, so the new
+              // manager starts with every existing drawable proven and gates anything that
+              // appears later. Installing earlier would hold roots against a dead context.
+              if (this._contextLost !== true && this._rendererResourcesDisposed !== true) {
+                this._installResidencyManager();
               }
               this._publishAssetResidencyDiagnostics();
               resumeSimAfterContextRestore(state);
@@ -12157,21 +12185,9 @@ export const render = {
       // drawable. The draw guard consults it per draw (entity leaves, VFX roots, tethers,
       // props); over-budget first uploads are held here and drained off-screen through the
       // same residency pass the warm roots use mid-flight. Counters ride rendererData for
-      // the frame-solid probe and the E10 dashboard.
-      if (!rendererData.sfResidencyManager) {
-        const manager = createResidencyManager({
-          requestRoots: (roots) => prepareStartupGeometryResidency(this.renderer, roots, {
-            includeEmpty: false,
-            yieldToMain: yieldToBrowser,
-          }),
-          hasUnresidentGeometry,
-          onRequest: () => this._scheduleResidencyDrain(),
-          onError: (message, error) => laneWarn(this, 'residencyManager', `[render] ${message}`, error),
-        });
-        rendererData.sfResidencyManager = manager;
-        this.renderer.__sfResidencyManager = manager;
-        this._residencyManager = manager;
-      }
+      // the frame-solid probe and the E10 dashboard. The method is reused after a context
+      // loss restores the GPU so late drawables stay gated.
+      this._installResidencyManager();
     }
     const pendingSubjectHolds = new Map();
     const markSubjectPipelinesPending = (subject, pending, debugBy = null) => {
@@ -25219,7 +25235,9 @@ export const render = {
     const timer = setTimeout(() => {
       this._residencyDrainTimer = null;
       const manager = this._residencyManager;
-      if (!manager) return;
+      // Teardown/context loss clears the manager; a timer that slipped through must not
+      // keep a dead renderer generation alive.
+      if (!manager || this._rendererResourcesDisposed === true) return;
       try { manager.drainUploads(); } catch (error) {
         laneWarn(this, 'residencyDrain', '[render] residency drain failed', error);
       }
@@ -25228,6 +25246,60 @@ export const render = {
     // A background tab must not keep a timer alive after teardown.
     if (timer && typeof timer.unref === 'function') timer.unref();
     this._residencyDrainTimer = timer;
+  },
+
+  // Create the one residency manager for this renderer generation. Also called after a
+  // context-loss restore: the lost-context manager is disposed (its stamps died with the
+  // context) and a fresh one gates drawables created after the whole-scene re-upload.
+  _installResidencyManager() {
+    if (!this.renderer) return null;
+    const rendererData = this.renderer.userData || (this.renderer.userData = {});
+    if (rendererData.sfResidencyManager) {
+      this._residencyManager = rendererData.sfResidencyManager;
+      this.renderer.__sfResidencyManager = this._residencyManager;
+      return this._residencyManager;
+    }
+    const manager = createResidencyManager({
+      requestRoots: (roots, urgent) => prepareStartupGeometryResidency(this.renderer, roots, {
+        // The drain hands over exactly the drawables stillPending selects. hasUnresidentGeometry
+        // counts count-0 InstancedMesh/drawRange buffers as unready, so the driver must admit
+        // the same empty geometry or a held empty pool can never release.
+        includeEmpty: true,
+        // Binds already on the glass (or inside the 2 s approach horizon) use the driver's
+        // separate urgent chain instead of waiting behind ambient runway work.
+        urgent: urgent === true,
+        yieldToMain: yieldToBrowser,
+      }),
+      hasUnresidentGeometry,
+      onRequest: () => this._scheduleResidencyDrain(),
+      onError: (message, error) => laneWarn(this, 'residencyManager', `[render] ${message}`, error),
+    });
+    rendererData.sfResidencyManager = manager;
+    this.renderer.__sfResidencyManager = manager;
+    this._residencyManager = manager;
+    return manager;
+  },
+
+  // Teardown and context loss: stop the drain timer, release every hold, and drop every
+  // reference so a late timer or draw cannot reach a dead manager. A disposed manager is
+  // inert (presented draws fail open) if some reference survives.
+  _releaseResidencyManager() {
+    if (this._residencyDrainTimer != null) {
+      clearTimeout(this._residencyDrainTimer);
+      this._residencyDrainTimer = null;
+    }
+    const manager = this._residencyManager;
+    this._residencyManager = null;
+    if (manager) {
+      try { manager.dispose(); } catch (_) { /* cleanup is best effort */ }
+    }
+    const renderer = this.renderer;
+    if (renderer) {
+      if (renderer.__sfResidencyManager === manager) renderer.__sfResidencyManager = null;
+      const data = renderer.userData;
+      if (data && data.sfResidencyManager === manager) data.sfResidencyManager = null;
+    }
+    return !!manager;
   },
 
   _bindPresentationMesh(entity, mesh) {
@@ -25296,7 +25368,10 @@ export const render = {
     // live root is never held here (that would blank a body the player is already watching);
     // its missing leaves are held individually by the draw guard instead.
     if (this._residencyManager && !mesh.parent && hasUnresidentGeometry(mesh)) {
-      this._residencyManager.holdRoot(mesh, 'bind');
+      // Already on the glass or inside the approach horizon: urgent upload chain. Off-glass
+      // binds keep the ambient order (making every bind urgent would re-create the burst).
+      const urgent = entityPredictedOnDeadlineGlass(entity, this.state);
+      this._residencyManager.holdRoot(mesh, 'bind', null, urgent);
     }
     lanes.reserve(entity.id, lane);
     const bound = world.bindMesh(handle, mesh, entity, entityVisualCullRadius(entity, mesh));
@@ -25411,6 +25486,9 @@ export const render = {
         // binding's claims while the true ones leak.
         const releaseId = marked ? mesh.userData.sfBoundEntityId : entityId;
         releasePooledPresentationTextures(mesh, releaseId, this);
+        // A pooled mesh must not carry a stale residency hold into its next binding:
+        // drop the queue entry and release the hold before the mark is recycled.
+        this._residencyManager?.cancelRoot?.(mesh);
       }
       // The pooled-mark contract is the entity bound *right now*: a mesh leaving
       // the presentation world keeps no owner, so entity resolvers can't hand
@@ -26978,14 +27056,14 @@ export const render = {
       );
       // The skip-count release exists to keep work moving on a permanently-slow host, but it
       // spends a whole heavy build inside a frame the player is watching. A build is only
-      // worth that spend when the body is about to be seen: the queue's deadline set now
-      // includes the 2 s prediction horizon, so off-screen backlog still waits.
+      // worth that spend when the body is already on the readable glass; the 2 s approach
+      // horizon stays in the ordering/hoist predicates, not this in-frame gate.
       const forcedBySkips = gate.start && !shouldStartHeavyAdmission(lastPresentDt, undefined, presentBaseline);
       // The starvation floor still consults the forced wallet - a spent frame
       // defers the forced start (keeping the late streak armed) instead of
       // running the one build un-metered like every other forced lane.
       const lateStartAllowed = gate.start
-        && (!forcedBySkips || meshBuildQueueHasDeadlineWork(this, this.state))
+        && (!forcedBySkips || meshBuildQueueHasInFrameGlassWork(this, this.state))
         && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
       if (!gate.start || lateStartAllowed) this._meshBuildLateSkips = gate.skippedCount;
       if (!lateStartAllowed) {
@@ -27107,11 +27185,11 @@ export const render = {
             { baselineMs: resumedBaseline },
           );
           // Same predictive rule as the prologue: a skip-count release is only allowed when
-          // the queue actually holds a body inside the lookahead horizon.
+          // the queue actually holds a body on the readable glass.
           const resumedForcedBySkips = resumedGate.start
             && !shouldStartHeavyAdmission(resumedLastDt, undefined, resumedBaseline);
           const resumedStartAllowed = resumedGate.start
-            && (!resumedForcedBySkips || meshBuildQueueHasDeadlineWork(this, this.state))
+            && (!resumedForcedBySkips || meshBuildQueueHasInFrameGlassWork(this, this.state))
             && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
           if (!resumedGate.start || resumedStartAllowed) {
             this._meshBuildLateSkips = resumedGate.skippedCount;
@@ -27124,8 +27202,9 @@ export const render = {
         this._meshBuildQueue[this._meshBuildQueueHead],
       );
       // Under a refused late-present start only the hoisted deadline-glass
-      // prefix may build; the first ambient head ends the drain.
-      if (deadlineGlassOnly && !entityIsOnDeadlineGlassScan(peek, this.state, drainScan)) break;
+      // prefix may build; the first row not already on the readable glass ends the
+      // drain. The 2 s horizon is an ordering verdict (hoist), not an in-frame permit.
+      if (deadlineGlassOnly && !entityIsOnInFrameGlassScan(peek, this.state, drainScan)) break;
       // A count cap of a few builds per frame is right for off-screen runway
       // filler. It is wrong for a body already on the glass: that is a hole in
       // the picture. On-glass builds ignore the count and stop on the time
@@ -28287,8 +28366,18 @@ export const render = {
           snapshotMissing: !posed,
           alive: !entity || entity.alive !== false,
         });
+        const wantsVisible = retainShown || (posed && shouldSubmitEntityMesh(_submitVisibilityOptions));
+        // Honest submit-side blink counter: a root that was on screen and is being taken
+        // off for a pending latch is a presented-then-refused draw even though bloom's
+        // draw guard never sees it.
+        if (!wantsVisible && !retainShown && mesh.visible !== false
+            && (_submitVisibilityOptions.pipelinesPending === true
+                || _submitVisibilityOptions.geometryPending === true
+                || _submitVisibilityOptions.authoredPending === true)) {
+          this._residencyManager?.noteRefusedDraw?.(mesh, 'submit-pending', true);
+        }
         const visibilityChanged = !(!posed && protectedRoot)
-          && applyEntityMeshVisibility(mesh, retainShown || (posed && shouldSubmitEntityMesh(_submitVisibilityOptions)));
+          && applyEntityMeshVisibility(mesh, wantsVisible);
         if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
         if (!retainShown && mesh.userData && mesh.userData.asteroidInstanceBody) {
           mesh.userData.asteroidInstanceViewCulled = true;
@@ -28594,8 +28683,16 @@ export const render = {
           snapshotMissing: !posed,
           alive: !entity || entity.alive !== false,
         });
+        const wantsVisible = retainShown || shouldSubmitEntityMesh(_submitVisibilityOptions);
+        // Same honest submit-side blink counter as the frustum branch above.
+        if (!wantsVisible && !retainShown && mesh.visible !== false
+            && (_submitVisibilityOptions.pipelinesPending === true
+                || _submitVisibilityOptions.geometryPending === true
+                || _submitVisibilityOptions.authoredPending === true)) {
+          this._residencyManager?.noteRefusedDraw?.(mesh, 'submit-pending', true);
+        }
         const visibilityChanged = !(!posed && protectedRoot)
-          && applyEntityMeshVisibility(mesh, retainShown || shouldSubmitEntityMesh(_submitVisibilityOptions));
+          && applyEntityMeshVisibility(mesh, wantsVisible);
         if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
         // D38 — a latched root on the live glass is a hole in the picture: whatever lane queued
         // its compile/residency while it was still off-glass must not finish under ambient FIFO
@@ -30197,6 +30294,8 @@ export const render = {
         this.state.render.residency = {
           ...this._residencyManager.snapshot(),
           compileFailOpen: this.renderer ? (this.renderer.__sfCompileFailOpen | 0) : 0,
+          compileRefusals: this.renderer ? (this.renderer.__sfCompileRefusalCount | 0) : 0,
+          compileFallbacks: this.renderer ? (this.renderer.__sfCompileFallbacks | 0) : 0,
         };
       }
     }

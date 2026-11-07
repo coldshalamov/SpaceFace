@@ -653,6 +653,8 @@ export function readResidencyCounters() {
   return {
     manager: mgr && typeof mgr.snapshot === 'function' ? mgr.snapshot() : null,
     compileFailOpen: render && render.renderer ? (render.renderer.__sfCompileFailOpen | 0) : 0,
+    compileRefusals: render && render.renderer ? (render.renderer.__sfCompileRefusalCount | 0) : 0,
+    compileFallbacks: render && render.renderer ? (render.renderer.__sfCompileFallbacks | 0) : 0,
     published: (SF && SF.state && SF.state.render && SF.state.render.residency) || null,
   };
 }

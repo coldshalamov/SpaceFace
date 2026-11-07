@@ -1476,8 +1476,16 @@ function linkedDrawProgramVariant(renderer, rec, material, object) {
 // the renderer's route-level instance) — and composes with the perf-counter drawObject
 // wrapper whichever installs first. Warm variants allocate nothing on the draw path.
 // Consecutive presented frames a drawable may be refused for an unlinked program before the
-// guard fails open (~1.5 s at 60 fps). A stuck admission lane must not hide a body forever.
-const COMPILE_REFUSAL_FAIL_OPEN = 90;
+// guard fails open. A wall deadline, not a count: 90 frames was ~6 s at 15 fps, so a slow
+// host hid a body far longer than the documented ~1.5 s. A stuck admission lane must not
+// hide a body forever.
+const COMPILE_REFUSAL_FAIL_OPEN_MS = 1500;
+
+function unreadyGuardNowMs() {
+  return (typeof performance !== 'undefined' && typeof performance.now === 'function')
+    ? performance.now()
+    : Date.now();
+}
 
 function installUnreadyDrawGuard(renderer) {
   if (!renderer || renderer.__sfUnreadyDrawGuardWrapped === true) return;
@@ -1485,6 +1493,8 @@ function installUnreadyDrawGuard(renderer) {
   renderer.__sfUnreadyDrawGuardDepth = 0;
   const inner = renderer.renderBufferDirect;
   const drawGuardGl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+  const guardNow = typeof renderer.__sfDrawGuardNow === 'function'
+    ? renderer.__sfDrawGuardNow : unreadyGuardNowMs;
   // Exact-target admission uses the same context-generation ownership as presented draws.
   renderer.__sfExactProgramInvalid = (program) => programWrapperDead(drawGuardGl, program);
   renderer.__sfDeferSelectedProgram = (program, object, material) => {
@@ -1502,6 +1512,23 @@ function installUnreadyDrawGuard(renderer) {
     }
     return true;
   };
+  // An object already on screen may keep drawing with the last material that proved a
+  // linked program. That is strictly better than refusing the draw and blanking a body the
+  // player is watching; the new material joins admission and takes over when it links.
+  function presentedFallbackMaterial(object, material, props) {
+    const previous = object && object.__sfPresentedMaterial;
+    if (!previous || previous === material || !props || typeof props.get !== 'function') return null;
+    let rec = null;
+    try { rec = props.get(previous); } catch (_) { return null; }
+    if (!rec || !rec.currentProgram) return null;
+    let variant = null;
+    try { variant = linkedDrawProgramVariant(renderer, rec, previous, object); } catch (_) { return null; }
+    if (!variant || programWrapperDead(drawGuardGl, variant)) return null;
+    if (typeof variant.isReady === 'function') {
+      try { if (variant.isReady() !== true) return null; } catch (_) { return null; }
+    }
+    return previous;
+  }
   function unreadyDrawGuard(camera, scene, geometry, material, object, group) {
     // Three already ran object/material before-hooks. Its instance renderer skips
     // zero counts only after program/uniform/binding work; avoid that work here.
@@ -1524,12 +1551,18 @@ function installUnreadyDrawGuard(renderer) {
     const presented = renderer.__sfPresentedPass === true;
     const residency = renderer.__sfResidencyManager;
     const gated = presented && !!residency && !renderer.__sfExactTargetTouch;
-    if (gated && residency.admitGeometry(object, geometry) === false) return undefined;
+    if (gated && residency.admitGeometry(object, geometry) === false) {
+      // Honest draw-point counter: unlike the hold path it also sees refusals that arrive
+      // through a route this manager did not hold (the reason is for probe context).
+      residency.noteRefusedDraw?.(object, 'geometry-not-resident');
+      return undefined;
+    }
     // Recover available mip donors and check live upload safety in one allocation-free
     // slot pass. Released payloads keep drawing from stamp-matched GPU copies; a
     // fresh upload or orientation hold waits for real bytes before three binds them.
     if (preparePresentedDraw(renderer, geometry, material)) {
       queuePresentedDetachRehydrate(renderer, { geometry, material });
+      if (presented) residency?.noteRefusedDraw?.(object, 'presented-detach');
       return undefined;
     }
     // The compiled check is deliberately NOT scoped to the armed scene scan. The scan is
@@ -1568,13 +1601,38 @@ function installUnreadyDrawGuard(renderer) {
         }
       } catch (_) { /* draw as today */ }
       if (!compiled) {
+        // Prefer keeping the already-drawn body on its last proven material over refusing
+        // the draw: blanking a body the player is watching is the worse failure.
+        const fallback = presentedFallbackMaterial(object, material, props);
+        if (fallback) {
+          renderer.__sfCompileFallbacks = (renderer.__sfCompileFallbacks | 0) + 1;
+          // The new material still needs its program: queue admission while the old
+          // material keeps the body on screen, or the swap would never converge.
+          const admissionData = data || (material.userData = {});
+          const queueAdmission = renderer.userData && renderer.userData.spacefaceQueuePipelineAdmission;
+          if (admissionData.__sfPipelineAdmission !== true && typeof queueAdmission === 'function') {
+            admissionData.__sfPipelineAdmission = true;
+            Promise.resolve(queueAdmission(object))
+              .catch(() => null)
+              .finally(() => { admissionData.__sfPipelineAdmission = false; });
+          }
+          const result = inner.call(this, camera, scene, geometry, fallback, object, group);
+          if (gated) residency.noteDrawn(object, geometry, fallback);
+          return result;
+        }
         // Bounded fail-open: if admission cannot produce a program for this drawable (a
         // detached boundary, a throw in the compile lane), a permanently invisible part is
-        // worse than one brick. After ~1.5 s of refusals the draw proceeds and the event is
-        // counted, so a stuck lane is visible to the probes instead of silent.
-        const refusals = (object.__sfCompileRefusals | 0) + 1;
-        if (refusals <= COMPILE_REFUSAL_FAIL_OPEN) {
-          object.__sfCompileRefusals = refusals;
+        // worse than one brick. A wall deadline keeps the bound honest at any frame rate.
+        // Every refusal is counted; the eventual fail-open has its own counter.
+        const nowMs = guardNow();
+        let firstRefusedAt = Number(object.__sfCompileRefusedAt);
+        if (!Number.isFinite(firstRefusedAt) || firstRefusedAt < 0) {
+          firstRefusedAt = nowMs;
+          object.__sfCompileRefusedAt = firstRefusedAt;
+        }
+        if (nowMs - firstRefusedAt < COMPILE_REFUSAL_FAIL_OPEN_MS) {
+          renderer.__sfCompileRefusalCount = (renderer.__sfCompileRefusalCount | 0) + 1;
+          if (gated) residency.noteRefusedDraw?.(object, 'program-not-linked');
           const admissionData = data || (material.userData = {});
           // Same material stamp dedupe as hideIfProgramUnready: one admission
           // in flight per material while the draw keeps being skipped.
@@ -1587,13 +1645,16 @@ function installUnreadyDrawGuard(renderer) {
           }
           return undefined;
         }
+        object.__sfCompileRefusedAt = -1;
         object.__sfCompileRefusals = 0;
         renderer.__sfCompileFailOpen = (renderer.__sfCompileFailOpen | 0) + 1;
-      } else if (object.__sfCompileRefusals) {
+      } else {
+        object.__sfCompileRefusedAt = -1;
         object.__sfCompileRefusals = 0;
       }
     }
     const result = inner.call(this, camera, scene, geometry, material, object, group);
+    if (object && material) object.__sfPresentedMaterial = material;
     // The draw just uploaded any missing buffers; record the residency proof so the next
     // frame takes the cheap path and the held-drawable counters see the body as ready.
     if (gated) residency.noteDrawn(object, geometry, material);

@@ -203,9 +203,13 @@ test('default video settings still request full picture quality', async () => {
 
 test('live entity view sync hides off-runway roots through the helper', async () => {
   const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
-  assert.match(source, /applyEntityMeshVisibility\(mesh,\s*retainShown \|\| shouldSubmitEntityMesh\(_submitVisibilityOptions\)\)/);
-  assert.match(source, /applyEntityMeshVisibility\(mesh,\s*retainShown \|\| \(posed && shouldSubmitEntityMesh\(_submitVisibilityOptions\)\)\)/,
+  assert.match(source, /const wantsVisible = retainShown \|\| \(posed && shouldSubmitEntityMesh\(_submitVisibilityOptions\)\)/);
+  assert.match(source, /const wantsVisible = retainShown \|\| shouldSubmitEntityMesh\(_submitVisibilityOptions\)/,
     'the hidden-boundary site submits through the same scratch');
+  assert.equal((source.match(/applyEntityMeshVisibility\(mesh,\s*wantsVisible\)/g) || []).length, 2,
+    'both submit sites hand the helper the same visibility verdict');
+  assert.match(source, /noteRefusedDraw\?\.\(mesh, 'submit-pending', true\)/,
+    'a presented root hidden by a pending latch is counted as a draw-point refusal');
   assert.match(source, /this\.state\.mode === 'flight' && retainShownCameraGlass\(\{/);
   assert.match(source, /if \(!retainShown\) this\._queueHiddenSubtreeFreeze\(mesh\)/,
     'a retained survival body stays on the live compose path');

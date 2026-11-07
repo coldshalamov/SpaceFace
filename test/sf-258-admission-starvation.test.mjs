@@ -58,3 +58,17 @@ test('every admission lane that can starve consults the gate or documents the by
   // spinner, so the gate would refuse every drain — that bypass has its own pin in
   // test/admission-slice-budget.test.mjs.
 });
+
+test('the late-frame gate admits readable glass, while prediction stays an ordering verdict', async () => {
+  const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const gateStart = renderer.indexOf('function meshBuildQueueHasInFrameGlassWork');
+  assert.ok(gateStart >= 0, 'the in-frame gate has its own predicate');
+  const gate = renderer.slice(gateStart, renderer.indexOf('function admissionSubjectIsOnDeadlineGlass', gateStart));
+  assert.match(gate, /entityIsOnInFrameGlassScan\(/, 'the gate uses the on-readable-glass split');
+  assert.doesNotMatch(gate, /entityIsOnDeadlineGlassScan\(/,
+    'the 2 s approach horizon must not admit heavy work inside a late frame');
+  const hoistStart = renderer.indexOf('function* hoistDeadlineGlassMeshBuildsSteps');
+  const hoist = renderer.slice(hoistStart, renderer.indexOf('export function hoistDeadlineGlassMeshBuilds', hoistStart));
+  assert.match(hoist, /entityIsOnDeadlineGlassScan\(/,
+    'hoisting keeps the predicted deadline glass so approach work is ordered early');
+});

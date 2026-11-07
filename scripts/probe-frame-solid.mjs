@@ -839,9 +839,12 @@ try {
     const r = residency.manager;
     console.log(`  residency: draws=${r.draws} resident=${r.admittedResident} inline=${r.admittedInline}`
       + ` heldDraws=${r.heldDraws} preAdmittedHolds=${r.preAdmittedHolds}`
-      + ` visibleUnready=${r.visibleUnready} released=${r.releasedRoots}`
+      + ` visibleUnready=${r.visibleUnready} refused=${r.refusedDraws}`
+      + ` visibleUnreadyDraws=${r.visibleUnreadyDraws} released=${r.releasedRoots}`
+      + ` failOpenReleases=${r.failOpenReleases} admittedFailOpen=${r.admittedFailOpen}`
       + ` delayP95=${r.firstResidentDelayP95Ms}ms uploadMs=${r.uploadMsTotal}`
-      + ` pending=${r.pending} compileFailOpen=${residency.compileFailOpen}`);
+      + ` pending=${r.pending} compileRefusals=${residency.compileRefusals}`
+      + ` compileFailOpen=${residency.compileFailOpen}`);
   } else {
     console.log('  residency: NOT MEASURED (manager absent)');
   }
@@ -902,12 +905,27 @@ try {
     comparePass = verdict.failures.length === 0;
   }
 
+  // E6 verdict: a solid frame is also a blink-free, link-free, fully-drawn frame, and the
+  // residency lane must have no pending work at the end of the route. These are measured
+  // values (null fails): the probe reports a real FAIL rather than silently skipping them.
+  const residencyManager = residency && residency.manager;
   const pass = !!(summary && summary.frames > 0)
     && summary.blinks === 0
     && summary.rootSwaps === 0
     && summary.regressions === 0
     && summary.stuckMissing === 0
-    && summary.stationNoCollider === 0;
+    && summary.stationNoCollider === 0
+    && metrics.inFrameShaderLinks === 0
+    && metrics.leftUndrawn === 0
+    && !!residencyManager
+    && residencyManager.visibleUnready === 0
+    && residencyManager.visibleUnreadyDraws === 0
+    && residencyManager.pending === 0;
+  console.log(`  E6 verdict inputs: inFrameShaderLinks=${metrics.inFrameShaderLinks}`
+    + ` leftUndrawn=${metrics.leftUndrawn}`
+    + ` visibleUnready=${residencyManager ? residencyManager.visibleUnready : 'n/a'}`
+    + ` visibleUnreadyDraws=${residencyManager ? residencyManager.visibleUnreadyDraws : 'n/a'}`
+    + ` pending=${residencyManager ? residencyManager.pending : 'n/a'}`);
   dumpErrors();
   console.log(pass ? 'RESULT: PASS' : 'RESULT: FAIL');
   if (COMPARE_PATH) console.log(comparePass ? 'COMPARE: PASS' : 'COMPARE: FAIL');
