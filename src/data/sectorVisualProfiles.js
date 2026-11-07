@@ -97,7 +97,11 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
           kind: 'planet', type: 'gas', ring: true, frac: 0.32,
           offset: [0.18, 0.16],
           screenNdc: [0.58, 0.32],
-          lightAngle: -0.72, ringTilt: 0.16,
+          // One sun: the play key is the DirectionalLight at (60, 140, 40). Through the 60°
+          // chase camera (screen right = -X, screen up = +Z) that key reads upper-left, so the
+          // painted terminator must too: atan2(40, -60) ≈ 2.55 rad. The old -0.72 lit the
+          // giant from the right and broke the one-sun rule in the X1 proof frame.
+          lightAngle: 2.55, ringTilt: 0.16,
         },
       },
     },

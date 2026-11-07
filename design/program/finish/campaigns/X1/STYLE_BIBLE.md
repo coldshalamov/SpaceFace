@@ -34,6 +34,15 @@ a play planet is never replaced by a painted sprite.
   A sky planet lit from a different side than the ship is a defect.
 - **One palette family.** Sky bodies use the sector's key/edge hue fight (`lookMoods.js`), not a
   separate colour script.
+- **Nebula ceiling.** The nebula is the largest, quietest thing in the frame; it is sky, not paint.
+  At the composited frame its brightest 1% of pixels stay ≤ 0.30 sRGB luma with ≤ 0.55 saturation,
+  and its mean stays ≤ 0.16. It may share the rock family's hue (Helios is amber-brown either way)
+  but never its chroma or its value: in a greyscale read the nebula sits below every lit play rock.
+  The sky plate (`spaceBackground.js` painted sky + structure) is the enforcement point; a capture
+  that breaks the ceiling is rejected in review, never rescued with a posterise pass.
+- **Rocks follow the ladder.** Play rocks are one family in three authored sizes (see §4): pebble,
+  boulder, monolith. A rock never changes language by size; the authored `place_rock_*` GLBs are
+  the bar, and the procedural icosphere is a load-failure fallback, not art.
 - **No collision between bands.** A sky sprite may never cross in front of a ship, rock, station, or
   HUD. The current `hero depth 12` + parallax gate is the enforcement point.
 - **A sky planet never explains a gameplay mechanic.** If a planet is a hazard, a site, or a target,
@@ -67,10 +76,15 @@ discipline** at the mode's real gameplay camera (Adventure: 60° top-down chase 
 | **Container rack** | 2 pods wide, 1 pod tall | stations, docks, cargo yards |
 | **Human-scale greeble** | 0.25–0.5 WU | doors, rails, ladders, windows on every prop |
 | **Arena furniture** | 1.5–4 ship lengths (a bank plate is room-scale, not crate-scale) | Foundry plates, pylons, crushers |
+| **Rock pebble** | radius 9 WU (18 WU across) | scatter cover; one value break is enough |
+| **Rock boulder** | radius 18 WU (36 WU across) | bankable cover; three values plus strata/veins |
+| **Rock monolith** | radius 30 WU (60 WU across) | landmark silhouette; at most one per room |
 | **Sky hero** | 0.32–0.34 screen height at depth 12 | Helios Saturn, Veil ringed ice |
 
 A prop is never sized by taste. If it is a crate, it is a cargo pod. If it is furniture, it is
-room-scale and reads as architecture. There is no third size.
+room-scale and reads as architecture. There is no third size. Rocks are the one family allowed
+three sizes, and only the three above: pebble, boulder, monolith — a rock that changes its value
+structure or silhouette language between sizes is two families, not a ladder.
 
 ## 5. Colour and light
 

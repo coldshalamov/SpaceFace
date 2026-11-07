@@ -73,12 +73,14 @@ test('warm steel panels and end mark remain flush, with a real inset chamfer abo
   }
   const panel = colorAt(-0.6, 0.1), middle = colorAt(0, 0.1), other = colorAt(0.6, 0.1);
   const weldA = colorAt(-0.333, 0.1), weldB = colorAt(0.333, 0.1);
-  const mark = colorAt(-0.81, 0.1);
+  // X1: the ochre mark moved to the dashed safety band on the working edge; the deck rows
+  // above it are the light/mid/dark value ladder.
+  const mark = colorAt(-0.65, -0.87);
   assert.deepEqual(panel, other);
   assert.notDeepEqual(panel, middle);
   assert.deepEqual(weldA, weldB);
   assert.notDeepEqual(weldA, panel);
-  assert.ok(mark[0] > mark[1] && mark[1] > mark[2], 'the end marking is restrained ochre');
+  assert.ok(mark[0] > mark[1] && mark[1] > mark[2], 'the safety band is restrained ochre');
   assert.notDeepEqual(mark, panel);
   assert.ok(position.count / 3 <= 100, 'the shared surface stays a bounded simple mesh');
   let bevelVertices = 0;

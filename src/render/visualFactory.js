@@ -2971,53 +2971,29 @@ function buildFoundryToy(e) {
   body.receiveShadow = true;
   g.add(body);
   // X1 finish: one lit work point so the machine reads as powered at the chase camera.
-  // The plate gets an edge light bar; posts and blocks get a cap lamp.
+  // Posts and blocks get a cap lamp. The bank plate carries no trim mesh at all: its
+  // foundation skirt, clamp rails, lamp housing and safety band are painted into the one
+  // vertex-coloured bank surface (foundryBankSurface.js) so the picture stays exactly
+  // inside the authored collision slab and the batch keeps a single specimen.
   if (kind === 'plate') {
-    const plateShape = foundryPlateShape(e);
-    // X1 §3: the slab is grounded, not floating. A dark foundation skirt and two hold-down
-    // clamps give the top face a manufactured silhouette and a contact read.
-    const iron = getMaterial('foundrytoy:iron', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-      color: 0x2a3038, roughness: 0.78, metalness: 0.5,
-    }), SHARED_MATERIAL_ROLE.STATION));
-    const skirt = new THREE.Mesh(machinedBoxGeometry(), iron);
-    skirt.name = 'foundry_plate_skirt';
-    skirt.scale.set(plateShape.halfWidth * 1.86, 0.7, plateShape.halfDepth * 1.86);
-    skirt.position.y = -plateShape.halfHeight - 0.2;
-    g.add(skirt);
-    for (const side of [-1, 1]) {
-      const clamp = new THREE.Mesh(machinedBoxGeometry(), iron);
-      clamp.name = 'foundry_plate_clamp';
-      clamp.scale.set(3.6, 0.9, 5.4);
-      clamp.position.set(side * plateShape.halfWidth * 0.78, plateShape.halfHeight + 0.35, 0);
-      g.add(clamp);
-    }
-    const housing = new THREE.Mesh(machinedBoxGeometry(), iron);
-    housing.name = 'foundry_plate_lamp_housing';
-    housing.scale.set(5.2, 0.8, 2.2);
-    housing.position.set(0, plateShape.halfHeight + 0.4, plateShape.halfDepth * 0.68);
-    g.add(housing);
-    addWorkLamp(g, {
-      width: plateShape.halfWidth * 1.35,
-      height: 0.6,
-      depth: 1.6,
-      y: plateShape.halfHeight + 0.95,
-      z: plateShape.halfDepth * 0.68,
-    });
+    // no extra draw: the deck's value structure lives in the shared surface's colour attribute
   } else if (kind === 'gate') {
+    // The lamp sits on the post's face, inside the authored hex footprint (radius 0.2 × scale)
+    // and below the post cap, so the picture never outgrows the contact proxy.
     addWorkLamp(g, {
-      width: 2.4, height: 1.1, depth: 2.4,
-      y: (furniture?.body?.height || 1.5) * 0.5 * (furniture?.scale || R) + 1,
+      width: 2.4, height: 1.1, depth: 0.8,
+      y: (furniture?.body?.height || 1.5) * 0.5 * (furniture?.scale || R) * 0.72,
+      z: (furniture?.body?.radiusBottom || 0.2) * (furniture?.scale || R) * 0.82,
     });
   } else if (kind === 'furnace') {
-    addWorkLamp(g, {
-      width: 3.4, height: 1, depth: 1.2,
-      y: (furniture?.body?.height || 0.72) * 0.5 * (furniture?.scale || R) + 0.6,
-      z: (furniture?.body?.depth || 0.95) * 0.5 * (furniture?.scale || R) + 0.1,
-    });
+    // The ember mouth below is the furnace's lit point; a second lamp would push the
+    // furnace past the two-solid foundry-furniture cap.
   } else {
+    // Shutter / block: the lamp rides the body face, never above the solid's top.
+    const halfHeight = (furniture?.body?.height || 0.32) * (furniture?.scale || R) * 0.5;
     addWorkLamp(g, {
       width: 2, height: 0.8, depth: 1,
-      y: 1.2,
+      y: Math.max(0.3, halfHeight * 0.55),
     });
   }
   if (kind === 'furnace') {

@@ -105,6 +105,7 @@ function sharedAssets() {
   const plateMat = finish.light;
   const paintMat = finish.paint;
   const hazardMat = finish.hazard;
+  const lampMat = finish.lamp;
   const emberMat = new THREE.MeshStandardMaterial({
     color: 0x1d1008,
     emissive: new THREE.Color(WORKS_FURNACE_HEAT.emberHex),
@@ -132,7 +133,7 @@ function sharedAssets() {
   for (const res of [cylGeo, torusGeo, emberMat, tideMat, amberMat, broodMat]) {
     res.userData.spacefaceSharedAsset = true;
   }
-  _shared = { boxGeo, cylGeo, torusGeo, darkMat, metalMat, plateMat, paintMat, hazardMat, emberMat, tideMat, amberMat, broodMat };
+  _shared = { boxGeo, cylGeo, torusGeo, darkMat, metalMat, plateMat, paintMat, hazardMat, lampMat, emberMat, tideMat, amberMat, broodMat };
   return _shared;
 }
 
@@ -449,7 +450,7 @@ function buildCryoProp(pos, isHeat, sink) {
   };
 }
 
-/** Bank plate: a tilted plate the wave can kick — pos + normal + halfWidth. */
+/** Bank plate: a tilted banked deck the wave can kick — pos + normal + halfWidth. */
 function buildBankPlate(toy, sink) {
   const shared = sharedAssets();
   const isHeat = toy.id === 'heat_plate';
@@ -458,23 +459,67 @@ function buildBankPlate(toy, sink) {
   root.name = `law_plate_${toy.id}`;
   root.position.set(toy.pos.x, 0, toy.pos.z);
   const n = toy.normal && Number.isFinite(toy.normal.x) ? toy.normal : { x: 0, z: 1 };
-  root.rotation.y = -Math.atan2(n.z, n.x); // local +Z faces the incoming body
+  root.rotation.y = -Math.atan2(n.z, n.x); // local +X faces the incoming body
   const half = Math.max(6, Number.isFinite(toy.halfWidth) ? toy.halfWidth : 28);
+
+  // The deck and every trim piece ride one leaned frame, so the working face keeps a
+  // coplanar, manufactured read at the gameplay camera. Local +X is the working face.
+  const deck = new THREE.Group();
+  deck.name = 'law_plate_deck';
+  deck.position.set(0, 9, 0);
+  deck.rotation.z = -0.42; // leaned back, like a banked wall
+  root.add(deck);
+
+  // 1 — the light bank surface (the light primary value).
   const plate = mesh(shared.boxGeo, shared.plateMat, 'law_plate_face');
   plate.scale.set(2.5, 16, half * 2);
-  plate.position.set(0, 9, 0);
-  plate.rotation.z = -0.42; // leaned back, like a banked wall
-  root.add(plate);
+  deck.add(plate);
+
+  // 2 — one dark recessed channel through the face: the top view keeps a real dark share
+  // instead of collapsing to one light value.
+  const channel = mesh(shared.boxGeo, shared.darkMat, 'law_plate_channel');
+  channel.scale.set(1.6, 8.4, half * 1.5);
+  channel.position.set(0.5, 0, 0);
+  deck.add(channel);
+
+  // The room hue reads as a thin powered seam inside the channel (lit point 1 of 2).
   const edge = mesh(shared.boxGeo, seam, 'law_plate_edge');
-  edge.scale.set(1.2, 2.2, half * 2);
-  edge.position.set(2.4, 15.5, 0);
-  edge.rotation.z = -0.42;
-  root.add(edge);
+  edge.scale.set(1.0, 1.1, half * 1.2);
+  edge.position.set(1.32, 0, 0);
+  deck.add(edge);
+
+  // 3 — two mid-value clamp rails across the deck. They overhang the ends like real
+  // hold-downs, so the silhouette reads as a clamped slab, not a card.
+  for (const y of [-5.3, 5.3]) {
+    const rail = mesh(shared.boxGeo, shared.metalMat, 'law_plate_clamp_rail');
+    rail.scale.set(0.9, 1.5, half * 2 + 6);
+    rail.position.set(1.55, y, 0);
+    deck.add(rail);
+  }
+
+  // 4 — one hazard band, only on the working edge (never wrapped onto the deck).
+  addHazardBand(deck, {
+    width: half * 1.8, height: 1.3, depth: 0.6, x: 1.55, y: -7.0, z: 0, rotationY: Math.PI / 2,
+  });
+
+  // 5 — lamp housing at the TOP edge with the lamp proud of it (lit point 2 of 2). The
+  // housing straddles the lip so it survives the 60° chase view instead of sitting in the
+  // plate's shadow at the base.
+  const housing = mesh(shared.boxGeo, shared.metalMat, 'law_plate_lamp_housing');
+  housing.scale.set(4.6, 2.2, half * 1.6);
+  housing.position.set(0.2, 8.3, 0);
+  deck.add(housing);
+  const lamp = mesh(shared.boxGeo, shared.lampMat, 'law_plate_lamp');
+  lamp.scale.set(1.4, 1.2, half * 1.5);
+  lamp.position.set(2.55, 8.3, 0);
+  deck.add(lamp);
+
+  // 6 — foundation skirt: the plate is welded to the floor, not floating.
   const foot = mesh(shared.boxGeo, shared.darkMat, 'law_plate_foot');
   foot.scale.set(14, 3, half * 2 + 8);
   foot.position.set(-4, 1.5, 0);
   root.add(foot);
-  addWorkLamp(root, { width: 3, height: 1, depth: 1.2, x: -4, y: 3.4, z: half + 4.1 });
+
   return {
     root,
     mover(elapsed, dt, reduced, calmFlash, pulse) {

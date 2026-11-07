@@ -315,10 +315,13 @@ function meshesOf(root) {
 
 test('a foundry room solid is dark furniture, not a lit station', () => {
   const kinds = {
-    plate: { color: 0x2c2926, geo: 'BoxGeometry' },
+    // X1: the bank plate is one vertex-coloured steel deck (value lives in the colour
+    // attribute, not the base colour); the animated/solid furniture is a machined box or
+    // cylinder with one small work lamp at most, never a lit station.
+    plate: { color: 0xffffff, geo: 'BufferGeometry', vertexColors: true },
     gate: { color: 0x2c2926, geo: 'CylinderGeometry' },
-    furnace: { color: 0x3a2418, geo: 'BoxGeometry' },
-    crate: { color: 0x2c2926, geo: 'BoxGeometry' },
+    furnace: { color: 0x3a2418, geo: 'ExtrudeGeometry' },
+    crate: { color: 0x2c2926, geo: 'ExtrudeGeometry' },
   };
   for (const [kind, expect] of Object.entries(kinds)) {
     const root = foundry(kind);
@@ -329,6 +332,7 @@ test('a foundry room solid is dark furniture, not a lit station', () => {
     assert.ok(meshes.length >= 1 && meshes.length <= 2, `${kind} stays a couple of solids`);
     let sawBody = false;
     let sawMouth = false;
+    let lamps = 0;
     for (const mesh of meshes) {
       assert.equal(mesh.isSprite, undefined);
       assert.equal(mesh.isPoints, undefined);
@@ -341,16 +345,40 @@ test('a foundry room solid is dark furniture, not a lit station', () => {
       assert.equal(mesh.geometry.type === 'SphereGeometry', false, `${kind} has no blinker lens`);
       assert.equal(mesh.geometry.type === 'IcosahedronGeometry', false);
       assert.equal(mesh.userData.blink, undefined);
+      // X1 §3.4: a working prop may carry one real lamp; it is not the body's value.
+      if (mat.name === 'sf-arena-lamp') {
+        lamps += 1;
+        assert.notEqual(mat.emissive.getHex(), 0, `${kind} lamp is a real emitter`);
+        continue;
+      }
       const bright = mat.color.r > 0.75 && mat.color.g > 0.75 && mat.color.b > 0.75;
-      assert.equal(bright, false, `${kind} material stays off white`);
+      assert.equal(bright && mat.vertexColors !== true, false, `${kind} material stays off white`);
       if (mat.isMeshStandardMaterial) {
         sawBody = true;
-        assert.equal(mat.color.getHex(), expect.color);
-        assert.equal(mat.roughness, 0.94);
-        assert.equal(mat.metalness, 0.06);
+        if (expect.vertexColors) {
+          // White base colour is the vertex-colour carrier; the authored deck paint must
+          // still stay below a lit white surface.
+          assert.equal(mat.vertexColors, true);
+          assert.equal(mat.roughness, 0.72);
+          assert.equal(mat.metalness, 0.38);
+          const colors = mesh.geometry.getAttribute('color');
+          assert.ok(colors && colors.count > 0, `${kind} carries its value in the colour attribute`);
+          // Only the lamp lens bar may read as a bright surface; every other band is paint.
+          let brightVertices = 0;
+          for (let i = 0; i < colors.count; i++) {
+            const peak = Math.max(colors.getX(i), colors.getY(i), colors.getZ(i));
+            if (peak > 0.78) brightVertices++;
+          }
+          assert.ok(brightVertices / colors.count <= 0.15,
+            `${kind} deck paint stays below a lit white surface (lens only)`);
+        } else {
+          assert.equal(mat.color.getHex(), expect.color);
+          assert.equal(mat.roughness, 0.94);
+          assert.equal(mat.metalness, 0.06);
+          if (kind === 'furnace') assert.equal(mat.emissiveIntensity, 0.16);
+          else assert.equal(mat.emissiveIntensity, 0);
+        }
         assert.equal(mesh.geometry.type, expect.geo);
-        if (kind === 'furnace') assert.equal(mat.emissiveIntensity, 0.16);
-        else assert.equal(mat.emissiveIntensity, 0);
       }
       if (mat.isMeshBasicMaterial) {
         sawMouth = true;
@@ -359,6 +387,7 @@ test('a foundry room solid is dark furniture, not a lit station', () => {
         assert.equal(mat.depthWrite, true);
       }
     }
+    assert.ok(lamps <= 1, `${kind} carries at most one work lamp`);
     assert.equal(sawBody, true, `${kind} has a matte body`);
     assert.equal(sawMouth, kind === 'furnace');
   }

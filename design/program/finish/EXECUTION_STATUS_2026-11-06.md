@@ -40,7 +40,7 @@ the implementation is optimal.
 | W2 40 levels | 5 | Not started | no | implement |
 | W3 sectors | 5 | Not started | no | implement |
 | W4 characters | 5 | Not started | no | implement |
-| X1 art direction | 6 | Work landed; lineup UNPROVEN | partial | owner approval in `campaigns/X1/STATUS.md` + re-shoot |
+| X1 art direction | 6 | Work landed; after re-shot, before unmatched | partial | owner approval in `campaigns/X1/STATUS.md` + E10 delta |
 | X2 asset production | 6 | Gated on X1 | no | implement |
 | X4 sound/music | 6 | Stems landed; 30-event pass open | partial | gate E + implement |
 | X3 Adventure glass | 6 | Landed; before capture open | partial | gate E |
@@ -77,8 +77,9 @@ the implementation is optimal.
   remain the record of what was approved.
 - **X1 is not self-granted.** The art-direction gate stays OPEN until the owner writes approval
   into `design/program/finish/campaigns/X1/STATUS.md`. "Build all the things" is a planning
-  assumption for sequencing, not an approval of a look; the lineup is still UNPROVEN (re-shoot
-  owed), so the controller cannot close this gate on the owner's behalf.
+  assumption for sequencing, not an approval of a look; the after frames are re-shot at 1600×1000
+  but the pre-finish "before" is unmatched and the E10 delta unmeasured, so the controller cannot
+  close this gate on the owner's behalf.
 - **Open PRs are not merged blindly.** Each is compared with current master; if the fix is still
   real and clean it lands (as a merge or a ported commit), otherwise it is closed with a one-line
   reason. CI on those branches is stale and is not by itself a verdict.

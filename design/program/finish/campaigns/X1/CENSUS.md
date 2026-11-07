@@ -5,17 +5,30 @@ Measured from the working tree on 2026-11-06 against [`STYLE_BIBLE.md`](./STYLE_
 are live-tree numbers, not doc claims. "Breaks" means the asset cannot pass §1 (one medium per
 depth band), §3 (three values / manufactured surfaces), or §4 (scale module) as it ships today.
 
+Rows B1–B3 are **re-finished, pending capture**: the finish is in the live tree and the focused
+checks are green, but the disposition stays pending until the X1 lineup is re-shot at 1600×1000 and
+the owner approves it.
+
 ## A. Assets that break the bible
 
 | # | Asset class | Where | What it is (measured) | Why it breaks | Disposition |
 |---|---|---|---|---|---|
-| B1 | **Arena furniture — six law rooms** | `src/render/lawArenaDressing.js` | **3 shared primitives only**: `BoxGeometry(1,1,1)`, `CylinderGeometry(1,1,1,20)`, `TorusGeometry(1,.09,8,28)`; 9 flat `MeshStandardMaterial`s, no texture, no chamfer, no panel, no lamp on most movers. Dresses Lagrange, Cinder, Cryo, Storm (+ Mill/Hive boss dressing). **0 arena/kit GLBs in 423 release rows.** | One value (dark ↔ mid), sharp untextured boxes, no manufactured detail; reads as greybox beside a 10–40 k-tri hull | **Re-finish (this campaign)** — machined box geometry + three values + hazard band + lamps in `arenaFinish.js` |
-| B2 | **Foundry bank plate surface** | `src/render/foundryBankSurface.js` | Hand-authored slab, 8 flat vertex colours; palette **0x292824–0x605e57** (whole prop lives in the dark third of the value range); one 0x987b49 mark | No light primary, no lit point; under the foundry mood it collapses to a flat tan/grey block | **Re-finish (this campaign)** — three-value palette + hazard band + panel seams |
-| B3 | **Foundry toys (gate / furnace / shutter / block)** | `src/render/visualFactory.js:2932–2981` | `BoxGeometry` / `CylinderGeometry` with flat colours `0x2c2926`, `0x3a2418`; mouth is a `MeshBasicMaterial` 0x6a3014 | Same as B1: no three-value structure, one flat dark tone | **Re-finish (this campaign)** — use the machined box + arena materials |
+| B1 | **Arena furniture — four law rooms** | `src/render/lawArenaDressing.js` | **3 shared primitives only**: `BoxGeometry(1,1,1)`, `CylinderGeometry(1,1,1,20)`, `TorusGeometry(1,.09,8,28)`; 9 flat `MeshStandardMaterial`s, no texture, no chamfer, no panel, no lamp on most movers. Dresses Lagrange, Cinder, Cryo, Storm (+ Mill/Hive boss dressing). **0 arena/kit GLBs in 423 release rows.** | One value (dark ↔ mid), sharp untextured boxes, no manufactured detail; reads as greybox beside a 10–40 k-tri hull | **Re-finished, pending capture** — machined box geometry + three values + hazard band + lamps in `arenaFinish.js`; the law bank plate is now a 9-mesh deck (channel, two clamp rails, working-edge hazard band, top-edge lamp housing + lamp, skirt) |
+| B2 | **Foundry bank plate surface** | `src/render/foundryBankSurface.js` | Hand-authored slab, 8 flat vertex colours; palette **0x292824–0x605e57** (whole prop lives in the dark third of the value range); one 0x987b49 mark | No light primary, no lit point; under the foundry mood it collapses to a flat tan/grey block | **Re-finished, pending capture** — one vertex-coloured deck (light panels, two mid clamp rails, dark recessed channel, dashed working-edge safety band, lamp-housing lens). Painted trim, not meshes: the picture stays exactly inside the collision slab and the batch keeps one specimen |
+| B3 | **Foundry toys (gate / furnace / shutter / block)** | `src/render/visualFactory.js:2932–2981` | `BoxGeometry` / `CylinderGeometry` with flat colours `0x2c2926`, `0x3a2418`; mouth is a `MeshBasicMaterial` 0x6a3014 | Same as B1: no three-value structure, one flat dark tone | **Re-finished, pending capture** — machined box + arena materials; the furnace mouth is its lit point, gate/block carry one work lamp, and the room-solid cap stays two meshes |
 | B4 | **Procedural payload canister** | `src/render/visualFactory.js:7230–7303` (`buildPayload`) | `CylinderGeometry(0.42,0.48,1.25,10)` + 2 torus collars + octahedron transponder | A primitive stands in for cargo a player handles constantly; six authored pod GLBs already exist | **Replace (X2)** — mount `pod_cargo_container` / `place_cargo_pod_*`; keep the procedural body as load-failure fallback |
 | B5 | **Procedural station body (fallback / non-archetype)** | `src/render/visualFactory.js:3426–3560` (`buildStation`) | Cylinder core + 8 greeble cylinders + 2 torus rings + extruded spars + box windows, flat palette | A second station language beside 7 authored archetypes + 14 faction kits | **Keep as fallback;** promote any live station still on it to an authored archetype (X2 census per sector) |
 | B6 | **Procedural asteroid fallback** | `src/render/visualFactory.js:2499–2560` (`buildAsteroid`) | Displaced icosphere + family textures | Detail density far below the authored rock family | **Keep as load-failure fallback only;** no live arena should rely on it |
 | B7 | **Two ship detail tiers** | `partsLibrary.js` `WHOLE_SHIP_FILE_BY_DEF_ID` (15 whole hulls) vs `HULL_FILE_BY_DEF_ID` (10 modular hulls) | Two different construction systems for the same 15 player defs | A modular hull and a Forge hull can appear side by side with different panel language | **Audit (X2)** — confirm every live player def resolves to a whole-ship; modular map is fallback only |
+
+## A.1 Plate-face value finding
+
+**2026-11-06, independent review.** At the 144 WU gameplay camera the foundry bank plate's top face
+had no dark share: 0x9ba3ab / 0x8e969e panels, 0.02-unit seams and a 0x5a6168 hatch collapsed to one
+white card under the key. The fix bakes a dark recessed centre channel, two mid clamp rails, dark end
+margins and a dashed working-edge safety band into the single vertex-coloured surface. No second
+draw: the plate remains one mesh exactly inside its 96 × 33.8 × 4.16 WU collision slab, so the
+picture can no longer outgrow the solid.
 
 ## B. Assets that comply (keep)
 
