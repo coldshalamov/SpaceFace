@@ -144,7 +144,9 @@ export function createGlobalFind(ctx) {
     // Re-check at the door: a contract can complete between render and Enter, and a dead door is
     // the one thing this palette is not allowed to have.
     if (!findRowOpens(state, row.ref)) { refresh(); return; }
-    const btn = listEl.querySelector(`[data-entity="${row.ref}"]`);
+    // Match the stored reference as data, never as CSS selector syntax.
+    const btn = [...listEl.querySelectorAll('[data-entity]')]
+      .find(node => node.getAttribute('data-entity') === row.ref);
     if (btn) btn.click(); // the delegate opens the dossier — one path, no second opener.
   }
 

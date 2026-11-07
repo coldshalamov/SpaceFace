@@ -309,9 +309,9 @@ export function createEntityLinks(ctx) {
     const closeBtn = el('button', 'sf-drawer__verb sf-drawer__verb--quiet', { text: 'Close', attrs: { type: 'button' } });
     closeBtn.addEventListener('click', () => close());
     verbs.push(closeBtn);
-    kids.push(el('div', 'sf-drawer__apron', { children: verbs }));
+    const apron = el('div', 'sf-drawer__apron', { children: verbs });
 
-    return { kids, headId };
+    return { kids, headId, apron };
   }
 
   function show(ref, { push = true } = {}) {
@@ -324,14 +324,16 @@ export function createEntityLinks(ctx) {
       if (back.length > MAX_BACK) back.shift();
     }
 
-    const { kids, headId } = renderDossier(d);
+    const { kids, headId, apron } = renderDossier(d);
     layer.textContent = '';
     const closeX = el('button', 'sf-drawer__x', { attrs: { type: 'button', 'aria-label': 'Close ' + d.label } });
     closeX.innerHTML = CLOSE_GLYPH;
     closeX.addEventListener('click', () => close());
-    const deck = el('div', 'sf-drawer__deck', { children: kids });
+    // The record scrolls independently of the variable-height action rail. Back and price
+    // alerts can add rows, so the rail must participate in layout instead of covering text.
+    const deck = el('div', 'sf-drawer__deck', { children: kids, attrs: { tabindex: '0' } });
     const drawer = el('aside', 'sf-drawer sf-drawer--entity', {
-      children: [closeX, deck],
+      children: [closeX, deck, apron],
       attrs: { role: 'region', 'aria-labelledby': headId, tabindex: '-1' },
     });
     layer.appendChild(drawer);

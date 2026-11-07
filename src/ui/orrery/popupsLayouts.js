@@ -153,17 +153,28 @@ const CSS = `
    cap, a short record ends at its apron and a long one still scrolls (overflow from the base
    .sf-drawer rule). Same selector as the shared sheet, injected after it — the tie breaks late. */
 .sf-drawerlayer > .sf-drawer--entity { top: 0; bottom: auto; max-height: 100%; display: flex; flex-direction: column; }
-/* With the sheet's height left to its content, the deck's height:100% resolved to auto and never
-   scrolled: a long record ran past the viewport and took the sticky verbs with it (OPEN ON THE CHART
-   and CLOSE were unreachable at 960x540 and 375x667). As a flex column the deck shrinks to the
-   capped sheet and scrolls, so the apron rides the foot again. */
-.sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck { height: auto; min-height: 0; }
+/* The record and action rail are flex siblings: the rail reserves its actual height, including
+   Back and price-alert rows, while the record takes the remaining scrollable space. A long rail
+   is independently scrollable so enlarged text cannot consume the entire record viewport. */
+.sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck { flex: 1 1 auto; height: auto; min-height: 0; scroll-padding-block: 8px; }
+.sf-drawer--entity > .sf-drawer__deck:focus-visible { outline: 2px solid var(--dp-lamp, #f2b950); outline-offset: -2px; }
+.sf-drawer--entity > .sf-drawer__apron {
+  position: relative; bottom: auto; flex: 0 0 auto; min-height: 0; max-height: 50vh;
+  box-sizing: border-box; overflow-y: auto; scroll-padding-block: 8px;
+  margin: 24px 36px 0 88px;
+}
+.sf-drawer--entity > .sf-drawer__apron > .sf-drawer__verb {
+  box-sizing: border-box; min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere;
+}
+@media (max-height: 760px) {
+  .sf-drawer--entity > .sf-drawer__apron { margin-top: 18px; }
+}
 /* Phone: the sheet is full width, so a hugging sheet left a strip of the station foot (COMMS,
    UNDOCK) printing under it. There it fills the screen and the verbs sit on its foot. */
 @media (max-width: 640px) {
   .sf-drawerlayer > .sf-drawer--entity { bottom: 0; max-height: none; }
   .sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck { flex: 1 1 auto; }
-  .sf-drawer--entity .sf-drawer__deck > .sf-drawer__apron { margin-top: auto; }
+  .sf-drawer--entity > .sf-drawer__apron { margin: 20px 20px 0; }
 }
 
 /* 641–1100 wide: at 48vw the 960x540 sheet left a 336px column, so CLOSE wrapped to a second apron
@@ -172,8 +183,46 @@ const CSS = `
 @media (min-width: 641px) and (max-width: 1100px) {
   .sf-drawerlayer > .sf-drawer--entity { width: min(600px, max(48vw, 480px)); }
   .sf-drawer--entity .sf-drawer__deck { padding-left: 76px; }
-  .sf-drawer--entity .sf-drawer__apron { column-gap: 10px; }
+  .sf-drawer--entity > .sf-drawer__apron { margin-left: 76px; column-gap: 10px; }
   .sf-drawer--entity .sf-drawer__apron > .sf-drawer__verb { padding: 0 15px 0 13px; letter-spacing: .11em; }
+}
+
+/* Short desktop: keep the compact record, but reserve the footer through normal flex layout.
+   Its height follows the actual actions rather than a 60px assumption that fails when Back,
+   Watch and price-alert controls wrap onto extra rows. */
+@media (min-width: 641px) and (max-height: 560px) {
+  .sf-drawerlayer > .sf-drawer--entity { bottom: 0; max-height: none; }
+  /* The deck shrinks above the action rail; only its record scrolls. */
+  .sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck {
+    flex: 1 1 auto; min-height: 0; height: auto;
+    max-height: none; margin-bottom: 0;
+    gap: 8px; padding-top: 14px; padding-bottom: 10px; padding-right: 28px;
+  }
+  .sf-drawer--entity .sf-drawer__crest { gap: 4px; padding-bottom: 6px; padding-right: 36px; }
+  .sf-drawer--entity .sf-drawer__title { font-size: clamp(22px, 3.2vw, 32px); }
+  .sf-drawer--entity .sf-drawer__facts { gap: 8px 16px; }
+  .sf-drawer--entity .sf-drawer__facts .sf-tile { padding-top: 6px; gap: 2px; }
+  .sf-drawer--entity .sf-tile__v { font-size: 14px; }
+  .sf-drawer--entity .sf-tile--data .sf-tile__v { font-size: 18px; }
+  .sf-drawer--entity .sf-drawer__stage { gap: 8px; }
+  .sf-drawer--entity .sf-deck { gap: 2px; }
+  .sf-drawer--entity .sf-deck__label { font-size: 12px; letter-spacing: .14em; }
+  .sf-drawer--entity .sf-drawer__prose { font-size: 13px; line-height: 1.35; }
+  .sf-drawer--entity .sf-entity-link--row { padding: 5px 2px 5px 0; font-size: 14px; }
+  .sf-drawer--entity > .sf-drawer__apron {
+    position: relative; left: auto; right: auto; bottom: auto;
+    z-index: 2; margin: 8px 28px 0 76px; height: auto; box-sizing: border-box;
+    padding-top: 10px; padding-bottom: 10px;
+    background: rgb(9 11 15);
+    box-shadow: 0 -16px 14px -6px rgb(9 11 15);
+  }
+  .sf-drawer--entity .sf-drawer__apron > .sf-drawer__verb { min-height: 34px; padding: 0 14px 0 12px; }
+  .sf-drawer--entity .sf-drawer__x { top: 8px; right: 12px; width: 28px; height: 28px; }
+}
+/* Wider short frames retain the same content and action inset. */
+@media (min-width: 1101px) and (max-height: 560px) {
+  .sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck { padding-left: 88px; }
+  .sf-drawer--entity > .sf-drawer__apron { margin-left: 88px; margin-right: 28px; }
 }
 
 /* ── 3. Rungs are doors at rest; disabled verbs look disabled ────────────────────────────── */
