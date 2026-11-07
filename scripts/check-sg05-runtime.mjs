@@ -8,7 +8,7 @@ import { validateEvidenceCorpus, formatEvidenceIssue } from '../src/contracts/ev
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const INPUT_PATH = 'test/47a.inputs.json';
-const ENVELOPE_PATH = 'test/47a.telemetry.save-v25.expected.json';
+const ENVELOPE_PATH = 'test/47a.telemetry.save-v24.expected.json';
 const SCENARIO_PATH = 'src/data/scenarios/47a.scenario.json';
 const envelope = readJson(ENVELOPE_PATH);
 const scenario = readJson(SCENARIO_PATH);

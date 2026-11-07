@@ -27,7 +27,7 @@ const DEFAULTS = Object.freeze({
    * 47-A delta is content-only (2434 economy fields, zero entity motion). The versioned v25
    * reference is `test/47a.telemetry.save-v25.expected.json`; v23/v24 remain for rollback.
    */
-  economySlicing: true,
+  economySlicing: false,
   /** The quantized per-body SG-02 snapshot is built lazily at a checkpoint, not every tick. */
   lazySg02Snapshot: true,
 });
