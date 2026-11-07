@@ -16,7 +16,9 @@
 //   - 1–10, never a percentage, never an engineering unit in the player's reading;
 //   - anchors are absolute, not roster-relative, so adding a hull never moves another hull's bar
 //     (the old `handlingProfileDomain()` min/max-over-the-roster did exactly that);
-//   - a bigger gun can never lower Firepower, and a heavier hull can never raise Handling.
+//   - adding mass to the SAME fit never raises Handling, and a bigger gun never lowers Firepower.
+//     (The older "a heavier hull can never raise Handling" claim is false hull-to-hull: five pairs
+//     of authored hulls invert once their own drives and masses are applied.)
 //
 // THE ANCHOR TABLE is `SHIP_STAT_DEFS`. `floor` is the raw reading that scores 1 and `ceiling` the
 // raw reading that scores 10; between them the score is log-linear, which is what makes one scale
@@ -47,7 +49,11 @@ export const SHIP_STAT_DEFS = Object.freeze([
     label: 'Firepower',
     meaning: 'Damage per second you can keep on a target.',
     floor: 10,
-    ceiling: 130,
+    // Re-anchored from the measured ceiling of a full legal fit (2026-11-06): the heaviest
+    // full-fit reading in the roster is 1332, so 1900 scores 10 only for content the catalogue
+    // cannot reach yet. The old 130 ceiling was below the strongest single mount, so nine of
+    // fifteen hulls saturated at 10.
+    ceiling: 1900,
     unit: 'damage/s',
   }),
   Object.freeze({
@@ -55,13 +61,13 @@ export const SHIP_STAT_DEFS = Object.freeze([
     label: 'Toughness',
     meaning: 'How much it takes to kill you.',
     floor: 125,
-    ceiling: 5700,
+    ceiling: 9000,
     unit: 'effective hull',
   }),
   Object.freeze({
     id: 'speed',
     label: 'Speed',
-    meaning: 'How fast you fly with the throttle down, and how much more boost gives you.',
+    meaning: 'How fast you fly with the throttle down, and how much a burner adds.',
     floor: 130,
     ceiling: 430,
     unit: 'wu/s',
@@ -77,46 +83,64 @@ export const SHIP_STAT_DEFS = Object.freeze([
   Object.freeze({
     id: 'power',
     label: 'Power',
-    meaning: 'How long you can fire and cast before the capacitor runs dry.',
-    floor: 100,
-    ceiling: 2400,
-    unit: 'capacitor',
+    meaning: 'How long you can keep firing before the capacitor or the heat stops you.',
+    // Seconds of sustained fire. A fit with no gun (or one that never runs dry) falls back to the
+    // capacitor's reserve at POWER_REFERENCE_DRAW_PER_S, so the reading is always a duration.
+    floor: 2,
+    ceiling: 300,
+    unit: 'seconds',
   }),
   Object.freeze({
     id: 'muscle',
     label: 'Muscle',
-    meaning: 'What the Line and a ram can move.',
-    floor: 15,
-    ceiling: 2000,
-    unit: 'tonnes',
+    meaning: 'How much Line load this hull can hold and move.',
+    floor: 8,
+    ceiling: 4000,
+    unit: 'tow tonnes',
   }),
 ]);
+
+/** A heavy mount's draw, the documented reference that turns a capacitor into a duration. */
+export const POWER_REFERENCE_DRAW_PER_S = 20;
 
 const STAT_BY_ID = new Map(SHIP_STAT_DEFS.map((def) => [def.id, def]));
 
 /**
  * The identity words. Each is the ship's STRONGEST stat said as a job, so the word is a statement
  * about how the ship plays and never about which modules happen to be bolted on. Order is the
- * tie-break when two stats are level.
+ * tie-break when two stats are level. `roles` is the authored hull class (data/ships.js) the word
+ * belongs to: when the hull's own job is within one point of the strongest stat, the job wins the
+ * word, so a tug does not print "Runner" just because its drive is quick.
+ *
+ * These words deliberately do not reuse the scanner's hull-role vocabulary (`Gunship`,
+ * `Generalist`): a hull's authored class and a fit's build are two different statements, and the
+ * ship sheet prints the authored class beside this word so the two can never be mistaken.
  */
 export const BUILD_IDENTITIES = Object.freeze([
-  Object.freeze({ id: 'gunship', label: 'Gunship', from: 'firepower', gloss: 'Built to put damage on a target and keep it there.' }),
-  Object.freeze({ id: 'brawler', label: 'Brawler', from: 'toughness', gloss: 'Built to take the hit and still be there.' }),
-  Object.freeze({ id: 'hauler', label: 'Hauler', from: 'muscle', gloss: 'Built to move mass — yours and theirs.' }),
-  Object.freeze({ id: 'workhorse', label: 'Workhorse', from: 'power', gloss: 'Built to keep working after the others run dry.' }),
-  Object.freeze({ id: 'runner', label: 'Runner', from: 'speed', gloss: 'Built to get there first.' }),
-  Object.freeze({ id: 'skirmisher', label: 'Skirmisher', from: 'handling', gloss: 'Built to turn and stop on a coin.' }),
+  Object.freeze({ id: 'gunship', label: 'Gunboat', from: 'firepower', roles: Object.freeze(['fighter', 'interceptor', 'gunship', 'strike']), gloss: 'Built to put damage on a target and keep it there.' }),
+  Object.freeze({ id: 'brawler', label: 'Brawler', from: 'toughness', roles: Object.freeze(['corvette', 'battlecruiser', 'flagship', 'capital', 'battleship']), gloss: 'Built to take the hit and still be there.' }),
+  Object.freeze({ id: 'hauler', label: 'Hauler', from: 'muscle', roles: Object.freeze(['tug', 'heavy_hauler', 'freighter', 'mining', 'mining_barge']), gloss: 'Built to move mass — yours and theirs.' }),
+  Object.freeze({ id: 'workhorse', label: 'Workhorse', from: 'power', roles: Object.freeze(['explorer', 'survey', 'science']), gloss: 'Built to keep working after the others run dry.' }),
+  Object.freeze({ id: 'runner', label: 'Runner', from: 'speed', roles: Object.freeze(['courier', 'racer']), gloss: 'Built to get there first.' }),
+  Object.freeze({ id: 'skirmisher', label: 'Skirmisher', from: 'handling', roles: Object.freeze(['starter', 'multirole', 'scout']), gloss: 'Built to turn and stop on a coin.' }),
 ]);
 
-/** A shape this flat is nobody's specialty. */
+/** A shape this flat is nobody's specialty. The gloss follows the level, not just the spread. */
 export const GENERALIST_IDENTITY = Object.freeze({
   id: 'generalist',
-  label: 'Generalist',
+  label: 'All-Rounder',
   pair: Object.freeze([]),
   gloss: 'No single strength; every stat is close to the others.',
 });
 
-/** How flat the stat spread has to be before the sheet calls a hull a Generalist. */
+/** The flat-shape gloss, branched on the mean so a strong all-rounder does not read as a shrug. */
+export function generalistGlossForMean(mean) {
+  if (mean >= 65) return 'Every stat is high; there is no soft corner to attack.';
+  if (mean <= 40) return 'Every stat is modest; nothing here stands out yet.';
+  return 'No single strength; every stat is close to the others.';
+}
+
+/** How flat the stat spread has to be before the sheet calls a hull an All-Rounder. */
 export const GENERALIST_SPREAD = 2;
 
 function finite(value, fallback = 0) {
@@ -156,38 +180,85 @@ export function statTenthsFor(score) {
 
 /**
  * Sustained damage per second from the fitted guns, read off the weapon runtime the sim builds.
- * A continuous mount's `dmg` is already per second; a cycling mount's is per shot, so it is
- * multiplied by the rate the lock and cooldown allow. The duty factor turns "huge burst for one
- * second" into an honest engagement number without ever punishing a bigger gun below a smaller
- * one by more than the burst it adds.
+ * Each mount pays its OWN duty: a continuous mount's `dmg` is already per second, a cycling
+ * mount's is per shot, and the heat/energy clock is that gun's own. A hot gun can no longer lower
+ * every other gun's contribution; the fit-wide trigger time is the Power stat's job.
+ *
+ * The starter fallback gun `buildWeaponList(..., isPlayer=true)` injects into an empty player fit
+ * is not fitted; it is ignored here (the Saucer's intrinsic emitters are marked and do count).
  */
 export function firepowerRawFor(shipDef, fittings, player, derived) {
   if (!shipDef) return 0;
-  const runtimes = buildWeaponList(shipDef, fittings || [], true, derived) || [];
-  let burstDps = 0;
+  const runtimes = realWeaponRuntimes(shipDef, fittings, player, derived);
+  if (!runtimes.length) return 0;
+  const capMax = finite(derived && derived.capMax, 0);
+  const capRegen = finite(derived && derived.capRegen, 0);
+  const rows = [];
   for (const runtime of runtimes) {
-    if (!runtime) continue;
     const def = WEAPON_BY_ID.get(runtime.defId) || null;
-    if (def && def.emergentPrimitive) continue;
-    const dmg = finite(runtime.dmg, finite(def && def.dmg, 0));
+    if (!def) continue;
+    const dmg = finite(runtime.dmg, finite(def.dmg, 0));
     if (!(dmg > 0)) continue;
-    if (def && def.continuous) {
-      burstDps += dmg;
-      continue;
-    }
-    const rof = finite(runtime.rof, finite(def && def.rof, 0));
-    if (!(rof > 0)) continue;
-    const lockS = (runtime.tracking || (def && def.tracking)) === 'homing'
-      ? Math.max(0, finite(runtime.lockTimeS, finite(def && def.lockTimeS, 0)))
-      : 0;
-    const shotsPerS = 1 / Math.max(1 / rof, lockS);
-    burstDps += dmg * shotsPerS;
+    const shotsPerS = shotsPerSecond(runtime, def);
+    if (!(shotsPerS > 0)) continue;
+    const continuous = !!(def.continuous || runtime.continuous);
+    const energyPerS = continuous
+      ? finite(runtime.energyCost, finite(def.energyCost, 0))
+      : finite(runtime.energyCost, finite(def.energyCost, 0)) * shotsPerS;
+    const heatPerS = continuous
+      ? (def.heatPerSec != null ? finite(def.heatPerSec, 0) : finite(runtime.heat, 0))
+      : finite(runtime.heat, finite(def.heatPerShot, 0)) * shotsPerS;
+    const heatMax = finite(runtime.heatMax, finite(def.heatMax, 0));
+    const cooling = finite(runtime.heatDissip, finite(def.heatDissip, 0));
+    rows.push({
+      burstDps: dmg * shotsPerS,
+      // Each mount's own clock: its heat flow and its own draw against the capacitor. Adding a
+      // second gun cannot shorten the first gun's clock (that is the global-duty bug this
+      // replaced); the fit-wide trigger time is the Power stat's job.
+      seconds: Math.min(
+        secondsUntilEmpty(capMax, energyPerS, capRegen),
+        secondsUntilEmpty(heatMax, heatPerS, cooling),
+      ),
+    });
   }
-  if (!(burstDps > 0)) return 0;
-  const sustain = sustainedFireForFit(shipDef.id, fittings || [], player);
-  const seconds = sustain && Number.isFinite(sustain.seconds) ? Math.max(0, sustain.seconds) : 6;
-  const duty = 0.55 + 0.45 * clamp(seconds / 6, 0, 1);
-  return burstDps * duty;
+  if (!rows.length) return 0;
+  let sustained = 0;
+  for (const row of rows) {
+    const duty = 0.55 + 0.45 * clamp(Number.isFinite(row.seconds) ? row.seconds / 6 : 1, 0, 1);
+    sustained += row.burstDps * duty;
+  }
+  return sustained;
+}
+
+/** The fitted weapon runtimes, excluding the starter fallback the player does not actually carry. */
+function realWeaponRuntimes(shipDef, fittings, player, derived) {
+  const fit = Array.isArray(fittings) ? fittings : [];
+  const runtimes = buildWeaponList(shipDef, fit, true, derived) || [];
+  return runtimes.filter((runtime) => {
+    if (!runtime) return false;
+    if (runtime.intrinsic) return true;
+    const fittedId = fit[runtime.slotIndex];
+    return !!(fittedId && WEAPON_BY_ID.has(fittedId));
+  });
+}
+
+function shotsPerSecond(runtime, def) {
+  const rof = finite(runtime.rof, finite(def && def.rof, 0));
+  const continuous = !!(def && def.continuous);
+  if (continuous && !(rof > 0)) return 1;
+  if (!(rof > 0)) return 0;
+  const lockS = (runtime.tracking || (def && def.tracking)) === 'homing'
+    ? Math.max(0, finite(runtime.lockTimeS, finite(def && def.lockTimeS, 0)))
+    : 0;
+  return 1 / Math.max(1 / rof, lockS);
+}
+
+function secondsUntilEmpty(max, rateIn, rateOut) {
+  if (!(rateIn > 0)) return Infinity;
+  if (!(max > 0)) return 0;
+  const net = rateIn - Math.max(0, rateOut);
+  if (!(net > 0)) return Infinity;
+  return max / net;
 }
 
 /**
@@ -203,12 +274,16 @@ export function toughnessRawFor(derived) {
   return (hull + armor) / reduction + 1.3 * shield;
 }
 
-/** Top speed the kernel governs in a fight, plus a fifth of the boost ceiling on top. */
+/**
+ * Top speed the kernel governs in a fight, lifted by a fitted burner's live burn gain. The old
+ * `0.2 * boost.max` read the boost ENERGY reservoir, not a speed, and made an Atlas outrun a
+ * Hornet on paper; `boost.topSpeedPct` is the speed multiplier the flight kernel actually applies.
+ */
 export function speedRawFor(derived) {
   if (!derived) return 0;
   const fight = governedFightSpeedFor(derived);
-  const boost = finite(derived.boost && derived.boost.max, 0);
-  return fight + 0.2 * boost;
+  const burnPct = Math.max(0, finite(derived.boost && derived.boost.topSpeedPct, 0));
+  return fight * (1 + burnPct);
 }
 
 /**
@@ -237,23 +312,44 @@ function brakeFor(derived) {
   return finite(model && model.reverseAccel, finite(model && model.angularBrake, 0));
 }
 
-/** The capacitor plus five seconds of its own regen: how long a heavy fit keeps working. */
-export function powerRawFor(derived) {
+/**
+ * How long the fit keeps firing, in seconds, from `sustainedFireForFit` (the same clock the
+ * Details door prints). When there is no gun — or the guns never outrun the capacitor — the
+ * reading falls back to the capacitor's reserve at POWER_REFERENCE_DRAW_PER_S, so a no-gun fit
+ * still has a duration rather than a unitless capacity.
+ */
+export function powerRawFor(shipId, fittings, player, derived) {
   if (!derived) return 0;
+  const fit = Array.isArray(fittings) ? fittings : [];
+  const shipDef = SHIP_BY_ID.get(shipId);
+  const hasRealGuns = !!(shipDef && realWeaponRuntimes(shipDef, fit, player, derived)
+    .some((runtime) => finite(runtime.dmg, 0) > 0));
+  if (hasRealGuns) {
+    const sustain = sustainedFireForFit(shipId, fit, player);
+    if (sustain && Number.isFinite(sustain.seconds) && sustain.seconds > 0) {
+      return Math.max(0, sustain.seconds);
+    }
+  }
   const cap = finite(derived.capMax, finite(derived.cap, 0));
   const regen = finite(derived.capRegen, 0);
-  return cap + 5 * regen;
+  return Math.max(0, (cap + 5 * regen) / POWER_REFERENCE_DRAW_PER_S);
 }
 
 /**
- * What the Line and a ram can move: the tow class the drive law already publishes, or — for a
- * hull too loaded to tow anything — its own mass, which is what a ram or an anchor is worth.
+ * What the Line can hold and move: the tow class law the drive already publishes. Cargo only ever
+ * lowers it, so a loaded hold cannot buy Muscle; a hull with no tow rating falls back to a small
+ * share of its dry mass (what a ram is worth) and says so in the meaning line.
  */
 export function muscleRawFor(derived) {
   if (!derived) return 0;
-  const tow = towClassMassFor(derived);
-  const mass = finite(derived.operationalMass, finite(derived.mass, 0));
-  return Math.max(tow, mass * 1.5);
+  const tow = Math.max(0, towClassMassFor(derived));
+  const dryMass = Math.max(0, finite(derived.mass, 0));
+  return Math.max(tow, 0.15 * dryMass);
+}
+
+/** True when this fit publishes a real tow rating — the same law `muscleRawFor` reads. */
+export function hasTowRating(derived) {
+  return !!derived && towClassMassFor(derived) > 0;
 }
 
 const RAW_READERS = Object.freeze({
@@ -261,7 +357,7 @@ const RAW_READERS = Object.freeze({
   toughness: (shipDef, fittings, player, derived) => toughnessRawFor(derived),
   speed: (shipDef, fittings, player, derived) => speedRawFor(derived),
   handling: (shipDef, fittings, player, derived) => handlingRawFor(derived),
-  power: (shipDef, fittings, player, derived) => powerRawFor(derived),
+  power: (shipDef, fittings, player, derived) => powerRawFor(shipDef && shipDef.id, fittings, player, derived),
   muscle: (shipDef, fittings, player, derived) => muscleRawFor(derived),
 });
 
@@ -272,41 +368,62 @@ const RAW_READERS = Object.freeze({
 /**
  * The six-stat sheet for one fit. Pure: same inputs, same output, no DOM, no state.
  *
- * @param {{shipId: string, fittings?: Array, player?: object|null}} input
+ * @param {{shipId?: string, fittings?: Array, player?: object|null}} input
  * @returns {null | Readonly<object>}
  */
-export function shipStatSheet({ shipId, fittings = [], player = null } = {}) {
+export function shipStatSheet(input = {}) {
+  const { shipId, fittings = [], player = null } = input || {};
   const shipDef = SHIP_BY_ID.get(shipId);
   if (!shipDef) return null;
   const fit = Array.isArray(fittings) ? fittings : [];
   const derived = getDerivedStats(shipId, fit, player);
   if (!derived) return null;
+  const towRating = hasTowRating(derived);
+  const runtimes = realWeaponRuntimes(shipDef, fit, player, derived);
+  const hasGuns = runtimes.length > 0;
+  const hasDamagingGuns = runtimes.some((runtime) => finite(runtime.dmg, 0) > 0);
 
   const stats = SHIP_STAT_DEFS.map((def) => {
     const raw = finite(RAW_READERS[def.id](shipDef, fit, player, derived), 0);
     const score = statScoreFor(def, raw);
+    // One rounding path: the tenths are authoritative, the headline is those tenths read whole.
+    const tenths = statTenthsFor(score);
+    const value = clamp(Math.round(tenths / 10), 1, 10);
+    let meaning = def.meaning;
+    let note = null;
+    if (def.id === 'firepower' && (!hasGuns || !(raw > 0))) {
+      note = 'No gun fitted.';
+      meaning = 'No gun fitted. Nothing on this fit puts damage on a target.';
+    }
+    if (def.id === 'muscle' && !towRating) {
+      note = 'No Line load — it rams instead.';
+      meaning = 'No Line load — this hull rams instead.';
+    }
     return Object.freeze({
       id: def.id,
       label: def.label,
-      meaning: def.meaning,
+      meaning,
+      note,
       unit: def.unit,
       raw: Math.round(raw * 100) / 100,
       score: Math.round(score * 100) / 100,
-      value: statValueFor(score),
-      tenths: statTenthsFor(score),
+      value,
+      tenths,
     });
   });
 
-  const identity = buildIdentityForStats(stats);
+  const identity = buildIdentityForStats(stats, shipDef.role || null);
   return Object.freeze({
     shipId: shipDef.id,
     hullName: shipDef.name,
     role: shipDef.role || 'ship',
+    roleLabel: roleLabelFor(shipDef.role),
     stats: Object.freeze(stats),
     identity,
     // The engineering reading the whole sheet is built from, for the Details disclosure only.
     detail: Object.freeze({
       mass: Math.round(finite(derived.operationalMass, finite(derived.mass, 0)) * 10) / 10,
+      ramWeight: Math.round(1.5 * finite(derived.operationalMass, finite(derived.mass, 0)) * 10) / 10,
       hull: Math.round(finite(derived.hullMax, 0)),
       shield: Math.round(finite(derived.shieldMax, 0)),
       armor: Math.round(finite(derived.armorMax, 0)),
@@ -314,10 +431,12 @@ export function shipStatSheet({ shipId, fittings = [], player = null } = {}) {
       capRegen: Math.round(finite(derived.capRegen, 0) * 10) / 10,
       cargo: Math.round(finite(derived.cargoCap, 0)),
       fightSpeed: Math.round(governedFightSpeedFor(derived)),
+      burnPct: Math.round(Math.max(0, finite(derived.boost && derived.boost.topSpeedPct, 0)) * 100),
       turnRate: Math.round(governedYawRateFor(derived) * 100) / 100,
       accel: Math.round(forwardAccelFor(derived)),
       towClass: Math.round(towClassMassFor(derived) * 10) / 10,
       sustainedFireS: (() => {
+        if (!hasDamagingGuns) return null;
         const sustain = sustainedFireForFit(shipId, fit, player);
         if (!sustain) return null;
         return Number.isFinite(sustain.seconds) ? Math.round(sustain.seconds * 10) / 10 : null;
@@ -326,17 +445,27 @@ export function shipStatSheet({ shipId, fittings = [], player = null } = {}) {
   });
 }
 
+/** The authored hull class in title case: `mining_barge` -> `Mining Barge`. */
+export function roleLabelFor(role) {
+  const words = String(role || 'ship').replace(/[_-]+/g, ' ').trim();
+  return words.replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+}
+
 /**
  * The build word, computed from the SHAPE of the stats rather than from which modules are bolted
- * on: the strongest stat names the job, and a sheet too flat to have a peak is a Generalist.
+ * on: the strongest stat names the job, and a sheet too flat to have a peak is an All-Rounder
+ * whose gloss follows the mean level.
  */
-export function buildIdentityForStats(stats) {
+export function buildIdentityForStats(stats, authoredRole = null) {
   const list = Array.isArray(stats) ? stats : [];
   if (!list.length) return GENERALIST_IDENTITY;
   const byId = new Map(list.map((stat) => [stat.id, finite(stat.tenths, finite(stat.value, 1) * 10)]));
   const values = [...byId.values()];
   const spread = Math.max(...values) - Math.min(...values);
-  if (spread < GENERALIST_SPREAD * 10) return GENERALIST_IDENTITY;
+  if (spread < GENERALIST_SPREAD * 10) {
+    const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+    return Object.freeze({ ...GENERALIST_IDENTITY, gloss: generalistGlossForMean(mean) });
+  }
   let best = null;
   let bestScore = -Infinity;
   for (const candidate of BUILD_IDENTITIES) {
@@ -346,27 +475,39 @@ export function buildIdentityForStats(stats) {
       bestScore = score;
     }
   }
+  // The authored class breaks a near-tie in favour of the job the hull was built for. It is the
+  // same authored field, not a module-id classifier: a Warden whose power is a point above its
+  // guns still reads as a Gunboat, and a Hawser that is quick still reads as a Hauler.
+  if (authoredRole) {
+    const role = String(authoredRole).toLowerCase();
+    const match = BUILD_IDENTITIES.find((candidate) => candidate.roles
+      && candidate.roles.includes(role)
+      && finite(byId.get(candidate.from), 0) >= bestScore - 20);
+    if (match) return match;
+  }
   return best || GENERALIST_IDENTITY;
 }
 
 /**
  * Per-stat difference between two sheets, in tenths. `tone` is `gain`, `loss` or `same`, which is
- * all a surface needs to paint green, red or leave it alone.
+ * all a surface needs to paint green, red or leave it alone. The before/after headline numbers are
+ * read from the same tenths, so a displayed `6 -> 7` is exactly the tenths move, never a second
+ * rounding of the score.
  */
 export function shipStatDelta(beforeSheet, afterSheet) {
   if (!beforeSheet || !afterSheet) return Object.freeze([]);
   const beforeById = new Map(beforeSheet.stats.map((stat) => [stat.id, stat]));
   return Object.freeze(afterSheet.stats.map((after) => {
     const before = beforeById.get(after.id) || null;
-    const from = before ? before.tenths : after.tenths;
-    const delta = after.tenths - from;
+    const fromTenths = before ? before.tenths : after.tenths;
+    const delta = after.tenths - fromTenths;
     return Object.freeze({
       id: after.id,
       label: after.label,
       meaning: after.meaning,
-      beforeValue: before ? before.value : after.value,
+      beforeValue: clamp(Math.round(fromTenths / 10), 1, 10),
       afterValue: after.value,
-      beforeTenths: from,
+      beforeTenths: fromTenths,
       afterTenths: after.tenths,
       delta,
       tone: delta > 0 ? 'gain' : (delta < 0 ? 'loss' : 'same'),
@@ -385,7 +526,7 @@ export function shipSheetSentence(sheet) {
   const best = stats.reduce((lead, stat) => (!lead || stat.value > lead.value || (stat.value === lead.value && stat.tenths > lead.tenths) ? stat : lead), null);
   const worst = stats.reduce((low, stat) => (!low || stat.value < low.value || (stat.value === low.value && stat.tenths < low.tenths) ? stat : low), null);
   if (identity.id === GENERALIST_IDENTITY.id) {
-    return 'No weak corner and no party trick. It will do any job you point it at.';
+    return identity.gloss;
   }
   if (!best || !worst || best.id === worst.id) return identity.gloss;
   return `${identity.gloss} Thinnest at ${worst.label.toLowerCase()}.`;
