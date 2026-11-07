@@ -209,6 +209,13 @@ export function createResidencyManager(options = {}) {
     if (!geometry || !object) return true;
     if (disposed) return true;
     counters.draws += 1;
+    // No off-screen driver configured (test/bare owners): fail open to the pre-E6 inline
+    // path rather than refuse a draw the manager cannot ever resolve.
+    if (!requestRoots) {
+      object.__sfResidencyPendingGeometry = geometry;
+      counters.admittedFailOpen += 1;
+      return true;
+    }
     // Bounded fail-open: the retry policy released this hold because its needs could not be
     // met; let its next draw upload inline rather than hold it invisible again.
     if (object.__sfResidencyFailOpen === true) {
@@ -809,6 +816,8 @@ export function createResidencyManager(options = {}) {
       refusedDraws: counters.refusedDraws,
       visibleUnreadyDraws: counters.visibleUnreadyDraws,
       failOpenReleases: counters.failOpenReleases,
+      /** Explicit alias for the liveness verdict named in the E6 review. */
+      residencyFailOpen: counters.failOpenReleases,
       admittedFailOpen: counters.admittedFailOpen,
       expiredRequests: counters.expiredRequests,
       expiredRetries: counters.expiredRetries,

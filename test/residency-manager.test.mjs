@@ -227,6 +227,17 @@ test('an on-glass hold jumps ahead of a bind-time hold in the drain queue', () =
   assert.equal(batches[0][0], glassRoot, 'the drawable the camera is trying to draw goes first');
 });
 
+test('a manager with no driver fails open instead of refusing a draw it cannot resolve', () => {
+  const manager = createResidencyManager();
+  const mesh = drawable();
+  const geometry = geometryWith(RESIDENCY_INLINE_UPLOAD_BYTES * 8);
+  manager.beginFrame(0);
+  assert.equal(manager.admitGeometry(mesh, geometry), true);
+  assert.equal(manager.snapshot().admittedFailOpen, 1);
+  assert.equal(manager.snapshot().residencyFailOpen, 0, 'no hold was released');
+  assert.equal(manager.noteDrawn(mesh, geometry), true);
+});
+
 test('a failed upload retries with backoff, then fails open instead of hiding forever', () => {
   let now = 0;
   let attempts = 0;

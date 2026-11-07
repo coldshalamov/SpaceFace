@@ -18,13 +18,13 @@
 | Honest draw-point counters | `bloom.js` + `renderer.js` | `noteRefusedDraw(object, reason)` is called for geometry hold, presented-detach, program refusal, and submit-pending hides. `refusedDraws` counts every refusal; `visibleUnreadyDraws` counts refusals on a drawable that had already been presented. The old `visibleUnready`/`preAdmittedHolds` remain for compatibility. |
 | Inline wallet | `residencyManager.js` | The per-frame upload wallet is charged in `noteDrawn` after the draw actually uploads, and a refused draw refunds its admission. A refused effect can no longer starve later ready effects. |
 | No forced off-screen admission | `renderer.js` (`_drainMeshBuildQueue`, both gates) | The skip-count release (`shouldStartHeavyAdmissionEventually`) is only honoured when the queue actually holds readable-glass work. A body parked off-screen no longer buys a heavy build inside a frame the player is watching. |
-| Counters | `state.render.residency` (published ~2 Hz) | `visibleUnready` (held again **after** presentation; must be 0), `visibleUnreadyDraws` (draw-point refusal of a presented drawable), `refusedDraws`, `preAdmittedHolds`, `heldDraws`, `heldRoots`, `releasedRoots`, `failOpenReleases`, `admittedFailOpen`, `expiredRequests`, `expiredRetries`, `uploadRetries`, `heldUnqueued`, `firstResidentDelayP50/P95/Max`, `uploadMs`, `uploadRuns/Failures`, `pending` (held drawables only — released in-flight uploads are not pending visibility), `compileFailOpen`, `compileRefusals`, `compileFallbacks`, `disposed`. Read from `SF.registry.get('render')._residencyManager.snapshot()`. |
+| Counters | `state.render.residency` (published ~2 Hz) | `visibleUnready` (held again **after** presentation; must be 0), `visibleUnreadyDraws` (draw-point refusal of a presented drawable), `refusedDraws`, `preAdmittedHolds`, `heldDraws`, `heldRoots`, `releasedRoots`, `failOpenReleases` (alias `residencyFailOpen`), `admittedFailOpen`, `expiredRequests`, `expiredRetries`, `uploadRetries`, `heldUnqueued`, `firstResidentDelayP50/P95/Max`, `uploadMs`, `uploadRuns/Failures`, `pending` (held drawables only — released in-flight uploads are not pending visibility), `compileFailOpen`, `compileRefusals`, `compileFallbacks`, `disposed`. Read from `SF.registry.get('render')._residencyManager.snapshot()`. |
 
-Focused checks (real counts, 2026-11-06): `test/residency-manager.test.mjs` **21/21**;
+Focused checks (real counts, 2026-11-06): `test/residency-manager.test.mjs` **22/22**;
 `bloom-unready-draw-guard` **25/25**; `presented-draw-detach-pass` **11/11**;
 `bloom-instancing-readiness` **5/5**; `entity-mesh-visibility` **14/14**;
 `sf-258-admission-starvation` **5/5**; `authored-admission-recovery` **13/13**;
-`stand-in-resident-submit` **2/2** — **96/96 focused**. Supporting:
+`stand-in-resident-submit` **2/2** — **97/97 focused**. Supporting:
 `renderer-owner-lifetime` + `authored-async-liveness` + `frame-solid-glass-priority` +
 `startup-geometry-residency` **103/103**. `node scripts/check-game-playable.mjs` was run and
 **failed** on `CLEAN` (`resolvePoseInto is not defined` in the working tree's
