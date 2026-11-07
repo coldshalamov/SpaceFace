@@ -119,6 +119,8 @@ export function shipSheetHtml(sheet, opts = {}) {
     const deltaAria = deltaText ? ` Now ${tenthsWord(delta.afterTenths)} of 10, ${signedTenths(delta.delta)}.` : '';
     const label = `${stat.label} ${stat.value} of 10. ${stat.meaning}${deltaAria}`;
     return (
+      // Compact sheets are readings: no meaning panel and no fake button role. A full sheet keeps
+      // one honest focusable list item per stat; its aria-label carries the meaning and delta.
       `<li class="sfs__stat" data-sfs-stat="${escapeHtml(stat.id)}" ` +
         `data-sfs-stat-meaning="${escapeHtml(stat.meaning)}" ` +
         (compact ? '' : 'tabindex="0" ') +

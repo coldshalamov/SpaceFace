@@ -336,6 +336,21 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} .sf-ng-sheet .sfs__pips { display:none; }
   ${NGD} .sf-ng-sheet .sfs--compact .sfs__stat { padding:3px 0 4px; }
 }
+/* Short narrow desktop: keep the existing page scroll and every form section, including the
+   hull picker, loadout and first-flight preview. These are decisions, not decorative overflow.
+   Put Back/Launch in normal flow after the complete form so the rail cannot cover an input.
+   The screens layer remains the single scroll owner, which also keeps the measured yard and
+   its hull choices aligned while moving through the page. */
+@media (max-width:700px) and (max-height:600px) {
+  ${NGD} { row-gap:16px !important; }
+  ${NGD} > .sf-ng-footer { position:relative !important; bottom:auto !important; z-index:2 !important;
+    margin:0 !important; padding:10px 0 12px !important;
+    border-image:linear-gradient(180deg, rgb(${BONE} / .16) 0 1px, rgb(6 8 11) 1px) fill 0 / / 0 100vw !important; }
+  ${NGD} .orr-stopscale .k-word,
+  ${NGD} .orr-stoparc .k-word { padding-top:2px !important; padding-bottom:2px !important; }
+  ${NGD} > .sf-ng-header > p { margin-top:2px !important; }
+}
+
 /* at phone width the yard's rear ends sit ~130px apart, so the rear names (WASP, PELICAN) set tighter */
 @media (max-width:480px) {
   ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word { font-size:12px !important; letter-spacing:.04em !important; }
@@ -360,6 +375,13 @@ ${NG_PHONE} .orr-turntable > .orr-turntable__row > li { flex:1 1 auto !important
 ${NG_PHONE} .orr-turntable > .orr-turntable__row > li .k-word {
   font-size:clamp(14px, 4.2vw, 17px) !important; letter-spacing:.08em !important; white-space:nowrap !important; }
 ${NG_PHONE} .orr-turntable > .orr-turntable__row > li .k-word-sub { letter-spacing:.14em !important; }
+/* short phone (≤380 × ≤600, e.g. 320×568): FIRST FLIGHT (Teach me / I've flown) sat on the
+   sticky BACK/LAUNCH band. Add body foot-pad so the last verbs clear the foot, and tighten the
+   foot pad so more of the form stays on first paint. */
+@media (max-width:380px) and (max-height:600px) {
+  ${NG_PHONE} > .sf-ng-body { padding-bottom:72px !important; }
+  ${NG_PHONE} > .sf-ng-footer { padding-top:10px !important; padding-bottom:10px !important; }
+}
 `;
 
 export function injectNewGameLayouts(doc = globalThis.document) {
