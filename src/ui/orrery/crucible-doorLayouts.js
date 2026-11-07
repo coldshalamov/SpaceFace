@@ -145,12 +145,17 @@ ${D} .sf-crd-arenas .fh-tile-legend { white-space:normal !important; overflow:vi
     font-variation-settings:'wdth' 92 !important; line-height:1.15 !important; }
 }
 @media (max-height:500px) {
-  ${D} .sf-crd-modes.sf-crd-modes .orr-tile { min-height:44px !important; height:auto !important; padding:2px 2px !important; }
-  ${D} .sf-crd-modes .fh-tile-art { height:18px !important; }
-  ${D} .sf-crd-modes .fh-tile-art svg { width:18px !important; height:18px !important; }
-  ${D} .sf-crd-stakes .orr-tile { min-height:44px !important; height:auto !important; padding:4px !important; }
+  /* 801×461 stage is ~191px once the hero claims the right column. Drop Daily chrome and
+     tighten Mode so Stake legend+purse clear the fold; pressure/yield stay for scroll. */
+  ${D} .orr-prep-daily { display:none !important; }
+  ${D} .sf-crd-modes.sf-crd-modes .orr-tile { min-height:40px !important; height:auto !important; padding:2px 2px !important; }
+  ${D} .sf-crd-modes .fh-tile-art { height:16px !important; }
+  ${D} .sf-crd-modes .fh-tile-art svg { width:16px !important; height:16px !important; }
+  ${D} .sf-crd-mode-sub { margin-top:2px !important; font-size:12px !important; line-height:1.25 !important; }
+  ${D} .sf-crd-stakes .orr-tile { min-height:40px !important; height:auto !important; padding:3px 2px !important; gap:2px !important; }
   ${D} .orr-prep-stake-number { font-size:16px !important; }
-  ${D} .orr-prep-settings.orr-prep-settings { gap:6px !important; }
+  ${D} .orr-prep-settings.orr-prep-settings { gap:4px !important; }
+  ${D} .k-row > .k-row__name { margin-bottom:2px !important; }
 }
 /* --- the arena strip reads by its words --------------------------------------------------- */
 ${D} .sf-crd-arenas .fh-tile-art img { width:100% !important; height:44px !important; object-fit:cover !important;
