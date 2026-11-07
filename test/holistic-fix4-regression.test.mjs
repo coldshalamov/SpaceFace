@@ -23,8 +23,6 @@ import {
 import { compareRuntimeFingerprints } from '../src/testing/lab/differentialReplay.js';
 import { flightV3 } from '../src/systems/flightV3.js';
 import { flight } from '../src/systems/flight.js';
-import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
-import { ai } from '../src/systems/ai.js';
 import { actions } from '../src/systems/actions.js';
 import { activityStampMoreRecent } from '../src/systems/input.js';
 import { LEADERSHIP_INIT_GRACE_MS, tryReclaimStaleQuotaLock } from '../scripts/lib/validationBroker.mjs';
@@ -78,12 +76,10 @@ test('G2: automation source has no Date.now() gameplay calls', () => {
   const stripped = src
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/\/\/[^\n]*/g, '');
-  // Only allowed behind wallClockOfflineProgressEnabled gate (explicit opt-in).
-  // Direct unconditional Date.now() helper must be gone.
+  assert.doesNotMatch(stripped, /Date\.now\s*\(/);
   assert.doesNotMatch(stripped, /function\s+nowMs\s*\(/);
   assert.match(src, /simTimeMs/);
-  assert.match(src, /wallClockOfflineProgress/);
-  assert.match(src, /pendingOfflineElapsedSec/);
+  assert.doesNotMatch(src, /wallClockOfflineProgress|pendingOfflineElapsedSec/);
 });
 
 // ── G3: PQ acceptance with receipt but no external claim fails ───────────────
@@ -266,19 +262,6 @@ test('G7: V3 vs legacy explicit manifests produce different hashes', () => {
   assert.notEqual(v3.selectedSlots.flightBackend, legacy.selectedSlots.flightBackend);
   assert.notEqual(v3.manifestHash, legacy.manifestHash);
   assert.equal(authoritativeIdentityEqual(v3, legacy), false);
-
-  const tacticalAI = createTacticalAISystem();
-  const tac = resolveRuntimeManifest({
-    profileId: 'production',
-    explicitSystems: [actions, tacticalAI],
-  });
-  const legAi = resolveRuntimeManifest({
-    profileId: 'production',
-    explicitSystems: [actions, ai],
-  });
-  assert.equal(tac.selectedSlots.aiBackend, 'sg06-tactical');
-  assert.equal(legAi.selectedSlots.aiBackend, 'legacy');
-  assert.notEqual(tac.manifestHash, legAi.manifestHash);
 });
 
 test('G7: differential fingerprint compare fails on manifestHash mismatch', () => {

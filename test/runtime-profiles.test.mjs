@@ -358,9 +358,10 @@ test('authoritative runtime does not expose raw sim.step (isolation cannot be by
   }
 });
 
-test('createRegistry slot identity reflects selected impl after physics fallback (not requested backend)', () => {
-  // Request V3 + tactical AI but non-Rapier physics → selectors fall back to legacy systems.
-  // Slot labels / manifestHash must record the SELECTED legacy identity, not the request.
+test('createRegistry slot identity reflects selected impl after flight fallback (not requested backend)', () => {
+  // Request V3 but non-Rapier physics → the flight selector falls back to legacy. Slot labels /
+  // manifestHash must record the SELECTED identity, not the request. AI has no legacy fallback
+  // after the Q4 deletion, so it stays on the live tactical slot.
   const fallbackState = createGameState(101);
   fallbackState.settings.gameplay.physicsBackend = 'custom';
   fallbackState.settings.gameplay.flightBackend = 'v3';
@@ -388,8 +389,8 @@ test('createRegistry slot identity reflects selected impl after physics fallback
 
   assert.equal(fallbackSlots.flightBackend, 'legacy',
     'non-Rapier + v3-requested must record legacy flight, not v3');
-  assert.equal(fallbackSlots.aiBackend, 'legacy',
-    'non-Rapier + tactical-requested must record legacy AI, not sg06-tactical');
+  assert.equal(fallbackSlots.aiBackend, 'sg06-tactical',
+    'the live AI slot is selected regardless of physics; no legacy backend remains');
   assert.equal(trueV3Slots.flightBackend, 'v3');
   assert.equal(trueV3Slots.aiBackend, 'sg06-tactical');
 

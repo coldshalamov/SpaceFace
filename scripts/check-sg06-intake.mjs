@@ -104,7 +104,7 @@ function exportSpecifiers(source) {
 }
 
 function systemImportsSg06() {
-  for (const rel of ['src/systems/ai.js', 'src/systems/tacticalAI.js']) {
+  for (const rel of ['src/systems/tacticalAI.js']) {
     if (!exists(rel)) continue;
     const text = read(rel);
     if (text.includes('../ai/') || text.includes("from './tacticalAI") || text.includes('TacticalAIStack')) return true;
@@ -180,8 +180,9 @@ async function assertGatedProductionRegistration() {
   const registry = read('src/core/registry.js');
   assert(registry.includes('createTacticalAISystem'), 'SG-06 registry gate must construct tacticalAI through the production registry');
   assert(registry.includes('aiEncounter'), 'SG-06 registry gate must register the active encounter owner');
-  assert(registry.includes("aiBackend === 'sg06-tactical'"), 'SG-06 tacticalAI must still honor the explicit AI backend selector');
-  assert(registry.includes("physicsBackend === 'rapier-dynamic'"), 'SG-06 tacticalAI must require SG-02 dynamic authority in the production registry');
+  assert(registry.includes('const aiSlot = createTacticalAISystem('), 'the production registry must always materialize the live tactical AI slot');
+  assert(!registry.includes("systems/ai.js"), 'the deleted legacy AI must not be re-imported');
+  assert(registry.includes("physicsBackend === 'rapier-dynamic'"), 'flight V3 must still require SG-02 dynamic authority in the production registry');
   assert(registry.includes("byName.set('ai', aiSlot)"), 'production registry must preserve the ai slot alias for the selected backend');
   const gameState = read('src/core/gameState.js');
   assert(gameState.includes("physicsBackend: 'rapier-dynamic'"), 'default game settings must use SG-02 dynamic authority');

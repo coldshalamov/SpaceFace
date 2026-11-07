@@ -849,7 +849,7 @@ HUD (`#hud`) is visible **iff** `screenStack.length === 0 && ui.docked === false
 |---|---|---|---|
 | `src/systems/input.js` | sample keyboard+mouse, mouse→world ray, write `state.input`; flight key ownership | `input` system | core/math, render(camera) |
 | `src/systems/flight.js` | thrust/drag/rotate, boost, strafe, handling penalty from cargo mass, sector inward accel | `flight` system | core, cargo(read) |
-| `src/systems/ai.js` | NPC FSM (idle/patrol/pursue/attack/strafe/flee), steering blend, threat/aggro target select → `entity.data.intent` | `ai` system | core, factions(read) |
+| `src/systems/tacticalAI.js` | NPC tactical stack (the only AI backend after Q4 deleted `ai.js`) | `tacticalAI` system | core, `src/ai/`, aiPorts |
 | `src/systems/weapons.js` | fire gates (cooldown/energy/heat/lock/ammo), spawn projectile entities + beams, fire groups, lead/intercept | `weapons` system | core, ships(weapon defs), economy(ammo) |
 | `src/systems/combat.js` | damage pipeline (shield→armor→hull), regen, death/respawn/insurance, loot roll, scaleCombatant, beams, `combatants` derived index | `combat` system | core, factions, economy, ships |
 | `src/systems/mining.js` | applyMining, ore ejection, magnet, salvage, asteroid fields, refining, beam heat | `mining` system | core, cargo, economy, world |

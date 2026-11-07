@@ -37,7 +37,6 @@ export function removeCargo(state, commodityId, qty) { return 0; }
 `;
 
 const files = {
-  'src/systems/ai.js': sys('ai'),
   'src/systems/weapons.js': sys('weapons'),
   'src/systems/combat.js': sys('combat'),
   'src/systems/mining.js': sys('mining'),

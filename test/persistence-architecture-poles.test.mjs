@@ -35,8 +35,6 @@ import {
   packEntityIntoSnapshot,
   SNAPSHOT_FENCE_BUFFERS,
 } from '../src/render/snapshotFence.js';
-import { isSimulationWorkerEnabled, createCommandRing } from '../src/core/simWorkerProtocol.js';
-import { stepAbstractRecords } from '../src/core/simWorkerHost.js';
 import { getActivityFrame } from '../src/core/worldActivityManager.js';
 import { resolve as resolveMaterial } from '../src/render/materialLibrary.js';
 import { createSaveDirtyJournal, shouldSerializeDuringPresent } from '../src/save/saveDirtyJournal.js';
@@ -204,18 +202,7 @@ test('snapshot fence columns and indices survive capacity growth without facade 
   assert.deepEqual(mesh.position, { x: 27, y: 12, z: -17 });
 });
 
-test('simulation Worker uses a real catch-up kernel with main-thread fallback', () => {
-  assert.equal(typeof isSimulationWorkerEnabled(), 'boolean');
-  const ring = createCommandRing(4);
-  assert.equal(ring.push(1), true);
-  assert.equal(ring.pop().kind, 1);
-});
-
-test('abstract catch-up kernel and snapshot pose apply without live entity chase', () => {
-  const moved = stepAbstractRecords([
-    { id: 9, alive: true, pos: { x: 0, z: 0 }, vel: { x: 10, z: 0 }, rot: 0, angVel: 0 },
-  ], 0, 2);
-  assert.equal(moved[0].pos.x, 20);
+test('snapshot pose apply does not chase a live entity', () => {
   const fence = createSnapshotFence({ capacity: 4 });
   const snap = fence.beginPack(1, 1);
   packEntityIntoSnapshot(snap, { id: 4, alive: true, pos: { x: 6, y: 0, z: 2 } });

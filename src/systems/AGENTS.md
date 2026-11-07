@@ -7,7 +7,7 @@ into this file.
 ## Important routing
 
 - Flight: `flightV3.js`; shared math in `src/core/flight/`. `flight.js` is compatibility/test scope.
-- AI: `tacticalAI.js` + `src/ai/`; `aiPorts.js` executes decisions. `ai.js` is compatibility scope.
+- AI: `tacticalAI.js` + `src/ai/`; `aiPorts.js` executes decisions. Legacy `ai.js` was deleted in Q4.
 - Hostility/fire authority: `src/ai/engagementAuthority.js`; read `docs/COMMON_BUGS.md` before edits.
 - Combat: registered `combat.js` plus shared `src/combat/` library.
 - Tether: `tetherGameplay.js` coordinating combat attachments, weapons, physics, and focus/camera.

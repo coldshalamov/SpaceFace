@@ -344,6 +344,31 @@ test('negative wall time fails closed (no grant)', () => {
   assert.equal(grants(bus).length, 0);
 });
 
+test('offline catch-up derives elapsed from sim-time and never the host wall clock', () => {
+  const { state, bus, inst } = boot(99);
+  busApplyCharges(inst);
+  deployDrone(inst, state);
+  bus.emitLog.length = 0;
+
+  const t0 = 4_000_000_000; // sim seconds → exact millisecond baseline
+  state.simTime = t0 / 1000;
+  state.automation.meta.lastTickTime = t0;
+  state.automation.meta.lastOfflineWindowStart = 0;
+
+  // If any wall clock leaked into the catch-up it would see a ten-hour window here.
+  const savedNow = Date.now;
+  Date.now = () => t0 + 10 * 3600 * 1000;
+  try {
+    const receipt = inst.runOfflineCatchup();
+    assert.equal(receipt.skipReason, 'zero_elapsed');
+    assert.equal(receipt.rawElapsedSec, 0);
+    assert.equal(receipt.credited, 0);
+    assert.equal(grants(bus).length, 0, 'no income from wall-clock absence');
+  } finally {
+    Date.now = savedNow;
+  }
+});
+
 test('serialize/deserialize keeps offline receipt + idempotency anchor', () => {
   const { state, bus, inst } = boot(77);
   busApplyCharges(inst);

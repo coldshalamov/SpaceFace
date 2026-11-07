@@ -618,7 +618,6 @@ test('spatial hash membership is the Rapier active set, not the whole sector', (
 test('production physics, AI, and traffic call the activity runtime', async () => {
   const physics = await readFile(new URL('../src/core/physics.js', import.meta.url), 'utf8');
   const tactical = await readFile(new URL('../src/systems/tacticalAI.js', import.meta.url), 'utf8');
-  const ai = await readFile(new URL('../src/systems/ai.js', import.meta.url), 'utf8');
   const ports = await readFile(new URL('../src/systems/aiPorts.js', import.meta.url), 'utf8');
   const traffic = await readFile(new URL('../src/systems/traffic.js', import.meta.url), 'utf8');
   const bark = await readFile(new URL('../src/systems/barkDirector.js', import.meta.url), 'utf8');
@@ -630,7 +629,6 @@ test('production physics, AI, and traffic call the activity runtime', async () =
   assert.match(physics, /activity\.physicsDynamics/);
   assert.match(tactical, /ensureActivityClassified/);
   assert.match(tactical, /entityNeedsAiThink/);
-  assert.match(ai, /entityNeedsAiThink/);
   assert.match(ports, /entityNeedsAiThink/);
   assert.match(traffic, /entityNeedsAiThink/);
   assert.match(bark, /ensureActivityClassified/);

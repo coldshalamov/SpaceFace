@@ -69,10 +69,6 @@ export const ALLOWED_WALL_TIME_FILES = new Map([
   ['src/systems/gamepad.js', 'gamepad device diagnostic stamp + idle-skip self-benchmark'],
   ['src/systems/touch.js', 'touch device diagnostic stamp (ev.timeStamp preferred; wall is fallback)'],
   ['src/systems/telemetry.js', 'local telemetry session id and human-readable duration listing'],
-  // The ONE sanctioned sim-adjacent exception: offline catch-up may read wall time only under
-  // settings.gameplay.wallClockOfflineProgress === true (explicit host opt-in; lab/deterministic
-  // runs leave it off and resolve "now" from sim-time baselines).
-  ['src/systems/automation.js', 'opt-in offline-progress exception: Date.now only under wallClockOfflineProgress === true'],
 ]);
 
 /**

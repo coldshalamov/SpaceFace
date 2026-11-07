@@ -67,16 +67,12 @@ export function createAuthoritativeRuntime(options = {}) {
   let slots = options.slots || null;
   if (!explicit && !systemLookup && options.nodeSafeOnly === true) {
     // Production Node defaults: tactical AI + flight V3 (same as browser createRegistry).
-    // legacy47a Node defaults: legacy AI + legacy flight (frozen 47-A / sf-sim).
-    const tacticalAI = isLegacy47a
-      ? options.tacticalAI === true
-      : options.tacticalAI !== false;
+    // legacy47a Node defaults: legacy flight (frozen 47-A / sf-sim); AI has no legacy backend.
     const flightBackend = (slots && slots.flightBackend)
       || (isLegacy47a ? 'legacy' : 'v3');
     systemLookup = getNodeSystemFactoryTable({
       aiSlot: slots && slots.aiSlot,
       flightSlot: slots && slots.flightSlot,
-      tacticalAI,
       flightBackend,
     });
     const aiSlot = (slots && slots.aiSlot) || systemLookup.get('aiSlot');

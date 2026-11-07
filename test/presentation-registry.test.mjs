@@ -75,8 +75,7 @@ test('direct worker registry uses the presentation factory and matches full mani
     assert.equal(presentation.runtimeManifest.manifestHash, full.runtimeManifest.manifestHash);
     assert.equal(presentation.runtimeManifest.selectedSlots.flightBackend,
       physicsBackend === 'rapier-dynamic' ? 'v3' : 'legacy');
-    assert.equal(presentation.runtimeManifest.selectedSlots.aiBackend,
-      physicsBackend === 'rapier-dynamic' ? 'sg06-tactical' : 'legacy');
+    assert.equal(presentation.runtimeManifest.selectedSlots.aiBackend, 'sg06-tactical');
     assert.equal(presentation.get('input').gamepad, worker.gamepad);
     assert.equal(presentation.systems.some(s => s.name === 'tacticalAI'), false);
   }

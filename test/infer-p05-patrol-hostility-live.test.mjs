@@ -1,10 +1,9 @@
 // SFQ-I018 on the LIVE AI backend (tacticalAI, the default aiBackend): a lawful patrol stops fighting once the
 // player's warrant has lapsed.
 //
-// test/infer-p05-patrol-hostility.test.mjs pins the compatibility backend (src/systems/ai.js), which the default
-// runtime does not run. On the live backend the engagement authority is the hostility oracle (isHostileForAI) and the
-// final fire gate (roe lawful_wanted_only), so the behaviour already held; this pins it where players meet it: a
-// wanted player is shot at by the patrol, and the moment the heat is gone the patrol stops firing and does not close.
+// The compatibility backend (the old src/systems/ai.js) was deleted in Q4; this pins the behaviour where
+// players meet it: a wanted player is shot at by the patrol, and the moment the heat is gone the patrol stops
+// firing and does not close.
 // Seed 4242, the production tactical stack at 60 Hz, no stubbed hostility.
 import assert from 'node:assert/strict';
 import test from 'node:test';

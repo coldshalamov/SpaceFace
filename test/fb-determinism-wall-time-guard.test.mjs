@@ -96,17 +96,14 @@ test('the named sim owners no longer read wall clocks directly', () => {
   }
 });
 
-test('the sanctioned offline-progress exception stays opt-in gated', () => {
+test('the offline-progress wall-clock exception is gone', () => {
   const automation = readFileSync(join(ROOT, 'src/systems/automation.js'), 'utf8');
-  assert.ok(
-    automation.includes('wallClockOfflineProgressEnabled'),
-    'automation.js must keep the wallClockOfflineProgress opt-in gate',
-  );
-  // The only live Date.now() call site sits inside resolveAutomationOfflineNow behind the gate.
-  const idx = automation.indexOf('Date.now) ? Date.now()');
-  assert.ok(idx > 0, 'expected the gated Date.now() read to still exist');
-  const gateIdx = automation.lastIndexOf('wallClockOfflineProgressEnabled(state, opts)', idx);
-  assert.ok(gateIdx > 0 && idx - gateIdx < 400, 'the Date.now() read must sit inside the opt-in gate');
+  const stripped = automation
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/[^\n]*/g, '');
+  assert.doesNotMatch(stripped, /Date\.now\s*\(/, 'automation.js must not read a wall clock');
+  assert.doesNotMatch(stripped, /wallClockOfflineProgress/, 'the writer-less opt-in is deleted');
+  assert.match(stripped, /simTimeMs/, 'the surviving path uses authoritative sim-time');
 });
 
 test('checker script wires the shared guard', () => {

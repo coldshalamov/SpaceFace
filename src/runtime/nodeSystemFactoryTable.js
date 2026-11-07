@@ -72,7 +72,6 @@ import { custodyConsequences } from '../systems/custodyConsequences.js';
 import { aceMemory } from '../systems/aceMemory.js';
 import { barkDirector } from '../systems/barkDirector.js';
 import { aiPorts } from '../systems/aiPorts.js';
-import { ai } from '../systems/ai.js';
 import { createTacticalAISystem, PRODUCTION_ENEMY_MIND_CONFIG } from '../systems/tacticalAI.js';
 import { aiEncounter } from '../systems/aiEncounter.js';
 import { actions } from '../systems/actions.js';
@@ -279,14 +278,11 @@ import { save } from '../save/saveSystem.js';
 
 /**
  * Build a Map of system id → factory object for Node production-fidelity runs.
- * @param {{ aiSlot?: object, flightSlot?: object, tacticalAI?: boolean, flightBackend?: string }} [options]
+ * @param {{ aiSlot?: object, flightSlot?: object, flightBackend?: string }} [options]
  */
 export function getNodeSystemFactoryTable(options = {}) {
-  const tacticalAI = options.tacticalAI !== false;
   const aiSlot = options.aiSlot
-    || (tacticalAI
-      ? createTacticalAISystem({ config: { enemyMind: PRODUCTION_ENEMY_MIND_CONFIG } })
-      : ai);
+    || createTacticalAISystem({ config: { enemyMind: PRODUCTION_ENEMY_MIND_CONFIG } });
   // I5: honor flightBackend — legacy47a must materialize legacy flight, not flightV3.
   const flightBackend = typeof options.flightBackend === 'string' ? options.flightBackend : 'v3';
   const flightSlot = options.flightSlot

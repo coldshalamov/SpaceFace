@@ -79,7 +79,6 @@ import { lineProgression } from '../systems/lineProgression.js';
 import { barkDirector } from '../systems/barkDirector.js';
 import { stuntGrammar } from '../systems/stuntGrammar.js';
 import { aiPorts } from '../systems/aiPorts.js';
-import { ai } from '../systems/ai.js';
 import { createTacticalAISystem, PRODUCTION_ENEMY_MIND_CONFIG } from '../systems/tacticalAI.js';
 import { aiEncounter } from '../systems/aiEncounter.js';
 import { actions } from '../systems/actions.js';
@@ -649,16 +648,16 @@ export function createRegistry(ctx) {
   setDeadDropWitnessSource(lawWitnessesNear);
   // The scanner cannot import the asteroid-site owner (cycle through drill, cargo and combat): same seam.
   setScannerSiteProjectionSource({ find: findAsteroidSiteFromState, project: projectAsteroidSiteFromState });
-  const aiSlot = selectAISystem(ctx);
-  // Normal play is SG-06 tactical AI + Flight V3 on rapier-dynamic. Legacy/custom branches stay
-  // available for explicit tool/test fixtures, not player-facing settings or save restore.
+  const aiSlot = createTacticalAISystem({ config: { enemyMind: PRODUCTION_ENEMY_MIND_CONFIG } });
+  // Normal play is SG-06 tactical AI + Flight V3 on rapier-dynamic. Flight keeps its legacy
+  // fallback for explicit tool/test fixtures; the compatibility AI backend was deleted in Q4.
   const flightSlot = selectFlightSystem(ctx);
 
   const gameplay = ctx && ctx.state && ctx.state.settings && ctx.state.settings.gameplay || {};
   const profileId = gameplay.runtimeProfile || DEFAULT_RUNTIME_PROFILE_ID;
   const systemLookup = buildRegistrySystemLookup(aiSlot, flightSlot);
   // Backend labels from the SELECTED implementation (post-fallback), not the requested setting.
-  // Selectors fall back to legacy when physics is non-Rapier; recording gameplay.flightBackend='v3'
+  // Flight falls back to legacy when physics is non-Rapier; recording gameplay.flightBackend='v3'
   // would give the same slot identity/hash as a true V3 runtime (both systems name 'flight').
   const slots = {
     aiSlot,
@@ -1028,16 +1027,6 @@ export function createRegistry(ctx) {
   };
 }
 
-function selectAISystem(ctx) {
-  const gameplay = ctx && ctx.state && ctx.state.settings && ctx.state.settings.gameplay || {};
-  if (gameplay.aiBackend === 'sg06-tactical' && gameplay.physicsBackend === 'rapier-dynamic') {
-    return createTacticalAISystem({ config: { enemyMind: PRODUCTION_ENEMY_MIND_CONFIG } });
-  }
-  return ai;
-}
-
-// Flight controller selection. V3 only functions under rapier-dynamic, so direct tool/test fixtures
-// that request another backend resolve to the legacy controller.
 function selectFlightSystem(ctx) {
   const gameplay = ctx && ctx.state && ctx.state.settings && ctx.state.settings.gameplay || {};
   if (gameplay.flightBackend === 'v3' && gameplay.physicsBackend === 'rapier-dynamic') {

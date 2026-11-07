@@ -175,7 +175,7 @@ sysLines.push('|---|---|---|---|---|---|');
 // Map slot name → likely file. Most systems live in src/systems/<name>.js; some differ.
 const slotToFile = {
   flight: ['systems/flightV3.js', 'systems/flight.js'], // flag-selected
-  ai: ['systems/tacticalAI.js', 'systems/ai.js'], // flag-selected
+  ai: ['systems/tacticalAI.js'],
   render: ['render/renderer.js'],
   vfx: ['render/vfx.js'],
   feel: ['render/feel.js'],

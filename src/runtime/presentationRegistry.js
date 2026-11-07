@@ -42,13 +42,13 @@ import { salvageOutfitsPrompt } from '../features/salvageOutfits/integration.js'
 
 export function createPresentationRegistry(ctx) {
   const gameplay = ctx.state?.settings?.gameplay || {};
-  const tactical = gameplay.aiBackend === 'sg06-tactical' && gameplay.physicsBackend === 'rapier-dynamic';
   const v3 = gameplay.flightBackend === 'v3' && gameplay.physicsBackend === 'rapier-dynamic';
   // Slot identities are descriptive only; all simulation owners live in the worker.
+  // The AI slot is always the live tactical backend (the compatibility ai.js was deleted in Q4).
   const resolved = resolveRuntimeManifest({
     profileId: gameplay.runtimeProfile || DEFAULT_RUNTIME_PROFILE_ID,
-    slots: { aiSlot: { name: tactical ? 'tacticalAI' : 'ai' }, flightSlot: { name: 'flight' },
-      aiBackend: tactical ? 'sg06-tactical' : 'legacy', flightBackend: v3 ? 'v3' : 'legacy' },
+    slots: { aiSlot: { name: 'tacticalAI' }, flightSlot: { name: 'flight' },
+      aiBackend: 'sg06-tactical', flightBackend: v3 ? 'v3' : 'legacy' },
   });
   if (ctx.applyRuntimeFeatures !== false) applyFeatureConfigToMaps(resolved.features);
   bindRuntimeToState(ctx.state, resolved, resolved);

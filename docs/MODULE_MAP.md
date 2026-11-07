@@ -81,14 +81,14 @@ remain available for callers that already use them.
 
 ---
 
-## AI (two stacks — SG-06 tactical is live)
+## AI (one stack — SG-06 tactical is live)
 
-> **If your AI fix "didn't apply," you edited `src/systems/ai.js`.** It is default-off.
-> The live stack is `tacticalAI.js` + `src/ai/` + `aiPorts.js`.
+> The live stack is `tacticalAI.js` + `src/ai/` + `aiPorts.js`. The old compatibility
+> `src/systems/ai.js` was deleted in Q4; there is no second AI backend to edit by mistake.
 
 | File | Role | Live? |
 |---|---|---|
-| `src/systems/tacticalAI.js` 🟢 | **LIVE AI system** (thin factory). Wires the `src/ai/` stack into the registry under the `'ai'` slot. | YES — `aiBackend:'sg06-tactical'`. |
+| `src/systems/tacticalAI.js` 🟢 | **LIVE AI system** (thin factory). Wires the `src/ai/` stack into the registry under the `'ai'` slot. | YES — always selected. |
 | `src/ai/stack.js` 🟢 | `TacticalAIStack.update` — the per-tick AI driver. | YES. |
 | `src/ai/perception.js` 🟢 | Builds per-ship sensor frames; counts `hostileContacts`/`visibleThreat` feeding the director. | YES. |
 | `src/ai/director.js` 🟢 | Encounter pacing — ramps pressure based on perceived threat, emits reinforcement requests. | YES. |
@@ -99,7 +99,6 @@ remain available for callers that already use them.
 | `src/ai/engagementAuthority.js` 🟢 | Final fail-closed engagement authorization plus fresh hostility oracle. Revalidates motive, response window, doctrine phase, leash, station jurisdiction, and first-session attacker ownership. | YES — final-fire authority; critical for hostility debugging. |
 | `src/systems/aiPorts.js` 🟢 | Bridges tactical decisions to physics/actions and consumes `engagementAuthority`. | YES. |
 | `src/systems/aiEncounter.js` 🟢 | Consumes director reinforcement requests, spawns `REINFORCEMENT_PACKAGES` (all `team:1`). | YES. |
-| `src/systems/ai.js` ⚪ | Legacy per-NPC FSM. | Default-off fallback. Statically imported by `registry.js` and used by compatibility checks. |
 
 ---
 
@@ -278,8 +277,9 @@ These live in `src/systems/` but are imported by other code; they do NOT run eve
 
 ## Where things are NOT (common dead-ends)
 
-- **`src/systems/flight.js` and `src/systems/ai.js` are not the default controllers.** Defaults run
-  V3 + tactical, but both legacy files remain statically imported fallbacks and CI/compatibility fixtures.
+- **`src/systems/flight.js` is not the default controller.** Defaults run V3, but the legacy file
+  remains a statically imported fallback for compatibility fixtures. The legacy AI backend
+  (`src/systems/ai.js`) was deleted in Q4; tactical is the only AI stack.
 - **There is no `src/core/flight/flightDynamics.js`** despite some spec docs referencing it. V3 files are `propulsionCatalog.js`/`propulsionKernel.js`/`flightTelemetry.js` under that dir. `flightDynamics.js` lives one level up at `src/core/flightDynamics.js` (legacy, but still imported by `aiPorts.js`).
 - **`WHOLE_SHIP_FILE_BY_DEF_ID` is active for Kestrel and Wasp.** Other ship definitions use
   modular `HULL_FILE_BY_DEF_ID` entries unless a production-validated complete body is deliberately wired.

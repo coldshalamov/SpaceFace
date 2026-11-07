@@ -475,9 +475,9 @@ export function buildMechanicalConditionReport() {
         damages: language ? [...language.damages] : [],
       },
       routeExposure: exposure,
-      // Honest negative: the OTHER live consumer of active.hazards does not fire at Ceres.
+      // The live consumer of active.hazards; it does not fire at Ceres.
       laneDangerConsumer: {
-        consumers: ['src/systems/ai.js playerIsInLaneDanger', 'src/systems/scanner.js playerIsInLaneDanger'],
+        consumers: ['src/systems/scannerReadModel.js playerIsInLaneDanger'],
         gate: 'security <= 0.45 || tier >= 2',
         sectorSecurity: Number(sector.security),
         sectorTier: Number(sector.tier),

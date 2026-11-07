@@ -29,7 +29,6 @@ import { flightV3 } from '../src/systems/flightV3.js';
 import { resolveHudNavStation } from '../src/ui/hud.js';
 import { createUiInput } from '../src/ui/input.js';
 import { automation } from '../src/systems/automation.js';
-import { ai } from '../src/systems/ai.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
 import { aiEncounter } from '../src/systems/aiEncounter.js';
 import { intervention } from '../src/systems/intervention.js';
@@ -1667,102 +1666,6 @@ function checkAudioThreatScanUsesSpatialShipCandidates() {
   } finally {
     state.entityList = originalEntityList;
   }
-}
-
-function checkAiTargetSelectionReusesSpatialScratch() {
-  const state = createGameState(99);
-  state.mode = 'flight';
-  state.entities.clear();
-  state.entityList.length = 0;
-  state.playerId = 1;
-  const player = {
-    id: 1,
-    type: 'ship',
-    alive: true,
-    collides: true,
-    radius: 8,
-    team: 0,
-    pos: { x: 240, z: 0 },
-    vel: { x: 0, z: 0 },
-    data: {},
-  };
-  const npc = {
-    id: 2,
-    type: 'ship',
-    alive: true,
-    collides: true,
-    radius: 8,
-    team: 1,
-    pos: { x: 0, z: 0 },
-    vel: { x: 0, z: 0 },
-    data: {
-      ai: { archetype: 'swarmer' },
-      combat: {},
-    },
-  };
-  const farShips = [];
-  for (let i = 0; i < 120; i++) {
-    farShips.push({
-      id: 10 + i,
-      type: 'ship',
-      alive: true,
-      collides: true,
-      radius: 8,
-      team: 0,
-      pos: { x: 5000 + i * 90, z: 0 },
-      vel: { x: 0, z: 0 },
-      data: {},
-    });
-  }
-  const ships = [player, npc, ...farShips];
-  for (const e of ships) {
-    state.entities.set(e.id, e);
-    state.entityList.push(e);
-  }
-  state.entityIndex = {
-    __spacefaceEntityIndexV1: true,
-    aiShips: [npc],
-    ships,
-    collidables: ships,
-  };
-
-  let calls = 0;
-  let firstScratch = null;
-  const helpers = {
-    queryRadius(pos, radius, out) {
-      calls += 1;
-      assert(out, 'AI target selection should pass reusable scratch to queryRadius');
-      if (firstScratch == null) firstScratch = out;
-      assert.equal(out, firstScratch, 'AI target selection should reuse the same query scratch across retargets');
-      out.length = 0;
-      out.push(player, npc, ...farShips);
-      return out;
-    },
-  };
-  ai.init({ state, bus: createBus(), helpers });
-
-  const arch = { sensor: 500, attackR: 300, pref: 180 };
-  state.world.currentSectorId = 'sector_pallas_drift';
-  state.world.sectors.sector_pallas_drift = { security: 0.35, tier: 2 };
-  npc.data.ai.sectorSecurity = 0.35;
-  npc.data.ai.sectorTier = 2;
-  state.world.activeSector = { gates: [], hazards: [] };
-  assert.equal(ai._selectTarget(npc, npc.data, state, player, arch), null,
-    'ambient pirates in unsafe sectors should not acquire a neutral player outside lane danger');
-  state.world.activeSector = { gates: [{ pos: { x: -1000, z: 0 } }], hazards: [] };
-  assert.equal(ai._selectTarget(npc, npc.data, state, player, arch), player,
-    'ambient pirates may acquire the player inside an unsafe lane danger pocket');
-  npc.data.ai.sectorSecurity = 0.72;
-  npc.data.ai.sectorTier = 1;
-  state.world.currentSectorId = 'sector_ceres_belt';
-  state.world.sectors.sector_ceres_belt = { security: 0.72, tier: 1 };
-  state.world.activeSector = { gates: [{ pos: { x: -1000, z: 0 } }], hazards: [] };
-  assert.equal(ai._selectTarget(npc, npc.data, state, player, arch), null,
-    'ambient pirates in lawful station space should not acquire the player from sensor range alone');
-  ai._addThreat(npc.id, player.id, 10);
-  assert.equal(ai._selectTarget(npc, npc.data, state, player, arch), player,
-    'AI target selection should still acquire the player after real threat is established');
-  assert.equal(calls, 4, 'AI target selection should query spatial candidates on each retarget');
 }
 
 function checkTrafficUsesEntityIndexesForStationsAndAsteroids() {
@@ -5796,7 +5699,6 @@ checkAutomationNearestAsteroidUsesSpatialCandidates();
 checkAlphabetProgramBeaconResolutionUsesIndexedSpatialCandidates();
 checkHudNavStationUsesIndexedLookup();
 checkAudioThreatScanUsesSpatialShipCandidates();
-checkAiTargetSelectionReusesSpatialScratch();
 checkTrafficUsesEntityIndexesForStationsAndAsteroids();
 checkSaveDelegatesSystemHooks();
 checkSaveDelegatesCraftingHooks();
