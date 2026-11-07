@@ -285,6 +285,12 @@ ${W} .sx-sw__chooser::before { content:none; display:none; }
 @media (max-width:760px) { ${W} .sx-sw__chooser { border-radius:8px; } }
 @media (max-height:519px) { ${W} .sx-sw__chooser { padding:10px 12px; } }
 @media (max-width:560px) { ${W} .sx-sw__chooser { padding:12px 14px; } }
+/* review261: on phones the dock panel is a ~260px scroller and the chooser (flex 0 1 auto, last child)
+   shrank to a 26px sliver below the stage. While choosing it holds its height and sticks to the
+   panel's foot so the module list is on screen wherever the bay is scrolled; the list scrolls inside. */
+@media (max-width:560px) { ${W}.is-choosing > .sx-sw__chooser { position:sticky; bottom:0; z-index:20; flex:0 0 auto;
+  min-height:min(240px, 92%); max-height:92%; overflow-y:auto; overscroll-behavior:contain;
+  background:linear-gradient(rgb(236 230 216 / .025), rgb(236 230 216 / .025)), rgb(7 8 10) !important; } }
 /* ui-polish-412 fix: on short/mid desktops the dock chooser column is ~190px, so the 14px side pad
    clipped the "Remove <module>" verb; densify the side pad and let long verbs wrap inside the card. */
 @media (min-width:561px) and (max-height:820px) { ${W} .sx-sw__chooser { padding-left:8px; padding-right:8px; } }
