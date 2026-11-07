@@ -71,7 +71,25 @@ the implementation is optimal.
   (30 measured surfaces + 10 named gaps).
 - **Verification on the published tree:** `test:fast` 39/39, `check:playable` 18/18,
   `check:baseline` 17/17, type floor, UI a11y, WCAG contrast, entity links, UI imports 55/0.
-  The route tier is running for Q5 evidence.
+  The route tier was run; its browser commands hit the 120 s cap on a loaded host, so only the
+  individual re-runs are evidence (below).
+- **Q3 primary-screen pass:** six headed captures reviewed; Shipworks socket 03 printed the raw
+  boolean "true" for the stock drive and now reads "Drive / STOCK · M" (`3de6121`). Review:
+  `campaigns/Q3/reviews/2026-11-07-primary-screens.md`.
+
+## Known reds on this host (2026-11-07)
+
+- `test/tethys-tally-passage.test.mjs`: the native fixture's count keg acquires a small drift
+  (~1.6 WU/s) before the courier reaches the wait mark, so the lane is already clear when the
+  clearance check runs and `firstHeldAt` never sets. The focused physical fixtures pass; the
+  integrated native choreography is open.
+- `test/pq-158-00-sample-library.test.mjs`: 13.92 MiB encoded vs the 12 MiB ceiling. The five 16 s
+  PCM theme stems are the bulk; compressing them would break the authored note-window/decode tests,
+  so this needs a content or ceiling decision, not a silent re-pin.
+- `check:new-game-layout.mjs` 1440×900 intermittently waits on the first-light `#sf-confirm` detach;
+  the 1024/1280 viewports pass and the earlier final run passed all three.
+- The route tier's browser commands time out at 120 s under this host's long-running Chrome load.
+  Individual re-runs: `check:playable` 18/18, trail-streak-instancing-webgl PASS.
 
 ## Ground truth at takeover (2026-11-06)
 
