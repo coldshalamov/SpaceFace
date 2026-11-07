@@ -9,7 +9,10 @@ import { COMPOSED_SECTOR_BEDS } from './sectorScoreBeds.js';
 
 export const THEME_MATRIX_SEED = 15803;
 
-export const THEME_STATES = Object.freeze(['travel', 'combat', 'station', 'wanted']);
+export const THEME_STATES = Object.freeze(['travel', 'combat', 'station', 'wanted', 'boss']);
+// The five adaptive stems. A travel, B tension, C combat, D station, E boss. Every fader
+// loop in the audio host reads this one list; a sixth stem is one edit here plus one data row.
+export const STEM_KEYS = Object.freeze(['A', 'B', 'C', 'D', 'E']);
 
 // Huggable travel lead: rising A-minor arpeggio to the octave. A stranger can hum "A C E A".
 export const TRAVEL_MOTIF = Object.freeze({
@@ -80,20 +83,42 @@ export const WANTED_MOTIF = Object.freeze({
   ]),
 });
 
+// X4: a fifth authored theme for the boss. Low fourths, then a raised sixth answering them —
+// the same "something is walking toward you" shape as the combat motif, a register lower and
+// slower to breathe. Distinct from every other interval signature by test.
+export const BOSS_MOTIF = Object.freeze({
+  id: 'boss_warden',
+  name: 'Warden',
+  hummable: 'A D A F#',
+  key: 'Am',
+  bpm: 132,
+  stem: 'E',
+  notes: Object.freeze(['A', 'D', 'A', 'F#']),
+  octaves: Object.freeze([2, 2, 2, 3]),
+  steps: Object.freeze([
+    Object.freeze({ bar: 0, beat: 0, note: 'A', oct: 2, dur: 6 }),
+    Object.freeze({ bar: 0, beat: 6, note: 'D', oct: 2, dur: 6 }),
+    Object.freeze({ bar: 0, beat: 12, note: 'A', oct: 2, dur: 4 }),
+    Object.freeze({ bar: 1, beat: 0, note: 'F#', oct: 3, dur: 8 }),
+  ]),
+});
+
 export const THEME_MOTIFS = Object.freeze({
   travel: TRAVEL_MOTIF,
   combat: COMBAT_MOTIF,
   station: STATION_MOTIF,
   wanted: WANTED_MOTIF,
+  boss: BOSS_MOTIF,
 });
 
-// Stem weights keyed by the four player-facing states. A=travel bed, B=tension/wanted,
-// C=combat, D=station/docked. Authored, not a threat-scalar remix of one pad.
+// Stem weights keyed by the player-facing states. A=travel bed, B=tension/wanted,
+// C=combat, D=station/docked, E=boss. Authored, not a threat-scalar remix of one pad.
 export const THEME_STEM_WEIGHTS = Object.freeze({
-  travel: Object.freeze({ A: 1.0, B: 0.0, C: 0.0, D: 0.0 }),
-  combat: Object.freeze({ A: 0.25, B: 0.35, C: 1.0, D: 0.0 }),
-  station: Object.freeze({ A: 0.15, B: 0.1, C: 0.0, D: 1.0 }),
-  wanted: Object.freeze({ A: 0.2, B: 1.0, C: 0.35, D: 0.0 }),
+  travel: Object.freeze({ A: 1.0, B: 0.0, C: 0.0, D: 0.0, E: 0.0 }),
+  combat: Object.freeze({ A: 0.25, B: 0.35, C: 1.0, D: 0.0, E: 0.0 }),
+  station: Object.freeze({ A: 0.15, B: 0.1, C: 0.0, D: 1.0, E: 0.0 }),
+  wanted: Object.freeze({ A: 0.2, B: 1.0, C: 0.35, D: 0.0, E: 0.0 }),
+  boss: Object.freeze({ A: 0.05, B: 0.2, C: 0.3, D: 0.0, E: 1.0 }),
 });
 
 // Legacy music-state names the sequencer already understands.
@@ -102,6 +127,7 @@ export const THEME_TO_MUSIC_STATE = Object.freeze({
   combat: 'combat',
   station: 'docked',
   wanted: 'tense',
+  boss: 'combat',
 });
 
 function bed(id, hzA, hzB, waveA, waveB, noise, tone, label, stemWeights) {
@@ -109,14 +135,14 @@ function bed(id, hzA, hzB, waveA, waveB, noise, tone, label, stemWeights) {
     id, hzA, hzB, waveA, waveB, noise, tone, label,
     signature: `${waveA}:${hzA}:${waveB}:${hzB}:${noise}:${tone}`,
     // FB-122 — sector register of the combat bed. Neutral (all 1) leaves state weights intact.
-    stemWeights: Object.freeze(stemWeights || { A: 1, B: 1, C: 1, D: 1 }),
+    stemWeights: Object.freeze(stemWeights || { A: 1, B: 1, C: 1, D: 1, E: 1 }),
   });
 }
 
 /** State weights × sector register. State identity stays on `stemWeights`; this is what is heard. */
 export function mixAudibleStemWeights(stateWeights, sectorWeights) {
   const out = {};
-  for (const key of ['A', 'B', 'C', 'D']) {
+  for (const key of STEM_KEYS) {
     const sector = sectorWeights && Number.isFinite(sectorWeights[key]) ? sectorWeights[key] : 1;
     out[key] = Math.round((Number(stateWeights && stateWeights[key]) || 0) * sector * 1000) / 1000;
   }
@@ -129,12 +155,15 @@ export function mixAudibleStemWeights(stateWeights, sectorWeights) {
 // the authored state row.
 export function scoreStemWeights(frame, theme) {
   if (!frame || !frame.stemWeights || !theme) return null;
+  // X4: the boss row is an authored mix, not a phase fader — the boss stem leads for its whole
+  // life instead of being re-mixed by the fight phase.
+  if (theme.state === 'boss' || frame.boss === true) return null;
   if ((theme.state === 'station') !== (frame.phase === 'dock')) return null;
   // The sector colours the mix but never overturns the phase's lead: a hub that thins its
   // tension stem (Helios B 0.4) still lets a chase lead with it.
   const sector = theme.sectorStemWeights || {};
   const out = {};
-  for (const key of ['A', 'B', 'C', 'D']) {
+  for (const key of STEM_KEYS) {
     const k = Number.isFinite(sector[key]) ? sector[key] : 1;
     const f = key === frame.stem ? SCORE_LEAD_SECTOR_FLOOR + (1 - SCORE_LEAD_SECTOR_FLOOR) * k : k;
     out[key] = Math.round((Number(frame.stemWeights[key]) || 0) * f * 1000) / 1000;
@@ -253,6 +282,7 @@ export const PURSUIT_THREAT = 0.3;
 
 export function resolveThemeState(input = {}) {
   if (input.docked || input.station) return 'station';
+  if (input.bossActive) return 'boss';
   if (input.wanted) return 'wanted';
   const threat = clamp01(input.threat);
   if (input.inCombat || threat >= 0.6) return 'combat';
@@ -265,7 +295,7 @@ export function resolvePursuit(input = {}, state = resolveThemeState(input)) {
 }
 
 // Chase mix: the tension stem leads over a thinned travel bed; no combat drums yet.
-export const PURSUIT_STEM_WEIGHTS = Object.freeze({ A: 0.35, B: 0.9, C: 0.2, D: 0.0 });
+export const PURSUIT_STEM_WEIGHTS = Object.freeze({ A: 0.35, B: 0.9, C: 0.2, D: 0.0, E: 0.0 });
 
 /**
  * SWARM-06 — the chain's music lift, 0..1. A running Swarm chain drags the audible stem mix
@@ -287,7 +317,7 @@ export function applySwarmStemLift(audibleWeights, sectorWeights, lift) {
   if (k <= 0) return audibleWeights;
   const combat = THEME_STEM_WEIGHTS.combat;
   const out = {};
-  for (const key of ['A', 'B', 'C', 'D']) {
+  for (const key of STEM_KEYS) {
     const base = Number(audibleWeights && audibleWeights[key]) || 0;
     const sector = sectorWeights && Number.isFinite(sectorWeights[key]) ? sectorWeights[key] : 1;
     const toward = (Number(combat[key]) || 0) * sector;

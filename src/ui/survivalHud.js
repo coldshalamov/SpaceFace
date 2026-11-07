@@ -965,7 +965,7 @@ export const survivalHud = {
   .sf-crun { display:flex; flex-direction:column; gap:6px; min-width:0;
     padding:0; border:0; background:none; color:var(--dp-ink, var(--sf-paper)); }
   .sf-crun__label { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-variation-settings:"wght" 720, "wdth" 62;
-    font-weight:700; font-size:12px; letter-spacing:.16em; text-transform:uppercase;
+    font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase;
     color:var(--dp-ink-mute, var(--sf-calm)); text-shadow:var(--dp-etch-shadow, none); }
   .sf-crun__row { display:flex; align-items:baseline; gap:9px; }
   .sf-crun__hero { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:12px;
@@ -978,7 +978,7 @@ export const survivalHud = {
     font-weight:700; font-size:20px; font-variant-numeric:tabular-nums; letter-spacing:.04em;
     color:var(--dp-phos, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
   .sf-crun__phase { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-variation-settings:"wght" 720, "wdth" 68;
-    font-weight:700; font-size:12px; letter-spacing:.16em; text-transform:uppercase;
+    font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase;
     color:var(--dp-ink-mute, var(--sf-calm)); margin-left:auto; }
   .sf-crun__phase--hot { color:var(--dp-danger-hot, var(--sf-foe)); }
   /* FB-025: the intro window's opening line — a full-width sentence in the paper ink, not a
@@ -987,7 +987,7 @@ export const survivalHud = {
     letter-spacing:.02em; color:var(--dp-ink, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
   .sf-crun__threat { display:flex; align-items:center; gap:7px; }
   .sf-crun__word { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-variation-settings:"wght" 700, "wdth" 62;
-    font-weight:700; font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase;
     color:var(--dp-ink-mute, var(--sf-calm)); }
   /* A bar is a printed track with a flat lit fill (ONE_PHOTOGRAPH section 9): the track is drawn so
      a part-spent bar reads as a gauge, not as a loose coloured slab, and the fill is one flat colour
@@ -1018,7 +1018,7 @@ export const survivalHud = {
   .sf-crun__chainbest { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:500; font-size:12px;
     font-variant-numeric:tabular-nums; color:var(--dp-ink-mute, var(--sf-calm)); }
   .sf-crun__chaincause { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-weight:700; font-size:12px;
-    letter-spacing:.12em; text-transform:uppercase; font-variant-numeric:tabular-nums;
+    letter-spacing:.09em; text-transform:uppercase; font-variant-numeric:tabular-nums;
     color:var(--dp-ink-dim, var(--sf-calm)); }
   .sf-crun__earn { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:650; font-size:12px;
     font-variant-numeric:tabular-nums; color:var(--dp-phos, var(--sf-paper)); text-shadow:var(--dp-emit, none); }

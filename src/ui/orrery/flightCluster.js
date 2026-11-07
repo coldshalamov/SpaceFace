@@ -25,6 +25,7 @@ import { hullPosterUrl } from '../hullPosters.js';
 import { nextFlightDecision, NEXT_DECISION_CLASS } from './nextDecision.js';
 import { ringLegendText } from './ringLegend.js';
 import { arsenalIcon } from './arsenalGlyphs.js';
+import { dpIcon } from '../deckplate/icons.js';
 
 // The colour phase is decided by the displayed reading (speedDial.js owns it; the contract is pinned here).
 export { speedPhase } from './speedDial.js';
@@ -179,6 +180,14 @@ const CSS = `
   .orr-cluster__legend .orr-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 }
 .orr-cluster__count { position:absolute; left:50%; top:50%; transform:translate(17px, 11px); font-family:var(--dp-face-numeral); font-weight:700; font-size: 12px; color:var(--dp-phos, #dfeeff); }
+/* S12 — the two-slot Swarm perk loadout, two lit chips riding the ring's open flank. A trigger
+   pulse replays through the is-pulse class; reduced-motion CSS kills the keyframe, the chip stays. */
+.orr-cluster__perks { position:absolute; display:flex; flex-direction:column; gap:8px; pointer-events:none; }
+.orr-cluster__perk { width:26px; height:26px; border-radius:50%; display:grid; place-items:center; color:var(--dp-phos, #dfeeff);
+  background:rgb(5 7 10 / .55); border:1px solid rgb(223 238 255 / .22); }
+.orr-cluster__perk .dp-icon { display:block; }
+.orr-cluster__perk.is-pulse { animation: orr-perk-pulse .55s ease-out; }
+@keyframes orr-perk-pulse { 0% { transform: scale(1); box-shadow:0 0 0 0 rgb(223 238 255 / .5); } 40% { transform: scale(1.28); } 100% { transform: scale(1); box-shadow:0 0 0 12px transparent; } }
 /* D240: the floating text reads over open field, so a hull parked under the instrument used to take
    a faceful of labels. When the adapter marks the cluster is-ship-under the text ghosts back —
    sockets, rings, dial and the Hand keep full strength, so the rail still reads at a glance. */
@@ -375,6 +384,11 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   hullRow.val.classList.add('is-hull');
   const shieldRow = legendRow('shield', 'Shield');
   const armorRow = legendRow('armor', 'Armor');
+
+  // ---- S12: the Swarm perk loadout — two lit chips beside the ring stack ----------------------------
+  const perksWrap = el('div', 'orr-cluster__perks orr-cluster__fade');
+  place(perksWrap, P.x - R.orbit - 36, P.y - 48);
+  const perkChips = new Map(); // id -> { node, pulse }
   const nextEl = el('p', NEXT_DECISION_CLASS);
   nextEl.setAttribute('role', 'status');
   nextEl.setAttribute('aria-live', 'polite');
@@ -519,7 +533,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
   // the unknown reading so its digit layout still re-arms when the measurement lands.
   const massCounter = createCounter(massEl, { format: (n) => (Number.isFinite(n) ? `${Math.round(n)} T` : '— T') });
 
-  root.append(dial.el, energyRead, heatRead, legend, nextEl, payload);
+  root.append(dial.el, energyRead, heatRead, legend, nextEl, payload, perksWrap);
 
   // ---- update --------------------------------------------------------------------------------------
   const last = {};
@@ -550,6 +564,30 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     });
     if (Number.isFinite(d.drift) && changed('drift', Math.round(d.drift))) {
       driftPip.setAttribute('transform', `rotate(${Math.max(-40, Math.min(40, d.drift))} ${P.x} ${P.y})`);
+    }
+    // S12 perk chips: mount the run's two-slot pick once; a fired trigger replays its pulse.
+    const perkList = Array.isArray(d.perks) ? d.perks.slice(0, 2) : [];
+    if (changed('perks', perkList.map((pk) => pk && pk.id).join(','))) {
+      perksWrap.textContent = '';
+      perkChips.clear();
+      for (const pk of perkList) {
+        if (!pk || !pk.id) continue;
+        const chip = el('span', 'orr-cluster__perk');
+        chip.title = pk.name || pk.id;
+        chip.innerHTML = dpIcon(pk.icon || 'spark', 15);
+        perksWrap.appendChild(chip);
+        perkChips.set(pk.id, { node: chip, pulse: 0 });
+      }
+    }
+    const perkPulses = d.perkPulses && typeof d.perkPulses === 'object' ? d.perkPulses : {};
+    for (const [id, chip] of perkChips) {
+      const n = Number(perkPulses[id]) || 0;
+      if (n > chip.pulse) {
+        chip.node.classList.remove('is-pulse');
+        void chip.node.offsetWidth;
+        chip.node.classList.add('is-pulse');
+      }
+      chip.pulse = n;
     }
     // ordnance: the Hand always points at the current choice. An engaged (armed) slot takes it; when
     // nothing is engaged it stays on the last slot that was, and before any, on the rest slot. Its
@@ -620,9 +658,12 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
       // The verb's EFFECTIVE name ("Rig · Scoop", "Bomb · Frag ×4 · drop") — never the band's fixed word.
       const label = typeof st.label === 'string' && st.label ? st.label : (node ? sk.group.name : slot.name);
       if (sk.labelText !== label && sk.labelNode) {
-        sk.labelText = label; sk.labelNode.textContent = label;
+        sk.labelText = label;
+        // S5: icon-only sockets (the Swarm bar) draw no word — the name stays on aria + tip.
+        const shown = st.iconOnly ? '' : label;
+        sk.labelNode.textContent = shown;
         // Keep the action on narrow screens; counts and secondary effects remain in the full tip.
-        sk.shortLabelNode.textContent = label.replace(/\s+\+\s+.*$/, '').replace(/\s+×\d+.*$/, '')
+        sk.shortLabelNode.textContent = shown.replace(/\s+\+\s+.*$/, '').replace(/\s+×\d+.*$/, '')
           .replace(/^Shove · Pushes away\b/i, 'Shove · Push away');
       }
       // The verb's reveal phrase moves with its state ("Ready" → "Recharging — 3s"), so it is

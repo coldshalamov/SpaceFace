@@ -62,6 +62,8 @@ import { interactionProfileForEntity } from '../data/entityInteractionProfiles.j
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { resolveSteeringView } from './racingSteer.js';
 import { noteSwarmPilotAction, swarmPilotHasActed, swarmPilotIsActing } from './swarmSafety.js';
+import { isSwarmControls } from '../data/swarmControls.js';
+import { contextActionAllowed, contextStockBindings } from '../data/inputContexts.js';
 import {
   POWER_VERBS, bombUsesCharge, powerVerbFor, powersFireOnPress, resolveRigTarget, savedCodesForPower, setHeldPower, swarmBombSelection,
 } from './powerVerbs.js';
@@ -438,9 +440,14 @@ function binding(state, action) {
   const cfg = state.settings && state.settings.controls && state.settings.controls.bindings;
   const scheme = SCHEME_BINDINGS[activeScheme(state)];
   const power = powerVerbFor(action);
+  // X5: the active context admits only its short set — every other verb resolves to no binding.
+  // Swarm keeps S5's exact set; station/map have no flight verbs; combat has the fight set.
+  if (!contextActionAllowed(state, power)) return [];
   const saved = power === action ? (cfg && cfg[action]) : undefined;
   const custom = saved || (POWER_VERBS.includes(power) ? savedCodesForPower(cfg, power) : undefined);
-  const list = custom || scheme[power] || DEFAULT_BINDINGS[power];
+  const list = custom
+    || (contextStockBindings(state)?.[power] || undefined)
+    || scheme[power] || DEFAULT_BINDINGS[power];
   return Array.isArray(list) ? list : (list ? [list] : []);
 }
 
@@ -1633,14 +1640,14 @@ export const input = {
 
   /** Quarantine-gated pad action edge — FB-003 chord verbs merge through the same seam as stock. */
   _padEdge(gp, action) {
-    return !!(gp && gp.isConnected()
+    return !!(gp && gp.isConnected() && contextActionAllowed(this.state, action)
       && this._gamepadLifecycleActionAllowed(action)
       && gp.actions[action] && gp.actions[action].pressed);
   },
 
   /** Quarantine-gated pad action hold — same seam for level verbs (bulletTime, siteBeam). */
   _padHeld(gp, action) {
-    return !!(gp && gp.isConnected()
+    return !!(gp && gp.isConnected() && contextActionAllowed(this.state, action)
       && this._gamepadLifecycleActionAllowed(action)
       && gp.actions[action] && gp.actions[action].held);
   },
@@ -2046,13 +2053,16 @@ export const input = {
     const gamepadSiteBeam = (gpMine || this._padHeld(gp, 'siteBeam')) && !!selectedSite;
     const siteBeamHeld = !!(contextualSiteBeam || gamepadSiteBeam);
     this._m2HeldS = this._m2 ? (this._m2HeldS || 0) + dt : 0;
-    const mouseToolHeld = !!(this._m2 && (this._m2UsesUiClock
+    // S5: in a live Swarm run RMB is the Line, not the world tool — the mine/sling/throw lane
+    // stays closed so every RMB hold feeds the tether grammar below instead.
+    const swarmLive = isSwarmControls(state);
+    const mouseToolHeld = !swarmLive && !!(this._m2 && (this._m2UsesUiClock
       ? this._m2HoldReady === true
       : this._m2HeldS >= WORLD_TOOL_HOLD_S));
     if (!this._m2) { this._m2ToolLane = null; this._m2SlingTargetId = null; }
     else if (this._m2ToolLane == null) this._m2ToolLane = this._sampleMouseToolLane(state, inp);
     const mouseLane = this._m2ToolLane;
-    const anyMineHeld = !!((mouseToolHeld && (mouseLane === 'beam' || mouseLane === 'legacy'))
+    const anyMineHeld = !swarmLive && !!((mouseToolHeld && (mouseLane === 'beam' || mouseLane === 'legacy'))
       || gpMine || tpMine);
     // RMB and touch Mine are cursor-aimed even when a World Site remains selected. Only the
     // explicit B action and gamepad LT claim the selected-site lane; preserving this provenance
@@ -2161,9 +2171,11 @@ export const input = {
     const tetherEdge = takeOldestTetherEdge(this);
     // One alias releasing (F or 3) must not drop Space while Space is still down.
     // The edge's own code is excluded, so a same-key re-press still counts as a release.
-    const tetherHeld = !tetherEdge
+    // S5: in Swarm the Line is RMB — the mouse button holds/releases it through the same grammar.
+    const tetherHeld = (!tetherEdge
       ? this._held(state, 'tether')
-      : (tetherEdge.pressed === true || this._heldExcept(state, 'tether', tetherEdge.code));
+      : (tetherEdge.pressed === true || this._heldExcept(state, 'tether', tetherEdge.code)))
+      || (swarmLive && this._m2 === true);
     const gpMassline = gp && gp.isConnected() && gp.actions.massline;
     // Dock is its own button (§22 E1). A stay on the rope even while the dock prompt is up.
     const gpMasslineHeld = !!(this._gamepadLifecycleActionAllowed('massline')
@@ -2255,6 +2267,8 @@ export const input = {
     acts.cycleBomb = edge('cycleBomb') || !!(gp && gp.isConnected()
       && this._gamepadLifecycleActionAllowed('cycleBomb')
       && gp.actions.cycleBomb && gp.actions.cycleBomb.pressed);
+    // S5: Q fires a stocked call-in — the Swarm-only verb; inert everywhere else.
+    acts.callIn = edge('callIn') || this._padEdge(gp, 'callIn');
     // Massline Wave M2 verbs. bulletTime is a LEVEL (hold-to-dilate; the system owns the meter and
     // may refuse when empty); cloakToggle is an edge; throwArm was resolved above where the mining
     // beam routing is decided (single owner for the RMB arbitration). FB-003: RB+D-pad-down is the

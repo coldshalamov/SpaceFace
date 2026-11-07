@@ -103,16 +103,16 @@ ${P} .orr-svg .orr-arcrail__rule { stroke-opacity:1; }
 ${PH} > .dp-frame__body {
   background:linear-gradient(180deg, rgb(4 6 9 / .72), rgb(4 6 9 / .62) 70%, rgb(4 6 9 / .5)) !important;
   border-radius:4px; box-shadow:0 0 0 10px rgb(4 6 9 / .5) !important; }
-${PH} .k-words__group {
+${PH} :is(.k-words__group, .dp-lit__group) {
   color:rgb(${BONE} / .78) !important; letter-spacing:.08em !important;
   margin:calc(14px * var(--dp-s, 1)) 0 6px !important; }
 ${PH} .k-words__group::after { background:rgb(${BONE} / .28) !important; }
-${PH} .sf-pause-words .k-word {
+${PH} .sf-pause-words :is(.k-word, .dp-lit__item) {
   color:rgb(${BONE} / .88) !important; min-height:40px !important; }
 ${PH} .sf-pause-words .k-word:is(:hover, :focus-visible, [aria-current="true"], .is-lit, [data-awake]) {
   color:rgb(${HOT}) !important; }
-${PH} .sf-pause-words .k-word.k-word--primary,
-${PH} .sf-pause-words .k-word[data-action="pause-0"] {
+${PH} .sf-pause-words :is(.k-word.k-word--primary, .dp-lit__item.dp-lit__item--primary),
+${PH} .sf-pause-words :is(.k-word, .dp-lit__item)[data-action="pause-0"] {
   color:rgb(${HOT}) !important;
   text-shadow:0 0 1px rgb(255 226 178 / .45), 0 0 14px rgb(255 217 140 / .28) !important; }
 ${PH} .sf-pause-brief { margin:0 0 20px !important; padding-bottom:4px !important; }
@@ -121,7 +121,7 @@ ${PH} .sf-pause-brief .sf-slot-name { font-size:21px !important; line-height:1.2
 ${PH} .orr-brief__kind { display:block !important; margin:0 0 4px !important; line-height:16px !important; }
 ${PH} .sf-pause-brief .dp-copy { font-size:14.5px !important; color:rgb(${BONE} / .86) !important; }
 ${PH} .k-words--row { gap:12px 22px !important; row-gap:10px !important; }
-${PH} .sf-pause-words .k-word { letter-spacing:.05em !important; }
+${PH} .sf-pause-words :is(.k-word, .dp-lit__item) { letter-spacing:.05em !important; }
 
 /* ---------- foot: real keycap boxes + verb labels (settings rail grammar) ---------- */
 ${BOTH} > .sf-pause-foot {
@@ -278,6 +278,38 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
     background:linear-gradient(90deg, rgb(${BONE} / .4), rgb(${BONE} / 0)) !important; }
 }
 
+/* phone densify (≤700 × ≤960): EXIT Main Menu sat +20 past the fold at 390×844 (+58 at 360×800)
+   with Physics / Sandbox on the last rows. Tip-ff: live Light (dp-lit) grew the stack vs the
+   overnight k-word pass — col gap stayed at --dp-rhythm (18px) and primary font/pad hit ~49px.
+   Tighten brief, groups, col gap and primary sizing so Main Menu / Physics / Sandbox clear first
+   paint; the screen stays the one scroll owner for the foot keycaps. */
+@media (max-width:700px) and (max-height:960px) {
+  ${PH} { gap:6px !important; }
+  ${PH} .dp-frame__col { gap:6px !important; }
+  ${PH} > .dp-frame__body { gap:6px !important; }
+  ${PH} .sf-pause-brief { margin:0 0 4px !important; padding-bottom:0 !important; }
+  ${PH} .sf-pause-brief .sf-slot-name { font-size:16px !important; line-height:1.1 !important; gap:2px !important; }
+  ${PH} .orr-brief__kind { margin:0 0 1px !important; line-height:12px !important; }
+  ${PH} .orr-brief__name { font-size:16px !important; line-height:1.1 !important; }
+  ${PH} .sf-pause-brief .dp-copy { font-size:12px !important; line-height:1.2 !important; margin-top:1px !important; }
+  ${PH} .sf-pause-brief .dp-copy--fine { margin-top:1px !important; padding:0 !important; }
+  ${PH} .orr-brief__read { margin-top:1px !important; gap:4px !important; }
+  ${PH} .orr-brief__ring { width:22px !important; height:22px !important; }
+  ${PH} .orr-brief__read b { font-size:16px !important; }
+  ${PH} :is(.k-words__group, .dp-lit__group) { margin:4px 0 1px !important; line-height:11px !important; }
+  ${PH} .sf-pause-words :is(.k-word, .dp-lit__item) {
+    min-height:32px !important; font-size:15px !important; line-height:1.15 !important;
+    padding-top:1px !important; padding-bottom:1px !important; }
+  ${PH} .sf-pause-words :is(.k-word.k-word--primary, .dp-lit__item.dp-lit__item--primary),
+  ${PH} .sf-pause-words :is(.k-word, .dp-lit__item)[data-action="pause-0"] {
+    min-height:40px !important; font-size:22px !important; line-height:1.05 !important;
+    padding-top:4px !important; padding-bottom:4px !important; }
+  ${PH} .k-words--row, ${PH} .sf-pause-words.dp-lit, ${PH} .sf-pause-words .dp-lit {
+    gap:2px 12px !important; row-gap:1px !important; }
+  ${PH} > .sf-pause-foot { min-height:0 !important; padding-top:0 !important; gap:6px !important; }
+  ${PH} > .sf-pause-foot .sf-pause-foot__keys { padding:2px 0 4px !important; }
+}
+
 /* narrow desktop window (≤760 wide, no touch): pause.js gives it the phone column, but the phone sheet's
    flow rules are keyed to data-sf-mobile, so the grid cut the verb list off under REFERENCE and long
    names ran off the right edge. The same flow here: one scroll owner (the screen), rows that wrap.
@@ -295,6 +327,66 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
   ${PN} .sf-pause-brief { max-width:100% !important; }
   ${PN} .sf-pause-brief .sf-slot-name { font-size:20px !important; overflow-wrap:anywhere; }
   ${PN} .k-words--row { flex-wrap:wrap !important; gap:8px 18px !important; }
+}
+/* narrow column densify (same fold as the phone rule): EXIT Main Menu clears at 390×844 / 360×800.
+   PAUSE_COLUMN_QUERY already owns the scroll; this only shortens the stack (incl. dp-lit tip-ff). */
+@media (max-width:760px) and (max-height:960px) {
+  ${PN} { gap:6px !important; }
+  ${PN} .dp-frame__col { gap:6px !important; }
+  ${PN} > .dp-frame__body { gap:6px !important; }
+  ${PN} .sf-pause-brief { margin:0 0 4px !important; padding-bottom:0 !important; }
+  ${PN} .sf-pause-brief .sf-slot-name { font-size:16px !important; line-height:1.1 !important; gap:2px !important; }
+  ${PN} .orr-brief__kind { margin:0 0 1px !important; line-height:12px !important; }
+  ${PN} .orr-brief__name { font-size:16px !important; line-height:1.1 !important; }
+  ${PN} .sf-pause-brief .dp-copy { font-size:12px !important; line-height:1.2 !important; margin-top:1px !important; }
+  ${PN} .sf-pause-brief .dp-copy--fine { margin-top:1px !important; padding:0 !important; }
+  ${PN} .orr-brief__read { margin-top:1px !important; gap:4px !important; }
+  ${PN} .orr-brief__ring { width:22px !important; height:22px !important; }
+  ${PN} .orr-brief__read b { font-size:16px !important; }
+  ${PN} :is(.k-words__group, .dp-lit__group) { margin:4px 0 1px !important; line-height:11px !important; }
+  ${PN} .sf-pause-words :is(.k-word, .dp-lit__item) {
+    min-height:32px !important; font-size:15px !important; line-height:1.15 !important;
+    padding-top:1px !important; padding-bottom:1px !important; }
+  ${PN} .sf-pause-words :is(.k-word.k-word--primary, .dp-lit__item.dp-lit__item--primary),
+  ${PN} .sf-pause-words :is(.k-word, .dp-lit__item)[data-action="pause-0"] {
+    min-height:40px !important; font-size:22px !important; line-height:1.05 !important;
+    padding-top:4px !important; padding-bottom:4px !important; }
+  ${PN} .k-words--row, ${PN} .sf-pause-words.dp-lit, ${PN} .sf-pause-words .dp-lit {
+    flex-wrap:wrap !important; gap:2px 12px !important; row-gap:1px !important; }
+  ${PN} > .sf-pause-foot { min-height:0 !important; padding-top:0 !important; gap:6px !important; }
+  ${PN} > .sf-pause-foot .sf-pause-foot__keys { padding:2px 0 4px !important; }
+}
+/* The column already scrolls as one surface. Coarse-pointer users keep a full touch target
+   outside the phone/narrow densify band. Inside that band, 44px cannot clear EXIT→Main Menu at
+   360×800 after the live Light (dp-lit) migration — keep a 40px floor (primary already 40) so
+   fold clearance wins; scroll-margin still helps focused keys. */
+@media (any-pointer:coarse) {
+  ${PH} .sf-pause-words :is(.k-word, .dp-lit__item),
+  ${PH} .sf-pause-words :is(.k-word.k-word--primary, .dp-lit__item.dp-lit__item--primary),
+  ${PH} .sf-pause-words :is(.k-word, .dp-lit__item)[data-action="pause-0"],
+  ${PN} .sf-pause-words :is(.k-word, .dp-lit__item),
+  ${PN} .sf-pause-words :is(.k-word.k-word--primary, .dp-lit__item.dp-lit__item--primary),
+  ${PN} .sf-pause-words :is(.k-word, .dp-lit__item)[data-action="pause-0"] {
+    min-height:44px !important; scroll-margin-block:12px;
+  }
+}
+@media (max-width:700px) and (max-height:960px) and (any-pointer:coarse) {
+  ${PH} .sf-pause-words :is(.k-word, .dp-lit__item) {
+    min-height:36px !important; scroll-margin-block:10px;
+  }
+  ${PH} .sf-pause-words :is(.k-word.k-word--primary, .dp-lit__item.dp-lit__item--primary),
+  ${PH} .sf-pause-words :is(.k-word, .dp-lit__item)[data-action="pause-0"] {
+    min-height:40px !important; scroll-margin-block:10px;
+  }
+}
+@media (max-width:760px) and (max-height:960px) and (any-pointer:coarse) {
+  ${PN} .sf-pause-words :is(.k-word, .dp-lit__item) {
+    min-height:36px !important; scroll-margin-block:10px;
+  }
+  ${PN} .sf-pause-words :is(.k-word.k-word--primary, .dp-lit__item.dp-lit__item--primary),
+  ${PN} .sf-pause-words :is(.k-word, .dp-lit__item)[data-action="pause-0"] {
+    min-height:40px !important; scroll-margin-block:10px;
+  }
 }
 `;
 

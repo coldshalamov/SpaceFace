@@ -2,7 +2,8 @@ import {ensurePhysicsBodySpec} from '../core/physicsAuthority.js';
 import {TALLY_THREE as T,tallyThreeSource} from '../data/tallyThree.js';
 import {TALLY_THREE_RADIUS,tallyThreePhysicalBody} from '../data/tallyThreeBody.js';
 import {makeShipEntitySpec} from '../systems/ships.js';
-const AUTHORED_MASS=makeShipEntitySpec(T.assessorShipId).mass;
+let authoredMassCache;
+function authoredMass(){if(authoredMassCache===undefined)authoredMassCache=makeShipEntitySpec(T.assessorShipId).mass;return authoredMassCache;}
 const clone=v=>v==null?v:JSON.parse(JSON.stringify(v));
 export function claimsTallyAssessor(e){const d=e?.data;return e?.worldRecordId===T.assessorId||d?.worldRecordId===T.assessorId||d?.role==='claim_assessor'||d?.placeId==='place_tally_three';}
 export function tallyAssessorOccupancy(state){
@@ -39,7 +40,7 @@ export function validTallyAssessor(e){const d=e?.data;
  &&(!d.hullDefId||d.hullDefId===T.assessorShipId)&&d.role==='claim_assessor'
  &&d.placeId==='place_tally_three'&&d.archetypeGlb==='place_tally_three'&&d.placeScale===1
  &&validTallyPhase(d.tallyThree)&&d.homeSectorId===T.sectorId&&d.sectorId===T.sectorId&&d.trafficRole==='tug'
- &&e.team===2&&e.factionId==='faction_dmc'&&e.radius===TALLY_THREE_RADIUS&&e.mass===AUTHORED_MASS
+ &&e.team===2&&e.factionId==='faction_dmc'&&e.radius===TALLY_THREE_RADIUS&&e.mass===authoredMass()
  &&validTallyBody(e);
 }
 export function validTallyRecordIdentity(rec){return !!rec&&rec.recordId===T.assessorId&&rec.type==='ship'&&rec.kind==='convoy'

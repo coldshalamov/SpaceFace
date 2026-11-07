@@ -78,6 +78,10 @@ function buyDome(h) {
   h.bus.emit('run:draftPickRequested', { offerId: 'callin_shield_dome' });
   h.state.run.phase = 'active';
   h.state.mode = 'flight';
+  // S5: a bought called charge queues at purchase; the player's Q press deploys it.
+  h.state.input = { actions: { callIn: true } };
+  survivalArena.update(1 / 60, h.state);
+  h.state.input.actions.callIn = false;
 }
 
 test('SW-06: the planted dome is a real field at the pilot, pushing outward inside the rim', () => {

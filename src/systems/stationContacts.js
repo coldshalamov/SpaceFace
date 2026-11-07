@@ -257,6 +257,7 @@ export const stationContacts = {
     });
     on('freight:custodyReceipt', (payload = {}) => this._recordVonnFreightCustody(payload));
     on('aftermathWreck:completed', (payload = {}) => this._recordVonnWreckCompletion(payload));
+    on('aftermathWreck:completed', (payload = {}) => this._noteMarchReconciliation(payload));
     on('recovery:completed', (payload = {}) => this._noteRescueNotice(payload));
     on('encounter:resolved', (payload = {}) => this._noteDeed(payload));
     on('traffic:ceresCausalChain', (payload = {}) => this._noteCeresChainDeed(payload));
@@ -737,6 +738,19 @@ export const stationContacts = {
       || !payload || payload.markerId !== caseFile.markerId
       || payload.sectorId !== caseFile.sectorId) return false;
     return this._writeVonnFreightLoss({ ...caseFile, wreckStatus: 'completed' }, 'aftermath-wreck-completed');
+  },
+
+  /**
+   * G16 — Provost March, the yard reconciliation clerk: "Every hull you dragged home is filed
+   * here. I square the sums." The deed is an aftermath wreck recovery completing — the towed
+   * hull's sums reconciled — deduped per wreck by receipt so one hull files once. This was the
+   * only depth counter with no writer (W1); the def bounds (0..5) clamp the rest.
+   */
+  _noteMarchReconciliation(payload = {}) {
+    const receiptId = payload.wreckId != null ? String(payload.wreckId)
+      : payload.markerId != null ? String(payload.markerId) : null;
+    if (!receiptId) return false;
+    return this._rememberCastDeed('march.reconciliation', receiptId, 1);
   },
 
   _normalizeVonnFreightLoss(reason) {

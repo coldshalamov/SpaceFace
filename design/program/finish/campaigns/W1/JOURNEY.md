@@ -130,10 +130,14 @@ hooks). Summary of what the Journey changes there:
   runtime voice is synthesized. The audio gap lives in Lane 6 (X4 score/sound), not in story
   wiring. The finale already closes with `castLastCall(contactCounters)` — one memory-banded
   line per depth contact.
-- **Heists:** three distinct settlement policies exist over one facility set, all posted at
-  Tethys. The Journey's arrangement: re-post the policies at branch-appropriate stations
-  (traders/Ceres, patrol/Coalition, free/Drift or Smuggler Den) so Act III gives each door a
-  different illegal option — data-only change, no new systems.
+- **Heists (implementation correction):** all three settlement policies (Capsule Run, Third
+  Shift, Counterweight Watch) are physically authored at Tethys — the launcher/catcher/fence
+  facilities, Berth Three beside the catcher, and the Tethys Transfer Yard counterweight cradle
+  are sector-local world bodies (`heistFacilities.js`). Re-posting the board rows at branch
+  stations would make rows point at scenes in another sector — a lie. W1 therefore does **not**
+  re-post; the rows stay on the Tethys board where the scenes live. The real door-spread —
+  authored facility placement variants per branch station — is W2 build work (one facility kit,
+  three placements), and the board recommendation now surfaces the rows it already has.
 - **Recommendation:** the board's recommended-job engine (`missionBoardOps.js`) is pointed at the
   spine's next book step so the ordinary route always shows the journey's next job first.
 
@@ -157,7 +161,7 @@ Nothing authored is deleted by this doc. What stops growing:
 | 2 | **"What do I do next" visibility** — the P2-14 story-objective tracker already persists the current beat objective (`onboarding.js:17`); add the act label above it and a pointer to the board's recommended book job; point the recommendation engine at the spine's next step | S | `missionBoardOps.js` recommendation sort + `onboarding.js` tracker panel | Mostly wiring; the "always an answer on screen" verify rides this. |
 | 3 | **Interlude reliability** — fire each interlude when eligible on the ordinary route | S | `missions.js`/`missionStoryOps` request site (seam exists: `encounterDirector.requestAuthoredEncounter`) | The gate logic in `interludes.js` is complete; the Journey walk verifies it fires. |
 | 4 | **Act framing strings** — 4 act titles + beat framing on the objective/Journal (act label above beat title) | XS | data strings; presentation wiring | Quotes canon titles; no new lore. |
-| 5 | **Heist arrangement** — re-post the three settlement policies at branch-appropriate stations (data only) | S | `heistMission.js` posting data | The policies and facilities exist; this spreads the one door into three. |
+| 5 | **Heist door spread** — RE-SCOPED during implementation: the scenes are Tethys-physical, so W1 ships only the recommendation surface (piece 2) and records the constraint; authored facility-placement variants per branch station are W2 build work | — | — | See §4.4 correction. |
 | 6 | **Unfreeze Provost March** — one emitter for `march.reconciliation` (yard reconciliation receipts) | S | one `stationContact:counterDelta` emit site or a stationContacts listener | The only frozen counter; read-side bands ship today. W4 owns the deeper arc work. |
 
 Out of W1 scope (owned elsewhere, hooks named here): pilot-level gates (Lane 4 P3 — the pacing
@@ -181,9 +185,9 @@ through NOW.md), encounter rubric/upgrades (W2 next), contact counter wiring bey
 2. **Wren:** the storyline names the protagonist and the ship (Tessera). Today the game never
    says the name aloud. Surfacing "Wren" and the Tessera in Journal/objective framing is canon,
    not new lore — but it changes the player-facing voice. Surfaced or kept implicit?
-3. **Heist doors:** the arrangement in §4.4 re-posts the three existing policies at branch
-   stations (data-only). Owner preference on which station per branch, and whether the two
-   post-ending mega-heists stay endgame-only?
+3. **Heist doors:** re-scoped — the three policies are Tethys-physical (§4.4). W2 builds the
+   facility-placement variants if the owner wants per-branch heist doors. The two post-ending
+   mega-heists stay endgame-only.
 4. **Ending approach:** is the rim road (Pallas→Sker→Veil wormhole) promoted in Act IV framing
    (as the "secret road" the bar rumors hint at), or left to be found?
 
