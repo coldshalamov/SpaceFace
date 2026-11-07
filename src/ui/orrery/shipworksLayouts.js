@@ -84,6 +84,7 @@ const STYLE_ID = 'sf-orrery-shipworks';
 const W = 'html body #screens > .sx-berth.orr-station .sx-sw';
 const D = W.replace('html body', 'html:root:not([data-sf-mobile="1"]) body');
 const BONE = '236 230 216';
+const POOL = '7 8 10';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase;';
 const PLAIN = 'background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; clip-path:none !important;';
 const HAND = 'clip-path:polygon(0 0, 100% 50%, 0 100%, 26% 50%) !important;';
@@ -269,8 +270,22 @@ ${W} .sx-sw-verb::before { all:unset !important; content:"›  " !important; col
 ${W} .sx-sw-verb:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
 ${W} .sx-sw-verb:disabled { color:rgb(${BONE} / .45) !important; }
 
-/* ---- the chooser: the compatible modules on the fleet's rail, the Hand at the one previewed ------ */
-${W} .sx-sw__chooser, ${W} .sx-chooser__panel { ${PLAIN} }
+/* ---- the chooser: hairline card; the compatible modules on the fleet's rail, the Hand at the one previewed ------ */
+/* ui-polish-412: dock chooser wears the same hairline card as dock .sx-sw__stats / flight chooser
+   (1px bone ~18% / radius 10 / padded). Settled pool under faint bone wash; foot feather mask
+   stands down so bay glow no longer runs through the module list. Densify radius 8→6. Panel stays PLAIN. */
+${W} .sx-sw__chooser { position:relative; isolation:isolate; box-sizing:border-box;
+  border-image:none !important; box-shadow:none !important; clip-path:none !important;
+  border:1px solid rgb(${BONE} / .18) !important; border-radius:10px;
+  background:linear-gradient(rgb(${BONE} / .025), rgb(${BONE} / .025)), rgb(${POOL} / .9) !important;
+  padding:12px 14px; }
+${W} .sx-sw__chooser::before { content:none; display:none; }
+@media (max-height:820px) { ${W} .sx-sw__chooser { border-radius:8px; } }
+@media (max-height:400px) { ${W} .sx-sw__chooser { border-radius:6px; } }
+@media (max-width:760px) { ${W} .sx-sw__chooser { border-radius:8px; } }
+@media (max-height:519px) { ${W} .sx-sw__chooser { padding:10px 12px; } }
+@media (max-width:560px) { ${W} .sx-sw__chooser { padding:12px 14px; } }
+${W} .sx-chooser__panel { ${PLAIN} }
 ${W} .sx-chooser__head { margin:0 0 12px !important; padding:0 !important; }
 ${W} .sx-chooser__x { ${PLAIN} ${LABEL} min-height:0 !important; min-width:0 !important; height:auto !important; padding:3px 0 !important; font-size: 12px !important;
   letter-spacing:.06em !important; color:rgb(${BONE} / .75) !important; }
@@ -406,8 +421,7 @@ ${W} .sx-modrow .sx-modrow__buy.k-word--primary::before { color:var(--dp-hand, #
 ${W} .sx-modrow .sx-modrow__buy.k-word--primary small { color:rgb(255 217 140 / .85) !important; }
 ${W} .sx-modrow .sx-modrow__buy.k-word--primary:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; text-shadow:0 0 18px rgb(255 217 140 / .45); }
 ${W} .sx-chooser__kicker { white-space:normal !important; max-width:100%; }
-${W} .sx-sw__chooser { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 48px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 48px), transparent) !important;
-  padding-bottom:48px !important; }
+/* ui-polish-412: dock chooser foot feather stands down with the hairline card (mask + 48px pad removed). */
 /* the picture on the stage: a rendered hull dissolves into the bay; no frame, no toolbar under it */
 ${W} .sx-sw__stage > .sx-sw__poster { -webkit-mask-image:radial-gradient(ellipse 60% 56% at 50% 52%, #000 38%, transparent 74%); mask-image:radial-gradient(ellipse 60% 56% at 50% 52%, #000 38%, transparent 74%); }
 ${W} .sx-sw__stage.has-poster:not(.is-live) > :is(.sx-sw__camera, .sx-sw__dragcue, .sx-sw__baylines) { display:none !important; }
