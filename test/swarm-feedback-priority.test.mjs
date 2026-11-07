@@ -31,8 +31,11 @@ function mount(run) {
   return { bus, owner };
 }
 
-test('Swarm keeps one physical cause while accounting events do not crowd it', () => {
-  const { bus, owner } = mount({ kind: 'survival', phase: 'active', ruleset: 'swarm' });
+test('a survival physical-cause register keeps one cause while accounting events do not crowd it', () => {
+  // S2/S3 quiet glass: a LIVE SWARM run's kill juice owns this line, so the Adventure-side
+  // register only draws for a classic/survival run outside Swarm rules. The counter contract is
+  // the same; the Swarm darkness is asserted beside it.
+  const { bus, owner } = mount({ kind: 'survival', phase: 'active', ruleset: 'classic' });
   const kill = { cause: 'terrain', word: 'PRESSED', pos: { x: 0, z: 0 } };
   bus.emit('aftermathWreck:recorded', {});
   bus.emit('lossLedger:recorded', {});
@@ -48,6 +51,14 @@ test('Swarm keeps one physical cause while accounting events do not crowd it', (
   assert.match(calloutTextFor(owner.root), /PRESSED/);
   assert.match(calloutTextFor(owner.root), /BURNING/);
   owner.destroy();
+
+  // The Swarm lane's own juice already speaks each kill; this register stays dark there.
+  const swarm = mount({ kind: 'survival', phase: 'active', ruleset: 'swarm' });
+  swarm.bus.emit('swarm:killPopup', kill);
+  swarm.owner.update(0);
+  assert.equal(calloutTextFor(swarm.owner.root), '',
+    'live Swarm glass owns the kill line, not the Adventure register');
+  swarm.owner.destroy();
 });
 
 test('world accounting receipts stay in the details register, not the Adventure flight glass', () => {
