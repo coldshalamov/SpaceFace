@@ -71,6 +71,24 @@ const LOCAL_DURABLE_LIMIT = 4096;
 // receipts ride the other durable keys, so shedding dead triggers can never
 // gap authoritative state.
 const LOCAL_EVENT_RETAIN_LIMIT = 512;
+// Same class: each stepped tick clones the full input state into a durable row,
+// but the presentation side only ever consumes the newest few through a
+// capacity-8 ring. Unbounded retained clones are payload weight, not data.
+const LOCAL_INPUT_PUBLISH_RETAIN_LIMIT = 64;
+// Queued wire commands wait for the next fixed tick and the drain sits outside
+// the step work budget — an input flood otherwise piles up unboundedly and the
+// next tick pays the whole backlog in one synchronous run. Latest-wins rows
+// (camera/viewport/timeEffects envelopes, pointer-move and sample dom payloads)
+// are sheddable; correctness envelopes (key edges, input, bus, rpc, settings,
+// spawn...) are never dropped — a lost keyup is a stuck key.
+const LOCAL_PENDING_COMMAND_LIMIT = 1024;
+const LOCAL_STALE_COMMAND_TYPES = new Set(['camera', 'viewport', 'timeEffects']);
+const LOCAL_STALE_DOM_TYPES = new Set(['mousemove', 'pointermove', 'gamepadFrame', 'cursorProjection']);
+function localCommandEnvelopeStale(env) {
+  if (!env || typeof env.t !== 'string') return false;
+  if (LOCAL_STALE_COMMAND_TYPES.has(env.t)) return true;
+  return env.t === 'dom' && env.p && env.p.d && LOCAL_STALE_DOM_TYPES.has(env.p.d.type);
+}
 // A publish whose ACK never lands wedges sentAwaitingAck forever: every later
 // tick only deepens the retained reply while presentation freezes at the last
 // applied pose — invisible to the in-flight watchdog because nothing is in
@@ -78,6 +96,12 @@ const LOCAL_EVENT_RETAIN_LIMIT = 512;
 // or the consumer is hopelessly behind) and the lane re-baselines through the
 // existing full-rebuild path instead of waiting indefinitely.
 const LOCAL_STALE_ACK_MS = 3000;
+// Outstanding (un-ACKed) publish budget. Stop-and-wait on a single reply means
+// every ACK round-trip beyond one tick merges into an ever-growing retained
+// blob — bigger applies feed back into slower ACKs until the lane collapses
+// into multi-second update cycles. A small window keeps per-tick replies
+// small under mild congestion; the retained merge still bounds deep stalls.
+const LOCAL_MAX_UNACKED = 4;
 const LOCAL_TIMER_MS = LOCAL_FIXED_DT * 1000;
 const LOCAL_JOURNAL_SCALAR_STRIDE = 18;
 const LOCAL_MERGED_PACK_MAX_RECORDS = 32768;
@@ -105,9 +129,12 @@ const localClock = {
   sentAwaitingAck: false,
   sentClockSequence: 0,
   sentJournalEnd: 0,
+  unackedSequences: [],
   ackWatchdogTimer: null,
   staleAckRecoveries: 0,
   shedEventCount: 0,
+  shedInputPublishCount: 0,
+  shedCommandCount: 0,
   latestReply: null,
   sabArena: null,
   needsRebuildOnSend: false,
@@ -120,6 +147,11 @@ const localClock = {
   stepCount: 0,
   shedStepCount: 0,
   commandCount: 0,
+  // E1 stall harness state (?simStall=): cycle of ms values, one consumed per local-clock tick.
+  stallCycle: null,
+  stallIndex: 0,
+  stallApplications: 0,
+  stallTotalMs: 0,
   // A slow authoritative tick must not leave one promise per timer turn queued
   // behind the shared directive chain. The next tick samples the elapsed wall
   // interval and applies the normal catch-up/shedding policy instead.
@@ -131,6 +163,38 @@ const localClock = {
 function localNowMs() {
   return typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now();
+}
+
+// ---- E1 stall-injection harness (?simStall=) ----------------------------------------
+// The faithful emulation of a heavy authoritative step is a BLOCKED worker event loop:
+// no timers, no messages, no reply until the stall elapses — exactly what Rapier's
+// 458 ms worst step does. Atomics.wait inside a DedicatedWorker blocks without spinning;
+// the busy loop is the fallback where SAB/wait is unavailable.
+let stallWaitCell = null;
+
+function stallBlock(ms) {
+  try {
+    if (typeof SharedArrayBuffer === 'function' && typeof Atomics !== 'undefined'
+      && typeof Atomics.wait === 'function') {
+      if (!stallWaitCell) stallWaitCell = new Int32Array(new SharedArrayBuffer(4));
+      Atomics.wait(stallWaitCell, 0, 0, ms);
+      return;
+    }
+  } catch (_) { /* not blockable here — busy wait below */ }
+  const until = localNowMs() + ms;
+  while (localNowMs() < until) { /* emulate the step's CPU occupancy */ }
+}
+
+function runInjectedStall() {
+  const cycle = localClock.stallCycle;
+  if (!cycle || !cycle.length || localClock.stopped) return;
+  const ms = cycle[localClock.stallIndex % cycle.length];
+  localClock.stallIndex++;
+  if (!(ms > 0)) return;
+  const started = localNowMs();
+  stallBlock(ms);
+  localClock.stallApplications++;
+  localClock.stallTotalMs += localNowMs() - started;
 }
 
 // Keep timer wakeups on the fixed-step deadline rather than adding a full
@@ -397,6 +461,11 @@ function localMergeReply(previous, next) {
     previous.events.splice(0, shed);
     localClock.shedEventCount = (localClock.shedEventCount || 0) + shed;
   }
+  if (Array.isArray(previous.inputPublishes) && previous.inputPublishes.length > LOCAL_INPUT_PUBLISH_RETAIN_LIMIT) {
+    const shed = previous.inputPublishes.length - LOCAL_INPUT_PUBLISH_RETAIN_LIMIT;
+    previous.inputPublishes.splice(0, shed);
+    localClock.shedInputPublishCount = (localClock.shedInputPublishCount || 0) + shed;
+  }
   for (const key of LOCAL_LATEST_KEYS) localMergeLatestRows(previous, next, key);
   const previousFullRebuild = previous.journalFullRebuild === true;
   const nextFullRebuild = next?.journalFullRebuild === true;
@@ -616,7 +685,7 @@ function localArmStaleAckWatchdog(clockSequence) {
   localClock.ackWatchdogTimer = setTimeout(() => {
     localClock.ackWatchdogTimer = null;
     if (localClock.stopped || !localClock.sentAwaitingAck
-      || localClock.sentClockSequence !== clockSequence) return;
+      || localClock.unackedSequences[0] !== clockSequence) return;
     // The publish's ACK never landed — the apply died mid-flight or the
     // consumer is hopelessly behind. Continuing to retain either hard-stops
     // the clock at the durable limit or leaves presentation frozen at the
@@ -624,6 +693,7 @@ function localArmStaleAckWatchdog(clockSequence) {
     // full rebuild rides the very next tick, carries every retained receipt,
     // and lands as an idempotent replace even when the original apply is
     // still queued on main. A late duplicate ACK is sequence-rejected below.
+    localClock.unackedSequences.length = 0;
     localClock.sentAwaitingAck = false;
     localClock.needsRebuildOnSend = true;
     localClock.staleAckRecoveries++;
@@ -647,10 +717,11 @@ async function publishLocalReply(reply) {
   reply.kind = 'clockTick';
   reply.clockSequence = localClock.replySequence;
   reply.seq = `clock-${localClock.replySequence}`;
+  localClock.unackedSequences.push(reply.clockSequence);
   localClock.sentAwaitingAck = true;
   localClock.sentClockSequence = reply.clockSequence;
   localClock.sentJournalEnd = Number.isSafeInteger(reply.journalEnd) ? reply.journalEnd : 0;
-  localArmStaleAckWatchdog(reply.clockSequence);
+  if (localClock.unackedSequences.length === 1) localArmStaleAckWatchdog(reply.clockSequence);
   localClock.latestReply = null;
   localReplyLatestRows.delete(reply);
   localClock.durableCount = 0;
@@ -660,6 +731,10 @@ async function publishLocalReply(reply) {
 
 async function runLocalClockTick(force = false, explicitSteps = 0, publishReply = true) {
   if (!localClock.enabled || localClock.stopped) return;
+  // The injected stall is part of this tick's wall cost: it elapses BEFORE the elapsed
+  // interval is measured, so the accumulator owes the blocked time and the existing
+  // catch-up/shed policy sees exactly what a heavy step produces.
+  runInjectedStall();
   const now = localNowMs();
   const elapsedMs = localClock.anchorMs > 0 ? Math.max(0, now - localClock.anchorMs) : 0;
   if (localClock.backpressured && localClock.sentAwaitingAck && !force) return;
@@ -753,8 +828,13 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     pendingCommands: localClock.pendingCommands.length,
     appliedCommandSequence: localClock.appliedCommandSequence,
     awaitingAck: localClock.sentAwaitingAck,
+    unacked: localClock.unackedSequences.length,
     shedEvents: localClock.shedEventCount || 0,
+    shedInputPublishes: localClock.shedInputPublishCount || 0,
+    shedCommands: localClock.shedCommandCount || 0,
     staleAckRecoveries: localClock.staleAckRecoveries || 0,
+    stallApplications: localClock.stallApplications || 0,
+    stallTotalMs: localClock.stallTotalMs || 0,
     backpressured: localClock.backpressured,
     backpressureEpisodes: localClock.backpressureEpisodes,
     backpressureMs: localClock.backpressureTotalMs + (localClock.backpressured
@@ -776,7 +856,11 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
   if (!publishReply && !localClock.sentAwaitingAck && !localClock.latestReply
     && !localArrayLength(reply, 'events') && !localArrayLength(reply, 'storageOps')) return;
 
-  if (localClock.sentAwaitingAck) {
+  if (localClock.unackedSequences.length >= LOCAL_MAX_UNACKED) {
+    // Pipeline saturated — fold this tick into the retained reply. Merging
+    // starts only once several replies are outstanding, which is what keeps
+    // a mildly congested lane shipping small per-tick replies instead of
+    // collapsing into a growing blob.
     localClock.latestReply = localMergeReply(localClock.latestReply, reply);
     localRefreshDurablePressure();
   } else {
@@ -879,25 +963,53 @@ async function handleLocalClockControl(msg) {
   if (localClock.active) scheduleLocalClock();
 }
 
+// The ACK half of a clockAck/clockCommand touches lane bookkeeping only — it
+// never mutates the sim host, so it does not need the serial directive chain's
+// FIFO protection. Applying it the moment the message arrives keeps the
+// publish pipeline moving while a heavy tick batch owns the chain; the
+// chained handler re-checks the sequence idempotently.
+async function localReleaseClockAck(clockSequence, ackJournalEnd) {
+  if (Number.isSafeInteger(ackJournalEnd)) {
+    localClock.pendingAckJournalEnd = Math.max(localClock.pendingAckJournalEnd, ackJournalEnd);
+  }
+  if (!Number.isSafeInteger(clockSequence)) return false;
+  // ACKs are cumulative: applied-watermark seq N covers every published reply
+  // at or below N. Clearing only the covered prefixes frees pipeline slots;
+  // a stale ACK for a superseded publish clears nothing.
+  let cleared = 0;
+  while (localClock.unackedSequences.length
+    && localClock.unackedSequences[0] <= clockSequence) {
+    localClock.unackedSequences.shift();
+    cleared++;
+  }
+  if (!cleared) return false;
+  if (localClock.unackedSequences.length === 0) {
+    localClock.sentAwaitingAck = false;
+    localDisarmStaleAckWatchdog();
+  } else {
+    // The watchdog tracks the oldest outstanding publish — re-arm on the new
+    // head so a freed pipeline still catches a lost ACK for later replies.
+    localArmStaleAckWatchdog(localClock.unackedSequences[0]);
+  }
+  const ackEnd = Number.isSafeInteger(ackJournalEnd) ? ackJournalEnd : localClock.sentJournalEnd;
+  // The retained window starting past ackEnd is applied-watermark
+  // backpressure (the paced visit spreads a dense range over presents), not
+  // a dropped hole — arming needsRebuildOnSend here re-minted a full
+  // republish on every ACK under load, which is the rebuild-storm loop.
+  // True drops reach this path through localReplyNeedsRebuild instead.
+  localSetBackpressure(false);
+  return await publishRetainedReplyAfterAck(ackEnd);
+}
+
 async function handleLocalClockAck(msg) {
   if (!localClock.enabled || localClock.stopped) return;
   let retainedReplyPublished = false;
   if (Number.isSafeInteger(msg.ackJournalEnd)) {
     localClock.pendingAckJournalEnd = Math.max(localClock.pendingAckJournalEnd, msg.ackJournalEnd);
   }
-  if (Number.isSafeInteger(msg.clockSequence)
-    && msg.clockSequence >= localClock.sentClockSequence) {
-    localClock.sentAwaitingAck = false;
-    localDisarmStaleAckWatchdog();
-    const ackEnd = Number.isSafeInteger(msg.ackJournalEnd) ? msg.ackJournalEnd : localClock.sentJournalEnd;
-    // The retained window starting past ackEnd is applied-watermark
-    // backpressure (the paced visit spreads a dense range over presents), not
-    // a dropped hole — arming needsRebuildOnSend here re-minted a full
-    // republish on every ACK under load, which is the rebuild-storm loop.
-    // True drops reach this path through localReplyNeedsRebuild instead.
-    localSetBackpressure(false);
-    retainedReplyPublished = await publishRetainedReplyAfterAck(ackEnd);
-  }
+  // localReleaseClockAck clears whichever pipeline slots this cumulative ACK
+  // covers — older-than-newest sequences still free real slots.
+  retainedReplyPublished = await localReleaseClockAck(msg.clockSequence, msg.ackJournalEnd);
   const needsImmediateMaintenance = !localClock.active || localClock.scale <= 0;
   if (localClock.latestReply && !retainedReplyPublished) {
     if (needsImmediateMaintenance) await runLocalClockTick(true);
@@ -927,21 +1039,20 @@ async function handleLocalClockCommand(msg) {
   if (Number.isSafeInteger(msg.ackJournalEnd)) {
     localClock.pendingAckJournalEnd = Math.max(localClock.pendingAckJournalEnd, msg.ackJournalEnd);
   }
-  if (Number.isSafeInteger(msg.ackClockSequence)
-    && msg.ackClockSequence >= localClock.sentClockSequence) {
-    localClock.sentAwaitingAck = false;
-    localDisarmStaleAckWatchdog();
-    const ackEnd = Number.isSafeInteger(msg.ackJournalEnd) ? msg.ackJournalEnd : localClock.sentJournalEnd;
-    // Same ack-watermark rule as handleLocalClockAck: journalStart > ackEnd is
-    // mid-apply backpressure, never by itself a rebuild trigger.
-    localSetBackpressure(false);
-    retainedReplyPublished = await publishRetainedReplyAfterAck(ackEnd);
+  if (Number.isSafeInteger(msg.ackClockSequence)) {
+    retainedReplyPublished = await localReleaseClockAck(msg.ackClockSequence, msg.ackJournalEnd);
   }
   if (Number.isSafeInteger(msg.commandSequence)) {
     localClock.pendingCommandSequence = Math.max(localClock.pendingCommandSequence, msg.commandSequence);
   }
   if (Array.isArray(msg.commands) && msg.commands.length) {
     localClock.pendingCommands.push(...msg.commands);
+    if (localClock.pendingCommands.length > LOCAL_PENDING_COMMAND_LIMIT) {
+      const kept = localClock.pendingCommands.filter((env) => !localCommandEnvelopeStale(env));
+      localClock.shedCommandCount = (localClock.shedCommandCount || 0)
+        + (localClock.pendingCommands.length - kept.length);
+      localClock.pendingCommands = kept;
+    }
   }
   const explicitSteps = Number.isSafeInteger(msg.steps) ? msg.steps : 0;
   // A command arriving while the autonomous clock is active can join the next
@@ -968,6 +1079,12 @@ async function dispatchDirective(msg) {
       const result = await init(msg);
       localClock.enabled = msg.clockMode === 'worker-local';
       localClock.stopped = false;
+      // E1 stall harness (?simStall=): the main lane ships the requested cycle on init.
+      localClock.stallCycle = Array.isArray(msg.simStall) && msg.simStall.length
+        ? msg.simStall : null;
+      localClock.stallIndex = 0;
+      localClock.stallApplications = 0;
+      localClock.stallTotalMs = 0;
       localClock.scale = Number.isFinite(msg.timeScale) ? Math.max(0, msg.timeScale) : 0;
       refreshLocalClockScale(msg.timeScale);
       localClock.lifecycleGeneration = Number.isSafeInteger(msg.generation) ? msg.generation : 0;
@@ -1083,6 +1200,23 @@ export { localMergeReply, localMaterializePack, localAckReplyAction };
 self.onmessage = (event) => {
   const msg = event && event.data;
   if (!msg || typeof msg !== 'object') return;
+  // ACK release is host-independent lane bookkeeping — run it on receipt
+  // instead of parking it behind an in-flight tick batch on the serial chain.
+  // The chained handler re-applies it through the same sequence check, so a
+  // double pass is a no-op; only the retained publish must not wait.
+  if (msg.kind === 'clockAck' || msg.kind === 'clockCommand') {
+    if (localClock.enabled && !localClock.stopped) {
+      const seq = msg.kind === 'clockAck' ? msg.clockSequence : msg.ackClockSequence;
+      const early = localReleaseClockAck(seq, msg.ackJournalEnd);
+      early.catch((error) => {
+        self.postMessage({
+          kind: 'error', seq: msg && msg.seq,
+          message: error && error.message ? error.message : String(error),
+          stack: error && error.stack ? String(error.stack) : null,
+        });
+      });
+    }
+  }
   chain = chain.then(() => dispatchDirective(msg));
 };
 

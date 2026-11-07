@@ -100,7 +100,8 @@ test('the cadence law: minors on ≡2,8 mod 10 — never major, never boss, neve
       `wave ${w} is no event wave at all`);
   }
   // Major waves are untouched — the every-5th law and the authored wager stand.
-  for (const w of [5, 15, 25, 35]) {
+  // Bosses hold the odd multiples of five (5, 15, 25…), so majors live on the even ones.
+  for (const w of [10, 20, 30, 40]) {
     assert.equal(isSwarmEventWave(w), true);
     assert.equal(isSwarmMinorEventWave(w), false);
     assert.equal(swarmMinorEventFor({ arenaId: 'helios_core', wave: w, seed: SEED }), null);
@@ -234,7 +235,7 @@ test('same seed deals the same minor card — ghosts agree; seeds still vary it'
 });
 
 test('boss and ordinary waves arm nothing — the director consult holds the cap', () => {
-  for (const wave of [1, 6, 10, 20, 30]) {
+  for (const wave of [1, 4, 6, 9, 15]) {
     const h = armedDirector({ arenaId: 'asteroid_mill', wave });
     startWave(h, wave);
     assert.equal(telegraphed(h).length, 0, `wave ${wave} offers nothing`);
@@ -246,7 +247,7 @@ test('boss and ordinary waves arm nothing — the director consult holds the cap
 });
 
 test('a major round is untouched — authored wager, warn voice, no band stamp', () => {
-  const wave = 15;
+  const wave = 10;
   const major = swarmEventFor({ arenaId: 'asteroid_mill', wave, seed: SEED });
   assert.ok(major);
   const h = armedDirector({ arenaId: 'asteroid_mill', wave });

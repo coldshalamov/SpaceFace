@@ -27,6 +27,7 @@ import { QUIET_BERTH_TUNING, QUIET_BERTH_TYPE, SPLIT_MANIFEST_LOTS, SPLIT_MANIFE
 import { missionIdentityOf } from '../world/worldRecords.js';
 import { passengerBeatLine } from '../data/barks.js';
 import { MISSION_TUNING, STORY_BEATS, STORY_BRANCH_INTRO_TAG } from '../data/missions.js';
+import { journeyActForBeat } from '../data/journeyActs.js';
 import { counterweightRuntime, heistMissionRuntime } from '../missions/heistMissionRuntime.js';
 import { snapshotWorkingBattlefield } from './workingBattlefieldRuntime.js';
 import { snapshotReckoning } from '../missions/reckoningRuntime.js';
@@ -2281,7 +2282,13 @@ export const missionStoryOps = {
     const nextBeat = STORY_BEATS[story.beatIndex];
     this._refreshNavigation({ forceStory: true, silent: true });
     const dir = (nextBeat && story.beatIndex !== fromIndex) ? BEAT_HINT[nextBeat.beat] : 'The contracts continue. The count never ends.';
-    if (dir) this._sayStoryLine(dir, 6);
+    // W1 Journey framing: an act turn opens the act by name, once, on the beat where it turns.
+    // Past the spine (sandbox fallback) no act exists and the line stays neutral as before.
+    const fromAct = journeyActForBeat(fromIndex);
+    const toAct = journeyActForBeat(story.beatIndex);
+    const actLine = (fromAct && toAct && fromAct.num !== toAct.num)
+      ? `ACT ${toAct.num} — ${toAct.title.toUpperCase()}. ` : '';
+    if (dir) this._sayStoryLine(actLine + dir, actLine ? 8 : 6);
     this.bus.emit('mission:updated', { missionId: null });
   },
 

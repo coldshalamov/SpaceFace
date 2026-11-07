@@ -327,6 +327,15 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} .orr-hullring text.orr-hullring__label { font-variation-settings:"wght" 600, "wdth" 100 !important; letter-spacing:.16em !important; }
   ${NGD} .orr-hullring text.orr-hullring__gloss { font-stretch:75% !important; font-variation-settings:"wght" 500, "wdth" 75 !important; letter-spacing:.02em !important; }
 }
+/* windows narrower than 1561px: the stage is too small for six stat rows beside the dial rings (the
+   numbers ran under the hull, MUSCLE sat on the MASS reading, the left arc cut through the bars).
+   The ship sheet becomes a 2-column block of name + number cells that stays above the rings. */
+@media (min-width:481px) and (max-width:1560px) {
+  ${NGD} .sf-ng-sheet .sfs--compact { max-width:240px; }
+  ${NGD} .sf-ng-sheet .sfs__stats { grid-template-columns:1fr 1fr; column-gap:16px; row-gap:0; }
+  ${NGD} .sf-ng-sheet .sfs__pips { display:none; }
+  ${NGD} .sf-ng-sheet .sfs--compact .sfs__stat { padding:3px 0 4px; }
+}
 /* at phone width the yard's rear ends sit ~130px apart, so the rear names (WASP, PELICAN) set tighter */
 @media (max-width:480px) {
   ${NGD} .orr-yard > .orr-turntable__row > li:not(.is-front) .k-word { font-size:12px !important; letter-spacing:.04em !important; }

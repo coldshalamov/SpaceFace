@@ -15,6 +15,7 @@ import { el, words, settle, cue } from '../kit/index.js';
 import { injectDeckplate, dpIcon } from '../deckplate/index.js';
 import { createMedalOrrery, createWordScale, medalDialSvg, medalProgress, medalState } from '../orrery/constellationMedals.js';
 import { injectConstellationScreens } from '../orrery/constellationLayouts.js';
+import { injectMetaLedgerLayouts } from '../orrery/achievementsLayouts.js';
 import { deferScreenCssReady } from '../orrery/cssSidecar.js';
 import { decrypt, rollTo } from '../orrery/text.js';
 import ACHIEVEMENT_MEDALS_MANIFEST from '../../../assets/ui/generated/achievements/manifest.json' with { type: 'json' };
@@ -214,7 +215,11 @@ export const achievementsScreen = {
   mount(rootEl, ctx) {
 
     injectDeckplate();
-    this._markCssReady = deferScreenCssReady(rootEl, injectConstellationScreens());
+    // Meta-ledger polish (achievementsLayouts) must land AFTER the constellation sidecar so its
+    // densify !important rules win equal-specificity ties against constellation.generated.css.
+    this._markCssReady = deferScreenCssReady(rootEl, Promise.resolve(injectConstellationScreens()).then(() => {
+      injectMetaLedgerLayouts();
+    }));
     this._unsubscribe();
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu', 'of-achievements');

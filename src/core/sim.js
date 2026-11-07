@@ -16,6 +16,7 @@ import { createGameState } from './gameState.js';
 import { core as coreDefinition } from './coreSystem.js';
 import { partitionUpdateSystems, updateQueueForThisStep } from './catchupPolicy.js';
 import { runHiddenKeepalive, shouldSkipFullTickSystems } from './presentationFreeze.js';
+import { getSimStepProfiler, nowNs } from './simStepProfiler.js';
 
 export const SIM_DT = 1 / 60;
 
@@ -204,13 +205,31 @@ export function createSimulation(options = {}) {
           core.preStep(dt, state);
         }
         const queue = updateQueueForThisStep(updatePartitions, state);
-        for (const system of queue) {
-          if (countSystems) tier1.countSystemInvocation(system.name);
-          system.update(updatePartitions.updateDt(system, dt, state), state);
-        }
-        if (core.lifetimeSweep) {
-          if (countSystems) tier1.countSystemInvocation('core.lifetimeSweep');
-          core.lifetimeSweep(dt, state);
+        const profiler = getSimStepProfiler();
+        if (profiler.active) {
+          profiler.beginTick();
+          for (const system of queue) {
+            const t0 = nowNs();
+            if (countSystems) tier1.countSystemInvocation(system.name);
+            system.update(updatePartitions.updateDt(system, dt, state), state);
+            profiler.record(system.name, nowNs() - t0);
+          }
+          if (core.lifetimeSweep) {
+            const t0 = nowNs();
+            if (countSystems) tier1.countSystemInvocation('core.lifetimeSweep');
+            core.lifetimeSweep(dt, state);
+            profiler.record('core.lifetimeSweep', nowNs() - t0);
+          }
+          profiler.endTick();
+        } else {
+          for (const system of queue) {
+            if (countSystems) tier1.countSystemInvocation(system.name);
+            system.update(updatePartitions.updateDt(system, dt, state), state);
+          }
+          if (core.lifetimeSweep) {
+            if (countSystems) tier1.countSystemInvocation('core.lifetimeSweep');
+            core.lifetimeSweep(dt, state);
+          }
         }
       } finally {
         hiddenKeepaliveTier1 = null;

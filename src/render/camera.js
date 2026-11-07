@@ -28,6 +28,7 @@ import {
 } from '../presentation/flightOverheadMath.js';
 import { resolveSteeringView, racingRigOf } from '../systems/racingSteer.js';
 import { createRacingCameraBlend, stepRacingCameraBlend } from './racingCameraBlend.js';
+import { isSwarmControls } from '../data/swarmControls.js';
 // The settled chase-framing derivation (speed-zoom, threat/tether/gyre composition,
 // safe-rect, zoom ceilings) lives in src/render/tabletopPolicy.js — a Three-free module
 // the sim-lane projector (tableWorldToScreen) also consumes, so the worker's analytic
@@ -565,6 +566,9 @@ export function resolveMasslineReleaseCameraCue(payload, motionReduced = false) 
 
 export function applyMasslineReleaseCameraCue(cameraController, state, payload = {}) {
   const cue = resolveMasslineReleaseCameraCue(payload, isMotionReduced(state));
+  // S6: in a live Swarm run Line moves never change the frame — the release keeps its
+  // recenter and receipt, the punch stays out.
+  if (isSwarmControls(state)) cue.zoomFactor = 0;
   const receipt = {
     schema: 'spaceface.masslineReleaseCameraCue.v1',
     releaseId: payload.releaseId || null,

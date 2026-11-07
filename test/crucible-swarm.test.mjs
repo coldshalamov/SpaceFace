@@ -28,6 +28,7 @@ import {
   isSwarmBossWave,
   pickSwarmArchetype,
   swarmArenaPhase,
+  swarmActFor,
   SWARM_BOSS_ROTATION,
   SWARM_QUOTA_CAP,
   SWARM_WAVE_DURATION_TICKS,
@@ -171,7 +172,7 @@ test('every swarm wave names a live enemy, a legal gate and a room that is never
     assert.ok(!plan.error, `wave ${wave} plans`);
     assert.equal(plan.mode, SWARM_RULESET);
     assert.notEqual(plan.arenaPhase, 'idle', `wave ${wave} room is doing something`);
-    assert.equal(plan.arenaPhase, swarmArenaPhase(wave));
+    assert.equal(plan.arenaPhase, (swarmActFor(wave) && swarmActFor(wave).arenaPhase) || swarmArenaPhase(wave));
     assert.ok(plan.schedule.length > 0, `wave ${wave} has an opening burst`);
     for (const entry of plan.schedule) {
       assert.ok(ENEMY_IDS.has(entry.enemyId), `${entry.enemyId} is a live archetype`);
@@ -573,7 +574,7 @@ function liveBosses(h, wave) {
 }
 
 test('a boss wave fields a Dreadnought and says it owes one', () => {
-  const plan = planWave({ seed: SEED, arenaId: ARENA, wave: 10, ruleset: SWARM_RULESET });
+  const plan = planWave({ seed: SEED, arenaId: ARENA, wave: 5, ruleset: SWARM_RULESET });
   assert.equal(plan.swarm.boss, true);
   assert.equal(plan.swarm.requireBoss, true);
   assert.equal(plan.objective.kind, 'boss');
@@ -588,9 +589,9 @@ test('a boss wave fields a Dreadnought and says it owes one', () => {
 });
 
 test('a living champion prevents a round clear even after a minute', () => {
-  const h = boot(); beginSwarm(h); forceWave(h, 10); tick(h, 30);
+  const h = boot(); beginSwarm(h); forceWave(h, 5); tick(h, 30);
   for (let i = 0; i < 4500; i++) {
-    const bossIds = new Set(liveBosses(h, 10).map(e => e.id));
+    const bossIds = new Set(liveBosses(h, 5).map(e => e.id));
     const chaff = liveHostiles(h).find(e => !bossIds.has(e.id));
     if (chaff) {
       chaff.alive = false; h.state.entities.delete(chaff.id);
@@ -598,15 +599,15 @@ test('a living champion prevents a round clear even after a minute', () => {
     }
     tick(h);
   }
-  assert.ok(liveBosses(h, 10).length > 0);
+  assert.ok(liveBosses(h, 5).length > 0);
   assert.equal(named(h.emitted, 'run:waveCleared').length, 0);
   while (killOne(h)) {} tick(h);
   assert.equal(named(h.emitted, 'run:waveCleared').length, 1);
 });
 
 test('killing the champion first still leaves the rest of its round to defeat', () => {
-  const h = boot(); beginSwarm(h); forceWave(h, 10); tick(h, 30);
-  for (const boss of liveBosses(h, 10)) {
+  const h = boot(); beginSwarm(h); forceWave(h, 5); tick(h, 30);
+  for (const boss of liveBosses(h, 5)) {
     boss.alive = false; h.state.entities.delete(boss.id);
     h.bus.emit('entity:destroyed', { id: boss.id });
   }
@@ -627,17 +628,17 @@ test('a refused champion remains owed until the spawn budget has room', () => {
   // During a live run the budget refuses non-wave requesters, so the hold must
   // reserve under a survival-wave id to actually occupy every slot.
   h.budget.request(h.budget.max(), 'survival-wave:9:test-hold');
-  forceWave(h, 10); tick(h, 30);
-  assert.equal(liveBosses(h, 10).length, 0);
+  forceWave(h, 5); tick(h, 30);
+  assert.equal(liveBosses(h, 5).length, 0);
   assert.equal(named(h.emitted, 'run:waveCleared').length, 0);
   h.budget.release('survival-wave:9:test-hold'); tick(h, 60);
-  assert.ok(liveBosses(h, 10).length > 0, 'the deferred boss materializes');
+  assert.ok(liveBosses(h, 5).length > 0, 'the deferred boss materializes');
 });
 
 test('the champion changes: every rotation row a different shape of boss wave, in step with the roster', () => {
   const seen = [];
   for (let step = 1; step <= SWARM_BOSS_ROTATION.length; step++) {
-    const wave = step * 10;
+    const wave = step * 10 - 5;
     const boss = swarmBossFor(wave);
     assert.ok(boss, `wave ${wave} has a champion`);
     assert.ok(!seen.includes(boss.id), `wave ${wave} is a boss the player has not fought (${boss.id})`);
@@ -655,14 +656,14 @@ test('the champion changes: every rotation row a different shape of boss wave, i
   }
   assert.equal(seen.length, SWARM_BOSS_ROTATION.length, 'the whole rotation before any repeat');
   // And it wraps rather than running out.
-  assert.equal(swarmBossFor((SWARM_BOSS_ROTATION.length + 1) * 10).id, SWARM_BOSS_ROTATION[0].id);
+  assert.equal(swarmBossFor(SWARM_BOSS_ROTATION.length * 10 + 5).id, SWARM_BOSS_ROTATION[0].id);
   assert.equal(swarmBossFor(7), null, 'an ordinary wave has no champion');
 });
 
-test('every tenth wave is a boss wave, and no other wave owes one', () => {
+test('every fifth-plus-tens wave is a boss wave, and no other wave owes one', () => {
   for (let wave = 1; wave <= 60; wave++) {
     const plan = planWave({ seed: SEED, arenaId: ARENA, wave, ruleset: SWARM_RULESET });
-    const expected = wave % 10 === 0;
+    const expected = wave >= 5 && wave % 10 === 5;
     assert.equal(plan.swarm.boss, expected, `wave ${wave} boss flag`);
     assert.equal(plan.swarm.requireBoss, expected);
     assert.equal(

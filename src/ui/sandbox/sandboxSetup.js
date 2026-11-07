@@ -187,6 +187,10 @@ export function buildSandboxLaunchConfig(baseConfig = {}, overrides = {}) {
         out.swarmPerks = overrides.swarmPerks.filter((id) => typeof id === 'string' && id);
       }
       if (overrides.openingLesson === true) out.openingLesson = true;
+      // S4 quick-start: when a launch explicitly opts out of the opening armory, the flag
+      // rides beside the setup and reaches run telemetry through the begin request — the
+      // phase machine (not this bridge) decides what the opening does with it.
+      if (overrides.openArmoryBeforeRound1 === false) out.openArmoryBeforeRound1 = false;
     }
   }
   return out;
@@ -389,6 +393,9 @@ function gameNewOptionsForSandboxConfig(config) {
       swarmThreats: config.swarmThreats,
       swarmPerks: config.swarmPerks,
       openingLesson: config.openingLesson,
+      // S4 quick-start: the worker lane never reads pendingConfig — the opt-out must ride
+      // the serialized setup too or a one-press launch silently re-opens the armory.
+      openArmoryBeforeRound1: config.openArmoryBeforeRound1,
     });
   }
   // Sandbox writes belong to the simulation lane. In worker mode, carry the complete validated
@@ -1304,6 +1311,9 @@ export function applySandboxSetup(ctx, config) {
           seed: setup.seed,
           arenaId: setup.arenaId,
           openingLesson: cfg.openingLesson === true,
+          openArmoryBeforeRound1: launchRuleset === SWARM_RULESET && cfg.openArmoryBeforeRound1 === false
+            ? false
+            : undefined,
           swarmStake: launchRuleset === SWARM_RULESET && typeof cfg.swarmStake === 'string'
             ? cfg.swarmStake
             : undefined,
