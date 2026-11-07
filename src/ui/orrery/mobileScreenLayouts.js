@@ -681,10 +681,20 @@ export const MOBILE_SCREEN_CSS = `
   ${H} .orr-help-factions__orbit { width:100% !important; height:320px !important; }
   ${H} .orr-help-factions__orbit .orr-crest:not(.is-chosen, :hover, :focus-visible) .orr-crest__name { visibility:hidden; }
 
-  /* Save portraits retain a horizontal rail, with enough room for each save's own label. */
+  /* Save portraits retain a horizontal rail, with enough room for each save's own label.
+     ui-polish-420: a pilot-authored long title (D249 "Black Flag public recovery") was wrapping
+     one word per line under the 150px pedestal at 390×844 — four stacked lines into the credits.
+     Keep the full name in the ledger NAME field; clamp the filmstrip label to two lines with an
+     ellipsis so neighbouring berths stay even and the rail stays readable. */
   ${V} .orr-film { height:auto !important; min-height:280px !important; overflow-x:auto !important; overflow-y:hidden !important; }
   ${V} .orr-film__list { width:max-content !important; min-width:100%; gap:18px !important; align-items:flex-start !important; }
   ${V} .orr-film__list > .sf-slot { flex:0 0 150px !important; width:150px !important; min-width:150px !important; }
+  ${V} .orr-film__list > .sf-slot > div { min-width:0 !important; max-width:100% !important; overflow:hidden !important; }
+  ${V} .orr-film__list .k-row__name.sf-slot-name {
+    display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2;
+    overflow:hidden !important; text-overflow:ellipsis !important; white-space:normal !important;
+    overflow-wrap:anywhere !important; max-width:100% !important; letter-spacing:.02em !important;
+    line-height:1.25 !important; }
   ${V} .orr-film__list .sf-slot-badges { display:block !important; margin:4px 0 !important; }
   ${V} .orr-film__list .sf-slot-badge { display:block !important; margin:0 !important; }
 
