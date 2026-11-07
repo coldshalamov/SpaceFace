@@ -17,6 +17,7 @@ import { formatLedgerCycle } from '../../../systems/shipLedger.js';
 import { el } from '../../kit/index.js';
 import { createEndingMeter } from '../dust/endingMeter.js';
 import { rollTo } from '../../orrery/text.js';
+import { injectOrreryStationLedger } from '../../orrery/station-ledgerLayouts.js';
 import { dressComms, watchComms } from './comms.js';
 import { dressEvents, watchEvents } from './events.js';
 import {
@@ -249,6 +250,7 @@ export function createLedgerScreen(ctx) {
 
   function dressLedger() {
     ensureLedgerStyle();
+    injectOrreryStationLedger();
     paintMarking(panel.el.querySelector('.st-sub-h'));
     paintLegend(panel.el.querySelector('.st-ledger-intro'));
     paintLegend(panel.el.querySelector('.st-ledger-status'), true);
