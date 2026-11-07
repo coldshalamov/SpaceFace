@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "77a3953741c2850ed7eebc71e9fbd4a169b0732d8deb6bf20383231e49262d1f",
+  "uiSourceDigest": "713cf091adbb985cea4bfd81f9bb3ef61c14e755d85aeedf76f8756fe96b8697",
   "uiSourceFiles": {
     "index.html": "43fb16a51ff36e5a2eee5078a63dcc68059734ebc95254de8c9833dbda292e93",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -229,7 +229,7 @@
     "src/ui/orrery/ringLegend.js": "370e949fbf4a126ccc982fe6927e0b4ce0d55276a07a3358732abf8d8da46b18",
     "src/ui/orrery/routeOrrery.js": "0d6fae9c6a1bf10e49629ed449740709ef12cf148c25f95515321df0cbc7da54",
     "src/ui/orrery/sableDemo.js": "c737e2e766cf3c64640bbb3660f3cfd5f93596f9e11d3eab9f64ddc9e6504630",
-    "src/ui/orrery/sandboxLayouts.js": "80509cd20f842bad30bc94c0d86edbac3b7c552f9c3b447c76ac3d6f8292cd55",
+    "src/ui/orrery/sandboxLayouts.js": "ad5d4fe8847fad0d6a19207ac3c7dd420fc3001bc7d9e0af9d436ae622f3e6d0",
     "src/ui/orrery/save-loadLayouts.js": "d95f63936a1954a0a28d4b7e6646eff88c5d647b2f9de50e4f8e121e466303db",
     "src/ui/orrery/saveBerth.js": "3277b73ea17573dd3b42ad2b683b7f49889537b3d0baa7170427d7822b549fd6",
     "src/ui/orrery/saveFilmstrip.js": "22523decdcfc3832c70a9b2ae1ebf62fb477972f4e414b143610f834267e813b",
@@ -1483,11 +1483,11 @@
   "missing": [
     {
       "surface": "localmap-legacy",
-      "reason": "default@2560x1080: no opener implemented for entry kind \"none\": superseded by the chart; no route can show it \u2014 the map authority (uiRoot.js) rewrites every localmap push, key and touch into galaxyMap at LOCAL focus, so the legacy DOM never mounts; a permanent, named gap"
+      "reason": "default@2560x1080: no opener implemented for entry kind \"none\": superseded by the chart; no route can show it — the map authority (uiRoot.js) rewrites every localmap push, key and touch into galaxyMap at LOCAL focus, so the legacy DOM never mounts; a permanent, named gap"
     },
     {
       "surface": "starmap-legacy",
-      "reason": "default@2560x1080: no opener implemented for entry kind \"none\": superseded by the chart; no route can show it \u2014 the map authority (uiRoot.js) rewrites every starmap push (including the base screen \"Open chart\") into galaxyMap at GALAXY focus, so the legacy DOM never mounts; a permanent, named gap"
+      "reason": "default@2560x1080: no opener implemented for entry kind \"none\": superseded by the chart; no route can show it — the map authority (uiRoot.js) rewrites every starmap push (including the base screen \"Open chart\") into galaxyMap at GALAXY focus, so the legacy DOM never mounts; a permanent, named gap"
     }
   ]
 }
