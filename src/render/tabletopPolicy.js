@@ -21,6 +21,7 @@ import {
   VL_EXCEPTIONAL_SPEED_RATIO_MAX,
 } from './velocityLanguage.js';
 import { BOOST_LAG_FRACTION } from '../presentation/flightOverheadMath.js';
+import { isSwarmControls } from '../data/swarmControls.js';
 
 // The shared chase-framing derivation below was lifted verbatim out of camera.js
 // (see the section header further down). These two locals mirror camera.js's own
@@ -1508,7 +1509,10 @@ export function tableChaseFraming(state, viewport = null, out = null) {
   // follow(): the authored base FOV drives composition geometry; the feel-layer
   // cam.fov punch is transient spectacle and never reframes the envelope.
   const baseFov = Math.max(10, Math.min(140, finiteOr(video.fov, 50)));
-  const baseZoom = video.chaseClose ? CHASE_ZOOM_CLOSE : finiteOr(camera.zoom, DEFAULT_ZOOM);
+  // S6: a live Swarm run frames ~1.6× today's area — the horde has to fill the screen. The
+  // factor is the area's square root on the linear zoom and stays under the 28 px hull floor.
+  const swarmFrame = isSwarmControls(state) ? Math.sqrt(1.6) : 1;
+  const baseZoom = (video.chaseClose ? CHASE_ZOOM_CLOSE : finiteOr(camera.zoom, DEFAULT_ZOOM)) * swarmFrame;
   const motionReduced = chaseLaneMotionReduced(state);
 
   // The sim's own floating origin belongs to the DERIVED path below — entity

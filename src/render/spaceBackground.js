@@ -25,6 +25,7 @@
 //    each layer's visual repeat distance is >= ~25 screens of flight.
 import * as THREE from 'three';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
+import { ENCLOSED_SKY_ARENA_IDS } from '../data/combatLabSetups.js';
 import { withSectorLandmark } from './sectorLandmarkBackground.js';
 import {
   resolveBackgroundComposition,
@@ -3307,7 +3308,8 @@ export class SpaceBackground {
     this.camX = cx; this.camZ = cz;
     const arenaRun = this.state && this.state.run;
     const arenaTarget = arenaRun && arenaRun.kind === 'survival' && this.state.mode === 'flight'
-      ? ARENA_BACKDROP_FOCUS : 1;
+      ? (ENCLOSED_SKY_ARENA_IDS.has(arenaRun.arenaId) ? 0 : ARENA_BACKDROP_FOCUS)
+      : 1;
     this.arenaFocus = Number.isFinite(this.arenaFocus)
       ? this.arenaFocus + (arenaTarget - this.arenaFocus) * (1 - Math.exp(-dt / 0.6))
       : arenaTarget;

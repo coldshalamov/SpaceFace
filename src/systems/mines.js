@@ -9,9 +9,24 @@
 // (inf-plow-turn: playerPushed, armed on the spot, the player's credit) — the fence
 // the plow shoves into the pack does not stay loyal to the pack that laid it.
 //
+// inf-mine-strike — the fence answers the throw. A mine is a ghost to the contact solver
+// (material 'projectile') and its proximity fuze senses only hulls its IFF admits, so a rock
+// the pilot hurled through a fence used to pass straight through it, and so did the pilot's
+// throw of the layer's own wingman. SF-041 names "throw a body through" as a fence answer:
+// an armed mine now goes off on the mass the pilot hurls into it — a body carrying the
+// pilot's fresh thrown-mass cause (the law card's own "you threw what hit them" tags), the
+// body on the pilot's line, or the still-witnessed wreck of the pilot's own kill — when that
+// body's swept path crosses the mine's contact disc at the throw floor or faster. One blast,
+// one victim, exactly as the proximity fuze: the charge is spent on what struck it, the
+// pilot's credit. Ambient drift, field piles and NPC throws stay what they were — the fuze
+// reads custody, not every bump.
+//
 // Determinism: arm/trigger timers use state.simTime only; no Math.random / wall clock.
 import { scalarHitToDamagePacket, npcCrossfireAdmits } from '../combat/damage.js';
+import { readRecentImpulseProvenance } from '../combat/impulseKernel.js';
+import { currentChainWreckWitness, isThrownMassTag } from '../combat/killCausality.js';
 import { Masks } from '../core/entity.js';
+import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isSwarmSpecialistRun } from '../data/swarmSpecialists.js';
 
 export const MINE_OWNER_CAP = 6;
@@ -22,6 +37,25 @@ export const MINE_BLAST_DAMAGE = 42;
 export const MINE_TELEGRAPH_CUE = 'wake_mines';
 export const MINE_TYPE = 'mine';
 export const MINE_THROW_GRACE_S = 0.5;
+
+// inf-mine-strike. The strike floor is the repo's standing "that was a throw" bar
+// (THROW_CREDIT_MIN_SPEED_WU in tumbleStates): a set-down below it is not a strike.
+export const MINE_STRIKE_MIN_SPEED = 25;
+/** Gather radius around a mine: a large rock's own radius plus one fixed step of travel. */
+export const MINE_STRIKE_QUERY_WU = 140;
+/** Sim seconds between strike band lines — one throw that clears a fence says it once. */
+export const MINE_STRIKE_LINE_GAP_S = 6;
+/**
+ * Bodies that can be hurled into a fence: rock, hulk and hull — never a mine itself. Cargo
+ * (payload/pod) is deliberately not a striker: a pod's damage is a cargo-loss and law event
+ * its own recovery owners keep, and a strike fuze must not fabricate one.
+ */
+const STRIKE_TYPES = new Set(['asteroid', 'wreck', 'ship', 'drone']);
+const STRIKE_LINES = Object.freeze({
+  throw: 'Your throw set off that mine',
+  line: 'The mass on your line set off that mine',
+  wreck: 'The wreck you made set off that mine',
+});
 
 // SF-041 (PB-ORD-C) — the wake-corridor law: a seeded fence hugs ONE flank of the approach
 // line, leaving the opposite flank an open, readable safe lane. Solutions are physical:
@@ -70,6 +104,8 @@ export const mines = {
     this.helpers = ctx.helpers || (ctx.helpers = {});
     this.registry = ctx.registry || null;
     this._scratch = [];
+    this._strikeScratch = [];
+    this._strikeLineAt = null;
     // Encounter scripts / mine-layer AI place through this helper (no direct entity writes).
     this.helpers.placeMine = (opts) => this.placeMine(opts || {});
     if (this.bus && typeof this.bus.on === 'function') {
@@ -188,6 +224,7 @@ export const mines = {
     const list = liveMineList(state);
     if (!list.length) return;
     const now = state.simTime || 0;
+    const stepS = Number.isFinite(_dt) && _dt > 0 ? _dt : 1 / 60;
     for (const mine of list) {
       if (!mine || !mine.alive || mine.type !== MINE_TYPE) continue;
       const data = mine.data || (mine.data = {});
@@ -213,8 +250,15 @@ export const mines = {
       }
       if (data.triggered) continue;
       const victim = this._findTriggerVictim(state, mine, data);
-      if (!victim) continue;
-      this._triggerMine(state, mine, data, victim);
+      if (victim) {
+        this._triggerMine(state, mine, data, victim);
+        continue;
+      }
+      // The proximity fuze senses hulls its IFF admits; the strike fuze answers mass the
+      // pilot hurled into a fence that is not on the pilot's side (inf-mine-strike).
+      if (mineFightsForPilot(state, mine, data)) continue;
+      const strike = this._findStrikingMass(state, mine, stepS);
+      if (strike) this._strikeMine(state, mine, data, strike);
     }
   },
 
@@ -351,8 +395,87 @@ export const mines = {
     return best;
   },
 
-  _triggerMine(state, mine, data, victim) {
+  /**
+   * inf-mine-strike — the mass the pilot hurled into this mine during the last step, or null.
+   * A strike is physical contact, not proximity: the body's swept path RELATIVE to the mine
+   * (the last fixed step of both motions) must cross the mine's contact disc, at the throw
+   * floor or faster. Custody is read from the owners that already keep it: the body's fresh
+   * impulse record naming the pilot with a thrown-mass tag, the pilot's tether target, or the
+   * chain witness the aftermath owner binds to the wreck of the pilot's own kill. The pilot's
+   * hull never strike-fuzes — the proximity law and the custody grace govern the pilot. Ties
+   * break on the closest approach, then the stable id, so the same step answers the same way.
+   */
+  _findStrikingMass(state, mine, stepS) {
+    const playerId = state.playerId;
+    if (playerId == null || !mine.pos) return null;
+    const mx = mine.pos.x;
+    const mz = mine.pos.z;
+    const mvx = finiteOr(mine.vel && mine.vel.x, 0);
+    const mvz = finiteOr(mine.vel && mine.vel.z, 0);
+    const mineRadius = Number.isFinite(mine.radius) && mine.radius > 0 ? mine.radius : 6;
+    const scratch = this._strikeScratch || (this._strikeScratch = []);
+    const candidates = queryNearbyEntities(state, mine.pos, MINE_STRIKE_QUERY_WU, scratch);
+    let best = null;
+    let bestGap = Infinity;
+    let bestSpeed = 0;
+    let bestCustody = null;
+    for (let i = 0; i < candidates.length; i++) {
+      const body = candidates[i];
+      if (!body || body.alive === false || body === mine || body.id === mine.id || !body.pos) continue;
+      if (!STRIKE_TYPES.has(body.type) || body.id === playerId) continue;
+      const rvx = finiteOr(body.vel && body.vel.x, 0) - mvx;
+      const rvz = finiteOr(body.vel && body.vel.z, 0) - mvz;
+      const speed = Math.hypot(rvx, rvz);
+      if (!(speed >= MINE_STRIKE_MIN_SPEED)) continue;
+      const ex = body.pos.x - mx;
+      const ez = body.pos.z - mz;
+      const gap = segmentGapToOrigin(ex - rvx * stepS, ez - rvz * stepS, ex, ez);
+      if (!(gap <= mineRadius + strikeBodyRadius(body))) continue;
+      if (best && (gap > bestGap || (gap === bestGap && compareStableIds(body.id, best.id) >= 0))) continue;
+      const custody = strikeCustody(state, body, playerId);
+      if (!custody) continue;
+      best = body;
+      bestGap = gap;
+      bestSpeed = speed;
+      bestCustody = custody;
+    }
+    scratch.length = 0;
+    return best ? { body: best, custody: bestCustody, speed: bestSpeed } : null;
+  },
+
+  /** The mine goes off on what struck it — the ordinary trigger receipts, the pilot's credit. */
+  _strikeMine(state, mine, data, strike) {
+    const body = strike.body;
+    if (this.bus) {
+      this.bus.emit('mines:struck', {
+        mineId: mine.id,
+        ownerId: data.ownerId,
+        bodyId: body.id,
+        bodyType: body.type,
+        custody: strike.custody,
+        speed: strike.speed,
+        pos: { x: mine.pos.x, z: mine.pos.z },
+      });
+    }
+    this._triggerMine(state, mine, data, body, { attackerId: state.playerId, struck: true });
+    this._tellStrike(state, strike.custody);
+  },
+
+  /** One band line per throw: a single cast that clears a fence says so once, not per mine. */
+  _tellStrike(state, custody) {
+    if (!this.bus) return;
+    const text = STRIKE_LINES[custody];
+    if (!text) return;
+    const now = state.simTime || 0;
+    const last = this._strikeLineAt;
+    if (Number.isFinite(last) && now >= last && now - last < MINE_STRIKE_LINE_GAP_S) return;
+    this._strikeLineAt = now;
+    this.bus.emit('voice:say', { channel: 'alert', id: 'mine-struck', text, ttl: 2.5 });
+  },
+
+  _triggerMine(state, mine, data, victim, opts = null) {
     data.triggered = true;
+    const struck = !!(opts && opts.struck);
     const damage = data.blastDamage || MINE_BLAST_DAMAGE;
     const packet = scalarHitToDamagePacket({
       damage,
@@ -363,9 +486,11 @@ export const mines = {
     // allowAnyTarget not required for ships; mines themselves use hull via projectile:hit path.
     const request = {
       // A mine in the player's custody (thrown or field-turned) pays the player's credit;
-      // a loyal one stays its layer's ordnance.
-      attackerId: (data.playerThrown === true || data.playerPushed === true) ? state.playerId
-        : data.ownerId != null ? data.ownerId : mine.id,
+      // a loyal one stays its layer's ordnance. A strike names its own attacker: the pilot
+      // whose hurled mass set the charge off.
+      attackerId: opts && opts.attackerId != null ? opts.attackerId
+        : (data.playerThrown === true || data.playerPushed === true) ? state.playerId
+          : data.ownerId != null ? data.ownerId : mine.id,
       targetId: victim.id,
       packet,
       origin: { kind: 'mine', id: mine.id },
@@ -380,6 +505,7 @@ export const mines = {
         targetId: victim.id,
         damage,
         pos,
+        ...(struck ? { struck: true } : null),
       });
     }
     this._routeDamage(request);
@@ -390,6 +516,7 @@ export const mines = {
         targetId: victim.id,
         damage,
         pos,
+        ...(struck ? { struck: true } : null),
       });
     }
     mine.alive = false;
@@ -412,6 +539,7 @@ export const mines = {
   releaseAll(reason = 'release') {
     const state = this.state;
     if (!state) return 0;
+    this._strikeLineAt = null;
     const list = liveMineList(state);
     let n = 0;
     for (const e of list) {
@@ -472,6 +600,69 @@ function teamOf(state, ownerId) {
   if (ownerId == null || !state || !state.entities) return 1;
   const owner = state.entities.get(ownerId);
   return owner && owner.team != null ? owner.team : 1;
+}
+
+// ── inf-mine-strike helpers ─────────────────────────────────────────────────────────────────
+
+function finiteOr(value, fallback) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+/** Distance from the origin to the segment A→B (the relative path of one fixed step). */
+function segmentGapToOrigin(ax, az, bx, bz) {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const len2 = dx * dx + dz * dz;
+  let t = len2 > 1e-12 ? -(ax * dx + az * dz) / len2 : 0;
+  if (t < 0) t = 0;
+  else if (t > 1) t = 1;
+  return Math.hypot(ax + dx * t, az + dz * t);
+}
+
+function strikeBodyRadius(body) {
+  return Number.isFinite(body && body.radius) && body.radius > 0 ? body.radius : 0;
+}
+
+function compareStableIds(a, b) {
+  if (Number.isFinite(a) && Number.isFinite(b)) return a - b;
+  const x = String(a);
+  const y = String(b);
+  return x < y ? -1 : x > y ? 1 : 0;
+}
+
+/**
+ * A mine on the pilot's side is not a fence the pilot's throws answer: their own mine, a mine
+ * already in their custody (thrown or field-turned — their grenade now), or a fence flying the
+ * pilot's colors (the Crucible room salts its lane mouths on the player's team so the pack
+ * wading in pays). Spending one of those on a rock the pilot threw at the pack is a loss with
+ * no answer in it, so the strike fuze reads only fences that stand against the pilot.
+ */
+function mineFightsForPilot(state, mine, data) {
+  const playerId = state.playerId;
+  if (playerId == null) return true;
+  if (data.ownerId != null && data.ownerId === playerId) return true;
+  if (data.playerThrown === true || data.playerPushed === true) return true;
+  const player = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(playerId) : null;
+  return !!(player && player.team != null && mine.team != null && mine.team === player.team);
+}
+
+/**
+ * Whose hurled mass this body is, in the owners' own words — or null. 'line': the pilot's
+ * tether holds it now (the whip on the line). 'throw': its freshest impulse record names the
+ * pilot with a thrown-mass tag (the release, the sling cut, the whip it struck, the hull a
+ * thrown hull knocked loose). 'wreck': the aftermath owner still binds the pilot's own kill to
+ * this exact wreck life. Anything else — drift, a field pile, an NPC throw — is not custody.
+ */
+function strikeCustody(state, body, playerId) {
+  const tether = state.player && state.player.tether;
+  if (tether && tether.active === true && tether.targetId != null
+    && String(tether.targetId) === String(body.id)) return 'line';
+  const tick = Number.isFinite(state.tick) ? state.tick | 0 : 0;
+  const record = readRecentImpulseProvenance(body, tick);
+  if (record && record.actorId === playerId && isThrownMassTag(record.tag)) return 'throw';
+  if (body.type === 'wreck' && currentChainWreckWitness(state, body)) return 'wreck';
+  return null;
 }
 
 // VERB-32 — mine spawn velocity is the deploying ship's velocity vector at the

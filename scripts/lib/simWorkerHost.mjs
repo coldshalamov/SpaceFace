@@ -85,6 +85,7 @@ import { reconcileLaneComponentSelection } from '../../src/core/simLaneCommands.
 import { projectBridgeEvent, resolveEventEntityRef } from './simEventBridge.mjs';
 import { createAuthoritativeRuntime } from '../../src/runtime/createAuthoritativeRuntime.js';
 import { createAuthoritativeStepper } from '../../src/core/authoritativeSimStep.js';
+import { getSimStepProfiler } from '../../src/core/simStepProfiler.js';
 import { shouldSkipFullTickSystems } from '../../src/core/presentationFreeze.js';
 import { partitionUpdateSystems } from '../../src/core/catchupPolicy.js';
 import { createBus } from '../../src/core/eventBus.js';
@@ -2178,6 +2179,11 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     host.lifecycleGeneration = Number.isSafeInteger(msg.generation) && msg.generation >= 0
       ? msg.generation : (Number.isSafeInteger(msg.timeEffectsSnapshot?.generation) ? msg.timeEffectsSnapshot.generation : 0);
     host.profile = msg.profile === 'production' ? 'production' : 'legacy47a';
+    // E2: the realm profiler is off unless the host asked for it. Enabling it here (before
+    // init) keeps the cost out of every normal boot and gives a probe one switch.
+    host.systemProfileRequested = msg.systemProfile === true;
+    getSimStepProfiler().setEnabled(host.systemProfileRequested);
+    if (host.systemProfileRequested) getSimStepProfiler().reset();
     if (host.profile === 'production') return handleInitProduction(msg);
     applyFeatureConfigToMaps(LEGACY47A_FEATURES);
     Object.assign(COMBAT_FLAGS, { weaponImpulseConsequences: false });
@@ -2509,6 +2515,10 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     const steps = Number.isSafeInteger(msg.steps) ? Math.max(0, msg.steps) : 1;
     const production = host.profile === 'production';
     reconcileLaneComponentSelection(state);
+    // Phase split for the lane's freeze forensics: workMs alone cannot tell a
+    // contact-storm step batch from a command drain or a vitals/pack tail.
+    const drainNs = nowNs() - workStart;
+    const stepsStartNs = nowNs();
 
     // Present-side ack: main consumed up to ackJournalEnd → free the ring slots.
     if (Number.isSafeInteger(msg.ackJournalEnd) && msg.ackJournalEnd > 0) {
@@ -2649,6 +2659,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       completedTick = makeCompletedTick(journalStart, journalEnd);
     }
     const workNs = nowNs() - workStart;
+    const stepsNs = nowNs() - stepsStartNs;
     host.totalWorkNs += workNs;
     host.tickCount += stepsExecuted;
 
@@ -2676,6 +2687,22 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     }
     const packNs = nowNs() - packStart;
     host.totalPackNs += packNs;
+
+    // E2 per-system profile summary: bounded, one per simulated second, only while the
+    // host asked for profiling. This is the worker realm's own export.
+    let systemProfile;
+    if (host.systemProfileRequested) {
+      const profiler = getSimStepProfiler();
+      host.systemProfileReplyCountdown = (host.systemProfileReplyCountdown | 0) - stepsExecuted;
+      if (host.systemProfileReplyCountdown <= 0) {
+        const snapshot = profiler.snapshot();
+        systemProfile = {
+          ...snapshot,
+          systems: snapshot.systems.slice(0, 40),
+        };
+        host.systemProfileReplyCountdown = 60;
+      }
+    }
 
     const events = drainEvents();
     const entityVitals = production
@@ -2777,6 +2804,9 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       storageOps: drainStorageOps(),
       entityVitals: production ? entityVitals : undefined,
       workMs: Number(workNs) / 1e6,
+      drainMs: Number(drainNs) / 1e6,
+      stepsMs: Number(stepsNs) / 1e6,
+      tailMs: (Number(boundaryMs) * 1e6 - Number(drainNs) - Number(stepsNs) - Number(packNs)) / 1e6,
       packMs: Number(packNs) / 1e6,
       stepsRequested: steps,
       stepsExecuted,
@@ -2784,6 +2814,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       sendNs: 0, // stamped just before postMessage/dispatch resolve
       stateTick: state.tick,
       simTime: state.simTime,
+      systemProfile,
     };
   }
 
@@ -2876,6 +2907,9 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     drainStorageOps,
     hasPendingDurable() { return pendingStorageOps.length > 0 || host.pendingEvents.length > 0; },
     applyPresentationTimeEffects,
+    /** E2: the realm's per-system step profile (also rides the tick reply while enabled). */
+    systemProfile() { return getSimStepProfiler().snapshot(); },
+    setSystemProfileEnabled(on) { return getSimStepProfiler().setEnabled(on); },
     effectiveTimeScale() {
       return host.timeEffectsAuthority && host.state
         ? createTimeEffects(host.state).getEffectiveScale() : null;

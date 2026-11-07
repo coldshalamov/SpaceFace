@@ -132,7 +132,7 @@ import {
 } from './tabletopPolicy.js';
 import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { PROJECTILE_DRAW_PAD_WU } from '../combat/projectileFlight.js';
-import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
+import { applyFlashAccessibility, resolveVfxAccessibilityProfile, clampFlashToScreenCap } from './vfxAccessibility.js';
 import { EVENT_LIGHT_DECAY, EVENT_LIGHT_GAIN, presetFor, scalePreset } from './vfxColorLightDirector.js';
 import { AMBIENT_FIXTURE_KEYS, makeAmbientFixtureReads, selectAmbientFixtures } from './ambientFixtures.js';
 import { nocturneForScene, eventPriorityClass } from './nocturne/bridge.js';
@@ -155,6 +155,43 @@ import {
   broodBurstPlan,
   BROOD_BURST_PRIORITY,
 } from './vfx/broodBurstRead.js';
+import {
+  isMineStrikeMoment,
+  isMineTurnMoment,
+  mineStrikeHue,
+  mineStrikeColorCss,
+  mineStrikePlan,
+  mineTurnPlan,
+  MINE_STRIKE_PRIORITY,
+} from './vfx/mineStrikeRead.js';
+// The strike scrape's fixed scatter fan (radians off the contact bearing).
+const MINE_STRIKE_SCATTER_FAN = Object.freeze([-0.45, 0.1, 0.6]);
+import {
+  isWreckResolveMoment,
+  wreckResolvePlan,
+  WRECK_PING_WINDOW_S,
+  WRECK_RESOLVE_PRIORITY,
+} from './vfx/wreckResolveRead.js';
+import {
+  isCrushMoment,
+  crushHue,
+  crushColorCss,
+  crushPlan,
+  CRUSH_PRIORITY,
+} from './vfx/crushRead.js';
+import {
+  isGhostRevealMoment,
+  isGhostEscapeMoment,
+  ghostResolvePlan,
+  ghostEscapePlan,
+  ghostColorCss,
+  ghostHues,
+  GHOST_RESOLVE_PRIORITY,
+} from './vfx/ghostResolveRead.js';
+// The crush spark fan (radians off the closing bearing) — fixed, no per-event randomness.
+const CRUSH_SPARK_FAN = Object.freeze([-0.7, -0.25, 0.2, 0.65]);
+// The ghost melt's fixed dissolve drift directions (radians) — no per-event randomness.
+const GHOST_MELT_FAN = Object.freeze([0.4, 1.9, 3.4, 4.9]);
 import { isHiveSacBody, HIVE_SAC_VOICE } from './vfx/hiveSacRead.js';
 import { collisionThrowRead, impactAxisAngle, impactRead } from './combat/impactRead.js';
 import {
@@ -2949,6 +2986,9 @@ export const vfx = {
     // so a cyst's spore burst or a volatile pop went off invisibly. broodBurstRead owns
     // the plan; the sprites ride the normal admission and flash accessibility.
     add('swarm:broodBurst', (p) => this._onBroodBurst(p));
+    // S6: every brood kill winks out — a ≤0.25 s pop on the instanced spark pool at the kill
+    // receipt's own position, so the horde visibly thins under your fire.
+    add('swarm:broodKills', (p) => this._onBroodKills(p));
     // inf-mayday-flare: a mayday starts here — the pod tearing clear of a killed crew reads
     // on the glass, not just in the speaker.
     add('survivorPod:ejected', (p) => this._onSurvivorPodEjected(p));
@@ -2977,6 +3017,19 @@ export const vfx = {
     add('bombs:detonated', (p) => this._onBombDetonated(p));
     add('bombs:fieldEnded', (p) => this._onBombFieldEnded(p));
     add('bombs:destroyed', (p) => this._onBombDestroyed(p));
+    // inf-fence-strike-read: the fence answers the throw on the glass — a strike's contact
+    // scrape keyed to the throw's speed and custody, and a field-turned mine's claim beat.
+    add('mines:struck', (p) => this._onMineStruck(p));
+    add('mines:turned', (p) => this._onMineTurned(p));
+    // inf-wreck-resolve-read: the first pulse that resolves a derelict lands at the hull —
+    // a landing beat plus the quiet marker lamp that holds for the ping window.
+    add('scan:wreckResolved', (p) => this._onWreckResolved(p));
+    // inf-crush-read: the crush verdict reads at the anvil — the room's signature death.
+    add('combat:crushed', (p) => this._onCrushed(p));
+    // inf-ghost-resolve-read: the deception loop's two ends both read — the contact your
+    // pulses harden snaps into a hull, and the one you failed to hold melts away.
+    add('scanner:ghostRevealed', (p) => this._onGhostResolved(p));
+    add('scanner:ghostEscaped', (p) => this._onGhostEscaped(p));
     // Hull-burst shockwave sweep: each body the sim front overtakes answers with one
     // small surface read — the wave becomes a sequence of responses, nearest first.
     add('combat:shockwavePass', (p) => this._onShockwavePass(p));
@@ -3252,6 +3305,20 @@ export const vfx = {
       size1 = authored.size1;
       op0 = authored.opacity0;
       op1 = authored.opacity1;
+    }
+    if (kind === SPR_FLASH && !this._spawnFlashAccessibilityBypass) {
+      // Global law: a flash never covers more than FLASH_SCREEN_FRACTION_CAP of the screen and
+      // never outlives FLASH_LIFE_CAP_S — the AUDIT full-screen bomb beat cannot return.
+      const zoom = this.state && this.state.camera && this.state.camera.liveZoom;
+      const authored = this._flashAccessibilityScratch
+        || (this._flashAccessibilityScratch = { life: 0, size0: 0, size1: 0, opacity0: 0, opacity1: 0 });
+      authored.life = life;
+      authored.size0 = size0;
+      authored.size1 = size1;
+      clampFlashToScreenCap(authored, zoom);
+      life = authored.life;
+      size0 = authored.size0;
+      size1 = authored.size1;
     }
     const priority = normalizeVfxAdmissionPriority(
       admissionPriority,
@@ -10171,6 +10238,193 @@ export const vfx = {
       BROOD_BURST_PRIORITY);
     this._eventLight({ x: pos.x, z: pos.z }, 'explosion',
       { severity: plan.light.severity, color: plan.vent.color, distance: plan.light.distance });
+  },
+
+  // S6: the plain brood death — a wink, not an explosion. One flash + one cooling puff per
+  // receipt at the kill centroid, ≤0.25 s, in the family's own acid tones. The bomb family's
+  // authored blast keeps _onBroodBurst; this is the dart going out under your fire.
+  _onBroodKills(p) {
+    if (!p?.pos || !this._scene) return;
+    const pos = p.pos;
+    const pops = Math.min(3, Math.max(1, Math.trunc(p.count || 0) || Math.trunc(p.removedCount || 0) || 1));
+    for (let i = 0; i < pops; i++) {
+      this._spawnSprite(SPR_FLASH, pos.x, 0.4, pos.z, 0.2, 0.5, 2.1, 0.75, 0.0, '#c8ff70',
+        0, 0, 1, null, BROOD_BURST_PRIORITY);
+      this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, 0.24, 0.6, 1.7, 0.42, 0.0, '#3f6b28',
+        (Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 2.5, 1, null, BROOD_BURST_PRIORITY);
+    }
+  },
+
+  // inf-fence-strike-read: a strike is the CONTACT — the reason a thrown mass tripped the
+  // fence — so the beat plays between the mine and the body that hit it, stretched along the
+  // throw, in the custody's own hue, keyed to the strike speed. The star outlives the scrape
+  // 3:1; the ordinary snap/blast receipts the same tick already carry the explosion side.
+  // The body may be dead by the time the bus delivers (it took the blast), so its live
+  // position is a courtesy read, not a gate — the receipt's mine position is the truth.
+  _onMineStruck(p) {
+    if (!isMineStrikeMoment(p) || !this._scene) return;
+    const pos = p.pos;
+    const body = p.bodyId != null ? this._ent(p.bodyId) : null;
+    const contact = (body && body.pos && Number.isFinite(body.pos.x) && Number.isFinite(body.pos.z))
+      ? {
+        x: pos.x + (body.pos.x - pos.x) * 0.5,
+        z: pos.z + (body.pos.z - pos.z) * 0.5,
+      }
+      : pos;
+    const along = (body && body.pos && Number.isFinite(body.pos.x) && Number.isFinite(body.pos.z))
+      ? Math.atan2(contact.z - pos.z, contact.x - pos.x)
+      : null;
+    const hue = mineStrikeHue(p.custody);
+    const plan = mineStrikePlan(p.speed, hue, along);
+    const vent = mineStrikeColorCss(hue);
+    this._spawnSprite(SPR_FLASH, contact.x, 0.4, contact.z, plan.contact.life, plan.contact.size0,
+      plan.contact.size1, plan.contact.op0, 0.0, plan.contact.color, 0, 0, 1,
+      plan.contact.along, MINE_STRIKE_PRIORITY);
+    if (plan.scrape) {
+      // Sparks scatter downrange of the throw on a fixed fan (no per-event randomness —
+      // the same strike replays the same scrape).
+      for (let i = 0; i < MINE_STRIKE_SCATTER_FAN.length; i++) {
+        const bearing = along + MINE_STRIKE_SCATTER_FAN[i];
+        this._spawnSprite(SPR_PUFF, contact.x, 0.3, contact.z, plan.scrape.life, plan.scrape.size0,
+          plan.scrape.size1, plan.scrape.op0, 0.0, vent,
+          Math.cos(bearing) * plan.scrape.drift,
+          Math.sin(bearing) * plan.scrape.drift,
+          1, null, MINE_STRIKE_PRIORITY);
+      }
+    }
+    this._spawnSprite(SPR_FLASH, contact.x, 0.5, contact.z, plan.star.life, plan.star.size0,
+      plan.star.size1, plan.star.op0, 0.0, plan.star.color, 0, 0, 1, null, MINE_STRIKE_PRIORITY);
+    this._eventLight({ x: contact.x, z: contact.z }, 'impact',
+      { color: vent, peak: plan.light.peak, distance: plan.light.distance });
+  },
+
+  // inf-fence-strike-read: the field-turned mine claims the pilot's side — one quiet claim
+  // beat in the armed/claim cyan on the mine itself. Nothing exploded yet; this is the
+  // allegiance flip the band line names, on the glass.
+  _onMineTurned(p) {
+    if (!isMineTurnMoment(p) || !this._scene) return;
+    const pos = p.pos;
+    const plan = mineTurnPlan();
+    this._spawnSprite(SPR_FLASH, pos.x, 0.5, pos.z, plan.claim.life, plan.claim.size0,
+      plan.claim.size1, plan.claim.op0, 0.0, plan.claim.color, 0, 0, 1, null, MINE_STRIKE_PRIORITY);
+    this._eventLight({ x: pos.x, z: pos.z }, 'impact',
+      { color: plan.claim.color, peak: plan.light.peak, distance: plan.light.distance });
+  },
+
+  // inf-wreck-resolve-read: the first pulse that resolves a derelict lands at the hull.
+  // The landing beat is the pulse arriving (ring out from the contact, white-hot core); the
+  // marker lamp is the ANSWER — the resolved wreck stays quietly lit for the scanner's ping
+  // window, so the hull you identified stays findable in a field of anonymous hulks. The
+  // lamp is the utility: reduced motion keeps it steady and only halves the landing beat.
+  _onWreckResolved(p) {
+    if (!isWreckResolveMoment(p) || !this._scene) return;
+    const pos = p.pos;
+    const reduced = this._isReduced();
+    const plan = wreckResolvePlan(WRECK_PING_WINDOW_S, reduced);
+    this._spawnSprite(SPR_RING, pos.x, 0.4, pos.z, plan.landing.ring.life, plan.landing.ring.size0,
+      plan.landing.ring.size1, plan.landing.ring.op0, 0.0, plan.landing.ring.color,
+      0, 0, 1, null, WRECK_RESOLVE_PRIORITY);
+    this._spawnSprite(SPR_FLASH, pos.x, 0.5, pos.z, plan.landing.core.life, plan.landing.core.size0,
+      plan.landing.core.size1, plan.landing.core.op0, 0.0, plan.landing.core.color,
+      0, 0, 1, null, WRECK_RESOLVE_PRIORITY);
+    // The marker lamp outlives the beat many times over — one quiet soft body per resolved
+    // wreck. It rides the puff family, never a flash: the S8 law caps every flash at 0.2 s,
+    // and a lamp is not a flash. All sprites retire on sector change, so the lamp can never
+    // haunt the next sector.
+    this._spawnSprite(SPR_PUFF, pos.x, 0.6, pos.z, plan.marker.life, plan.marker.size0,
+      plan.marker.size1, plan.marker.op0, 0.0, plan.marker.color,
+      0, 0, 1, null, WRECK_RESOLVE_PRIORITY);
+    this._eventLight({ x: pos.x, z: pos.z }, plan.light.kind,
+      { color: plan.marker.color, peak: plan.light.peak, distance: plan.light.distance });
+  },
+
+  // inf-crush-read: the crumple law's verdict plays at the anvil. The victim's own hit flash
+  // is the ordinary combat:damage beat; THIS is the crush — a flat steel pop along the closing
+  // bearing, sparks scattering off the contact, and (only when the receipt's target already
+  // died of it) the kill star, because a crush that empties a hull is the room's signature
+  // death. routeDamage precedes the emit, so a dead target IS the crush kill. The victim's
+  // entity survives as a record even when dead — its position is the receipt's truth.
+  _onCrushed(p) {
+    if (!isCrushMoment(p) || !this._scene) return;
+    const victim = p.entityId != null ? this._ent(p.entityId) : null;
+    const pos = victim && victim.pos && Number.isFinite(victim.pos.x) && Number.isFinite(victim.pos.z)
+      ? victim.pos
+      : null;
+    if (!pos) return;
+    const killed = victim.alive === false;
+    const vx = Number.isFinite(victim.vel?.x) ? victim.vel.x : 0;
+    const vz = Number.isFinite(victim.vel?.z) ? victim.vel.z : 0;
+    const moving = Math.hypot(vx, vz) > 1;
+    const along = moving ? Math.atan2(vz, vx) : null;
+    const reduced = this._isReduced();
+    const plan = crushPlan(p.speed, p.damage, killed, along, reduced);
+    const steel = crushColorCss(crushHue());
+    // A bearing flattens the pop along the closing axis; without one it stays round rather
+    // than lying about a direction it does not know.
+    this._spawnSprite(SPR_FLASH, pos.x, 0.4, pos.z, plan.pop.life, plan.pop.size0,
+      plan.pop.size1, plan.pop.op0, 0.0, plan.pop.color, 0, 0,
+      along == null ? 1 : 2.2, plan.pop.along, CRUSH_PRIORITY);
+    if (plan.sparks) {
+      for (let i = 0; i < CRUSH_SPARK_FAN.length; i++) {
+        const bearing = along + CRUSH_SPARK_FAN[i];
+        this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, plan.sparks.life, plan.sparks.size0,
+          plan.sparks.size1, plan.sparks.op0, 0.0, steel,
+          Math.cos(bearing) * plan.sparks.drift,
+          Math.sin(bearing) * plan.sparks.drift,
+          1, null, CRUSH_PRIORITY);
+      }
+    }
+    if (plan.kill) {
+      this._spawnSprite(SPR_FLASH, pos.x, 0.5, pos.z, plan.kill.life, plan.kill.size0,
+        plan.kill.size1, plan.kill.op0, 0.0, plan.kill.color, 0, 0, 1, null, CRUSH_PRIORITY);
+    }
+    this._eventLight({ x: pos.x, z: pos.z }, plan.light.kind,
+      { color: steel, peak: plan.light.peak, distance: plan.light.distance });
+  },
+
+  // inf-ghost-resolve-read: the pulse that hardens a ghost contact into a real ship plays at
+  // the hull — a white-hot snap, a holo wisp settling, a cue light. The payloads carry only
+  // ids, so the contact's own record owns the position; without one the read honestly skips.
+  _onGhostResolved(p) {
+    if (!isGhostRevealMoment(p) || !this._scene) return;
+    const contact = p.entityId != null ? this._ent(p.entityId) : null;
+    const pos = contact && contact.pos && Number.isFinite(contact.pos.x) && Number.isFinite(contact.pos.z)
+      ? contact.pos
+      : null;
+    if (!pos) return;
+    const plan = ghostResolvePlan(this._isReduced());
+    const holo = ghostColorCss(ghostHues().holo);
+    this._spawnSprite(SPR_FLASH, pos.x, 0.5, pos.z, plan.snap.life, plan.snap.size0,
+      plan.snap.size1, plan.snap.op0, 0.0, plan.snap.color, 0, 0, 1, null, GHOST_RESOLVE_PRIORITY);
+    this._spawnSprite(SPR_PUFF, pos.x, 0.4, pos.z, plan.settle.life, plan.settle.size0,
+      plan.settle.size1, plan.settle.op0, 0.0, holo, plan.settle.drift, -plan.settle.drift,
+      1, null, GHOST_RESOLVE_PRIORITY);
+    this._eventLight({ x: pos.x, z: pos.z }, plan.light.kind,
+      { color: holo, peak: plan.light.peak, distance: plan.light.distance });
+  },
+
+  // inf-ghost-resolve-read: the contact that held escape range dissolves at its last known
+  // position — the melt, dimmer than the snap in every channel. An escaped ghost is already
+  // dead; only its record's last position is the truth, and a recycled record gets no lie.
+  _onGhostEscaped(p) {
+    if (!isGhostEscapeMoment(p) || !this._scene) return;
+    const contact = p.entityId != null ? this._ent(p.entityId) : null;
+    const pos = contact && contact.pos && Number.isFinite(contact.pos.x) && Number.isFinite(contact.pos.z)
+      ? contact.pos
+      : null;
+    if (!pos) return;
+    const plan = ghostEscapePlan(this._isReduced());
+    const melt = ghostColorCss(ghostHues().melt);
+    for (let i = 0; i < GHOST_MELT_FAN.length; i++) {
+      const bearing = GHOST_MELT_FAN[i];
+      this._spawnSprite(SPR_PUFF, pos.x, 0.4, pos.z, plan.dissolve.life, plan.dissolve.size0,
+        plan.dissolve.size1, plan.dissolve.op0, 0.0, melt,
+        Math.cos(bearing) * plan.dissolve.drift,
+        Math.sin(bearing) * plan.dissolve.drift,
+        1, null, GHOST_RESOLVE_PRIORITY);
+    }
+    this._eventLight({ x: pos.x, z: pos.z }, plan.light.kind,
+      { color: melt, peak: plan.light.peak, distance: plan.light.distance });
   },
 
   _onEnvironmentDetonated(p) {

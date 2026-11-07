@@ -120,20 +120,20 @@ test('the rotation walks the champions — the brood champions land at waves 70 
   const order = ['iron_maw', 'mirrorjaw_foreman', 'forge_regent', 'corsair_wing', 'the_anvil',
     'quiet_choir', 'brood_queen', 'brood_tendril', 'nest_carrier', 'casket_worm',
     'furnace_maw', 'yardmaster', 'adjudicator_44c', 'hive_hulk'];
-  for (const [i, wave] of [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140].entries()) {
+  for (const [i, wave] of [5, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105, 115, 125, 135].entries()) {
     const boss = swarmBossFor(wave);
     assert.equal(boss && boss.id, order[i], `wave ${wave}`);
   }
-  assert.equal(swarmBossFor(150).id, 'iron_maw', 'the rotation wraps after the fourteenth');
-  const w70 = planFor(70).swarm;
+  assert.equal(swarmBossFor(145).id, 'iron_maw', 'the rotation wraps after the fourteenth');
+  const w70 = planFor(65).swarm;
   assert.equal(w70.bossScoreId, 'capital_boss_brood_queen');
   assert.equal(w70.bossEnemyId, 'brood_queen');
   assert.equal(w70.bossRoom, 'brood_nest');
-  const w80 = planFor(80).swarm;
+  const w80 = planFor(75).swarm;
   assert.equal(w80.bossScoreId, 'capital_boss_tendril');
   assert.equal(w80.bossEnemyId, 'brood_tendril');
   assert.equal(w80.bossRoom, 'coil_field');
-  for (const wave of [70, 80]) {
+  for (const wave of [65, 75]) {
     const champions = planFor(wave).packages.filter((p) => p.champion === true);
     assert.equal(champions.length, 1, `wave ${wave} fields one capital hull`);
     assert.equal(champions[0].count, 1);
@@ -145,39 +145,39 @@ test('the rotation walks the champions — the brood champions land at waves 70 
 test('the prewarm seam sees single-enemy boss rows — the eligible-ids fix', () => {
   // Reading boss.packages directly made every capital champion invisible to the launch/dwell
   // prewarm. bossPackagesFor is the seam; the ids the wave actually fields must appear.
-  assert.ok(swarmEligibleEnemyIds(20).has('mirrorjaw_foreman'), 'the Foreman prewarms');
-  assert.ok(swarmEligibleEnemyIds(70).has('brood_queen'), 'the Queen prewarms');
-  assert.ok(swarmEligibleEnemyIds(80).has('brood_tendril'), 'the Tendril prewarms');
+  assert.ok(swarmEligibleEnemyIds(15).has('mirrorjaw_foreman'), 'the Foreman prewarms');
+  assert.ok(swarmEligibleEnemyIds(65).has('brood_queen'), 'the Queen prewarms');
+  assert.ok(swarmEligibleEnemyIds(75).has('brood_tendril'), 'the Tendril prewarms');
 });
 
 test('the queen wave fields the flood — every body a mite, at the full population curve', () => {
   // The flood is the fight: her wave ignores the boss-fraction discount (that law exists so a
   // champion stays legible — the Queen IS her own flood, so the full curve stays on).
-  const plan = swarmBroodPlan(70, () => 0.5);
+  const plan = swarmBroodPlan(65, () => 0.5);
   assert.equal(plan.length, 1, 'one family, nothing else');
   assert.equal(plan[0].id, 'mite');
-  assert.equal(plan[0].count, swarmBroodPopulation(70));
+  assert.equal(plan[0].count, swarmBroodPopulation(65));
   // The population law pins the band: boss waves discount to the fraction's floor, hers does not.
-  assert.equal(swarmBroodPopulation(70), 400, 'the curve maxed out long before wave 70 — hers keeps it');
-  const w50 = swarmBroodPopulation(50);
+  assert.equal(swarmBroodPopulation(65), 400, 'the curve maxed out long before wave 70 — hers keeps it');
+  const w50 = swarmBroodPopulation(45);
   assert.ok(w50 >= SWARM_BROOD_MIN && w50 < swarmBroodPopulation(70),
     'an ordinary boss wave still discounts toward the floor');
-  assert.equal(swarmBroodBossFor(70), 'brood_queen');
-  assert.equal(swarmBroodBossFor(80), 'brood_tendril');
-  assert.equal(swarmBroodBossFor(50), null, 'other champions carry no brood rule');
-  assert.equal(swarmBroodBossFor(71), null, 'ordinary waves carry no brood boss');
+  assert.equal(swarmBroodBossFor(65), 'brood_queen');
+  assert.equal(swarmBroodBossFor(75), 'brood_tendril');
+  assert.equal(swarmBroodBossFor(45), null, 'other champions carry no brood rule');
+  assert.equal(swarmBroodBossFor(66), null, 'ordinary waves carry no brood boss');
 });
 
 test('the queen lands as a real capital boss and her score runs the fight', () => {
-  const h = boot(70);
-  startWave(h, 70);
+  const h = boot(65);
+  startWave(h, 65);
   const boss = capitalBody(h);
   assert.ok(boss, 'the Queen hull is a real cohort body');
   assert.equal(boss.data.lootTableId, 'brood_queen');
-  assert.equal(boss.data.runWave, 70);
+  assert.equal(boss.data.runWave, 65);
   assert.equal(boss.data.bountyHunt, undefined, 'capital champions never enter the hunter path');
 
-  const fight = fightStore(h).fights['swarm:w70'];
+  const fight = fightStore(h).fights['swarm:w65'];
   assert.ok(fight, 'capitalBoss:start opened a fight record');
   assert.equal(fight.encounterId, 'capital_boss_brood_queen');
   assert.equal(fight.bossId, boss.id);
@@ -196,8 +196,8 @@ test('the queen lands as a real capital boss and her score runs the fight', () =
 });
 
 test('the queen\'s call lands real damage and act II requests her brood_screen wing', () => {
-  const h = boot(70);
-  startWave(h, 70);
+  const h = boot(65);
+  startWave(h, 65);
   const boss = capitalBody(h);
   assert.ok(boss, 'the Queen hull is a real cohort body');
   const player = h.state.entities.get(h.state.playerId);
@@ -237,12 +237,12 @@ test('the queen\'s call lands real damage and act II requests her brood_screen w
 });
 
 test('the tendril lands as a real capital boss on wave 80', () => {
-  const h = boot(80);
-  startWave(h, 80);
+  const h = boot(75);
+  startWave(h, 75);
   const boss = capitalBody(h);
   assert.ok(boss, 'the Tendril head hull landed');
   assert.equal(boss.data.lootTableId, 'brood_tendril');
-  const fight = fightStore(h).fights['swarm:w80'];
+  const fight = fightStore(h).fights['swarm:w75'];
   assert.ok(fight);
   assert.equal(fight.encounterId, 'capital_boss_tendril');
   tick(h, 200);
@@ -305,7 +305,7 @@ function addTendrilHead(h, x = 120, z = 0, vx = -30, vz = 0) {
 }
 
 test('the tendril wave arms the body — the chain trails the head and never touches the ship budget', () => {
-  const h = broodBoot(80);
+  const h = broodBoot(75);
   assert.equal(h.engine.view.tendril, true, 'the wave armed tendril mode');
   assert.equal(h.engine.view.segAliveCount, 0, 'no chain before the head lands');
 
@@ -335,7 +335,7 @@ test('the tendril wave arms the body — the chain trails the head and never tou
 });
 
 test('the sling counter: a rock severs the weave, a mid-link kill splits the body', () => {
-  const h = broodBoot(80);
+  const h = broodBoot(75);
   addTendrilHead(h);
   tendrilStep(h, 1);
   const { x, z, alive, lead } = h.engine._segs;
@@ -374,7 +374,7 @@ test('the sling counter: a rock severs the weave, a mid-link kill splits the bod
 });
 
 test('the head dying collapses the whole body — the knot comes apart', () => {
-  const h = broodBoot(80);
+  const h = broodBoot(75);
   const head = addTendrilHead(h);
   tendrilStep(h, 1);
   assert.equal(h.engine.view.segAliveCount, TENDRIL_SEG_PER_WORM);

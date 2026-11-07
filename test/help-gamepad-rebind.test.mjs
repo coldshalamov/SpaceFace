@@ -44,7 +44,7 @@ test('a stock (or missing) pad map keeps the authored dual-naming table byte for
   assert.deepEqual(stock[29], ['Rig (clearing cone / skim scoop)', null, 'LB / L1 + D-Pad Right']);
   assert.deepEqual(stock[32], ['Jettison cargo lot', null, 'RB / R1 + Guide']);
   const taught = [
-    ['fire', 'Fire'], ['mine', 'Mine beam'], ['boost', 'Boost'], ['brake', 'Brake / reverse'],
+    ['fire', 'Fire'], ['mine', 'Mine beam'], ['boost', 'Boost'], ['brake', 'Brake / full stop'],
     ['shove', 'Shove (repulsor; sets off armed ordnance)'], ['accept', 'Accept / confirm'], ['massline', 'Massline'],
     ['countermeasure', 'Countermeasure'], ['bomb', 'Bomb (selected ordnance)'], ['cycleBomb', 'Cycle ordnance'],
     ['cycleTarget', 'Cycle target'], ['map', 'Open star-map'], ['codex', 'Open codex'],

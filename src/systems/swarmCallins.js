@@ -33,6 +33,16 @@ export const SMART_BOMB_MAX_DV_WU_S = 95;
 export const SMART_BOMB_DAMAGE = 46;
 /** The lance: the paint must be visible for at least this long before the column lands. */
 export const LANCE_TELEGRAPH_S = 0.8;
+
+/** The one word the room hears when a charge goes off — Zombies' `LANCE!` beat. */
+export const SWARM_CALLIN_CALLOUT = Object.freeze({
+  smart_bomb: 'BOMB!',
+  orbital_lance: 'LANCE!',
+  turret_drop: 'TURRET!',
+  drone_wing: 'WING!',
+  shield_dome: 'DOME!',
+  decoy: 'DECOY!',
+});
 export const LANCE_RADIUS_WU = 34;
 export const LANCE_MAX_DV_WU_S = 60;
 export const LANCE_DAMAGE = 70;
@@ -105,7 +115,9 @@ export function createSwarmCallinsDirector(ctx) {
       this._lances = [];
       this._allies = [];
       this._domes = [];
+      this._queuedCallins = [];
       this._prevBomb = false;
+      this._prevCallin = false;
     },
 
     destroy() {
@@ -141,6 +153,22 @@ export function createSwarmCallinsDirector(ctx) {
       this._expireDomes(st);
       this._expireAllies(st);
       this._readBombPress(st, run);
+      this._readCallinPress(st, run);
+    },
+
+    /** S5: a bought called charge waits on the player — Q deploys the next one on the pile. */
+    queueCallin(callinId) {
+      if (callinId) this._queuedCallins.push(callinId);
+      return true;
+    },
+
+    _readCallinPress(st, run) {
+      const actions = st.input && st.input.actions;
+      const pressed = !!(actions && actions.callIn === true);
+      const edge = pressed && !this._prevCallin;
+      this._prevCallin = pressed;
+      if (!edge || !this._queuedCallins.length) return;
+      this.callIn(st, run, this._queuedCallins.shift());
     },
 
     // ---- the stocked charges (SW-01 smart bomb, SW-03 orbital lance) ------------------------
@@ -168,6 +196,7 @@ export function createSwarmCallinsDirector(ctx) {
         if (after >= before) return;
         this._lances.push({ atS: (st.simTime || 0) + LANCE_TELEGRAPH_S, x: target.x, z: target.z });
         this._emit(st, 'swarm:callinTelegraph', { callinId: 'orbital_lance', x: target.x, z: target.z, atS: (st.simTime || 0) + LANCE_TELEGRAPH_S });
+        this._emit(st, 'swarm:announce', { kind: 'callin', text: SWARM_CALLIN_CALLOUT.orbital_lance });
       }
     },
 
@@ -199,6 +228,7 @@ export function createSwarmCallinsDirector(ctx) {
       // The break: hostile hulls in the radius take one real packet through the combat seam.
       this._damageHostiles(st, pos, SMART_BOMB_RADIUS_WU, SMART_BOMB_DAMAGE, 'swarm_smart_bomb');
       this._emit(st, 'swarm:smartBomb', { x: pos.x, z: pos.z, radiusWu: SMART_BOMB_RADIUS_WU });
+      this._emit(st, 'swarm:announce', { kind: 'callin', text: SWARM_CALLIN_CALLOUT.smart_bomb });
     },
 
     _damageHostiles(st, pos, radiusWu, damage, weaponId) {
@@ -248,11 +278,15 @@ export function createSwarmCallinsDirector(ctx) {
     callIn(st, run, callinId) {
       const pos = shipPos(st);
       if (!pos) return false;
-      if (callinId === 'turret_drop') return this._callTurret(st, pos);
-      if (callinId === 'drone_wing') return this._callWing(st, pos);
-      if (callinId === 'shield_dome') return this._callDome(st, pos);
-      if (callinId === 'decoy') return this._callDecoy(st, pos);
-      return false;
+      let ok = false;
+      if (callinId === 'turret_drop') ok = this._callTurret(st, pos);
+      else if (callinId === 'drone_wing') ok = this._callWing(st, pos);
+      else if (callinId === 'shield_dome') ok = this._callDome(st, pos);
+      else if (callinId === 'decoy') ok = this._callDecoy(st, pos);
+      if (ok && SWARM_CALLIN_CALLOUT[callinId]) {
+        this._emit(st, 'swarm:announce', { kind: 'callin', text: SWARM_CALLIN_CALLOUT[callinId] });
+      }
+      return ok;
     },
 
     /** One allied combat body, spawned through the arena seam and tracked for the teardown. */

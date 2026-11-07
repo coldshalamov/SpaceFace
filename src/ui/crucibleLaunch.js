@@ -63,7 +63,7 @@ let lastSetup = null;
 /** Build (and validate) a Crucible setup from a starter package id and a seed. */
 export function crucibleSetupFor({
   starterId, seed, arenaId = CRUCIBLE_ARENA_ID, ruleset = CRUCIBLE_DEFAULT_RULESET, swarmStake = null,
-  startWave = 1, swarmThreats = null,
+  startWave = 1, swarmThreats = null, openArmoryBeforeRound1,
 } = {}) {
   const starter = COMBAT_LAB_STARTER_PACKAGES.find((entry) => entry.id === starterId)
     || COMBAT_LAB_STARTER_PACKAGES.find(entry => entry.id === CRUCIBLE_DEFAULT_STARTER_ID);
@@ -94,6 +94,10 @@ export function crucibleSetupFor({
     const threats = normalizeThreatIds(swarmThreats);
     if (result.ruleset === SWARM_RULESET && threats.length) {
       result.value.swarmThreats = threats;
+    }
+    // S4 quick-start: the armory opt-out rides beside the setup like the stake — swarm only.
+    if (result.ruleset === SWARM_RULESET && openArmoryBeforeRound1 === false) {
+      result.value.openArmoryBeforeRound1 = false;
     }
   }
   return result;
@@ -184,6 +188,7 @@ export function crucibleLaunchConfig(setup, ruleset = CRUCIBLE_DEFAULT_RULESET, 
     swarmThreats: Array.isArray(extras.swarmThreats) ? extras.swarmThreats : undefined,
     swarmPerks: Array.isArray(extras.swarmPerks) ? extras.swarmPerks : undefined,
     openingLesson: extras.openingLesson === true,
+    openArmoryBeforeRound1: extras.openArmoryBeforeRound1 === false ? false : undefined,
   });
 }
 
@@ -236,6 +241,7 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
   delete launchSetup.swarmStake;
   delete launchSetup.swarmThreats;
   delete launchSetup.swarmPerks;
+  delete launchSetup.openArmoryBeforeRound1;
   // The stake travels beside the setup like the ruleset — never inside the closed schema.
   const swarmStake = typeof setup.swarmStake === 'string' ? normalizeSwarmStake(setup.swarmStake) : null;
   // SWARM-06: same seam for the Threat wager and an explicit perk pick. The door's perks live
@@ -243,6 +249,11 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
   // them — normalized against the catalog here and earned-checked again at begin.
   const swarmThreats = normalizeThreatIds(setup.swarmThreats);
   const swarmPerks = Array.isArray(setup.swarmPerks) ? setup.swarmPerks.slice() : null;
+  // S4 quick-start: the armory opt-out rides beside the setup like the stake — swarm only,
+  // never inside the closed schema. Absent means the armory opens as authored.
+  const openArmoryBeforeRound1 = resolved === SWARM_RULESET && setup.openArmoryBeforeRound1 === false
+    ? false
+    : undefined;
   if (weeklyMutatorId === 'weapons_cold') {
     launchSetup.loadout = applyWeaponsColdLoadout(launchSetup.loadout);
   }
@@ -262,6 +273,9 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
   // silently fly an easier room under the same result.
   if (swarmThreats.length) lastSetup.swarmThreats = swarmThreats.slice();
   if (swarmPerks && swarmPerks.length) lastSetup.swarmPerks = swarmPerks.slice();
+  // A retry replays the launch the player took — a quick-started run retries into flight,
+  // not into the armory it skipped.
+  if (openArmoryBeforeRound1 === false) lastSetup.openArmoryBeforeRound1 = false;
   // Training is an explicit choice on the Crucible door. A new profile must meet the ordinary
   // opening horde immediately; history is not consent to replace that encounter with a lesson.
   requestSandboxGame(bus, crucibleLaunchConfig(launchSetup, resolved, {
@@ -269,6 +283,7 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
     swarmStake,
     swarmThreats: swarmThreats.length ? swarmThreats : undefined,
     swarmPerks: swarmPerks && swarmPerks.length ? swarmPerks : undefined,
+    openArmoryBeforeRound1,
   }));
   return true;
 }

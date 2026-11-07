@@ -537,7 +537,7 @@ Current save version: `23`
 | `$.settings.controls.mouse.sensitivity` | number | 1 |
 | `$.settings.gameplay` | object | {} |
 | `$.settings.gameplay.aiBackend` | string | sg06-tactical |
-| `$.settings.gameplay.autosaveIntervalS` | number | 120 |
+| `$.settings.gameplay.autosaveIntervalS` | number | 300 |
 | `$.settings.gameplay.controlScheme` | string | pilot |
 | `$.settings.gameplay.controlSchemeV2` | boolean | true |
 | `$.settings.gameplay.difficulty` | string | standard |
