@@ -99,11 +99,25 @@ ${W} .sx-sw__nameEdit:is(:focus, :focus-visible)::placeholder { color:var(--dp-h
 ${W} .sx-sw__blurb { font-family:var(--dp-face-body, "Instrument Sans"), sans-serif !important; font-size:14px !important; line-height:1.5 !important;
   color:rgb(${BONE} / .82) !important; max-width:52ch; text-shadow:0 1px 8px rgb(${POOL} / .55) !important; }
 
-/* ---- the six readings: a ledger line at the stage's foot, no plate ----------------------------- */
-${W} .sx-sw__gauges { ${PLAIN} isolation:isolate; gap:0 26px !important; justify-content:center !important; flex-wrap:nowrap !important;
-  white-space:nowrap; padding:6px 28px !important; }
-${W} .sx-sw__gauges::before { content:""; position:absolute; z-index:-1; inset:-4px 0 -8px; pointer-events:none;
-  background:linear-gradient(180deg, rgb(${POOL} / 0), rgb(${POOL} / .62) 30% 72%, rgb(${POOL} / 0)); }
+/* ---- the six readings: a ledger line at the stage's foot --------------------------------------- */
+/* ui-polish-409: gauges ledger wears the same hairline card as .sx-sw__stats / .sx-sw__side /
+   .sx-sw__nameplate (1px bone ~18% / radius 10 / padded). It sits over the bright hull stage foot,
+   so the card keeps a settled pool fill under the faint bone wash instead of the unbound shade-pool,
+   whose feathered edges let forge glow run through the six readings. Densify radius 8→6 on
+   short/narrow, matching the sibling cards. width:fit-content hugs the ledger and stays centered. */
+${W} .sx-sw__gauges { position:relative; isolation:isolate; box-sizing:border-box;
+  gap:0 26px !important; justify-content:center !important; flex-wrap:nowrap !important;
+  white-space:nowrap; width:fit-content; max-width:100%; margin-inline:auto;
+  border-image:none !important; box-shadow:none !important; clip-path:none !important;
+  border:1px solid rgb(${BONE} / .18) !important; border-radius:10px;
+  background:linear-gradient(rgb(${BONE} / .025), rgb(${BONE} / .025)), rgb(${POOL} / .9) !important;
+  padding:10px 28px !important; }
+${W} .sx-sw__gauges::before { content:none; display:none; }
+@media (max-height:820px) { ${W} .sx-sw__gauges { border-radius:8px; } }
+@media (max-height:400px) { ${W} .sx-sw__gauges { border-radius:6px; } }
+@media (max-width:760px) { ${W} .sx-sw__gauges { border-radius:8px; } }
+@media (max-height:519px) { ${W} .sx-sw__gauges { padding:8px 20px !important; } }
+@media (max-width:560px) { ${W} .sx-sw__gauges { padding:8px 16px !important; } }
 ${W} .sx-sw-gauge { ${PLAIN} padding:0 !important; min-height:0 !important; gap:8px !important; }
 ${W} .sx-sw-gauge .k-row__name { ${LABEL} font-size:12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .86) !important; }
 ${W} .sx-sw-gauge .k-row__num { ${NUM} font-size:13px !important; color:${INK} !important; }
