@@ -1214,7 +1214,12 @@ export function isStartupPackagedContactEntity(entity, state) {
   if (!entity || entity.alive === false || !state) return false;
   if (entity.type !== 'wreck' && entity.type !== 'drone'
       && !startupPayloadOwnsVeilPin(entity, state)) return false;
-  return startupAuthoredContactOnRunway(entity, state);
+  // Composition radius, not the longer authored-decode prefetch radius: a contact that is only
+  // inside the prefetch window is still an ordinary inbound decode, and keeping every R3_UNLOADED
+  // wreck at 1 km alive defeated the residency poll (presentation-residency regression).
+  const distanceSq = playerPlanarDistanceSq(entity, state);
+  if (!Number.isFinite(distanceSq)) return false;
+  return Math.sqrt(distanceSq) - entityPresenceRadius(entity) <= tableOpeningCompositionWu(state);
 }
 
 /** Opening-shot quality gate: nearby actors settle behind loading, distant world stays on-demand. */
