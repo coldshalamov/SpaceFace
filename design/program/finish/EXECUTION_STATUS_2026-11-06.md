@@ -178,3 +178,48 @@ landed for data alone.
   (Iron Kraken), 776 (Swarm specialists), 748 then 667 (shader warming), 657/724/840 (drafts).
 - **Do not add:** the `.github/workflows/ui-pr-review.yml` + `uiBenchArrival` scaffolding shown in
   the stale display diff; it is not in any real merge delta.
+
+---
+
+## Final verification wave, 2026-11-07
+
+**Green on the committed tree (`4c5cd4b8`):**
+
+- `npm run test:fast` **39/39**; `check-game-playable` **18/18** (boot, launch, pilot, hull, world,
+  controls, save/continue, clean, shader, assets, authored hull).
+- `check:baseline` **17/17 links green** (including v26 sim, sim-v3, sim-compare, smooth-flight,
+  tether mass, massline). Wall was 107 s under fixer load vs the 90 s budget; no link failed and the
+  budget was not raised.
+- Focused: E1/E10 **87/87**, E6 **114/114** (+131 supporting), E2/E3 **148/148**, P1/P2 **30/30**,
+  W1 **72/72** (+live 18/18), X1 **75/75** (+yard 29/29), X3 **54/54**, X4/X5 **48/48**.
+- `check-program-docs`, `check-src-syntax` (3,020 modules), `check-src-reachability`,
+  `check-runtime-asset-contract` (0/0), `check-lod` 18/18, `check-parts-manifest` 9,035/9,035,
+  `check-ui-screen-imports` 55/0.
+- Determinism: v26 envelopes pass for legacy and v3; the only compare allowance is the one act
+  receipt W1 replays on Continue.
+
+**Gate state after the final review round:**
+
+- **A** - final review found one material defect: a steady 2-10 Hz cadence above 350 ms is treated
+  as silence, so the reserve is eaten and the hull snaps at 400-600 ms. Fix in flight. E1/E10/E5
+  Verify still need a browser 1x recapture and a live Electron-shell receipt.
+- **B** - final review agrees the prior liveness/counter/gate defects are fixed, but the submit
+  verdict still hides presented bodies (`pipelinesPending`/`authoredPending`/`geometryPending`),
+  instance proofs are not context-generation-tagged, and the only after-run is the pre-fix FAIL.
+  E6 Verify remains not met. The unified `admit()` / one visible writer is the structural remainder.
+- **C** - economy slice is **off**; the per-tick drain, cadence and save-cursor tests are green but
+  the shipped tape cannot be re-recorded until a clean flag-on v27/profile. YARD and UNKNOWN modes
+  are fixed. Bars remain unmet; E4 is untouched.
+- **D** - P1/P2 pass 30/30 with the tow/anchor/taxonomy fixes; final review pending.
+- **E** - X1 evidence/gates and X5 device gates are fixed; X1 owner approval, X3 onboarding prose,
+  X4 heard-score development and the 10-minute listen remain open.
+- **F** - W1 72/72 and live 18/18; final review pending. The ordinary-route walk and the deeper act
+  shape/side-content design remain open.
+
+**Not started or incomplete:** E4 (data-oriented core), E7 (renderer rebuild), E9 (load in
+seconds), P3 (pilot progression; design ready), P4 (visible fits; contract only), W2-W5 (levels,
+sectors, characters, first hour), X2 (asset production), X4 variants/census, E8 (native verdict),
+Q2/Q4 (route walks/razor beyond the three deletions), and the 35-PR integration queue.
+
+No campaign is being called optimal on a single reviewer. E6 and E1 have explicit structural or
+cadence defects; the rest are waiting for the final three-way agreement.
