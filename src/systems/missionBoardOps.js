@@ -21,7 +21,7 @@ import { isFragileCommodity } from './fragileCargo.js';
 import { sectorFieldOreWeights } from '../data/mining.js';
 import { towClassMassFor } from './shipCapabilities.js';
 import { customsWeirForSector } from '../world/customsWeir.js';
-import { ALL_STATIONS, BRANCH_INTRO_BY_FACTION, BULK_HAUL_FEE, BULK_HAUL_MIN_MASS_U, BULK_HAUL_PAY_MULT, BULK_HAUL_TYPE, CMDTY_BY_ID, CONTRABAND_CMDTYS, LEGAL_TRADE_CMDTYS, MINEABLE_CMDTYS, ONBOARDING_CHOICE_LOOPS, ONBOARDING_CHOICE_SOURCE, POSTED_BOARD_SOURCE, SECTOR_BY_ID, SIZE_TIER, STATION_INFO, TYPE_BY_ID, TYPE_ORDER, campaign47aOutcomeKey, campaign47aRouteKind, cargoFootprint, clamp, completedEndgamePull, isCapitalBossMission, isCompetingStarvedRow, isFingerprintBoardSource, missionOfferMinRep, missions, mulberryLocal, passengerIdentityFor, round, sectorDistanceWu, setPieceUpfrontCost, stampAuthoredTwist, stampCapitalBossTwist, stationInfoFor, withClauseBriefSuffix } from './missions.js';
+import { ALL_STATIONS, BRANCH_INTRO_BY_FACTION, BULK_HAUL_FEE, BULK_HAUL_MIN_MASS_U, BULK_HAUL_PAY_MULT, BULK_HAUL_TYPE, CMDTY_BY_ID, CONTRABAND_CMDTYS, LEGAL_TRADE_CMDTYS, MINEABLE_CMDTYS, ONBOARDING_CHOICE_LOOPS, ONBOARDING_CHOICE_SOURCE, POSTED_BOARD_SOURCE, SECTOR_BY_ID, SIZE_TIER, STATION_INFO, TYPE_BY_ID, TYPE_ORDER, campaign47aOutcomeKey, campaign47aRouteKind, cargoFootprint, clamp, completedEndgamePull, isCapitalBossMission, isCompetingStarvedRow, isFingerprintBoardSource, missionOfferMinRep, mulberryLocal, passengerIdentityFor, round, sectorDistanceWu, setPieceUpfrontCost, stampAuthoredTwist, stampCapitalBossTwist, stationInfoFor, withClauseBriefSuffix } from './missionShared.js';
 import { AUTHORED_SET_PIECES, AUTHORED_SET_PIECE_SOURCE, AUTHORED_SET_PIECE_TYPE, CAPITAL_BOSS, CAPITAL_BOSSES, CAPITAL_BOSS_SOURCE, CAPITAL_BOSS_TYPE, MEGA_HEISTS, MEGA_HEIST_SOURCE, MISSION_TUNING, MISSION_TYPE_PHYSICAL_VERB, ONE_LOAD_CARGO_TYPES, PHYSICAL_MISSION_VARIANTS, RANK_CONTRACT_BY_FACTION, RANK_CONTRACT_SOURCE, SET_PIECE_MISSIONS, STORY_BRANCH_INTRO_TAG, buildAuthoredSetPieceOffer, buildCapitalBossOffer, buildMegaHeistOffer, hasContractsDesk, missionStandingGateForMinRep, offerHistoryMultiplier, offerHistoryTierFor, physicalMissionVariantFor, withBountyHeadMoney } from '../data/missions.js';
 import { LANDMARK_QUEST_SOURCE, validateLandmarkQuestOffer } from '../data/landmarkMissions.js';
 import { SET_PIECE_MISSION_SOURCE, buildSetPieceMissionOffers } from './setPieceMissionOffers.js';
@@ -40,7 +40,7 @@ import { syncColdburnBid } from './coldburnRey.js';
 import { dedupWarn } from '../core/warnDedup.js';
 import { sayHeistCue } from '../missions/heistMissionRuntime.js';
 import { offerMixWeight } from '../data/missions.js';
-import { setPieceCauseOf } from './missions.js';
+import { setPieceCauseOf } from './missionShared.js';
 
 export const missionBoardOps = {
   // =========================================================================================
@@ -1776,6 +1776,10 @@ export const missionBoardOps = {
     offer.id = `mo_${info.id}_${epoch}_${intro.branch}_intro`;
     offer.storyTag = STORY_BRANCH_INTRO_TAG;
     offer.storyBranch = intro.branch;
+    // W1 Journey: the real producer must name its live beat or the board's journey-step
+    // candidate can never badge the three-door choice. The test fixture used to add this by
+    // hand; the producer now stamps it.
+    offer.campaign47aBeat = 4;
     offer.title = intro.title;
     // B4 is mandatory story work, not a bankroll gate. The procedural offer may inherit a
     // distance-scaled collateral (well above one million credits on the Coalition route), which

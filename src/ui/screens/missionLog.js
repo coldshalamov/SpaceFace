@@ -27,7 +27,8 @@ import { COMMODITIES } from '../../data/commodities.js';
 import { confirm } from '../confirm.js';
 import { FACTION_META } from '../../data/factions.js';
 import { STORY_BEATS } from '../../data/missions.js';
-import { journeyActForBeat, journeyActLabel } from '../../data/journeyActs.js';
+import { journeyActForBeat, journeyActLabel, journeyActStoryClosed } from '../../data/journeyActs.js';
+import { localizeText } from '../../localization/sourceText.js';
 import { CONTRACT_47A_B0_BODY } from '../../data/narrative.js';
 import { postEndingReplayChain } from '../../data/postEndingReplayChains.js';
 import {
@@ -1735,14 +1736,30 @@ function offeredEndingAction(state) {
 }
 
 /** W1 Journey: the act is its own line/chip on a story action, never a label prefix. */
-function attachJourneyAct(action, beatIndex) {
+function attachJourneyAct(action, state) {
   if (!action) return action;
-  const act = journeyActForBeat(beatIndex);
+  const story = state && state.story;
+  if (!story || journeyActStoryClosed(story)) return action;
+  const act = journeyActForBeat(story.beatIndex);
   if (!act) return action;
-  const line = journeyActLabel(act);
+  const line = localizeText(journeyActLabel(act));
   action.actLine = line;
   action.meta = action.meta ? `${line} · ${action.meta}` : line;
   return action;
+}
+
+/** The persistent Journal campaign strip: the act survives a tracked job and a quiet board. */
+export function journalJourneyActStrip(state) {
+  const story = state && state.story;
+  if (!story || journeyActStoryClosed(story)) return null;
+  const act = journeyActForBeat(story.beatIndex);
+  if (!act) return null;
+  return {
+    actNum: act.num,
+    label: localizeText(journeyActLabel(act)),
+    goal: localizeText(act.goal || ''),
+    verb: localizeText(act.verb || ''),
+  };
 }
 
 export function storyActionForBeat(beat, state) {
@@ -1801,7 +1818,38 @@ export function storyActionForBeat(beat, state) {
         meta: 'Helios board',
       };
     }
-    case 2:
+    case 2: {
+      // The tracker walks the live B2 step list; the Journal's "what next" must not keep saying
+      // "arm for a bounty" after the Cinder Board is already cleared. Read the same sidecar the
+      // tracker reads (campaign47a.stepProgress) and name the next ordered step.
+      const completed = new Set(story.campaign47a?.stepProgress?.['2']?.completed || []);
+      if (completed.has('cinder_board') && !completed.has('compost')) {
+        return {
+          tone: 'primary',
+          label: 'COMPOST',
+          title: 'Feed the Compost Run',
+          body: 'The paid 240t run is optional; a garden growth on the books also opens the Nest.',
+          meta: 'B2 · Compost Run',
+        };
+      }
+      if (completed.has('compost') && !completed.has('nest')) {
+        return {
+          tone: 'primary',
+          label: 'SOUTH LANE',
+          title: 'Clear the Nest',
+          body: 'Approach the Nest in the south radiation lane from the east; fight or withdraw alive.',
+          meta: 'B2 · The Nest',
+        };
+      }
+      if (completed.has('nest') && !completed.has('elroy')) {
+        return {
+          tone: 'primary',
+          label: 'REGISTRY',
+          title: 'Read the Registry Writ',
+          body: 'Dock at Tethys Junction and take the registry writ; scan before choosing force or custody.',
+          meta: 'B2 · Registry Writ',
+        };
+      }
       return {
         tone: 'primary',
         label: 'COMBAT',
@@ -1809,6 +1857,7 @@ export function storyActionForBeat(beat, state) {
         body: 'Fit the Hitch for a low-risk bounty, track the target, and cash the first kill.',
         meta: 'Bounty',
       };
+    }
     case 3:
       return {
         tone: 'primary',
@@ -1894,7 +1943,7 @@ const PERSISTENT_CAMPAIGN_LABELS = new Set([
  */
 export function persistentCampaignAction(state, activeMissions = [], trackedMissionId = null, commissionSelected = false) {
   const beatIndex = state && state.story ? (state.story.beatIndex || 0) : 0;
-  const action = attachJourneyAct(storyActionForBeat(STORY_BEATS[beatIndex], state), beatIndex);
+  const action = attachJourneyAct(storyActionForBeat(STORY_BEATS[beatIndex], state), state);
   const label = String(action && action.label || '');
   const isEndingLabel = /^ENDING [A-E]$/.test(label);
   if (!action || (!PERSISTENT_CAMPAIGN_LABELS.has(label) && !isEndingLabel)) return null;
@@ -1917,7 +1966,7 @@ export function recommendedActions(state, activeMissions, trackedMissionId) {
   const tracked = trackedMissionId ? active.find((m) => m.id === trackedMissionId) : null;
   const beatIndex = state && state.story ? (state.story.beatIndex || 0) : 0;
   const storyBeat = STORY_BEATS[beatIndex];
-  const storyAction = attachJourneyAct(storyActionForBeat(storyBeat, state), beatIndex);
+  const storyAction = attachJourneyAct(storyActionForBeat(storyBeat, state), state);
   const activeTradeRoute = tradeRouteAction(state);
   const setPieceContinuation = setPieceContinuationAction(state);
   const cargo = cargoLoad(state);
@@ -3154,6 +3203,25 @@ export const missionLogScreen = {
     const tracked = state.ui && state.ui.trackedMissionId;
     const action = persistentCampaignAction(state, active, tracked, commissionSelected);
     if (!action) {
+      // W1 Journey: a tracked job or a deliberately quiet board must not erase the act. This
+      // persistent strip is derived from state.story (not from a popup), so it survives a
+      // save/load and stays visible while the book is live; it disappears once the book closes.
+      const strip = journalJourneyActStrip(state);
+      if (strip) {
+        if (this._storySub) {
+          this._storySub.textContent = strip.label;
+          this._storySub.hidden = false;
+        }
+        this._storyEl.hidden = false;
+        this._storyEl.innerHTML =
+          '<div class="k-row k-row--static sf-mlog-section-story" data-journey-act="true">' +
+            '<div class="k-caps">' + escapeHtml(wordText(strip.label)) + '</div>' +
+          '</div>' +
+          '<div class="sf-mlog-story-tile" data-journey-act="true">' +
+            (strip.goal ? '<p class="k-sentence k-62 sf-mlog-story-introduces">' + escapeHtml(strip.goal) + '</p>' : '') +
+          '</div>';
+        return;
+      }
       this._storyEl.innerHTML = '';
       this._storyEl.hidden = true;
       if (this._storySub) {

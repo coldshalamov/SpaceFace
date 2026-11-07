@@ -22,12 +22,13 @@ import { normalizeStandingOrders } from './captainStandingOrders.js';
 import { ADVENTURE_SPEED_CONTRACTS } from '../data/adventureSpeedContracts.js';
 import { RED_KITE } from '../data/redKite.js';
 import { nestOutcomeReceipt } from '../data/nestVisit.js';
-import { BEAT_HINT, BEAT_TRIGGER, BRANCH_CHAIN_COUNT, BRANCH_CHAIN_TYPE, BRANCH_FACTION, BRANCH_INTRO_BY_BRANCH, CONTRACT_47A_B0_TAG, CONTRACT_47A_B1_TAG, CONTRACT_47A_B2_TAG, CONTRACT_47A_B3_TAG, CONTRACT_47A_SAMPLE_ID, CONTRACT_CLAIM_CUT_PERIOD_S, CONTRACT_CLAIM_FLEE_RANGE_WU, CONTRACT_CLAIM_ORBIT_RAD_PER_S, CONTRACT_CLAIM_PLAYER_RANGE_WU, CONTRACT_CLAIM_SCAN_LABEL, CONTRACT_CLAIM_WORK_RANGE_WU, HOME_FACTION, MISSION_WRECK_COLLISION_MASK, SECTOR_BY_ID, STATION_INFO, STORY_SIGNAL_BY_KIND, TYPE_BY_ID, campaign47aOutcomeKey, campaign47aRouteKind, contractClaimSiteMission, crucibleScreenIsLive, isCapitalBossMission, isStoryBranchIntroOffer, missionHostileSpawnPos, missions, mulberryLocal, normalizeMissionReceipts, normalizeSetPieceSettlements, salvagePoolUnits, setPieceCauseOf, setPieceEventFields } from './missions.js';
+import { BEAT_HINT, BEAT_TRIGGER, BRANCH_CHAIN_COUNT, BRANCH_CHAIN_TYPE, BRANCH_FACTION, BRANCH_INTRO_BY_BRANCH, CONTRACT_47A_B0_TAG, CONTRACT_47A_B1_TAG, CONTRACT_47A_B2_TAG, CONTRACT_47A_B3_TAG, CONTRACT_47A_SAMPLE_ID, CONTRACT_CLAIM_CUT_PERIOD_S, CONTRACT_CLAIM_FLEE_RANGE_WU, CONTRACT_CLAIM_ORBIT_RAD_PER_S, CONTRACT_CLAIM_PLAYER_RANGE_WU, CONTRACT_CLAIM_SCAN_LABEL, CONTRACT_CLAIM_WORK_RANGE_WU, HOME_FACTION, MISSION_WRECK_COLLISION_MASK, SECTOR_BY_ID, STATION_INFO, STORY_SIGNAL_BY_KIND, TYPE_BY_ID, campaign47aOutcomeKey, campaign47aRouteKind, contractClaimSiteMission, isCapitalBossMission, isStoryBranchIntroOffer, missionHostileSpawnPos, mulberryLocal, normalizeMissionReceipts, normalizeSetPieceSettlements, salvagePoolUnits, setPieceCauseOf, setPieceEventFields } from './missionShared.js';
+import { crucibleScreenIsLive } from '../missions/corridorOpeningReadModel.js';
 import { QUIET_BERTH_TUNING, QUIET_BERTH_TYPE, SPLIT_MANIFEST_LOTS, SPLIT_MANIFEST_TUNING, SPLIT_MANIFEST_TYPE, YARD_CUES, splitManifestNetOffset, splitManifestWreckOffset, yardSinkPos } from '../data/yardContracts.js';
 import { missionIdentityOf } from '../world/worldRecords.js';
 import { passengerBeatLine } from '../data/barks.js';
 import { MISSION_TUNING, STORY_BEATS, STORY_BRANCH_INTRO_TAG } from '../data/missions.js';
-import { journeyActForBeat, journeyActLabel } from '../data/journeyActs.js';
+import { journeyActForBeat, journeyActLabel, journeyActsThroughBeat, journeyActStoryClosed, journeyActRecord } from '../data/journeyActs.js';
 import { counterweightRuntime, heistMissionRuntime } from '../missions/heistMissionRuntime.js';
 import { snapshotWorkingBattlefield } from './workingBattlefieldRuntime.js';
 import { snapshotReckoning } from '../missions/reckoningRuntime.js';
@@ -39,7 +40,8 @@ import { CONTRACT_47A_B0_BODY, THREAD_B_FRAGMENT_ID, GRAFFITI } from '../data/na
 import { forEachJobInteractable, forEachLivingWorldActor } from '../world/livingWorldViews.js';
 import { ensureCampaign47aState, failEncounter, initCampaignSidecar, syncObservedBeat } from '../story/campaign47a/index.js';
 import { resetRacingGhostSession } from './racingGhosts.js';
-import { steerIntentToward } from './missions.js';
+import { steerIntentToward } from './missionShared.js';
+import { localizeText } from '../localization/sourceText.js';
 
 // W-BOOKS-0-2 (§34.7 Book 0): the unknown vessel takes the sample mid-lane — the kill
 // feed and the 12.4 t strain read fire this long after the sample is recovered aboard.
@@ -1964,7 +1966,20 @@ export const missionStoryOps = {
       && row.destStationId === stationId) || null;
     if (!m) return false;
     const status = getBeatStepStatus(this.state, 0);
-    const mineDone = !!(status && (status.steps || []).some((s) => s.id === 'mine' && s.done));
+    let mineDone = !!(status && (status.steps || []).some((s) => s.id === 'mine' && s.done));
+    if (!mineDone) {
+      // A save written by an older build can carry `sampleRecovered: true` without the sidecar's
+      // mine step. The physical sample aboard IS proof the mine happened; backfill the ordered
+      // step before the guard so the dock cannot consume the sample and leave the spine at 0.
+      const backfill = recordBeatStep(this.state, 'mining:yield', {
+        missionId: m.id,
+        commodityId: CONTRACT_47A_SAMPLE_ID,
+        qty: 1,
+        sampleRecovered: true,
+        source: 'save_backfill',
+      }, deferredEnterNow(this.state) || 0);
+      mineDone = !!(backfill && backfill.ok);
+    }
     if (!mineDone) return false;
     return this._resolveContract47aSkim(m, 'dock');
   },
@@ -2292,37 +2307,92 @@ export const missionStoryOps = {
     // Past the spine (sandbox fallback) no act exists and the line stays neutral as before.
     const fromAct = journeyActForBeat(fromIndex);
     const toAct = journeyActForBeat(story.beatIndex);
+    // Carry the previous act's unresolved canon line into the turn so the new act does not arrive
+    // as a bare heading. The act table arranges existing graffiti; it does not author a new hook.
     const actLine = (fromAct && toAct && fromAct.num !== toAct.num)
-      ? `${journeyActLabel(toAct)}. ` : '';
+      ? `${localizeText(journeyActLabel(toAct))}. ${localizeText(fromAct.line || '')} ` : '';
     if (fromAct && toAct && fromAct.num !== toAct.num) this._announceJourneyAct(toAct);
-    if (dir) this._sayStoryLine(actLine + dir, actLine ? 8 : 6);
+    if (dir) this._sayStoryLine(actLine + localizeText(dir), actLine ? 8 : 6);
     this.bus.emit('mission:updated', { missionId: null });
   },
 
   /**
-   * W1 Journey: the act line needs a surface that survives a dock modal and a missed toast.
-   * One persistent comms entry per act (stable id `act:<num>`) is the durable receipt; the
-   * direction toast still carries the immediate line. A moved flag prevents a re-announcement
-   * on newGame double-calls or a replayed act turn.
+   * W1 Journey: the act line needs a surface that survives a dock modal, an Adventure-side comms
+   * gate, a feed eviction and a save/load. The durable destination is `state.story.journeyActs`
+   * (the Codex, Journal and HUD all read the beat from the same state); the `comms:popup` is the
+   * immediate receipt. The moved flag is only set AFTER that durable record exists, so a dropped
+   * popup can never suppress the act forever.
    */
   _announceJourneyAct(act) {
     if (!act) return false;
     const story = this.state && this.state.story;
     if (!story) return false;
+    const record = journeyActRecord(story);
+    if (!record) return false;
+    // History is append-only and complete through the live beat: a jumped beat still knows the
+    // acts it passed rather than claiming the player skipped straight from I to IV.
+    for (const row of journeyActsThroughBeat(story.beatIndex)) {
+      if (!record.seen.includes(row.num)) record.seen.push(row.num);
+    }
+    if (!record.seen.includes(act.num)) record.seen.push(act.num);
+    record.current = act.num;
     story.flags = story.flags || {};
     const key = `journey_act_${act.num}_announced`;
     if (story.flags[key]) return false;
     story.flags[key] = true;
-    const line = `${journeyActLabel(act)}. ${act.goal || ''}`.trim();
+    this._publishJourneyAct(act);
+    return true;
+  },
+
+  /** Emit the one persistent act receipt. Kept separate so a load replay can publish without
+   *  re-moving the announced flag. */
+  _publishJourneyAct(act) {
+    if (!act) return false;
+    const line = `${localizeText(journeyActLabel(act))}. ${localizeText(act.goal || '')}`.trim();
     this.bus.emit('comms:popup', {
       id: `act:${act.num}`,
       sender: 'THE BOOK',
       category: 'story',
       ttl: 10,
       persist: true,
+      storyReceipt: true,
       text: line,
     });
     return true;
+  },
+
+  /**
+   * Continue can land mid-act on a save written before W1 (no journeyActs record) or on a save
+   * whose popup was dropped. Backfill every act through the current beat as seen, and replay the
+   * current act's durable receipt exactly once. A closed book keeps history but names no live act.
+   */
+  _reconcileJourneyAct() {
+    const story = this.state && this.state.story;
+    if (!story) return false;
+    const record = journeyActRecord(story);
+    if (!record) return false;
+    const act = journeyActForBeat(story.beatIndex);
+    if (!act || journeyActStoryClosed(story)) {
+      record.current = null;
+      return false;
+    }
+    const through = journeyActsThroughBeat(story.beatIndex);
+    let replay = false;
+    for (const row of through) {
+      if (!record.seen.includes(row.num)) record.seen.push(row.num);
+      story.flags = story.flags || {};
+      const key = `journey_act_${row.num}_announced`;
+      if (!story.flags[key]) {
+        story.flags[key] = true;
+        replay = true;
+      }
+    }
+    record.current = act.num;
+    // The popup itself is transient (Adventure glass, eviction, modal). Re-publishing the current
+    // act's durable receipt on every load makes Continue a reliable replay even when the saved
+    // flag says the act was already announced.
+    this._publishJourneyAct(act);
+    return replay;
   },
 
   /** Lazily attach campaign47a sidecar under state.story (meta only). */
@@ -2707,7 +2777,7 @@ export const missionStoryOps = {
     state.missions.nextId = 1;
     state.missions.config = MISSION_TUNING;
     // Clear story spine + any prior campaign47a sidecar (nested under state.story).
-    state.story = { beatIndex: 0, branch: null, flags: {}, chainProgress: 0, persistentCargo: [] };
+    state.story = { beatIndex: 0, branch: null, flags: {}, chainProgress: 0, persistentCargo: [], journeyActs: { seen: [], current: null } };
     initCampaignSidecar(state, state.simTime || 0);
     // Act I owns a durable receipt too. The opening direction toast is suppressed while the
     // tutorial owns the opening, so this persistent line is how a fresh save sees the act.

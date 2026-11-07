@@ -81,8 +81,11 @@ function liveSpineBeat(state) {
   const flags = story.flags || {};
   if (flags.endgame === true || flags.sandboxContinued === true
     || story.endgameChoice || story.endgameResolved === true) return null;
-  const beatIndex = Math.floor(Number(story.beatIndex) || 0);
-  if (beatIndex < 0 || beatIndex > 7) return null;
+  // Same null guard as journeyActForBeat: a missing/empty/boolean beat is not beat 0.
+  const raw = story.beatIndex;
+  if (raw == null || raw === '' || typeof raw === 'boolean') return null;
+  const beatIndex = Math.floor(Number(raw));
+  if (!Number.isFinite(beatIndex) || beatIndex < 0 || beatIndex > 7) return null;
   const def = STORY_BEATS[beatIndex];
   return def && def.beat === beatIndex ? def : null;
 }

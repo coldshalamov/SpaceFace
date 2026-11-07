@@ -574,9 +574,33 @@ function advanceToB5(h, branch = 'traders') {
   const outcome = branch === 'patrol' ? 'custody' : 'force';
   assert.equal(state.story.beatIndex, 0);
 
-  // B0: mine then dock (ordered). Dock alone must not advance.
+  // B0: mine then dock (ordered). The shared harness stands the contract at the already-secured
+  // step; rewind that one field for this ordering check so the first dock is genuinely pre-mine.
+  // The stale-save rule (sampleRecovered===true proves the mine) is covered by w1-third-pass.
+  const b0 = (state.missions.active || []).find((m) => m && m.storyTag === 'campaign47a:b0:recovery');
+  if (b0) {
+    b0.params = b0.params || {};
+    b0.params.sampleRecovered = false;
+    b0.params.skimResolved = false;
+    b0.objectiveProgress = 0;
+    if (state.player?.cargo?.items) delete state.player.cargo.items[CONTRACT_47A_SAMPLE_ID];
+    state.story.persistentCargo = (state.story.persistentCargo || [])
+      .filter((id) => id !== CONTRACT_47A_SAMPLE_ID);
+  }
   bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(state.story.beatIndex, 0, 'dock alone must not advance B0');
+  // The marked rock yields the sample (the focused worksite test owns the physical event); this
+  // ordering check only needs the recovered sample as the proof that the mine happened.
+  if (b0) {
+    b0.params.sampleRecovered = true;
+    b0.params.sampleRecoveredAt = state.simTime;
+    b0.objectiveProgress = 1;
+    addCargo(state, CONTRACT_47A_SAMPLE_ID, 1);
+    state.story.persistentCargo = state.story.persistentCargo || [];
+    if (!state.story.persistentCargo.includes(CONTRACT_47A_SAMPLE_ID)) {
+      state.story.persistentCargo.push(CONTRACT_47A_SAMPLE_ID);
+    }
+  }
   bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 2 });
   bus.emit('story:skimResolved', { source: 'live-skim' });
   assert.equal(state.story.beatIndex, 0, 'mine alone must not advance B0');

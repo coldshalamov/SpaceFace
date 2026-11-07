@@ -303,6 +303,33 @@ function storyBeatIndex(story = {}) {
   return Math.max(0, Math.min(BEAT_CONTENT.length - 1, beat));
 }
 
+/**
+ * W1 Journey: the act row is an article with the act's verb + canon-backed goal/line, but a
+ * future act is title-only and locked — the Codex's locked-entry note promises no spoilers, and
+ * Act III/IV name consequences the game has not surfaced yet.
+ */
+export function codexJourneyActRows(story = {}) {
+  const beat = storyBeatIndex(story);
+  return JOURNEY_ACTS.map((act) => {
+    const reached = Math.min(...act.beats) <= beat;
+    const current = act.beats.includes(beat);
+    return {
+      id: 'act:' + act.num,
+      act,
+      reached,
+      current,
+      name: localizeText(act.title),
+      sub: reached ? (current ? 'Current act' : 'Reached') : 'Locked',
+      meta: 'Act ' + act.num,
+      body: reached
+        ? `${localizeText(act.verb)}. ${localizeText(act.goal)}\n${localizeText(act.line)}`
+        : '— not yet encountered —',
+      locked: !reached,
+      signal: current,
+    };
+  });
+}
+
 export function commUnlocked(entry, story, beat, categoryKey) {
   const seen = story && story.seenComms || {};
   if (!entry) return false;
@@ -2573,14 +2600,16 @@ export const codexScreen = {
     const beat = storyBeatIndex(s);
     // W1 Journey: the eight beats file under the four canon acts. The act row carries the act's
     // goal, verb and one line; the beat rows carry only their own words, never a Phase column.
-    for (const act of JOURNEY_ACTS) {
+    for (const row of codexJourneyActRows(s)) {
+      const act = row.act;
       const entries = [makeEntry({
-        id: 'act:' + act.num,
-        name: localizeText(act.title),
-        sub: localizeText(act.verb),
-        meta: 'Act ' + act.num,
-        body: localizeText(act.goal) + '\n' + localizeText(act.line),
-        signal: act.beats.includes(beat),
+        id: row.id,
+        name: row.name,
+        sub: row.sub,
+        meta: row.meta,
+        body: row.body,
+        locked: row.locked,
+        signal: row.signal,
       })];
       for (const i of act.beats) {
         const content = BEAT_CONTENT[i];

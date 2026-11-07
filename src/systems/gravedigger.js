@@ -1181,6 +1181,9 @@ export function createGravedigger() {
         pos: { x: wreck.pos.x, z: wreck.pos.z },
         radius: Number.isFinite(wreck.radius) ? wreck.radius : 0,
         source: 'gravedigger:bury',
+        // Explicit provenance for the paid-compost branch: the ground bought a disposal, it did
+        // not recover a hull. Downstream credit seams (March) read this source, not the flag.
+        paid: pay === true,
       });
       if (this.helpers.removeEntity(wreck.id) === false) return false;
       const gardens = this._gardens();

@@ -14,7 +14,8 @@ import { createBus } from '../src/core/eventBus.js';
 import { missionReceiptRows } from '../src/ui/screens/missionLog.js';
 
 const gameStateSrc = readFileSync(new URL('../src/core/gameState.js', import.meta.url), 'utf8');
-const missionsSrc = readFileSync(new URL('../src/systems/missions.js', import.meta.url), 'utf8');
+const missionsSrc = readFileSync(new URL('../src/systems/missions.js', import.meta.url), 'utf8')
+  + '\n' + readFileSync(new URL('../src/systems/missionShared.js', import.meta.url), 'utf8');
 const missionStorySrc = readFileSync(new URL('../src/systems/missionStoryOps.js', import.meta.url), 'utf8');
 const saveSrc = readFileSync(new URL('../src/save/saveSystem.js', import.meta.url), 'utf8');
 const missionLogSrc = readFileSync(new URL('../src/ui/screens/missionLog.js', import.meta.url), 'utf8');

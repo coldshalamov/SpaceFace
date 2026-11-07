@@ -43,7 +43,7 @@ import { BINDINGS, promptLabel } from './bindings.js';
 import { plottedRouteEngageTeach } from './map/mapRouteRibbon.js';
 import { coreText } from './localizedCoreCopy.js';
 import { localizeText } from '../localization/sourceText.js';
-import { journeyActForBeat, journeyActLabel } from '../data/journeyActs.js';
+import { journeyActForBeat, journeyActLabel, journeyActStoryClosed, journeyActTrackerLabel } from '../data/journeyActs.js';
 import { VENUE_SECTOR_ID as COUNTERWEIGHT_SECTOR_ID } from '../features/counterweightCircuit/definition.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
@@ -758,9 +758,15 @@ function mtReadingsLine(bearing, distanceText, etaText, extra = '') {
 function journeyActTrackerLine(state) {
   const story = state && state.story;
   if (!story) return '';
-  const flags = story.flags || {};
-  if (flags.endgame === true || flags.sandboxContinued === true
-    || story.endgameChoice || story.endgameResolved === true) return '';
+  if (journeyActStoryClosed(story)) return '';
+  const act = journeyActForBeat(story.beatIndex);
+  return act ? localizeText(journeyActTrackerLabel(act)) : '';
+}
+
+/** Full act heading for the title/aria label (the tracker itself shows the short form). */
+function journeyActTrackerFullLine(state) {
+  const story = state && state.story;
+  if (!story || journeyActStoryClosed(story)) return '';
   const act = journeyActForBeat(story.beatIndex);
   return act ? localizeText(journeyActLabel(act)) : '';
 }
@@ -5913,6 +5919,12 @@ export function createHud(ctx, alerts) {
       // dock-modal because the persistent `act:<n>` receipt is separate.
       const actLine = dest.show && showObjective ? String(dest.actLine || '') : '';
       setText(mtTitle, actLine);
+      // The 290px nowrap field shows the short act title; the full canon heading stays on the
+      // node's tooltip and accessible name so nothing is lost to the ellipsis.
+      const actFull = actLine ? journeyActTrackerFullLine(state) : '';
+      mtTitle.title = actFull;
+      if (actFull) mtTitle.setAttribute('aria-label', actFull);
+      else mtTitle.removeAttribute('aria-label');
       setDisplay(mtTitle, !!actLine);
       // The muted-safe tutorial caption rides the tracker's secondary line. It is additive:
       // the objective's verb, distance and recall state above are untouched.

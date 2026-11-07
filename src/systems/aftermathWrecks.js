@@ -1126,6 +1126,23 @@ function trimAndSort(markers, retained) {
     || String(a.markerId).localeCompare(String(b.markerId)));
 }
 
+/**
+ * W1 provenance at the `salvage:completed` seam: March's reconciliation counts a hull the PLAYER
+ * recovered, not every producer that retires a wreck through the same event.
+ *  - The player beam (`mining.js`) is the only sourceless producer, so no source = player work.
+ *  - `gravedigger:bury` is the pit's disposal path. It is excluded whether the ground buried the
+ *    hull autonomously or paid the keeper's compost fee (`paid: true`): a paid compost is a
+ *    disposal transaction, not a recovered manifest.
+ *  - `rook:booth*` sales are purchases, not salvage.
+ *  - Any future producer must opt in with an explicit player-salvage source.
+ */
+export function salvageCompletedByPlayer(payload) {
+  const source = payload && payload.source;
+  if (source == null || source === '') return true;
+  if (source === 'mining' || source === 'player_beam') return true;
+  return false;
+}
+
 export const aftermathWrecks = {
   name: 'aftermathWrecks',
   // trimAndSort/trimCauses/serializeEcology rebuild every marker, cause and field fresh — the
@@ -1180,7 +1197,7 @@ export const aftermathWrecks = {
       yield* this._spawnForSectorSteps(sectorId);
     };
     this._onSectorExit = (payload) => { clearChainWreckWitnesses(this.state); this._clearLiveRefs(payload && payload.sectorId); };
-    this._onSalvageCompleted = (payload) => this._completeByEntity(payload || {}, { byPlayer: true });
+    this._onSalvageCompleted = (payload) => this._salvageCompleted(payload || {});
     this._onEncounterResolved = (payload) => {
       const cause = rememberCause(this.state, this.bus, payload || {});
       // The wreck materializes on the kill, which is before the raid resolves. Stamp the
@@ -2877,6 +2894,12 @@ export const aftermathWrecks = {
         if (marker && this._spawned.has(marker.markerId)) this._writeBackBoundWreck(marker);
       }
     }
+  },
+
+  /** The `salvage:completed` seam: settle the bound marker, but only credit the player when the
+   *  producer is the player's own beam. See salvageCompletedByPlayer for the source rules. */
+  _salvageCompleted(payload) {
+    return this._completeByEntity(payload || {}, { byPlayer: salvageCompletedByPlayer(payload) });
   },
 
   _completeByEntity(payload, options = {}) {

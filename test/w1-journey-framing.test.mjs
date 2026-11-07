@@ -3,7 +3,7 @@
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { JOURNEY_ACTS, journeyActForBeat, journeyActLabel } from '../src/data/journeyActs.js';
+import { JOURNEY_ACTS, journeyActForBeat, journeyActLabel, journeyActTrackerLabel } from '../src/data/journeyActs.js';
 import { STORY_BEATS } from '../src/data/missions.js';
 import { storyBeatTitle } from '../src/systems/missions.js';
 import { createBus } from '../src/core/eventBus.js';
@@ -11,6 +11,8 @@ import { createGameState } from '../src/core/gameState.js';
 import { missions as missionsProto } from '../src/systems/missions.js';
 import { recommendMissionBoardOffer } from '../src/ui/station/stationMissionModel.js';
 import { flightDestinationSurface } from '../src/ui/hud.js';
+import { codexJourneyActRows } from '../src/ui/screens/codex.js';
+import { journalJourneyActStrip, storyActionForBeat } from '../src/ui/screens/missionLog.js';
 
 test('the four acts tile the 8-beat spine exactly', () => {
   assert.equal(JOURNEY_ACTS.length, 4);
@@ -39,10 +41,59 @@ test('journeyActForBeat maps each act boundary and rejects past-the-spine', () =
 
 test('the act line is one stable heading and the beat label stays actionable', () => {
   assert.equal(journeyActLabel(journeyActForBeat(2)), 'ACT II - THE CINDER BOARD');
+  assert.equal(journeyActTrackletLabelSafe(), true);
   assert.equal(journeyActLabel(null), '');
   assert.equal(storyBeatTitle(STORY_BEATS[2]), 'First Blood');
   assert.doesNotMatch(storyBeatTitle(STORY_BEATS[2]), /Cinder Board/,
     'the act is separate state, never a label prefix');
+});
+
+function journeyActTrackletLabelSafe() {
+  for (const act of JOURNEY_ACTS) {
+    const label = journeyActTrackerLabel(act);
+    assert.ok(label.length <= 30, `${label} fits the 290px nowrap tracker`);
+    assert.ok(label.startsWith(`ACT ${act.num} - `), 'the tracker keeps the act identity');
+  }
+  assert.equal(journeyActTrackerLabel(journeyActForBeat(4)), 'ACT III - THREE DOORS',
+    'the long canon title keeps a short tracker form');
+  return true;
+}
+
+test('Codex locks future acts and keeps the verb on reached articles', () => {
+  const rows = codexJourneyActRows({ beatIndex: 1, flags: {} });
+  const actOne = rows.find((row) => row.id === 'act:I');
+  const actThree = rows.find((row) => row.id === 'act:III');
+  const actFour = rows.find((row) => row.id === 'act:IV');
+  assert.equal(actOne.locked, false);
+  assert.match(actOne.body, /Sample and haul/, 'the reached act article names its verb');
+  assert.equal(actThree.locked, true, 'a future act is locked');
+  assert.equal(actThree.body, '— not yet encountered —', 'a future act does not reveal its goal or line');
+  assert.equal(actFour.locked, true, 'Act IV stays sealed on an early save');
+});
+
+test('the Journal keeps a persistent act strip beside a tracked job, and drops it after the book', () => {
+  const live = { story: { beatIndex: 5, flags: {} } };
+  const strip = journalJourneyActStrip(live);
+  assert.ok(strip, 'the act is a Journal surface, not only a recommendation');
+  assert.equal(strip.label, 'ACT III - THREE DOORS, ONE ADMINISTRATOR');
+  assert.match(strip.goal, /Pick a side/);
+  assert.equal(journalJourneyActStrip({ story: { beatIndex: 7, flags: { endgame: true } } }), null,
+    'the strip is suppressed once the book closes');
+  assert.equal(journalJourneyActStrip({ story: { beatIndex: 8, flags: { sandboxContinued: true } } }), null,
+    'a sandbox save names no live act');
+});
+
+test('the Journal B2 what-next follows the same ordered steps as the tracker', () => {
+  const state = (completed) => ({
+    story: { beatIndex: 2, flags: {}, campaign47a: { stepProgress: { '2': { completed } } } },
+    missions: { active: [], boards: {} },
+    player: { credits: 0 },
+  });
+  assert.equal(storyActionForBeat(STORY_BEATS[2], state([])).title, 'Arm for a bounty');
+  assert.equal(storyActionForBeat(STORY_BEATS[2], state(['cinder_board'])).title, 'Feed the Compost Run');
+  assert.equal(storyActionForBeat(STORY_BEATS[2], state(['cinder_board', 'compost'])).title, 'Clear the Nest');
+  assert.equal(storyActionForBeat(STORY_BEATS[2], state(['cinder_board', 'compost', 'nest'])).title,
+    'Read the Registry Writ');
 });
 
 test('the HUD tracker paints the act as its own line above the objective', () => {
@@ -115,6 +166,39 @@ test('branch intro rows count as journey steps; final-disposition filings do not
   const pick2 = recommendMissionBoardOffer([filing, plain], state(4));
   assert.equal(pick2, null,
     'with no valid journey row the live spine offers no badge at all');
+});
+
+test('the real B4 producer stamps the live beat so the three-door choice badges', () => {
+  const state = createGameState(47);
+  state.story = { beatIndex: 4, branch: null, flags: {}, chainProgress: 0, journeyActs: { seen: [], current: null } };
+  state.onboarding = { active: false, finished: true };
+  const bus = createBus();
+  const missions = Object.assign({}, missionsProto);
+  missions.init({ state, bus, helpers: {}, registry: null });
+  const stationIds = ['station_tethys', 'station_helios', 'station_reach'];
+  for (const stationId of stationIds) missions.ensureBoard(stationId);
+  const rows = [];
+  for (const stationId of stationIds) {
+    const board = state.missions.boards[stationId];
+    rows.push(...(board?.slots || []).filter((row) => row && row.storyTag === 'story.branch_intro'));
+  }
+  assert.equal(rows.length, 3, 'all three doors post from the real producer');
+  for (const row of rows) assert.equal(row.campaign47aBeat, 4, 'the producer names its live beat');
+  const pick = recommendMissionBoardOffer(rows, state);
+  assert.ok(pick, 'the real three-door choice is recommendable');
+  assert.equal(pick.label, 'THE BOOK');
+  assert.ok(rows.some((row) => String(pick.missionId) === String(row.id)));
+
+  // The refresh path must also re-post a missing door with the same stamp.
+  const tethys = state.missions.boards.station_tethys;
+  tethys.slots = tethys.slots.filter((row) => row?.storyTag !== 'story.branch_intro');
+  assert.equal(missions._refreshStoryBranchIntroBoards(), true);
+  // ensureBoard replaces the board object; re-read the canonical reference.
+  const refreshed = state.missions.boards.station_tethys;
+  assert.ok(refreshed, 'the board survives the refresh');
+  const restored = refreshed.slots.find((row) => row?.storyTag === 'story.branch_intro');
+  assert.ok(restored, 'the real refresh path re-posts the door');
+  assert.equal(restored.campaign47aBeat, 4);
 });
 
 test('a blocked book job names the book, the blocker, and demands prep first', () => {
@@ -241,6 +325,8 @@ test('Act I announces once on a fresh save and every act keeps a persistent rece
   assert.ok(actOne, 'the first act has a durable receipt on a fresh save');
   assert.match(actOne.text, /ACT I - THE PIT/);
   assert.equal(actOne.persist, true, 'the act line survives a missed toast');
+  assert.equal(h.state.story.journeyActs.current, 'I', 'the act state is the durable destination');
+  assert.deepEqual(h.state.story.journeyActs.seen, ['I']);
   const before = h.popups.filter((p) => p && p.id === 'act:I').length;
   h.missions._announceJourneyAct(journeyActForBeat(0));
   assert.equal(h.popups.filter((p) => p && p.id === 'act:I').length, before,
@@ -254,6 +340,60 @@ test('Act I announces once on a fresh save and every act keeps a persistent rece
   const actFour = h.popups.find((p) => p && p.id === 'act:IV');
   assert.ok(actFour, 'the act turn emits a persistent act:<n> line');
   assert.match(actFour.text, /ACT IV - THE DEEP REACH/);
+  assert.equal(h.state.story.journeyActs.current, 'IV');
+  assert.deepEqual(h.state.story.journeyActs.seen, ['I', 'II', 'III', 'IV']);
+});
+
+test('a dropped popup cannot suppress the act: the state record is written before the flag', () => {
+  const bus = createBus();
+  const system = {
+    state: { story: { flags: {} } },
+    bus,
+    _announceJourneyAct: missionsProto._announceJourneyAct,
+    _publishJourneyAct: missionsProto._publishJourneyAct,
+  };
+  // No popups are observed here: this simulates a gate/eviction that drops the event.
+  system._announceJourneyAct(journeyActForBeat(2));
+  assert.deepEqual(system.state.story.journeyActs.seen, ['II']);
+  assert.equal(system.state.story.flags.journey_act_II_announced, true);
+});
+
+test('Continue replays the current act from the saved state record', () => {
+  const h = freshMissionHarness();
+  h.state.story.beatIndex = 4;
+  h.popups.length = 0;
+  h.missions._announceJourneyAct(journeyActForBeat(4));
+  assert.equal(h.state.story.journeyActs.current, 'III');
+  assert.deepEqual(h.state.story.journeyActs.seen, ['I', 'II', 'III']);
+  const savedStory = structuredClone(h.state.story);
+  // A save taken after the popup was dropped: the flag is already set. Continue must still
+  // publish the durable receipt because the popup is not itself saved.
+  const h2 = freshMissionHarness();
+  h2.popups.length = 0;
+  h2.state.story = savedStory;
+  h2.missions._reconcileJourneyAct();
+  const replayed = h2.popups.find((p) => p && p.id === 'act:III');
+  assert.ok(replayed, 'the current act is replayed on load');
+  assert.equal(replayed.storyReceipt, true);
+  assert.equal(h2.state.story.journeyActs.current, 'III');
+});
+
+test('a pre-W1 mid-act save backfills every act through the current beat', () => {
+  const bus = createBus();
+  const popups = [];
+  bus.on('comms:popup', (p) => popups.push(p));
+  const system = {
+    state: { story: { beatIndex: 5, flags: {} } },
+    bus,
+    journeyActForBeat,
+    _reconcileJourneyAct: missionsProto._reconcileJourneyAct,
+    _publishJourneyAct: missionsProto._publishJourneyAct,
+  };
+  system._reconcileJourneyAct();
+  assert.deepEqual(system.state.story.journeyActs.seen, ['I', 'II', 'III']);
+  assert.equal(popups.filter((p) => p && p.id === 'act:III').length, 1);
+  assert.equal(popups.some((p) => p && p.id === 'act:IV'), false,
+    'a future act is not announced by the backfill');
 });
 
 test('the act announcement method is the same shared writer used by the turn', () => {
@@ -264,6 +404,7 @@ test('the act announcement method is the same shared writer used by the turn', (
     state: { story: { flags: {} } },
     bus,
     _announceJourneyAct: missionsProto._announceJourneyAct,
+    _publishJourneyAct: missionsProto._publishJourneyAct,
   };
   system._announceJourneyAct(journeyActForBeat(2));
   system._announceJourneyAct(journeyActForBeat(2));

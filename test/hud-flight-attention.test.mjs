@@ -229,11 +229,11 @@ test('one destination line already carries distance and ETA', () => {
     HUD_SRC.indexOf('// --- credits / cargo / objectives'),
   );
   assert.match(paint, /flightDestinationSurface\(state, command\)/);
-  assert.match(paint, /setDisplay\(mtTitle,\s*false\)/);
+  assert.match(paint, /setText\(mtTitle,\s*actLine\)/);
+  assert.match(paint, /setDisplay\(mtTitle,\s*!!actLine\)/);
   // mtTime's display is owned by paintTutorialTrackerCaption; no redundant pre-hide.
   assert.match(paint, /paintTutorialTrackerCaption\(mtTime,\s*state\)/);
   assert.doesNotMatch(paint, /setDisplay\(mtTime,\s*false\)/);
-  assert.doesNotMatch(paint, /setText\(mtTitle/);
   assert.doesNotMatch(paint, /mtMarkerLine\(/);
   assert.doesNotMatch(paint, /coreText\('currentObjective'\)/);
   assert.doesNotMatch(paint, /coreText\('tutorialObjective'\)/);
@@ -259,7 +259,7 @@ test('campaign story objective stays off the mission tracker during a live Cruci
   const storyCommand = { owner: 'story' };
   assert.deepEqual(
     flightDestinationSurface(state, storyCommand),
-    { show: false, line: '', urgent: false },
+    { show: false, line: '', urgent: false, actLine: '' },
     'a live survival run owns its HUD and cannot inherit the campaign story prompt',
   );
 

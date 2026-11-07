@@ -25,7 +25,8 @@ import {
 import { recommendMissionBoardOffer } from '../src/ui/station/stationMissionModel.js';
 
 const dataSrc = readFileSync(new URL('../src/data/missionsData.js', import.meta.url), 'utf8');
-const missionsSrc = readFileSync(new URL('../src/systems/missions.js', import.meta.url), 'utf8');
+const missionsSrc = readFileSync(new URL('../src/systems/missions.js', import.meta.url), 'utf8')
+  + '\n' + readFileSync(new URL('../src/systems/missionShared.js', import.meta.url), 'utf8');
 const missionBoardOpsSrc = readFileSync(new URL('../src/systems/missionBoardOps.js', import.meta.url), 'utf8');
 const preflightSrc = readFileSync(new URL('../src/ui/missionPreflight.js', import.meta.url), 'utf8');
 const factionLogicSrc = readFileSync(new URL('../src/ui/factionStanding.js', import.meta.url), 'utf8');

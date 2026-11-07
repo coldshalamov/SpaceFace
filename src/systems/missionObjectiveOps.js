@@ -8,7 +8,7 @@ import { authoredFurnaceWorksite, furnaceAccounting, isFurnaceOwnedLot, furnaceL
 // spread back onto the missions object, so `this` still binds to the system at call time.
 import { addCargo, releasableContractUnits } from './cargo.js';
 import { reckoningKilled } from '../missions/reckoningRuntime.js';
-import { b2RescueActorCount } from './missions.js';
+import { b2RescueActorCount } from './missionShared.js';
 import { compactKillCausality, killCauseFamily } from '../combat/killCausality.js';
 import { maxFittedModuleMod } from '../core/fittedModules.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
@@ -20,7 +20,8 @@ import { deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { setPieceFacilityWorldPos } from './heistFacilities.js';
 import { capitalBossEncounter } from '../data/encounters/capital-boss.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
-import { BULK_HAUL_TYPE, CAPITAL_SUBSYSTEM_ORDER, CHOIR_RETURN_RADIUS_WU, CLEAN_PHYSICAL_RELEASE, CONTRACT_47A_B0_TAG, CONTRACT_47A_B2_CUSTODY_REEL_WU, CONTRACT_47A_B2_SCAN_RADIUS_WU, CONTRACT_47A_B2_TAG, CONTRACT_47A_SAMPLE_ID, LONG_READ_RUMOR_EVENT, MISSION_WRECK_COLLISION_MASK, PHYSICAL_BERTH_WU, PHYSICAL_ROLE, PHYSICAL_TYPE_SET, SECTOR_BY_ID, SET_PIECE_DISPOSITION_OBJECTIVES, SET_PIECE_RECOVERY_OBJECTIVES, STATION_INFO, STORY_LATCH_DOCK_SLACK_WU, THROWN_MASS_SUBSYSTEM_DAMAGE, ashfallBlockadeDoorPos, ashfallCacheApproachPos, authoredDefinitionOf, authoredEncounterOf, authoredMethodFor, b2RescueActorForRole, b2RescueActorIdentity, b2RescueActorIndexFromEntity, b6DeploymentPayload, bountyTargetLost, campaign47aOutcomeKey, campaign47aRouteKind, capitalBossAdjustedPlacement, capitalSubsystemWorldPos, completedMissionTargetSlots, convoyClientVoice, distSq, ensureB2RescueActorOutcomes, escortLossSite, externalTargetLoss, findLivingWorldActorStation, isCampaign47aB2Rescue, isCapitalBossMission, isMutationRecovery, missionHostileSpawnPos, missionObservesClauseEvent, missions, mutationWreckRouting, outsideMissionPortSafety, physicalRoleOf, setPieceCauseOf } from './missions.js';
+import { BULK_HAUL_TYPE, CAPITAL_SUBSYSTEM_ORDER, CHOIR_RETURN_RADIUS_WU, CLEAN_PHYSICAL_RELEASE, CONTRACT_47A_B0_TAG, CONTRACT_47A_B2_CUSTODY_REEL_WU, CONTRACT_47A_B2_SCAN_RADIUS_WU, CONTRACT_47A_B2_TAG, CONTRACT_47A_SAMPLE_ID, LONG_READ_RUMOR_EVENT, MISSION_WRECK_COLLISION_MASK, PHYSICAL_BERTH_WU, PHYSICAL_ROLE, PHYSICAL_TYPE_SET, SECTOR_BY_ID, SET_PIECE_DISPOSITION_OBJECTIVES, SET_PIECE_RECOVERY_OBJECTIVES, STATION_INFO, STORY_LATCH_DOCK_SLACK_WU, THROWN_MASS_SUBSYSTEM_DAMAGE, ashfallBlockadeDoorPos, ashfallCacheApproachPos, authoredDefinitionOf, authoredEncounterOf, authoredMethodFor, b2RescueActorForRole, b2RescueActorIdentity, b2RescueActorIndexFromEntity, b6DeploymentPayload, bountyTargetLost, campaign47aOutcomeKey, campaign47aRouteKind, capitalBossAdjustedPlacement, capitalSubsystemWorldPos, completedMissionTargetSlots, convoyClientVoice, distSq, ensureB2RescueActorOutcomes, escortLossSite, externalTargetLoss, isCampaign47aB2Rescue, isCapitalBossMission, isMutationRecovery, missionHostileSpawnPos, missionObservesClauseEvent, mutationWreckRouting, outsideMissionPortSafety, physicalRoleOf, setPieceCauseOf } from './missionShared.js';
+import { findLivingWorldActorStation } from '../missions/corridorOpeningReadModel.js';
 import { activeOwnedShip, shipCarriesModule, starterRamKill } from '../data/starterJobs.js';
 import { AUTHORED_SET_PIECE_TYPE, CAPITAL_BOSS, ONE_LOAD_CARGO_TYPES, WRECK_BOUND_SET_PIECE_OBJECTIVES } from '../data/missions.js';
 import { heistMissionRuntime } from '../missions/heistMissionRuntime.js';
@@ -32,7 +33,7 @@ import { capitalBossBallastPosition, spawnCapitalActorOnce } from '../missions/c
 import { SET_PIECE_FOLLOW_ON_SOURCE, setPieceFollowOnBody, setPieceFollowOnOffer } from '../data/sandboxSetPieceFollowOns.js';
 import { recordBeatStep } from '../story/campaign47a/index.js';
 import { decorateCapitalBossSpawnSpec } from '../missions/capitalBossSpawn.js';
-import { missionTargetSlotOf } from './missions.js';
+import { missionTargetSlotOf } from './missionShared.js';
 import { ensureSpineBreakWorksite, isSpineBreakOperation, noteSpineBreakDisposition,
   spineBreakOutcome } from '../missions/spineBreakWorksite.js';
 import { hasExplicitPickupAcceptance, finiteWholePickupAmount } from '../core/pickupAcceptance.js';

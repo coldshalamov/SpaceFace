@@ -1535,7 +1535,9 @@ export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
   // Record before Contact: a two-tag row must never clip the live counter (War owns the first
   // slot; Record owns the second when the contact has filed a deed).
   const deedMemory = contactDeedMemory(contact.id, state.player?.stationContactCounters);
-  if (deedMemory) add('Record', `${deedMemory.glyph} ${deedMemory.band} · ${deedMemory.value}`, 'story');
+  if (deedMemory && Number(deedMemory.value) !== 0) {
+    add('Record', `${deedMemory.glyph} ${deedMemory.band} · ${deedMemory.value}`, 'story');
+  }
   if (memory && memory.met) add('Contact', stationContactStanding(memory), 'story');
   else if (contact.canonicalKey) add('Contact', 'New recurring contact', 'story');
 

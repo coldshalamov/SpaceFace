@@ -12,6 +12,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { stationContacts } from '../src/systems/stationContacts.js';
 import { stationContactCounterValue, CONTACT_COUNTER_DEFS } from '../src/data/stationContacts.js';
 import { barContactIntelTags } from '../src/ui/station/barContacts.js';
+import { aftermathWrecks, salvageCompletedByPlayer } from '../src/systems/aftermathWrecks.js';
 import { compileFinaleContent } from '../src/story/endings/finaleContent.js';
 
 function boot(seed = 47) {
@@ -176,6 +177,40 @@ test('the battle report row keeps Record when War and Contact precede it', () =>
   assert.equal(tags[0].label, 'War');
   assert.equal(tags[1].label, 'Record', 'the live counter is never clipped by Contact');
   assert.match(tags[1].text, /2/);
+});
+
+test('the salvage:completed seam credits only the player beam, never a gravedigger or booth disposal', () => {
+  const payloads = [
+    { wreckId: 1 },                                   // mining.js beam: sourceless
+    { wreckId: 2, source: 'mining' },
+    { wreckId: 3, source: 'gravedigger:bury' },       // autonomous bury
+    { wreckId: 4, source: 'gravedigger:bury', paid: true }, // paid compost
+    { wreckId: 5, source: 'rook:booth' },             // a sale, not a recovery
+  ];
+  assert.deepEqual(payloads.map(salvageCompletedByPlayer), [true, true, false, false, false]);
+
+  const calls = [];
+  const owner = {
+    _completeByEntity(payload, options) {
+      calls.push({ source: payload.source || null, byPlayer: options.byPlayer });
+      return true;
+    },
+  };
+  for (const payload of payloads) aftermathWrecks._salvageCompleted.call(owner, payload);
+  assert.deepEqual(calls.map((row) => row.byPlayer), [true, true, false, false, false],
+    'the seam passes byPlayer only for player beam work');
+});
+
+test('March record tag stays hidden at zero', () => {
+  const { state, bus } = boot();
+  contactsFor({ state, bus });
+  const tags = barContactIntelTags(
+    { id: MARCH_CONTACT, role: 'barkeep', factionId: 'faction_scn', canonicalKey: MARCH_CONTACT },
+    state,
+    'station_helios',
+  );
+  assert.equal(tags.some((tag) => tag.label === 'Record'), false,
+    'a zero counter is not a filed record');
 });
 
 test('a last call names March only after a guard actually filed a hull', () => {

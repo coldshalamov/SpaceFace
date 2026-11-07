@@ -289,6 +289,10 @@ export function scenarioDialogueCommsPayload(payload) {
   };
 }
 
+export function isDurableStoryReceipt(p) {
+  return !!(p && (p.storyReceipt === true || String(p.id || '').startsWith('act:')));
+}
+
 export function createComms(ctx) {
   const { bus, state } = ctx;
   let choiceModalOpen = false;
@@ -371,11 +375,22 @@ export function createComms(ctx) {
 
   function pushComms(p, delivery = null) {
     if (!p || !p.text) return;
+    const durableStory = isDurableStoryReceipt(p);
+    const glassed = isSwarmGlass(state) || isAdventureFlight(state);
     // Swarm glass (design/program/finish/swarm S2): a live Swarm round never shows the
     // comms feed — the whole channel is narrative chatter, not the fight.
     // X3 Adventure glass: ordinary flight is the same case. The left-edge feed is prose
     // texture; it belongs to the bar, codex or station, not over the action.
-    if (isSwarmGlass(state) || isAdventureFlight(state)) return;
+    // A durable story receipt is the exception: its state record is the real destination, and
+    // this entry still lands in the backlog so the act line is never silently dropped.
+    if (glassed && !durableStory) return;
+    if (glassed && durableStory) {
+      backlog.unshift({ sender: p.sender || 'UNKNOWN', text: p.text, category: p.category || 'story', note: p.note || null, at: Date.now() });
+      while (backlog.length > MAX_BACKLOG) backlog.pop();
+      if (!backlogOpen) backlogBtn.classList.add('sf-comm-backlog-btn--pulse');
+      else rebuildBacklog();
+      return;
+    }
     traceHoldUntilMs = Math.max(traceHoldUntilMs, nowMs() + 320);
     traceFactionId = resolveCommsFactionId(p, state, traceFactionId);
     const fromQueue = delivery === true || !!(delivery && delivery.fromQueue);
@@ -395,7 +410,7 @@ export function createComms(ctx) {
       else rebuildBacklog();
       return;
     }
-    if (!fromQueue && !bypassAttentionGate && attentionGateActive() && !GATE_BYPASS.test(p.category || '')) {
+    if (!durableStory && !fromQueue && !bypassAttentionGate && attentionGateActive() && !GATE_BYPASS.test(p.category || '')) {
       // Keep the authored delivery permission while the opening instruction owns
       // attention. A continuously tracked job must not silence this story line forever.
       held.push({ payload: p, heldAt: performance.now(),
@@ -449,7 +464,16 @@ export function createComms(ctx) {
     while (backlog.length > MAX_BACKLOG) backlog.pop();
 
     requestAnimationFrame(() => entry.classList.add('sf-comm--in'));
-    while (live.length > MAX_LIVE) dismissLive(live[live.length - 1]);
+    // Persistent story receipts are not evicted by the four-line live cap; drop the newest
+    // ordinary line instead. If every live row is persistent, stop rather than removing one.
+    while (live.length > MAX_LIVE) {
+      let evict = -1;
+      for (let i = live.length - 1; i >= 0; i--) {
+        if (!live[i].persist) { evict = i; break; }
+      }
+      if (evict < 0) break;
+      dismissLive(live[evict]);
+    }
     // pulse the backlog button when new content arrives while it's closed
     if (!backlogOpen) backlogBtn.classList.add('sf-comm-backlog-btn--pulse');
   }
