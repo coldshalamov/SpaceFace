@@ -23,14 +23,27 @@ import { massDeclarationForTarget, physicalMassT } from '../../systems/cargoCust
 import { SHIPS } from '../../data/ships.js';
 import { resolveGovernedCombatSpeed, resolvePropulsionProfile } from '../../core/flight/propulsionCatalog.js';
 import { resolveTravelCeiling } from '../../core/flight/propulsionKernel.js';
+import { isSwarmControls, swarmRailSlotAllowed, SWARM_LINE_KEY_LABEL } from '../../data/swarmControls.js';
+import { runPerkIds, SWARM_PERK_BY_ID } from '../../data/swarmPerks.js';
 import { travelFlag } from '../../data/featureFlags.js';
 import { formatBindingCode, resolveActionCodes, resolveActionLabel } from '../../systems/input.js';
+import { heldPower } from '../../systems/powerVerbs.js';
 import { injectOrrery } from './tokens.js';
 import { createFlightCluster } from './flightCluster.js';
 import { applyOrreryHudSkin } from './hudSkin.js';
 import { currentDenial, mountArsenalDenials } from '../arsenalDenials.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+
+/** S12 — the perk chip's glyph per catalog id. An unknown id falls back to `spark`. */
+const SWARM_PERK_ICON = Object.freeze({
+  scavenger: 'credits',
+  overclock: 'boost',
+  gambler: 'spark',
+  ram_plate: 'hull',
+  bounty_hunter: 'target',
+  chain_reactor: 'fire',
+});
 // The five powers (owner 2026-10-22): each power is its own band, so each prints by name.
 const GROUP_NAME = Object.freeze({ PULL: 'Pull', SHOVE: 'Shove', PIN: 'Pin', BAY: 'Bomb', RIG: 'Rig', LINE: 'Line', GYRE: 'Gyre', CLOAK: 'Cloak' });
 const GROUP_ICON = Object.freeze({ Pull: 'well', Shove: 'repel', Pin: 'seed', Bomb: 'munitions', Rig: 'cone', Line: 'line', Gyre: 'well', Cloak: 'seed' });
@@ -143,6 +156,8 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
   });
   const out = {};
   for (const slot of [...RAIL_SLOTS, ...SUPPORT_SLOTS]) {
+    // S5: the Swarm bar is six icons — the five powers and the Line; travel/gyre/cloak stay off it.
+    if (!swarmRailSlotAllowed(state, slot.index)) continue;
     const r = rail[slot.index] || {};
     const pe = presented.entries[PRESENTED_ID[slot.index]];
     const st = RAIL_STATE[r.state] || 'ready';
@@ -151,6 +166,10 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
     // the rig it will toggle, the cloak module fitted), never a fixed per-socket symbol.
     const arsenalId = pe && (isBomb || slot.index === 5 || slot.index === 8) ? pe.glyph : (SLOT_ARSENAL[slot.index] || '');
     const entry = { state: st, key: labels[slot.index] || '', arsenalId };
+        // S5 + X3: the flight rail draws icons and key caps, no words  the names live on the
+    // socket's tip and aria label. The Line socket wears RMB in Swarm (no keyboard tether).
+    entry.iconOnly = true;
+    if (isSwarmControls(state) && slot.index === 6) entry.key = SWARM_LINE_KEY_LABEL;
     if (isBomb) entry.consumable = true;
     // SWARM-03: the rail's tactical-live flag rides beside the state so the Cluster can
     // breathe a key whose verb is real right now (latch in reach, ordnance armed, pack
@@ -377,6 +396,15 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
       classLine: `${liveDef && liveDef.role ? liveDef.role : 'hull'} · tier ${liveDef && Number.isFinite(liveDef.tier) ? liveDef.tier : 0}`,
     });
   };
+  // S12 — the run's perk pick rides the cluster model; a fired trigger bumps that chip's pulse.
+  const perkPulseCounts = {};
+  let offPerkTrigger = null;
+  if (bus && typeof bus.on === 'function') {
+    offPerkTrigger = bus.on('swarm:perkTrigger', (p) => {
+      const id = p && p.perkId;
+      if (typeof id === 'string' && id) perkPulseCounts[id] = (perkPulseCounts[id] || 0) + 1;
+    });
+  }
   let offName = null;
   if (bus && typeof bus.on === 'function' && typeof cluster.setRingLegend === 'function') {
     offName = bus.on('ship:nameChanged', (payload = {}) => {
@@ -426,13 +454,52 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
       if (slow && typeof cluster.setHull === 'function') syncHull(liveState, p);
       if (!p) { syncShipUnder(null); return; }
       syncShipUnder(p);
-      if (slow || !ordnance) ordnance = readOrdnanceModel(liveState, tracker, undefined, { denial: lastDenial });
+      const acts = liveState && liveState.input && liveState.input.actions;
+      const held = heldPower(liveState);
+      const nowWall = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+
+      let firingEdge = false;
+      if (acts) {
+        if (acts.pull?.pressed || acts.deployWell) { firingUntil.set(1, nowWall + FLASH_DURATION_MS); firingEdge = true; }
+        if (acts.shove?.pressed || acts.deployRepulsor || acts.chargeDetonate) { firingUntil.set(2, nowWall + FLASH_DURATION_MS); firingEdge = true; }
+        if (acts.pin?.pressed || acts.deployMassSeed) { firingUntil.set(3, nowWall + FLASH_DURATION_MS); firingEdge = true; }
+        if (acts.bomb?.pressed || acts.chargeThrow || acts.dropBomb || acts.swarmBombThrow) { firingUntil.set(4, nowWall + FLASH_DURATION_MS); firingEdge = true; }
+        if (acts.rig?.pressed || acts.toggleClearingCone || acts.toggleSkimCollector) { firingUntil.set(5, nowWall + FLASH_DURATION_MS); firingEdge = true; }
+        if (acts.tetherFire || acts.massline?.latch) { firingUntil.set(6, nowWall + FLASH_DURATION_MS); firingEdge = true; }
+        if (acts.gyreSnare) { firingUntil.set(7, nowWall + FLASH_DURATION_MS); firingEdge = true; }
+        if (acts.cloakToggle) { firingUntil.set(8, nowWall + FLASH_DURATION_MS); firingEdge = true; }
+      }
+
+      let firingExpired = false;
+      for (const [idx, until] of firingUntil.entries()) {
+        if (nowWall >= until) {
+          firingUntil.delete(idx);
+          firingExpired = true;
+        }
+      }
+
+      const activeSig = `${held || ''}|${Array.from(firingUntil.keys()).sort().join(',')}`;
+      const activeChanged = activeSig !== lastActiveSig;
+      lastActiveSig = activeSig;
+
+      if (slow || !ordnance || activeChanged || firingEdge || firingExpired || firingUntil.size > 0 || held != null) {
+        ordnance = readOrdnanceModel(liveState, tracker, undefined, { denial: lastDenial, firingUntil, held, nowWall });
+      }
       if (slow || ceiling == null) ceiling = readSpeedCeiling(liveState, p);
       const model = readClusterModel(liveState, p, { ordnance, speedMax: ceiling, weaponHeatScratch });
-      if (model) cluster.update(model);
+      if (model) {
+        model.perks = runPerkIds(liveState && liveState.run).map((id) => ({
+          id,
+          name: (SWARM_PERK_BY_ID[id] && SWARM_PERK_BY_ID[id].name) || id,
+          icon: SWARM_PERK_ICON[id] || 'spark',
+        }));
+        model.perkPulses = perkPulseCounts;
+        cluster.update(model);
+      }
     },
     dispose() {
       if (typeof offName === 'function') { try { offName(); } catch (_) {} }
+      if (typeof offPerkTrigger === 'function') { try { offPerkTrigger(); } catch (_) {} }
       try { offDenials(); } catch (_) {}
       if (typeof window !== 'undefined' && window.removeEventListener) {
         window.removeEventListener('resize', markClusterBoxStale);

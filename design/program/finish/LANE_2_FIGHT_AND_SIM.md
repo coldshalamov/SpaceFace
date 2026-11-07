@@ -416,6 +416,49 @@ Implemented and focused-tested, wave 9 (INFERENCE 100 program — one commit eac
   riding the fauna spawn path; the tide cadence per class (endemic/tidal/incursion) has no
   authored numbers, so the clock is an E-packet design decision before code.
 
+Implemented and focused-tested, wave 10 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`):
+- inf-mine-strike (WF-05 repair): the fence answers the throw. A mine is a ghost to the contact
+  solver and its proximity fuze senses only hulls its IFF admits, so a rock the pilot hurled
+  through a fence passed straight through it — SF-041's "throw a body through" answer was not
+  physical. An armed mine now goes off on mass the pilot hurled into it: a body carrying the
+  pilot's fresh thrown-mass cause (the law card's own tags, exported as `isThrownMassTag`),
+  the body on the pilot's line, or the chain-witnessed wreck of the pilot's own kill, when its
+  swept relative path crosses the contact disc at the 25 wu/s throw floor. One blast on what
+  struck it (the ordinary snap/detonation receipts, now `struck: true`, plus `mines:struck`),
+  the pilot's credit — the layer's own wingman or the layer itself thrown into its fence is
+  the pilot's kill — and one band line per throw. Drift, field piles, NPC throws, set-downs,
+  unarmed fuses, the pilot's own hull and cargo pods (the recovery owners' business) stay
+  as they were (56245c71d773, test/inf-mine-strike.test.mjs). Follow-up 0c74a297d53f: a
+  fence on the pilot's side (their own mines, mines in their custody, and the Crucible
+  room's player-team lane-mouth mines) is never spent on the pilot's own throw. Verified
+  already true, no unit taken: weapon knock reads hull class honestly (the kernel delivers
+  J, Δv = J/m in physicalEffects, and the hitstun law's sqrt mass factor plus
+  heavy-as-terrain separate a small hull from a capital). Skipped as invented: a brood
+  relay/Queen screen law (no authored source; keeperKin is faction conduct, not brood
+  posture). Proximity attribution stays authored: a hull the pilot throws into a fence whose
+  IFF already senses it pays the layer, not the pilot — named, not changed (a towed rescue
+  would otherwise bill the pilot for a pirate's mine).
+- inf-brood-chain-open (WF-15 repair): a brood wipe that opens a chain counts every body. The
+  batch stamped its kill time only after the loop, so on the run's first wipe or the first
+  after a lapse (the global sim clock makes the last kill time always stale there) every body
+  after the first "lapsed", broke the one-body chain and restarted at one — a 40-mite opener
+  counted 1 and threw 39 `swarm:chainBroken` receipts. Each body now stamps its kill time
+  like N same-tick ship kills (80e753f8cced, test/inf-brood-chain-open.test.mjs; all four
+  cases verified red on the old law).
+- inf-overdrive-voice (WF-14 integration): the chain's score cap opens one overdrive window
+  (player guns ×3 while the chain holds) and `swarm:overdrive` had no consumer — no tier or
+  milestone sits at the cap, so the gear change came and went in silence. swarmJuice names
+  it through the existing announcer ("OVERDRIVE · GUNS ×3" with the climb's unused top-octave
+  chime and the chain's dip; "OVERDRIVE SPENT" on the break); reduced effects keep word and
+  chime (3af98ae577c6, test/inf-overdrive-voice.test.mjs). A persistent overdrive mark on the
+  chain hero is Lane 3's HUD follow-up (the receipt and `chainState().overdrive` are there).
+Pre-existing reds seen during wave 10 (identical with and without these changes, shared tree
+with a foreign-dirty `src/data/swarmMode.js`): swarm-juice ×4 (boss slam/bar/audio),
+swarm-champion-wrap ×5, swarm-mill-hive-boss-dressing ×5, swarm-late-roster-band3 ×2,
+rc-481-arena-kill-words ×2, swarm-brood engine census (396 vs 400), crucible-results salvage
+cell — owner of the swarmMode.js work should re-run these before landing it.
+
 ## Traps
 
 - Never edit `test/*.expected.json` to pass. A sim change that moves the golden is a real change: explain it or undo it.

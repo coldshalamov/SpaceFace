@@ -389,17 +389,35 @@ ${P} .sxb-launch__state { font-family:${UI} !important; font-size:13px !importan
    so at 700×461 the tab body was 0px tall and at 800×720 ~73px. The purse rides the name's row beside the palette
    key, the five readings stand on ONE ruled row (tighter fr tracks than 801–900: 636–736px of content), the note
    and the next step share a row, and the signs run on one clamped line (folded away at ≤540 tall): the head is
-   ~220px. */
+   ~220px.
+   ui-polish-354: equal 1fr|1fr left the title cell ~289–313px while "Helios Station" + full ident need ~331px
+   (ox 9/18 at 700×461; ox 33/42 at 651). Bias the name track (1.15fr/0.85fr), densify the 30px hero to 26px,
+   tighten ident tracking to .02em, and tuck the purse to the finder width so the full eyebrow clears. Distinct from #869 (901–1100 title
+   column) and from open #861 (vitals densify in this same media query). */
 @media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:800px) {
-  ${P} .sxb-berth.dp-frame__head { position:relative !important; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important;
+  ${P} .sxb-berth.dp-frame__head { position:relative !important; grid-template-columns:minmax(0, 1.15fr) minmax(0, 0.85fr) !important;
     grid-template-areas:"title purse" "crown crown" "tape handoff" "signs signs" !important;
     grid-template-rows:max-content max-content max-content max-content !important; align-content:start !important;
     column-gap:10px !important; row-gap:5px !important; max-height:none !important; }
+  /* densify the 30px hero; tighten ident tracking so the full eyebrow fits beside purse+finder
+     (equal 1fr left title ~289–313px; ident ink at .06em is ~332px. 1.15/0.85 + .02em → ~311 ink in a
+     ~332px title cell at 651, with purse starting ~352 — clear of the nameplate) */
+  ${P} .sxb-berth .so-station-title .dp-title__name,
+  ${P} .sxb-berth .sxb-berth__name { font-size:26px !important; line-height:1.05 !important; }
+  /* beat the shared :is(.sxb-berth__ident,…) .03em and the base .06em so ink drops ~301–311px */
+  ${P} .sxb-berth .so-station-title .sxb-berth__ident { letter-spacing:0 !important;
+    white-space:normal !important; overflow:visible !important; text-overflow:clip !important;
+    overflow-wrap:anywhere; line-height:1.3 !important; }
+  /* A larger name track fits Helios; wrapping keeps longer authored station/faction names
+     readable too, instead of restoring the base nameplate's ellipsis at the new width. */
+  ${P} .sxb-berth .so-station-title { width:100% !important; max-width:100% !important; min-width:0 !important; }
+  ${P} .sxb-berth .so-station-title .dp-title__name { min-width:0; max-width:100%; white-space:normal !important;
+    overflow-wrap:anywhere; }
   ${P} .sxb-berth.dp-frame__head > .so-command-trigger { position:absolute !important; top:0 !important; right:0 !important; }
   ${P} .sxb-berth.dp-frame__head > .sxb-crown { display:contents !important; }
   ${P} .sxb-berth.dp-frame__head > .sxb-crown .sxb-purse { grid-area:purse !important; align-self:start !important; justify-self:end !important;
     min-width:0 !important; width:max-content !important; grid-template-columns:auto auto !important; grid-template-areas:"label value" "delta delta" !important;
-    align-items:center !important; gap:0 8px !important; margin:0 94px 0 0 !important; padding:3px 9px !important; }
+    align-items:center !important; gap:0 8px !important; margin:0 70px 0 0 !important; padding:3px 9px !important; }
   ${P} .sxb-crown .sxb-purse__label { width:auto !important; border:0 !important; padding:0 !important; }
   ${P} .sxb-crown .sxb-purse__value { font-size:20px !important; line-height:1.1 !important; }
   ${P} .sxb-berth.dp-frame__head > .sxb-crown .sxb-vitals { grid-area:crown !important; display:grid !important;

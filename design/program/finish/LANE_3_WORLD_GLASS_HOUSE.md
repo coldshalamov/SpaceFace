@@ -693,6 +693,25 @@ Direction: `design/frontend/ORRERY.md`, `ORRERY_RUBRIC.md`; method: `docs/UI_VIS
   `offsetWidth` is event-driven (resize/ResizeObserver, cargo-buy animation), stale-flagged
   (`objectiveEdgeBoxes` re-measures only on invalidate), or explicitly bounded to one forced
   layout per frame. No per-frame layout reads found.
+- **G6 — One type voice + the worst screens (2026-11-06, owner: "fully professional and sleek").**
+  The UI sources carried 30+ letter-spacing values in 146 sheets (each screen its own poster-width
+  caps `LABEL`). `src/ui/orrery/typeGovernor.js` (installed by `consoleStandard.js`, pure rule fn
+  unit-tested in `test/ui-type-governor.test.mjs`) applies STATION_STANDARD §2 from measured style as
+  screens mount: label tracking ≤ .075em, normal width at label sizes, ≥7-word capitals as sentences;
+  it only narrows and skips `#screens`-external HUD, SVG, form fields and `data-type-ink="keep"`.
+  Fixed from the 1440×900 sweep: Crucible entry (all four setting rows now fit; TRAINING/QUICK PLAY
+  are keys), Armory (aligned cards, no `SC…` truncation, readable Esc hint, keys, hull schematic
+  not cropped), Research chips, Credits dial, New Game stat sheet (<1561px), Chart verbs, Save/Load
+  badge line. Verified with `ui-bench` at 1440×900 + 1920×1080, zero geometry findings on the touched set.
+  Same day, round 4: hull-ring side readings may use the window margin beside the stage (LINE no longer
+  sits on its arc at 1440); Missions prints the objective on the card and the recommended action, not
+  also on the selected row; Shipworks hull-sheet column fades at the foot while more is below.
+  Type governor reviewed: it no longer writes width/weight on interactive elements (that froze their
+  selected/hover states) and works in time slices (`typeGovernorStats()`).
+  **Open (next sitting):** flight-cluster HULL/SHIELD/ARMOR figures cross the hull ring in `flightCluster.js`
+  (another agent had it uncommitted, so the HUD cluster got no pass); `src/ui/ship/shipSheet.js` owns its
+  own stylesheet, so `check-ui-screen-imports` fails (another lane's new file — material belongs in
+  `deckplate/`); Shipworks right-hand readout grid sits ~2px past the panel foot at 900px tall.
 
 ### Wave W2 — an economy you can play and a long game that lasts
 - **Row 544 W-ECONOMY** — travel ≤ 50 % of time, a play-changing purchase every 15–25 minutes, pay by the tonne.
@@ -923,6 +942,23 @@ standing why-surface (factionHistoryLines ring deep).
 Inbox addition (wave 8): test/fb-hitchhiking-named.test.mjs "the flight HUD path mounts the
 layer" fails at HEAD — clean hud.js (9dec955de450) added onFlightTextGeometryChange to the
 stunt-callout mount and the test's regex expects the old call. Owner: HUD/geometry thread.
+
+Implemented and focused-tested, wave 9 (INFERENCE 100 program — one commit each, recorded in
+`design/program/inference-memory.json`; the war family's second and third reads, per visit,
+per save, per ending):
+- inf-bar-war-front (WF-09): docking into a faction at war, the arrival desk names the rival —
+  but the bar you sit down in still answered "Things have been quiet lately. Too quiet." The
+  conversation now reads the same conflict record the desk and chart read, gated exactly like
+  the desk: cold and tense pairs stay quiet (93deba67c6a5).
+- inf-slot-standing (WF-09): the save slot card named everything the run did to its hull and
+  nothing about who the run was to the houses; a Standing line reads the saved faction bag
+  the envelope already carries (no new field, no migration) — "Drift — Foreman, Concord —
+  Suspect" — with a still-burning war riding the same line (904080205f1d).
+- inf-epilogue-war (WF-09): the final-disposition epilogue never said what the galaxy was
+  doing when you filed; a front at war reads back on its own THE WAR YOU LEFT section — which
+  houses, which contested lane, and when the banked playerLean is real, which side your work
+  left it leaning, with your name on the lean; the sandbox continuation card carries the
+  line too (c4b44ae548ba).
 
 ## Traps
 

@@ -651,6 +651,28 @@ subject; no live yard-tow sim seam found). Defects for owners: `jump:arrive` omi
 (world.js — presentation works around it geometrically); environmental machinery hazard
 boundaries carry no entityId (Cinder Sluice machines stay silent both directions).
 
+Implemented and focused-tested, wave 10 — the closing wave (INFERENCE 100 program — one
+commit each, recorded in `design/program/inference-memory.json`):
+- inf-fence-strike-read (WF-12 integration): a rock you throw through a mine fence lights the
+  contact that set it off — the wave-10 `mines:struck` receipt had no render consumer —
+  contact bead stretched along the throw in the custody's hue, speed-keyed; a field-turned
+  mine gets a quiet claim beat (710f03ad5623).
+- inf-wreck-resolve-read (WF-11 integration): the wreck you scan answers at the hull —
+  landing ring, white core inside the flash law, a quiet scanner-blue marker lamp held for
+  the ping window; sprites retire on sector change (de23f5ab8019).
+- inf-crush-read (WF-12 repair): the anvil's verdict reads — the wave-7 defect closed — flat
+  steel pop along the closing bearing, fixed spark fan, a kill star only when the target
+  actually died of it; hue is the collision row's own pale steel (08d7e772066c).
+- inf-ghost-resolve-read (WF-11 repair): a ghost contact snaps into a real ship under your
+  last pulse, and the one you failed to hold melts at its last recorded position — the
+  deception loop's two events had zero consumers anywhere; recycled records get no lie
+  (839685fee566).
+Verified already true, wave 10: cloak family (actionEventRecipes rows + shipMicroMotion
+handlers), scanner world-side (dish rig ANI-01 + seam blaze), first-arrival night lights
+(nightside + beacons + apron family), explosion→debris handoff (debris-wound-heat's inherited
+velocity). Defects for owners: mines:expired/placed/released have no consumers; ghostEscaped
+payloads carry no position (the melt honestly skips on recycling).
+
 ## Traps — measured and rejected; do not repeat
 
 - Shader prewarm with dummy meshes (made the fly worse: 147 → 207–219 ms).

@@ -639,3 +639,20 @@ export function compareFrameSolidMetrics(baseline, current, options = {}) {
   }
   return { failures, warnings, rows };
 }
+
+/**
+ * In-page: the E6 residency manager's own verdicts, read after the sampler is stopped.
+ * `visibleUnready` counts drawables held again after they had already been presented (the
+ * blink class); `preAdmittedHolds` counts drawables held before their first presentation.
+ * Self-contained: pass to page.evaluate.
+ */
+export function readResidencyCounters() {
+  const SF = window.SF;
+  const render = SF && SF.registry && SF.registry.get('render');
+  const mgr = render && render.renderer && render.renderer.__sfResidencyManager;
+  return {
+    manager: mgr && typeof mgr.snapshot === 'function' ? mgr.snapshot() : null,
+    compileFailOpen: render && render.renderer ? (render.renderer.__sfCompileFailOpen | 0) : 0,
+    published: (SF && SF.state && SF.state.render && SF.state.render.residency) || null,
+  };
+}

@@ -146,8 +146,16 @@ export function setPromptBindings(state) {
   _promptState = state || null;
 }
 
+// The kbm table reads input.js bindings — build it on first access, not at module top level:
+// a systems→UI import cycle can evaluate this file while input.js is still initializing.
+let _CONTROL_KBM = null;
+function controlKbm() {
+  if (!_CONTROL_KBM) _CONTROL_KBM = Object.freeze(buildKbmPrompts(defaultPromptState('classic')));
+  return _CONTROL_KBM;
+}
+
 export const CONTROL_PROMPTS = Object.freeze({
-  kbm: buildKbmPrompts(defaultPromptState('classic')),
+  get kbm() { return controlKbm(); },
   gamepad: GAMEPAD_PROMPTS,
   touch: TOUCH_PROMPTS,
 });

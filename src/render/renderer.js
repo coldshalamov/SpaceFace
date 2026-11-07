@@ -51,7 +51,7 @@ import {
   entityHasAuthoredPendingRoot,
   entityHasAuthoredResidentRoot,
   entityHomeSectorMismatch,
-  entityIsOnDeadlineGlassScan,
+  entityIsOnDeadlineGlassScan as entityIsOnDeadlineGlassScanImpl,
   entityIsExplicitRenderFocus,
   entityTimeToGlassSeconds,
   entityWithinPlayerRadius,
@@ -363,6 +363,7 @@ import {
   INTEGRATED_PRESET_SUGGESTION,
   DEFAULT_QUALITY_PRESET,
   adaptiveFrameBudgetMs,
+  adaptiveFloorForCombinedScale,
   adaptiveResolutionEligibleForState,
   adaptiveResolutionEnabledForSettings,
   dynResFloorForTier,
@@ -438,6 +439,7 @@ import { createCrucibleWarmPackageResidency } from './crucibleWarmPackageResiden
 import {
   ADMISSION_SLICE_TARGET_MS,
   shouldContinueAdmissionSlice,
+  shouldStartHeavyAdmission,
   shouldStartHeavyAdmissionEventually,
 } from './admissionSliceBudget.js';
 import {
@@ -596,6 +598,7 @@ import {
   yieldToBrowser,
   yieldToNextPresent,
 } from './startupGpuResidency.js';
+import { createResidencyManager, RESIDENCY_HELD, RESIDENCY_LOOKAHEAD_S } from './residencyManager.js';
 import { createCookQueuePaceDebt, makeGpuQueuePacer } from './gpuQueuePace.js';
 import { whenBootOverlayRetired, bootOverlayRetired } from '../core/bootShellPacing.js';
 import {
@@ -4060,6 +4063,59 @@ function entityIsOnDeadlineGlass(entity, state) {
     0,
     entityVisualCullRadius(entity, entity.mesh),
   )) === TABLE_BAND.GLASS;
+}
+
+/**
+ * Predictive pre-admission (E6). A body that will be on the glass inside the 2 s horizon is
+ * admission-urgent even when its current position is still outside the glass rectangle:
+ * building it on arrival is the pop, and forcing it into a late frame is the brick. Uses the
+ * existing approach-aware time-to-glass query (relative velocity, ledger rows, camera lead) so
+ * there is one predictor, not two.
+ */
+function entityPredictedOnDeadlineGlass(entity, state) {
+  if (!entity || entity.alive === false || !state) return false;
+  if (entityIsOnDeadlineGlass(entity, state)) return true;
+  let seconds = Infinity;
+  try {
+    seconds = entityTimeToGlassSeconds(
+      entity,
+      renderAdmissionEnv(state),
+      state,
+      RESIDENCY_LOOKAHEAD_S,
+    );
+  } catch (_) {
+    return false;
+  }
+  return Number.isFinite(seconds) && seconds <= RESIDENCY_LOOKAHEAD_S;
+}
+
+/**
+ * Deadline glass = on the glass now, or predicted to enter it inside the residency lookahead.
+ * Every caller of the original scan predicate wants admission urgency, so prediction belongs
+ * here rather than in a second lane.
+ */
+function entityIsOnDeadlineGlassScan(entity, state, scan) {
+  if (entityIsOnDeadlineGlassScanImpl(entity, state, scan)) return true;
+  return entityPredictedOnDeadlineGlass(entity, state);
+}
+
+/**
+ * Does the pending build queue hold anything the player is about to see? Bounded head scan —
+ * this answers the late-frame gate, so it must stay cheap even with a 70-row backlog.
+ */
+const MESH_BUILD_DEADLINE_SCAN_LIMIT = 64;
+function meshBuildQueueHasDeadlineWork(owner, state) {
+  const queue = owner && owner._meshBuildQueue;
+  if (!queue || !state) return false;
+  const start = owner._meshBuildQueueHead | 0;
+  const end = Math.min(queue.length, start + MESH_BUILD_DEADLINE_SCAN_LIMIT);
+  if (end <= start) return false;
+  const scan = makeHoldExemptScanContext(state);
+  for (let i = start; i < end; i++) {
+    const entity = resolveWorldPresentationEntity(state, queue[i]);
+    if (entityIsOnDeadlineGlassScan(entity, state, scan)) return true;
+  }
+  return false;
 }
 
 /**
@@ -11242,6 +11298,7 @@ export const render = {
     // fast, so let it drop much lower (and drop bloom); the real fix is a hardware context, surfaced
     // to the player below.
     const dynFloor = dynResFloorForTier(gpu.tier);
+    this._dynFloor = dynFloor;
     this._adaptive = createAdaptiveResolution({
       floor: dynFloor,
       initialScale: gpu.software === true ? dynFloor : 1,
@@ -11255,6 +11312,7 @@ export const render = {
     // Published for renderGraphDynResBlocked (route selection + buffer sizing read it there).
     state.render.dynResAllowed = this._dynResAllowed;
     this._adaptive.setEnabled(adaptiveResolutionEnabledForSettings(gpu, state.settings && state.settings.video));
+    this._adaptive.setFloor(this._adaptiveFloorForRelief());
 
     // Hardware acceleration OFF (CPU WebGL: SwiftShader/llvmpipe): no in-game setting makes that
     // fast — apply the software-only emergency profile and tell the player exactly how to fix it.
@@ -12090,6 +12148,25 @@ export const render = {
           joinOutstanding: true,
         }) : Promise.resolve({ skipped: true })
       );
+      // E6: one residency manager owns "is this drawable's data on the GPU?" for every
+      // drawable. The draw guard consults it per draw (entity leaves, VFX roots, tethers,
+      // props); over-budget first uploads are held here and drained off-screen through the
+      // same residency pass the warm roots use mid-flight. Counters ride rendererData for
+      // the frame-solid probe and the E10 dashboard.
+      if (!rendererData.sfResidencyManager) {
+        const manager = createResidencyManager({
+          requestRoots: (roots) => prepareStartupGeometryResidency(this.renderer, roots, {
+            includeEmpty: false,
+            yieldToMain: yieldToBrowser,
+          }),
+          hasUnresidentGeometry,
+          onRequest: () => this._scheduleResidencyDrain(),
+          onError: (message, error) => laneWarn(this, 'residencyManager', `[render] ${message}`, error),
+        });
+        rendererData.sfResidencyManager = manager;
+        this.renderer.__sfResidencyManager = manager;
+        this._residencyManager = manager;
+      }
     }
     const pendingSubjectHolds = new Map();
     const markSubjectPipelinesPending = (subject, pending, debugBy = null) => {
@@ -19486,6 +19563,8 @@ export const render = {
         const adaptiveEnabled = adaptiveResolutionEnabledForSettings(state.render.gpu, vd);
         if (adaptiveEnabled) this._adaptive.syncScale(state.render.dynResScale);
         this._adaptive.setEnabled(adaptiveEnabled);
+        // The integrated relief rides the same Auto predicate — re-resolve the combined floor.
+        if (this._adaptive.setFloor) this._adaptive.setFloor(this._adaptiveFloorForRelief());
       }
       // FOV: the feel system (feel.js) adds a transient punch on top of this base. We update the
       // camera's base fov here; feel.frame() re-derives its cached base from settings when no punch
@@ -24777,6 +24856,11 @@ export const render = {
       grain: norm.grain ?? 0,
       sceneSamples,
     };
+    // Hitch-governor rungs 1–2 ride the same live options channel: shallower bloom pyramid,
+    // then the grade/vignette/grain/toe composite out. Settings are untouched.
+    const hitchReliefLevel = (this._hitchRelief && this._hitchRelief.level) || 0;
+    if (hitchReliefLevel >= 1) postOpts.bloomLevels = Math.min(Number.isFinite(postOpts.bloomLevels) ? postOpts.bloomLevels : 2, 1);
+    if (hitchReliefLevel >= 2) postOpts.postFx = false;
     if (this.bloom) this.bloom.setOptions(postOpts);
     // Native presentation is reserved for a degraded post-processor fallback. Keep Three's exposure
     // and tone mapper aligned so that exceptional route still degrades predictably.
@@ -24820,6 +24904,7 @@ export const render = {
     noteHitchRing(this._hitchRing, present, Number(renderState.lastPresentDtMs));
     renderState.hitchRing = this._hitchRing;
     this._notePresentInputEdges(renderState, present);
+    this._updateHitchRelief(renderState, present);
   },
 
   _notePresentInputEdges(renderState, present) {
@@ -24839,6 +24924,82 @@ export const render = {
       if (consumePresentInputEdge(latch, action, down, present)) edges += 1;
     }
     renderState.presentInputEdges = edges;
+  },
+
+  // Presentation hitch governor. When the hitch ring shows sustained blocking the ladder sheds
+  // the cheapest GPU/post costs first (bloom mip depth → post-FX stack → raster scale), and
+  // restores one rung after a quiet window. Runtime-only — never writes settings.video — and
+  // gated to the Auto/dynamic-resolution quality policy plus active flight so explicit Manual
+  // choices and paused/menu surfaces keep the configured picture. Level lives on renderState
+  // so the witness probe can observe it.
+  _updateHitchRelief(renderState, present) {
+    const ring = this._hitchRing;
+    if (!ring || !renderState) return;
+    const rel = this._hitchRelief || (this._hitchRelief = { level: 0, lastChangeMs: -Infinity });
+    const gpu = renderState.gpu;
+    const vd = (this.state.settings && this.state.settings.video) || {};
+    const eligible = adaptiveResolutionEnabledForSettings(gpu, vd) === true
+      && adaptiveResolutionEligibleForState(this.state) !== false;
+    if (!eligible) {
+      if (rel.level !== 0) this._setHitchReliefLevel(renderState, 0, null);
+      return;
+    }
+    const now = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
+    let recent = 0;
+    let extended = 0;
+    for (const slot of ring.slots) {
+      if (!slot) continue;
+      if (slot.present >= present - HITCH_RELIEF_WINDOW + 1) recent += 1;
+      if (slot.present >= present - HITCH_RELIEF_UP_WINDOW + 1) extended += 1;
+    }
+    if (rel.level < HITCH_RELIEF_MAX_LEVEL && recent >= HITCH_RELIEF_DOWN_COUNT
+        && now - rel.lastChangeMs >= HITCH_RELIEF_DOWN_COOLDOWN_MS) {
+      this._setHitchReliefLevel(renderState, rel.level + 1, true);
+    } else if (rel.level > 0 && extended <= HITCH_RELIEF_UP_COUNT
+        && now - rel.lastChangeMs >= HITCH_RELIEF_UP_COOLDOWN_MS) {
+      this._setHitchReliefLevel(renderState, rel.level - 1, false);
+    }
+  },
+
+  // Effective dyn-res floor for the current automatic raster reliefs. Integrated relief and
+  // hitch-governor rung 3 already shrink the drawing buffer itself, so the content sub-rect
+  // must stay proportionally shallower or the two reliefs compound far below the readability
+  // floor (integrated + hitch + old dyn floor presented ~0.36×). Manual renderScale choices
+  // are the player's own and do not raise the floor. Software keeps its emergency depth.
+  _adaptiveFloorForRelief() {
+    const renderState = this.state && this.state.render;
+    const gpu = renderState && renderState.gpu;
+    if (!gpu || gpu.tier === 'software') return this._dynFloor || dynResFloorForTier(gpu && gpu.tier);
+    const vd = (this.state.settings && this.state.settings.video) || {};
+    const hitch = finiteInRange(renderState && renderState.hitchReliefScale, 0.5, 1, 1);
+    const relief = gpu.tier === 'integrated' && adaptiveResolutionEnabledForSettings(gpu, vd)
+      ? Math.min(hitch, INTEGRATED_RELIEF_RASTER_CAP) : hitch;
+    return adaptiveFloorForCombinedScale(this._dynFloor || dynResFloorForTier(gpu.tier), relief);
+  },
+
+  _setHitchReliefLevel(renderState, level, eased) {
+    const rel = this._hitchRelief;
+    rel.level = level;
+    rel.lastChangeMs = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
+    renderState.hitchReliefLevel = level;
+    const prevScale = renderState.hitchReliefScale || 1;
+    renderState.hitchReliefScale = level >= 3 ? HITCH_RELIEF_SCALE : 1;
+    this._invalidatePostOptionsCache();
+    this._syncPostOptions();
+    // Raster relief just changed — retighten/loosen the dyn-res floor so relief × content
+    // scale holds the combined readability floor (see _adaptiveFloorForRelief).
+    if (this._adaptive && this._adaptive.setFloor) this._adaptive.setFloor(this._adaptiveFloorForRelief());
+    if (prevScale !== renderState.hitchReliefScale) this._applySize();
+    if (eased === null) return;
+    try {
+      this.bus && this.bus.emit('toast', {
+        text: eased
+          ? 'Graphics eased automatically to keep the game responsive'
+          : 'Graphics restored to your settings',
+        kind: 'info',
+        ttl: 5,
+      });
+    } catch (_) { /* toast is best-effort */ }
   },
 
   _publishArrivalRoster(exactSectorId) {
@@ -25045,6 +25206,25 @@ export const render = {
     this._nemesisHullPresentations.delete(mesh);
   },
 
+  // E6: a held drawable's buffers are uploaded off-screen, never inside a presented frame.
+  // The queue drains on a bounded background task (the residency pass yields to the browser
+  // between proxy uploads), so this timer is a scheduler, not work.
+  _scheduleResidencyDrain() {
+    if (this._residencyDrainTimer != null) return;
+    const timer = setTimeout(() => {
+      this._residencyDrainTimer = null;
+      const manager = this._residencyManager;
+      if (!manager) return;
+      try { manager.drainUploads(); } catch (error) {
+        laneWarn(this, 'residencyDrain', '[render] residency drain failed', error);
+      }
+      if (manager.pendingCount() > 0) this._scheduleResidencyDrain();
+    }, 200);
+    // A background tab must not keep a timer alive after teardown.
+    if (timer && typeof timer.unref === 'function') timer.unref();
+    this._residencyDrainTimer = timer;
+  },
+
   _bindPresentationMesh(entity, mesh) {
     const world = this._presentationWorld;
     if (!entity || !mesh) return false;
@@ -25106,6 +25286,13 @@ export const render = {
     const lane = mesh.material && (mesh.material.transparent || mesh.material.transmission > 0)
       ? SUBMIT_LANE.TRANSPARENT
       : SUBMIT_LANE.OPAQUE;
+    // A fresh root whose buffers have never reached the GPU is held before it is ever
+    // submitted: the off-screen lane uploads it, then it appears complete. A rebind of a
+    // live root is never held here (that would blank a body the player is already watching);
+    // its missing leaves are held individually by the draw guard instead.
+    if (this._residencyManager && !mesh.parent && hasUnresidentGeometry(mesh)) {
+      this._residencyManager.holdRoot(mesh, 'bind');
+    }
     lanes.reserve(entity.id, lane);
     const bound = world.bindMesh(handle, mesh, entity, entityVisualCullRadius(entity, mesh));
     if (!bound) return false;
@@ -26777,15 +26964,24 @@ export const render = {
       }
     };
     if (buildBudget !== Infinity && this._initialMeshReconcileComplete && !loadingDrain) {
+      const lastPresentDt = this.state && this.state.render && this.state.render.lastPresentDtMs;
+      const presentBaseline = this.state && this.state.render && this.state.render.presentDtBaselineMs;
       const gate = shouldStartHeavyAdmissionEventually(
-        this.state && this.state.render && this.state.render.lastPresentDtMs,
+        lastPresentDt,
         this._meshBuildLateSkips,
-        { baselineMs: this.state && this.state.render && this.state.render.presentDtBaselineMs },
+        { baselineMs: presentBaseline },
       );
-      // The starvation floor still consults the forced wallet — a spent frame
+      // The skip-count release exists to keep work moving on a permanently-slow host, but it
+      // spends a whole heavy build inside a frame the player is watching. A build is only
+      // worth that spend when the body is about to be seen: the queue's deadline set now
+      // includes the 2 s prediction horizon, so off-screen backlog still waits.
+      const forcedBySkips = gate.start && !shouldStartHeavyAdmission(lastPresentDt, undefined, presentBaseline);
+      // The starvation floor still consults the forced wallet - a spent frame
       // defers the forced start (keeping the late streak armed) instead of
       // running the one build un-metered like every other forced lane.
-      const lateStartAllowed = gate.start && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
+      const lateStartAllowed = gate.start
+        && (!forcedBySkips || meshBuildQueueHasDeadlineWork(this, this.state))
+        && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
       if (!gate.start || lateStartAllowed) this._meshBuildLateSkips = gate.skippedCount;
       if (!lateStartAllowed) {
         if (!(yield* driveHoist(this))) return 0;
@@ -26898,12 +27094,19 @@ export const render = {
         // refusing ambient rows, and a resume under a now-late frame must stop
         // building them.
         if (buildBudget !== Infinity && this._initialMeshReconcileComplete && !loadingDrain) {
+          const resumedLastDt = this.state && this.state.render && this.state.render.lastPresentDtMs;
+          const resumedBaseline = this.state && this.state.render && this.state.render.presentDtBaselineMs;
           const resumedGate = shouldStartHeavyAdmissionEventually(
-            this.state && this.state.render && this.state.render.lastPresentDtMs,
+            resumedLastDt,
             this._meshBuildLateSkips,
-            { baselineMs: this.state && this.state.render && this.state.render.presentDtBaselineMs },
+            { baselineMs: resumedBaseline },
           );
+          // Same predictive rule as the prologue: a skip-count release is only allowed when
+          // the queue actually holds a body inside the lookahead horizon.
+          const resumedForcedBySkips = resumedGate.start
+            && !shouldStartHeavyAdmission(resumedLastDt, undefined, resumedBaseline);
           const resumedStartAllowed = resumedGate.start
+            && (!resumedForcedBySkips || meshBuildQueueHasDeadlineWork(this, this.state))
             && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
           if (!resumedGate.start || resumedStartAllowed) {
             this._meshBuildLateSkips = resumedGate.skippedCount;
@@ -28055,6 +28258,7 @@ export const render = {
           && !authoredPendingBoundarySubmitsStandIn(mesh);
         _submitVisibilityOptions.resolvingMarker = !!(mesh.userData && mesh.userData.authoredResolvingMarker);
         _submitVisibilityOptions.geometryPending = !!(mesh.userData && mesh.userData.geometryPending);
+        _submitVisibilityOptions.residencyHeld = !!(mesh.userData && mesh.userData[RESIDENCY_HELD]);
         _submitVisibilityOptions.standInResident = (_submitVisibilityOptions.pipelinesPending
           || _submitVisibilityOptions.geometryPending || _submitVisibilityOptions.authoredPending)
           && rootDrawsResidentStandIn(mesh);
@@ -28366,6 +28570,7 @@ export const render = {
           && !authoredPendingBoundarySubmitsStandIn(mesh);
         _submitVisibilityOptions.resolvingMarker = !!(mesh.userData && mesh.userData.authoredResolvingMarker);
         _submitVisibilityOptions.geometryPending = !!(mesh.userData && mesh.userData.geometryPending);
+        _submitVisibilityOptions.residencyHeld = !!(mesh.userData && mesh.userData[RESIDENCY_HELD]);
         _submitVisibilityOptions.standInResident = (_submitVisibilityOptions.pipelinesPending
           || _submitVisibilityOptions.geometryPending || _submitVisibilityOptions.authoredPending)
           && rootDrawsResidentStandIn(mesh);
@@ -29976,6 +30181,20 @@ export const render = {
     this._racingCourseView?.frame();
     this._notePicturePresent(presentationFrame);
     this._presentationFrame = presentationFrame;
+    // E6 residency: reset the per-frame inline upload wallet. A drawable's first upload is
+    // either small enough to pay here or held for the off-screen residency lane.
+    if (this._residencyManager) {
+      this._residencyManager.beginFrame();
+      // Publish the counters at ~2 Hz for probes and the E10 dashboard. One small object per
+      // 30 frames, never per draw.
+      const frameSeq = (this._residencyPublishSeq = (this._residencyPublishSeq | 0) + 1);
+      if ((frameSeq % 30) === 0 && this.state && this.state.render) {
+        this.state.render.residency = {
+          ...this._residencyManager.snapshot(),
+          compileFailOpen: this.renderer ? (this.renderer.__sfCompileFailOpen | 0) : 0,
+        };
+      }
+    }
     this._lastFrameDt = Number.isFinite(frameDt) ? frameDt : 0.016667;
     // World-anchored presentation integrates by the wall frame scaled by the live time-effects
     // scale — the same model _bgTime already uses below. Hit-stop and bullet-time slow it; a zero
@@ -33824,6 +34043,24 @@ function collectOrientationResizeResources(scene, camera, renderer, keyLight) {
   };
 }
 
+// Hitch-governor tuning. The ring holds the last 16 over-threshold presents; "recent" counts
+// hitches inside the latest 16 presents, "extended" inside the latest 48. Step down one rung
+// when ~2/3 of recent presents hitched, step up when the extended window is nearly clean. The
+// up-cooldown is deliberately longer than the down-cooldown so an oscillating scene settles at
+// the deeper rung instead of flapping.
+const HITCH_RELIEF_WINDOW = 16;
+const HITCH_RELIEF_DOWN_COUNT = 10;
+const HITCH_RELIEF_UP_WINDOW = 48;
+const HITCH_RELIEF_UP_COUNT = 2;
+const HITCH_RELIEF_DOWN_COOLDOWN_MS = 2500;
+const HITCH_RELIEF_UP_COOLDOWN_MS = 8000;
+const HITCH_RELIEF_SCALE = 0.8;
+const HITCH_RELIEF_MAX_LEVEL = 3;
+// Automatic raster relief for integrated GPUs on the Auto quality policy — applyRendererSize
+// caps the configured scale here; _adaptiveFloorForRelief folds the same value into the
+// dyn-res floor so the two reductions never compound past the readability floor.
+const INTEGRATED_RELIEF_RASTER_CAP = 0.9;
+
 function aspectClassFromSize(size) {
   return size.x >= size.y ? 'land' : 'port';
 }
@@ -33836,14 +34073,28 @@ function applyRendererSize(renderer, state) {
   // it now only shrinks the bloom content sub-rect via setContentScale — see _applySize.
   const tier = state.render && state.render.gpu && state.render.gpu.tier;
   const tierCap = tier === 'software' ? 1 : tier === 'integrated' ? 1.5 : 4;
-  const cap = Math.min(finiteInRange(vd.pixelRatioCap, 0.25, 4, 2), tierCap);
+  // Integrated-GPU relief, gated on the same Auto-quality predicate the adaptive
+  // controller uses: dynResScale only shrinks the bloom content sub-rect, so an
+  // iGPU-bound scene needs fill relief at the raster source. Runtime intent only
+  // — never a settings.video write — and any explicit video key flips quality to
+  // Manual and restores the player's own resolution choice in the same publish.
+  const reliefGpu = state.render && state.render.gpu;
+  const relief = reliefGpu && reliefGpu.tier === 'integrated'
+    && adaptiveResolutionEnabledForSettings(reliefGpu, vd) === true;
+  const cap = Math.min(finiteInRange(vd.pixelRatioCap, 0.25, 4, 2), tierCap, relief ? 1 : 4);
   // The default bloom route applies renderScale at the drawing buffer. The optional graph needs a
   // native presentation buffer and owns its clamped internal scene scale, so applying the same
   // setting here too would square every downscale (0.7 -> 0.49) and silently overcharge quality.
   const graphOwnsScale = vd.renderGraph === true
     && state.render?.renderGraphUnavailable !== true
     && !renderGraphDynResBlocked(state);
-  const scale = graphOwnsScale ? 1 : finiteInRange(vd.renderScale, 0.5, 2, 1);
+  const configuredScale = finiteInRange(vd.renderScale, 0.5, 2, 1);
+  // Governor rung 3: a raster FLOOR while the hitch ring reports sustained blocking — a cap,
+  // not a multiplier, so it never compounds the integrated relief below the readability floor
+  // (0.9 × 0.8 = 0.72 was player-rejected as too soft). Effective scale is min(configured,
+  // tier relief, hitch floor): integrated 0.9→0.8 under stress, discrete 1.0→0.8.
+  const hitchCap = finiteInRange(state.render && state.render.hitchReliefScale, 0.5, 1, 1);
+  const scale = graphOwnsScale ? 1 : Math.min(relief ? Math.min(configuredScale, INTEGRATED_RELIEF_RASTER_CAP) : configuredScale, hitchCap);
   // dynResScale is intentionally NOT applied to the drawing buffer. Reading it here keeps the
   // single size entry-point aware of the live multiplier (tests/probes still see the field), but
   // the pixel ratio stays at the max pool size so bloom/post targets are not reallocated on scale

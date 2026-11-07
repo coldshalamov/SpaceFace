@@ -71,7 +71,12 @@ test('real field rocks gather, grow and bowl through several hulls with damage, 
     }
     assert.ok(tumbled.size >= 2, 'multiple victims lose the helm');
     assert.equal(bystander.hull, 1200, 'off-axis hulls are outside the bowling corridor');
-    assert.ok(!state.physicsRuntime.sg02Snapshot.some(p => p.id === bystander.id), 'threat admission does not wake the whole sector');
+    // E2: the per-body SG-02 snapshot is published lazily (it is a checkpoint view, not per-tick
+    // state). Ask the provider the physics owner installs so this reads the identical rows.
+    const sg02Rows = state.physicsRuntime.sg02Snapshot
+      || (typeof state.physicsRuntime.sg02SnapshotProvider === 'function'
+        ? state.physicsRuntime.sg02SnapshotProvider() : []);
+    assert.ok(!sg02Rows.some(p => p.id === bystander.id), 'threat admission does not wake the whole sector');
     assert.ok(stages.some(p => p.event === 'gyre:snagged') && stages.some(p => p.event === 'gyre:absorbed')
       && stages.some(p => p.event === 'gyre:launched'), 'every player-facing lifecycle beat is emitted');
     t.diagnostic(`seed18122: ${radius.toFixed(1)}WU/${mass.toFixed(0)}t clump, ${topSpeed.toFixed(1)}WU/s; hulls=${victims.map(v => v.hull.toFixed(0))}; speeds=${victims.map(v => Math.hypot(v.vel.x,v.vel.z).toFixed(1))}; tumbles=${tumbled.size}`);
