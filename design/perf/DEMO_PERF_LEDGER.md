@@ -163,6 +163,12 @@ The owner reported pixelation on zoom-out. Three cuts had stacked:
 The authored bloom, Nocturne, trails, atmosphere and post-FX stay on. Resolution is not used as a
 performance lever for this top-down picture.
 
+Live zoom-out verification (headed, New Game, 1280×720): wheel zoom from camera 144 to 243 holds
+`renderScale 0.85`; dyn-res settles at 0.915, drawing buffer 1088×612 (combined ~0.78), and the
+capture stays crisp — ships, Saturn's rings and HUD text are readable, not pixelated. A no-op
+relief rung no longer announces "Graphics eased automatically"; only an actually visible rung
+(bloom depth above 1, post-FX, or raster) may toast.
+
 ## Rules
 
 - Do not lower the bar or rename a hitch; fix the frame or name the residual.

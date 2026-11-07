@@ -25327,6 +25327,7 @@ export const render = {
 
   _setHitchReliefLevel(renderState, level, eased) {
     const rel = this._hitchRelief;
+    const prevLevel = Number(rel.level) || 0;
     rel.level = level;
     rel.lastChangeMs = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
     renderState.hitchReliefLevel = level;
@@ -25339,6 +25340,15 @@ export const render = {
     if (this._adaptive && this._adaptive.setFloor) this._adaptive.setFloor(this._adaptiveFloorForRelief());
     if (prevScale !== renderState.hitchReliefScale) this._applySize();
     if (eased === null) return;
+    // Only announce a rung that changed the visible picture. On the 1-bloom-level demo preset a
+    // level-1 relief is a no-op, and the old toast made a handled frame look like a quality cut.
+    const vd = (this.state.settings && this.state.settings.video) || {};
+    const baseBloomLevels = Number(vd.bloomLevels);
+    const bloomChanged = ((prevLevel >= 1) !== (level >= 1))
+      && (!Number.isFinite(baseBloomLevels) || baseBloomLevels > 1);
+    const postChanged = ((prevLevel >= 2) !== (level >= 2)) && vd.postFx !== false;
+    const rasterChanged = prevScale !== renderState.hitchReliefScale;
+    if (!bloomChanged && !postChanged && !rasterChanged) return;
     try {
       this.bus && this.bus.emit('toast', {
         text: eased
