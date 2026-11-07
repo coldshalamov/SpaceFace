@@ -104,6 +104,52 @@ ${T} .con-sky .con-label.is-curve-covered { opacity:0 !important; animation:none
   ${T} .con-cost dd { font-size:24px; margin-top:1px; }
   ${T} .con-cost__sub { margin-top:2px; letter-spacing:.06em; }
 }
+/* ui-polish-367: mid-short desktop (761+ × ≤640, e.g. 960×540) — after the side-by-side costs
+   of ui-polish-231 the Unlocks art rows and Requires still ran ~68px past the side scrollport,
+   so Autocannon faded under Back and "No prerequisites" never painted. Compress unlock art and
+   dossier chrome so Unlocks+Requires clear the foot on first paint. */
+@media (min-width:761px) and (max-height:640px) {
+  /* Keep the final dossier line and focus underline above the inherited 26px fade. */
+  ${T} > .con-side { padding-bottom:30px; scroll-padding-bottom:30px; }
+  ${T} .con-dossier { gap:4px; }
+  ${T} .con-dossier__kicker { font-size:12px; letter-spacing:.18em; }
+  ${T} .con-dossier__name { font-size:20px; line-height:1; }
+  ${T} .con-dossier__state { font-size:13px; line-height:1.25; }
+  ${T} .con-caps { margin:2px 0 0; font-size:12px; letter-spacing:.18em; }
+  ${T} .con-rows { margin:0 !important; }
+  ${T} .con-row { padding:1px 0; }
+  ${T} .con-rows:has(.con-row__img) .con-row.has-art { grid-template-columns:40px minmax(0, 1fr) auto; }
+  ${T} .con-rows:has(.con-row__img) .con-row__art { width:40px; height:26px; }
+  ${T} .con-row__art .con-row__img { width:24px; height:34px; }
+  ${T} .con-row__name { font-size:13px; line-height:1.2; }
+  ${T} .con-row__sub { font-size:12px; letter-spacing:.12em; }
+  ${T} .con-sentence { font-size:12.5px; line-height:1.3; }
+}
+/* ui-polish-367: very-short desktop (≤500, e.g. 801×461) — side scrollH 425 > clientH 331 left
+   Autocannon∩BACK (mashVis via overflow boxes) and Requires under the fade. One more notch so all
+   three unlock rows and Requires sit above Back without scrolling. */
+@media (min-width:761px) and (max-height:500px) {
+  ${T} > .con-side { padding:4px 0 12px; scroll-padding-bottom:12px;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 8px), transparent);
+    mask-image:linear-gradient(180deg, #000 calc(100% - 8px), transparent); }
+  ${T} .con-dossier { gap:2px; }
+  ${T} .con-dossier__kicker { font-size:12px; letter-spacing:.16em; }
+  ${T} .con-dossier__name { font-size:18px; }
+  ${T} .con-dossier__state { font-size:12.5px; line-height:1.2; }
+  ${T} dl.con-dossier__cost { margin:0 !important; column-gap:10px; }
+  ${T} .con-cost dd { font-size:20px; }
+  ${T} .con-cost__sub { font-size:12px; letter-spacing:.04em; margin-top:1px; }
+  ${T} .con-actions { margin:2px 0 0; }
+  ${T} .con-actions .orr-lampkey { min-height:30px !important; }
+  ${T} .con-caps { margin:1px 0 0; font-size:12px; letter-spacing:.16em; }
+  ${T} .con-row { padding:0; }
+  ${T} .con-rows:has(.con-row__img) .con-row.has-art { grid-template-columns:32px minmax(0, 1fr) auto; }
+  ${T} .con-rows:has(.con-row__img) .con-row__art { width:32px; height:22px; }
+  ${T} .con-row__art .con-row__img { width:20px; height:28px; }
+  ${T} .con-row__name { font-size:12.5px; }
+  ${T} .con-row__sub { font-size:12px; letter-spacing:.1em; }
+  ${T} .con-sentence { font-size:12px; line-height:1.25; }
+}
 `;
 
 export function injectTechTreeScreens(doc = globalThis.document) {
