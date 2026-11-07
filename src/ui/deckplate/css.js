@@ -9,6 +9,7 @@ import { DECKPLATE_LAYOUT_CSS } from './layout.js';
 import { DECKPLATE_LIGHT_CSS } from './light.js';
 import { DECKPLATE_TRANSITION_CSS } from './transition.js';
 import { DECKPLATE_SCREENS_CSS } from './screens.js';
+import { SHIP_SHEET_CSS } from './shipSheetStyles.js';
 
 /** Exact combined stylesheet formerly injected by deckplate/index.js. */
 export const DECKPLATE_CSS =
@@ -22,4 +23,5 @@ export const DECKPLATE_CSS =
   DECKPLATE_LIGHT_CSS + '\n' +
   DECKPLATE_TRANSITION_CSS + '\n' +
   DECKPLATE_SCREENS_CSS + '\n' +
+  SHIP_SHEET_CSS + '\n' +
   DECKPLATE_COMPONENTS_FORCED_CSS;
