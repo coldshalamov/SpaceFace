@@ -1377,16 +1377,6 @@ function autoSocketsFor(members) {
       out.set(entity.id, want);
     }
   };
-  // Keep established stations within a flight. Recomputing sockets from the new sorted
-  // roster after a casualty makes every survivor cross somebody else's flight path.
-  for (const m of sorted) {
-    const ai = m.data && m.data.ai;
-    if (ai && ai.squadSocket && ai.autoSquadSocket !== true) take(m, ai.squadSocket);
-  }
-  for (const m of sorted) {
-    const ai = m.data && m.data.ai;
-    if (ai && ai.autoSquadSocket === true) take(m, ai.squadSocket);
-  }
   // Marksman doctrines ride the rear socket so the firing line keeps its support wing.
   for (const m of sorted) {
     const d = normalizeCombatDoctrineId(m.data && m.data.ai && m.data.ai.combatDoctrineId);
@@ -1411,56 +1401,6 @@ function autoSocketsFor(members) {
 
 const autoSquadGroupsScratch = new Map();
 
-function stableAutoFlights(members, key) {
-  const ordered = members.slice().sort((a, b) => {
-    const x = String(a.id); const y = String(b.id);
-    return x < y ? -1 : x > y ? 1 : 0;
-  });
-  const existing = new Map();
-  const waiting = [];
-  for (const member of ordered) {
-    const ai = member.data.ai;
-    const id = ai.autoSquadRecipe === true && typeof ai.squadFrameId === 'string'
-      && ai.squadFrameId.startsWith(`${key}#`) ? ai.squadFrameId : null;
-    if (id == null) { waiting.push(member); continue; }
-    let flight = existing.get(id);
-    if (!flight) { flight = []; existing.set(id, flight); }
-    if (flight.length < AUTO_SQUAD_FLIGHT_SIZE) flight.push(member);
-    else waiting.push(member);
-  }
-  const flights = [...existing].filter(([, flight]) => flight.length >= AUTO_SQUAD_MIN_SIZE)
-    .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
-  for (const [, flight] of existing) {
-    if (flight.length < AUTO_SQUAD_MIN_SIZE) waiting.push(...flight);
-  }
-  waiting.sort((a, b) => {
-    const x = String(a.id); const y = String(b.id);
-    return x < y ? -1 : x > y ? 1 : 0;
-  });
-  const openStations = flights.reduce((sum, [, flight]) => sum + AUTO_SQUAD_FLIGHT_SIZE - flight.length, 0);
-  let admissionCount = Math.min(openStations, waiting.length);
-  // Keep a pair for a new wing when filling every open station would abandon one
-  // reinforcement. Established pilots retain their frames; 3 + 2 stays 3 + 2, not 4 + 1.
-  if (waiting.length - admissionCount === 1 && admissionCount > 0) admissionCount--;
-  let cursor = 0;
-  for (const [, flight] of flights) {
-    while (flight.length < AUTO_SQUAD_FLIGHT_SIZE && cursor < admissionCount) flight.push(waiting[cursor++]);
-  }
-  const usedIds = new Set(flights.map(([id]) => id));
-  let nextId = 0;
-  while (waiting.length - cursor >= AUTO_SQUAD_MIN_SIZE) {
-    while (usedIds.has(`${key}#${nextId}`)) nextId++;
-    const id = `${key}#${nextId++}`;
-    // Five new arrivals make a three and a two, rather than abandoning a singleton.
-    const remaining = waiting.length - cursor;
-    const size = remaining === AUTO_SQUAD_FLIGHT_SIZE + 1
-      ? AUTO_SQUAD_FLIGHT_SIZE - 1 : Math.min(AUTO_SQUAD_FLIGHT_SIZE, remaining);
-    flights.push([id, waiting.slice(cursor, cursor + size)]);
-    cursor += size;
-  }
-  return flights;
-}
-
 export function assignAutoSquadRecipes(state, shipLikeList = indexedShipLikeScan(state), seed = 1) {
   const list = shipLikeList;
   if (!list || !list.length) return 0;
@@ -1479,28 +1419,32 @@ export function assignAutoSquadRecipes(state, shipLikeList = indexedShipLikeScan
     group.push(entity);
   }
   let stamped = 0;
-  const assigned = new Set();
   for (const [key, members] of byKey) {
     if (members.length < AUTO_SQUAD_MIN_SIZE) continue;
     const recipeId = incumbentAutoRecipe(members, String(key))
       || autoRecipeForSquad(members, String(key), seed);
-    // Preserve surviving flights before admitting replacements. Re-chunking by id on every
-    // casualty used to move healthy pilots into a different frame and restart its maneuver.
-    for (const [flightId, flight] of stableAutoFlights(members, String(key))) {
+    const sorted = members.slice().sort((a, b) => {
+      const ai = String(a.id);
+      const bi = String(b.id);
+      return ai < bi ? -1 : ai > bi ? 1 : 0;
+    });
+    // Large spawns split into flights so each frame stays a readable formation instead
+    // of eight hulls fighting over four sockets.
+    for (let start = 0; start < sorted.length; start += AUTO_SQUAD_FLIGHT_SIZE) {
+      const flight = sorted.slice(start, start + AUTO_SQUAD_FLIGHT_SIZE);
+      if (flight.length < AUTO_SQUAD_MIN_SIZE) continue;
+      const flightId = `${key}#${Math.floor(start / AUTO_SQUAD_FLIGHT_SIZE)}`;
       const sockets = autoSocketsFor(flight);
       for (const entity of flight) {
         const ai = entity.data.ai;
-        assigned.add(entity.id);
-        const socket = sockets.get(entity.id);
-        const socketOwned = !ai.squadSocket || ai.autoSquadSocket === true;
         // A live recipe re-stamps nothing; a recipe change (squad attrition shifting the
         // mix across the line) moves the whole flight at once.
-        if (ai.squadRecipe === recipeId && ai.squadFrameId === flightId
-          && (!socketOwned || ai.squadSocket === socket)) continue;
+        if (ai.squadRecipe === recipeId && ai.squadFrameId === flightId) continue;
         ai.squadRecipe = recipeId;
         ai.autoSquadRecipe = true;
         ai.squadFrameId = flightId;
-        if (socket && socketOwned) {
+        const socket = sockets.get(entity.id);
+        if (socket && !ai.squadSocket) {
           ai.squadSocket = socket;
           ai.autoSquadSocket = true;
         }
@@ -1514,7 +1458,16 @@ export function assignAutoSquadRecipes(state, shipLikeList = indexedShipLikeScan
     const entity = list[i];
     const ai = entity && entity.data && entity.data.ai;
     if (!ai || ai.autoSquadRecipe !== true) continue;
-    if (assigned.has(entity.id)) continue;
+    const flightId = ai.squadFrameId;
+    const group = autoSquadKeyFor(ai) != null ? byKey.get(autoSquadKeyFor(ai)) : null;
+    const stillAssigned = autoSquadEligible(entity, state)
+      && group != null
+      && group.length >= AUTO_SQUAD_MIN_SIZE
+      && group.some((m) => {
+        const gai = m.data && m.data.ai;
+        return gai && gai.squadFrameId === flightId;
+      });
+    if (stillAssigned) continue;
     delete ai.squadRecipe;
     delete ai.autoSquadRecipe;
     delete ai.squadFrameId;

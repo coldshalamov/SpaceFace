@@ -118,49 +118,7 @@ test('moving vignette points use transit tracking and never inherit a combat tar
   }
 });
 
-test('a finite column arrives through the existing braking owner without borrowing a combat target', () => {
-  const h = fixture();
-  try {
-    h.actor.pos = { x: 660, z: 0 };
-    const runtime = compileVignette({ id: 'column', phases: [
-      { id: 'move', verb: 'motion', seconds: 60, motion: 'column', next: 'done' },
-      { id: 'done', verb: 'resolve' },
-    ] });
-    runtime.fire(h.director, h.live, h.sim.state);
-    runtime.tick(h.director, h.live, h.sim.state, 1);
-    const activity = h.actor.data.ai.activity;
-    const directive = { squadId: 'courtesy', formation: { slot: { x: 700, z: 0 }, bound: 170 } };
-    const maneuver = movementForActivity({ kind: 'intercept', targetId: h.player.id, formationBound: 170 },
-      activity, directive);
-    const request = new ManeuverPlanner({ seed: 2011 }).plan({ entityId: h.actor.id, tick: 1,
-      perception: h.sim.helpers.aiSensors.frameFor(h.actor.id, 1), behavior: { maneuver }, directive });
-    assert.equal(request.brake, true, 'the real 70-WU/s momentum must brake at the finite column station');
-    assert.equal(maneuver.kind, 'formation');
-    assert.equal(maneuver.targetId, null);
-    assert.equal(maneuver.breakFormation, true, 'the authored station remains the destination');
-    assert.deepEqual(maneuver.formationSlot, activity.anchor);
-    assert.equal(h.actor.data.intent.moveZ, undefined, 'the vignette never supplies its own thrust');
-    assert.equal(h.actor.data.ai.passive, true);
-    assert.equal(h.actor.data.ai.roe, 'hold_fire');
-  } finally { h.sim.dispose(); }
-});
-
-test('column arrival selection stays outside moving waypoints and ordinary combat interception', () => {
-  const stationary = { kind: 'transit', reason: 'vignette_motion:column', anchor: { x: 700, z: 0 }, targetId: null };
-  for (const [label, activity] of [
-    ['moving column', { ...stationary, anchorVelocity: { x: 30, z: 0 } }],
-    ['moving orbit', { ...stationary, reason: 'vignette_motion:orbit', anchorVelocity: { x: 0, z: 88 } }],
-    ['departure', { ...stationary, reason: 'vignette_motion:depart' }],
-    ['body pursuit', { ...stationary, targetId: 4 }],
-    ['missing authored point', { ...stationary, anchor: null }],
-    ['combat run', { ...stationary, kind: 'attack_run', reason: 'interceptor_flyby' }],
-  ]) {
-    const result = movementForActivity({ kind: 'intercept', targetId: 4 }, activity, {});
-    assert.equal(result.kind, 'intercept', label);
-  }
-});
-
-test('orbit and depart retain moving choreography under the native tactical helm', async t => {
+test('orbit and depart retain moving choreography under the native tactical helm', async () => {
   const { bootRealPath } = await import('../scripts/lib/bench/realPath.mjs');
   for (const motion of ['depart', 'orbit']) {
     const h = await bootRealPath({ seed: 2011, systems: ['tacticalAI', 'flightV3', 'aiPorts', 'physics'],
@@ -182,7 +140,6 @@ test('orbit and depart retain moving choreography under the native tactical helm
         maxZ = Math.max(maxZ, actor.pos.z); minZ = Math.min(minZ, actor.pos.z);
       }
       if (motion === 'orbit') {
-        t.diagnostic(JSON.stringify({ motion, path, minX, maxZ, minZ }));
         assert.ok(path > 650, `orbit must remain a moving ring, not a center hold: ${path}`);
         assert.ok(minX < -80 && maxZ > 80 && minZ < -80,
           `orbit must visit both sides of its authored ring: ${JSON.stringify({ minX, maxZ, minZ })}`);
@@ -248,24 +205,4 @@ test('moving-point speed allowance leaves ordinary intercept caps and obstacle b
   assert.equal(plan('vignette_motion:orbit', [{ id: 3, kind: 'hazard', alive: true,
     pos: { x: 90, z: 0 }, vel: { x: 6, z: 0 }, radius: 35, tags: ['solid'], confidence: 1 }]).brake,
   true, 'a freight dodge must reclaim emergency braking');
-});
-
-test('moving vignette bearings follow the tracking controller velocity at zero and small position error', () => {
-  const plan = ({ reason = 'vignette_motion:orbit', point = { x: 0, z: 0 }, velocity = { x: 0, z: 88 } } = {}) =>
-    new ManeuverPlanner({ seed: 2011, config: { squadFrames: false, desiredKp: 0.11, desiredKv: 0.55 } }).plan({
-      tick: 1, entityId: 2,
-      perception: { tick: 1, self: { id: 2, team: 1, pos: { x: 0, z: 0 },
-        vel: { x: 0, z: 0 }, rot: 0, radius: 18, energyFraction: 1, heatFraction: 0 }, contacts: [] },
-      directive: { squadId: 'point', formation: { slot: point, bound: 170 } },
-      behavior: { maneuver: { kind: 'intercept', targetId: null, breakFormation: true,
-        formationSlot: point, formationVelocity: velocity, reason } },
-    });
-  assert.ok(Math.abs(plan().targetHeading - Math.PI / 2) < 1e-9,
-    'a pilot already at the moving waypoint faces its travel direction');
-  assert.ok(Math.abs(plan({ point: { x: 10, z: 0 } }).targetHeading - Math.atan2(88 + (88 * 45 / 60) * 0.2, 2)) < 1e-9,
-    'the bearing uses the same predicted point and existing Kp/Kv tracking gain');
-  assert.equal(plan({ reason: 'ordinary_intercept', point: { x: 10, z: 0 } }).targetHeading, 0,
-    'ordinary interception keeps its own bearing policy');
-  assert.equal(plan({ point: { x: 10, z: 0 }, velocity: { x: 0, z: 0 } }).targetHeading, 0,
-    'stationary destinations keep their existing approach bearing');
 });

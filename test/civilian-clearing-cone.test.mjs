@@ -5,7 +5,6 @@ import { createBus } from '../src/core/eventBus.js';
 import { fields, activeFieldSnapshot, fieldBodyProfile } from '../src/systems/fields.js';
 import { physics } from '../src/core/physics.js';
 import { npcJobsRuntime } from '../src/systems/npcJobsRuntime.js';
-import { traffic } from '../src/systems/traffic.js';
 import { FIELD_FLAGS, FIELD_DEFS } from '../src/data/fields.js';
 import { fieldAffectsBody } from '../src/core/fields/fieldKernel.js';
 import { planNpcFieldDeploy, CIVILIAN_CLEARING_TUNING } from '../src/ai/npcFieldDeploy.js';
@@ -22,7 +21,7 @@ async function boot({ coast = 0, playerCone = false, combatCone = false, adopted
   const previous = FIELD_FLAGS.enabled;
   FIELD_FLAGS.enabled = true;
   const sim = createSimulation({ seed: 4242, bus: createBus(),
-    systems: [...(adoptedScavenger ? [traffic, npcJobsRuntime] : []), fields, physics],
+    systems: [...(adoptedScavenger ? [npcJobsRuntime] : []), fields, physics],
     updateOrder: [fields, physics] });
   const state = sim.state;
   state.mode = 'flight'; state.input.actions = {};
@@ -83,12 +82,6 @@ test('civilian clearing moves one real workpiece without launching the belt or n
 async function adoptedWorkerFixture() {
   const ctx = await boot({ adoptedScavenger: true });
   ctx.state.world.currentSectorId = 'sector_vesta_forge';
-  // Adoption now books a real local intake route through Traffic. Supply that production
-  // owner and a distant yard; the cone still acts only on the exact booked workpiece.
-  const yard = spawn(ctx.sim, 'station', -250, 250, 0, {
-    stationId: 'station_clearing_fixture', sectorId: 'sector_vesta_forge',
-  });
-  yard.physicsBody.dynamic = false;
   const work = spawn(ctx.sim, 'wreck', 50, 0, 0, {
     salvagePool: { cmdty_scrap_metal: 2 }, sectorId: 'sector_vesta_forge',
   });

@@ -10,7 +10,6 @@ export {
 } from '../core/flight/flightPresentationReads.js';
 import { consumeCeresBreakerControl, publishCeresWorkfleetActuation } from './ceresWorkfleet.js';
 import { isSwarmCoverLive } from './swarmCoverSeek.js';
-import { planCivilianTrafficYield } from './trafficYield.js';
 import { isPlayerSaucer } from '../data/saucer.js';
 import { saucerVelocity } from '../core/flight/saucerControl.js';
 import { queueSaucerVelocity } from '../core/physicsAuthority.js';
@@ -531,14 +530,6 @@ export const flightV3 = {
       input.unvectoredCruiseSteering = vectoringSetting === false
         && !(autopilot && autopilot.active)
         && !(tether && tether.active === true);
-      // Close-quarters control hands over continuously to inertial flight as speed rises.
-      // Navigation, draw-flight, hero choreography and ropes keep their own trajectory
-      // controllers; NPCs use the motor planner. This flag never enters saves.
-      input.precisionAssist = !saucer && !pathActive && !input.drawFlight
-        && !heroManeuverActive
-        && !(autopilot && autopilot.active)
-        && !(tether && tether.active === true)
-        && playerFlightControlsActive(state, entity);
       if (!gridHeld) debitTravelBurn(this, entity, input, dt, state);
     }
 
@@ -589,9 +580,6 @@ export const flightV3 = {
         autopilotActive: !!(autopilot && autopilot.active),
       });
       pursuitSlot = pursuitSlotStep;
-      // The slot controller brakes relative to its moving target. World-relative precision
-      // would otherwise pull a correctly co-moving player out of that slot.
-      if (pursuitSlot.active) input.precisionAssist = false;
       if (pursuitSlot.active && pursuitSlot.impulse) {
         queuePhysicsImpulse(entity, pursuitSlot.impulse);
       }
@@ -606,15 +594,6 @@ export const flightV3 = {
     // controllers retain their own counterthrust and brake leases; NPC packets never inherit it.
     input.manualReverse = isPlayer && !saucer && !gridHeld && !pathActive && !heroManeuverActive
       && !(autopilot && autopilot.active) && playerFlightControlsActive(state, entity);
-    let trafficYield = null;
-    if (!isPlayer) {
-      trafficYield = planCivilianTrafficYield(state, entity, rawInput, input, profile,
-        driveAuthority);
-      if (trafficYield.active) {
-        input.rendezvous = { velocity: trafficYield.velocity, heading: trafficYield.heading };
-        input.boost = input.boostPressed = false;
-      }
-    }
     _stepArgs.dt = dt;
     _stepArgs.body = body;
     _stepArgs.input = input;
@@ -683,7 +662,6 @@ export const flightV3 = {
     // matching the legacy controller (src/systems/flight.js:216 — AI never used e.boost).
     entity.flags.boosting = isPlayer ? boosting : !!input.boost;
     assignFlightFrame(entity, result, input.assistMode);
-    if (!isPlayer) entity._flightFrame.trafficYield = trafficYield;
 
     applyResourceDelta(entity, result.resourceDelta);
     updateBank(entity, dt, profile);
@@ -1475,7 +1453,6 @@ function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG
   o.travelDrive = undefined;
   o.velocityVectoring = undefined;
   o.unvectoredCruiseSteering = undefined;
-  o.precisionAssist = undefined;
   // Job guidance uses the existing bounded moving-frame controller, never a pose writer.
   o.rendezvous = !isPlayer && raw.rendezvous ? raw.rendezvous : undefined;
   o.manualReverse = false;
@@ -2314,7 +2291,7 @@ function emitThrustCue(bus, state, entity, input, frame) {
     ? frame.speed
     : Math.hypot(finite(entity.vel && entity.vel.x), finite(entity.vel && entity.vel.z));
   const neutralAssistBrake = frame &&
-    (frame.assistReason === 'neutral-counterthrust' || frame.assistReason === 'precision-assist') &&
+    frame.assistReason === 'neutral-counterthrust' &&
     frame.assistMode === 'assisted' &&
     !manual &&
     speed > 1.2;

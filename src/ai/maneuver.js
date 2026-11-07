@@ -300,22 +300,14 @@ export class ManeuverPlanner {
       ? { contactIndexBuilds: 0, indexedContactVisits: 0, legacyContactVisits: 0 }
       : null;
     this.resolveHull = typeof config.resolveHull === 'function' ? config.resolveHull : null;
-    this.resolveMotion = typeof config.resolveMotion === 'function' ? config.resolveMotion : null;
     this.squadFrames = config.squadFrames === false
       ? null
       : (config.squadFrames || createSquadFrameDirector({ seed: this.seed }));
   }
 
   plan({ tick, entityId, perception, behavior, directive }) {
-    const sensedSelf = perception && perception.self;
-    if (!sensedSelf) throw new Error(`maneuver planner lacks self sensor frame for ${entityId}`);
-    const motion = this.resolveMotion && this.resolveMotion(entityId, tick);
-    // Pilots know their own body continuously even when their next contact scan is batched.
-    // Do not refresh contacts or tactical memory here, and never borrow a recycled id's pose.
-    const self = motion && motion.id === sensedSelf.id
-      && (sensedSelf.occupantGeneration == null || motion.occupantGeneration === sensedSelf.occupantGeneration)
-      ? overlaySelf(sensedSelf, motion)
-      : sensedSelf;
+    const self = perception && perception.self;
+    if (!self) throw new Error(`maneuver planner lacks self sensor frame for ${entityId}`);
     let runtime = this.byEntity.get(entityId);
     if (!runtime) {
       runtime = {
@@ -338,11 +330,6 @@ export class ManeuverPlanner {
       };
       this.byEntity.set(entityId, runtime);
     }
-    // A contact may leave sensing permanently. Retire its pass on the existing deadline
-    // even when this pilot is tumbling or choreography skips the avoidance planner.
-    for (const [contactId, pass] of runtime.collisionPasses) {
-      if (tick > pass.untilTick) runtime.collisionPasses.delete(contactId);
-    }
     // INF-021: a decontrolled ship relents — no drive, no torque, no boost, no brake.
     // The hull keeps whatever velocity the yank gave it, so the tumble reads as drift;
     // when the status clears, ordinary planning resumes off current truth and the ship
@@ -353,11 +340,6 @@ export class ManeuverPlanner {
       runtime.lastVelZ = self.vel ? self.vel.z : 0;
       runtime.lastVelTick = tick;
       runtime.stationaryTicks = 0;
-      runtime.smoothedForward = 0;
-      runtime.smoothedRight = 0;
-      runtime.smoothedTorqueYaw = 0;
-      runtime.lastTick = tick;
-      runtime.lastHeading = null;
       runtime.lastRot = self.rot;
       runtime.lastRotTick = tick;
       const held = makeThrusterRequest(entityId, tick, {
@@ -411,11 +393,11 @@ export class ManeuverPlanner {
       );
       if (queued) intent = { ...intent, formationSlot: { x: queued.x, z: queued.z } };
     }
-    // Close the yaw loop on the body's measured rate. Differentiating a cached sensor heading
-    // on every motor tick reports zero, then a spike when the next contact batch arrives.
-    // Older/injected ports without body-rate sensing retain the wrapped difference fallback.
+    // The sensor frame carries no angular-velocity channel, so differentiate the wrapped
+    // heading between plan calls; the yaw request below closes on this measured rate
+    // (see yawRateTorqueFor).
     const rotGapTicks = Number.isInteger(runtime.lastRotTick) ? Math.max(1, tick - runtime.lastRotTick) : 1;
-    const measuredWy = Number.isFinite(selfPose.angVel) ? selfPose.angVel : Number.isFinite(runtime.lastRot)
+    const measuredWy = Number.isFinite(runtime.lastRot)
       ? wrapAngle(selfPose.rot - runtime.lastRot) / (rotGapTicks / 60)
       : 0;
     runtime.lastRot = selfPose.rot;
@@ -504,7 +486,7 @@ export class ManeuverPlanner {
     if (!(choreo && choreo.coast)) {
       desired = applyFriendlySeparation(desired, selfPose, contactSource.ships, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
       if (!choreo) {
-        desired = applyShipCollisionAvoidance(desired, selfPose, contactSource.ships, intent, this.seed, entityId, tick, runtime, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy', target, hullScale);
+        desired = applyShipCollisionAvoidance(desired, selfPose, contactSource.ships, intent, this.seed, entityId, tick, runtime, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy', target);
       }
     }
     desired = applyObstacleAvoidance(desired, selfPose, contactSource.obstacles, intent, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
@@ -588,7 +570,7 @@ export class ManeuverPlanner {
       const reversing = Number.isFinite(runtime.lastDesiredUnitX)
         && (runtime.lastDesiredUnitX * rawDesiredUnit.x + runtime.lastDesiredUnitZ * rawDesiredUnit.z) < REVERSAL_DOT;
       if (reversing) {
-        const exempt = desired.obstacleAvoidance === true || desired.shipCollisionAvoidance === true
+        const exempt = desired.obstacleAvoidance === true
           || reflex != null
           || kind === ManeuverKind.RETREAT
           || kind === ManeuverKind.ESCAPE_TETHER
@@ -683,10 +665,7 @@ export class ManeuverPlanner {
       ? closeApproachLimit(kind, intent, selfPose, target, this.config, envelope.maxClosingSpeed)
       : envelope.maxClosingSpeed;
     const velocityAlongDesired = selfPose.vel.x * desiredUnit.x + selfPose.vel.z * desiredUnit.z;
-    const collisionSpeedLimited = desired.shipCollisionAvoidance && Number.isFinite(desired.shipCollisionTurnSpeed)
-      && Math.hypot(selfPose.vel.x - (desired.shipCollisionVelocity.x || 0),
-        selfPose.vel.z - (desired.shipCollisionVelocity.z || 0)) > desired.shipCollisionTurnSpeed + this.config.speedBrakeSlack;
-    const speedLimited = speed > envelope.maxSpeed + this.config.speedBrakeSlack || collisionSpeedLimited;
+    const speedLimited = speed > envelope.maxSpeed + this.config.speedBrakeSlack;
     const closingLimited = target && closing > localClosingLimit + this.config.closingBrakeSlack;
     let throttle = arrival < slowRadius ? saturate(arrival / slowRadius) : 1;
 
@@ -698,7 +677,7 @@ export class ManeuverPlanner {
     if (Math.abs(angleError) > turnGate) throttle *= 0.35;
     if (velocityAlongDesired > envelope.maxSpeed) throttle *= 0.25;
 
-    const allowReverse = desired.shipCollisionAvoidance === true || !!choreo || kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION || speedLimited;
+    const allowReverse = kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION || speedLimited;
     const tracked = desired.control === 'track' && desired.desiredPos && kind !== ManeuverKind.CLEAR_DEADLOCK;
     let rawForward;
     let rawRight;
@@ -706,7 +685,7 @@ export class ManeuverPlanner {
     // thrown body is ballistic and cannot yield, so formation strafe authority and the
     // gentle input slew would deliver the escape line too late (M11 5↔6 graze).
     const choreoDodge = !!(choreo && choreo.dodge);
-    const lateralBurst = isLateralBurst(reflex) || choreoDodge || desired.shipCollisionAvoidance === true;
+    const lateralBurst = isLateralBurst(reflex) || choreoDodge;
     const strafeAuthority = lateralBurst
       ? Math.max(strafeAuthorityForKind(kind), this.config.reflexStrafeAuthority)
       : strafeAuthorityForKind(kind);
@@ -764,7 +743,7 @@ export class ManeuverPlanner {
     const boostWanted = ((kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER || kind === ManeuverKind.CLEAR_DEADLOCK) &&
       speed < envelope.maxSpeed * 0.85 && Math.abs(angleError) < 0.78)
       || (reflex != null && reflex.boost === true && Math.abs(angleError) < 0.9);
-    const boost = boostWanted && !desired.obstacleAvoidance && !desired.shipCollisionAvoidance && !(reflex && reflex.simmer) && !disruption.active
+    const boost = boostWanted && !desired.obstacleAvoidance && !(reflex && reflex.simmer) && !disruption.active
       && selfPose.energyFraction >= this.config.minBoostEnergyFraction && selfPose.heatFraction <= this.config.maxBoostHeatFraction;
     const slotSpeed = choreo && choreo.slotVel
       ? Math.hypot(choreo.slotVel.x || 0, choreo.slotVel.z || 0)
@@ -996,33 +975,15 @@ function desiredForIntent(intent, self, target, contactIndex, seed, entityId, co
       && !(intent.seekContactWhenAvailable === true && target)) {
     const speed = intent.enemyMindOwned && intent.kind === ManeuverKind.RETREAT
       ? config.retreatSpeed : config.interceptSpeed;
-    return commitPoint(self, intent.flightPoint, speed * (hullScale && hullScale.speed || 1),
-      ZERO_VEL, intent.crossingLane === true);
+    return commitPoint(self, intent.flightPoint, speed * (hullScale && hullScale.speed || 1));
   }
   switch (intent.kind) {
-    case ManeuverKind.INTERCEPT: {
-      if (target) return intercept(self, target, config.interceptHorizonTicks, intent.lateralSign,
-        (intent.contactRun === true && intent.committedRun === true ? config.escapeSpeed : config.interceptSpeed)
-        * (hullScale && hullScale.speed || 1), config, intent);
-      const velocity = intent.formationVelocity;
-      const movingWaypoint = intent.targetId == null && intent.reason?.startsWith('vignette_motion:')
-        && velocity && Math.hypot(velocity.x, velocity.z) > 0;
-      // An authored moving point has the same finite tracking latency as a squad
-      // slot. Use its existing prediction horizon instead of chasing its old pose.
-      const point = movingWaypoint ? predictFormationSlot(intent, config.formationPredictionTicks) : intent.formationSlot;
-      const desired = trackPoint(self, point, velocity, 0.7);
-      if (movingWaypoint) {
-        // Face the same commanded velocity that the tracking PD controller follows.
-        // Position error alone has no bearing at a moving point; it can turn a
-        // perfectly placed pilot away from the waypoint's travel direction.
-        const kp = config.desiredKp * (hullScale && hullScale.track > 0 ? hullScale.track : 1);
-        const kv = config.desiredKv * (hullScale && hullScale.damp > 0 ? hullScale.damp : 1);
-        const closingRate = kv > 0 ? kp / kv : 0;
-        desired.x = velocity.x + (desired.desiredPos.x - self.pos.x) * closingRate;
-        desired.z = velocity.z + (desired.desiredPos.z - self.pos.z) * closingRate;
-      }
-      return desired;
-    }
+    case ManeuverKind.INTERCEPT:
+      return target
+        ? intercept(self, target, config.interceptHorizonTicks, intent.lateralSign,
+          (intent.contactRun === true && intent.committedRun === true ? config.escapeSpeed : config.interceptSpeed)
+          * (hullScale && hullScale.speed || 1), config, intent)
+        : trackPoint(self, intent.formationSlot, intent.formationVelocity, 0.7);
     case ManeuverKind.ORBIT: {
       const orbitRadius = Math.max(1, Number.isFinite(intent.preferredRange) ? intent.preferredRange : config.orbitRadius);
       if (target) return orbit(self, target, orbitRadius, seed, entityId, intent.lateralSign,
@@ -1295,31 +1256,33 @@ function trackPoint(self, point, velocity, throttle) {
   };
 }
 
-function commitPoint(self, point, commitSpeed, feedVel = ZERO_VEL, flyThrough = false) {
+function commitPoint(self, point, commitSpeed, feedVel = ZERO_VEL, runThrough = false) {
   const target = point || self.pos;
   const dx = target.x - self.pos.x, dz = target.z - self.pos.z;
   const distance = Math.hypot(dx, dz);
   const inv = distance > 1e-9 ? 1 / distance : 0;
   const speed = Math.max(8, commitSpeed || 0);
-  // Arrive in the slot's moving frame. A nonzero minimum chase speed continually pumps
-  // motion through a stationary slot, while fractional feedforward makes a wing lag its
-  // own frame. Close the relative error to zero and carry the full frame velocity.
-  // A committed attack corridor explicitly flies through its endpoint instead of docking.
+  // Arrival damping: a formation slot is a place, not a direction. The raised pursuit caps
+  // made full-speed slot chases overshoot and oscillate around the slot — formation mates
+  // crossed centers and ground hull-to-hull during settle and reform (M6 left↔right at
+  // spawn, lead↔left in the reform turn). Cap the SELF-driven approach by the braking
+  // distance to the slot, on top of the slot's own recede rate along the bearing — a
+  // receding slot is pursued at full cap, a settled slot glides in.
   const feed = feedVel || ZERO_VEL;
-  const arriveSpeed = Math.sqrt(2 * COMMIT_ARRIVAL_BRAKE * Math.max(0, distance - 6));
-  const chase = flyThrough ? speed : Math.min(speed, arriveSpeed, distance * 1.6);
-  const vx = (feed.x || 0) + dx * inv * chase;
-  const vz = (feed.z || 0) + dz * inv * chase;
-  const limit = Math.max(speed, Math.hypot(feed.x || 0, feed.z || 0));
-  const scale = Math.min(1, limit / Math.max(1e-9, Math.hypot(vx, vz)));
+  const recede = distance > 1e-9 ? ((feed.x || 0) * dx + (feed.z || 0) * dz) * inv : 0;
+  const arriveSpeed = recede + Math.sqrt(2 * COMMIT_ARRIVAL_BRAKE * Math.max(0, distance - 6));
+  // A run-through commit point is a place the hull arrives AT speed — the detonator's fuse
+  // ring, a ram bow — never a slot it must settle on. Arrival damping would glide the dive
+  // in at braking distance and hand a receding prey the last ~30 WU it needs to live.
+  const chase = runThrough ? speed : Math.min(speed, Math.max(speed * 0.35, arriveSpeed));
   return {
     x: dx,
     z: dz,
     arrivalDistance: distance,
     desiredPos: target,
     desiredVel: {
-      x: vx * scale,
-      z: vz * scale,
+      x: (feed.x || 0) * 0.35 + dx * inv * chase,
+      z: (feed.z || 0) * 0.35 + dz * inv * chase,
     },
     control: 'track',
   };
@@ -1353,114 +1316,63 @@ function applyFriendlySeparation(desired, self, contacts, config, counters, coun
   return stampDesired(desired, { x, z, arrivalDistance: desired.arrivalDistance });
 }
 
-function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, entityId, tick, runtime, config, counters, counterMode = 'legacy', target = null, hullScale = ENEMY_MOTION_IDENTITY_SCALE) {
-  if (config.shipCollisionLookahead <= 0) return desired;
+function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, entityId, tick, runtime, config, counters, counterMode = 'legacy', target = null) {
+  // A kamikaze's committed run is authored as ONE STRAIGHT final approach: a pass-around point
+  // re-aims the line ~1.85x clearance off a bystander hull and the dart sweeps wide of its own
+  // 56 WU fuse ring — a miss that only re-arms the cycle, not a dodge it survives by. Lit-run
+  // scrapes against bystanders resolve physically; rocks still own the obstacle cone.
   if (intent && intent.contactRun === true && intent.committedRun === true) return desired;
   const dir = unit2(desired.x, desired.z, Math.cos(self.rot), Math.sin(self.rot));
-  const endpoint = desired.desiredPos || {
-    x: self.pos.x + dir.x * config.shipCollisionLookahead,
-    z: self.pos.z + dir.z * config.shipCollisionLookahead,
-  };
+  let x = dir.x, z = dir.z;
+  const rightX = -dir.z;
+  const rightZ = dir.x;
   const passes = runtime.collisionPasses || (runtime.collisionPasses = new Map());
+  // A broken-off contact seek cannot honor a blocker's halo when the destination itself sits
+  // inside it (the freight pod spilled 33 WU off the dead carrier, inside its ~72 WU keep-out —
+  // the raider slalomed the shoulder for 40 s and never touched the cargo). The seek wins;
+  // the solver resolves the scrape physically.
   const seekDest = target && intent && intent.breakFormation === true && maneuverSeeksContact(intent.kind)
     ? target.pos : null;
-  let selected = null, nearest = Infinity;
   for (const contact of contacts) {
     countContactVisit(counters, counterMode);
     if (!contact || contact.kind !== ContactKind.SHIP || contact.id === self.id || contact.alive === false) continue;
     if (contact.id === intent.targetId && seeksHullContact(intent, self)) continue;
-    const dx = contact.pos.x - self.pos.x, dz = contact.pos.z - self.pos.z;
+    const dx = contact.pos.x - self.pos.x;
+    const dz = contact.pos.z - self.pos.z;
     const distance = Math.hypot(dx, dz);
-    const hullClearance = bodyRadius(self) + bodyRadius(contact);
-    const clearance = config.shipCollisionClearance + hullClearance
+    const ahead = dx * dir.x + dz * dir.z;
+    const lateral = dx * rightX + dz * rightZ;
+    const clearance = config.shipCollisionClearance + bodyRadius(self) + bodyRadius(contact)
       + massClearanceFor(contact, intent, self, config);
-    const companion = contact.team != null && contact.team === self.team && contact.id !== intent.targetId;
-    // Friendly separation already owns comfortable spacing. Emergency collision
-    // routing takes over only for a measured hull threat, so a close formation can advance.
-    const predictionClearance = companion ? hullClearance : clearance;
-    if (seekDest && contact.id !== target.id && distance2(contact.pos, seekDest) < clearance) continue;
-    const rvx = self.vel.x - (contact.vel && contact.vel.x || 0);
-    const rvz = self.vel.z - (contact.vel && contact.vel.z || 0);
-    const velocity = Math.hypot(rvx, rvz);
-    const approach = dx * rvx + dz * rvz;
-    // Forecast only the existing motion horizon. Extrapolating a slow follower for
-    // lookahead/relativeSpeed seconds turns normal braking approaches into false emergencies.
-    const horizon = Math.min(Math.max(1, config.trajectoryHorizonTicks) / 60,
-      config.shipCollisionLookahead / Math.max(1, velocity));
-    const t = velocity > 1e-6 ? clamp(approach / (velocity * velocity), 0, horizon) : 0;
-    const driftThreat = distance < hullClearance || (approach > 0 && t > 0
-      && Math.hypot(dx - rvx * t, dz - rvz * t) < predictionClearance);
-    // Allied ships move under their own motors. A static ray to our long-range
-    // waypoint would turn every ship ahead into a wall even while relative motion is clear.
-    const routeThreat = !companion && shipRouteEntersClearance(self.pos, endpoint, contact.pos, clearance);
+    if (seekDest && contact.id !== target.id
+      && distance2(contact.pos, seekDest) < clearance) continue;
     let pass = passes.get(contact.id) || null;
-    // A new escape leg that already clears the ship owns its route. Continuing toward an old
-    // far-side pass point can turn an otherwise safe extension back through the target.
-    if (pass && ((!routeThreat && !driftThreat && (companion || distance >= clearance))
-      || tick > pass.untilTick || distance > config.shipCollisionLookahead * 2.4)) {
+    const passed = pass && ((self.pos.x - contact.pos.x) * pass.forwardX +
+      (self.pos.z - contact.pos.z) * pass.forwardZ > clearance * 1.5);
+    if (pass && (passed || tick > pass.untilTick || distance > config.shipCollisionLookahead * 2.4)) {
       passes.delete(contact.id);
       pass = null;
     }
-    if (!pass && (routeThreat || driftThreat) && distance <= config.shipCollisionLookahead + clearance) {
-      const forward = routeThreat ? dir : unit2(rvx, rvz, dir.x, dir.z);
-      const lateral = dx * -forward.z + dz * forward.x;
+    if (!pass && ahead > 0 && ahead <= config.shipCollisionLookahead && Math.abs(lateral) < clearance) {
       const deterministicSide = hashUnit(seed, entityId, contact.id, 'ship_collision_pass') < 0.5 ? -1 : 1;
       const side = Math.abs(lateral) <= clearance * 0.15 ? deterministicSide : (lateral < 0 ? 1 : -1);
-      pass = { forwardX: forward.x, forwardZ: forward.z, side, untilTick: tick + 240 };
+      pass = {
+        forwardX: dir.x,
+        forwardZ: dir.z,
+        pointX: contact.pos.x + dir.x * clearance * 3 + rightX * side * clearance * 1.85,
+        pointZ: contact.pos.z + dir.z * clearance * 3 + rightZ * side * clearance * 1.85,
+        untilTick: tick + 240,
+      };
       passes.set(contact.id, pass);
     }
-    if (!pass || distance / clearance >= nearest) continue;
-    const rightX = -pass.forwardZ, rightZ = pass.forwardX;
-    let point = {
-      x: contact.pos.x + pass.forwardX * clearance * 3 + rightX * pass.side * clearance * 1.85,
-      z: contact.pos.z + pass.forwardZ * clearance * 3 + rightZ * pass.side * clearance * 1.85,
-    };
-    if (shipRouteEntersClearance(self.pos, point, contact.pos, clearance) || distance < clearance) {
-      const nx = distance > 1e-6 ? -dx / distance : -pass.forwardX;
-      const nz = distance > 1e-6 ? -dz / distance : -pass.forwardZ;
-      if (distance <= clearance) {
-        // Inside the approach margin, recover outward before choosing another crossing leg.
-        point = { x: contact.pos.x + nx * clearance * 1.25,
-          z: contact.pos.z + nz * clearance * 1.25 };
-      } else {
-        // A point outside a hull is not itself a clear route. Use the tangent on the chosen
-        // passing side, extended along that same line so the controller flies past the corner.
-        const radial = clearance * clearance / distance;
-        const tangent = clearance * Math.sqrt(distance * distance - clearance * clearance) / distance;
-        const sign = (-nz * rightX + nx * rightZ) * pass.side >= 0 ? 1 : -1;
-        const tx = contact.pos.x + nx * radial - nz * tangent * sign;
-        const tz = contact.pos.z + nz * radial + nx * tangent * sign;
-        const along = unit2(tx - self.pos.x, tz - self.pos.z, dir.x, dir.z);
-        point = { x: tx + along.x * clearance, z: tz + along.z * clearance };
-      }
-    }
-    nearest = distance / clearance;
-    selected = { point, contact, clearance };
+    if (!pass) continue;
+    const passDirection = unit2(pass.pointX - self.pos.x, pass.pointZ - self.pos.z, dir.x, dir.z);
+    const proximity = saturate(1 - distance / (config.shipCollisionLookahead * 1.5));
+    const blend = clamp(0.65 + proximity * config.shipCollisionWeight, 0, 1);
+    x = x * (1 - blend) + passDirection.x * blend;
+    z = z * (1 - blend) + passDirection.z * blend;
   }
-  if (!selected) return desired;
-  const route = unit2(selected.point.x - self.pos.x, selected.point.z - self.pos.z, dir.x, dir.z);
-  if (desired.control !== 'track') return { ...desired, x: route.x, z: route.z, shipCollisionAvoidance: true };
-  // Turn in the contact's moving frame: v²/R must fit the existing hull-scaled lateral
-  // tracking budget. The ordinary motor brake and bounded thrusters perform the slowdown.
-  const lateralAccel = config.desiredMaxLateralAccel * (hullScale.strafe || 1) * config.reflexStrafeAuthority;
-  const turnSpeed = Math.sqrt(Math.max(1, lateralAccel * selected.clearance));
-  const speed = Math.min(config.interceptSpeed, turnSpeed, Math.max(12,
-    Math.hypot(desired.desiredVel && desired.desiredVel.x || 0,
-      desired.desiredVel && desired.desiredVel.z || 0)));
-  return { ...desired, x: route.x, z: route.z, shipCollisionAvoidance: true,
-    shipCollisionVelocity: selected.contact.vel || ZERO_VEL, shipCollisionTurnSpeed: turnSpeed,
-    desiredPos: selected.point,
-    desiredVel: { x: (selected.contact.vel && selected.contact.vel.x || 0) + route.x * speed,
-      z: (selected.contact.vel && selected.contact.vel.z || 0) + route.z * speed } };
-}
-
-function shipRouteEntersClearance(start, end, center, radius) {
-  const x = start.x - center.x, z = start.z - center.z;
-  const dx = end.x - start.x, dz = end.z - start.z;
-  const length2 = dx * dx + dz * dz;
-  if (length2 <= 1e-9 || x * dx + z * dz >= 0) return false;
-  const t = clamp(-(x * dx + z * dz) / length2, 0, 1);
-  return (x + dx * t) ** 2 + (z + dz * t) ** 2 < radius * radius;
+  return stampDesired(desired, { x, z, arrivalDistance: desired.arrivalDistance });
 }
 
 function closeApproachLimit(kind, intent, self, target, config, fallback) {
@@ -1677,8 +1589,7 @@ function yawRateTorqueFor(angleError, measuredWy, headingRate, kind, config, hul
   // bearing may spend the full rate budget, but it cannot re-pump a whirlpool — the commanded
   // rate still collapses to the proportional term the moment the heading stops moving.
   const track = clamp(Number.isFinite(headingRate) ? headingRate : 0, -rateTarget, rateTarget);
-  const desiredWy = clamp(track + clamp(angleError / config.yawSoftAngle, -1, 1) * rateTarget,
-    -rateTarget, rateTarget);
+  const desiredWy = track + clamp(angleError / config.yawSoftAngle, -1, 1) * rateTarget;
   return clamp((desiredWy - measuredWy) * config.yawRateGain, -limit, limit);
 }
 
@@ -1850,27 +1761,13 @@ function applyReflexToDesired(desired, self, reflex) {
 function overlaySelf(self, live) {
   const pos = live.pos || self.pos;
   const vel = live.vel || self.vel;
-  const x = Number.isFinite(pos.x) ? pos.x : 0;
-  const z = Number.isFinite(pos.z) ? pos.z : 0;
-  const vx = Number.isFinite(vel.x) ? vel.x : 0;
-  const vz = Number.isFinite(vel.z) ? vel.z : 0;
-  const rot = Number.isFinite(live.rot) ? live.rot : self.rot;
-  const angVel = Number.isFinite(live.angVel) ? live.angVel : self.angVel;
-  const tumbling = typeof live.tumbling === 'boolean' ? live.tumbling : self.tumbling;
-  const recovering = typeof live.recovering === 'boolean' ? live.recovering : self.recovering;
-  const radius = Number.isFinite(live.radius) ? live.radius : self.radius;
-  const hullFraction = Number.isFinite(live.hullFraction) ? live.hullFraction : self.hullFraction;
-  // The fresh sensor or preceding body overlay usually already matches the squad's live
-  // pose. Keep that immutable view instead of cloning its static fields and both vectors
-  // again for every formation pilot on every motor tick.
-  if (x === self.pos.x && z === self.pos.z && vx === self.vel.x && vz === self.vel.z
-    && rot === self.rot && angVel === self.angVel && tumbling === self.tumbling
-    && recovering === self.recovering && radius === self.radius && hullFraction === self.hullFraction) return self;
   return {
     ...self,
-    pos: { x, z },
-    vel: { x: vx, z: vz },
-    rot, angVel, tumbling, recovering, radius, hullFraction,
+    pos: { x: Number.isFinite(pos.x) ? pos.x : 0, z: Number.isFinite(pos.z) ? pos.z : 0 },
+    vel: { x: Number.isFinite(vel.x) ? vel.x : 0, z: Number.isFinite(vel.z) ? vel.z : 0 },
+    rot: Number.isFinite(live.rot) ? live.rot : self.rot,
+    radius: Number.isFinite(live.radius) ? live.radius : self.radius,
+    hullFraction: Number.isFinite(live.hullFraction) ? live.hullFraction : self.hullFraction,
   };
 }
 

@@ -417,14 +417,7 @@ export function movementForActivity(maneuver, activityValue, directive, freeze =
       // and keep its obstacle/arrival control. Never inherit a selected combat target:
       // these passive hold-fire destinations have no body to pursue or ram.
       if (activity.kind === ActivityKind.TRANSIT && activity.reason.startsWith('vignette_motion:')) {
-        // A finite column ends at fixed positions. Formation navigation retains its
-        // normal arrival braking, keeping the escort's wake stable as the convoy
-        // settles. Moving vignette waypoints retain the intercept tracker.
-        const stationaryColumn = activity.reason === 'vignette_motion:column'
-          && activity.targetId == null && activity.anchor
-          && (!activity.anchorVelocity || (activity.anchorVelocity.x === 0 && activity.anchorVelocity.z === 0));
-        return freeze({ ...base, kind: stationaryColumn ? ManeuverKind.FORMATION : ManeuverKind.INTERCEPT,
-          targetId: null, breakFormation: true,
+        return freeze({ ...base, kind: ManeuverKind.INTERCEPT, targetId: null, breakFormation: true,
           formationVelocity: activity.anchorVelocity || freeze({ x: 0, z: 0 }) });
       }
       // Ordinary lane transit keeps formation travel. A TRANSIT activity that names a concrete
