@@ -32,6 +32,7 @@ import { stationContactMemoryFor, stationContactMemoryLine } from '../../../data
 import { mountContactPortrait } from '../../portraitArt.js';
 import { createWaveform, createVoiceArc, voiceEnvelope } from '../../orrery/waveform.js';
 import { createReplyDial } from '../../orrery/barReplyDial.js';
+import { injectOrreryStationBar } from '../../orrery/station-barLayouts.js';
 import { typewriter, decrypt } from '../../orrery/text.js';
 import { reducedMotion } from '../../orrery/motion.js';
 import { escapeHtml } from '../../comms.js';
@@ -202,6 +203,7 @@ export function createBarScreen(ctx) {
 
   function dressStage() {
     ensureBarStyle();
+    injectOrreryStationBar();
     if (stageEl.querySelector('.sx-empty')) {
       paintLegend(stageEl.querySelector('.sx-empty'), true);
       return;
