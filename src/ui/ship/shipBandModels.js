@@ -226,7 +226,7 @@ export function conditionFromEntity(entity) {
   };
 }
 
-/** The fit-screen line that names the hull this fit tows at the under-way bar. */
+/** The fit-screen line that names the hull this fit's printed Line rating covers. */
 export function towSentence(predictions) {
   const name = predictions && predictions.towableHullName;
   if (name) return `Can tow ${withArticle(name)}.`;
