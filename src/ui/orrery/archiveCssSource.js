@@ -157,10 +157,21 @@ ${CX} .cx-filed { color:rgb(252 250 244); }
 ${CX} > .k-stage { ${PLAIN} padding:0 0 26px 14px !important; margin-left:-14px !important; overflow:hidden auto; }
 ${CX}[data-plate="on"] > .k-stage { padding-right:calc(var(--cx-plate) + clamp(28px, 3vw, 64px)) !important; }
 ${CX} > .k-stage { display:flex !important; flex-direction:column; }
-${CX} .sf-codex-entry { ${PLAIN} position:relative; display:block !important; max-width:none !important; min-height:0 !important; padding:0 !important; margin:0 !important; color:${INK}; }
+/* ui-polish-394: .sf-codex-entry wears 1px bone ~18% / radius 10 / faint fill; densify 8→6.
+   Drop PLAIN so the card can keep border/radius/fill. Internal pad seats lore inside the chrome;
+   stage-child keeps the 14px left gutter pull so the scroll-extent thumb rides outside the first letters. */
+${CX} .sf-codex-entry { position:relative; display:block !important; max-width:none !important; min-height:0 !important;
+  box-sizing:border-box; padding:18px 20px !important; margin:0 !important; color:${INK};
+  border:1px solid rgb(${BONE} / .18); border-radius:10px; background:rgb(${BONE} / .025); }
+@media (max-height:820px) { ${CX} .sf-codex-entry { border-radius:8px; } }
+@media (max-height:460px) { ${CX} .sf-codex-entry { border-radius:8px; } }
+@media (max-height:400px) { ${CX} .sf-codex-entry { border-radius:6px; } }
+@media (max-width:760px) { ${CX} .sf-codex-entry { border-radius:8px; } }
 /* the reading stands level with the plate's heart; a long one starts at the top and scrolls */
 ${CX}[data-plate="on"] .sf-codex-entry { margin-top:auto !important; margin-bottom:0 !important; }
-${CX} > .k-stage > .sf-codex-entry { flex:0 1 auto; min-height:0 !important; overflow:hidden auto; scrollbar-width:none; padding-left:14px !important; margin-left:-14px !important; }
+/* left pad = 14px gutter + ~14px card inset so thumb clears first letters; other sides keep card pad */
+${CX} > .k-stage > .sf-codex-entry { flex:0 1 auto; min-height:0 !important; overflow:hidden auto; scrollbar-width:none;
+  padding:18px 20px 18px 28px !important; margin-left:-14px !important; }
 ${CX} > .k-stage > .sf-codex-entry::-webkit-scrollbar { display:none; }
 /* the scroll-extent thumb rides the 14px left gutter at every desktop size, not through the reading's first letters (960x540) */
 ${CX} > .k-stage > .sf-codex-entry > .orr-extent::before { left:-10px; }
@@ -617,7 +628,8 @@ ${CX_PHONE} > .k-stage { flex:0 1 auto; order:4; min-height:0 !important; max-he
  *  it outside the stage's overflow:hidden box, so on phone it is clipped out of view (not parked in a visible gutter);
  *  the reading fade still says "more below". The padding/margin pair keeps the entry text where it was. */
 ${CX_PHONE} > .k-stage > .sf-codex-entry > .orr-extent::before { left:-12px !important; width:2px !important; }
-${CX_PHONE} > .k-stage > .sf-codex-entry { padding-left:16px !important; margin-left:-16px !important; }
+/* ui-polish-394: keep hairline card pad on phone; left gutter pull still parks the thumb outside the first letters */
+${CX_PHONE} > .k-stage > .sf-codex-entry { padding:14px 16px 14px 26px !important; margin-left:-16px !important; }
 ${CX_PHONE} .cx-reader__num { gap:8px; margin-bottom:2px !important; }
 ${CX_PHONE} .cx-reader__num-n { font-size:28px; line-height:1 !important; }
 ${CX_PHONE} .cx-reader__num-of { font-size:12px; }
