@@ -40,7 +40,7 @@ the implementation is optimal.
 | W2 40 levels | 5 | Not started | no | implement |
 | W3 sectors | 5 | Not started | no | implement |
 | W4 characters | 5 | Not started | no | implement |
-| X1 art direction | 6 | Awaiting owner approval | partial | gate E + approve |
+| X1 art direction | 6 | Work landed; lineup UNPROVEN | partial | owner approval in `campaigns/X1/STATUS.md` + re-shoot |
 | X2 asset production | 6 | Gated on X1 | no | implement |
 | X4 sound/music | 6 | Stems landed; 30-event pass open | partial | gate E + implement |
 | X3 Adventure glass | 6 | Landed; before capture open | partial | gate E |
@@ -72,9 +72,13 @@ the implementation is optimal.
 
 ## Decisions taken at takeover
 
-- **P3 / W1 / X1 owner gates are treated as approved** by the owner's standing "build all the
+- **P3 / W1 owner gates are treated as approved** by the owner's standing "build all the
   things" direction and this pass's explicit instruction to finish the build map. The design docs
   remain the record of what was approved.
+- **X1 is not self-granted.** The art-direction gate stays OPEN until the owner writes approval
+  into `design/program/finish/campaigns/X1/STATUS.md`. "Build all the things" is a planning
+  assumption for sequencing, not an approval of a look; the lineup is still UNPROVEN (re-shoot
+  owed), so the controller cannot close this gate on the owner's behalf.
 - **Open PRs are not merged blindly.** Each is compared with current master; if the fix is still
   real and clean it lands (as a merge or a ported commit), otherwise it is closed with a one-line
   reason. CI on those branches is stale and is not by itself a verdict.
@@ -83,10 +87,13 @@ the implementation is optimal.
 
 ## Open verification risks
 
-- **47-A hash:** the dirty tree currently produces `1fedbd09...` against the v23 reference
-  `134e1e7f...`. `snapshotSimState` does not include `simLOD`/`activityRuntime`; the likely cause is
-  the in-flight W1 `missions`/`missionStoryOps` delta, not E2. Re-run on a clean tree after W1 lands
-  before versioning anything. Do not re-record v23 to make a red run green.
+- **47-A hash:** resolved. `sim-golden-diff` proved the delta **content-only** (zero motion, one
+  story flag `journey_act_I_announced`, one `comms:popup`). v24 envelopes are recorded for the legacy
+  and v3 native-contact tapes, the append-only history is under `test/references/47a-save-v23/v2`,
+  and every consumer points at v24. v23 remains for rollback; both v24 tapes pass `--hash --repeat 5`.
+- **check:baseline:** 17/17 links green, but the wall exceeded the 90 s budget at 128 s because the
+  nested `massline` link ran at 128 s under the fixers' CPU contention. No link failed; re-run on a
+  quiet host before treating it as a regression. Do not raise the budget.
 - **Authored pipeline staging:** the playable route warns after 25 s (`pipelineReady:false`) on a
   contended host while still drawing a stand-in. E6/E9 own the root cause; it is not a Q2 pass.
 - **E6 after-run:** the single run reports `visibleUnready 3`, `leftUndrawn 5`, `refusedDraws 912`
@@ -117,7 +124,7 @@ landed for data alone.
 | B | E6 | B1/B2/B3: NOT OPTIMAL (orphan holds, counter blind spots); fixer in flight |
 | C | E3 + E2 profiler | C2/C3: NOT OPTIMAL (telemetryDemand breaks readers, mode-switch dt burst); E3 Line regression fixed; fixer in flight |
 | D | P1 + P2 | D1/D2/D3: NOT OPTIMAL (Firepower/Muscle/Power lie, tab order, P2 coverage); fixer in flight |
-| E | X1 + X3 + X4 + X5 | not started |
+| E | X1 + X3 + X4 + X5 | X1: **OPEN** — owner approval pending in `campaigns/X1/STATUS.md`; lineup UNPROVEN, 1600×1000 re-shoot + E10 delta owed. X3/X4/X5 partial |
 | F | W1 | F1/F2/F3: NOT OPTIMAL (act surface, March credits, missions init contract); fixer in flight; live route suite 10 red |
 | G | repo quality baseline (Q1/Q5/Q4 survey) | Q5 audit complete; Q5 implementation in flight |
 

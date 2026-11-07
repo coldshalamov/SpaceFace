@@ -3,8 +3,8 @@
 
 <!--
 refreshed: 2026-11-06
-baseCommit: b5dbfa81d5bcf0132b45671fcb3aa0b2a4218e82
-expiresAfterCommits: 25
+baseCommit: c37d52ad3148840334ea73121d954f09330d4705
+expiresAfterCommits: 60
 expiresAfterDays: 2
 -->
 
