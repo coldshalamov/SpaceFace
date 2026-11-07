@@ -190,6 +190,17 @@ ${FLIGHT}:not([data-sf-mobile-wheel="1"]) body:not(.ui-modal-open) #hud > .sf-ra
     right:calc(max(44px,52px * var(--mf-scale)) + 8px);
   }
 }
+/* Landscape keeps the Powers side handle (portrait moves it into the top Pause row).
+   Compact radar densify (max-height:599 / max-width:959 above) parks .sf-rightdock at
+   right:8, which slides HOSTILE / GATE / HAULER under Powers at 960×540 and the same
+   mash persists on taller landscape (1280×720) whenever the dock hugs the right edge.
+   Keep the Powers-clearing inset for every landscape mobile-flight seat; the ≤500 block
+   below still owns the taller-seat toast / leftcontext / race-tape moves. */
+@media (orientation:landscape) {
+  ${FLIGHT} #hud .sf-rightdock {
+    right:calc(84px + var(--sf-safe-right,0px))!important;
+  }
+}
 @media (max-height:500px) and (orientation:landscape) {
   ${FLIGHT} #hud .sf-radar-wrap--expanded { top:calc(8px + var(--sf-safe-top,0px))!important; max-height:calc(100dvh - 16px - var(--sf-safe-top,0px) - var(--sf-safe-bottom,0px)); }
   ${FLIGHT} #hud .sf-rightdock { top:calc(95px + var(--sf-safe-top,0px))!important; right:calc(84px + var(--sf-safe-right,0px))!important; }
