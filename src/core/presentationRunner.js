@@ -1430,6 +1430,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       }
       const skipPresentation = destroyed || suspended
         || (!restoring && lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING);
+      // A skipped/restored callback must not carry loading or pause wall time into the first
+      // presented flight frame. Cap-skips still accumulate (skipPresentation stays false).
+      if (skipPresentation || restoring) presentedElapsedS = 0;
       // Player frame-cap (Settings → Video). Sim keeps its 60 Hz leftover; only the GPU present
       // is gated. Fractional debt accrues from elapsed time: a busy 60 Hz display delivering
       // 30 callbacks/s must still present all of them under a 30 fps cap. Counting callbacks
