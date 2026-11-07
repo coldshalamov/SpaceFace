@@ -2,8 +2,10 @@
 # SpaceFace orientation
 
 This is a short map of the game and repository. Root [`AGENTS.md`](../AGENTS.md) is the front door;
-the current game-finishing work and its outcome criteria live in
-[`design/program/finish/README.md`](../design/program/finish/README.md) and its lane boards.
+the current game-finishing work lives in
+[`design/program/finish/MASTER_PLAN.md`](../design/program/finish/MASTER_PLAN.md), its dispatch in
+[`MASTER_LANES.md`](../design/program/finish/MASTER_LANES.md), and live outcome state in
+[`EXECUTION_STATUS_2026-11-06.md`](../design/program/finish/EXECUTION_STATUS_2026-11-06.md).
 [`TASK_ROUTER.md`](./TASK_ROUTER.md) points to named workflows. These documents route work; they do
 not duplicate volatile status.
 
@@ -29,12 +31,12 @@ for generated indexes.
 | Path | Contents and entry point |
 |---|---|
 | `src/` | Runtime code. Start with [`MODULE_MAP.md`](./MODULE_MAP.md), then read the nearest `AGENTS.md`. |
-| `src/core/`, `runtime/`, `systems/` | State, runtime assembly, and fixed-step simulation. |
+| `src/core/`, `src/runtime/`, `src/systems/` | State, runtime assembly, and fixed-step simulation. |
 | `src/render/`, `src/ui/`, `src/audio/`, `src/save/` | Rendering, screens, sound, and persistence; each has local ownership guidance. |
 | `src/data/`, `src/world/`, `src/story/` | Catalogs, world state, and narrative systems. |
 | `assets/` | Authored ships, places, props, portraits, and art; start at `assets/AGENTS.md` and the asset docs. |
 | `design/` | Product intent and selected design specifications. Read only the section activated by the task. |
-| `design/program/finish/` | Current completion assignments, path ownership, and acceptance criteria. |
+| `design/program/finish/` | Current campaigns, lane dispatch, exact path ownership and acceptance criteria. |
 | `docs/` | Engineering navigation, contracts, validation, and historical context. See `docs/README.md`. |
 | `test/`, `scripts/`, `tools/` | Tests, checks, and production tooling; read the nearest `AGENTS.md`. |
 | `styles/`, `electron/`, `schemas/` | Styling, desktop shell, and data schemas. |

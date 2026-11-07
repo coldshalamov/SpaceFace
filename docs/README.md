@@ -11,10 +11,10 @@ This is the navigation front door for engineering and world-content documentatio
 | Named campaign / symptom door | [`TASK_ROUTER.md`](./TASK_ROUTER.md) |
 | Full working agreement (finish rules, `NOW.md` locks, `check:playable`, reporting) | [`AGENT_OPERATIONS.md`](./AGENT_OPERATIONS.md) |
 | Owner preferences and verified workspace facts | [`AGENT_LESSONS.md`](./AGENT_LESSONS.md) |
-| Active game-finishing work | [`../design/program/finish/README.md`](../design/program/finish/README.md) → the owning Lane 1/2/3 board; build-map rows remain specification detail while the Finish Program is active |
+| Active game-finishing work | [`../design/program/finish/MASTER_PLAN.md`](../design/program/finish/MASTER_PLAN.md) → [`MASTER_LANES.md`](../design/program/finish/MASTER_LANES.md); build-map rows are specification detail, not a queue |
 | Technical invariants and ownership | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) |
-| Active work and lane ownership | [`../design/program/finish/README.md`](../design/program/finish/README.md) + its lane boards; use [`../design/program/NOW.md`](../design/program/NOW.md) for current checkpoints/liveness |
-| Current work packet | The ordered packet on the owning Lane 1/2/3 board in [`../design/program/finish/`](../design/program/finish/README.md) while the Finish Program is active |
+| Active work and lane ownership | [`../design/program/finish/MASTER_LANES.md`](../design/program/finish/MASTER_LANES.md) + [`EXECUTION_STATUS`](../design/program/finish/EXECUTION_STATUS_2026-11-06.md); use [`../design/program/NOW.md`](../design/program/NOW.md) for current write claims |
+| Current work packet | The ordered campaign on [`MASTER_PLAN.md`](../design/program/finish/MASTER_PLAN.md); exact owned paths come from `NOW.md` |
 | Finish Program review and verification | [`../design/program/finish/README.md`](../design/program/finish/README.md) §§5.2–5.4; other work follows its selected packet and applicable verification route |
 | Find the module that owns behavior | [`MODULE_MAP.md`](./MODULE_MAP.md), then the nearest `src/**/AGENTS.md` |
 | Diagnose a recurring failure | [`COMMON_BUGS.md`](./COMMON_BUGS.md) |
@@ -33,8 +33,8 @@ This is the navigation front door for engineering and world-content documentatio
 
 ## Documentation classes
 
-- **Authority:** root `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, the active Finish Program lane board, and its selected packet.
-- **Current status:** `design/program/finish/` lane boards own active finish assignments; other program status stays in the surface that currently governs it, with `NOW.md` for volatile claims and checkpoints.
+- **Authority:** root `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `design/program/finish/MASTER_PLAN.md`, and the selected campaign.
+- **Current status:** `design/program/finish/EXECUTION_STATUS_2026-11-06.md` owns the campaign matrix; `design/program/NOW.md` is the volatile write-claim board.
 - **Navigation/reference:** `MODULE_MAP.md`, `COMMON_BUGS.md`, and `SEARCH_CONTEXT.md`.
 - **Generated indexes:** `EVENT_ROUTING.md` and `SYSTEM_REGISTRY.md`; regenerate with `npm run build:indexes`.
 - **Historical evidence:** handoffs, reviews, old audit reports, and captures. They explain; they do not dispatch.
