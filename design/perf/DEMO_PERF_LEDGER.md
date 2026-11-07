@@ -110,17 +110,21 @@ render list. Re-check the slope on a quiet host before ever raising or lowering 
 
 ## First-flight loading is the other red (2026-11-07)
 
-Cold boots currently take 32–42 s to `entering-flight`, with 15–18 s in the `render-pipelines`
-stage. The route labels the wait "Linking the first-flight render pipelines"; the assets audit
-showed `precompile.js` has no production caller and the label is held while
-`waitForRequiredOpeningPicture` runs. The host was 59 % busy for both samples; the whole route was
-about 2× slower, so these are not a clean before/after.
+Cold boots measured 32–42 s to `entering-flight` earlier on this box, with 15–18 s in the
+`render-pipelines` stage. The route labels the wait "Linking the first-flight render pipelines"; the
+assets audit showed `precompile.js` has no production caller and the label is held while
+`waitForRequiredOpeningPicture` runs.
 
-A cap bypass during loading was tried and reverted: the sample came out slower (14.7 → 18.1 s in
-the stage), and uncapping can steal main-thread time from the admission lanes on a contended host.
-Re-test only on a quiet host, with the admission stage spans as the matched metric. The real
-candidates remain the serial admission wall (per-hull compile/upload paced waits) and the four
-permanently `missing` opening roots.
+The latest native run reached flight at **15.4 s** (render-pipelines 8.0 → 15.4 s, 7.5 s) on a
+less-contended host, after the content-hash fast path, policy-walk collapse, texture batching and
+VFX warm. Four opening roots are still permanently `missing` (604 wreck, 607–609 payloads) and show
+as procedural fallbacks; they do not block flight. The first-visible-draw identity gate still fails
+on late-cooked residency by design (`applyFirstPlayablePaintRelease` comment); it is a diagnostic,
+not a visual gate.
+
+A cap bypass during loading was tried and reverted: the sample came out slower, and uncapping can
+steal main-thread time from the admission lanes on a contended host. Re-test only on a quiet host.
+
 
 ## Tether / boost / turn hitch: an in-frame shader link, fixed (2026-11-07)
 
