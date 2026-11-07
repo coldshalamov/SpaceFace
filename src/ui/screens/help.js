@@ -718,6 +718,12 @@ export const helpScreen = {
         b.setAttribute('aria-selected', String(on));
         if (on) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
       }
+      // ui-polish-421: on the phone strip FACTIONS (and Ores) sit past the fold — keep the open
+      // tab in view so the selected word is the scroll peek, not off-frame.
+      const openTab = this._tabBtns[this._activeTab];
+      if (openTab && typeof openTab.scrollIntoView === 'function') {
+        try { openTab.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'auto' }); } catch (e) { /* layout-free host */ }
+      }
     }
 
     switch (this._activeTab) {
@@ -729,6 +735,35 @@ export const helpScreen = {
       case 'Factions': this._view = this._renderFactions(); break;
       default: break;
     }
+    this._bindHelpPageFold();
+  },
+
+  /** ui-polish-421: phone Help page scrolls as one column — mark when the foot still hides more. */
+  _syncHelpPageFold() {
+    const root = this._root;
+    if (!root) return;
+    const sh = Number(root.scrollHeight) || 0;
+    const ch = Number(root.clientHeight) || 0;
+    const st = Number(root.scrollTop) || 0;
+    const over = sh - ch > 6;
+    const left = sh - st - ch;
+    root.dataset.overflow = over ? '1' : '0';
+    root.dataset.foldFoot = over && left > 6 ? '1' : '0';
+  },
+
+  _bindHelpPageFold() {
+    const root = this._root;
+    if (!root || typeof root.addEventListener !== 'function') return;
+    if (!this._helpFoldBound) {
+      this._helpFoldBound = true;
+      root.addEventListener('scroll', () => this._syncHelpPageFold(), { passive: true });
+      if (typeof ResizeObserver === 'function') {
+        try { new ResizeObserver(() => this._syncHelpPageFold()).observe(root); } catch (e) { /* shim */ }
+      }
+    }
+    const run = () => this._syncHelpPageFold();
+    run();
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);
   },
 
   /** The search field on the long-list tabs; filters the ladder in place. */
@@ -1273,6 +1308,13 @@ export const helpScreen = {
       if (nb && typeof nb.focus === 'function') nb.focus();
     });
     paint(false);
+    // ui-polish-421: only the ≤760 column makes .orr-help-factions the scroll owner; syncing the
+    // extent on the desktop grid would insert .orr-extent as a first grid cell and shove the orbit.
+    try {
+      const narrow = typeof matchMedia === 'function'
+        && matchMedia('(max-width:760px) and (min-height:461px)').matches;
+      if (narrow) syncScrollExtent(wrap);
+    } catch (e) { /* layout-free host */ }
     return { dispose: () => orbit.dispose() };
   },
 
