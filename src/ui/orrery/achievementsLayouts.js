@@ -3,8 +3,9 @@
 // (the medal orrery, src/ui/orrery/constellationMedals.js). The statistics composition stands
 // here because the unit's one new layout home is this file; the achievements section carries the
 // polish the shared constellation sheet (src/ui/orrery/constellationLayouts.js, another lane's
-// file) does not. Layout and type only. Nothing here draws a box: readings sit on pools of shade
-// with soft edges, the deeds hang off a ladder rail, the one filled shape stays the Lamp Key.
+// file) does not. Layout and type only. Records readings sit on pools of shade with soft edges; the
+// medal reading wears a promise-scale hairline card; the deeds hang off a ladder rail, the one
+// filled shape stays the Lamp Key.
 // Scoped to each screen's root (#screens > .k-screen.orr-statistics / .con-achievements) so
 // nothing reaches another screen. Injected AFTER statisticsLayouts/constellationLayouts by the
 // screens themselves, so these rules win the cascade ties they need.
@@ -129,8 +130,23 @@ const A = 'html body #screens > .k-screen.con-achievements';
 const ACHIEVEMENTS = `
 /* achievements polish over constellationLayouts.js (kept here so that shared sheet stays owned by
    the research lane): the reading column's earned rim already carries the date, so nothing else
-   in the column needs to; the column breathes against the frame's foot at the tall end. */
-${A} > .con-medal-read { padding-bottom:clamp(20px, 5vh, 64px); }
+   in the column needs to. */
+/* ui-polish-396: the reading column wears the promise-scale hairline card (1px bone ~18% / radius 10 /
+   faint fill / padded) the other readings wear (#898-#907), in place of the unbound shade pool that
+   read as a bare Newgrounds plate; densify takes the radius 8 -> 6 on short and narrow frames. */
+${A} > .con-medal-read { box-sizing:border-box; padding:16px 18px;
+  border:1px solid rgb(${BONE} / .18); border-radius:10px; background:rgb(${BONE} / .025); }
+${A} > .con-medal-read::before { content:none; display:none; }
+@media (max-height:820px) { ${A} > .con-medal-read { border-radius:8px; } }
+@media (max-height:460px) { ${A} > .con-medal-read { border-radius:8px; } }
+@media (max-height:400px) { ${A} > .con-medal-read { border-radius:6px; } }
+/* short bands (651x461, 960x500): the card's padding would push its foot and head toward the title;
+   trim the padding so the plate stays clear of ACHIEVEMENTS */
+@media (max-height:519px) { ${A} > .con-medal-read { padding:10px 14px; } }
+/* the 290px reading column of the 561-1000 bands: a slimmer inline pad keeps a two-word name on one line */
+@media (min-width:561px) and (max-width:1000px) { ${A} > .con-medal-read { padding-inline:12px; } }
+@media (max-width:760px) { ${A} > .con-medal-read { border-radius:8px; } }
+@media (max-width:560px) { ${A} > .con-medal-read { padding:14px 16px; } }
 /* the count figure pairs its numeral with its "of" word on one baseline */
 ${A} .con-medal-read__figure { align-items:baseline; }
 
@@ -149,6 +165,8 @@ ${A} .con-medal-read__figure { align-items:baseline; }
   ${A} .con-filters .k-word { font-size:12px !important; letter-spacing:.04em !important; font-stretch:100% !important;
     min-height:26px; scroll-margin-inline:10px; }
   ${A} .con-filters .k-word:focus-visible { outline:2px solid var(--dp-hand, #f2b950) !important; outline-offset:-2px; }
+  /* the reading's card leaves the 150px dial floor no head room under the title here; a 120px dial keeps it clear */
+  ${A} .con-medal-read__dial { width:120px; height:120px; --ms:120px; }
 }
 `;
 
