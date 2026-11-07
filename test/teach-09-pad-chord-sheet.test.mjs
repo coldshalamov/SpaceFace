@@ -55,7 +55,7 @@ test('a player who never opens Settings still reads the dual Xbox/PlayStation re
   assert.equal(rows.get('Fire'), 'RT / R2');
   assert.equal(rows.get('Mine beam'), 'LT / L2');
   assert.equal(rows.get('Boost'), 'RB / R1');
-  assert.equal(rows.get('Brake / reverse'), 'LB / L1');
+  assert.equal(rows.get('Brake / full stop'), 'LB / L1');
   // The five powers (owner 2026-10-22): SHOVE keeps Y and takes the old detonate's D-Pad Down.
   assert.equal(rows.get('Shove (repulsor; sets off armed ordnance)'), 'Y / △ or D-Pad Down');
   assert.equal(rows.get('Accept / confirm'), 'A / Cross');

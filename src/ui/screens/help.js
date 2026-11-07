@@ -140,7 +140,6 @@ export const GAMEPAD_ROW_ACTIONS = Object.freeze([
   ['Gyre Snare (hold: lash; release: bowl)', 'gyreSnare', (g) => g],
   ['Shield pylons (place / link / recall)', 'deployShieldPylon', (g) => g],
   ['Chase / overhead camera', 'steeringView', (g) => g],
-  ['Restart time trial', 'raceRestart', (g) => g],
 ]);
 
 // Rows with no pad action: the analogue sticks and the one verb a pad does not own. Keyed by
