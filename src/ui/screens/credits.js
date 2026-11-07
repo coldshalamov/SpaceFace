@@ -5,13 +5,14 @@
 // catches the section being read. Picking a section on the ladder rolls the reel, which swings the
 // orrery to it. A progress arc reads how far through the reel you are. Third-party notices PQ-033.00.
 // The emblem is credits' own (src/ui/orrery/creditsLayouts.js — its body spacing follows the section
-// count). Unique chrome: styles/credits.css, composed over by src/ui/orrery/settingsLayouts.js.
+// count). Unique chrome: styles/credits.css, composed over by src/ui/orrery/settingsLayouts.js;
+// hairline cards for reel sections / notices live in creditsLayouts.js (ui-polish-387).
 // Data from scripts/write-credits.mjs.
 import { CREDITS } from '../../data/credits.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { injectOrrerySettings, createDriftField, createReelProgress, revealReel, attachSpotlight } from '../orrery/settingsLayouts.js';
-import { createCreditsOrrery } from '../orrery/creditsLayouts.js';
+import { createCreditsOrrery, injectCreditsLayouts } from '../orrery/creditsLayouts.js';
 import { reducedMotion } from '../orrery/motion.js';
 
 const CREDITS_SHEET_ID = 'of-credits-css';
@@ -138,6 +139,7 @@ export const creditsScreen = {
     injectDeckplate();
     ensureCreditsStyles();
     injectOrrerySettings();
+    injectCreditsLayouts();
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu');
     rootEl.classList.add('k-screen', 'of-credits', 'orr-credits');
