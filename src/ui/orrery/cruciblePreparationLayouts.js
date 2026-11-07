@@ -779,10 +779,14 @@ ${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-slottag { color:rgb
   ${A} .k-foot .sf-cru-kbd, ${A} .sf-cru-fine .orr-armory-keycap { font-size:12px !important; letter-spacing:.12em !important; }
 }
 /* review: under ~800 wide the one-row foot is wider than the frame, and its right-packed verbs
-   pushed LAUNCH ROUND off the left edge (761×500). There the key hints take a second row. */
-@media (min-width:761px) and (max-width:820px) and (max-height:500px) {
-  ${A} > .k-foot { flex-wrap:wrap !important; row-gap:0 !important; }
-  ${A} .k-foot .k-words { justify-content:flex-start !important; }
+   pushed LAUNCH ROUND off the left edge (761×500). There the key hints take a second row.
+   polish384: the same right-pack + nowrap also ejects Launch (and Rearrange) off the left at
+   960×500 — five foot verbs (~908px) fight the fine strip (~284px) inside a 912px foot. Extend
+   the wrap/flex-start guard through ~1100 so Launch stays on-frame; fine drops to its own row. */
+@media (min-width:761px) and (max-width:1100px) and (max-height:500px) {
+  ${A} > .k-foot { flex-wrap:wrap !important; row-gap:4px !important; }
+  ${A} .k-foot .k-words { justify-content:flex-start !important; flex-wrap:wrap !important; flex:1 1 auto !important; min-width:0 !important; }
+  ${A} .sf-cru-fine { margin:0 !important; flex:1 0 100% !important; text-align:left !important; }
   /* the second foot row costs the height the two-line preview needs, so here it stays one line (PURCHASE stays on-frame) */
   ${A} > .k-title .sf-cru-preview { display:block !important; white-space:nowrap; -webkit-line-clamp:unset; line-clamp:none; }
 }
