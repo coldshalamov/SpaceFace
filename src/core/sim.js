@@ -200,14 +200,18 @@ export function createSimulation(options = {}) {
           runHiddenKeepalive(hiddenKeepaliveRequest);
           return state;
         }
-        if (core.preStep) {
-          if (countSystems) tier1.countSystemInvocation('core.preStep');
-          core.preStep(dt, state);
-        }
-        const queue = updateQueueForThisStep(updatePartitions, state);
         const profiler = getSimStepProfiler();
         if (profiler.active) {
+          // Begin before the pre-step so the ranking includes core.preStep (E3 review F6).
+          // The pre-step still runs before queue resolution, exactly as the unprofiled path.
           profiler.beginTick();
+          if (core.preStep) {
+            const t0 = nowNs();
+            if (countSystems) tier1.countSystemInvocation('core.preStep');
+            core.preStep(dt, state);
+            profiler.record('core.preStep', nowNs() - t0);
+          }
+          const queue = updateQueueForThisStep(updatePartitions, state);
           for (const system of queue) {
             const t0 = nowNs();
             if (countSystems) tier1.countSystemInvocation(system.name);
@@ -222,6 +226,11 @@ export function createSimulation(options = {}) {
           }
           profiler.endTick();
         } else {
+          if (core.preStep) {
+            if (countSystems) tier1.countSystemInvocation('core.preStep');
+            core.preStep(dt, state);
+          }
+          const queue = updateQueueForThisStep(updatePartitions, state);
           for (const system of queue) {
             if (countSystems) tier1.countSystemInvocation(system.name);
             system.update(updatePartitions.updateDt(system, dt, state), state);

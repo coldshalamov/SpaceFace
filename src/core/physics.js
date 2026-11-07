@@ -377,20 +377,21 @@ export const physics = {
     const runtime = state.physicsRuntime;
     // E2: the quantized per-body snapshot is a verification view (simSnapshot), not sim state.
     // Building it per tick allocated one record per body per step for a reader that only asks at
-    // a checkpoint. Publish it only when a host explicitly opts in; otherwise hand out a lazy
-    // provider so `snapshotSimState` still sees identical data at the moment it asks.
+    // a checkpoint. Publish it only when a host explicitly opts in; otherwise install a lazy
+    // accessor so a reader that dereferences `physicsRuntime.sg02Snapshot` (checks, probes,
+    // snapshotSimState) still gets the identical rows at the moment it asks (E3 review F3).
     if (this._sg02 && this._diag.backend === 'rapier-dynamic') {
       if (!this._sg02SnapshotProvider) {
         this._sg02SnapshotProvider = () => (this._sg02 ? this._sg02.quantizedSnapshot({ liveOnly: true }) : []);
       }
       runtime.sg02SnapshotProvider = this._sg02SnapshotProvider;
       if (shouldPublishSg02Snapshot(state)) {
-        runtime.sg02Snapshot = this._sg02SnapshotProvider();
+        publishSg02Snapshot(runtime, this._sg02SnapshotProvider);
       } else {
-        delete runtime.sg02Snapshot;
+        installLazySg02Snapshot(runtime, this._sg02SnapshotProvider);
       }
     } else {
-      delete runtime.sg02Snapshot;
+      removeSg02Snapshot(runtime);
       delete runtime.sg02SnapshotProvider;
     }
   },
@@ -2047,6 +2048,32 @@ function maxLiveCollectorRadius(collectors) {
     if (isPickupCollector(col) && (col.radius || 0) > radius) radius = col.radius || 0;
   }
   return radius;
+}
+
+// Runtimes whose `sg02Snapshot` is the lazy accessor. A WeakSet probe is the only per-tick
+// cost in the default path; reads are the only times the rows are built.
+const LAZY_SG02_SNAPSHOT_RUNTIMES = new WeakSet();
+
+function installLazySg02Snapshot(runtime, provider) {
+  if (LAZY_SG02_SNAPSHOT_RUNTIMES.has(runtime)) return;
+  delete runtime.sg02Snapshot;
+  Object.defineProperty(runtime, 'sg02Snapshot', {
+    configurable: true,
+    // Non-enumerable: object spread/JSON/save never materialise the rows by accident.
+    enumerable: false,
+    get: provider,
+  });
+  LAZY_SG02_SNAPSHOT_RUNTIMES.add(runtime);
+}
+
+function publishSg02Snapshot(runtime, provider) {
+  if (LAZY_SG02_SNAPSHOT_RUNTIMES.delete(runtime)) delete runtime.sg02Snapshot;
+  runtime.sg02Snapshot = provider();
+}
+
+function removeSg02Snapshot(runtime) {
+  LAZY_SG02_SNAPSHOT_RUNTIMES.delete(runtime);
+  delete runtime.sg02Snapshot;
 }
 
 function shouldPublishSg02Snapshot(state) {

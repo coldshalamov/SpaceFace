@@ -690,26 +690,34 @@ export function validateSystemClockDeclarations(updateIds = PRODUCTION_UPDATE_OR
  * E3 — Simulation execution modes and mode-scoped system scheduling.
  * Every id in PRODUCTION_UPDATE_ORDER carries an explicit mode scope declaration.
  * validateSystemModeDeclarations() verifies complete coverage.
+ *
+ * Only FLIGHT and SWARM are scheduling scopes: they are the two states the ordinary route
+ * actually steps. DOCKED and YARD are frozen-world labels — presentationFreeze skips the full
+ * tick while either holds, so no mode queue is ever dispatched for them (E3 review F4).
  */
 export const SIM_MODE = Object.freeze({
   FLIGHT: 'flight',
-  DOCKED: 'docked',
   SWARM: 'swarm',
-  YARD: 'shipbreakingYard',
   UNSCOPED: 'unscoped',
+  // Resolved for state labelling and skip decisions only. Deliberately absent from
+  // ALL_SIM_MODES: a frozen step runs the hidden keepalive services, not a system queue.
+  DOCKED: 'docked',
+  YARD: 'shipbreakingYard',
 });
 
+/** Scopes a queue can be dispatched for. A frozen label (DOCKED/YARD) is not one. */
 export const ALL_SIM_MODES = Object.freeze([
   SIM_MODE.FLIGHT,
-  SIM_MODE.DOCKED,
   SIM_MODE.SWARM,
-  SIM_MODE.YARD,
 ]);
 
 const MODE_SCOPE_ALWAYS = ALL_SIM_MODES;
-const MODE_SCOPE_ADVENTURE = Object.freeze([SIM_MODE.FLIGHT, SIM_MODE.DOCKED, SIM_MODE.YARD]);
-const MODE_SCOPE_FLIGHT_ONLY = Object.freeze([SIM_MODE.FLIGHT, SIM_MODE.YARD]);
-const MODE_SCOPE_COMBAT_FLIGHT = Object.freeze([SIM_MODE.FLIGHT, SIM_MODE.YARD, SIM_MODE.SWARM]);
+// ADVENTURE and FLIGHT_ONLY both resolve to FLIGHT now that DOCKED/YARD are frozen labels, not
+// scheduling scopes. The names are kept because they document the owner's intent and the two
+// groups will diverge again if a docked step ever ships.
+const MODE_SCOPE_ADVENTURE = Object.freeze([SIM_MODE.FLIGHT]);
+const MODE_SCOPE_FLIGHT_ONLY = Object.freeze([SIM_MODE.FLIGHT]);
+const MODE_SCOPE_COMBAT_FLIGHT = Object.freeze([SIM_MODE.FLIGHT, SIM_MODE.SWARM]);
 const MODE_SCOPE_SWARM_ONLY = Object.freeze([SIM_MODE.SWARM]);
 
 export const SYSTEM_MODE_DECLARATIONS = Object.freeze({
@@ -842,7 +850,7 @@ export const SYSTEM_MODE_DECLARATIONS = Object.freeze({
   aceMemory: MODE_SCOPE_FLIGHT_ONLY,
   factionPresence: MODE_SCOPE_FLIGHT_ONLY,
   nemesisEncounter: MODE_SCOPE_FLIGHT_ONLY,
-  capitalBossEncounters: MODE_SCOPE_FLIGHT_ONLY,
+  capitalBossEncounters: MODE_SCOPE_COMBAT_FLIGHT,
   kilnback: MODE_SCOPE_FLIGHT_ONLY,
   mothlight: MODE_SCOPE_FLIGHT_ONLY,
   palletJack: MODE_SCOPE_FLIGHT_ONLY,

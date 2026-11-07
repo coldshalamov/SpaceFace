@@ -21,10 +21,19 @@
 // `process.memoryUsage().heapUsed` in Node). Chrome bucketises that counter, so the mean
 // over many ticks is the usable number; a single tick's delta is not. The report carries
 // its own `source` and `quantised` flags rather than implying precision it does not have.
+// A worker realm with neither counter (no `performance.memory`) reports `allocation: null`;
+// allocation evidence is therefore Node/harness-side, not a claim about the worker heap.
 
 export const SIM_STEP_PROFILE_SCHEMA = 'spaceface.simStepProfile.v1';
 
 const RING_TICKS = 256;
+
+// `core.preStep`, `core.lifetimeSweep` and `core.publishInputCommand` are top-level step work,
+// not sub-phases of another system. The dot is just a namespace, so keep them in the ranking
+// denominator; the other dotted ids (`physics.worldStep`, `economy.drift`) remain nested.
+function isNestedPhaseId(id) {
+  return id.includes('.') && !id.startsWith('core.');
+}
 
 function nowNs() {
   if (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') {
@@ -182,12 +191,14 @@ export function createSimStepProfiler(options = {}) {
       measuringThisTick = measure;
       if (!measure) { skippedTicks++; return false; }
       counters.tickBegin++;
-      order = [];
-      tickCalls = 0;
+      // Sample the heap before touching the retained scratch so the delta measures the step,
+      // not this bookkeeping. `order` is reused (length reset, never reallocated).
       tickStartNs = nowNs();
       heapAtStart = heapBytes();
       tickHeapDelta = 0;
       tickHeapSource = heapAtStart ? heapAtStart.source : null;
+      order.length = 0;
+      tickCalls = 0;
       return true;
     },
 
@@ -233,11 +244,12 @@ export function createSimStepProfiler(options = {}) {
         totalMeasuredMs += rec.totalMs;
         // Sub-phases (`physics.worldStep`, `economy.pressure`) are portions of a parent row, not
         // peers of it. Counting them in the denominator made one system read as 47% of the step
-        // and invited an agent to optimise the same work three times (E2 review F7).
-        if (!rec.id.includes('.')) topLevelMeasuredMs += rec.totalMs;
+        // and invited an agent to optimise the same work three times (E2 review F7). Core step
+        // rows are top-level work despite their dotted namespace.
+        if (!isNestedPhaseId(rec.id)) topLevelMeasuredMs += rec.totalMs;
         systems.push({
           id: rec.id,
-          nested: rec.id.includes('.'),
+          nested: isNestedPhaseId(rec.id),
           calls: rec.calls,
           meanMs: round(meanMs),
           p50: round(ringPercentile(rec.ring, 0.5)),

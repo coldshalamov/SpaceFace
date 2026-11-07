@@ -56,3 +56,37 @@ test('sampling strides whole ticks without losing the measured row set', () => {
   assert.equal(report.skippedTicks, 3);
   assert.equal(report.step.count, 3);
 });
+
+test('core step rows are ranked as top-level work, not nested sub-phases', () => {
+  const profiler = createSimStepProfiler();
+  profiler.setEnabled(true);
+  profiler.beginTick();
+  profiler.record('core.preStep', 1e6);
+  profiler.record('core.publishInputCommand', 0.5e6);
+  profiler.record('input', 0.5e6);
+  profiler.record('physics.worldStep', 2e6);
+  profiler.record('physics', 3e6);
+  profiler.endTick();
+
+  const report = profiler.snapshot();
+  const rows = new Map(report.systems.map((row) => [row.id, row]));
+  assert.equal(rows.get('core.preStep').nested, false, 'core.preStep is top-level');
+  assert.equal(rows.get('core.publishInputCommand').nested, false, 'the input publish is top-level');
+  assert.equal(rows.get('physics.worldStep').nested, true, 'physics.worldStep stays a sub-phase');
+  // 1 + 0.5 + 0.5 + 3 = 5 ms of top-level work; the 2 ms physics sub-phase is already inside it.
+  assert.equal(report.topLevelMeasuredMs, 5);
+  assert.ok(Math.abs(rows.get('core.preStep').share - (1 / 5)) < 0.001);
+});
+
+test('the last-tick row set is reset between ticks instead of retaining the previous tick', () => {
+  const profiler = createSimStepProfiler();
+  profiler.setEnabled(true);
+  profiler.beginTick();
+  profiler.record('physics', 1e6);
+  profiler.endTick();
+  profiler.beginTick();
+  profiler.record('economy', 2e6);
+  profiler.endTick();
+  const rows = profiler.lastTick().systems;
+  assert.deepEqual(rows.map((row) => row.id), ['economy']);
+});

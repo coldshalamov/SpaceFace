@@ -1,6 +1,6 @@
 import { getCombatKernel } from '../../combat/kernel.js';
 import { entityLocalPointToWorld, worldPointToEntityLocal } from '../../combat/geometry.js';
-import { physicsBodyNativeReady, queuePhysicsImpulse, readPhysicsTelemetry } from '../../core/physicsAuthority.js';
+import { physicsBodyNativeReady, queuePhysicsImpulse, readPhysicsTelemetry, requestPhysicsTelemetry } from '../../core/physicsAuthority.js';
 import { markDirty, DIRTY } from '../../core/dirtyJournal.js';
 import { worldLedgerHoldsId } from '../../core/entity.js';
 import { PARTS, MOUNTS, RIG_TEMPLATES, RIG_LIMITS, RIG_COMBAT_PROFILE, RIG_ATTACHMENT_DEF, RIG_CAPTURE_DEF, partBodySpec } from './parts.js';
@@ -280,6 +280,9 @@ export function createRigPhysicsAdapter(ctx) {
     const snapshot = w.preview;
     const body = createPart(w, rig, snapshot.partType, snapshot.pos, snapshot.rot);
     if (!body) return fail('body_spawn_unavailable');
+    // The new-keel admission below reads the measured body receipt. Declare the demand here,
+    // where the seed body is bound, so a demand-driven telemetry owner still publishes it.
+    if (snapshot.seed) requestPhysicsTelemetry(body);
     const edge = snapshot.seed ? null : makeConnection(rig, parent, body);
     rig.pendingEdit = { bodyId: body.id, edgeId: edge?.id || null, seed: snapshot.seed, stockCost: snapshot.cost,
       tick: state.tick || 0, previousModified: rig.modified };

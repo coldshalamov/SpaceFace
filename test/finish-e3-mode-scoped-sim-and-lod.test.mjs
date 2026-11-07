@@ -5,7 +5,6 @@ import {
   ALL_SIM_MODES,
   PRODUCTION_UPDATE_ORDER,
   SIM_MODE,
-  SYSTEM_MODE_DECLARATIONS,
   getDeclaredSystemModeScope,
   getSystemModeScope,
   systemRunsInMode,
@@ -19,15 +18,14 @@ import {
   shouldSkipSystemThisStep,
   updateQueueForThisStep,
 } from '../src/core/catchupPolicy.js';
-import {
-  ensureActivityClassified,
-  getSimulationLODTelemetry,
-} from '../src/world/activityRuntime.js';
+import { ensureActivityClassified } from '../src/world/activityRuntime.js';
 
 test('E3: validateSystemModeDeclarations validates all production update systems', () => {
   const violations = validateSystemModeDeclarations();
   assert.deepEqual(violations, [], 'Production update order must have zero mode declaration violations');
   assert.equal(PRODUCTION_UPDATE_ORDER.length, 220);
+  // Only the two states the ordinary route actually steps are scheduling scopes.
+  assert.deepEqual([...ALL_SIM_MODES], [SIM_MODE.FLIGHT, SIM_MODE.SWARM]);
 });
 
 test('E3: validateSystemModeDeclarations catches missing, invalid, or empty declarations', () => {
@@ -55,28 +53,24 @@ test('E3: systemRunsInMode handles UNSCOPED and specific modes correctly', () =>
   assert.equal(systemRunsInMode('survivalArena', SIM_MODE.FLIGHT), false);
   assert.equal(systemRunsInMode('survivalArena', SIM_MODE.DOCKED), false);
 
-  // Open flight combat systems do not run when DOCKED
+  // Open flight combat systems run in Flight and Swarm
   assert.equal(systemRunsInMode('weapons', SIM_MODE.FLIGHT), true);
   assert.equal(systemRunsInMode('weapons', SIM_MODE.SWARM), true);
   assert.equal(systemRunsInMode('weapons', SIM_MODE.DOCKED), false);
 
-  // Adventure economy/services run in flight and docked, but NOT in swarm
-  assert.equal(systemRunsInMode('stationServices', SIM_MODE.DOCKED), true);
+  // Adventure economy/services run in flight, but NOT in swarm
   assert.equal(systemRunsInMode('stationServices', SIM_MODE.FLIGHT), true);
   assert.equal(systemRunsInMode('stationServices', SIM_MODE.SWARM), false);
-  assert.equal(systemRunsInMode('missions', SIM_MODE.DOCKED), true);
+  assert.equal(systemRunsInMode('missions', SIM_MODE.FLIGHT), true);
   assert.equal(systemRunsInMode('missions', SIM_MODE.SWARM), false);
 
-  // Always-active authorities run across all modes
-  assert.equal(systemRunsInMode('input', SIM_MODE.FLIGHT), true);
-  assert.equal(systemRunsInMode('input', SIM_MODE.DOCKED), true);
-  assert.equal(systemRunsInMode('input', SIM_MODE.SWARM), true);
-  assert.equal(systemRunsInMode('input', SIM_MODE.YARD), true);
-  assert.equal(systemRunsInMode('physics', SIM_MODE.FLIGHT), true);
-  assert.equal(systemRunsInMode('physics', SIM_MODE.DOCKED), true);
-  assert.equal(systemRunsInMode('physics', SIM_MODE.SWARM), true);
-  assert.equal(systemRunsInMode('save', SIM_MODE.FLIGHT), true);
-  assert.equal(systemRunsInMode('save', SIM_MODE.SWARM), true);
+  // DOCKED/YARD are frozen labels, not scheduling scopes: no queue runs for them.
+  for (const frozen of [SIM_MODE.DOCKED, SIM_MODE.YARD]) {
+    assert.equal(ALL_SIM_MODES.includes(frozen), false);
+    assert.equal(systemRunsInMode('input', frozen), false);
+    assert.equal(systemRunsInMode('physics', frozen), false);
+    assert.equal(systemRunsInMode('save', frozen), false);
+  }
 });
 
 test('E3: resolveActiveSimMode extracts active mode from state accurately', () => {
@@ -89,11 +83,10 @@ test('E3: resolveActiveSimMode extracts active mode from state accurately', () =
   assert.equal(resolveActiveSimMode({ run: { kind: 'survival', phase: 'wave' } }), SIM_MODE.SWARM);
   assert.equal(resolveActiveSimMode({ mode: 'swarm' }), SIM_MODE.SWARM);
 
-  // Docked
+  // Docked / yard still resolve so a skip decision can name why nothing runs; neither is a
+  // scheduling scope (ALL_SIM_MODES excludes them).
   assert.equal(resolveActiveSimMode({ ui: { docked: true } }), SIM_MODE.DOCKED);
   assert.equal(resolveActiveSimMode({ mode: 'docked' }), SIM_MODE.DOCKED);
-
-  // Shipbreaking Yard
   assert.equal(resolveActiveSimMode({ mode: 'shipbreakingYard' }), SIM_MODE.YARD);
   assert.equal(resolveActiveSimMode({ activeOccupation: 'shipbreakingYard' }), SIM_MODE.YARD);
   assert.equal(
@@ -105,7 +98,7 @@ test('E3: resolveActiveSimMode extracts active mode from state accurately', () =
   assert.equal(resolveActiveSimMode({ mode: 'flight' }), SIM_MODE.FLIGHT);
 });
 
-test('E3: partitionUpdateSystems pre-builds mode-scoped queues preserving relative order', () => {
+test('E3: partitionUpdateSystems pre-builds Flight and Swarm queues preserving relative order', () => {
   function makeStub(name) {
     return { name, update() {} };
   }
@@ -114,18 +107,9 @@ test('E3: partitionUpdateSystems pre-builds mode-scoped queues preserving relati
 
   assert.ok(partitions.modePartitions, 'partitions must contain modePartitions');
   assert.ok(partitions.modePartitions[SIM_MODE.FLIGHT], 'Flight mode partition exists');
-  assert.ok(partitions.modePartitions[SIM_MODE.DOCKED], 'Docked mode partition exists');
   assert.ok(partitions.modePartitions[SIM_MODE.SWARM], 'Swarm mode partition exists');
-  assert.ok(partitions.modePartitions[SIM_MODE.YARD], 'Yard mode partition exists');
-
-  // Verify counts:
-  // Docked mode excludes flight-only and combat-flight systems
-  const dockedAll = partitions.modePartitions[SIM_MODE.DOCKED].all;
-  assert.ok(dockedAll.length < systems.length, 'Docked queue must skip flight/combat systems');
-  assert.equal(dockedAll.some((s) => s.name === 'weapons'), false, 'Weapons must not run when docked');
-  assert.equal(dockedAll.some((s) => s.name === 'mining'), false, 'Mining must not run when docked');
-  assert.equal(dockedAll.some((s) => s.name === 'stationServices'), true, 'Station services must run when docked');
-  assert.equal(dockedAll.some((s) => s.name === 'missions'), true, 'Missions must run when docked');
+  assert.equal(partitions.modePartitions[SIM_MODE.DOCKED], undefined, 'Docked has no queue');
+  assert.equal(partitions.modePartitions[SIM_MODE.YARD], undefined, 'Yard has no queue');
 
   // Swarm mode excludes adventure economy and open flight systems
   const swarmAll = partitions.modePartitions[SIM_MODE.SWARM].all;
@@ -153,7 +137,7 @@ test('E3: partitionUpdateSystems pre-builds mode-scoped queues preserving relati
   }
 });
 
-test('E3: updateQueueForThisStep and telemetry update cleanly during step', () => {
+test('E3: updateQueueForThisStep reports telemetry; getStepExecutionStats stays pure', () => {
   function makeStub(name) {
     return { name, update() {} };
   }
@@ -161,22 +145,27 @@ test('E3: updateQueueForThisStep and telemetry update cleanly during step', () =
   const partitions = partitionUpdateSystems(systems);
 
   const state = {
-    mode: 'docked',
+    mode: 'flight',
     runtime: { profileId: 'production' },
     tick: 10,
   };
 
   const queue = updateQueueForThisStep(partitions, state);
   assert.ok(queue.length > 0);
-  assert.equal(state.simModeRuntime.mode, SIM_MODE.DOCKED);
+  assert.equal(state.simModeRuntime.mode, SIM_MODE.FLIGHT);
   assert.equal(state.simModeRuntime.activeCount, queue.length);
   assert.equal(state.simModeRuntime.totalCount, systems.length);
   assert.equal(state.simModeRuntime.skippedCount, systems.length - queue.length);
 
   const initialSimModeRuntimeRef = state.simModeRuntime;
 
-  const stats = getStepExecutionStats(partitions, state);
-  assert.deepEqual(stats, state.simModeRuntime);
+  // The derivation agrees with the reported row, but does not write it.
+  assert.deepEqual(getStepExecutionStats(partitions, state), state.simModeRuntime);
+  const pureState = { mode: 'flight', runtime: { profileId: 'production' }, tick: 10 };
+  const pureStats = getStepExecutionStats(partitions, pureState);
+  assert.equal(pureState.simModeRuntime, undefined, 'stats must not create state.simModeRuntime');
+  assert.equal(pureStats.mode, SIM_MODE.FLIGHT);
+  assert.equal(pureStats.activeCount, queue.length);
 
   // Transition to Swarm
   state.mode = 'swarm';
@@ -197,7 +186,7 @@ test('E3: updateQueueForThisStep and telemetry update cleanly during step', () =
   assert.equal(state.simModeRuntime, initialSimModeRuntimeRef);
 });
 
-test('E3: Simulation LOD telemetry categorizes near, mid, far, and shelved entities', () => {
+test('E3: activity tier counters publish through state.activityRuntime, not a write-only simLOD mirror', () => {
   const state = {
     tick: 1,
     simTime: 1.0,
@@ -225,15 +214,10 @@ test('E3: Simulation LOD telemetry categorizes near, mid, far, and shelved entit
   state.entityList.push(player);
 
   ensureActivityClassified(state);
-  const lod = getSimulationLODTelemetry(state);
-
-  assert.ok(lod, 'LOD telemetry must be non-null');
-  assert.equal(typeof lod.near, 'number');
-  assert.equal(typeof lod.mid, 'number');
-  assert.equal(typeof lod.far, 'number');
-  assert.equal(lod.tiers.shelved, 2, 'Must report 2 shelved far-actor records');
-  assert.equal(lod.far >= 2, true, 'Far band must include shelved far actors');
-  assert.equal(state.simLOD, lod, 'state.simLOD must match getSimulationLODTelemetry');
+  assert.ok(state.activityRuntime, 'activity runtime must publish');
+  assert.equal(state.activityRuntime.counts.s0, 1, 'the player is an exact-tier body');
+  assert.equal(typeof state.activityRuntime.physicsDynamicCount, 'number');
+  assert.equal(state.simLOD, undefined, 'the separate write-only LOD mirror is gone');
 });
 
 test('E3: step execution runs smoothly with dynamic mode switching', () => {
@@ -264,25 +248,25 @@ test('E3: step execution runs smoothly with dynamic mode switching', () => {
   const step1Ran = ran.map((r) => r.name);
   assert.deepEqual(step1Ran, ['input', 'weapons', 'stationServices', 'physics'], 'Flight mode excludes survivalWave');
 
-  // Step 2: docked mode
-  ran.length = 0;
-  state.mode = 'docked';
-  queue = updateQueueForThisStep(partitions, state);
-  for (const s of queue) s.update(1 / 60, state);
-  const step2Ran = ran.map((r) => r.name);
-  assert.deepEqual(step2Ran, ['input', 'stationServices', 'physics'], 'Docked mode excludes weapons and survivalWave');
-
-  // Step 3: swarm mode
+  // Step 2: swarm mode
   ran.length = 0;
   state.mode = 'swarm';
   state.run = { kind: 'survival', phase: 'wave' };
   queue = updateQueueForThisStep(partitions, state);
   for (const s of queue) s.update(1 / 60, state);
-  const step3Ran = ran.map((r) => r.name);
-  assert.deepEqual(step3Ran, ['input', 'weapons', 'survivalWave', 'physics'], 'Swarm mode excludes stationServices');
+  const step2Ran = ran.map((r) => r.name);
+  assert.deepEqual(step2Ran, ['input', 'weapons', 'survivalWave', 'physics'], 'Swarm mode excludes stationServices');
+
+  // Step 3: back to flight
+  ran.length = 0;
+  delete state.run;
+  state.mode = 'flight';
+  queue = updateQueueForThisStep(partitions, state);
+  for (const s of queue) s.update(1 / 60, state);
+  assert.deepEqual(ran.map((r) => r.name), ['input', 'weapons', 'stationServices', 'physics']);
 });
 
-test('E3: catch-up steps in docked mode execute only table-clock docked systems', () => {
+test('E3: a frozen or unknown mode has one policy — no queue and every system skipped', () => {
   function makeStub(name) {
     return { name, update() {} };
   }
@@ -291,30 +275,31 @@ test('E3: catch-up steps in docked mode execute only table-clock docked systems'
 
   const catchupDockedState = {
     mode: 'docked',
-    simCatchupIndex: 1, // Indicates catch-up presentation skip
+    simCatchupIndex: 1,
     tick: 15,
     runtime: { profileId: 'production' },
   };
 
-  const queue = updateQueueForThisStep(partitions, catchupDockedState);
+  assert.deepEqual(updateQueueForThisStep(partitions, catchupDockedState), [],
+    'a frozen/unknown mode dispatches nothing');
+  assert.equal(getStepExecutionStats(partitions, catchupDockedState).activeCount, 0);
+  // shouldSkip agrees with the empty queue for every system, including table/physics.
+  for (const id of ['weapons', 'survivalWave', 'stationServices', 'physics', 'input']) {
+    assert.equal(shouldSkipSystemOnCatchup(id, catchupDockedState), true, `${id} must be skipped`);
+    assert.equal(shouldSkipSystemThisStep(id, catchupDockedState), true, `${id} must be skipped`);
+  }
+
+  // Flight catch-up still runs the full table clock.
+  const catchupFlightState = { ...catchupDockedState, mode: 'flight' };
+  const queue = updateQueueForThisStep(partitions, catchupFlightState);
   assert.ok(queue.length > 0);
-
-  // Weapons (combat-flight) must NOT run
-  assert.equal(queue.some((s) => s.name === 'weapons'), false);
-  // Survival wave (swarm-only) must NOT run
+  assert.equal(queue.some((s) => s.name === 'weapons'), true);
   assert.equal(queue.some((s) => s.name === 'survivalWave'), false);
-  // Mining (flight-only) must NOT run
-  assert.equal(queue.some((s) => s.name === 'mining'), false);
-  // Station services is table clock and docked mode -> MUST run
+  assert.equal(queue.some((s) => s.name === 'mining'), true);
   assert.equal(queue.some((s) => s.name === 'stationServices'), true);
-  // Physics is table clock and always mode -> MUST run
   assert.equal(queue.some((s) => s.name === 'physics'), true);
-
-  // shouldSkipSystemOnCatchup agrees
-  assert.equal(shouldSkipSystemOnCatchup('weapons', catchupDockedState), true);
-  assert.equal(shouldSkipSystemOnCatchup('survivalWave', catchupDockedState), true);
-  assert.equal(shouldSkipSystemOnCatchup('stationServices', catchupDockedState), false);
-  assert.equal(shouldSkipSystemOnCatchup('physics', catchupDockedState), false);
+  assert.equal(shouldSkipSystemOnCatchup('weapons', catchupFlightState), false);
+  assert.equal(shouldSkipSystemOnCatchup('physics', catchupFlightState), false);
 });
 
 test('E3: a live Crucible run keeps the Line — combat-flight systems are not skipped in Swarm', () => {
@@ -335,4 +320,53 @@ test('E3: a live Crucible run keeps the Line — combat-flight systems are not s
   }
   // Adventure-only verb stays out of the arena.
   assert.equal(shouldSkipSystemThisStep('mining', liveRun), true);
+});
+
+test('E3: a mode change is a clock discontinuity — the first resumed calendar call gets fixed dt', () => {
+  // Regression for E3 review F2: a skipped Crucible run must not arrive at economy/automation
+  // as one 5-minute dt, which would burst-catch-up ~60 economy ticks in a single step.
+  const calls = [];
+  const economy = { name: 'economy', update(dt) { calls.push(['economy', dt]); } };
+  const automation = { name: 'automation', update(dt) { calls.push(['automation', dt]); } };
+  const state = { mode: 'flight', runtime: { profileId: 'production' }, simTime: 0, tick: 10 };
+  const partitions = partitionUpdateSystems([economy, automation], { state });
+  const dt = 1 / 60;
+
+  // Prime both calendar stamps on a normal Flight tick (the partition baseline is simTime 0).
+  state.simTime = 0.5;
+  updateQueueForThisStep(partitions, state);
+  assert.equal(partitions.updateDt(economy, dt, state), 0.5);
+  assert.equal(partitions.updateDt(automation, dt, state), 0.5);
+
+  // Enter the Crucible. Neither owner is in the Swarm queue, so neither updateDt runs while the
+  // round advances five simulated minutes.
+  state.mode = 'flight';
+  state.run = { kind: 'survival', phase: 'active' };
+  state.tick += 1;
+  updateQueueForThisStep(partitions, state);
+  assert.deepEqual(updateQueueForThisStep(partitions, state), [], 'economy/automation are not in Swarm');
+  state.tick += 5 * 60 * 60;
+  state.simTime += 5 * 60;
+
+  // Return to Flight. The first call for each owner is one fixed step, not the run duration.
+  delete state.run;
+  state.mode = 'flight';
+  state.simTime += dt;
+  state.tick += 1;
+  updateQueueForThisStep(partitions, state);
+  assert.equal(partitions.updateDt(economy, dt, state), dt, 'economy must resume at fixed dt');
+  assert.equal(partitions.updateDt(automation, dt, state), dt, 'automation must resume at fixed dt');
+
+  // The next real interval is the ordinary calendar clock, not the skipped run.
+  state.simTime += 0.5;
+  state.tick += 30;
+  updateQueueForThisStep(partitions, state);
+  assert.equal(partitions.updateDt(economy, dt, state), 0.5);
+  assert.equal(partitions.updateDt(automation, dt, state), 0.5);
+
+  // Dispatch through the ordinary queue path too: no owner receives a run-sized dt.
+  for (const s of updateQueueForThisStep(partitions, state)) {
+    s.update(partitions.updateDt(s, dt, state), state);
+  }
+  for (const [, seenDt] of calls) assert.ok(seenDt <= 0.5, `unexpected burst dt ${seenDt}`);
 });

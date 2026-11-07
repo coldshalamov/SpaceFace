@@ -11,6 +11,7 @@
 // (measured fused-able overhead: ~0, design/perf/w4-catchup-REPORT.md).
 
 import {
+  ALL_SIM_MODES,
   CALENDAR_CLOCK_PERIOD_TICKS,
   SYSTEM_CLOCK,
   calendarCohortTickMod,
@@ -160,9 +161,11 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
     }
   }
 
-  // Pre-filter partitioned queues per active simulation mode for zero-overhead dispatch during step()
+  // Pre-filter partitioned queues per scheduling mode for zero-overhead dispatch during step().
+  // DOCKED and YARD are frozen-world labels, not scheduling scopes: presentationFreeze skips the
+  // full tick while they hold, so they deliberately have no queue here (E3 review F4).
   const modePartitions = Object.create(null);
-  for (const mode of [SIM_MODE.FLIGHT, SIM_MODE.DOCKED, SIM_MODE.SWARM, SIM_MODE.YARD]) {
+  for (const mode of ALL_SIM_MODES) {
     const filterFn = (s) => systemRunsInMode(s.name, mode);
     const mAll = all.filter(filterFn);
     const mTable = table.filter(filterFn);
@@ -186,21 +189,39 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
     };
   }
 
-  const freshRecord = (baseline) => ({ baseline, stamps: new Map(), seeded: true });
+  const freshRecord = (baseline, mode) => ({ baseline, stamps: new Map(), seeded: true, mode });
   // Calendar membership is fixed at partition time; updateDt is called for every queued
   // system every step, so the non-calendar early-out must not re-derive the clock from
   // the manifest by name on each call.
   const calendarSet = new Set(calendar);
   let clockRecords = new WeakMap();
   if (state && typeof state === 'object') {
-    clockRecords.set(state, freshRecord(Number(state.simTime)));
+    clockRecords.set(state, freshRecord(Number(state.simTime), resolveActiveSimMode(state)));
   }
   function resetClocks() {
     if (state && typeof state === 'object') {
-      clockRecords.set(state, freshRecord(Number(state.simTime)));
+      clockRecords.set(state, freshRecord(Number(state.simTime), resolveActiveSimMode(state)));
     } else {
       clockRecords = new WeakMap();
     }
+  }
+  // E3 review F2: a mode change is a clock discontinuity. Calendar owners skipped for the
+  // duration of a Crucible round must not see the whole run as one elapsed dt on resume, or
+  // economy/automation/salvage/routeFollower burst-catch-up for minutes. Called once per
+  // full step by updateQueueForThisStep (so a mode entered and left while no calendar owner
+  // was due still resets), and again as a safety net inside updateDt for direct callers.
+  function noteStepMode(host, mode) {
+    if (!host || typeof host !== 'object') return;
+    const record = clockRecords.get(host);
+    if (!record) {
+      clockRecords.set(host, { baseline: NaN, stamps: new Map(), seeded: false, mode });
+      return;
+    }
+    if (record.mode === mode) return;
+    record.mode = mode;
+    record.baseline = NaN;
+    record.stamps.clear();
+    record.seeded = false;
   }
   const clockUnsubscribes = [];
   if (bus && typeof bus.on === 'function' && state && typeof state === 'object') {
@@ -217,8 +238,15 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
     if (!Number.isFinite(simTime)) return fixedDt;
     let record = clockRecords.get(host);
     if (!record) {
-      record = { baseline: NaN, stamps: new Map(), seeded: false };
+      record = { baseline: NaN, stamps: new Map(), seeded: false, mode: resolveActiveSimMode(host) };
       clockRecords.set(host, record);
+    }
+    const mode = resolveActiveSimMode(host);
+    if (record.mode !== mode) {
+      record.mode = mode;
+      record.baseline = NaN;
+      record.stamps.clear();
+      record.seeded = false;
     }
     const stamped = record.stamps.get(system);
     const hasStamp = stamped !== undefined;
@@ -245,42 +273,51 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
     catchupTickQueues: calendar.length ? catchupTickQueues : null,
     modePartitions,
     updateDt,
+    noteStepMode,
     dispose,
   };
 }
 
-export function updateQueueForThisStep(partitions, state) {
+/**
+ * Pure queue selection for one step. Policy (E3 review F7): an explicit mode resolves only
+ * through its pre-built partition; a mode with no partition — a frozen DOCKED/YARD label or an
+ * unrecognised string — runs nothing. `shouldSkipSystemThisStep` applies the same policy (its
+ * scope lookup rejects those modes too), so the queue and the per-system skip can never disagree.
+ */
+function selectStepQueue(partitions, state, mode) {
   if (!partitions) return [];
-  const mode = resolveActiveSimMode(state);
-  const target = (mode !== SIM_MODE.UNSCOPED && partitions.modePartitions && partitions.modePartitions[mode]) || partitions;
-
-  let queue;
-  if (isCatchupPresentationSkip(state)) {
-    if (!isProductionClockState(state)) queue = target.table;
-    else if (state && state.clockWake && state.clockWake.calendar === true) queue = target.tableCalendar;
-    else {
-      const tick = state && Number.isInteger(state.tick) ? state.tick : 0;
-      if (tick <= 1) queue = target.tableCalendar;
-      else {
-        const mod = ((tick % CALENDAR_CLOCK_PERIOD_TICKS) + CALENDAR_CLOCK_PERIOD_TICKS) % CALENDAR_CLOCK_PERIOD_TICKS;
-        queue = (target.catchupTickQueues && target.catchupTickQueues[mod]) || target.table;
-      }
-    }
-  } else if (!isProductionClockState(state)) {
-    queue = target.all;
-  } else if (state && state.clockWake && state.clockWake.calendar === true) {
-    queue = target.all;
-  } else {
-    const tick = state && Number.isInteger(state.tick) ? state.tick : 0;
-    if (tick <= 1) queue = target.all;
-    else {
-      const mod = ((tick % CALENDAR_CLOCK_PERIOD_TICKS) + CALENDAR_CLOCK_PERIOD_TICKS)
-        % CALENDAR_CLOCK_PERIOD_TICKS;
-      queue = (target.tickQueues && target.tickQueues[mod]) || target.combat;
-    }
+  let target = partitions;
+  if (mode !== SIM_MODE.UNSCOPED) {
+    const scoped = partitions.modePartitions ? partitions.modePartitions[mode] : null;
+    if (!scoped) return [];
+    target = scoped;
   }
 
-  if (state && typeof state === 'object') {
+  if (isCatchupPresentationSkip(state)) {
+    if (!isProductionClockState(state)) return target.table;
+    if (state && state.clockWake && state.clockWake.calendar === true) return target.tableCalendar;
+    const tick = state && Number.isInteger(state.tick) ? state.tick : 0;
+    if (tick <= 1) return target.tableCalendar;
+    const mod = ((tick % CALENDAR_CLOCK_PERIOD_TICKS) + CALENDAR_CLOCK_PERIOD_TICKS) % CALENDAR_CLOCK_PERIOD_TICKS;
+    return (target.catchupTickQueues && target.catchupTickQueues[mod]) || target.table;
+  }
+  if (!isProductionClockState(state)) return target.all;
+  if (state && state.clockWake && state.clockWake.calendar === true) return target.all;
+  const tick = state && Number.isInteger(state.tick) ? state.tick : 0;
+  if (tick <= 1) return target.all;
+  const mod = ((tick % CALENDAR_CLOCK_PERIOD_TICKS) + CALENDAR_CLOCK_PERIOD_TICKS)
+    % CALENDAR_CLOCK_PERIOD_TICKS;
+  return (target.tickQueues && target.tickQueues[mod]) || target.combat;
+}
+
+export function updateQueueForThisStep(partitions, state) {
+  const mode = resolveActiveSimMode(state);
+  const queue = selectStepQueue(partitions, state, mode);
+  if (partitions && typeof partitions.noteStepMode === 'function') {
+    partitions.noteStepMode(state, mode);
+  }
+
+  if (partitions && state && typeof state === 'object') {
     const totalCount = partitions.all ? partitions.all.length : 0;
     const smr = state.simModeRuntime || (state.simModeRuntime = {
       mode: null,
@@ -297,9 +334,10 @@ export function updateQueueForThisStep(partitions, state) {
   return queue;
 }
 
+/** Pure derivation for diagnostics — never writes `state.simModeRuntime` (E3 review F7). */
 export function getStepExecutionStats(partitions, state) {
   const mode = resolveActiveSimMode(state);
-  const queue = updateQueueForThisStep(partitions, state);
+  const queue = selectStepQueue(partitions, state, mode);
   const total = partitions && partitions.all ? partitions.all.length : 0;
   return {
     mode,

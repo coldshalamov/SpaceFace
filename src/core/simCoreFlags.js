@@ -12,8 +12,15 @@
 // system and nothing in the game sets them.
 
 const DEFAULTS = Object.freeze({
-  /** Per-body physics telemetry only for bodies a gameplay owner inspects. */
-  telemetryDemand: true,
+  /**
+   * Per-body physics telemetry only for bodies a gameplay owner inspects.
+   * DEFAULT OFF: several shipped readers (the rig workshop's new-keel admission, the buoy
+   * service, the SG-02/SG-06 checks) still read the receipt without opting in, so demand
+   * publication silently removed a player feature. The flag stays implemented for a later
+   * pull-based migration; every reader must call requestPhysicsTelemetry first before it can
+   * default on. Three owners opt in today (Crucible shutters, Kilnback completion, rig seed).
+   */
+  telemetryDemand: false,
   /**
    * A due economy pass advances by a fixed quantum per tick instead of one 130 ms step.
    * DEFAULT OFF: measured at 130–150 ms → ~3 ms/call, but the per-listing maths read

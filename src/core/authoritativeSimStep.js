@@ -64,13 +64,28 @@ export function createAuthoritativeStepper({
         }
         return;
       }
-      if (core && typeof core.preStep === 'function') core.preStep(dt, state);
-      if (input && input.update) input.update(dt, state);
-      publishBoundary(tickBoundary);
       if (profiler.active) {
+        // Begin the measured tick before the pre-step so the ranking includes the ~2 ms of
+        // step preamble it used to omit: core.preStep, input.update and the input-command
+        // publish (E3 review F6). Execution order is unchanged.
+        profiler.beginTick();
+        if (core && typeof core.preStep === 'function') {
+          const t0 = nowNs();
+          core.preStep(dt, state);
+          profiler.record('core.preStep', nowNs() - t0);
+        }
+        if (input && input.update) {
+          const t0 = nowNs();
+          input.update(dt, state);
+          profiler.record('input', nowNs() - t0);
+        }
+        {
+          const t0 = nowNs();
+          publishBoundary(tickBoundary);
+          profiler.record('core.publishInputCommand', nowNs() - t0);
+        }
         // Sampled path: one clock pair per executed system. Same queue, same order, same
         // updateDt arguments — profiling must not change what the step computes.
-        profiler.beginTick();
         for (const s of updateQueueForThisStep(postInputPartitions, state)) {
           const t0 = nowNs();
           s.update(postInputPartitions.updateDt(s, dt, state), state);
@@ -83,6 +98,9 @@ export function createAuthoritativeStepper({
         }
         profiler.endTick();
       } else {
+        if (core && typeof core.preStep === 'function') core.preStep(dt, state);
+        if (input && input.update) input.update(dt, state);
+        publishBoundary(tickBoundary);
         for (const s of updateQueueForThisStep(postInputPartitions, state)) {
           s.update(postInputPartitions.updateDt(s, dt, state), state);
         }
