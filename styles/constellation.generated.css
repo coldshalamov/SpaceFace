@@ -42,8 +42,29 @@ html body #screens > #sf-techtree.con-research > .con-side { grid-area:side; pos
   padding:clamp(6px, 3vh, 44px) 0 10px; overflow:visible; }
 html body #screens > #sf-techtree.con-research > .con-side::before { content:""; position:absolute; z-index:-1; inset:-10% -18% -6% -22%; pointer-events:none;
   background:radial-gradient(closest-side, rgb(4 6 9 / .82), rgb(4 6 9 / .6) 58%, rgb(4 6 9 / 0)); }
-html body #screens > #sf-techtree.con-research .con-dossier { display:flex; flex-direction:column; gap:clamp(6px, 1.1vh, 14px); }
+/* reading dossier: promise-scale hairline card (was unbound Newgrounds plate over the soft pool) */
+html body #screens > #sf-techtree.con-research .con-dossier {
+  display:flex; flex-direction:column; gap:clamp(6px, 1.1vh, 14px);
+  box-sizing:border-box;
+  border:1px solid rgb(236 230 216 / .18);
+  border-radius:10px;
+  background:rgb(236 230 216 / .025);
+  padding:clamp(10px, 1.2vh, 16px) clamp(12px, 1.2vw, 18px);
+}
 html body #screens > #sf-techtree.con-research .con-dossier > * { margin:0; }
+/* short frames: compress card chrome with the shared densify bands */
+@media (max-height:820px) {
+  html body #screens > #sf-techtree.con-research .con-dossier { border-radius:8px; }
+}
+@media (max-height:460px) {
+  html body #screens > #sf-techtree.con-research .con-dossier { border-radius:8px; }
+}
+@media (max-height:400px) {
+  html body #screens > #sf-techtree.con-research .con-dossier { border-radius:6px; }
+}
+@media (max-width:760px) {
+  html body #screens > #sf-techtree.con-research .con-dossier { border-radius:8px; }
+}
 html body #screens > #sf-techtree.con-research .con-dossier__kicker { font-family:var(--dp-face-label, "Archivo"), "Archivo", system-ui, sans-serif; font-stretch:112%; font-weight:650; text-transform:uppercase; font-variation-settings:normal; font-size:clamp(12px, .62vw, 13px); letter-spacing:.24em; color:rgb(236 230 216 / .82); }
 html body #screens > #sf-techtree.con-research .con-dossier__kicker span { margin:0 .3em; }
 html body #screens > #sf-techtree.con-research .con-dossier__name { font-family:var(--dp-face-display, "Archivo"), "Archivo", system-ui, sans-serif; font-stretch:125%; font-weight:800; font-variation-settings:"wght" 800, "wdth" 125;
