@@ -150,12 +150,14 @@ export function settingEffect(label, value = '', settings = {}) {
 const CSS = `
 .orr-set-preview { position:relative; min-width:0; min-height:0; display:grid; grid-template-rows:auto minmax(0, 1fr) auto; row-gap:16px;
   color:rgb(${BONE}); pointer-events:none; }
-.orr-set-preview::before { content:""; position:absolute; inset:-8% -10% -6% -12%; z-index:-1; pointer-events:none;
-  background:
-    radial-gradient(closest-side, rgb(8 12 18 / .78), rgb(5 7 10 / .55) 54%, rgb(4 6 9 / 0) 78%),
-    radial-gradient(120% 90% at 50% 40%, rgb(12 18 26 / .35), transparent 70%);
-  -webkit-mask-image:radial-gradient(closest-side, #000 42%, transparent 78%);
-  mask-image:radial-gradient(closest-side, #000 42%, transparent 78%); }
+/* promise-scale hairline card (ui-polish-399): one quiet edge round legend + instrument, no shade pool */
+.orr-set-preview { border:1px solid rgb(${BONE} / .18); border-radius:10px; background:rgb(${BONE} / .025); padding:16px 18px;
+  box-sizing:border-box; isolation:isolate; }
+.orr-set-preview::before { content:none; display:none; }
+@media (max-width:820px), (max-height:460px), (max-width:760px) { .orr-set-preview { border-radius:8px; } }
+@media (max-height:400px) { .orr-set-preview { border-radius:6px; } }
+@media (max-height:600px) { .orr-set-preview { padding:12px 14px; row-gap:10px; } }
+@media (max-height:540px) { .orr-set-preview { padding:10px 12px; row-gap:6px; } }
 /* the legend: the row being worked, and what it does */
 .orr-set-read { display:flex; flex-direction:column; gap:11px; min-height:104px; }
 .orr-set-read__kicker { ${LABEL} font-size: 12px; letter-spacing:.24em; color:rgb(${BONE} / .72); display:flex; align-items:center; gap:12px; }
