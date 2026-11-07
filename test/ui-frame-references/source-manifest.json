@@ -228,7 +228,7 @@
   "src/ui/orrery/scrollExtent.js": "3ce8cfd26641228da0258bdf2ae77f324316a40ce9640a46f5b68a64e83ac126",
   "src/ui/orrery/settingsLayouts.js": "0999fe9cdfdb9dec4ceb6a0d83eefda81d4219b6f5448d2ed1100aa348fbcc7e",
   "src/ui/orrery/settingsPreview.js": "e99e5275f703f434819c96f911b29b441e47fcce08d362469e2ccbd2ef085d35",
-  "src/ui/orrery/shipLayouts.js": "621c67158b63afaaa288635561986912d2845db0fb39ee519ffe5387092461c7",
+  "src/ui/orrery/shipLayouts.js": "baed1cabde0507adf27755de07c151800ab9e16ccf248e2a297e550f8790c95b",
   "src/ui/orrery/shipworksLayouts.js": "34c56ca9a026651a84532d20add4de0f71d34e63de0542fcfaf04af695827c00",
   "src/ui/orrery/slotJig.js": "d0e59cb67cb2beea0e46a16b29933656ce1b46d19744f04cd0759a713f5a6660",
   "src/ui/orrery/speedDial.js": "afeb6340c00df19cda2785a6d62f4793204a5cc92877477f42c8386f6b488ea6",
