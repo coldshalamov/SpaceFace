@@ -6,10 +6,8 @@ import { SHIPS } from '../src/data/ships.js';
 import { WEAPONS } from '../src/data/weapons.js';
 import {
   describeOutfittingPurchase,
-  buildOutfittingEngineeringFeel,
   missionFitGuide,
   missionPickForOutfitting,
-  outfittingEngineeringFeelHtml,
   recommendOutfittingPurchase,
   slotReadiness,
   statSnippet,
@@ -111,11 +109,6 @@ const starterFittings = fittingsFromDefaultModules('ship_kestrel', [
 const starterBudget = outfitBudgetForFittings(shipDef, starterFittings);
 assert.equal(starterBudget.fits, true, 'the shipped starter fit remains inside all nested budgets');
 assert.equal(outfitBudgetBlocker(shipDef, starterFittings), null);
-assert.match(outfittingEngineeringFeelHtml(buildOutfittingEngineeringFeel({
-  shipId: shipDef.id,
-  fittings: starterFittings,
-})), /Fit mass[\s\S]*\d+\/20 t total[\s\S]*weapons[\s\S]*engine/,
-'the live engineering readout exposes all three authored budgets');
 
 const overloadedStarter = fittingsFromDefaultModules('ship_kestrel', [
   'wpn_autocannon_s',
@@ -141,49 +134,6 @@ const secondGunPurchase = describeOutfittingPurchase(
 assert.equal(secondGunPurchase.state, 'inventory', 'an over-cap second gun is not promised as Buy & Fit');
 assert.equal(secondGunPurchase.fitBlocker?.reason, 'weapon_capacity');
 assert.match(secondGunPurchase.title, /Weapon capacity exceeded \(8\/7 t\)/);
-let feel = buildOutfittingEngineeringFeel({
-  shipId: 'ship_kestrel',
-  fittings: starterFittings,
-  player: { cargo: { usedMass: 0 }, efficiencyMods: {} },
-});
-assert.equal(feel.mode, 'current');
-assert.equal(feel.profile.axes.length, 4, 'current fit exposes all four live flight-model axes');
-assert.equal(feel.delta, null, 'current fit does not manufacture a before/after change');
-
-const engineSlot = slots.findIndex((slot) => slot.type === 'engine');
-feel = buildOutfittingEngineeringFeel({
-  shipId: 'ship_kestrel',
-  fittings: starterFittings,
-  preview: { slotIndex: engineSlot, defId: 'mod_engine_fusion_m' },
-  player: { cargo: { usedMass: 0 }, efficiencyMods: {} },
-});
-assert.equal(feel.mode, 'preview');
-assert.equal(feel.afterFittings[engineSlot], 'mod_engine_fusion_m');
-assert.ok(feel.delta.metrics.some((metric) => metric.id === 'topSpeed' && metric.delta > 0),
-  'engine hover previews the real derived top-speed change');
-assert.match(outfittingEngineeringFeelHtml(feel), /Fusion Drive M preview/);
-assert.match(outfittingEngineeringFeelHtml(feel), /Top speed <b>\+/,
-  'player-facing panel renders the measured fitting delta');
-
-const cargoSlot = slots.findIndex((slot) => slot.type === 'cargo');
-feel = buildOutfittingEngineeringFeel({
-  shipId: 'ship_kestrel',
-  fittings: starterFittings,
-  preview: { slotIndex: cargoSlot, defId: 'mod_smuggler_hold' },
-  player: { cargo: { usedMass: 0 }, efficiencyMods: {} },
-});
-assert.ok(feel.risks.risks.some((risk) => risk.id === 'contraband'),
-  'previewed fit exposes a risk already declared by live module data');
-assert.match(outfittingEngineeringFeelHtml(feel), /Contraband/);
-
-feel = buildOutfittingEngineeringFeel({
-  shipId: 'ship_kestrel',
-  fittings: starterFittings,
-  preview: { slotIndex: cargoSlot, defId: 'mod_cargo_pod_m' },
-});
-assert.equal(feel.mode, 'unavailable', 'incompatible preview fails closed');
-assert.match(outfittingEngineeringFeelHtml(feel), /Preview unavailable/);
-
 let nextBuy = recommendOutfittingPurchase({
   credits: 10000,
   researchedNodes: [],

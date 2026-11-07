@@ -59,6 +59,8 @@ import { fittedModuleDefs } from '../core/fittedModules.js';
 import { worldSiteManifestById } from '../data/worldSiteManifests.js';
 import { crackerRunWorkLoadRead, isCrackerRunWorkLoad } from './crackerRunGuidance.js';
 import { isSwarmGlass } from './swarmGlass.js';
+import { shipStatSheet } from './ship/shipStats.js';
+import { fittingsFromDefaultModules } from '../systems/ships.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -537,15 +539,31 @@ export function targetPhysicalClassLabel(t) {
 }
 
 /**
- * FB-058: the scanned ship's build badge — the label the buildIdentity system stamped on the
- * entity. Shown only at the SF-133 disclosure stage (deep/full reveal, where fittings are
- * disclosed); a class-band contact never advertises hidden hardware. Pure and DOM-free.
+ * FB-058 / P1: the scanned ship's build badge — the SHIP SHEET's build word for the disclosed
+ * hull, never the scanner's separate role vocabulary. Shown only at the SF-133 disclosure stage
+ * (deep/full reveal, where fittings are disclosed); a class-band contact never advertises hidden
+ * hardware. Pure and DOM-free.
  */
 export function targetBuildBadgeLabel(t) {
   const data = t && t.data;
   const reveal = data && data.scanRevealed;
   const disclosed = reveal && (reveal.quality === 'full' || reveal.quality === 'deep');
-  const label = disclosed && data.buildIdentity ? data.buildIdentity.label : null;
+  if (!disclosed) return null;
+  const identity = data.buildIdentity || null;
+  const basis = identity && identity.basis;
+  const shipId = (basis && basis.shipId) || data.shipId || data.defId || null;
+  const shipDef = shipId ? SHIP_BY_ID.get(shipId) : null;
+  if (!shipDef) {
+    // A legacy stamp with no resolvable hull keeps its own label rather than inventing one.
+    const label = identity && identity.label;
+    return typeof label === 'string' && label.length > 0 ? label.toUpperCase() : null;
+  }
+  const modules = Array.isArray(basis && basis.modules)
+    ? basis.modules
+    : (Array.isArray(data.fittings) ? data.fittings : []);
+  const fittings = fittingsFromDefaultModules(shipId, modules);
+  const sheet = shipStatSheet({ shipId, fittings, player: null });
+  const label = sheet && sheet.identity && sheet.identity.label;
   return typeof label === 'string' && label.length > 0 ? label.toUpperCase() : null;
 }
 

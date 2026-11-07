@@ -1,19 +1,17 @@
 // FB-058 — build identity reaches a screen.
 //
-// Packet law: shipworks shows the player's archetype badge as a fifth hero band and prints each
-// synergy tell WITH its drawback plus each unique module's `variantBonuses` as a "what is
-// different" row; targetPanel shows a scanned NPC's badge only at the SF-133 disclosure stage
-// (full/deep reveal). The UI reads the buildIdentity classifier — it never recomputes identity —
-// and no loot-rarity ladder is added.
+// Packet law: shipworks shows the player's archetype badge from the Ship Sheet's own shape, never
+// a second classifier; targetPanel shows a scanned NPC's badge only at the SF-133 disclosure stage
+// (full/deep reveal), and that badge uses the Ship Sheet's vocabulary too. No loot-rarity ladder is
+// added, and the old raw `variantBonuses` line is gone from the rows (the sheet delta is the one
+// statement of what a fit changes).
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { classifyBuildIdentity } from '../src/systems/buildIdentity.js';
-import { MODULES } from '../src/data/modules.js';
-import { variantBonusWords } from '../src/ui/station/screens/shipworks.js';
+import { fittingsFromDefaultModules } from '../src/systems/ships.js';
+import { shipStatSheet } from '../src/ui/ship/shipStats.js';
 import { targetBuildBadgeLabel } from '../src/ui/targetPanel.js';
-
-const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
 
 test('the fit model’s classifier answers badge, tell, and drawback for a known pair', () => {
   // mod_ram_plate + mod_cargo_pod_m is the authored 'rammer_truck' synergy; its drawback is part
@@ -32,41 +30,36 @@ test('the fit model’s classifier answers badge, tell, and drawback for a known
     'the tell carries its drawback, not just the benefit');
 });
 
-test('a lone ram plate reads as a hull role, and no tell is claimed for a missing pair', () => {
-  const identity = classifyBuildIdentity(['mod_ram_plate']);
-  assert.equal(identity.synergyNotes.length, 0,
-    'the synergy filter only yields complete pairs — no half-tell is advertised');
-  assert.ok(identity.label.length > 0, 'the badge still answers a role read');
-});
-
-test('variantBonuses print as one "what is different" line per key', () => {
-  const unique = MODULE_BY_ID.get('unique_choir_bell_aegis');
-  assert.ok(unique && unique.unique, 'fixture: an authored unique module');
-  const words = variantBonusWords(unique.variantBonuses);
-  assert.match(words, /\+25 % shield flat/);
-  assert.match(words, /\+50 % energy draw/, 'a cost is printed too — bonuses are not flattering-only');
-  assert.match(words, /1 missile knockback uses \/ fight|missile knockback/);
-});
-
 test('the NPC badge answers only at the SF-133 disclosure stage', () => {
-  const npc = {
+  const warden = {
     data: {
-      buildIdentity: { label: 'Ghost Hauler' },
+      buildIdentity: { label: 'Gunship', basis: { shipId: 'ship_warden', role: 'gunship', modules: [] } },
       scanRevealed: { quality: 'deep' },
     },
   };
-  assert.equal(targetBuildBadgeLabel(npc), 'GHOST HAULER');
+  const expected = shipStatSheet({
+    shipId: 'ship_warden',
+    fittings: fittingsFromDefaultModules('ship_warden', []),
+  }).identity.label.toUpperCase();
+  assert.notEqual(expected, 'GUNSHIP', 'fixture: the sheet vocabulary is not the scanner word');
+  assert.equal(targetBuildBadgeLabel(warden), expected,
+    'the badge speaks the Ship Sheet vocabulary, not the scanner hull-role word');
 
   for (const quality of ['contact', 'class', 'partial', null, undefined]) {
     const hidden = {
       data: {
-        buildIdentity: { label: 'Ghost Hauler' },
+        buildIdentity: { label: 'Gunship', basis: { shipId: 'ship_warden', modules: [] } },
         scanRevealed: quality ? { quality } : null,
       },
     };
     assert.equal(targetBuildBadgeLabel(hidden), null,
       `quality=${quality} never advertises hidden hardware`);
   }
+
+  // A legacy stamp with no resolvable hull still answers its own label.
+  assert.equal(targetBuildBadgeLabel({
+    data: { buildIdentity: { label: 'Ghost Hauler' }, scanRevealed: { quality: 'deep' } },
+  }), 'GHOST HAULER');
 
   // A full read with no classified build stays silent rather than inventing a badge.
   assert.equal(targetBuildBadgeLabel({ data: { scanRevealed: { quality: 'full' } } }), null);

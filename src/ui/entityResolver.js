@@ -30,7 +30,7 @@ import { BODY_MODULES } from '../data/claimableBodies.js';
 import { aceById, knownAces } from '../data/namedAces.js';
 import { stuntDossierForNetwork } from '../combat/stuntWitnesses.js';
 import { airSentenceForId } from './ship/fitReadout.js';
-import { handlingBandModel } from './ship/shipBandModels.js';
+import { shipStatSheet, shipSheetSentence } from './ship/shipStats.js';
 
 export const ENTITY_TYPES = Object.freeze([
   'faction', 'commodity', 'station', 'hull', 'module', 'captain', 'sector', 'contract',
@@ -355,13 +355,15 @@ function hullDossier(state, id) {
     { k: 'Price', v: creditText(s.price), tone: 'goal', num: true },
   ];
   const lines = [];
-  if (s.mass != null) lines.push({ label: 'Mass', text: String(s.mass) });
-  // The same sentences the fit screen prints, so a hull you open before you pay
-  // does not contradict the yard.
-  const band = handlingBandModel({ shipId: id, fittings: [], player: null });
-  if (band && band.crestSentence) lines.push({ label: 'Flies', text: band.crestSentence });
-  const brake = band && Array.isArray(band.bars) ? band.bars.find((row) => row.id === 'brake') : null;
-  if (brake && brake.why) lines.push({ label: 'Stops', text: brake.why });
+  // The hull record reads the same six-stat sheet every hull surface mounts. It deliberately does
+  // not print the old profile's raw turn radius / draw / burst-clock paragraph: those numbers are
+  // not on the player's 1–10 scale, and the sheet is the one statement of what a hull is.
+  const sheet = shipStatSheet({ shipId: id, fittings: [], player: null });
+  if (sheet) {
+    lines.push({ label: 'Build', text: `${sheet.roleLabel} \u00b7 ${sheet.identity.label}` });
+    const sentence = shipSheetSentence(sheet);
+    if (sentence) lines.push({ label: 'Flies', text: sentence });
+  }
   return { kicker: 'Hull · tier ' + String(s.tier ?? '?'), facts, lines, links: [], route: { screen: 'ship', focus: 'hull:' + id } };
 }
 

@@ -7,7 +7,6 @@ import {
   findMasslineHeadConflict,
   fits,
   outfitBudgetBlocker,
-  outfitBudgetForFittings,
   stationShopOffer,
 } from '../../systems/ships.js';
 import { SHIPS } from '../../data/ships.js';
@@ -17,18 +16,6 @@ import { SECTORS } from '../../data/sectors.js';
 import { TECH_NODES } from '../../data/tech.js';
 import { FACTION_META } from '../../data/factions.js';
 import { HULL_BURST_TYPES } from '../../data/hullBurst.js';
-import { escapeHtml } from '../comms.js';
-import {
-  presentGaugePacket,
-  presentModuleFitPreview,
-  presentShopModuleDelta,
-} from '../presenters/engineeringPreview.js';
-import { buildMassDelta } from '../panels/massDelta.js';
-import {
-  handlingProfileDomain,
-  handlingProfileForShip,
-} from '../panels/handlingProfile.js';
-import { moduleRiskStrip } from '../panels/moduleRisk.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
@@ -52,7 +39,6 @@ function driveLabelFor(defId) {
 const FITTABLE_BY_ID = new Map();
 for (const m of MODULES) FITTABLE_BY_ID.set(m.id, m);
 for (const w of WEAPONS) if (!FITTABLE_BY_ID.has(w.id)) FITTABLE_BY_ID.set(w.id, w);
-const HANDLING_PROFILE_DOMAIN = handlingProfileDomain();
 
 // Retired arsenal (`retiredInto`, the five powers, owner 2026-10-22) is off the shop, so it is never
 // the next buy either; an owned copy still reads through FITTABLE_BY_ID above.
@@ -478,161 +464,6 @@ export function statSnippet(def) {
     if (def.directToCargo) parts.push('direct');
   }
   return parts.join(' · ');
-}
-
-// One read-only packet for the engineering panel. The three older fitting-feel helpers were
-// previously check-covered but had no production caller; keep their live-stat authority intact and
-// compose them here instead of cloning their formulas into the DOM layer.
-export function buildOutfittingEngineeringFeel({
-  shipId,
-  fittings = [],
-  preview = null,
-  player = null,
-} = {}) {
-  if (!SHIP_BY_ID.has(shipId)) return null;
-  const beforeFittings = Array.isArray(fittings) ? fittings.slice() : [];
-  let previewPacket = null;
-  if (preview && (preview.defId || preview.remove)) {
-    previewPacket = presentModuleFitPreview({
-      defId: shipId,
-      fittings: beforeFittings,
-      moduleId: preview.defId,
-      slotIndex: preview.slotIndex,
-      remove: preview.remove === true,
-      player,
-    });
-  }
-
-  const afterFittings = previewPacket && previewPacket.ok
-    ? previewPacket.afterFittings.slice()
-    : beforeFittings.slice();
-  const profile = handlingProfileForShip(shipId, {
-    fittings: afterFittings,
-    player,
-    domain: HANDLING_PROFILE_DOMAIN,
-  });
-  const risks = moduleRiskStrip(afterFittings, {
-    shipId,
-    fittings: afterFittings,
-    player,
-  });
-  const delta = previewPacket && previewPacket.ok
-    ? buildMassDelta(shipId, {
-      beforeFittings,
-      afterFittings,
-      player,
-    })
-    : null;
-
-  const budget = outfitBudgetForFittings(shipId, afterFittings);
-  return Object.freeze({
-    shipId,
-    mode: preview
-      ? (previewPacket && previewPacket.ok ? 'preview' : 'unavailable')
-      : 'current',
-    previewName: previewPacket && previewPacket.moduleName
-      || (preview && FITTABLE_BY_ID.get(preview.defId)?.name)
-      || null,
-    detail: preview && preview.detail || previewPacket && previewPacket.detail || null,
-    beforeFittings: Object.freeze(beforeFittings),
-    afterFittings: Object.freeze(afterFittings),
-    profile,
-    delta,
-    risks,
-    budget,
-  });
-}
-
-function engineeringNumber(value, digits = 1) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return '—';
-  const scale = 10 ** digits;
-  return String(Math.round(number * scale) / scale);
-}
-
-function engineeringDelta(metric) {
-  const delta = Number(metric && metric.delta) || 0;
-  const sign = delta > 0 ? '+' : '';
-  if (metric.unit === 'pct') return sign + engineeringNumber(metric.pct, 1) + '%';
-  if (metric.unit === 'wu') return sign + String(Math.round(delta)) + ' u';
-  return sign + engineeringNumber(delta, 2);
-}
-
-function meaningfulEngineeringDelta(metric) {
-  if (!metric) return false;
-  if (metric.unit === 'pct') return Math.abs(Number(metric.pct) || 0) >= 0.1;
-  if (metric.unit === 'wu') return Math.abs(Number(metric.delta) || 0) >= 0.5;
-  return Math.abs(Number(metric.delta) || 0) >= 0.01;
-}
-
-export function outfittingEngineeringFeelHtml(packet) {
-  if (!packet || !packet.profile) {
-    return '<div class="st-outfit-feel-empty">Select an active hull to inspect its flight feel.</div>';
-  }
-
-  const profile = packet.profile;
-  const axes = profile.axes.map((axis) => {
-    const bar = Math.max(0, Math.min(100, Math.round(Number(axis.bar) || 0)));
-    const label = escapeHtml(axis.label);
-    const phrase = escapeHtml(axis.higherMeans || 'relative');
-    return '<div class="st-outfit-feel-axis">' +
-      '<div class="st-outfit-feel-axis__head"><span>' + label + '</span><span class="mono">' +
-        escapeHtml(engineeringNumber(axis.raw, 1)) + '</span></div>' +
-      '<div class="st-outfit-feel-bar" role="progressbar" aria-label="' + label + ', ' + phrase +
-        ' relative to shipped hulls" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + bar + '">' +
-        '<span class="st-outfit-feel-bar__fill" style="width:' + bar + '%"></span>' +
-      '</div>' +
-      '<div class="st-outfit-feel-axis__sense">more is ' + phrase + '</div>' +
-    '</div>';
-  }).join('');
-
-  let changeHtml;
-  if (packet.mode === 'unavailable') {
-    changeHtml = '<div class="st-outfit-feel-note st-outfit-feel-note--warn"><b>Preview unavailable.</b> ' +
-      escapeHtml(packet.detail || 'No compatible hardpoint on this hull.') + '</div>';
-  } else if (packet.mode === 'preview' && packet.delta && packet.delta.ok) {
-    const changed = packet.delta.metrics.filter(meaningfulEngineeringDelta);
-    const chips = changed.map((metric) => {
-      // INF-081: situational predictions state their assumption where fit stats do not —
-      // a stop distance is a forecast under stated conditions, not a bolted-on number.
-      const note = metric.basis === 'situational' && metric.assumption ? ' · ' + metric.assumption : '';
-      return '<span class="st-outfit-feel-delta" title="' + escapeHtml(metric.verb + note) + '">' +
-        escapeHtml(metric.label) + ' <b>' + escapeHtml(engineeringDelta(metric)) + '</b></span>';
-    }).join('');
-    changeHtml = '<div class="st-outfit-feel-preview"><b>' +
-      escapeHtml(packet.previewName || 'Fitting') + ' preview</b>' +
-      (chips || '<span class="st-outfit-feel-note">No handling change in the live flight model.</span>') +
-      '</div>';
-  } else {
-    changeHtml = '<div class="st-outfit-feel-note">Current fitted profile. Hover or focus a compatible module to preview its handling change.</div>';
-  }
-
-  const risks = packet.risks && Array.isArray(packet.risks.risks) ? packet.risks.risks : [];
-  const riskHtml = risks.length
-    ? risks.map((risk) => {
-      const safeTone = ['illegal', 'loud', 'heavy', 'hot'].includes(risk.tone) ? risk.tone : 'neutral';
-      return '<span class="st-outfit-feel-risk st-outfit-feel-risk--' + safeTone + '" title="' +
-        escapeHtml(risk.basis && risk.basis.detail || risk.label) + '">' + escapeHtml(risk.label) + '</span>';
-    }).join('')
-    : '<span class="st-outfit-feel-note">No declared loadout risks in live module data.</span>';
-
-  const budget = packet.budget;
-  const budgetHtml = budget
-    ? '<div class="st-outfit-feel-section"><span class="st-outfit-feel-label">Fit mass</span>' +
-      '<div class="st-outfit-feel-note mono">' +
-      escapeHtml(budget.used + '/' + budget.outfitSpace + ' t total · ' +
-        budget.weaponUsed + '/' + budget.weaponCapacity + ' t weapons · ' +
-        budget.engineUsed + '/' + budget.engineCapacity + ' t engine') +
-      '</div></div>'
-    : '';
-
-  return '<div class="st-outfit-feel__head"><span>Flight feel</span><span class="mono">' +
-      escapeHtml(profile.driveLabel || profile.flightClass || 'ship') + '</span></div>' +
-    '<div class="st-outfit-feel-axes">' + axes + '</div>' +
-    budgetHtml +
-    '<div class="st-outfit-feel-section"><span class="st-outfit-feel-label">Fit change</span>' + changeHtml + '</div>' +
-    '<div class="st-outfit-feel-section"><span class="st-outfit-feel-label">Declared risks</span><div class="st-outfit-feel-risks">' +
-      riskHtml + '</div></div>';
 }
 
 function missionId(m) {

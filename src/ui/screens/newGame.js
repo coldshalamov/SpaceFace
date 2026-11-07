@@ -24,7 +24,6 @@ import { dressLampKey } from '../orrery/lampKey.js';
 import { createStageHull } from './stageHull.js';
 import { createStopScale } from '../orrery/stopDial.js';
 import { createYardCarousel } from '../orrery/yardCarousel.js';
-import { createHullRing } from '../orrery/hullRing.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { injectNewGameLayouts } from '../orrery/newGameLayouts.js';
 import { injectNewGameScreenSheet } from '../orrery/new-gameLayouts.js';
@@ -336,38 +335,6 @@ function shipDefFor(ctx, shipId) {
 // one-word tag beneath it. paintKey pins its alignment inline on every state change, so the rail
 // asks for it through data-key-align rather than overriding once (the hull names sat centred over
 // left-set tags).
-// The chosen hull's numbers as three bone tick-scale arcs: a lit fill for this hull, faint marks
-// where the other two starters sit, the reading in the display face under the arc. (Fixed specs are
-// bone; ice is for data in motion.)
-// SEED-ST-02 — "Line" is the Massline winch, not a speed: the stat names what it measures in
-// player words instead of bare "Line … wu/s". Mass and Thrust are self-evident; this one is not.
-export const STARTER_LINE_GLOSS = 'winch speed';
-
-function paintStarterStats(host, card, scale, others = []) {
-  const rows = [['Mass', 'massT', 't', ''], ['Thrust', 'thrust', '', ''], ['Line', 'lineWuPerS', 'u/s', STARTER_LINE_GLOSS]];
-  host.textContent = '';
-  const a0 = -110; const a1 = 110;
-  const p = (a, r = 22) => [30 + r * Math.sin(a * Math.PI / 180), 30 - r * Math.cos(a * Math.PI / 180)];
-  const arc = (from, to, r = 22) => { const [x0, y0] = p(from, r); const [x1, y1] = p(to, r); return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${to - from > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`; };
-  for (const [name, key, unit, gloss] of rows) {
-    const value = Number(card[key]) || 0;
-    const f = Math.max(0, Math.min(1, value / scale[key]));
-    const ticks = [];
-    for (let a = a0; a <= a1 + 0.01; a += 10) { const [x0, y0] = p(a, 25); const [x1, y1] = p(a, a % 50 === 0 ? 31 : 28); ticks.push(`M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)}`); }
-    const ghosts = others.map((o) => {
-      const g = a0 + (a1 - a0) * Math.max(0, Math.min(1, (Number(o[key]) || 0) / scale[key]));
-      const [x0, y0] = p(g, 17); const [x1, y1] = p(g, 27);
-      return `<path d="M ${x0.toFixed(1)} ${y0.toFixed(1)} L ${x1.toFixed(1)} ${y1.toFixed(1)}" class="orr-ng-stat__ghost"/>`;
-    }).join('');
-    const reading = value >= 1000 ? (value / 1000).toFixed(1) + 'k' : String(Math.round(value));
-    const cell = el('div', 'orr-ng-stat');
-    cell.innerHTML = `<svg viewBox="0 0 60 44"><path d="${ticks.join(' ')}" class="orr-ng-stat__ticks"/>`
-      + `<path d="${arc(a0, a1)}" class="orr-ng-stat__track"/><path d="${arc(a0, a0 + (a1 - a0) * f)}" class="orr-ng-stat__fill"/>${ghosts}</svg>`
-      + `<b>${reading}<i>${unit}</i></b><span>${name}</span>`
-      + (gloss ? `<span class="orr-ng-stat__gloss">${gloss}</span>` : '');
-    host.appendChild(cell);
-  }
-}
 function railWord(b) {
   b.dataset.keyAlign = 'flex-start';
   paintKey(b, 'legend');
@@ -431,7 +398,7 @@ export const newGameScreen = {
     }
     // a remount without a dispose (screen swap, error recovery) would leave the last mount's
     // instruments observing detached DOM — release them first, the way dispose() does (REV-D136b.3)
-    for (const key of ['_diffDial', '_starterDial', '_hullRing', 'hull']) {
+    for (const key of ['_diffDial', '_starterDial', 'hull']) {
       if (this[key] && typeof this[key].dispose === 'function') { try { this[key].dispose(); } catch (e) {} }
       this[key] = null;
     }
@@ -480,9 +447,9 @@ export const newGameScreen = {
     const starterWords = words(NEW_GAME_STARTERS.map((s) => ({
       action: 'starter:' + s.id,
       label: s.name,
-      // P1 — the word under a starter is the ship sheet's own identity, so the choice and the
-      // ship screen never name the same hull two different things.
-      sub: (starterAirCard(s).identity || s.tag),
+      // P1 — the word under a starter is the ship sheet's authored class and build word, so the
+      // choice and the ship screen never name the same hull two different things.
+      sub: (starterAirCard(s).railLabel || s.tag),
     })), {
       row: true, size: 'body', ariaLabel: 'Start as',
       onPick: (action) => this._setStarter(action.slice('starter:'.length)),
@@ -806,15 +773,10 @@ export const newGameScreen = {
     // numbers and the run it opens are about the hull, so they read at the hull.
     if (ORRERY) {
       caption.append(loadoutField.wrap, route);
-      // the stats as three short arcs of ice, filled against the largest of the starters
-      const cards = NEW_GAME_STARTERS.map((s) => starterAirCard(s));
-      const scale = { massT: Math.max(...cards.map((c) => c.massT), 1), thrust: Math.max(...cards.map((c) => c.thrust), 1), lineWuPerS: Math.max(...cards.map((c) => c.lineWuPerS), 1) };
-      const stats = el('div', 'orr-ng-stats');
-      stats.setAttribute('aria-hidden', 'true');
-      caption.insertBefore(stats, loadoutField.wrap);
       // P1 — the six-stat sheet beside the hull, so the starter choice is a character decision:
       // the same six 1–10 bars the dock and THE SHIP print, with the engineering numbers behind
-      // their own Details door.
+      // their own Details door. The old Mass/Thrust/Line arcs are gone: they were a second, raw
+      // answer beside the sheet.
       ensureShipSheetStyles();
       const sheetHost = el('div', 'sf-ng-sheet');
       caption.appendChild(sheetHost);
@@ -823,28 +785,10 @@ export const newGameScreen = {
         sheetHost.innerHTML = shipSheetHtml(card.sheet, { compact: true });
         bindShipSheet(sheetHost.querySelector('[data-sfs]'));
       };
-      // one ring round the hull (ORRERY 6): mass left, thrust over the top, line right; the other starters as ghosts
-      // the readings between two hulls (f = 0 at a, 1 at b): while the yard turns they sweep from one to the
-      // next; every starter stands on each arc as a ghost tick, so the lit value travels between them
-      const allCards = NEW_GAME_STARTERS.map((s) => starterAirCard(s));
-      const ringStatsMix = (a, b, f) => {
-        const ca = starterAirCard(a); const cb = starterAirCard(b || a);
-        return [['Mass', 'massT', 't'], ['Thrust', 'thrust', ''], ['Line', 'lineWuPerS', 'u/s']].map(([name, key, unit]) => {
-          const value = (1 - f) * (Number(ca[key]) || 0) + f * (Number(cb[key]) || 0);
-          return { name, unit, reading: value >= 1000 ? (value / 1000).toFixed(1) + 'k' : String(Math.round(value)),
-            frac: value / scale[key], ghosts: allCards.map((o) => (Number(o[key]) || 0) / scale[key]),
-            ...(name === 'Line' ? { gloss: STARTER_LINE_GLOSS } : {}) };
-        });
-      };
-      const ringStats = (starter) => ringStatsMix(starter, starter, 0);
       this._paintStats = (starter) => {
-        if (this._hullRing) this._hullRing.paint(ringStats(starter));
-        else paintStarterStats(stats, starterAirCard(starter), scale, NEW_GAME_STARTERS.filter((s) => s.id !== starter.id).map((s) => starterAirCard(s)));
         if (this._paintStarterSheet) this._paintStarterSheet(starter);
         this._lastStarter = starter;
       };
-      // on the screen itself, not the stage cell: the stage ends above the floor, and the arc has to
-      // sit under the ship rather than across it
       // the hull choice as a turntable round the ship's base: the three hulls stand on its front arc
       // as their rendered hero art, the amber index riding the ring to the chosen one
       const pick = el('div', 'orr-ng-pick');
@@ -859,33 +803,19 @@ export const newGameScreen = {
       // SPIN THE YARD: drag the ring; each hull's mass sets how it answers; release settles and picks
       const mass = {};
       for (const s of NEW_GAME_STARTERS) mass['starter:' + s.id] = starterAirCard(s).massT;
-      const starterOfLi = () => [...starterWords.children].filter((li) => li.querySelector && li.querySelector('button'))
-        .map((li) => NEW_GAME_STARTERS.find((s) => 'starter:' + s.id === li.querySelector('button').dataset.action));
       // Phones show the produced hull portrait and full-width measured dials. Do not mount a
       // second hidden WebGL model carousel behind the phone's ordinary hull-choice row.
       this._starterDial = createYardCarousel({ row: starterWords, host: rootEl, anchor: stage, hero: '.orr-ng-hero-box', art, artWidth: 132, mass, modelRing: !isPhoneLayout(),
         onModelsReady: (ok) => { stage.classList.toggle('orr-ng--models', !!ok); },
         onTurn: (i0, i1, f) => {
-          const list = starterOfLi();
-          if (this._hullRing && list[i0]) this._hullRing.paint(ringStatsMix(list[i0], list[i1], f));
+          // the poster crossfade between two hulls; the six-stat sheet is repainted on settle
           stage.style.setProperty('--ng-spin-mix', (Math.min(f, 1 - f) * 2).toFixed(3));
-        },
-        // the yard moved: the ring round the hull re-seats on the render (it measures only on a move)
-        onLayout: () => { if (this._hullRing) this._hullRing.layout(); } });
+        } });
     }
     rootEl.appendChild(stage);
     // the hull alone inside its ring (ORRERY 6): the stage is the instrument, not a photograph of a dock
     // ORRERY: the produced poster is the hero (the live mount showed a different pose and light of the same ship)
     this.hull = createStageHull(stage, { rootEl, zoom: ORRERY ? STAGE_ZOOM_RING : STAGE_ZOOM, dock: !ORRERY, live: !ORRERY });
-    if (ORRERY) {
-      const statsHost = stage.querySelector('.orr-ng-stats');
-      const heroBox = stage.querySelector('.orr-ng-hero-box');
-      if (statsHost && heroBox && !isPhoneLayout()) {
-        statsHost.textContent = '';
-        this._hullRing = createHullRing({ host: statsHost, anchor: heroBox });
-        if (this._lastStarter) this._paintStats(this._lastStarter);
-      }
-    }
 
     // Foot: Back, then Launch (the one primary word) — Launch stays the LAST footer button because
     // the capture matrix, the atlas, the review probe and the localization check all reach it as
@@ -1160,8 +1090,17 @@ export const newGameScreen = {
       const field = refs.name;
       const token = {};
       this._nameFocus = token;
+      let attempts = 0;
       const focusName = () => {
         if (this._nameFocus !== token) return;
+        // The screen manager can call onShow one frame before the newGame pane is laid out; a
+        // focus() while it is still display:none is silently dropped. Wait for a laid-out field,
+        // then focus, rather than losing the name-entry shortcut to a transition race.
+        if (!field.isConnected || field.getClientRects().length === 0) {
+          attempts += 1;
+          if (attempts < 120) setTimeout(focusName, 16);
+          return;
+        }
         this._nameFocus = null;
         try { field.focus(); field.select(); } catch (e) {}
       };
@@ -1186,7 +1125,6 @@ export const newGameScreen = {
     if (this._diffDial) { this._diffDial.dispose(); this._diffDial = null; }
     if (this._starterDial) { this._starterDial.dispose(); this._starterDial = null; }
     if (this.hull) { this.hull.dispose(); this.hull = null; }
-    if (this._hullRing) { this._hullRing.dispose(); this._hullRing = null; }
     if (refs && refs.unsubStartFailed) { try { refs.unsubStartFailed(); } catch (e) {} }
     if (refs && refs.unsubLoading) { try { refs.unsubLoading(); } catch (e) {} }
     refs = null;

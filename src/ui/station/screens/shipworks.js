@@ -103,7 +103,6 @@ import {
   previewMetricValue,
 } from '../../presenters/engineeringPreview.js';
 import {
-  SHIP_ENGINEERING_GAUGE_DEFS,
   capabilityBandModel,
   conditionFromEntity,
   scarCalloutsForHull,
@@ -199,7 +198,6 @@ export function fitOfferChipHtml(d, hints, purchase, equipped, credits) {
   return '';
 }
 const shipName = (id) => { const s = SHIP_BY_ID.get(id); return s ? s.name : id; };
-const GAUGE_DEFS = SHIP_ENGINEERING_GAUGE_DEFS.slice();
 const UI_SWITCH_DETENT_CUE = 'sfx_ui_switch_detent';
 const UI_DRAWER_LATCH_CUE = 'sfx_ui_drawer_latch';
 
@@ -309,31 +307,6 @@ export function shipworksActionAvailability(state) {
 const titleCaseWords = (value) => String(value || '').replace(/[_-]+/g, ' ')
   .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
-/**
- * FB-058 — a unique module's variantBonuses printed as one "what is different" line: each key
- * becomes a readable fragment (+25 % shield flat, 1 missile knockback / fight, whole-wreck
- * tractor). Pure presentation of the authored record; the numbers are not re-derived here.
- */
-export function variantBonusWords(bonuses) {
-  if (!bonuses || typeof bonuses !== 'object') return '';
-  const parts = [];
-  for (const key of Object.keys(bonuses)) {
-    const value = bonuses[key];
-    const base = key
-      .replace(/Pct$/, '')
-      .replace(/UsesPerEncounter$/, '')
-      .replace(/([A-Z])/g, ' $1')
-      .toLowerCase()
-      .trim();
-    if (value === true) parts.push(base);
-    else if (value === false) continue;
-    else if (key.endsWith('Pct')) parts.push(`${value >= 0 ? '+' : '−'}${Math.abs(Math.round(Number(value) * 100))} % ${base}`);
-    else if (key.endsWith('UsesPerEncounter')) parts.push(`${Number(value)} ${base} / fight`);
-    else if (Number.isFinite(Number(value))) parts.push(`${Number(value) >= 0 ? '+' : '−'}${Math.abs(Number(value))} ${base}`);
-    else parts.push(`${base}: ${value}`);
-  }
-  return parts.join(' · ');
-}
 
 let fieldMeasureCtx = null;
 /** Width of `text` set in an input's computed font (canvas metrics; 0 when there is no canvas). */
@@ -592,12 +565,14 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   const scarfieldEl = el.querySelector('.sx-sw__scarfield');
   const powerOverlayEl = el.querySelector('.sx-sw__power');
   const gaugeRackEl = el.querySelector('.sx-sw__gauges');
-  // P1 — the six engineering gauges (mass / energy / shield / cargo / thrust / heat) duplicate the
-  // ship sheet's Details door in raw units; leaving them on the surface is a second answer. They are
-  // kept in the DOM for the flight-side systems readout but not shown beside the sheet.
+  // P1 - the old six raw gauges (mass / energy / shield / cargo / thrust / heat) duplicated the
+  // ship sheet's Details door in engineering units. The rack is an empty, hidden shell kept only
+  // because the station frame template still owns the element; no gauge value is computed or
+  // synced any more, and the sheet's `Details` door is the one place those numbers live.
   if (gaugeRackEl) {
     gaugeRackEl.hidden = true;
     gaugeRackEl.style.display = 'none';
+    gaugeRackEl.replaceChildren();
   }
   const acquiringEl = el.querySelector('.sx-sw__acquiring');
   // The hull's produced render (src/ui/ship/hullPoster.js): the stage until the authored hull has
@@ -640,14 +615,6 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     ensureInteriorStyle();
     paintMarking(nameplateEl.querySelector('.sx-sw__name'));
     paintLegend(nameplateEl.querySelector('.sx-sw__conditionVerb'), true);
-  }
-
-  function dressGauges() {
-    ensureInteriorStyle();
-    for (const tile of gaugeRackEl.querySelectorAll('.sx-sw-gauge')) {
-      paintRow(tile, false);
-      paintLegend(tile.querySelector('.sx-sw-gauge__k'));
-    }
   }
 
   function dressApron() {
@@ -888,9 +855,6 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   const clearSableDemo = () => { sableDemo?.dispose(); sableDemo = null; sableStamp = null; };
   const sableLifecycleUnsubs = ['save:restoring', 'game:newGame'].map(event => ctx.bus?.on(event, clearSableDemo)).filter(Boolean);
   const powerBeam = createRouteBeam(powerOverlayEl, { width: 400, height: 240 });
-  const gaugeByKey = {};
-  let gaugeReady = false;
-  let currentGaugeStats = null;
   let currentPowerHeadroom = 0;
   let currentPowerCapMax = 0;
   let currentPowerSlotIndices = [];
@@ -906,35 +870,6 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
 
   function emitUiCue(id) {
     if (ctx.bus) ctx.bus.emit('audio:cue', { id });
-  }
-
-  // The corner: six compact static rows (Mass · Energy · Shield · Cargo · Thrust · Heat), the value
-  // at emphasis. No dials (Task C §1.9). A ghost value (a hovered module or a selected preset)
-  // reads as 38 % text beside the live value.
-  function ensureGaugeRack() {
-    if (gaugeReady) return;
-    gaugeRackEl.innerHTML = '';
-    for (const def of GAUGE_DEFS) {
-      const tile = document.createElement('li');
-      tile.className = 'k-row k-row--static sx-sw-gauge';
-      tile.setAttribute('data-gauge', def.key);
-      // The gauge value is a tier-2 carrier (syncGaugeValues stamps data-why below): focusable so
-      // the same reveal answers keyboard focus, not only hover.
-      tile.setAttribute('tabindex', '0');
-      tile.innerHTML =
-        `<span class="k-row__name k-62 sx-sw-gauge__k">${escapeHtml(def.label)}</span>` +
-        `<span class="k-row__num sx-sw-gauge__v"><span data-gauge-value></span><span class="k-38 sx-sw-ghost" data-gauge-ghost hidden></span></span>`;
-      gaugeRackEl.appendChild(tile);
-      gaugeByKey[def.key] = {
-        def,
-        tile,
-        valueEl: tile.querySelector('[data-gauge-value]'),
-        ghostEl: tile.querySelector('[data-gauge-ghost]'),
-        liveText: '',
-      };
-    }
-    gaugeReady = true;
-    dressGauges();
   }
 
   function owned() { return (ctx.state.player && ctx.state.player.ownedShips) || []; }
@@ -1546,9 +1481,6 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const identity = sheet
       ? { id: sheet.identity.id, label: sheet.identity.label, summary: sheet.identity.gloss, synergyNotes: [] }
       : null;
-    const variantRows = fittedDefs
-      .filter((d) => d && d.variantBonuses)
-      .map((d) => ({ id: d.id, name: d.name || d.id, words: variantBonusWords(d.variantBonuses) }));
     return {
       def,
       fittings,
@@ -1572,7 +1504,6 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       identity,
       sheet,
       sheetSentence: shipSheetSentence(sheet),
-      variantRows,
       hullNotes,
     };
   }
@@ -1636,57 +1567,6 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     metricsMirrorEl.innerHTML = PREVIEW_METRIC_KEYS.map((key) =>
       `<span data-metric="${key}" data-value="${finite(previewMetricValue(model.derived, key), 0)}"></span>`,
     ).join('');
-  }
-
-  /**
-   * Write the six corner rows. `ghost: true` (a hovered module, a selected preset) leaves the live
-   * value in place and writes the proposed value beside it at 38 %; a live write clears the ghost.
-   */
-  function syncGaugeValues(model, { ghost = false } = {}) {
-    ensureGaugeRack();
-    if (!model || !model.derived) {
-      currentGaugeStats = null;
-      stampStatsProvenance(ghostBandModel);
-      return;
-    }
-    // Mirror the previewed fit while a ghost is on screen — a live-model refresh firing between
-    // the hover and the read must not flip the provenance back to the numbers the player is not
-    // being shown.
-    stampStatsProvenance(ghostBandModel || model);
-    const stats = {
-      mass: finite(model.derived.mass, 0),
-      capMax: finite(model.derived.capMax, 0),
-      capRegen: finite(model.derived.capRegen, 0),
-      shieldMax: finite(model.derived.shieldMax, 0),
-      cargoCap: finite(model.derived.cargoCap, 0),
-      // The 'Thrust' gauge shows what full throttle commands — forward accel at the shown
-      // mass — not the legacy maxSpeed field it used to be fed (NXB-030).
-      thrust: forwardAccelFor(model.derived),
-      continuousDrain: finite(model.derived.continuousDrain, 0),
-    };
-    if (!ghost) currentGaugeStats = stats;
-    for (const def of GAUGE_DEFS) {
-      const row = gaugeByKey[def.key];
-      if (!row) continue;
-      const raw = stats[def.key];
-      const text = `${fmt(raw)}${def.suffix}`;
-      if (ghost) {
-        const same = text === row.liveText;
-        row.ghostEl.textContent = same ? '' : `→ ${text}`;
-        row.ghostEl.hidden = same;
-        // a change for the worse reads in dim bone, never in the gain's ice: mass, heat and draw want less
-        const liveRaw = currentGaugeStats ? finite(currentGaugeStats[def.key], raw) : raw;
-        const lowerIsBetter = /mass|heat|drain|draw/i.test(String(def.key));
-        const worse = lowerIsBetter ? raw > liveRaw : raw < liveRaw;
-        row.ghostEl.classList.toggle('is-loss', !same && worse);
-        continue;
-      }
-      row.liveText = text;
-      row.valueEl.textContent = text;
-      row.ghostEl.textContent = '';
-      row.ghostEl.hidden = true;
-      row.tile.setAttribute('data-why', `${def.label}: ${fmt(raw)}${def.suffix}`);
-    }
   }
 
   function syncPowerBand(model) {
@@ -2011,7 +1891,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     activeBandModel = deriveBandModel(ctxPrev);
     renderCrest(activeBandModel);
     renderApron(activeBandModel);
-    syncGaugeValues(activeBandModel);
+    stampStatsProvenance(activeBandModel);
     syncPowerBand(activeBandModel);
     renderScarCallouts(activeBandModel);
     if (activePresetRailModel && activePresetRailModel.selectedPreset) {
@@ -3930,7 +3810,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     activeBandModel = deriveBandModel(previewCtx);
     renderCrest(activeBandModel);
     renderApron(activeBandModel);
-    syncGaugeValues(activeBandModel);
+    stampStatsProvenance(activeBandModel);
     syncPowerBand(activeBandModel);
     renderScarCallouts(activeBandModel);
     renderSpatialSlots();
@@ -4018,7 +3898,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const slots = buildSlotList(def);
     const fittings = s.fittings || [];
     const equippedDefs = fittings.map((id) => id && FITTABLE_BY_ID.get(id)).filter(Boolean);
-    const moduleMass = equippedDefs.reduce((sum, d) => sum + (Number(d.mass) || 0), 0);
+    // The side panel's identity is the SHIP SHEET's class + build word, never the authored role
+    // alone: the sheet beside it and the rail must not name the same hull two different things.
+    const sideSheet = shipStatSheet({ shipId: def.id, fittings, player: ctx.state.player });
+    const sideClass = sideSheet ? sideSheet.roleLabel : titleCaseWords(def.role || 'ship');
+    const sideWord = sideSheet ? ` \u00b7 ${sideSheet.identity.label}` : '';
     const systemDraw = new Map();
     for (const t of ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility', 'thruster']) systemDraw.set(t, 0);
     for (const d of equippedDefs) {
@@ -4104,14 +3988,16 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const activeControl = host === 'flight' ? '' : inspectedIndex !== activeIndex
       ? `<li><button type="button" ${stationControlAttrs('make-active')} class="k-word k-word--emph sx-sw-circuit__activate" data-activate-ship="${inspectedIndex}" ${availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(availability.hullEnabled ? 'Make active. ' + switchCargo : availability.hullLabel)}">${availability.hullEnabled ? 'Make active' : escapeHtml(availability.hullLabel)}</button></li>`
       : `<li><span class="k-word k-word--emph k-38 sx-sw-circuit__active">Active flight hull</span></li>`;
-    // The stage-right column: the build's identity, the core as a hero number, each system's
-    // draw as a row, and one sentence telling the player where to click.
+    // The stage-right column: the build's class + word, each system's fit state as a row, and one
+    // sentence telling the player where to click. Engineering units live behind the sheet's Details
+    // door, not here.
     sideEl.innerHTML =
       `<div class="sx-sw-circuit">` +
-        `<h3 class="k-t-sub sx-sw-circuit__identity">${escapeHtml(titleCaseWords(def.role || 'ship'))}` +
-          `<span class="k-t-fine k-38 sx-sw-circuit__sub">${equippedDefs.length + (stockDriveCounted ? 1 : 0)}/${slots.length} systems fitted · ${fmt(moduleMass)} t modules</span></h3>` +
-        // ORRERY: the core as a dial -- its capacity the arc, each system's draw lit along it
-        `<div class="k-hero sx-sw-circuit__core">${powerDialSvg({ cap: def.energyCap || 0, draws: flows, systems: circuitSystems(def, fittings) })}<span class="k-hero__n">${fmt(def.energyCap || 0)}</span><span class="k-hero__w">power used · ${fmt(totalDraw)} of ${fmt(def.energyCap || 0)}</span></div>` +
+        `<h3 class="k-t-sub sx-sw-circuit__identity">${escapeHtml(sideClass)}${escapeHtml(sideWord)}` +
+          `<span class="k-t-fine k-38 sx-sw-circuit__sub">${equippedDefs.length + (stockDriveCounted ? 1 : 0)}/${slots.length} systems fitted</span></h3>` +
+        // ORRERY: the core as a dial -- its capacity the arc, each system's draw lit along it.
+        // No capacity or draw number is printed: those are Details readings.
+        `<div class="k-hero sx-sw-circuit__core">${powerDialSvg({ cap: def.energyCap || 0, draws: flows, systems: circuitSystems(def, fittings) })}</div>` +
         `<ul class="k-rows sx-sw-circuit__flows">${flows.map(([type, draw]) => {
           const available = slots.filter((slot) => slot.type === type).length;
           const fitted = slots.reduce((n, slot, i) => n + (slot.type === type && fittings[i] ? 1 : 0), 0);
@@ -4329,7 +4215,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const researched = (ctx.state.player && Array.isArray(ctx.state.player.researchedNodes))
       ? ctx.state.player.researchedNodes : [];
     const sableTrialButton = d => sableVennServiceAvailable(ctx.state)
-      ? `<button type="button" ${stationControlAttrs('sable-demo')} class="k-word k-word--fine" data-sable-demo="${escapeHtml(d.id)}" data-sable-slot="${slotIndex}" aria-label="Sable Venn: demonstrate ${escapeHtml(d.name)}">${stationControlLabel('sable-demo')}</button>` : '';
+      ? `<button type="button" ${stationControlAttrs('sable-demo')} class="k-word k-word--fine" data-sable-demo="${escapeHtml(d.id)}" data-sable-slot="${slotIndex}" aria-label="Sable Venn: demonstrate ${escapeHtml((partFacts(d.id) || {}).name || d.name)}">${stationControlLabel('sable-demo')}</button>` : '';
     const holdRowHtml = ({ d, count, instanceId, instText, mountBlock, provMark }) => {
       const headConflict = findMasslineHeadConflict(fittings, slotIndex, d);
       const prospective = fittings.slice();
@@ -4344,7 +4230,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         ? 'Research required: ' + techDisplayName(d.requiresTech) : null) || standingBlock;
       const blocked = mountBlock || headConflict || budgetBlocker || researchBlock;
       const blockedText = mountBlock
-        ? (mountRefusal(slot, d) || fitRefusalText(slot, d) || `${d.name} does not fit this slot`)
+        ? (mountRefusal(slot, d) || fitRefusalText(slot, d) || `${(partFacts(d.id) || {}).name || d.name} does not fit this slot`)
         : headConflict
           ? `Unfit ${headConflict.name} before installing another Massline head.`
           : researchBlock || (budgetBlocker && budgetBlocker.text) || '';
@@ -4364,7 +4250,6 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${iconHtml} ${entitySpanHtml('module:' + d.id, escapeHtml(facts ? facts.name : d.name))}</span>` +
             `<span class="k-row__sub sx-modrow__role">${metaFallback} · ${escapeHtml(facts ? facts.sentence : '')}</span>` +
             `<span class="k-row__sub sx-modrow__metrics">${sheetDeltaChipsHtml(liveSheet, def, fittings, slotIndex, d)}</span>` +
-            (d.variantBonuses ? `<span class="k-row__sub k-38 sx-modrow__variant">Different: ${escapeHtml(variantBonusWords(d.variantBonuses))}</span>` : '') +
             (instText ? `<span class="k-row__sub k-38 sx-modrow__instance">This unit: ${escapeHtml(instText)}</span>` : '') +
             `<span class="k-row__sub k-38 sx-modrow__role"${blocked ? ' data-refusal' : ''}>${blocked ? escapeHtml(blockedText) : 'Already paid for — fits this slot.'}</span></span>` +
           `<span class="k-row__num sx-modrow__act">${sableTrialButton(d)}${btn}</span>` +
@@ -4404,14 +4289,16 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const facts = partFacts(d.id);
       const metaFallback = partMetaHtml(facts, d.id);
       const ringNote = mountOutputFactor(d, slot) < 1 ? ` The ring aims it for you at ${ringPct} % output.` : '';
+      const detailName = facts ? facts.name : d.name;
+      const fittedName = fittedDef ? ((partFacts(fittedDef.id) || {}).name || fittedDef.name) : null;
       const actionDetail = equipped ? 'Installed in this slot.'
         : purchase.disabled ? purchase.title
         : headConflict ? `Unfit ${headConflict.name} before installing another Massline head. This purchase goes to inventory.`
         : selectedBudgetBlocker ? `${selectedBudgetBlocker.text || 'This fitting exceeds the hull budget'}. This purchase goes to inventory.`
         : selectedFit && fittedId
-        ? `Buy ${d.name} and replace ${(fittedDef && fittedDef.name) || 'the fitted module'}; the removed module goes to inventory.${ringNote}`
+        ? `Buy ${detailName} and replace ${fittedName || 'the fitted module'}; the removed module goes to inventory.${ringNote}`
         : selectedFit
-          ? `Buy ${d.name} and fit it to this ${slot.type} ${slot.size} slot.${ringNote}`
+          ? `Buy ${detailName} and fit it to this ${slot.type} ${slot.size} slot.${ringNote}`
         : purchase.title;
       const viewingActiveHull = viewIdx === ((ctx.state.player && ctx.state.player.activeShipIndex) || 0);
       const fitsOnceFunded = !equipped && purchase.state === 'funding' && !headConflict && !selectedBudgetBlocker;
@@ -4436,7 +4323,6 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
             `<span class="k-row__sub sx-modrow__role">${metaFallback} · ${escapeHtml(facts ? facts.sentence : '')}</span>` +
             `<span class="k-row__sub sx-modrow__metrics">${chips}${fitOfferChipHtml(d, ctx.state.player && ctx.state.player.hints, purchase, equipped, ctx.state.player && ctx.state.player.credits)}</span>` +
             `<span class="k-row__sub sx-modrow__meta">${equippedInstText ? `<span class="sx-modrow__instance">This unit: ${escapeHtml(equippedInstText)}</span> ` : ''}${riskChips ? `<span class="sx-modrow__chips">${riskChips}</span>` : ''}</span>` +
-            (d.variantBonuses ? `<span class="k-row__sub k-38 sx-modrow__variant">Different: ${escapeHtml(variantBonusWords(d.variantBonuses))}</span>` : '') +
             `<span class="k-row__sub k-38 sx-modrow__role">${escapeHtml(actionDetailFull)}</span>` +
             (advice ? `<span class="k-row__sub sx-modrow__role sx-modrow__advice">${escapeHtml(advice)}</span>` : '') + `</span>` +
           `<span class="k-row__num sx-modrow__act">${sableTrialButton(d)}${btn}</span>` +
@@ -4444,7 +4330,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       );
     });
     const refusedList = refused.map((d) => {
-      const sentence = mountRefusal(slot, d) || fitRefusalText(slot, d) || `${d.name} does not fit this slot`;
+      const sentence = mountRefusal(slot, d) || fitRefusalText(slot, d) || `${(partFacts(d.id) || {}).name || d.name} does not fit this slot`;
       // P2 — the ladder is Mk I/II/III and the role says what the part is. The intent lives in the
       // group heading above the row, not as a repeated middot on every line.
       const facts = partFacts(d.id);
@@ -4655,7 +4541,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         }
       }
       const buyLabel = !outfit ? 'Dock to buy' : afford ? 'Buy' : `Need ${fmt(d.price)} cr`;
-      const buyHint = !outfit ? availability.outfitLabel : afford ? `Buy one ${d.name} into hangar stock` : 'Not enough credits';
+      const buyHint = !outfit ? availability.outfitLabel : afford ? `Buy one ${(facts && facts.name) || d.name} into hangar stock` : 'Not enough credits';
       verbs.push(`<button type="button" ${stationControlAttrs('payload-buy')} class="k-word k-word--fine sx-modrow__buy" data-payload-buy="${escapeHtml(d.id)}" ${outfit && afford ? '' : `disabled aria-label="${escapeHtml(buyHint)}"`}>${escapeHtml(buyLabel)} <small class="k-38">${fmt(d.price)} cr</small></button>`);
       if (stock > 0) {
         verbs.push(`<button type="button" ${stationControlAttrs('payload-sell')} class="k-word k-word--fine sx-modrow__buy" data-payload-sell="${escapeHtml(d.id)}" ${outfit ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${stationControlLabel('payload-sell')} <small class="k-38">${fmt(sellValue)} cr</small></button>`);
@@ -4726,7 +4612,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       : '';
     if (activeBandModel) renderApron(activeBandModel, ghostBandModel);
     if (ghostBandModel) {
-      syncGaugeValues(ghostBandModel, { ghost: true });
+      stampStatsProvenance(ghostBandModel);
       syncPowerBand(ghostBandModel);
     }
     const ghostSlot = Number.isInteger(slotIndex) ? slotIndex : selectedSlot;
@@ -4933,7 +4819,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     ghostNote = '';
     if (activeBandModel) renderApron(activeBandModel, ghostBandModel);
     if (ghostBandModel) {
-      syncGaugeValues(ghostBandModel, { ghost: true });
+      stampStatsProvenance(ghostBandModel);
       syncPowerBand(ghostBandModel);
     }
     scheduleSpatialProjection();

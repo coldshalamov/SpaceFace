@@ -28,7 +28,7 @@ export const NEW_GAME = {
     'wpn_pulse_laser_s',   // weapon slot S (starter gun, visible in loadout)
     'mod_mining_laser_s',   // mining slot S (starter laser, price 0)
     'mod_engine_ion_m',     // engine slot M
-    'mod_shield_booster_s', // shield slot S
+    'mod_shield_liner_s',   // shield slot S — light shield, so the Hitch reads as the fragile skirmisher
     'mod_drill_amp',        // utility slot S — the hitch's cut; the other two hulls do not carry it
   ],
 

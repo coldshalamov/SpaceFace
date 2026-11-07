@@ -12,6 +12,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { SHIPS } from '../src/data/ships.js';
 import { MODULES } from '../src/data/modules.js';
@@ -20,21 +21,22 @@ import { NEW_GAME_STARTERS } from '../src/data/newGameDefaults.js';
 import {
   buildSlotList,
   fits,
-  fittingsFromDefaultModules,
   getDerivedStats,
   outfitBudgetBlocker,
 } from '../src/systems/ships.js';
-import { governedFightSpeedFor, towClassMassFor } from '../src/systems/shipCapabilities.js';
+import { governedFightSpeedFor } from '../src/systems/shipCapabilities.js';
 import {
   BUILD_IDENTITIES,
   SHIP_STAT_DEFS,
   buildIdentityForStats,
   firepowerRawFor,
+  hasTowRating,
   shipSheetSentence,
   shipStatDelta,
   shipStatSheet,
 } from '../src/ui/ship/shipStats.js';
-import { shipSheetHtml } from '../src/ui/ship/shipSheet.js';
+import { bindShipSheet, shipSheetHtml } from '../src/ui/ship/shipSheet.js';
+import { starterAirCard } from '../src/ui/starterAirCard.js';
 
 const stat = (sheet, id) => sheet.stats.find((row) => row.id === id);
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
@@ -78,9 +80,9 @@ function strongestLegalFit(shipDef) {
     const options = FITTABLE
       .filter((def) => def.slotType === slot.type && fits(slot, def))
       .sort((a, b) => {
-        const damage = Number(b.mods && b.mods.weaponDmgPct) - Number(a.mods && a.mods.weaponDmgPct);
+        const damage = (Number(b.mods && b.mods.weaponDmgPct) || 0) - (Number(a.mods && a.mods.weaponDmgPct) || 0);
         if (damage) return damage;
-        return Number(b.mods && b.mods.shieldFlat) - Number(a.mods && a.mods.shieldFlat);
+        return (Number(b.mods && b.mods.shieldFlat) || 0) - (Number(a.mods && a.mods.shieldFlat) || 0);
       });
     for (const moduleDef of options) {
       fit[slot.index] = moduleDef.id;
@@ -117,7 +119,7 @@ test('the sheet is exactly six stats, each bounded 1-10, and null input is safe'
 test('Firepower ignores the phantom starter gun and counts every damaging mount', () => {
   const empty = shipStatSheet({ shipId: 'ship_kestrel' });
   assert.equal(stat(empty, 'firepower').raw, 0, 'an empty fit carries no gun');
-  assert.match(stat(empty, 'firepower').meaning, /No gun fitted/);
+  assert.match(stat(empty, 'firepower').meaning, /No damaging gun fitted/);
   assert.equal(stat(empty, 'firepower').value, 1);
 
   const thermal = shipStatSheet({ shipId: 'ship_kestrel', fittings: ['wpn_thermal_cooker'] });
@@ -175,41 +177,50 @@ test('each gun pays its own duty: adding a hot gun never lowers the fit', () => 
   }
 });
 
-test('a higher burst gun never reads a lower whole Firepower bar in the same slot', () => {
-  // The bar is the player's reading; the tenths below it can still reflect a hotter gun's shorter
-  // sustained clock (that is what the Power stat is for), but the headline must never invert.
+test('a gun with a higher sustained reading never reads a lower whole Firepower bar', () => {
+  // The bar is the player's reading; it measures SUSTAINED damage, so burst dps alone is not the
+  // comparison (a hotter cycling gun can lose to a cooler one with a better duty). What must never
+  // invert is the model's own raw reading: a fit whose raw is higher cannot print a lower bar.
   // The Saucer is excluded: fitting a gun replaces an intrinsic emitter in that slot.
   for (const shipDef of SHIPS.filter((ship) => ship.id !== 'ship_saucer')) {
     const hullSlots = buildSlotList(shipDef);
     for (let index = 0; index < hullSlots.length; index += 1) {
       if (hullSlots[index].type !== 'weapon') continue;
       const guns = FITTABLE.filter((gun) => gun.slotType === 'weapon' && fits(hullSlots[index], gun));
-      for (let a = 0; a < guns.length; a += 1) {
-        for (let b = a + 1; b < guns.length; b += 1) {
-          const burstA = FIRED_DPS(guns[a]);
-          const burstB = FIRED_DPS(guns[b]);
-          if (burstA === burstB) continue;
-          const high = burstA > burstB ? guns[a] : guns[b];
-          const low = burstA > burstB ? guns[b] : guns[a];
-          const highSheet = shipStatSheet({ shipId: shipDef.id, fittings: fitAt(hullSlots, [[index, high.id]]) });
-          const lowSheet = shipStatSheet({ shipId: shipDef.id, fittings: fitAt(hullSlots, [[index, low.id]]) });
-          assert.ok(stat(highSheet, 'firepower').value >= stat(lowSheet, 'firepower').value,
-            `${shipDef.id} slot ${index}: ${high.id} (${FIRED_DPS(high)}) reads ${stat(highSheet, 'firepower').value}, ${low.id} (${FIRED_DPS(low)}) reads ${stat(lowSheet, 'firepower').value}`);
+      const readings = guns.map((gun) => {
+        const fit = fitAt(hullSlots, [[index, gun.id]]);
+        const sheet = shipStatSheet({ shipId: shipDef.id, fittings: fit });
+        return { gun, raw: stat(sheet, 'firepower').raw, value: stat(sheet, 'firepower').value };
+      });
+      for (let a = 0; a < readings.length; a += 1) {
+        for (let b = a + 1; b < readings.length; b += 1) {
+          if (readings[a].raw === readings[b].raw) continue;
+          const high = readings[a].raw > readings[b].raw ? readings[a] : readings[b];
+          const low = readings[a].raw > readings[b].raw ? readings[b] : readings[a];
+          assert.ok(high.value >= low.value,
+            `${shipDef.id} slot ${index}: ${high.gun.id} (${high.raw}) reads ${high.value}, ${low.gun.id} (${low.raw}) reads ${low.value}`);
         }
       }
     }
   }
 });
 
-test('a full legal fit leaves Firepower headroom on at least 13 of 15 hulls', () => {
-  let headroom = 0;
+test('the strongest legal fit stays below the Firepower ceiling and no hull saturates', () => {
+  const def = SHIP_STAT_DEFS.find((row) => row.id === 'firepower');
+  let strongest = 0;
+  let strongestHull = null;
+  let saturated = 0;
   for (const shipDef of SHIPS) {
     const fit = strongestLegalFit(shipDef);
     assert.equal(outfitBudgetBlocker(shipDef, fit), null, `${shipDef.id} fit is legal`);
     const sheet = shipStatSheet({ shipId: shipDef.id, fittings: fit });
-    if (stat(sheet, 'firepower').value < 10) headroom += 1;
+    const raw = stat(sheet, 'firepower').raw;
+    if (raw > strongest) { strongest = raw; strongestHull = shipDef.id; }
+    if (stat(sheet, 'firepower').value >= 10) saturated += 1;
   }
-  assert.ok(headroom >= 13, `only ${headroom}/15 hulls keep Firepower headroom at a full legal fit`);
+  assert.ok(strongest < def.ceiling,
+    `the strongest fit (${strongestHull} ${strongest}) must stay under the ${def.ceiling} ceiling`);
+  assert.equal(saturated, 0, `no hull may pin Firepower at 10 (${saturated} did)`);
 });
 
 test('a 60 percent gun upgrade moves at least one tenth', () => {
@@ -254,10 +265,35 @@ test('Power is a duration: sustained fire when bounded, capacitor reserve when o
   assert.ok(Math.abs(stat(open, 'power').raw - reserveSeconds) < 0.06, 'an open burst limit falls back to the capacitor');
 });
 
-test('Muscle is tow class; cargo can only lower it, and no tow says so', () => {
-  const dry = shipStatSheet({ shipId: 'ship_mule', player: { cargo: {} } });
-  const loaded = shipStatSheet({ shipId: 'ship_mule', player: { cargo: { usedMass: 200 } } });
-  assert.ok(stat(loaded, 'muscle').tenths <= stat(dry, 'muscle').tenths, 'a loaded hold never raises Muscle');
+test('Muscle is tow class; a cargo sweep never raises it and the wording stays true', () => {
+  const ids = ['ship_mule', 'ship_kestrel', 'ship_atlas', 'ship_hawser'];
+  const loads = [0, 200, 600, 1000];
+  for (const id of ids) {
+    const shipDef = SHIP_BY_ID.get(id);
+    for (const [label, fittings] of [['empty', []], ['full legal', strongestLegalFit(shipDef)]]) {
+      let previous = Infinity;
+      for (const usedMass of loads) {
+        const player = { cargo: { usedMass } };
+        const sheet = shipStatSheet({ shipId: id, fittings, player });
+        const muscle = stat(sheet, 'muscle');
+        const derived = getDerivedStats(id, fittings, player);
+        assert.ok(muscle.raw <= previous + 1e-9,
+          `${id} (${label}) Muscle rose with cargo ${previous} -> ${muscle.raw} at ${usedMass} t`);
+        previous = muscle.raw;
+        if (!hasTowRating(derived)) {
+          assert.match(muscle.meaning, /No Line load/i, `${id} (${label}) has no rating and says so`);
+          assert.ok(Math.abs(muscle.raw - 0.15 * derived.dryMass) < 0.06,
+            `${id} (${label}) rams at 0.15 x dry mass (${muscle.raw} vs ${derived.dryMass})`);
+        } else if (muscle.raw === 0) {
+          assert.match(muscle.meaning, /Too loaded to tow/i,
+            `${id} (${label}) has a rating but is overloaded at ${usedMass} t: ${muscle.meaning}`);
+        } else {
+          assert.doesNotMatch(muscle.meaning, /No Line load|Too loaded to tow/i,
+            `${id} (${label}) still tows at ${usedMass} t: ${muscle.meaning}`);
+        }
+      }
+    }
+  }
 
   const atlas = shipStatSheet({ shipId: 'ship_atlas' });
   const hawser = shipStatSheet({ shipId: 'ship_hawser' });
@@ -265,7 +301,7 @@ test('Muscle is tow class; cargo can only lower it, and no tow says so', () => {
 
   const ironback = shipStatSheet({ shipId: 'ship_ironback' });
   const ironbackDerived = getDerivedStats('ship_ironback', [], null);
-  if (!(towClassMassFor(ironbackDerived) > 0)) {
+  if (!hasTowRating(ironbackDerived)) {
     assert.match(stat(ironback, 'muscle').meaning, /No Line load/i, 'a hull with no tow rating says it rams instead');
     assert.ok(stat(ironback, 'muscle').tenths >= 10);
   }
@@ -279,20 +315,17 @@ test('adding mass to the same fit never raises Handling', () => {
     'a loaded hold never improves how the hull turns');
 });
 
-test('every starter hull lands on a distinct, peaking shape', () => {
-  const sheets = NEW_GAME_STARTERS.map((starter) => shipStatSheet({
-    shipId: starter.shipId,
-    fittings: fittingsFromDefaultModules(starter.shipId, starter.fittedModules),
-  }));
-  const values = sheets.map((sheet) => sheet.stats.map((row) => row.tenths));
+test('every starter hull lands on a distinct, peaking shape and a unique rail label', () => {
+  const cards = NEW_GAME_STARTERS.map((starter) => starterAirCard(starter));
+  const sheets = cards.map((card) => card.sheet);
+  const labels = cards.map((card) => card.railLabel);
+  assert.equal(new Set(labels).size, labels.length, `starter rail labels are unique: ${labels.join(' | ')}`);
+  const values = sheets.map((sheet) => sheet.stats.map((row) => row.value));
   for (let i = 0; i < sheets.length; i += 1) {
     for (let j = i + 1; j < sheets.length; j += 1) {
-      const label = `${sheets[i].roleLabel} · ${sheets[i].identity.label}`;
-      const otherLabel = `${sheets[j].roleLabel} · ${sheets[j].identity.label}`;
-      const differentWord = label !== otherLabel;
-      const bigDiffs = values[i].filter((value, index) => Math.abs(value - values[j][index]) >= 10).length;
-      assert.ok(differentWord || bigDiffs >= 2,
-        `${sheets[i].shipId} and ${sheets[j].shipId} must differ by their displayed class/build word or two real bars`);
+      const diffs = values[i].filter((value, index) => value !== values[j][index]).length;
+      assert.ok(diffs >= 2,
+        `${sheets[i].shipId} and ${sheets[j].shipId} must differ by at least two whole bars (got ${diffs})`);
     }
     assert.ok(sheets[i].stats.some((row) => row.value >= 5), `${sheets[i].shipId} has a real strength`);
     assert.ok(sheets[i].stats.some((row) => row.value <= 2), `${sheets[i].shipId} has a real weakness`);
@@ -368,8 +401,39 @@ test('deltas are tenths of the same scale and the hover line shows the before an
     tone: 'gain',
   }];
   const html = shipSheetHtml(before, { delta: synthetic });
-  assert.match(html, /2 \u2192 3 \(\+0\.2\)/, 'the hover line prints before, after and the tenths move');
+  assert.match(html, /2\.5 \u2192 2\.7 \(\+0\.2\)/, 'the hover line prints the exact tenths before, after and the move');
   assert.match(html, /left:27%/, 'the ghost marker is drawn from afterTenths, so a 0.2 move shows');
+});
+
+test('a sub-whole delta never prints the same before and after number', () => {
+  const wasp = SHIP_BY_ID.get('ship_wasp');
+  const slots = buildSlotList(wasp);
+  const stripped = MODULES.find((def) => def.id === 'mod_thruster_stripped_s');
+  const index = slotFor(wasp, stripped);
+  assert.ok(index >= 0, 'the Wasp has an S thruster bay');
+  const before = fitAt(slots, []);
+  const after = fitAt(slots, [[index, stripped.id]]);
+  const beforeSheet = shipStatSheet({ shipId: wasp.id, fittings: before });
+  const afterSheet = shipStatSheet({ shipId: wasp.id, fittings: after });
+  const handling = shipStatDelta(beforeSheet, afterSheet).find((row) => row.id === 'handling');
+  assert.ok(handling && handling.delta < 0, 'the stripped RCS is a Handling loss');
+  assert.equal(handling.beforeValue, handling.afterValue,
+    'fixture: the whole-number bar does not move, which is the contradiction to catch');
+
+  const html = shipSheetHtml(beforeSheet, { delta: shipStatDelta(beforeSheet, afterSheet) });
+  const line = `${(handling.beforeTenths / 10).toFixed(1)} \u2192 ${(handling.afterTenths / 10).toFixed(1)} (${'\u2212'}${(Math.abs(handling.delta) / 10).toFixed(1)})`;
+  assert.ok(html.includes(line), `the delta line prints exact tenths: ${line}`);
+  assert.ok(html.includes(`Now ${(handling.afterTenths / 10).toFixed(1)} of 10`),
+    'the aria text gives the exact after value');
+  const rowStart = html.indexOf('data-sfs-stat="handling"');
+  const rowEnd = html.indexOf('data-sfs-stat="power"');
+  assert.ok(rowStart >= 0 && rowEnd > rowStart, 'the handling row is present');
+  const shown = html.slice(rowStart, rowEnd).match(/class="sfs__delta[^"]*">([^<]+)</);
+  assert.ok(shown, 'the delta markup is present');
+  if (shown) {
+    const [beforeWord, afterWord] = shown[1].split(' \u2192 ');
+    assert.notEqual(beforeWord, afterWord, `a nonzero delta must not print ${beforeWord} -> ${afterWord}`);
+  }
 });
 
 test('the sheet is honest to assistive tech and compact keeps its meaning line', () => {
@@ -385,6 +449,94 @@ test('the sheet is honest to assistive tech and compact keeps its meaning line',
   assert.ok(!/role="button"/.test(compact));
   assert.match(compact, /data-sfs-meaning/, 'compact keeps the meaning line');
   assert.match(full, new RegExp(sheet.roleLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'the authored class sits beside the build word');
+});
+
+test('no raw engineering reading survives on the Shipworks or New Game surfaces', () => {
+  const shipworks = readFileSync(new URL('../src/ui/station/screens/shipworks.js', import.meta.url), 'utf8');
+  assert.ok(!/\$\{fmt\(moduleMass\)\} t modules/.test(shipworks), 'the side panel does not print module tonnes');
+  assert.ok(!/power used ·/.test(shipworks), 'the side panel does not print a power-used fraction');
+  assert.ok(!/variantBonusWords|sx-modrow__variant/.test(shipworks), 'a unique module row does not print raw stat percentages');
+  const newGame = readFileSync(new URL('../src/ui/screens/newGame.js', import.meta.url), 'utf8');
+  assert.ok(!/paintStarterStats|orr-ng-stat|lineWuPerS|STARTER_LINE_GLOSS/.test(newGame),
+    'New Game does not draw the raw Mass/Thrust/Line arcs');
+  assert.match(newGame, /railLabel/, 'the starter rail reads the sheet class + build word');
+});
+
+test('bindShipSheet wires pointer, focus and Details without a real DOM', () => {
+  const sheet = shipStatSheet({ shipId: 'ship_kestrel' });
+  const handlers = () => {
+    const map = new Map();
+    return {
+      add(type, fn) { if (!map.has(type)) map.set(type, []); map.get(type).push(fn); },
+      addEventListener(type, fn) { this.add(type, fn); },
+      remove(type, fn) { map.set(type, (map.get(type) || []).filter((entry) => entry !== fn)); },
+      removeEventListener(type, fn) { this.remove(type, fn); },
+      emit(type, target) { for (const fn of map.get(type) || []) fn({ target }); },
+      count(type) { return (map.get(type) || []).length; },
+    };
+  };
+  const stats = sheet.stats.map((row) => ({
+    attrs: { 'data-sfs-stat': row.id, 'data-sfs-stat-meaning': row.meaning },
+    classList: { toggle() {} },
+    closest(selector) { return selector === '[data-sfs-stat]' ? this : null; },
+    getAttribute(key) { return this.attrs[key] ?? null; },
+  }));
+  const list = handlers();
+  list.querySelector = (selector) => {
+    const match = /data-sfs-stat="([^"]+)"/.exec(selector);
+    return match ? stats.find((row) => row.attrs['data-sfs-stat'] === match[1]) || null : null;
+  };
+  list.querySelectorAll = () => stats;
+  const meaning = { textContent: '' };
+  const eng = {
+    hidden: true,
+    hasAttribute(key) { return key === 'hidden' ? this.hidden : false; },
+    removeAttribute(key) { if (key === 'hidden') this.hidden = false; },
+    setAttribute(key) { if (key === 'hidden') this.hidden = true; },
+  };
+  const details = handlers();
+  details.setAttribute = (key, value) => { details.attrs = { ...(details.attrs || {}), [key]: value }; };
+  const root = {
+    attrs: { 'data-sfs-default': 'firepower' },
+    getAttribute(key) { return this.attrs[key] ?? null; },
+    querySelector(selector) {
+      if (selector === '.sfs__stats') return list;
+      if (selector === '[data-sfs-meaning]') return meaning;
+      if (selector === '[data-sfs-details]') return details;
+      if (selector === '[data-sfs-eng]') return eng;
+      return null;
+    },
+  };
+
+  const dispose = bindShipSheet(root);
+  assert.equal(meaning.textContent, sheet.stats[0].meaning, 'binding starts on the default stat');
+  const speed = stats.find((row) => row.attrs['data-sfs-stat'] === 'speed');
+  list.emit('pointerover', speed);
+  assert.equal(meaning.textContent, sheet.stats.find((row) => row.id === 'speed').meaning, 'hover moves the meaning line');
+  list.emit('pointerleave', speed);
+  assert.equal(meaning.textContent, sheet.stats[0].meaning, 'leaving restores the default');
+  list.emit('focusin', speed);
+  assert.equal(meaning.textContent, sheet.stats.find((row) => row.id === 'speed').meaning, 'focus moves the meaning line');
+
+  details.emit('click');
+  assert.equal(eng.hidden, false, 'Details opens the engineering block');
+  assert.equal(details.attrs['aria-expanded'], 'true', 'Details announces expanded');
+  details.emit('click');
+  assert.equal(eng.hidden, true, 'Details closes the engineering block');
+  assert.equal(details.attrs['aria-expanded'], 'false', 'Details announces collapsed');
+
+  dispose();
+  assert.equal(list.count('pointerover'), 0, 'dispose removes the pointer listener');
+});
+
+test('two mounted sheets get their own Details id', () => {
+  const sheet = shipStatSheet({ shipId: 'ship_kestrel' });
+  const first = shipSheetHtml(sheet);
+  const second = shipSheetHtml(sheet);
+  const firstId = /aria-controls="([^"]+)"/.exec(first)[1];
+  const secondId = /aria-controls="([^"]+)"/.exec(second)[1];
+  assert.notEqual(firstId, secondId, 'two sheets do not share one aria-controls target');
+  assert.ok(first.includes(`id="${firstId}"`) && second.includes(`id="${secondId}"`));
 });
 
 test('the sheet sentence never repeats a stat name as its whole message', () => {

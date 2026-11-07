@@ -20,6 +20,7 @@
 import { ATTACHMENT_DEFS } from '../data/combatDefs.js';
 import { MODULES } from '../data/modules.js';
 import { SHIPS } from '../data/ships.js';
+import { massLoadFactor } from './ships.js';
 import { PLAYER_TRANSLATION_RESPONSIVENESS, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
 import {
@@ -174,9 +175,30 @@ function towSelfMass(derived) {
   return finite(derived && derived.operationalMass, finite(derived && derived.mass, 0));
 }
 
+/**
+ * The force the LINE is rated at: the drive's force at the hull's dry mass, at the dry mass's own
+ * load factor. A profile that keeps a constant acceleration at a heavier mass would otherwise make
+ * the live force grow with cargo and hand a full hold a better tow rating. Rating the line at dry
+ * mass and charging it the operational mass is what makes "a heavier fit tows less" true by
+ * construction: the first term is flat, the subtracted term is rising.
+ */
+function towRatedForce(derived) {
+  const force = playerTowForceFor(derived);
+  const self = towSelfMass(derived);
+  const dry = Math.max(0, finite(derived && derived.dryMass, self));
+  if (!(force > 0) || !(self > 0) || !(dry > 0)) return force;
+  const liveLoad = Math.max(0.01, Math.min(1, finite(derived && derived.massLoadFactor,
+    finite(derived && derived.propulsion && derived.propulsion.massLoadFactor, 1))));
+  const designMass = finite(derived && derived.designMass, 0);
+  const dryLoad = designMass > 0
+    ? massLoadFactor({ designMass, mass: dry }, dry)
+    : liveLoad;
+  return force * (dry / self) * (dryLoad / liveLoad);
+}
+
 /** The heaviest partner mass this fit can put under way, in tonnes. Zero means "nothing". */
 export function towClassMassFor(derived) {
-  const force = playerTowForceFor(derived);
+  const force = towRatedForce(derived);
   const self = towSelfMass(derived);
   if (!(force > 0) || !(self > 0)) return 0;
   return Math.max(0, force / TOW_UNDER_WAY_ACCEL - self);

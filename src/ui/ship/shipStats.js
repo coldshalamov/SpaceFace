@@ -49,11 +49,12 @@ export const SHIP_STAT_DEFS = Object.freeze([
     label: 'Firepower',
     meaning: 'Damage per second you can keep on a target.',
     floor: 10,
-    // Re-anchored from the measured ceiling of a full legal fit (2026-11-06): the heaviest
-    // full-fit reading in the roster is 1332, so 1900 scores 10 only for content the catalogue
-    // cannot reach yet. The old 130 ceiling was below the strongest single mount, so nine of
-    // fifteen hulls saturated at 10.
-    ceiling: 1900,
+    // Anchored above the strongest fit the catalogue can actually reach. The corrected strongest
+    // full legal fit (every weapon slot at its best legal gun, every module slot at its best legal
+    // module) reads 2184.48 raw on the Leviathan; 3200 leaves that fit below the ceiling and keeps
+    // every hull off the 10 wall, while still scoring a 10 to damage the catalogue cannot reach yet.
+    // The old 1900 ceiling was below that legal maximum and pinned the Leviathan at 10.
+    ceiling: 3200,
     unit: 'damage/s',
   }),
   Object.freeze({
@@ -336,20 +337,29 @@ export function powerRawFor(shipId, fittings, player, derived) {
 }
 
 /**
- * What the Line can hold and move: the tow class law the drive already publishes. Cargo only ever
- * lowers it, so a loaded hold cannot buy Muscle; a hull with no tow rating falls back to a small
- * share of its dry mass (what a ram is worth) and says so in the meaning line.
+ * What the Line can hold and move: the tow class law the drive already publishes. The law is rated
+ * at the hull's DRY mass, so cargo only ever lowers it — a loaded hold cannot buy Muscle. A hull
+ * with no tow rating at all falls back to a small share of its dry mass (what a ram is worth) and
+ * says so; a hull that HAS a rating but is currently too heavy says that instead, rather than
+ * pretending the rating never existed.
  */
 export function muscleRawFor(derived) {
   if (!derived) return 0;
   const tow = Math.max(0, towClassMassFor(derived));
-  const dryMass = Math.max(0, finite(derived.mass, 0));
-  return Math.max(tow, 0.15 * dryMass);
+  if (hasTowRating(derived)) return tow;
+  const dryMass = Math.max(0, finite(derived.dryMass, finite(derived.mass, 0)));
+  return 0.15 * dryMass;
 }
 
-/** True when this fit publishes a real tow rating — the same law `muscleRawFor` reads. */
+/**
+ * True when the HULL publishes a real tow rating at its dry mass. This deliberately does not read
+ * the current load: an overloaded tug still has a rating, it just cannot use it right now.
+ */
 export function hasTowRating(derived) {
-  return !!derived && towClassMassFor(derived) > 0;
+  if (!derived) return false;
+  const dryMass = Math.max(0, finite(derived.dryMass, finite(derived.mass, 0)));
+  if (!(dryMass > 0)) return false;
+  return towClassMassFor({ ...derived, mass: dryMass, operationalMass: dryMass }) > 0;
 }
 
 const RAW_READERS = Object.freeze({
@@ -379,6 +389,7 @@ export function shipStatSheet(input = {}) {
   const derived = getDerivedStats(shipId, fit, player);
   if (!derived) return null;
   const towRating = hasTowRating(derived);
+  const liveTow = Math.max(0, towClassMassFor(derived));
   const runtimes = realWeaponRuntimes(shipDef, fit, player, derived);
   const hasGuns = runtimes.length > 0;
   const hasDamagingGuns = runtimes.some((runtime) => finite(runtime.dmg, 0) > 0);
@@ -392,12 +403,17 @@ export function shipStatSheet(input = {}) {
     let meaning = def.meaning;
     let note = null;
     if (def.id === 'firepower' && (!hasGuns || !(raw > 0))) {
-      note = 'No gun fitted.';
-      meaning = 'No gun fitted. Nothing on this fit puts damage on a target.';
+      note = 'No damaging gun fitted.';
+      meaning = 'No damaging gun fitted. Nothing on this fit puts damage on a target.';
     }
-    if (def.id === 'muscle' && !towRating) {
-      note = 'No Line load — it rams instead.';
-      meaning = 'No Line load — this hull rams instead.';
+    if (def.id === 'muscle') {
+      if (!towRating) {
+        note = 'No Line load — it rams instead.';
+        meaning = 'No Line load — this hull rams instead.';
+      } else if (!(liveTow > 0)) {
+        note = 'Too loaded to tow.';
+        meaning = 'Too loaded to tow — the hold is heavier than the drive is rated for.';
+      }
     }
     return Object.freeze({
       id: def.id,
@@ -430,11 +446,15 @@ export function shipStatSheet(input = {}) {
       capMax: Math.round(finite(derived.capMax, 0)),
       capRegen: Math.round(finite(derived.capRegen, 0) * 10) / 10,
       cargo: Math.round(finite(derived.cargoCap, 0)),
+      // The old handling profile's `continuousDrain` reading, kept so the engineering block still
+      // says what the always-on modules cost. It is module draw, not weapon heat.
+      continuousDrain: Math.round(finite(derived.continuousDrain, 0) * 10) / 10,
       fightSpeed: Math.round(governedFightSpeedFor(derived)),
       burnPct: Math.round(Math.max(0, finite(derived.boost && derived.boost.topSpeedPct, 0)) * 100),
       turnRate: Math.round(governedYawRateFor(derived) * 100) / 100,
       accel: Math.round(forwardAccelFor(derived)),
-      towClass: Math.round(towClassMassFor(derived) * 10) / 10,
+      towClass: Math.round(liveTow * 10) / 10,
+      towRated: towRating,
       sustainedFireS: (() => {
         if (!hasDamagingGuns) return null;
         const sustain = sustainedFireForFit(shipId, fit, player);

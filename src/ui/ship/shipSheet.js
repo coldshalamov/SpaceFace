@@ -1,9 +1,9 @@
 // P1 — THE SHIP SHEET, as one DOM block every hull surface mounts.
 //
 // Shipworks (dock) and THE SHIP (flight) are the same shared stage, so both read this block from
-// one place; New Game mounts it on the starter carousel. The Crucible Ship & Kit and the Swarm
-// shop read the model (`shipStats.js`) directly and may render their own markup, but they must not
-// grow a second scale.
+// one place; New Game mounts it on the starter carousel. The Crucible Ship & Kit and the Swarm shop
+// do NOT read this model yet — they live in other lanes and were not edited here. If they grow a
+// six-stat block, it must read `shipStats.js`, not a second scale.
 //
 // What the block shows, in order:
 //   1. the authored hull class beside the build word, then one sentence of shape
@@ -37,6 +37,12 @@ function escapeHtml(value) {
     .replace(/"/g, '&quot;');
 }
 
+let sheetInstance = 0;
+function nextSheetId() {
+  sheetInstance += 1;
+  return sheetInstance;
+}
+
 function signedTenths(delta) {
   const n = Math.round(Number(delta) || 0);
   if (!n) return '';
@@ -44,11 +50,18 @@ function signedTenths(delta) {
   return `${sign}${(Math.abs(n) / 10).toFixed(1)}`;
 }
 
+function tenthsWord(tenths) {
+  return (Math.round(Number(tenths) || 0) / 10).toFixed(1);
+}
+
 function deltaTextFor(delta) {
   if (!delta) return '';
   const amount = signedTenths(delta.delta);
   if (!amount) return '';
-  return `${delta.beforeValue} \u2192 ${delta.afterValue} (${amount})`;
+  // Print the exact tenths on both sides. Whole numbers would show `6 -> 6 (-0.8)` for a move
+  // from 6.3 to 5.5, which reads as a contradiction; the bar headline stays whole, the delta line
+  // does not hide a real move behind the same digit.
+  return `${tenthsWord(delta.beforeTenths)} \u2192 ${tenthsWord(delta.afterTenths)} (${amount})`;
 }
 
 function pipRow(stat, delta) {
@@ -96,11 +109,14 @@ export function shipSheetHtml(sheet, opts = {}) {
   const deltaById = new Map(deltaRows.map((row) => [row.id, row]));
   const meaning = new Map(sheet.stats.map((stat) => [stat.id, stat.meaning]));
   const initial = opts.defaultStat || (sheet.stats[0] && sheet.stats[0].id) || 'firepower';
+  // One id per mounted sheet: two sheets (a chooser preview beside the dock sheet) must not share
+  // an `aria-controls` target.
+  const engId = `sfs-eng-${nextSheetId()}`;
   const rows = sheet.stats.map((stat) => {
     const delta = deltaById.get(stat.id) || null;
     const deltaText = deltaTextFor(delta);
     const deltaCls = delta && delta.tone !== 'same' ? ` is-${delta.tone}` : '';
-    const deltaAria = deltaText ? ` Now ${delta.afterValue} of 10, ${signedTenths(delta.delta)}.` : '';
+    const deltaAria = deltaText ? ` Now ${tenthsWord(delta.afterTenths)} of 10, ${signedTenths(delta.delta)}.` : '';
     const label = `${stat.label} ${stat.value} of 10. ${stat.meaning}${deltaAria}`;
     return (
       `<li class="sfs__stat" data-sfs-stat="${escapeHtml(stat.id)}" ` +
@@ -128,12 +144,13 @@ export function shipSheetHtml(sheet, opts = {}) {
     ['Shield', detail.shield],
     ['Armour', detail.armor],
     ['Capacitor', `${detail.capMax} (+${detail.capRegen}/s)`],
+    ['Heat', `${detail.continuousDrain || 0}/s continuous`],
     ['Cargo', `${detail.cargo} u`],
     ['Fight speed', `${detail.fightSpeed} wu/s`],
     ['Burn gain', `${detail.burnPct || 0} %`],
     ['Turn rate', `${detail.turnRate} rad/s`],
     ['Thrust', `${detail.accel} wu/s²`],
-    ['Tow class', detail.towClass ? `${detail.towClass} t` : 'no tow'],
+    ['Tow class', detail.towRated ? (detail.towClass ? `${detail.towClass} t` : 'overloaded') : 'no tow'],
     ['Burst window', detail.sustainedFireS == null ? 'held' : `${detail.sustainedFireS} s`],
   ].map(([term, value]) => `<dt>${escapeHtml(term)}</dt><dd>${escapeHtml(value)}</dd>`).join('');
 
@@ -148,8 +165,8 @@ export function shipSheetHtml(sheet, opts = {}) {
       emptyNote +
       `<p class="sfs__meaning" data-sfs-meaning aria-hidden="true">${escapeHtml(meaning.get(initial) || '')}</p>` +
       (compact ? '' : (
-        `<button type="button" class="sfs__details" data-sfs-details aria-expanded="false" aria-controls="sfs-eng">Details</button>` +
-        `<dl class="sfs__eng" id="sfs-eng" data-sfs-eng hidden>${engineering}</dl>`
+        `<button type="button" class="sfs__details" data-sfs-details aria-expanded="false" aria-controls="${engId}">Details</button>` +
+        `<dl class="sfs__eng" id="${engId}" data-sfs-eng hidden>${engineering}</dl>`
       )) +
     `</section>`
   );

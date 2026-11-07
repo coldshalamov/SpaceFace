@@ -60,9 +60,10 @@ try {
         assert.ok(hit, 'Launch receives the touch at its centre');
         assert.ok(await page.locator('.sf-ng-scroll').evaluate((el) => el.scrollTop < 1), 'New Game arrives at its heading');
         assert.notEqual(await page.evaluate(() => document.activeElement?.id), 'sf-ng-pilot-name', 'Phone arrival does not open the keyboard');
-        await page.locator('.orr-ng-stats').scrollIntoViewIfNeeded();
-        assert.ok(await page.locator('.orr-ng-stats').isVisible(), 'Hull dials remain reachable');
-        assert.equal(await page.locator('.orr-ng-stat').count(), 3, 'Mass, thrust and line dials show the selected hull');
+        await page.locator('.sf-ng-sheet').scrollIntoViewIfNeeded();
+        assert.ok(await page.locator('.sf-ng-sheet [data-sfs]').isVisible(), 'The Ship Sheet remains reachable');
+        assert.equal(await page.locator('.sf-ng-sheet .sfs__stat').count(), 6, 'The six ship stats show the selected hull');
+        assert.equal(await page.locator('.orr-ng-stat').count(), 0, 'No raw Mass/Thrust/Line arcs remain');
         assert.ok(await page.locator('[aria-label="Loadout"]').isVisible(), 'Selected hull loadout remains visible');
         await page.getByRole('button', { name: 'Pelican', exact: true }).tap();
         assert.match(await page.locator('.sf-slot-card-title').textContent(), /Pelican/i, 'Touch hull choice updates its reading');

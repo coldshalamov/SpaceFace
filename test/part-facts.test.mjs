@@ -15,6 +15,7 @@ import assert from 'node:assert/strict';
 import { MODULES } from '../src/data/modules.js';
 import { WEAPONS } from '../src/data/weapons.js';
 import { BOMB_DEFS, BOMB_IDS } from '../src/data/bombs.js';
+import { ATTACK_TRAITS } from '../src/data/attackTraits.js';
 import {
   PART_DISPLAY_NAMES,
   PART_INTENTS,
@@ -34,11 +35,15 @@ const CATALOG = [...MODULES, ...WEAPONS];
 const PURCHASABLE_MODULES = PURCHASABLE.filter((def) => def.slotType !== 'weapon');
 const PURCHASABLE_WEAPONS = PURCHASABLE.filter((def) => def.slotType === 'weapon');
 
-test('the catalogue counts are stated honestly: 206 catalogued, 158 purchasable', () => {
+test('the catalogue counts are stated honestly: 206 modules+weapons, 158 purchasable, 166 with bombs', () => {
   assert.equal(CATALOG.length, 206);
   assert.equal(PURCHASABLE.length, 158);
   assert.equal(PURCHASABLE_MODULES.length, 130);
   assert.equal(PURCHASABLE_WEAPONS.length, 28);
+  // Bombs are a separate catalogue: eight more purchasable ids that the module/weapon count above
+  // does not contain. 158 + 8 = 166 purchasable ids overall.
+  assert.equal(BOMB_IDS.length, 8);
+  assert.equal(PURCHASABLE.length + BOMB_IDS.length, 166);
 });
 
 test('every purchasable part has role, sentence, tier, intent and an honest preview state', () => {
@@ -62,7 +67,7 @@ test('every purchasable part has role, sentence, tier, intent and an honest prev
   }
 });
 
-test('the duplicate detector uses authored signatures, not role+intent+tier', () => {
+test('the duplicate detector uses exact authored signatures, not role+intent+tier', () => {
   const ids = PURCHASABLE.map((def) => def.id);
   const groups = duplicateGroups(ids);
   assert.ok(groups.length > 100, `not a coarse bucket (${groups.length} groups)`);
@@ -72,6 +77,18 @@ test('the duplicate detector uses authored signatures, not role+intent+tier', ()
     'a claw anchor is not a cargo scanner');
   assert.equal(partSignature('mod_twin_mount') === partSignature('mod_triad_mount'), false,
     'two different mounts with empty mods are not merged');
+
+  // A true duplicate exists in the catalogue: the pristine and scarred ram plates have the same
+  // slot, size, mass, draw, tier and authored modifier, so the probe must find them.
+  assert.equal(partSignature('mod_ram_plate'), partSignature('mod_ram_plate_scarred'));
+  const allGroups = duplicateGroups(MODULES.map((def) => def.id));
+  assert.ok(allGroups.some((group) => group.ids.includes('mod_ram_plate')
+    && group.ids.includes('mod_ram_plate_scarred')), 'the known true duplicate is found');
+
+  // A false positive the old signature produced: the same `swingDrive` modifier at two different
+  // sizes and masses is not an exact duplicate.
+  assert.notEqual(partSignature('mod_swing_drive_m'), partSignature('mod_swing_drive_s'),
+    'Swing Drive M and S are different fittings, not one duplicate');
 });
 
 test('no role bucket swallows the catalogue and Utility stays a last resort', () => {
@@ -82,12 +99,33 @@ test('no role bucket swallows the catalogue and Utility stays a last resort', ()
   }
   const largest = Math.max(...roles.values());
   assert.ok(largest / PURCHASABLE.length < 0.3, `largest role bucket is ${largest}/${PURCHASABLE.length}`);
-  assert.ok((roles.get('Utility') || 0) / PURCHASABLE.length < 0.25,
+  assert.ok((roles.get('Utility') || 0) / PURCHASABLE.length < 0.05,
     `Utility share is ${((roles.get('Utility') || 0) / PURCHASABLE.length * 100).toFixed(1)}%`);
   assert.ok(roles.get('Cloak') >= 1, 'cloak modules read as Cloak');
   assert.ok(roles.get('Armour') >= 1, 'hull plating reads as Armour');
   assert.ok(roles.get('Point defence') >= 1, 'point-defence gear reads as Point defence');
   assert.ok(roles.get('Sensor') >= 1, 'survey gear reads as Sensor');
+});
+
+test('attack traits read as Fight kit, engines read as Drive, support parts read their job', () => {
+  for (const trait of ATTACK_TRAITS) {
+    const facts = partFacts(trait.id);
+    assert.ok(facts, `${trait.id} has facts`);
+    assert.equal(facts.intent, 'fight', `${trait.id} is bought to put damage on something`);
+    assert.notEqual(facts.role, 'Utility', `${trait.id} has a specific attack role (${facts.role})`);
+  }
+  for (const def of PURCHASABLE.filter((row) => row.slotType === 'engine')) {
+    assert.equal(partFacts(def.id).role, 'Drive', `${def.id} is a Drive, not a Manoeuvre kit`);
+  }
+  for (const def of PURCHASABLE.filter((row) => row.slotType === 'thruster')) {
+    const mods = def.mods || {};
+    const neutral = ['turnMult', 'strafeMult', 'brakeMult'].every((key) => mods[key] == null || Number(mods[key]) === 1);
+    if (neutral) assert.notEqual(partFacts(def.id).role, 'Manoeuvre kit', `${def.id} changes nothing and must not claim a manoeuvre`);
+  }
+  assert.equal(partFacts('mod_thermal_sink_s').intent, 'fight', 'a heat sink keeps guns firing');
+  assert.equal(partFacts('mod_jump_drive_m').intent, 'move', 'a jump drive is travel');
+  assert.equal(partFacts('mod_twin_mount').intent, 'fight', 'a twin mount is attack kit');
+  assert.equal(partFacts('mod_ion_payload').intent, 'fight', 'a warhead core is attack kit');
 });
 
 test('tiers are authored: ordnance reads unlockTier and no display name carries a second ladder', () => {

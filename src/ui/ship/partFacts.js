@@ -24,6 +24,7 @@
 import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { BOMB_DEFS, BOMB_IDS } from '../../data/bombs.js';
+import { ATTACK_TRAIT_BY_ID } from '../../data/attackTraits.js';
 import { arsenalSentence, arsenalIdentity } from '../../data/arsenalIdentity.js';
 
 const MODULE_BY_ID = new Map(MODULES.map((def) => [def.id, def]));
@@ -103,6 +104,40 @@ function hasPositive(mods, key) {
   return finite(mods[key], 0) > 0;
 }
 
+/** A multiplier at 1 is the yard stock value: it changes nothing and must not name a role. */
+function changesMultiplier(mods, key) {
+  return mods[key] != null && finite(mods[key], 1) !== 1;
+}
+
+/**
+ * The attack-rig family is authored in `attackTraits.js`, not under module `mods`, so the generic
+ * modifier ladder below cannot see it. One shared taxonomy names what each rig does; every rig is
+ * bought to put damage on something, so its intent is Fight.
+ */
+const ATTACK_TRAIT_ROLES = Object.freeze({
+  mod_twin_mount: 'Mount rig',
+  mod_triad_mount: 'Mount rig',
+  mod_piercing_core: 'Piercing rig',
+  mod_forked_core: 'Forked rig',
+  mod_bank_shot: 'Bank rig',
+  mod_smart_bank: 'Smart bank',
+  mod_ion_payload: 'Warhead core',
+  mod_incendiary_payload: 'Warhead core',
+  mod_gravity_tag: 'Warhead core',
+  mod_relay_arc: 'Relay rig',
+  mod_bank_relay: 'Bank relay',
+  mod_tether_capacitor: 'Tether amp',
+  mod_conductive_path: 'Conductive path',
+  mod_cryo_payload: 'Warhead core',
+  mod_cryo_gyros: 'Cryo rig',
+  mod_herald_fan: 'Spread rig',
+  mod_storm_carom: 'Storm rig',
+});
+
+function attackTraitFor(def) {
+  return def && ATTACK_TRAIT_BY_ID[def.id] ? ATTACK_TRAIT_BY_ID[def.id] : null;
+}
+
 /** The line-head / massline-head family reads as one authored role, not a generic utility. */
 function lineRoleFor(mods) {
   if (mods.masslineHeadId === 'tractor' || hasPositive(mods, 'magnetRange') || mods.tractorWholeWrecks) return 'Tractor';
@@ -146,6 +181,8 @@ export function roleForPart(def, kind) {
     if (/singularity|gravity/.test(id)) return 'Gravity bomb';
     return 'Damage bomb';
   }
+  const attackTrait = attackTraitFor(def);
+  if (attackTrait) return ATTACK_TRAIT_ROLES[def.id] || `Attack ${attackTrait.family}`;
   const lineRole = lineRoleFor(mods);
   if (lineRole) return lineRole;
   if (finite(mods.droneBay, 0) > 0 || mods.repairDockedDrones) return 'Drone bay';
@@ -166,8 +203,11 @@ export function roleForPart(def, kind) {
   if (hasPositive(mods, 'shieldFlat') || hasPositive(mods, 'shieldRegenFlat')) return 'Shield booster';
   if (hasPositive(mods, 'weaponHeatDissipPct')) return 'Heat sink';
   if (hasPositive(mods, 'boostTopSpeedPct') || mods.boostDurS) return 'Afterburner';
-  if (hasPositive(mods, 'turnMult') || hasPositive(mods, 'strafeMult') || hasPositive(mods, 'brakeMult')
-    || mods.heroManeuver) return 'Manoeuvre kit';
+  // An engine is a Drive first. Most engines author `turnMult: 1` (the stock value); treating that
+  // as a positive manoeuvre multiplier named every engine "Manoeuvre kit" and hid the Drive family.
+  if (def.slotType === 'engine') return 'Drive';
+  if (changesMultiplier(mods, 'turnMult') || changesMultiplier(mods, 'strafeMult')
+    || changesMultiplier(mods, 'brakeMult') || mods.heroManeuver) return 'Manoeuvre kit';
   if (hasPositive(mods, 'topSpeed') || hasPositive(mods, 'accelMult') || hasPositive(mods, 'travelCeilingMult')) return 'Drive tune';
   if (hasPositive(mods, 'loadCapacityMult') || hasPositive(mods, 'pylonPairs') || hasPositive(mods, 'impulseChargeCapacity')
     || mods.bombPropulsion) return 'Ordnance rack';
@@ -227,6 +267,13 @@ export function intentForPart(def, kind) {
     if (/emp|static|scrambler|havoc/.test(String(def.id || ''))) return 'sneak';
     return 'fight';
   }
+  // The attack-rig family changes what a hit does; that is Fight work even though it bolts into a
+  // utility slot. Its own role map above says which part of the hit it changes.
+  if (attackTraitFor(def)) return 'fight';
+  // Jumping is travel: Move, not the utility slot's default Work. A heat sink exists to keep guns
+  // firing; it is Fight support, not a work tool.
+  if (mods.jumpDriveTier) return 'move';
+  if (hasPositive(mods, 'weaponHeatDissipPct')) return 'fight';
   // Towing and line work is a job, not cargo: the Line is how you move someone else's hull.
   if (mods.lineHeadId || mods.masslineHeadId || hasPositive(mods, 'magnetRange') || hasPositive(mods, 'tetherSpoolMult')
     || hasPositive(mods, 'tetherReelRateMult') || mods.towFlail || mods.resonantMassline
@@ -379,9 +426,11 @@ export function intentDiffersFromSlot(id) {
 }
 
 /**
- * A canonical signature over the authored modifiers. Two parts with the same signature really do
- * the same thing to the sim; role + intent + tier does NOT prove that (a claw anchor and a cargo
- * scanner are both Utility/Work/Mk I). Used by the duplicate probe, never to merge automatically.
+ * A canonical signature over the authored fit facts and modifiers. Two parts with the same
+ * signature really do the same thing to the sim AND cost the same slot; role + intent + tier does
+ * NOT prove that (a claw anchor and a cargo scanner are both Utility/Work/Mk I). Size, mass, draw
+ * and tier are part of the identity: a Swing Drive M and a Swing Drive S share their one modifier
+ * but are not interchangeable fittings. Used by the duplicate probe, never to merge automatically.
  */
 export function partSignature(id) {
   const def = WEAPON_BY_ID.get(id) || MODULE_BY_ID.get(id) || BOMB_BY_ID.get(id);
@@ -393,22 +442,25 @@ export function partSignature(id) {
     if (value && typeof value === 'object') return `${key}:${JSON.stringify(value)}`;
     return `${key}:${String(value)}`;
   }).join('|');
+  const fitting = `size:${def.size || ''}|mass:${finite(def.mass, 0)}`
+    + `|draw:${finite(def.energyDraw, 0)}|tier:${tierNumberFor(def)}`;
   // Weapons and ordnance carry their authored behaviour on the definition, not under `mods`; an
   // empty `mods` object would otherwise collapse every gun into one bogus "duplicate" group.
   if (def.slotType === 'weapon') {
-    return `weapon|${finite(def.dmg, 0)}|${finite(def.rof, 0)}|${def.continuous ? 1 : 0}`
+    return `weapon|${fitting}|${finite(def.dmg, 0)}|${finite(def.rof, 0)}|${def.continuous ? 1 : 0}`
       + `|${def.tracking || 'fixed'}|${finite(def.range, 0)}|${finite(def.energyCost, 0)}`
-      + `|${def.size || 'S'}|${def.mount || ''}|${def.emergentPrimitive || ''}|${body}`;
+      + `|${def.mount || ''}|${def.emergentPrimitive || ''}|${body}`;
   }
   if (BOMB_BY_ID.get(id) === def) {
-    return `bomb|${finite(def.price, 0)}|${finite(def.magazine, 0)}|${finite(def.fuzeS, 0)}`
-      + `|${finite(def.cooldownS, 0)}|${tierNumberFor(def)}|${body}`;
+    return `bomb|${fitting}|${finite(def.price, 0)}|${finite(def.magazine, 0)}|${finite(def.fuzeS, 0)}`
+      + `|${finite(def.cooldownS, 0)}|${body}`;
   }
-  // A module with no authored modifiers has no signature to compare. Its identity lives in fields
-  // this reader does not model, so it is never claimed as a duplicate of another part (the old
-  // empty-mods bucket called a claw anchor and a cargo scanner the same thing).
-  if (!body) return `${def.slotType || 'module'}|no-authored-mods|${def.id}`;
-  return `${def.slotType || 'module'}|${body}`;
+  // A module with no authored modifiers still has an authored slot, mass, draw and tier. It is
+  // only grouped when those too match, and a no-mod part whose identity lives in a name or an
+  // attack-trait record is never claimed as another part's duplicate.
+  const trait = attackTraitFor(def);
+  if (trait) return `${def.slotType || 'module'}|${fitting}|trait:${trait.id}`;
+  return `${def.slotType || 'module'}|${fitting}|${body || `no-authored-mods|${def.id}`}`;
 }
 
 /** Group ids by their exact authored modifier signature. Groups are ordered by size, then key. */
