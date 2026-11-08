@@ -748,7 +748,10 @@ const FACTION_NAME_BY_ID = new Map(FACTION_META.map((row) => [row.id, row.short 
 const SECTOR_NAME_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector.name]));
 
 function factionCardName(factionId) {
-  return FACTION_NAME_BY_ID.get(factionId) || String(factionId || '').replace(/^faction_/, '');
+  // A house the current catalog no longer lists (a retired id riding in an old save) reads
+  // as an honest generic noun (words-standing-house-fallback) — never the mangled remnant
+  // a prefix-strip leaves behind, dressed up as a proper name.
+  return FACTION_NAME_BY_ID.get(factionId) || 'an unlisted house';
 }
 
 function frontCardName(sectorId) {
