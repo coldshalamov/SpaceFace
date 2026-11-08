@@ -17,7 +17,7 @@ export function furnaceLots(m) {
     const paid = Math.min(3, Math.max(0, m.params.furnaceFeeds | 0));
     m.params.furnaceLots = Array.from({ length: 3 }, (_, slot) => ({
       slot, received: slot < paid, sectorId: FURNACE_INTAKE.sectorId,
-      pos: sectorLocalToGlobalForSector({ x: 1760, z: 1740 + slot * 70 }, FURNACE_INTAKE.sectorId),
+      pos: sectorLocalToGlobalForSector({ x: 1760 + slot * 170, z: 1640 }, FURNACE_INTAKE.sectorId),
       vel: { x: 0, z: 0 }, hull: 220,
     }));
   }
@@ -80,12 +80,14 @@ export function furnaceWorksiteFocus(m, state) {
   const lot = pending.find(row => { const body = state.entities?.get(row.entityId); return body && (body.flags?.tethered || state.player?.tether?.targetId === body.id); }) || pending[0];
   const e = lot && state.entities?.get(lot.entityId);
   const held = e && (e.flags?.tethered || state.player?.tether?.targetId === e.id);
+  const bank = lot && sectorLocalToGlobalForSector({ x: 1760 + lot.slot * 170, z: 1640 }, FURNACE_INTAKE.sectorId);
+  const inBank = !held && bank && Math.hypot((e?.pos || lot.pos).x-bank.x,(e?.pos || lot.pos).z-bank.z)<1;
   return {
     pos: held || !lot ? furnaceMouthGlobal() : { ...(e?.pos || lot.pos) },
     targetEntityId: held ? null : e?.id || null,
     sectorId: held || !lot ? FURNACE_INTAKE.sectorId : sectorMembershipAtGlobal(e?.pos || lot.pos),
     label: held ? 'CR-FEED — release ore across the lip' : 'Infested hauler — disposal pods',
-    reason: `${m.params.furnaceFeeds || 0}/3 hauler lots received; ${m.params.furnaceLosses || 0} lost. Tow or fling each marked pod into the open amber ring; ordinary rock does not settle these lots.`,
+    reason: `${m.params.furnaceFeeds || 0}/3 hauler lots received; ${m.params.furnaceLosses || 0} lost. ${inBank?'The marked load is on the intake-aligned east bank; take the remaining lot nearest the intake first. ':'Follow the current marked load position. '}Tow or fling each marked pod into the open amber ring; ordinary rock does not settle these lots.`,
   };
 }
 
