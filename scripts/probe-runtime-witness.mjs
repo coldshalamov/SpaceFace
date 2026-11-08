@@ -3933,9 +3933,14 @@ try {
         const original = r.renderBufferDirect;
         const counts = new Map();
         let calls = 0;
+        const normalize = (name) => String(name || '?')
+          .replace(/_\d+/g, '_#')
+          .replace(/\d+/g, '#');
         r.renderBufferDirect = function drawCensus(camera, scene, geometry, material, object) {
           calls += 1;
-          const key = `${object?.name || object?.type || '?'}|${material?.name || material?.type || '?'}`;
+          // Group entity ids and instance suffixes so a long tail of unique meshes is visible
+          // as a family instead of hundreds of one-call rows.
+          const key = `${normalize(object?.name || object?.type)}|${material?.name || material?.type || '?'}`;
           counts.set(key, (counts.get(key) || 0) + 1);
           return original.apply(this, arguments);
         };

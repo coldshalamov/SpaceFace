@@ -345,6 +345,37 @@ budget, records every unexpected spike separately from the top-20 list, snapshot
 spike time instead of serializing its later mutation, keeps unresolved program additions as audit
 evidence, records host CPU busy, and refuses a ≥70% window.
 
+## Tether-route truth and the generic frame cliff (2026-11-08)
+
+The per-frame frame-truth trace changes the diagnosis. On the ordinary tether spin, before the
+heartbeat/stand-in work:
+
+- presented frames: **6.8 fps**; present p50 **68 ms**, p95 **106 ms**, max **341 ms**;
+- simulation advanced **0.33 s per wall second**;
+- **zero** fence-pin episodes >80 ms. The “locations frozen while animation continues” is not a
+  fence pin: at 70–140 ms frames the world pose updates only when a frame finally presents, while
+  CSS animation and asteroid tumble keep their own clocks.
+
+After the presentation heartbeat and coarse-tier stand-in:
+
+- presented frames **~10 fps**; sim rate **0.50×**; present p50 **65 ms**, p95 **94 ms**, max
+  **136 ms** (the 341 ms freeze is gone);
+- the pending-ship stand-in family disappeared from the draw census (LOD2 instead of the LOD0
+  primitive pile);
+- `bloomScene` (the whole world draw) p95 **31 ms**, avg 21.6 — the remaining frame cost.
+
+The worker’s own per-system profile on the stress route (host-contended, so absolute values are
+inflated; shares are the signal): step p50 **23.6 ms** / p95 **36.6**; physics **5.8 ms/tick**
+(25%), tacticalAI **4.35 ms** (18%, p95 9.7), npcJobsRuntime **2.0 ms** (8%), flight 1.7,
+world/traffic 0.7 each; the rest spread across ~20 systems. `NEAR_CLOCK_IDS` is not a lower
+cadence — near systems still run every 60 Hz primary tick; only catch-up steps skip them.
+
+The draw census normalized by family (`Asteroid_#`, `GLTFKit_StaticGroup_#`) shows the render tail
+is **per-part ship/wreck meshes** (`GLTFKit_StaticGroup_*` 1.2k calls, `Retro_*` 1.35k, LOD hook/
+nav/canopy parts ~1k over the window), VFX ~660, background ~480 — not one broken object. The
+illustrated-surface per-ship uniforms keep those hull surfaces out of the retained batch, so each
+part is its own draw. This is the E7 retained-batch/material-uniform problem, not a quality setting.
+
 ## Rules
 
 - Do not lower the bar or rename a hitch; fix the frame or name the residual.
