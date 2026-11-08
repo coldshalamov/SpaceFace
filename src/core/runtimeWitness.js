@@ -733,8 +733,9 @@ function formatPictureLines(picture) {
     `- raster: renderScale ${num(picture.renderScale)} | dynRes ${num(picture.dynResScale)}`
       + ` | hitchRelief ${picture.hitchReliefLevel ?? 0} | contentScale ${num(picture.contentScale)}`
       + ` | effective ${num(picture.effectiveSceneScale)}`,
-    `- post: ${picture.activePath || 'n/a'} | bloom ${picture.bloomSelected === true ? 'on' : 'off'}`
-      + ` (levels ${picture.bloomLevels ?? 'n/a'}, strength ${num(picture.bloomStrength)})`
+    `- post: ${picture.activePath || 'n/a'} | bloom ${picture.bloomEnabledLive === true ? 'on' : picture.bloomSelected === true ? 'on' : 'off'}`
+      + ` (levels ${picture.bloomLevelsLive ?? picture.bloomLevels ?? 'n/a'}, strength ${num(picture.bloomStrength)})`
+      + ` | postFx ${picture.postFxActive === true ? 'on' : 'off'}`
       + ` | CAS ${picture.casSharpenActive === true ? 'sharpen' : (picture.casReconstruction || 'off')}`,
     `- authored tiers: particles ${picture.particleQuality || 'n/a'} | sky ${picture.skyTier || 'n/a'}`
       + ` | sharpen ${picture.sharpen === true} | cap ${picture.frameCap ?? 'n/a'}`,

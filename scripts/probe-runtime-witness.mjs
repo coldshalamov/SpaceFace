@@ -2353,6 +2353,18 @@ function readWitnessInPage() {
       bloomSelected: post ? post.bloomSelected === true : null,
       bloomLevels: Number.isFinite(Number(video.bloomLevels)) ? Number(video.bloomLevels) : null,
       bloomStrength: Number.isFinite(Number(video.bloomStrength)) ? Number(video.bloomStrength) : null,
+      // Live post state, not the configured preset: the hitch governor can cap bloom to one level
+      // and zero grade/vignette/toe/grain at relief 2. A capture signed off at relief 0 must say so.
+      bloomLevelsLive: bloom && Number.isFinite(Number(bloom.levels)) ? Number(bloom.levels) : null,
+      bloomEnabledLive: bloom ? bloom.enabled === true : null,
+      postGrade: bloom && Number.isFinite(Number(bloom.grade)) ? Number(bloom.grade) : null,
+      postVignette: bloom && Number.isFinite(Number(bloom.vignette)) ? Number(bloom.vignette) : null,
+      postToe: bloom && Number.isFinite(Number(bloom.toe)) ? Number(bloom.toe) : null,
+      postGrain: bloom && Number.isFinite(Number(bloom.grain)) ? Number(bloom.grain) : null,
+      postFxActive: bloom
+        ? (Number(bloom.grade) || 0) + (Number(bloom.vignette) || 0)
+          + (Number(bloom.toe) || 0) + (Number(bloom.grain) || 0) > 0
+        : null,
       particleQuality: typeof video.particleQuality === 'string' ? video.particleQuality : null,
       skyTier: render?.spaceBg?.tierName || null,
       sharpen: video.sharpen === true,
@@ -3148,8 +3160,11 @@ async function captureCanvasFrame(targetPage, shotPath, elapsedMs) {
 // The composed frame keeps the HUD and is captured at the page's device scale, so legibility and
 // the final presentation (post + CAS + DOM) are reviewed together instead of canvas-only.
 async function captureComposedFrame(targetPage, shotPath, elapsedMs) {
+  const reliefLevel = await targetPage.evaluate(() => (
+    Number(window.SF?.state?.render?.hitchReliefLevel) || 0
+  )).catch(() => null);
   await targetPage.screenshot({ path: shotPath, type: 'png' });
-  composedFrames.push({ elapsedMs, path: shotPath });
+  composedFrames.push({ elapsedMs, path: shotPath, reliefLevel });
   return shotPath;
 }
 
@@ -3972,7 +3987,24 @@ try {
     }
     await page.waitForTimeout(SAMPLE_EVERY_MS);
   }
-  if (TETHER_STRESS) await writeFile(path.join(OUT, 'tether-motion.json'), JSON.stringify(snapshots, null, 2));
+  if (TETHER_STRESS) {
+    await writeFile(path.join(OUT, 'tether-motion.json'), JSON.stringify(snapshots, null, 2));
+    // Per-frame trace: presented fence clock, playout delay/depth/rate, pack time, player pose,
+    // lane reply/step cost. This is the evidence that distinguishes a fence pin from a worker
+    // stall or a mesh-writer bug.
+    try {
+      const frameTruth = await page.evaluate(() => (
+        window.__SF_FRAME_TRUTH__ && typeof window.__SF_FRAME_TRUTH__.exportJSON === 'function'
+          ? window.__SF_FRAME_TRUTH__.exportJSON({ note: 'tether-stress' })
+          : null
+      ));
+      if (frameTruth) {
+        await writeFile(path.join(OUT, 'frame-truth.json'), JSON.stringify(frameTruth));
+      }
+    } catch (error) {
+      log(`frame-truth export failed: ${error && error.message}`);
+    }
+  }
   // A one-off in-page question on the live flight scene ("what is that object?"), asked after the
   // sample so it cannot perturb the measured window. Printed and kept in the report.
   if (process.env.SPACEFACE_WITNESS_EVAL) {
@@ -4062,8 +4094,14 @@ try {
   if (!NO_SAMPLE_SHOTS) {
     const finalShot = path.join(OUT, 't-final.png');
     await captureCanvasFrame(page, finalShot, Date.now() - started).catch(() => {});
-    await captureComposedFrame(page, path.join(OUT, 't-final-composed.png'), Date.now() - started).catch(() => {});
   }
+  // The final composed frame is captured after the measured window (it cannot perturb the sample)
+  // and only once the hitch governor has returned to relief 0, so the sign-off picture is the
+  // authored post state, not a relief-2 fallback.
+  await page.waitForFunction(() => (Number(window.SF?.state?.render?.hitchReliefLevel) || 0) === 0,
+    null, { timeout: 6000 }).catch(() => {});
+  await captureComposedFrame(page, path.join(OUT, 't-final-composed.png'), Date.now() - started)
+    .catch(() => {});
 } catch (error) {
   primaryError = error;
   log(`probe failed: ${error && error.stack ? error.stack : error}`);

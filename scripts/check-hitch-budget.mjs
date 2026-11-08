@@ -165,7 +165,8 @@ try {
   const pageWarnings = issues.warningIssues().slice(0, 12);
   const pass = sample.settleWait === 'settled'
     && sample.frameMs.samples > 0
-    && sample.frameMs.p95 <= sample.frameBudgetMs + 0.05
+    && sample.presented.samples > 0
+    && sample.presented.p95 <= 40
     && sample.frameMs.unexpectedOverBudget === 0
     && sample.programEvents.length === 0
     && (!sample.presentedHolds
@@ -197,6 +198,7 @@ try {
     scenario: stress,
     hostLoad,
     frameMs: sample.frameMs,
+    presented: sample.presented,
     presentedHolds: sample.presentedHolds,
     settleWait: sample.settleWait,
     settleQueue: sample.settleQueue || null,
@@ -212,6 +214,7 @@ try {
     failureEvidence: buildFailureEvidence({
       frameBudgetMs: sample.frameBudgetMs,
       frameMs: sample.frameMs,
+      presented: sample.presented,
       presentedHolds: sample.presentedHolds,
       settleWait: sample.settleWait,
       settleQueue: sample.settleQueue,
@@ -447,6 +450,8 @@ async function sampleHitches(page, opts) {
     let last = null;
     let sampleStart = null;
     let presentedHoldStart = null;
+    const presentIntervals = [];
+    let lastPresentFrame = 0;
     let settledAt = null;
     let finished = false;
     let watchdog = null;
@@ -541,6 +546,16 @@ async function sampleHitches(page, opts) {
       };
       const diagnostics = readDiagnostics();
       settleQueue = settleQueue || authoredQueueSnapshot();
+      const sortedPresents = presentIntervals.slice().sort((a, b) => a - b);
+      const presented = {
+        samples: presentIntervals.length,
+        p50: round(percentile(sortedPresents, 0.50)),
+        p95: round(percentile(sortedPresents, 0.95)),
+        max: round(sortedPresents.length ? sortedPresents[sortedPresents.length - 1] : 0),
+        over40: presentIntervals.filter((value) => value > 40).length,
+        over50: presentIntervals.filter((value) => value > 50).length,
+        over66: presentIntervals.filter((value) => value > 66.7).length,
+      };
       const presentedEnd = presentedHoldSnapshot();
       const episodesInSample = presentedEnd && Array.isArray(presentedEnd.episodes)
         ? presentedEnd.episodes.filter((episode) => Number(episode.atMs) >= sampleStart)
@@ -558,6 +573,7 @@ async function sampleHitches(page, opts) {
       resolve({
         frameMs,
         frameBudgetMs: budgetMs,
+        presented,
         presentedHolds,
         settleWait,
         settleQueue,
@@ -606,6 +622,7 @@ async function sampleHitches(page, opts) {
               if (stress) stress.nextBurstAt = now + 120;
               sampleStart = now;
               presentedHoldStart = presentedHoldSnapshot();
+              lastPresentFrame = Number(window.SF?.state?.render?.renderer?.info?.render?.frame) || 0;
               resolveFrameBudgetMs();
               last = now;
               resetRuntimeProbes();
@@ -619,6 +636,17 @@ async function sampleHitches(page, opts) {
       } else {
         pumpStress(now);
         monitorPrograms(now);
+        // Acceptance is the PRESENTED cadence, not callback cadence. A 30 fps cap still runs a
+        // 60 Hz rAF; a callback miss is only a hitch if the present interval grew. lastPresentDtMs
+        // is stamped per presented frame, so record one sample per render frame.
+        const presentFrame = Number(window.SF?.state?.render?.renderer?.info?.render?.frame);
+        if (Number.isFinite(presentFrame) && presentFrame > lastPresentFrame) {
+          lastPresentFrame = presentFrame;
+          const presentMs = Number(window.SF?.state?.render?.lastPresentDtMs);
+          if (Number.isFinite(presentMs) && presentMs > 0 && presentMs < 2000) {
+            presentIntervals.push(presentMs);
+          }
+        }
         const dt = now - last;
         frames.push(dt);
         if (dt > resolveFrameBudgetMs()) {
@@ -1044,8 +1072,8 @@ function printReport(report) {
 }
 
 function buildFailureEvidence({
-  frameBudgetMs, frameMs, presentedHolds, settleWait, settleQueue, spikes, topSpikeSources,
-  programEvents, pageErrors, hostLoad, out,
+  frameBudgetMs, frameMs, presented, presentedHolds, settleWait, settleQueue, spikes,
+  topSpikeSources, programEvents, pageErrors, hostLoad, out,
 }) {
   const reasons = [];
   if (settleWait !== 'settled') {
@@ -1055,8 +1083,10 @@ function buildFailureEvidence({
     reasons.push(`runtime did not settle before sampling: ${settleWait}${queueNote}`);
   }
   if (frameMs.samples === 0) reasons.push('no post-warmup frames were sampled');
-  if (frameMs.samples > 0 && frameMs.p95 > frameBudgetMs + 0.05) {
-    reasons.push(`p95 frame interval ${frameMs.p95} ms exceeded the ${frameBudgetMs} ms cadence`);
+  if (!presented || presented.samples === 0) {
+    reasons.push('no presented frames were recorded; the cadence claim is unmeasured');
+  } else if (presented.p95 > 40) {
+    reasons.push(`presented p95 ${presented.p95} ms exceeded the 30 fps cadence bar (40 ms)`);
   }
   if (frameMs.unexpectedOverBudget > 0) {
     reasons.push(`${frameMs.unexpectedOverBudget} application-owned post-warmup frames exceeded ${frameBudgetMs} ms`);
