@@ -565,3 +565,41 @@ anti-bloat law). Owner ideas enter at PICK via EXPAND. The directed catalog in
 [`INFERENCE_IDEAS.md`](./INFERENCE_IDEAS.md) follows §0.1; only raw owner notes
 have the capped-inbox treatment. Explicit section-development requests follow
 §0.2. This section adds memory and intakes; it changes no precedence above.
+
+## 14. The kinds this contract leaves out — sweep them too
+
+The loop above proves each unit alone, at its own layer, the moment it ships.
+Five kinds of work fall outside that proof, and a batch that never spends
+units on them leaves the game worse in ways no per-unit check can see. On a
+look-then-rotate batch, these are eligible weaknesses you may find and fix;
+on a large batch (`N ≥ 10`), spend at least a quarter of `N` on them.
+
+1. **Parked defects.** §4 says a failed check or a board finding is recorded
+   "for its owner" — and nothing routes anyone back. Every recorded defect
+   ("Defects for owners", "Inbox", knownDefects) is an eligible unit: triage
+   it against live code, fix the cause, and let the player-facing reader
+   work. Fixing a test-only pin does not count.
+2. **The words the player reads.** The depth bar is about systems, never the
+   sentence, so hundreds of new lines ship unread by anyone. Sweep one
+   surface family per unit: plural bugs ("1 units"), zero and signed deltas
+   ("+0 cr"), stopwatch ages ("0 s ago"), raw ids dressed as names. Two whole
+   sentences, never `+ 's'`.
+3. **Accessibility parity.** Root `AGENTS.md` makes reduced-motion/flash,
+   captions, and reachable input a contract; new units gate their own
+   effects, but older shared paths are never swept. One unit = one coherent
+   repair (a strobing vignette, an uncaptioned danger cue, a color-only
+   signal), following the house pattern: stretch, never silence.
+4. **Composition.** Units that each cap themselves ("once per watch, never
+   over a louder voice") can still stack when ten of them land on one moment.
+   For each shared moment (a desk, a band, a PA), read what composes the
+   lines; where 3+ can fire together or a quieter line is starved forever,
+   give that moment one honest ordering inside its owner.
+5. **Reach.** `implemented`/`focused_green` says nothing about whether the
+   trigger ever fires in ordinary play. Before recording, walk the emitter
+   once on the ordinary route (or reason it in code): is the event name
+   spelled the same at both ends, is the reader imported, are the conditions
+   reachable? A wire that cannot carry is a repair unit, not a footnote.
+
+Stale test pins (a cadence or copy change the pins outlived) are support
+repairs under §4 — never units — but leaving them red is also not an option:
+re-pin them in the same sitting with the evidence in the body.
