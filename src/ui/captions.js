@@ -296,6 +296,21 @@ const EXPLICIT_RECIPE_CAPTIONS = Object.freeze({
   sfx_hauler_blast: Object.freeze({ text: 'A hauler blasts its horn.', urgency: 'warn', event: 'traffic.horn' }),
   sfx_hauler_blast_double: Object.freeze({ text: 'A hauler blasts twice.', urgency: 'warn', event: 'traffic.horn' }),
   sfx_hauler_blast_lean: Object.freeze({ text: 'A hauler leans on its horn.', urgency: 'warn', event: 'traffic.horn' }),
+  // a11y-danger-captions: the warnings a deaf player must not miss spoke as de-snaked ids at
+  // normal urgency ("Subsystem drive disabled." / "Mining fracture warning.") — words that name
+  // a file, not the moment. These are authored now, high or warn as the moment deserves.
+  sfx_subsystem_disabled: Object.freeze({ text: 'A subsystem burns out.', urgency: 'high', event: 'combat.subsystem' }),
+  sfx_subsystem_drive_disabled: Object.freeze({ text: 'A drive subsystem goes down.', urgency: 'high', event: 'combat.subsystem.drive' }),
+  sfx_subsystem_sensor_disabled: Object.freeze({ text: 'A sensor subsystem goes dark.', urgency: 'high', event: 'combat.subsystem.sensor' }),
+  sfx_subsystem_weapon_disabled: Object.freeze({ text: 'A weapon subsystem fails.', urgency: 'high', event: 'combat.subsystem.weapon' }),
+  sfx_hull_decompress: Object.freeze({ text: 'A hull breaches.', urgency: 'high', event: 'combat.breach' }),
+  sfx_combat_near_miss: Object.freeze({ text: 'A round slips past.', urgency: 'warn', event: 'combat.nearmiss' }),
+  sfx_doctrine_ranged_charge: Object.freeze({ text: 'A hostile lines up a shot.', urgency: 'warn', event: 'combat.telegraph' }),
+  sfx_swarm_alert_tick: Object.freeze({ text: 'The chain is about to break.', urgency: 'warn', event: 'swarm.chainwarn' }),
+  sfx_travel_interdiction: Object.freeze({ text: 'You are being pulled over.', urgency: 'warn', event: 'travel.interdiction' }),
+  sfx_mining_fracture_warning: Object.freeze({ text: 'The rock is about to fracture.', urgency: 'warn', event: 'mining.fracture' }),
+  sfx_mining_heat_warning: Object.freeze({ text: 'The drill is running hot.', urgency: 'warn', event: 'mining.heat' }),
+  sfx_mining_gas_hazard: Object.freeze({ text: 'Gas vents from the seam.', urgency: 'high', event: 'mining.gas' }),
 });
 
 export function isUiBlipRecipe(recipeId) {
