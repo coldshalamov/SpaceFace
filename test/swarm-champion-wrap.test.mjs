@@ -1,11 +1,15 @@
 // A WRAPPED CHAMPION IS AN ESCALATION, NOT A REPRINT.
 //
-// The rotation has fourteen rows, so wave 150 lands on the wave-10 row again. That rematch
+// The rotation has fourteen rows, so wave 145 lands on the wave-5 row again. That rematch
 // used to arrive verbatim — same card, same single hull. Now a wrapped row keeps the fight
 // the player learned (id, score, room, line, trick) and escalates through the mode's own
 // currency: a cycle numeral the versus card already renders ("Iron Maw II") and an honor
 // guard of wardens folded into the row's `packages`, so the guards are owed like the wing
 // row's aces are owed — never HP inflation.
+//
+// Versioned for S14 (483dff172351): the champion cadence moved from 10, 20, 30... to
+// 5, 15, 25... (SWARM_BOSS_FIRST + step * SWARM_BOSS_EVERY), so every rotation step and every
+// wrap is retargeted at the wave that now fields it: the wrap at 145 instead of 150.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -18,6 +22,8 @@ import { survivalWave } from '../src/systems/survivalWave.js';
 import { swarmJuice } from '../src/systems/swarmJuice.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import {
+  SWARM_BOSS_EVERY,
+  SWARM_BOSS_FIRST,
   SWARM_BOSS_ROTATION,
   SWARM_RULESET,
   SWARM_WRAP_ESCORT_ENEMY,
@@ -31,6 +37,8 @@ import { SURVIVAL_COHORT_TAG } from '../src/systems/waveMaterialization.js';
 const DT = 1 / 60;
 const SEED = 4242;
 const ARENA = 'helios_core';
+/** The wave a rotation step lands on under the S14 cadence. */
+const champWave = (step) => SWARM_BOSS_FIRST + step * SWARM_BOSS_EVERY;
 
 function boot(wave) {
   const state = createGameState(SEED);
@@ -109,14 +117,15 @@ function escortPackage(boss) {
 }
 
 test('the first pass is untouched — same frozen row, no cycle, no numeral', () => {
-  for (const [i, wave] of [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140].entries()) {
+  for (const [i, wave] of [5, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105, 115, 125, 135].entries()) {
+    assert.equal(wave, champWave(i), `rotation step ${i} lands on wave ${wave}`);
     const boss = swarmBossFor(wave);
     assert.equal(boss, SWARM_BOSS_ROTATION[i], `wave ${wave} returns the authored row itself`);
     assert.equal(boss.cycle, undefined, `wave ${wave} carries no cycle`);
     assert.equal(boss.label, SWARM_BOSS_ROTATION[i].label, `wave ${wave} wears no numeral`);
     assert.equal(planFor(wave).swarm.bossCycle, 0, `wave ${wave} plan rides pass zero`);
   }
-  assert.equal(swarmBossFor(5), null, 'a non-boss wave still fields nothing');
+  assert.equal(swarmBossFor(10), null, 'a non-boss wave still fields nothing (S14: none at 10)');
 });
 
 test('the numeral ladder reads the pass — II on the second, VIII at the ceiling', () => {
@@ -128,8 +137,8 @@ test('the numeral ladder reads the pass — II on the second, VIII at the ceilin
   assert.equal(swarmCycleNumeral(0), 'I');
 });
 
-test('wave 150 is Iron Maw II — the same fight machinery wearing the escalation', () => {
-  const boss = swarmBossFor(150);
+test('wave 145 is Iron Maw II — the same fight machinery wearing the escalation', () => {
+  const boss = swarmBossFor(145);
   const base = SWARM_BOSS_ROTATION[0];
   assert.equal(boss.id, 'iron_maw');
   assert.equal(boss.cycle, 1, 'the second pass names itself');
@@ -146,7 +155,7 @@ test('wave 150 is Iron Maw II — the same fight machinery wearing the escalatio
   assert.equal(escort.count, 1);
   assert.equal(escort.sameGate, true, 'the guard arrives on the champion\'s own gate');
 
-  const plan = planFor(150);
+  const plan = planFor(145);
   assert.equal(plan.swarm.bossCycle, 1);
   assert.equal(plan.swarm.bossLabel, `${base.label} II`, 'the announce path carries the numeral');
   const champions = plan.packages.filter((pkg) => pkg.champion === true);
@@ -159,8 +168,8 @@ test('wave 150 is Iron Maw II — the same fight machinery wearing the escalatio
 });
 
 test('the guard materializes as owed champion bodies and the card wears the numeral', () => {
-  const h = boot(150);
-  startWave(h, 150);
+  const h = boot(145);
+  startWave(h, 145);
   const bodies = cohort(h);
   const maw = bodies.find((e) => e.data.missionTag === 'capital_boss');
   assert.ok(maw, 'the Iron Maw hull landed under its score stamp');
@@ -169,7 +178,7 @@ test('the guard materializes as owed champion bodies and the card wears the nume
   assert.equal(guard.length, 1, 'one warden rides shotgun on the second pass');
   for (const e of guard) {
     assert.equal(e.data.swarmChampion, true, 'the guard is owed exactly like the hull');
-    assert.equal(e.data.runWave, 150);
+    assert.equal(e.data.runWave, 145);
     assert.equal(e.data.missionTag, undefined, 'the guard is a champion body, not the score\'s hull');
   }
   // The player-facing intro names the pass — swarmJuice reads the same row the planner did.
@@ -180,7 +189,8 @@ test('the guard materializes as owed champion bodies and the card wears the nume
 
 test('deeper wraps escalate monotonically — more pass, more guard, never hull', () => {
   let lastGuard = 0;
-  for (const [wave, cycle, numeral] of [[150, 1, 'II'], [290, 2, 'III'], [430, 3, 'IV'], [570, 4, 'V'], [710, 5, 'VI']]) {
+  for (const [wave, cycle, numeral] of [[145, 1, 'II'], [285, 2, 'III'], [425, 3, 'IV'], [565, 4, 'V'], [705, 5, 'VI']]) {
+    assert.equal(wave, champWave(cycle * SWARM_BOSS_ROTATION.length), `pass ${cycle} re-lands the Iron Maw on wave ${wave}`);
     const boss = swarmBossFor(wave);
     assert.equal(boss.id, 'iron_maw', `wave ${wave} keeps landing on the same base row`);
     assert.equal(boss.cycle, cycle, `wave ${wave}`);
@@ -191,17 +201,17 @@ test('deeper wraps escalate monotonically — more pass, more guard, never hull'
       `wave ${wave} guard ${guard.count} never shrinks below pass ${cycle - 1}`);
     lastGuard = guard.count;
   }
-  assert.equal(escortPackage(swarmBossFor(290)).count, 2, 'cycle two doubles the guard');
-  assert.equal(escortPackage(swarmBossFor(710)).count, SWARM_WRAP_ESCORT_MAX,
+  assert.equal(escortPackage(swarmBossFor(285)).count, 2, 'cycle two doubles the guard');
+  assert.equal(escortPackage(swarmBossFor(705)).count, SWARM_WRAP_ESCORT_MAX,
     'the guard caps at a screen, never a second wing');
   // And the boss hull itself is untouched — escalation lives in bodies, not hull numbers.
-  const lead = bossPackagesFor(swarmBossFor(710))[0];
+  const lead = bossPackagesFor(swarmBossFor(705))[0];
   assert.equal(lead.enemyId, 'dreadnought_boss');
   assert.equal(lead.count, 1, 'still one capital hull — the same fight, deeper');
 });
 
 test('a wrapped compositional row keeps its trick and gains the same guard', () => {
-  const boss = swarmBossFor(180);
+  const boss = swarmBossFor(175);
   const base = SWARM_BOSS_ROTATION.find((b) => b.id === 'corsair_wing');
   assert.equal(boss.id, 'corsair_wing');
   assert.equal(boss.cycle, 1);
@@ -214,7 +224,7 @@ test('a wrapped compositional row keeps its trick and gains the same guard', () 
 });
 
 test('wrapped plans stay deterministic — same seed, same escalation', () => {
-  for (const wave of [150, 180, 290]) {
+  for (const wave of [145, 175, 285]) {
     const a = planFor(wave);
     const b = planFor(wave);
     assert.deepEqual(a.packages, b.packages, `wave ${wave} packages drifted`);

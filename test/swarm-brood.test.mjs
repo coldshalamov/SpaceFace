@@ -109,8 +109,14 @@ test('engine census: the cap holds and spawn honours it', () => {
   // Machine's rebuild reserve for its welders (15 here). Arrivals plus held reserves plus
   // still-deferred placements equal the population law's count exactly:
   // nothing is silently dropped or invented.
+  //
+  // Versioned for S14 (483dff172351): wave 40 was a champion row under the old 10-clock and is
+  // an ordinary round now, so the B5 late specialist reserve (exempt only on champion waves)
+  // also holds its small group out of the same mite share — it joins the ledger here.
   const held = engine._splitter().reserve + engine._mother().reserve
-    + engine._hive().sacBudget + engine.view.pendingCount + engine._machine().reserve;
+    + engine._hive().sacBudget + engine.view.pendingCount + engine._machine().reserve
+    + engine._reserve().left;
+  assert.ok(engine._reserve().left > 0, 'an ordinary late wave holds a specialist reserve');
   assert.equal(spawned + held, swarmBroodPopulation(40));
   assert.ok(engine.census().alive <= SWARM_BROOD_MAX);
   assert.ok(engine.census().alive >= SWARM_BROOD_MIN);
