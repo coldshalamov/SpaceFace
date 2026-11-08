@@ -429,13 +429,19 @@ export function describeProgrammedMinerOperation(group, def = {}) {
       + (lc.heldUnits > 0 ? ` · ${lc.heldUnits}u still held` : '')
       + ` → net ${lc.netCr} cr`
     : null;
+  // words-field-counts: the screen-reader summary can count to one — "Gross cut 1 unit",
+  // "Operating cost 1 credit per minute" — instead of reading "1 units" to a blind pilot.
+  const countUnits = (n) => `${Math.max(0, Number(n) || 0)}`;
+  const unitWord = (n) => (Math.round(Number(n) || 0) === 1 ? 'unit' : 'units');
+  const creditWord = (n) => (Math.round(Number(n) || 0) === 1 ? 'credit' : 'credits');
+  const grossUnits = Math.max(0, Number(op.grossUnits) || 0);
   const accessibleSummary = [
     statusLabel,
-    `Gross cut ${Math.max(0, Number(op.grossUnits) || 0)} units`,
-    `Stored ${stored} of ${cap} units`,
+    `Gross cut ${countUnits(grossUnits)} ${unitWord(grossUnits)}`,
+    `Stored ${countUnits(stored)} of ${countUnits(cap)} ${unitWord(cap)}`,
     `Last sale ${lastText}`,
-    `Operating cost ${cost} credits per minute`,
-    `Estimated net ${net} credits per minute`,
+    `Operating cost ${countUnits(cost)} ${creditWord(cost)} per minute`,
+    `Estimated net ${countUnits(net)} ${creditWord(net)} per minute`,
     ...(cycleText ? [cycleText] : []),
     reason,
   ].join('. ');

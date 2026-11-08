@@ -1846,7 +1846,10 @@ export const asteroidScreen = {
         if (res.ok) {
           projDirty = true;
           pushLedgerLine('info', `${dir === 'deposit' ? 'Loaded' : 'Recovered'} ${res.moved}u ${name}.`);
-          announce(`${res.moved} units of ${name} moved to the ${dir === 'deposit' ? 'site' : 'rover'}.`);
+          // words-field-counts: the announcement can count to one (the ledger keeps its own u).
+          announce(res.moved === 1
+            ? `1 unit of ${name} moved to the ${dir === 'deposit' ? 'site' : 'rover'}.`
+            : `${res.moved} units of ${name} moved to the ${dir === 'deposit' ? 'site' : 'rover'}.`);
         } else {
           announce(transferRefusalText(res));
         }

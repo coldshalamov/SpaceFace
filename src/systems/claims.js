@@ -1551,7 +1551,7 @@ export const claims = {
     };
     spec.defense = defense;
     this._setDefenseWaypoint(body, defense);
-    this._receipt(body, 'defense_warning', `${defense.attackerName} inbound — ${attackerCount} ships, ${CLAIM_DEFENSE_WARNING_S}s to respond`, {
+    this._receipt(body, 'defense_warning', `${defense.attackerName} inbound — ${attackerCount === 1 ? '1 ship' : `${attackerCount} ships`}, ${CLAIM_DEFENSE_WARNING_S}s to respond`, {
       defenseId, attackerFactionId: defense.attackerFactionId, attackerCount,
     });
     this.bus.emit('claim:defenseWarning', {
@@ -1869,7 +1869,7 @@ export const claims = {
       kind: 'claim_defense', markerKind: 'mission-objective', claimId: body.id, defenseId: defense.id,
       ignoreDefense: defense.phase === 'warning',
       sectorId: body.sectorId, pos: { x: body.x, z: body.z }, label: `DEFEND ${body.name}`,
-      reason: `${defense.attackerName} · ${defense.attackerCount} ships · respond at ${body.name} (${remaining}s)`,
+      reason: `${defense.attackerName} · ${defense.attackerCount === 1 ? '1 ship' : `${defense.attackerCount} ships`} · respond at ${body.name} (${remaining}s)`,
       arrivalRadius: CLAIM_DEFENSE_ARRIVAL_R, deadline_s: defense.deadlineAt,
     };
     const current = this.state.nav.waypoint;

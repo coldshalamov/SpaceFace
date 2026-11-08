@@ -117,7 +117,11 @@ export function recoveryCustodyView(payload, state, simTime = state && state.sim
     ].filter(Boolean).join(' · ');
     detail = `Receipt ${String(payload.id)}.`;
   } else if (phase === 'tethered') {
-    detail = `Line attached. Reel to ${threshold} units for custody lock, then tow to ${destination}.`;
+    // words-field-counts: the custody threshold can be one unit.
+    const t = Math.max(0, Math.round(Number(threshold) || 0));
+    detail = t === 1
+      ? `Line attached. Reel to 1 unit for custody lock, then tow to ${destination}.`
+      : `Line attached. Reel to ${t} units for custody lock, then tow to ${destination}.`;
   } else if (phase === 'secured') {
     status = timerStatus || 'LOCKED';
     detail = `Custody locked. Tow ${label} to ${destination}.`;

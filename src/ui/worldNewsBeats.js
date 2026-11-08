@@ -193,7 +193,9 @@ export function claimDeliveryNote(state, payload) {
     : `${payload.bodyId}:${qty}:${Number(state && state.simTime) || 0}`;
   const currentSector = state && state.world && state.world.currentSectorId;
   return {
-    text: `Depot run landed at ${name}: ${qty} units of supplies.`,
+    text: qty === 1
+      ? `Depot run landed at ${name}: 1 unit of supplies.`
+      : `Depot run landed at ${name}: ${qty} units of supplies.`,
     legKey,
     qty,
     bodyId: payload.bodyId,

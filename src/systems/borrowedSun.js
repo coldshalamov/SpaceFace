@@ -590,8 +590,9 @@ export const borrowedSun = {
     return { carrierId: C.carrierId, visitId: r.visitId, phase: r.phase,
       serviceAvailable: this.serviceStatus().ok, berth: berth.name, sectorId: berth.sectorId,
       nextBerth: next.name, stock, status, ledger,
-      detail: `${stock.map(s => `${s.label}: ${s.stock} units in the ordinary market`).join(' · ') || 'Stock remains in the ordinary market register.'} The light is free. Spare parts use the normal quote. Next berth: ${next.name}.${ledgerLine}`,
-      rumor: r.lastTrade ? `Our last accepted business was ${r.lastTrade.side === 'buy' ? 'outgoing' : 'incoming'} ${r.lastTrade.qty} units of ${labels.get(r.lastTrade.commodityId) || r.lastTrade.commodityId}. Same ship, different cargo.`
+      // words-field-counts: a one-unit stock row and a one-unit trade can count to one.
+      detail: `${stock.map(s => `${s.label}: ${s.stock} ${s.stock === 1 ? 'unit' : 'units'} in the ordinary market`).join(' · ') || 'Stock remains in the ordinary market register.'} The light is free. Spare parts use the normal quote. Next berth: ${next.name}.${ledgerLine}`,
+      rumor: r.lastTrade ? `Our last accepted business was ${r.lastTrade.side === 'buy' ? 'outgoing' : 'incoming'} ${r.lastTrade.qty} ${r.lastTrade.qty === 1 ? 'unit' : 'units'} of ${labels.get(r.lastTrade.commodityId) || r.lastTrade.commodityId}. Same ship, different cargo.`
         : 'No accepted trade has been recorded on this visit. We prefer being found.' };
   },
   offer() {
