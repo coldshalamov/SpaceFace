@@ -58,8 +58,9 @@ import { isSwarmRuleset } from './survivalSwarm.js';
 import { dominoDeltaVelocity } from './swarmLegendaries.js';
 import { playerTowedLure } from '../ai/towedLure.js';
 import { gateBearing } from './waveMaterialization.js';
-import { findSwarmArrival } from './swarmSafety.js';
+import { findSwarmArrival, swarmPilotHasActed } from './swarmSafety.js';
 import { planSwarmBank, swarmBankEligible } from './swarmBank.js';
+import { planSwarmOpeningVolley } from './swarmOpeningVolley.js';
 import {
   BROOD_CHARGER_DASH_MAX_S,
   BROOD_CHARGER_DASH_SPEED,
@@ -466,6 +467,9 @@ export function createBroodEngine(deps = {}) {
   let bankPlayed = false;
   let bank = null;
   let spawnRequestedBankAttempted = false;
+  let openingVolleyAttempted = false;
+  let openingBeat = null; // three live opening lives; remainder stays in the ordinary plan
+  let openingRamp = null; // bounded directional arrivals after that first decision
 
   // --- B4: the Hive's reserve (see src/systems/theHiveArena.js) ------------------------
   //
@@ -680,6 +684,9 @@ export function createBroodEngine(deps = {}) {
     if (reason === 'new_game' || reason === 'run_ended') bankPlayed = false;
     bank = null;
     spawnRequestedBankAttempted = false;
+    openingVolleyAttempted = false;
+    openingBeat = null;
+    openingRamp = null;
     if (aliveCount > 0) { alive.fill(0); affix.fill(0); }
     aliveCount = 0;
     creditUntil.fill(0);
@@ -865,8 +872,26 @@ export function createBroodEngine(deps = {}) {
   }
 
   /** Fill the planned cohort around the player anchor, in clumps on the wave's gate ring. */
+  function validateOpeningCourse(state) {
+    const course = openingRamp?.course;
+    if (!course) return;
+    const player = state?.entities?.get?.(state.playerId);
+    // Retire on an observed departure, even if the pilot returns before a packet.
+    if (course.player !== player || !player?.alive || !Number.isFinite(player.pos?.x)
+      || !Number.isFinite(player.pos?.z) || Math.hypot(player.pos.x - course.x, player.pos.z - course.z) > 120) openingRamp.course = null;
+  }
+
+  function openingBeatHasLives() {
+    return openingBeat?.lives.some(({ slot, life }) => alive[slot] && serial[slot] === life);
+  }
+
   function spawnWave(state) {
     if (!pendingPlan || pendingPlan.length === 0) return 0;
+    validateOpeningCourse(state);
+    if (openingBeat && (state.mode !== 'flight' || liveSwarmRun(state)?.phase !== 'active' ||
+      (openingBeat.remaining > 0 && openingBeatHasLives()))) return 0;
+    openingBeat = null;
+    if (openingRamp && (state.mode !== 'flight' || liveSwarmRun(state)?.phase !== 'active' || openingRamp.remaining > 1e-8)) return 0;
     cacheRocks(state);
     spawnRequested = true; // the arena owns the initial lesson release; retries cannot bypass it
     const now = finite(state?.simTime);
@@ -875,7 +900,39 @@ export function createBroodEngine(deps = {}) {
     const ax = finite(player?.pos?.x), az = finite(player?.pos?.z);
     const familyIndex = buildFamilyIndex();
     const deferred = [];
-    let spawned = 0, groupIndex = 0;
+    let spawned = 0, groupIndex = openingRamp?.group || 0;
+    let arrivalBudget = openingRamp ? 18 : Infinity;
+    const packReserved = openingRamp ? [] : null;
+    if (packReserved) for (let i = 0; i < CAP; i++) if (alive[i]) {
+      packReserved.push({ alive: true, pos: { x: px[i], z: pz[i] }, radius: liveFamilyRadius[family[i]] });
+    }
+    if (openingRamp) openingRamp.remaining = 0.75;
+    // The first released pack presents a real throwing lane beyond one existing
+    // pocket pebble. Spend the usual mite plan; a blocked or used-up court falls
+    // through to ordinary arrivals, never teleports props or delays the round.
+    if (!openingVolleyAttempted) {
+      openingVolleyAttempted = true;
+      const mite = familyIndex.get('mite');
+      const layout = mite == null ? null : planSwarmOpeningVolley(
+        state, state.run, liveWave, pendingPlan, liveFamilyRadius[mite]);
+      const free = [];
+      for (let i = 0; layout && i < CAP && free.length < 3; i++) if (!alive[i]) free.push(i);
+      if (layout && free.length === 3) {
+        for (let i = 0; i < 3; i++) spawnAt(free[i], mite, layout.points[i].x, layout.points[i].z);
+        pendingPlan.find(part => part.id === 'mite').count -= 3;
+        // Let the existing pebble-and-pack choice read before the full gate pressure.
+        // These are ordinary live enemies, not parked practice targets. The same plan
+        // resumes on their defeat or after six seconds of active pilot play.
+        openingBeat = { remaining: 6, lastTick: state.tick, lives: free.map(slot => ({ slot, life: serial[slot] })) };
+        const dx = layout.points[0].x - ax, dz = layout.points[0].z - az;
+        const distance = Math.hypot(dx, dz);
+        openingRamp = { remaining: 0, lastTick: state.tick, group: 0,
+          course: { x: ax, z: az, ux: dx / distance, uz: dz / distance, player } };
+        assignMotherShares();
+        publish();
+        return 3;
+      }
+    }
     // Admit the whole vignette atomically before the usual gate arrivals. It spends the
     // existing plan and never moves the chosen rock or an already-live brood body.
     if (!bankPlayed && !spawnRequestedBankAttempted) {
@@ -902,18 +959,26 @@ export function createBroodEngine(deps = {}) {
       const famIdx = familyIndex.get(part.id);
       if (famIdx == null) continue;
       let owed = 0;
-      for (let start = 0; start < part.count; start += 18) {
+      for (let start = 0; start < part.count;) {
+        if (arrivalBudget <= 0) { owed += part.count - start; break; }
         const bearing = gateBearing(GATE_RING[groupIndex++ % GATE_RING.length]);
-        const cx = ax + bearing.x * 165, cz = az + bearing.z * 165;
-        const n = Math.min(18, part.count - start);
+        const course = openingRamp?.course;
+        const cx = course ? course.x + (-bearing.x * course.uz - bearing.z * course.ux) * 165 : ax + bearing.x * 165;
+        const cz = course ? course.z + (bearing.x * course.ux - bearing.z * course.uz) * 165 : az + bearing.z * 165;
+        const n = Math.min(18, part.count - start, arrivalBudget);
+        start += n;
+        arrivalBudget -= n;
         for (let i = 0; i < n; i++) {
           const slot = findFreeSlot();
           if (slot < 0) { owed++; continue; }
           const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * 30;
           const open = findSwarmArrival(state, { x: cx + Math.cos(a) * r, z: cz + Math.sin(a) * r },
-            liveFamilyRadius[famIdx], { clearance: BROOD_SPAWN_ROCK_CLEARANCE });
-          if (!open) { owed++; continue; }
+            liveFamilyRadius[famIdx], { clearance: BROOD_SPAWN_ROCK_CLEARANCE,
+              ...(packReserved ? { reserved: packReserved, reservedClearance: 1,
+                clusterCenter: { x: cx, z: cz }, clusterRadius: 30, clusterAngle: 0 } : {}) });
+          if (!open || (packReserved && Math.hypot(open.x - cx, open.z - cz) > 30.001) || (course && Math.hypot(open.x - ax, open.z - az) > 300)) { owed++; continue; }
           spawnAt(slot, famIdx, open.x, open.z);
+          if (packReserved) packReserved.push({ alive: true, pos: { x: open.x, z: open.z }, radius: liveFamilyRadius[famIdx] });
           if (liveFamilyDef[famIdx] && liveFamilyDef[famIdx].burrows) parkBurrower(slot);
           if (liveFamilyDef[famIdx] && liveFamilyDef[famIdx].rooted) parkRooted(slot);
           spawned++;
@@ -922,6 +987,10 @@ export function createBroodEngine(deps = {}) {
       if (owed > 0) deferred.push({ ...part, count: owed });
     }
     pendingPlan = deferred.length ? deferred : null;
+    if (openingRamp) {
+      openingRamp.group = groupIndex;
+      if (!pendingPlan) openingRamp = null;
+    }
     // B5 — the reserve drops on the wave's own clock: first spawn starts the timer,
     // so a held-back group always lands mid-wave rather than at the open.
     if (reserveBudget > 0 && !Number.isFinite(reserveReleaseAt)) {
@@ -1195,6 +1264,21 @@ export function createBroodEngine(deps = {}) {
   function step(state) {
     const run = liveSwarmRun(state);
     if (!run || run.phase !== 'active' || state.mode !== 'flight') return false;
+    validateOpeningCourse(state);
+    if (openingBeat) {
+      if (openingBeat.lastTick !== state.tick) {
+        openingBeat.lastTick = state.tick;
+        if (swarmPilotHasActed(state)) openingBeat.remaining = Math.max(0, openingBeat.remaining - DT);
+      }
+      if (!openingBeatHasLives() || openingBeat.remaining <= 1e-8) {
+        openingBeat = null;
+        nextSpawnAttemptAt = 0;
+      }
+    }
+    if (openingRamp && !openingBeat && openingRamp.lastTick !== state.tick) {
+      openingRamp.lastTick = state.tick;
+      openingRamp.remaining = Math.max(0, openingRamp.remaining - DT);
+    }
     if (spawnRequested && pendingPlan?.length && finite(state.simTime) >= nextSpawnAttemptAt) spawnWave(state);
     // The Tendril wave keeps stepping while the body may still exist — the champion hull can
     // materialize after the flock dies, and the chain outlives it by exactly one collapse.

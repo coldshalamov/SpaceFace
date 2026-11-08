@@ -47,8 +47,12 @@ export function swarmPlacementIsClear(state, pos, radius, options = {}) {
       && !(entity.physicsBody?.schemaVersion === 1 && entity.physicsBody.material !== 'massline_sensor'))) continue;
     if (sweptDiscsOverlap(pos, radius, entity, options)) return false;
   }
+  // Authored packs may separate their own bodies more tightly than solid terrain.
+  // Omitted/invalid override preserves the shared placement contract for every caller.
+  const reservedOptions = Number.isFinite(options.reservedClearance) && options.reservedClearance >= 0
+    ? { ...options, clearance: options.reservedClearance } : options;
   for (const entity of options.reserved || []) {
-    if (sweptDiscsOverlap(pos, radius, entity, options)) return false;
+    if (sweptDiscsOverlap(pos, radius, entity, reservedOptions)) return false;
   }
   return true;
 }
@@ -80,7 +84,7 @@ export function findSwarmArrival(state, proposed, radius, options = {}) {
   const clusterRadius = finite(options.clusterRadius);
   if (center && Number.isFinite(center.x) && Number.isFinite(center.z) && clusterRadius > 0) {
     for (let sample = 0; sample < 64; sample++) {
-      const localAngle = angle + sample * 2.399963229728653; // golden-angle disc samples
+      const localAngle = (Number.isFinite(options.clusterAngle) ? options.clusterAngle : angle) + sample * 2.399963229728653; // golden-angle disc samples
       const r = clusterRadius * Math.sqrt(sample / 63);
       const pos = { x: center.x + Math.cos(localAngle) * r, z: center.z + Math.sin(localAngle) * r };
       if (Math.hypot(pos.x - finite(anchor.x), pos.z - finite(anchor.z)) < floor) continue;
