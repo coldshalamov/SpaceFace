@@ -2,6 +2,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { createServer as createNetServer } from 'node:net';
+import { cpus } from 'node:os';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -143,12 +144,16 @@ try {
   await warmStressPipelines(page);
   console.log('[hitch-budget] stress pipelines ready');
   await waitForStressAssets(page);
+  // Wall-time acceptance is only valid on a quiet host. Record the CPU-busy ratio across the
+  // measured window so a contended run is labelled instead of read as a clean pass/fail.
+  const hostLoadStart = readCpuTimes();
   const sample = await sampleHitches(page, {
     warmupMs: WARMUP_MS,
     durationMs: DURATION_MS,
     frameBudgetMs: FRAME_BUDGET_MS,
     pumpDuringSettle: !!(argv['pump-during-settle'] || argv.pumpDuringSettle),
   });
+  const hostLoad = summarizeHostLoad(hostLoadStart);
   const attribution = await page.evaluate(() => ({
     longtasks: (window.__HITCH_LONGTASKS__ || []).filter((t) => t.ms >= 50).slice(-40),
     resources: (window.__HITCH_RESOURCES__ || []).slice(-40),
@@ -162,6 +167,7 @@ try {
     && sample.frameMs.samples > 0
     && sample.frameMs.unexpectedOverBudget === 0
     && sample.programEvents.length === 0
+    && !(Number(hostLoad.busyPct) >= 70)
     && pageErrors.length === 0;
   const report = {
     schema: 'spaceface.hitchBudget.v1',
@@ -186,6 +192,7 @@ try {
       },
     },
     scenario: stress,
+    hostLoad,
     frameMs: sample.frameMs,
     settleWait: sample.settleWait,
     settleQueue: sample.settleQueue || null,
@@ -205,6 +212,7 @@ try {
       topSpikeSources: sample.topSpikeSources,
       programEvents: sample.programEvents,
       pageErrors,
+      hostLoad,
       out: OUT,
     }),
     pass,
@@ -724,13 +732,25 @@ async function sampleHitches(page, opts) {
             for (let node = object; node && chain.length < 6; node = node.parent) {
               chain.push(node.name || node.type || '?');
             }
+            const idMatch = /^Asteroid_(\d+)$/.exec(object.name || '');
+            const ownerEntity = idMatch && state?.entities?.get
+              ? state.entities.get(Number(idMatch[1])) : null;
             owners.push({
               object: object.name || object.type,
               objectType: object.type,
               parentChain: chain.slice(1),
+              entityTypeId: ownerEntity?.data?.typeId || null,
+              entityType: ownerEntity?.type || null,
               material: material.name || material.type,
               materialType: material.type,
               materialUuid: material.uuid || null,
+              materialUserData: material.userData && typeof material.userData === 'object'
+                ? {
+                  role: material.userData.spacefaceSharedMaterialRole || null,
+                  family: material.userData.spacefaceProgramFamily || null,
+                  abi: material.userData.spacefaceMaterialAbiVersion || null,
+                  illustrated: material.userData.spacefaceIllustratedSurface === true,
+                } : null,
               geometry: object.geometry?.name || null,
               transparent: !!material.transparent,
               blending: material.blending,
@@ -886,10 +906,41 @@ async function dismissOnboarding(page) {
   });
 }
 
+function readCpuTimes() {
+  try {
+    const list = cpus();
+    if (!Array.isArray(list) || list.length === 0) return { logicalCpus: 0, idle: 0, total: 0 };
+    let idle = 0;
+    let total = 0;
+    for (const cpu of list) {
+      const times = cpu && cpu.times ? cpu.times : {};
+      const busy = (times.user || 0) + (times.nice || 0) + (times.sys || 0) + (times.irq || 0);
+      idle += times.idle || 0;
+      total += busy + (times.idle || 0);
+    }
+    return { logicalCpus: list.length, idle, total };
+  } catch (_) {
+    return { logicalCpus: 0, idle: 0, total: 0 };
+  }
+}
+
+function summarizeHostLoad(start) {
+  const end = readCpuTimes();
+  const idleDelta = end.idle - (start?.idle || 0);
+  const totalDelta = end.total - (start?.total || 0);
+  const measured = start?.logicalCpus > 0 && end.logicalCpus === start.logicalCpus && totalDelta > 0;
+  return {
+    available: measured,
+    busyPct: measured ? Math.round(1000 * (1 - idleDelta / totalDelta)) / 10 : null,
+    logicalCpus: end.logicalCpus,
+  };
+}
+
 function printReport(report) {
   console.log(`[hitch-budget] scenario=${report.scenario.baseScenario} enemies=${report.scenario.enemies} asteroids=${report.scenario.asteroids}`);
   console.log(`[hitch-budget] frames=${report.frameMs.samples} avg=${report.frameMs.avg}ms p95=${report.frameMs.p95}ms p99=${report.frameMs.p99}ms worst=${report.frameMs.max}ms`);
   console.log(`[hitch-budget] settle=${report.settleWait}`);
+  console.log(`[hitch-budget] host busy=${report.hostLoad?.busyPct != null ? `${report.hostLoad.busyPct}%` : 'n/a'} (contended at >=70%)`);
   if (report.settleQueue) {
     console.log(`[hitch-budget] settleQueue pending=${report.settleQueue.pending} running=${report.settleQueue.running} activeJobs=${report.settleQueue.activeJobs} last=${report.settleQueue.lastJobKey || '-'} ${report.settleQueue.lastJobStatus || ''}`);
   }
@@ -923,7 +974,8 @@ function printReport(report) {
 }
 
 function buildFailureEvidence({
-  frameBudgetMs, frameMs, settleWait, settleQueue, spikes, topSpikeSources, programEvents, pageErrors, out,
+  frameBudgetMs, frameMs, settleWait, settleQueue, spikes, topSpikeSources, programEvents, pageErrors,
+  hostLoad, out,
 }) {
   const reasons = [];
   if (settleWait !== 'settled') {
@@ -937,6 +989,9 @@ function buildFailureEvidence({
     reasons.push(`${frameMs.unexpectedOverBudget} application-owned post-warmup frames exceeded ${frameBudgetMs} ms`);
   }
   if (programEvents.length > 0) reasons.push(`${programEvents.length} new GPU program events appeared after warm-up`);
+  if (Number(hostLoad?.busyPct) >= 70) {
+    reasons.push(`host CPU was ${hostLoad.busyPct}% busy during the sample — not a valid acceptance window`);
+  }
   if (pageErrors.length > 0) reasons.push(`${pageErrors.length} browser page errors were reported`);
   if (!reasons.length) reasons.push('no failure recorded');
   return {
