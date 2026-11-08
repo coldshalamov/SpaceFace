@@ -271,6 +271,30 @@ export function buyRailComparisonFacts(player, candidateDefId) {
   };
 }
 
+// The rack verb's own words (words-yard-count-lines): the yard can count to one round.
+// Whole singular/plural sentences with the verb agreeing ("1 unit loads", "2 units load").
+// Pure text — exported so the focused test reads exactly what the rack says.
+export function rackPartialFillLine(rounds) {
+  const n = Math.max(0, Math.floor(Number(rounds) || 0));
+  return n === 1
+    ? 'Partial fill — 1 unit loads before credits run out'
+    : `Partial fill — ${n} units load before credits run out`;
+}
+
+export function rackLoadLine(rounds) {
+  const n = Math.max(0, Math.floor(Number(rounds) || 0));
+  return n === 1
+    ? 'Load 1 unit — hangar stock first, then purchased ammunition'
+    : `Load ${n} units — hangar stock first, then purchased ammunition`;
+}
+
+export function rackShortLine(unmet) {
+  const n = Math.max(0, Math.floor(Number(unmet) || 0));
+  return n === 1
+    ? 'The rack is short 1 unit — restock fee plus ammunition exceed the balance'
+    : `The rack is short ${n} units — restock fee plus ammunition exceed the balance`;
+}
+
 function whyAttr(text) {
   if (!text || !String(text).trim()) return '';
   // tabindex travels with the why: a hover-only affordance does not exist for a keyboard player
@@ -3975,10 +3999,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const prepareHint = !availability.outfitEnabled ? availability.outfitLabel
         : prepReady
           ? (prepPlan.limitingReason === 'credits'
-            ? `Partial fill — ${prepPlan.roundsLoaded} units load before credits run out`
-            : `Load ${prepPlan.roundsLoaded} units — hangar stock first, then purchased ammunition`)
+            ? rackPartialFillLine(prepPlan.roundsLoaded)
+            : rackLoadLine(prepPlan.roundsLoaded))
           : prepBroke
-            ? `The rack is short ${prepPlan.unmetNeed} units — restock fee plus ammunition exceed the balance`
+            ? rackShortLine(prepPlan.unmetNeed)
             : 'Rack is already prepared';
       if (prepReady && prepPlan.limitingReason === 'credits') prepNote = prepareHint;
       // No native title: the hint prints in visible type (prepNote) and the disabled state
