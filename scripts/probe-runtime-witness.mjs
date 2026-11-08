@@ -2278,6 +2278,16 @@ function readWitnessInPage() {
       };
     }
   }
+  // Presented-hold accounting from the loop diagnostics (cumulative since loop start; the
+  // classifier compares first→last deltas). This is the world-hitch number that frame cost alone
+  // cannot see: a repeated presented moment while time advances.
+  sample.presented = {
+    gapMs: Number.isFinite(d.lastPresentedGapMs) ? d.lastPresentedGapMs : null,
+    maxGapMs: Number.isFinite(d.maxPresentedGapMs) ? d.maxPresentedGapMs : null,
+    gapsOver100: Number.isFinite(d.presentedGapsOver100) ? d.presentedGapsOver100 : null,
+    heldMs: Number.isFinite(d.heldPresentMs) ? d.heldPresentMs : null,
+    maxHeldMs: Number.isFinite(d.maxHeldPresentMs) ? d.maxHeldPresentMs : null,
+  };
   // GPU-side residency alongside the heap. Growth here that never plateaus says the world is
   // retaining what it streams in rather than churning it, which is a different fix from allocation
   // churn even though both end in the same multi-second collection.

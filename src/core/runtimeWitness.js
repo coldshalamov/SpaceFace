@@ -435,6 +435,18 @@ export function classifyRuntimeWitness(samples, { canvasHashes = [] } = {}) {
   const canvasStuck = hashes.length >= 2 && new Set(hashes).size === 1;
   const hitchCount = tail.filter((row) => row.hitch === true).length;
   const picture = last.picture && typeof last.picture === 'object' ? last.picture : null;
+  const firstPresented = first.presented && typeof first.presented === 'object'
+    ? first.presented : null;
+  const lastPresented = last.presented && typeof last.presented === 'object'
+    ? last.presented : null;
+  const maxHeldPresentDeltaMs = firstPresented && lastPresented
+    && Number.isFinite(Number(firstPresented.maxHeldMs))
+    && Number.isFinite(Number(lastPresented.maxHeldMs))
+    ? Math.max(0, Number(lastPresented.maxHeldMs) - Number(firstPresented.maxHeldMs)) : null;
+  const presentedGapsDelta = firstPresented && lastPresented
+    && Number.isFinite(Number(firstPresented.gapsOver100))
+    && Number.isFinite(Number(lastPresented.gapsOver100))
+    ? Math.max(0, Number(lastPresented.gapsOver100) - Number(firstPresented.gapsOver100)) : null;
   const topPhase = last.topPhase || null;
   const facts = {
     sampleCount: tail.length,
@@ -464,6 +476,8 @@ export function classifyRuntimeWitness(samples, { canvasHashes = [] } = {}) {
     contentScale: picture ? picture.contentScale ?? null : null,
     effectiveSceneScale: picture ? picture.effectiveSceneScale ?? null : null,
     casSharpenActive: picture ? picture.casSharpenActive ?? null : null,
+    maxHeldPresentDeltaMs,
+    presentedGapsDelta,
   };
 
   if (last.contextLost === true) {
@@ -553,6 +567,15 @@ export function classifyRuntimeWitness(samples, { canvasHashes = [] } = {}) {
     ? worldSubmissionDelta >= 2 : rendererObserved && rendererFrameDelta >= 2;
   const pictureLive = rendererLive || canvasChanged;
   if (simDelta >= 0.5 && frameDelta >= 8 && pictureLive && !canvasStuck) {
+    if (maxHeldPresentDeltaMs != null && maxHeldPresentDeltaMs > 100) {
+      return {
+        ok: false,
+        kind: 'world-hold',
+        headline: `The presented world held for ${Math.round(maxHeldPresentDeltaMs)} ms while time advanced.`,
+        next: 'Check fence pack silence, the worker lane, and the presented-clock cap before tuning frame cost.',
+        facts,
+      };
+    }
     if (picture && picture.contentNative === false) {
       return {
         ok: false,
@@ -676,6 +699,14 @@ function formatLiveCountsLine(samples) {
   return `- live field, tether and traffic counts: fields ${fields} | tethers ${tethers} | traffic ${traffic}`;
 }
 
+function formatPresentedHoldLine(presented) {
+  if (!presented || typeof presented !== 'object') return null;
+  const ms = (value) => (Number.isFinite(Number(value)) ? `${Math.round(Number(value))} ms` : 'n/a');
+  return `- presented hold: max gap ${ms(presented.maxGapMs)}`
+    + ` | gaps >=100 ms ${presented.gapsOver100 ?? 'n/a'}`
+    + ` | max repeated-moment hold ${ms(presented.maxHeldMs)}`;
+}
+
 /** Picture contract: native buffer, post route, relief and the authored tiers, in one block. */
 function formatPictureLines(picture) {
   if (!picture || typeof picture !== 'object') return [];
@@ -785,6 +816,7 @@ export function formatRuntimeWitnessReport({
     formatSpawnWitnessLine(samples),
     formatGeometryPendingLine(samples),
     formatLiveCountsLine(samples),
+    ...(formatPresentedHoldLine(last?.presented) ? [formatPresentedHoldLine(last?.presented)] : []),
     ...formatPictureLines(last?.picture),
     ...formatLaneLines(last?.lane),
     '',

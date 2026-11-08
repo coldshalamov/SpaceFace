@@ -82,6 +82,17 @@ test('a native buffer with a 0.9 content scale is soft-picture, not presenting',
   assert.equal(verdict.facts.contentNative, false);
 });
 
+test('a presented world that repeats a moment is world-hold, not presenting', () => {
+  const samples = series();
+  for (let i = 0; i < samples.length; i++) {
+    samples[i].presented = { maxHeldMs: i === samples.length - 1 ? 400 : 0, gapsOver100: 0 };
+  }
+  const verdict = classifyRuntimeWitness(samples);
+  assert.equal(verdict.ok, false);
+  assert.equal(verdict.kind, 'world-hold');
+  assert.equal(verdict.facts.maxHeldPresentDeltaMs, 400);
+});
+
 test('a moving sim clock with a stuck GPU frame is draw-dead, not healthy', () => {
   const verdict = classifyRuntimeWitness(series({ rendererFrame: 12 }));
   assert.equal(verdict.ok, false);

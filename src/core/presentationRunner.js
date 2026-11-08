@@ -366,6 +366,18 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     // Presents that showed the same simulated moment as the present before them while time was
     // passing. The pilot reads each one as the ship losing its place; the count must stay zero.
     duplicateMomentPresents: 0,
+    // Presented hold accounting: a repeated moment while time passes is a fence/dry-world hold.
+    // Wall milliseconds, not frame count, so a 2 s pin is 2000 and can be gated. lastPresentedGapMs
+    // is the last present interval; presentedGapsOver100 counts intervals >=100 ms.
+    lastPresentedGapMs: 0,
+    maxPresentedGapMs: 0,
+    presentedGapsOver100: 0,
+    heldPresentMs: 0,
+    maxHeldPresentMs: 0,
+    heldPresentStreakFrames: 0,
+    // Completed >=100 ms hold episodes, newest last. A max-delta across a sampling window cannot
+    // see a new hold smaller than an earlier max; episodes carry their own wall time.
+    heldPresentEpisodes: [],
     presentFirst: 'restore-only',
     lastPresentMs: 0,
     frameCapSkips: 0,
@@ -1207,9 +1219,32 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     // The drawn moment is simTime + accumulator − fixedDt. While the clock runs and time passed,
     // two presents in a row at one moment is a frozen world under a moving camera.
     const presentedMoment = (Number(state.simTime) || 0) + (Number(state.accumulator) || 0);
-    if (!restoring && frameDt > 0 && Number(state.timeScale) > 0
-      && presentedMoment === lastPresentedMoment) {
+    const presentedGapMs = Math.max(0, (Number.isFinite(presentationFrame.presentElapsedS)
+      ? presentationFrame.presentElapsedS : frameDt) * 1000);
+    diagnostics.lastPresentedGapMs = presentedGapMs;
+    if (presentedGapMs > diagnostics.maxPresentedGapMs) {
+      diagnostics.maxPresentedGapMs = presentedGapMs;
+    }
+    if (presentedGapMs >= 100) diagnostics.presentedGapsOver100++;
+    const sameMoment = !restoring && frameDt > 0 && Number(state.timeScale) > 0
+      && presentedMoment === lastPresentedMoment;
+    if (sameMoment) {
       diagnostics.duplicateMomentPresents++;
+      diagnostics.heldPresentStreakFrames++;
+      diagnostics.heldPresentMs += presentedGapMs;
+      if (diagnostics.heldPresentMs > diagnostics.maxHeldPresentMs) {
+        diagnostics.maxHeldPresentMs = diagnostics.heldPresentMs;
+      }
+    } else {
+      if (diagnostics.heldPresentMs >= 100) {
+        if (diagnostics.heldPresentEpisodes.length >= 8) diagnostics.heldPresentEpisodes.shift();
+        diagnostics.heldPresentEpisodes.push({
+          atMs: measureNow(),
+          heldMs: diagnostics.heldPresentMs,
+        });
+      }
+      diagnostics.heldPresentMs = 0;
+      diagnostics.heldPresentStreakFrames = 0;
     }
     lastPresentedMoment = presentedMoment;
     presentationFrame.sequence++;

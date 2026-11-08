@@ -165,8 +165,11 @@ try {
   const pageWarnings = issues.warningIssues().slice(0, 12);
   const pass = sample.settleWait === 'settled'
     && sample.frameMs.samples > 0
+    && sample.frameMs.p95 <= sample.frameBudgetMs + 0.05
     && sample.frameMs.unexpectedOverBudget === 0
     && sample.programEvents.length === 0
+    && (!sample.presentedHolds
+      || (sample.presentedHolds.gapsOver100 === 0 && sample.presentedHolds.heldDeltaMs <= 100))
     && !(Number(hostLoad.busyPct) >= 70)
     && pageErrors.length === 0;
   const report = {
@@ -194,11 +197,14 @@ try {
     scenario: stress,
     hostLoad,
     frameMs: sample.frameMs,
+    presentedHolds: sample.presentedHolds,
     settleWait: sample.settleWait,
     settleQueue: sample.settleQueue || null,
     histogram: sample.histogram,
     spikes: sample.spikes.slice(0, 20),
+    unexpectedSpikes: sample.unexpectedSpikes,
     programEvents: sample.programEvents,
+    unresolvedProgramEvents: sample.unresolvedProgramEvents,
     topSpikeSources: sample.topSpikeSources,
     renderWarmup,
     diagnostics: sample.diagnostics,
@@ -206,6 +212,7 @@ try {
     failureEvidence: buildFailureEvidence({
       frameBudgetMs: sample.frameBudgetMs,
       frameMs: sample.frameMs,
+      presentedHolds: sample.presentedHolds,
       settleWait: sample.settleWait,
       settleQueue: sample.settleQueue,
       spikes: sample.spikes,
@@ -439,6 +446,7 @@ async function sampleHitches(page, opts) {
     const spikes = [];
     let last = null;
     let sampleStart = null;
+    let presentedHoldStart = null;
     let settledAt = null;
     let finished = false;
     let watchdog = null;
@@ -448,6 +456,7 @@ async function sampleHitches(page, opts) {
     let previousProgramCount = 0;
     let previousProgramKeys = new Set();
     const programEvents = [];
+    const unresolvedProgramEvents = [];
     let settleQueue = null;
     let effectiveFrameBudgetMs = Number(frameBudgetMs) > 0 ? Number(frameBudgetMs) : 0;
 
@@ -532,12 +541,29 @@ async function sampleHitches(page, opts) {
       };
       const diagnostics = readDiagnostics();
       settleQueue = settleQueue || authoredQueueSnapshot();
+      const presentedEnd = presentedHoldSnapshot();
+      const episodesInSample = presentedEnd && Array.isArray(presentedEnd.episodes)
+        ? presentedEnd.episodes.filter((episode) => Number(episode.atMs) >= sampleStart)
+        : [];
+      const maxEpisodeMs = episodesInSample.reduce((max, episode) => (
+        Number(episode.heldMs) > max ? Number(episode.heldMs) : max), 0);
+      const heldDelta = presentedHoldStart && presentedEnd
+        ? Math.max(0, (presentedEnd.maxHeldMs || 0) - (presentedHoldStart.maxHeldMs || 0))
+        : 0;
+      const presentedHolds = presentedHoldStart && presentedEnd ? {
+        gapsOver100: Math.max(0, (presentedEnd.gapsOver100 || 0) - (presentedHoldStart.gapsOver100 || 0)),
+        heldDeltaMs: Math.max(maxEpisodeMs, heldDelta),
+        episodes: episodesInSample.slice(-4),
+      } : null;
       resolve({
         frameMs,
         frameBudgetMs: budgetMs,
+        presentedHolds,
         settleWait,
         settleQueue,
         programEvents,
+        unresolvedProgramEvents,
+        unexpectedSpikes: unexpectedSpikes.slice(0, 40),
         histogram: histogram(frames),
         spikes: spikes.sort((a, b) => b.ms - a.ms),
         topSpikeSources: topSpikeSources(diagnostics.perf),
@@ -579,6 +605,7 @@ async function sampleHitches(page, opts) {
               const stress = window.__SF_HITCH_STRESS__;
               if (stress) stress.nextBurstAt = now + 120;
               sampleStart = now;
+              presentedHoldStart = presentedHoldSnapshot();
               resolveFrameBudgetMs();
               last = now;
               resetRuntimeProbes();
@@ -601,6 +628,13 @@ async function sampleHitches(page, opts) {
           const upgrade = renderState?.scene?.userData?.authoredUpgradeDiagnostics || null;
           const callbackMs = Number(perf.frameCallback?.last);
           const lastJob = Array.isArray(upgrade?.jobs) ? upgrade.jobs.at(-1) || null : null;
+          // Snapshot the job at spike time: the live object keeps mutating (endedAtMs/phases land
+          // later), so serializing it at finish made a just-ended job look recent.
+          const lastJobSnapshot = lastJob ? {
+            ...lastJob,
+            phases: lastJob.phases && typeof lastJob.phases === 'object'
+              ? { ...lastJob.phases } : null,
+          } : null;
           const lastPartLoad = Array.isArray(upgrade?.partLoads) ? upgrade.partLoads.at(-1) || null : null;
           const recentResources = performance.getEntriesByType('resource')
             .filter((entry) => /\.(?:glb|png|jpg|ktx2|json)(?:\?|$)/i.test(String(entry.name || ''))
@@ -640,7 +674,7 @@ async function sampleHitches(page, opts) {
               activeJobs: upgrade.activeJobs,
               maxConcurrentJobs: upgrade.maxConcurrentJobs,
               maxConcurrentDecode: upgrade.maxConcurrentDecode,
-              lastJob,
+              lastJob: lastJobSnapshot,
               lastPartLoad,
             } : null,
             recentResources,
@@ -664,6 +698,17 @@ async function sampleHitches(page, opts) {
 
     watchdog = setTimeout(finish, warmupMs + warmupMs + durationMs + 30000);
     requestAnimationFrame(tick);
+
+    function presentedHoldSnapshot() {
+      try {
+        const d = window.SF?.loop?.getDiagnostics?.() || {};
+        return {
+          gapsOver100: Number(d.presentedGapsOver100) || 0,
+          maxHeldMs: Number(d.maxHeldPresentMs) || 0,
+          episodes: Array.isArray(d.heldPresentEpisodes) ? d.heldPresentEpisodes.slice() : [],
+        };
+      } catch (_) { return null; }
+    }
 
     function authoredQueueSnapshot() {
       const scene = window.SF && window.SF.state && window.SF.state.render && window.SF.state.render.scene;
@@ -767,7 +812,18 @@ async function sampleHitches(page, opts) {
           }
         });
       }
-      if (owners.length === 0) return;
+      if (owners.length === 0) {
+        // A cache entry with no live owner is not a draw hitch, but dropping it entirely hides
+        // recompiles that the program-count diff did see. Keep it as separate audit evidence.
+        if (unresolvedProgramEvents.length < 8) {
+          unresolvedProgramEvents.push({
+            atMs: round(sampleStart == null ? 0 : now - sampleStart),
+            count: programs.length,
+            addedKeys,
+          });
+        }
+        return;
+      }
       programEvents.push({
         atMs: round(sampleStart == null ? 0 : now - sampleStart),
         count: programs.length,
@@ -805,13 +861,19 @@ async function sampleHitches(page, opts) {
         rigidBatchWaitStartedAt = null;
       }
       let queue = { pending: 0, running: false };
+      let activeAdmissions = 0;
       try {
+        const scene = state.render && state.render.scene;
         const queueStats = window.__SF_GET_AUTHORED_UPGRADE_QUEUE_STATS__;
         if (typeof queueStats === 'function') {
-          queue = queueStats(state.render && state.render.scene) || queue;
+          queue = queueStats(scene) || queue;
         }
-        if (queue.pending > 0 || queue.running) {
-          settleWait = `authored-queue:${queue.pending}:${queue.running ? 1 : 0}`;
+        // The queue can report idle while a job is still inside its compose/compile/commit legs.
+        // Sampling then starts inside a known main-thread admission — the artifact then blames the
+        // first frame's gap on "external scheduling". Wait for the job itself, not just the queue.
+        activeAdmissions = Number(scene?.userData?.authoredUpgradeDiagnostics?.activeJobs) || 0;
+        if (queue.pending > 0 || queue.running || activeAdmissions > 0) {
+          settleWait = `authored-queue:${queue.pending}:${queue.running ? 1 : 0}:${activeAdmissions}`;
           return false;
         }
       } catch (_) {}
@@ -828,7 +890,8 @@ async function sampleHitches(page, opts) {
           const admissionBusy = meshQueueRemaining > 0
             || !!render._meshReconcileDirty
             || queue.pending > 0
-            || queue.running;
+            || queue.running
+            || activeAdmissions > 0;
           if (admissionBusy) {
             settleWait = `mesh-missing:${entity.type || 'unknown'}:${entity.id}`;
             return false;
@@ -941,6 +1004,10 @@ function printReport(report) {
   console.log(`[hitch-budget] frames=${report.frameMs.samples} avg=${report.frameMs.avg}ms p95=${report.frameMs.p95}ms p99=${report.frameMs.p99}ms worst=${report.frameMs.max}ms`);
   console.log(`[hitch-budget] settle=${report.settleWait}`);
   console.log(`[hitch-budget] host busy=${report.hostLoad?.busyPct != null ? `${report.hostLoad.busyPct}%` : 'n/a'} (contended at >=70%)`);
+  if (report.presentedHolds) {
+    console.log(`[hitch-budget] presented gaps>=100ms=${report.presentedHolds.gapsOver100}`
+      + ` maxRepeatedMomentHold=${Math.round(report.presentedHolds.heldDeltaMs)}ms`);
+  }
   if (report.settleQueue) {
     console.log(`[hitch-budget] settleQueue pending=${report.settleQueue.pending} running=${report.settleQueue.running} activeJobs=${report.settleQueue.activeJobs} last=${report.settleQueue.lastJobKey || '-'} ${report.settleQueue.lastJobStatus || ''}`);
   }
@@ -951,6 +1018,9 @@ function printReport(report) {
       const owners = event.owners.map((owner) => `${owner.object}/${owner.material}`).join(', ') || 'unresolved';
       console.log(`  +${event.atMs}ms programs=${event.count} owners=${owners}`);
     }
+  }
+  if (report.unresolvedProgramEvents?.length) {
+    console.log(`[hitch-budget] unresolved program additions (no live owner): ${report.unresolvedProgramEvents.length}`);
   }
   console.log('[hitch-budget] histogram:');
   for (const bin of report.histogram) console.log(`  ${bin.label.padEnd(8)} ${bin.count}`);
@@ -974,8 +1044,8 @@ function printReport(report) {
 }
 
 function buildFailureEvidence({
-  frameBudgetMs, frameMs, settleWait, settleQueue, spikes, topSpikeSources, programEvents, pageErrors,
-  hostLoad, out,
+  frameBudgetMs, frameMs, presentedHolds, settleWait, settleQueue, spikes, topSpikeSources,
+  programEvents, pageErrors, hostLoad, out,
 }) {
   const reasons = [];
   if (settleWait !== 'settled') {
@@ -985,8 +1055,17 @@ function buildFailureEvidence({
     reasons.push(`runtime did not settle before sampling: ${settleWait}${queueNote}`);
   }
   if (frameMs.samples === 0) reasons.push('no post-warmup frames were sampled');
+  if (frameMs.samples > 0 && frameMs.p95 > frameBudgetMs + 0.05) {
+    reasons.push(`p95 frame interval ${frameMs.p95} ms exceeded the ${frameBudgetMs} ms cadence`);
+  }
   if (frameMs.unexpectedOverBudget > 0) {
     reasons.push(`${frameMs.unexpectedOverBudget} application-owned post-warmup frames exceeded ${frameBudgetMs} ms`);
+  }
+  if (presentedHolds && presentedHolds.gapsOver100 > 0) {
+    reasons.push(`${presentedHolds.gapsOver100} presented gap(s) of >=100 ms occurred during the sample`);
+  }
+  if (presentedHolds && presentedHolds.heldDeltaMs > 100) {
+    reasons.push(`the presented world repeated a moment for ${Math.round(presentedHolds.heldDeltaMs)} ms`);
   }
   if (programEvents.length > 0) reasons.push(`${programEvents.length} new GPU program events appeared after warm-up`);
   if (Number(hostLoad?.busyPct) >= 70) {

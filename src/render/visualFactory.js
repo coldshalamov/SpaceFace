@@ -4342,7 +4342,7 @@ export function hulkExemplarSpecsForShips(shipSpecs, idPrefix = 'crucible-warm:h
  */
 export function asteroidVisualExemplarSpecs(idPrefix = 'survival-roster-prewarm:asteroid:') {
   const prefix = String(idPrefix || 'survival-roster-prewarm:asteroid:');
-  return Object.keys(AST_TYPE).map((typeId) => ({
+  const specs = Object.keys(AST_TYPE).map((typeId) => ({
     id: `${prefix}${typeId}`,
     type: 'asteroid',
     pos: { x: 0, y: 0, z: 0 },
@@ -4350,13 +4350,26 @@ export function asteroidVisualExemplarSpecs(idPrefix = 'survival-roster-prewarm:
     alive: true,
     data: { typeId },
   }));
+  // A tinted common rock takes the flat tint + noise branch instead of the packed common
+  // surface, so its program is not the untinted exemplar's. Warm one representative tint;
+  // the colour value is a uniform and every tint shares the same program.
+  specs.push({
+    id: `${prefix}ast_common_rock:tinted`,
+    type: 'asteroid',
+    pos: { x: 0, y: 0, z: 0 },
+    radius: 12,
+    alive: true,
+    data: { typeId: 'ast_common_rock', tint: '#ffffff' },
+  });
+  return specs;
 }
 
 /**
  * The shared leaf pair (displaced geometry + surface material) for one asteroid type and
  * displacement variant — the exact cached objects buildAsteroid hands to the live leaf mesh.
  * The pool warm binds these so a pre-created chunk is byte-identical to what real rocks
- * register with; tint only repaints the material color uniform, so untinted covers it.
+ * register with. A tint is a different material key and a different map set for common rock,
+ * so untinted does not cover a tinted sector rock; buildAsteroidLeafWarmGroup mounts one.
  */
 export function asteroidLeafResources(typeId, variantIdx) {
   const canonical = canonicalAstTypeId(typeId);
@@ -4482,6 +4495,18 @@ export function buildAsteroidLeafWarmGroup() {
       exemplar.userData.rosterPrewarmLeaf = `asteroid:${typeId}:full`;
       root.add(exemplar);
     }
+  }
+  // Sector-tinted common rocks deliberately skip the pooled common surface (flat tint + noise),
+  // so the untinted exemplars above do not link their program — the first tinted rock admitted
+  // in flight paid an illustrated-surface link (Asteroid_652/653/654). Tint is a colour uniform,
+  // not a program axis: one representative tinted exemplar covers every tint value.
+  const tintedCommon = buildAsteroid({
+    id: 'leafwarm:ast_common_rock:tinted', type: 'asteroid', pos: { x: 0, y: 0, z: 0 },
+    radius: 12, alive: true, data: { typeId: 'ast_common_rock', tint: '#ffffff' },
+  });
+  if (tintedCommon) {
+    tintedCommon.userData.rosterPrewarmLeaf = 'asteroid:ast_common_rock:tinted';
+    root.add(tintedCommon);
   }
   return root;
 }
