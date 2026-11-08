@@ -636,7 +636,10 @@ async function sampleHitches(page, opts) {
               lastPartLoad,
             } : null,
             recentResources,
-            unexpected: attribution.length > 0,
+            // App-owned means the measured callback itself exceeded the frame budget. An active
+            // authored job or a nearby resource fetch is a correlate, not proof that this frame's
+            // 44 ms gap came from our code; scheduler-only frames stay in their own bucket.
+            unexpected: Number.isFinite(callbackMs) && callbackMs > resolveFrameBudgetMs(),
             attribution: attribution.length > 0 ? attribution : ['scheduler-only'],
             stress: window.__SF_HITCH_STRESS__ ? {
               nextWeapon: window.__SF_HITCH_STRESS__.nextWeapon,

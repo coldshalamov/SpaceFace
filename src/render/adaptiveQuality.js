@@ -83,15 +83,11 @@ export function detectGpu(renderer) {
 // Presets deliberately do not disable authored world content (ships, trails, stations): they lower
 // resolution and particle density, not the number of things in the world.
 export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
-  // Max FPS. Keeps the light language (bloom, engine trails, energy materials — the game reads
-  // black without them) and sheds the measured costs instead: shading resolution (pixel ratio 1x —
-  // a 2x-DPI panel otherwise shades 4x the pixels; renderer.applyRendererSize), the tight
-  // single-level bloom, and the low particle tier (the full sky tier locked an Intel iGPU to a
-  // 30 fps frame — spaceBackground._resolveTier). CAS sharpening holds the 0.75 scale crisp.
-  // The owner's panel is DPR 1.25; a sub-native raster plus a 1x pixel-ratio cap presented
-  // 0.53-0.68 physical pixels and read as pixelation on any zoom-out. The frame is
-  // submission-bound (render p95 flat across 0.60-0.90), so this profile now presents native:
-  // renderScale 1.0 and the integrated tier's 1.5 pixel-ratio cap let a 1.25 panel render at 1.25.
+  // High performance is now a cadence profile, not a picture cut: native raster, the authored
+  // two-level bloom, medium particles, Nocturne/trails/energy materials/postFx, and no sun-shadow
+  // map. The authored sky's own measurement says the mid tier holds 60 fps on this iGPU, and the
+  // frame is submission-bound; the 30 fps cap is the lever. The hitch governor may shed bloom/post
+  // under sustained blocking but never drops raster.
   low: Object.freeze({
     id: 'low',
     label: 'High performance',
@@ -111,11 +107,11 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
     energyMaterials: true,
     renderGraph: false,
     engineTrails: true,
-    particleQuality: 'low',
+    particleQuality: 'medium',
     frameCap: 30,
     dynamicResolution: false,
     postFx: true,
-    sharpen: true,
+    sharpen: false,
   }),
   // The shipped picture, unchanged: full-resolution render, medium particles, no shadow map, no
   // render graph. Every key matches the gameState video defaults so the chooser presses Balanced
@@ -230,12 +226,10 @@ export const QUALITY_PRESETS = Object.freeze([
     id: 'low',
     label: 'High performance',
     tier: 'low',
-    stays: Object.freeze(['bloom', 'engine trails', 'energy materials']),
+    stays: Object.freeze(['native raster', 'bloom', 'engine trails', 'energy materials',
+      'medium particles', 'Nocturne']),
     substitutes: Object.freeze([
-      'pixel ratio 1x',
-      'render scale 0.75 + sharpen',
-      'tight single-level bloom',
-      'low particles',
+      '30 fps cap',
       'no sun-shadow map',
       'no render graph',
     ]),

@@ -1216,7 +1216,11 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     presentationFrame.frameDt = frameDt;
     presentationFrame.rawFrameDt = rawFrameDt;
     if (state && state.render) {
-      const presentMs = frameDt * 1000;
+      // The presented interval is wall time since the last present, not the last rAF callback.
+      // At a 30 Hz cap the callback dt is 16.7 ms while the picture cadence is 33.3 ms.
+      const presentElapsedS = Number.isFinite(presentationFrame.presentElapsedS)
+        ? presentationFrame.presentElapsedS : frameDt;
+      const presentMs = presentElapsedS * 1000;
       state.render.lastPresentDtMs = presentMs;
       // Smoothed cadence of THIS host: heavy-admission gates judge a frame "late" against it, so a
       // steady 50 ms machine still admits models instead of deferring every beat (pop-in).
