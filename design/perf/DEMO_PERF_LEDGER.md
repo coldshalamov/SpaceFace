@@ -223,6 +223,30 @@ Focused proof: `test/velocity-vectoring.test.mjs` new from-rest held-turn case �
 combat speed and out of the full retro hemisphere for 15 s; velocity-vectoring 18/18, flightV3 spec
 + governed reverse 13/13, `test:fast` 39/39, `check:playable` 18/18.
 
+## Retained-batch churn (2026-11-08)
+
+The stress gate's "new GPU program events" were the retained rigid batch, not a new mesh shader:
+`[GPU brick]`-style events named `SF_RigidOpaqueBatch_nocast|noreceive`, and the program count
+went 152 → 153 → 152 every few seconds. A live probe caught the exact reason:
+`[rigid-batch] rollback membership-quiet-rebuild` — the controller folded newly streamed roots
+into the active cohort every 8 quiet frames, disposing and re-preparing (and relinking) the whole
+batch.
+
+Fixed:
+
+- New roots now stay direct for the active cohort's lifetime; the cohort reforms from current roots
+  only when it empties or the sector changes. A few direct hulls cost less than a 100–500 ms relink.
+- A source that drifts in material/tint/uniform/shadow state is demoted **per entry** to its direct
+  draw; the surviving cohort keeps its geometry/program. Geometry, reparent, render-order,
+  compile-hook and layer writers still take the full rollback.
+- The hitch gate now waits (bounded) for the retained batch's first activation, and counts a
+  "new GPU program" only when an added program is attached to a live scene material. A disposal is
+  not a link, and an ownerless cache entry is not a drawn program.
+
+A quiet normal-flight probe after the change: batch active with 46 instances / 7 batches, 0
+rollbacks while roots streamed out; no `membership-quiet-rebuild` event. Remaining stress reds are
+marginal 50.0 ms frames and the stall render spikes, not the batch.
+
 ## Rules
 
 - Do not lower the bar or rename a hitch; fix the frame or name the residual.
