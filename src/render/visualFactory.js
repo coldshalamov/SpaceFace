@@ -47,7 +47,7 @@ import { buildRuudVisual } from './characters/ruudModel.js';
 import { modelTruthMountFractions } from '../data/modelTruth.js';
 import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec, ROCK_SURFACE_VARIANTS } from './rockSurfaceLibrary.js';
-import { rockFamilyFor, ROCK_FAMILY_TINT_MIX, ROCK_FAMILY_EMISSIVE_LIFT } from './rockFamilyLibrary.js';
+import { getReadyRockFamilies, rockFamilyFor, ROCK_FAMILY_TINT_MIX, ROCK_FAMILY_EMISSIVE_LIFT } from './rockFamilyLibrary.js';
 import {
   COMMON_ROCK_MATERIAL_ROLES,
   COMMON_ROCK_MINERAL_SHEEN,
@@ -2470,6 +2470,16 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
         spacefaceBareRock: { typeId, tint: tint == null ? null : tint, variant: variantIdx | 0 },
       };
     }
+    // Non-common rocks built before their family maps decode keep the procedural tint/noise
+    // material. Tag them so the family-ready continuation can re-material them onto the decoded
+    // maps; without this an old rock sits on the poorer surface AND on a program the family
+    // warm never links, so its first draw pays the whole illustrated-surface link in flight.
+    if (!family && typeId !== 'ast_common_rock' && def.variant !== 'ice') {
+      material.userData = {
+        ...(material.userData || {}),
+        spacefaceFamilylessRock: { typeId, tint: tint == null ? null : tint, variant: variantIdx | 0 },
+      };
+    }
     return commonSurface
       ? configureCommonRockPbr(material)
       : stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.ROCK);
@@ -2489,6 +2499,30 @@ export function upgradeBareRockMaterials(root) {
     if (!tag) return;
     const typeId = canonicalAstTypeId(tag.typeId);
     const def = AST_TYPE[typeId] || AST_TYPE.ast_common_rock;
+    const next = astMaterial(typeId, def, tag.tint == null ? undefined : tag.tint, tag.variant);
+    if (next && next !== node.material) {
+      node.material = next;
+      count += 1;
+    }
+  });
+  return count;
+}
+
+/**
+ * Re-skin every non-common rock under `root` that was built before its generated family maps
+ * decoded. Unlike the bare common-rock path this also improves the picture: the procedural
+ * tint/noise material is replaced by the decoded base-colour/normal/emissive family.
+ */
+export function upgradeFamilylessRockMaterials(root) {
+  if (!root || typeof root.traverse !== 'function' || !getReadyRockFamilies()) return 0;
+  let count = 0;
+  root.traverse((node) => {
+    const tag = node && node.material && node.material.userData
+      && node.material.userData.spacefaceFamilylessRock;
+    if (!tag) return;
+    const typeId = canonicalAstTypeId(tag.typeId);
+    const def = AST_TYPE[typeId] || AST_TYPE.ast_common_rock;
+    if (!rockFamilyFor(def.variant)) return;
     const next = astMaterial(typeId, def, tag.tint == null ? undefined : tag.tint, tag.variant);
     if (next && next !== node.material) {
       node.material = next;

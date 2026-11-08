@@ -160,7 +160,7 @@ import {
   loadFoundryIblTexture,
   resolveIblSource,
 } from './foundryEnvironment.js';
-import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, fractureFragmentFilesForDef, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, syncSwarmThreatPlate, updateHulkEmber, upgradeBareRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
+import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, fractureFragmentFilesForDef, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, syncSwarmThreatPlate, updateHulkEmber, upgradeBareRockMaterials, upgradeFamilylessRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
 import { createOpeningStandInWarmSubject, installVisualOverrides, materializeBoundaryResolvingMarker, packagedPropSpec, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, setBoundaryStandInResolver, upgradeAdmissionStandIn } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,
@@ -29711,6 +29711,30 @@ export const render = {
     const stillLive = () => !!(this._meshes && this.scene === liveScene);
     const compile = state && state.render && state.render.compileObjectPipelines;
     if (typeof compile !== 'function') return;
+    // A rock built before the family maps decoded keeps the procedural tint/noise material: a
+    // flatter surface AND a program this warm group never links (the group builds after decode).
+    // Re-skin live and prewarm roots onto the decoded family here, paced like the other reskin
+    // legs, so the first live draw is the family program and already compiled.
+    const familyReskinnedRoots = [];
+    let familyReskinVisited = 0;
+    try {
+      for (const mesh of this._meshes.values()) {
+        if (!stillLive()) return;
+        if (upgradeFamilylessRockMaterials(mesh) > 0) familyReskinnedRoots.push(mesh);
+        if (++familyReskinVisited % 32 === 0) await yieldToBrowser();
+      }
+      for (const root of this._rosterPrewarmRoots || []) {
+        if (!stillLive()) return;
+        if (upgradeFamilylessRockMaterials(root) > 0) familyReskinnedRoots.push(root);
+        if (++familyReskinVisited % 32 === 0) await yieldToBrowser();
+      }
+    } catch (_) { /* family reskin is best-effort */ }
+    for (const root of familyReskinnedRoots) {
+      if (!stillLive()) return;
+      try { compile.call(state.render, root, { explicit: true }); } catch (_) { /* best effort */ }
+      await yieldToBrowser();
+    }
+    if (!stillLive()) return;
     const warmRoot = buildAsteroidLeafWarmGroup();
     warmRoot.visible = false;
     liveScene.add(warmRoot);
