@@ -302,14 +302,18 @@ export function waveOpeningLine(wave, plan) {
     if (plan.openingLesson) {
       return `Wave ${wave}. One hostile on the field — the rest are holding. The rock beside you is ammunition: line it and throw it.`;
     }
+    const namecheck = newcomer ? ` ${newcomer} is new.` : '';
     if (swarm.boss) {
       // The champion NAMES ITSELF. A boss wave can be one Dreadnought or a wing of three raiders,
       // and "Corsair Raider leads" would describe the second one as if it were the first.
       const label = swarm.bossLabel || 'A capital signature';
       const line = swarm.bossLine ? ` ${swarm.bossLine}` : '';
-      return `Wave ${wave}. ${stageLine}${arrival} ${label}.${line}${pressure}${wall}${actLine} ${closing}`;
+      // S14 puts champions on odd waves, so a boss round can also be a debut round. Wave 5's
+      // Iron Maw arrives with the Detonator Dart's staged first body, and wave 15's Foreman with
+      // the Patrol Lawman's. The champion speaks first. The debut keeps its one namecheck, so it
+      // does not arrive unannounced on the busiest round so far.
+      return `Wave ${wave}. ${stageLine}${arrival} ${label}.${line}${namecheck}${pressure}${wall}${actLine} ${closing}`;
     }
-    const namecheck = newcomer ? ` ${newcomer} is new.` : '';
     // LW-05: a scheduled recurring character is named before contact, same as the debut it
     // replaced — its staged seat lands seconds into the wave, so it is inbound, not arrived.
     const character = swarm.character && typeof swarm.character.name === 'string' && swarm.character.name

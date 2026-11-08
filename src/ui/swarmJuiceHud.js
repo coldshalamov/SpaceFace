@@ -46,12 +46,21 @@ export function swarmPopupText({ word = '', score = 0, credits = 0 } = {}) {
   return parts.join(' ');
 }
 
-/** The countdown-era slam text: the round figure plus the card's sub-line. */
+/**
+ * The countdown-era slam text: the round figure plus the card's sub-line.
+ *
+ * S14 moved the champions onto 5, 15, 25…, so a boss round can also be a debut round: wave 5's
+ * Iron Maw lands with the Detonator Dart's first body, wave 15's Foreman with the Patrol
+ * Lawman's, and the Brood's undertow and pox sac debut under the wave-55 and wave-75
+ * champions. A boss round always raises the versus card and the boss bar, and both already
+ * name the champion. That leaves this one sub-line as the only place a new threat can be
+ * named. On a shared round it names the newcomer, not the boss a third time.
+ */
 export function swarmSlamSub({ boss = null, newcomer = null } = {}) {
-  if (boss && typeof boss.name === 'string' && boss.name) return `BOSS · ${boss.name}`;
-  if (newcomer && typeof newcomer.name === 'string' && newcomer.name) {
-    return `NEW THREAT · ${newcomer.name}`;
-  }
+  const bossName = boss && typeof boss.name === 'string' && boss.name ? boss.name : '';
+  const newName = newcomer && typeof newcomer.name === 'string' && newcomer.name ? newcomer.name : '';
+  if (newName) return `NEW THREAT · ${newName}`;
+  if (bossName) return `BOSS · ${bossName}`;
   return '';
 }
 
