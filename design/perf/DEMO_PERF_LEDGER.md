@@ -314,6 +314,37 @@ renderer wiring assertion). `test/rock-surface-library.test.mjs` also had a pre-
 regex pinned to `async () =>` after the opener gained an `options` argument; the contract is
 unchanged and the assertion now names the real signature.
 
+### Content 1:1, composed captures, and the presented-hold gate (2026-11-08)
+
+The visual audit separated “native buffer” from “native picture”: the drawing buffer was 1832×973
+while the scene ran at 0.9 content (1649×876) and CAS reconstructed it, with no measured cadence
+win. That cut is gone:
+
+- `COMBINED_READABILITY_FLOOR` is **1**. The Auto/30 fps posture keeps `dynResScale 1`,
+  `contentScale 1`, `casSharpenActive false`; the hitch governor still stops at post-FX level 2
+  and never drops raster.
+- The witness publishes `picture.contentNative` (scene scale ≥0.999, content scale ≥0.999, no CAS
+  upscale) and returns a **soft-picture** failure for a native buffer with sub-native content.
+  `report.md` prints `content: 1:1` or `content: NOT 1:1 (...)`.
+- Composed `t00-composed.png` / `t-final-composed.png` captures keep the HUD, so legibility and the
+  final post chain are reviewed together. The first composed frame shows the mission tracker, the
+  speed/energy stack, radar and prompt deck legible at 1:1.
+
+The hitch audit's residual class — a presented-world hold with normal rAF cadence — is now a
+first-class number. `presentationRunner` records `lastPresentedGapMs`, `maxPresentedGapMs`,
+`presentedGapsOver100`, the current `heldPresentMs` streak, `maxHeldPresentMs`, and a small ring of
+completed `heldPresentEpisodes` (wall ms). A repeated presented moment while time advances is
+wall-time held, not just a duplicate frame. The witness fails **world-hold** above 100 ms
+(first→last delta), and `check-hitch-budget` fails the sample on any presented gap ≥100 ms or a
+repeated-moment hold >100 ms, using episode wall times so a new hold smaller than an earlier max
+cannot hide.
+
+The stress gate is now fail-closed and auditable: it waits for `authoredUpgradeDiagnostics.activeJobs`
+(not only the queue's `pending/running`) before starting the sample, fails `p95` above the cadence
+budget, records every unexpected spike separately from the top-20 list, snapshots the authored job at
+spike time instead of serializing its later mutation, keeps unresolved program additions as audit
+evidence, records host CPU busy, and refuses a ≥70% window.
+
 ## Rules
 
 - Do not lower the bar or rename a hitch; fix the frame or name the residual.
