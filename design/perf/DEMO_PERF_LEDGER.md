@@ -297,6 +297,23 @@ flight each) now name the remaining tail instead of leaving it as "admission/app
   replay events, reply mode), so an apparent "200 ms admission/apply" must name the mode before it
   is treated as a flight hitch.
 
+### Cold family-less rock program (2026-11-08)
+
+The probabilistic post-warmup program link was not a new ship: the owners were live
+`Asteroid_652/653/654` meshes sharing one `MeshStandardMaterial` with a roughness map and no
+albedo map. A non-common rock built before its generated family maps decode keeps the procedural
+tint/noise material (`visualFactory.astMaterial`, no `:fam` key). The family-ready warm built a
+leaf group from the *decoded* family materials, so the old procedural program was never linked and
+paid the whole illustrated-surface link on its first draw in flight.
+
+Fix: tag that material (`spacefaceFamilylessRock`) and re-skin every live/prewarm rock onto the
+decoded family in `_runRockFamilyDecodeRewarm` before its paced compile. The same rock now also
+wears the intended base-colour/normal/emissive maps instead of the noise fallback. Focused proof:
+`test/rock-family-library.test.mjs` (pre-decode tag → decode → one swap → idempotent; plus the
+renderer wiring assertion). `test/rock-surface-library.test.mjs` also had a pre-existing brittle
+regex pinned to `async () =>` after the opener gained an `options` argument; the contract is
+unchanged and the assertion now names the real signature.
+
 ## Rules
 
 - Do not lower the bar or rename a hitch; fix the frame or name the residual.
