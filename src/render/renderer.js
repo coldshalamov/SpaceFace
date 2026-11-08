@@ -34586,7 +34586,10 @@ function applyRendererSize(renderer, state) {
   // iGPU-bound scene needs fill relief at the raster source. Runtime intent only
   // — never a settings.video write — and any explicit video key flips quality to
   // Manual and restores the player's own resolution choice in the same publish.
-  // The Auto policy also caps presentation at 30 Hz (presentationRunner) so the loop stops\n  // presenting frames it cannot finish; the raster scale keeps the authored 0.9 sharpness.
+  // The Auto policy also caps presentation at 30 Hz (presentationRunner) so the loop stops
+  // presenting frames it cannot finish. The raster stays native at the integrated cap; the
+  // combined readability floor is 1.0, so dyn-res cannot soften the scene while the frame is
+  // submission-bound.
   const reliefGpu = state.render && state.render.gpu;
   const relief = reliefGpu && reliefGpu.tier === 'integrated'
     && adaptiveResolutionEnabledForSettings(reliefGpu, vd) === true;

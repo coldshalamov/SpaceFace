@@ -42,7 +42,7 @@ test('picture and worker-lane blocks surface the native contract and apply tail'
     hitchReliefLevel: 0, contentScale: 1, effectiveSceneScale: 1, activePath: 'bloom',
     bloomSelected: true, bloomLevels: 2, bloomStrength: 0.4, casSharpenActive: false,
     casReconstruction: 'bypass', particleQuality: 'medium', skyTier: 'mid',
-    sharpen: false, frameCap: 30,
+    sharpen: false, frameCap: 30, contentNative: true,
   };
   last.lane = {
     workerApplyMaxMs: 224.7, appliesOver100ms: 2, msSinceLastAppliedReply: 16,
@@ -52,6 +52,7 @@ test('picture and worker-lane blocks surface the native contract and apply tail'
   const text = formatRuntimeWitnessReport({ verdict: classifyRuntimeWitness(samples), samples });
   assert.match(text, /## Picture contract/);
   assert.match(text, /native: yes/);
+  assert.match(text, /content: 1:1/);
   assert.match(text, /particles medium \| sky mid/);
   assert.match(text, /## Worker lane/);
   assert.match(text, /apply max: 224\.7 ms/);
@@ -66,6 +67,19 @@ test('a sub-native buffer is reported as a picture failure, not silently accepte
   };
   const text = formatRuntimeWitnessReport({ verdict: classifyRuntimeWitness(samples), samples });
   assert.match(text, /native: NO/);
+});
+
+test('a native buffer with a 0.9 content scale is soft-picture, not presenting', () => {
+  const samples = series();
+  const last = samples[samples.length - 1];
+  last.picture = {
+    native: true, contentNative: false, effectiveSceneScale: 0.9, contentScale: 0.9,
+    casSharpenActive: true,
+  };
+  const verdict = classifyRuntimeWitness(samples);
+  assert.equal(verdict.ok, false);
+  assert.equal(verdict.kind, 'soft-picture');
+  assert.equal(verdict.facts.contentNative, false);
 });
 
 test('a moving sim clock with a stuck GPU frame is draw-dead, not healthy', () => {

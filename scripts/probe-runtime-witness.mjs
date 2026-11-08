@@ -134,6 +134,7 @@ const consoleHits = [];
 const pageErrors = [];
 const snapshots = [];
 const canvasFrames = [];
+const composedFrames = [];
 const loadingReadinessSamples = [];
 let loadingProgressEvents = [];
 let probeInstrumentation = null;
@@ -2320,6 +2321,16 @@ function readWitnessInPage() {
         ? Number(bloom.contentScale) : null,
       effectiveSceneScale: post && Number.isFinite(Number(post.effectiveSceneScale))
         ? Number(post.effectiveSceneScale) : null,
+      // contentNative is the scene's own 1:1 test, not the buffer's. A 0.9 content scale plus CAS
+      // is a reconstruction; a native drawing buffer does not make the picture native.
+      contentNative: (() => {
+        const effective = post && Number.isFinite(Number(post.effectiveSceneScale))
+          ? Number(post.effectiveSceneScale) : 1;
+        const bloomScale = bloom && Number.isFinite(Number(bloom.contentScale))
+          ? Number(bloom.contentScale) : 1;
+        const cas = bloom ? bloom.casSharpenActive === true : false;
+        return effective >= 0.999 && bloomScale >= 0.999 && cas !== true;
+      })(),
       casSharpenActive: bloom ? bloom.casSharpenActive === true : null,
       casReconstruction: bloom ? bloom.casReconstruction : null,
       sceneTargetWidth: post && Number.isFinite(Number(post.sceneTargetWidth))
@@ -3122,6 +3133,14 @@ async function captureCanvasFrame(targetPage, shotPath, elapsedMs) {
   const hash = createHash('sha256').update(await readFile(shotPath)).digest('hex');
   canvasFrames.push({ elapsedMs, path: shotPath, hash });
   return hash;
+}
+
+// The composed frame keeps the HUD and is captured at the page's device scale, so legibility and
+// the final presentation (post + CAS + DOM) are reviewed together instead of canvas-only.
+async function captureComposedFrame(targetPage, shotPath, elapsedMs) {
+  await targetPage.screenshot({ path: shotPath, type: 'png' });
+  composedFrames.push({ elapsedMs, path: shotPath });
+  return shotPath;
 }
 
 async function dismissCinematic(targetPage) {
@@ -3935,6 +3954,10 @@ try {
     if (!NO_SAMPLE_SHOTS && !PRODUCTION_ROUTE && elapsedMs >= shotIndex * (SAMPLE_MS / 2)) {
       const shotPath = path.join(OUT, `t${String(shotIndex).padStart(2, '0')}.png`);
       await captureCanvasFrame(page, shotPath, elapsedMs).catch((err) => log(`screenshot failed: ${err}`));
+      if (shotIndex === 0) {
+        await captureComposedFrame(page, path.join(OUT, 't00-composed.png'), elapsedMs)
+          .catch((err) => log(`composed screenshot failed: ${err}`));
+      }
       shotIndex += 1;
     }
     await page.waitForTimeout(SAMPLE_EVERY_MS);
@@ -4029,6 +4052,7 @@ try {
   if (!NO_SAMPLE_SHOTS) {
     const finalShot = path.join(OUT, 't-final.png');
     await captureCanvasFrame(page, finalShot, Date.now() - started).catch(() => {});
+    await captureComposedFrame(page, path.join(OUT, 't-final-composed.png'), Date.now() - started).catch(() => {});
   }
 } catch (error) {
   primaryError = error;
@@ -4291,6 +4315,7 @@ const report = {
   first: snapshots[0] || null,
   last: snapshots[snapshots.length - 1] || null,
   canvasFrames,
+  composedFrames,
   pageErrors,
   consoleHits,
   logs,

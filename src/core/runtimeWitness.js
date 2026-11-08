@@ -434,6 +434,7 @@ export function classifyRuntimeWitness(samples, { canvasHashes = [] } = {}) {
   const canvasChanged = hashes.length >= 2 && new Set(hashes).size > 1;
   const canvasStuck = hashes.length >= 2 && new Set(hashes).size === 1;
   const hitchCount = tail.filter((row) => row.hitch === true).length;
+  const picture = last.picture && typeof last.picture === 'object' ? last.picture : null;
   const topPhase = last.topPhase || null;
   const facts = {
     sampleCount: tail.length,
@@ -459,6 +460,10 @@ export function classifyRuntimeWitness(samples, { canvasHashes = [] } = {}) {
     topPhase,
     topPhaseP95: last.topPhaseP95,
     speed: last.speed,
+    contentNative: picture ? picture.contentNative !== false : null,
+    contentScale: picture ? picture.contentScale ?? null : null,
+    effectiveSceneScale: picture ? picture.effectiveSceneScale ?? null : null,
+    casSharpenActive: picture ? picture.casSharpenActive ?? null : null,
   };
 
   if (last.contextLost === true) {
@@ -548,6 +553,17 @@ export function classifyRuntimeWitness(samples, { canvasHashes = [] } = {}) {
     ? worldSubmissionDelta >= 2 : rendererObserved && rendererFrameDelta >= 2;
   const pictureLive = rendererLive || canvasChanged;
   if (simDelta >= 0.5 && frameDelta >= 8 && pictureLive && !canvasStuck) {
+    if (picture && picture.contentNative === false) {
+      return {
+        ok: false,
+        kind: 'soft-picture',
+        headline: `The world is presenting below 1:1 content`
+          + ` (scene ${finite(picture.effectiveSceneScale).toFixed(2)},`
+          + ` CAS ${picture.casSharpenActive === true ? 'sharpen' : 'off'}).`,
+        next: 'Restore content scale 1.0 or prove a matched cadence gain; a native drawing buffer is not a native picture.',
+        facts,
+      };
+    }
     const hitchHeavy = hitchCount >= Math.max(3, Math.floor(tail.length * 0.4));
     if (hitchHeavy) {
       return {
@@ -669,11 +685,20 @@ function formatPictureLines(picture) {
     ? `${picture.bufferWidth}x${picture.bufferHeight}` : 'n/a';
   const css = picture.cssWidth != null && picture.cssHeight != null
     ? `${picture.cssWidth}x${picture.cssHeight} @${num(picture.devicePixelRatio)}dpr` : 'n/a';
+  const contentNative = picture.contentNative === true
+    || (picture.contentNative == null
+      && Number(picture.effectiveSceneScale) >= 0.999
+      && picture.casSharpenActive !== true);
+  const contentDetail = contentNative
+    ? '1:1'
+    : `NOT 1:1 (scene ${num(picture.effectiveSceneScale)}, content ${num(picture.contentScale)}`
+      + `, CAS ${picture.casSharpenActive === true ? 'sharpen' : 'off'})`;
   return [
     '',
     '## Picture contract',
     `- native: ${picture.native === true ? 'yes' : picture.native === false ? 'NO' : 'n/a'}`
       + ` (buffer ${buffer}, css ${css}, ratio ${num(picture.pixelRatio)})`,
+    `- content: ${contentDetail}`,
     `- raster: renderScale ${num(picture.renderScale)} | dynRes ${num(picture.dynResScale)}`
       + ` | hitchRelief ${picture.hitchReliefLevel ?? 0} | contentScale ${num(picture.contentScale)}`
       + ` | effective ${num(picture.effectiveSceneScale)}`,

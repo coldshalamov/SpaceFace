@@ -445,18 +445,19 @@ export const GPU_TIER_DYNRES_FLOOR = Object.freeze({
  * twice — so the product, not each channel, is what must stay readable. The software emergency
  * tier is exempt: a CPU rasterizer needs the depth more than the readability.
  *
- * 0.7, not the old 0.6: on a top-down picture the 0.6 product read as pixelation in ordinary
- * zoomed-out flight. The adaptive controller still has real headroom above the 0.85 demo base,
- * but it can no longer soften the game into mush.
+ * Native content is the contract: the demo drawing buffer is already native (renderScale 1,
+ * integrated raster cap 1.0) and the frame is submission-bound, so shrinking the scene inside
+ * that buffer buys no measured cadence and reads as softness. Keep the combined product at 1:1;
+ * the hitch governor handles blocking with post-FX only. The software emergency tier is exempt:
+ * a CPU rasterizer needs the depth more than the readability.
  */
-export const COMBINED_READABILITY_FLOOR = 0.9;
+export const COMBINED_READABILITY_FLOOR = 1;
 
 /**
  * Effective dyn-res floor once automatic raster relief is already below 1: the deeper the
  * drawing-buffer relief, the shallower the content scale must stay to hold the combined
  * product at COMBINED_READABILITY_FLOOR. `rasterRelief` is the product of the automatic
- * reliefs only (integrated cap 0.9, hitch relief 0.8) — the player's own renderScale choice
- * belongs to Manual and is not rescued here.
+ * reliefs only — the player's own renderScale choice belongs to Manual and is not rescued here.
  */
 export function adaptiveFloorForCombinedScale(tierFloor, rasterRelief) {
   const relief = clamp(Number(rasterRelief) || 1, 0.2, 1);
