@@ -1385,6 +1385,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     if (destroyed || suspended || !isPresentingState(lifecycleState)) return;
 
     diagnostics.executedFrames++;
+    // Presentation heartbeat: every callback proves the page can still present. If beats stop,
+    // the worker holds authoritative time instead of running ahead into a later jump.
+    try { simulationRunner.heartbeat?.(); } catch (_) { /* heartbeat is best-effort */ }
     const restoring = lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING;
     const callbackStart = measureNow();
     let perf = null;

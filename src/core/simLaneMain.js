@@ -2181,6 +2181,10 @@ export function createSimLaneRuntime({
       flushDirectives({ projectCursor: workerClockMode === 'worker-local' });
       return advanceResult;
     },
+    heartbeat() {
+      if (workerClockMode !== 'worker-local' || laneClosed || !ready) return;
+      try { channel.post({ kind: 'laneHeartbeat' }); } catch (_) { /* best-effort beat */ }
+    },
     stepOnce() {
       assertLaneOpen();
       pendingSteps++;
