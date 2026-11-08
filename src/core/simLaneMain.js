@@ -1136,6 +1136,7 @@ export function createSimLaneRuntime({
       }
       for (const ev of msg.events) {
         if (ev && typeof ev.t === 'string') {
+          const eventStartedAtMs = nowMs();
           try {
             const p = remapEventPayload(ev.p);
             if (ev.t === 'save:store-synced') {
@@ -1186,6 +1187,11 @@ export function createSimLaneRuntime({
               if (emitSerial != null && world) world.enterSerial = prevSerial;
             }
           } catch (_) { boundaryErrorCount++; }
+          const eventMs = Math.max(0, nowMs() - eventStartedAtMs);
+          if (eventMs >= WORKER_SLOW_EVENT_MS) {
+            if (workerSlowEvents.length >= 16) workerSlowEvents.shift();
+            workerSlowEvents.push({ t: ev.t, ms: eventMs, atMs: nowMs(), wallMs: Date.now() });
+          }
         }
       }
     }
@@ -1410,6 +1416,14 @@ export function createSimLaneRuntime({
   let workerApplyMs = 0;
   let workerApplyMaxMs = 0;
   let workerApplyOver100 = 0;
+  // The last reply is usually a healthy one; keep the cost block of the worst apply and a small
+  // ring of every >100 ms apply so a rare stall can be attributed after the fact.
+  let workerApplyMaxWork = null;
+  const workerSlowApplies = [];
+  // Event replay is a synchronous bus dispatch: one expensive listener blocks the presented
+  // frame. Name the event that actually paid it rather than blaming the whole reply.
+  const WORKER_SLOW_EVENT_MS = 8;
+  const workerSlowEvents = [];
   let openFreeze = null;
   let freezeSampler = null;
   let workerClockGeneration = 0;
@@ -1653,8 +1667,35 @@ export function createSimLaneRuntime({
       applyTickReply(msg);
     } finally {
       workerApplyMs = Math.max(0, nowMs() - started);
-      if (workerApplyMs > workerApplyMaxMs) workerApplyMaxMs = workerApplyMs;
-      if (workerApplyMs > 100) workerApplyOver100++;
+      if (workerApplyMs > workerApplyMaxMs) {
+        workerApplyMaxMs = workerApplyMs;
+        workerApplyMaxWork = workerLastReplyWork
+          ? { ...workerLastReplyWork, applyMs: workerApplyMs } : null;
+      }
+      if (workerApplyMs > 100) {
+        workerApplyOver100++;
+        if (workerSlowApplies.length >= 8) workerSlowApplies.shift();
+        // A slow apply is usually one listener, but a long tail of cheap replays looks the same in
+        // the total. Keep the type histogram only for the rare slow reply.
+        const eventTypes = {};
+        let eventCount = 0;
+        if (Array.isArray(msg.events)) {
+          for (const event of msg.events) {
+            const type = event && typeof event.t === 'string' ? event.t : '?';
+            eventTypes[type] = (eventTypes[type] || 0) + 1;
+            eventCount += 1;
+          }
+        }
+        workerSlowApplies.push({
+          atMs: nowMs(),
+          wallMs: Date.now(),
+          mode: state?.mode || null,
+          applyMs: workerApplyMs,
+          work: workerLastReplyWork ? { ...workerLastReplyWork } : null,
+          eventCount,
+          eventTypes,
+        });
+      }
       lastAppliedAtMs = nowMs();
       // E10 frame truth: the authoritative cost chain recorded per reply (2–10 Hz).
       const frameTruth = state && state.frameTruth;
@@ -2334,6 +2375,9 @@ export function createSimLaneRuntime({
         workerApplyMs,
         workerApplyMaxMs,
         workerApplyOver100,
+        workerApplyMaxWork,
+        workerSlowApplies: workerSlowApplies.slice(),
+        workerSlowEvents: workerSlowEvents.slice(),
         freezeActive: openFreeze != null,
         freezeEpisodes,
         msSinceLastAppliedReply: lastAppliedAtMs >= 0

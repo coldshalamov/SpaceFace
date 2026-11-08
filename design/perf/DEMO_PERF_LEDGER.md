@@ -252,6 +252,51 @@ Verification after these changes: `check:playable` 18/18; `check:sim` and `check
 and witness reruns are invalid while the shared host is above ~70 % CPU (it reached 87 % from
 another agent's session).
 
+## Picture, present clock and gate truth (2026-11-08)
+
+Three audits kept this from being called optimal. What changed:
+
+- **The Auto/High-performance picture is no longer a quality cut.** `particleQuality` is **medium**
+  (the authored mid sky tier; the source's own measurement says mid holds 60 fps on this iGPU and
+  the frame is submission-bound) and `sharpen` is **false** at native raster. The legacy unsharp was
+  left over from the 0.75-scale posture and doubled with CAS on any dyn-res dip.
+- **CAS ignores sub-pixel fractional footprints.** `resolveCasSharpenActive` floors the CSS×DPR
+  footprint, so a 1600×900 buffer against 1600.5×900.5 never reads as an upscale; a full-pixel
+  deficit still does.
+- **VFX, camera follow, feel and UI advance on the presented interval**, not the rAF callback dt.
+  At a 30 Hz cap on 60 Hz the callback dt is 16.7 ms while the picture cadence is 33.3 ms; the old
+  wiring ran cosmetics at 0.5× wall speed (0.25× at 120 Hz) while the snapshot world ran at 1×.
+  `state.render.lastPresentDtMs` is now the presented interval too.
+- **Receipt-lane content changes keep settled obstacle geometry.** A caption/toast text or
+  show/hide no longer clears the measured rects; only a layout/settings invalidation does. The
+  busy-lane safety tick re-places against the last measurement and still loses to a real one.
+- **The hitch gate reports the picture and the worker lane.** `probe-runtime-witness` now records
+  `picture` (native buffer vs CSS×DPR, renderScale, dynRes, relief level, contentScale, CAS state,
+  bloom depth, particle/sky tier, sharpen, cap) and `lane` (apply max, >100 ms applies, freeze
+  state, last-reply fold/reconcile/events); `report.md` prints both. The stress gate also records
+  the parent chain and material identity of any post-warmup program link.
+
+Latest quiet-host stress gate (20 s warm-up, 30 s sample, 1280×720 headed): **pass**, p50 16.67 /
+p95 33.3 / p99 33.39, **0 app-owned >50 ms**, 6 **scheduler-only** >50 ms, **0** post-warmup program
+events. Two earlier runs of the same gate each caught one illustrated-surface program link at
+~3.6–3.8 s (roughness-map-only material, 4 anonymous meshes) — a mid-flight traffic family that
+its admission did not warm. The identity instrumentation above is in place; treat that link as
+probabilistic and unresolved, not fixed by the passing run.
+
+Two quiet-host normal-flight witnesses after the telemetry landed (`native-posture-3/4`, 20 s of
+flight each) now name the remaining tail instead of leaving it as "admission/apply 200 ms":
+
+- Picture: buffer **1832×973 at CSS 1466×779 @1.25** — native; `renderScale 1`, `dynRes 0.90`
+  with **CAS sharpen active**, `hitchRelief 0`, bloom route with 2 levels, particles **medium**,
+  sky **mid**, sharpen false, cap 30. Presentation p95 **24.4 / 25.8 ms** (budget 33.3).
+- Worker lane: no freeze episodes, command-in-flight 0. The only apply over 100 ms in each run is
+  the **opening scene reply** (`game:newGame`, `game:scenePrepared`, `sector:enter`, 101 spawns;
+  apply 122–125 ms, of which **106–118 ms is `sector:enter` replay**). Mid-flight replies fold in
+  0.6–7.1 ms and reconcile in <0.1 ms; no mid-flight apply over 100 ms was observed.
+- The witness report now prints `picture` and `worker lane` (apply max, slow-reply split, slow
+  replay events, reply mode), so an apparent "200 ms admission/apply" must name the mode before it
+  is treated as a flight hitch.
+
 ## Rules
 
 - Do not lower the bar or rename a hitch; fix the frame or name the residual.

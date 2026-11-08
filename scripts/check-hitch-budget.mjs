@@ -717,11 +717,21 @@ async function sampleHitches(page, opts) {
             const currentKey = properties && properties.currentProgram
               ? programKey(properties.currentProgram) : null;
             if (!currentKey || !addedSet.has(currentKey)) continue;
+            // A program link is only actionable if the artifact names the family that paid it.
+            // The object name is usually empty, so record the ancestor chain that carries the
+            // owner's qualifier (SF_<family> / entity root) and the material's own name.
+            const chain = [];
+            for (let node = object; node && chain.length < 6; node = node.parent) {
+              chain.push(node.name || node.type || '?');
+            }
             owners.push({
               object: object.name || object.type,
               objectType: object.type,
+              parentChain: chain.slice(1),
               material: material.name || material.type,
               materialType: material.type,
+              materialUuid: material.uuid || null,
+              geometry: object.geometry?.name || null,
               transparent: !!material.transparent,
               blending: material.blending,
               side: material.side,

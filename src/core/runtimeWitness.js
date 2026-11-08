@@ -660,6 +660,69 @@ function formatLiveCountsLine(samples) {
   return `- live field, tether and traffic counts: fields ${fields} | tethers ${tethers} | traffic ${traffic}`;
 }
 
+/** Picture contract: native buffer, post route, relief and the authored tiers, in one block. */
+function formatPictureLines(picture) {
+  if (!picture || typeof picture !== 'object') return [];
+  const num = (value, digits = 2) => (Number.isFinite(Number(value))
+    ? Number(value).toFixed(digits) : 'n/a');
+  const buffer = picture.bufferWidth != null && picture.bufferHeight != null
+    ? `${picture.bufferWidth}x${picture.bufferHeight}` : 'n/a';
+  const css = picture.cssWidth != null && picture.cssHeight != null
+    ? `${picture.cssWidth}x${picture.cssHeight} @${num(picture.devicePixelRatio)}dpr` : 'n/a';
+  return [
+    '',
+    '## Picture contract',
+    `- native: ${picture.native === true ? 'yes' : picture.native === false ? 'NO' : 'n/a'}`
+      + ` (buffer ${buffer}, css ${css}, ratio ${num(picture.pixelRatio)})`,
+    `- raster: renderScale ${num(picture.renderScale)} | dynRes ${num(picture.dynResScale)}`
+      + ` | hitchRelief ${picture.hitchReliefLevel ?? 0} | contentScale ${num(picture.contentScale)}`
+      + ` | effective ${num(picture.effectiveSceneScale)}`,
+    `- post: ${picture.activePath || 'n/a'} | bloom ${picture.bloomSelected === true ? 'on' : 'off'}`
+      + ` (levels ${picture.bloomLevels ?? 'n/a'}, strength ${num(picture.bloomStrength)})`
+      + ` | CAS ${picture.casSharpenActive === true ? 'sharpen' : (picture.casReconstruction || 'off')}`,
+    `- authored tiers: particles ${picture.particleQuality || 'n/a'} | sky ${picture.skyTier || 'n/a'}`
+      + ` | sharpen ${picture.sharpen === true} | cap ${picture.frameCap ?? 'n/a'}`,
+  ];
+}
+
+/** Worker-lane truth: a rare apply block or freeze episode that frame counters cannot see. */
+function formatLaneLines(lane) {
+  if (!lane || typeof lane !== 'object') return [];
+  const ms = (value) => (Number.isFinite(Number(value)) ? `${Number(value).toFixed(1)} ms` : 'n/a');
+  const worst = lane.worstReplyWork && typeof lane.worstReplyWork === 'object'
+    ? lane.worstReplyWork : null;
+  const work = worst || (lane.lastReplyWork && typeof lane.lastReplyWork === 'object'
+    ? lane.lastReplyWork : null);
+  const workLine = work
+    ? ` | ${worst ? 'worst' : 'last'} reply fold ${ms(work.applyFoldMs)}`
+      + ` reconcile ${ms(work.applyReconcileMs)}`
+      + ` events ${ms(work.applyEventsMs)}`
+      + (Number.isFinite(Number(worst?.applyMs)) ? ` total ${ms(worst.applyMs)}` : '')
+    : '';
+  const slowEvents = Array.isArray(lane.slowEvents) ? lane.slowEvents.slice(-3) : [];
+  const slowApply = Array.isArray(lane.slowApplies) && lane.slowApplies.length
+    ? lane.slowApplies[lane.slowApplies.length - 1] : null;
+  const slowApplyTypes = slowApply && slowApply.eventTypes
+    ? Object.entries(slowApply.eventTypes).sort((a, b) => b[1] - a[1]).slice(0, 4)
+      .map(([type, count]) => `${type}x${count}`).join(', ')
+    : '';
+  const slowLine = slowEvents.length
+    ? slowEvents.map((event) => `${event?.t || '?'} ${ms(event?.ms)}`).join(' | ')
+    : 'none';
+  return [
+    '',
+    '## Worker lane',
+    `- apply max: ${ms(lane.workerApplyMaxMs)} | over 100 ms: ${lane.appliesOver100ms ?? 0}`
+      + ` | since last reply: ${ms(lane.msSinceLastAppliedReply)}`,
+    `- freeze active: ${lane.freezeActive === true} | command in flight: ${ms(lane.commandInFlightWallMs)}`
+      + ` | replies: ${lane.replyCount ?? 'n/a'}${workLine}`,
+    `- slow events (>=8 ms replay): ${slowLine}`
+      + (slowApplyTypes
+        ? ` | slow reply events${slowApply?.mode ? ` (${slowApply.mode})` : ''}: ${slowApplyTypes}`
+        : ''),
+  ];
+}
+
 export function formatRuntimeWitnessReport({
   verdict,
   samples = [],
@@ -697,6 +760,8 @@ export function formatRuntimeWitnessReport({
     formatSpawnWitnessLine(samples),
     formatGeometryPendingLine(samples),
     formatLiveCountsLine(samples),
+    ...formatPictureLines(last?.picture),
+    ...formatLaneLines(last?.lane),
     '',
     '## Where the last frames went (ms)',
   ];

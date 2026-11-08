@@ -2289,6 +2289,79 @@ function readWitnessInPage() {
       programs: Array.isArray(progs) ? progs.length : 0,
     } : null;
   } catch (_) { sample.gpuResidency = null; }
+  // Picture contract: the console proves the buffer, but sign-off also needs the live post route,
+  // dynamic-resolution/relief state, bloom depth and sky/particle tier from the same sample.
+  try {
+    const render = window.SF?.state?.render || null;
+    const video = window.SF?.state?.settings?.video || {};
+    const diag = render?.diagnostics || null;
+    const report = diag && typeof diag.getReport === 'function' ? diag.getReport() : null;
+    const post = report && report.post ? report.post : null;
+    const bloom = post && post.bloom && typeof post.bloom === 'object' ? post.bloom : null;
+    const renderer = render?.renderer || null;
+    const canvas = renderer && renderer.domElement ? renderer.domElement : null;
+    const ratio = renderer && typeof renderer.getPixelRatio === 'function'
+      ? renderer.getPixelRatio() : null;
+    const cssW = Number(window.innerWidth) || 0;
+    const cssH = Number(window.innerHeight) || 0;
+    const dpr = Number(window.devicePixelRatio) || 1;
+    sample.picture = {
+      renderScale: Number.isFinite(Number(video.renderScale)) ? Number(video.renderScale) : null,
+      pixelRatioCap: Number.isFinite(Number(video.pixelRatioCap)) ? Number(video.pixelRatioCap) : null,
+      pixelRatio: Number.isFinite(Number(ratio)) ? Number(ratio) : null,
+      bufferWidth: canvas ? canvas.width | 0 : null,
+      bufferHeight: canvas ? canvas.height | 0 : null,
+      cssWidth: cssW,
+      cssHeight: cssH,
+      devicePixelRatio: dpr,
+      dynResScale: Number.isFinite(Number(render?.dynResScale)) ? Number(render.dynResScale) : 1,
+      hitchReliefLevel: Number(render?.hitchReliefLevel) || 0,
+      contentScale: bloom && Number.isFinite(Number(bloom.contentScale))
+        ? Number(bloom.contentScale) : null,
+      effectiveSceneScale: post && Number.isFinite(Number(post.effectiveSceneScale))
+        ? Number(post.effectiveSceneScale) : null,
+      casSharpenActive: bloom ? bloom.casSharpenActive === true : null,
+      casReconstruction: bloom ? bloom.casReconstruction : null,
+      sceneTargetWidth: post && Number.isFinite(Number(post.sceneTargetWidth))
+        ? Number(post.sceneTargetWidth) : null,
+      sceneTargetHeight: post && Number.isFinite(Number(post.sceneTargetHeight))
+        ? Number(post.sceneTargetHeight) : null,
+      configuredRenderScale: post && Number.isFinite(Number(post.configuredRenderScale))
+        ? Number(post.configuredRenderScale) : null,
+      activePath: post ? post.activePath : null,
+      bloomSelected: post ? post.bloomSelected === true : null,
+      bloomLevels: Number.isFinite(Number(video.bloomLevels)) ? Number(video.bloomLevels) : null,
+      bloomStrength: Number.isFinite(Number(video.bloomStrength)) ? Number(video.bloomStrength) : null,
+      particleQuality: typeof video.particleQuality === 'string' ? video.particleQuality : null,
+      skyTier: render?.spaceBg?.tierName || null,
+      sharpen: video.sharpen === true,
+      frameCap: Number.isFinite(Number(video.frameCap)) ? Number(video.frameCap) : null,
+      // Native means the drawing buffer covers the CSS×DPR footprint. A sub-native raster is the
+      // pixelation class this probe must never report as healthy.
+      native: canvas
+        ? (canvas.width | 0) >= Math.floor(cssW * dpr) && (canvas.height | 0) >= Math.floor(cssH * dpr)
+        : null,
+    };
+  } catch (_) { sample.picture = null; }
+  // Worker-lane truth: reply apply cost and freeze state belong in every witness run, not only the
+  // tether-stress probe. A main-thread stall hides from frame counters; this is where it surfaces.
+  try {
+    const diag = window.SF?.simLaneDiag?.() || null;
+    sample.lane = diag ? {
+      replyCount: diag.replyCount,
+      lastCommandSequence: diag.workerClockLastAppliedCommandSequence,
+      workerApplyMaxMs: diag.workerApplyMaxMs,
+      appliesOver100ms: diag.workerApplyOver100,
+      msSinceLastAppliedReply: diag.msSinceLastAppliedReply,
+      commandInFlightWallMs: diag.commandInFlightWallMs ?? null,
+      freezeActive: diag.freezeActive === true,
+      freezeEpisodes: Array.isArray(diag.freezeEpisodes) ? diag.freezeEpisodes.slice(-3) : null,
+      lastReplyWork: diag.workerLastReplyWork || null,
+      worstReplyWork: diag.workerApplyMaxWork || null,
+      slowApplies: Array.isArray(diag.workerSlowApplies) ? diag.workerSlowApplies.slice(-3) : null,
+      slowEvents: Array.isArray(diag.workerSlowEvents) ? diag.workerSlowEvents.slice(-5) : null,
+    } : null;
+  } catch (_) { sample.lane = null; }
   // Economy population alongside the heap. The flight allocation profile blames synthetic
   // price-history seeding, which costs 64 points per LISTING at market creation - so the size of
   // that cost is a function of how many markets come into existence during flight, not of the tick
