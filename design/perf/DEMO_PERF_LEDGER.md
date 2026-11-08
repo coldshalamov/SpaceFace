@@ -247,6 +247,11 @@ A quiet normal-flight probe after the change: batch active with 46 instances / 7
 rollbacks while roots streamed out; no `membership-quiet-rebuild` event. Remaining stress reds are
 marginal 50.0 ms frames and the stall render spikes, not the batch.
 
+Verification after these changes: `check:playable` 18/18; `check:sim` and `check:sim:v3` exit 0
+(the 47-A tape is unchanged); `test:fast` 39/39; rigid batch/policy/cohort 74/74. Wall-time stress
+and witness reruns are invalid while the shared host is above ~70 % CPU (it reached 87 % from
+another agent's session).
+
 ## Rules
 
 - Do not lower the bar or rename a hitch; fix the frame or name the residual.
