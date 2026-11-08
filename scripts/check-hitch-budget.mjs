@@ -197,6 +197,7 @@ try {
     },
     scenario: stress,
     hostLoad,
+    systemProfile: sample.systemProfile,
     frameMs: sample.frameMs,
     presented: sample.presented,
     presentedHolds: sample.presentedHolds,
@@ -546,6 +547,18 @@ async function sampleHitches(page, opts) {
       };
       const diagnostics = readDiagnostics();
       settleQueue = settleQueue || authoredQueueSnapshot();
+      const lane = window.SF?.simLaneDiag?.() || null;
+      const systemProfile = lane?.workerSystemProfile
+        ? {
+          step: lane.workerSystemProfile.step,
+          ticksMeasured: lane.workerSystemProfile.ticksMeasured,
+          skippedTicks: lane.workerSystemProfile.skippedTicks,
+          totalMeasuredMs: lane.workerSystemProfile.totalMeasuredMs,
+          topLevelMeasuredMs: lane.workerSystemProfile.topLevelMeasuredMs,
+          systems: Array.isArray(lane.workerSystemProfile.systems)
+            ? lane.workerSystemProfile.systems.slice(0, 20) : [],
+        }
+        : null;
       const sortedPresents = presentIntervals.slice().sort((a, b) => a - b);
       const presented = {
         samples: presentIntervals.length,
@@ -575,6 +588,7 @@ async function sampleHitches(page, opts) {
         frameBudgetMs: budgetMs,
         presented,
         presentedHolds,
+        systemProfile,
         settleWait,
         settleQueue,
         programEvents,
@@ -1036,6 +1050,15 @@ function printReport(report) {
     console.log(`[hitch-budget] presented gaps>=100ms=${report.presentedHolds.gapsOver100}`
       + ` maxRepeatedMomentHold=${Math.round(report.presentedHolds.heldDeltaMs)}ms`);
   }
+  if (report.systemProfile?.step) {
+    const step = report.systemProfile.step;
+    console.log(`[hitch-budget] worker step ms: p50=${step.p50} p95=${step.p95} p99=${step.p99}`
+      + ` max=${step.max} last=${step.lastMs}`);
+    for (const row of (report.systemProfile.systems || []).slice(0, 10)) {
+      console.log(`  ${String(row.id).padEnd(34)} share=${(row.share * 100).toFixed(1)}%`
+        + ` perTick=${row.meanMsPerTick}ms p95=${row.p95}ms calls=${row.calls}`);
+    }
+  }
   if (report.settleQueue) {
     console.log(`[hitch-budget] settleQueue pending=${report.settleQueue.pending} running=${report.settleQueue.running} activeJobs=${report.settleQueue.activeJobs} last=${report.settleQueue.lastJobKey || '-'} ${report.settleQueue.lastJobStatus || ''}`);
   }
@@ -1183,6 +1206,9 @@ function isPortFree(port) {
 function withDebugFlight(url) {
   const u = new URL(url);
   u.searchParams.set('debug', 'flight');
+  // E2 per-system worker profile on the same run. The lane reads this at init; without it the
+  // step cost is a single number with no owner and the next edit is a guess.
+  u.searchParams.set('simProfile', '1');
   return String(u);
 }
 

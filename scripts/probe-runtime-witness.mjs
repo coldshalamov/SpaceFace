@@ -3861,6 +3861,8 @@ try {
   const started = Date.now();
   let shotIndex = 0;
   let tetherStage = 0;
+  let censusStartedAt = null;
+  let censusResult = null;
   let backgroundWindowId = null;
   let backgroundStage = 0;
   let backgroundBefore = null;
@@ -3898,6 +3900,23 @@ try {
       log(`background-flight: returned native focus; sim advanced ${occluded.simTime - backgroundBefore.simTime}s while occluded`);
     }
     if (TETHER_STRESS && tetherStage === 0) {
+      await page.evaluate(() => {
+        window.__SF_TETHER_EVENTS__ = [];
+        const record = (type) => (payload) => {
+          if (window.__SF_TETHER_EVENTS__.length >= 200) return;
+          window.__SF_TETHER_EVENTS__.push({
+            at: Math.round(performance.now()),
+            type,
+            reason: payload?.reason || payload?.breakReason || null,
+            targetId: payload?.targetId ?? null,
+            load: Number.isFinite(payload?.load) ? payload.load : null,
+          });
+        };
+        for (const name of ['tether:attached', 'tether:released', 'tether:break',
+          'tether:snapCatch', 'massline:snareEnded', 'tether:latchDenied']) {
+          try { window.SF.bus.on(name, record(name)); } catch (_) {}
+        }
+      }).catch(() => {});
       await page.keyboard.press('ControlLeft+Space');
       tetherStage = 1;
       log('tether-stress: nearest latch + thrust');
@@ -3905,6 +3924,29 @@ try {
       await page.keyboard.down('KeyA');
       await page.keyboard.down('BracketLeft');
       tetherStage = 2;
+      // Draw census: name the exact objects filling the tether frame. The hook is removed
+      // after 1.2 s; it is a diagnostic, not a permanent probe.
+      const installed = await page.evaluate(() => {
+        const sys = window.SF?.registry?.get?.('render');
+        const r = sys?.renderer;
+        if (!r || typeof r.renderBufferDirect !== 'function') return false;
+        const original = r.renderBufferDirect;
+        const counts = new Map();
+        let calls = 0;
+        r.renderBufferDirect = function drawCensus(camera, scene, geometry, material, object) {
+          calls += 1;
+          const key = `${object?.name || object?.type || '?'}|${material?.name || material?.type || '?'}`;
+          counts.set(key, (counts.get(key) || 0) + 1);
+          return original.apply(this, arguments);
+        };
+        window.__SF_DRAW_CENSUS__ = {
+          calls: () => calls,
+          stop: () => { r.renderBufferDirect = original; },
+          rows: () => [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40),
+        };
+        return true;
+      }).catch(() => false);
+      if (installed) censusStartedAt = elapsedMs;
       log('tether-stress: turn + reel in');
     } else if (TETHER_STRESS && !TETHER_HOLD_STRESS && tetherStage === 2 && elapsedMs >= 12_000) {
       await page.keyboard.up('BracketLeft');
@@ -3941,10 +3983,43 @@ try {
           laneRpc('probeState').then((value) => ({ value }), (error) => ({ error: String(error?.message || error) })),
           new Promise((resolve) => setTimeout(() => resolve({ timedOut: true }), 300)),
         ]);
+        const attachment = (() => {
+          const byId = state?.combat?.attachments?.byId;
+          if (!byId || !tether) return null;
+          for (const id in byId) {
+            const a = byId[id];
+            if (a && a.state === 'active'
+              && (a.ownerId === state.playerId || a.controllerId === state.playerId)
+              && a.targetId === tether.targetId) return a;
+          }
+          return null;
+        })();
+        let targetMeshChildren = 0;
+        try { target?.mesh?.traverse?.(() => { targetMeshChildren += 1; }); } catch (_) {}
         return {
           tick: state?.tick, scale: state?.timeScale,
           timeEffects: state ? readTimeEffectsRequests(state) : null,
           active: tether?.active === true, targetId: tether?.targetId ?? null,
+          tetherDetail: tether ? {
+            phase: tether.phase || null,
+            load: Number.isFinite(tether.load) ? tether.load : null,
+            strain: Number.isFinite(tether.strain) ? tether.strain : null,
+            reeling: tether.reeling === true,
+            payingOut: tether.payingOut === true,
+            automaticBreakAllowed: tether.automaticBreakAllowed === true,
+          } : null,
+          attachment: attachment ? {
+            state: attachment.state,
+            breakReason: attachment.breakReason || null,
+            lastTension: attachment.lastTension ?? null,
+            lastImpulse: attachment.lastImpulse ?? null,
+            lastYank: attachment.lastYank ?? null,
+          } : null,
+          targetDetail: target ? {
+            type: target.type || null,
+            dataType: target.data?.typeId || target.data?.enemyId || null,
+            meshChildren: targetMeshChildren,
+          } : null,
           hitchRelief: state?.render ? {
             level: state.render.hitchReliefLevel || 0,
             scale: state.render.hitchReliefScale || 1,
@@ -3976,6 +4051,15 @@ try {
       row.tetherStage = tetherStage;
     }
     snapshots.push(row);
+    if (TETHER_STRESS && censusStartedAt != null && censusResult == null
+      && elapsedMs >= censusStartedAt + 1_200) {
+      censusResult = await page.evaluate(() => {
+        const census = window.__SF_DRAW_CENSUS__;
+        if (!census) return null;
+        census.stop();
+        return { calls: census.calls(), rows: census.rows() };
+      }).catch(() => null);
+    }
     if (!NO_SAMPLE_SHOTS && !PRODUCTION_ROUTE && elapsedMs >= shotIndex * (SAMPLE_MS / 2)) {
       const shotPath = path.join(OUT, `t${String(shotIndex).padStart(2, '0')}.png`);
       await captureCanvasFrame(page, shotPath, elapsedMs).catch((err) => log(`screenshot failed: ${err}`));
@@ -3989,6 +4073,13 @@ try {
   }
   if (TETHER_STRESS) {
     await writeFile(path.join(OUT, 'tether-motion.json'), JSON.stringify(snapshots, null, 2));
+    try {
+      const tetherEvents = await page.evaluate(() => window.__SF_TETHER_EVENTS__ || []);
+      await writeFile(path.join(OUT, 'tether-events.json'), JSON.stringify(tetherEvents, null, 2));
+    } catch (_) { /* event recorder is best-effort */ }
+    if (censusResult) {
+      await writeFile(path.join(OUT, 'draw-census.json'), JSON.stringify(censusResult, null, 2));
+    }
     // Per-frame trace: presented fence clock, playout delay/depth/rate, pack time, player pose,
     // lane reply/step cost. This is the evidence that distinguishes a fence pin from a worker
     // stall or a mesh-writer bug.
