@@ -184,6 +184,7 @@ import {
   isGhostEscapeMoment,
   ghostResolvePlan,
   ghostEscapePlan,
+  ghostEscapePosition,
   ghostColorCss,
   ghostHues,
   GHOST_RESOLVE_PRIORITY,
@@ -10414,13 +10415,12 @@ export const vfx = {
 
   // inf-ghost-resolve-read: the contact that held escape range dissolves at its last known
   // position — the melt, dimmer than the snap in every channel. An escaped ghost is already
-  // dead; only its record's last position is the truth, and a recycled record gets no lie.
+  // dead; the receipt's stamped position (fix-ghost-escape-pos) or the record's last position
+  // is the truth, and a record nobody ever placed gets no lie.
   _onGhostEscaped(p) {
     if (!isGhostEscapeMoment(p) || !this._scene) return;
     const contact = p.entityId != null ? this._ent(p.entityId) : null;
-    const pos = contact && contact.pos && Number.isFinite(contact.pos.x) && Number.isFinite(contact.pos.z)
-      ? contact.pos
-      : null;
+    const pos = ghostEscapePosition(p, contact);
     if (!pos) return;
     const plan = ghostEscapePlan(this._isReduced());
     const melt = ghostColorCss(ghostHues().melt);

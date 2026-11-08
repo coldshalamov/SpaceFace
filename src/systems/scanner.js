@@ -1190,11 +1190,17 @@ export const scanner = {
       const entity = slice[i];
       const result = tickGhostEscape(entity, state, now);
       if (result.escaped) {
+        // fix-ghost-escape-pos: the sim despawns the escaped ghost, so the consumer's entity
+        // lookup usually misses and the melt honestly skipped. The last recorded position is
+        // the truth — stamp it into the receipt at emit time.
+        const px = Number(entity && entity.pos && entity.pos.x);
+        const pz = Number(entity && entity.pos && entity.pos.z);
         this.bus.emit('scanner:ghostEscaped', {
           entityId: entity.id,
           reason: result.reason || 'beyond_escape_range',
           distance: result.distance,
           simTime: now,
+          ...(Number.isFinite(px) && Number.isFinite(pz) ? { pos: { x: px, z: pz } } : {}),
         });
       }
     }
