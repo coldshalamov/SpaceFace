@@ -85,6 +85,7 @@ import { sectorLawProfile } from './securityReadout.js';
 import { causeFor } from './causeLedger.js';
 import { uniqueWreckMapReadouts } from './uniqueWreckMapLayer.js';
 import { frontierRumorMapReadouts, frontierRumorMapTarget, frontierRumorCorroborations } from './frontierRumorMapLayer.js';
+import { laneChatterForZone } from './laneChatterMapLayer.js';
 import { vestaOreCacheMapReadouts, vestaOreCacheMapTarget } from './vestaOreCacheMapLayer.js';
 import { pallasHiddenCacheMapReadouts, pallasHiddenCacheMapTarget } from './pallasHiddenCacheMapLayer.js';
 import { worldSiteMapMarkers } from './worldSiteMapLayer.js';
@@ -2264,6 +2265,9 @@ export function buildSystemModel(state, sectorId, options = {}) {
       reason: z.reason || '',
       hazard: !!meta.hazard,
       safe: !!meta.safe,
+      // inf-lane-chatter-chart: what the station boards say about this lane (pirateRumor's own
+      // records), or null when the boards never flagged it.
+      chatter: laneChatterForZone(state, sid, z.id),
     };
   });
 
@@ -3973,7 +3977,7 @@ export function computePreviewRoute(state, startSectorId, targetSectorId) {
 // Search Target Gathering Helper
 // ---------------------------------------------------------------------------------------------
 
-function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile = null) {
+export function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile = null) {
   const targets = [];
   // 1. Sectors
   const galaxyModel = buildGalaxyModel(state);
@@ -4035,10 +4039,16 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
     }
   }
   // Named danger rings already have a public selectable zone target on SYSTEM. Expose that
-  // exact target in search, without indexing anonymous generated clutter.
+  // exact target in search, without indexing anonymous generated clutter. A named lane the
+  // station boards flagged joins them (inf-lane-chatter-chart): the headline names the lane, so
+  // the pilot who heard it can type that name and land on the ring.
   for (const zone of systemModel.zones) {
-    if (!zone.hazard || !zone.authoredName) continue;
+    if (!zone.authoredName) continue;
+    if (!zone.hazard && !(zone.chatter && zone.chatter.flagged)) continue;
     const target = systemZoneTarget(zone, curSecId, playerEntity(state)?.pos);
+    if (target && !zone.hazard && zone.chatter && zone.chatter.mapTag) {
+      target.detail = `${target.detail} · ${zone.chatter.mapTag}`;
+    }
     if (target) targets.push(target);
   }
   // Galaxy search can name every charted sector, so let its known station catalog answer the
@@ -6272,6 +6282,19 @@ _stepAnimation(now) {
         </div>
 
       `;
+      // inf-lane-chatter-chart: what the station boards say about this lane, read from
+      // pirateRumor's own record. Absent entirely when the boards never flagged it.
+      {
+        const chatter = laneChatterForZone(state, t.sectorId || currentSectorId(state), t.id);
+        if (chatter && chatter.lines.length) {
+          html += `
+        <div class="gm-ins-section" data-lane-chatter="${chatter.live ? 'live' : 'cooled'}">
+          <div class="gm-ins-title"${chatter.live ? ` style="color:${INK.red}"` : ''}>Lane chatter</div>
+          ${chatter.lines.map((line) => `<div class="gm-ins-note">${escapeMapHtml(line)}</div>`).join('')}
+        </div>
+      `;
+        }
+      }
       buttonLabel = 'Align Autopilot';
     } else if (t.kind === 'waypoint') {
       const player = playerEntity(state);
@@ -6587,6 +6610,12 @@ _stepAnimation(now) {
     const zoneLine = zone
       ? `${zone.name} (${zoneMeta ? zoneMeta.label : zone.type}${zoneThreatLvl ? ` · Threat ${zoneThreatLvl}` : ''})`
       : 'Open sector space';
+    // inf-lane-chatter-chart: flying inside a lane the boards still flag says so under the zone
+    // row — the live talk only; a cooled warning stays on the zone's own record.
+    const hereChatter = zone && sectorId ? laneChatterForZone(state, sectorId, zone.id) : null;
+    const hereChatterHtml = hereChatter && hereChatter.live && hereChatter.lines.length
+      ? `<div class="gm-ins-note" data-lane-chatter-here style="color:${INK.red}">${escapeMapHtml(hereChatter.lines[0])}</div>`
+      : '';
     const speed = player && player.vel
       ? Math.round(Math.hypot(Number(player.vel.x) || 0, Number(player.vel.z) || 0))
       : 0;
@@ -6689,6 +6718,7 @@ _stepAnimation(now) {
         <div class="gm-ins-target-name"><span${entityAttr('sector:' + sectorId)}>${escapeMapHtml(sectorName)}</span></div>
         <div class="gm-ins-row"><span>Jurisdiction</span><span class="gm-ins-row-val"><span${entityAttr('faction:' + law.factionId)}>${escapeMapHtml(law.authority)}</span> · ${escapeMapHtml(law.level)} ${securityPips(sec)}</span></div>
         <div class="gm-ins-row"><span>Local zone</span><span class="gm-ins-row-val">${escapeMapHtml(zoneLine)}</span></div>
+        ${hereChatterHtml}
         <div class="gm-ins-row"><span>Ship fix</span><span class="gm-ins-row-val">(${Math.round(localPos.x)}, ${Math.round(localPos.z)}) u · Hdg ${headingBrg} · ${speed} u/s</span></div>
         ${careersInner}
       </div>
@@ -10471,6 +10501,20 @@ _drawSystem(g, state, w, h) {
       // world.js stores global.
       this._clickTargets.push({ ...systemZoneTarget(z, model.sectorId, playerEntity(state)?.pos), sx: x, sy: y, radiusPx: Math.max(16, rr) });
 
+      // inf-lane-chatter-chart: a lane the station boards still flag wears a dashed danger ring
+      // inside its rim and its label carries the boards' own count — under TROUBLE · Events, the
+      // layer the galaxy scale's war fronts already ride. Static ink: nothing here animates.
+      const chatterTag = this._layers.events && z.chatter && z.chatter.mapTag ? z.chatter.mapTag : '';
+      if (chatterTag && z.chatter.live) {
+        g.save();
+        g.strokeStyle = CHART_INK.danger(0.72);
+        g.lineWidth = 1.6;
+        if (typeof g.setLineDash === 'function') g.setLineDash([6, 5]);
+        g.beginPath(); g.arc(x, y, Math.max(6, rr * 0.86), 0, Math.PI * 2); g.stroke();
+        g.restore();
+      }
+      const chatterSuffix = chatterTag ? ` · ${chatterTag}` : '';
+
       if (z.hazard && this._layers.hazard) {
         g.save();
         g.fillStyle = CHART_INK.danger(0.06);
@@ -10482,8 +10526,8 @@ _drawSystem(g, state, w, h) {
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `zone:${z.id}`,
           kind: 'hazard',
-          text: `HAZARD · ${z.name.toUpperCase()}`,
-          lines: [`HAZARD · ${z.name.toUpperCase()}`],
+          text: `HAZARD · ${z.name.toUpperCase()}${chatterSuffix}`,
+          lines: [`HAZARD · ${z.name.toUpperCase()}${chatterSuffix}`],
           x,
           y,
           anchorRadius: 5,
@@ -10496,8 +10540,8 @@ _drawSystem(g, state, w, h) {
         const zoneLabel = makeMapLabelCandidate(g, {
           id: `zone:${z.id}`,
           kind: 'zone',
-          text: z.name + (z.threat ? ` · THREAT ${z.threat}` : ''),
-          lines: [z.name + (z.threat ? ` · THREAT ${z.threat}` : '')],
+          text: z.name + (z.threat ? ` · THREAT ${z.threat}` : '') + chatterSuffix,
+          lines: [z.name + (z.threat ? ` · THREAT ${z.threat}` : '') + chatterSuffix],
           x,
           y,
           anchorRadius: 3,
