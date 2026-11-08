@@ -224,6 +224,10 @@ const EXPLICIT_RECIPE_CAPTIONS = Object.freeze({
   ambient_station_shift_bell: Object.freeze({ text: 'The shift bell rings.', urgency: 'normal', event: 'station.shift' }),
   ambient_station_market_chime: Object.freeze({ text: 'The market desk chimes.', urgency: 'normal', event: 'station.market' }),
   sfx_rescue_delivery_chime: Object.freeze({ text: 'A berth takes them in.', urgency: 'normal', event: 'station.rescue' }),
+  // inf-wreck-cooling-voice: a fresh hulk's first cooling voice names what is ticking.
+  sfx_ambient_wreck_tick: Object.freeze({ text: 'Hot wreck metal ticks as it cools.', urgency: 'normal', event: 'wreck.cooling' }),
+  sfx_ambient_wreck_knock: Object.freeze({ text: 'Hot wreck metal ticks as it cools.', urgency: 'normal', event: 'wreck.cooling' }),
+  sfx_ambient_wreck_groan: Object.freeze({ text: 'A burning wreck groans as it settles.', urgency: 'normal', event: 'wreck.cooling' }),
   sfx_refusal_empty: Object.freeze({ text: 'No ammunition.', urgency: 'high', event: 'refusal.ammo' }),
   sfx_refusal_target: Object.freeze({ text: 'No valid target.', urgency: 'high', event: 'refusal.target' }),
   sfx_massline_deny: Object.freeze({ text: 'Action refused.', urgency: 'high', event: 'refusal' }),
@@ -285,6 +289,13 @@ const EXPLICIT_RECIPE_CAPTIONS = Object.freeze({
   sfx_field_loop_well: Object.freeze({ text: 'Gravity well holding.', urgency: 'normal', event: 'field.well' }),
   sfx_field_loop_repulsor: Object.freeze({ text: 'Repulsor holding.', urgency: 'normal', event: 'field.repulsor' }),
   sfx_field_loop_cone: Object.freeze({ text: 'Cone holding.', urgency: 'normal', event: 'field.cone' }),
+  // inf-lane-horn: a buzzed civilian's horn says which class answered and how far it escalated.
+  sfx_lane_horn_tap: Object.freeze({ text: 'A pilot honks.', urgency: 'warn', event: 'traffic.horn' }),
+  sfx_lane_horn_double: Object.freeze({ text: 'A pilot honks twice.', urgency: 'warn', event: 'traffic.horn' }),
+  sfx_lane_horn_lean: Object.freeze({ text: 'A pilot leans on the horn.', urgency: 'warn', event: 'traffic.horn' }),
+  sfx_hauler_blast: Object.freeze({ text: 'A hauler blasts its horn.', urgency: 'warn', event: 'traffic.horn' }),
+  sfx_hauler_blast_double: Object.freeze({ text: 'A hauler blasts twice.', urgency: 'warn', event: 'traffic.horn' }),
+  sfx_hauler_blast_lean: Object.freeze({ text: 'A hauler leans on its horn.', urgency: 'warn', event: 'traffic.horn' }),
 });
 
 export function isUiBlipRecipe(recipeId) {

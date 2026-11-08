@@ -140,6 +140,7 @@ import { heatLevelFor } from '../systems/heat.js';
 import { CERES_CAUSAL_CHAIN_EVENT } from '../contracts/trafficEvents.js';
 import { hash32 } from '../core/rng.js';
 import { dyingFuseS } from '../combat/lifecycle.js';
+import { createWreckCoolingMemory, planWreckCooling } from './wreckCoolingVoice.js';
 import {
   createSampleRuntime,
   resolveSampleBinding,
@@ -192,6 +193,9 @@ const POCKET_BEAT_MIN_GAP_S = 6;
 const POCKET_BEAT_GAIN = 0.45;
 const POCKET_BEAT_RATE_LO = 0.92;
 const POCKET_BEAT_RATE_HI = 1.08;
+// Wreck cooling voice (inf-wreck-cooling-voice): aftermath only — the same "combat owns the
+// mix" line the place accents hold, so a hulk's ticking waits out the fight that made it.
+const WRECK_COOL_THREAT_HOLD = 0.35;
 const PAN_SPAN = TABLE_HEARING_PAN_WU;  // wu — half-pan distance
 
 // --- music ---
@@ -6636,6 +6640,8 @@ export const audio = {
     // New Game or a save restore: the next run must be able to speak from tick zero.
     rt._combatFeedbackAdmit = null;
     rt._aftermathHush = null;
+    // Wreck cooling clocks are keyed by the outgoing session's entity ids.
+    rt._wreckCooling = null;
     this._clearDeferred();
     this._endDesiredLoops();
     this._releaseDockedFieldLoops();
@@ -7009,6 +7015,40 @@ export const audio = {
       if (d2 < bestD2) { bestD2 = d2; best = e; }
     }
     return best;
+  },
+
+  /**
+   * inf-wreck-cooling-voice (WF-13) — the hulks you just made sound their cooling. A sim-stamped
+   * fresh wreck ticks and groans on the same clock its fire and smoke read (wreckAftermathState),
+   * positioned on the hulk, densest just after the flame gutters, silent once cold; unstamped
+   * set dressing never speaks. Aftermath only: held while combat owns the mix, silent docked,
+   * paused or off the flight mode. Read-only over state; the planner owns the bounded clocks.
+   */
+  _updateWreckCooling() {
+    const rt = this.rt;
+    const state = this.state;
+    if (!rt || !state || rt._docked || rt._paused || rt._lifecycleSuspended) return 0;
+    if (state.mode != null && state.mode !== 'flight') return 0;
+    if (rt.threat != null && rt.threat >= WRECK_COOL_THREAT_HOLD) return 0;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || player.alive === false || !player.pos) return 0;
+    const memory = rt._wreckCooling || (rt._wreckCooling = createWreckCoolingMemory());
+    const rows = rt._wreckCoolingRows || (rt._wreckCoolingRows = []);
+    const wrecks = (state.entityIndex && state.entityIndex.wrecks) || state.entityList || null;
+    const count = planWreckCooling(wrecks, player.pos, Number(state.simTime) || 0, memory, rows);
+    for (let i = 0; i < count; i++) {
+      const row = rows[i];
+      // The first voice a hulk speaks carries its authored caption (bearing included); the rest
+      // of its cooling stays caption-owned so a ticking wreck never floods the caption floor.
+      this.play(row.recipeId, {
+        gain: row.gain,
+        rate: row.rate,
+        position: row.position,
+        captionOwned: !row.first,
+      });
+    }
+    return count;
   },
 
   _emitPresentationCaption(text, opts = {}) {
@@ -8849,6 +8889,7 @@ export const audio = {
     this._updateStationMurmur(now);
     this._updatePlaceContext(now);
     this._updateApproachHum(now);
+    this._updateWreckCooling();
     this._updatePressureLayer();
     this._writeMixLedger(now);
 
