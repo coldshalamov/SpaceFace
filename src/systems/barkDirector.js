@@ -52,6 +52,13 @@ import { shouldDrawTableVfx, tableLookAtDelta, tableSimAuthorityWuFromState, tab
 import { ensureActivityClassified } from '../world/activityRuntime.js';
 import { entityIndexVersion, entityIndexLaneVersion, forEachLivingWorldActor, indexedShipLikeOrEntitiesScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { activeHullIdentity } from '../data/hullIdentity.js';
+import {
+  LANE_HORN_MAX_STEP,
+  clampLaneHornStep,
+  laneHornBarkFor,
+  laneHornDockControlLine,
+  laneHornRegisterFor,
+} from '../data/laneHorns.js';
 import { livingHullNotoriety } from '../core/livingHull.js';
 import { adventureStunts, completeWitness, incidentIdentity, knownStuntTitles, observerProfile, STUNT_SITUATION_LINES, STUNT_TITLE_RULES, stuntSpecificLine, witnessLineOfSight } from '../combat/stuntWitnesses.js';
 import { hintTextFor } from './survivalAnnounce.js';
@@ -378,6 +385,12 @@ export const BODY_NEAR_MISS_RADIUS_WU = 70;
 export const BODY_NEAR_MISS_EXIT_WU = 90;
 export const BODY_NEAR_MISS_WINDOW_TICKS = 480;
 export const BODY_NEAR_MISS_COOLDOWN_TICKS = 120;
+// inf-lane-horn: crews the player buzzes speak at most one line per this gap across the sector;
+// a station's dock control calls the third pass in its shell once per watch; a buzzed crew skips
+// its friendly pass-by chirp for the grudge window.
+export const LANE_HORN_BARK_GAP_S = 4;
+export const LANE_HORN_DOCK_GAP_S = 90;
+export const LANE_HORN_GRUDGE_S = 45;
 
 /** Bench A/B: production default ON. Quiet latch skips barkDirector
  * ensureActivityClassified + living-actor bark/hail census when no eligible
@@ -883,6 +896,10 @@ export const barkDirector = {
       this.bus.on('entity:killed', this._onHaulerRaidKill);
       this._onHaulerRegroup = (payload) => this._speakHaulerRegroup(payload || {});
       this.bus.on('traffic:haulerRegroup', this._onHaulerRegroup);
+      // inf-lane-horn — a civilian the player buzzed answers: its class horn at the hull, the
+      // crew's line on a scrape or a repeat, dock control on the third pass in its shell.
+      this._onLaneHorn = (payload) => this._answerLaneHorn(payload || {});
+      this.bus.on('traffic:nearMiss', this._onLaneHorn);
       this._onOreFlood = (payload) => this._speakOreFlood(payload || {});
       this.bus.on('economy:oreFlood', this._onOreFlood);
       this._onTumbleRake = (payload) => this._speakTumbleRake(payload || {});
@@ -989,6 +1006,9 @@ export const barkDirector = {
     if (this._liveHaulerRaids) this._liveHaulerRaids.clear();
     this._oreFloodKeys = null;
     this._tumbleRakeKeys = null;
+    this._laneHornBarkAt = null;
+    this._laneHornDockAt = null;
+    this._laneHornGrudges = null;
     this.noteBarkWake();
   },
 
@@ -1962,6 +1982,10 @@ export const barkDirector = {
     const dx = entity.pos.x - player.pos.x;
     const dz = entity.pos.z - player.pos.z;
     if (dx * dx + dz * dz > PASS_HAIL_RANGE_SQ) return false;
+    // inf-lane-horn: a crew the player just buzzed leaned on its horn; it does not chirp hello.
+    const grudgeAt = this._laneHornGrudges instanceof Map ? this._laneHornGrudges.get(entity.id) : undefined;
+    const hailNow = Number(state.simTime) || 0;
+    if (Number.isFinite(grudgeAt) && hailNow >= grudgeAt && hailNow - grudgeAt < LANE_HORN_GRUDGE_S) return false;
     // The owed thank-you replaces the stock chirp for this one crossing.
     if (this._speakHaulerRescueThanks(entity)) return true;
     if (grandee) return this._speakGrandeeHail(entity);
@@ -2169,6 +2193,106 @@ export const barkDirector = {
     const now = Number(state.simTime) || 0;
     const receipt = { entityId: hauler.id, text, dragKey: key, t: now, register: 'hauler', factionId, voiceId };
     this._emit('barkDirector:voice', receipt);
+    return receipt;
+  },
+
+  /**
+   * inf-lane-horn — traffic saw the player buzz a civilian (`traffic:nearMiss`). The horn always
+   * sounds at the hull, in its class and at its escalation step. A first pass that nearly scraped
+   * paint, and every repeat, also gets the crew's line (one line per hull per step, a sector gap
+   * between crews). A third pass inside a station's traffic shell brings dock control onto the
+   * band, naming the player's hull, once per station per watch. Traffic already rate-limits the
+   * pass itself; this only shapes the voice. Nothing here touches heat, standing or hostility.
+   */
+  _answerLaneHorn(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.entityId == null) return null;
+    if (state.mode && state.mode !== 'flight') return null;
+    const hull = entityAt(state, payload.entityId);
+    if (!hull || hull.alive === false || hull.id === state.playerId || !finitePos(hull.pos)) return null;
+    const now = Number(state.simTime) || 0;
+    const step = clampLaneHornStep(payload.step);
+    const receipt = { entityId: hull.id, step, horn: null, text: null, dockText: null, t: now };
+    const horn = payload.horn && typeof payload.horn.id === 'string' ? payload.horn : null;
+    if (horn && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('audio:cue', {
+        id: horn.id,
+        position: { x: hull.pos.x, z: hull.pos.z },
+        gain: Number.isFinite(horn.gain) ? horn.gain : 0.8,
+        rate: Number.isFinite(horn.rate) ? horn.rate : 1,
+      });
+      receipt.horn = horn.id;
+    }
+    // A buzzed crew does not follow its horn with the friendly pass-by chirp.
+    if (!(this._laneHornGrudges instanceof Map)) this._laneHornGrudges = new Map();
+    this._laneHornGrudges.set(hull.id, now);
+    while (this._laneHornGrudges.size > 64) this._laneHornGrudges.delete(this._laneHornGrudges.keys().next().value);
+
+    const voice = this.helpers && this.helpers.voice;
+    const own = ensureState(state);
+    const register = laneHornRegisterFor(payload.role);
+    const crewMaySpeak = (step >= 2 || payload.scrape === true) && register
+      && !(Number.isFinite(this._laneHornBarkAt) && now >= this._laneHornBarkAt
+        && now - this._laneHornBarkAt < LANE_HORN_BARK_GAP_S);
+    if (crewMaySpeak && voice && typeof voice.say === 'function') {
+      const index = Number.isFinite(Number(payload.lineIndex)) ? Number(payload.lineIndex) : hull.id;
+      const text = laneHornBarkFor(register, step, index);
+      const factionId = factionFor(hull);
+      const voiceId = `barkDirector:${hull.id}:lane-horn`;
+      const accepted = text && voice.say({
+        channel: 'bark',
+        text,
+        kind: 'laneHorn',
+        ttl: VOICE_TTL_S,
+        id: voiceId,
+        factionId,
+        register: 'lane-horn',
+        valid: () => speakerStillLive(state, hull.id),
+      });
+      if (accepted) {
+        this._laneHornBarkAt = now;
+        noteSpeakerSpoke(own, hull, 'lane-horn', now, text);
+        receipt.text = text;
+        this._emit('barkDirector:voice', {
+          entityId: hull.id, situation: 'lane-horn', reason: 'traffic:nearMiss', text,
+          factionId, voiceId, register: 'lane-horn', step, t: now,
+        });
+      }
+    }
+
+    // Repeated recklessness inside a station's shell becomes the station's business.
+    const stationId = payload.stationEntityId;
+    if (step >= LANE_HORN_MAX_STEP && stationId != null && voice && typeof voice.say === 'function') {
+      if (!(this._laneHornDockAt instanceof Map)) this._laneHornDockAt = new Map();
+      const last = this._laneHornDockAt.get(stationId);
+      const cooled = !Number.isFinite(last) || now < last || now - last >= LANE_HORN_DOCK_GAP_S;
+      const station = cooled ? entityAt(state, stationId) : null;
+      if (station && station.alive !== false && station.type === 'station') {
+        const identity = activeHullIdentity(state);
+        const seed = state.meta && state.meta.seed;
+        const pick = hash32(seed == null ? 0 : seed, 'laneHornDock', String(stationId), Math.floor(now));
+        const dockText = laneHornDockControlLine(pick, identity && identity.name);
+        const factionId = factionFor(station);
+        const voiceId = `barkDirector:dock:${stationId}:lane-horn`;
+        const accepted = voice.say({
+          channel: 'bark',
+          text: dockText,
+          kind: 'laneHornDock',
+          ttl: VOICE_TTL_S,
+          id: voiceId,
+          factionId,
+          register: 'dock_control',
+        });
+        if (accepted) {
+          this._laneHornDockAt.set(stationId, now);
+          receipt.dockText = dockText;
+          this._emit('barkDirector:voice', {
+            entityId: station.id, situation: 'lane-horn-dock', reason: 'traffic:nearMiss',
+            text: dockText, factionId, voiceId, register: 'dock_control', t: now,
+          });
+        }
+      }
+    }
     return receipt;
   },
 
@@ -3016,6 +3140,7 @@ export const barkDirector = {
       if (this._onHaulerRaidCleared) this.bus.off('encounter:ambientPredationCleared', this._onHaulerRaidCleared);
       if (this._onHaulerRaidKill) this.bus.off('entity:killed', this._onHaulerRaidKill);
       if (this._onHaulerRegroup) this.bus.off('traffic:haulerRegroup', this._onHaulerRegroup);
+      if (this._onLaneHorn) this.bus.off('traffic:nearMiss', this._onLaneHorn);
       if (this._onOreFlood) this.bus.off('economy:oreFlood', this._onOreFlood);
       if (this._onTumbleRake) this.bus.off('combat:tumbleRake', this._onTumbleRake);
       if (this._onDriveDown) this.bus.off('combat:subsystemDisabled', this._onDriveDown);
@@ -3070,6 +3195,10 @@ export const barkDirector = {
     this._onHaulerRaidCleared = null;
     this._onHaulerRaidKill = null;
     this._onHaulerRegroup = null;
+    this._onLaneHorn = null;
+    this._laneHornBarkAt = null;
+    this._laneHornDockAt = null;
+    this._laneHornGrudges = null;
     this._onOreFlood = null;
     this._onTumbleRake = null;
     this._onThrownWreck = null;

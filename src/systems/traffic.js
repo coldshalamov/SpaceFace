@@ -156,6 +156,7 @@ import { trafficTugOps } from './trafficTugOps.js';
 import { trafficEscortOps } from './trafficEscortOps.js';
 import { trafficRecoveryOps } from './trafficRecoveryOps.js';
 import { trafficCausalChainOps } from './trafficCausalChainOps.js';
+import { trafficNearMissOps } from './trafficNearMiss.js';
 
 export const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
 // Core pocket density (spec2/04 §4: core 6–9 concurrent). Cap keeps perf predictable.
@@ -1620,6 +1621,7 @@ export const traffic = {
   ...trafficEscortOps,
   ...trafficRecoveryOps,
   ...trafficCausalChainOps,
+  ...trafficNearMissOps,
   ...anvilTrafficMethods,
   name: 'traffic',
   // Every serialized field is rebuilt by a normalizer, sliced, or primitive — saveSystem need
@@ -4036,6 +4038,9 @@ export const traffic = {
         }
         if (!e.data.jobId) this._assignCeresActivityJob(e, activityEntry);
         this._reactCivilianViolence(e, rec, stations, state);
+        // inf-lane-horn: the authored cast is job-owned, so a buzz only leases its jink to the
+        // job runtime and emits the horn; the choreography keeps its single intent writer.
+        this._reactPlayerNearMiss(e, rec, stations, state, player);
         continue;
       }
       if (hasLivePlayer && entityNeedsAiThink(e, state) === false) continue;
@@ -4045,6 +4050,12 @@ export const traffic = {
       // Nearby gunfire: civilians change course before ordinary / world-site / job branches.
       // Job hulls are interrupted through npcJobsRuntime; traffic never writes their intent.
       if (this._reactCivilianViolence(e, rec, stations, state)) {
+        this._syncTrafficRecordToData(e, rec);
+        continue;
+      }
+      // inf-lane-horn: a fast close pass by the player jinks the hull off the line and leans on
+      // its horn. Ambient hulls fly the jink here; a job hull's jink is leased to npcJobsRuntime.
+      if (this._reactPlayerNearMiss(e, rec, stations, state, player)) {
         this._syncTrafficRecordToData(e, rec);
         continue;
       }
