@@ -709,6 +709,32 @@ export function cashInSalvage(state, { includeIllicit = false } = {}) {
   return { units, credits, lots };
 }
 
+// The dock receipt's own words (words-receipt-counts): "1 units" could not happen. Each line
+// is a whole singular or plural sentence, and the money reads grouped like every other
+// credit receipt on the station screens (25,000, not 25000). Pure text — exported so the
+// focused test can read exactly what the dock says.
+export function salvageCashInLine(units, credits) {
+  const n = Math.max(0, Math.floor(Number(units) || 0));
+  const cr = Math.max(0, Math.round(Number(credits) || 0)).toLocaleString('en-US');
+  return n === 1
+    ? `Salvage bay cashed in: 1 unit for ${cr} cr.`
+    : `Salvage bay cashed in: ${n} units for ${cr} cr.`;
+}
+
+export function restrictedSalvageLine(units) {
+  const n = Math.max(0, Math.floor(Number(units) || 0));
+  return n === 1
+    ? 'Restricted salvage stays in your bay: 1 unit. Lawful docks won\'t buy it.'
+    : `Restricted salvage stays in your bay: ${n} units. Lawful docks won't buy it.`;
+}
+
+export function unvaluedSalvageLine(units) {
+  const n = Math.max(0, Math.floor(Number(units) || 0));
+  return n === 1
+    ? 'Salvage remains in your bay: 1 unit could not be valued or paid.'
+    : `Salvage remains in your bay: ${n} units could not be valued or paid.`;
+}
+
 /** Canonical bay custody removal for the customs owner. */
 export function removeSalvageBayCargo(state, commodityId, requested) {
   const bay = state.player?.salvageBay, def = defOf(state, commodityId);
@@ -1343,11 +1369,11 @@ export const cargo = {
     const restricted = remaining.reduce((sum, [id, qty]) => sum + (defOf(this.state, id)?.legality && defOf(this.state, id).legality !== 'legal' ? Math.max(0, Number(qty) || 0) : 0), 0);
     const retained = remaining.reduce((sum, [, qty]) => sum + Math.max(0, Number(qty) || 0), 0);
     if (restricted && this.bus?.emit) this.bus.emit('toast', {
-      text: `Restricted salvage stays in your bay: ${restricted} units. Lawful docks won't buy it.`,
+      text: restrictedSalvageLine(restricted),
       kind: 'warn', ttl: 7,
     });
     if (retained > restricted && this.bus?.emit) this.bus.emit('toast', {
-      text: `Salvage remains in your bay: ${retained - restricted} units could not be valued or paid.`,
+      text: unvaluedSalvageLine(retained - restricted),
       kind: 'warn', ttl: 7,
     });
     if (!sale || !this.bus || typeof this.bus.emit !== 'function') return;
@@ -1363,7 +1389,7 @@ export const cargo = {
     // "Dock to cash it" right after the dock just paid out.
     this.bus.emit('salvage:changed', { used: Math.round(this.state.player.salvageBay?.usedVolume || 0), cap: Math.round(salvageBayCap(this.state)), cashIn: true });
     this.bus.emit('toast', {
-      text: `Salvage bay cashed in: ${sale.units} units for ${sale.credits} cr.`,
+      text: salvageCashInLine(sale.units, sale.credits),
       kind: 'good',
       ttl: 6,
     });

@@ -352,6 +352,19 @@ export function minerSeamWorkedOutKey(payload) {
   return `${job}|${field}`;
 }
 
+/** The theft receipt's own words (words-receipt-counts): the band can count to one.
+ * A whole singular or plural sentence, an honest generic noun when the caller's lookups
+ * came back empty, and no bearing clause when nobody saw which way it went. Pure text —
+ * exported so the focused test reads exactly what the band says. */
+export function raiderTheftLine(who, qty, what, bearing = '') {
+  const name = String(who || '').trim() || 'a raider';
+  const good = String(what || '').trim() || 'cargo';
+  const n = Math.max(0, Math.round(Number(qty) || 0));
+  const units = n === 1 ? '1 unit' : `${n} units`;
+  const seen = String(bearing || '').trim();
+  return `${name} made off with ${units} of ${good}${seen ? ` — last seen headed ${seen}` : ''}.`;
+}
+
 export const AMBIENT_QUIET_STEP_S = 60.0;
 export const AMBIENT_MAX_GAP_S = 60.0;
 // The patrol lattice takes notice one hull at a time — sector scans serialize on this gap
@@ -2941,7 +2954,7 @@ export const barkDirector = {
 
     this._emit('comms:log', {
       from: 'Local traffic',
-      text: `${who} made off with ${qty} units of ${what}${bearing ? ` — last seen headed ${bearing}` : ''}.`,
+      text: raiderTheftLine(who, qty, what, bearing),
       kind: 'cargo',
       custodyId,
       raiderId: payload.raiderId != null ? payload.raiderId : null,
