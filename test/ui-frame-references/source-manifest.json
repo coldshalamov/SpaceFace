@@ -214,7 +214,7 @@
   "src/ui/orrery/popupsLayouts.js": "5921ace7c17551a9e625c2ef71fd989de9b26f6bb00616fdadbd71e3e9f63ea2",
   "src/ui/orrery/power-railLayouts.js": "158d524ed7f3eba030e9b608c93ff53ebeb656a6890d1d00212c49f1b8cb4c65",
   "src/ui/orrery/raceBoardLayouts.js": "023631eaef7c42b2fe54e11c61c1cfd1ae4452c8fef511dd96d5ee0c7b1720e7",
-  "src/ui/orrery/rangeLayouts.js": "83653f20a7b8e2c905de64bb7b14ab3b26090fef693e8648825c770e7c08d71c",
+  "src/ui/orrery/rangeLayouts.js": "f4175647a42f39f92cbb9df7673dc656bcad02849ec922a71adb70f3b737c27f",
   "src/ui/orrery/ringLegend.js": "370e949fbf4a126ccc982fe6927e0b4ce0d55276a07a3358732abf8d8da46b18",
   "src/ui/orrery/routeOrrery.js": "0d6fae9c6a1bf10e49629ed449740709ef12cf148c25f95515321df0cbc7da54",
   "src/ui/orrery/sableDemo.js": "1ba81b322b51ab23f57028b6c563d24352e8fce427735813e6358db6b26f7314",
