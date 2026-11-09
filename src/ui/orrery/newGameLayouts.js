@@ -171,11 +171,11 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} .orr-yard > .orr-turntable__row > li.is-front ~ li { translate:-18px 38px !important; }
 }
 
-/* the same band at ≤460 tall (844×390, 900×420, 1024×440): the stage had ~305px for the name, the fittings,
+/* the same band at ≤480 tall (844×390, 900×420, 1024×440, 801×461): the stage had ~305px for the name, the fittings,
    the ring and the run, so the yard was forced up over the hull's name and the fittings, and the form column
    showed only CASUAL. The frame's margin closes to 20px, the run's scale stands down to the accessibility
    tree (the yard then centres on the hull alone) and the footnote does too, so every difficulty stop shows. */
-@media (min-width:801px) and (max-width:1100px) and (max-height:460px) {
+@media (min-width:801px) and (max-width:1100px) and (max-height:480px) {
   ${NGD} { padding-top:20px !important; padding-bottom:20px !important; row-gap:10px !important; }
   ${NGD} > .k-fine,
   ${NGD} .orr-ng-caption > .sf-ng-route {
@@ -335,6 +335,24 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} .sf-ng-sheet .sfs__stats { grid-template-columns:1fr 1fr; column-gap:16px; row-gap:0; }
   ${NGD} .sf-ng-sheet .sfs__pips { display:none; }
   ${NGD} .sf-ng-sheet .sfs--compact .sfs__stat { padding:3px 0 4px; }
+}
+/* 801–1100 wide, ≤600 tall (960×540, 801×461): the six-stat sheet arrived after the hero box was placed
+   for this band, so the hull render, its ring and the WASP / PELICAN names sat on MUSCLE and the
+   stat gloss. The sheet lays its six cells out three across (two rows, not three), the hover gloss stands
+   down here (it is aria-hidden; each row keeps its name and number), and the hero box drops into the
+   gap the sheet gives back, between the numbers and the run. */
+@media (min-width:801px) and (max-width:1100px) and (max-height:600px) {
+  ${NGD} .sf-ng-sheet .sfs--compact { max-width:400px; }
+  ${NGD} .sf-ng-sheet .sfs__stats { grid-template-columns:repeat(3, minmax(0, 1fr)); column-gap:18px; }
+  ${NGD} .sf-ng-sheet .sfs__meaning { display:none !important; }
+  ${NGD} > .k-stage > :is(.k-world--stage, .k-stage__poster),
+  ${NGD} > .k-stage > .orr-ng-hero-box { top:50% !important; height:18% !important; }
+  ${NGD} > .k-stage::before { top:65%; }
+}
+@media (min-width:801px) and (max-width:1100px) and (max-height:480px) {
+  ${NGD} > .k-stage > :is(.k-world--stage, .k-stage__poster),
+  ${NGD} > .k-stage > .orr-ng-hero-box { top:58% !important; height:20% !important; }
+  ${NGD} > .k-stage::before { top:75%; }
 }
 /* Short narrow desktop: keep the existing page scroll and every form section, including the
    hull picker, loadout and first-flight preview. These are decisions, not decorative overflow.
