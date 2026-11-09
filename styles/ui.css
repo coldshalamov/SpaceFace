@@ -2292,6 +2292,17 @@ html.sf-reduce-motion .orr-replay__pulse { display:none; }
 @media (max-width:560px) {
   .orr-replay__readout { top:auto; bottom:calc(100% - 52px); }
 }
+/* Very short narrow frames (<=345 tall, 568x320 / 480x320 / 420x320): the eased tape puts the
+ * legend level with the top-right count and its SEED · NO TAPE line. Up to 700 wide the legend
+ * ends left of that column (right inset = the column's ~170px less the tape's 6vw margin); on
+ * phones it hangs from just under the code line (y90) instead of growing up into it. Either way
+ * it then reaches down beside the playhead, so it starts 24px (phones 16px) in, clear of the Hand. */
+@media (min-width:561px) and (max-width:700px) and (max-height:345px) {
+  .orr-replay__readout { left:24px; right:calc(170px - 6vw); }
+}
+@media (max-width:560px) and (max-height:345px) {
+  .orr-replay__readout { top:max(0px, calc(346px - 100vh)); bottom:auto; left:16px; right:0; }
+}
 @media (forced-colors:active) {
   .orr-replay__count, .orr-replay__total, .orr-replay__sep { color:CanvasText; text-shadow:none; }
   .orr-replay__codes, .orr-replay__readout, .orr-replay__ev, .orr-replay__sec {
