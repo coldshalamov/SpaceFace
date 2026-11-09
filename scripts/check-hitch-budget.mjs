@@ -435,6 +435,7 @@ async function sampleHitches(page, opts) {
     let finished = false;
     let watchdog = null;
     let settleWait = 'warmup';
+    let rigidBatchWaitStartedAt = null;
     let warmupPumpStopped = false;
     let previousProgramCount = 0;
     let previousProgramKeys = new Set();
@@ -694,6 +695,11 @@ async function sampleHitches(page, opts) {
       if (programs.length === previousProgramCount) return;
       const keys = programs.map(programKey);
       const addedKeys = keys.filter((key) => !previousProgramKeys.has(key));
+      // A disposal is not a shader link. Only additions are "new GPU programs during sample";
+      // recording drops as events made a healthy batch/root retirement look like a hitch.
+      previousProgramCount = programs.length;
+      previousProgramKeys = new Set(keys);
+      if (addedKeys.length === 0) return;
       const owners = [];
       const addedSet = new Set(addedKeys);
       const scene = state && state.render && state.render.scene;
@@ -728,14 +734,13 @@ async function sampleHitches(page, opts) {
           }
         });
       }
+      if (owners.length === 0) return;
       programEvents.push({
         atMs: round(sampleStart == null ? 0 : now - sampleStart),
         count: programs.length,
         addedKeys,
         owners,
       });
-      previousProgramCount = programs.length;
-      previousProgramKeys = new Set(keys);
     }
 
     function programKey(program) {
@@ -753,6 +758,19 @@ async function sampleHitches(page, opts) {
       if (meshQueueRemaining > 0) { settleWait = `mesh-queue:${meshQueueRemaining}`; return false; }
       if (render._meshReconcileDirty) { settleWait = 'mesh-reconcile'; return false; }
       if (window.__SF_RENDER_WARMUP_READY__ === false) { settleWait = 'render-warmup'; return false; }
+      // The retained rigid batch is part of the render structure: its first activation links a
+      // program. Let it become active before sampling instead of counting the warm-up link as a
+      // post-warmup hitch.
+      const rigidBatch = state.render && state.render.rigidOpaqueBatch;
+      if (rigidBatch && (rigidBatch.status === 'preparing' || rigidBatch.status === 'settling')) {
+        if (rigidBatchWaitStartedAt == null) rigidBatchWaitStartedAt = performance.now();
+        if (performance.now() - rigidBatchWaitStartedAt < 12000) {
+          settleWait = `rigid-batch:${rigidBatch.status}`;
+          return false;
+        }
+      } else {
+        rigidBatchWaitStartedAt = null;
+      }
       let queue = { pending: 0, running: false };
       try {
         const queueStats = window.__SF_GET_AUTHORED_UPGRADE_QUEUE_STATS__;

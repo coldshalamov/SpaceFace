@@ -1216,10 +1216,12 @@ function vectoringIdle(reason) {
  * Q/E or helm slide still bends the path. computeYawControl eases same-sign yaw onto
  * pathFollowRate as the nose approaches VECTORING_SLIP_LEAD_RAD, then holds it there; excess
  * lead is pulled back. Turning back toward the path is always free, and a zero turn is not
- * given yaw the pilot did not ask for. |slip| >= 90 deg returns null so flips still swing the
- * nose. Overspeed does not release it either: the bound only limits a yaw command and spends no
- * speed, and pathFollowRate is measured from the real applied accel — so a boost or dash that
- * crosses its own cap keeps the same welded arc instead of snapping the nose free.
+ * given yaw the pilot did not ask for. The vectoring weld releases at |slip| >= 90 deg so a
+ * deliberate flip still swings the nose; the wider unvectored cruise governor holds its
+ * 90-degree lead allowance instead, so held thrust cannot point backwards and retro-burn the
+ * ship to a stop. Overspeed does not release it either: the bound only limits a yaw command and
+ * spends no speed, and pathFollowRate is measured from the real applied accel — so a boost or
+ * dash that crosses its own cap keeps the same welded arc instead of snapping the nose free.
  * Without vectoring, the cruise governor uses the same physical path-follow rate with a wider
  * 90-degree lead allowance: no extra force, just a held turn that cannot repeatedly retro-burn.
  */
@@ -1233,16 +1235,14 @@ function assistedTurnBound(body, input, profile, accel, dt) {
   if (!(input.throttle > deadInput)) return null;
   const speed = length2(body.vel);
   if (!(speed > positive(settings.deadSpeed, 0.18))) return null;
-  // Unvectored assisted flight still has a cruise governor. Inside its closing-speed window,
-  // let the nose lead freely toward 90 degrees, then follow the turn the real thrusters can
-  // produce. Otherwise held yaw repeatedly puts W behind the momentum vector and burns the
-  // ship to a stop. This adds no vectoring force; releasing W, raw modes and low-speed yaw stay
-  // free. The vectoring assist retains its much tighter authored nose/path weld.
+  // The unvectored assisted cruise governor applies at every speed above the dead band. It used
+  // to wait for the closing-speed window near combat cruise, but a held W+A from rest crossed
+  // 90 degrees of slip before that window and thrust pointed backwards — the ship could never
+  // reach the window it was waiting for. The bound adds no vectoring force; it only keeps the
+  // nose from leading past the physical path-follow rate.
   if (!tuning) {
-    // Key this to combat cruise, so raising the translation cap with boost cannot release yaw.
     const cap = positive(profile.combatSpeed, 0);
-    const closingSpeed = positive(profile.mainAccel, 0) * positive(settings.governorResponseS, 0.9);
-    if (!(cap > 0) || speed < Math.max(0, cap - closingSpeed)) return null;
+    if (!(cap > 0)) return null;
   }
   const pathHeading = Math.atan2(body.vel.z, body.vel.x);
   const slip = wrapAngle(body.rot - pathHeading);
@@ -1251,7 +1251,12 @@ function assistedTurnBound(body, input, profile, accel, dt) {
   const boundSlip = tuning && COMMAND_SLIP_BOUND && input.strafe
     ? wrapAngle(body.rot + Math.atan2(input.strafe, input.throttle) - pathHeading)
     : slip;
-  if (Math.abs(boundSlip) >= Math.PI / 2) return null;
+  // A deliberate flip still has to swing the nose: the vectoring weld releases at 90 degrees.
+  // The unvectored cruise governor does NOT release there — that release let a held W+A cross 90
+  // degrees and turn full thrust backwards, producing the repeated retro-burn stop. It keeps the
+  // bound at the 90-degree lead allowance instead; same-sign yaw is pulled back, turning toward
+  // the path stays free, and raw/assist-off modes are unchanged.
+  if (tuning && Math.abs(boundSlip) >= Math.PI / 2) return null;
   // pathFollowRate = this tick's achievable velocity rotation: the signed rate the combined
   // applied acceleration (thrust, assists, drag, vectoring) already bends the velocity vector.
   // Measuring the real applied accel — not an authority estimate — keeps the bound honest at
