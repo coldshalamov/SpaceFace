@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "353e1e508e0b5c342019ff23c0e87343e2af9fb09b12bc55b632d64addc3e2e3",
+  "uiSourceDigest": "0df473ec69fea7bf82a6a693f82fd6dbbfcabbd6a31a00372cee8ffea3b00d0f",
   "uiSourceFiles": {
     "index.html": "9675d8b65c4623cc9aa48ad94c670479f78ce1b0f2d05166fa9a52b44d509e04",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -219,7 +219,7 @@
     "src/ui/orrery/mobileScreenLayouts.js": "a5ed5767467f4929d2d72545079a8584c6042b78787ef9dd1713d13e15a09cfc",
     "src/ui/orrery/motion.js": "d6b91527f27e6cf6eef7f514a17105d37975d3f936596d987f72f20e15eb0878",
     "src/ui/orrery/new-gameLayouts.js": "6386197d948ea0821c1bb6880bcc4d6eed634789c0160aac7e6003014e382988",
-    "src/ui/orrery/newGameLayouts.js": "dbac740561739b297bfc03ac7df4b9eef8a664aca9df0eb3cf219a1b612dc35e",
+    "src/ui/orrery/newGameLayouts.js": "6dbd46b041988b14d7b674a488de72e44999a0e30f78f48ae6fbbab5f260b51b",
     "src/ui/orrery/nextDecision.js": "abeecce9c2bb94fe37d834bf2be7a139bafb95aa588e81a640d352c46197e547",
     "src/ui/orrery/pauseLayouts.js": "1d5fc4c96517552848f829362fe7ebc87e41e9df0db69c12c987e0d329edf115",
     "src/ui/orrery/physics-raceLayouts.js": "665953adead5e6d97e08d65536e1ae0228fb9c6d7417aeb020523dffe7a10546",
