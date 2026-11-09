@@ -14,9 +14,9 @@
 // ui-polish-423: the card's words ran flush against its own hairline ("SALVAGE RETRIEVAL", the
 // title, the terms rail and the FROM end all sat at x=0 of the border at every size). The card now
 // carries an inset that steps down with the shared densify bands. The stage is a scroll column and
-// the card is `flex:1 0 auto`, so the inset grows the card instead of clipping the route band. At
-// <=820px tall the inset is 8/16/10 and the route band's lead is 12px, so at 1280x720 the band
-// still starts where it did with no inset (y557) and the track stays above the fold.
+// the card is `flex:1 0 auto`, so the inset grows the card instead of clipping the route band. The
+// short/narrow inset rules are scoped to the desktop bands they were measured in (see below), so
+// the phone rule and the archive sheet's per-band route margins keep winning elsewhere.
 import { injectOrrery } from './tokens.js';
 
 const BONE = '236 230 216';
@@ -76,18 +76,45 @@ export function injectMissionLogLayouts(doc = globalThis.document) {
       -webkit-mask-image: none !important; mask-image: none !important;
     }
   }
-  /* short frames: compress card chrome with the shared densify bands */
+  /* Inset bands (ui-polish-423). Each rule is scoped to the desktop band it was measured in and uses
+     the base selector's specificity, so the phone rule above (<=639w) and the archive sheet's
+     per-band route margins (4/6/18/30px) still win where they apply. */
   @media (max-height: 820px) {
     ${ML} .sf-mlog-card { border-radius: 8px; }
-    ${ML} .sf-mlog-card:not(#_) { padding: 8px 16px 10px; }
-    ${ML} .sf-mlog-card > .ml-route-host:not(#_) { margin-top: 12px; }
   }
-  /* narrow short desktop windows (800x600; the narrow end of the archive sheet's 761-1100w / <=640h band): the dial
-     column keeps its 190px, so every px of side inset comes out of the reading column, and the terms'
-     104px label column left each value ~76px (about a word a line). The sides step down to 8px and
-     each term stacks its label over its value so the value takes the full reading column. */
-  @media (min-width: 761px) and (max-width: 900px) and (max-height: 640px) {
-    ${ML} .sf-mlog-card:not(#_):not(#_) { padding-left: 8px; padding-right: 8px; }
+  /* short desktop frames: 8/16/10 inset */
+  @media (min-width: 640px) and (max-height: 820px) {
+    ${ML} .sf-mlog-card { padding: 8px 16px 10px; }
+  }
+  /* wide short (1280x720): the archive's 22px route lead drops to 12px so the band starts where it
+     did with no inset (y557 vs master 559) and the course track stays above the fold */
+  @media (min-width: 1101px) and (max-height: 820px) {
+    ${ML} .sf-mlog-card > .ml-route-host { margin-top: 12px; }
+  }
+  /* wide 821-960 tall (1440x900, 1600x900): the full 20px top inset and the 4.8vh lead ran the
+     band ~19px past the fold at 1600x900; a 10px top inset and a 3.6vh lead keep the medallions in */
+  @media (min-width: 1101px) and (min-height: 821px) and (max-height: 960px) {
+    ${ML} .sf-mlog-card { padding-top: 10px; }
+    ${ML} .sf-mlog-card > .ml-route-host { margin-top: clamp(24px, 3.6vh, 46px); }
+  }
+  /* 761-1100 wide x <=820 tall (800x600 ... 1024x768): the dial column is fixed, so the side inset
+     drops to 8px and the column gap / dial column give those 16px back; the reading column keeps
+     master's width and its words wrap where they did */
+  @media (min-width: 761px) and (max-width: 1100px) and (max-height: 820px) {
+    ${ML} .sf-mlog-card { padding-left: 8px; padding-right: 8px; }
+  }
+  @media (min-width: 761px) and (max-width: 1100px) and (min-height: 641px) and (max-height: 820px) {
+    ${ML} .sf-mlog-card { column-gap: 4px; }
+  }
+  /* ...and at <=640 tall (column gap already 0) the 190px side column gives them up; the top inset
+     is 4px so the band sits within 4px of master's (960x540 y463 vs 459) */
+  @media (min-width: 761px) and (max-width: 1100px) and (max-height: 640px) {
+    ${ML} .sf-mlog-card { padding-top: 4px; grid-template-columns: minmax(0, 1fr) 174px; }
+  }
+  /* 761-860 wide x <=820 tall (800x600, 800x700, 800x768, 840x660): the terms' label column left
+     each value ~76px (about a word a line, already so on master); each term stacks its label over
+     its value instead */
+  @media (min-width: 761px) and (max-width: 860px) and (max-height: 820px) {
     ${ML} .sf-mlog-card .sf-mlog-terms > .k-row:not(#_) { grid-template-columns: minmax(0, 1fr) !important; row-gap: 1px; }
   }
   @media (max-height: 460px) {
@@ -95,7 +122,9 @@ export function injectMissionLogLayouts(doc = globalThis.document) {
   }
   @media (max-height: 400px) {
     ${ML} .sf-mlog-card { border-radius: 6px; }
-    ${ML} .sf-mlog-card:not(#_) { padding: 10px 12px; }
+  }
+  @media (min-width: 640px) and (max-height: 400px) {
+    ${ML} .sf-mlog-card { padding: 10px 12px; }
   }
   `;
   doc.head.appendChild(style);
