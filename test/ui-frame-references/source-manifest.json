@@ -89,7 +89,7 @@
   "src/ui/globalFind.js": "864d7cd912543f02d5cd4f53be96de19222049f9c9d6fba0b0f198ef6b124302",
   "src/ui/glyphs.js": "f54a95acd99ab8030e27a3d9ccfcd79f39f023b30b735f2dc3adeda2ac858865",
   "src/ui/gravityMarkOverlay.js": "28a1da02ea27126cb3346c0327f81cc755dc0baa5f59b183aef4d806e53389ab",
-  "src/ui/hud.js": "3507f7d9d76fe55d17e8213ea7a51eee62e14d44804f47582c8c763a78ed249f",
+  "src/ui/hud.js": "ecd284d98ded8cfed5158cc5f7c713b61b52416ce35d55dc3b7acf30de3b09a3",
   "src/ui/hudAttention.js": "5542adf8af8542b4eb7eafea9b53161dc2d4d5faa6b5fdf324fee8f5f8df851e",
   "src/ui/hudBrackets.js": "8c4ea67e725b6a8c912190a14a4c1587ec8640319af9405c1568d840c0d743eb",
   "src/ui/hudCombatLock.js": "4d93fd84e57bbfe2cca9138d446a8ce5b80fe544c601a97439313ddb1cff99d0",

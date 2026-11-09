@@ -52,7 +52,8 @@ test('syncEntityViews feeds simNow to the world-anchored closures', () => {
 
 test('the per-entity motion block and flash decay ride the scaled presentation delta', () => {
   const src = readFileSync(RENDERER, 'utf8');
-  assert.match(src, /_presentationFrameDt = Math\.max\(0, this\._lastFrameDt \* presentationTs\)/);
+  assert.match(src, /const presentElapsedS = presentationFrame && Number\.isFinite\(presentationFrame\.presentElapsedS\)/);
+  assert.match(src, /_presentationFrameDt = Math\.max\(0, presentElapsedS \* presentationTs\)/);
   assert.match(src, /if \(entity && !farSpeck && presFrameDt > 0\)/);
   assert.match(src, /updateShipPitchPresentation\(this\.state, this\._presentationFrameDt\)/);
   // No wall-clock dt feeds the micro-motion block: the old fallback would force a

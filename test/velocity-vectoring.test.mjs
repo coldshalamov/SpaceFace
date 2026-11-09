@@ -432,6 +432,31 @@ function noseTo(offsetRad) {
   };
 }
 
+test('an unvectored assisted held turn from rest cannot cross 90 degrees into a retro-burn', () => {
+  // Tether/low-speed case: vectoring is off, the assisted cruise governor owns the turn. Before
+  // the bound held at 90 deg, a held W+A crossed the retro hemisphere and full thrust pointed
+  // backwards every ~2 s (kernel min speed 8.7 of a ~195 WU/s cruise).
+  const profile = hitchPlayerProfile();
+  const b = body();
+  let minSpeed = Infinity;
+  let maxSlip = 0;
+  simulate(profile, b, () => ({
+    throttle: 1, turn: 1, velocityVectoring: false, unvectoredCruiseSteering: true,
+  }), 900, (i, bb) => {
+    if (i > 120) {
+      const speed = speedOf(bb);
+      if (speed < minSpeed) minSpeed = speed;
+      const slip = Math.abs(wrap(bb.rot - headingOf(bb)));
+      if (slip > maxSlip) maxSlip = slip;
+    }
+    return false;
+  });
+  assert.ok(minSpeed >= profile.combatSpeed * 0.5,
+    `held W+A kept at least half combat speed (min ${minSpeed.toFixed(1)} of ${profile.combatSpeed.toFixed(1)})`);
+  assert.ok(maxSlip < Math.PI * 0.62,
+    `the nose stayed out of the full retro hemisphere (slip ${(maxSlip * 180 / Math.PI).toFixed(0)} deg)`);
+});
+
 test(`kernel redirect table: twitch, W+turn sweep and W+strafe+turn per variant — "${TWITCH}"`, () => {
   const profile = hitchPlayerProfile();
   const rows = [];
