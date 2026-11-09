@@ -61,6 +61,7 @@ import { gateBearing } from './waveMaterialization.js';
 import { findSwarmArrival, swarmPilotHasActed } from './swarmSafety.js';
 import { planSwarmBank, swarmBankEligible } from './swarmBank.js';
 import { planSwarmOpeningVolley } from './swarmOpeningVolley.js';
+import { planSwarmOpeningFlanks, SWARM_OPENING_FLANK_GATES } from './swarmOpeningFlanks.js';
 import {
   BROOD_CHARGER_DASH_MAX_S,
   BROOD_CHARGER_DASH_SPEED,
@@ -899,6 +900,15 @@ export function createBroodEngine(deps = {}) {
     const player = state?.entities?.get?.(state.playerId);
     const ax = finite(player?.pos?.x), az = finite(player?.pos?.z);
     const familyIndex = buildFamilyIndex();
+    // Round two uses the surviving court, not an invisible ring following the pilot.
+    // Check only on the first admission attempt; a missing court keeps normal arrivals.
+    if (!openingVolleyAttempted) {
+      const mite = familyIndex.get('mite');
+      const course = mite == null ? null : planSwarmOpeningFlanks(
+        state, state.run, liveWave, pendingPlan, liveFamilyRadius[mite]);
+      if (course) openingRamp = { remaining: 0, lastTick: state.tick, group: 0,
+        course, gates: SWARM_OPENING_FLANK_GATES };
+    }
     const deferred = [];
     let spawned = 0, groupIndex = openingRamp?.group || 0;
     let arrivalBudget = openingRamp ? 18 : Infinity;
@@ -961,10 +971,12 @@ export function createBroodEngine(deps = {}) {
       let owed = 0;
       for (let start = 0; start < part.count;) {
         if (arrivalBudget <= 0) { owed += part.count - start; break; }
-        const bearing = gateBearing(GATE_RING[groupIndex++ % GATE_RING.length]);
+        const gates = openingRamp?.course && openingRamp.gates || GATE_RING;
+        const bearing = gateBearing(gates[groupIndex++ % gates.length]);
         const course = openingRamp?.course;
-        const cx = course ? course.x + (-bearing.x * course.uz - bearing.z * course.ux) * 165 : ax + bearing.x * 165;
-        const cz = course ? course.z + (bearing.x * course.ux - bearing.z * course.uz) * 165 : az + bearing.z * 165;
+        const distance = course?.distance || 165;
+        const cx = course ? course.x + (-bearing.x * course.uz - bearing.z * course.ux) * distance : ax + bearing.x * 165;
+        const cz = course ? course.z + (bearing.x * course.ux - bearing.z * course.uz) * distance : az + bearing.z * 165;
         const n = Math.min(18, part.count - start, arrivalBudget);
         start += n;
         arrivalBudget -= n;
