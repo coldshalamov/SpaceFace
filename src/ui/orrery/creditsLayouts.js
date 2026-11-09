@@ -85,6 +85,14 @@ ${C} .of-credits-rows .k-row::before {
     border-radius:8px !important;
   }
 }
+/* ui-polish-440: a short wide window (901+ wide, 461-640 tall, e.g. 960x540). The foot row ran
+   under both columns, so the reel stage stopped at the BACK row's top and the next card (TYPE)
+   peeked as an empty 35px hairline box under the fade (ui-bench credits, 2026-11-09). BACK only
+   needs the hang column, so the stage now runs down beside it and the next card's head reads. */
+@media (min-width:901px) and (min-height:461px) and (max-height:640px) {
+  html:root body #screens > .k-screen.of-credits.orr-credits {
+    grid-template-areas:"title title" "hang stage" "foot stage" !important; }
+}
 @media (max-height:460px) {
   ${C} .orr-cr-sec:not(:has(> .of-credits-notice)) {
     padding:8px 10px;
