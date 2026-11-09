@@ -25,6 +25,8 @@ const CSS = `
 .orr-chain > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
 .orr-chain.is-off > svg, .orr-chain.is-off > .orr-chain__label { display:none; }
 .orr-chain__label { position:absolute; display:flex; flex-direction:column; gap:2px; pointer-events:none; white-space:nowrap; }
+/* the yard's own stock answer under a short input's count (WF-14): fine print in the label voice */
+.orr-chain__yard { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:520; font-size:max(11px, calc(8.5px * var(--orr-chain-s))); letter-spacing:.12em; text-transform:uppercase; color:rgb(${BONE} / .58); }
 /* a verb under a short input (source it in the market) is the one thing on the drawing that takes the pointer */
 .orr-chain__verb { pointer-events:auto; margin-top:3px; }
 .orr-chain__verb > * { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:max(12px, calc(9.5px * var(--orr-chain-s))); letter-spacing:.16em; text-transform:uppercase;
@@ -419,7 +421,7 @@ export function createChainBeam(host, { onLayout = null } = {}) {
       rig.ins.push({ beam, need, held, units, paintStock, len: null });
       if (inp.glyph) layer.appendChild(rise(glyphAt(inp.glyph, xIn, y, rIn, short ? 'is-short' : ''), 60 + i * 40));
       else if (!short) layer.appendChild(rise(svg('circle', { cx: f(xIn), cy: f(y), r: 2 * gIn, class: 'orr-chain__core' }), 60 + i * 40));
-      const l = label(`is-left${short ? ' is-short' : ''}${blocked ? ' is-after-block' : ''}`, 0, y - 16 * scL, `<span class="orr-chain__name">${inp.nameHtml || ''}</span><span class="orr-chain__count"><b>${inp.have}</b> / ${inp.need}${short ? ' · short' : ''}</span>${inp.verbHtml ? `<span class="orr-chain__verb">${inp.verbHtml}</span>` : ''}`);
+      const l = label(`is-left${short ? ' is-short' : ''}${blocked ? ' is-after-block' : ''}`, 0, y - 16 * scL, `<span class="orr-chain__name">${inp.nameHtml || ''}</span><span class="orr-chain__count"><b>${inp.have}</b> / ${inp.need}${short ? ' · short' : ''}</span>${inp.noteHtml ? `<span class="orr-chain__yard">${inp.noteHtml}</span>` : ''}${inp.verbHtml ? `<span class="orr-chain__verb">${inp.verbHtml}</span>` : ''}`);
       l.style.width = `${f(xIn - rIn - 10 * scL)}px`;
       if (arriveNow) { l.classList.add('orr-chain__rise'); l.style.setProperty('--orr-delay', `${100 + i * 40}ms`); }
     });
