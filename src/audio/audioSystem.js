@@ -82,7 +82,7 @@ import { createThreatEar } from './threatEar.js';
 import { bindTrailerScore } from './trailerScore.js';
 import { bindIronKrakenAudio } from './ironKrakenAudio.js';
 import { noteToHz, AUTHORED_STEM_SAMPLES } from './themeCompose.js';
-import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding } from './barkVoice.js';
+import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding, withRadioBand } from './barkVoice.js';
 
 // A recorder may tap this already gesture-started graph. It never unlocks or connects audio.
 export function getReplayAudioSource() {
@@ -7431,7 +7431,12 @@ export const audio = {
     const player = this.state && this.state.entities && typeof this.state.entities.get === 'function'
       ? this.state.entities.get(this.state.playerId) : null;
     // Bearing pan only — radio carries the distance; gain stays flat (unlike world position,
-    // which would cull and attenuate a far hail the receiver still hears clearly).
+    // which would cull and attenuate a far hail the receiver still hears clearly). The distance
+    // rides the channel itself instead: a far hail is narrower, hissier, more driven (barkVoice's
+    // three bands), so the ear can hear how far away the speaker is without the words fading.
+    const speakerDistanceWu = speakerPos && player && player.pos
+      ? Math.hypot(speakerPos.x - player.pos.x, speakerPos.z - player.pos.z) : null;
+    const voiced = withRadioBand(resolved, speakerDistanceWu);
     const pan = speakerPos && player && player.pos
       ? Math.max(-1, Math.min(1, (speakerPos.x - player.pos.x) / PAN_SPAN)) : 0;
     // Industrial punctuation: the mic solenoid keys open, the voice rides the carrier, then the
@@ -7442,7 +7447,7 @@ export const audio = {
       gain: resolved.gain * (rt && Number.isFinite(rt._barkVoiceScale) ? rt._barkVoiceScale : 1),
       rate,
       barkPcmBuffer: ctx && ctx.state === 'running' && !this._isMuted()
-        ? cachedBarkBuffer(ctx, rt._barkPcmCache || (rt._barkPcmCache = new Map()), resolved) : null,
+        ? cachedBarkBuffer(ctx, rt._barkPcmCache || (rt._barkPcmCache = new Map()), voiced) : null,
       barkSampleId: resolved.sampleId,
       critical: true,
       pan,
