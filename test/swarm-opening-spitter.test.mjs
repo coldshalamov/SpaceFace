@@ -155,7 +155,7 @@ test('duplicate spawn calls and duplicate ticks cannot spend the hold twice', ()
 test('clear and next-wave preparation cannot inherit the debut or pending crowd', () => {
   const f = fixture(); f.engine.spawnWave(f.state); f.engine.clear('run_ended'); tick(f, 400);
   assert.equal(f.engine.view.aliveCount, 0); assert.equal(f.engine.view.pendingCount, 0);
-  f.state.run.wave = 4; f.engine.prepareWave(f.state.run, 4);
+  f.state.run.wave = 5; f.engine.prepareWave(f.state.run, 5);
   assert.ok(f.engine.spawnWave(f.state) > 18);
 });
 

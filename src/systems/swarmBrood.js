@@ -62,6 +62,7 @@ import { findSwarmArrival, swarmPilotHasActed } from './swarmSafety.js';
 import { planSwarmBank, swarmBankEligible } from './swarmBank.js';
 import { planSwarmOpeningVolley } from './swarmOpeningVolley.js';
 import { planSwarmOpeningSpitter } from './swarmOpeningSpitter.js';
+import { planSwarmOpeningCrossfire } from './swarmOpeningCrossfire.js';
 import { planSwarmOpeningFlanks, SWARM_OPENING_FLANK_GATES } from './swarmOpeningFlanks.js';
 import {
   BROOD_CHARGER_DASH_MAX_S,
@@ -924,6 +925,24 @@ export function createBroodEngine(deps = {}) {
     if (!openingVolleyAttempted) {
       openingVolleyAttempted = true;
       const spitter = familyIndex.get('spitter');
+      const mixedMite = familyIndex.get('mite');
+      const mixed = mixedMite == null || spitter == null ? null : planSwarmOpeningCrossfire(
+        state, state.run, liveWave, pendingPlan, liveFamilyRadius[mixedMite], liveFamilyRadius[spitter]);
+      const mixedSlots = [];
+      for (let i = 0; mixed && i < CAP && mixedSlots.length < 4; i++) if (!alive[i]) mixedSlots.push(i);
+      if (mixed && mixedSlots.length === 4) {
+        for (let i = 0; i < 3; i++) spawnAt(mixedSlots[i], mixedMite, mixed.mites[i].x, mixed.mites[i].z);
+        spawnAt(mixedSlots[3], spitter, mixed.spitter.x, mixed.spitter.z);
+        pendingPlan.find(part => part.id === 'mite').count -= 3;
+        pendingPlan.find(part => part.id === 'spitter').count -= 1;
+        openingBeat = { remaining: 6, lastTick: state.tick, attackPending: true,
+          lives: mixedSlots.map(slot => ({ slot, life: serial[slot] })) };
+        attackAfter[mixedSlots[3]] = Infinity;
+        openingRamp = { remaining: 0, lastTick: state.tick, group: 0, course: mixed.course };
+        assignMotherShares();
+        publish();
+        return 4;
+      }
       const debut = spitter == null ? null : planSwarmOpeningSpitter(
         state, state.run, liveWave, pendingPlan, liveFamilyRadius[spitter]);
       const debutSlot = debut ? findFreeSlot() : -1;
