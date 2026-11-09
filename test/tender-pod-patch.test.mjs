@@ -185,3 +185,44 @@ test('native pilot approaches prepared original pod and patches damaged tender w
   assert.equal(h.crate.data.cargoManifest.totalQty,qty-1);
  }finally{h.close();}
 });
+
+test('last racked scrap commits empty custody before cut callback and cold restore cannot restore clamp',async()=>{
+ const h=await patchFixture({saving:true});let cold;try{
+  for(const [commodityId,quantity] of [[SCRAP,5],[ELECTRONICS,3],['cmdty_fuel_cells',2]]) {
+   assert.equal(h.action('unload',{bodyId:h.crate.id,sourceId:h.crate.data.worldRecordId,commodityId,quantity}).ok,true);h.advance(DT*3);
+  }
+  assert.equal(h.crate.data.cargoManifest.totalQty,1);
+  assert.equal(h.action('stow',{bodyId:h.crate.id}).ok,true);h.advance(DT*3);
+  const rack=h.row.physical.recovery[0].rackAttachmentId;assert.ok(rack);
+  let saved,nested;
+  h.bus.on('tether:broken',e=>{if(e.attachmentId!==rack && e.id!==rack)return;
+   saved=clone(h.sim.registry.get('save').serialize('empty-pod'));
+   nested=createTenderPhysical(h.tender.ctx).patchFromRecovery(h.row,h.crate.id,h.crate.occupantGeneration,h.crate.data.worldRecordId,h.body.occupantGeneration);
+  });
+  const hull=h.body.hull;assert.equal(h.patch().ok,true);
+  assert.ok(saved);assert.equal(nested.reason,'transfer_busy');assert.equal(h.body.hull,hull+30);
+  assert.equal(h.row.physical.rackId,null);assert.equal(h.row.physical.recovery[0].status,'empty');
+  assert.notEqual(h.sim.registry.get('combat').kernel.attachments.get(rack).state,'active');
+  cold=await boot({native:true,saving:true,discover:false});assert.equal(cold.sim.registry.get('save').loadEnvelope(saved,'empty-pod'),true);cold.advance(DT*3);
+  assert.equal(cold.row.physical.rackId,null);assert.equal(cold.row.physical.recovery[0].status,'empty');
+  assert.equal(cold.row.physical.recovery[0].manifest.totalQty,0);assert.equal(cold.body.hull,hull+30);
+  const restored=cold.tender.physical.recoveryBodies(cold.row)[0];
+  assert.equal(cold.sim.registry.get('combat').kernel.attachments.listForEntity(restored.id).some(a=>a.state==='active' && a.controlMode==='salvage_tender_rack'),false);
+ }finally{cold?.close();h.close();}
+});
+
+test('last-unit cut callback cannot attribute repair receipt to a replaced original life',async()=>{
+ for(const target of ['home','pod']) {
+  const h=await patchFixture();try{
+   for(const [commodityId,quantity] of [[SCRAP,5],[ELECTRONICS,3],['cmdty_fuel_cells',2]]) {
+    assert.equal(h.action('unload',{bodyId:h.crate.id,sourceId:h.crate.data.worldRecordId,commodityId,quantity}).ok,true);h.advance(DT*3);
+   }
+   assert.equal(h.action('stow',{bodyId:h.crate.id}).ok,true);h.advance(DT*3);
+   const rack=h.row.physical.recovery[0].rackAttachmentId;let receipts=0;
+   h.bus.on('salvageTender:podPatched',()=>receipts++);
+   h.bus.on('tether:broken',e=>{if(e.attachmentId===rack || e.id===rack)(target==='home'?h.body:h.crate).occupantGeneration++;});
+   const result=h.patch();assert.equal(result.ok,true);assert.equal(result.receiptSuppressed,true);assert.equal(receipts,0);
+   assert.equal(h.crate.data.cargoManifest.totalQty,0);
+  }finally{h.close();}
+ }
+});

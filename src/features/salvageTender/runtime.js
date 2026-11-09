@@ -456,7 +456,7 @@ export const salvageTender = {
     }
     if (action === 'pod_patch') {
       const result = this.physical.patchFromRecovery(row, options.bodyId, options.generation, options.sourceId, options.tenderGeneration);
-      if (result.ok) this._remember('repair', `One plate from the original pod patches Morrowlight by ${result.restoredHull} hull. Your hold is unchanged.`);
+      if (result.ok && !result.receiptSuppressed) this._remember('repair', `One plate from the original pod patches Morrowlight by ${result.restoredHull} hull. Your hold is unchanged.`);
       return result;
     }
     if (action === 'restock') {

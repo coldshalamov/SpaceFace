@@ -425,6 +425,10 @@ export function createTenderPhysical(ctx) {
       || new Set(m.lines.map(l => l.commodityId)).size !== m.lines.length
       || m.totalQty !== m.lines.reduce((n, l) => n + l.qty, 0)
       || e.data.missionCargo || !(line?.qty >= 1) || !Number.isInteger(line.qty)) return refusal('pod_scrap_unavailable');
+    if (m.totalQty === 1 && physical(row).rackId === r.id) {
+      const line = attachments()?.get(r.rackAttachmentId);
+      if (!line || line.state !== 'active' || lineBetween(home, e) !== line || line.controlMode !== 'salvage_tender_rack') return refusal('rack_constraint_not_ready');
+    }
     const amount = Math.min(30, Math.max(0, home.hullMax - home.hull));
     if (!Number.isFinite(amount) || amount <= 0) return refusal('tender_hull_intact');
     return { ok: true, amount, stored: line.qty };
@@ -434,6 +438,7 @@ export function createTenderPhysical(ctx) {
     const q = podPatchQuote(row, bodyId, generation, sourceId, tenderGeneration); if (!q.ok) return q;
     const home = byIdentity(row, TENDER_BODY_ID), e = state.entities.get(bodyId), r = recordFor(row, sourceId);
     const m = e.data.cargoManifest, line = m.lines.find(l => l.commodityId === 'cmdty_scrap_metal');
+    const rackLine = m.totalQty === 1 && physical(row).rackId === r.id ? attachments().get(r.rackAttachmentId) : null;
     busy = true; transferStates.add(state);
     try {
       // This delivery writer is synchronous and callback-free. Commit both
@@ -446,7 +451,17 @@ export function createTenderPhysical(ctx) {
       syncDerivedPhysicsMass(e, mass, mass * e.radius * e.radius * 0.4, e.radius);
       // Re-enable the repaired original before callback-time save/prompt readers.
       syncTenderProtection(row, home);
+      if (m.totalQty === 0) {
+        r.status = 'empty';
+        if (physical(row).rackId === r.id) { physical(row).rackId = null; r.rackAttachmentId = null; }
+      }
       capture(row); row.revision++;
+      // Publish empty custody before cut's synchronous callbacks. The native
+      // owner marks the exact validated line inactive before notifying listeners.
+      if (rackLine) attachments().cut(rackLine.id, home.id, 'salvage_tender_pod_spent');
+      const receiptCurrent = byIdentity(row, TENDER_BODY_ID) === home && home.occupantGeneration === tenderGeneration
+        && byIdentity(row, sourceId) === e && e.occupantGeneration === generation && state.salvageTender === row;
+      if (!receiptCurrent) return { ok: true, restoredHull: job.deliveredHull, consumedScrap: 1, remaining: line.qty, receiptSuppressed: true };
       bus?.emit('salvageTender:podPatched', { sourceId, bodyId, generation, tenderId: home.id,
         tenderGeneration, consumedScrap: 1, restoredHull: job.deliveredHull });
       return { ok: true, restoredHull: job.deliveredHull, consumedScrap: 1, remaining: line.qty };
