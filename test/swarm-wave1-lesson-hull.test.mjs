@@ -95,6 +95,12 @@ function combatantRuntime(state, target) {
 function chipLessonParts(state, target) {
   const runtime = combatantRuntime(state, target);
   if (!runtime || !runtime.subsystems) return null;
+  // The authored wasp is unshielded/unarmored. Explicit non-full pools make this
+  // restoration fixture exercise the layered branch rather than assert a 0 -> 0 restore.
+  target.shieldMax = 50;
+  target.shield = 31;
+  target.armorMax = 60;
+  target.armorHp = 37;
   const tick = state.tick >>> 0;
   let plantedId = null;
   for (const [id, subsystem] of Object.entries(runtime.subsystems)) {
@@ -205,6 +211,11 @@ async function runLesson({ when, originKind, attacker, tickCap, inspectParts = f
       // hold is what has to keep a rock from clearing the hull.
       if (acted) noteSwarmPilotAction(state);
       const result = strike(runtime, state, live, attackerId, originKind);
+      note.hit = {
+        shieldBefore: result?.before?.shield,
+        shieldBroke: result?.shieldBroke,
+        shieldAfter: live.shield,
+      };
       if (chip) {
         const hitId = result && result.subsystemId;
         const hit = hitId && combatantRuntime(state, live) && combatantRuntime(state, live).subsystems[hitId];
@@ -259,7 +270,7 @@ test('a player shot still ends the opening lesson and brings the pack', { timeou
   assert.ok(note.after.spawned >= 2, `pack did not arrive: ${JSON.stringify(note)}`);
 });
 
-test('seed 4242: after the pilot acts a foundry collision does not kill the lesson wasp', { timeout: 90_000, concurrency: false }, async () => {
+test('seed 4242: explicit partial shield and armor fixture preserves lesson hull after a foundry collision', { timeout: 90_000, concurrency: false }, async () => {
   const note = await runLesson({
     when: 'early', originKind: 'collision', attacker: 'rock', tickCap: 14 * 60, inspectParts: true, acted: true,
   });
@@ -269,6 +280,7 @@ test('seed 4242: after the pilot acts a foundry collision does not kill the less
   assert.equal(note.struck.alive, true, `collision cleared the lesson wasp: ${JSON.stringify(note)}`);
   assert.ok((note.struck.hull || 0) > 0, `collision zeroed the lesson hull: ${JSON.stringify(note)}`);
   // snapshotVitals.before.armor is the armorHp the listener writes back.
+  assert.ok(note.parts.armorBefore > 0, "restoration fixture must start with armor");
   assert.equal(note.parts.armorHp, note.parts.armorBefore, `armorHp was not restored: ${JSON.stringify(note.parts)}`);
   assert.equal(note.parts.armorHp, note.parts.beforeArmor, `armorHp does not match payload.before.armor: ${JSON.stringify(note.parts)}`);
   assert.equal(note.parts.shieldBroke, true, `expected the test collision to break shields: ${JSON.stringify(note.parts)}`);
@@ -283,6 +295,21 @@ test('seed 4242: after the pilot acts a foundry collision does not kill the less
   assert.equal(note.after.spawned, 1, `collision released the pack: ${JSON.stringify(note)}`);
   assert.equal(note.after.resolved, 0, `collision counted a kill: ${JSON.stringify(note)}`);
   assert.equal(note.after.released, false, `opening lesson released: ${JSON.stringify(note)}`);
+});
+
+test('authored unshielded lesson survives incidental collision without a false shield break', { timeout: 90_000, concurrency: false }, async () => {
+  const note = await runLesson({
+    when: 'early', originKind: 'collision', attacker: 'rock', tickCap: 14 * 60, acted: true,
+  });
+  assert.ok(note.struck, JSON.stringify(note));
+  assert.equal(note.strikeResult, 'ok', JSON.stringify(note));
+  assert.deepEqual(note.hit, { shieldBefore: 0, shieldBroke: false, shieldAfter: 0 });
+  assert.equal(note.struck.alive, true);
+  assert.ok(note.after, JSON.stringify(note));
+  assert.equal(note.after.alive, true);
+  assert.equal(note.after.spawned, 1);
+  assert.equal(note.after.resolved, 0);
+  assert.equal(note.after.released, false);
 });
 
 test('a rock the pilot threw still kills the lesson wasp', { timeout: 90_000, concurrency: false }, async () => {
