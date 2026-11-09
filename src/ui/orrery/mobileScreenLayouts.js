@@ -524,6 +524,14 @@ export const MOBILE_SCREEN_CSS = `
   ${M} .sx-mkt-browser__filters::-webkit-scrollbar { display:none; }
   ${M} .sx-mkt-browser__filters { -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent) !important;
     mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent) !important; padding-right:28px !important; }
+  /* ui-polish-444: swiped, the row cut a family mid-word at its left edge ("W & RARE"); each edge fades
+     only while there is more row past it (keyframes and properties live in marketLayouts.js). */
+  @supports (animation-timeline: scroll()) {
+  ${M} .sx-mkt-browser__filters {
+    -webkit-mask-image:linear-gradient(90deg, transparent calc(var(--sx-mkt-fam-fl) / 4), #000 var(--sx-mkt-fam-fl), #000 calc(100% - var(--sx-mkt-fam-fr)), transparent calc(100% - var(--sx-mkt-fam-fr) / 4)) !important;
+    mask-image:linear-gradient(90deg, transparent calc(var(--sx-mkt-fam-fl) / 4), #000 var(--sx-mkt-fam-fl), #000 calc(100% - var(--sx-mkt-fam-fr)), transparent calc(100% - var(--sx-mkt-fam-fr) / 4)) !important;
+    animation:sx-mkt-fam-edges linear both; animation-timeline:scroll(self inline); }
+  }
   ${M} .sx-mkt-browser__filters li { flex:none !important; margin:0 !important; padding:0 !important; }
   ${M} .sx-mkt-filter { min-height:40px !important; padding:0 !important; font-size:12px !important; letter-spacing:.12em !important; white-space:nowrap !important; }
   ${M} .orr-mkt-find { position:relative !important; inset:auto !important; width:100% !important; margin:4px 0 6px !important; padding:0 !important; }
