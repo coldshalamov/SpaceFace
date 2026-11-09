@@ -459,6 +459,17 @@ html.sf-reduce-motion ${W} * { transition:none !important; animation:none !impor
   ${W} .sx-sw-hero[data-band='handling'] .k-hero__n { font-size:clamp(36px, 5.2vh, 52px) !important; }
   ${W} .sx-sw__stats .k-row { padding:3px 0 !important; }
 }
+/* ui-polish-439: a short desktop window (701+ wide, <=800 tall: 960x540, 1280x720, 1366x768). The
+   main column scrolls (the stats card runs ~480px under a 490-620px column) but had no edge, so
+   the Skirmisher card's description and stat bars were hard-cut mid-line at the frame's foot
+   (ui-bench still, 2026-11-09). The column now fades over its last 28px, and 28px of foot room
+   lets the card's last row scroll clear of the fade. */
+@media (min-width:701px) and (max-height:800px) {
+  html:root:not([data-sf-mobile="1"]) body #screens #sf-ship .sx-sw > .sx-sw__main {
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 28px), transparent);
+    mask-image:linear-gradient(180deg, #000 calc(100% - 28px), transparent);
+    padding-bottom:28px !important; box-sizing:border-box; }
+}
 `;
 
 let injected = false;
