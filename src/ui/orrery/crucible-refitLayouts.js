@@ -151,9 +151,11 @@ ${RF} > .k-title .sf-cru-preview {
   }
   ${RF} > .sf-cru-stage:not(.orr-hull--on) > .sf-cru-rows {
     flex:1 1 auto !important; min-height:0 !important; max-height:100% !important;
+    /* ui-polish-442: the list scrolls the lit hardpoint into view, so its top edge needs the same fade as
+       its foot; at 960x540 the row above printed its STRIP / SELL verbs as a sliced line under the title. */
     overflow:auto !important; gap:0 !important; padding-bottom:6px !important;
-    -webkit-mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%) !important;
-    mask-image:linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%) !important;
+    -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 16px, #000 calc(100% - 18px), transparent 100%) !important;
+    mask-image:linear-gradient(180deg, transparent 0, #000 16px, #000 calc(100% - 18px), transparent 100%) !important;
   }
   ${RF} > .sf-cru-stage:not(.orr-hull--on) .sf-cru-row {
     padding:6px 0 8px !important; column-gap:12px !important;
