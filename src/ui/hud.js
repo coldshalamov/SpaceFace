@@ -6998,6 +6998,12 @@ export function createHud(ctx, alerts) {
     if (!reuse) receiptGeometryRects = new Map();
     receiptGeometryRects.bm = null;
     try { placeReceiptLane(); }
+    catch (error) {
+      // A failed placement cannot retain a half-invalidated snapshot.
+      receiptGeometryRects = null;
+      receiptGeometryReusable = false;
+      throw error;
+    }
     finally { if (!reuse) receiptGeometryRects = null; }
   }
   function prepareReceiptLaneSize(laneRoot, laneWidth) {

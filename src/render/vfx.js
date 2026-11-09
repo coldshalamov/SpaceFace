@@ -2507,6 +2507,15 @@ export const vfx = {
     if (!scene) { this._scene = null; return; } // render not up yet (e.g. unit test) — degrade to no-op
     this._scene = scene;
     this._ensureOverflowJets();
+    // Action answers (tether/boost/turn receipts) used to mint this batch lazily on the first
+    // event, so its swept-surface/particle programs were never in the first-flight cook and the
+    // first draw linked 12-15 programs inside bloomScene (241 ms / 485 ms Intel bricks,
+    // freeze-hunt 2026-11-07). Mint it behind the loading shell; `_onActionVfx` keeps the lazy
+    // fallback for non-boot harnesses.
+    if (!this._actionVfx) {
+      this._actionVfx = new ActionVfx(this._scene,
+        this._combatBeamLocalizer || ((x, z, out) => this._toLocalXZ(x, z, out)));
+    }
 
     const q = (state.settings.video && state.settings.video.particleQuality) || 'high';
     const cap = PARTICLE_CAP[q] || PARTICLE_CAP.high;
@@ -10822,8 +10831,13 @@ export const vfx = {
     if (!this._scene) return false;
     if (name === 'bombs:detonated' && this._bombFlashDropped(payload)) return false;
     this._noteCauseSilhouette(name, payload);
-    if (!this._actionVfx) this._actionVfx = new ActionVfx(this._scene,
-      this._combatBeamLocalizer || ((x, z, out) => this._toLocalXZ(x, z, out)));
+    if (!this._actionVfx) {
+      // A missing pre-cook warm must not compile a brand-new batch inside a presented flight
+      // frame. The receipt is cosmetic; skip it for this tick rather than brick the picture.
+      if (this.state && this.state.mode === 'flight') return false;
+      this._actionVfx = new ActionVfx(this._scene,
+        this._combatBeamLocalizer || ((x, z, out) => this._toLocalXZ(x, z, out)));
+    }
     return this._actionVfx.emit(name, payload, this.state);
   },
 
@@ -12511,6 +12525,14 @@ export const vfx = {
 
   warmupLiveFlightEffectsForLoading() {
     if (!this._scene) return { skipped: true, reason: 'no-scene' };
+    // The pre-cook seam the renderer calls immediately before collecting the first-flight effect
+    // cohort. Mint the action batch HERE as well as in _initPools: pool init waits on the async
+    // volume payload and can settle after the cohort walk, which would reintroduce the first-use
+    // in-frame link this warm exists to prevent.
+    if (!this._actionVfx) {
+      this._actionVfx = new ActionVfx(this._scene,
+        this._combatBeamLocalizer || ((x, z, out) => this._toLocalXZ(x, z, out)));
+    }
     if (!this._energy) this._initEnergy();
     const energy = this._energy;
     if (!energy) return { skipped: true, reason: 'no-energy' };

@@ -25327,6 +25327,7 @@ export const render = {
 
   _setHitchReliefLevel(renderState, level, eased) {
     const rel = this._hitchRelief;
+    const prevLevel = Number(rel.level) || 0;
     rel.level = level;
     rel.lastChangeMs = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
     renderState.hitchReliefLevel = level;
@@ -25339,6 +25340,15 @@ export const render = {
     if (this._adaptive && this._adaptive.setFloor) this._adaptive.setFloor(this._adaptiveFloorForRelief());
     if (prevScale !== renderState.hitchReliefScale) this._applySize();
     if (eased === null) return;
+    // Only announce a rung that changed the visible picture. On the 1-bloom-level demo preset a
+    // level-1 relief is a no-op, and the old toast made a handled frame look like a quality cut.
+    const vd = (this.state.settings && this.state.settings.video) || {};
+    const baseBloomLevels = Number(vd.bloomLevels);
+    const bloomChanged = ((prevLevel >= 1) !== (level >= 1))
+      && (!Number.isFinite(baseBloomLevels) || baseBloomLevels > 1);
+    const postChanged = ((prevLevel >= 2) !== (level >= 2)) && vd.postFx !== false;
+    const rasterChanged = prevScale !== renderState.hitchReliefScale;
+    if (!bloomChanged && !postChanged && !rasterChanged) return;
     try {
       this.bus && this.bus.emit('toast', {
         text: eased
@@ -30664,13 +30674,15 @@ export const render = {
     // recognise a hidden-tab/occlusion re-entry. presentationRunner stamps it on the frame.
     this._lastRawFrameDt = presentationFrame && Number.isFinite(presentationFrame.rawFrameDt)
       ? Math.max(0, presentationFrame.rawFrameDt) : this._lastFrameDt;
-    // World-anchored presentation integrates by the wall frame scaled by the live time-effects
-    // scale — the same model _bgTime already uses below. Hit-stop and bullet-time slow it; a zero
-    // scale (kill-cam freeze, pause, restore latch, lab hold) yields exactly 0 so consumers can
-    // skip rather than integrate a floor.
+    // World-anchored presentation integrates by the wall time since the last PRESENT, scaled by the
+    // live time-effects scale. A 30 Hz cap skips every other callback; per-callback dt made this
+    // clock run at 0.9x wall speed (0.45x on 120 Hz), so the fence drifted and pinned to the oldest
+    // pack. presentationRunner stamps the accumulated present elapsed.
     const presentationTs = Number.isFinite(this.state && this.state.timeScale)
       ? this.state.timeScale : 1;
-    this._presentationFrameDt = Math.max(0, this._lastFrameDt * presentationTs);
+    const presentElapsedS = presentationFrame && Number.isFinite(presentationFrame.presentElapsedS)
+      ? Math.max(0, presentationFrame.presentElapsedS) : this._lastFrameDt;
+    this._presentationFrameDt = Math.max(0, presentElapsedS * presentationTs);
     // Shared presentation clock for visualFactory self-animation (nav blinkers, spinning gems):
     // sim time holds on pause/freeze and slows with hit-stop, so set pieces freeze with the world.
     setFactoryPresentationNow(Number(this.state && this.state.simTime) || 0);
@@ -34524,11 +34536,14 @@ const HITCH_RELIEF_UP_COUNT = 2;
 const HITCH_RELIEF_DOWN_COOLDOWN_MS = 2500;
 const HITCH_RELIEF_UP_COOLDOWN_MS = 8000;
 const HITCH_RELIEF_SCALE = 0.8;
-const HITCH_RELIEF_MAX_LEVEL = 3;
+// Raster is the last rung and the one the owner sees as pixelation. Render p95 is flat across
+// 0.60-0.90 on this game's submission-bound frame, so dropping the buffer buys no time; the
+// emergency ladder stops at post-FX and never softens the picture.
+const HITCH_RELIEF_MAX_LEVEL = 2;
 // Automatic raster relief for integrated GPUs on the Auto quality policy — applyRendererSize
 // caps the configured scale here; _adaptiveFloorForRelief folds the same value into the
 // dyn-res floor so the two reductions never compound past the readability floor.
-const INTEGRATED_RELIEF_RASTER_CAP = 0.9;
+const INTEGRATED_RELIEF_RASTER_CAP = 1;
 
 function aspectClassFromSize(size) {
   return size.x >= size.y ? 'land' : 'port';
@@ -34551,7 +34566,10 @@ function applyRendererSize(renderer, state) {
   const reliefGpu = state.render && state.render.gpu;
   const relief = reliefGpu && reliefGpu.tier === 'integrated'
     && adaptiveResolutionEnabledForSettings(reliefGpu, vd) === true;
-  const cap = Math.min(finiteInRange(vd.pixelRatioCap, 0.25, 4, 2), tierCap, relief ? 1 : 4);
+  // Native-capable on HiDPI: the integrated tier caps the pixel ratio at 1.5, so a 1.25 panel
+  // renders 1.25 physical pixels without the old Auto-only 1x ceiling. A 2x panel still caps at
+  // 1.5 (2.25x CSS area). The relief term remains for documentation/diagnostics only.
+  const cap = Math.min(finiteInRange(vd.pixelRatioCap, 0.25, 4, 2), tierCap);
   // The default bloom route applies renderScale at the drawing buffer. The optional graph needs a
   // native presentation buffer and owns its clamped internal scene scale, so applying the same
   // setting here too would square every downscale (0.7 -> 0.49) and silently overcharge quality.
