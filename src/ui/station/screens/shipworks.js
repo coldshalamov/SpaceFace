@@ -2878,7 +2878,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   function seatSaleStats(g) {
     const stats = el.querySelector('.sx-sw__stats');
     if (!stats) return;
-    const props = ['position', 'left', 'top', 'right', 'bottom', 'width', 'max-width', 'transform', 'z-index'];
+    const props = ['position', 'left', 'top', 'right', 'bottom', 'width', 'max-width', 'max-height', 'transform', 'z-index'];
     if (!g || !el.classList.contains('sx-sw--buying')) { stats.classList.remove('sx-sw__stats--unseated'); for (const k of props) stats.style.removeProperty(k); clearStatsOfRoster(); return; }
     // a short stage gives the readouts the whole gutter left of the dial (the pair row needs 170px of it)
     const tight = ringShort();
@@ -2898,8 +2898,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     stats.style.setProperty('bottom', 'auto', 'important');
     stats.style.setProperty('transform', 'none', 'important');
     stats.style.setProperty('z-index', '3', 'important');
-    const h = stats.offsetHeight || 200;
     const short = sr.height / k < 600;
+    // ui-polish-441: a short stage seats the readouts at its top, but the full sheet (~510px) is
+    // taller than the stage (260-280px at 960x540 / 1280x720), so it ran out over the station tabs
+    // and under the verb row. Keep it on the stage glass: the plate already scrolls and fades its foot.
+    if (short) stats.style.setProperty('max-height', `${Math.max(120, Math.floor(sr.height / k) - 12)}px`, 'important');
+    else stats.style.removeProperty('max-height');
+    const h = stats.offsetHeight || 200;
     placeFixed(stats, sr.left + (tight ? 6 : 16) * k, short ? sr.top + 6 * k : sr.bottom - (h + 14) * k);
   }
   // the verbs' one home, both modes: one row centred on the dial, at the band reserved under it
