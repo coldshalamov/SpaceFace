@@ -408,6 +408,50 @@ export function createTenderPhysical(ctx) {
       return total ? { ok: true, moved, remaining: before.totalQty, sourceId: r.id } : refusal('cargo_hold_full');
     } finally { busy = false; transferStates.delete(state); }
   }
+  function podPatchQuote(row, bodyId, generation, sourceId, tenderGeneration) {
+    const home = byIdentity(row, TENDER_BODY_ID), pilot = player(), e = state.entities?.get(bodyId);
+    const r = physical(row)?.recovery.find(c => c.id === sourceId);
+    if (restoring || state.salvageTender !== row || !row?.owned || !activeSector(row)
+      || state.mode !== 'flight' || state.ui?.docked || !pilot || !home
+      || !Number.isInteger(tenderGeneration) || tenderGeneration <= 0 || home.occupantGeneration !== tenderGeneration || !r || byIdentity(row, sourceId) !== e
+      || e?.occupantGeneration !== generation || !Number.isInteger(generation) || generation <= 0
+      || !['loose', 'racked'].includes(r.status) || physical(row).mode !== 'secured') return refusal('original_crate_unavailable');
+    if (![home, pilot, e].every(nativeReady)) return refusal('waiting_for_physics');
+    if (distance(pilot.pos, home.pos) > 100 || distance(pilot.pos, e.pos) > 75 || distance(e.pos, home.pos) > 95
+      || relativeSpeed(pilot, home) > 8 || relativeSpeed(e, home) > 8 || Math.hypot(home.vel.x, home.vel.z) > 8) return refusal('bring_pod_alongside_home');
+    const m = e.data.cargoManifest, line = m?.lines?.find(l => l.commodityId === 'cmdty_scrap_metal');
+    if (m?.ownerId !== TENDER_BODY_ID || m.manifestId !== `${sourceId}:manifest` || m.sealed || line?.sealed
+      || !Array.isArray(m?.lines) || !m.lines.every(l => COMMODITIES.includes(l.commodityId) && Number.isInteger(l.qty) && l.qty >= 0 && !l.sealed)
+      || new Set(m.lines.map(l => l.commodityId)).size !== m.lines.length
+      || m.totalQty !== m.lines.reduce((n, l) => n + l.qty, 0)
+      || e.data.missionCargo || !(line?.qty >= 1) || !Number.isInteger(line.qty)) return refusal('pod_scrap_unavailable');
+    const amount = Math.min(30, Math.max(0, home.hullMax - home.hull));
+    if (!Number.isFinite(amount) || amount <= 0) return refusal('tender_hull_intact');
+    return { ok: true, amount, stored: line.qty };
+  }
+  function patchFromRecovery(row, bodyId, generation, sourceId, tenderGeneration) {
+    if (busy || transferStates.has(state)) return refusal('transfer_busy');
+    const q = podPatchQuote(row, bodyId, generation, sourceId, tenderGeneration); if (!q.ok) return q;
+    const home = byIdentity(row, TENDER_BODY_ID), e = state.entities.get(bodyId), r = recordFor(row, sourceId);
+    const m = e.data.cargoManifest, line = m.lines.find(l => l.commodityId === 'cmdty_scrap_metal');
+    busy = true; transferStates.add(state);
+    try {
+      // This delivery writer is synchronous and callback-free. Commit both
+      // physical owners and their save records before emitting any receipt.
+      const job = { type: 'repair', deliveredHull: 0, deliveredArmor: 0, meta: { shares: { hull: 1, armor: 0 } } };
+      stationServices._applyJobDelta({ ...state, playerId: home.id }, job, q.amount);
+      if (!(job.deliveredHull > 0)) return refusal('repair_not_delivered');
+      line.qty--; m.totalQty--; r.manifest = clone(m);
+      const mass = crateMass(m); e.mass = mass;
+      syncDerivedPhysicsMass(e, mass, mass * e.radius * e.radius * 0.4, e.radius);
+      // Re-enable the repaired original before callback-time save/prompt readers.
+      syncTenderProtection(row, home);
+      capture(row); row.revision++;
+      bus?.emit('salvageTender:podPatched', { sourceId, bodyId, generation, tenderId: home.id,
+        tenderGeneration, consumedScrap: 1, restoredHull: job.deliveredHull });
+      return { ok: true, restoredHull: job.deliveredHull, consumedScrap: 1, remaining: line.qty };
+    } finally { busy = false; transferStates.delete(state); }
+  }
   function restockQuote(row, bodyId, generation, sourceId, commodityId) {
     const p = physical(row), pilot = player(), e = state.entities?.get(bodyId);
     const r = p?.recovery.find(c => c.id === sourceId);
@@ -492,14 +536,20 @@ export function createTenderPhysical(ctx) {
     capture(row); return { ok: true, bodyId: e.id, sourceId: r.id };
   }
 
+  function syncTenderProtection(row, e) {
+    const p = physical(row);
+    const sheltered = !activeSector(row) || distance(player()?.pos, e.pos) > TENDER_PHYSICAL.awayShelterRange;
+    if (p.disabled && e.hull > TENDER_PHYSICAL.disabledHull) p.disabled = false;
+    e.flags.invuln = sheltered || p.disabled;
+    return sheltered;
+  }
+
   function step(dt, row) {
     currentRow = row;
     if (restoring || !physical(row)) return;
     const p = physical(row), e = byIdentity(row, TENDER_BODY_ID), pilot = player();
     if (!e) return;
-    const sheltered = !activeSector(row) || distance(pilot?.pos, e.pos) > TENDER_PHYSICAL.awayShelterRange;
-    if (p.disabled && e.hull > TENDER_PHYSICAL.disabledHull) p.disabled = false;
-    e.flags.invuln = sheltered || p.disabled;
+    const sheltered = syncTenderProtection(row, e);
     for (const record of p.recovery) {
       const cargo = byIdentity(row, record.id);
       if (cargo) cargo.flags.invuln = row.owned === true && record.id === p.rackId && sheltered;
@@ -591,7 +641,7 @@ export function createTenderPhysical(ctx) {
     nativeReady, hasPlayerLine: row => lineBetween(player(), byIdentity(row, TENDER_BODY_ID)),
     beginTow, cancelTow, canSecure, secure, step, capture, afterRestore, shelve, destroy,
     handleDamage, isDisabled: row => physical(row)?.disabled === true,
-    spawnRecovery, recoveryBodies, canUnload, unloadRecovery, restockQuote, restockRecovery, stowRecovery, releaseRecovery,
+    spawnRecovery, recoveryBodies, canUnload, unloadRecovery, podPatchQuote, patchFromRecovery, restockQuote, restockRecovery, stowRecovery, releaseRecovery,
     dispose(row) { destroy(row); for (const off of subscriptions) if (typeof off === 'function') off(); subscriptions.length = 0; },
   };
 }

@@ -228,7 +228,7 @@ export const salvageTender = {
       choices.push(choice('service_menu', 'Prepare / service this ship', { action: 'menu', page: 'service' }));
       choices.push(choice('restore_menu', row.stage < 3 ? 'Restore the next machine' : 'Inspect installed machines', { action: 'menu', page: 'restore' }));
       choices.push(choice('cargo_menu', 'Physical supply crates / rack', { action: 'menu', page: 'cargo' }));
-      choices.push(choice('restock_menu', 'Pack my supplies into an original pod', { action: 'menu', page: 'restock' }));
+      choices.push(choice('restock_menu', 'Original pods · pack supplies / patch home', { action: 'menu', page: 'restock' }));
       choices.push(choice('navigation_menu', 'Home course / move the tender', { action: 'menu', page: 'navigation' }));
       const patchGate = this._serviceGate({ allowDisabled: true });
       const patchParts = tenderCostQuote(this.state, { items: { cmdty_scrap_metal: 1 } });
@@ -269,7 +269,7 @@ export const salvageTender = {
         choices.push(choice('restore_cash', `Buy installation supplies · ${next.cost.credits} cr`, { action: 'restore', payment: 'credits' }, gate.ok && q.canUseCredits, gate.reason || 'Insufficient credits.'));
       }
     } else if (this._page === 'cargo') {
-      detail = 'These three finite recovery loads contain scrap metal, salvage electronics and fuel cells. Match a crate’s speed within 75 wu to transfer what fits into your normal hold. Take one chosen supply from the nearest locker to leave room for what you need, or transfer a mixed load. Stage 3 clamps one of these original pods; unload it before using its supplies. Empty shells receive no free refill; after claiming Morrowlight you may pack your own unsealed supplies into their original compartments.';
+      detail = 'These three finite recovery loads contain scrap metal, salvage electronics and fuel cells. Match a crate’s speed within 75 wu to transfer what fits into your normal hold. Take one chosen supply from the nearest locker to leave room for what you need, or transfer a mixed load. Stage 3 clamps one of these original pods; unload its supplies for ship services, or bring its scrap alongside to patch Morrowlight directly. Empty shells receive no free refill; after claiming Morrowlight you may pack your own unsealed supplies into their original compartments.';
       const crates = row.physical.recovery.filter(r => r.status !== 'lost' && r.manifest.totalQty > 0);
       for (const r of crates) {
         const e = this.physical.recoveryBodies(row).find(e => e.data.worldRecordId === r.id);
@@ -288,7 +288,7 @@ export const salvageTender = {
               commodityId: line.commodityId, quantity: 1 }));
         }
       }
-      if (row.owned) choices.push(choice('restock_menu', 'Rack / pack my supplies', { action: 'menu', page: 'restock' }));
+      if (row.owned) choices.push(choice('restock_menu', 'Rack / pack / patch Morrowlight', { action: 'menu', page: 'restock' }));
     } else if (this._page === 'restock') {
       detail = 'Choose an original pod to pack from your hold. Each click moves one unsealed supply, with no purchase or free refill. Keep within 75 wu at matched speed. Original compartment limits remain unchanged; lost pods are not replaced.';
       for (const r of row.physical.recovery.filter(r => r.status !== 'lost')) {
@@ -304,11 +304,19 @@ export const salvageTender = {
     } else if (this._page === 'packing') {
       const target = this._packingTarget, e = this.state.entities.get(target?.bodyId);
       const record = row.physical.recovery.find(r => r.id === target?.sourceId);
-      detail = `Pack one supply into ${record?.name || 'the original pod'}. This takes it out of your hold; unload the same pod to use it again. Sealed mission freight stays aboard. No cash changes hands.`;
+      detail = `Pack one supply into ${record?.name || 'the original pod'}. This takes it out of your hold; unload the same pod for ship services, or spend its scrap directly on Morrowlight’s hull. Sealed mission freight stays aboard. No cash changes hands.`;
       if (target && e === target.body) for (const id of ['cmdty_scrap_metal', 'cmdty_salvage_electronics', 'cmdty_fuel_cells']) {
         const q = this.physical.restockQuote(row, target.bodyId, target.generation, target.sourceId, id);
         choices.push(choice(`deposit_${id}`, `Pack 1 ${commodityName(id)}${q.ok ? ` · ${q.stored}/${q.capacity} stored` : ''}`,
           { action: 'restock', bodyId: target.bodyId, generation: target.generation, sourceId: target.sourceId, commodityId: id }, q.ok, readable(q.reason)));
+      }
+      if (target && e === target.body) {
+        const home = this.physical.find(row);
+        const q = this.physical.podPatchQuote(row, target.bodyId, target.generation, target.sourceId, home?.occupantGeneration);
+        choices.push(choice('pod_patch', `Patch Morrowlight from this pod · 1 scrap → up to 30 hull${q.ok ? ` (${q.amount} now)` : ''}`,
+          { action: 'pod_patch', bodyId: target.bodyId, generation: target.generation, sourceId: target.sourceId,
+            tenderGeneration: home?.occupantGeneration }, q.ok, readable(q.reason)));
+        detail += ' Or bring this original alongside the secured tender: its own scrap can patch Morrowlight directly, without cargo space or a cash payment.';
       }
       choices.push(choice('pods', 'Choose another original pod', { action: 'menu', page: 'restock' }));
     } else if (this._page === 'navigation') {
@@ -445,6 +453,11 @@ export const salvageTender = {
     }
     if (action === 'recovery') {
       this.physical.capture(row); return this._course('crate', options.sourceId);
+    }
+    if (action === 'pod_patch') {
+      const result = this.physical.patchFromRecovery(row, options.bodyId, options.generation, options.sourceId, options.tenderGeneration);
+      if (result.ok) this._remember('repair', `One plate from the original pod patches Morrowlight by ${result.restoredHull} hull. Your hold is unchanged.`);
+      return result;
     }
     if (action === 'restock') {
       const result = this.physical.restockRecovery(row, options.bodyId, options.generation, options.sourceId, options.commodityId);
