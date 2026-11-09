@@ -3365,11 +3365,14 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
 
   // ui-polish-413: where the layout sheet draws the floating nameplate as a hairline card (a border
   // on an absolutely seated box hugging the crest), the card's edge is the keep-out, not the ink:
-  // a callout clearing only the ink would land on the hairline. The in-flow phone band is not a card.
-  function nameplateCard() {
+  // a callout clearing only the ink would land on the hairline. The in-flow phone band (<=700) also
+  // wears the hairline now; callouts keep out of it too ({ inFlow:true }, review262: its border
+  // crossed "Shield" at 390x844), but the jig's dial never sizes off the in-flow band.
+  function nameplateCard({ inFlow = false } = {}) {
     if (!nameplateEl || !nameplateEl.isConnected || typeof getComputedStyle !== 'function') return null;
     const cs = getComputedStyle(nameplateEl);
-    if (cs.position !== 'absolute' || !(parseFloat(cs.borderTopWidth) > 0)) return null;
+    const seated = cs.position === 'absolute' || (inFlow && (cs.position === 'relative' || cs.position === 'static'));
+    if (!seated || !(parseFloat(cs.borderTopWidth) > 0)) return null;
     const r = nameplateEl.getBoundingClientRect();
     return r.width > 0 && r.height > 0 ? nameplateEl : null;
   }
@@ -3409,7 +3412,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         : rr;
     }
     if (!ink) return null;
-    const card = nameplateCard();
+    const card = nameplateCard({ inFlow: true });
     if (card) {
       const cr = card.getBoundingClientRect();
       ink = { left: Math.min(ink.left, cr.left), top: Math.min(ink.top, cr.top), right: Math.max(ink.right, cr.right), bottom: Math.max(ink.bottom, cr.bottom) };
