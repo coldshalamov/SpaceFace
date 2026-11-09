@@ -81,6 +81,15 @@ ${R} > .orr-clips__actions > * { position:relative; z-index:1; }
   ${R} .orr-clip__plate.is-ghost .orr-clip__name { font-size:15px !important; }
   ${R} .orr-clip__plate.is-ghost .orr-clip__sub { font-size:12px !important; letter-spacing:.04em !important; }
 }
+
+/* Phone landscape ≤400 tall (560×400, 560×360, 390×400): the phone rail (top:14%) came after the
+   ≤400 raise and won, while layoutGhosts still applied the ≤400 lifts, so the ghosts dropped
+   ~56px under the readout. The raise is restated after the phone rule so both agree, and the
+   readout line sits 8px lower (84→76px) so the side ghosts' subs clear its band at 560×360. */
+@media (max-width: 560px) and (max-height: 400px) {
+  ${R}:has(.orr-clip__plate.is-ghost) > .orr-clips__rail { top:-60px !important; }
+  ${R}:has(.orr-clip__plate.is-ghost) > .orr-clips__readline { bottom:76px !important; }
+}
 `;
 
 export const CLIPS_LAYOUT_CSS = CSS;
