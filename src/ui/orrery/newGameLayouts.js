@@ -195,6 +195,25 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} > .k-stage > :is(.k-world--stage, .k-stage__poster),
   ${NGD} > .k-stage > .orr-ng-hero-box { left:25% !important; width:50% !important; top:51% !important; height:23% !important; }
   ${NGD} > .k-stage::before { left:25%; width:50%; top:72%; }
+  /* the difficulty scale stood on end ran 196px down a 237px form column, so IRONMAN sat under the fold at 844×390:
+     its stations close to 28px rows (the scale re-measures them and redraws its ruler), the stack rides up into its
+     own top pad, and the live stop's sentence stands beside the words as a ruled aside instead of under them */
+  ${NGD} .sf-ng-body > div:has(> #sf-ng-difficulty-desc) { position:relative !important; }
+  ${NGD} .sf-ng-body .orr-ng-gap { height:4px !important; }
+  /* the column's scroll fade (the seed waits below) shortens to 18px so it no longer greys the last stop */
+  ${NGD} > .sf-ng-body {
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 18px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important;
+    mask-image:linear-gradient(180deg, #000 calc(100% - 18px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important; }
+  ${NGD} .orr-stopscale--y { margin:-8px 0 -10px !important; }
+  ${NGD} .orr-stopscale--y > .orr-stopscale__row > li > .k-word { min-height:28px !important; height:28px !important;
+    padding-top:0 !important; padding-bottom:0 !important; align-items:center !important; }
+  ${NGD} .sf-ng-body #sf-ng-difficulty-desc { position:absolute !important; left:178px !important; right:0 !important; top:16px !important;
+    margin:0 !important; padding:2px 0 2px 12px !important; border-left:1px solid rgb(${BONE} / .3) !important;
+    font-size:12.5px !important; line-height:1.4 !important; text-wrap:pretty; }
+  /* the aside rides beside the live stop (the last one hangs from its row's foot so a third line stays above the fold) */
+  ${NGD} .sf-ng-body > div:has(.orr-stopscale__row > li:nth-child(2) > [aria-pressed="true"]) > #sf-ng-difficulty-desc { top:56px !important; }
+  ${NGD} .sf-ng-body > div:has(.orr-stopscale__row > li:nth-child(3) > [aria-pressed="true"]) > #sf-ng-difficulty-desc { top:96px !important; }
+  ${NGD} .sf-ng-body > div:has(.orr-stopscale__row > li:nth-child(4) > [aria-pressed="true"]) > #sf-ng-difficulty-desc { top:154px !important; translate:0 -100%; }
 }
 
 /* 701–1100 wide desktop: the four beats share a ~380–560px stage, so each title had ~90–120px and
