@@ -132,19 +132,6 @@
   ],
   "units": [
     {
-      "id": "inf-scar-identity",
-      "date": "2026-11-02",
-      "wf": "WF-12",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "A fresh hull wound glows in the striking weapon's own colors before it cools to burn amber, so a furball reads as who is hitting whom with what.",
-      "fingerprint": "verb=see,subject=weapon-impact-scars,sector=crucible,domain=wf-12",
-      "references": [],
-      "integration": "live",
-      "commit": "a22326943315",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-drive-heat",
       "date": "2026-11-02",
       "wf": "WF-12",
@@ -1689,6 +1676,19 @@
       "references": [],
       "integration": "live",
       "commit": "8f10d88762e9",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-radio-distance",
+      "date": "2026-11-09",
+      "wf": "WF-13",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A hail was panned by bearing and flat in level on purpose but rendered through its register's one fixed radio band, so near and far speakers sounded equally close - the band now carries distance: past 1800 wu narrower, hissier, more driven; past 3600 further; the register always survives, intimate voices never ride a far carrier, and the PCM cache keys the band.",
+      "fingerprint": "verb=widen-hiss-by-distance,subject=comms-band-voices,sector=flight-comms,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "4aad17df23ac",
       "verification": "focused_green"
     }
   ],
