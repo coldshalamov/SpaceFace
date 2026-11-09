@@ -2,6 +2,7 @@
 // While the pilot waits, canonical damage/fuse owners hold harm; bodies keep their motion
 // and resume ordinary damage after the act. The geometry tests below never park a body.
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { runLifetime } from './runSession.js';
 
 export const SWARM_ARRIVAL_GRACE_S = 2.5;
 export const SWARM_SPAWN_LOOKAHEAD_S = 0.75;
@@ -104,11 +105,11 @@ export function findSwarmArrival(state, proposed, radius, options = {}) {
   return null;
 }
 
-// Per-wave pilot latch. Held on the state object, never on state.run: survivalWave
-// must not write the run record. A new wave number forgets the previous act, so a
-// round cannot be won, or shot through, on the last round's thrust. A save/load
-// re-arms the opener until the next pilot act — a fresh boot is a fresh opener,
-// and a playing pilot re-acts on the next tick, so nothing observable is lost.
+// Per-run, per-wave pilot latch. Never writes state.run. The owner lifetime
+// survives wallet/census clones but changes on retry, including the same seed.
+// The worker mirror retains its facade object, so its hot retireToken also
+// distinguishes a new run there. Unowned fixtures fall back to run identity.
+// A fresh boot waits for the next pilot act; no previous run can release it.
 const _pilotActedWave = new WeakMap();
 
 function liveFirstActFight(state) {
@@ -123,13 +124,18 @@ function liveFirstActFight(state) {
 export function swarmPilotHasActed(state) {
   const run = liveFirstActFight(state);
   if (!run) return true;
-  return _pilotActedWave.get(state) === run.wave;
+  const act = _pilotActedWave.get(state);
+  return act?.wave === run.wave && act.run === (runLifetime(run) || run)
+    && act.retireToken === run.retireToken;
 }
 
 export function noteSwarmPilotAction(state) {
   const run = liveFirstActFight(state);
   if (!run) return;
-  _pilotActedWave.set(state, run.wave);
+  const identity = runLifetime(run) || run;
+  const act = _pilotActedWave.get(state);
+  if (act?.wave !== run.wave || act.run !== identity || act.retireToken !== run.retireToken)
+    _pilotActedWave.set(state, { wave: run.wave, run: identity, retireToken: run.retireToken });
 }
 
 /**
