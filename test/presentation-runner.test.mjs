@@ -172,6 +172,42 @@ test('every callback simulates the time that passed and then presents it; the or
   controller.destroy();
 });
 
+test('a 30 Hz cap accumulates present elapsed so the playout clock runs at wall speed', () => {
+  const raf = createRaf();
+  const presented = [];
+  const state = {
+    accumulator: 0, timeScale: 1, tick: 0, simTime: 0, input: { actions: {} },
+    settings: { video: { frameCap: 30, vsync: true } },
+    render: { displayHz: 60, frameCap: 30 },
+  };
+  const registry = {
+    renderUpdate(alpha, frameDt, frame) { presented.push(frame.presentElapsedS); },
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    simulationRunner: createStubSimulationRunner([], []),
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    perfNow: () => 0,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+  let now = 1000 + LOOP_FIXED_DT * 1000;
+  for (let i = 0; i < 10; i++) {
+    raf.flushOne(now);
+    now += 1000 / 60;
+  }
+  assert.ok(presented.length >= 4, 'the 30 Hz cap still presents frames');
+  // Every presented frame after the first must carry two callbacks of wall time, not one. Feeding
+  // half the elapsed made the playout fence run at 0.9x wall speed and pin to its oldest pack.
+  for (let i = 1; i < presented.length - 1; i++) {
+    assert.ok(Math.abs(presented[i] - (1 / 30)) < 0.006,
+      `present ${i} carried ${presented[i]}s, expected ~0.0333s`);
+  }
+  controller.destroy();
+});
+
 test('after-present compile waits for both the sim and the picture on every frame', () => {
   const raf = createRaf();
   const order = [];

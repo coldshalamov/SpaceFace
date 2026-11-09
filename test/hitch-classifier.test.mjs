@@ -8,6 +8,7 @@ import {
   createHitchHistogram,
   hitchCoverage,
   hitchHistogramReport,
+  hitchThresholdForBudget,
   isHitchFrame,
 } from '../src/render/hitchClassifier.js';
 import { ensurePerfRuntime } from '../src/core/perfRuntime.js';
@@ -17,6 +18,15 @@ test('frames inside two vsyncs are not hitches', () => {
   assert.equal(isHitchFrame(32), false);
   assert.equal(isHitchFrame(32.1), true);
   assert.equal(classifyHitchFrame({ frameMs: 16.8, compileMs: 12 }), null);
+});
+
+test('a capped cadence never calls a healthy presented frame a hitch', () => {
+  const at30 = hitchThresholdForBudget(1000 / 30);
+  assert.equal(at30, 50);
+  assert.equal(isHitchFrame(33.3, at30), false, 'a 30 Hz present is on time');
+  assert.equal(isHitchFrame(49.9, at30), false);
+  assert.equal(isHitchFrame(66.7, at30), true, 'a dropped present at 30 Hz is a hitch');
+  assert.equal(isHitchFrame(18, hitchThresholdForBudget(1000 / 60)), false);
 });
 
 test('a named phase that owns the excess is the hitch owner', () => {

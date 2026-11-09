@@ -88,15 +88,19 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
   // a 2x-DPI panel otherwise shades 4x the pixels; renderer.applyRendererSize), the tight
   // single-level bloom, and the low particle tier (the full sky tier locked an Intel iGPU to a
   // 30 fps frame — spaceBackground._resolveTier). CAS sharpening holds the 0.75 scale crisp.
+  // The owner's panel is DPR 1.25; a sub-native raster plus a 1x pixel-ratio cap presented
+  // 0.53-0.68 physical pixels and read as pixelation on any zoom-out. The frame is
+  // submission-bound (render p95 flat across 0.60-0.90), so this profile now presents native:
+  // renderScale 1.0 and the integrated tier's 1.5 pixel-ratio cap let a 1.25 panel render at 1.25.
   low: Object.freeze({
     id: 'low',
     label: 'High performance',
     adaptiveFloor: 0.5,
-    renderScale: 0.75,
-    pixelRatioCap: 1,
+    renderScale: 1,
+    pixelRatioCap: 2,
     bloom: true,
     bloomStrength: 0.40,
-    bloomLevels: 1,
+    bloomLevels: 2,
     // Sun shadow-maps stay out of High performance/Balanced: at the neighbourhood ortho's texel
     // density they read as crawling clumps, not depth. The High quality tier opts back in.
     shadows: false,
@@ -108,7 +112,7 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
     renderGraph: false,
     engineTrails: true,
     particleQuality: 'low',
-    frameCap: 0,
+    frameCap: 30,
     dynamicResolution: false,
     postFx: true,
     sharpen: true,
@@ -348,6 +352,22 @@ export function applyQualityPreset(settings, presetId) {
   return { preset: tier.id, tier: tier.id, changed };
 }
 
+/**
+ * Apply a preset as an AUTOMATIC posture: the picture keys move, but the quality policy stays Auto
+ * so the dynamic-resolution controller, the hitch governor and the Auto presentation cap keep
+ * working. Manual choices still go through `applyQualityPreset`.
+ */
+export function applyAutoQualityPreset(settings, presetId) {
+  const applied = applyQualityPreset(settings, presetId);
+  if (!applied) return applied;
+  const video = settings && settings.video;
+  if (video && video.qualityMode !== 'auto') {
+    video.qualityMode = 'auto';
+    if (!applied.changed.includes('qualityMode')) applied.changed.push('qualityMode');
+  }
+  return { ...applied, qualityMode: 'auto' };
+}
+
 /** Resolve automatic/manual policy without changing existing player settings. Older saves have no
  * policy key: an untouched (possibly older, partial) Balanced profile adopts Auto, while a named
  * non-default or hand-edited profile remains manual. The former dynamic-resolution opt-in also
@@ -400,6 +420,16 @@ export function shouldSuggestIntegratedPreset(gpu, video = {}) {
   return preset !== 'integrated';
 }
 
+/**
+ * The presentation cadence the Auto policy applies to an integrated GPU. The authored picture is
+ * unchanged; the cap stops the loop from presenting frames it cannot finish. Manual presets and
+ * explicit frame caps always win.
+ */
+export function autoPresentationCapFor(gpu, video = {}) {
+  if (!gpu || gpu.tier !== 'integrated') return 0;
+  return qualityModeForVideo(video) === 'auto' ? 30 : 0;
+}
+
 // --- Software-renderer emergency profile (the one automatic visual reduction) ------------------
 // A CPU backend (SwiftShader/llvmpipe, hardware acceleration off) cannot shade the HDR scene plus
 // bloom composite: the game auto-drops bloom and starts dynres at its established floor, and tells
@@ -420,8 +450,12 @@ export const GPU_TIER_DYNRES_FLOOR = Object.freeze({
  * the drawing buffer itself while dyn-res shrinks the content inside it — the same lever pulled
  * twice — so the product, not each channel, is what must stay readable. The software emergency
  * tier is exempt: a CPU rasterizer needs the depth more than the readability.
+ *
+ * 0.7, not the old 0.6: on a top-down picture the 0.6 product read as pixelation in ordinary
+ * zoomed-out flight. The adaptive controller still has real headroom above the 0.85 demo base,
+ * but it can no longer soften the game into mush.
  */
-export const COMBINED_READABILITY_FLOOR = 0.6;
+export const COMBINED_READABILITY_FLOOR = 0.9;
 
 /**
  * Effective dyn-res floor once automatic raster relief is already below 1: the deeper the
