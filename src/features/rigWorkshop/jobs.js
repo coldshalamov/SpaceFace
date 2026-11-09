@@ -13,8 +13,14 @@ export const RIG_JOB_DEFS = Object.freeze([
     lesson: 'Put the mover behind the load. An off-centre load twists the hitch. Brake early with mover assist enabled, then let the heavy load settle.',
     count: 2, mass: 190, radius: 5.5, hull: 320, pay: 300, asset: 'place_cargo_pod_hazmat',
     pickup: { x: -760, z: 250 }, destination: { x: -350, z: -480 } }),
+  Object.freeze({ id: 'relay', title: 'The Quiet Relay', rig: 'cradle', requires: Object.freeze(['needle', 'kiln']),
+    description: 'The receiving crew has watched your survey and kiln loads arrive. Now two fragile relay packs need moving from a retired dispatch rack to the night-shift gantry. These are light loads, not another test of horsepower.',
+    lesson: 'Take one original at a time if your cradle is broad. The freight throat is narrow, but the outside route stays open. Keep the packs clear of the frames; damage reduces their receipt.',
+    count: 2, mass: 18, radius: 6, hull: 90, pay: 220, asset: 'place_cargo_pod_standard',
+    pickupRadius: 145, throatHalfWidth: 48, frameRadius: 24, westbound: true,
+    pickup: { x: 780, z: 650 }, destination: { x: -620, z: 680 } }),
 ]);
-export const RIG_JOB_LIMITS = Object.freeze({ receiverRadius: 75, speed: 6, spin: 0.4, minimumTravel: 180, maxBodies: 21 });
+export const RIG_JOB_LIMITS = Object.freeze({ receiverRadius: 75, speed: 6, spin: 0.4, minimumTravel: 180, maxBodies: 24 });
 const deliveryTransactions = new WeakSet();
 const copy = v => JSON.parse(JSON.stringify(v));
 const distance = (a, b) => Math.hypot((a?.x || 0) - (b?.x || 0), (a?.z || 0) - (b?.z || 0));
@@ -22,6 +28,17 @@ const speed = e => Math.hypot(e?.vel?.x || 0, e?.vel?.z || 0);
 const definition = id => RIG_JOB_DEFS.find(d => d.id === id);
 const worldPoint = (w, offset) => ({ x: w.bench.pos.x + offset.x, z: w.bench.pos.z + offset.z });
 const entity = (state, id) => state.entities?.get(id);
+
+/** Earned work is based on delivered originals, never merely closing an abandoned ticket. */
+export function rigJobAvailability(w, id) {
+  const def = definition(id);
+  if (!def) return { ok: false, reason: 'Unknown work order.' };
+  const missing = (def.requires || []).filter(key => {
+    const prior = w.jobs?.[key];
+    return !prior?.settled || !(prior.delivered?.length > 0);
+  });
+  return missing.length ? { ok: false, reason: 'Deliver at least one original and settle both the Needle Orchard and kiln orders first. The crew needs to see your work arrive.' } : { ok: true };
+}
 
 export function createWorkshopJobs({ state, bus, physics, feedback = () => {} }) {
   const bodies = w => (state.entityList || []).filter(e => e.data?.rigWorkshopOwner === w.ownerId && e.data?.rigWorkshopJob);
@@ -46,13 +63,15 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
   function accept(w, id) {
     const def = definition(id);
     if (!def) return { ok: false, reason: 'Unknown work order.' };
+    const availability = rigJobAvailability(w, id);
+    if (!availability.ok) return availability;
     const existing = w.jobs?.[id];
     if (existing) return { ok: false, reason: existing.settled ? 'This contract has already been settled.' : 'This work order is already aboard. Follow its cargo marker.' };
     if (w.activeJobId && !w.jobs[w.activeJobId]?.settled) return { ok: false, reason: 'Finish or settle the current work order first.' };
     if (!w.rigs?.length) return { ok: false, reason: 'Inspect a rig at the bench first.' };
-    if (bodies(w).length > RIG_JOB_LIMITS.maxBodies - 9) return { ok: false, reason: 'Workshop body limit reached. Finish the first job before accepting another.' };
+    if (bodies(w).length + 5 + def.count > RIG_JOB_LIMITS.maxBodies) return { ok: false, reason: 'Workshop body limit reached. Finish the first job before accepting another.' };
     if (!w.bench?.pos || state.world?.currentSectorId !== w.bench.sectorId) return { ok: false, reason: 'Accept this order at the workshop in its home sector.' };
-    const pickup = clearPatch(w, worldPoint(w, def.pickup), id === 'needle' ? 145 : 165);
+    const pickup = clearPatch(w, worldPoint(w, def.pickup), def.pickupRadius ?? (id === 'needle' ? 145 : 165));
     const destination = pickup && clearPatch(w, worldPoint(w, def.destination), 110, pickup);
     if (!pickup || !destination) return { ok: false, reason: 'The nearby work site is obstructed. Clear the local traffic and try the order again; nothing was spent.' };
     const job = { id, title: def.title, stage: 'pickup', acceptedAt: state.simTime || 0,
@@ -62,13 +81,15 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
     const spawned = [];
     const spawn = spec => { const e = physics.spawnBody(spec); if (e) spawned.push(e); return e; };
     try {
-      const receiver = spawn(bodySpec(w, job, 'receiver', { x: job.destination.x + 65, z: job.destination.z },
+      const receiver = spawn(bodySpec(w, job, 'receiver', { x: job.destination.x + (def.westbound ? 0 : 65), z: job.destination.z + (def.westbound ? 65 : 0) },
         { radius: 19, mass: 100000, dynamic: false, placeId: 'place_maintenance_gantry' }));
       if (!receiver) throw new Error('Receiver could not enter the world.');
       job.receiverId = receiver.id;
       for (let i = 0; i < def.count; i += 1) {
         const token = `${w.ownerId}:${id}:${i + 1}`;
-        const at = { x: job.pickup.x + (i - (def.count - 1) / 2) * 39, z: job.pickup.z + 55 + (i % 2) * 28 };
+        const across = (i - (def.count - 1) / 2) * 39, behind = 55 + (i % 2) * 28;
+        const at = def.westbound ? { x: job.pickup.x + behind, z: job.pickup.z + across }
+          : { x: job.pickup.x + across, z: job.pickup.z + behind };
         const e = spawn(bodySpec(w, job, 'cargo', at, { radius: def.radius, mass: def.mass * (id === 'kiln' && i === 1 ? 1.4 : 1), hull: def.hull, placeId: def.asset, token }));
         if (!e) throw new Error('A cargo body could not enter the world.');
         job.cargoIds.push(e.id);
@@ -76,8 +97,11 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
       }
       // Two rows make a physical throat. The alternate wide route stays open around them.
       for (const side of [-1, 1]) for (let row = 0; row < 2; row += 1) {
-        const e = spawn(bodySpec(w, job, 'freight frame', { x: job.pickup.x + side * (id === 'needle' ? 48 : 92), z: job.pickup.z - 65 + row * 52 },
-          { radius: id === 'needle' ? 24 : 30, mass: 100000, dynamic: false, placeId: 'place_construction_frame' }));
+        const across = side * (def.throatHalfWidth ?? (id === 'needle' ? 48 : 92)), along = -65 + row * 52;
+        const at = def.westbound ? { x: job.pickup.x + along, z: job.pickup.z + across }
+          : { x: job.pickup.x + across, z: job.pickup.z + along };
+        const e = spawn(bodySpec(w, job, 'freight frame', at,
+          { radius: def.frameRadius ?? (id === 'needle' ? 24 : 30), mass: 100000, dynamic: false, placeId: 'place_construction_frame' }));
         if (!e) throw new Error('The route could not enter the world.');
         job.obstacleIds.push(e.id);
       }

@@ -2,7 +2,7 @@
 // All decisions arrive through promptDeck; movement and contacts stay with native physics.
 import { PART_LIST, PARTS, MOUNTS } from './parts.js';
 import { createRigPhysicsAdapter, connectedPartIds } from './physics.js';
-import { createWorkshopJobs, RIG_JOB_DEFS } from './jobs.js';
+import { createWorkshopJobs, RIG_JOB_DEFS, rigJobAvailability } from './jobs.js';
 import { captureRigWorkshop, restoreRigWorkshop } from './persistence.js';
 import { explainWorkshopReason, PART_BUTTONS } from './text.js';
 import { isRacingCorridorSession } from '../../world/racingCorridor.js';
@@ -435,10 +435,10 @@ export function createRigWorkshopSystem() {
     _showJobs() {
       const w = this.workshop;
       this._show('jobs', 'RATCHET · useful trouble outside the yard',
-        w.activeJobId ? 'An order is already open. Deliver what you can; partial payment is kept if you close the remainder.' : 'Both work orders are local flights beyond the bench. Damage reduces pay. Delivering original bodies pays once.',
-        [...RIG_JOB_DEFS.map(d => ({ id: `job:${d.id}`, label: `${d.id === 'needle' ? 'Needle Orchard' : 'Bad Centre of Gravity'}${w.jobs[d.id]?.settled ? ' · done' : ''}`, disabled: !!w.jobs[d.id]?.settled,
-          run: () => this._show('offer', d.title, `${d.description} ${d.lesson} Up to ${d.pay * d.count} cr, with payment for each surviving original.`,
-            [this._option('accept', 'Accept this work order', 'acceptJob', { id: d.id }, { disabled: !!w.activeJobId }),
+        w.activeJobId ? 'An order is already open. Deliver what you can; partial payment is kept if you close the remainder.' : 'The first two work orders are local flights beyond the bench. Deliver a survivor from each and settle them to earn the receiving crew’s fragile relay run. Damage reduces pay. Delivering original bodies pays once.',
+        [...RIG_JOB_DEFS.map(d => ({ id: `job:${d.id}`, label: `${d.title}${w.jobs[d.id]?.settled ? ' · done' : !rigJobAvailability(w, d.id).ok ? ' · earn crew trust' : ''}`, disabled: !!w.jobs[d.id]?.settled,
+          run: () => this._show('offer', d.title, `${d.description} ${d.lesson} ${rigJobAvailability(w, d.id).reason || ''} Up to ${d.pay * d.count} cr, with payment for each surviving original.`,
+            [this._option('accept', 'Accept this work order', 'acceptJob', { id: d.id }, { disabled: !!w.activeJobId || !rigJobAvailability(w, d.id).ok }),
               this._option('refuse', 'Leave it on the board', 'cancel', {}, { cancel: true })]) })),
           ...(w.activeJobId ? [this._option('guide', 'Mark a destination', 'guide'),
             { id: 'partial', label: 'Settle partial work', run: () => this._show('close-order', 'Settle the work done?', 'You keep every recorded payment. Undelivered cargo stays in the world and cannot pay this contract later.',
