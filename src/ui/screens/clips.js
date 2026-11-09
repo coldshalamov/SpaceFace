@@ -766,8 +766,12 @@ function layoutGhosts(view, geo, railW, cx, ghosts) {
   const short = hostH > 0 && hostH <= 460;
   const artRatio = short ? 0.36 : 0.52;
   const ghostGeo = { ...geo, plateW: ghostW, artRatio };
-  const liftMid = short ? 108 : 64;
-  const liftSide = short ? 72 : 40;
+  // ≤400 tall the rail sits 60px above the stage (clipsLayouts.js): the middle ghost's lift drops
+  // to 92 to keep its top inside the frame while still clearing the Hand, and the side ghosts drop
+  // to 16 so they stay where they were, under the EXIT plate and the clip count.
+  const tiny = short && hostH <= 400;
+  const liftMid = tiny ? 92 : short ? 108 : 64;
+  const liftSide = tiny ? 16 : short ? 72 : 40;
   ghosts.forEach((ghost, k) => {
     const off = (k - 1) * spread;
     const plate = buildPlate(null, view, ghostGeo, { ghost });

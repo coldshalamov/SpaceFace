@@ -64,6 +64,14 @@ ${R} > .orr-clips__actions > * { position:relative; z-index:1; }
   ${R}:has(.orr-clip__plate.is-ghost) > .orr-clips__rail { top:0 !important; }
 }
 
+/* ≤400 tall (640×360, 844×390): even at top:0 the 380px rail put the Hand (y244-291) on the readout
+   (y231-266 at 640×360) and the arc's foot behind the FLY TO MAKE ONE lamp (y294). The rail climbs
+   another 60px so the Hand ends above the readout and the arc above the lamp; layoutGhosts trims the
+   middle ghost's lift to match so it stays inside the top edge. */
+@media (max-height: 400px) {
+  ${R}:has(.orr-clip__plate.is-ghost) > .orr-clips__rail { top:-60px !important; }
+}
+
 /* Phone: same curtain, tighter rail so three ghosts clear the legend above FLY TO MAKE ONE. */
 @media (max-width: 560px) {
   ${R}:has(.orr-clip__plate.is-ghost) > .orr-clips__rail { top:14% !important; }
