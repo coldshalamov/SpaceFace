@@ -351,8 +351,14 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
 }
 @media (min-width:801px) and (max-width:1100px) and (max-height:480px) {
   ${NGD} > .k-stage > :is(.k-world--stage, .k-stage__poster),
-  ${NGD} > .k-stage > .orr-ng-hero-box { top:58% !important; height:20% !important; }
-  ${NGD} > .k-stage::before { top:75%; }
+  ${NGD} > .k-stage > .orr-ng-hero-box { top:60% !important; height:19% !important; }
+  ${NGD} > .k-stage::before { top:76%; }
+}
+/* 801–900 wide, ≤600 tall (801×461, 844×390): the ring is ~150px across, so the rear names stood on the
+   front name's line (WASP ran into HITCH, PELICAN touched it). The yard picks each name's side from the
+   ring angle, which CSS can't read, so the front name steps down a line instead, under the rear pair. */
+@media (min-width:801px) and (max-width:900px) and (max-height:600px) {
+  ${NGD} .orr-yard > .orr-turntable__row > li.is-front { translate:0 20px !important; }
 }
 /* Short narrow desktop: keep the existing page scroll and every form section, including the
    hull picker, loadout and first-flight preview. These are decisions, not decorative overflow.
