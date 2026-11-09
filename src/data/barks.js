@@ -2959,6 +2959,38 @@ export function spillVultureBarkFor(kind, rng) {
   return table[pickIndex(rng, table.length)];
 }
 
+// CH-61 — pilot personality hails. A tempered pilot answers a close pass in its
+// own register, not its role's: the voice is the tell that this hull drives
+// differently because someone with a temperament is in the seat.
+export const PILOT_PERSONALITY_HAILS = Object.freeze({
+  cautious: Object.freeze({ register: 'pilot-cautious', lines: Object.freeze([
+    'Wide berth coming through. No sudden moves, no incidents.',
+    'Slow and boring gets the freight there. Watch my spacing.',
+    'I brake early for a reason. The paperwork proves it.',
+  ]) }),
+  cocky: Object.freeze({ register: 'pilot-cocky', lines: Object.freeze([
+    'Lane is clear, pedal is down. Try to keep up.',
+    'Nobody carries this run faster. Nobody.',
+    'Tight gap, full burn. Space is wide if you are good.',
+  ]) }),
+  panicky: Object.freeze({ register: 'pilot-panicky', lines: Object.freeze([
+    'Too close! Too close! Give me room, give me room!',
+    'Who taught you to fly? Stay back from my hull!',
+    'Everything out here wants to kill me. Keep your distance!',
+  ]) }),
+  veteran: Object.freeze({ register: 'pilot-veteran', lines: Object.freeze([
+    'Twelve thousand runs and no claims. Steady as she goes.',
+    'Formation spacing is not decoration. Hold your line.',
+    'Seen every trick this lane has. Fly predictably, friend.',
+  ]) }),
+});
+
+export function pilotPersonalityHailFor(kind, rng) {
+  const cell = kind && Object.hasOwn(PILOT_PERSONALITY_HAILS, kind) ? PILOT_PERSONALITY_HAILS[kind] : null;
+  if (!cell || !cell.lines.length) return null;
+  return { register: cell.register, text: cell.lines[pickIndex(rng, cell.lines.length)] };
+}
+
 // A freight raider clearing its escape leash (encounterScripts freight-custody). The thief
 // names its own take as it goes — one line per hull, spoken over the getaway transponder burn.
 export const FREIGHT_RAIDER_ESCAPE_REGISTER = Object.freeze([
@@ -3266,6 +3298,8 @@ export default {
   RIVAL_SCAVENGER_REGISTER,
   SPILL_VULTURE_REGISTER,
   spillVultureBarkFor,
+  PILOT_PERSONALITY_HAILS,
+  pilotPersonalityHailFor,
   FREIGHT_RAIDER_ESCAPE_REGISTER,
   GRANDEE_REGISTER,
   sectorGreetingBarkFor,

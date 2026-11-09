@@ -12,6 +12,7 @@ import { ownsWinnowRecoveryHull, normalizeWinnowRecovery, admitWinnowRecovery, r
 import { cancelAnvilSpillRendezvous } from '../world/anvilSpillRecovery.js';
 import { bindRestoredCharonSupply, materializeCharonSupply, ownsCharonSupplyHull, charonSupplyRoundBoundary, reconcileCharonSupply, stepCharonSupply, releaseCharonSupply, normalizeCharonSupply, charonSupplyPickupReceipt, charonSupplySpillReceipt, charonSupplyDestroyed } from '../world/charonSalvageSupply.js';
 import { spillVulturesSpillReceipt, spillVulturesPickupReceipt, spillVulturesDestroyed, stepSpillVultures, releaseSpillVultures } from '../world/spillVultures.js';
+import { pilotPersonalityDef, pilotPersonalityDrive, pilotPersonalityFor } from '../data/pilotPersonalities.js';
 import { releaseTallyPause, tallyPassageTarget, isTallyPassageJob } from './tethysTallyPassage.js';
 import { TETHYS_TALLY, tallyMarks, tallyRouteDuration } from '../data/tethysTallyPassage.js';
 import {claimsTallyAssessor} from '../world/tallyThreeIdentity.js';
@@ -3400,6 +3401,9 @@ export const traffic = {
       ent.data.trafficLabel = (def && def.label) || role;
     }
     ent.data.role = role; // readability for target panel / scanner
+    // CH-61: the seat's temperament is part of the hull's stable identity — hashed
+    // from the run seed and hull id, so it survives rematerialization unchanged.
+    pilotPersonalityFor(this.state, ent);
     ent.homeSectorId = sectorId;
     ent.data.homeSectorId = sectorId;
     if (ent.data.sectorId == null) ent.data.sectorId = sectorId;
@@ -4191,7 +4195,27 @@ export const traffic = {
       }
       // drive: face the target, thrust forward. moveZ=1 means forward along the nose.
       const expressBoost = !!(role.express && massline2Flag('hitchhiking'));
-      setIntent(e, 0, 1, expressBoost, false, null, aimAngle);
+      // CH-61: a pilot with a temperament flies the leg differently — spacing to
+      // the hull ahead, boost appetite, weave, early approach braking. The
+      // decision is pure and stamped per hull; a hull with no temperament (or a
+      // temperament with nothing to say this tick) flies the historical default
+      // verbatim, so scenario casts and determinism envelopes are untouched.
+      let drive = null;
+      const pDef = this.state && !e.data?.scenarioActorId
+        ? pilotPersonalityDef(this.state, e) : null;
+      if (pDef) {
+        const ahead = this._nearestHullAhead(e, Math.max(pDef.spacingLookaheadWu || 0, pDef.boostWhenClearWu || 0, pDef.boostWhenNearWu || 0));
+        drive = pilotPersonalityDrive(pDef, {
+          distToTarget: dist,
+          distToHullAhead: ahead,
+          simTime: state.simTime,
+          hullId: e.id,
+        });
+      }
+      const throttleZ = drive && drive.moveZ != null ? drive.moveZ : 1;
+      const boost = expressBoost || !!(drive && drive.boost);
+      const aim = aimAngle + (drive && drive.aimAngleOffset ? drive.aimAngleOffset : 0);
+      setIntent(e, 0, throttleZ, boost, false, null, aim);
       this._syncTrafficRecordToData(e, rec);
       // V3 reads this intent and applies real thrust. Traffic never writes velocity, so a latched
       // player receives only the Rapier constraint pull and whatever momentum the liner earns.

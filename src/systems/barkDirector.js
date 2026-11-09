@@ -20,6 +20,7 @@ import {
   pursuitBarkFor,
   rivalScavengerLineFor,
   spillVultureBarkFor,
+  pilotPersonalityHailFor,
   sectorGreetingBarkFor,
   surrenderBarkFor,
   trafficRoleHail,
@@ -2075,8 +2076,15 @@ export const barkDirector = {
   },
 
   // A working hull hails in its own work register, once per contact. Same foghorn
-  // and wing-rock answer as the freighter chirp — the voice is the new part.
+  // and wing-rock answer as the freighter chirp — the voice is the new part. A
+  // hull with a pilot personality answers in the temperament's register instead:
+  // the voice is the tell that this hull drives differently on purpose.
   _speakWorkHail(entity, role) {
+    const kind = entity && entity.data && entity.data.pilotPersonality;
+    if (kind) {
+      const accepted = this._speakTemperamentHail(entity, kind);
+      if (accepted) return true;
+    }
     const accepted = this._speakRegisterHail(entity, role, `${role}-hail`, `${role}Hail`);
     if (accepted && this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('audio:cue', {
@@ -2088,6 +2096,43 @@ export const barkDirector = {
       // wing-rock and receipt trigger twice per pass.
     }
     return !!accepted;
+  },
+
+  // The temperament register itself: one hail line in the pilot personality's own
+  // voice, same foghorn contract as the role hails (once per contact, TTL-bounded).
+  _speakTemperamentHail(entity, kind) {
+    const state = this.state;
+    if (!state || !entity || entity.alive === false) return false;
+    const own = ensureState(state);
+    const entityId = String(entity.id);
+    const rec = entityRecordFor(own, entityId, entity);
+    const situation = `${kind}-hail`;
+    if (rec.said[situation]) return false;
+    if (this._isSuppressed(entity, 'patrol-greeting', rec)) return false;
+    const seed = state.meta && state.meta.seed;
+    const index = hash32(seed == null ? 0 : seed, 'pilot-personality-hail', entityId);
+    const picked = pilotPersonalityHailFor(kind, index);
+    if (!picked) return false;
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return false;
+    const voiceId = `barkDirector:${entityId}:${situation}`;
+    const accepted = voice.say({
+      channel: 'bark',
+      text: picked.text,
+      kind: 'barkDirector',
+      ttl: VOICE_TTL_S,
+      id: voiceId,
+      factionId: factionFor(entity),
+      valid: () => {
+        const e = state.entities && typeof state.entities.get === 'function' ? state.entities.get(entity.id) : null;
+        return e === entity && e.occupantGeneration === entity.occupantGeneration && e.alive !== false;
+      },
+    });
+    if (!accepted) return false;
+    noteBarkText(own, factionFor(entity), situation, picked.text);
+    rec.said[situation] = true;
+    rec.lastSituation = situation;
+    return true;
   },
 
   _speakRegisterHail(entity, register, situation, salt) {
