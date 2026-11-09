@@ -3853,6 +3853,34 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.05, decay: 1.5, sustain: 0.88, release: 0.6 },
     gainMult: 0.95,
   },
+  // inf-gate-throat-voice (WF-13): a jump gate sounds like a gate, not a berth. The station bed
+  // is a 60 Hz sine pedal under a 180 Hz lowpass; the gate throat is a ring that SINGS — a D2
+  // sawtooth whose fifth harmonic rings through a narrow bandpass, its pitch breathing at the
+  // portal's own breath rate (infrastructureMotion: sin(simTime * 2.2) → 0.35 Hz). The runtime
+  // detunes it up to a whole tone across the picture's 400 wu spin-up radius, so the harmonic
+  // the bandpass catches slides as the swirl winds up. The wormhole throat is lower and wider:
+  // a triangle moan with a slow, deep warble under a resonant lowpass, sagging (detuned down)
+  // as the player closes. Both loop on the ambient bus via audioSystem._updateGateThroat.
+  {
+    id: 'sfx_gate_throat',
+    category: 'ambient',
+    type: 'continuous_oscillator',
+    wave: 'sawtooth',
+    baseFreq: 73.4,
+    gainEnvelope: { attack: 1.2, sustain: 1.0, release: 1.6 },
+    filterType: 'bandpass', filterFreq: 370, filterQ: 6,
+    lfoRate: 0.35, lfoDepth: 0.018,
+  },
+  {
+    id: 'sfx_wormhole_throat',
+    category: 'ambient',
+    type: 'continuous_oscillator',
+    wave: 'triangle',
+    baseFreq: 49,
+    gainEnvelope: { attack: 1.6, sustain: 1.0, release: 2.0 },
+    filterType: 'lowpass', filterFreq: 210, filterQ: 5,
+    lfoRate: 0.21, lfoDepth: 0.07,
+  },
 ];
 
 // PQ-158.00 — the sample-library hybrid bindings.

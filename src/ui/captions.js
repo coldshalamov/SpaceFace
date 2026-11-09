@@ -311,6 +311,9 @@ const EXPLICIT_RECIPE_CAPTIONS = Object.freeze({
   sfx_mining_fracture_warning: Object.freeze({ text: 'The rock is about to fracture.', urgency: 'warn', event: 'mining.fracture' }),
   sfx_mining_heat_warning: Object.freeze({ text: 'The drill is running hot.', urgency: 'warn', event: 'mining.heat' }),
   sfx_mining_gas_hazard: Object.freeze({ text: 'Gas vents from the seam.', urgency: 'high', event: 'mining.gas' }),
+  // inf-gate-throat-voice: a gate's throat names what is singing when it first comes into hearing.
+  sfx_gate_throat: Object.freeze({ text: 'A jump gate hums.', urgency: 'normal', event: 'place.gate' }),
+  sfx_wormhole_throat: Object.freeze({ text: 'A wormhole throat moans.', urgency: 'normal', event: 'place.wormhole' }),
 });
 
 export function isUiBlipRecipe(recipeId) {

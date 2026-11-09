@@ -141,6 +141,7 @@ import { CERES_CAUSAL_CHAIN_EVENT } from '../contracts/trafficEvents.js';
 import { hash32 } from '../core/rng.js';
 import { dyingFuseS } from '../combat/lifecycle.js';
 import { createWreckCoolingMemory, planWreckCooling } from './wreckCoolingVoice.js';
+import { GATE_THROAT_PEAK, admitGateThroatCaption, planGateThroat } from './gateThroatVoice.js';
 import {
   createSampleRuntime,
   resolveSampleBinding,
@@ -6642,6 +6643,8 @@ export const audio = {
     rt._aftermathHush = null;
     // Wreck cooling clocks are keyed by the outgoing session's entity ids.
     rt._wreckCooling = null;
+    // So is the gate throat's once-per-visit caption memory.
+    rt._gateThroatCaption = null;
     this._clearDeferred();
     this._endDesiredLoops();
     this._releaseDockedFieldLoops();
@@ -6999,7 +7002,7 @@ export const audio = {
     return frac * frac * APPROACH_HUM_PEAK;
   },
 
-  /** Nearest live dockable station body (read-only; dockless platforms run no hum). */
+  /** Nearest live dockable station body (read-only; dockless platforms and gates run no hum). */
   _nearestDockableStation() {
     const state = this.state;
     const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
@@ -7010,11 +7013,88 @@ export const audio = {
     for (const e of list) {
       if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
       if (e.data && e.data.dockless === true) continue;
+      // Gates spawn as station bodies (data.isGate, wormholes included) but are no berth: they
+      // sing their own throat (_updateGateThroat) instead of a docking station's bed.
+      if (e.data && (e.data.isGate === true || e.data.isWormhole === true)) continue;
       const d2 = (e.pos.x - player.pos.x) * (e.pos.x - player.pos.x)
         + (e.pos.z - player.pos.z) * (e.pos.z - player.pos.z);
       if (d2 < bestD2) { bestD2 = d2; best = e; }
     }
     return best;
+  },
+
+  /**
+   * inf-gate-throat-voice (WF-13) — a jump gate sounds like a gate. The nearest live gate inside
+   * hearing sings its own throat (ring-hum for a jump gate, a sagging moan for a wormhole): one
+   * ambient loop panned on the gate's bearing, swelling with distance, detuned across the same
+   * 400 wu spin-up radius the picture's swirl winds up on. Silent docked, paused, suspended or
+   * off flight; bows under a live fight and the critical-cue duck; re-voices on a new gate; one
+   * authored caption per gate visit. Read-only over state; the planner owns the decision.
+   */
+  _updateGateThroat() {
+    const rt = this.rt;
+    if (!rt || !rt.loops) return;
+    const stop = () => {
+      const held = rt.loops.gateThroat;
+      if (!held) return;
+      this._endLoopVoice(held);
+      delete rt.loops.gateThroat;
+    };
+    const state = this.state;
+    if (!state || rt._docked || rt._paused || rt._lifecycleSuspended
+      || (state.mode != null && state.mode !== 'flight')) { stop(); return; }
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || player.alive === false || !player.pos) { stop(); return; }
+    const gates = state.entityIndex && state.entityIndex.gates;
+    const plan = planGateThroat(gates, player.pos, rt.threat,
+      rt._gateThroatPlan || (rt._gateThroatPlan = {}));
+    if (!plan) { stop(); return; }
+    let voice = rt.loops.gateThroat;
+    // A different gate (or a recycled id that is now a wormhole) re-voices on the next tick.
+    if (voice && (voice._gateId !== plan.gateId || voice.recipeId !== plan.recipeId)) { stop(); return; }
+    if (!voice) {
+      if (rt.voices && rt.voices.length >= MAX_AUDIO_VOICES && !this._reserveVoiceSlot(false)) return;
+      const recipe = AUDIO_RECIPE_BY_ID[plan.recipeId];
+      const amp = this._ampFor(recipe) || 1;
+      voice = this._startLoopVoice(plan.recipeId, null, GATE_THROAT_PEAK / amp,
+        { busName: 'ambient', rate: plan.rate, follow: true });
+      if (!voice) return;
+      voice._gateId = plan.gateId;
+      rt.loops.gateThroat = voice;
+      const nowS = rt.ctx && Number.isFinite(rt.ctx.currentTime) ? rt.ctx.currentTime : 0;
+      if (admitGateThroatCaption(rt._gateThroatCaption || (rt._gateThroatCaption = {}), plan.gateId, nowS)) {
+        emitAdmittedRecipeCaption(this, plan.recipeId, recipe, { position: { x: plan.x, z: plan.z } }, 'ambient');
+      }
+    }
+    const t = rt.ctx ? rt.ctx.currentTime : 0;
+    const duck = Number.isFinite(rt._priorityDuckWeapon) ? rt._priorityDuckWeapon : 1;
+    // The duck pass composes _baseGain with the critical-cue duck; keep it on the distance read.
+    voice._baseGain = plan.gain;
+    this._setParam(voice.gain && voice.gain.gain, plan.gain * duck, t, 0.35);
+    if (voice._panner && voice._panner.pan) {
+      this._setParam(voice._panner.pan, clamp((plan.x - player.pos.x) / PAN_SPAN, -1, 1), t, 0.25);
+    }
+    this._detuneGateThroat(voice, plan.spinCents, t);
+  },
+
+  /** Glide every source of the throat voice to `cents` (the spin-up rides detune, not rate). */
+  _detuneGateThroat(voice, cents, t) {
+    if (!voice || voice._spinCents === cents) return;
+    voice._spinCents = cents;
+    const apply = (sources) => {
+      if (!sources) return;
+      for (let i = 0; i < sources.length; i++) {
+        const detune = sources[i] && sources[i].detune;
+        if (detune && typeof detune.setTargetAtTime === 'function') {
+          try { detune.setTargetAtTime(cents, t, 0.6); } catch (_) {}
+        }
+      }
+    };
+    apply(voice.sources);
+    if (voice.subVoices) {
+      for (let i = 0; i < voice.subVoices.length; i++) apply(voice.subVoices[i] && voice.subVoices[i].sources);
+    }
   },
 
   /**
@@ -8894,6 +8974,7 @@ export const audio = {
     this._updateStationMurmur(now);
     this._updatePlaceContext(now);
     this._updateApproachHum(now);
+    this._updateGateThroat();
     this._updateWreckCooling();
     this._updatePressureLayer();
     this._writeMixLedger(now);
