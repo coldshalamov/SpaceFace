@@ -15,6 +15,7 @@ export const RIG_JOB_DEFS = Object.freeze([
     pickup: { x: -760, z: 250 }, destination: { x: -350, z: -480 } }),
 ]);
 export const RIG_JOB_LIMITS = Object.freeze({ receiverRadius: 75, speed: 6, spin: 0.4, minimumTravel: 180, maxBodies: 21 });
+const deliveryTransactions = new WeakSet();
 const copy = v => JSON.parse(JSON.stringify(v));
 const distance = (a, b) => Math.hypot((a?.x || 0) - (b?.x || 0), (a?.z || 0) - (b?.z || 0));
 const speed = e => Math.hypot(e?.vel?.x || 0, e?.vel?.z || 0);
@@ -186,16 +187,54 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
     return { ok: accepted.length > 0, reason: accepted.length ? null : rejected[0]?.reason || 'No unpaid cargo remains.', accepted, rejected };
   }
 
-  function deliver(w, id = w.activeJobId) {
+  function deliver(w, id = w.activeJobId, selection = null) {
+    if (deliveryTransactions.has(state)) return { ok: false, reason: 'A handover is already in progress.' };
+    deliveryTransactions.add(state);
+    try { return commitDelivery(w, id, selection); }
+    finally { deliveryTransactions.delete(state); }
+  }
+
+  function commitDelivery(w, id, selection) {
     update(w);
     const quote = deliveryQuote(w, id), job = w.jobs?.[id];
     if (!quote.ok) { if (job) job.lastReject = quote.reason; return quote; }
+    if (selection) {
+      const line = quote.accepted.find(c => c.id === selection.id);
+      const body = entity(state, selection.id);
+      if (!line || !Number.isInteger(selection.generation) || selection.generation <= 0
+        || body?.occupantGeneration !== selection.generation || body.ownerId !== state.playerId
+        || body.data?.playerOwned !== true || line.token !== selection.token
+        || line.amount !== selection.amount) {
+        return { ok: false, reason: 'That original or its receipt changed. Inspect the handover again.' };
+      }
+      quote.accepted = [line];
+    }
+    // Native release emits tether:broken synchronously. Reserve the transaction
+    // before release, then verify every original again before any receipt/credit.
+    // A callback may save the unpaid released load or replace its life; neither
+    // authorizes a receipt for the replacement. Failed validation leaves it loose.
+    const plans = quote.accepted.map(line => {
+      const record = job.cargo.find(c => c.id === line.id), body = original(w, job, record);
+      return { line, record, body, generation: body?.occupantGeneration,
+        ownerId: body?.ownerId, playerOwned: body?.data?.playerOwned };
+    });
+    for (const { body } of plans) {
+      for (const rig of w.rigs) if (rig.cargoIds?.includes(body.id)) physics.releaseCargo(w, rig.id, body.id);
+    }
+    const current = deliveryQuote(w, id);
+    if (state.rigWorkshop !== w || w.jobs?.[id] !== job || job.settled || !current.ok
+      || plans.some(p => original(w, job, p.record) !== p.body
+        || p.body.occupantGeneration !== p.generation || p.body.ownerId !== p.ownerId
+        || p.body.data?.playerOwned !== p.playerOwned || p.record.paid
+        || job.cargo.find(c => c.id === p.line.id) !== p.record
+        || !current.accepted.some(c => c.id === p.line.id && c.token === p.line.token && c.amount === p.line.amount))) {
+      return { ok: false, reason: 'The handover changed while releasing the restraint. No payment or custody was transferred; inspect the loose originals again.' };
+    }
     // Commit custody and payout receipt before publishing to economy. Its writer remains sole owner of credits.
     let amount = 0;
     for (const line of quote.accepted) {
       const record = job.cargo.find(c => c.id === line.id), e = original(w, job, record);
       if (record.paid || !e) continue;
-      for (const rig of w.rigs) if (rig.cargoIds?.includes(e.id)) physics.releaseCargo(w, rig.id, e.id);
       record.paid = true;
       e.data.rigWorkshopCargo.delivered = true;
       e.data.rigWorkshopCargo.receiverId = job.receiverId;
@@ -229,6 +268,7 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
   }
 
   function settlePartial(w) {
+    if (deliveryTransactions.has(state)) return { ok: false, reason: 'A handover is already in progress.' };
     const job = w.jobs?.[w.activeJobId];
     if (!job || job.settled) return { ok: false, reason: 'No open work order.' };
     if (state.world?.currentSectorId !== job.sectorId) return { ok: false, reason: 'Return to the workshop sector to settle this order.' };

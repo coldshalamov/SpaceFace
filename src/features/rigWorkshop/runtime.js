@@ -296,7 +296,7 @@ export function createRigWorkshopSystem() {
       } else if (action === 'releaseCargo') {
         const cargoId = args.cargoId ?? rig?.cargoIds?.[rig.cargoIds.length - 1];
         result = this.physics.releaseCargo(w, rig?.id, cargoId); this._showField();
-      } else if (action === 'deliver') { result = this.jobs.deliver(w); this._showField(); }
+      } else if (action === 'deliver') { result = this.jobs.deliver(w, args.jobId || w.activeJobId, args.selection || null); this._showField(); }
       else if (action === 'finishPartial') { result = this.jobs.settlePartial(w); this._showJobs(); }
       else if (action === 'guide') {
         if (!args.target && w.activeJobId) this._showGuide();
@@ -532,6 +532,34 @@ export function createRigWorkshopSystem() {
           this._option('close', 'Keep flying · release nothing', 'close', {}, { cancel: true })],
         cargo.length ? 'Only current native restraints' : 'No secured cargo to release');
     },
+    _showDelivery() {
+      const w = this.workshop, job = w.jobs[w.activeJobId];
+      if (!job) { this._showField(); return; }
+      const quote = this.jobs.deliveryQuote(w);
+      const options = quote.accepted.map(line => {
+        const body = this.state.entities.get(line.id), generation = body?.occupantGeneration;
+        return { id: `handover:${line.id}:${generation}`, label: `${body?.data?.name || 'Original cargo'} · ${line.amount} cr`,
+          run: () => {
+            if (w.jobs[w.activeJobId] !== job || this.state.entities.get(line.id) !== body) {
+              this.feedback('reject', 'That original or work order changed. Inspect the handover again.');
+              this._promptSignature = null; this._showDelivery(); return;
+            }
+            this.dispatch('deliver', { jobId: job.id, selection: { id: line.id, generation, token: line.token, amount: line.amount } });
+          } };
+      });
+      this._show('delivery', `${job.title} · gantry handover`,
+        'Hand over one named original and keep the others, or deliver all currently eligible originals. Damage changes the base payment. The first modified-rig success may add the existing 100 cr bonus. Handover releases its restraint and transfers custody; it cannot be undone.',
+        [...options, ...(quote.ok ? [{ id: 'all', label: 'Deliver all currently eligible originals', run: () => {
+            if (w.jobs[w.activeJobId] !== job) {
+              this.feedback('reject', 'That work order changed. Inspect the current handover.');
+              this._promptSignature = null; this._showDelivery(); return;
+            }
+            this.dispatch('deliver', { jobId: job.id });
+          } }] : []),
+          { id: 'back', label: 'Keep the loads · Back', run: () => this._showField() },
+          this._option('close', 'Keep flying · hand over nothing', 'close', {}, { cancel: true })],
+        quote.reason || `${quote.accepted.length} ready · ${quote.rejected.length} not ready`);
+    },
     _showField() {
       const rig = this.activeRig, w = this.workshop, job = w.jobs[w.activeJobId];
       if (!rig || !isWorkshopAdventure(this.state)) return;
@@ -542,7 +570,7 @@ export function createRigWorkshopSystem() {
           this._option('power', rig.power ? 'Cut mover power' : 'Enable movers', 'power'),
           this._option('couple', 'Couple ship', 'couple'),
           this._option('release', 'Release tow', 'release'),
-          ...(job ? [this._option('deliver', 'Deliver originals', 'deliver'), this._option('guide', 'Mark a destination', 'guide')] : []),
+          ...(job ? [{ id: 'deliver', label: 'Inspect gantry handover', run: () => this._showDelivery() }, this._option('guide', 'Mark a destination', 'guide')] : []),
           { id: 'more', label: 'Recovery · release', run: () => this._show('field-care', 'Recover the machine, keep the story',
             'Lost a connection? Find the original part, tow it home, and repair. You can release cargo to rebalance before securing it again.',
             [{ id: 'releaseCargo', label: 'Choose cargo to release', run: () => this._showCargoRelease() }, this._option('recover', 'Recover originals', 'recover'),
