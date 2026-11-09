@@ -192,6 +192,16 @@ export function createIndustryScreen(ctx) {
       }
     } catch (_) { /* a headless host has no boxes to fit */ }
   }
+  // the window's height is only known once the panel around it has laid out (the blueprint card, the phone
+  // column), so the fit is re-taken whenever the list or its panel changes size; a re-fit that lands on the
+  // same rung leaves both sizes unchanged, so the observer settles after one pass
+  let ladderRo = null;
+  function watchLadderWindow() {
+    if (ladderRo || disposed || !listEl || typeof ResizeObserver !== 'function') return;
+    ladderRo = new ResizeObserver(() => { if (!disposed) fitLadderWindow(); });
+    ladderRo.observe(listEl);
+    if (listEl.parentElement) ladderRo.observe(listEl.parentElement);
+  }
 
   function renderList(state) {
     renderListBody(state);
@@ -204,6 +214,7 @@ export function createIndustryScreen(ctx) {
     }
     syncScrollExtent(listEl);
     fitLadderWindow();
+    watchLadderWindow();
   }
   function renderListBody(state) {
     const stn = stationType(ctx);
@@ -677,6 +688,7 @@ export function createIndustryScreen(ctx) {
     dispose() {
       disposed = true;
       visible = false;
+      if (ladderRo) { ladderRo.disconnect(); ladderRo = null; }
       if (ctx.bus && ctx.bus.off) {
         ctx.bus.off('craft:complete', onCraftChanged);
         ctx.bus.off('craft:queueChanged', onCraftChanged);
