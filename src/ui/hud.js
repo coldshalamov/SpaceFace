@@ -1963,7 +1963,26 @@ export function createHud(ctx, alerts) {
   // The HUD frame is the single pre-paint placement owner. Event bursts only mark it dirty.
   let receiptLanePlacementDirty = true;
   let receiptIdleSlowTicks = 0;
-  function invalidateReceiptLane() { receiptLanePlacementDirty = true; }
+  let receiptGeometryReusable = false;
+  function invalidateReceiptLane() {
+    receiptLanePlacementDirty = true;
+    receiptGeometryReusable = false;
+    if (!receiptGeometryRects) return;
+    // A layout/settings/content invalidation makes every cached rect and selector list stale.
+    // The 10 Hz busy-lane safety tick re-places through `refreshReceiptLanePlacement` instead.
+    receiptGeometryRects.clear();
+    receiptGeometryRects.bm = null;
+    receiptGeometryRects.q = null;
+    receiptGeometryRects.resp = null;
+    receiptGeometryRects.gap = null;
+  }
+  // The busy-lane safety tick may re-place against the last measured geometry. It never wins over a
+  // real invalidation: that frame must re-measure so the placement reflects the current DOM.
+  function refreshReceiptLanePlacement() {
+    if (receiptLanePlacementDirty) return;
+    receiptLanePlacementDirty = true;
+    receiptGeometryReusable = receiptGeometryRects !== null;
+  }
   const on = (event, listener, opts = undefined) => {
     if (!ctx.bus || typeof ctx.bus.on !== 'function') return null;
     const unsubscribe = ctx.bus.on(event, listener, opts);
@@ -6006,7 +6025,11 @@ export function createHud(ctx, alerts) {
         || externalFlightCaptions.size > 0
         || (caption && !caption.hidden && caption.classList.contains('show'));
       receiptIdleSlowTicks = laneBusy ? 0 : receiptIdleSlowTicks + 1;
-      if (laneBusy || receiptIdleSlowTicks >= 5) {
+      if (laneBusy) {
+        // Busy lane: keep the cadence but re-place from the last measured geometry. Real content
+        // and layout owners still invalidate; this tick is a safety net, not a re-measure.
+        refreshReceiptLanePlacement();
+      } else if (receiptIdleSlowTicks >= 5) {
         receiptIdleSlowTicks = 0;
         invalidateReceiptLane();
       }
@@ -6963,9 +6986,25 @@ export function createHud(ctx, alerts) {
   function flushReceiptLane() {
     if (!receiptLanePlacementDirty) return;
     receiptLanePlacementDirty = false;
-    receiptGeometryRects = receiptPlacementMode === 'shared' ? new Map() : null;
+    if (receiptPlacementMode !== 'shared') {
+      receiptGeometryRects = null;
+      placeReceiptLane();
+      return;
+    }
+    // Content/layout invalidations measure from scratch; the busy-lane safety tick may re-place
+    // against the last measured geometry. The band memo is per-flush either way.
+    const reuse = receiptGeometryReusable && receiptGeometryRects !== null;
+    receiptGeometryReusable = false;
+    if (!reuse) receiptGeometryRects = new Map();
+    receiptGeometryRects.bm = null;
     try { placeReceiptLane(); }
-    finally { receiptGeometryRects = null; }
+    catch (error) {
+      // A failed placement cannot retain a half-invalidated snapshot.
+      receiptGeometryRects = null;
+      receiptGeometryReusable = false;
+      throw error;
+    }
+    finally { if (!reuse) receiptGeometryRects = null; }
   }
   function prepareReceiptLaneSize(laneRoot, laneWidth) {
     const write = receiptPlacementMode === 'shared' ? setReceiptStyle : setStyle;
@@ -7047,8 +7086,13 @@ export function createHud(ctx, alerts) {
     }
     if (!sharedGeometry) prepareReceiptLaneSize(laneRoot, laneWidth);
     const receiptCards = [...(laneRoot.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || [])];
-    const receiptGap = typeof getComputedStyle === 'function'
-      ? Math.max(0, parseFloat(getComputedStyle(laneRoot).rowGap) || 0) : 0;
+    const receiptGap = (() => {
+      if (typeof getComputedStyle !== 'function') return 0;
+      if (receiptGeometryRects && receiptGeometryRects.gap != null) return receiptGeometryRects.gap;
+      const gap = Math.max(0, parseFloat(getComputedStyle(laneRoot).rowGap) || 0);
+      if (receiptGeometryRects) receiptGeometryRects.gap = gap;
+      return gap;
+    })();
     const receiptHeight = Math.max(lane.height,
       receiptCards.reduce((sum, card) => sum + (readReceiptRect(card)?.height || 0), 0)
         + Math.max(0, receiptCards.length - 1) * receiptGap);

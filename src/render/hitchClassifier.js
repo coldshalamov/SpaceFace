@@ -1,10 +1,20 @@
-// Name the owner of any display callback that misses two vsyncs (>32 ms).
+// Name the owner of any display callback that misses its presentation cadence. The default
+// threshold is two 60 Hz vsyncs; callers on a capped cadence pass the live budget so a healthy
+// 30 Hz frame (33.3 ms) is never recorded as a hitch.
 //
 // Production play does not call this unless a probe enables hitch attribution.
 // The classifier is a pure function over already-collected phase samples so the
 // default picture pays no extra clocks.
 
 export const HITCH_THRESHOLD_MS = 32;
+
+/** A hitch threshold relative to the cadence budget: 1.5 × the frame budget by default. */
+export function hitchThresholdForBudget(budgetMs, multiple = 1.5) {
+  const budget = Number(budgetMs);
+  const base = Number.isFinite(budget) && budget > 0 ? budget : 1000 / 60;
+  const factor = Number.isFinite(Number(multiple)) && Number(multiple) > 0 ? Number(multiple) : 1.5;
+  return base * factor;
+}
 
 // src/core/presentationRunner.js:672 clamps frameDt > 0.25 to 0.25 and line 688 is the only
 // production caller of perfRuntime.beginFrame, so a real frameMs never exceeds this value.

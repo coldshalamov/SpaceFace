@@ -736,9 +736,26 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   const SEAT_MIN_INTERVAL_MS = 250;
   let lastSeatAt = -Infinity;
   let lastSeatNodes = null;
+  let seatObstacleNodes = null;
   let seatFramePending = false;
   let seatFrameHandle = null;
   let seatFrameCancel = null;
+
+  // The eleven avoidance targets are HUD/touch singletons. Resolve them once and re-resolve only a
+  // node that detached (touch layout swap, recovery remount); a live match is the same element the
+  // selector would return. This removes eleven querySelector calls from every seat.
+  function resolveSeatObstacleNodes(obstacles) {
+    if (seatObstacleNodes === null || seatObstacleNodes.length !== obstacles.length) {
+      seatObstacleNodes = obstacles.map(([selector]) => doc.querySelector(selector) || null);
+      return seatObstacleNodes;
+    }
+    for (let i = 0; i < obstacles.length; i++) {
+      const node = seatObstacleNodes[i];
+      if (node && node.isConnected !== false) continue;
+      seatObstacleNodes[i] = doc.querySelector(obstacles[i][0]) || null;
+    }
+    return seatObstacleNodes;
+  }
 
   function seatClearOfSpeedDial(force = false) {
     const view = doc.defaultView;
@@ -756,14 +773,15 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       [TOUCH_EDGE_SELECTOR, HUD_PRIORITY_CLEARANCE_PX],
       [TOUCH_DOCK_SELECTOR, HUD_PRIORITY_CLEARANCE_PX],
     ];
-    const nodes = obstacles.map(([selector]) => doc.querySelector(selector) || null);
+    const nodes = resolveSeatObstacleNodes(obstacles);
     const seatNow = calloutNow();
     const unchanged = lastSeatNodes !== null && nodes.every((node, i) => node === lastSeatNodes[i]);
     if (!force && unchanged && seatNow - lastSeatAt < SEAT_MIN_INTERVAL_MS) {
-      notifyFlightTextGeometryIfChanged(root.getBoundingClientRect());
+      // No geometry moved: the previous seat already published this exact box. Do not force a
+      // layout read just to re-publish an unchanged key.
       return;
     }
-    lastSeatNodes = nodes;
+    lastSeatNodes = nodes.slice();
     lastSeatAt = seatNow;
     const ownRect = root.getBoundingClientRect();
     const viewportHeight = Number(view.innerHeight);

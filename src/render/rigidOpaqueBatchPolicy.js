@@ -288,6 +288,13 @@ export function isRigidOpaqueBatchableSurface(source, tags = {}, options = {}) {
   if (source.isInstancedMesh || source.isSkinnedMesh || source.isBatchedMesh) return false;
   if (source.visible === false) return false;
   if (!source.geometry || !source.material || Array.isArray(source.material)) return false;
+  // Direct authored ownership markers are as load-bearing as the packed tags; a generic hull
+  // leaf can carry either. Never batch a damage unit, a decal, canopy/plume, nav/sensor light,
+  // independent fan/drive pivot, or a keep-separate surface.
+  const data = source.userData || {};
+  if (data.damageRole || data.keepSeparate === true || data.decal === true
+      || data.canopy === true || data.plume === true || data.navLight === true
+      || data.fan === true || data.drive === true || data.hot === true || data.heat === true) return false;
   if (tags.damageRole) return false;
   if (tags.canopy || tags.decal || tags.plume || tags.navLight || tags.fan) return false;
   if (!isRigidOpaqueBatchMotionSafe(source, tags, options)) return false;

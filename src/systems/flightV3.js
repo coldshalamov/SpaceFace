@@ -594,6 +594,14 @@ export const flightV3 = {
     // controllers retain their own counterthrust and brake leases; NPC packets never inherit it.
     input.manualReverse = isPlayer && !saucer && !gridHeld && !pathActive && !heroManeuverActive
       && !(autopilot && autopilot.active) && playerFlightControlsActive(state, entity);
+    // A non-orbiting tethered player still flies the assisted cruise governor. The tether
+    // disables vectoring, and without this bound a held W+A can cross 90 degrees of slip and aim
+    // full thrust backwards — the repeated retro-burn stop the owner reported. The orbit assist
+    // owns the turn when it is active, so only the non-orbiting case takes the bound.
+    if (isPlayer && !input.velocityVectoring && !(autopilot && autopilot.active)
+        && !(orbitAssist && orbitAssist.active) && input.unvectoredCruiseSteering !== true) {
+      input = { ...input, unvectoredCruiseSteering: true };
+    }
     _stepArgs.dt = dt;
     _stepArgs.body = body;
     _stepArgs.input = input;
