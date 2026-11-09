@@ -336,6 +336,18 @@ export const salvageOutfits = {
     } finally { this._busy = false; }
   },
 
+  _canKeelRelief(m) {
+    if (this._restoring || this._destroyed || this.state.mode !== 'flight' || this._row.meetings[m.id] !== m || !this._reachable(m)
+      || m.crews.latch.status !== 'stalled' || !activeCrew(m.crews.keel)
+      || distrustsPlayer(this._row.memory.keel) || !activeBody(m.bodies.core)
+      || !activeBody(m.bodies.frame) || !activeBody(m.bodies.cache)) return false;
+    const keel = this.physical.find(m.crews.keel.key), latch = this.physical.find(m.crews.latch.key);
+    const core = this.physical.find(m.bodies.core.key), frame = this.physical.find(m.bodies.frame.key);
+    const cache = this.physical.find(m.bodies.cache.key);
+    return !!(keel && latch && core && frame && cache && Number.isFinite(core.mass) && core.mass > 0
+      && core.mass <= outfit('keel').safeMass && !this.physical.playerLine(core));
+  },
+
   offer(meetingId, kind = null) {
     const m = this._row.meetings[meetingId];
     if (!m || m.status === 'complete' || this._restoring || this.state.mode !== 'flight'
@@ -353,6 +365,11 @@ export const salvageOutfits = {
       choices = [publicChoice('rescue', 'TAKE THE RESCUE', 'No up-front fee. The original cradle must arrive intact enough to recover.'),
         publicChoice('refuse', 'LEAVE IT TO THEM', 'No hostility; the loose original stays in the world.'),
         publicChoice('cancel', 'CLOSE RADIO', 'Keep flying. No agreement.', true)];
+      if (this._canKeelRelief(m)) {
+        choices.splice(1, 0, publicChoice('keel_relief', 'LET KEEL LIFT · TAKE THE SMALL WORK',
+          'Keel tows the original cradle. Both smaller originals are yours to tow or beam. No rescue bonus.'));
+        detail += ' Or ask Keel to take over the heavy lift: its Hawser can handle this cradle. You work the smaller originals under a split, with no rescue fee.';
+      }
     } else {
       crewId = 'keel'; title = 'Divide the work before the cables cross';
       detail = distrust
@@ -394,6 +411,30 @@ export const salvageOutfits = {
       return { ok: false, reason: 'stale_or_distant_offer' };
     }
     const choice = payload.choiceId;
+    if (choice === 'keel_relief') {
+      if (!this._canKeelRelief(m)) { this._closeOffer(m); return { ok: false, reason: 'relief_changed' }; }
+      this._busy = true;
+      try {
+        this._closeOffer(m);
+        // Closing UI and cancelling native jobs emit callbacks. Revalidate the
+        // actual people, originals and trust after each boundary before promising work.
+        if (!this._canKeelRelief(m)) return { ok: false, reason: 'relief_changed' };
+        for (const c of Object.values(m.crews)) {
+          const actor = this.physical.find(c.key); if (actor) this.physical.cancelTow(actor);
+        }
+        if (!this._canKeelRelief(m)) return { ok: false, reason: 'relief_changed' };
+        m.agreement = { type: 'split', status: 'active', crewId: 'keel', pieceId: 'frame',
+          acceptedAt: this._now(), bonus: 0, receiptId: `${m.id}:agreement:split` };
+        m.bodies.core.claim = 'keel'; m.bodies.frame.claim = 'player';
+        if (activeBody(m.bodies.cache)) m.bodies.cache.claim = 'player';
+        Object.assign(m.crews.keel, { targetId: 'core', status: 'approach', startsAt: this._now(), towSeconds: 0 });
+        Object.assign(m.crews.latch, { targetId: null, status: 'idle' });
+        this._say('keel', 'Let my Hawser take that cradle. Kit, clear your cable. The radiator and tooling rack are yours to work; no rescue fee, just a clean split.');
+        if (this._row.meetings[m.id] === m && !this._destroyed && !this._restoring)
+          this.bus.emit('salvageOutfits:agreement', { meetingId: m.id, ...m.agreement });
+        return { ok: true, committed: true, agreement: cloneSalvageOutfits(m.agreement) };
+      } finally { this._busy = false; }
+    }
     if (['cancel', 'refuse'].includes(choice)) {
       this._closeOffer(m); this._lastOfferAt = this._now();
       if (choice === 'refuse') this._say(offer.crewId, 'Understood. We keep working. Take your own line.');
