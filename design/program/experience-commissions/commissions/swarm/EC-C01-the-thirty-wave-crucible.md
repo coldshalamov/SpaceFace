@@ -68,9 +68,21 @@ Reject a new lore document, thirty labels, a wave-30 debug spawn, one attractive
 - `src/data/swarmMode.js`
 - `src/data/swarmLadder.js`
 
+## Commission execution supplement — branch and proof
+
+**Implementation on this existing draft PR:** `experience-commissions/EC-C01-the-thirty-wave-crucible`. Put production source, assets, real playtest evidence and fixes here; do not open a duplicate prompt/PR. Reconcile actual master, open Swarm PRs, current Finish status and `NOW.md` source claims first. Shared `swarmArena.js`, `swarmMode.js`, `swarmLadder.js` and roster writers must be assigned one active owner across all arenas/blocks. Use linked dependencies only for canonical shared-owner integration.
+
+**Distinct combat design:** This is the **authored** 30-wave Crucible arc, not a duplication of the endless Swarm ladder. Preserve its unique scripted act/wave identity, systems, story climax, encounter meaning and result handling. Compare at least two feasible ways to improve the least convincing moment and choose a solution maximizing physically understandable agency, enemy character, encounter rhythm and replayable tactical depth for real performance cost. Do not build new enemy structures in combat, reward self-triggered collisions, make enemies bullet sponges or hide visual causes under particle whiteout.
+
+**Proof in the actual game:** Check normal launch, multiple transition rounds, powers, different enemy sizes and counterplay, staged boss, results and restart; run existing regression/determinism tests plus a real rendered gameplay route. Inspect normal-camera image/video, keyboard/mouse/control response, audio-muted and reduced-motion equivalents. Measure dense-worker, main-thread, GPU, asset residency and memory under a named seed/hardware; no pixelation/depopulating as an optimization. Native reward/wave/mission ownership is mandatory.
+
+**Finite completion:** Keep draft until all named round/block experiences, results and failure cases are implemented and independently reviewed (three reviewers if current native gate requires). Log changed source, ordinary route, seed, actual performance/visual evidence and exact remaining blockers; partial work remains **AREA INCOMPLETE**.
+
+Follow [agent execution protocol](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/06_AGENT_PR_EXECUTION_PROTOCOL.md) and [concurrency map](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/07_PARALLEL_AGENT_DEPLOYMENT.md).
+
 ## Execution contract — own the experience, not just the files
 
-You are the implementation lead for the named commission. Produce working source and any necessary authored assets in SpaceFace, then publish an area-focused PR. This is an execution assignment, not a request for another plan, prompt, simulation transcript, catalog, or test-only demonstration. Your responsibility includes design judgment, source integration, presentation, failure recovery, and the ordinary player route. A subordinate's completed component does not discharge your responsibility for the whole.
+You are the implementation lead for the named commission. Produce working combat source/assets directly on this existing draft PR branch; open a linked PR only for canonical shared-owner coordination. This is an execution assignment, not a request for another plan, prompt, simulation transcript, catalog, or test-only demonstration. Your responsibility includes design judgment, source integration, presentation, failure recovery, and the ordinary player route. A subordinate's completed component does not discharge your responsibility for the whole.
 
 **Establish truth before replacing things.** Read the current `AGENTS.md`, relevant nested instructions, `design/VISION.md`, the applicable parts of `design/GDD_2_0.md`, and the current master-plan campaign/lane/status. Inspect `git status --short`, exact relevant diffs, open PRs and `design/program/NOW.md`. Read the named native parents in this commission. Inspect the existing route in the running game; trace its source owners. Classify each promised outcome as working, present-but-poor, disconnected, absent, blocked by a shared defect, or unverified. A prose claim, a shipped catalog row, and a passing unit test are not equivalent to a working experience. Preserve the good parts and finish their missing connections.
 
