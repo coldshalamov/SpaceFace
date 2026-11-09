@@ -2244,15 +2244,20 @@ html.sf-reduce-motion .orr-replay__pulse { display:none; }
   /* ui-polish-425: the SVG draws a fixed 172-unit-tall tape, so squeezing the host to 100px
    * scaled the track down ~0.58 and centred it (240–720 of 960 at 960×540) while the HTML
    * second marks kept the full width and sank under the curtain. Keep the authored 172px;
-   * the 124px lift alone clears the readout off the lamp. Only frames under 420 tall squeeze. */
+   * the 124px lift alone clears the readout off the lamp. Under 420 tall see the rule below. */
   .orr-replay__tape { bottom:124px; height:172px; }
   .orr-replay__readout {
     padding:6px 4px;
     background:linear-gradient(90deg, rgb(5 7 10 / 0), rgb(5 7 10 / .92) 12%, rgb(5 7 10 / .92) 88%, rgb(5 7 10 / 0));
   }
 }
+/* ui-polish-425 (#997): under 420 tall the host used to squeeze to min(100px, 24vh), which put
+ * the same mismatch back: the SVG track scaled ~0.5 and centred (184–456 at 640×360) while the
+ * second marks kept the full width and sat under the curtain (y278). The tape keeps its authored
+ * 172px here too and drops to bottom:84px instead, so the readout clears the counter and the
+ * second marks stay above the lamp apron. */
 @media (max-height:419px) {
-  .orr-replay__tape { height:min(100px, 24vh); }
+  .orr-replay__tape { bottom:84px; height:172px; }
 }
 /* Phone: same curtain so wrapped how-to cannot paint through the lamp apron. */
 @media (max-width:560px) {
