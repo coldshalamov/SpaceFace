@@ -61,6 +61,7 @@ import { gateBearing } from './waveMaterialization.js';
 import { findSwarmArrival, swarmPilotHasActed } from './swarmSafety.js';
 import { planSwarmBank, swarmBankEligible } from './swarmBank.js';
 import { planSwarmOpeningVolley } from './swarmOpeningVolley.js';
+import { planSwarmOpeningSpitter } from './swarmOpeningSpitter.js';
 import { planSwarmOpeningFlanks, SWARM_OPENING_FLANK_GATES } from './swarmOpeningFlanks.js';
 import {
   BROOD_CHARGER_DASH_MAX_S,
@@ -922,6 +923,23 @@ export function createBroodEngine(deps = {}) {
     // through to ordinary arrivals, never teleports props or delays the round.
     if (!openingVolleyAttempted) {
       openingVolleyAttempted = true;
+      const spitter = familyIndex.get('spitter');
+      const debut = spitter == null ? null : planSwarmOpeningSpitter(
+        state, state.run, liveWave, pendingPlan, liveFamilyRadius[spitter]);
+      const debutSlot = debut ? findFreeSlot() : -1;
+      if (debut && debutSlot >= 0) {
+        spawnAt(debutSlot, spitter, debut.pos.x, debut.pos.z);
+        pendingPlan.find(part => part.id === 'spitter').count -= 1;
+        // One ordinary marked lob gets room to speak. Killing this life releases
+        // the crowd early; otherwise the existing six active-second beat does.
+        openingBeat = { remaining: 6, lastTick: state.tick, attackPending: true,
+          lives: [{ slot: debutSlot, life: serial[debutSlot] }] };
+        attackAfter[debutSlot] = Infinity;
+        openingRamp = { remaining: 0, lastTick: state.tick, group: 0, course: debut.course };
+        assignMotherShares();
+        publish();
+        return 1;
+      }
       const mite = familyIndex.get('mite');
       const layout = mite == null ? null : planSwarmOpeningVolley(
         state, state.run, liveWave, pendingPlan, liveFamilyRadius[mite]);
@@ -1280,7 +1298,15 @@ export function createBroodEngine(deps = {}) {
     if (openingBeat) {
       if (openingBeat.lastTick !== state.tick) {
         openingBeat.lastTick = state.tick;
-        if (swarmPilotHasActed(state)) openingBeat.remaining = Math.max(0, openingBeat.remaining - DT);
+        if (swarmPilotHasActed(state)) {
+          if (openingBeat.attackPending) {
+            for (const { slot, life } of openingBeat.lives) if (alive[slot] && serial[slot] === life) {
+              attackAfter[slot] = finite(state.simTime) + BROOD_ATTACK_ARRIVAL_S;
+            }
+            openingBeat.attackPending = false;
+          }
+          openingBeat.remaining = Math.max(0, openingBeat.remaining - DT);
+        }
       }
       if (!openingBeatHasLives() || openingBeat.remaining <= 1e-8) {
         openingBeat = null;

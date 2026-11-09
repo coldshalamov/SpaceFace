@@ -282,10 +282,12 @@ test('clear and next-wave preparation retire every pending flank body and course
   advance(f, 400);
   assert.equal(f.engine.view.aliveCount, 0);
   assert.equal(f.engine.view.pendingCount, 0);
-  f.state.run.wave = 3;
-  f.engine.prepareWave(f.state.run, 3);
+  // Round three has its own authored Spitter debut; use the next ordinary round
+  // to prove this cleared flank course cannot leave an inherited packet hold.
+  f.state.run.wave = 4;
+  f.engine.prepareWave(f.state.run, 4);
   assert.ok(f.engine.spawnWave(f.state) > 18);
-  assert.equal(f.engine.view.aliveCount + f.engine.view.pendingCount, swarmBroodPopulation(3));
+  assert.equal(f.engine.view.aliveCount + f.engine.view.pendingCount, swarmBroodPopulation(4));
 });
 
 test('same seeded round produces identical packets and conserves its independent RNG stream', () => {
