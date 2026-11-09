@@ -283,15 +283,7 @@ export function createRigWorkshopSystem() {
         if (!this._atBench()) return { ok: false, reason: 'Accept a work order at the bench.' };
         result = this.jobs.accept(w, args.id); this._showField();
       } else if (action === 'capture') {
-        const job = w.jobs[w.activeJobId];
-        const originalIds = new Set((job?.cargo || []).filter(c => !c.paid && !c.lost).map(c => c.id));
-        const candidates = (this.state.entityList || []).filter(e => {
-          if (!at(e) || e.type !== 'payload' || e.data?.rigWorkshop || e.physicsBody?.dynamic === false
-            || e.data?.rigWorkshopCargo?.delivered || e.data?.rigWorkshopDelivered) return false;
-          if (originalIds.has(e.id)) return true;
-          const owner = e.data?.rigWorkshopCargo?.ownerId ?? e.data?.ownerId ?? e.ownerId;
-          return !e.data?.rigWorkshopJob && (owner === w.ownerId || owner === this.state.playerId);
-        });
+        const job = w.jobs[w.activeJobId], candidates = this._captureCandidates();
         const rigBodies = (rig?.partIds || []).map(id => this.state.entities.get(id)).filter(e => at(e));
         const cargo = args.cargoId ? candidates.find(e => e.id === args.cargoId) : candidates
           .filter(e => !(w.rigs || []).some(r => this.physics.isCargoSecured(w, r.id, e.id)))
@@ -473,6 +465,47 @@ export function createRigWorkshopSystem() {
           this._option('close', 'Keep exploring', 'close', {}, { cancel: true }),
         ]);
     },
+    _captureCandidates() {
+      const w = this.workshop, job = w.jobs[w.activeJobId];
+      const originalIds = new Set((job?.cargo || []).filter(c => !c.paid && !c.lost).map(c => c.id));
+      return (this.state.entityList || []).filter(e => {
+        if (!at(e) || e.type !== 'payload' || e.data?.rigWorkshop || e.physicsBody?.dynamic === false
+          || e.data?.rigWorkshopCargo?.delivered || e.data?.rigWorkshopDelivered) return false;
+        if (originalIds.has(e.id)) return true;
+        const owner = e.data?.rigWorkshopCargo?.ownerId ?? e.data?.ownerId ?? e.ownerId;
+        return !e.data?.rigWorkshopJob && (owner === w.ownerId || owner === this.state.playerId);
+      });
+    },
+    _showCargoCapture(page = 0) {
+      const rig = this.activeRig, w = this.workshop;
+      if (!rig) return this._showField();
+      const holders = rig.partIds.map(id => this.state.entities.get(id))
+        .filter(e => at(e) && PARTS[e.data?.rigWorkshop?.partType]?.cargoCapacity);
+      const cargo = this._captureCandidates().filter(e => Number.isInteger(e.occupantGeneration) && e.occupantGeneration > 0
+        && !w.rigs.some(r => this.physics.isCargoSecured(w, r.id, e.id))
+        && holders.some(holder => dist(holder.pos, e.pos) <= PARTS[holder.data.rigWorkshop.partType].captureRadius));
+      const current = Math.max(0, Math.min(Math.floor(page) || 0, Math.max(0, Math.ceil(cargo.length / 5) - 1)));
+      const choices = cargo.slice(current * 5, current * 5 + 5).map(body => {
+        const generation = body.occupantGeneration;
+        const mass = Number.isFinite(body.physicsBody?.mass) ? body.physicsBody.mass : body.mass;
+        return { id: `capture:${body.id}:${generation}`, label: `${body.data?.name || 'Owned cargo'} · ${Number.isFinite(mass) ? Math.round(mass * 10) / 10 : '?'} t`,
+          run: () => {
+            if (this.activeRig !== rig || this.state.entities.get(body.id) !== body || body.occupantGeneration !== generation
+              || !this._captureCandidates().includes(body)) {
+              this.feedback('reject', 'That original or its ownership changed. Choose a current load.');
+              this._promptSignature = null; this._showCargoCapture(current); return;
+            }
+            this.dispatch('capture', { cargoId: body.id });
+          } };
+      });
+      if (current > 0) choices.push({ id: 'previous', label: 'Previous loads', run: () => this._showCargoCapture(current - 1) });
+      if ((current + 1) * 5 < cargo.length) choices.push({ id: 'next', label: 'More loads', run: () => this._showCargoCapture(current + 1) });
+      choices.push({ id: 'back', label: 'Back to the rig', run: () => this._showField() },
+        this._option('close', 'Keep flying · clamp nothing', 'close', {}, { cancel: true }));
+      this._show(`capture-cargo:${current}`, `${rig.name} · choose a load`,
+        'Choose which owned original to secure. Only loads within a collector or cradle’s reach are listed. Match their speed; the real clamp still checks capacity and motion. No cargo is delivered or sold.',
+        choices, cargo.length ? `Nearby loads · page ${current + 1}/${Math.ceil(cargo.length / 5)}` : 'Bring owned loose cargo inside a collector or cradle');
+    },
     _showCargoRelease() {
       const rig = this.activeRig, w = this.workshop;
       if (!rig) return this._showField();
@@ -505,7 +538,7 @@ export function createRigWorkshopSystem() {
       const broken = Math.max(rig.connections.filter(c => ['broken', 'detached'].includes(c.state)).length, rig.detachedCount || 0);
       const detail = job ? `${job.title} · ${job.delivered.length}/${job.cargo.length} delivered. ${job.stage === 'pickup' ? 'Follow the cargo marker, approach slowly, then secure an original.' : 'Brake well before the gantry and let the load settle below 6 WU/s and 0.4 rad/s.'}${job.id === 'kiln' ? ' Keep mover assist enabled while braking.' : ''}` : 'Test the rig or carry your own loose payloads. Fly and brake normally; the tow and mover respond through the existing physics.';
       this._show('field', `${rig.name}${broken ? ` · ${broken} broken connection${broken === 1 ? '' : 's'}` : ''}`, detail,
-        [this._option('capture', 'Secure cargo', 'capture'),
+        [{ id: 'capture', label: 'Choose cargo to secure', run: () => this._showCargoCapture() },
           this._option('power', rig.power ? 'Cut mover power' : 'Enable movers', 'power'),
           this._option('couple', 'Couple ship', 'couple'),
           this._option('release', 'Release tow', 'release'),
