@@ -3,7 +3,7 @@ import { createTenderPhysical, TENDER_BODY_ID, TENDER_PHYSICAL } from './physica
 import { TENDER_CONFIG as C, TENDER_STAGES, freshSalvageTender, normalizeSalvageTender,
   discoverTenderState, recordTenderHistory } from './model.js';
 import { tenderCostQuote, payTenderCost, tenderServiceQuote, bookTenderService,
-  stepTenderService, setTenderRepairPriority, cancelTenderService, repairTenderHull, rebindTenderService } from './services.js';
+  stepTenderService, holdTenderService, setTenderRepairPriority, cancelTenderService, repairTenderHull, rebindTenderService } from './services.js';
 import { installSalvageTenderSaveAdapter } from './saveAdapter.js';
 import { getSalvageTenderReadModel } from './readModel.js';
 
@@ -243,6 +243,8 @@ export const salvageTender = {
           for (const priority of ['balanced', 'hull', 'armor']) choices.push(choice(`priority_${priority}`, `Redirect: ${priority === 'balanced' ? 'balanced' : priority + ' first'} · no new charge`,
             { action: 'repair_priority', priority, jobId: row.service.id }, gate.ok && (row.service.repairPriority || 'balanced') !== priority));
         }
+        choices.push(choice('hold_service', row.service.manualPaused === true ? 'Resume prepaid work · no new charge' : 'Pause prepaid work · keep the remainder',
+          { action: 'hold_service', paused: row.service.manualPaused !== true, jobId: row.service.id }, gate.ok, gate.reason));
         choices.push(choice('cancel_service', row.service.delivered <= 1e-9 ? 'Cancel · untouched supply returned' : 'Cancel · partially used supply is spent'));
       } else for (const [action, label] of [['refuel', 'Pump one fuel cell'], ['repair', 'Balanced weld · 1 scrap'], ['emergency', 'Use starter emergency weld · free to 35% hull']]) {
         const q = tenderServiceQuote(this.state, row, action);
@@ -402,6 +404,10 @@ export const salvageTender = {
       const result = bookTenderService(this.ctx, row, action, options.priority || 'balanced');
       if (result.ok) this._remember(action === 'refuel' ? 'provision' : 'repair', `${action === 'refuel' ? 'Fuel' : 'Repair'} work booked. Stay alongside; leaving pauses the work you paid for.`);
       return result;
+    }
+    if (action === 'hold_service') {
+      const gate = this._serviceGate(); if (!gate.ok) return gate;
+      return holdTenderService(this.ctx, row, options.paused, options.jobId);
     }
     if (action === 'repair_priority') {
       const gate = this._serviceGate(); if (!gate.ok) return gate;

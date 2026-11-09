@@ -63,7 +63,7 @@ export function payTenderCost(ctx, cost, method, commit) {
 export function tenderServiceQuote(state, row, type) {
   const player = state.entities?.get(state.playerId);
   if (!player?.alive) return { ok: false, reason: 'A live ship is required.' };
-  if (row.service) return { ok: false, reason: 'Finish or pause the booked work before starting another service.' };
+  if (row.service) return { ok: false, reason: 'Finish or cancel the booked work before starting another service.' };
   if (!row.owned) return { ok: false, reason: 'Recover and claim Morrowlight first.' };
   const hullMissing = Math.max(0, (player.hullMax || 0) - (player.hull || 0));
   const armorMissing = Math.max(0, (player.armorMax || 0) - (player.armorHp || 0));
@@ -100,7 +100,7 @@ export function bookTenderService(ctx, row, type, priority = 'balanced') {
     hullShare: q.hullShare, armorShare: q.armorShare,
     deliveredHull: 0, deliveredArmor: 0, deliveredFuel: 0,
     paidCommodity: q.commodity, paidUnits: q.count,
-    beforeProtection: (player.hull || 0) + (player.armorHp || 0), paused: false, pauseReason: '',
+    beforeProtection: (player.hull || 0) + (player.armorHp || 0), manualPaused: false, paused: false, pauseReason: '',
   };
   // Reserve before the cargo owner emits cargo:changed; a nested button cannot book twice.
   row.service = pending;
@@ -129,6 +129,21 @@ export function setTenderRepairPriority(ctx, row, priority, jobId) {
   return { ok: true, priority, charged: 0 };
 }
 
+/** A deliberate hold preserves exactly the same paid work; it is not cancellation. */
+export function holdTenderService(ctx, row, paused, jobId) {
+  const job = row.service, player = ctx.state.entities?.get(ctx.state.playerId), binding = serviceBindings.get(ctx.state);
+  if (typeof paused !== 'boolean' || !job || job.id !== jobId || !player?.alive
+    || binding?.jobId !== job.id || binding.entity !== player || binding.generation !== player.occupantGeneration
+    || (ctx.state.player.activeShipIndex || 0) !== job.shipIndex
+    || (player.data?.defId || '') !== job.shipDefId || (job.vesselId && ownedVessel(ctx.state) !== job.vesselId)) {
+    return { ok: false, reason: 'The service booking or its original ship changed.' };
+  }
+  job.manualPaused = paused; job.paused = paused;
+  job.pauseReason = paused ? 'Held by you. Resume prepaid work at this berth when ready.' : '';
+  row.revision++;
+  return { ok: true, paused, charged: 0, refunded: 0 };
+}
+
 /** Uses the existing yard's delivery writer without pretending the pilot is docked at a
  * station. The feature supplies scheduling and a physically checked local service berth. */
 export function stepTenderService(ctx, row, dt, gate) {
@@ -141,6 +156,10 @@ export function stepTenderService(ctx, row, dt, gate) {
     && binding?.jobId === job.id && binding.entity === player && binding.generation === player.occupantGeneration;
   if (!sameHull || !gate.ok) {
     job.paused = true; job.pauseReason = sameHull ? gate.reason : 'This work belongs to your previous hull. Return in it or cancel the unused work.';
+    return null;
+  }
+  if (job.manualPaused === true) {
+    job.paused = true; job.pauseReason = 'Held by you. Resume prepaid work at this berth when ready.';
     return null;
   }
   if (!(dt > 0) || !Number.isFinite(dt)) return null;

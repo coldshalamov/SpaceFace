@@ -60,6 +60,7 @@ export function normalizeTenderService(raw) {
     deliveredFuel: Math.max(0, finite(raw.deliveredFuel)),
     paidCommodity: text(raw.paidCommodity, 80), paidUnits: count(raw.paidUnits, 1000),
     beforeProtection: Math.max(0, finite(raw.beforeProtection)),
+    manualPaused: raw.manualPaused === true,
     paused: true, pauseReason: 'Reconnect at the same berth to resume.',
   };
 }
