@@ -249,6 +249,36 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
   ${P} .sxb-crown .sxb-vitals { grid-template-columns:minmax(0,106fr) minmax(0,100fr) minmax(0,98fr) minmax(0,116fr) minmax(0,134fr) !important;
     grid-template-areas:"hull fuel hold note muni" !important; }
 }
+/* …and at that ~493px strip a figure beside its word did not fit: FUEL ran 8px into "100 / 100", HOLD 5px into
+   "0 / 40 u", MUNITIONS 3px into "0 / 100", and HULL kept 4px. Here each reading is a small stat: the word, its
+   figure under it, then the track and the verb. Stacked, the figures need only their own ink, so the cells give
+   their width to the verbs (HULL's Repair/Insure and LEDGER's Draw no longer run past their cell) and to 10px gutters,
+   so LEDGER's CREDIT LINE OPEN no longer reads on into MUNITIONS' figure. The figure stands in the cell's flow (the
+   track is drawn under it), so a longer one ("120 / 120 u") widens its column instead of printing over the next. */
+@media (min-width:960px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
+  ${P} .sxb-crown .sxb-vitals { grid-template-columns:minmax(min-content,92fr) minmax(min-content,62fr) minmax(min-content,53fr)
+    minmax(min-content,129fr) minmax(min-content,117fr) !important; column-gap:10px !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--note :is(.sxb-vital__value, .orr-vnum.is-word) { text-align:left !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) .sxb-vital__head { min-height:18px !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) .sxb-vital__value { position:static !important; display:flex !important;
+    width:max-content !important; max-width:none !important; margin:0 0 8px !important; line-height:18px !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) .sxb-vital__track,
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--muni .sxb-vital__head::after { position:absolute !important; top:40px !important; left:0 !important;
+    width:100% !important; margin:0 !important; }
+}
+/* The head here is a 145-173px scrollport, so its fold cut the verbs (and the next step's sentence) mid-line.
+   While more head lies below, its foot fades over the last 18px, driven by the head's own scroll; with no
+   overflow the timeline is inactive and the head stays fully opaque. */
+@property --sxb-head-foot { syntax:"<number>"; inherits:false; initial-value:1; }
+@keyframes sxb-head-foot { from { --sxb-head-foot:.06; } 96% { --sxb-head-foot:.9; } to { --sxb-head-foot:1; } }
+@supports (animation-timeline: scroll()) {
+  @media (min-width:960px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
+    ${P} .sxb-berth.dp-frame__head {
+      -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 18px), rgb(0 0 0 / var(--sxb-head-foot)) 100%) !important;
+      mask-image:linear-gradient(180deg, #000 calc(100% - 18px), rgb(0 0 0 / var(--sxb-head-foot)) 100%) !important;
+      animation:sxb-head-foot linear both; animation-timeline:scroll(self block); }
+  }
+}
 
 /* 901-959 wide x 461-640 tall: the foot is still two rows here, so the head's 167px scrollport shows only the hull and
    ledger of the two-row crown grid. Put the five readings on ONE row, as 960+ does, trimmed to the ~530px crown: values go
