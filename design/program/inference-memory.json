@@ -1705,9 +1705,10 @@
       "id": "drill-presentation-pipeline-duplication",
       "wf": "WF-15",
       "severity": "suspected-foundation",
-      "status": "open",
+      "status": "resolved",
       "date": "2026-08-07",
-      "note": "Drill minigame audit (2026-08-07) found a second presentation pipeline, third CSS surface, and sim-pause silence making drilling feel cheap. VERIFY against live code before acting; may be partially repaired since. [2026-10-14 partial re-verify: one CSS surface (asteroid-ops.css), single self-contained RAF minigame loop; the 2026-08-07 three-surface claim did not reproduce. Second-pipeline claim still unverified.]"
+      "note": "Drill minigame audit (2026-08-07) found a second presentation pipeline, third CSS surface, and sim-pause silence making drilling feel cheap. VERIFY against live code before acting; may be partially repaired since. [2026-10-14 partial re-verify: one CSS surface (asteroid-ops.css), single self-contained RAF minigame loop; the 2026-08-07 three-surface claim did not reproduce. Second-pipeline claim still unverified.]",
+      "resolvedDate": "2026-11-09"
     },
     {
       "id": "convoy-choices-dormant",
@@ -1721,9 +1722,10 @@
       "id": "sw-02-overdrive-cap-pin",
       "wf": "WF-02",
       "severity": "ambient",
-      "status": "open",
+      "status": "resolved",
       "date": "2026-10-25",
-      "note": "test/inf50-seed-sw-02.test.mjs:200 'capacitor cost per shot is unchanged' fails on master: hot tape spends ~2/shot vs ~9086 cold. Unit seed-sw-02-overdrive shipped @974f04824e; later landed units (chain-fed packets SEED-SW-09/10, e3b8b4975f fast-guns rework) moved the capacitor spend path. Decide whether the pin or the spend law needs repair."
+      "note": "test/inf50-seed-sw-02.test.mjs:200 'capacitor cost per shot is unchanged' fails on master: hot tape spends ~2/shot vs ~9086 cold. Unit seed-sw-02-overdrive shipped @974f04824e; later landed units (chain-fed packets SEED-SW-09/10, e3b8b4975f fast-guns rework) moved the capacitor spend path. Decide whether the pin or the spend law needs repair.",
+      "resolvedDate": "2026-11-09"
     }
   ],
   "referenceUse": {},
