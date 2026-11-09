@@ -1,5 +1,16 @@
 # SpaceFace — live agent commission dispatch index
 
+## Enhanced agent workflow (2026-11-08)
+
+Every one of the 52 draft PR briefs now includes explicit **branch ownership, native-path coordination, measured quality/performance evidence, complete player-route proof, independent review and honest partial-work status**. The existing draft PR is the agent's implementation destination; do not open another planning PR.
+
+- [06 — PR execution and acceptance protocol](06_AGENT_PR_EXECUTION_PROTOCOL.md): diagnose first, compare alternatives, build causally complete gameplay, preserve image quality while measuring performance, and never treat a test or asset as full completion.
+- [07 — Parallel deployment and source collision map](07_PARALLEL_AGENT_DEPLOYMENT.md): 19 briefs cite `worldRecords.js`, 12 cite NPC jobs, and 12 cite the Swarm ladder. References are NOT write claims; one native writer per shared file.
+- [08 — Open owner style decisions](08_OWNER_DESIGN_FORKS.md): ship-scale versus on-foot presence, materially lived-in environments versus a graphic arcade look, and authored modular transformations versus freeform construction. Defaults let agents proceed until clarified.
+
+**This branch and those documents are specification/dispatch infrastructure—not gameplay acceptance.** Existing master plan, native source owners, `NOW.md` and X1 art approval remain authoritative.
+
+
 **Status:** 52 open **DRAFT, specification-only** PRs, each containing its complete standalone implementation brief. No gameplay implementation or live playtesting is claimed by these documents. The owner may assign one agent to each PR branch. Keep drafts open until code/assets, ordinary-route acceptance, and independent review justify marking ready.
 
 **Repository authority:** `AGENTS.md`; `design/VISION.md`; current `design/program/finish/MASTER_PLAN.md`, `MASTER_LANES.md`, `EXECUTION_STATUS_2026-11-06.md`; `design/program/NOW.md`; `design/program/INFERENCE_LANES.md` §0.2. The historical `build_map.md` remains a specification/reference, *not an alternate dispatch queue*. This commission collection does not change native status, claim shared paths, or duplicate existing systems. Agents must reconcile any active PR and owner before modifying source.
