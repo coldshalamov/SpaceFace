@@ -3529,7 +3529,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       // the same extra reserve even when the stage is tall.
       const reserveX = nodes.length
         ? Math.max(...cards.map((c) => c.w)) + (host === 'flight' && compactFlightNameplate.matches
-          ? 80 : (shortStage || narrowStage ? 52 : 32))
+          ? 80 : (host === 'dock' && shortStage && narrowStage && !isPhoneLayout() ? 30
+            : (shortStage || narrowStage ? 52 : 32)))
         : 0;
       const fitArgs = { ink: poster.ink(), imageAspect: poster.aspect(), reserveX, reserveY: 8 };
       let fit = fitHullInk({ region, ...fitArgs });
