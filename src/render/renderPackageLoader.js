@@ -118,6 +118,19 @@ export function createRenderPackageLoader(options = {}) {
     const expectedContentHash = loadOptions.expectedContentHash ?? options.expectedContentHash ?? null;
     const expectedRuntimeHash = loadOptions.expectedRuntimeHash ?? options.expectedRuntimeHash ?? null;
     try {
+      // Content-hash fast path: the pilot already knows the exact package identity, and this
+      // loader's cache is keyed by that verified hash. A resident hit needs no metadata request,
+      // no re-canonicalization and no re-hash — it is the same trusted bytes, already decoding or
+      // decoded. Misses fall through to the authoritative metadata route below.
+      const fastHash = typeof metadataOrUrl === 'string'
+        ? normalizeExpectedContentHash(expectedContentHash) : null;
+      if (fastHash) {
+        const joined = await admission.wait(joinResidentPackage(
+          fastHash, normalizeExpectedRuntimeHash(expectedRuntimeHash), decodeOptions, admission,
+        ));
+        if (joined) return joined;
+        admission.assertActive();
+      }
       const resolved = await admission.wait(resolveMetadata(metadataOrUrl, decodeOptions, fetchImpl, 'no-cache'));
       try {
         return await admission.wait(loadResolved(resolved.metadata, resolved.baseUrl, expectedContentHash, expectedRuntimeHash, decodeOptions, admission, metadataOrUrl));
@@ -132,6 +145,53 @@ export function createRenderPackageLoader(options = {}) {
       admission.finish();
       activeAdmissions.delete(admission);
     }
+  }
+
+  // Join a package whose verified content hash is already resident. Mirrors the metadata-path
+  // cache-hit settle (consumer liveness, residency retain, eviction/dead-tail fallback) without
+  // touching the network or the canonicalizer. Null means "not resident now"; the caller must
+  // reload through metadata rather than inherit a stale entry.
+  async function joinResidentPackage(contentHash, expectedRuntime, loadOptions, requestAdmission) {
+    const existing = cache.get(contentHash);
+    if (!existing || existing.evicted || !existing.metadata) return null;
+    const metadata = existing.metadata;
+    if (expectedRuntime && metadata.runtimeHash !== expectedRuntime) {
+      throw new Error(
+        `Render package runtime trust-anchor mismatch for ${metadata.assetId}: `
+        + `${metadata.runtimeHash || 'missing'} != ${expectedRuntime}.`,
+      );
+    }
+    const consumerOwner = loadOptions.residencyOwner || null;
+    const sharedConsumers = typeof loadOptions.getSharedDecodeConsumers === 'function'
+      ? loadOptions.getSharedDecodeConsumers()
+      : [loadOptions];
+    const consumerIsActive = (consumer) => typeof consumer.isResidencyOwnerActive !== 'function'
+      || consumer.isResidencyOwnerActive() === true;
+    const decodeConsumerActive = typeof loadOptions.getSharedDecodeConsumers === 'function'
+      ? () => sharedConsumers.some(consumerIsActive)
+      : loadOptions.isResidencyOwnerActive;
+    if (typeof decodeConsumerActive === 'function' && existing.liveConsumers) {
+      existing.liveConsumers.push(decodeConsumerActive);
+    }
+    const decodeWarm = /warm|runway|prewarm|armory|predicted/i.test(String(loadOptions.residencyRole || ''));
+    const decodeServed = !decodeWarm && !!consumerOwner;
+    const loaded = await existing.promise;
+    requestAdmission.assertActive();
+    if (existing.evicted || loaded == null) return null;
+    for (const consumer of sharedConsumers) {
+      const owner = consumer.residencyOwner;
+      if (!owner || !consumerIsActive(consumer)) continue;
+      const warm = /warm|runway|prewarm|armory|predicted/i.test(String(consumer.residencyRole || ''));
+      residency.retain(existing.key, owner, {
+        role: consumer.residencyRole || 'live-boundary',
+        sectorId: consumer.residencySectorId || null,
+        decodeWarm: warm,
+        decodeServed: !warm,
+        ...(consumer.residencySoftLease === true ? { softLease: true } : {}),
+      });
+    }
+    if (!retainPackageOwner(existing, decodeWarm, decodeServed)) return null;
+    return loaded;
   }
 
   async function loadResolved(metadataValue, baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions = {}, requestAdmission, metadataUrl = null) {

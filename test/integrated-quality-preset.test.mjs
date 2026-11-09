@@ -13,7 +13,9 @@ import {
   INTEGRATED_PRESET_SUGGESTION,
   QUALITY_PRESETS,
   applyQualityPreset,
+  applyAutoQualityPreset,
   adaptiveResolutionEnabledForSettings,
+  autoPresentationCapFor,
   detectGpu,
   normalizeFrameCap,
   qualityTierForPreset,
@@ -135,6 +137,39 @@ test('detectGpu integrated may suggest the preset without applying it', () => {
   assert.equal(state.settings.video.renderScale, 1);
   applyQualityPreset(state.settings, 'integrated');
   assert.equal(shouldSuggestIntegratedPreset(gpu, state.settings.video), false);
+});
+
+test('Auto caps an integrated GPU at 30 Hz without touching the authored picture', () => {
+  const gpu = { tier: 'integrated' };
+  const auto = createGameState(SEED).settings.video;
+  assert.equal(auto.qualityPreset, 'medium');
+  assert.equal(autoPresentationCapFor(gpu, auto), 30, 'Auto integrated presents at 30 Hz');
+  assert.equal(auto.renderScale, 1, 'the cap never writes a visual setting');
+  assert.equal(auto.bloom, true);
+  assert.equal(auto.nocturne, true);
+  const manualState = createGameState(SEED);
+  applyQualityPreset(manualState.settings, 'integrated');
+  assert.equal(autoPresentationCapFor(gpu, manualState.settings.video), 0, 'a Manual preset owns its own cap');
+  assert.equal(autoPresentationCapFor({ tier: 'discrete' }, auto), 0);
+  assert.equal(autoPresentationCapFor({ tier: 'software' }, auto), 0);
+});
+
+test('the automatic demo posture keeps Auto so the adaptive controller stays live', () => {
+  const state = createGameState(SEED);
+  const applied = applyAutoQualityPreset(state.settings, 'low');
+  const video = state.settings.video;
+  assert.equal(applied.qualityMode, 'auto');
+  assert.equal(applied.preset, 'low');
+  assert.equal(video.qualityPreset, 'low');
+  assert.equal(video.qualityMode, 'auto', 'the auto-applied preset must not persist a Manual choice');
+  assert.equal(video.renderScale, 1, 'the auto posture keeps the native integrated scale');
+  assert.equal(video.frameCap, 30);
+  assert.equal(video.bloomLevels, 2, 'the authored two-level halo is restored');
+  assert.equal(video.nocturne, true, 'authored Nocturne stays on');
+  assert.equal(adaptiveResolutionEnabledForSettings({ tier: 'integrated' }, video), true,
+    'Auto keeps dynamic resolution available on the integrated profile');
+  assert.equal(autoPresentationCapFor({ tier: 'integrated' }, video), 30,
+    'the Auto policy owns the 30 Hz cap');
 });
 
 test('settings screen lists Integrated GPU and 45 fps', () => {

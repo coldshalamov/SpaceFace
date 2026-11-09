@@ -4,6 +4,7 @@ import {
   classifyHitchFrame,
   createHitchHistogram,
   hitchHistogramReport,
+  hitchThresholdForBudget,
   isHitchFrame,
 } from '../render/hitchClassifier.js';
 
@@ -717,9 +718,13 @@ export function ensurePerfRuntime(state) {
         for (const owner of FRAME_HITCH_DETAIL_OWNERS) {
           nestedPresentationMs += frameNestedPresentationMs[owner];
         }
-        if (isHitchFrame(ms)) {
+        // The ring budget is the cadence the loop actually runs (30 Hz on the iGPU profile), so a
+        // healthy 33.3 ms frame is not misclassified as a hitch.
+        const hitchThresholdMs = hitchThresholdForBudget(fixedFrameBudgetMs);
+        if (isHitchFrame(ms, hitchThresholdMs)) {
           const classification = classifyHitchFrame({
             frameMs: ms,
+            thresholdMs: hitchThresholdMs,
             simMs: framePhaseMs.simFrame,
             presentMs: Math.max(0, framePhaseMs.render - nestedPresentationMs),
             uiMs: framePhaseMs.ui,

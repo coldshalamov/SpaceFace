@@ -203,6 +203,17 @@ function isLiveFirstFlightEffect(object) {
     || name === 'SF_ArcadeBrokenArcPool' || name === 'SF_ArcadePhysicalShardPool') return true;
   if (name === 'SF_QuarksEmittersRoot' || name === 'SF_QuarksBatchedRenderer') return true;
   if (name === 'SF_SnarlBraidedCables') return true;
+  // Tether/action first-use bricks (freeze-hunt 2026-11-07): the massline energy ribbon and the
+  // SF_ActionAnswers swept-surface batch are created at effects init but hidden/empty until the
+  // player first tethers or triggers an action. Their energy/action shaders were therefore never
+  // in the first-flight cook, and the first visible draw linked 12-15 programs inside bloomScene
+  // (241 ms, 485 ms bricks on Intel/ANGLE). Warm them with the other live pools.
+  if (name === 'SF_ActionAnswers' || name === 'sf-energy-massline') return true;
+  // The rest of the tether vocabulary: swing trace, latch rim and chain readout are hidden at
+  // init and reveal on the first latch/whip. Warm them with the same cohort so tethering cannot
+  // link a program inside a presented frame.
+  if (name === 'sf-massline-swing-trace' || name === 'sf-massline-latch-rim'
+    || name === 'sf-massline-chain-readout') return true;
   // Field device strand (pips, chevrons, banks, vanes, ribs, berms, knots, domes): instanced meshes built
   // once at effects init at count 0. A Crucible arena's fields light them in the first half second of
   // flight, where the pip program still linked on first draw (swarm probe, 2026-09-13).

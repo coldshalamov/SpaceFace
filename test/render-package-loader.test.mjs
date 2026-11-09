@@ -107,6 +107,26 @@ test('verified URL cache rejects changed metadata that reuses declared trust anc
     await assert.rejects(loader.load(url), /content hash mismatch/);
   } finally { loader.dispose(); }
 });
+test('a known content hash joins the resident package without a metadata request', async () => {
+  let fetches = 0;
+  const decoded = decodedFixture();
+  const loader = createRenderPackageLoader({
+    fetchImpl: async () => { fetches += 1; return { ok: true, json: async () => packageMetadata() }; },
+    loadGlb: async () => ({ scene: decoded.scene }),
+    contentDigest: async bytes => createHash('sha256').update(bytes).digest('hex'),
+  });
+  const url = 'https://assets.example/fixture/render-package.json';
+  try {
+    const first = await loader.load(url);
+    assert.ok(first);
+    assert.equal(fetches, 1);
+    const second = await loader.load(url, { expectedContentHash: packageMetadata().contentHash });
+    assert.equal(second, first, 'the resident trusted package is returned, not a second decode');
+    assert.equal(fetches, 1, 'a content-hash hit never fetches or re-serializes metadata');
+    assert.equal(loader.diagnostics().cacheEntries, 1);
+  } finally { loader.dispose(); }
+});
+
 const IDENTITY = Object.freeze([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 
 function packageMetadata() {
