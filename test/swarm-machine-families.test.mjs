@@ -6,6 +6,7 @@ import { test } from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
+import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
 import { createRunState } from '../src/core/runState.js';
 import { mulberry32 } from '../src/core/rng.js';
 import { createBroodEngine, broodStreamSeed, BROOD_PHASE_WINDUP, BROOD_PHASE_DASH } from '../src/systems/swarmBrood.js';
@@ -54,6 +55,7 @@ function boot({ wave = 64, seed = SEED, phase = 'active' } = {}) {
   state.run.phase = phase;
   state.run.wave = wave;
   state.mode = 'flight';
+  noteSwarmPilotAction(state);
   state.player = state.player || { tether: null };
   return { state, bus, emitted, player };
 }

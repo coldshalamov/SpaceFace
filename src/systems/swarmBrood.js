@@ -293,6 +293,9 @@ export function createBroodEngine(deps = {}) {
   const gridCellZ = new Int32Array(CAP);
 
   // caches
+  const rockEntities = new Array(ROCK_CACHE_MAX).fill(null);
+  const linkMoverEntities = new Array(MOVER_STORAGE_MAX).fill(null);
+  let linkMassHistory = new WeakMap();
   const rockX = new Float32Array(ROCK_CACHE_MAX);
   const rockZ = new Float32Array(ROCK_CACHE_MAX);
   const rockR = new Float32Array(ROCK_CACHE_MAX);
@@ -556,6 +559,8 @@ export function createBroodEngine(deps = {}) {
   // per-linker reform clock after a thrown body crosses the beam.
   const linkPartner = new Int16Array(CAP);
   const linkBrokenUntil = new Float64Array(CAP);
+  const linkStartedTick = new Float64Array(CAP);
+  const linkTargetLife = new Uint32Array(CAP);
   // Repair/assemble channels: the remain ENTITY being consumed (-1 none — entity ids
   // are stable across ticks, mover-cache slots are not) and the one-shot tell for the
   // channel's telegraph.
@@ -703,6 +708,7 @@ export function createBroodEngine(deps = {}) {
   function clear(reason = 'clear') {
     chunkEpoch++;
     chunkHistory = new WeakMap();
+    linkMassHistory = new WeakMap();
     bossChunkResolvedTick = -1;
     bossChunkTargetPhysical.fill(0);
     cellObservedTick.fill(-1);
@@ -761,6 +767,8 @@ export function createBroodEngine(deps = {}) {
     shielded.fill(0);
     linkPartner.fill(-1);
     linkBrokenUntil.fill(0);
+    linkStartedTick.fill(Infinity);
+    linkTargetLife.fill(0);
     channelEntity.fill(-1);
     channelTold.fill(0);
     squadId.fill(-1);
@@ -1118,6 +1126,8 @@ export function createBroodEngine(deps = {}) {
     shielded[slot] = 0;
     linkPartner[slot] = -1;
     linkBrokenUntil[slot] = 0;
+    linkStartedTick[slot] = Infinity;
+    linkTargetLife[slot] = 0;
     channelEntity[slot] = -1;
     channelTold[slot] = 0;
     beamState[slot] = 0;
@@ -1263,6 +1273,7 @@ export function createBroodEngine(deps = {}) {
 
   function cacheRocks(state) {
     rockCount = 0;
+    rockEntities.fill(null);
     const list = indexedTypeScan(state, 'asteroids');
     for (let i = 0; i < list.length && rockCount < ROCK_CACHE_MAX; i++) {
       const e = list[i];
@@ -1274,6 +1285,7 @@ export function createBroodEngine(deps = {}) {
       // any heavy body. Under the index it never reaches this list anyway; on the un-indexed
       // fallback every entity lands here, and without the guard the worm eats its own neck.
       if (e.data && e.data.lootTableId === TENDRIL_HEAD_LOOT_ID) continue;
+      rockEntities[rockCount] = e;
       rockCredited[rockCount] = playerOwnsBody(state, e) ? 1 : 0;
       rockX[rockCount] = finite(e.pos.x);
       rockZ[rockCount] = finite(e.pos.z);
@@ -1286,6 +1298,7 @@ export function createBroodEngine(deps = {}) {
 
   function cacheMovers(state) {
     movCount = 0;
+    linkMoverEntities.fill(null);
     chunkSwept.fill(0);
     chunkEntities.fill(null);
     headFound = false;
@@ -1305,6 +1318,7 @@ export function createBroodEngine(deps = {}) {
         headVZ = finite(e.vel.z);
         headFound = true;
       }
+      linkMoverEntities[movCount] = e;
       movX[movCount] = finite(e.pos.x);
       movZ[movCount] = finite(e.pos.z);
       movVX[movCount] = finite(e.vel.x);
@@ -1328,6 +1342,7 @@ export function createBroodEngine(deps = {}) {
       if (!e || e.alive === false || !e.pos || !e.vel) continue;
       const rem = e.data && e.data.broodRemain;
       if (!rem) continue;
+      linkMoverEntities[movCount] = e;
       movX[movCount] = finite(e.pos.x);
       movZ[movCount] = finite(e.pos.z);
       movVX[movCount] = finite(e.vel.x);
@@ -1424,6 +1439,7 @@ export function createBroodEngine(deps = {}) {
     for (let i = 0; i < count; i++) {
       const { entity: e, body, history } = bossChunkCandidates[i];
       chunkEntities[movCount] = e;
+      linkMoverEntities[movCount] = e;
       movX[movCount] = e.pos.x; movZ[movCount] = e.pos.z;
       movVX[movCount] = e.vel.x; movVZ[movCount] = e.vel.z;
       movMass[movCount] = body.mass; movRad[movCount] = body.radius;
@@ -2896,14 +2912,26 @@ export function createBroodEngine(deps = {}) {
           segA.z = pz[i];
           segB.x = px[p];
           segB.z = pz[p];
-          for (let m = 0; m < movCount; m++) {
-            if (movVX[m] * movVX[m] + movVZ[m] * movVZ[m] < BROOD_PLOW_MIN_SPEED * BROOD_PLOW_MIN_SPEED) continue;
-            const t = segmentCircleT(segA, segB, movX[m], movZ[m], movRad[m] + 1);
-            if (t != null) {
-              linkPartner[i] = -1;
-              linkBrokenUntil[i] = simTime + (def.linkReformS > 0 ? def.linkReformS : 7);
-              break;
+          const state = getState();
+          const observedLink = linkStartedTick[i] < state.tick
+            && linkTargetLife[i] === serial[p]
+            && bossChunkTargetObserved(state, i) && bossChunkTargetObserved(state, p);
+          let cut = false;
+          // Stones live outside the mover cache. Their native solid, not the padded
+          // terrain disc, is what the pilot can physically put across this beam.
+          if (swarmPilotHasActed(state)) {
+            for (let r = 0; r < rockCount && !cut; r++) {
+              const entity = rockEntities[r];
+              if (entity?.type !== 'asteroid') continue;
+              cut = massCutsLink(i, p, entity, state, observedLink);
             }
+            for (let m = 0; m < movCount && !cut; m++) {
+              cut = massCutsLink(i, p, linkMoverEntities[m], state, observedLink);
+            }
+          }
+          if (cut) {
+            linkPartner[i] = -1;
+            linkBrokenUntil[i] = simTime + (def.linkReformS > 0 ? def.linkReformS : 7);
           }
         }
       }
@@ -2922,9 +2950,67 @@ export function createBroodEngine(deps = {}) {
       }
       if (best >= 0) {
         linkPartner[i] = best;
+        linkStartedTick[i] = finite(getState()?.tick);
+        linkTargetLife[i] = serial[best];
+        // First contact observations begin when this visible beam exists, never
+        // while the pilot is still protected at the start of the round.
+        const state = getState();
+        if (swarmPilotHasActed(state)) {
+          for (let r = 0; r < rockCount; r++) {
+            if (rockEntities[r]?.type === 'asteroid') observeLinkMass(rockEntities[r], state);
+          }
+          for (let m = 0; m < movCount; m++) observeLinkMass(linkMoverEntities[m], state);
+        }
         emitTelegraph(i, def);
       }
     }
+  }
+
+  // Match observed native mass travel to the SAME interval of both living beam ends.
+  // Never borrow a newly formed link, a replaced life, a skipped tick or a teleport.
+  function observeLinkMass(entity, state) {
+    if (!entity || entity.alive === false || entity.collides === false || entity.physicsBody === false
+      || !Number.isFinite(entity.pos?.x) || !Number.isFinite(entity.pos?.z)
+      || !Number.isFinite(entity.vel?.x) || !Number.isFinite(entity.vel?.z)) return null;
+    const body = resolvePhysicsBodySpec(entity);
+    if (!body?.dynamic || body.material === 'sensor' || body.material === 'massline_sensor'
+      || !(Number.isFinite(body.radius) && body.radius > 0)) return null;
+    const x = entity.pos.x, z = entity.pos.z, dx = entity.vel.x, dz = entity.vel.z;
+    let history = linkMassHistory.get(entity);
+    if (!history || history.body !== entity.physicsBody || history.radius !== body.radius
+      || history.generation !== entity.occupantGeneration) {
+      history = { tick: state.tick, x, z, fromX: x, fromZ: z, vx: dx, vz: dz,
+        radius: body.radius, generation: entity.occupantGeneration, body: entity.physicsBody, swept: false };
+      linkMassHistory.set(entity, history);
+    } else if (history.tick !== state.tick) {
+      const consecutive = history.tick + 1 === state.tick;
+      history.fromX = consecutive ? history.x : x;
+      history.fromZ = consecutive ? history.z : z;
+      history.swept = consecutive && Math.hypot(x - history.x, z - history.z)
+        <= Math.max(Math.hypot(history.vx, history.vz), Math.hypot(dx, dz)) * DT + 0.01;
+      history.tick = state.tick; history.x = x; history.z = z;
+      history.vx = dx; history.vz = dz;
+    }
+    return history;
+  }
+
+  function massCutsLink(i, p, entity, state, observedLink) {
+    const mass = observeLinkMass(entity, state);
+    if (!mass) return false;
+    const radius = mass.radius + 1;
+    const speed = Math.hypot(entity.vel.x, entity.vel.z);
+    if (speed >= BROOD_PLOW_MIN_SPEED
+      && segmentCircleT(segA, segB, entity.pos.x, entity.pos.z, radius) != null) return true;
+    // A glue/splash remain may already be spent by an earlier contact along this
+    // interval. Its consumption owner decides that ordering after the link pass.
+    // Keep its existing endpoint verb; only reusable mass gains a swept beam cut.
+    const remain = entity.data?.broodRemain;
+    if (finite(remain?.glueS) > 0 || finite(remain?.splashRadius) > 0) return false;
+    if (!mass.swept || !observedLink
+      || Math.hypot(entity.pos.x - mass.fromX, entity.pos.z - mass.fromZ) < BROOD_PLOW_MIN_SPEED * DT) return false;
+    return movingDiscCutsLink(mass.fromX, mass.fromZ, entity.pos.x, entity.pos.z, radius,
+      cellObservedX[i], cellObservedZ[i], px[i], pz[i],
+      cellObservedX[p], cellObservedZ[p], px[p], pz[p]);
   }
 
   /** The nearest throwable remain in the mover cache for a salvager's run, or -1. */
@@ -4606,4 +4692,27 @@ function segmentCircleT(from, to, x, z, radius) {
 
 function directCandidateBefore(t, kind, life, otherT, otherKind, otherLife) {
   return t < otherT || (t === otherT && (kind < otherKind || (kind === otherKind && life < otherLife)));
+}
+
+// Conservative advancement against a line whose two ends may move independently.
+// Each step is bounded by the maximum relative endpoint travel, so it cannot skip a
+// contact or turn a future/previous-only geometric crossing into an actual hit.
+// A nearly tangent unresolved approach fails closed after 32 iterations.
+function movingDiscCutsLink(x0, z0, x1, z1, radius, ax0, az0, ax1, az1, bx0, bz0, bx1, bz1) {
+  const mx = x1 - x0, mz = z1 - z0;
+  const adx = ax1 - ax0, adz = az1 - az0, bdx = bx1 - bx0, bdz = bz1 - bz0;
+  const bound = Math.max(Math.hypot(mx - adx, mz - adz), Math.hypot(mx - bdx, mz - bdz));
+  if (!(bound > 0)) return false;
+  let t = 0;
+  for (let n = 0; n < 32 && t <= 1; n++) {
+    const ax = ax0 + adx * t, az = az0 + adz * t;
+    const bx = bx0 + bdx * t, bz = bz0 + bdz * t;
+    const dx = bx - ax, dz = bz - az, len2 = dx * dx + dz * dz;
+    const rx = x0 + mx * t - ax, rz = z0 + mz * t - az;
+    const u = len2 > 0 ? Math.max(0, Math.min(1, (rx * dx + rz * dz) / len2)) : 0;
+    const gap = Math.hypot(rx - u * dx, rz - u * dz) - radius;
+    if (gap <= 1e-6) return true;
+    t += gap / bound;
+  }
+  return false;
 }
