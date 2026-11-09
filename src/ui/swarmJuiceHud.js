@@ -616,6 +616,9 @@ const CSS = `
 .sf-sj__call[data-kind="pileup"], .sf-sj__call[data-kind="collateral"] { color:var(--dp-lamp, #f2b950); }
 .sf-sj__call[data-kind="revenge"], .sf-sj__call[data-kind="closecall"] { color:var(--dp-danger-hot, #ff8a70); }
 .sf-sj__call[data-kind="lastone"], .sf-sj__call[data-kind="bossdown"] { color:var(--dp-lamp-hot, #ffd98c); }
+/* inf-chain-star: the zone's chain star reads in the lamp's hot gold — the same ink the ladder's
+   stars wear on the Crucible screen; the words carry the meaning. */
+.sf-sj__call[data-kind="chainstar"] { color:var(--dp-lamp-hot, #ffd98c); }
 .sf-sj__shatter { position:absolute; top:24vh; left:50%; transform:translateX(-50%);
   font-weight:800; font-size:22px; letter-spacing:.26em; text-transform:uppercase;
   color:var(--dp-danger-hot, #ff5038); animation:sf-sj-drop .5s ease-out both; }
