@@ -9,7 +9,7 @@ import { cinderglassJobEnsureLatchMount, cinderglassJobCohortReady, cinderglassJ
 import { attachments, podEntity, carrierEntity, cinderglassJobEnsureClamp,
   cinderglassJobObserveCustody, cinderglassJobReleasePod, cinderglassJobStepHandoff,
   cinderglassJobReceiveQuote, nativeCinderglassAttachment, nativeCinderglassPose } from './custody.js';
-import { cinderglassJobProposalAvailable, cinderglassJobPropose, cinderglassJobDaskRelease } from './negotiation.js';
+import { cinderglassJobProposalAvailable, cinderglassJobPropose, cinderglassJobDaskRelease, cinderglassJobExtensionAvailable, cinderglassJobRequestExtension } from './negotiation.js';
 import { cinderglassJobObserveScan, cinderglassJobObserveMarkings, cinderglassJobServiceGate,
   cinderglassJobServiceProgress, cinderglassJobServiceAbort } from './interception.js';
 import { cinderglassJobApplyClosingMemory, cinderglassJobApplyConsequences } from './consequences.js';
@@ -262,6 +262,7 @@ export const cinderglassJobSystem = {
       detail = `Hold close, matched drift and clear sightlines for ${CINDERGLASS_JOB_SERVICE_SECONDS} seconds.`;
       choices.push({ id: 'serviceAbort', label: 'Abort service' });
     } else if ([P.RECON, P.DECIDE].includes(st.phase)) {
+      if (cinderglassJobExtensionAvailable(this, state)) choices.push({ id: 'extendInspection', label: 'Ask Dask for 30 more seconds · once, no fee' });
       if (cinderglassJobProposalAvailable(this, state)) choices.push({ id: 'propose', label: 'Post the quoted 150CR inspection deposit' });
       if (cinderglassJobServiceGate(this, state).ok) choices.push({ id: 'serviceStart', label: 'Quietly service the latch · five seconds' });
     } else if (st.phase === P.RECOVERY && st.receiveQuote) {
@@ -363,6 +364,10 @@ export const cinderglassJobSystem = {
       cinderglassJobClose(st, state.simTime, O.LOST);
       rememberFact(st, state.simTime, 'abandoned', 'The recovery was abandoned during preparation. No deposit or reward was paid; no replacement original will be created.');
       this._stepClosure(state); p.result = { ok: true };
+    } else if (action === 'extendInspection') {
+      if (p.revision !== st.promptRevision) return this._refuseAction(p, 'stale_inspection_view');
+      p.result = cinderglassJobRequestExtension(this, state);
+      if (!p.result.ok) this._refuseAction(p, p.result.reason);
     } else if (action === 'propose') {
       p.result = cinderglassJobPropose(this, state, p);
       if (!p.result.ok) this._refuseAction(p, p.result.reason);
