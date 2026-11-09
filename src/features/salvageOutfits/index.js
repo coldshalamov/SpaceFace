@@ -109,9 +109,14 @@ export const salvageOutfits = {
       const memory = this._row.memory[def.id];
       const unhappy = distrustsPlayer(memory);
       this._say(def.id, unhappy ? memory.lastEvent?.cause === 'player_damage' ? def.damaged : def.cheated
+        : def.id === 'latch' && m.crews.latch.learnedMassLimit
+          ? 'I checked the mass this time. Small work for my cable; the Hawser can take the cradle. That three-way haul taught me something.'
         : memory.lastEvent?.kind === 'kept' && def.kept ? def.kept : memory.helped > 0 ? def.helped : def.greeting);
     }
-    this._say('keel', `${situation(m.variant).line} Receiver is marked nearby. Tow an original in slowly for payment, or beam it for ordinary salvage.`);
+    const sceneLine = m.variant === 'overreach' && m.crews.latch.learnedMassLimit && !m.crews.latch.cautious
+      ? `Kit has left the heavy cradle to Keel and called the ${m.bodies[m.crews.latch.targetId].label.toLowerCase()}. The last job changed how this crew works.`
+      : situation(m.variant).line;
+    this._say('keel', `${sceneLine} Receiver is marked nearby. Tow an original in slowly for payment, or beam it for ordinary salvage.`);
     this.offer(id);
     this.bus.emit('salvageOutfits:started', { meetingId: id, variant: m.variant, sectorId: m.sectorId });
     return { ok: true, meetingId: id };
@@ -232,7 +237,7 @@ export const salvageOutfits = {
     const available = order.filter(id => {
       const b = m.bodies[id];
       if (!activeBody(b) || b.claim === 'player' || (c.favorsPlayer && id === 'cache' && b.claim !== c.id)) return false;
-      if (c.cautious && piece(id).mass > outfit(c.id).safeMass) return false;
+      if ((c.cautious || c.learnedMassLimit) && piece(id).mass > outfit(c.id).safeMass) return false;
       if (m.agreement?.status === 'active' && b.claim && b.claim !== c.id) return false;
       if (m.agreement?.status === 'active' && m.agreement.type === 'cooperate' && id !== 'core') return false;
       return !Object.values(m.crews).some(other => other !== c && other.targetId === id
