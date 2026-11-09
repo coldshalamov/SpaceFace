@@ -63,6 +63,7 @@ import { injectStationStandard } from '../orrery/stationStandard.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { AMMO_BATCH as MUNITIONS_LOAD } from './serviceQuotes.js';
 import { clearTradeExpectation, consumeStationTradeReceipt, TRADE_EXPECTATION_KEY } from './tradeReceipt.js';
+import { consumeFitCapabilityMilestone } from '../ship/capabilityMilestone.js';
 
 export function stationReceiptOverlapsControls(receiptRect, controls) {
   return [...(controls || [])].some((el) => {
@@ -999,7 +1000,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     refresh();
   });
   subscribe('module:purchased', (p = {}) => showReceipt('SHIPWORKS', 'MODULE ACQUIRED', `−${fmtCr(p.price)} cr`));
-  subscribe('module:equipped', () => showReceipt('SHIPWORKS', 'FIT COMMITTED', 'LOADOUT RECALCULATED'));
+  // inf-fit-milestone: a fit that teaches the hull a new verb names it on the receipt — the
+  // capability vocabulary's own words — instead of the mechanical LOADOUT RECALCULATED line.
+  subscribe('module:equipped', (p = {}) => {
+    const gained = consumeFitCapabilityMilestone(state(), p);
+    showReceipt('SHIPWORKS', 'FIT COMMITTED', gained && gained.verb
+      ? `NEW · ${String(gained.verb).toUpperCase()}`
+      : 'LOADOUT RECALCULATED');
+  });
   subscribe('module:unequipped', () => showReceipt('SHIPWORKS', 'MODULE RETURNED', 'INVENTORY UPDATED'));
   subscribe('ship:purchased', (p = {}) => showReceipt('SHIPWORKS', 'SHIP ACQUIRED', p.price ? `−${fmtCr(p.price)} cr` : 'FABRICATION COMPLETE'));
   subscribe('mission:accepted', () => showReceipt('MISSION BOUND', 'ROUTE ADDED TO NAVIGATION', 'STAGE 01 ACTIVE'));

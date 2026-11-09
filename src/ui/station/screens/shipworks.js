@@ -117,6 +117,7 @@ import { bindShipSheet, ensureShipSheetStyles, shipSheetHtml } from '../../ship/
 import { compareParts, intentDiffersFromSlot, partFacts, sortIdsByIntent } from '../../ship/partFacts.js';
 import { fitHullInk, layoutHullCallouts, pointsBox, separateBeads } from '../../ship/calloutLayout.js';
 import { createStagePoster, loadHullPosterManifest } from '../../ship/hullPoster.js';
+import { stampFitCapabilityExpectation } from '../../ship/capabilityMilestone.js';
 import {
   dressState,
   ensureInteriorStyle,
@@ -4437,6 +4438,21 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
 
   function emitFitIntent(eventName, payload) {
+    // inf-fit-milestone: stamp the viewed hull's capability ids BEFORE the fit dispatches, so the
+    // station receipt can name the verb this fit teaches (consumed once, TTL-bounded, UI-only).
+    if (eventName === 'ui:fitModule' && payload) {
+      const ships = ctx.state && ctx.state.player && Array.isArray(ctx.state.player.ownedShips)
+        ? ctx.state.player.ownedShips : [];
+      const owned = ships[Number(payload.shipIndex)];
+      if (owned && owned.defId) {
+        stampFitCapabilityExpectation(ctx.state, {
+          hullDefId: owned.defId,
+          slotIndex: payload.slotIndex,
+          fittings: owned.fittings,
+          player: ctx.state.player,
+        });
+      }
+    }
     if (eventName === 'ui:fitModule' && laneCommandSink()) {
       if (!ctx.bus || typeof ctx.bus.on !== 'function') return Promise.resolve(null);
       const operationId = nextLaneToken('fit');
