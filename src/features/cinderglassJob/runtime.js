@@ -262,6 +262,16 @@ export const cinderglassJobSystem = {
       detail = `Hold close, matched drift and clear sightlines for ${CINDERGLASS_JOB_SERVICE_SECONDS} seconds.`;
       choices.push({ id: 'serviceAbort', label: 'Abort service' });
     } else if ([P.RECON, P.DECIDE].includes(st.phase)) {
+      // Communicate the physical stop's deadline without rebuilding controls on
+      // every simulation tick. This reads the lease; it never extends or pauses it.
+      if (st.atLayby && st.laybyHoldActive && Number.isFinite(st.laybyRemainingS) && st.laybyRemainingS > 0) {
+        const window = st.laybyRemainingS <= 5 ? 'five seconds or less'
+          : st.laybyRemainingS <= 15 ? 'fifteen seconds or less'
+            : st.laybyRemainingS <= 30 ? 'thirty seconds or less' : 'more than thirty seconds';
+        headline = `Dask · inspection stop · ${window}`;
+        detail = '“I have a delivery slot to make. Read the latch, then tell me your terms.” The clock keeps running while you choose. If CG-7 stays aboard, Dask resumes the paid delivery; closing this conversation does not stop him. Force is unlawful.';
+        if (st.actors.dask.inspectionExtensionUsed === true) detail += ' Your one extra thirty-second window is already included.';
+      }
       if (cinderglassJobExtensionAvailable(this, state)) choices.push({ id: 'extendInspection', label: 'Ask Dask for 30 more seconds · once, no fee' });
       if (cinderglassJobProposalAvailable(this, state)) choices.push({ id: 'propose', label: 'Post the quoted 150CR inspection deposit' });
       if (cinderglassJobServiceGate(this, state).ok) choices.push({ id: 'serviceStart', label: 'Quietly service the latch · five seconds' });
