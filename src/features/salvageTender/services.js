@@ -131,7 +131,18 @@ export function stepTenderService(ctx, row, dt, gate) {
   job.paused = false; job.pauseReason = '';
   const amount = Math.min(job.remaining, job.rate * dt);
   const before = (job.deliveredHull || 0) + (job.deliveredArmor || 0) + (job.deliveredFuel || 0);
-  const delivery = { ...job, type: job.type === 'refuel' ? 'refuel' : 'repair', meta: { shares: { hull: job.hullShare, armor: job.armorShare } } };
+  // The bench sold combined hull/armor work on this exact ship, not a frozen
+  // damage split. Other repair/damage owners can change that split while the
+  // pilot is away. Send today's deficits to the same delivery writer; never
+  // rebook, recharge or count work that could not fit. Starter weld stays hull-only.
+  let shares = { hull: job.hullShare, armor: job.armorShare };
+  if (job.type === 'repair') {
+    const hull = Math.max(0, (player.hullMax || 0) - (player.hull || 0));
+    const armor = Math.max(0, (player.armorMax || 0) - (player.armorHp || 0));
+    const missing = hull + armor;
+    shares = missing > 0 ? { hull: hull / missing, armor: armor / missing } : { hull: 0, armor: 0 };
+  }
+  const delivery = { ...job, type: job.type === 'refuel' ? 'refuel' : 'repair', meta: { shares } };
   stationServices._applyJobDelta(state, delivery, amount);
   const gained = Math.max(0, delivery.deliveredHull + delivery.deliveredArmor + delivery.deliveredFuel - before);
   job.deliveredHull = delivery.deliveredHull; job.deliveredArmor = delivery.deliveredArmor; job.deliveredFuel = delivery.deliveredFuel;
