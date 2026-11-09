@@ -72,6 +72,10 @@ test('first admission and prewarm use a fresh exact-family projection, and rejec
   const file = 'wholeships/wasp_production_v1_lod2.glb';
   assert.equal(initialWholeShipLodForBoundary(entity, boundary, 1100), 'lod2');
   assert.equal(initialWholeShipLodPublicationSafe(entity, boundary, 'lod2', file, 1100), true);
+  sample.px = 80;
+  assert.equal(initialWholeShipLodForBoundary(entity, boundary, 1100), 'lod0',
+    'top-down: a readable 80 px contact admits the full authored body, not LOD1');
+  sample.px = 24;
   const requests = authoredPrewarmRequestsForEntities([entity], { includeSpawnableArchetypes: false,
     initialLodForEntity: e => initialWholeShipLodForBoundary(e, boundary, 1100) });
   assert.ok(requests.some(r => r.slot === 'hull' && r.url.endsWith(file)));

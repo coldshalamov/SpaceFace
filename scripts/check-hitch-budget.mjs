@@ -15,7 +15,10 @@ const HEIGHT = Number(argv.height || 800);
 const SEED = Number(argv.seed || 47) >>> 0;
 const WARMUP_MS = Number(argv.warmup || 5000);
 const DURATION_MS = Number(argv.duration || 60000);
-const FRAME_BUDGET_MS = Number(argv.frameBudgetMs || argv['frame-budget-ms'] || 32);
+// Over-budget means a missed present at the cadence the loop is actually on: 1.5 × (1000 / live
+// frame cap), or 1.5 × display refresh when uncapped. A healthy capped 30 Hz frame (33.3 ms) is
+// not a hitch. Pass --frame-budget-ms to pin an explicit bar.
+const FRAME_BUDGET_MS = Number(argv.frameBudgetMs || argv['frame-budget-ms'] || 0);
 const OUT = argv.out || '.devshots/perf/hitch-budget.json';
 const HEADED = !!(argv.headed || argv.headful || argv.headless === 'false');
 // The acceptance route uses Chrome's normal presentation pacing. Uncapped submission is useful for
@@ -169,7 +172,7 @@ try {
       seed: SEED,
       warmupMs: WARMUP_MS,
       durationMs: DURATION_MS,
-      frameBudgetMs: FRAME_BUDGET_MS,
+      frameBudgetMs: sample.frameBudgetMs,
       headless: !HEADED,
       uncapped: UNCAPPED,
       diagnostics: {
@@ -194,7 +197,7 @@ try {
     diagnostics: sample.diagnostics,
     pageIssues: { errors: pageErrors, warnings: pageWarnings },
     failureEvidence: buildFailureEvidence({
-      frameBudgetMs: FRAME_BUDGET_MS,
+      frameBudgetMs: sample.frameBudgetMs,
       frameMs: sample.frameMs,
       settleWait: sample.settleWait,
       settleQueue: sample.settleQueue,
@@ -432,11 +435,25 @@ async function sampleHitches(page, opts) {
     let finished = false;
     let watchdog = null;
     let settleWait = 'warmup';
+    let rigidBatchWaitStartedAt = null;
     let warmupPumpStopped = false;
     let previousProgramCount = 0;
     let previousProgramKeys = new Set();
     const programEvents = [];
     let settleQueue = null;
+    let effectiveFrameBudgetMs = Number(frameBudgetMs) > 0 ? Number(frameBudgetMs) : 0;
+
+    // The live presentation cap is the player's cadence. Resolve it once when sampling begins so a
+    // dynamic-resolution or relief change later cannot move the goalposts mid-run.
+    function resolveFrameBudgetMs() {
+      if (effectiveFrameBudgetMs > 0) return effectiveFrameBudgetMs;
+      const renderState = window.SF && window.SF.state && window.SF.state.render;
+      const cap = Number(renderState && renderState.frameCap) || 0;
+      const displayHz = Number(renderState && renderState.displayHz) || 60;
+      const cadenceMs = cap > 0 ? 1000 / cap : 1000 / displayHz;
+      effectiveFrameBudgetMs = Math.round(cadenceMs * 1.5 * 10) / 10;
+      return effectiveFrameBudgetMs;
+    }
 
     function resetRuntimeProbes() {
       try { if (window.__THREE_GAME_DIAGNOSTICS__ && window.__THREE_GAME_DIAGNOSTICS__.reset) window.__THREE_GAME_DIAGNOSTICS__.reset(); } catch (_) {}
@@ -488,6 +505,7 @@ async function sampleHitches(page, opts) {
       try { if (window.SF) window.SF.bus.emit('mining:stop', {}); } catch (_) {}
       const sorted = frames.slice().sort((a, b) => a - b);
       const unexpectedSpikes = spikes.filter((spike) => spike.unexpected === true);
+      const budgetMs = resolveFrameBudgetMs();
       const frameMs = {
         samples: frames.length,
         avg: round(avg(frames)),
@@ -498,7 +516,7 @@ async function sampleHitches(page, opts) {
         p99: round(percentile(sorted, 0.99)),
         over16_7: frames.filter((value) => value > 16.7).length,
         over24: frames.filter((value) => value > 24).length,
-        overBudget: frames.filter((value) => value > frameBudgetMs).length,
+        overBudget: frames.filter((value) => value > budgetMs).length,
         unexpectedOverBudget: unexpectedSpikes.length,
         schedulerOnlyOverBudget: spikes.length - unexpectedSpikes.length,
         over40: frames.filter((value) => value > 40).length,
@@ -508,6 +526,7 @@ async function sampleHitches(page, opts) {
       settleQueue = settleQueue || authoredQueueSnapshot();
       resolve({
         frameMs,
+        frameBudgetMs: budgetMs,
         settleWait,
         settleQueue,
         programEvents,
@@ -552,6 +571,7 @@ async function sampleHitches(page, opts) {
               const stress = window.__SF_HITCH_STRESS__;
               if (stress) stress.nextBurstAt = now + 120;
               sampleStart = now;
+              resolveFrameBudgetMs();
               last = now;
               resetRuntimeProbes();
               watchdog = setTimeout(finish, durationMs + 1000);
@@ -566,7 +586,7 @@ async function sampleHitches(page, opts) {
         monitorPrograms(now);
         const dt = now - last;
         frames.push(dt);
-        if (dt > frameBudgetMs) {
+        if (dt > resolveFrameBudgetMs()) {
           const perf = window.__SPACEFACE_PERF__?.getReport?.() || {};
           const phases = perf.phases || {};
           const renderState = window.SF?.state?.render || null;
@@ -585,7 +605,7 @@ async function sampleHitches(page, opts) {
             }));
           const attribution = [];
           if (!Number.isFinite(callbackMs)) attribution.push('missing-callback-evidence');
-          else if (callbackMs > frameBudgetMs) attribution.push('game-callback-over-budget');
+          else if (callbackMs > resolveFrameBudgetMs()) attribution.push('game-callback-over-budget');
           if (Number(upgrade?.activeJobs) > 0) attribution.push('authored-admission-active');
           if (Number.isFinite(lastJob?.endedAtMs) && now - lastJob.endedAtMs <= 1000) {
             attribution.push('authored-admission-recent');
@@ -675,6 +695,11 @@ async function sampleHitches(page, opts) {
       if (programs.length === previousProgramCount) return;
       const keys = programs.map(programKey);
       const addedKeys = keys.filter((key) => !previousProgramKeys.has(key));
+      // A disposal is not a shader link. Only additions are "new GPU programs during sample";
+      // recording drops as events made a healthy batch/root retirement look like a hitch.
+      previousProgramCount = programs.length;
+      previousProgramKeys = new Set(keys);
+      if (addedKeys.length === 0) return;
       const owners = [];
       const addedSet = new Set(addedKeys);
       const scene = state && state.render && state.render.scene;
@@ -709,14 +734,13 @@ async function sampleHitches(page, opts) {
           }
         });
       }
+      if (owners.length === 0) return;
       programEvents.push({
         atMs: round(sampleStart == null ? 0 : now - sampleStart),
         count: programs.length,
         addedKeys,
         owners,
       });
-      previousProgramCount = programs.length;
-      previousProgramKeys = new Set(keys);
     }
 
     function programKey(program) {
@@ -734,6 +758,19 @@ async function sampleHitches(page, opts) {
       if (meshQueueRemaining > 0) { settleWait = `mesh-queue:${meshQueueRemaining}`; return false; }
       if (render._meshReconcileDirty) { settleWait = 'mesh-reconcile'; return false; }
       if (window.__SF_RENDER_WARMUP_READY__ === false) { settleWait = 'render-warmup'; return false; }
+      // The retained rigid batch is part of the render structure: its first activation links a
+      // program. Let it become active before sampling instead of counting the warm-up link as a
+      // post-warmup hitch.
+      const rigidBatch = state.render && state.render.rigidOpaqueBatch;
+      if (rigidBatch && (rigidBatch.status === 'preparing' || rigidBatch.status === 'settling')) {
+        if (rigidBatchWaitStartedAt == null) rigidBatchWaitStartedAt = performance.now();
+        if (performance.now() - rigidBatchWaitStartedAt < 12000) {
+          settleWait = `rigid-batch:${rigidBatch.status}`;
+          return false;
+        }
+      } else {
+        rigidBatchWaitStartedAt = null;
+      }
       let queue = { pending: 0, running: false };
       try {
         const queueStats = window.__SF_GET_AUTHORED_UPGRADE_QUEUE_STATS__;

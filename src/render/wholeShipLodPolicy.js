@@ -26,15 +26,20 @@ export function isOrdinaryLodShip(entity) {
 }
 
 // A missing, stale or invalid projection must never choose a cheap initial body.
+//
+// Top-down camera: the player sees the whole engagement, so there is no distant-traffic band to
+// degrade. Only a true speck (< 32 CSS px) may start on the low-detail sibling to avoid uploading
+// a full hull nobody can read; everything else admits the authored LOD0 body. LOD1 is not selected
+// on the live route while runtime demotion is off — it exists for the authored family/tests.
 export function initialShipLodFromProjection(px, protectedBody = false) {
   if (protectedBody || !Number.isFinite(px) || px <= 0) return 'lod0';
-  return px < 32 ? 'lod2' : px < 96 ? 'lod1' : 'lod0';
+  return px < 32 ? 'lod2' : 'lod0';
 }
 
 export function initialShipLodStillSafe(level, px, protectedBody = false) {
   if (level === 'lod0') return true;
   if (protectedBody || !Number.isFinite(px) || px <= 0) return false;
-  return level === 'lod2' ? px <= 56 : level === 'lod1' && px <= 128;
+  return level === 'lod2' ? px <= 56 : px <= 128;
 }
 
 export function normalizeRequestedLod(level) {
