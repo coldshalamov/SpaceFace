@@ -23,6 +23,8 @@ import { arcD, polar } from '../../orrery/svg.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { isUnsellableCargo, releasableContractUnits, reservedCargoQuantity, sellableCargoQuantity } from '../../../systems/cargo.js';
 import { compareDockedFreight, formatFreightComparison, marketStockStatus } from '../../../systems/economy.js';
+import { economyPulseReport } from '../../../economy/economyPulse.js';
+import { marketPulseRead, marketPulseHtml } from '../../marketPulsePresenter.js';
 import { partialDeliverySettlement } from '../../../systems/missions.js';
 import { predictPriceCurve, regimeLabel } from '../../../systems/economyCycles.js';
 import { escapeHtml } from '../../comms.js';
@@ -928,6 +930,7 @@ export function createMarketScreen(ctx) {
   const consoleEl = el.querySelector('.sx-mkt__console');
   const tradeEl = el.querySelector('.sx-mkt__trade');
   const routesEl = el.querySelector('.sx-mkt__routes');
+  const pulseEl = el.querySelector('.sx-mkt__pulse');
   const decisionEl = el.querySelector('.sx-mkt__decision');
   const papers = createLaunderService({ bus: ctx.bus, getState: () => ctx.state || {}, document });
   // The market frame always parents the quote; a detached frame keeps the papers desk unmounted
@@ -2392,6 +2395,22 @@ export function createMarketScreen(ctx) {
     dressRoutes();
   }
 
+  // WF-06 — the berth's own pulse, read. The economy already bins twelve hours of observed
+  // cash in/out, contract offers and field work (src/economy/economyPulse.js) but no surface
+  // ever read it; this paints that measured flow beside the routes it feeds. Quiet stays quiet.
+  function renderPulse(state) {
+    if (!pulseEl) return;
+    let read = null;
+    try {
+      read = marketPulseRead(economyPulseReport(state && state.economy, state && state.simTime));
+    } catch (_) { read = null; }
+    const next = marketPulseHtml(read);
+    if (pulseEl.dataset.pulseHtml !== next) {
+      pulseEl.dataset.pulseHtml = next;
+      pulseEl.innerHTML = next;
+    }
+  }
+
   function renderAll(state) {
     renderAdBoardNotice(adBoardEl, state);
     const active = typeof document !== 'undefined' ? document.activeElement : null;
@@ -2399,6 +2418,7 @@ export function createMarketScreen(ctx) {
     renderList(state); renderStage(state);
     renderConsole(state, { receiptOnly: editingQuantity });
     renderRoutes(state);
+    renderPulse(state);
   }
 
   // A worker-side price refusal is already an authoritative quote for this exact
