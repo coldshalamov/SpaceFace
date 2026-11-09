@@ -303,6 +303,20 @@ export const salvageOutfits = {
     if (!player) return;
     for (const b of Object.values(m.bodies)) {
       const e = activeBody(b) && this.physical.find(b.key);
+      if (e && this.physical.playerLine(e) && this.physical.nativeReady(e)
+        && this.physical.nativeReady(player) && distance(player.pos, m.receiver) <= 220
+        && distance(e.pos, m.receiver) <= 260) {
+        const callId = `${m.id}:receiving-call:${b.id}`;
+        const speaker = ['keel', 'latch'].find(id => activeCrew(m.crews[id])
+          && this.physical.find(m.crews[id].key));
+        if (speaker && !m.receipts[callId]) {
+          // Remember before radio callbacks: this is advice about an observed original,
+          // not a delivery receipt, payment, or reservation of the other crews' work.
+          m.receipts[callId] = { id: callId, amount: 0, at: this._now(), kind: 'receiving_call' };
+          this._say(speaker, `${b.label} coming in on your cable. Bring ship AND load inside the marked receiver, both below 12. Keep the cable on until the receiving receipt; flying through ahead of the load will not unload it.`);
+          if (this._destroyed || this._restoring || this._row.meetings[m.id] !== m) return;
+        }
+      }
       if (e && this.physical.withinDelivery(player, e, m.receiver)) this._deliver(m, b, 'player', player);
     }
   },
