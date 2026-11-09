@@ -11,6 +11,11 @@
 // faint fill) so the chosen-contract dossier matches statistics empty-state / Help terms / Records
 // Wall bands / Save-Load ledger. Chrome only — no padding — so the dial and route band keep their
 // authored seats. Scoped to `.orr-mlog`. Selectors/IDs unchanged.
+//
+// ui-polish-423: the card's words ran flush against its own hairline ("SALVAGE RETRIEVAL", the
+// title, the terms rail and the FROM end all sat at x=0 of the border at every size). The card now
+// carries an inset that steps down with the shared densify bands. The stage is a scroll column and
+// the card is `flex:1 0 auto`, so the inset grows the card instead of clipping the route band.
 import { injectOrrery } from './tokens.js';
 
 const BONE = '236 230 216';
@@ -55,9 +60,11 @@ export function injectMissionLogLayouts(doc = globalThis.document) {
     border: 1px solid rgb(${BONE} / .18);
     border-radius: 10px;
     background: rgb(${BONE} / .025);
+    padding: 20px 24px 22px;
   }
 
   @media (max-width: 639px) {
+    ${ML} .sf-mlog-card { padding: 14px 14px 16px; }
     ${ML} .sf-mlog-commission-card > .sf-mlog-side { display: none !important; }
   }
   @media (max-width: 639px) and (max-height: 400px) {
@@ -69,12 +76,14 @@ export function injectMissionLogLayouts(doc = globalThis.document) {
   /* short frames: compress card chrome with the shared densify bands */
   @media (max-height: 820px) {
     ${ML} .sf-mlog-card { border-radius: 8px; }
+    ${ML} .sf-mlog-card:not(#_) { padding-top: 14px; padding-bottom: 16px; }
   }
   @media (max-height: 460px) {
     ${ML} .sf-mlog-card { border-radius: 8px; }
   }
   @media (max-height: 400px) {
     ${ML} .sf-mlog-card { border-radius: 6px; }
+    ${ML} .sf-mlog-card:not(#_) { padding: 10px 12px; }
   }
   `;
   doc.head.appendChild(style);
