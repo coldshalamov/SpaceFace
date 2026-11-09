@@ -119,7 +119,7 @@ test('ordinary proximity discovery offers inspect/refuse/cancel and preserves a 
     assert.equal(h.record().phase, 'preview');
     assert.equal(h.owner.readModel().bodies.length, getScenario('drift').bodies.length);
     const decision = industrialDecision(h.owner.readModel());
-    assert.deepEqual(decision.options.map((o) => o.id), ['inspect', 'accept:drift', 'decline', 'cancel']);
+    assert.deepEqual(decision.options.map((o) => o.id), ['inspect', 'accept:drift', 'drill:drift', 'decline', 'cancel']);
     assert.equal(commandForIndustrialChoice('accept:drift').action, 'accept');
     const transport = h.bodies().transport, before = { ...transport.pos };
     for (const action of ['inspect', 'cancel', 'decline']) assert.equal(h.command(action).ok, true);
