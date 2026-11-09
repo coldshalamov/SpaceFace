@@ -2241,11 +2241,18 @@ html.sf-reduce-motion .orr-replay__pulse { display:none; }
     background:linear-gradient(180deg, rgb(5 7 10 / 0), rgb(5 7 10 / .88) 55%, rgb(5 7 10 / .98));
   }
   .orr-replay__transport > * { position:relative; z-index:1; }
-  .orr-replay__tape { bottom:124px; height:min(100px, 24vh); }
+  /* ui-polish-425: the SVG draws a fixed 172-unit-tall tape, so squeezing the host to 100px
+   * scaled the track down ~0.58 and centred it (240–720 of 960 at 960×540) while the HTML
+   * second marks kept the full width and sank under the curtain. Keep the authored 172px;
+   * the 124px lift alone clears the readout off the lamp. Only frames under 420 tall squeeze. */
+  .orr-replay__tape { bottom:124px; height:172px; }
   .orr-replay__readout {
     padding:6px 4px;
     background:linear-gradient(90deg, rgb(5 7 10 / 0), rgb(5 7 10 / .92) 12%, rgb(5 7 10 / .92) 88%, rgb(5 7 10 / 0));
   }
+}
+@media (max-height:419px) {
+  .orr-replay__tape { height:min(100px, 24vh); }
 }
 /* Phone: same curtain so wrapped how-to cannot paint through the lamp apron. */
 @media (max-width:560px) {
