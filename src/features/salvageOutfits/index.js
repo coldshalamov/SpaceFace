@@ -231,7 +231,7 @@ export const salvageOutfits = {
     const order = c.id === 'keel' ? ['core', 'frame', 'cache'] : ['cache', 'frame', 'core'];
     const available = order.filter(id => {
       const b = m.bodies[id];
-      if (!activeBody(b) || b.claim === 'player' || (c.favorsPlayer && id === 'cache')) return false;
+      if (!activeBody(b) || b.claim === 'player' || (c.favorsPlayer && id === 'cache' && b.claim !== c.id)) return false;
       if (c.cautious && piece(id).mass > outfit(c.id).safeMass) return false;
       if (m.agreement?.status === 'active' && b.claim && b.claim !== c.id) return false;
       if (m.agreement?.status === 'active' && m.agreement.type === 'cooperate' && id !== 'core') return false;
@@ -348,6 +348,13 @@ export const salvageOutfits = {
       && core.mass <= outfit('keel').safeMass && !this.physical.playerLine(core));
   },
 
+  _canThreeWay(m) {
+    const cache = this.physical.find(m.bodies.cache.key);
+    return this._canKeelRelief(m) && !distrustsPlayer(this._row.memory.latch)
+      && cache && Number.isFinite(cache.mass) && cache.mass > 0
+      && cache.mass <= outfit('latch').safeMass && !this.physical.playerLine(cache);
+  },
+
   offer(meetingId, kind = null) {
     const m = this._row.meetings[meetingId];
     if (!m || m.status === 'complete' || this._restoring || this.state.mode !== 'flight'
@@ -368,6 +375,8 @@ export const salvageOutfits = {
       if (this._canKeelRelief(m)) {
         choices.splice(1, 0, publicChoice('keel_relief', 'LET KEEL LIFT · TAKE THE SMALL WORK',
           'Keel tows the original cradle. Both smaller originals are yours to tow or beam. No rescue bonus.'));
+        if (this._canThreeWay(m)) choices.splice(2, 0, publicChoice('three_way', 'THREE WAY · LEAVE KIT THE TOOLING',
+          'Keel takes the cradle, Kit tows the tooling rack, you keep the radiator. No bonus; each original must actually come home.'));
         detail += ' Or ask Keel to take over the heavy lift: its Hawser can handle this cradle. You work the smaller originals under a split, with no rescue fee.';
       }
     } else {
@@ -411,25 +420,30 @@ export const salvageOutfits = {
       return { ok: false, reason: 'stale_or_distant_offer' };
     }
     const choice = payload.choiceId;
-    if (choice === 'keel_relief') {
-      if (!this._canKeelRelief(m)) { this._closeOffer(m); return { ok: false, reason: 'relief_changed' }; }
+    if (choice === 'keel_relief' || choice === 'three_way') {
+      const threeWay = choice === 'three_way';
+      const ready = () => threeWay ? this._canThreeWay(m) : this._canKeelRelief(m);
+      if (!ready()) { this._closeOffer(m); return { ok: false, reason: 'relief_changed' }; }
       this._busy = true;
       try {
         this._closeOffer(m);
         // Closing UI and cancelling native jobs emit callbacks. Revalidate the
         // actual people, originals and trust after each boundary before promising work.
-        if (!this._canKeelRelief(m)) return { ok: false, reason: 'relief_changed' };
+        if (!ready()) return { ok: false, reason: 'relief_changed' };
         for (const c of Object.values(m.crews)) {
           const actor = this.physical.find(c.key); if (actor) this.physical.cancelTow(actor);
         }
-        if (!this._canKeelRelief(m)) return { ok: false, reason: 'relief_changed' };
-        m.agreement = { type: 'split', status: 'active', crewId: 'keel', pieceId: 'frame',
-          acceptedAt: this._now(), bonus: 0, receiptId: `${m.id}:agreement:split` };
+        if (!ready()) return { ok: false, reason: 'relief_changed' };
+        m.agreement = { type: threeWay ? 'three_way' : 'split', status: 'active', crewId: 'keel', pieceId: 'frame',
+          acceptedAt: this._now(), bonus: 0, receiptId: `${m.id}:agreement:${threeWay ? 'three_way' : 'split'}` };
         m.bodies.core.claim = 'keel'; m.bodies.frame.claim = 'player';
-        if (activeBody(m.bodies.cache)) m.bodies.cache.claim = 'player';
+        if (activeBody(m.bodies.cache)) m.bodies.cache.claim = threeWay ? 'latch' : 'player';
         Object.assign(m.crews.keel, { targetId: 'core', status: 'approach', startsAt: this._now(), towSeconds: 0 });
         Object.assign(m.crews.latch, { targetId: null, status: 'idle' });
-        this._say('keel', 'Let my Hawser take that cradle. Kit, clear your cable. The radiator and tooling rack are yours to work; no rescue fee, just a clean split.');
+        if (threeWay) {
+          Object.assign(m.crews.latch, { status: 'approach', targetId: 'cache', startsAt: this._now(), towSeconds: 0 });
+          this._say('latch', 'Thirty-five tonnes. That I can carry. Keel gets the cradle, you get the radiator, and I bring the tooling home. No rescue fee.');
+        } else this._say('keel', 'Let my Hawser take that cradle. Kit, clear your cable. The radiator and tooling rack are yours to work; no rescue fee, just a clean split.');
         if (this._row.meetings[m.id] === m && !this._destroyed && !this._restoring)
           this.bus.emit('salvageOutfits:agreement', { meetingId: m.id, ...m.agreement });
         return { ok: true, committed: true, agreement: cloneSalvageOutfits(m.agreement) };
@@ -477,6 +491,19 @@ export const salvageOutfits = {
     const a = m.agreement;
     if (!a || a.status !== 'active') return;
     const core = m.bodies.core, frame = m.bodies.frame;
+    if (a.type === 'three_way') {
+      const cache = m.bodies.cache;
+      if (core.status === 'delivered' && core.deliveredBy === 'keel'
+        && cache.status === 'delivered' && cache.deliveredBy === 'latch'
+        && (frame.status === 'salvaged' || (frame.status === 'delivered' && frame.deliveredBy === 'player'))) {
+        a.status = 'complete';
+        this._memory('keel', 'kept', m, 'three_way_kept');
+        this._memory('latch', 'kept', m, 'three_way_kept');
+        this._say('latch', 'Tooling received. Three working cables, three shares. Next job I check the mass before calling the big piece.');
+      } else if ((!activeBody(core) && core.deliveredBy !== 'keel')
+        || (!activeBody(cache) && cache.deliveredBy !== 'latch') || frame.status === 'destroyed') a.status = 'broken';
+      return;
+    }
     if (a.type === 'split') {
       if (core.status === 'delivered' && core.deliveredBy === 'keel'
         && [frame, m.bodies.cache].some(b => ['delivered', 'salvaged'].includes(b.status))) {
@@ -509,7 +536,14 @@ export const salvageOutfits = {
   },
   _breach(m, b, crewId) {
     const a = m.agreement;
-    if (!a || a.status !== 'active' || !['split', 'cooperate'].includes(a.type) || b.id !== 'core' || crewId !== 'keel') return;
+    if (!a || a.status !== 'active') return;
+    if (a.type === 'three_way') {
+      if (!((b.id === 'core' && crewId === 'keel') || (b.id === 'cache' && crewId === 'latch'))) return;
+      a.status = 'broken'; this._memory(crewId, 'cheated', m, 'three_way_broken');
+      this._say(crewId, 'That original was my share. The three-way agreement is off. Ordinary salvage rules still apply.', 'warn');
+      return;
+    }
+    if (!['split', 'cooperate'].includes(a.type) || b.id !== 'core' || crewId !== 'keel') return;
     a.status = 'broken'; this._memory('keel', 'cheated', m, 'promise_broken');
     this._say('keel', 'That was the cradle you promised us. I am cancelling the deal. We will remember; we are not starting a gunfight.', 'warn');
   },
@@ -574,7 +608,7 @@ export const salvageOutfits = {
         const text = Object.values(m.bodies).map(b => `${b.label}: ${b.status === 'delivered' ? `received by ${outfit(b.deliveredBy)?.name || 'you'}` : b.status}`).join('; ');
         this._say('keel', text); }
     } else if (m.agreement?.status === 'active') {
-      this._say(m.agreement.crewId, m.agreement.type === 'split' ? 'Your two small pieces are marked. Our cradle stays on our line.'
+      this._say(m.agreement.crewId, m.agreement.type === 'three_way' ? 'Keel brings the cradle; Kit brings the tooling rack. The radiator is your share. Each original has to come home.' : m.agreement.type === 'split' ? 'Your two small pieces are marked. Our cradle stays on our line.'
         : `Still waiting for the original ${piece(m.agreement.pieceId).label}. Receiver is marked; bring both ends in slowly.`);
     } else this.offer(m.id);
   },

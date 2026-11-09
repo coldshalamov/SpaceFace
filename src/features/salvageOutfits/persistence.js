@@ -68,7 +68,7 @@ export function normalizeSalvageOutfits(raw) {
     mem.events = (Array.isArray(src.events) ? src.events : []).filter(e => plain(e)
       && safeId(e.id, 240) && safeId(e.meetingId) && ['helped', 'kept', 'cheated'].includes(e.kind))
       .slice(-L.memoryEvents).map(e => ({ id: e.id, meetingId: e.meetingId, kind: e.kind,
-        cause: ['player_damage', 'promise_broken', 'split_kept', 'cooperate', 'rescue'].includes(e.cause) ? e.cause : e.kind,
+        cause: ['player_damage', 'promise_broken', 'split_kept', 'three_way_kept', 'three_way_broken', 'cooperate', 'rescue'].includes(e.cause) ? e.cause : e.kind,
         at: positive(e.at) }));
     mem.lastEvent = mem.events.length ? mem.events[mem.events.length - 1] : null;
   }
@@ -113,11 +113,11 @@ export function normalizeSalvageOutfits(raw) {
       }
     }
     const a = src.agreement;
-    if (plain(a) && ['split', 'cooperate', 'rescue'].includes(a.type)
+    if (plain(a) && ['split', 'cooperate', 'rescue', 'three_way'].includes(a.type)
       && ['active', 'complete', 'broken'].includes(a.status)) {
       m.agreement = { type: a.type, status: a.status, crewId: a.type === 'rescue' ? 'latch' : 'keel',
         pieceId: a.type === 'rescue' ? 'core' : 'frame', acceptedAt: positive(a.acceptedAt),
-        bonus: positive(a.bonus, 500), receiptId: `${id}:agreement:${a.type}` };
+        bonus: a.type === 'three_way' ? 0 : positive(a.bonus, 500), receiptId: `${id}:agreement:${a.type}` };
     }
     m.status = Object.values(m.bodies).every(b => b.status !== 'live') ? 'complete' : 'working';
     out.meetings[id] = m;
