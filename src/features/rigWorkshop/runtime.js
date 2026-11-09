@@ -300,7 +300,7 @@ export function createRigWorkshopSystem() {
       else if (action === 'finishPartial') { result = this.jobs.settlePartial(w); this._showJobs(); }
       else if (action === 'guide') {
         if (!args.target && w.activeJobId) this._showGuide();
-        else { result = this.jobs.guide(w, args.target); this._showField(); }
+        else { result = this.jobs.guide(w, args.target, args.selection || null); this._showField(); }
       }
       else if (action === 'recover') {
         const broken = (rig?.connections || []).find(c => c.state === 'broken' || c.state === 'detached');
@@ -450,11 +450,22 @@ export function createRigWorkshopSystem() {
       const job = this.workshop.jobs[this.workshop.activeJobId];
       if (!job) { this.jobs.guide(this.workshop, 'bench'); this._showField(); return; }
       this._show('guide', 'Where next?', 'You can return for the remaining originals after a partial delivery. The marker guides your flight; you still move and brake the physical load.', [
-        this._option('pickup', 'Remaining cargo', 'guide', { target: 'pickup' }),
+        { id: 'pickup', label: 'Choose remaining original', run: () => this._showOriginalCourses() },
         this._option('receiver', 'Receiving gantry', 'guide', { target: 'receiver' }),
         this._option('bench', 'Workshop bench', 'guide', { target: 'bench' }),
         this._option('back', 'Back to rig', 'cancel', {}, { cancel: true }),
       ]);
+    },
+    _showOriginalCourses() {
+      const lines = this.jobs.remainingCourses(this.workshop);
+      this._show('original-courses', 'Which load next?',
+        'Choose a surviving loose original by mass and condition. The course follows its actual position; nothing is collected or moved. A secured load belongs on the route to the gantry.',
+        [...lines.map(line => this._option(`original:${line.id}:${line.generation}`,
+          `${line.name} · ${Math.round(line.mass * 10) / 10} t · ${line.integrity}% · ${line.distance} WU`,
+          'guide', { target: 'pickup', selection: { jobId: line.jobId, id: line.id, generation: line.generation, token: line.token } })),
+          this._option('receiver', 'Mark receiving gantry', 'guide', { target: 'receiver' }),
+          { id: 'back', label: 'Back to destinations', run: () => this._showGuide() }],
+        lines.length ? 'Original bodies, not replacement stock' : 'No loose surviving originals here');
     },
     _showAway() {
       this._show('away', 'RATCHET · Your machine is still yours',

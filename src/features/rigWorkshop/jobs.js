@@ -306,9 +306,34 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
     return { ok: true, paid: job.paid };
   }
 
-  function guide(w, target) {
+  function remainingCourses(w) {
+    const job = w.jobs?.[w.activeJobId];
+    if (!job || job.settled || state.world?.currentSectorId !== job.sectorId) return [];
+    const player = entity(state, state.playerId);
+    return job.cargo.filter(c => !c.paid && !c.lost).map(record => ({ record, body: original(w, job, record) }))
+      .filter(({ body }) => body?.alive !== false && body?.hull > 0 && body?.pos
+        && body.ownerId === state.playerId && body.data?.playerOwned === true
+        && Number.isInteger(body.occupantGeneration) && body.occupantGeneration > 0
+        && !w.rigs.some(r => physics.isCargoSecured?.(w, r.id, body.id)))
+      .map(({ record, body }) => ({ jobId: job.id, id: body.id, generation: body.occupantGeneration,
+        token: record.token, name: body.data?.name || 'Original cargo', mass: body.mass,
+        integrity: Math.round(100 * Math.max(0, Math.min(1, body.hull / body.hullMax))),
+        distance: Math.round(distance(player?.pos, body.pos)) }));
+  }
+
+  function guide(w, target, selection = null) {
     if (!w.bench) return { ok: false, reason: 'The workshop has not been charted yet.' };
     const job = w.jobs?.[w.activeJobId];
+    if (selection) {
+      const line = remainingCourses(w).find(c => c.id === selection.id && c.jobId === selection.jobId
+        && c.generation === selection.generation && c.token === selection.token);
+      if (target !== 'pickup' || !line) return { ok: false, reason: 'That original is no longer loose on this work order. Inspect the remaining loads again.' };
+      const body = entity(state, line.id);
+      bus.emit('ui:setCourse', { pos: { ...body.pos }, sectorId: job.sectorId, autopilot: false,
+        targetEntityId: body.id, waypointKind: 'local', arrivalRadius: 65,
+        label: line.name, reason: 'Approach this original slowly. The marker follows the body; secure it with your assembled rig.' });
+      return { ok: true };
+    }
     const useBench = target === 'bench' || !job;
     const usePickup = target === 'pickup' || (!target && job && job.stage === 'pickup');
     const remaining = usePickup ? (job?.cargo || []).filter(c => !c.paid && !c.lost
@@ -327,5 +352,5 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
       reason: useBench ? 'Inspect, change, repair, or recover your machine.' : usePickup ? 'Fly the rig to the cargo. Slow down, then secure the nearest original.' : 'Deliver the physical cargo inside the gantry circle at low speed.' });
     return { ok: true };
   }
-  return { accept, update, recordLoss, deliveryQuote, deliver, settlePartial, guide };
+  return { accept, update, recordLoss, deliveryQuote, deliver, settlePartial, guide, remainingCourses };
 }
