@@ -2244,20 +2244,24 @@ html.sf-reduce-motion .orr-replay__pulse { display:none; }
   /* ui-polish-425: the SVG draws a fixed 172-unit-tall tape, so squeezing the host to 100px
    * scaled the track down ~0.58 and centred it (240–720 of 960 at 960×540) while the HTML
    * second marks kept the full width and sank under the curtain. Keep the authored 172px;
-   * the 124px lift alone clears the readout off the lamp. Under 420 tall see the rule below. */
-  .orr-replay__tape { bottom:124px; height:172px; }
+   * the lift clears the readout off the lamp. The lift ramps with the frame height (84px at
+   * <=420 tall up to 124px at >=460) so the tape never jumps when the window shrinks by a pixel;
+   * below 420 the readout top tracks the height and the second marks keep 5px over the apron. */
+  .orr-replay__tape { bottom:clamp(84px, calc(100vh - 336px), 124px); height:172px; }
   .orr-replay__readout {
     padding:6px 4px;
     background:linear-gradient(90deg, rgb(5 7 10 / 0), rgb(5 7 10 / .92) 12%, rgb(5 7 10 / .92) 88%, rgb(5 7 10 / 0));
   }
 }
 /* ui-polish-425 (#997): under 420 tall the host used to squeeze to min(100px, 24vh), which put
- * the same mismatch back: the SVG track scaled ~0.5 and centred (184–456 at 640×360) while the
- * second marks kept the full width and sat under the curtain (y278). The tape keeps its authored
- * 172px here too and drops to bottom:84px instead, so the readout clears the counter and the
- * second marks stay above the lamp apron. */
-@media (max-height:419px) {
-  .orr-replay__tape { bottom:84px; height:172px; }
+ * the same mismatch back (track scaled ~0.5 and centred, second marks full width under the
+ * curtain). The tape keeps its authored 172px at every height; see the ramp above. Under ~330
+ * tall (700x320) the readout's first line sat tight under the EXIT plate, so the lamp and the
+ * tape ease down together by up to 8px (lamp 22->14px off the bottom, tape 84->76px), keeping
+ * the marks' 5px over the apron; both ramps meet the rule above with no step. */
+@media (min-width:561px) and (max-height:420px) {
+  .orr-replay__transport { bottom:clamp(14px, calc(100vh - 306px), 22px); }
+  .orr-replay__tape { bottom:clamp(76px, calc(100vh - 244px), 84px); }
 }
 /* Phone: same curtain so wrapped how-to cannot paint through the lamp apron. */
 @media (max-width:560px) {
@@ -2272,6 +2276,16 @@ html.sf-reduce-motion .orr-replay__pulse { display:none; }
     background:linear-gradient(180deg, rgb(5 7 10 / 0), rgb(5 7 10 / .88) 55%, rgb(5 7 10 / .98));
   }
   .orr-replay__transport > * { position:relative; z-index:1; }
+}
+/* Phone short frames (560x419/400/360): the 48px phone apron ran 3px over the second marks
+ * that sit on the shared ramp above, so on short phones the apron keeps the 40px desktop height
+ * (marks 5px clear). Under 420 tall the legend, which grows upward from the hand, also met the
+ * SEED · NO TAPE line (560x360); the count (52->42px) and its code line (10->4px) ease down
+ * between 430 and 420 tall so the legend clears it without a step. */
+@media (max-width:560px) and (max-height:560px) {
+  .orr-replay__transport::before { height:40px; }
+  .orr-replay__count { font-size:clamp(42px, calc(100vh - 378px), 52px); }
+  .orr-replay__codes { margin-top:clamp(4px, calc(100vh - 416px), 10px); }
 }
 /* Phone widths: the legend wraps to 4-5 lines, taller than the 64px above the
  * playhead, so it grows upward from just above the hand instead of down into it. */
