@@ -473,6 +473,32 @@ export function createRigWorkshopSystem() {
           this._option('close', 'Keep exploring', 'close', {}, { cancel: true }),
         ]);
     },
+    _showCargoRelease() {
+      const rig = this.activeRig, w = this.workshop;
+      if (!rig) return this._showField();
+      const cargo = (rig.cargoIds || []).map(id => this.state.entities.get(id))
+        .filter(body => body?.alive && Number.isInteger(body.occupantGeneration) && body.occupantGeneration > 0
+          && this.physics.isCargoSecured(w, rig.id, body.id));
+      this._show('release-cargo', `${rig.name} · choose a load to set loose`,
+        'Release only the selected restraint to rebalance. The same cargo keeps its position and momentum; nothing is delivered or sold. Slow down first, then recover it when ready.',
+        [...cargo.map((body, index) => {
+          const generation = body.occupantGeneration;
+          const mass = Number.isFinite(body.physicsBody?.mass) ? body.physicsBody.mass : body.mass;
+          return { id: `release:${body.id}:${generation}`,
+            label: `${index + 1}. ${body.data?.name || 'Secured cargo'} · ${Number.isFinite(mass) ? Math.round(mass * 10) / 10 : '?'} t`,
+            run: () => {
+              if (this.activeRig !== rig || this.state.entities.get(body.id) !== body
+                || body.occupantGeneration !== generation || !this.physics.isCargoSecured(w, rig.id, body.id)) {
+                this.feedback('reject', 'That secured original changed. Choose from the current restraints.');
+                this._promptSignature = null; this._showCargoRelease(); return;
+              }
+              this.dispatch('releaseCargo', { cargoId: body.id });
+            } };
+        }),
+          { id: 'back', label: 'Back to the rig', run: () => this._showField() },
+          this._option('close', 'Keep flying · release nothing', 'close', {}, { cancel: true })],
+        cargo.length ? 'Only current native restraints' : 'No secured cargo to release');
+    },
     _showField() {
       const rig = this.activeRig, w = this.workshop, job = w.jobs[w.activeJobId];
       if (!rig || !isWorkshopAdventure(this.state)) return;
@@ -486,7 +512,7 @@ export function createRigWorkshopSystem() {
           ...(job ? [this._option('deliver', 'Deliver originals', 'deliver'), this._option('guide', 'Mark a destination', 'guide')] : []),
           { id: 'more', label: 'Recovery · release', run: () => this._show('field-care', 'Recover the machine, keep the story',
             'Lost a connection? Find the original part, tow it home, and repair. You can release cargo to rebalance before securing it again.',
-            [this._option('releaseCargo', 'Release last cargo', 'releaseCargo'), this._option('recover', 'Recover originals', 'recover'),
+            [{ id: 'releaseCargo', label: 'Choose cargo to release', run: () => this._showCargoRelease() }, this._option('recover', 'Recover originals', 'recover'),
               this._option('bench', 'Mark workshop', 'guide', { target: 'bench' }), this._option('jobs', 'Job status · settle', 'jobs'),
               this._option('close', 'Keep flying', 'close', {}, { cancel: true })]) },
           this._option('close', 'Keep flying', 'close', {}, { cancel: true })],
