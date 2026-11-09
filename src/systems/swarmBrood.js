@@ -48,6 +48,7 @@
 
 import { mulberry32 } from '../core/rng.js';
 import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { queuePhysicsImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { readRecentImpulseProvenance } from '../combat/impulseKernel.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
@@ -566,6 +567,8 @@ export function createBroodEngine(deps = {}) {
   // channel's telegraph.
   const channelEntity = new Int32Array(CAP);
   const channelTold = new Uint8Array(CAP);
+  const channelSource = new Array(CAP).fill(null);
+  const channelGeneration = new Float64Array(CAP);
   // Formation squads: each formation body rides a squad anchor (-1 none); anchors are a
   // fixed pool orbiting the signature on a seeded lissajous — the Galaga weave. The peel
   // clock feeds one member at a time into the authored dive.
@@ -771,6 +774,8 @@ export function createBroodEngine(deps = {}) {
     linkTargetLife.fill(0);
     channelEntity.fill(-1);
     channelTold.fill(0);
+    channelSource.fill(null);
+    channelGeneration.fill(0);
     squadId.fill(-1);
     squadSlot.fill(0);
     squadCount = 0;
@@ -1130,6 +1135,8 @@ export function createBroodEngine(deps = {}) {
     linkTargetLife[slot] = 0;
     channelEntity[slot] = -1;
     channelTold[slot] = 0;
+    channelSource[slot] = null;
+    channelGeneration[slot] = 0;
     beamState[slot] = 0;
     beamSlotOf[slot] = -1;
     contactAfter[slot] = 0;
@@ -1960,18 +1967,19 @@ export function createBroodEngine(deps = {}) {
             attackAfter[i] = simTime + BROOD_WRAP_RETRY_S;
           } else if (channelEntity[i] >= 0 && !trackChannel(i, def)) {
             // The salvager's channel aborts the moment its wreck stops being there —
-            // spent by another builder, flung out of reach, or pulped mid-weld.
+            // caught by the pilot, spent, flung out of reach, or pulped mid-weld.
             phase[i] = BROOD_PHASE_FLOCK;
             timer[i] = 0;
             channelEntity[i] = -1;
             channelTold[i] = 0;
+            channelSource[i] = null;
           } else {
             timer[i] -= dt;
             if (timer[i] <= 0) {
               if (def.id === 'spitter') fireLob(i, fam);
               else if (def.id === 'charger') beginDash(i, fam);
               else if (def.wrapRange > 0) beginWrap(i, fam);
-              else if (channelEntity[i] >= 0) finishChannel(i, def);
+              else if (channelEntity[i] >= 0) { if (!finishChannel(i, def)) return false; }
               else if (def.formation) beginFormationDash(i, def);
               else phase[i] = BROOD_PHASE_FLOCK;
             }
@@ -3013,12 +3021,35 @@ export function createBroodEngine(deps = {}) {
       cellObservedX[p], cellObservedZ[p], px[p], pz[p]);
   }
 
-  /** The nearest throwable remain in the mover cache for a salvager's run, or -1. */
+  // A real pilot catch takes this tool out of the loose stock. Read the canonical,
+  // current-life attachment, not the HUD's selected tether or old throw provenance.
+  // Keep it in the mover cache: held mass still fights by the ordinary contact laws.
+  function salvageRemainAvailable(m) {
+    const state = getState(), entity = linkMoverEntities[m];
+    if (movRemainId[m] < 0 || !entity || entity.alive === false
+      || state.entities?.get(entity.id) !== entity || !entity.data?.broodRemain
+      || entity.collides === false || entity.physicsBody === false
+      || (Number.isFinite(entity.data.despawnAt) && entity.data.despawnAt <= state.simTime)) return false;
+    const player = state.entities?.get(state.playerId);
+    const playerLife = occupantGenerationOf(player), life = occupantGenerationOf(entity);
+    if (!player || player.alive === false || playerLife == null || life == null) return true;
+    const attachments = state.combat?.attachments?.byId;
+    for (const key in attachments) {
+      const attachment = attachments[key];
+      if (attachment?.state === 'active'
+        && (attachment.defId === 'tether_standard' || attachment.defId === 'attachment_massline')
+        && attachment.ownerId === player.id && attachment.targetId === entity.id
+        && attachment.ownerGeneration === playerLife && attachment.targetGeneration === life) return false;
+    }
+    return true;
+  }
+
+  /** The nearest loose throwable remain for a salvager's run, or -1. */
   function nearestRemainMov(i, maxD) {
     let best = -1;
     let bestD = maxD * maxD;
     for (let m = 0; m < movCount; m++) {
-      if (movRemainId[m] < 0) continue;
+      if (!salvageRemainAvailable(m)) continue;
       const dx = movX[m] - px[i];
       const dz = movZ[m] - pz[i];
       const d2 = dx * dx + dz * dz;
@@ -3053,6 +3084,8 @@ export function createBroodEngine(deps = {}) {
       const dz = movZ[m] - pz[i];
       if (dx * dx + dz * dz > reach * reach) return;
       channelEntity[i] = movRemainId[m];
+      channelSource[i] = linkMoverEntities[m];
+      channelGeneration[i] = occupantGenerationOf(linkMoverEntities[m]) ?? 0;
       teleX[i] = movX[m];
       teleZ[i] = movZ[m];
       phase[i] = BROOD_PHASE_WINDUP;
@@ -3066,7 +3099,7 @@ export function createBroodEngine(deps = {}) {
     let first = -1;
     let near = 0;
     for (let m = 0; m < movCount; m++) {
-      if (movRemainId[m] < 0) continue;
+      if (!salvageRemainAvailable(m)) continue;
       const dx = movX[m] - px[i];
       const dz = movZ[m] - pz[i];
       if (dx * dx + dz * dz <= reach * reach) {
@@ -3076,6 +3109,8 @@ export function createBroodEngine(deps = {}) {
     }
     if (near < need) return;
     channelEntity[i] = movRemainId[first];
+    channelSource[i] = linkMoverEntities[first];
+    channelGeneration[i] = occupantGenerationOf(linkMoverEntities[first]) ?? 0;
     teleX[i] = movX[first];
     teleZ[i] = movZ[first];
     phase[i] = BROOD_PHASE_WINDUP;
@@ -3089,8 +3124,20 @@ export function createBroodEngine(deps = {}) {
     const id = channelEntity[i];
     if (id < 0) return true;
     const reach = (def.repairs ? def.repairRange * 2.5 : def.assembleRange * 1.5) || 30;
+    if (def.assembles) {
+      const need = Math.max(2, Math.trunc(def.assembleDebrisMin) || 2);
+      let near = 0;
+      for (let m = 0; m < movCount; m++) {
+        if (!salvageRemainAvailable(m)) continue;
+        const dx = movX[m] - px[i], dz = movZ[m] - pz[i];
+        if (dx * dx + dz * dz <= reach * reach) near++;
+      }
+      if (near < need) return false;
+    }
     for (let m = 0; m < movCount; m++) {
       if (movRemainId[m] !== id) continue;
+      if (!salvageRemainAvailable(m) || linkMoverEntities[m] !== channelSource[i]
+        || (occupantGenerationOf(linkMoverEntities[m]) ?? 0) !== channelGeneration[i]) return false;
       teleX[i] = movX[m];
       teleZ[i] = movZ[m];
       const dx = movX[m] - px[i];
@@ -3102,41 +3149,54 @@ export function createBroodEngine(deps = {}) {
 
   /** The channel lands: the wreck is spent, the mint spends the wave's own reserve. */
   function finishChannel(i, def) {
+    const state = getState(), run = liveSwarmRun(state), epoch = chunkEpoch, wave = liveWave, life = serial[i];
     const id = channelEntity[i];
     channelEntity[i] = -1;
     channelTold[i] = 0;
+    channelSource[i] = null;
     phase[i] = BROOD_PHASE_FLOCK;
     attackAfter[i] = attackClock + 1.5;
     if (def.repairs) {
       for (let m = 0; m < movCount; m++) {
-        if (movRemainId[m] === id) {
+        if (movRemainId[m] === id && salvageRemainAvailable(m)) {
           emitRemainSpent(m);
+          if (!salvageCompletionCurrent(state, run, epoch, wave, i, life)) return false;
           mintMachine(px[i] + 4, pz[i] + 4, def.repairYieldId);
           break;
         }
       }
-      return;
+      return true;
     }
     const reach = def.assembleRange > 0 ? def.assembleRange : 30;
     const need = Math.max(1, Math.trunc(def.assembleDebrisMin) || 2);
     let available = 0;
     for (let m = 0; m < movCount; m++) {
-      if (movRemainId[m] < 0) continue;
+      if (!salvageRemainAvailable(m)) continue;
       const dx = movX[m] - px[i];
       const dz = movZ[m] - pz[i];
       if (dx * dx + dz * dz <= reach * reach) available += 1;
     }
-    if (available < need) return;
+    if (available < need) return true;
     let ate = 0;
     for (let m = 0; m < movCount && ate < need; m++) {
-      if (movRemainId[m] < 0) continue;
+      if (!salvageRemainAvailable(m)) continue;
       const dx = movX[m] - px[i];
       const dz = movZ[m] - pz[i];
       if (dx * dx + dz * dz > reach * reach) continue;
       emitRemainSpent(m);
+      if (!salvageCompletionCurrent(state, run, epoch, wave, i, life)) return false;
       ate += 1;
     }
     if (ate === need) mintMachine(px[i] + 4, pz[i] + 4, def.assembleYieldId);
+    return true;
+  }
+
+  // Spending is a synchronous owner receipt. A cancelled room, fresh attempt or
+  // destroyed builder must not continue that old completion into new state.
+  function salvageCompletionCurrent(state, run, epoch, wave, i, life) {
+    return getState() === state && liveSwarmRun(state) === run && run?.phase === 'active'
+      && state.mode === 'flight' && run.wave === wave && liveWave === wave
+      && chunkEpoch === epoch && alive[i] === 1 && serial[i] === life;
   }
 
   /**
@@ -3969,6 +4029,7 @@ export function createBroodEngine(deps = {}) {
     // A dying turret's sweep dies with it; a dying linker's charge drops its shield
     // THIS tick — the link pass only rebuilds flags for the living.
     freeBeamOf(i);
+    channelSource[i] = null;
     if (linkPartner[i] >= 0) {
       const partner = linkPartner[i];
       linkPartner[i] = -1;
