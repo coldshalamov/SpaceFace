@@ -3,7 +3,7 @@ import { createTenderPhysical, TENDER_BODY_ID, TENDER_PHYSICAL } from './physica
 import { TENDER_CONFIG as C, TENDER_STAGES, freshSalvageTender, normalizeSalvageTender,
   discoverTenderState, recordTenderHistory } from './model.js';
 import { tenderCostQuote, payTenderCost, tenderServiceQuote, bookTenderService,
-  stepTenderService, cancelTenderService, repairTenderHull, rebindTenderService } from './services.js';
+  stepTenderService, setTenderRepairPriority, cancelTenderService, repairTenderHull, rebindTenderService } from './services.js';
 import { installSalvageTenderSaveAdapter } from './saveAdapter.js';
 import { getSalvageTenderReadModel } from './readModel.js';
 
@@ -238,10 +238,20 @@ export const salvageTender = {
       detail = `Supplies come from your existing hold. One fuel cell pumps up to ${C.fuelPerCell} fuel; one scrap restores up to ${C.repairPerScrap} hull/armor. Keep within 100 wu at matched speed. Leaving pauses prepaid work.`;
       if (row.service) {
         detail += ` Booked ${row.service.type}: ${row.service.delivered.toFixed(1)}/${row.service.requested.toFixed(1)} delivered. ${row.service.paused ? row.service.pauseReason : 'Machinery is working.'}`;
+        if (row.service.type === 'repair') {
+          detail += ` Priority: ${row.service.repairPriority || 'balanced'}. Priority fills that protection first, then the other; total prepaid work is unchanged.`;
+          for (const priority of ['balanced', 'hull', 'armor']) choices.push(choice(`priority_${priority}`, `Redirect: ${priority === 'balanced' ? 'balanced' : priority + ' first'} · no new charge`,
+            { action: 'repair_priority', priority, jobId: row.service.id }, gate.ok && (row.service.repairPriority || 'balanced') !== priority));
+        }
         choices.push(choice('cancel_service', row.service.delivered <= 1e-9 ? 'Cancel · untouched supply returned' : 'Cancel · partially used supply is spent'));
-      } else for (const [action, label] of [['refuel', 'Pump one fuel cell'], ['repair', 'Weld with one scrap'], ['emergency', 'Use starter emergency weld · free to 35% hull']]) {
+      } else for (const [action, label] of [['refuel', 'Pump one fuel cell'], ['repair', 'Balanced weld · 1 scrap'], ['emergency', 'Use starter emergency weld · free to 35% hull']]) {
         const q = tenderServiceQuote(this.state, row, action);
         choices.push(choice(action, label, {}, gate.ok && q.ok, gate.ok ? q.reason : gate.reason));
+      }
+      if (!row.service) for (const priority of ['hull', 'armor']) {
+        const q = tenderServiceQuote(this.state, row, 'repair');
+        choices.push(choice(`repair_${priority}`, `${priority === 'hull' ? 'Hull' : 'Armor'} first · 1 scrap / up to ${C.repairPerScrap} combined HP`,
+          { action: 'repair', priority }, gate.ok && q.ok, gate.ok ? q.reason : gate.reason));
       }
       const supplies = tenderCostQuote(this.state, { items: { cmdty_fuel_cells: 1, cmdty_scrap_metal: 1 } }).items;
       detail += ` Unsealed hold: ${supplies[0].available} fuel cells · ${supplies[1].available} scrap. Sealed freight is never consumed.`;
@@ -389,9 +399,13 @@ export const salvageTender = {
     }
     if (['repair', 'refuel', 'emergency'].includes(action)) {
       const gate = this._serviceGate(); if (!gate.ok) return gate;
-      const result = bookTenderService(this.ctx, row, action);
+      const result = bookTenderService(this.ctx, row, action, options.priority || 'balanced');
       if (result.ok) this._remember(action === 'refuel' ? 'provision' : 'repair', `${action === 'refuel' ? 'Fuel' : 'Repair'} work booked. Stay alongside; leaving pauses the work you paid for.`);
       return result;
+    }
+    if (action === 'repair_priority') {
+      const gate = this._serviceGate(); if (!gate.ok) return gate;
+      return setTenderRepairPriority(this.ctx, row, options.priority, options.jobId);
     }
     if (action === 'cancel_service') return cancelTenderService(this.ctx, row);
     if (action === 'patch') {
