@@ -295,6 +295,13 @@ export const shipbreakingYard = {
       actions.push({ id: 'disconnect', couplingId: coupling.id, label: `RELEASE ${coupling.label.toUpperCase()}`,
         disabled: !claimed || !!blocked, title: blocked || 'Service release uses the real clamp. Keep a MassLine on the part to control its drift.' });
     }
+    if (job.layoutId === 'lark' && !TERMINAL_PARTS.has(record.status)) {
+      for (const coupling of layout.couplings.filter(c => c.b === moduleId && job.couplings[c.id].status === 'released')) {
+        const gate = this.physics.resecureGate(job, coupling.id);
+        actions.push({id:'resecure',moduleId,couplingId:coupling.id,label:'RE-SECURE TRANSPORT CLAMP · NO REPAIR',
+          disabled:!claimed || !gate.ok,title:gate.reason || 'Restrain the same parts at their current span for parking or towing. No alignment or hull repair; release again before delivery.'});
+      }
+    }
     let delivery = null;
     if (!attached.length && !TERMINAL_PARTS.has(record.status)) {
       delivery = this.physics.deliveryGate(job, moduleId, this.receiver());
@@ -354,6 +361,19 @@ export const shipbreakingYard = {
       this._say(`${coupling.label} released. ${this._layout(job).modules.find(m => m.id === coupling.b)?.label} keeps its real drift; take it gently on the MassLine.`, 'good');
     } finally { this._busy = false; }
     this._publish(); return result;
+  },
+
+  resecure(couplingId, revision, jobId = this._row.activeJobId) {
+    const job=this.getJob(jobId),reason=this._gate(revision,job,true);
+    if(reason)return this._result(false,reason);
+    this._busy=true;let result;
+    try {
+      result=this.physics.resecure(job,couplingId);
+      if(!result.ok)return result;
+      this._refreshFreedom(job);this._touch();
+      this._say('Transport clamp requested on the same originals. Wait for physical admission. No hull repair or payment; release it again before handover.','good');
+    } finally {this._busy=false;}
+    this._publish();return result;
   },
 
   vent(moduleId, revision, jobId = this._row.activeJobId) {
@@ -473,6 +493,7 @@ export const shipbreakingYard = {
     if (actionId === 'work') return this.workTicket(job?.id);
     if (actionId === 'accept') result = this.accept(layoutId || job?.layoutId, revision);
     else if (actionId === 'disconnect') result = this.disconnect(couplingId, revision, job?.id);
+    else if (actionId === 'resecure') result = this.resecure(couplingId, revision, job?.id);
     else if (actionId === 'vent') result = this.vent(moduleId, revision, job?.id);
     else if (actionId === 'deliver') result = this.deliver(moduleId, revision, job?.id);
     else if (actionId === 'park') result = this.park(job?.id, revision);
@@ -506,7 +527,7 @@ export const shipbreakingYard = {
       // A rejected stale/native gate should leave a usable current ticket in the deck.
       if (job && this._near(job)) this.workTicket(job.id);
     }
-    if (result.ok && ['disconnect', 'vent', 'deliver'].includes(actionId)) {
+    if (result.ok && ['disconnect', 'resecure', 'vent', 'deliver'].includes(actionId)) {
       if (moduleId) this.inspectPart(moduleId, job.id); else this.workTicket(job.id);
     }
     return result;
