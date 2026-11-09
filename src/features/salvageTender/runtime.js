@@ -196,14 +196,14 @@ export const salvageTender = {
   _nearbyCrate() {
     if (!this._sameSector()) return null;
     const player = this._player();
-    return this.physical.recoveryBodies(this._row).filter(e => e.data.cargoManifest?.totalQty > 0
+    return this.physical.recoveryBodies(this._row).filter(e => (e.data.cargoManifest?.totalQty > 0 || this._row.owned)
       && distance(player?.pos, e.pos) <= 110).sort((a, b) => distance(player.pos, a.pos) - distance(player.pos, b.pos))[0] || null;
   },
 
   inspect(page = 'home') {
     if (!this._eligible() || !this._row.discovered || (!this._near(C.offerRange)
-      && !(page === 'cargo' && this._nearbyCrate()))) return fail('Approach or scan Morrowlight, or a nearby recovery crate.');
-    this._page = ['home', 'service', 'restore', 'cargo', 'navigation', 'history'].includes(page) ? page : 'home';
+      && !(['cargo', 'restock', 'packing'].includes(page) && this._nearbyCrate()))) return fail('Approach or scan Morrowlight, or a nearby recovery crate.');
+    this._page = ['home', 'service', 'restore', 'cargo', 'restock', 'packing', 'navigation', 'history'].includes(page) ? page : 'home';
     const row = this._row, body = this.physical.find(row), choices = [];
     const hull = `${Math.ceil(body?.hull || row.physical.tender.hull)}/${TENDER_PHYSICAL.hullMax}`;
     const stateWord = row.physical.disabled ? 'DISABLED' : row.physical.mode === 'released' ? 'MOVING · services paused' : 'SECURED';
@@ -228,6 +228,7 @@ export const salvageTender = {
       choices.push(choice('service_menu', 'Prepare / service this ship', { action: 'menu', page: 'service' }));
       choices.push(choice('restore_menu', row.stage < 3 ? 'Restore the next machine' : 'Inspect installed machines', { action: 'menu', page: 'restore' }));
       choices.push(choice('cargo_menu', 'Physical supply crates / rack', { action: 'menu', page: 'cargo' }));
+      choices.push(choice('restock_menu', 'Pack my supplies into an original pod', { action: 'menu', page: 'restock' }));
       choices.push(choice('navigation_menu', 'Home course / move the tender', { action: 'menu', page: 'navigation' }));
       const patchGate = this._serviceGate({ allowDisabled: true });
       const patchParts = tenderCostQuote(this.state, { items: { cmdty_scrap_metal: 1 } });
@@ -268,7 +269,7 @@ export const salvageTender = {
         choices.push(choice('restore_cash', `Buy installation supplies · ${next.cost.credits} cr`, { action: 'restore', payment: 'credits' }, gate.ok && q.canUseCredits, gate.reason || 'Insufficient credits.'));
       }
     } else if (this._page === 'cargo') {
-      detail = 'These three finite recovery loads contain scrap metal, salvage electronics and fuel cells. Match a crate’s speed within 75 wu to transfer what fits into your normal hold. Take one chosen supply from the nearest locker to leave room for what you need, or transfer a mixed load. Stage 3 clamps one of these original pods; unload it before using its supplies. Empty shells stay empty.';
+      detail = 'These three finite recovery loads contain scrap metal, salvage electronics and fuel cells. Match a crate’s speed within 75 wu to transfer what fits into your normal hold. Take one chosen supply from the nearest locker to leave room for what you need, or transfer a mixed load. Stage 3 clamps one of these original pods; unload it before using its supplies. Empty shells receive no free refill; after claiming Morrowlight you may pack your own unsealed supplies into their original compartments.';
       const crates = row.physical.recovery.filter(r => r.status !== 'lost' && r.manifest.totalQty > 0);
       for (const r of crates) {
         const e = this.physical.recoveryBodies(row).find(e => e.data.worldRecordId === r.id);
@@ -287,11 +288,29 @@ export const salvageTender = {
               commodityId: line.commodityId, quantity: 1 }));
         }
       }
+      if (row.owned) choices.push(choice('restock_menu', 'Rack / pack my supplies', { action: 'menu', page: 'restock' }));
+    } else if (this._page === 'restock') {
+      detail = 'Choose an original pod to pack from your hold. Each click moves one unsealed supply, with no purchase or free refill. Keep within 75 wu at matched speed. Original compartment limits remain unchanged; lost pods are not replaced.';
+      for (const r of row.physical.recovery.filter(r => r.status !== 'lost')) {
+        const e = this.physical.recoveryBodies(row).find(e => e.data.worldRecordId === r.id);
+        if (e) choices.push(choice(`pack_${r.key}`, `${r.name} · ${r.manifest.totalQty} units`,
+          { action: 'packing', bodyId: e.id, generation: e.occupantGeneration, sourceId: r.id }));
+      }
       if (row.stage >= 3) {
         const target = this._rackCandidate();
         if (row.physical.rackId) choices.push(choice('release', 'Release the original rack pod', { bodyId: target?.id }));
         else choices.push(choice('stow', 'Clamp nearest supply pod into rack', { bodyId: target?.id }, !!target && gate.ok, 'Bring one stocked original slowly within 95 wu.'));
       }
+    } else if (this._page === 'packing') {
+      const target = this._packingTarget, e = this.state.entities.get(target?.bodyId);
+      const record = row.physical.recovery.find(r => r.id === target?.sourceId);
+      detail = `Pack one supply into ${record?.name || 'the original pod'}. This takes it out of your hold; unload the same pod to use it again. Sealed mission freight stays aboard. No cash changes hands.`;
+      if (target && e === target.body) for (const id of ['cmdty_scrap_metal', 'cmdty_salvage_electronics', 'cmdty_fuel_cells']) {
+        const q = this.physical.restockQuote(row, target.bodyId, target.generation, target.sourceId, id);
+        choices.push(choice(`deposit_${id}`, `Pack 1 ${commodityName(id)}${q.ok ? ` · ${q.stored}/${q.capacity} stored` : ''}`,
+          { action: 'restock', bodyId: target.bodyId, generation: target.generation, sourceId: target.sourceId, commodityId: id }, q.ok, readable(q.reason)));
+      }
+      choices.push(choice('pods', 'Choose another original pod', { action: 'menu', page: 'restock' }));
     } else if (this._page === 'navigation') {
       detail = 'Relocation moves this hull and its clamped cargo with your actual Massline. Release costs one scrap for the mooring brake; resuming an interrupted tow is free. Stop below 8 wu/s to secure the new berth; scan the hull to inspect it at any time. Intersector relocation is not offered.';
       choices.push(choice('course', 'Mark Morrowlight on the chart', { destination: 'home' }));
@@ -340,13 +359,17 @@ export const salvageTender = {
     if (!this._eligible()) return fail('Adventure flight only.');
     if (revision !== this._row.revision) return this._feedback(fail('This offer changed. Inspect Morrowlight again.'));
     if (action === 'menu') return this.inspect(options.page);
+    if (action === 'packing') {
+      this._packingTarget = { ...options, body: this.state.entities.get(options.bodyId) };
+      return this.inspect('packing');
+    }
     if (action === 'course') return this._course(options.destination, options.sourceId);
     if (action === 'leave' || action === 'refuse') {
       this._dismissed = true; this._row.nextOfferAt = this.state.simTime + 15; this._hide();
       return { ok: true, ownershipChanged: false };
     }
     if (!this._row.discovered) return fail('Discover the original tender first.');
-    if (!['unload', 'recovery'].includes(action) && !this._near(C.offerRange)) return this._feedback(fail('Come back alongside Morrowlight.'));
+    if (!['unload', 'recovery', 'restock'].includes(action) && !this._near(C.offerRange)) return this._feedback(fail('Come back alongside Morrowlight.'));
     this._busy = true;
     let result;
     try { result = this._act(action, options); }
@@ -422,6 +445,11 @@ export const salvageTender = {
     }
     if (action === 'recovery') {
       this.physical.capture(row); return this._course('crate', options.sourceId);
+    }
+    if (action === 'restock') {
+      const result = this.physical.restockRecovery(row, options.bodyId, options.generation, options.sourceId, options.commodityId);
+      if (result.ok) { row.revision++; this._remember('provision', `Packed 1 ${commodityName(options.commodityId)} from your hold into the original pod. No supply purchased or created.`); }
+      return result;
     }
     if (action === 'unload') {
       const original = this.physical.recoveryBodies(row).find(e => e.id === options.bodyId);
