@@ -268,6 +268,12 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   let transportClosed = false;
   let frameHandle = null;
   let last = nowMs();
+  // Elapsed wall time accumulated since the last PRESENTED frame. The playout fence must advance
+  // by this, not by the last rAF callback's dt: at a 30 Hz cap on a 60 Hz display every other
+  // callback is a cap-skip, and feeding 16.7 ms per present made the fence's clock run at 0.9x
+  // wall speed (0.45x on 120 Hz), drift back through the pack ring and pin to the oldest pack.
+  // That was the world-only staircase the owner saw while the DOM HUD kept animating.
+  let presentedElapsedS = 0;
   let lifecycleState = requestedState();
   let restoreTarget = LOOP_LIFECYCLE_STATES.FOREGROUND_VISIBLE;
   let suspended = !isPresentingState(lifecycleState);
@@ -303,6 +309,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   const presentationFrame = {
     sequence: 0,
     frameDt: 0,
+    // Wall time accumulated since the previous PRESENTED frame (cap-skip callbacks included).
+    presentElapsedS: 0,
     // Unclamped rAF delta for this present. Presentation consumes the loop-clamped frameDt;
     // the fence uses this only to recognise a hidden-tab/occlusion re-entry (E1).
     rawFrameDt: 0,
@@ -1350,6 +1358,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     const rawFrameDt = frameDt;
     if (frameDt > 0.25) frameDt = 0.25;
     last = now;
+    if (!restoring) presentedElapsedS += frameDt;
     // Declared at frame scope so the finally's frame-truth ingest can read the present cost
     // even when the present threw (the value then is the last measured one, or 0).
     let presentationMs = 0;
@@ -1421,6 +1430,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       }
       const skipPresentation = destroyed || suspended
         || (!restoring && lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING);
+      // A skipped/restored callback must not carry loading or pause wall time into the first
+      // presented flight frame. Cap-skips still accumulate (skipPresentation stays false).
+      if (skipPresentation || restoring) presentedElapsedS = 0;
       // Player frame-cap (Settings → Video). Sim keeps its 60 Hz leftover; only the GPU present
       // is gated. Fractional debt accrues from elapsed time: a busy 60 Hz display delivering
       // 30 callbacks/s must still present all of them under a 30 fps cap. Counting callbacks
@@ -1478,6 +1490,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       if (capSkip) diagnostics.frameCapSkips++;
       if (!skipPresentation && !capSkip) {
         try {
+          presentationFrame.presentElapsedS = presentedElapsedS;
+          presentedElapsedS = 0;
           presentationMs = presentLastCompletedSnapshot(frameDt, restoring, perf, fixedDt, rawFrameDt);
           renderedSnapshot = true;
         } catch (error) {

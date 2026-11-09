@@ -149,12 +149,12 @@ test('a borderline sustained miss parks at a shallow band instead of grinding to
 });
 
 test('raster relief raises the adaptive floor — combined scale stays readable', () => {
-  assert.equal(adaptiveFloorForCombinedScale(0.6, 1), 0.6,
-    'no relief means the plain tier floor');
-  assert.ok(Math.abs(adaptiveFloorForCombinedScale(0.6, 0.8) - 0.75) < 1e-9,
-    'hitch relief 0.8 lifts the discrete floor to 0.75');
-  assert.ok(Math.abs(adaptiveFloorForCombinedScale(0.5, 0.72) - (0.6 / 0.72)) < 1e-9,
-    'integrated + hitch relief lifts the integrated floor to ~0.83');
+  assert.equal(adaptiveFloorForCombinedScale(0.6, 1), 0.9,
+    'no relief means the combined readability floor');
+  assert.equal(adaptiveFloorForCombinedScale(0.6, 0.8), 1,
+    'hitch relief 0.8 lifts the discrete floor to the native scale');
+  assert.equal(adaptiveFloorForCombinedScale(0.5, 0.72), 1,
+    'integrated + hitch relief lifts the integrated floor to native');
 
   const controller = createAdaptiveResolution({ floor: 0.5 });
   controller.syncScale(0.5);
