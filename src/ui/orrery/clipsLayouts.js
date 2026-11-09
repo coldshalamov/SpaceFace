@@ -64,11 +64,12 @@ ${R} > .orr-clips__actions > * { position:relative; z-index:1; }
   ${R}:has(.orr-clip__plate.is-ghost) > .orr-clips__rail { top:0 !important; }
 }
 
-/* ≤400 tall (640×360, 844×390): even at top:0 the 380px rail put the Hand (y244-291) on the readout
+/* ≤430 tall (640×360, 844×390, 640×401): even at top:0 the 380px rail put the Hand (y244-291) on the readout
    (y231-266 at 640×360) and the arc's foot behind the FLY TO MAKE ONE lamp (y294). The rail climbs
    another 60px so the Hand ends above the readout and the arc above the lamp; layoutGhosts trims the
-   middle ghost's lift to match so it stays inside the top edge. */
-@media (max-height: 400px) {
+   middle ghost's lift to match so it stays inside the top edge. The same held up to ~430 tall
+   (640×401, 800×401, 1280×430: Hand on the readout), so the cut is 430. */
+@media (max-height: 430px) {
   ${R}:has(.orr-clip__plate.is-ghost) > .orr-clips__rail { top:-60px !important; }
 }
 
@@ -82,13 +83,18 @@ ${R} > .orr-clips__actions > * { position:relative; z-index:1; }
   ${R} .orr-clip__plate.is-ghost .orr-clip__sub { font-size:12px !important; letter-spacing:.04em !important; }
 }
 
-/* Phone landscape ≤400 tall (560×400, 560×360, 390×400): the phone rail (top:14%) came after the
-   ≤400 raise and won, while layoutGhosts still applied the ≤400 lifts, so the ghosts dropped
+/* Phone landscape ≤430 tall (560×400, 560×360, 390×400): the phone rail (top:14%) came after the
+   ≤430 raise and won, while layoutGhosts still applied the ≤400 lifts, so the ghosts dropped
    ~56px under the readout. The raise is restated after the phone rule so both agree, and the
    readout line sits 8px lower (84→76px) so the side ghosts' subs clear its band at 560×360. */
-@media (max-width: 560px) and (max-height: 400px) {
+@media (max-width: 560px) and (max-height: 430px) {
   ${R}:has(.orr-clip__plate.is-ghost) > .orr-clips__rail { top:-60px !important; }
   ${R}:has(.orr-clip__plate.is-ghost) > .orr-clips__readline { bottom:76px !important; }
+}
+/* 320-tall phones (560×320 … 375×320): the readout line takes another 6px (lamp still 10px clear)
+   and layoutGhosts lifts the side ghosts 32px more and drops their subtitles, so they end above it. */
+@media (max-width: 560px) and (max-height: 340px) {
+  ${R}:has(.orr-clip__plate.is-ghost) > .orr-clips__readline { bottom:70px !important; }
 }
 `;
 
