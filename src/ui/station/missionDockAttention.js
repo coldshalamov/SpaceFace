@@ -1,6 +1,9 @@
 // Pure station-dock attention for missions. UI-only: no bus, no DOM, no sim mutation.
 // Decides which mission to surface when the player docks and whether the Missions tab
 // should pulse / auto-open so they are not hunting for "Contracts".
+import { releasableContractUnits, sellableCargoQuantity } from '../../systems/cargo.js';
+import { unsatisfiedRequiredConditions } from '../../data/contractClauses.js';
+import { partialDeliverySettlement, isMutationRecovery, mutationPartialSettlement } from '../../systems/missionShared.js';
 
 const TURN_IN_TYPES = new Set([
   'cargo_delivery',
@@ -26,13 +29,39 @@ function boardOffers(state, stationId) {
   return (board && Array.isArray(board.slots) ? board.slots : []).filter(Boolean);
 }
 
-function cargoReady(state, m) {
-  const p = (m && m.params) || {};
-  if (!p.cmdtyId) return true;
-  const need = Math.max(1, Number(p.qty) || 1);
+function berthReadiness(state, m) {
+  const blocked = unsatisfiedRequiredConditions(m);
+  if (blocked.length) return { ready: false, reason: blocked[0].pendingText || 'Required contract condition is not yet satisfied' };
+  let p = (m && m.params) || {};
+  if (m.type === 'escort' || !p.cmdtyId) return { ready: true };
+  const tracked = m.preloadedCargo === true && (Number(p.qty) > 0 || p.sealAccounted === true);
+  // Docking accounts an old/uninitialized seal before checking delivery. Mirror that
+  // normalization in a read-only view; stale remaining/delivered fields are not authority.
+  if (tracked && p.sealAccounted !== true && Number(p.qty) > 0) {
+    p = { ...p, sealedRemaining: Math.floor(Number(p.qty)),
+      sealedDelivered: Math.max(0, Math.floor(Number(p.sealedDelivered) || 0)), sealAccounted: true };
+    m = { ...m, params: p };
+  }
+  const need = tracked
+    ? Math.max(0, Math.floor(Number(p.sealedRemaining) || 0))
+    : Math.max(1, Number(p.qty) || 1);
   const items = state && state.player && state.player.cargo && state.player.cargo.items;
-  const have = Number(items && items[p.cmdtyId]) || 0;
-  return have >= need;
+  // The assay sample is the owner's explicit persistent-cargo exception. Other jobs
+  // cannot spend a sibling contract's seals, even when raw hold totals look sufficient.
+  const have = tracked ? releasableContractUnits(state, m)
+    : m.storyTag === 'campaign47a:b0:recovery' && p.cmdtyId === 'cmdty_47a_assay_sample'
+      ? Number(items && items[p.cmdtyId]) || 0
+      : sellableCargoQuantity(state, p.cmdtyId);
+  if (need === 0) return { ready: tracked && Number(p.sealedDelivered) > 0 };
+  if (have >= need) return { ready: true };
+  const partial = partialDeliverySettlement(m, state)
+    || (m.type === 'salvage_retrieval' && isMutationRecovery(m)
+      ? mutationPartialSettlement(have, need, m.reward_cr) : null);
+  if (partial && partial.deliverQty > 0) return {
+    ready: true,
+    reason: `Short delivery: ${partial.deliverQty}/${need} units can settle on the recorded terms`,
+  };
+  return { ready: false, reason: 'At destination — required cargo is missing or reserved for another contract' };
 }
 
 function titleOf(m) {
@@ -61,13 +90,14 @@ export function missionDockAttention(state, stationId) {
 
   // 1) Destination berth for delivery-style work (ready to settle, or stuck missing cargo).
   const atDest = active.filter((m) => m.destStationId === stationId && TURN_IN_TYPES.has(m.type));
-  const readyTurnIns = atDest.filter((m) => m.type === 'escort' || cargoReady(state, m));
+  const readiness = new Map(atDest.map((m) => [m, berthReadiness(state, m)]));
+  const readyTurnIns = atDest.filter((m) => readiness.get(m).ready);
   const ready = (tracked && readyTurnIns.find((m) => String(mid(m)) === tracked)) || readyTurnIns[0];
   if (ready) {
     return {
       focusMissionId: String(mid(ready)),
       kind: 'turn_in',
-      reason: 'Mission objective can settle at this berth',
+      reason: readiness.get(ready).reason || 'Mission objective can settle at this berth',
       autoOpen: true,
       badge: '!',
       title: titleOf(ready),
@@ -79,7 +109,7 @@ export function missionDockAttention(state, stationId) {
     return {
       focusMissionId: String(mid(stuck)),
       kind: 'active',
-      reason: 'At destination — required cargo is not in the hold',
+      reason: readiness.get(stuck).reason || 'At destination — required cargo is not in the hold',
       autoOpen: true,
       badge: '!',
       title: titleOf(stuck),
