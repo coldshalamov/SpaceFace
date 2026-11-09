@@ -31,6 +31,7 @@ contexts/servers. Preserve concurrent edits; no reset/restore/clean/stash or bro
 | Distant ship admission | Terra terminal01a1abb6-176d | lod.js, wholeShipLodPolicy.js; partsLibrary prewarm/admission/controller; renderer ship LOD callsite; focused tests | Complete initial-tier admission and safe promotion, not just later sibling swaps. Exact packaged families; Dart currently has none |
 | Shadow-off retained batches | Sol terminal01a1abab-bc8b | renderer effective depth; rigidOpaqueBatch.js; precompile warm fence; rigidBatchShadowGate.js; focused tests | Complete meaningful superseded-preparation check and fail-closed consumer guards; 20 ejected instances observed, no FPS claim |
 | Hot ship package consolidation | Terra terminal01a1abb6-1771 | ignored shard-3/rigid-ship-merge/ only until exact source grant | Safe same-motion-owner Dart/Rig merging prototype with part/hook/material/socket/collision preservation; rare static barge alone not priority |
+| INFERENCE 20 + 20 omitted-kind units (2026-11-08) | zcode controller + its implementer agents | per-unit exact paths, each committed as its own unit as soon as its focused test passes; new `test/inf-*.test.mjs`; never renderer.js, lod.js, wholeShipLodPolicy.js, partsLibrary.js, rigidOpaqueBatch*, precompile.js, vfx.js tier construction, residencyManager.js, bloom.js, `src/core/*`, onboarding, `src/data/encounters/*`, input/bindings | Controller records units in inference-memory.json + lane boards and regenerates localization catalogs once at the end; this row is removed then |
 
 Current approved GPU source is bad06a4b250a: encounter context6943, v23 referencesd79f, berth
 readers4aa334, starter previewdf437, finite material152650, fracture clearance95464, debrief59233,
@@ -265,3 +266,22 @@ socket names through `data/modelTruth.js`. One call site in the parts admission 
 <!-- Resolved 2026-11-06: the ships.js TDZ was a stale report. -->
 **Resolved (controller):** `src/systems/ships.js` imports clean; the Ship Sheet, UI bench and boot
 route all load it. The earlier circular-import report no longer reproduces.
+
+<!-- Lane A OVERNIGHT (gates & integration) — claims, 2026-11-08 → 2026-11-09 -->
+## Lane A OVERNIGHT — gates & integration (`.overnight-dispatch/LANE_A_GATES_AND_INTEGRATION.md`)
+
+| Work | Owner | Exact write set | Note |
+|---|---|---|---|
+| WS1a E2 economy slicing | Lane A | `src/core/simCoreFlags.js`, `src/systems/economy.js`, `src/core/catchupPolicy.js`, `scripts/probe-sim-step.mjs`, `test/references/47a-save-v27`, `test/47a.telemetry.*save-v27*.expected.json`, `package.json` check pins, `campaigns/E2/*` | Record flag-on as next versioned reference, fresh matched A/B on clean tree, flip default if 8/12/25 ms bars met |
+| WS1b E6 admit() + after-run | Lane A | `src/render/residencyManager.js`, `src/render/bloom.js`, `src/render/renderer.js` (manager wiring callsite only — preserve the foreign `isStartupPackagedContactEntity` hunk and any other foreign hunk), `test/residency-manager.test.mjs`, `test/bloom-unready-draw-guard.test.mjs`, `scripts/probe-frame-solid.mjs`, `scripts/lib/frameSolidSampler.mjs`, `campaigns/E6/*` | Unified admit() one visible writer; never edit lod.js/wholeShipLodPolicy/partsLibrary/rigidOpaqueBatch/precompile/vfx (Terra/Sol) |
+| WS1c E1/E10/E5 receipts | Lane A | `campaigns/E1/*`, `campaigns/E5/*`, `campaigns/E10/*`, evidence JSON/PNG under them | Browser 1× recapture, stall-harness cadence verify, Electron shell probe, frame-truth JSON export |
+| WS2 known reds | Lane A | `test/tethys-tally-passage.test.mjs`, `test/swarm-feedback-priority.test.mjs`, `test/hud-flight-attention.test.mjs`, `scripts/check-new-game-layout.mjs`, `scripts/test-tier.mjs` + the source files each red's diagnosis names (claimed per-file before edit), `campaigns/Q1/pq-158-memo.md` | One fix per red, diagnosed not guessed; pq-158 is memo-only |
+| WS3 PR queue | Lane A | each ui-polish PR's real merge delta (ui/station/kit CSS + screen files per PR), `assets/ui/` budget digests via `capture-ui-matrix.mjs`, `gh` merge/port commits | Land ascending 412→422; `--walk` each touched screen; dot drafts reviewed not merged where lane-owned |
+| WS4 Q-lane | Lane A | `campaigns/Q1/*` (decisions executed in own write set), `campaigns/Q2/*`, `campaigns/Q5/*`, `test/tiers/*`, source-text pin tests converted/deleted per ruling 7 | test:fast stays <2 min; route walks file material defects only |
+| Dawn report | Lane A | `campaigns/_OVERNIGHT_A/DAWN_REPORT.md`, `EXECUTION_STATUS_2026-11-06.md` top section | Last act |
+
+Lane A does not edit: SWARM lane-F file list (`swarm/LANES.md`), `src/ui/screens/crucible.js`,
+`crucibleDraft.js`, `broodPresentation.js`, `src/render/vfx/*`, `feel.js`, camera files, Terra/Sol
+claims above, Lane B's set (onboarding/first-hour, `src/ui/ship/partFacts.js` + preview rig,
+`src/data/encounters/`, `src/audio/`, X5 context rows), `design/program/vm-drop/`. Determinism
+goldens are versioned by `scripts/reference.mjs` only, never hand-edited.

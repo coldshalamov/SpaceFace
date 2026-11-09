@@ -836,7 +836,7 @@ test('admission retires a disposed retained batch before warming its authored so
   }
 });
 
-test('active non-vertex material color changes invalidate the retained copy', async () => {
+test('a source albedo change demotes only that leaf and never leaves a stale sibling', async () => {
   const scene = new THREE.Scene();
   const { root, a, b } = makeRoot();
   scene.add(root);
@@ -850,10 +850,14 @@ test('active non-vertex material color changes invalidate the retained copy', as
   assert.equal(result.status, 'active');
   a.material.color.setHex(0xe0a040);
   const afterMutation = await controller.sync(root);
-  assert.equal(afterMutation.status, 'idle',
-    'a changed source albedo must not leave a stale shared batch material active');
-  assert.equal(a.layers.mask, 1);
-  assert.equal(b.layers.mask, 1);
+  // A and B are separate material clones with matching color at admission. A's new albedo is
+  // rendered by A's direct draw; B's retained copy still carries the admitted color, so the
+  // shared batch material is not stale for B. A whole-cohort rollback here relinked the batch
+  // program after warm-up and was the stress-gate's new-program failure.
+  assert.equal(afterMutation.status, 'active');
+  assert.equal(afterMutation.rollbacks | 0, 0, 'the cohort was not rolled back');
+  assert.equal(a.layers.mask, 1, 'the changed leaf is direct');
+  assert.equal(b.layers.mask, 0, 'the unchanged sibling stays retained');
 
   controller.dispose();
   a.geometry.dispose();
@@ -1151,7 +1155,7 @@ test('root removal restores only departed sources and retains the surviving batc
   }
 });
 
-test('new roots stay direct until a quiet membership window triggers one full replan', async () => {
+test('new roots stay direct for the active cohort lifetime', async () => {
   const scene = new THREE.Scene();
   const first = makeRoot();
   const second = makeRoot();
@@ -1165,27 +1169,30 @@ test('new roots stay direct until a quiet membership window triggers one full re
   await controller.sync([first.root]);
   const originalBatch = scene.children.find((child) => child.userData?.spacefaceRigidOpaqueBatch);
   assert.ok(originalBatch);
-  const initial = controller.getDiagnostics();
-  assert.equal(initial.activations, 1);
+  assert.equal(controller.getDiagnostics().activations, 1);
 
-  for (let i = 0; i < RETAINED_BATCH_MEMBERSHIP_QUIET_FRAMES - 1; i++) {
+  // Additions stay direct instead of triggering a quiet-window full replan. That replan disposed
+  // and relinked the batch program every few seconds in live traffic.
+  for (let i = 0; i < RETAINED_BATCH_MEMBERSHIP_QUIET_FRAMES * 3; i++) {
     await controller.sync([first.root, second.root]);
-    assert.equal(second.a.layers.mask, 1, 'new roots remain on the direct path while streaming settles');
+    assert.equal(second.a.layers.mask, 1, 'new roots remain on the direct path');
     assert.equal(second.b.layers.mask, 1);
+    assert.equal(first.a.layers.mask, 0, 'the original cohort stays retained');
     assert.equal(scene.children.includes(originalBatch), true);
     assert.equal(controller.getDiagnostics().activations, 1);
+    assert.equal(controller.getDiagnostics().rollbacks, 0);
   }
 
-  const rebuilt = await controller.sync([first.root, second.root]);
+  // Once the original cohort has no roots left, it reforms from the current roots.
+  const rebuilt = await controller.sync([second.root]);
   const diagnostics = controller.getDiagnostics();
   assert.equal(rebuilt.status, 'active');
-  assert.equal(diagnostics.status, 'active');
-  assert.equal(diagnostics.rollbacks, 1, 'one quiet rebuild replaces the retained cohort');
+  assert.equal(diagnostics.rollbacks, 1, 'one empty-cohort rebuild replaces the retired cohort');
   assert.equal(diagnostics.activations, 2);
-  assert.equal(diagnostics.instances, 4);
-  assert.equal(first.a.layers.mask, 0);
-  assert.equal(first.b.layers.mask, 0);
-  assert.equal(second.a.layers.mask, 0, 'the settled root enters only after residency preparation');
+  assert.equal(diagnostics.instances, 2);
+  assert.equal(first.a.layers.mask, 1);
+  assert.equal(first.b.layers.mask, 1);
+  assert.equal(second.a.layers.mask, 0, 'the current root enters after residency preparation');
   assert.equal(second.b.layers.mask, 0);
   assert.equal(scene.children.includes(originalBatch), false);
 

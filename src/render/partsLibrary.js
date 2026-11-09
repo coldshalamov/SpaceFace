@@ -9353,6 +9353,14 @@ export async function prepareAuthoredVisualPipelines(root, options = {}, phaseOb
   await pacePolicyWalk(() => configureRealtimeCanopyMaterials(root));
   await pacePolicyWalk(() => configureTransparentSinglePassSurfaces(root));
   await pacePolicyWalk(() => canonicalizeAuthoredProgramState(root));
+  // Repeat-archetype early lane: the three canonicalization walks above have already fixed this
+  // root's program axes. If every program it needs is linked from an earlier admission, the
+  // remaining specimen/twin mounts are cache-hit binds and must not each pay a present yield.
+  // One yield for the whole group replaces four to six frames of serialized queue wall-time.
+  // The late check below still covers axes that only became provable after those mounts.
+  const residentProgramLaneEarly = options.yieldBetweenGpuStages === true
+    && canonicalProgramsLinked(root);
+  if (residentProgramLaneEarly) options.yieldBetweenGpuStages = false;
   // Ship cohort twin warm: a family that first appears mid-flight registers its canonical
   // specimen here — after the opening cook's registry sweep has run — so without this
   // twin its USE_BATCHING variant links inside the cohort's activation compile. One
