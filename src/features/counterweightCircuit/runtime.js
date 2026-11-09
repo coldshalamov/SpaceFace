@@ -42,6 +42,7 @@ export function createCounterweightCircuitSystem() {
   const unsubs = [];
 
   // Live attempt — the FSM itself is a plain-data object that serializes whole.
+  let practiceConsent = null;
   let attempt = null;              // {eventId, attemptId, practice, fsm, def, cohort:Map, shift}
   let ghostRec = null;             // recorder for the running attempt
   let registrarInRange = false;
@@ -271,8 +272,20 @@ export function createCounterweightCircuitSystem() {
     state.counterweightCircuitOffer = spec;
     bus?.emit('counterweightCircuit:offer', spec);
   }
+  function validPracticeConsent() {
+    const c = practiceConsent, p = player();
+    return !!c && c.attempt === attempt && !attempt.practice && !restoring
+      && ['staged', 'running'].includes(attempt.fsm.phase) && state.mode === 'flight'
+      && !state.ui?.docked && inVenueSector() && playerDist() <= VENUE_RANGE_WU
+      && p === c.player && p?.alive !== false && p.occupantGeneration === c.generation
+      && state.simTime >= c.at && state.simTime - c.at <= 30
+      && c.bodies.every(([e, generation]) => state.entities.get(e.id) === e
+        && e.alive !== false && e.occupantGeneration === generation);
+  }
   function emitProgressOffer(force = false) {
     if (!attempt) return;
+    if (validPracticeConsent()) return;
+    practiceConsent = null;
     if (!force && state.simTime - lastProgressAt < 0.5) return;
     lastProgressAt = state.simTime;
     const fragile = attempt.def.bodies.find((b) => b.fragile);
@@ -288,6 +301,7 @@ export function createCounterweightCircuitSystem() {
     emitOffer(resultOfferSpec(result, { canReview }));
   }
   function closeOffers() {
+    practiceConsent = null;
     offerGeneration += 1;
     state.counterweightCircuitOffer = null;
     bus?.emit('counterweightCircuit:close', { id: 'counterweight' });
@@ -386,7 +400,33 @@ export function createCounterweightCircuitSystem() {
       else emitOffer({ ...offer, detail: `${offer.detail || ''}\nReturn to the registrar to choose another course.` });
       return;
     }
-    if (action === 'menu') {
+    if (action === 'practiceContinue') {
+      const p = player();
+      if (!attempt || attempt.practice || attempt.admissionPending || restoring || !p
+        || state.mode !== 'flight' || state.ui?.docked || !inVenueSector()
+        || playerDist() > VENUE_RANGE_WU || !['staged', 'running'].includes(attempt.fsm.phase)) return;
+      practiceConsent = { attempt, player: p, generation: p.occupantGeneration, at: state.simTime,
+        bodies: [...attempt.cohort.values()].map(e => [e, e.occupantGeneration]) };
+      if (!validPracticeConsent()) { practiceConsent = null; return; }
+      emitOffer({ id: 'counterweight:practiceConsent', kind: 'contact', sender: 'Circuit Registrar',
+        headline: 'KEEP FLYING AS PRACTICE?',
+        detail: 'Forfeit this attempt’s payout permanently. Times, medals and course unlocks still count. This attempt will not save a ghost. The same loads, lines, damage and clock stay live; nothing is reset, repaired or refunded. The course does not pause while you decide. This choice expires after 30 seconds.',
+        choices: [{ id: 'practiceConfirm', label: 'Forfeit payout · continue as practice' },
+          { id: 'practiceBack', label: 'Back · keep current attempt' }] });
+    } else if (action === 'practiceConfirm' || action === 'practiceBack') {
+      const valid = validPracticeConsent();
+      practiceConsent = null;
+      if (action === 'practiceConfirm' && valid) {
+        // Commit both saved authorities before any publication callback.
+        attempt.practice = true;
+        attempt.fsm.practice = true;
+        ghostRec = null;
+        state.counterweightCircuitGhost = null;
+        r.revision += 1;
+      }
+      emitProgressOffer(true);
+      publishView(true);
+    } else if (action === 'menu') {
       emitOffer(registrarOfferSpec(state, { attempt }));
     } else if (action === 'events' || action === 'courseList') {
       emitOffer({ id: 'counterweight:events', kind: 'contact', sender: 'Circuit Registrar',
@@ -572,6 +612,9 @@ export function createCounterweightCircuitSystem() {
       if (COUNTERWEIGHT_EVENT_BY_ID[eventId] && row().records[eventId]?.paid === true) {
         emitCommissionCue(bus, 'commission.counterweight.payout', key, VENUE_SECTOR_ID, state.tick);
       }
+    });
+    for (const event of ['mode:changed', 'sim:pause', 'dock:docked']) on(event, () => {
+      if (practiceConsent) { practiceConsent = null; closeOffers(); }
     });
     on('save:restoring', () => { restoring = true; admissionGeneration += 1; closeOffers(); });
     on('save:loaded', afterContinue);
