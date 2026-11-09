@@ -125,7 +125,7 @@ test('earned relay preserves prior originals, public offer, individual receipts 
   assert.equal(job.cargo.length,2);assert.equal(job.obstacleIds.length,4);
   assert.ok(priorIds.every(id=>h.state.entities.get(id)?.data.rigWorkshopCargo.delivered));
   for(const [i,r] of job.cargo.entries()){
-   const e=h.state.entities.get(r.id);assert.equal(e.mass,18);assert.equal(e.hullMax,90);
+   const e=h.state.entities.get(r.id);assert.equal(e.mass,i === 0 ? 18 : 36);assert.equal(e.hullMax,i === 0 ? 90 : 180);
    e.pos={x:job.destination.x-30,z:job.destination.z+i*20};e.vel={x:0,z:0};e.angVel=0;
    r.travelled=200;r.collectedByRig=h.w.rigs[0].id;
   }
@@ -139,11 +139,11 @@ test('earned relay preserves prior originals, public offer, individual receipts 
   system.destroy();
  }finally{h.close();cold.close();}
 });
-test('native relay original travels to the gantry under rig restraint and pays its real condition once',async()=>{
+for (const cargoIndex of [0, 1]) test(`native relay original ${cargoIndex + 1} travels to the gantry under rig restraint and pays its real condition once`,async()=>{
  const h=await nativeFixture();try{
   h.physics.ensureTemplates(h.w);h.step(3);const jobs=createWorkshopJobs({state:h.state,bus:h.bus,physics:h.physics});earnPriorOrders(h,jobs);
   const accepted=jobs.accept(h.w,'relay');assert.equal(accepted.ok,true,accepted.reason);h.step(3);
-  const job=accepted.job,rig=h.w.rigs[0],record=job.cargo[0],cargo=h.state.entities.get(record.id);
+  const job=accepted.job,rig=h.w.rigs[0],record=job.cargo[cargoIndex],cargo=h.state.entities.get(record.id);
   const holder=rig.partIds.map(id=>h.state.entities.get(id)).find(e=>e.data.rigWorkshop.partType==='cradle');
   stageUnloadedRig(h,rig,holder,cargo);assert.equal(h.physics.captureCargo(h.w,rig.id,cargo.id).ok,true);h.step(3);
   // Take the authored wide route around the south side, then approach below the gantry.

@@ -14,9 +14,13 @@ export const RIG_JOB_DEFS = Object.freeze([
     count: 2, mass: 190, radius: 5.5, hull: 320, pay: 300, asset: 'place_cargo_pod_hazmat',
     pickup: { x: -760, z: 250 }, destination: { x: -350, z: -480 } }),
   Object.freeze({ id: 'relay', title: 'The Quiet Relay', rig: 'cradle', requires: Object.freeze(['needle', 'kiln']),
-    description: 'The receiving crew has watched your survey and kiln loads arrive. Now two fragile relay packs need moving from a retired dispatch rack to the night-shift gantry. These are light loads, not another test of horsepower.',
+    description: 'The receiving crew has watched your survey and kiln loads arrive. Now a sensitive signal coil and its protective relay housing need moving from a retired dispatch rack to the night-shift gantry. The coil is light but easily damaged; the housing is heavier and tougher.',
     lesson: 'Take one original at a time if your cradle is broad. The freight throat is narrow, but the outside route stays open. Keep the packs clear of the frames; damage reduces their receipt.',
     count: 2, mass: 18, radius: 6, hull: 90, pay: 220, asset: 'place_cargo_pod_standard',
+    loads: Object.freeze([
+      Object.freeze({ label: 'Signal coil', mass: 18, hull: 90 }),
+      Object.freeze({ label: 'Protective relay housing', mass: 36, hull: 180 }),
+    ]),
     pickupRadius: 145, throatHalfWidth: 48, frameRadius: 24, westbound: true,
     pickup: { x: 780, z: 650 }, destination: { x: -620, z: 680 } }),
 ]);
@@ -43,7 +47,7 @@ export function rigJobAvailability(w, id) {
 export function createWorkshopJobs({ state, bus, physics, feedback = () => {} }) {
   const bodies = w => (state.entityList || []).filter(e => e.data?.rigWorkshopOwner === w.ownerId && e.data?.rigWorkshopJob);
 
-  function bodySpec(w, job, role, at, { radius = 10, mass = 50, hull = 300, placeId, dynamic = true, token } = {}) {
+  function bodySpec(w, job, role, at, { radius = 10, mass = 50, hull = 300, placeId, dynamic = true, token, label } = {}) {
     return {
       type: 'payload', pos: { ...at }, vel: { x: 0, z: 0 }, rot: 0, angVel: 0,
       radius, mass, hull, hullMax: hull, collides: true, team: 0, ownerId: state.playerId,
@@ -52,7 +56,7 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
         inertiaY: mass * radius * radius * 0.5, material: dynamic ? 'cargo' : 'wreck', ccd: true, revision: 0 },
       data: { rigWorkshopOwner: w.ownerId, rigWorkshopJob: job.id, rigWorkshopRole: role,
         persistenceOwner: 'rigWorkshop', transientSector: false, sectorId: w.bench.sectorId,
-        homeSectorId: w.bench.sectorId, name: role === 'cargo' ? `${job.title} · ${token}` : `${job.title} · ${role}`,
+        homeSectorId: w.bench.sectorId, name: role === 'cargo' ? `${job.title} · ${label || token}` : `${job.title} · ${role}`,
         placeId, placeTargetRadius: radius, poi: true, playerOwned: dynamic,
         salvagePool: {}, payloadType: 'rig_workshop',
         ...(role === 'cargo' ? { rigWorkshopCargo: { jobId: job.id, token, ownerId: w.ownerId, delivered: false } } : {}),
@@ -90,7 +94,10 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
         const across = (i - (def.count - 1) / 2) * 39, behind = 55 + (i % 2) * 28;
         const at = def.westbound ? { x: job.pickup.x + behind, z: job.pickup.z + across }
           : { x: job.pickup.x + across, z: job.pickup.z + behind };
-        const e = spawn(bodySpec(w, job, 'cargo', at, { radius: def.radius, mass: def.mass * (id === 'kiln' && i === 1 ? 1.4 : 1), hull: def.hull, placeId: def.asset, token }));
+        const load = def.loads?.[i];
+        const e = spawn(bodySpec(w, job, 'cargo', at, { radius: def.radius,
+          mass: load?.mass ?? def.mass * (id === 'kiln' && i === 1 ? 1.4 : 1),
+          hull: load?.hull ?? def.hull, placeId: def.asset, token, label: load?.label }));
         if (!e) throw new Error('A cargo body could not enter the world.');
         job.cargoIds.push(e.id);
         job.cargo.push({ id: e.id, token, origin: { ...at }, collectedByRig: null, travelled: 0, paid: false, lost: false });
