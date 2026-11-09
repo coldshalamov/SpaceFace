@@ -200,6 +200,9 @@ function cellKey(cx, cz) {
 // mover/rock caches — rebuilt into retained arrays every tick, never reallocated
 const ROCK_CACHE_MAX = 64;
 const MOVER_CACHE_MAX = 96;
+// Champion mass never displaces the original hull/remain budget.
+const BOSS_CHUNK_CACHE_MAX = 8;
+const MOVER_STORAGE_MAX = MOVER_CACHE_MAX + BOSS_CHUNK_CACHE_MAX;
 
 const EMPTY_FIELDS = [];
 
@@ -297,21 +300,35 @@ export function createBroodEngine(deps = {}) {
   const rockVZ = new Float32Array(ROCK_CACHE_MAX);
   const rockCredited = new Uint8Array(ROCK_CACHE_MAX);
   let rockCount = 0;
-  const movX = new Float32Array(MOVER_CACHE_MAX);
-  const movZ = new Float32Array(MOVER_CACHE_MAX);
-  const movVX = new Float32Array(MOVER_CACHE_MAX);
-  const movVZ = new Float32Array(MOVER_CACHE_MAX);
-  const movMass = new Float32Array(MOVER_CACHE_MAX);
-  const movRad = new Float32Array(MOVER_CACHE_MAX);
-  const movIsPlayer = new Uint8Array(MOVER_CACHE_MAX);
-  const movIsHead = new Uint8Array(MOVER_CACHE_MAX);
-  const movCredited = new Uint8Array(MOVER_CACHE_MAX);
+  const movX = new Float32Array(MOVER_STORAGE_MAX);
+  const movZ = new Float32Array(MOVER_STORAGE_MAX);
+  const movVX = new Float32Array(MOVER_STORAGE_MAX);
+  const movVZ = new Float32Array(MOVER_STORAGE_MAX);
+  const movMass = new Float32Array(MOVER_STORAGE_MAX);
+  const movRad = new Float32Array(MOVER_STORAGE_MAX);
+  const movIsPlayer = new Uint8Array(MOVER_STORAGE_MAX);
+  const movIsHead = new Uint8Array(MOVER_STORAGE_MAX);
+  const movCredited = new Uint8Array(MOVER_STORAGE_MAX);
   // W-BLOOM-LOW remains movers: splashRadius/glueS the moving remain carries, and its entity
   // id so combat can retire the body once the burst or the stick is spent. -1 is "no remain".
-  const movRemainId = new Int32Array(MOVER_CACHE_MAX);
-  const movSplashR = new Float32Array(MOVER_CACHE_MAX);
-  const movGlueS = new Float32Array(MOVER_CACHE_MAX);
+  const movRemainId = new Int32Array(MOVER_STORAGE_MAX);
+  const movSplashR = new Float32Array(MOVER_STORAGE_MAX);
+  const movGlueS = new Float32Array(MOVER_STORAGE_MAX);
   let movCount = 0;
+  // Chunk-only observations: previously published mover behavior is unchanged.
+  let bossChunkStart = 0, bossChunkResolvedTick = -1, chunkEpoch = 0;
+  const chunkEntities = new Array(MOVER_STORAGE_MAX).fill(null);
+  const cellObservedTick = new Float64Array(CAP);
+  const cellObservedLife = new Uint32Array(CAP);
+  const cellObservedX = new Float32Array(CAP), cellObservedZ = new Float32Array(CAP);
+  const cellObservedVX = new Float32Array(CAP), cellObservedVZ = new Float32Array(CAP);
+  const bossChunkTargetPhysical = new Uint8Array(CAP);
+  const chunkFromX = new Float32Array(MOVER_STORAGE_MAX);
+  const chunkFromZ = new Float32Array(MOVER_STORAGE_MAX);
+  const chunkSwept = new Uint8Array(MOVER_STORAGE_MAX);
+  const chunkBornTick = new Float64Array(CAP);
+  let chunkHistory = new WeakMap();
+  const chunkSweepFrom = { x: 0, z: 0 }, chunkSweepTo = { x: 0, z: 0 };
   let nextAttackAt = 0;
   let spawnRequested = false;
   let nextSpawnAttemptAt = 0;
@@ -684,6 +701,12 @@ export function createBroodEngine(deps = {}) {
   // --- lifecycle --------------------------------------------------------------------------
 
   function clear(reason = 'clear') {
+    chunkEpoch++;
+    chunkHistory = new WeakMap();
+    bossChunkResolvedTick = -1;
+    bossChunkTargetPhysical.fill(0);
+    cellObservedTick.fill(-1);
+    chunkBornTick.fill(Infinity);
     if (reason === 'new_game' || reason === 'run_ended') bankPlayed = false;
     bank = null;
     spawnRequestedBankAttempted = false;
@@ -1065,6 +1088,7 @@ export function createBroodEngine(deps = {}) {
     timer[slot] = 0;
     seedPhase[slot] = rng() * Math.PI * 2;
     serial[slot] = nextSerial++;
+    chunkBornTick[slot] = finite(getState()?.tick);
     swellStage[slot] = 0;
     swellUntil[slot] = 0;
     primeUntil[slot] = 0;
@@ -1214,12 +1238,37 @@ export function createBroodEngine(deps = {}) {
     return readRecentImpulseProvenance(entity, state.tick)?.actorId === playerId;
   }
 
+  // Observe native chunk motion, never infer a path across a gap, recycle or teleport.
+  function observeBossChunk(e, tick, x, z, radius, dx, dz) {
+    let history = chunkHistory.get(e);
+    if (!history || history.generation !== e.occupantGeneration || history.radius !== radius) {
+      history = { tick: tick, x: x, z: z,
+        fromX: x, fromZ: z, swept: false,
+        vx: dx, vz: dz,
+        generation: e.occupantGeneration, radius: radius };
+      chunkHistory.set(e, history);
+    } else if (history.tick !== tick) {
+      const consecutive = history.tick + 1 === tick;
+      history.fromX = consecutive ? history.x : x;
+      history.fromZ = consecutive ? history.z : z;
+      const travel = Math.hypot(x - history.x, z - history.z);
+      const possibleTravel = Math.max(Math.hypot(history.vx, history.vz),
+        Math.hypot(dx, dz)) * DT + 0.01;
+      history.swept = consecutive && travel <= possibleTravel;
+      history.tick = tick; history.x = x; history.z = z;
+      history.vx = dx; history.vz = dz;
+    }
+    return history;
+  }
+
   function cacheRocks(state) {
     rockCount = 0;
     const list = indexedTypeScan(state, 'asteroids');
     for (let i = 0; i < list.length && rockCount < ROCK_CACHE_MAX; i++) {
       const e = list[i];
       if (!e || e.alive === false || !e.pos) continue;
+      // The broad fallback must not also treat champion movers as terrain.
+      if (e.type === 'wreck' && e.data?.swarmBossChunk === true) continue;
       if (e.collides === false) continue;
       // The Tendril head is never terrain — it plows the flock through the MOVER cache like
       // any heavy body. Under the index it never reaches this list anyway; on the un-indexed
@@ -1237,6 +1286,8 @@ export function createBroodEngine(deps = {}) {
 
   function cacheMovers(state) {
     movCount = 0;
+    chunkSwept.fill(0);
+    chunkEntities.fill(null);
     headFound = false;
     const list = indexedShipLikeScan(state);
     const playerId = state.playerId;
@@ -1291,6 +1342,154 @@ export function createBroodEngine(deps = {}) {
       movGlueS[movCount] = finite(rem.glueS);
       movCount += 1;
     }
+    bossChunkStart = movCount;
+    cacheBossChunks(state);
+  }
+
+  const bossChunkCandidates = Array.from({ length: BOSS_CHUNK_CACHE_MAX }, () =>
+    ({ entity: null, body: null, history: null, distance: Infinity }));
+
+  function bossChunkTargetEligible(slot, simTime) {
+    if (!alive[slot] || phase[slot] === BROOD_PHASE_LATCHED || phase[slot] === BROOD_PHASE_WRAPPED) return false;
+    const def = liveFamilyDef[family[slot]];
+    if (def?.burrows && (phase[slot] === BROOD_PHASE_BURIED || phase[slot] === BROOD_PHASE_WINDUP)) return false;
+    // The ordinary flock's due fuse runs before contact. Keep that death's cause/owner.
+    if (phase[slot] !== BROOD_PHASE_DASH && !def?.rooted && !def?.bounces
+      && ((swellStage[slot] === 1 && simTime >= swellUntil[slot])
+        || (primeUntil[slot] && simTime >= primeUntil[slot]))) return false;
+    return true;
+  }
+
+  function bossChunkTargetObserved(state, slot) {
+    if (!bossChunkTargetPhysical[slot] || chunkBornTick[slot] >= state.tick || cellObservedTick[slot] + 1 !== state.tick
+      || cellObservedLife[slot] !== serial[slot]) return false;
+    const possible = Math.max(Math.hypot(cellObservedVX[slot], cellObservedVZ[slot]),
+      Math.hypot(vx[slot], vz[slot])) * DT + 0.01;
+    return Math.hypot(px[slot] - cellObservedX[slot], pz[slot] - cellObservedZ[slot]) <= possible;
+  }
+
+  function cacheBossChunks(state) {
+    if (!swarmPilotHasActed(state)) return;
+    let count = 0;
+    const wrecks = indexedTypeScan(state, 'wrecks');
+    for (let i = 0; i < wrecks.length; i++) {
+      const e = wrecks[i];
+      if (!e || e.type !== 'wreck' || e.alive === false || e.collides === false
+        || e.data?.swarmBossChunk !== true || e.data.physicalRole !== 'throw_mass'
+        || !Number.isFinite(e.pos?.x) || !Number.isFinite(e.pos?.z)
+        || !Number.isFinite(e.vel?.x) || !Number.isFinite(e.vel?.z)) continue;
+      const body = resolvePhysicsBodySpec(e);
+      if (!body?.dynamic || body.material === 'massline_sensor' || body.material === 'sensor'
+        || !(Number.isFinite(body.mass) && body.mass >= BROOD_PLOW_MIN_MASS)
+        || !(Number.isFinite(body.radius) && body.radius > 0)) continue;
+      const history = observeBossChunk(e, state.tick, e.pos.x, e.pos.z, body.radius, e.vel.x, e.vel.z);
+      const travel = history.swept ? Math.hypot(e.pos.x - history.fromX, e.pos.z - history.fromZ) / DT : 0;
+      // Resting trophies are not weapons. Preserve a genuine fast crossing that just braked.
+      if (Math.max(travel, Math.hypot(e.vel.x, e.vel.z)) < BROOD_PLOW_MIN_SPEED) continue;
+      const fromX = history.swept ? history.fromX : e.pos.x;
+      const fromZ = history.swept ? history.fromZ : e.pos.z;
+      let distance = Infinity;
+      // If many old chunks are still in flight, retain the paths nearest the actual
+      // living crowd, not the first eight wreck IDs or whichever is nearest the pilot.
+      // This ranks candidates only; the existing per-cell contact law decides every hit.
+      for (let slot = 0; slot < CAP; slot++) {
+        if (!bossChunkTargetEligible(slot, finite(state.simTime))) continue;
+        const matched = history.swept && bossChunkTargetObserved(state, slot);
+        const dx = matched ? fromX - cellObservedX[slot] : e.pos.x - px[slot];
+        const dz = matched ? fromZ - cellObservedZ[slot] : e.pos.z - pz[slot];
+        const mx = matched ? e.pos.x - fromX - (px[slot] - cellObservedX[slot]) : 0;
+        const mz = matched ? e.pos.z - fromZ - (pz[slot] - cellObservedZ[slot]) : 0;
+        const len2 = mx * mx + mz * mz;
+        const t = len2 > 0 ? Math.max(0, Math.min(1, -(dx * mx + dz * mz) / len2)) : 0;
+        distance = Math.min(distance, Math.hypot(dx + mx * t, dz + mz * t)
+          - body.radius - liveFamilyRadius[family[slot]]);
+      }
+      for (let slot = 0; slot < TENDRIL_SEG_MAX; slot++) {
+        if (!segAlive[slot]) continue;
+        // Segments keep endpoint-only contact, so relevance claims no future path.
+        distance = Math.min(distance, Math.hypot(e.pos.x - segX[slot], e.pos.z - segZ[slot])
+          - body.radius - TENDRIL_SEG_RADIUS);
+      }
+      if (!Number.isFinite(distance) || (count === BOSS_CHUNK_CACHE_MAX
+        && distance >= bossChunkCandidates[count - 1].distance)) continue;
+      let at = Math.min(count, BOSS_CHUNK_CACHE_MAX - 1);
+      const candidate = bossChunkCandidates[at];
+      candidate.entity = e; candidate.body = body; candidate.history = history; candidate.distance = distance;
+      while (at > 0 && bossChunkCandidates[at - 1].distance > distance) {
+        bossChunkCandidates[at] = bossChunkCandidates[at - 1]; at--;
+      }
+      bossChunkCandidates[at] = candidate;
+      count = Math.min(BOSS_CHUNK_CACHE_MAX, count + 1);
+    }
+    for (let i = 0; i < count; i++) {
+      const { entity: e, body, history } = bossChunkCandidates[i];
+      chunkEntities[movCount] = e;
+      movX[movCount] = e.pos.x; movZ[movCount] = e.pos.z;
+      movVX[movCount] = e.vel.x; movVZ[movCount] = e.vel.z;
+      movMass[movCount] = body.mass; movRad[movCount] = body.radius;
+      movIsPlayer[movCount] = 0; movIsHead[movCount] = 0;
+      movCredited[movCount] = playerOwnsBody(state, e) ? 1 : 0;
+      movRemainId[movCount] = -1; movSplashR[movCount] = 0; movGlueS[movCount] = 0;
+      chunkFromX[movCount] = history.fromX; chunkFromZ[movCount] = history.fromZ;
+      chunkSwept[movCount] = history.swept ? 1 : 0;
+      movCount++;
+    }
+    // The selection is transient, never a second owner or an entity lifetime pin.
+    for (const candidate of bossChunkCandidates) {
+      candidate.entity = null; candidate.body = null; candidate.history = null;
+    }
+  }
+
+  // Champion chunks compare the SAME observed interval for both participants,
+  // before this tick advances the cells. Never pair last tick's native flight with
+  // the target's next movement, or test the same chunk again in the later plow pass.
+  function sweepBossChunks(state) {
+    if (bossChunkResolvedTick === state.tick) return true;
+    bossChunkResolvedTick = state.tick;
+    const run = liveSwarmRun(state), epoch = chunkEpoch;
+    for (let i = 0; i < CAP; i++) {
+      if (!bossChunkTargetEligible(i, finite(state.simTime))) continue;
+      const tx = px[i], tz = pz[i], rad = liveFamilyRadius[family[i]];
+      const cx = tx - cellObservedX[i], cz = tz - cellObservedZ[i];
+      const observed = bossChunkTargetObserved(state, i);
+      let first = Infinity, contact = -1, hitX = tx, hitZ = tz;
+      for (let m = bossChunkStart; m < movCount; m++) {
+        const entity = chunkEntities[m];
+        if (!entity || entity.alive === false || state.entities?.get?.(entity.id) !== entity
+          || chunkHistory.get(entity)?.generation !== entity.occupantGeneration) continue;
+        let at = null;
+        if (chunkSwept[m] && observed) {
+          const mx = movX[m] - chunkFromX[m], mz = movZ[m] - chunkFromZ[m];
+          const rx = mx - cx, rz = mz - cz, floor = BROOD_PLOW_MIN_SPEED * DT;
+          if (mx * mx + mz * mz >= floor * floor && rx * rx + rz * rz >= floor * floor) {
+            chunkSweepFrom.x = chunkFromX[m] - cellObservedX[i];
+            chunkSweepFrom.z = chunkFromZ[m] - cellObservedZ[i];
+            chunkSweepTo.x = movX[m] - tx; chunkSweepTo.z = movZ[m] - tz;
+            at = segmentCircleT(chunkSweepFrom, chunkSweepTo, 0, 0, movRad[m] + rad);
+          }
+        }
+        // First observations and newly born lives still have real current contact,
+        // but cannot inherit a path sampled before they existed.
+        let endpoint = false;
+        if (at == null) {
+          const dx = tx - movX[m], dz = tz - movZ[m], reach = rad + movRad[m];
+          const rx = movVX[m] - vx[i], rz = movVZ[m] - vz[i];
+          if (dx * dx + dz * dz <= reach * reach
+            && rx * rx + rz * rz >= BROOD_PLOW_MIN_SPEED * BROOD_PLOW_MIN_SPEED) {
+            at = 1; endpoint = true;
+          }
+        }
+        if (at == null || at >= first) continue;
+        first = at; contact = m;
+        hitX = endpoint ? tx : cellObservedX[i] + cx * at;
+        hitZ = endpoint ? tz : cellObservedZ[i] + cz * at;
+      }
+      if (contact < 0) continue;
+      kill(i, 'collision', hitX, hitZ, !!movCredited[contact] || creditUntil[i] > finite(state.simTime));
+      if (epoch !== chunkEpoch || run !== liveSwarmRun(state)
+        || run?.phase !== 'active' || state.mode !== 'flight') return false;
+    }
+    return true;
   }
 
   function rebuildGrid() {
@@ -1412,6 +1611,18 @@ export function createBroodEngine(deps = {}) {
     creditedCount.fill(0);
     killCredits.fill(0);
     killScore.fill(0);
+
+    if (!sweepBossChunks(state)) return false;
+    if (run !== liveSwarmRun(state) || run.phase !== 'active' || state.mode !== 'flight') return false;
+    // Record the same interval's start before virtual movement; next step compares
+    // this real observation to the current position, alongside native payload history.
+    for (let i = 0; i < CAP; i++) {
+      if (!alive[i]) continue;
+      bossChunkTargetPhysical[i] = bossChunkTargetEligible(i, simTime) ? 1 : 0;
+      cellObservedTick[i] = state.tick; cellObservedLife[i] = serial[i];
+      cellObservedX[i] = px[i]; cellObservedZ[i] = pz[i];
+      cellObservedVX[i] = vx[i]; cellObservedVZ[i] = vz[i];
+    }
 
     const fields = fieldList() || EMPTY_FIELDS;
     const dt = DT;
@@ -1827,7 +2038,7 @@ export function createBroodEngine(deps = {}) {
 
       // -- deaths by plow: a heavy body moving fast through the pack. The throw, the swing,
       //    the ship itself — whatever the massline latches and releases is exactly such a body.
-      for (let m = 0; m < movCount; m++) {
+      for (let m = 0; m < bossChunkStart; m++) {
         const dx = px[i] - movX[m];
         const dz = pz[i] - movZ[m];
         const rr = movRad[m] + rad;
