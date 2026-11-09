@@ -232,6 +232,19 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
 @media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
   ${P} .sxb-crown .sxb-vitals { gap:4px 6px !important; }
 }
+/* 901-1100 wide x 461-640 tall: the head is a 32vh scrollport, and the handoff's sentence, held to the column left of
+   Dismiss (~275px), took a second line that fell under the Market panel ("Hold is empty. Check Market prices or" and
+   then nothing). Dismiss only needs the title's row, so the sentence runs the full width under it and reads on one
+   line. The crown beside it spans the tape and handoff rows and its extra height was shared between them, which
+   pushed a one-line brief 14px down again; the handoff row is the flexible one now, so the tape and brief pack under
+   the title and the whole sentence ends ~8px inside the head's visible band at 960x540. Dismiss stays on top in its own cell; the title row
+   still ends before it. */
+@media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
+  ${P} .sxb-berth.dp-frame__head { grid-template-rows:auto auto auto 1fr auto !important; }
+  ${P} .sxb-handoff > .sxb-next { grid-column:1 / -1 !important; }
+  ${P} .sxb-handoff > .sxb-next__x { position:relative; z-index:1; }
+  ${P} .sxb-handoff > .sxb-next > .sxb-next__t { max-width:calc(100% - 120px) !important; }
+}
 /* 960–1100 wide × 461–640 tall: the seven tabs (glyphs folded, 6px keys) are ~560px, so tabs, COMMS · HELP and UNDOCK
    (~860px with gaps) stand on ONE row of the 896px+ foot instead of the tab rail taking a row of its own. The row it
    gave back (~70px) goes to the body, so the Market's Buy/Sell stage and table are no longer cut to a sliver at 960x540.
