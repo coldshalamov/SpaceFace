@@ -2932,6 +2932,33 @@ export function rivalScavengerLineFor(kind, rng) {
   return table[pickIndex(rng, table.length)];
 }
 
+// Spill vultures (traffic spill convergence). The open-lane cousin of the rival
+// cutter: the arrival names the claim, the player's scoop earns one warning pass,
+// and the getaway names the take. One line each, per vulture.
+export const SPILL_VULTURE_REGISTER = Object.freeze({
+  dispatch: [
+    'Fresh spill on the scope. Moving for the pods — first cut is mine.',
+    'Cargo in the black, unclaimed. Coming about.',
+    'That wreck just opened its hold. Mine before it drifts.',
+  ],
+  race: [
+    'Those pods are spoken for. Back off, pilot.',
+    'I saw the spill first! That is theft of salvage.',
+    'Scoop my claim again and we have a problem.',
+  ],
+  departed: [
+    'Hold secured. The spill fed the vultures, like it always does.',
+    'Pods banked. You scooped the scraps — enjoy.',
+    'Full hold outbound. Slow hands eat vacuum.',
+  ],
+});
+
+export function spillVultureBarkFor(kind, rng) {
+  const table = (kind && Object.hasOwn(SPILL_VULTURE_REGISTER, kind)) ? SPILL_VULTURE_REGISTER[kind] : null;
+  if (!table || !table.length) return '';
+  return table[pickIndex(rng, table.length)];
+}
+
 // A freight raider clearing its escape leash (encounterScripts freight-custody). The thief
 // names its own take as it goes — one line per hull, spoken over the getaway transponder burn.
 export const FREIGHT_RAIDER_ESCAPE_REGISTER = Object.freeze([
@@ -3237,6 +3264,8 @@ export default {
   BAR_GREETING_BARKS,
   BAR_APPROACH_BARKS,
   RIVAL_SCAVENGER_REGISTER,
+  SPILL_VULTURE_REGISTER,
+  spillVultureBarkFor,
   FREIGHT_RAIDER_ESCAPE_REGISTER,
   GRANDEE_REGISTER,
   sectorGreetingBarkFor,

@@ -19,6 +19,7 @@ import {
   patrolInterventionHailFor,
   pursuitBarkFor,
   rivalScavengerLineFor,
+  spillVultureBarkFor,
   sectorGreetingBarkFor,
   surrenderBarkFor,
   trafficRoleHail,
@@ -833,6 +834,28 @@ export const barkDirector = {
       this._speakEventLine(entity, 'rival-departed', 'wreckEcology:departed',
         (_f, i) => rivalScavengerLineFor('departed', i));
     };
+    // The spill vulture (traffic spill convergence) speaks the same race as the
+    // wreck-field cutter, one line each: the claim on arrival, the warning pass
+    // when the player scoops first, and the getaway that names the take.
+    this._onVultureArrived = (payload) => {
+      const entity = this._spillVultureFrom(payload);
+      if (!entity) return;
+      this._speakEventLine(entity, 'vulture-claim', 'vultures:dispatch',
+        (_f, i) => spillVultureBarkFor('dispatch', i));
+    };
+    this._onVultureRace = (payload) => {
+      const entity = this._spillVultureFrom(payload);
+      if (!entity) return;
+      this._speakEventLine(entity, 'vulture-race', 'vultures:race',
+        (_f, i) => spillVultureBarkFor('race', i));
+    };
+    this._onVultureDeparted = (payload) => {
+      if (!payload || !(Number(payload.holdQty) > 0)) return;
+      const entity = this._spillVultureFrom(payload);
+      if (!entity) return;
+      this._speakEventLine(entity, 'vulture-departed', 'vultures:departed',
+        (_f, i) => spillVultureBarkFor('departed', i));
+    };
     this._onFulfillmentProvoked = (payload) => this._speakFulfillmentProvoked(payload || {});
     this._onAdministrativeRouting = (payload) => this._speakAdministrativeRouting(payload || {});
     if (this.bus && typeof this.bus.on === 'function') {
@@ -858,6 +881,9 @@ export const barkDirector = {
       this.bus.on('wreckEcology:scavenged', this._onRivalCut);
       this.bus.on('wreckEcology:rivalPressured', this._onRivalPressured);
       this.bus.on('wreckEcology:departed', this._onRivalDeparted);
+      this.bus.on('vultures:dispatch', this._onVultureArrived);
+      this.bus.on('vultures:race', this._onVultureRace);
+      this.bus.on('vultures:departed', this._onVultureDeparted);
       this.bus.on('law:reportIncidentReceipt', this._onLawReportReceipt);
       this.bus.on('encounter:patrolIntervened', this._onPatrolIntervened);
       this.bus.on('harasser:disengaged', this._onHarasserDisengaged);
@@ -1125,6 +1151,16 @@ export const barkDirector = {
     const entity = this.state.entities && this.state.entities.get
       && this.state.entities.get(payload.entityId);
     if (!entity || !entity.data || entity.data.wreckEcologyRole !== 'scavenger') return null;
+    return entity;
+  },
+
+  // The spill vulture speaks from its own lifecycle events (traffic spill
+  // convergence); resolve the hull from any of them, or this observer is silent.
+  _spillVultureFrom(payload) {
+    if (!payload || !this.state) return null;
+    const entity = this.state.entities && this.state.entities.get
+      && this.state.entities.get(payload.entityId);
+    if (!entity || !entity.data || !entity.data.spillVulture) return null;
     return entity;
   },
 
@@ -3111,6 +3147,9 @@ export const barkDirector = {
       if (this._onRivalCut) this.bus.off('wreckEcology:scavenged', this._onRivalCut);
       if (this._onRivalPressured) this.bus.off('wreckEcology:rivalPressured', this._onRivalPressured);
       if (this._onRivalDeparted) this.bus.off('wreckEcology:departed', this._onRivalDeparted);
+      if (this._onVultureArrived) this.bus.off('vultures:dispatch', this._onVultureArrived);
+      if (this._onVultureRace) this.bus.off('vultures:race', this._onVultureRace);
+      if (this._onVultureDeparted) this.bus.off('vultures:departed', this._onVultureDeparted);
       if (this._onLawReportReceipt) this.bus.off('law:reportIncidentReceipt', this._onLawReportReceipt);
       if (this._onPatrolIntervened) this.bus.off('encounter:patrolIntervened', this._onPatrolIntervened);
       if (this._onHarasserDisengaged) this.bus.off('harasser:disengaged', this._onHarasserDisengaged);
@@ -3179,6 +3218,9 @@ export const barkDirector = {
     this._onRivalCut = null;
     this._onRivalPressured = null;
     this._onRivalDeparted = null;
+    this._onVultureArrived = null;
+    this._onVultureRace = null;
+    this._onVultureDeparted = null;
     this._onLawWarrantReleased = null;
     this._onLawDistressRaised = null;
     this._onCounterHintSpawn = null;

@@ -11,6 +11,7 @@ export { CERES_TENDER_SLOT_ID, CERES_ACTIVITY_CAST, CERES_ACTIVITY_CAST_BY_SLOT_
 import { ownsWinnowRecoveryHull, normalizeWinnowRecovery, admitWinnowRecovery, reconcileWinnowRecovery, stepWinnowRecovery, winnowPickupReceipt, winnowSpillReceipt, winnowKilledReceipt, winnowDestroyedReceipt } from '../world/vestaWinnowRecovery.js';
 import { cancelAnvilSpillRendezvous } from '../world/anvilSpillRecovery.js';
 import { bindRestoredCharonSupply, materializeCharonSupply, ownsCharonSupplyHull, charonSupplyRoundBoundary, reconcileCharonSupply, stepCharonSupply, releaseCharonSupply, normalizeCharonSupply, charonSupplyPickupReceipt, charonSupplySpillReceipt, charonSupplyDestroyed } from '../world/charonSalvageSupply.js';
+import { spillVulturesSpillReceipt, spillVulturesPickupReceipt, spillVulturesDestroyed, stepSpillVultures, releaseSpillVultures } from '../world/spillVultures.js';
 import { releaseTallyPause, tallyPassageTarget, isTallyPassageJob } from './tethysTallyPassage.js';
 import { TETHYS_TALLY, tallyMarks, tallyRouteDuration } from '../data/tethysTallyPassage.js';
 import {claimsTallyAssessor} from '../world/tallyThreeIdentity.js';
@@ -1800,6 +1801,10 @@ export const traffic = {
     this.bus.on('pickup:collected', (p) => this._onCeresDisabledHaulerPickup(p || {}));
     this.bus.on('pickup:collected', (p) => this._onCeresClampPodPickup(p || {}));
     this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {}));
+    // Spill vultures: a violence-spilled pod is a contest, not free loot on the floor.
+    this.bus.on('freight:cargoSpilled', p => spillVulturesSpillReceipt(this, p || {}));
+    this.bus.on('pickup:collected', p => spillVulturesPickupReceipt(this, p || {}));
+    this.bus.on('entity:destroyed', p => spillVulturesDestroyed(this, p || {}));
     this.bus.on('well:haulerDragged', (p) => this._onWellHaulerDragged(p || {}));
     this.bus.on('uniqueWreck:resolved', (p) => this._onCeresTenderWreckResolved(p || {}));
     this.bus.on('survivorPod:boarded', (p) => this._onSurvivorPodRescued(p || {}));
@@ -3640,6 +3645,9 @@ export const traffic = {
     this._resetTransientCausalLedgers(true);
     this._resetCeresCausalChain('cleanup');
     this._clearCivilianViolenceMemory();
+    // The spill convergence is sector-scoped transient work: a hard exit folds it
+    // rather than letting a vulture chase a spill into the next sector.
+    releaseSpillVultures(this);
     // The core system exposes helpers.removeEntity (marks alive=false; the renderer/physics GC it).
     // Fall back to a direct alive=false if the helper shape differs across builds.
     const helper = this.helpers && (this.helpers.removeEntity || this.helpers.despawnEntity);
@@ -3892,6 +3900,7 @@ export const traffic = {
     }
     reconcileWinnowRecovery(this);
     reconcileCharonSupply(this);
+    stepSpillVultures(this);
     syncCeresWorkfleetHardware(this);
     this._stepAnvilWork(dt, state);
     this._stepPocketMeteorPass(dt, state);
