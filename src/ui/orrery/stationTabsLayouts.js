@@ -2174,6 +2174,12 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .orr-ind-chain .orr-chain__label.is-below .orr-chain__unit { max-width:100% !important; line-height:1.15 !important; }
   ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) { max-width:42% !important; }
   ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb > .orr-chain__wayout { max-width:12em !important; }
+  /* the input's Source in market and the ring's way out are station buttons here, so they read as buttons:
+     no chevron cap (STATION_STANDARD section 5), inset off their own border, and a wrapped label breaks
+     between words instead of a cramped centred pair. */
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__verb > .orr-chain__source { display:block !important; box-sizing:border-box; width:fit-content !important; max-width:100% !important; min-height:0 !important; margin-top:5px !important; padding:5px 9px !important; line-height:14px !important; text-align:left !important; text-wrap:balance; white-space:normal !important; overflow-wrap:normal !important; word-break:keep-all !important; letter-spacing:.06em !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb > .orr-chain__wayout { padding:5px 9px !important; line-height:14px !important; text-align:left !important; letter-spacing:.06em !important; }
+  ${D} .orr-ind-chain .orr-chain__verb > :is(.orr-chain__source, .orr-chain__wayout)::before { content:none !important; }
 }
 /* Factions at 700×460-class (≤800 wide, ≤640 tall): the one-band head let the standing column sit
    beside the authority kicker, and at this width the two printed on each other (D223). The kicker
