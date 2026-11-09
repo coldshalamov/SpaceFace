@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "d306e3aef3303449bc65a8bc0fb1b0b29942ab91c380e48bbc8a530fd678c6fb",
+  "uiSourceDigest": "41c9b89ea482db85497f428fcd7656f2e7fe9aae94509e7a55d586db2bbb3153",
   "uiSourceFiles": {
     "index.html": "9675d8b65c4623cc9aa48ad94c670479f78ce1b0f2d05166fa9a52b44d509e04",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -390,7 +390,7 @@
     "src/ui/station/screens/industry.js": "b897671d13bb1cc8e222a20db07d8b3fc6bf252e41f9861a94c9ca2e87d0734b",
     "src/ui/station/screens/ledger.js": "7ab2763cfa6f4bcc2a075cc73bd858c120c22d735fb6f1941ce60da330e9be12",
     "src/ui/station/screens/market.js": "3c80037835310cfcdbd5f6d795aed1aad330fe48e785f693ef20bc6e27c3e100",
-    "src/ui/station/screens/shipworks.js": "5954860d9caef225ce57c2616c187eeb8f0da483076ccaee8a07315152366678",
+    "src/ui/station/screens/shipworks.js": "de0dd9e45572805f44695e682628b163bfb12a3801cb4d8cb774b3b795d50e62",
     "src/ui/station/serviceQuotes.js": "dacec3ad4d167a32feb197f7f7a8963081192ed0c77d9e883cbddbb5575b2ef3",
     "src/ui/station/starterWorkdayConversation.js": "47d395d5aba8ceeffeb98ae7c50776207f74c360107ae595332f24929449b50e",
     "src/ui/station/stationApp.js": "015c628e2ed7cecd42e68837d01d7bd84b7d844b1f48fc0dea31944ca8981870",
