@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-11-08",
+  "updated": "2026-11-09",
   "runs": [
     {
       "date": "2026-08-12",
@@ -131,84 +131,6 @@
     }
   ],
   "units": [
-    {
-      "id": "inf-near-miss-dodge",
-      "date": "2026-10-30",
-      "wf": "WF-16",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A dodged lethal round is on the Record now: one dodge stunt per fight window, the near miss finally rewarded",
-      "fingerprint": "verb=dodge,subject=near-miss,sector=flight,domain=wf-16",
-      "references": [],
-      "integration": "live",
-      "commit": "c906a62cb4b2",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-list-controls-field",
-      "date": "2026-10-30",
-      "wf": "WF-14",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "The help screen's search and chips now read as library instruments — rail field, scale-line words — instead of bordered boxes",
-      "fingerprint": "verb=see,subject=list-controls,sector=station,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "14fe521f8d7c",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-approach-hum-faction",
-      "date": "2026-10-30",
-      "wf": "WF-13",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "The approach hum now leans the station's own house — Concord rests, Reach leans, Choir hangs — so whose place it is reaches the ear before the ring",
-      "fingerprint": "verb=hear,subject=station-approach,sector=flight,domain=wf-13",
-      "references": [],
-      "integration": "live",
-      "commit": "e5ac485619fd",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-shove-panic",
-      "date": "2026-11-02",
-      "wf": "WF-02",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A hull the pilot tosses rattles for a beat — guns cold, one mayday over the band — and a rattled reinforcement caller now calls its screen at full hull.",
-      "fingerprint": "verb=react,subject=shoved-enemy,sector=flight,domain=wf-02",
-      "references": [],
-      "integration": "live",
-      "commit": "40d7b14def70",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-fled-wing-grudge",
-      "date": "2026-11-02",
-      "wf": "WF-02",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A wing the pilot broke and let run keeps its name on the ledger — the return encounter can bring that crew back, and the band says the name.",
-      "fingerprint": "verb=remember,subject=fled-wing,sector=piracy-flight,domain=wf-02",
-      "references": [],
-      "integration": "live",
-      "commit": "50e97d88b139",
-      "verification": "focused_green"
-    },
-    {
-      "id": "inf-crusher-bite",
-      "date": "2026-11-02",
-      "wf": "WF-15",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "The crusher jaws finally bite: a hull shoved into the anvil at crumple speed takes the collision law's own damage and the pilot who aimed the shove keeps the kill.",
-      "fingerprint": "verb=crush,subject=arena-hazard,sector=crucible,domain=wf-15",
-      "references": [],
-      "integration": "live",
-      "commit": "acf1f5ba2236",
-      "verification": "focused_green"
-    },
     {
       "id": "inf-scar-identity",
       "date": "2026-11-02",
@@ -1689,6 +1611,84 @@
       "references": [],
       "integration": "live",
       "commit": "c8ee2d0860c6",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-desk-compose",
+      "date": "2026-11-09",
+      "wf": "WF-17",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "The docked greeting concatenated every live clause - keeper, recognition, title, war or peace - with no cap or priority, and a house the kits never carried printed its stripped id; the desk now speaks keeper and recognition plus at most one news band (title outranks per-visit posture, war outranks peace), with honest nouns for unknown houses and grounds.",
+      "fingerprint": "verb=composes-one-band,subject=arrival-desk-greeting,sector=station-desk,domain=wf-17",
+      "references": [],
+      "integration": "live",
+      "commit": "8b2f2ed2207c",
+      "verification": "focused_green"
+    },
+    {
+      "id": "fix-machinery-storm-hull",
+      "date": "2026-11-09",
+      "wf": "WF-12",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Crossing the Cinder Sluice current or a machine mouth played no charge, static or shed while the identical charted storm did, because the machinery hazard receipts carried no hull id - they now name the player hull they measured and the family's authored storm severity.",
+      "fingerprint": "verb=names-the-hull,subject=machinery-hazard-receipts,sector=cinder-sluice+kill-machines,domain=wf-12",
+      "references": [],
+      "integration": "live",
+      "commit": "44f0ab92af3d",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-fit-milestone",
+      "date": "2026-11-09",
+      "wf": "WF-07",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A fit that taught the hull a new verb said only LOADOUT RECALCULATED - Shipworks now stamps the hull's capabilities before the fit and the equip receipt names the verb gained ('NEW · SCOOP CARGO WITHOUT STOPPING'), consumed once, TTL-bounded, never saved.",
+      "fingerprint": "verb=names-the-verb,subject=fit-receipt-capability,sector=shipworks,domain=wf-07",
+      "references": [],
+      "integration": "live",
+      "commit": "1adb3ada3841",
+      "verification": "focused_green"
+    },
+    {
+      "id": "words-ship-sheet-counts",
+      "date": "2026-11-09",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "The Ship Sheet and Settings wrote '(s)' - 'Put 1 drone(s) in the water', '1 confirmed kill(s)' under '1 KILLS', '1 cycle(s) since the last wash', '1 subscribed item(s)' - each is now a whole singular or plural sentence with agreeing labels.",
+      "fingerprint": "verb=removes-paren-plurals,subject=ship-sheet-settings-lines,sector=ship-sheet+settings,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "46989b1b2910",
+      "verification": "focused_green"
+    },
+    {
+      "id": "words-authored-names",
+      "date": "2026-11-09",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Two owners never looked up names: claims printed every good as its lowercase id ('10u ore iron', 'Need 3 more ore iron') and the cause ledger's hauler-lane why-line named berths as ids - both now read the authored catalog names ('Iron Ore', 'Ceres Refinery').",
+      "fingerprint": "verb=reads-catalog-names,subject=claims-and-cause-ledger-text,sector=claims+why-tooltips,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "32b2bf227363",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-chain-star",
+      "date": "2026-11-09",
+      "wf": "WF-16",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "The Crucible screen asked for 'a chain of 12' but the moment the live chain crossed it nothing said so - the announcer now calls CHAIN STAR · ×target once per zone per run, on ladder runs only (dailies, custom seeds, mutators and practice pay no stars and claim none).",
+      "fingerprint": "verb=calls-the-star,subject=zone-chain-target,sector=crucible-ladder,domain=wf-16",
+      "references": [],
+      "integration": "live",
+      "commit": "8f10d88762e9",
       "verification": "focused_green"
     }
   ],
