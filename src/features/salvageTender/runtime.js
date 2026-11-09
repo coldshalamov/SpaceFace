@@ -256,14 +256,24 @@ export const salvageTender = {
         choices.push(choice('restore_cash', `Buy installation supplies · ${next.cost.credits} cr`, { action: 'restore', payment: 'credits' }, gate.ok && q.canUseCredits, gate.reason || 'Insufficient credits.'));
       }
     } else if (this._page === 'cargo') {
-      detail = 'These three finite recovery loads contain scrap metal, salvage electronics and fuel cells. Match a crate’s speed within 75 wu to transfer what fits into your normal hold. Stage 3 clamps one of these original pods; unload it before using its supplies. Empty shells stay empty.';
+      detail = 'These three finite recovery loads contain scrap metal, salvage electronics and fuel cells. Match a crate’s speed within 75 wu to transfer what fits into your normal hold. Take one chosen supply from the nearest locker to leave room for what you need, or transfer a mixed load. Stage 3 clamps one of these original pods; unload it before using its supplies. Empty shells stay empty.';
       const crates = row.physical.recovery.filter(r => r.status !== 'lost' && r.manifest.totalQty > 0);
       for (const r of crates) {
         const e = this.physical.recoveryBodies(row).find(e => e.data.worldRecordId === r.id);
         const can = e && this.physical.canUnload(row, e.id);
         const contents = r.manifest.lines.filter(l => l.qty > 0).map(l => `${l.qty} ${commodityName(l.commodityId)}`).join(' · ');
-        choices.push(choice(`crate_${r.key}`, `${r.name} · ${r.manifest.totalQty} units`, { action: can?.ok ? 'unload' : 'recovery', bodyId: e?.id, sourceId: r.id }, true,
+        choices.push(choice(`crate_${r.key}`, `${r.name} · ${can?.ok ? 'transfer mixed load' : `${r.manifest.totalQty} units`}`, { action: can?.ok ? 'unload' : 'recovery', bodyId: e?.id, sourceId: r.id }, true,
           `${contents}. ${can?.ok ? 'Transfer what fits.' : 'Mark this original crate.'}`));
+      }
+      const nearby = this.physical.recoveryBodies(row).filter(e => this.physical.canUnload(row, e.id).ok)
+        .sort((a, b) => distance(this._player()?.pos, a.pos) - distance(this._player()?.pos, b.pos) || a.id - b.id)[0];
+      if (nearby) {
+        detail += ` Choose from ${row.physical.recovery.find(r => r.id === nearby.data.worldRecordId)?.name || 'the nearest original locker'}.`;
+        for (const line of nearby.data.cargoManifest.lines.filter(line => line.qty > 0)) {
+          choices.push(choice(`take_${line.commodityId}`, `Take 1 ${commodityName(line.commodityId)} · ${line.qty} left`,
+            { action: 'unload', bodyId: nearby.id, sourceId: nearby.data.worldRecordId,
+              commodityId: line.commodityId, quantity: 1 }));
+        }
       }
       if (row.stage >= 3) {
         const target = this._rackCandidate();
@@ -394,7 +404,11 @@ export const salvageTender = {
       this.physical.capture(row); return this._course('crate', options.sourceId);
     }
     if (action === 'unload') {
-      const result = this.physical.unloadRecovery(row, options.bodyId);
+      const original = this.physical.recoveryBodies(row).find(e => e.id === options.bodyId);
+      if (options.sourceId && original?.data.worldRecordId !== options.sourceId) return fail('The original locker changed. Inspect it again.');
+      const selection = options.commodityId !== undefined || options.quantity !== undefined
+        ? { commodityId: options.commodityId, quantity: options.quantity } : null;
+      const result = this.physical.unloadRecovery(row, options.bodyId, undefined, selection);
       if (result.ok) { row.revision++; this._remember('provision', `Recovered ${Object.values(result.moved).reduce((a, b) => a + b, 0)} units into your hold. ${result.remaining} remain in the original pod.`); }
       return result;
     }

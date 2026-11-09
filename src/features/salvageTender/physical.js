@@ -359,18 +359,23 @@ export function createTenderPhysical(ctx) {
     if (!(e.data.cargoManifest?.totalQty > 0)) return refusal('crate_empty');
     return { ok: true, bodyId: e.id, sourceId: r.id };
   }
-  function unloadRecovery(row, bodyId, cargoOwner = ctx.registry?.get?.('cargo')) {
+  function unloadRecovery(row, bodyId, cargoOwner = ctx.registry?.get?.('cargo'), selection = null) {
     if (busy) return refusal('transfer_busy');
     const gate = canUnload(row, bodyId); if (!gate.ok) return gate;
     const e = state.entities.get(bodyId), r = recordFor(row, gate.sourceId), before = e.data.cargoManifest;
+    if (selection !== null && (!COMMODITIES.includes(selection?.commodityId)
+      || !Number.isInteger(selection.quantity) || selection.quantity <= 0
+      || !before.lines.some(line => line.commodityId === selection.commodityId && line.qty > 0)))
+      return refusal('selected_supply_unavailable');
     const moved = {}; busy = true;
     try {
       for (const line of before.lines) {
-        if (line.qty <= 0) continue;
-        const requested = line.qty;
+        if (line.qty <= 0 || (selection && line.commodityId !== selection.commodityId)) continue;
+        const requested = selection ? Math.min(line.qty, selection.quantity) : line.qty;
+        const untouched = line.qty - requested;
         // Reserve the source before a cargo callback can re-enter. The ordinary cargo
         // owner returns its actual accepted quantity; untouched units stay in this body.
-        line.qty = 0;
+        line.qty = untouched;
         before.totalQty -= requested;
         r.manifest = clone(before);
         let accepted = 0;
@@ -380,7 +385,7 @@ export function createTenderPhysical(ctx) {
             : addCargo(state, line.commodityId, requested, { kind: 'salvage', sourceId: r.id });
         } finally {
           accepted = clamp(Math.floor(finite(accepted)), 0, requested);
-          line.qty = requested - accepted; before.totalQty += line.qty;
+          line.qty = untouched + requested - accepted; before.totalQty += requested - accepted;
           if (accepted) moved[line.commodityId] = accepted;
           r.manifest = clone(before);
         }
