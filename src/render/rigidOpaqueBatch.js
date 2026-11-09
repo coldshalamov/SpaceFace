@@ -37,6 +37,13 @@ export function isRetiredRigidOpaqueBatch(mesh) {
 // this many consecutive syncs observe the same root set, at which point one bounded full rebuild
 // can fold them in. Removals are handled immediately without rebuilding surviving instances.
 export const RETAINED_BATCH_MEMBERSHIP_QUIET_FRAMES = 8;
+// Source-state failures that only change what THIS leaf would draw can be demoted to a direct
+// draw without invalidating the cohort's geometry/program. Everything else (geometry, reparent,
+// render order, compile hooks, layer writers) still rolls the batch back.
+const PER_ENTRY_FALLBACK_CHECKS = new Set([
+  'uniforms-drift', 'color-drift', 'material-version', 'material-visibility',
+  'cast-shadow', 'receive-shadow',
+]);
 const _sceneInverse = new THREE.Matrix4();
 const _localMatrix = new THREE.Matrix4();
 const _sourceColor = new THREE.Color(1, 1, 1);
@@ -971,19 +978,6 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     deferredMembershipFrames = 0;
   };
 
-  const noteDeferredMembership = (roots) => {
-    const sameRoots = rootsEqual(deferredMembershipRoots, roots);
-    const sameTopology = sameRoots && topologyMatches(deferredMembershipTopology, roots);
-    if (!sameTopology) {
-      deferredMembershipRoots = roots.slice();
-      deferredMembershipTopology = captureTopology(roots);
-      deferredMembershipFrames = 1;
-    } else {
-      deferredMembershipFrames += 1;
-    }
-    return deferredMembershipFrames >= RETAINED_BATCH_MEMBERSHIP_QUIET_FRAMES;
-  };
-
   const refreshDiagnostics = () => {
     stats.batches = active ? active.batches.length : 0;
     stats.instances = active ? active.entries.length : 0;
@@ -1093,17 +1087,17 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     return true;
   };
 
-  // A shadow policy change belongs to its presentation owner, not to every retained ship.
-  // The changed owner's old batch lane is no longer safe, so restore that owner's direct
-  // primitives and retire only its instances. Other owners keep their valid retained copies.
-  const detachShadowChangedOwner = (batchOwner, root, restoreDirectSources) => {
-    if (!batchOwner || !root) return true;
+  // Retire a selected set of retained instances in place. A source that drifts (heat, material
+  // color, shadow policy) becomes a direct draw; the surviving cohort keeps its resident
+  // geometry and program. Full rollback stays only for topology/dead-texture failures.
+  const detachEntries = (batchOwner, shouldDetach, reason, restoreDirectSources) => {
+    if (!batchOwner) return true;
     let removedCount = 0;
     for (const entry of batchOwner.entries) {
-      if (entry.root !== root || entry.removed) continue;
+      if (entry.removed || !shouldDetach(entry)) continue;
       try { entry.batch.mesh.deleteInstance(entry.instanceId); }
       catch (_) { return false; }
-      if (restoreDirectSources && entry.source.layers && Number.isFinite(entry.layersMask)) {
+      if (restoreDirectSources && entry.source?.layers && Number.isFinite(entry.layersMask)) {
         entry.source.layers.mask = entry.layersMask;
       }
       if (entry.visible) entry.batch.visibleCount = Math.max(0, entry.batch.visibleCount - 1);
@@ -1139,9 +1133,15 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     if (restoreDirectSources) batchOwner.entryTopology = captureEntryTopology(batchOwner.entries);
     stats.eligibleMeshes = Math.max(0, stats.eligibleMeshes - removedCount);
     stats.directFallbackMeshes += removedCount;
-    stats.lastReason = 'shadow-owner-direct-fallback';
+    stats.lastReason = reason;
     return true;
   };
+
+  // A shadow policy change belongs to its presentation owner, not to every retained ship.
+  // The changed owner's old batch lane is no longer safe, so restore that owner's direct
+  // primitives and retire only its instances. Other owners keep their valid retained copies.
+  const detachShadowChangedOwner = (batchOwner, root, restoreDirectSources) =>
+    detachEntries(batchOwner, (entry) => entry.root === root, 'shadow-owner-direct-fallback', restoreDirectSources);
 
   const validateAndRefresh = () => {
     if (!active) return false;
@@ -1176,10 +1176,25 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     }
     let visibleCount = 0;
     const materialUniformStability = new Map();
+    const unstableEntries = [];
     _sceneInverse.copy(scene.matrixWorld || _sceneInverse.identity()).invert();
     for (const entry of active.entries) {
+      let failedCheck = null;
       if (!sourceStaticStateStable(entry, true, isRenderHookSafe, noteMutableMaterial,
-        materialUniformStability, noteUnstableCheck(entry), shadowDepthDisabled)) return false;
+        materialUniformStability, (name) => { if (failedCheck == null) failedCheck = name; },
+        shadowDepthDisabled)) {
+        // Material/tint drift only changes what this leaf would draw, so demote that one leaf to
+        // its authored direct draw and keep the resident cohort. Topology/program/geometry
+        // failures still take the full rollback: they invalidate the batch's shared layout or
+        // program, and a partial cohort would be unsound.
+        if (failedCheck && PER_ENTRY_FALLBACK_CHECKS.has(failedCheck)) {
+          unstableEntries.push(entry);
+          if (!stats.lastDetail) stats.lastDetail = `source-state:${failedCheck}`;
+          continue;
+        }
+        stats.lastDetail = `source-state:${failedCheck || 'unknown'}`;
+        return false;
+      }
       const source = entry.source;
       _localMatrix.multiplyMatrices(_sceneInverse, source.matrixWorld);
       if (matrixChanged(entry.matrix, _localMatrix.elements)) {
@@ -1203,6 +1218,18 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         entry.batch.visibleCount += visible ? 1 : -1;
         entry.visible = visible;
       }
+    }
+    if (unstableEntries.length > 0) {
+      const unstable = new Set(unstableEntries);
+      if (!detachEntries(active, (entry) => unstable.has(entry), 'source-state-direct-fallback', true)) {
+        stats.lastDetail = 'source-state-detach-failed';
+        return false;
+      }
+      // All instances retired means there is no retained cohort left; let the caller take the
+      // ordinary idle/rebuild path so status and diagnostics do not claim an empty batch.
+      if (active.entries.length === 0) return false;
+      visibleCount = 0;
+      for (const batch of active.batches) visibleCount += batch.visibleCount;
     }
     // The retained root disables aggregate frustum culling; Three's per-instance culling uses
     // each geometry's local sphere directly, so recomputing the aggregate sphere here would only
@@ -1248,20 +1275,22 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       } else {
         const hasNewRoots = normalized.some((root) => !rootInList(active.roots, root));
         if (hasNewRoots) {
-          // Keep the current cohort valid while streamed additions settle. Their direct leaves
-          // remain on the authored layer until one quiet window allows a safe full replan.
-          if (!noteDeferredMembership(normalized)) {
-            if (!topologyMatches(active.topology, active.roots)
-                ? (stats.lastDetail = 'root-topology', true)
-                : !validateAndRefresh()) {
-              disposeActive('source-state-changed');
-            } else {
-              stats.status = 'active';
-              return refreshDiagnostics();
-            }
+          // Additions stay direct for the active cohort's lifetime. Folding them in after an
+          // 8-frame quiet window rebuilt and relinked the whole batch every few seconds in live
+          // traffic (the stress gate's post-warmup program events). A few direct hulls cost far
+          // less than a 100-500 ms program relink; the cohort reforms from the current roots when
+          // it empties or the sector changes.
+          clearDeferredMembership();
+          if (active.entries.length === 0) {
+            disposeActive('cohort-empty');
+          } else if (!topologyMatches(active.topology, active.roots)
+              ? (stats.lastDetail = 'root-topology', true)
+              : !validateAndRefresh()) {
+            disposeActive('source-state-changed');
           } else {
-            clearDeferredMembership();
-            disposeActive('membership-quiet-rebuild');
+            stats.status = 'active';
+            stats.lastReason = 'new-roots-direct';
+            return refreshDiagnostics();
           }
         } else {
           clearDeferredMembership();
