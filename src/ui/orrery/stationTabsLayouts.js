@@ -2403,6 +2403,15 @@ ${T} .sx-ledger .st-ledger-board-head { text-wrap:balance; }
   ${D} .orr-ind-chain .orr-chain__reason { white-space:normal !important; overflow-wrap:anywhere !important; }
   ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) :is(.orr-chain__name, .orr-chain__count, .orr-chain__verb, .orr-chain__verb > *) { max-width:100% !important; box-sizing:border-box; white-space:normal !important; overflow-wrap:anywhere !important; }
 }
+/* Industry fab-chain on short desktops (1101+ wide, <=800 tall: 1280x720, 1366x768): the reason block hangs
+   ~88px over a 180px chain, so NEEDS REFINERY rose past the stage's top edge and was cut in half. It stands in
+   the blueprint head's right corner instead, set right like the <=1100 column, clear of the ring and product. */
+@media (min-width:1101px) and (max-height:800px) {
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) { left:auto !important; right:0 !important; top:-52px !important; width:auto !important; max-width:42% !important; white-space:normal !important; text-align:right !important; align-items:flex-end !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb { align-items:flex-end !important; text-align:right !important; }
+  ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb > .orr-chain__wayout { margin-left:auto !important; }
+  ${D} .orr-ind-chain .orr-chain__reason-leader { display:none !important; }
+}
 /* Missions on short desktops: the tracked job is the one row the player chose, so it keeps its height and
    the board window above (which already scrolls and snaps to a whole row) is the part that yields. */
 @media (min-width:1101px) and (max-height:800px) {
