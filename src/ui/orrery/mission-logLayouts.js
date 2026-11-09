@@ -67,7 +67,10 @@ export function injectMissionLogLayouts(doc = globalThis.document) {
   }
 
   @media (max-width: 639px) {
-    ${ML} .sf-mlog-card { padding: 14px 14px 16px; }
+    /* phones: the card is one column, so the side inset comes straight out of the sentence and
+       the terms' values; 8px sides and a 96px label column (archive 104px) keep master's wraps */
+    ${ML} .sf-mlog-card { padding: 12px 8px 14px; }
+    ${ML} .sf-mlog-card .sf-mlog-terms > .k-row:not(#_) { grid-template-columns: 96px minmax(0, 1fr) !important; }
     ${ML} .sf-mlog-commission-card > .sf-mlog-side { display: none !important; }
   }
   @media (max-width: 639px) and (max-height: 400px) {
@@ -86,35 +89,36 @@ export function injectMissionLogLayouts(doc = globalThis.document) {
   @media (min-width: 640px) and (max-height: 820px) {
     ${ML} .sf-mlog-card { padding: 8px 16px 10px; }
   }
-  /* wide short (1280x720): the archive's 22px route lead drops to 12px so the band starts where it
-     did with no inset (y557 vs master 559) and the course track stays above the fold */
-  @media (min-width: 1101px) and (max-height: 820px) {
+  /* wide 701-820 tall (1280x720): the archive's 22px route lead drops to 12px so the band starts
+     where it did with no inset (y557 vs master 559) and the course track stays above the fold.
+     At <=700 tall the archive's own 6px lead stands. */
+  @media (min-width: 1101px) and (min-height: 701px) and (max-height: 820px) {
     ${ML} .sf-mlog-card > .ml-route-host { margin-top: 12px; }
   }
-  /* wide 821-960 tall (1440x900, 1600x900): the full 20px top inset and the 4.8vh lead ran the
-     band ~19px past the fold at 1600x900; a 10px top inset and a 3.6vh lead keep the medallions in */
-  @media (min-width: 1101px) and (min-height: 821px) and (max-height: 960px) {
+  /* wide >820 tall (1440x900, 1600x900, 1920x1080): the full 20px top inset and the 4.8vh lead ran
+     the band past the fold (1600x900 ~19px, 1920x1080 ~31px); a 10px top inset and a 3.6vh lead
+     keep the medallions in */
+  @media (min-width: 1101px) and (min-height: 821px) {
     ${ML} .sf-mlog-card { padding-top: 10px; }
     ${ML} .sf-mlog-card > .ml-route-host { margin-top: clamp(24px, 3.6vh, 46px); }
   }
-  /* 761-1100 wide x <=820 tall (800x600 ... 1024x768): the dial column is fixed, so the side inset
-     drops to 8px and the column gap / dial column give those 16px back; the reading column keeps
-     master's width and its words wrap where they did */
-  @media (min-width: 761px) and (max-width: 1100px) and (max-height: 820px) {
-    ${ML} .sf-mlog-card { padding-left: 8px; padding-right: 8px; }
+  /* 761-1100 wide at any height (800x600 ... 1024x768, 900x900, 1100x900, tablet portrait): the
+     dial column is fixed, so the side inset is 8px and the column gap (>=641 tall) or the dial
+     column (<=640 tall) gives those 16px back; the reading column keeps master's width and its
+     words wrap where they did. The top inset is 8px (4px at <=640 tall). */
+  @media (min-width: 761px) and (max-width: 1100px) {
+    ${ML} .sf-mlog-card { padding: 8px 8px 10px; }
   }
-  @media (min-width: 761px) and (max-width: 1100px) and (min-height: 641px) and (max-height: 820px) {
+  @media (min-width: 761px) and (max-width: 1100px) and (min-height: 641px) {
     ${ML} .sf-mlog-card { column-gap: 4px; }
   }
-  /* ...and at <=640 tall (column gap already 0) the 190px side column gives them up; the top inset
-     is 4px so the band sits within 4px of master's (960x540 y463 vs 459) */
   @media (min-width: 761px) and (max-width: 1100px) and (max-height: 640px) {
     ${ML} .sf-mlog-card { padding-top: 4px; grid-template-columns: minmax(0, 1fr) 174px; }
   }
-  /* 761-860 wide x <=820 tall (800x600, 800x700, 800x768, 840x660): the terms' label column left
-     each value ~76px (about a word a line, already so on master); each term stacks its label over
-     its value instead */
-  @media (min-width: 761px) and (max-width: 860px) and (max-height: 820px) {
+  /* 761-860 wide at any height (800x600, 800x700, 840x660, 768x1024, 810x1080, 820x1180): the
+     terms' label column left each value ~76px (about a word a line, already so on master); each
+     term stacks its label over its value instead */
+  @media (min-width: 761px) and (max-width: 860px) {
     ${ML} .sf-mlog-card .sf-mlog-terms > .k-row:not(#_) { grid-template-columns: minmax(0, 1fr) !important; row-gap: 1px; }
   }
   @media (max-height: 460px) {
@@ -124,7 +128,7 @@ export function injectMissionLogLayouts(doc = globalThis.document) {
     ${ML} .sf-mlog-card { border-radius: 6px; }
   }
   @media (min-width: 640px) and (max-height: 400px) {
-    ${ML} .sf-mlog-card { padding: 10px 12px; }
+    ${ML} .sf-mlog-card { padding: 8px 8px 10px; }
   }
   `;
   doc.head.appendChild(style);
