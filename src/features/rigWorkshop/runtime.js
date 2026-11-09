@@ -1,5 +1,6 @@
 // RATCHET: one simulation owner for the bench, its machines and work orders.
 // All decisions arrive through promptDeck; movement and contacts stay with native physics.
+import { installRelayCargoImpacts } from './cargoImpact.js';
 import { PART_LIST, PARTS, MOUNTS } from './parts.js';
 import { createRigPhysicsAdapter, connectedPartIds } from './physics.js';
 import { createWorkshopJobs, RIG_JOB_DEFS, rigJobAvailability } from './jobs.js';
@@ -78,7 +79,7 @@ export function createRigWorkshopSystem() {
       this.physics = createRigPhysicsAdapter(ctx);
       this.jobs = createWorkshopJobs({ state: this.state, bus: this.bus, physics: this.physics,
         feedback: (kind, text, position) => this.feedback(kind, text, position) });
-      this._unsubs = []; this._actions = new Map(); this._sequence = sequenceFloor;
+      this._unsubs = [installRelayCargoImpacts(ctx)]; this._actions = new Map(); this._sequence = sequenceFloor;
       this._lastRefresh = -Infinity; this._near = false; this._wasFlying = false; this._farPromptOffered = false;
       const on = (name, fn) => this._unsubs.push(this.bus.on(name, fn));
       on('rigWorkshop:choose', payload => this.choose(payload));
