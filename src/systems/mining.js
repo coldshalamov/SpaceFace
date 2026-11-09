@@ -1,3 +1,4 @@
+import {applyFundedBeamRepair, beamRepairReserve, beamRepairScrap} from './beamRepairResources.js';
 import { isHeliosClaimCutter } from './heliosClaimOpening.js';
 import { crackerRunLoadRecovery } from '../data/worldOneOffs.js';
 import { stableRecordId } from '../world/worldRecords.js';
@@ -123,7 +124,7 @@ const BEAM_REFUSAL_TEXT = Object.freeze({
   'mined-out': 'Nothing left to take',
   'beam-locked': 'That body is locked to the site',
   'hull-intact': 'Nothing to repair there',
-  'insufficient-resources': 'Need scrap or credits to weld',
+  'insufficient-resources': 'Repair needs credits or unsealed scrap (1 scrap = 20 total HP; unused work kept)',
   'invalid-receiver': 'Can\'t send the load there',
   'no-cargo': 'No cargo to transfer',
   'presentation-unavailable': 'The beam won\'t work that',
@@ -463,6 +464,8 @@ export const mining = {
       mode: (state.ui && state.ui.beamMode) || (state.player && state.player.beamMode) || 'auto',
       selectedComponentId: (state.ui && state.ui.componentSelection && state.ui.componentSelection.componentId) || null,
       credits: (state.player && state.player.credits) || 0,
+      repairReserveHp: beamRepairReserve(state),
+      repairScrapUnits: beamRepairScrap(state),
       cargo: (state.player && state.player.cargo && state.player.cargo.items) || {},
       receiver: (state.input && state.input.receiver) || null,
     };
@@ -784,25 +787,20 @@ export const mining = {
   },
 
   _applyRepair(player, target, resolved, dps, dt) {
-    const heal = dps * dt * 2.0;
-    const costCr = Math.ceil(heal * 1.5);
-    // Credits have a SOLE writer (economy §0.6): charge through the sanctioned intent, never a
-    // direct state.player.credits write from this system.
-    if (costCr > 0) this.bus.emit('economy:chargeCredits', { amount: costCr, reason: 'beam:repair' });
-    if (resolved.componentId) {
-      const combat = this.registry && this.registry.get && this.registry.get('combat');
-      if (combat && typeof combat.repair === 'function') {
-        combat.repair(target.id, resolved.componentId, heal, 'beam_repair');
-      }
-    } else {
-      if (target.hull != null && target.hullMax != null) {
-        target.hull = Math.min(target.hullMax, target.hull + heal);
-      }
-      if (target.armorHp != null && target.armorMax != null) {
-        target.armorHp = Math.min(target.armorMax, target.armorHp + heal);
-      }
-    }
+    const targetLife = target?.occupantGeneration;
+    const playerLife = player?.occupantGeneration;
+    const sector = this.state.world?.currentSectorId;
+    const currentReceipt = () => this.state.mode === 'flight' && !this.state.save?.restoring
+      && !this.state.ui?.docked && !this.state.player?.flags?.docked
+      && this.state.world?.currentSectorId === sector
+      && this.state.entities.get(target.id) === target && target.alive && target.occupantGeneration === targetLife
+      && this.state.entities.get(this.state.playerId) === player && player.alive && player.occupantGeneration === playerLife;
+    const heal = applyFundedBeamRepair(this, player, target, resolved.componentId, dps * dt * 2.0);
+    // Payment/material notices may synchronously replace an occupant. The paid
+    // work belongs to its original life; never credit a replacement with its receipt.
+    if (!(heal > 0) || !currentReceipt()) return;
     this.bus.emit('beam:repaired', { targetId: target.id, healAmount: heal });
+    if (!currentReceipt()) return;
 
     // WF-05 weld-out receipt: the moment the hull closes is the moment the player feels. One
     // cooled toast per casualty (simTime-driven, never wall time; session-scoped keys capped like
