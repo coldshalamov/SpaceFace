@@ -18,6 +18,8 @@
 const STYLE_ID = 'sf-orrery-save-load-layouts';
 const BONE = '236 230 216';
 const SL = 'html body #screens > .k-screen.of-saveload.orr-saveload.orr-saveload';
+/** SL for desktop-only rules (same root as saveLayouts' SLD), after `html:root:not([data-sf-mobile="1"])`. */
+const SLD = 'html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-saveload.orr-saveload.orr-saveload';
 
 const CSS = `
 /* the save-name field: a quiet hover, a focus the eye finds, a disabled state that reads.
@@ -49,6 +51,28 @@ ${SL} > .k-stage__foot.sf-save-ledger {
 }
 @media (max-height:400px) {
   ${SL} > .k-stage__foot.sf-save-ledger { border-radius:6px !important; }
+}
+
+/* ui-polish-452 (#1027 review): the hull record's STANDING line now reads (a war save:
+   "Drift · Charter · The Drift and Meridian front at Tethys Junction still burns"). In the shared
+   sheet's ≤640-tall two-column record that sentence wrapped to 5–6 lines in a ~90px cell and pushed
+   LOAD / SAVE HERE / DELETE past the frame (html/body do not scroll): +42px at 880×500, +77px at
+   1280×580. Side by side at 461–640 tall the record reads one line per entry instead (the ≤520
+   rule's layout): each value gets the column's full width, so the war line takes two lines and the
+   other entries one or two, and the record ends up no taller than master's two-up grid. Two lines
+   is the cap; the full reading stays in the node's text and its title. */
+@media (min-width:791px) and (min-height:461px) and (max-height:640px) {
+  ${SLD} .sf-save-ledger .sf-save-portrait { display:flex; flex-direction:column; row-gap:0; }
+  ${SLD} .sf-save-portrait > .sf-ledger-line { display:grid; }
+  ${SLD} .sf-save-portrait > .sf-ledger-line:nth-of-type(even) > .sf-ledger-k { padding-left:0; }
+  ${SLD} .sf-save-portrait .sf-portrait-standing { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+}
+/* ≤460 tall the two-up record stays (one line per entry does not fit there), and STANDING takes its
+   own full-width row at one line, ellipsised, the full reading in its title: a war save no longer
+   adds 4–5 lines over master's frame. */
+@media (min-width:521px) and (max-height:460px) {
+  ${SLD} .sf-save-portrait > .sf-ledger-line:has(> .sf-portrait-standing) > .sf-ledger-k { grid-column:1; padding-left:0; }
+  ${SLD} .sf-save-portrait > .sf-ledger-line > .sf-portrait-standing { grid-column:2 / -1; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:1; overflow:hidden; }
 }
 `;
 

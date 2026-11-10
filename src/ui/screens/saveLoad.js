@@ -873,6 +873,8 @@ export function paintSavePortrait(nodes, portrait) {
   if (nodes.standing) {
     paintEntityLine(nodes.standing, portrait.standing && portrait.standing.factionId
       ? 'faction:' + portrait.standing.factionId : null, portrait.standing.line);
+    // Short desktop frames cap the line (save-loadLayouts); the whole reading stays on hover.
+    if (typeof nodes.standing.setAttribute === 'function') nodes.standing.setAttribute('title', portrait.standing.line);
   }
   if (nodes.rapSheet) nodes.rapSheet.textContent = portrait.rapSheet.line;
   paintEntityLine(nodes.grudge, portrait.grudge && portrait.grudge.aceId ? 'captain:' + portrait.grudge.aceId : null, portrait.grudge.line);
