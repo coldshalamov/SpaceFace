@@ -23,6 +23,17 @@ export const OPERATING_STATE = Object.freeze({
 
 export const THROUGHPUT_SETTLEMENT_SOURCES = Object.freeze(['drone:program']);
 
+/** A whole counted amount for a sentence: "1 unit", "12 units" — never a bare "1u". */
+function countedUnits(n) {
+  const v = Math.max(0, Math.round(Number(n) || 0));
+  return `${v.toLocaleString('en-US')} ${v === 1 ? 'unit' : 'units'}`;
+}
+
+/** Grouped credits for a sentence: "1,234 cr" — never an ungrouped wall of digits. */
+function groupedCr(n) {
+  return `${Math.max(0, Math.round(Number(n) || 0)).toLocaleString('en-US')} cr`;
+}
+
 const LIMIT_COPY = Object.freeze({
   [LIMIT_STAGE.NO_EXPOSED_FACE]: {
     label: 'No rock to cut',
@@ -407,7 +418,7 @@ export function describeProgrammedMinerOperation(group, def = {}) {
   const cap = Math.max(0, Number(op.storedCap != null ? op.storedCap : def.bufferCap) || 0);
   const last = op.lastSale;
   const lastText = last && last.credited > 0
-    ? `${last.credited} cr for ${last.quantity}u`
+    ? `${groupedCr(last.credited)} for ${countedUnits(last.quantity)}`
     : 'No sale yet';
   const cost = Math.max(0, Number(op.operatingCostPerMin) || 0);
   const net = Number(op.netThroughputPerMin) || 0;
@@ -420,14 +431,19 @@ export function describeProgrammedMinerOperation(group, def = {}) {
   const statusLabel = op.label || 'Running';
   const reason = op.reason || 'Waiting for the first cut.';
   // SF-115 — the closed cycle in one line: inputs and the receipt, net of upkeep, with held stock
-  // named as stock rather than income. Nothing here is an estimate; every term was a committed event.
+  // named as stock rather than income. Nothing here is an estimate; every term was a committed
+  // event. The line counts to one ("cut 1 unit, sold 1 unit for 5 cr"), groups its money, and a
+  // term that did not happen says nothing (no "upkeep -0 cr"); a zero net reads "broke even".
   const lc = op.lastCycle && typeof op.lastCycle === 'object' ? op.lastCycle : null;
+  const netCr = lc ? Math.round(Number(lc.netCr) || 0) : 0;
   const cycleText = lc
-    ? `Last run: cut ${lc.minedUnits}u, sold ${lc.quantity}u for ${lc.credited} cr`
-      + ` · upkeep -${lc.upkeepAccrued} cr · fuel ${lc.fuelUsed}u`
-      + (lc.withdrawnUnits > 0 ? ` · lost ${lc.withdrawnUnits}u` : '')
-      + (lc.heldUnits > 0 ? ` · ${lc.heldUnits}u still held` : '')
-      + ` → net ${lc.netCr} cr`
+    ? `Last run: cut ${countedUnits(lc.minedUnits)}, sold ${countedUnits(lc.quantity)} for ${groupedCr(lc.credited)}`
+      + (Number(lc.upkeepAccrued) > 0 ? ` · upkeep cost ${groupedCr(lc.upkeepAccrued)}` : '')
+      + (Number(lc.fuelUsed) > 0 ? ` · burned ${countedUnits(lc.fuelUsed)} of fuel` : '')
+      + (Number(lc.withdrawnUnits) > 0 ? ` · lost ${countedUnits(lc.withdrawnUnits)}` : '')
+      + (Number(lc.heldUnits) > 0 ? ` · ${countedUnits(lc.heldUnits)} still held` : '')
+      + (netCr > 0 ? ` → net +${groupedCr(netCr)}`
+        : netCr < 0 ? ` → net -${groupedCr(-netCr)}` : ' → broke even')
     : null;
   // words-field-counts: the screen-reader summary can count to one — "Gross cut 1 unit",
   // "Operating cost 1 credit per minute" — instead of reading "1 units" to a blind pilot.
