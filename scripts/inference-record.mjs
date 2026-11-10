@@ -130,12 +130,13 @@ if (command === 'unit') {
   const player = flag('player');
   const check = existingOptionalPath('check');
   if (productionVerdict && integration === 'live') {
-    if (!['class', 'finish', 'remove'].includes(kind || '')) {
+    if (!['class', 'finish', 'remove', 'plant'].includes(kind || '')) {
       fail(
-        'production units require --kind class|finish|remove '
+        'production units require --kind class|finish|remove|plant '
         + '(class: fix one defect everywhere and add the check that stops it returning; '
         + 'finish: make a half-working thing work on the ordinary route; '
-        + 'remove: delete noise, duplicates or unreachable content). '
+        + 'remove: delete noise, duplicates or unreachable content; '
+        + 'plant: build one row of INFERENCE_PLANTS.md exactly as written, --id PL-nn). '
         + 'A new stand-alone feature belongs to a commission PR, not to INFERENCE.',
       );
     }
@@ -153,6 +154,9 @@ if (command === 'unit') {
       if (/^(test|tests|scripts|src)[\\/]/.test(evidence)) {
         fail('--evidence must be something a person can look at (picture, clip, trace, receipt), not a test or source file');
       }
+    }
+    if (kind === 'plant' && !/^PL-\d+$/i.test(id)) {
+      fail('--kind plant requires --id PL-nn, the row of design/program/INFERENCE_PLANTS.md you built as written');
     }
     if (kind === 'class' && !check) {
       fail('--kind class requires --check <the script or test that now fails on this defect class>');
@@ -263,7 +267,7 @@ if (command === 'unit') {
     'Commands: unit | run | defect',
     '',
     'Every live production unit also needs:',
-    '  --kind class|finish|remove      which of the three kinds of work this was',
+    '  --kind class|finish|remove|plant  which kind of work this was (plant: --id PL-nn)',
     '  --player "<sentence>"           what a player would say about the difference',
     '  --evidence <path>               before/after bench still, sim trace or receipt',
     '                                  (omit only with --verification unproven; those do not count)',

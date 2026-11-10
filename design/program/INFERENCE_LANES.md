@@ -47,10 +47,12 @@ bigger, not better. So:
 
 - **INFERENCE makes what is already in the game right. It does not add features.** New places,
   people, modes and systems belong to the commission PRs (`experience-commissions/EC-*` branches).
-- **A unit is one of three kinds.** `class` — fix one player-visible defect everywhere through a
+- **A unit is one of four kinds.** `class` — fix one player-visible defect everywhere through a
   shared helper or component, add the check that fails when it returns, and list it in
   [`INFERENCE_CLASSES.md`](./INFERENCE_CLASSES.md). `finish` — make a half-working thing work
-  completely on the ordinary route. `remove` — delete noise, duplicates and unreachable content.
+  completely on the ordinary route. `remove` — delete noise, duplicates and unreachable content. `plant` — build one OPEN row of
+  [`INFERENCE_PLANTS.md`](./INFERENCE_PLANTS.md) exactly as written (a reaction, a street moment, a
+  chance meeting, a secret, a radio line). Agents build plants; they do not invent them.
 - **Look before and after** with the fast tools (bench still, sim-lab trace, short player-truth
   run) and keep both as the unit's evidence. A unit recorded `unproven` is kept and does not count
   toward `N`.
