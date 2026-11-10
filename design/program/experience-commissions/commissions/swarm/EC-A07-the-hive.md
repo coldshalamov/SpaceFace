@@ -10,6 +10,8 @@
 
 **Build first:** one wall that spawns, and the cut that shuts it.
 
+**Written out, 2026-11-10:** the whole of Swarm — the loop, what is on the floor, the drops, the freight lanes, every enemy and its answer, all thirty rounds by name, the bosses and Madame Kiln's lines — is in [12 — Swarm: the Pit](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/12_SWARM_THE_PIT.md). The guns, power bends and mods it hands out are in [11 — The Armory](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/11_THE_ARMORY.md). Build from those; do not invent rounds, enemies or drops.
+
 ### How to build this and check your own work
 
 Swarm has the best fast tools in the project. Use them in this order.
