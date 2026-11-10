@@ -1,0 +1,45 @@
+TAP version 13
+# Subtest: lifetimeSweep does not recycle or drop the current player wreck
+ok 1 - lifetimeSweep does not recycle or drop the current player wreck
+  ---
+  duration_ms: 5.371504
+  ...
+# Subtest: lifetimeSweep does not expire the current player via TTL
+ok 2 - lifetimeSweep does not expire the current player via TTL
+  ---
+  duration_ms: 0.755495
+  ...
+# Subtest: quiet clocks skip defaults ON for production bench flag
+ok 3 - quiet clocks skip defaults ON for production bench flag
+  ---
+  duration_ms: 1.226789
+  ...
+# Subtest: quiet Ceres Infinity-ttl movers skip clocks walk without dropping corpses
+ok 4 - quiet Ceres Infinity-ttl movers skip clocks walk without dropping corpses
+  ---
+  duration_ms: 4.552586
+  ...
+# Subtest: projectile TTL still expires when short-lived lane is non-empty (dirty-wake)
+ok 5 - projectile TTL still expires when short-lived lane is non-empty (dirty-wake)
+  ---
+  duration_ms: 2.090872
+  ...
+# Subtest: shipLike despawnAt fail-open restores clocks path
+ok 6 - shipLike despawnAt fail-open restores clocks path
+  ---
+  duration_ms: 1.12506
+  ...
+# Subtest: bench flag OFF restores always-walk clocks (projectile TTL still works)
+ok 7 - bench flag OFF restores always-walk clocks (projectile TTL still works)
+  ---
+  duration_ms: 2.096439
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 161.942622

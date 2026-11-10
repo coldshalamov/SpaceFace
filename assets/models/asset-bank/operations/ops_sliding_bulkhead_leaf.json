@@ -1,0 +1,209 @@
+{
+  "assetId": "ops_sliding_bulkhead_leaf",
+  "category": "mechanisms",
+  "description": "sliding bulkhead leaf",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "carriage",
+      "position": [
+        0.0,
+        3.2,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion",
+      "motionGroup": "bulkhead_slide"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.6,
+          -0.0
+        ],
+        "size": [
+          0.3,
+          3.2,
+          2.6
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.2,
+          1.65,
+          -0.0
+        ],
+        "size": [
+          0.13,
+          2.5,
+          2.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.6,
+          1.23
+        ],
+        "size": [
+          0.38,
+          3.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.6,
+          -1.23
+        ],
+        "size": [
+          0.38,
+          3.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [
+    {
+      "id": "bulkhead_slide",
+      "pivot": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "parent": null,
+      "objects": [
+        "leaf",
+        "raised_panel",
+        "seal",
+        "seal.001",
+        "hazard_band",
+        "panel_stiffener",
+        "panel_stiffener.001",
+        "locking_recess",
+        "locking_bar",
+        "locking_recess.001",
+        "locking_bar.001"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    }
+  ],
+  "tags": [
+    "operations",
+    "mechanisms",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -0.1899999976158142,
+      0.0,
+      -1.3000000715255737
+    ],
+    "max": [
+      0.3009999990463257,
+      3.200000047683716,
+      1.3000000715255737
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_sliding_bulkhead_leaf_lod0.glb",
+      "triangles": 2068,
+      "draws": 6,
+      "bytes": 337012,
+      "method": "source",
+      "sha256": "6ac1a3366576461efaf0db575f7b7cddfb75b90e84f92d6e1f2e2f7dddb06857"
+    },
+    {
+      "level": 1,
+      "file": "ops_sliding_bulkhead_leaf_lod1.glb",
+      "triangles": 826,
+      "draws": 6,
+      "bytes": 280912,
+      "method": "Forge-decimation",
+      "sha256": "89750d2538148034099964ea5587edde2dc6c7a3c6a7bc7a0f85d2f183c94245"
+    },
+    {
+      "level": 2,
+      "file": "ops_sliding_bulkhead_leaf_lod2.glb",
+      "triangles": 372,
+      "draws": 6,
+      "bytes": 260016,
+      "method": "Forge-decimation",
+      "sha256": "17d48773cb61becd3f0da8ae8ff449a91725a568e4e4c41a0cc3d3bfc0ca6f85"
+    }
+  ]
+}

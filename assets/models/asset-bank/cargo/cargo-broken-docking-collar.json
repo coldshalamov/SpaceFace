@@ -1,0 +1,280 @@
+{
+  "assetId": "cargo-broken-docking-collar",
+  "category": "cargo",
+  "description": "Incomplete collar arc with contact pads",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_DockAxis",
+      "position": [
+        0.0,
+        0.3,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        -0.01725590229034424,
+        0.7247371673583984,
+        -0.005872249603271484
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        1.1760798692703247,
+        0.43736858665943146,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          1.0131670934031738,
+          0.3,
+          -0.42836017653951564
+        ],
+        "size": [
+          0.25,
+          0.3,
+          0.25
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.5473281526808997,
+          0.3,
+          -0.9541655481534187
+        ],
+        "size": [
+          0.25,
+          0.3,
+          0.25
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.14172894372507736,
+          0.3,
+          -1.0908312914977154
+        ],
+        "size": [
+          0.25,
+          0.3,
+          0.25
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.7729843844509094,
+          0.3,
+          -0.7826206880699288
+        ],
+        "size": [
+          0.25,
+          0.3,
+          0.25
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.0889917462604901,
+          0.3,
+          -0.15523200886585395
+        ],
+        "size": [
+          0.25,
+          0.3,
+          0.25
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.9608729874523317,
+          0.3,
+          0.5354653135212694
+        ],
+        "size": [
+          0.25,
+          0.3,
+          0.25
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.4408790892879721,
+          0.3,
+          1.0077825304244008
+        ],
+        "size": [
+          0.25,
+          0.3,
+          0.25
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "aftermath",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -1.2105916738510132,
+      0.14000000059604645,
+      -1.211510419845581
+    ],
+    "max": [
+      1.1760798692703247,
+      0.7247371673583984,
+      1.199765920639038
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-broken-docking-collar_lod0.glb",
+      "triangles": 6280,
+      "draws": 3,
+      "bytes": 552916,
+      "method": "source",
+      "sha256": "c2ffc907508d424fa15b434761e5cf3dd005c5d2954e67a21645be13547f263f"
+    },
+    {
+      "level": 1,
+      "file": "cargo-broken-docking-collar_lod1.glb",
+      "triangles": 848,
+      "draws": 3,
+      "bytes": 287700,
+      "method": "authored-topology",
+      "sha256": "1d206835a85a1c903d2261b06a92df908ace767669d21b8866541ac1058f2358"
+    },
+    {
+      "level": 2,
+      "file": "cargo-broken-docking-collar_lod2.glb",
+      "triangles": 608,
+      "draws": 3,
+      "bytes": 274740,
+      "method": "authored-topology",
+      "sha256": "1719df010a6398be53c4aeac1e73eba4c198a13b51b5d7d08f8cc2dc8b2004b7"
+    }
+  ]
+}

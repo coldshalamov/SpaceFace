@@ -1,0 +1,2510 @@
+import { projectIlexGreenhouse } from '../../src/data/ilexGreenhouse.js';
+import { foldSwarmSpecialistPresentation } from '../../src/data/swarmSpecialistPresentation.js';
+import { bindCeresCradlePublicLayout } from '../../src/core/ceresWorkfleetLayoutAdmission.js';
+import { bindCeresWorkfleetPublicActuation } from '../../src/core/ceresWorkfleetActuation.js';
+import { LAST_SHIFT, lastShiftFactIds, lastShiftLocalReport } from '../../src/data/lastShift.js';
+// S1 Phase-B stage 3 — main-side read model v1.
+//
+// Reconstructs what the present lane reads from live sim state, fed entirely by
+// transported data: journal spawn/destroy records + entity-info blocks (entities
+// Map) and the aux-row channel (ledger rows: far actors, field rocks, dressing
+// rows that are not GameState.entityList members).
+//
+// The collect query is windowed exactly like appendNearbyLedgerRows: a quantized
+// cell walk memoized on (walkX, walkZ, walkRadius, auxVersion), then per-row
+// ballistic projection + collect-radius / time-to-enter predicates run against
+// the exact origin every call. The worker ships the resolved collect inputs
+// (origin, radii, simTime, player velocity) each tick in `collectProbe`, so the
+// read-model collect is an apples-to-apples set-equality check against the live
+// walk's id set (gate F).
+//
+// Membership semantics mirror the live state exactly:
+//   - entities Map ~ state.entities: spawn info inserts; journal DESTROY deletes
+//     (removal-time, matching state.entities.delete — killed-but-unswept rows
+//     cannot exist at collect time because the corpse sweep + recordDestroy run
+//     inside the tick before the collect probe).
+//   - pushAlive parity: every entry that crossed the journal already passed
+//     entityIsJournaled (no _noMesh, no visual-factory-skip projectile), so the
+//     read-model journaled set = live collect's entityList contribution.
+//   - aux rows ~ ledger rows: alive/liveEntityId gates applied per row kind the
+//     same way queryAsteroidField/queryFarActors + appendNearbyLedgerRows apply
+//     them; dressing rows ride the same aux channel but keep pushAlive's
+//     _noMesh filter and dedupe against journaled ids.
+
+import { resolveOrchardForecast } from '../../src/world/anvilOrchardForecast.js';
+import { ANVIL_ORCHARD } from '../../src/data/anvilOrchard.js';
+import { isOrchardPod } from '../../src/data/anvilOrchardIdentity.js';
+import { orchardPodBodySpec } from '../../src/data/anvilOrchardBody.js';
+import { sha256Hex } from '../../src/runtime/runtimeFingerprint.js';
+import { nowNs } from './simRealm.mjs';
+import { projectNpcJobsById, projectLanternWard, LANTERN_WARD_VITAL_KEYS,
+  lanternWardPresentationLife, lanternWardVitalValue } from './npcJobsMirror.mjs';
+import { latestPlayerImpactFromTrace } from '../../src/combat/presentationImpact.js';
+import { initializePresentationAdmission } from '../../src/core/presentationAdmission.js';
+import { ASTEROID_FIELD_CELL } from '../../src/world/asteroidField.js';
+import {
+  timeToEnterRadiusSeconds,
+  TABLE_COLLECT_HORIZON_SECONDS,
+  TABLE_DECODE_RUNWAY_SECONDS,
+} from '../../src/render/tabletopPolicy.js';
+
+// Same numeric cell encoding as the live grids (bijective for |cell| < 1,048,576).
+const CELL_KEY_OFFSET = 1048576;
+const CELL_KEY_STRIDE = 2097152;
+const READ_MODEL_CELL = ASTEROID_FIELD_CELL;
+
+function cellKeyOf(x, z) {
+  return (Math.floor(x / READ_MODEL_CELL) + CELL_KEY_OFFSET) * CELL_KEY_STRIDE
+    + (Math.floor(z / READ_MODEL_CELL) + CELL_KEY_OFFSET);
+}
+
+function finite(n, fallback = 0) {
+  return Number.isFinite(n) ? n : fallback;
+}
+
+// The wire carries scalars; HUD readers use the live entity's nested boost reservoir.
+function foldBoostVitals(row, fields) {
+  if (fields.boostEnergy === undefined && fields.boostMax === undefined) return;
+  if (!row.boost || typeof row.boost !== 'object') row.boost = {};
+  if (fields.boostEnergy !== undefined) row.boost.energy = fields.boostEnergy;
+  if (fields.boostMax !== undefined) row.boost.max = fields.boostMax;
+}
+
+// Work flags change after spawn; keep the machine data object held by visuals.
+function foldMachineVitals(row, fields) {
+  if (fields.machineRepairing === undefined && fields.machineWorking === undefined) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  if (!row.data.machine || typeof row.data.machine !== 'object') row.data.machine = {};
+  if (fields.machineRepairing !== undefined) row.data.machine.repairing = fields.machineRepairing;
+  if (fields.machineWorking !== undefined) row.data.machine.working = fields.machineWorking;
+}
+
+// Mines arm after their spawn; the halo counts the authoritative nested flag.
+function foldMineVitals(row, fields) {
+  if (fields.mineArmed === undefined) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  row.data.armed = fields.mineArmed;
+}
+
+// Reject an old occupant's phase even if a recycled entity id is still in flight.
+function foldRiderTell(row, fields, life = row.occupantGeneration) {
+  const tell = fields.swarmRideTell;
+  if (!Number.isSafeInteger(tell) || tell === 0 || Math.abs(tell) !== life) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  row.data.swarmRideTellLife = life;
+  row.data.swarmRideActive = tell > 0;
+}
+
+// Story props change scanner text as work progresses after their spawn; the scanned flag flips
+// on the same path and gates wreck identity concealment on the read model.
+function foldScanLabel(row, fields) {
+  if (fields.dataScanLabel === undefined && fields.dataScanned === undefined && fields.dataBeaconExpireAt === undefined) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  if (fields.dataScanLabel !== undefined) row.data.scanLabel = fields.dataScanLabel;
+  if (fields.dataScanned !== undefined) row.data.scanned = fields.dataScanned;
+  if (fields.dataBeaconExpireAt !== undefined) row.data.expireAt = fields.dataBeaconExpireAt;
+}
+
+// Revelation changes labels and the sail's silhouette after its spawn.
+function foldEcologyVitals(row, fields) {
+  if (fields.ecologyDisguised === undefined) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  row.data.name = fields.ecologyName;
+  row.data.scanLabel = fields.ecologyScanLabel;
+  row.data.scannerSignalKind = fields.ecologySignalKind;
+  if (!row.data.ecology || typeof row.data.ecology !== 'object') row.data.ecology = {};
+  row.data.ecology.disguised = fields.ecologyDisguised;
+}
+
+// Decode only changed history, keeping scar arrays stable when other vitals change.
+function foldNemesisHullVitals(row, fields) {
+  if (fields.nemesisLivingHullJson === undefined || fields.nemesisLivingHullJson === row.nemesisLivingHullJson) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  row.data.livingHull = fields.nemesisLivingHullJson === null ? null : JSON.parse(fields.nemesisLivingHullJson);
+}
+
+// Traffic writes the memorial sightseer's flee onto data.ai after spawn.
+// The spawn clone would keep the old loiter state; this scalar refreshes it.
+function foldAiState(row, fields) {
+  if (fields.aiFsm === undefined) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  if (!row.data.ai || typeof row.data.ai !== 'object') row.data.ai = {};
+  row.data.ai.fsm = fields.aiFsm;
+  row.data.ai.state = fields.aiFsm;
+}
+
+function seekerVitalsMatch(row, fields, generation = row.occupantGeneration) {
+  return !Object.hasOwn(fields, 'seekerSourceGeneration')
+    || row.type === 'projectile' && generation != null && fields.seekerSourceGeneration === generation;
+}
+
+function foldSeekerVitals(row, fields, generation = row.occupantGeneration) {
+  if (!Object.hasOwn(fields, 'seekerSourceGeneration') || !seekerVitalsMatch(row, fields, generation)) return;
+  const data = row.data || (row.data = {});
+  data.targetId = fields.seekerTargetId ?? null;
+  data.targetGeneration = fields.seekerTargetGeneration ?? null;
+  data.turnRate = Number.isFinite(fields.seekerTurnRate) ? fields.seekerTurnRate : 0;
+  data.diverted = fields.seekerDiverted === true;
+  data.guidanceBroken = fields.seekerGuidanceBroken === true;
+}
+
+function foldPallasSeamVitals(row, fields) {
+  if (fields.pallasSeamCutting === undefined && fields.pallasSeamStandbyTick === undefined) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  const data = row.data;
+  if (typeof fields.pallasSeamCutting === 'boolean') data.minerShiftActive = fields.pallasSeamCutting;
+  if (fields.pallasSeamStandbyTick === null || Number.isSafeInteger(fields.pallasSeamStandbyTick)) {
+    data.pallasSeamStandbyTick = fields.pallasSeamStandbyTick;
+  }
+}
+
+// The visuals retain this data object. Update it from the authoritative work phase, including
+// explicit cleared flags, and reject a delayed update for a prior occupant or another record.
+function foldLanternWardVitals(row, fields, life = row.occupantGeneration) {
+  if (fields.lanternWardLife !== life || !Number.isSafeInteger(life) || life < 1
+    || fields.lanternWardRecordId !== row.data?.worldRecordId
+    || lanternWardPresentationLife({ type: row.type, data: row.data, occupantGeneration: life }) == null) return;
+  const data = row.data;
+  const projected = { worldRecordId: data.worldRecordId };
+  for (const key of LANTERN_WARD_VITAL_KEYS) {
+    if (!Object.hasOwn(fields, key)) return;
+    if (key !== 'lanternWardLife' && key !== 'lanternWardRecordId'
+      && key !== 'lanternWardCustodyHolder' && key !== 'lanternWardCargoHolderId') projected[key] = fields[key];
+  }
+  projected.lanternWardCustody = { holder: fields.lanternWardCustodyHolder };
+  projected.cargoManifest = { custody: { holderId: fields.lanternWardCargoHolderId } };
+  const candidate = { data: projected };
+  for (const key of LANTERN_WARD_VITAL_KEYS) {
+    if (lanternWardVitalValue(candidate, key, life) !== fields[key]) return;
+  }
+  for (const key of LANTERN_WARD_VITAL_KEYS) {
+    if (key !== 'lanternWardLife' && key !== 'lanternWardRecordId'
+      && key !== 'lanternWardCustodyHolder' && key !== 'lanternWardCargoHolderId') data[key] = fields[key];
+  }
+  if (fields.lanternWardCustodyHolder != null) {
+    // The mirror describes custody; native attachment receipts remain private to the worker.
+    data.lanternWardCustody = { holder: fields.lanternWardCustodyHolder,
+      ...(data.lanternWardSerial ? { serial: data.lanternWardSerial } : {}) };
+  } else delete data.lanternWardCustody;
+  if (data.cargoManifest) data.cargoManifest.custody = { holderId: fields.lanternWardCargoHolderId };
+}
+
+// Retain one small presentation object per deployment so VFX can follow later replies.
+function foldCountermeasureVitals(row, fields) {
+  if (fields.cmEffectId === undefined) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  const cm = row.data.cm || (row.data.cm = {});
+  cm.effectT = fields.cmEffectT;
+  if (fields.cmEffectId === null) { cm.effect = null; return; }
+  if (cm.effect?.presentationId !== fields.cmEffectId) {
+    cm.effect = { presentationId: fields.cmEffectId, cfg: { kind: fields.cmEffectKind } };
+  }
+  cm.effect.originX = fields.cmEffectX;
+  cm.effect.originZ = fields.cmEffectZ;
+}
+
+export function createReadModel() {
+  return {
+    entities: new Map(),   // entityId -> projected entity row (journal-covered)
+    rosterVersion: 0,      // bumped on every entities set/delete so the lane can skip list rebuilds
+    weaponVfxProjectiles: new Map(), // visual-factory-skipped shots, for the weapon presenter only
+    aux: new Map(),        // rowId -> aux row (far | rock | dressing)
+    auxCells: new Map(),   // numeric cellKey -> Set(rowId)
+    auxVersion: 0,
+    meshKey: { walkX: NaN, walkZ: NaN, walkRadius: NaN, auxVersion: -1 },
+    meshScratch: [],
+    domains: new Map(),    // domain key -> mirror facade (stage 4; mutate-in-place)
+  };
+}
+
+export function applyWeaponVfxProjectiles(readModel, projectileInfos) {
+  const seen = new Set();
+  for (const info of projectileInfos || []) {
+    if (!info || !Number.isSafeInteger(info.entityId)) continue;
+    const id = info.entityId;
+    seen.add(id);
+    let row = readModel.weaponVfxProjectiles.get(id);
+    if (!row) {
+      row = { id, type: 'projectile', pos: {}, prevPos: {}, vel: {}, data: {} };
+      readModel.weaponVfxProjectiles.set(id, row);
+    }
+    row.type = 'projectile';
+    row.alive = info.alive !== false;
+    row.team = Number.isFinite(info.team) ? info.team : 0;
+    row.ownerId = Number.isSafeInteger(info.ownerId) ? info.ownerId : null;
+    row.pos.x = finite(info.x);
+    row.pos.y = finite(info.y);
+    row.pos.z = finite(info.z);
+    row.prevPos.x = finite(info.prevX, row.pos.x);
+    row.prevPos.y = finite(info.prevY, row.pos.y);
+    row.prevPos.z = finite(info.prevZ, row.pos.z);
+    row.vel.x = finite(info.vx);
+    row.vel.y = finite(info.vy);
+    row.vel.z = finite(info.vz);
+    row.rot = finite(info.rot);
+    row.radius = finite(info.radius);
+    row.data.weaponId = typeof info.weaponId === 'string' ? info.weaponId : null;
+  }
+  for (const id of readModel.weaponVfxProjectiles.keys()) {
+    if (!seen.has(id)) readModel.weaponVfxProjectiles.delete(id);
+  }
+}
+
+export function applySpawnInfos(readModel, spawnInfos, state = null, worldGeneration = null) {
+  for (const info of spawnInfos || []) {
+    if (!info || !Number.isSafeInteger(info.entityId)) continue;
+    const row = {
+      id: info.entityId,
+      type: info.type,
+      alive: info.alive !== false,
+      team: info.team,
+      factionId: info.factionId,
+      pos: { x: info.x || 0, y: finite(info.y, 0), z: info.z || 0 },
+      prevPos: null,
+      vel: { x: finite(info.vx, 0), z: finite(info.vz, 0) },
+      rot: finite(info.rot, 0),
+      radius: info.radius || 0,
+      isPlayer: info.isPlayer === true,
+      farResident: info.farResident === true,
+      fieldResident: info.fieldResident === true,
+      _noMesh: info.noMesh === true,
+      sectorId: info.sectorId || null,
+      flags: info.flags || {},
+      data: info.data && typeof info.data === 'object'
+        ? canonicalClone(info.data)
+        : {
+          callsign: info.callsign,
+          name: info.name,
+          trafficRole: info.trafficRole,
+          role: info.role,
+        },
+      activity: { presentationTier: info.presentationTier || 0 },
+    };
+    // The authored frame body is presentation identity, never a native owner or motor.
+    if (info.physicsBody) row.physicsBody = canonicalClone(info.physicsBody);
+    // Stage-8 vitals: per-entity scalar fields the renderer/UI read off the live
+    // entity (hull, shield, fuel, and friends). Shipped on spawn and refreshed by
+    // the vitals diff channel; absent fields stay undefined rather than 0.
+    if (info.vitals && typeof info.vitals === 'object') {
+      foldNemesisHullVitals(row, info.vitals);
+      Object.assign(row, canonicalClone(info.vitals));
+      foldBoostVitals(row, info.vitals);
+      foldMachineVitals(row, info.vitals);
+      foldMineVitals(row, info.vitals);
+      foldSwarmSpecialistPresentation(row, info.vitals);
+      foldRiderTell(row, info.vitals, info.occupantGeneration);
+      foldScanLabel(row, info.vitals);
+      foldEcologyVitals(row, info.vitals);
+      foldCountermeasureVitals(row, info.vitals);
+      foldAiState(row, info.vitals);
+      foldSeekerVitals(row, info.vitals, info.occupantGeneration);
+      foldPallasSeamVitals(row, info.vitals);
+      foldLanternWardVitals(row, info.vitals, info.occupantGeneration);
+    }
+    // A re-delivered spawn (init replay, rebuild) must not mint a fresh row
+    // object: the render realm holds entity refs across the hop (admission
+    // jobs capture admissionEntity at enqueue and stamp presentationAdmission
+    // onto it at commit). Replacing the object strands the live row while a
+    // dead twin collects the stamp — entity identity is the map slot, the way
+    // entityList swap semantics preserve row identity on the main lane.
+    const existing = readModel.entities.get(info.entityId);
+    const life = Number.isSafeInteger(info.occupantGeneration) ? info.occupantGeneration : null;
+    const newOccupant = existing && life != null && existing.occupantGeneration != null
+      && existing.occupantGeneration !== life;
+    if (newOccupant) existing.alive = false; // Captured admissions now lose their old owner.
+    const target = existing && typeof existing === 'object' && !newOccupant ? existing : row;
+    if (existing && newOccupant) bindCeresWorkfleetPublicActuation(existing, state, null, worldGeneration);
+    if (life != null) Object.defineProperty(target, 'occupantGeneration', {
+      value: life, writable: true, configurable: true, enumerable: false,
+    });
+    if (target === existing) {
+      delete row.prevPos;
+      // A renderer-owned failure latch stays with this occupant across a journal rebuild.
+      // A new occupant takes its own transported value through the other branch.
+      if (existing._noMeshByRenderer === true) row._noMesh = true;
+      Object.assign(existing, row);
+      // A stamped admission verdict outranks the fresh spawn's 'pending' —
+      // presentationAdmission isn't a mirrored field, so the render realm
+      // owns whatever is already there once it exists.
+      if (existing.presentationAdmission == null) initializePresentationAdmission(existing);
+    } else {
+      // The row is the worker lane's spawnEntity product — same authored-
+      // presentation contract: admit-required rows start 'pending' so the
+      // render realm's admit path (boundaryLiveEntity resolves this same
+      // map) can stamp them 'ready' exactly as on the main lane.
+      initializePresentationAdmission(row);
+      readModel.entities.set(info.entityId, row);
+      readModel.rosterVersion++;
+    }
+    if (state && Object.hasOwn(info, 'ceresCradleReceipt')) {
+      bindCeresCradlePublicLayout(target, state, info.ceresCradleReceipt, worldGeneration);
+    }
+    if (target.data?.ceresWorkfleetRole === 'breaker' || target.data?.ceresWorkfleetRole === 'cutterHead') {
+      bindCeresWorkfleetPublicActuation(target, state, null, worldGeneration);
+    }
+  }
+}
+
+// A world lifetime change invalidates public physics receipts immediately.
+export function revokeCeresCradleReceipts(readModel, state) {
+  if (!state) return;
+  for (const entity of readModel.entities.values()) {
+    if (entity.data?.ceresWorkfleetRole === 'cradle') bindCeresCradlePublicLayout(entity, state, null, null);
+    if (entity.data?.ceresWorkfleetRole === 'breaker' || entity.data?.ceresWorkfleetRole === 'cutterHead') {
+      bindCeresWorkfleetPublicActuation(entity, state, null, null);
+    }
+  }
+}
+
+/**
+ * Stage-8: update facade pose from a drained journal transform record — pos,
+ * prevPos, and the yaw/bank/pitch rotation tuple. The journal IS the pose truth
+ * the presentation lane consumes, so the facade answers the same values.
+ */
+export function applyFacadePose(readModel, entityId, pose, knownRow = null) {
+  const row = knownRow || (readModel && readModel.entities.get(entityId));
+  if (!row || !pose || typeof pose !== 'object') return;
+  if (!row.prevPos) row.prevPos = { x: row.pos.x, y: row.pos.y, z: row.pos.z };
+  if (Number.isFinite(pose.x)) { row.prevPos.x = row.pos.x; row.pos.x = pose.x; }
+  if (Number.isFinite(pose.y)) { row.prevPos.y = row.pos.y; row.pos.y = pose.y; }
+  if (Number.isFinite(pose.z)) { row.prevPos.z = row.pos.z; row.pos.z = pose.z; }
+  if (Number.isFinite(pose.rot)) row.rot = pose.rot;
+  if (Number.isFinite(pose.prevX)) row.prevPos.x = pose.prevX;
+  if (Number.isFinite(pose.prevY)) row.prevPos.y = pose.prevY;
+  if (Number.isFinite(pose.prevZ)) row.prevPos.z = pose.prevZ;
+  if (Number.isFinite(pose.prevRot)) row.prevRot = pose.prevRot;
+  if (Number.isFinite(pose.bank)) row.bank = pose.bank;
+  if (Number.isFinite(pose.pitch)) row.pitch = pose.pitch;
+}
+
+/**
+ * Stage-8: apply the vitals diff channel — [entityId, fields] pairs replacing
+ * named scalar fields on the facade row (null entity ids / unknown facades skip).
+ */
+// 0 = plain scalar assigned onto the row; 1 = fold family key that is also
+// assigned; 2 = fold-only key (never assigned). The fold functions read only
+// names under these prefixes plus vx/vz, so any other key can skip them.
+const VITAL_KEY_KIND = new Map();
+const VITAL_FOLD_ONLY = new Set(['ceresCradlePublic', 'ceresWorkfleetPublic', 'orchardPodPublic']);
+const LANTERN_WARD_VITAL_SET = new Set(LANTERN_WARD_VITAL_KEYS);
+const VITAL_FOLD_PREFIXES = ['boost', 'machine', 'mine', 'swarm', 'data', 'ecology', 'cm', 'aiFsm',
+  'seeker', 'pallas', 'lanternWard', 'orchard', 'ceres', 'nemesis'];
+function classifyVitalKey(key) {
+  if (VITAL_FOLD_ONLY.has(key) || LANTERN_WARD_VITAL_SET.has(key)) return 2;
+  if (key === 'vx' || key === 'vz') return 1;
+  for (let i = 0; i < VITAL_FOLD_PREFIXES.length; i++) {
+    if (key.startsWith(VITAL_FOLD_PREFIXES[i])) return 1;
+  }
+  return 0;
+}
+
+export function applyEntityVitals(readModel, vitals, state = null, worldGeneration = null) {
+  if (!Array.isArray(vitals) || !vitals.length) return;
+  for (const entry of vitals) {
+    if (!Array.isArray(entry) || entry.length < 2) continue;
+    const id = entry[0];
+    const fields = entry[1];
+    if (!Number.isSafeInteger(id) || !fields || typeof fields !== 'object') continue;
+    const row = readModel.entities.get(id);
+    if (!row) continue;
+    if (!seekerVitalsMatch(row, fields)) continue;
+    // One key pass: plain scalars (hull, shield, pose...) assign directly; only a
+    // key from a fold family (prefix table below) arms the fold chain, so the
+    // common pose/vitals entry skips a dozen no-op fold calls.
+    // Nemesis decode compares against the row's previous JSON, so it runs before assignment.
+    if (fields.nemesisLivingHullJson !== undefined) foldNemesisHullVitals(row, fields);
+    let needsFold = false;
+    for (const key in fields) {
+      let kind = VITAL_KEY_KIND.get(key);
+      if (kind === undefined) {
+        kind = classifyVitalKey(key);
+        VITAL_KEY_KIND.set(key, kind);
+      }
+      if (kind !== 0) {
+        needsFold = true;
+        if (kind === 2) continue;
+      }
+      const v = fields[key];
+      if (v === undefined) delete row[key];
+      else row[key] = v;
+    }
+    if (!needsFold) continue;
+    foldBoostVitals(row, fields);
+    foldMachineVitals(row, fields);
+    foldMineVitals(row, fields);
+    foldSwarmSpecialistPresentation(row, fields);
+    foldRiderTell(row, fields);
+    foldScanLabel(row, fields);
+    foldEcologyVitals(row, fields);
+    foldCountermeasureVitals(row, fields);
+    foldAiState(row, fields);
+    foldSeekerVitals(row, fields);
+    foldPallasSeamVitals(row, fields);
+    foldLanternWardVitals(row, fields);
+    foldOrchardPodVitals(row, fields);
+    if (state && Object.hasOwn(fields, 'ceresCradlePublic')) {
+      const update = fields.ceresCradlePublic;
+      if (update && Object.hasOwn(update, 'layout') && row.data) {
+        row.data.ceresWorkfleetCradleLayout = update.layout;
+        if (row.data.itinerary?.ceresWorkfleet) row.data.itinerary.ceresWorkfleet.cradleLayout = update.itineraryLayout;
+      }
+      bindCeresCradlePublicLayout(row, state, update?.receipt ?? null, worldGeneration);
+    }
+    if (state && fields.ceresWorkfleetPublic && Object.hasOwn(fields.ceresWorkfleetPublic, 'playerOwned') && row.data) {
+      const update = fields.ceresWorkfleetPublic;
+      row.playerOwned = update.playerOwned === true;
+      row.data.playerOwned = update.dataPlayerOwned === true;
+      row.data.controlLease = update.controlled === true;
+      row.data.disabled = update.disabled === true;
+    }
+    // Vitals ship velocity as flat vx/vz while presentation readers (HUD speed
+    // tape, playable checks) consume the nested `vel` vector the live entity
+    // carries — refold so both views stay coherent.
+    if (fields.vx !== undefined || fields.vz !== undefined) {
+      if (!row.vel || typeof row.vel !== 'object') row.vel = { x: 0, y: 0, z: 0 };
+      if (fields.vx !== undefined) row.vel.x = fields.vx;
+      if (fields.vz !== undefined) row.vel.z = fields.vz;
+    }
+  }
+}
+
+// Reconstitute only the canonical public body and three bounded pod facts. This is
+// presentation data: no native lease, motor, body handle, or simulation writer crosses.
+function foldOrchardPodVitals(row, fields) {
+  if (typeof fields.orchardPodPublic !== 'string' || fields.orchardPodPublic.length > 256
+    || !isOrchardPod(row)) return;
+  let value;
+  try { value = JSON.parse(fields.orchardPodPublic); } catch { return; }
+  if (!Array.isArray(value) || value.length !== 6) return;
+  const [life, lotId, dynamic, revision, tetherable, amount] = value;
+  if (!Number.isSafeInteger(life) || life < 1 || life !== row.occupantGeneration
+    || lotId !== row.data.worldRecordId || typeof dynamic !== 'boolean'
+    || !Number.isSafeInteger(revision) || revision < 1 || revision < row.physicsBody.revision
+    || (revision === row.physicsBody.revision && dynamic !== row.physicsBody.dynamic)
+    || typeof tetherable !== 'boolean' || tetherable !== dynamic
+    || !Number.isSafeInteger(amount) || amount < 1 || amount > ANVIL_ORCHARD.unitsPerPod) return;
+  if (revision !== row.physicsBody.revision || dynamic !== row.physicsBody.dynamic) {
+    row.physicsBody = orchardPodBodySpec({ dynamic, revision });
+  }
+  row.data.masslineTetherable = tetherable;
+  row.data.amount = amount;
+}
+
+// Current-tick workfleet samples bind only after the caller applies the same
+// packet's domains, entity vitals and simulation clock.
+export function applyCeresWorkfleetActuation(readModel, vitals, state, worldGeneration) {
+  if (!state || !Array.isArray(vitals)) return;
+  for (const entry of vitals) {
+    if (!Array.isArray(entry) || !entry[1] || !Object.hasOwn(entry[1], 'ceresWorkfleetPublic')) continue;
+    const entity = readModel.entities.get(entry[0]);
+    if (entity) bindCeresWorkfleetPublicActuation(entity, state, entry[1].ceresWorkfleetPublic?.receipt ?? null, worldGeneration);
+  }
+}
+
+// Journal DESTROY == state.entities.delete (fired at removal, inside the same
+// tick sweep, before the collect probe). Delete keeps `entities.has` parity with
+// the live far-row check (`state.entities.has(rec.id)`).
+export function applyDestroyIds(readModel, ids, state = null) {
+  for (const id of ids || []) {
+    if (!Number.isSafeInteger(id)) continue;
+    const row = readModel.entities.get(id);
+    if (row) {
+      if (state && row.data?.ceresWorkfleetRole === 'cradle') bindCeresCradlePublicLayout(row, state, null, null);
+      bindCeresWorkfleetPublicActuation(row, state, null, null);
+      row.alive = false;
+    }
+    if (readModel.entities.delete(id)) readModel.rosterVersion++;
+  }
+}
+
+export function applyAuxUpserts(readModel, upserts) {
+  if (!Array.isArray(upserts) || !upserts.length) return;
+  for (const u of upserts) {
+    if (!u || !Number.isSafeInteger(u.id)) continue;
+    const cell = cellKeyOf(finite(u.x), finite(u.z));
+    const prev = readModel.aux.get(u.id);
+    if (prev && prev.cell !== cell) {
+      const bucket = readModel.auxCells.get(prev.cell);
+      if (bucket) {
+        bucket.delete(u.id);
+        if (bucket.size === 0) readModel.auxCells.delete(prev.cell);
+      }
+    }
+    const row = {
+      id: u.id,
+      kind: u.kind,
+      type: u.type,
+      alive: u.alive !== false,
+      pos: { x: finite(u.x), z: finite(u.z) },
+      vel: { x: finite(u.vx), z: finite(u.vz) },
+      rot: finite(u.rot),
+      radius: finite(u.radius),
+      lastExactT: Number.isFinite(u.lastExactT) ? u.lastExactT : null,
+      liveEntityId: u.liveEntityId == null ? null : u.liveEntityId,
+      _noMesh: u.noMesh === true,
+      sectorId: u.sectorId || null,
+      cell,
+    };
+    // A journaled dressing entity also has a stable renderer facade. Its ordinary
+    // transform journal does not tick table rows; the bounded aux delta owns this pose.
+    const facade = u.kind === 'dressing' && readModel.entities.get(u.id);
+    const pose = u.warmFreighterPose;
+    if (facade?.data?.warmFreighterHostMarkerId && pose
+        && [pose.height, pose.bank, pose.pitch, pose.localYaw].every(Number.isFinite)) {
+      facade.pos.x = finite(u.x); facade.pos.z = finite(u.z); facade.rot = finite(u.rot);
+      const dest = facade.data.warmFreighterVisualPose || (facade.data.warmFreighterVisualPose = {});
+      dest.height = pose.height; dest.bank = pose.bank; dest.pitch = pose.pitch; dest.localYaw = pose.localYaw;
+    }
+    if (!prev) {
+      let bucket = readModel.auxCells.get(cell);
+      if (!bucket) {
+        bucket = new Set();
+        readModel.auxCells.set(cell, bucket);
+      }
+      bucket.add(u.id);
+    } else if (prev.cell !== cell) {
+      let bucket = readModel.auxCells.get(cell);
+      if (!bucket) {
+        bucket = new Set();
+        readModel.auxCells.set(cell, bucket);
+      }
+      bucket.add(u.id);
+    }
+    readModel.aux.set(u.id, row);
+    readModel.auxVersion++;
+  }
+}
+
+export function applyAuxRemovals(readModel, ids) {
+  if (!Array.isArray(ids) || !ids.length) return;
+  for (const id of ids) {
+    const prev = readModel.aux.get(id);
+    if (!prev) continue;
+    const facade = prev.kind === 'dressing' && readModel.entities.get(id);
+    if (facade?.data?.warmFreighterHostMarkerId) {
+      facade.alive = false;
+      if (readModel.entities.delete(id)) readModel.rosterVersion++;
+    }
+    const bucket = readModel.auxCells.get(prev.cell);
+    if (bucket) {
+      bucket.delete(id);
+      if (bucket.size === 0) readModel.auxCells.delete(prev.cell);
+    }
+    readModel.aux.delete(id);
+    readModel.auxVersion++;
+  }
+}
+
+// Mirror of resolveWorldPresentationEntity's precedence for read-model consumers
+// (entities → rock → dressing → far → live-fallback).
+export function readModelResolve(readModel, id) {
+  if (id == null || !readModel) return null;
+  const live = readModel.entities.get(id);
+  if (live && live.alive !== false) return live;
+  const aux = readModel.aux.get(id);
+  if (aux && aux.alive !== false) {
+    if (aux.kind === 'rock' && aux.liveEntityId == null) return aux;
+    if (aux.kind === 'dressing') return aux;
+    if (aux.kind === 'far') return aux;
+  }
+  return live && live.alive !== false ? live : null;
+}
+
+// Disc query over the aux grid — the "windowed query" the stage replaces
+// appendNearbyLedgerRows' live-table scans with. Mirrors queryAsteroidField's
+// cell walk + per-row disc filter (reach union: d2 <= (r + radius)^2 || d2 <= r2).
+// Far rows query the same grid — the live code's row-scan shortcut is a cost
+// decision, not a membership difference, so one windowed walk covers both.
+function auxQueryDisc(readModel, walkX, walkZ, walkRadius, out) {
+  out.length = 0;
+  const r = walkRadius;
+  const r2 = r * r;
+  const minC = Math.floor((walkX - r) / READ_MODEL_CELL);
+  const maxC = Math.floor((walkX + r) / READ_MODEL_CELL);
+  const minR = Math.floor((walkZ - r) / READ_MODEL_CELL);
+  const maxR = Math.floor((walkZ + r) / READ_MODEL_CELL);
+  for (let cx = minC; cx <= maxC; cx++) {
+    const rowBase = (cx + CELL_KEY_OFFSET) * CELL_KEY_STRIDE + CELL_KEY_OFFSET;
+    for (let cz = minR; cz <= maxR; cz++) {
+      const bucket = readModel.auxCells.get(rowBase + cz);
+      if (!bucket) continue;
+      for (const id of bucket) {
+        const row = readModel.aux.get(id);
+        if (!row) continue;
+        const dx = row.pos.x - walkX;
+        const dz = row.pos.z - walkZ;
+        const d2 = dx * dx + dz * dz;
+        const reach = r + finite(row.radius);
+        if (d2 <= reach * reach || d2 <= r2) out.push(row);
+      }
+    }
+  }
+  return out;
+}
+
+const _eff = { x: 0, z: 0 };
+function ledgerPredicted(row, simTime) {
+  const drift = Math.max(0, finite(simTime) - finite(row.lastExactT));
+  _eff.x = finite(row.pos.x) + finite(row.vel.x) * drift;
+  _eff.z = finite(row.pos.z) + finite(row.vel.z) * drift;
+  return _eff;
+}
+
+/**
+ * Read-model twin of collectMeshPresentationEntities — returns an id SET (not
+ * row objects) for digest comparison against the worker's live collect.
+ *
+ * `inputs` = the worker-shipped collectProbe block:
+ *   { originX, originZ, collectRadius, scanRadius, glassCorner, simTime,
+ *     pvx, pvz }
+ * origin is the resolved tableLookAtOrigin (focus+frameOrigin math stays
+ * worker-side; the resolved scalar crosses — the read model never sees
+ * camera.focus directly).
+ */
+export function readModelCollectIds(readModel, inputs, out = []) {
+  out.length = 0;
+  const seen = new Set();
+  for (const e of readModel.entities.values()) {
+    if (e && e.alive !== false && e._noMesh !== true && !seen.has(e.id)) {
+      seen.add(e.id);
+      out.push(e.id);
+    }
+  }
+  const {
+    originX, originZ, collectRadius, scanRadius, glassCorner, simTime,
+  } = inputs || {};
+  const pvx = finite(inputs && inputs.pvx);
+  const pvz = finite(inputs && inputs.pvz);
+  // Dressing rows: live collect pushes them via collectJournalPresentationEntities'
+  // dressing.rows loop (pushAlive semantics) — dedup against journaled ids.
+  for (const row of readModel.aux.values()) {
+    if (row.kind !== 'dressing') continue;
+    if (row.alive === false || row._noMesh || seen.has(row.id)) continue;
+    seen.add(row.id);
+    out.push(row.id);
+  }
+  if (!(collectRadius > 0)) return out;
+  // Quantized walk — identical lattice math to appendNearbyLedgerRows so the
+  // memo covers the same superset; per-row predicates still run every call.
+  const walkX = (Math.floor(finite(originX) / ASTEROID_FIELD_CELL) + 0.5) * ASTEROID_FIELD_CELL;
+  const walkZ = (Math.floor(finite(originZ) / ASTEROID_FIELD_CELL) + 0.5) * ASTEROID_FIELD_CELL;
+  const radiusPad = Math.ceil(ASTEROID_FIELD_CELL * Math.SQRT1_2);
+  const walkRadius = Math.ceil((finite(scanRadius) + radiusPad) / 500) * 500;
+  const key = readModel.meshKey;
+  if (!(key.walkX === walkX && key.walkZ === walkZ
+        && key.walkRadius === walkRadius && key.auxVersion === readModel.auxVersion)) {
+    auxQueryDisc(readModel, walkX, walkZ, walkRadius, readModel.meshScratch);
+    key.walkX = walkX;
+    key.walkZ = walkZ;
+    key.walkRadius = walkRadius;
+    key.auxVersion = readModel.auxVersion;
+  }
+  const radius2 = collectRadius * collectRadius;
+  for (let i = 0; i < readModel.meshScratch.length; i++) {
+    const row = readModel.meshScratch[i];
+    if (!row || seen.has(row.id)) continue;
+    if (row.kind === 'rock') {
+      // queryAsteroidField already filtered liveEntityId/alive at query time;
+      // the aux grid keeps them so the collect applies the same gates here.
+      if (row.alive === false || row.liveEntityId != null) continue;
+      const eff = ledgerPredicted(row, simTime);
+      const relX = eff.x - originX;
+      const relZ = eff.z - originZ;
+      if (relX * relX + relZ * relZ <= radius2) {
+        seen.add(row.id);
+        out.push(row.id);
+        continue;
+      }
+      const relVx = finite(row.vel.x) - pvx;
+      const relVz = finite(row.vel.z) - pvz;
+      const tEnter = timeToEnterRadiusSeconds(
+        relX, relZ, relVx, relVz,
+        glassCorner + finite(row.radius),
+        TABLE_COLLECT_HORIZON_SECONDS,
+      );
+      if (tEnter <= TABLE_COLLECT_HORIZON_SECONDS) {
+        seen.add(row.id);
+        out.push(row.id);
+      }
+    } else if (row.kind === 'far') {
+      if (row.alive === false) continue;
+      // Live: `live.has(rec.id)` — read model: journaled-entity membership.
+      if (readModel.entities.has(row.id)) continue;
+      const eff = ledgerPredicted(row, simTime);
+      const relX = eff.x - originX;
+      const relZ = eff.z - originZ;
+      if (relX * relX + relZ * relZ <= radius2) {
+        seen.add(row.id);
+        out.push(row.id);
+        continue;
+      }
+      const relVx = finite(row.vel.x) - pvx;
+      const relVz = finite(row.vel.z) - pvz;
+      const tEnter = timeToEnterRadiusSeconds(
+        relX, relZ, relVx, relVz,
+        glassCorner + finite(row.radius, 8),
+        TABLE_DECODE_RUNWAY_SECONDS,
+      );
+      if (tEnter <= TABLE_DECODE_RUNWAY_SECONDS) {
+        seen.add(row.id);
+        out.push(row.id);
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Set digest shared by both lanes: worker digests the live collect's ids, main
+ * digests readModelCollectIds — equal digests prove the read-model collect
+ * returns the same set. FNV-1a over the sorted id list; ids are safe-integers
+ * (f64) so sort must be numeric.
+ */
+export function digestIds(ids) {
+  const sorted = (ids || []).slice().sort((a, b) => a - b);
+  let h = 0x811c9dc5;
+  for (const id of sorted) {
+    const s = String(id);
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 0x01000193);
+    }
+    h ^= 0x2c;
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, '0');
+}
+
+// ---------------------------------------------------------------------------
+// S1 Phase-B stage 4 — domain mirrors (read model v2).
+//
+// The render+UI lane reads sim-owned state keys beyond the journal-covered
+// presentation set. After the flip those reads must hit main-side facades, so
+// the worker ships canonical snapshots of every mirrored key whenever its
+// canonical signature changes. Facades are mutated in place on the main side —
+// consumers hold references across ticks, identity is the contract.
+//
+// Mirrored key set (stage-4 census; UI+render reads merged). Top-level state
+// keys plus the non-aux world.* subkeys. NOT mirrored, deliberately:
+//   entities/entityList/entityIndex (v1 read model), world.asteroidField /
+//   farActors / dressing (aux channel), settings (command envelopes),
+//   render/ui/meshes/camera/perfRuntime/assets/pools/diagnostics/stats/slots
+//   (render-local — they move WITH the render lane), bus (event bridge),
+//   rng (worker-only — a main-side draw would fork the stream), timeScale /
+//   flight / jump / scenario / traffic / claims / crafting / careers /
+//   conflicts / aiEncounter / interventions (outside the census set).
+// ---------------------------------------------------------------------------
+
+// Stage-6 narrowed census (item C): mirror only what the render/UI lane
+// provably reads. Whole roots carry dynamic consumers (player.cargo, economy.*,
+// missions.active, factions[id].rep, combat.attachments, bare `state.onboarding`
+// object reads, meta.seed/playtimeS, run.kind/ruleset, input.* live controls,
+// fuel.current/max, aceMemory[id], cursor on the asteroid screen, sandbox,
+// mode/simTime/tick/playerId/ruleset scalars). Dotted keys mirror just the
+// consumed subtree — resolveDomainValue walks every segment.
+//
+// Dropped vs the stage-4 set: world.sectorId and world.currentSector (dead
+// keys — neither ever exists on gameState), and the untouched halves of the
+// narrowed roots (sectorSim.* minus .field, npcJobs.* minus .byId,
+// factionPresence.* minus .boarding, automation internals, drill internals,
+// save internals, world.records internals besides .byId).
+export const DOMAIN_MIRROR_KEYS = Object.freeze([
+  // whole-root mirrors
+  'mode', 'simTime', 'tick', 'playerId', 'ruleset',
+  'player', 'missions', 'nav', 'economy', 'story', 'factions', 'combat',
+  'input', 'fuel', 'aceMemory', 'sandbox', 'onboarding', 'meta', 'run',
+  'cursor',
+  // Bounded live pod facts only: the leaf projector excludes other planet authority.
+  'planet.ships', 'planet.orchardForecast',
+  'ilexGreenhousePublic',
+  'spectrumPublic', 'physicsVenuePublic', 'orbitalGalleryLedger', 'kineticLeague',
+  'survivalDraftPublic', 'survivalResultsPublic', 'careers',
+  // Current score-backed fights feed the main-side warning and boss readouts.
+  'capitalBossEncounters',
+  'physicsVenueSession', 'world.wreckCourtRulings',
+  // Home/worksite labels and offers join native bodies through the ordinary entity journal.
+  'salvageTender', 'salvageTenderOffer', 'salvageOutfits', 'rigWorkshop',
+  'counterweightCircuitOffer', 'counterweightCircuitView', 'counterweightCircuitGhost',
+  'breakwaterSpurOffer', 'breakwaterSpurView',
+  'cinderglassJobView', 'cinderglassJobToken', 'cinderglassJobPresentationReady',
+  'replay.latestPoseSample', 'mercyServicePublic', 'wreckCourtPublic',
+  // leaf-path mirrors (root stays on the facade; only the subtree ships)
+  'flightRuntime.angularIntent',
+  // Boomerang Run's phase/readiness is authored in the worker; the Crucible HUD
+  // consumes this small plain-data projection without mirroring flightRuntime.
+  'heroManeuverReadModel',
+  'lossLedger.impound',
+  'sectorSim.field', 'npcJobs.byId', 'npcJobs.revision', 'factionPresence.boarding',
+  'automation.meta', 'automation.traders', 'automation.fleet', 'automation.outposts',
+  // The site map, machinery HUD and cargo transfer UI read these authoritative
+  // records; presentation-owned siblings remain local to the main realm.
+  'sites.byId', 'sites.order', 'sites.worldById', 'sites.worldOrder', 'sites.anvilOrchard', 'automation.drones',
+  'drill',
+  'save.slots', 'save.currentSlot',
+  // Stage-E facade coverage: the claims facade's read view needs the whole root
+  // (galaxyMap reads state.claims.stationGrowth directly, not just bodies), and
+  // the industry screen reads state.crafting.queues.
+  'claims', 'crafting',
+  'world.currentSectorId', 'world.sectors', 'world.discovery',
+  'world.frameOrigin', 'world.frameOriginSeq', 'world.frontierRumors',
+  'world.scanPings', 'world.activeSector', 'world.records.byId',
+  'world.vestaOreCache', 'world.pallasHiddenCache',
+  'world.counterweightCircuit.discovered',
+  // Filed local evidence and original-recorder custody feed the existing Ceres host.
+  // The presentation projection excludes live body poses and the owner's other internals.
+  'world.lastShift',
+  // Bounded paired-passage receipt for main-side Pallas Hail, not the traffic owner graph.
+  'traffic.pallasWorkLoop',
+  // The existing survey ledger caps this sector at24 plain records; no global history mirror.
+  'npcJobs.surveyMarks.sector_pallas_drift',
+  // Fold-authored ui.* fields the worker owns but main still reads: docked gates
+  // presentationFreeze/uiStage/doDock re-entry, and the soak probe reads the
+  // facade's ui.docked. Without these mirrors the fold write never reaches main.
+  'ui.docked', 'ui.dockedStationId', 'ui.objectSelection',
+  // Sim-authored the same way: acceptMission tracks state.ui.trackedMissionId
+  // and the HUD tracker, galaxy map and comms read it on the facade.
+  'ui.trackedMissionId',
+  // acceptMission also pushes missions.active — facade readers (Mission Log,
+  // HUD tracked panel, contracts Accepted section) need it inside the accept
+  // beat, not the whole-root missions leaf's next cold-leaf window.
+  'missions.active', 'missions.completed', 'missions.failed',
+  // machineGate/machine-route standing for the main-side computeRoute facade
+  // (routePlanner reads machineAccess + machineProtocol only).
+  'world.alienEcology',
+  // Native store status settles Continue and is read synchronously by save event listeners.
+  'save.sharedStoreStatus',
+  // Keep the sector epoch after event replay's temporary emit-time shim ends.
+  // Appending preserves existing domain slots and their staggered cadences.
+  'world.enterSerial',
+  // The simulation owns Line acquisition; the main HUD needs its current bounded preview.
+  'masslineAcquisition',
+  'massline2', 'fields', 'gyreSnare', 'travelLanes',
+  // Station contacts read the bounded incident book, never the wreck/sector graph.
+  // Append new roots so existing domain slots keep their deterministic cadence.
+  'aftermathWrecks.causes',
+  // Line class and live strain are simulation-owned; the HUD and recovery appraisal need them.
+  'lineProgression',
+  // Small player-facing facts; preserve the other planet and factionPresence subtrees.
+  'planet.active', 'planet.siteId', 'planet.player',
+  'factionPresence.servicesByStation', 'economyContracts.massScale.slips',
+  'stationServices', 'planet.center',
+  // The case board is authored by the simulation and shared by station and Codex readers.
+  'shipLedger.board',
+  'dockingPresentation',
+  // Hail and the Ward's contact readers need a bounded account of the actual work history.
+  'npcJobs.lanternWard',
+]);
+
+// Per-key canonical-serialization ship cap (report-only): any single mirrored
+// value whose signature exceeds this is flagged in the run diagnostics.
+export const DOMAIN_SHIP_CAP_BYTES = 256 * 1024;
+
+// Live-state accessor for a mirrored key. Every segment walks off the state
+// root — 'world.currentSectorId' reaches state.world.currentSectorId, and the
+// stage-6 leaf keys ('sectorSim.field', 'drill.scan', 'world.records.byId')
+// walk their full path. A dead segment resolves to undefined: the differ then
+// treats the leaf as absent rather than throwing on a missing container.
+export function resolveDomainValue(state, key) {
+  if (!state) return undefined;
+  let node = state;
+  const start = key.indexOf('.');
+  if (start < 0) return node[key];
+  for (const seg of key.split('.')) {
+    if (node == null) return undefined;
+    node = node[seg];
+  }
+  return node;
+}
+
+// Path granularity: mirrored roots are diffed at leaf-path level, not whole-key.
+// A whole-key diff forces a full canonical walk of the largest roots every tick
+// (economy ≈ 3.9 MB, measured stage-4 census) — ~75 ms/tick. Expansion descends
+// into plain-object children up to the declared depth so big roots split into
+// per-leaf paths (economy.markets.<station>, combat.attachments, ...).
+// Cadence tiers (measured stage-4 census): leaf paths > DOMAIN_COLD_BYTES
+// re-sign every DOMAIN_COLD_TICKS passes; > DOMAIN_WARM_BYTES every
+// DOMAIN_WARM_TICKS; smaller leaves every pass. The probe always reports the
+// last-signed digest per leaf path, so it stays consistent with the facade
+// state between cold/warm re-signs (facades trail live by the tier interval
+// at worst — the signed digest still describes the shipped content).
+export const DOMAIN_EXPAND = Object.freeze({ economy: 2, combat: 1, story: 1, input: 1, meta: 1, player: 1, run: 1, salvageOutfits: 2 });
+// player: 1 — the wallet/cargo fields the UI reads hot (player.credits,
+// player.cargo) sign every pass instead of trailing the monolithic player
+// leaf's cold-tier 60-tick interval: a settled trade used to leave the facade
+// showing pre-trade credits for up to a full cold period.
+// run: 1 — phase identity travels with the body reply; other top-level run
+// values keep their existing slow cadence and nested bags remain bounded leaves.
+// Path-prefix expansion overrides: a matching prefix raises the expansion
+// depth for that subtree. None active — measured 2026-10: expanding
+// economy.markets one more level (per-commodity rows) balloons the leaf set
+// from ~150 to ~1300 and the fixed per-pass walk (~1µs/leaf) costs more than
+// the ship bytes it saves. Kept as a tuning knob for stage 5+.
+
+export const DOMAIN_COLD_BYTES = 4 * 1024;
+export const DOMAIN_COLD_TICKS = 60;
+export const DOMAIN_WARM_BYTES = 1024;
+export const DOMAIN_WARM_TICKS = 10;
+// Expanded containers re-enumerate their children on this cadence instead of
+// every pass (add/remove detection trails by the interval; leaf signing inside
+// the known set keeps its own tier cadence). Warm leaves and enumerations are
+// staggered round-robin by node slot so per-pass cost stays flat. Cold leaves
+// use the same staggering: signing every market/history leaf on one pass
+// stalls the worker's next pose reply even if the average cost looks small.
+// The old aligned offset remains available for explicit diagnostic comparisons.
+export const DOMAIN_ENUM_TICKS = 10;
+export const DOMAIN_COLD_OFFSET = DOMAIN_COLD_TICKS >> 1;
+// Stage-6 per-domain freshness budgets (item C): leaf paths under a listed
+// root re-sign no more often than N passes. The effective interval is
+// max(sizeTier, cadence) — cadence only ever RELAXES a leaf (markets refresh
+// ~6x/s, slow UI bags ~1x/s); a cold leaf keeps its 60-pass freshness budget.
+// Roots not listed keep the size-tier schedule unchanged.
+export const DOMAIN_CADENCE = Object.freeze({
+  economy: 10, missions: 10, story: 10, factions: 30,
+  sectorSim: 10, npcJobs: 30, 'npcJobs.revision': 1, factionPresence: 10, automation: 30,
+  'npcJobs.lanternWard': 6,
+  sites: 10,
+  salvageOutfits: 10,
+  cinderglassJobView: 6, cinderglassJobToken: 1, cinderglassJobPresentationReady: 1,
+  onboarding: 10, meta: 30, run: 30, save: 10, aceMemory: 60,
+  'save.sharedStoreStatus': 1,
+  'heroManeuverReadModel': 6, 'dockingPresentation': 1,
+  'counterweightCircuitGhost': 60,
+  // Native phase identity shares the body reply's clock. A paced intro label over already-live
+  // field motion misrepresents the public round; score/history retain the run root cadence.
+  'run.kind': 1, 'run.ruleset': 1, 'run.phase': 1, 'run.wave': 1, 'run.retireToken': 1,
+  // The completion census is sampled alongside phase by player-truth and the HUD. Keep the
+  // resolved count on the same reply as cleanup so a finished wave cannot present a stale kill
+  // total after its phase has already advanced.
+  'run.resolvedThreat': 1,
+  // The HUD also reads the planned count while a wave is active. Ship a changed budget with the
+  // next domain reply; unlike spawnedThreat this is a small plan value, not a recurring census.
+  'run.threatBudget': 1,
+  // The accept beat must reach the facade inside its own publish window, not the
+  // missions root cadence — Mission Log / HUD / contracts render off the mirror.
+  'missions.active': 1,
+  'stationServices': 6,
+  'world.sectors': 10, 'world.discovery': 10, 'world.records': 60,
+  'world.frontierRumors': 10, 'world.scanPings': 10, 'world.activeSector': 10,
+  'world.vestaOreCache': 60, 'world.pallasHiddenCache': 60,
+});
+// Every Nth probe ships the full slot/digest set instead of the changed-set
+// delta: a periodic whole-facade re-verification that also re-checks for
+// facade paths the live state no longer has.
+export const DOMAIN_PROBE_SWEEP_TICKS = 60;
+
+// Cadence keys name the mirrored root OR a dot-prefix of it — 'sectorSim' binds
+// 'sectorSim.field', 'world.records' binds 'world.records.byId'. Longest prefix
+// wins — a leaf entry may tighten OR relax the root it sits under.
+const DOMAIN_CADENCE_KEYS = Object.keys(DOMAIN_CADENCE);
+function domainCadenceFor(rootKey) {
+  let ticks = 0;
+  let bestLen = -1;
+  for (const key of DOMAIN_CADENCE_KEYS) {
+    if (key.length <= bestLen) continue;
+    if (rootKey === key || rootKey.startsWith(`${key}.`)) {
+      bestLen = key.length;
+      ticks = DOMAIN_CADENCE[key];
+    }
+  }
+  return ticks;
+}
+
+// Mutable mirroring profile (stage-7 item B): the differ consumes this in the
+// worker realm; the facade probe/checker consumes it in the main realm. Both
+// realms must install the SAME profile before the first diff pass or the probe
+// path sets diverge — the runner ships it on the init directive so the two
+// realms can't drift. The station profile keeps the stage-6 shape and adds
+// only the bounded live-market projection.
+//   expandPaths: [{segs, depth}] — prefix expansion overrides (was the frozen
+//     DOMAIN_EXPAND_PATHS knob; a matching prefix raises expand depth).
+//   leafViews: [{segs, leafSegs, drop, project, deferFirstSign, firstSignTicks,
+//     minCadenceTicks}] — leaf projections: at a leaf path of length leafSegs
+//     matching prefix segs, sign/ship the projected leaf; `drop` removes named
+//     keys from one object and `project` selects a named bounded projection.
+//   combatTraceProjection: when true, replace combat.trace with the bounded
+//     player-impact receipt used by the pause screen; false retains the full
+//     trace for diagnostics.
+//     deferFirstSign spreads
+//     first-signs onto a slot schedule (firstSignTicks ticks — defaults to the
+//     root cadence, DOMAIN_COLD_TICKS flattens a mass-mint hardest).
+//     minCadenceTicks is an explicit lower bound between ordinary re-signs;
+//     it does not delay the first mint or structural deletion.
+//   staggerCold: defaults true; explicit false restores the aligned
+//     DOMAIN_COLD_OFFSET burst for historical diagnostic comparisons.
+const activeDomainConfig = {
+  expandPaths: [], leafViews: [], staggerCold: true, combatTraceProjection: false,
+};
+const NPC_JOBS_MIRROR_RULE = Object.freeze({ project: 'npcJobs' });
+const COMBAT_TRACE_PRESENTATION_RULE = Object.freeze({ project: 'combatPause' });
+const ORCHARD_FORECAST_MIRROR_RULE = Object.freeze({ project: 'orchardForecast' });
+const ILEX_GREENHOUSE_MIRROR_RULE = Object.freeze({ project: 'ilexGreenhouse' });
+const ORCHARD_EXPOSURE_MIRROR_RULE = Object.freeze({ project: 'orchardExposure' });
+const AFTERMATH_CAUSES_MIRROR_RULE = Object.freeze({ project: 'aftermathCauses' });
+
+// Named diagnostic wire profiles. The ordinary runtime installs the station
+// profile before the first differ is created and ships the same object to the
+// worker realm. The station profile projects listing history out of the live
+// mirror; the market UI backfills those authoritative rings through the
+// marketHistory RPC. The history-bearing commodity profile remains available
+// for diagnostics that keep inline history.
+export const DOMAIN_MIRROR_PROFILE_NAMES = Object.freeze([
+  'station', 'commodity', 'commodity-nohist',
+]);
+
+export function createDomainMirroringProfile(name = 'station') {
+  const profile = String(name || 'station');
+  if (profile === 'station') return {
+    // Keep the production station-level shape (economy.markets.<station> is
+    // still one leaf) while removing only the per-listing chart cache. The
+    // worker's authoritative market/history objects are never changed.
+    leafViews: [{
+      segs: ['economy', 'markets'], leafSegs: 3,
+      project: 'marketLive', minCadenceTicks: DOMAIN_COLD_TICKS,
+    }],
+    staggerCold: true,
+    combatTraceProjection: true,
+  };
+  if (profile !== 'commodity' && profile !== 'commodity-nohist') {
+    throw new RangeError(`unknown domain mirror profile: ${profile}`);
+  }
+  return {
+    expandPaths: [
+      { segs: ['economy', 'markets'], depth: 3 },
+      { segs: ['economy', 'cycles'], depth: 3 },
+    ],
+    leafViews: [
+      {
+        segs: ['economy', 'markets'], leafSegs: 4,
+        drop: profile === 'commodity-nohist' ? ['history'] : [],
+        deferFirstSign: true, firstSignTicks: 60,
+      },
+      {
+        segs: ['economy', 'cycles'], leafSegs: 4,
+        drop: [], deferFirstSign: true, firstSignTicks: 60,
+      },
+    ],
+    staggerCold: true,
+    combatTraceProjection: true,
+  };
+}
+
+export function configureDomainMirroring(config = {}) {
+  activeDomainConfig.expandPaths = Array.isArray(config.expandPaths) ? config.expandPaths : [];
+  activeDomainConfig.leafViews = Array.isArray(config.leafViews) ? config.leafViews : [];
+  activeDomainConfig.staggerCold = config.staggerCold !== false;
+  activeDomainConfig.combatTraceProjection = config.combatTraceProjection === true;
+}
+
+// Find the leaf-view rule covering a leaf path, or null. leafSegs must equal
+// the full segment count (rule prefix + path suffix) so a rule can't reach
+// deeper into a subtree than it declared.
+function domainLeafViewFor(segs) {
+  if (segs.length === 1 && segs[0] === 'world.counterweightCircuit.discovered') return { hotPresentation: true };
+  if (segs.length === 1 && ['dockingPresentation', 'counterweightCircuitOffer', 'counterweightCircuitView', 'breakwaterSpurOffer', 'breakwaterSpurView', 'cinderglassJobView', 'cinderglassJobToken', 'cinderglassJobPresentationReady'].includes(segs[0])) return { hotPresentation: true };
+  if (segs.length === 1 && ['planet.active', 'planet.siteId'].includes(segs[0])) return { hotPresentation: true };
+  if (segs.length === 1 && segs[0] === 'planet.player') return { project: 'planetPlayer', hotPresentation: true };
+  if (segs.length === 1 && segs[0] === 'planet.center') return { project: 'planetCenter', hotPresentation: true };
+  if (segs.length === 1 && segs[0] === 'factionPresence.servicesByStation') return { project: 'dockedFactionService', hotPresentation: true };
+  if (segs.length === 1 && segs[0] === 'economyContracts.massScale.slips') return { project: 'heliosWeightSlip', hotPresentation: true };
+  if (segs.length === 1 && segs[0] === 'stationServices') return { project: 'stationYard' };
+  if (segs.length === 1 && segs[0] === 'drill') return { project: 'drillPresentation', hotPresentation: true };
+  if (segs.length === 1 && segs[0] === 'lineProgression') return { project: 'lineProgression', hotPresentation: true };
+  if (segs.length === 1 && segs[0] === 'masslineAcquisition') return { project: 'masslineAcquisition' };
+  if (segs.length === 1 && ['massline2', 'fields', 'gyreSnare', 'travelLanes'].includes(segs[0])) {
+    return { project: segs[0], hotPresentation: true };
+  }
+  if (segs.length === 1 && segs[0] === 'capitalBossEncounters') return { project: 'capitalBossPresentation' };
+  if ((segs.length === 1 && segs[0] === 'world.lastShift')
+      || (segs.length === 2 && segs[0] === 'world' && segs[1] === 'lastShift')) {
+    return { project: 'lastShiftLocalReport', hotPresentation: true };
+  }
+  if (segs.length === 1 && segs[0] === 'ilexGreenhousePublic') return ILEX_GREENHOUSE_MIRROR_RULE;
+  if (segs.length === 1 && segs[0] === 'planet.orchardForecast') return ORCHARD_FORECAST_MIRROR_RULE;
+  if (segs.length === 1 && segs[0] === 'planet.ships') return ORCHARD_EXPOSURE_MIRROR_RULE;
+  if (segs.length === 1 && segs[0] === 'aftermathWrecks.causes') return AFTERMATH_CAUSES_MIRROR_RULE;
+  if (activeDomainConfig.combatTraceProjection && isCombatTracePath(segs)) {
+    return COMBAT_TRACE_PRESENTATION_RULE;
+  }
+  // DOMAIN_MIRROR_KEYS keeps dotted leaf paths as one logical root on the worker wire; the main
+  // lane splits that segment while grafting it into state.npcJobs.byId.
+  if ((segs.length === 1 && segs[0] === 'npcJobs.byId')
+      || (segs.length === 2 && segs[0] === 'npcJobs' && segs[1] === 'byId')) {
+    return NPC_JOBS_MIRROR_RULE;
+  }
+  if ((segs.length === 1 && segs[0] === 'npcJobs.lanternWard')
+      || (segs.length === 2 && segs[0] === 'npcJobs' && segs[1] === 'lanternWard')) {
+    return { project: 'lanternWard', hotPresentation: true };
+  }
+  for (const rule of activeDomainConfig.leafViews) {
+    if (segs.length !== rule.leafSegs) continue;
+    const p = rule.segs;
+    let match = true;
+    for (let i = 0; i < p.length; i++) {
+      if (segs[i] !== p[i]) { match = false; break; }
+    }
+    if (match) return rule;
+  }
+  return null;
+}
+
+function isNpcJobsByIdPath(segs) {
+  return (segs.length === 1 && segs[0] === 'npcJobs.byId')
+    || (segs.length === 2 && segs[0] === 'npcJobs' && segs[1] === 'byId');
+}
+
+// Shallow key-drop projection for a leaf-view rule. Returns a copy minus the
+// dropped keys — never mutates the live value; callers sign/clone the result
+// so the facade stores exactly the projected (shipped) content.
+function projectMarketLive(v) {
+  if (!isCanonicalObject(v)) return v;
+  const commodityIds = Object.keys(v);
+  let hasHistory = false;
+  for (const commodityId of commodityIds) {
+    const listing = v[commodityId];
+    if (isCanonicalObject(listing) && Object.hasOwn(listing, 'history')) {
+      hasHistory = true;
+      break;
+    }
+  }
+  if (!hasHistory) return v;
+  const out = {};
+  for (const commodityId of commodityIds) {
+    const listing = v[commodityId];
+    if (!isCanonicalObject(listing) || !Object.hasOwn(listing, 'history')) {
+      out[commodityId] = listing;
+      continue;
+    }
+    const projected = {};
+    for (const key of Object.keys(listing)) {
+      if (key !== 'history') projected[key] = listing[key];
+    }
+    out[commodityId] = projected;
+  }
+  return out;
+}
+
+function projectCombatTraceForPause(v, playerId) {
+  if (!isCanonicalObject(v) || !Array.isArray(v.events)) return v;
+  return {
+    playerId: playerId == null ? null : playerId,
+    latestPlayerImpact: latestPlayerImpactFromTrace(v, playerId),
+  };
+}
+
+function projectOrchardExposure(state, records) {
+  const out = {};
+  if (!state?.planet?.active || state.planet.siteId !== ANVIL_ORCHARD.planetId
+    || state.world?.currentSectorId !== ANVIL_ORCHARD.sectorId || !isCanonicalObject(records)) return out;
+  let count = 0;
+  for (const id of Object.keys(records)) {
+    if (count >= ANVIL_ORCHARD.socketCount) break;
+    const entity = state.entities?.get?.(Number(id));
+    const rec = records[id];
+    if (!entity || !isOrchardPod(entity) || entity.physicsBody.dynamic !== true
+      || entity.data.masslineTetherable !== true || !Number.isSafeInteger(entity.occupantGeneration)
+      || entity.occupantGeneration < 1 || rec?.occupantGeneration !== entity.occupantGeneration
+      || !Number.isFinite(rec.lastThermalAt) || rec.lastThermalAt < 0 || rec.lastThermalAt > state.simTime
+      || !Number.isFinite(rec.heat) || rec.heat < 0 || rec.heat > 1
+      || !['outside', 'influence', 'sling', 'skim', 'danger', 'reentry'].includes(rec.region)
+      || ![null, 'skim', 'commit', 'breakup', 'descent'].includes(rec.stage)) continue;
+    out[id] = { occupantGeneration: rec.occupantGeneration, lotId: entity.data.worldRecordId,
+      heat: rec.heat, stage: rec.stage, region: rec.region, lastThermalAt: rec.lastThermalAt };
+    count++;
+  }
+  return out;
+}
+
+function selectPresentationFields(source, keys) {
+  if (!source || typeof source !== 'object') return null;
+  const out = {};
+  for (const key of keys) if (Object.prototype.hasOwnProperty.call(source, key)) out[key] = source[key];
+  return out;
+}
+
+const AFTERMATH_CAUSE_FIELDS = ['fingerprint', 'shapeId', 'sectorId', 'outcome',
+  'createdTick', 'manifestId', 'commodityId'];
+
+// The appraisal normalizes the class from its earned/granted inputs; the cable and HUD also
+// read the owner's current heat and verdict. Keep private, unbounded stamp history off the wire.
+const LINE_PROGRESSION_FIELDS = ['schemaVersion', 'tonnageLoggedT', 'highestHeldMassT',
+  'classIndex', 'grantedClassSteps', 'trialClassSteps', 'classFullControlMassT', 'overClass', 'winchHeat'];
+
+function projectAftermathCauses(causes) {
+  // aftermathWrecks owns the 24-cause cap and restore normalization. Mirror only
+  // the conversation facts; an absent restored book must also clear old facade rows.
+  const out = {};
+  if (isCanonicalObject(causes)) {
+    for (const [id, cause] of Object.entries(causes)) {
+      if (isCanonicalObject(cause)) out[id] = selectPresentationFields(cause, AFTERMATH_CAUSE_FIELDS);
+    }
+  }
+  return out;
+}
+
+const LINE_SOLUTION_FIELDS = ['valid','onSolution','errorRad','tolRad','interceptAngle','payloadSpeed',
+  'clearance','decisionStale','fieldAware','degraded','turnRate','sampleTick','sampleAgeTicks',
+  'sampleIntervalTicks','sampleSequence','sampled','timeToSolution','timeOfFlight','predicted',
+  'projectedPath','window','relativeSpeed','missDistance','impactTime','model','decisionTick','reachable',
+  'targetId','targetPos','targetKind'];
+const FIELD_PRESENTATION_FIELDS = ['id','kind','sourceId','ownerId','tag','center','dir','radius','strength',
+  'falloff','phase','lifecyclePhase','halfAngleRad','halfWidth','volume','palette','expireAt','engaged',
+  'distortionRadius','distortionStrength','hitchedCount','edgeSoftRad','innerRadius','innerSoft','damping',
+  'thermal','filters','frame','lockStrength'];
+const GYRE_PRESENTATION_FIELDS = ['phase','nose','maw','coneLen','halfAngleRad','endRadius','coreId',
+  'coreMaterial','coreTypeId','clumpMass','clumpRadius','absorbs','maxClumpMass','strain01','corePos',
+  'coreAngVel','launchDir','members','launchedId','ballPos','ballVx','ballVz','ballAngVel','ballMass',
+  'ballTtl01','ballTtlLeftS','basinCount','ballClumpRadius','launchWindup01','launchBurst01','ballGrave',
+  'graves','thrownBeat','thrownTick','basinSpots','dropReason','fuseS','liveBalls','absorbDir','absorbR',
+  'balls','tornId','tornPos','tornDir','tornGentle','deflectCount','deflectLane','ballOverflow','suckRadius',
+  'swirlBlend','orbitSeed','ballTtlS','full','refusals','refusal','towCount','tooHeavyCount'];
+
+// The canonical drill owner has a 28 x 45 board. Keep its presentation atomic:
+// an avatar from a new session must never be paired with an old field or target life.
+function projectDrillPresentation(source) {
+  if (!source || typeof source !== 'object') return null;
+  const fields = (value, names) => {
+    if (!value || typeof value !== 'object') return null;
+    const out = {};
+    for (const key of names) {
+      const entry = value[key];
+      if (entry === null || typeof entry === 'boolean' || (typeof entry === 'number' && Number.isFinite(entry))) out[key] = entry;
+      else if (typeof entry === 'string') out[key] = entry.slice(0, 128);
+    }
+    return out;
+  };
+  const point = value => fields(value, ['col', 'row']);
+  const out = fields(source, ['active','asteroidId','asteroidGeneration','fieldId','rockBudget','rockBudgetMax',
+    'drillDir','moveCooldown','drillTemp','overheated','drillEnergy','energyDepleted','gasHits',
+    'tilesCleared','maxDepth','sessionElapsed','chargeArmed','chargePayload','chargeStock','chargeCooldown','chargesSet']);
+  out.avatar = fields(source.avatar, ['col','row','fromCol','fromRow','moveDuration','moveElapsed','faceDir','isDrilling','drillBlocked']);
+  if (out.avatar) out.avatar.drillTarget = point(source.avatar.drillTarget);
+  out.scan = fields(source.scan, ['cooldown','active','serial','contacts']);
+  out.chargeAim = point(source.chargeAim);
+  out.charge = fields(source.charge, ['col','row','fuse','fuseS','payload']);
+  if (out.charge && Array.isArray(source.charge.pattern)) out.charge.pattern = source.charge.pattern.slice(0, 1260).map(point);
+  out.cableTrail = Array.isArray(source.cableTrail) ? source.cableTrail.slice(0, 1260).map(point) : [];
+  out.yieldLog = {};
+  for (const key of Object.keys(source.yieldLog || {}).slice(0, 128)) {
+    if (key.length <= 128 && Number.isFinite(source.yieldLog[key])) {
+      Object.defineProperty(out.yieldLog, key, { value: source.yieldLog[key], enumerable: true, writable: true, configurable: true });
+    }
+  }
+  out.field = Array.isArray(source.field) ? source.field.slice(0, 28).map(column => Array.isArray(column)
+    ? column.slice(0, 45).map(tile => {
+      const shown = fields(tile, ['type','hp','maxHp','ore','yieldU','hazard','tierReq','hardness','risk',
+        'stratum','rich','cave','fault','cracked','rubble','vented','structure']);
+      if (shown && tile.structure && typeof tile.structure === 'object') shown.structure = fields(tile.structure, ['id','defId']);
+      return shown;
+    }) : null) : null;
+  return out;
+}
+
+function projectLastShiftLocalRecord(source) {
+  if (source?.schema !== 1 || source.siteId !== LAST_SHIFT.siteId) return null;
+  const status = source.bodies?.recorder?.status;
+  const shown = {
+    schema: 1, siteId: LAST_SHIFT.siteId,
+    knownClueIds: lastShiftFactIds(source.knownClueIds),
+    revision: Number.isInteger(source.revision) && source.revision >= 0 && source.revision <= 16
+      ? source.revision : 0,
+    receipts: [],
+    bodies: ['live', 'returned', 'destroyed', 'salvaged'].includes(status)
+      ? { recorder: { status } } : {},
+  };
+  // Use the same evidence/custody validator as the actual contact reader. A new scan
+  // does not silently revise the last filed report; invalid receipts reveal no report.
+  const report = lastShiftLocalReport({ world: { lastShift: source } });
+  if (!report) return shown;
+  const receipt = source.receipts.at(-1);
+  shown.receipts.push({ id: receipt.id, revision: receipt.revision,
+    clueIds: lastShiftFactIds(receipt.clueIds),
+    destroyedClueIds: lastShiftFactIds(receipt.destroyedClueIds),
+    text: receipt.text, at: receipt.at });
+  if (report.recorderReturned) {
+    const returned = source.recorderReturn;
+    shown.recorderReturn = { id: returned.id, bodyKey: returned.bodyKey,
+      stationId: returned.stationId, at: returned.at };
+  }
+  return shown;
+}
+
+function projectDomainLeaf(rule, v, state) {
+  if (rule?.project === 'lastShiftLocalReport') return projectLastShiftLocalRecord(v);
+  if (rule?.project === 'stationYard') {
+    const stationId = state?.ui?.docked === true && state.ui.dockedStationId;
+    const player = v?.player;
+    if (!stationId || !player || player.stationId !== stationId || v._departedLatch === true) return { player: null, stations: {} };
+    const jobs = Array.isArray(player.jobs) ? player.jobs : [];
+    let count = 0, head = null, hasRepair = false, hasRefuel = false, repairHull = 0, repairArmor = 0;
+    for (const job of jobs) {
+      if (!job) continue;
+      count++;
+      if (!head) head = selectPresentationFields(job, ['type', 'status', 'total', 'applied']);
+      if (job.type === 'refuel') hasRefuel = true;
+      if (job.type === 'repair') {
+        hasRepair = true;
+        const remaining = Math.max(0, (Number(job.total) || 0) - (Number(job.applied) || 0));
+        const shares = job.meta?.shares;
+        repairHull += remaining * (Number.isFinite(Number(shares?.hull)) ? Number(shares.hull) : 1);
+        repairArmor += remaining * (Number.isFinite(Number(shares?.armor)) ? Number(shares.armor) : 0);
+      }
+    }
+    const yard = v.stations?.[stationId];
+    return { player: { stationId, padIdx: player.padIdx, _lastHoldingEmit: player._lastHoldingEmit,
+      summary: { count, head, hasRepair, hasRefuel, repairHull, repairArmor } },
+    stations: yard ? { [stationId]: selectPresentationFields(yard, ['waitingClients', 'busyCrews']) } : {} };
+  }
+  if (rule?.project === 'planetPlayer') return selectPresentationFields(v,
+    ['region', 'regionRank', 'heat', 'stage', 'collectorOn']);
+  if (rule?.project === 'planetCenter') return state?.planet?.active === true
+    && Number.isFinite(v?.x) && Number.isFinite(v?.z) ? { x: v.x, z: v.z } : null;
+  if (rule?.project === 'dockedFactionService') {
+    const stationId = state?.ui?.docked === true && state.ui.dockedStationId;
+    const row = stationId && v?.[stationId];
+    const projected = selectPresentationFields(row, ['factionId', 'services', 'requiredRep', 'closedReason']);
+    return projected ? { [stationId]: projected } : {};
+  }
+  if (rule?.project === 'heliosWeightSlip') {
+    const id = 'mass-slip:eco_mass_scale_weight_audit_station_helios:0';
+    const slip = v?.[id];
+    const projected = selectPresentationFields(slip, ['slipId', 'sourceOfferId', 'missionId', 'kind',
+      'issuer', 'reference', 'targetSlot', 'declaredMassT', 'measuredMassT', 'issuingStationId']);
+    if (!projected) return {};
+    const filing = slip.filedAtStations?.station_helios;
+    projected.filedAtStations = filing ? { station_helios: selectPresentationFields(filing, ['outcome']) } : {};
+    return { [id]: projected };
+  }
+  if (rule?.project === 'lineProgression') {
+    const out = selectPresentationFields(v, LINE_PROGRESSION_FIELDS);
+    if (!out) return null;
+    const tether = state?.player?.tether;
+    const targetId = tether?.active ? tether.targetId ?? null : null;
+    out.presentationHold = {
+      targetId,
+      attachmentId: tether?.active ? tether.attachmentId ?? null : null,
+      occupantGeneration: targetId == null ? null : state?.entities?.get?.(targetId)?.occupantGeneration ?? null,
+    };
+    return out;
+  }
+  if (rule?.project === 'aftermathCauses') return projectAftermathCauses(v);
+  if (rule?.project === 'drillPresentation') return projectDrillPresentation(v);
+  if (rule?.project === 'massline2') {
+    if (!v || typeof v !== 'object') return null;
+    const line = v.throw;
+    const shown = selectPresentationFields(line, ['armed','payloadId','aimTargetId','aimSynthetic']);
+    if (shown) {
+      shown.releaseTarget = selectPresentationFields(line.releaseTarget, ['kind','source','targetId','pos','radius','stable']);
+      shown.lastThrow = selectPresentationFields(line.lastThrow, ['tick','releaseId','payloadId']);
+      shown.solution = selectPresentationFields(line.solution, LINE_SOLUTION_FIELDS);
+      shown.selfSolution = selectPresentationFields(line.selfSolution, LINE_SOLUTION_FIELDS);
+    }
+    return { throw: shown, cloak: selectPresentationFields(v.cloak, ['active','available','energy','radius','baseRadius']),
+      bulletTime: selectPresentationFields(v.bulletTime, ['active','energy']) };
+  }
+  if (rule?.project === 'fields') {
+    if (!v || typeof v !== 'object') return null;
+    const deployed = {};
+    for (const [id, item] of Object.entries(v.deployed || {})) deployed[id] = selectPresentationFields(item, ['fieldId','kind','emitterId','deployedAt','expireAt']);
+    return { coneActive: v.coneActive, cooldowns: selectPresentationFields(v.cooldowns, ['well','repulsor']),
+      lastDenial: selectPresentationFields(v.lastDenial, ['kind','reason','at','readyAt']), deployed,
+      active: Array.isArray(v.active) ? v.active.map(item => selectPresentationFields(item, FIELD_PRESENTATION_FIELDS)) : [],
+      snapshot: Array.isArray(v.snapshot) ? v.snapshot.map(item => selectPresentationFields(item, FIELD_PRESENTATION_FIELDS)) : [],
+      familyRead: selectPresentationFields(v.familyRead, ['edge','pin','bend','breakout']),
+      telemetry: selectPresentationFields(v.telemetry, ['orbitNodes']) };
+  }
+  if (rule?.project === 'gyreSnare') return selectPresentationFields(v, GYRE_PRESENTATION_FIELDS);
+  if (rule?.project === 'travelLanes') return selectPresentationFields(v, ['manufactured','inLane','infrastructureStage','infrastructureOperational','ceilingMult']);
+  if (rule?.project === 'masslineAcquisition') {
+    if (!v || typeof v !== 'object') return null;
+    const selected = v.selected;
+    return {
+      schemaVersion: v.schemaVersion, id: v.id, publishedTick: v.publishedTick,
+      publishedAt: v.publishedAt, validUntil: v.validUntil, reason: v.reason,
+      selected: selected ? {
+        targetId: selected.targetId, occupantGeneration: selected.occupantGeneration,
+        targetType: selected.targetType, targetLabel: selected.targetLabel,
+        context: selected.context, intentLabel: selected.intentLabel, confidence: selected.confidence,
+        status: selected.status, reason: selected.reason,
+        isMassSeedTetherEligible: selected.isMassSeedTetherEligible, seedStateWord: selected.seedStateWord,
+      } : null,
+    };
+  }
+  // npcJobs.byId is authoritative in the worker but a presentation mirror on the main side.
+  // Project before canonicalization so the expensive planner/cargo/sidecar fields do not enter
+  // the signed string or structured-clone update.  The worker state itself is never modified.
+  if (rule?.project === 'capitalBossPresentation') {
+    const fights = {};
+    for (const [id, fight] of Object.entries(v?.fights || {})) {
+      if (!fight || fight.started !== true || fight.terminal != null) continue;
+      const cast = fight.cast;
+      fights[id] = { fightId: fight.fightId, encounterId: fight.encounterId,
+        bossId: fight.bossId, targetId: fight.targetId, started: true,
+        suspended: fight.suspended, terminal: null, actIndex: fight.actIndex,
+        phase: fight.phase, clock: fight.clock,
+        plates: Array.isArray(fight.plates) ? fight.plates.map(p => ({ id: p.id, attached: p.attached, strainTicks: p.strainTicks })) : null,
+        cast: cast ? { id: cast.id, beatId: cast.beatId, startedAt: cast.startedAt,
+          locked: cast.locked, shapes: cast.shapes } : null };
+    }
+    return { fights };
+  }
+  if (rule?.project === 'ilexGreenhouse') return projectIlexGreenhouse(state);
+  if (rule?.project === 'orchardForecast') return resolveOrchardForecast(state);
+  if (rule?.project === 'ilexGreenhouse') return projectIlexGreenhouse(state);
+  if (rule?.project === 'orchardExposure') return projectOrchardExposure(state, v);
+  if (rule && rule.project === 'npcJobs') return projectNpcJobsById(v);
+  if (rule?.project === 'lanternWard') return projectLanternWard(v);
+  if (rule && rule.project === 'marketLive') return projectMarketLive(v);
+  if (rule && rule.project === 'combatPause') return projectCombatTraceForPause(v, state && state.playerId);
+  if (!rule || !Array.isArray(rule.drop) || !isCanonicalObject(v)) return v;
+  let has = false;
+  for (const k of rule.drop) {
+    if (Object.hasOwn(v, k)) { has = true; break; }
+  }
+  if (!has) return v;
+  const out = {};
+  for (const k of Object.keys(v)) if (!rule.drop.includes(k)) out[k] = v[k];
+  return out;
+}
+
+function expandDepthFor(segs) {
+  // These roots are bounded presentation projections, even when a diagnostic
+  // profile expands every root. Expanding their raw sources would bypass the
+  // projector, and the facade must retain the same atomic projected path.
+  if (segs[0] === 'drill' || segs[0] === 'capitalBossEncounters' || segs[0] === 'planet.ships'
+    || segs[0] === 'planet.orchardForecast' || segs[0] === 'ilexGreenhousePublic'
+    || segs[0] === 'aftermathWrecks.causes' || segs[0] === 'lineProgression') return 0;
+  // One live cable changes every tick, while the bounded broken-line history is mostly static.
+  // Keep the complete facade, but diff individual attachment records so that live tension does
+  // not clone and transport every old cable on every pose reply.
+  if (segs[0] === 'combat' && segs[1] === 'attachments') return 3;
+  let depth = DOMAIN_EXPAND[segs[0]] || 0;
+  for (const rule of activeDomainConfig.expandPaths) {
+    const p = rule.segs;
+    if (p.length >= segs.length) continue;
+    let match = true;
+    for (let i = 0; i < p.length; i++) {
+      if (segs[i] !== p[i]) { match = false; break; }
+    }
+    if (match && rule.depth > depth) depth = rule.depth;
+  }
+  return depth;
+}
+
+// True for values the canonical object branch serializes as `o:{...}` — plain
+// objects AND class instances (own enumerable fields only). These are the only
+// kinds the differ descends into for path expansion.
+function isCanonicalObject(v) {
+  return v !== null && typeof v === 'object'
+    && !Array.isArray(v) && !(v instanceof Map) && !(v instanceof Set)
+    && !(v instanceof Date) && !(v instanceof RegExp)
+    && !ArrayBuffer.isView(v) && !(v instanceof ArrayBuffer);
+}
+
+// Combat trace is an append-only producer-owned record.  Its public shape is
+// deliberately checked before using the watermark: loaded/diagnostic objects
+// with an unknown field or malformed producer field continue through the
+// ordinary exact canonical walk.  The watermark is only a work-elision hint;
+// it never crosses the wire and never replaces the full signature/payload.
+const COMBAT_TRACE_KEYS = Object.freeze([
+  'nextSeq', 'capacity', 'events', 'dropped', 'hashU32', 'digest',
+]);
+const COMBAT_TRACE_KEY_SET = new Set(COMBAT_TRACE_KEYS);
+
+function combatTraceWatermark(trace, previous = null, playerId = null) {
+  if (!isCanonicalObject(trace) || !Array.isArray(trace.events)) return null;
+  const keys = Object.keys(trace);
+  if (keys.length !== COMBAT_TRACE_KEYS.length
+      || keys.some((key) => !COMBAT_TRACE_KEY_SET.has(key))) return null;
+  if (!Number.isSafeInteger(trace.nextSeq) || trace.nextSeq < 1
+      || !Number.isSafeInteger(trace.capacity) || trace.capacity < 1
+      || !Number.isSafeInteger(trace.dropped) || trace.dropped < 0
+      || !Number.isInteger(trace.hashU32) || trace.hashU32 < 0 || trace.hashU32 > 0xffffffff
+      || typeof trace.digest !== 'string' || !/^[0-9a-f]{8}$/.test(trace.digest)
+      || trace.events.length > trace.capacity) return null;
+
+  const events = trace.events;
+  const firstEvent = events[0];
+  const lastEvent = events.length ? events[events.length - 1] : undefined;
+  // appendCombatTrace creates canonical plain event objects and never edits an
+  // existing event.  Validate a new/replaced event array once; subsequent
+  // unchanged passes use identity plus the producer watermarks below.
+  const eventArrayReplaced = !previous || previous.trace !== trace || previous.events !== events
+    || previous.eventLength !== events.length
+    || previous.firstEvent !== firstEvent || previous.lastEvent !== lastEvent;
+  if (eventArrayReplaced) {
+    for (const event of events) {
+      if (!isCanonicalObject(event)) return null;
+    }
+  }
+  return {
+    trace,
+    events,
+    playerId: playerId == null ? null : playerId,
+    eventLength: events.length,
+    firstEvent,
+    lastEvent,
+    nextSeq: trace.nextSeq,
+    dropped: trace.dropped,
+    capacity: trace.capacity,
+    hashU32: trace.hashU32,
+    digest: trace.digest,
+  };
+}
+
+function sameCombatTraceWatermark(a, b) {
+  if (!a || !b
+      || a.trace !== b.trace
+      || a.events !== b.events
+      || a.playerId !== b.playerId
+      || a.eventLength !== b.eventLength
+      || a.firstEvent !== b.firstEvent
+      || a.lastEvent !== b.lastEvent
+      || a.nextSeq !== b.nextSeq
+      || a.dropped !== b.dropped
+      || a.capacity !== b.capacity
+      || a.hashU32 !== b.hashU32
+      || a.digest !== b.digest) return false;
+  if (!Array.isArray(a.eventRefs) || a.eventRefs.length !== b.eventLength) return false;
+  for (let i = 0; i < b.events.length; i++) {
+    if (a.eventRefs[i] !== b.events[i]) return false;
+  }
+  return true;
+}
+
+function isCombatTracePath(segs) {
+  return segs.length === 2 && segs[0] === 'combat' && segs[1] === 'trace';
+}
+
+// sha256 hex (truncated to 64-bit) of a canonical signature string — what
+// crosses the wire in the probe. 16 hex chars per path keeps the per-tick
+// probe under a few KB; collision risk is nil at ~150-path scale.
+export function domainSigDigest(sig) {
+  return sha256Hex(sig).slice(0, 16);
+}
+
+// --- canonical signature ----------------------------------------------------
+//
+// Deterministic serialization of a value's canonical (transport) form:
+//   numbers/bigints/strings/booleans/null → typed literal tokens
+//   plain objects & class instances       → own-enumerable sorted-key tuple
+//   arrays                                → elements in order
+//   Map                                   → entries sorted by key signature
+//   Set                                   → values sorted by signature
+//   Date/RegExp                           → tagged literal
+//   typed arrays                          → ctor tag + elements in order
+//   functions/undefined/symbols           → '@@opaque'
+//   true back-edge revisits (cycles)      → '@@cycle'
+// Shared references that are NOT ancestors of the current node re-sign by
+// content (the signature describes data, not sharing topology — mutate-in-place
+// facades legitimately hold different identity graphs than the live objects).
+// `seen` is the ancestor set: add on descend, delete on ascend.
+// The same traversal shapes canonicalClone, so a facade re-signs byte-identical
+// to the live value it mirrors.
+
+const SIG_OPAQUE = '@@opaque';
+const SIG_CYCLE = '@@cycle';
+
+export function writeDomainSignature(value, parts, seen) {
+  if (value === null) {
+    parts.push('null');
+    return;
+  }
+  const t = typeof value;
+  if (t === 'number') {
+    parts.push('n:', Number.isNaN(value) ? 'NaN'
+      : Object.is(value, -0) ? '-0'
+        : Number.isFinite(value) ? String(value)
+          : String(value));
+    return;
+  }
+  if (t === 'string') {
+    parts.push('s:', JSON.stringify(value));
+    return;
+  }
+  if (t === 'boolean') {
+    parts.push('b:', String(value));
+    return;
+  }
+  if (t === 'bigint') {
+    parts.push('g:', String(value));
+    return;
+  }
+  if (t !== 'object') {
+    parts.push(SIG_OPAQUE);
+    return;
+  }
+  if (seen.has(value)) {
+    parts.push(SIG_CYCLE);
+    return;
+  }
+  if (Array.isArray(value)) {
+    seen.add(value);
+    parts.push('a:[');
+    for (let i = 0; i < value.length; i++) {
+      if (i) parts.push(',');
+      writeDomainSignature(value[i], parts, seen);
+    }
+    parts.push(']');
+    seen.delete(value);
+    return;
+  }
+  if (value instanceof Map) {
+    seen.add(value);
+    const entries = [];
+    for (const [k, v] of value) {
+      const keyParts = [];
+      writeDomainSignature(k, keyParts, seen);
+      entries.push([keyParts.join(''), v]);
+    }
+    entries.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+    parts.push('m:{');
+    for (let i = 0; i < entries.length; i++) {
+      if (i) parts.push(',');
+      parts.push(entries[i][0], '=>');
+      writeDomainSignature(entries[i][1], parts, seen);
+    }
+    parts.push('}');
+    seen.delete(value);
+    return;
+  }
+  if (value instanceof Set) {
+    seen.add(value);
+    const sigs = [];
+    for (const item of value) {
+      const itemParts = [];
+      writeDomainSignature(item, itemParts, seen);
+      sigs.push(itemParts.join(''));
+    }
+    sigs.sort();
+    parts.push('e:{', sigs.join(','), '}');
+    seen.delete(value);
+    return;
+  }
+  if (value instanceof Date) {
+    parts.push('d:', String(value.getTime()));
+    return;
+  }
+  if (value instanceof RegExp) {
+    parts.push('r:', value.source, '/', value.flags);
+    return;
+  }
+  if (ArrayBuffer.isView(value)) {
+    if (value instanceof DataView) {
+      parts.push('y:DataView:[', String(value.byteLength), ']');
+      return;
+    }
+    parts.push('y:', value.constructor.name, ':[');
+    for (let i = 0; i < value.length; i++) {
+      if (i) parts.push(',');
+      writeDomainSignature(value[i], parts, seen);
+    }
+    parts.push(']');
+    return;
+  }
+  seen.add(value);
+  const keys = Object.keys(value).sort();
+  parts.push('o:{');
+  for (let i = 0; i < keys.length; i++) {
+    if (i) parts.push(',');
+    parts.push(JSON.stringify(keys[i]), '=');
+    let field;
+    try {
+      field = value[keys[i]];
+    } catch (_) {
+      field = undefined; // throwing getter — opaque leaf
+    }
+    writeDomainSignature(field, parts, seen);
+  }
+  parts.push('}');
+  seen.delete(value);
+}
+
+// Canonical signature of a value. `scratch` is a caller-retained object the
+// helper fills with {parts, seen} so repeat calls allocate nothing but the
+// joined result string.
+export function canonicalSignature(value, scratch) {
+  const ctx = scratch || {};
+  const parts = ctx.parts || (ctx.parts = []);
+  const seen = ctx.seen || (ctx.seen = new Set());
+  parts.length = 0;
+  seen.clear();
+  writeDomainSignature(value, parts, seen);
+  return parts.join('');
+}
+
+// --- canonical clone --------------------------------------------------------
+//
+// Transport-safe deep copy with the same traversal as the signature: functions
+// and other opaque leaves become `undefined`, class instances become plain
+// objects of their own enumerable fields, cycles/shared refs are preserved as
+// shared references (structured clone carries the graph verbatim).
+
+function cloneDomainValue(value, seen) {
+  if (value === null) return null;
+  const t = typeof value;
+  if (t === 'number' || t === 'string' || t === 'boolean' || t === 'bigint') {
+    return value;
+  }
+  if (t !== 'object') return undefined;
+  let out = seen.get(value);
+  if (out !== undefined) return out;
+  if (Array.isArray(value)) {
+    out = new Array(value.length);
+    seen.set(value, out);
+    for (let i = 0; i < value.length; i++) {
+      out[i] = cloneDomainValue(value[i], seen);
+    }
+    return out;
+  }
+  if (value instanceof Map) {
+    out = new Map();
+    seen.set(value, out);
+    for (const [k, v] of value) {
+      out.set(cloneDomainValue(k, seen), cloneDomainValue(v, seen));
+    }
+    return out;
+  }
+  if (value instanceof Set) {
+    out = new Set();
+    seen.set(value, out);
+    for (const item of value) out.add(cloneDomainValue(item, seen));
+    return out;
+  }
+  if (value instanceof Date) {
+    out = new Date(value.getTime());
+    seen.set(value, out);
+    return out;
+  }
+  if (value instanceof RegExp) {
+    out = new RegExp(value.source, value.flags);
+    seen.set(value, out);
+    return out;
+  }
+  if (ArrayBuffer.isView(value)) {
+    out = value instanceof DataView
+      ? new DataView(value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength))
+      : value.slice();
+    seen.set(value, out);
+    return out;
+  }
+  if (value instanceof ArrayBuffer) {
+    out = value.slice(0);
+    seen.set(value, out);
+    return out;
+  }
+  out = {};
+  seen.set(value, out);
+  for (const k of Object.keys(value)) {
+    let field;
+    try {
+      field = value[k];
+    } catch (_) {
+      field = undefined;
+    }
+    out[k] = cloneDomainValue(field, seen);
+  }
+  return out;
+}
+
+// Canonical transport clone. `scratch` is a caller-retained object holding
+// {seen}; the returned graph is structured-clone safe (no functions, no live
+// class instances — everything below is plain data).
+export function canonicalClone(value, scratch) {
+  const ctx = scratch || {};
+  const seen = ctx.seen || (ctx.seen = new Map());
+  seen.clear();
+  return cloneDomainValue(value, seen);
+}
+
+// --- mutate-in-place merge --------------------------------------------------
+//
+// Deep-assign a shipped canonical value into the stored facade. Same-kind
+// containers are edited in place so facade identity survives across updates;
+// anything else (primitive, kind change, first ship) replaces.
+//
+// `touched` tracks facade objects already mutated by THIS update application:
+// when the same facade node is reached a second time (facade graph has sharing
+// the shipped graph does not — or vice versa), merging again would alias the
+// second path onto the first. The second visit replaces instead, which can
+// break sharing but never corrupts content (content-based signatures make
+// sharing topology invisible to the probe).
+
+function isContainer(value) {
+  return value !== null && typeof value === 'object';
+}
+
+export function deepAssignInPlace(target, source, touched) {
+  if (target === source) return target;
+  if (!isContainer(target) || !isContainer(source)) return source;
+  if (touched) {
+    if (touched.has(target)) return source;
+    touched.add(target);
+  }
+  if (Array.isArray(source)) {
+    if (!Array.isArray(target)) return source;
+    for (let i = 0; i < source.length; i++) {
+      target[i] = deepAssignInPlace(target[i], source[i], touched);
+    }
+    target.length = source.length;
+    return target;
+  }
+  if (source instanceof Map) {
+    if (!(target instanceof Map)) return source;
+    for (const k of target.keys()) {
+      if (!source.has(k)) target.delete(k);
+    }
+    for (const [k, v] of source) {
+      target.set(k, deepAssignInPlace(target.get(k), v, touched));
+    }
+    return target;
+  }
+  if (source instanceof Set) {
+    if (!(target instanceof Set)) return source;
+    target.clear();
+    for (const item of source) target.add(item);
+    return target;
+  }
+  if (source instanceof Date) {
+    if (!(target instanceof Date)) return source;
+    target.setTime(source.getTime());
+    return target;
+  }
+  if (ArrayBuffer.isView(source) || source instanceof ArrayBuffer) {
+    if (target.constructor === source.constructor
+        && target.length === source.length
+        && typeof target.set === 'function') {
+      target.set(source);
+      return target;
+    }
+    return source;
+  }
+  if (Array.isArray(target) || target instanceof Map || target instanceof Set
+      || target instanceof Date || ArrayBuffer.isView(target)
+      || target instanceof ArrayBuffer) {
+    return source; // container kind changed — replacement is the only merge
+  }
+  const targetKeys = Object.keys(target);
+  for (const k of targetKeys) {
+    if (!Object.prototype.hasOwnProperty.call(source, k)) delete target[k];
+  }
+  for (const k of Object.keys(source)) {
+    target[k] = deepAssignInPlace(target[k], source[k], touched);
+  }
+  return target;
+}
+
+// True when two shipped/facade values are the same container kind — the case
+// where mutate-in-place must hold (identity is not preserved across kind
+// changes by design; a kind change is a legitimate swap).
+export function sameDomainContainerKind(a, b) {
+  if (Array.isArray(a) || Array.isArray(b)) return Array.isArray(a) && Array.isArray(b);
+  if (a instanceof Map || b instanceof Map) return a instanceof Map && b instanceof Map;
+  if (a instanceof Set || b instanceof Set) return a instanceof Set && b instanceof Set;
+  if (a instanceof Date || b instanceof Date) return a instanceof Date && b instanceof Date;
+  const aView = ArrayBuffer.isView(a);
+  const bView = ArrayBuffer.isView(b);
+  if (aView || bView) return aView && bView && a.constructor === b.constructor;
+  return isContainer(a) && isContainer(b)
+    && !(a instanceof ArrayBuffer) && !(b instanceof ArrayBuffer);
+}
+
+// --- domain path differ -----------------------------------------------------
+//
+// Worker-side per-pass differ. Maintains a path table: expanded (container)
+// nodes enumerate their live children each pass; leaf nodes sign on their
+// cadence (hot every pass, cold every DOMAIN_COLD_TICKS passes) and ship a
+// canonical clone when the signature changes. The probe is the digest set of every
+// leaf path — the runner replays the same walk over its facades and compares.
+//
+// Node records: { leaf, kids:Map<string,node>|null, digest, bytes, lastSign, segs }.
+// paths is keyed by the joined path string; segs is the segment array where
+// segs[0] is the mirrored root key (which itself may contain dots, e.g.
+// 'world.currentSectorId').
+
+function domainWireChildSegs(segs, aliased, child, name) {
+  return aliased || child.segs[0] !== segs[0]
+    ? segs.concat(name) : child.segs;
+}
+
+export function createDomainDiffer(options = {}) {
+  // Stage-6 instrumentation gate (item F3): the probe slot table + digest sets
+  // exist only for --probe domains runs. Production ticks pass probe:false and
+  // pay zero slot bookkeeping / zero probe alloc; diff updates are identical
+  // either way (probe content never fed the shipped updates).
+  const probeEnabled = options.probe === true;
+  const paths = new Map();
+  // Roots are created lazily in DOMAIN_MIRROR_KEYS order. That interleaving is
+  // part of the wire cadence contract because each node's creation slot seeds
+  // its staggered signing phase.
+  const rootNodes = new Array(DOMAIN_MIRROR_KEYS.length);
+  const rootAliasSegs = new Array(DOMAIN_MIRROR_KEYS.length);
+  const sigScratch = {};
+  const cloneScratch = {};
+  let nextSlot = 0;
+  // Probe slot table: leaf paths interned to stable integer slots so the
+  // per-tick probe ships [slot, digest] pairs instead of path strings.
+  // probeSlots[slot] = path (null while the slot is free). pendingAdds /
+  // pendingRemovals ride the next probe reply; probeGen bumps on table churn.
+  const probeSlots = [];
+  const freeSlots = [];
+  const pendingAdds = [];
+  const pendingRemovals = [];
+  let probeGen = 0;
+
+  function assignProbeSlot(node, path) {
+    if (!probeEnabled) return;
+    const slot = freeSlots.length ? freeSlots.pop() : probeSlots.length;
+    probeSlots[slot] = path;
+    node.probeSlot = slot;
+    pendingAdds.push([slot, node.segs]);
+    probeGen++;
+  }
+
+  function releaseProbeSlot(node) {
+    if (!probeEnabled || node.probeSlot == null) return;
+    probeSlots[node.probeSlot] = null;
+    freeSlots.push(node.probeSlot);
+    pendingRemovals.push(node.probeSlot);
+    node.probeSlot = null;
+    probeGen++;
+  }
+
+  function dropNode(node) {
+    if (!node) return;
+    if (node.kids) {
+      for (const child of node.kids.values()) dropNode(child);
+      node.kids = null;
+    }
+    node.alive = false;
+    releaseProbeSlot(node);
+    if (paths.get(node.path) === node) paths.delete(node.path);
+  }
+
+  function createNode(path, segs) {
+    const node = {
+      path,
+      segs,
+      alive: true,
+      leaf: true,
+      kids: null,
+      digest: null,
+      signature: null,
+      bytes: 0,
+      lastSign: -1,
+      lastEnum: null,
+      slot: nextSlot++,
+      probeSlot: null,
+      probeChanged: false,
+      // These values depend only on the path. Keep them on the node so the
+      // hot walk does not repeatedly classify the same path.
+      ownerSnapshot: segs[0] === 'survivalDraftPublic' || segs[0] === 'survivalResultsPublic',
+      isCombatTrace: isCombatTracePath(segs),
+      isCombatAttachments: segs[0] === 'combat' && segs[1] === 'attachments',
+      isNpcJobsById: isNpcJobsByIdPath(segs),
+      isRunSpawnedThreat: segs[0] === 'run' && segs[1] === 'spawnedThreat',
+      cadence: domainCadenceFor(segs[0] === 'run' && segs.length === 2 ? path : segs[0]),
+    };
+    if (node.isCombatTrace) {
+      node.combatTraceWatermark = null;
+      node.combatTraceEventRefs = null;
+    }
+    paths.set(path, node);
+    return node;
+  }
+
+  // A path can be discovered through an expanded parent before its dotted
+  // mirror key reaches the root loop. Resolve that alias only while creating
+  // a node; hot visits use the parent/root's retained node reference directly.
+  function getOrCreateNode(path, segs) {
+    return paths.get(path) || createNode(path, segs);
+  }
+
+  // Dotted mirror roots can revisit a node with a different segment boundary
+  // after an expanded parent created it. Cache that rare alias view once so
+  // metadata keeps the old walk(segs) semantics without classifying on every
+  // hot visit; canonical visits use the node's creation-time metadata directly.
+  function staticMetadataFor(node, segs) {
+    if (segs === node.segs) return node;
+    const aliasKey = `${segs[0]}\u0000${segs.length}\u0000${segs[1] ?? ''}`;
+    let metadata = node.aliasMetadata && node.aliasMetadata.get(aliasKey);
+    if (metadata) return metadata;
+    metadata = {
+      ownerSnapshot: segs[0] === 'survivalDraftPublic' || segs[0] === 'survivalResultsPublic',
+      isCombatTrace: isCombatTracePath(segs),
+      isCombatAttachments: segs[0] === 'combat' && segs[1] === 'attachments',
+      isNpcJobsById: isNpcJobsByIdPath(segs),
+      isRunSpawnedThreat: segs[0] === 'run' && segs[1] === 'spawnedThreat',
+      cadence: domainCadenceFor(segs[0] === 'run' && segs.length === 2 ? node.path : segs[0]),
+    };
+    if (!node.aliasMetadata) node.aliasMetadata = new Map();
+    node.aliasMetadata.set(aliasKey, metadata);
+    return metadata;
+  }
+
+  function walk(node, v, tick, updates, stats, npcJobsRevision, runContext, state,
+    walkSegs = node.segs) {
+    const playerId = state && state.playerId;
+    const path = node.path;
+    const segs = walkSegs;
+    const aliased = segs !== node.segs;
+    const metadata = staticMetadataFor(node, segs);
+    // These owners publish detached immutable snapshots only at settlement. A fresh result
+    // or stock/hold receipt must arrive before its event opens a screen, even for a cold leaf.
+    const freshOwnerSnapshot = metadata.ownerSnapshot && node.ownerSnapshotSource !== v;
+    if (metadata.ownerSnapshot) node.ownerSnapshotSource = v;
+    if (isCanonicalObject(v) && segs.length - 1 < expandDepthFor(segs)) {
+      if (node.leaf) {
+        releaseProbeSlot(node); // leaf -> container
+        if (metadata.isCombatAttachments) {
+          // Expanded paths still carry empty dictionaries and scalar-to-object resets. The
+          // following child deltas fill this container without retaining an old null value.
+          updates.push({ segs, v: {}, bytes: 2 });
+          stats.shipBytes += 2;
+          stats.ships++;
+          // The last scalar signature no longer describes the published container. Invalidate
+          // it even for an empty dictionary, so null -> {} -> null publishes the second null.
+          node.lastSign = -1;
+          node.signature = null;
+          node.digest = null;
+        }
+        if (segs[0] === 'run' && segs.length === 1) {
+          // A reset/null run must enumerate the new identity on its first reply.
+          node.lastEnum = null;
+          node.lastSign = -1;
+          node.digest = null;
+        }
+      }
+      node.leaf = false;
+      // Cable admission, cuts and history pruning must accompany this tick's bodies. Unlike
+      // cold domain inventories, this bounded table cannot wait ten replies to enumerate.
+      const enumDue = metadata.isCombatAttachments || freshOwnerSnapshot || node.lastEnum == null
+        || tick % DOMAIN_ENUM_TICKS === node.slot % DOMAIN_ENUM_TICKS;
+      if (enumDue) {
+        const previousKids = node.kids;
+        const nextKids = new Map();
+        for (const c of Object.keys(v)) {
+          let child = previousKids && previousKids.get(c);
+          let childSegs;
+          if (child) {
+            childSegs = domainWireChildSegs(segs, aliased, child, c);
+          } else {
+            childSegs = segs.concat(c);
+            child = getOrCreateNode(`${path}.${c}`, childSegs);
+          }
+          nextKids.set(c, child);
+          walk(child, v[c], tick, updates, stats, npcJobsRevision, runContext, state, childSegs);
+        }
+        if (previousKids) {
+          for (const [c, child] of previousKids) {
+            if (!nextKids.has(c)) {
+              updates.push({ segs: domainWireChildSegs(segs, aliased, child, c), del: true });
+              dropNode(child);
+            }
+          }
+        }
+        node.kids = nextKids;
+        node.lastEnum = tick;
+      } else {
+        // Between enumerations walk the known set only: absent children delete
+        // eagerly (a present-undefined child will be re-discovered next enum);
+        // new children wait for the enumeration pass.
+        for (const [c, child] of node.kids) {
+          const cv = v[c];
+          if (cv === undefined) {
+            updates.push({ segs: domainWireChildSegs(segs, aliased, child, c), del: true });
+            dropNode(child);
+            node.kids.delete(c);
+          } else {
+            walk(child, cv, tick, updates, stats, npcJobsRevision, runContext, state,
+              domainWireChildSegs(segs, aliased, child, c));
+          }
+        }
+      }
+      return;
+    }
+    if (node.kids) {
+      // Was expanded, value no longer a canonical object — collapse: every
+      // former child path deletes, then this node diffs as a leaf.
+      for (const [c, child] of node.kids) {
+        updates.push({ segs: domainWireChildSegs(segs, aliased, child, c), del: true });
+        dropNode(child);
+      }
+      node.kids = null;
+      if (segs[0] === 'run' && segs.length === 1) {
+        // A previously shipped null still has to replace a newer expanded run.
+        node.lastSign = -1;
+        node.digest = null;
+      }
+    }
+    node.leaf = true;
+    const leafRule = domainLeafViewFor(segs);
+    const isCombatTrace = metadata.isCombatTrace;
+    // Do not retain a replaced live trace/event array until its next cold slot.
+    // The replacement still follows the normal cadence, but dropping the old
+    // references here keeps reset/load graphs collectible immediately.
+    if (isCombatTrace && node.combatTraceWatermark
+        && (!v || typeof v !== 'object'
+          || node.combatTraceWatermark.trace !== v
+          || node.combatTraceWatermark.events !== v.events)) {
+      node.combatTraceWatermark = null;
+      node.combatTraceEventRefs = null;
+    }
+    // npcJobsRuntime already increments this small revision on create/delete/reset.  Use that
+    // existing lifecycle signal to bypass the large-leaf cadence for structural changes, while
+    // leaving ordinary phase/progress changes on their bounded cold cadence.  This avoids a
+    // per-tick Object.keys membership scan and keeps the authoritative worker object untouched.
+    const npcJobsRevisionChanged = metadata.isNpcJobsById
+      && Number.isSafeInteger(npcJobsRevision)
+      && node.npcJobsRevision !== npcJobsRevision;
+    if (metadata.isNpcJobsById && Number.isSafeInteger(npcJobsRevision)) {
+      node.npcJobsRevision = npcJobsRevision;
+    }
+    const normalizedPlayerId = playerId == null ? null : playerId;
+    const combatTracePlayerChanged = isCombatTrace && node.combatTraceWatermark
+      && node.combatTraceWatermark.playerId !== normalizedPlayerId;
+    const cadence = metadata.cadence;
+    const minCadenceTicks = leafRule && Number.isFinite(leafRule.minCadenceTicks)
+      ? Math.max(1, Math.floor(leafRule.minCadenceTicks)) : 0;
+    // A replaced station object is a reset/rebind boundary. Keep its first
+    // mint immediate even when the old path had a recent market-live sign;
+    // ordinary in-place market updates still use the explicit lower bound.
+    const marketLiveSourceChanged = leafRule && leafRule.project === 'marketLive'
+      && node.lastSign >= 0 && node.marketLiveSource !== v;
+    // The selected PB tape is immutable for an attempt. Ship its start/clear edge immediately,
+    // but do not re-sign a large unchanged tape on every simulation reply.
+    const circuitGhostChanged = path === 'counterweightCircuitGhost'
+      && node.lastSign >= 0 && node.circuitGhostSource !== v;
+    // The first admitted threat in an active wave is a bootstrap edge, not a
+    // recurring progress sample.  A new game can leave the run root already
+    // expanded with spawnedThreat=0; if the worker then reaches active and
+    // admits its opening batch before the paced slot for this leaf, the phase
+    // update can arrive while the public census remains zero for the whole
+    // presentation window.  Ship that one positive edge immediately, while
+    // keeping later within-wave count changes on the existing root cadence.
+    let runAdmissionBootstrap = false;
+    if (metadata.isRunSpawnedThreat) {
+      const activeWave = runContext && runContext.phase === 'active'
+        && Number.isSafeInteger(runContext.wave) ? runContext.wave : null;
+      if (activeWave === null) {
+        node.runAdmissionWave = null;
+      } else if (Number.isFinite(v) && v > 0 && node.runAdmissionWave !== activeWave) {
+        node.runAdmissionWave = activeWave;
+        runAdmissionBootstrap = true;
+      }
+    }
+    // Active cable loads and cuts belong to the same reply as their moving bodies, at any table size.
+    // The finite Orchard ledger (three sockets, at most twelve lots) also carries live motor progress.
+    if (node.lastSign >= 0 && path !== 'sites.anvilOrchard' && !leafRule?.hotPresentation && !metadata.isCombatAttachments && !node.urgentSign && !freshOwnerSnapshot && !npcJobsRevisionChanged
+        && !runAdmissionBootstrap && !marketLiveSourceChanged && !circuitGhostChanged && !combatTracePlayerChanged) {
+      const tierTicks = leafRule?.project === 'capitalBossPresentation' ? 1 : node.bytes > DOMAIN_COLD_BYTES ? DOMAIN_COLD_TICKS
+        : node.bytes > DOMAIN_WARM_BYTES ? DOMAIN_WARM_TICKS : 1;
+      // minCadenceTicks is a true minimum after a sign, rather than a slot
+      // phase. This keeps a projected market below 4 KiB from falling back to
+      // the economy's 10-pass cadence (six times the intended signing rate).
+      if (minCadenceTicks > 1 && tick - node.lastSign < minCadenceTicks) return;
+      const interval = Math.max(tierTicks, cadence, minCadenceTicks);
+      if (interval > 1) {
+        // Keep the same maximum freshness interval while spreading recurring
+        // large canonical/signature walks across replies. Initial values still
+        // ship immediately below; only an explicit diagnostic profile aligns.
+        if (!activeDomainConfig.staggerCold
+            && tierTicks === DOMAIN_COLD_TICKS && interval === DOMAIN_COLD_TICKS) {
+          if (tick % DOMAIN_COLD_TICKS !== DOMAIN_COLD_OFFSET) return;
+        } else if (tick % interval !== node.slot % interval) {
+          return;
+        }
+      }
+    } else if (!freshOwnerSnapshot && leafRule && leafRule.deferFirstSign) {
+      // Mass-mint smoothing for leaf-view rules: a first sign waits for the
+      // leaf's slot instead of firing immediately, spreading mint bursts
+      // (e.g. station markets materializing on one economy:tick) over
+      // firstSignTicks — default the root cadence. Kept paths only — non-rule
+      // leaves still mint eagerly.
+      const interval = Math.max(1, leafRule.firstSignTicks || cadence);
+      if (interval > 1 && tick % interval !== node.slot % interval) return;
+    }
+    const previousCombatTraceWatermark = isCombatTrace
+      ? node.combatTraceWatermark : null;
+    const currentCombatTraceWatermark = isCombatTrace
+      ? combatTraceWatermark(v, previousCombatTraceWatermark, normalizedPlayerId) : null;
+    // combat.trace is a large append-only leaf. When its producer watermark,
+    // event identities, and player identity are unchanged, the canonical
+    // signature and retained presentation payload are already on this node.
+    // Advance the freshness clock without re-walking the record; any append,
+    // trim, replacement, reset, malformed shape, unknown field, or player
+    // switch falls through to the exact path below.
+    if (currentCombatTraceWatermark
+        && node.lastSign >= 0
+        && sameCombatTraceWatermark(previousCombatTraceWatermark, currentCombatTraceWatermark)) {
+      node.lastSign = tick;
+      return;
+    }
+    const pv = projectDomainLeaf(leafRule, v, state);
+    const sig = canonicalSignature(pv, sigScratch);
+    // Production sends the canonical value, never its hash. Compare the retained
+    // text directly instead of UTF-8 encoding and SHA-256 hashing every leaf on
+    // every due reply. The optional parity probe still gets the same digest,
+    // computed only when its source changes. This keeps complete payloads and
+    // freshness unchanged, and exact text equality cannot hide a hash collision.
+    const changed = node.lastSign < 0 || sig !== node.signature;
+    stats.signedBytes += sig.length;
+    node.urgentSign = false;
+    node.lastSign = tick;
+    node.bytes = sig.length;
+    if (leafRule && leafRule.project === 'marketLive') node.marketLiveSource = v;
+    if (path === 'counterweightCircuitGhost') node.circuitGhostSource = v;
+    if (currentCombatTraceWatermark) {
+      const eventRefs = node.combatTraceEventRefs || [];
+      eventRefs.length = currentCombatTraceWatermark.events.length;
+      for (let i = 0; i < eventRefs.length; i++) {
+        eventRefs[i] = currentCombatTraceWatermark.events[i];
+      }
+      currentCombatTraceWatermark.eventRefs = eventRefs;
+      node.combatTraceEventRefs = eventRefs;
+    } else {
+      node.combatTraceEventRefs = null;
+    }
+    node.combatTraceWatermark = currentCombatTraceWatermark;
+    const freshSlot = node.probeSlot == null;
+    if (freshSlot) assignProbeSlot(node, path);
+    if (changed) {
+      node.signature = sig;
+      node.digest = probeEnabled ? domainSigDigest(sig) : null;
+      node.probeChanged = true;
+      updates.push({ segs, v: canonicalClone(pv, cloneScratch), bytes: sig.length });
+      stats.shipBytes += sig.length;
+      stats.ships++;
+      if (sig.length > DOMAIN_SHIP_CAP_BYTES && stats.oversize.length < 32) {
+        stats.oversize.push({ path, bytes: sig.length, tick });
+      }
+    } else if (freshSlot) {
+      node.probeChanged = true; // runner needs this digest for the new slot
+    }
+  }
+
+  return {
+    paths,
+    // An owner event may require one mutable leaf before its normal cold slot. Keep the
+    // previous signature: an unchanged value still ships nothing, and the next diff resumes
+    // the usual cadence. A lazy leaf needs no flag before its first (already eager) sign.
+    invalidateLeaf(path) {
+      const node = paths.get(path);
+      if (!node || !node.leaf) return false;
+      node.urgentSign = true;
+      return true;
+    },
+    // A bounded result receipt may expose several values from one native owner
+    // before their staggered leaf slots are due. Urgent-sign only the existing
+    // leaves under that owner; signatures remain authoritative, so equal values
+    // do not ship, and the next successful sign restores the ordinary cadence.
+    // Unseen children need no special treatment: their first sign is already eager.
+    invalidateSubtree(path) {
+      const node = paths.get(path);
+      if (!node) return 0;
+      let invalidated = 0;
+      const markLeaves = (current) => {
+        if (!current || !current.alive) return;
+        if (!current.kids) {
+          if (current.leaf) {
+            current.urgentSign = true;
+            invalidated++;
+          }
+          return;
+        }
+        for (const child of current.kids.values()) markLeaves(child);
+      };
+      markLeaves(node);
+      return invalidated;
+    },
+    diff(state, tick) {
+      const start = nowNs();
+      const updates = [];
+      const stats = { shipBytes: 0, ships: 0, signedBytes: 0, oversize: [] };
+      const npcJobsRevision = resolveDomainValue(state, 'npcJobs.revision');
+      const runContext = resolveDomainValue(state, 'run');
+      for (let rootIndex = 0; rootIndex < DOMAIN_MIRROR_KEYS.length; rootIndex++) {
+        const key = DOMAIN_MIRROR_KEYS[rootIndex];
+        let rootNode = rootNodes[rootIndex];
+        if (!rootNode || !rootNode.alive) {
+          rootNode = getOrCreateNode(key, [key]);
+          rootNodes[rootIndex] = rootNode;
+        }
+        let walkSegs = rootNode.segs;
+        if (walkSegs.length !== 1 || walkSegs[0] !== key) {
+          walkSegs = rootAliasSegs[rootIndex];
+          if (!walkSegs) walkSegs = rootAliasSegs[rootIndex] = [key];
+        }
+        walk(rootNode, resolveDomainValue(state, key), tick, updates, stats, npcJobsRevision,
+          runContext, state, walkSegs);
+      }
+      const sweep = tick % DOMAIN_PROBE_SWEEP_TICKS === 0;
+      let probe = null;
+      if (probeEnabled) {
+        const s = [];
+        const h = [];
+        for (const n of paths.values()) {
+          if (!n.leaf || n.probeSlot == null) continue;
+          if (sweep || n.probeChanged) {
+            s.push(n.probeSlot);
+            h.push(n.digest);
+            n.probeChanged = false;
+          }
+        }
+        probe = {
+          gen: probeGen,
+          sweep,
+          a: pendingAdds.splice(0),
+          r: pendingRemovals.splice(0),
+          s,
+          h,
+        };
+      }
+      stats.diffMs = Number(nowNs() - start) / 1e6;
+      return { updates, probe, ...stats };
+    },
+  };
+}
+
+// Apply one shipped path update into the facades map. Multi-segment updates
+// resolve under the mirrored root (segs[0]); intermediate nodes are created as
+// needed; the leaf slot is deep-assigned in place. {del:true} removes the leaf
+// property. Root facade identity is preserved — the root object is mutated,
+// never swapped, except by a root-level del (which the differ never emits for
+// mirrored keys) or a root-level kind change (a legitimate swap).
+export function applyDomainPathUpdate(domains, u, touched) {
+  if (!u || !Array.isArray(u.segs) || u.segs.length === 0) return;
+  const root = u.segs[0];
+  if (u.segs.length === 1) {
+    if (u.del) { domains.delete(root); return; }
+    domains.set(root, deepAssignInPlace(domains.get(root), u.v, touched));
+    return;
+  }
+  let node = domains.get(root);
+  if (u.del) {
+    if (!isCanonicalObject(node)) return;
+    for (let i = 1; i < u.segs.length - 1; i++) {
+      node = node[u.segs[i]];
+      if (!isCanonicalObject(node)) return;
+    }
+    delete node[u.segs[u.segs.length - 1]];
+    return;
+  }
+  if (!isCanonicalObject(node)) {
+    node = {};
+    domains.set(root, node);
+  }
+  for (let i = 1; i < u.segs.length - 1; i++) {
+    let next = node[u.segs[i]];
+    if (!isCanonicalObject(next)) {
+      next = {};
+      node[u.segs[i]] = next;
+    }
+    node = next;
+  }
+  const last = u.segs[u.segs.length - 1];
+  node[last] = deepAssignInPlace(node[last], u.v, touched);
+}
+
+// Runner-side probe replay: walks the facade map with the same expansion rules
+// the differ applies to live state and digests every leaf path. Set-equality of
+// paths plus digest equality is gate F2.
+export function facadeDomainProbe(domains, scratch) {
+  const probe = {};
+  for (const key of DOMAIN_MIRROR_KEYS) {
+    if (!domains.has(key)) continue;
+    walkFacade(domains.get(key), key, [key], probe, scratch);
+  }
+  return probe;
+}
+
+function walkFacade(v, path, segs, probe, scratch) {
+  if (isCanonicalObject(v) && segs.length - 1 < expandDepthFor(segs)) {
+    for (const k of Object.keys(v)) {
+      walkFacade(v[k], `${path}.${k}`, segs.concat(k), probe, scratch);
+    }
+    return;
+  }
+  probe[path] = domainSigDigest(canonicalSignature(v, scratch));
+}
+
+// Resolve a dotted leaf path to the facade value's probe digest (undefined
+// when the facade does not hold the path).
+function facadeDigestAt(domains, segs, scratch) {
+  let node = domains.get(segs[0]);
+  for (let i = 1; i < segs.length; i++) {
+    if (node == null || typeof node !== 'object') return undefined;
+    node = node[segs[i]];
+  }
+  return domainSigDigest(canonicalSignature(node, scratch));
+}
+
+// Runner-side probe consumer: mirrors the worker's slot table from add/remove
+// entries and verifies shipped digests against the facades. Between sweeps it
+// re-signs only the paths the worker probed (the ones that changed); a sweep
+// re-verifies every facade leaf and checks for extra facade paths.
+export function createDomainProbeChecker(domains) {
+  const slotSegs = [];
+  const slotPath = [];
+  const scratch = {};
+  let gen = 0;
+  return {
+    consume(probe) {
+      const res = { checks: 0, sweep: !!probe.sweep, events: [] };
+      if (!probe) return res;
+      if (Number.isSafeInteger(probe.gen) && probe.gen > gen) gen = probe.gen;
+      for (const slot of probe.r || []) { slotSegs[slot] = null; slotPath[slot] = null; }
+      for (const [slot, segs] of probe.a || []) {
+        slotSegs[slot] = segs;
+        slotPath[slot] = segs.join('.');
+      }
+      if (probe.sweep) {
+        const facadeProbe = facadeDomainProbe(domains, scratch);
+        const livePaths = new Set();
+        for (const p of slotPath) if (p != null) livePaths.add(p);
+        for (const path of Object.keys(facadeProbe)) {
+          if (!livePaths.has(path)) {
+            res.checks++;
+            res.events.push({ kind: 'extra-facade-path', path });
+          }
+        }
+        for (let i = 0; i < probe.s.length; i++) {
+          const path = slotPath[probe.s[i]];
+          res.checks++;
+          if (path == null) {
+            res.events.push({ kind: 'unbound-slot', slot: probe.s[i], liveDigest: probe.h[i] });
+            continue;
+          }
+          const model = facadeProbe[path];
+          if (model === undefined) {
+            res.events.push({ kind: 'missing-facade-path', path, liveDigest: probe.h[i] });
+          } else if (model !== probe.h[i]) {
+            res.events.push({ kind: 'digest', path, modelDigest: model, liveDigest: probe.h[i] });
+          }
+        }
+        return res;
+      }
+      for (let i = 0; i < probe.s.length; i++) {
+        const segs = slotSegs[probe.s[i]];
+        res.checks++;
+        if (segs == null) {
+          res.events.push({ kind: 'unbound-slot', slot: probe.s[i], liveDigest: probe.h[i] });
+          continue;
+        }
+        const model = facadeDigestAt(domains, segs, scratch);
+        if (model === undefined) {
+          res.events.push({ kind: 'missing-facade-path', path: segs.join('.'), liveDigest: probe.h[i] });
+        } else if (model !== probe.h[i]) {
+          res.events.push({ kind: 'digest', path: segs.join('.'), modelDigest: model, liveDigest: probe.h[i] });
+        }
+      }
+      return res;
+    },
+  };
+}
+
+// Facade accessor — the post-flip stand-in for `state.<key>` /
+// `state.world.<sub>` reads. Undefined before the first ship (or when the live
+// value itself is opaque/undefined).
+export function readModelDomain(readModel, key) {
+  return readModel && readModel.domains ? readModel.domains.get(key) : undefined;
+}

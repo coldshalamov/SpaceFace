@@ -1,0 +1,180 @@
+From 58e5b25fa5be10b11d2d1263d945b86350767b04 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 08:16:58 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quiet-latch=20idle=20field-forc?=
+ =?UTF-8?q?e=20surfaces=20(~2.5=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight still paid frustum rebuild + slot reserved walk +
+batch.begin/end commit(0) every tick with no live field surfaces. Latch
+after first empty publish; wake on fields.active or residual releasing
+slots. Soft-GPU fps not claimed.
+---
+ .../forceLanguage/fieldForcePresentation.js   | 30 ++++++-
+ test/field-force-quiet-empty-latch.test.mjs   | 90 +++++++++++++++++++
+ 2 files changed, 119 insertions(+), 1 deletion(-)
+ create mode 100644 test/field-force-quiet-empty-latch.test.mjs
+
+diff --git a/src/render/forceLanguage/fieldForcePresentation.js b/src/render/forceLanguage/fieldForcePresentation.js
+index 724530974..981567016 100644
+--- a/src/render/forceLanguage/fieldForcePresentation.js
++++ b/src/render/forceLanguage/fieldForcePresentation.js
+@@ -29,6 +29,11 @@ export class FieldForcePresentation {
+     this.time=0;this.frame=0;this.disposed=false;
+     this.frustum=new THREE.Frustum();this.clip=new THREE.Matrix4();this.sphere=new THREE.Sphere();
+     this.stats={active:0,releasing:0,surfaces:0,dropped:0,unknown:0,culled:0};
++    // Quiet settled flight: empty field-force still paid frustum rebuild +
++    // 10-slot reserved walk + batch.begin/end commit(0) every tick after
++    // surfaces already hidden. Latch after first empty publish; wake on
++    // fields.active / residual releasing slots. Soft-GPU fps not claimed.
++    this._quietEmpty=false;
+   }
+   _valid(field){
+     return field && field.id!=null && Number.isFinite(field.center?.x) && Number.isFinite(field.center?.z)
+@@ -66,8 +71,24 @@ export class FieldForcePresentation {
+     slot.angle=Math.abs(dx)+Math.abs(dz)>1e-6?Math.atan2(dz,dx):0;
+     this.stats.active++;
+   }
++  // Cheap dirty wake for quiet field-force latch — active list or residual slot.
++  // False-wake falls through to one full update and re-latches when empty.
++  _quietMaybeAwake(state){
++    const list=state&&state.fields&&state.fields.active;
++    if(Array.isArray(list)&&list.length>0)return true;
++    for(let i=0;i<this.slots.length;i++)if(this.slots[i].id!==null)return true;
++    return false;
++  }
+   update(dt,state={}){
+     if(this.disposed)return this.stats;
++    // Quiet settled flight: empty field-force still paid frustum rebuild +
++    // slot reserved walk + batch.begin/end commit(0) every tick with no live
++    // surfaces. Latch after first empty publish; cheap active/slot wake.
++    // Soft-GPU fps not claimed. Release residue must keep updating until slots clear.
++    if(this._quietEmpty){
++      if(!this._quietMaybeAwake(state))return this.stats;
++      this._quietEmpty=false;
++    }
+     const clock=Number.isFinite(state.simTime)?state.simTime:this.time+Math.max(0,finite(dt));
+     // A restored/new simulation may rewind the clock. Release old purely cosmetic identities.
+     if(clock<this.time)for(const s of this.slots){s.id=null;s.release=-1;}
+@@ -128,6 +149,13 @@ export class FieldForcePresentation {
+       }
+     }
+     this.batch.end();stats.surfaces=this.batch.count;stats.dropped+=this.batch.dropped;
++    // Fully idle empty (no active fields, no residual releasing slots, batch empty)
++    // → quiet latch. Soft-GPU fps not claimed.
++    const activeList=state&&state.fields&&state.fields.active;
++    const hasActive=Array.isArray(activeList)&&activeList.length>0;
++    let slotLive=false;
++    for(let i=0;i<this.slots.length;i++){if(this.slots[i].id!==null){slotLive=true;break;}}
++    this._quietEmpty=!hasActive&&!slotLive&&this.batch.count===0;
+     return stats;
+   }
+   _position(slot){
+@@ -301,5 +329,5 @@ export class FieldForcePresentation {
+     };
+   }
+   reproject(dx,dz){ this.batch.reproject(dx,dz); } // Also safe when the next simulation dt is zero.
+-  dispose(){if(this.disposed)return;this.disposed=true;this.batch.dispose();for(const s of this.slots){s.id=null;s.release=-1;}}
++  dispose(){if(this.disposed)return;this.disposed=true;this._quietEmpty=false;this.batch.dispose();for(const s of this.slots){s.id=null;s.release=-1;}}
+ }
+diff --git a/test/field-force-quiet-empty-latch.test.mjs b/test/field-force-quiet-empty-latch.test.mjs
+new file mode 100644
+index 000000000..f6f352c06
+--- /dev/null
++++ b/test/field-force-quiet-empty-latch.test.mjs
+@@ -0,0 +1,90 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import * as THREE from 'three';
++import { FieldForcePresentation } from '../src/render/forceLanguage/fieldForcePresentation.js';
++import { FIELD_LIFECYCLES } from '../src/render/forceLanguage/effectLifecycle.js';
++
++const field = (kind, id = kind) => ({
++  id,
++  kind,
++  center: { x: 20, z: 30 },
++  dir: { x: 1, z: 0 },
++  radius: kind === 'seed' ? 42 : 170,
++  halfAngleRad: 0.56,
++  halfWidth: 52,
++  engaged: false,
++});
++const state = (active = []) => ({
++  simTime: 0,
++  fields: { active },
++  massSeed: { seedId: 3, phase: 'active' },
++  settings: { video: {} },
++  render: {
++    camera: {
++      projectionMatrix: new THREE.Matrix4(),
++      matrixWorldInverse: new THREE.Matrix4(),
++    },
++  },
++});
++const step = (o, s, t) => {
++  s.simTime = t;
++  return o.update(0.016, s);
++};
++
++test('quiet empty field-force latches after first empty publish', () => {
++  const o = new FieldForcePresentation(new THREE.Scene());
++  const s = state([]);
++  step(o, s, 0);
++  assert.equal(o._quietEmpty, true, 'first empty publish latches');
++  assert.equal(o.mesh.visible, false);
++  assert.equal(o.mesh.count, 0);
++  const frameBefore = o.frame;
++  step(o, s, 1);
++  step(o, s, 2);
++  assert.equal(o._quietEmpty, true);
++  assert.equal(o.frame, frameBefore, 'latched idle skips frame advance');
++  o.dispose();
++});
++
++test('fields.active dirty-wake resumes update then re-latches when empty', () => {
++  const o = new FieldForcePresentation(new THREE.Scene());
++  const s = state([]);
++  step(o, s, 0);
++  assert.equal(o._quietEmpty, true);
++  s.fields.active = [field('well')];
++  step(o, s, 1);
++  assert.equal(o._quietEmpty, false);
++  assert.equal(o.stats.active, 1);
++  assert.ok(o.mesh.count > 0);
++  s.fields.active = [];
++  step(o, s, 1.1);
++  assert.equal(o.stats.releasing, 1, 'release residue still updates');
++  assert.equal(o._quietEmpty, false, 'must not latch while releasing');
++  const release = FIELD_LIFECYCLES.well.release;
++  step(o, s, 1.1 + release + 0.05);
++  assert.equal(o.mesh.count, 0);
++  assert.equal(o._quietEmpty, true, 're-latches after residue drains');
++  const frame = o.frame;
++  step(o, s, 5);
++  assert.equal(o.frame, frame);
++  o.dispose();
++});
++
++test('picture unchanged while latched — mesh stays hidden/count 0', () => {
++  const o = new FieldForcePresentation(new THREE.Scene());
++  const s = state([field('repulsor')]);
++  step(o, s, 0);
++  step(o, s, 1);
++  assert.ok(o.mesh.visible);
++  s.fields.active = [];
++  const release = FIELD_LIFECYCLES.repulsor.release;
++  step(o, s, 1.05);
++  step(o, s, 1.05 + release + 0.05);
++  assert.equal(o._quietEmpty, true);
++  assert.equal(o.mesh.visible, false);
++  assert.equal(o.mesh.count, 0);
++  for (let i = 0; i < 30; i++) step(o, s, 2 + i * 0.05);
++  assert.equal(o.mesh.visible, false);
++  assert.equal(o.mesh.count, 0);
++  o.dispose();
++});
+-- 
+2.47.3
+

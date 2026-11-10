@@ -1,0 +1,226 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: evict stays farther than admit so a lip oscillation does not thrash
+ok 1 - evict stays farther than admit so a lip oscillation does not thrash
+  ---
+  duration_ms: 2.19902
+  ...
+# Subtest: decode runway sees an inbound far hull and can request promote
+ok 2 - decode runway sees an inbound far hull and can request promote
+  ---
+  duration_ms: 8.08898
+  ...
+# Subtest: mesh collect surfaces a far hull on the decode runway before its build horizon
+ok 3 - mesh collect surfaces a far hull on the decode runway before its build horizon
+  ---
+  duration_ms: 2.663799
+  ...
+# Subtest: a mesh already on the lip is kept when the live body is shelved
+ok 4 - a mesh already on the lip is kept when the live body is shelved
+  ---
+  duration_ms: 0.746991
+  ...
+# Subtest: a promoted inbound hull stays render-relevant when the last activity frame omitted it
+ok 5 - a promoted inbound hull stays render-relevant when the last activity frame omitted it
+  ---
+  duration_ms: 1.152449
+  ...
+# Subtest: flight first-render does not compose an ordinary on-glass hull
+ok 6 - flight first-render does not compose an ordinary on-glass hull
+  ---
+  duration_ms: 0.517018
+  ...
+# Subtest: time-to-glass solves entry for movers and rejects non-approachers
+ok 7 - time-to-glass solves entry for movers and rejects non-approachers
+  ---
+  duration_ms: 0.449999
+  ...
+# Subtest: admission anchor follows the near focus and falls back after a relocate
+ok 8 - admission anchor follows the near focus and falls back after a relocate
+  ---
+  duration_ms: 1.786998
+  ...
+# Subtest: a fast inbound hull beyond the decode disc is render-relevant on approach time
+ok 9 - a fast inbound hull beyond the decode disc is render-relevant on approach time
+  ---
+  duration_ms: 1.483573
+  ...
+# Subtest: player motion leans the residency oval forward and lets the trailing edge sleep
+ok 10 - player motion leans the residency oval forward and lets the trailing edge sleep
+  ---
+  duration_ms: 0.70921
+  ...
+# Subtest: a fast inbound row gets its mesh from the ledger; it does not thrash the live set
+ok 11 - a fast inbound row gets its mesh from the ledger; it does not thrash the live set
+  ---
+  duration_ms: 6.811655
+  ...
+# Subtest: a fast inbound row shelved long ago still admits on its extrapolated position
+ok 12 - a fast inbound row shelved long ago still admits on its extrapolated position
+  ---
+  duration_ms: 1.243446
+  ...
+# Subtest: mesh collect leans forward on approach vectors only
+ok 13 - mesh collect leans forward on approach vectors only
+  ---
+  duration_ms: 1.056241
+  ...
+# Subtest: first-flight hold still owes a mesh to an inbound prefetch contact
+ok 14 - first-flight hold still owes a mesh to an inbound prefetch contact
+  ---
+  duration_ms: 1.211447
+  ...
+# Subtest: first-flight hold admits static ledger rocks on player-vel collect horizon
+ok 15 - first-flight hold admits static ledger rocks on player-vel collect horizon
+  ---
+  duration_ms: 0.648926
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: dock, screen stack, and sector-shell cook freeze 3D submit
+ok 16 - dock, screen stack, and sector-shell cook freeze 3D submit
+  ---
+  duration_ms: 1.41907
+  ...
+# Subtest: first-flight streaming hold keeps the cooked GPU set until the latch
+ok 17 - first-flight streaming hold keeps the cooked GPU set until the latch
+  ---
+  duration_ms: 0.253221
+  ...
+# Subtest: sector-shell admission only keeps the first-flight cook set relevant
+ok 18 - sector-shell admission only keeps the first-flight cook set relevant
+  ---
+  duration_ms: 0.764478
+  ...
+# Subtest: residency service reports the first-flight hold and clears a banked full scan
+ok 19 - residency service reports the first-flight hold and clears a banked full scan
+  ---
+  duration_ms: 0.527855
+  ...
+# Subtest: same-sector F9 recook keeps resident GPU meshes
+ok 20 - same-sector F9 recook keeps resident GPU meshes
+  ---
+  duration_ms: 1.491975
+  ...
+# Subtest: same-sector F9 recook reattaches GPU meshes onto restored entities
+ok 21 - same-sector F9 recook reattaches GPU meshes onto restored entities
+  ---
+  duration_ms: 0.434707
+  ...
+# Subtest: place props carry a durable (sector, place, position) mesh key
+ok 22 - place props carry a durable (sector, place, position) mesh key
+  ---
+  duration_ms: 0.265035
+  ...
+# Subtest: kept place boundary rebinds to the matching restored row, not a recycled id
+ok 23 - kept place boundary rebinds to the matching restored row, not a recycled id
+  ---
+  duration_ms: 0.764292
+  ...
+# Subtest: intentional sector enter cooks the live next scene behind the jump shell
+ok 24 - intentional sector enter cooks the live next scene behind the jump shell
+  ---
+  duration_ms: 25.739201
+  ...
+# Subtest: isEntityMeshExpected mirrors the hold-exempt build contract
+ok 25 - isEntityMeshExpected mirrors the hold-exempt build contract
+  ---
+  duration_ms: 1.792145
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: first-flight hold enqueues the rescue set and on-glass rows instead of starving them
+ok 26 - first-flight hold enqueues the rescue set and on-glass rows instead of starving them
+  ---
+  duration_ms: 7.259488
+  ...
+# Subtest: protected first-flight drain caps to the ordinary runtime mesh budget
+ok 27 - protected first-flight drain caps to the ordinary runtime mesh budget
+  ---
+  duration_ms: 8.730591
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: presentation residency follows glass and runway tiers, not sector existence
+ok 28 - presentation residency follows glass and runway tiers, not sector existence
+  ---
+  duration_ms: 6.447671
+  ...
+# Subtest: a stamped runway package stays meshed even when far from the live radius fallback
+ok 29 - a stamped runway package stays meshed even when far from the live radius fallback
+  ---
+  duration_ms: 0.415022
+  ...
+# Subtest: a shelved far hull still draws from the ledger before it rematerializes
+ok 30 - a shelved far hull still draws from the ledger before it rematerializes
+  ---
+  duration_ms: 1.477178
+  ...
+# Subtest: nothing on the live screen loses its mesh, whatever tier the sim-side frame gave it
+ok 31 - nothing on the live screen loses its mesh, whatever tier the sim-side frame gave it
+  ---
+  duration_ms: 0.592017
+  ...
+# Subtest: mesh eviction never sits inside mesh prefetch while the player zooms out
+ok 32 - mesh eviction never sits inside mesh prefetch while the player zooms out
+  ---
+  duration_ms: 5.415469
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: inbound hulls retain their cooked roots across repeated outer decode runway polls
+ok 33 - inbound hulls retain their cooked roots across repeated outer decode runway polls
+  ---
+  duration_ms: 9.441378
+  ...
+# Subtest: ordinary residency poll keeps exact runway semantics in two retained collection passes
+ok 34 - ordinary residency poll keeps exact runway semantics in two retained collection passes
+  ---
+  duration_ms: 6.645234
+  ...
+# Subtest: residency service runs full recovery once, then drains without repeating scans
+ok 35 - residency service runs full recovery once, then drains without repeating scans
+  ---
+  duration_ms: 0.566412
+  ...
+# Subtest: continuous sector handoff defers the seam recovery scan through the visual blend
+ok 36 - continuous sector handoff defers the seam recovery scan through the visual blend
+  ---
+  duration_ms: 0.282081
+  ...
+# Subtest: stable 400-entity poll halves collection visits and removes all redundant rebinds
+ok 37 - stable 400-entity poll halves collection visits and removes all redundant rebinds
+  ---
+  duration_ms: 10.429061
+  ...
+# Subtest: ordinary poll admits a nearby far-actor hull before it hits the glass
+ok 38 - ordinary poll admits a nearby far-actor hull before it hits the glass
+  ---
+  duration_ms: 1.216466
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: wave-planned hull keys cover schedule enemies with silhouette-aware decode stubs
+ok 39 - wave-planned hull keys cover schedule enemies with silhouette-aware decode stubs
+  ---
+  duration_ms: 4.964159
+  ...
+# Subtest: noteWaveHullRunwayKeys stamps planned keys and holds swarm-spawn wasps mesh-expected
+ok 40 - noteWaveHullRunwayKeys stamps planned keys and holds swarm-spawn wasps mesh-expected
+  ---
+  duration_ms: 1.259458
+  ...
+# Subtest: collectWaveHullDecodeKeys ignores empty/failed plans and dedupes shared shipIds
+ok 41 - collectWaveHullDecodeKeys ignores empty/failed plans and dedupes shared shipIds
+  ---
+  duration_ms: 0.242749
+  ...
+# Subtest: renderer wires run:wavePlanned to wave-hull decode runway (source contract)
+ok 42 - renderer wires run:wavePlanned to wave-hull decode runway (source contract)
+  ---
+  duration_ms: 9.122488
+  ...
+1..42
+# tests 42
+# suites 0
+# pass 42
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 802.524101

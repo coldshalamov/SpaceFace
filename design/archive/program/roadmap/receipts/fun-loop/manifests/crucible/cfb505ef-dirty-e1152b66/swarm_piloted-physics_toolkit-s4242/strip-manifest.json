@@ -1,0 +1,4351 @@
+{
+  "schema": "spaceface.frameStripManifest.v2",
+  "bench": "crucible",
+  "scenarioId": "swarm_piloted",
+  "scenarioLabel": "Crucible swarm, flown and fired",
+  "loadoutId": "physics_toolkit",
+  "sourceIdentity": {
+    "gitHead": "cfb505ef777ca3d0987201cfc7bae0c27bebd59d",
+    "gitTree": "176cbb0d15ff6f3e4bfe1272620f011751b13844",
+    "productionDirty": true,
+    "productionDiffHash": "e1152b66d6855ac144e21a2b6ed36cf777a389d33c55d843347d21426d8af870"
+  },
+  "harnessDigest": "4573d69fec5d4bbeb9e346ef68973383f3bc3be05c3271b38a697885e062390e",
+  "arenaId": "helios_core",
+  "ruleset": "swarm",
+  "seed": 4242,
+  "runKind": "survival",
+  "route": "real player click-through (title -> Crucible door -> hull/seed -> Hold the line)",
+  "camera": "shipping_chase",
+  "cameraMeasured": {
+    "available": true,
+    "heightWU": 194.02,
+    "fovDeg": 50.97,
+    "aspect": 1.7778,
+    "visibleDepthWU": 184.96,
+    "controller": "cameraCtrl"
+  },
+  "hudText": "off",
+  "hudTextVerified": true,
+  "hudTextLeftovers": [],
+  "hudTextVerifiedAtStart": true,
+  "hudTextVerifiedAtEnd": true,
+  "hudTextSweptAtStart": [],
+  "hudTextSweptDuringRun": 0,
+  "webglRenderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "parallelShaderCompile": true,
+  "hullWait": {
+    "waitedS": 25.59,
+    "drawnAtSimTime": 15.617,
+    "hullPx": 114,
+    "litPixelsOnHull": 1882,
+    "litPixelsBoxArea": 29241,
+    "hostilesDrawing": 3,
+    "evidence": "three.js onAfterRender on the authored LOD parts, counted only for the on-screen pass through the shipping camera, attributed to whichever ship the mesh is on at read time, + lit pixels in a box at the projected hull",
+    "knownLimits": "no occlusion test; the lit-pixel box does not separate hull from background"
+  },
+  "hullDrawn": {
+    "medianPartsPerFrame": 11,
+    "framesWithHull": 90,
+    "framesTotal": 90
+  },
+  "captureMethod": "cdp screencast, jpeg q92 (passive; the compositor hands over frames it already drew)",
+  "frameFormat": "jpeg",
+  "frameQuality": 92,
+  "screencastEveryNthFrame": 9,
+  "chromeArgs": [
+    "--window-size=1280,760",
+    "--mute-audio",
+    "--disable-gpu-shader-disk-cache",
+    "--disable-backgrounding-occluded-windows",
+    "--disable-renderer-backgrounding",
+    "--disable-background-timer-throttling"
+  ],
+  "realtimeStages": {
+    "settled": 0.934,
+    "afterRecorder": 0.86,
+    "beforeScreencast": 0.914,
+    "duringScreencast": 0.615,
+    "afterScreencast": 0.292
+  },
+  "realtimeBeforeScreencast": 0.914,
+  "sampleHz": 8,
+  "baselineFps": 4,
+  "momentFps": 8,
+  "momentLeadS": 8,
+  "momentTailS": 12,
+  "simHz": 60,
+  "runStartTick": 30,
+  "tickBasis": "run-relative (state.tick minus the tick at launch)",
+  "requestedDurationS": 26,
+  "capturedSpanS": 16.567,
+  "settleWaitS": 26.97,
+  "settleFraction": 0.934,
+  "realtimeFraction": 0.615,
+  "normalSpeed": true,
+  "normalSpeedFloor": 0.6,
+  "realtimeSegments": [
+    {
+      "fromWallS": 0,
+      "toWallS": 4.75,
+      "realtime": 0.736
+    },
+    {
+      "fromWallS": 5,
+      "toWallS": 9.96,
+      "realtime": 0.427
+    },
+    {
+      "fromWallS": 10,
+      "toWallS": 14.87,
+      "realtime": 0.872
+    },
+    {
+      "fromWallS": 15,
+      "toWallS": 19.88,
+      "realtime": 0.754
+    },
+    {
+      "fromWallS": 20,
+      "toWallS": 24.93,
+      "realtime": 0.466
+    },
+    {
+      "fromWallS": 25,
+      "toWallS": 25.32,
+      "realtime": 1.036
+    }
+  ],
+  "playerShotsFired": 10,
+  "tetherActiveFrames": 0,
+  "visibleJitter": {
+    "measured": true,
+    "windows": 4,
+    "headingReversals": 0,
+    "screenReversals": 0,
+    "cameraReversals": 0,
+    "worldMotionMeasured": true,
+    "commandedHeadingReversals": 0,
+    "commandedScreenReversals": 0,
+    "unreadableSteps": 0,
+    "unreadableWindows": 0,
+    "events": 0,
+    "windowS": 0.5,
+    "cadenceFpsMin": 4.8,
+    "commandedLeadS": 0.15,
+    "unreadableAboveRadS": 6,
+    "note": "4 contact window(s) of 0.5s at >= 4.8 fps; a reversal inside a window is a wobble a viewer sees (0 heading and 0 motion reversal(s) lined up with the pilot's own key transitions within 0.15s and are the pilot, not jitter); 0 reversal(s) on the glass had no reversal in the hull's world motion and are the chase camera, not the ship"
+  },
+  "streamedFrames": 101,
+  "deliveredFps": 3.65,
+  "pageSamples": 1203,
+  "alignWorstMs": 29,
+  "stoppedBecause": "duration reached",
+  "sampledCount": 101,
+  "framesCount": 90,
+  "momentsCount": 86,
+  "momentsInSpanCount": 49,
+  "rawMomentsCount": 5979,
+  "momentFilter": "physics:impact kept only when it involves the player or exchanges >= 40 momentum; moments within 0.5s merged",
+  "pageErrors": [],
+  "capturedAt": "2026-09-06T05:48:38.984Z",
+  "stripDir": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\fun-loop\\strips\\crucible\\cfb505ef-dirty-e1152b66\\swarm_piloted-physics_toolkit-s4242",
+  "receiptDir": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\design\\program\\roadmap\\receipts\\fun-loop\\manifests\\crucible\\cfb505ef-dirty-e1152b66\\swarm_piloted-physics_toolkit-s4242",
+  "contactSheet": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\design\\program\\roadmap\\receipts\\fun-loop\\manifests\\crucible\\cfb505ef-dirty-e1152b66\\swarm_piloted-physics_toolkit-s4242\\contact-sheet.png",
+  "inputTape": [
+    {
+      "atS": 0.5,
+      "keyDown": "KeyW"
+    },
+    {
+      "atS": 3,
+      "keyDown": "KeyD"
+    },
+    {
+      "atS": 5,
+      "keyUp": "KeyD"
+    },
+    {
+      "atS": 5.2,
+      "mouseDown": true
+    },
+    {
+      "atS": 7.5,
+      "mouseUp": true
+    },
+    {
+      "atS": 8,
+      "keyDown": "KeyA"
+    },
+    {
+      "atS": 10.5,
+      "keyUp": "KeyA"
+    },
+    {
+      "atS": 11,
+      "mouseDown": true
+    },
+    {
+      "atS": 13,
+      "mouseUp": true
+    },
+    {
+      "atS": 13.5,
+      "keyUp": "KeyW"
+    },
+    {
+      "atS": 14,
+      "keyDown": "KeyS"
+    },
+    {
+      "atS": 16,
+      "keyUp": "KeyS"
+    },
+    {
+      "atS": 16.5,
+      "keyDown": "KeyW"
+    },
+    {
+      "atS": 17,
+      "keyDown": "KeyD"
+    },
+    {
+      "atS": 20,
+      "keyUp": "KeyD"
+    },
+    {
+      "atS": 20.5,
+      "mouseDown": true
+    },
+    {
+      "atS": 23,
+      "mouseUp": true
+    },
+    {
+      "atS": 24,
+      "keyUp": "KeyW"
+    }
+  ],
+  "inputEvents": [
+    {
+      "atS": 0.5,
+      "simTime": 32.033,
+      "tick": 1892,
+      "input": "forward held"
+    },
+    {
+      "atS": 3,
+      "simTime": 33.967,
+      "tick": 2008,
+      "input": "turn right held"
+    },
+    {
+      "atS": 5,
+      "simTime": 35.183,
+      "tick": 2081,
+      "input": "turn right released"
+    },
+    {
+      "atS": 5.2,
+      "simTime": 35.267,
+      "tick": 2086,
+      "input": "fire held"
+    },
+    {
+      "atS": 7.5,
+      "simTime": 36.267,
+      "tick": 2146,
+      "input": "fire released"
+    },
+    {
+      "atS": 8,
+      "simTime": 36.467,
+      "tick": 2158,
+      "input": "turn left held"
+    },
+    {
+      "atS": 10.5,
+      "simTime": 37.617,
+      "tick": 2227,
+      "input": "turn left released"
+    },
+    {
+      "atS": 11,
+      "simTime": 38.133,
+      "tick": 2258,
+      "input": "fire held"
+    },
+    {
+      "atS": 13,
+      "simTime": 39.833,
+      "tick": 2360,
+      "input": "fire released"
+    },
+    {
+      "atS": 13.5,
+      "simTime": 40.317,
+      "tick": 2389,
+      "input": "forward released"
+    },
+    {
+      "atS": 14,
+      "simTime": 40.7,
+      "tick": 2412,
+      "input": "reverse/brake held"
+    },
+    {
+      "atS": 16,
+      "simTime": 42.467,
+      "tick": 2518,
+      "input": "reverse/brake released"
+    },
+    {
+      "atS": 16.5,
+      "simTime": 43.017,
+      "tick": 2551,
+      "input": "forward held"
+    },
+    {
+      "atS": 17,
+      "simTime": 43.3,
+      "tick": 2568,
+      "input": "turn right held"
+    },
+    {
+      "atS": 20,
+      "simTime": 45.317,
+      "tick": 2689,
+      "input": "turn right released"
+    },
+    {
+      "atS": 20.5,
+      "simTime": 45.9,
+      "tick": 2724,
+      "input": "fire held"
+    },
+    {
+      "atS": 23,
+      "simTime": 47.517,
+      "tick": 2821,
+      "input": "fire released"
+    },
+    {
+      "atS": 24,
+      "simTime": 47.6,
+      "tick": 2826,
+      "input": "forward released"
+    }
+  ],
+  "warmup": [],
+  "pressMethod": "cdp-session-mouse",
+  "moments": [
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 9,
+      "simTime": 0.65,
+      "playerInvolved": false,
+      "magnitude": 29.8,
+      "surface": "other",
+      "merged": 6
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 44,
+      "simTime": 1.2333,
+      "playerInvolved": false,
+      "magnitude": 5.49,
+      "surface": "other",
+      "merged": 5
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 80,
+      "simTime": 1.8333,
+      "playerInvolved": false,
+      "magnitude": 2.27,
+      "surface": "other"
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 206,
+      "simTime": 3.9333,
+      "playerInvolved": false,
+      "magnitude": 155.686,
+      "surface": "craft",
+      "merged": 3
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 256,
+      "simTime": 4.7667,
+      "playerInvolved": true,
+      "magnitude": 16.813,
+      "surface": "craft",
+      "merged": 3
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 321,
+      "simTime": 5.85,
+      "playerInvolved": true,
+      "magnitude": 187.265,
+      "surface": "craft",
+      "merged": 9
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 391,
+      "simTime": 7.0167,
+      "playerInvolved": false,
+      "magnitude": 51.266,
+      "surface": "craft",
+      "merged": 3
+    },
+    {
+      "type": "entity:killed",
+      "tick": 510,
+      "simTime": 9,
+      "playerInvolved": false,
+      "magnitude": 30950.998,
+      "surface": "terrain",
+      "merged": 36
+    },
+    {
+      "type": "physics:impact",
+      "tick": 540,
+      "simTime": 9.5,
+      "playerInvolved": false,
+      "magnitude": 25817.279,
+      "surface": "asteroid|wreck",
+      "merged": 30
+    },
+    {
+      "type": "physics:impact",
+      "tick": 570,
+      "simTime": 10,
+      "playerInvolved": false,
+      "magnitude": 34544.494,
+      "surface": "asteroid|wreck",
+      "merged": 33
+    },
+    {
+      "type": "physics:impact",
+      "tick": 600,
+      "simTime": 10.5,
+      "playerInvolved": false,
+      "magnitude": 25790.342,
+      "surface": "asteroid|wreck",
+      "merged": 34
+    },
+    {
+      "type": "physics:impact",
+      "tick": 630,
+      "simTime": 11,
+      "playerInvolved": false,
+      "magnitude": 25769.302,
+      "surface": "asteroid|wreck",
+      "merged": 34
+    },
+    {
+      "type": "physics:impact",
+      "tick": 660,
+      "simTime": 11.5,
+      "playerInvolved": false,
+      "magnitude": 26238.692,
+      "surface": "asteroid|wreck",
+      "merged": 38
+    },
+    {
+      "type": "physics:impact",
+      "tick": 690,
+      "simTime": 12,
+      "playerInvolved": false,
+      "magnitude": 38779.392,
+      "surface": "asteroid|wreck",
+      "merged": 47
+    },
+    {
+      "type": "physics:impact",
+      "tick": 720,
+      "simTime": 12.5,
+      "playerInvolved": true,
+      "magnitude": 25652.421,
+      "surface": "asteroid|wreck",
+      "merged": 36
+    },
+    {
+      "type": "physics:impact",
+      "tick": 750,
+      "simTime": 13,
+      "playerInvolved": true,
+      "magnitude": 28208.773,
+      "surface": "ship",
+      "merged": 40
+    },
+    {
+      "type": "physics:impact",
+      "tick": 780,
+      "simTime": 13.5,
+      "playerInvolved": false,
+      "magnitude": 39233.508,
+      "surface": "asteroid|wreck",
+      "merged": 30
+    },
+    {
+      "type": "physics:impact",
+      "tick": 810,
+      "simTime": 14,
+      "playerInvolved": false,
+      "magnitude": 25421.506,
+      "surface": "asteroid|wreck",
+      "merged": 30
+    },
+    {
+      "type": "physics:impact",
+      "tick": 840,
+      "simTime": 14.5,
+      "playerInvolved": false,
+      "magnitude": 25307.271,
+      "surface": "asteroid|wreck",
+      "merged": 42
+    },
+    {
+      "type": "physics:impact",
+      "tick": 870,
+      "simTime": 15,
+      "playerInvolved": false,
+      "magnitude": 25170.898,
+      "surface": "asteroid|ship",
+      "merged": 51
+    },
+    {
+      "type": "physics:impact",
+      "tick": 900,
+      "simTime": 15.5,
+      "playerInvolved": false,
+      "magnitude": 25008.24,
+      "surface": "asteroid|wreck",
+      "merged": 30
+    },
+    {
+      "type": "physics:impact",
+      "tick": 930,
+      "simTime": 16,
+      "playerInvolved": false,
+      "magnitude": 24820.615,
+      "surface": "asteroid|wreck",
+      "merged": 30
+    },
+    {
+      "type": "physics:impact",
+      "tick": 960,
+      "simTime": 16.5,
+      "playerInvolved": false,
+      "magnitude": 24598.583,
+      "surface": "asteroid|wreck",
+      "merged": 34
+    },
+    {
+      "type": "physics:impact",
+      "tick": 990,
+      "simTime": 17,
+      "playerInvolved": false,
+      "magnitude": 24299.265,
+      "surface": "asteroid|wreck",
+      "merged": 35
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1020,
+      "simTime": 17.5,
+      "playerInvolved": false,
+      "magnitude": 23992.731,
+      "surface": "asteroid|wreck",
+      "merged": 35
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1050,
+      "simTime": 18,
+      "playerInvolved": false,
+      "magnitude": 23578.069,
+      "surface": "asteroid|wreck",
+      "merged": 37
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1080,
+      "simTime": 18.5,
+      "playerInvolved": false,
+      "magnitude": 23099.71,
+      "surface": "asteroid|wreck",
+      "merged": 33
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1110,
+      "simTime": 19,
+      "playerInvolved": false,
+      "magnitude": 22524.085,
+      "surface": "asteroid|wreck",
+      "merged": 31
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1140,
+      "simTime": 19.5,
+      "playerInvolved": false,
+      "magnitude": 34056.815,
+      "surface": "asteroid|wreck",
+      "merged": 30
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1170,
+      "simTime": 20,
+      "playerInvolved": false,
+      "magnitude": 39661.404,
+      "surface": "asteroid|wreck",
+      "merged": 29
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1200,
+      "simTime": 20.5,
+      "playerInvolved": false,
+      "magnitude": 37929.392,
+      "surface": "asteroid|wreck",
+      "merged": 33
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1230,
+      "simTime": 21,
+      "playerInvolved": false,
+      "magnitude": 42508.767,
+      "surface": "asteroid|wreck",
+      "merged": 30
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1260,
+      "simTime": 21.5,
+      "playerInvolved": false,
+      "magnitude": 48448.988,
+      "surface": "asteroid|wreck",
+      "merged": 31
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1290,
+      "simTime": 22,
+      "playerInvolved": false,
+      "magnitude": 49344.217,
+      "surface": "asteroid|wreck",
+      "merged": 32
+    },
+    {
+      "type": "entity:killed",
+      "tick": 1320,
+      "simTime": 22.5,
+      "playerInvolved": false,
+      "magnitude": 48275.613,
+      "surface": "asteroid|wreck",
+      "merged": 30
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1350,
+      "simTime": 23,
+      "playerInvolved": false,
+      "magnitude": 34523.698,
+      "surface": "asteroid|wreck",
+      "merged": 21
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1380,
+      "simTime": 23.5,
+      "playerInvolved": false,
+      "magnitude": 40507.767,
+      "surface": "asteroid|wreck",
+      "merged": 13
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1412,
+      "simTime": 24.0333,
+      "playerInvolved": false,
+      "magnitude": 38478.758,
+      "surface": "asteroid|wreck",
+      "merged": 5
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 1445,
+      "simTime": 24.5833,
+      "playerInvolved": false,
+      "magnitude": 9056.779,
+      "surface": "craft",
+      "merged": 4
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 1487,
+      "simTime": 25.2833,
+      "playerInvolved": false,
+      "magnitude": 802.44,
+      "surface": "craft",
+      "merged": 10
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 1564,
+      "simTime": 26.5667,
+      "playerInvolved": false,
+      "magnitude": 402.895,
+      "surface": "craft",
+      "merged": 10
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 1608,
+      "simTime": 27.3,
+      "playerInvolved": false,
+      "magnitude": 106.504,
+      "surface": "terrain",
+      "merged": 6
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 1682,
+      "simTime": 28.5333,
+      "playerInvolved": true,
+      "magnitude": 102.527,
+      "surface": "craft",
+      "merged": 37
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1712,
+      "simTime": 29.0333,
+      "playerInvolved": true,
+      "magnitude": 121.423,
+      "surface": "ship",
+      "merged": 6
+    },
+    {
+      "type": "entity:killed",
+      "tick": 1769,
+      "simTime": 29.9833,
+      "playerInvolved": false,
+      "magnitude": 28038.998,
+      "surface": "terrain",
+      "merged": 35
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1799,
+      "simTime": 30.4833,
+      "playerInvolved": false,
+      "magnitude": 23406.898,
+      "surface": "asteroid|wreck",
+      "merged": 40
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1829,
+      "simTime": 30.9833,
+      "playerInvolved": false,
+      "magnitude": 11488082.133,
+      "surface": "asteroid|wreck",
+      "merged": 36
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1859,
+      "simTime": 31.4833,
+      "playerInvolved": false,
+      "magnitude": 22756.59,
+      "surface": "asteroid|wreck",
+      "merged": 30
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1889,
+      "simTime": 31.9833,
+      "playerInvolved": true,
+      "magnitude": 22171.285,
+      "surface": "asteroid|wreck",
+      "merged": 43
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1919,
+      "simTime": 32.4833,
+      "playerInvolved": false,
+      "magnitude": 23765096.533,
+      "surface": "asteroid|wreck",
+      "merged": 37
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1949,
+      "simTime": 32.9833,
+      "playerInvolved": false,
+      "magnitude": 20359.213,
+      "surface": "asteroid|wreck",
+      "merged": 30
+    },
+    {
+      "type": "entity:killed",
+      "tick": 1979,
+      "simTime": 33.4833,
+      "playerInvolved": false,
+      "magnitude": 19072.494,
+      "surface": "asteroid|wreck",
+      "merged": 42
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2009,
+      "simTime": 33.9833,
+      "playerInvolved": false,
+      "magnitude": 47123.833,
+      "surface": "asteroid|ship",
+      "merged": 70
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2039,
+      "simTime": 34.4833,
+      "playerInvolved": false,
+      "magnitude": 34439.404,
+      "surface": "asteroid|wreck",
+      "merged": 75
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2069,
+      "simTime": 34.9833,
+      "playerInvolved": true,
+      "magnitude": 52746.008,
+      "surface": "asteroid|wreck",
+      "merged": 85
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2099,
+      "simTime": 35.4833,
+      "playerInvolved": false,
+      "magnitude": 46499.588,
+      "surface": "asteroid|wreck",
+      "merged": 92
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2129,
+      "simTime": 35.9833,
+      "playerInvolved": true,
+      "magnitude": 4686608,
+      "surface": "asteroid|wreck",
+      "merged": 74
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2159,
+      "simTime": 36.4833,
+      "playerInvolved": true,
+      "magnitude": 31635.577,
+      "surface": "asteroid",
+      "merged": 81
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2189,
+      "simTime": 36.9833,
+      "playerInvolved": false,
+      "magnitude": 840791.6,
+      "surface": "asteroid|wreck",
+      "merged": 60
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2219,
+      "simTime": 37.4833,
+      "playerInvolved": false,
+      "magnitude": 39524.817,
+      "surface": "asteroid|wreck",
+      "merged": 66
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2249,
+      "simTime": 37.9833,
+      "playerInvolved": true,
+      "magnitude": 36660.8,
+      "surface": "asteroid|wreck",
+      "merged": 91
+    },
+    {
+      "type": "entity:killed",
+      "tick": 2279,
+      "simTime": 38.4833,
+      "playerInvolved": false,
+      "magnitude": 41541.975,
+      "surface": "asteroid|wreck",
+      "merged": 69
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2309,
+      "simTime": 38.9833,
+      "playerInvolved": false,
+      "magnitude": 42035.029,
+      "surface": "asteroid|wreck",
+      "merged": 84
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2339,
+      "simTime": 39.4833,
+      "playerInvolved": false,
+      "magnitude": 41913.967,
+      "surface": "asteroid|wreck",
+      "merged": 80
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2369,
+      "simTime": 39.9833,
+      "playerInvolved": false,
+      "magnitude": 46713.992,
+      "surface": "asteroid|ship",
+      "merged": 99
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2399,
+      "simTime": 40.4833,
+      "playerInvolved": false,
+      "magnitude": 42188.975,
+      "surface": "asteroid|ship",
+      "merged": 78
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2429,
+      "simTime": 40.9833,
+      "playerInvolved": false,
+      "magnitude": 35847.304,
+      "surface": "asteroid|ship",
+      "merged": 81
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2459,
+      "simTime": 41.4833,
+      "playerInvolved": false,
+      "magnitude": 35468.667,
+      "surface": "asteroid|ship",
+      "merged": 94
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2489,
+      "simTime": 41.9833,
+      "playerInvolved": false,
+      "magnitude": 38548.829,
+      "surface": "asteroid|ship",
+      "merged": 70
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2519,
+      "simTime": 42.4833,
+      "playerInvolved": false,
+      "magnitude": 39849.658,
+      "surface": "asteroid|ship",
+      "merged": 48
+    },
+    {
+      "type": "entity:killed",
+      "tick": 2549,
+      "simTime": 42.9833,
+      "playerInvolved": false,
+      "magnitude": 33773.86,
+      "surface": "asteroid|wreck",
+      "merged": 47
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2579,
+      "simTime": 43.4833,
+      "playerInvolved": false,
+      "magnitude": 32967.873,
+      "surface": "asteroid|wreck",
+      "merged": 77
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2609,
+      "simTime": 43.9833,
+      "playerInvolved": false,
+      "magnitude": 23025653.333,
+      "surface": "asteroid|wreck",
+      "merged": 46
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 2639,
+      "simTime": 44.4833,
+      "playerInvolved": false,
+      "magnitude": 23436.823,
+      "surface": "terrain",
+      "merged": 36
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2669,
+      "simTime": 44.9833,
+      "playerInvolved": false,
+      "magnitude": 44535.233,
+      "surface": "asteroid|wreck",
+      "merged": 48
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 2699,
+      "simTime": 45.4833,
+      "playerInvolved": false,
+      "magnitude": 14045.841,
+      "surface": "terrain",
+      "merged": 46
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2729,
+      "simTime": 45.9833,
+      "playerInvolved": false,
+      "magnitude": 13169.271,
+      "surface": "asteroid|wreck",
+      "merged": 44
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 2759,
+      "simTime": 46.4833,
+      "playerInvolved": false,
+      "magnitude": 12045.871,
+      "surface": "terrain",
+      "merged": 51
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2789,
+      "simTime": 46.9833,
+      "playerInvolved": false,
+      "magnitude": 25101.365,
+      "surface": "asteroid|wreck",
+      "merged": 41
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 2819,
+      "simTime": 47.4833,
+      "playerInvolved": false,
+      "magnitude": 3934162.133,
+      "surface": "terrain",
+      "merged": 71
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2849,
+      "simTime": 47.9833,
+      "playerInvolved": false,
+      "magnitude": 630126.333,
+      "surface": "asteroid|wreck",
+      "merged": 84
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 2879,
+      "simTime": 48.4833,
+      "playerInvolved": false,
+      "magnitude": 44270.771,
+      "surface": "terrain",
+      "merged": 74
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2909,
+      "simTime": 48.9833,
+      "playerInvolved": false,
+      "magnitude": 44353.5,
+      "surface": "asteroid|ship",
+      "merged": 65
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 2939,
+      "simTime": 49.4833,
+      "playerInvolved": false,
+      "magnitude": 34650.775,
+      "surface": "terrain",
+      "merged": 74
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2969,
+      "simTime": 49.9833,
+      "playerInvolved": false,
+      "magnitude": 34858.927,
+      "surface": "asteroid|ship",
+      "merged": 52
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2999,
+      "simTime": 50.4833,
+      "playerInvolved": false,
+      "magnitude": 34984.867,
+      "surface": "asteroid|ship",
+      "merged": 49
+    }
+  ],
+  "momentsInSpan": [
+    {
+      "type": "physics:impact",
+      "tick": 1412,
+      "simTime": 24.0333,
+      "playerInvolved": false,
+      "magnitude": 38478.758,
+      "surface": "asteroid|wreck",
+      "merged": 5
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 1445,
+      "simTime": 24.5833,
+      "playerInvolved": false,
+      "magnitude": 9056.779,
+      "surface": "craft",
+      "merged": 4
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 1487,
+      "simTime": 25.2833,
+      "playerInvolved": false,
+      "magnitude": 802.44,
+      "surface": "craft",
+      "merged": 10
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 1564,
+      "simTime": 26.5667,
+      "playerInvolved": false,
+      "magnitude": 402.895,
+      "surface": "craft",
+      "merged": 10
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 1608,
+      "simTime": 27.3,
+      "playerInvolved": false,
+      "magnitude": 106.504,
+      "surface": "terrain",
+      "merged": 6
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 1682,
+      "simTime": 28.5333,
+      "playerInvolved": true,
+      "magnitude": 102.527,
+      "surface": "craft",
+      "merged": 37
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1712,
+      "simTime": 29.0333,
+      "playerInvolved": true,
+      "magnitude": 121.423,
+      "surface": "ship",
+      "merged": 6
+    },
+    {
+      "type": "entity:killed",
+      "tick": 1769,
+      "simTime": 29.9833,
+      "playerInvolved": false,
+      "magnitude": 28038.998,
+      "surface": "terrain",
+      "merged": 35
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1799,
+      "simTime": 30.4833,
+      "playerInvolved": false,
+      "magnitude": 23406.898,
+      "surface": "asteroid|wreck",
+      "merged": 40
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1829,
+      "simTime": 30.9833,
+      "playerInvolved": false,
+      "magnitude": 11488082.133,
+      "surface": "asteroid|wreck",
+      "merged": 36
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1859,
+      "simTime": 31.4833,
+      "playerInvolved": false,
+      "magnitude": 22756.59,
+      "surface": "asteroid|wreck",
+      "merged": 30
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1889,
+      "simTime": 31.9833,
+      "playerInvolved": true,
+      "magnitude": 22171.285,
+      "surface": "asteroid|wreck",
+      "merged": 43
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1919,
+      "simTime": 32.4833,
+      "playerInvolved": false,
+      "magnitude": 23765096.533,
+      "surface": "asteroid|wreck",
+      "merged": 37
+    },
+    {
+      "type": "physics:impact",
+      "tick": 1949,
+      "simTime": 32.9833,
+      "playerInvolved": false,
+      "magnitude": 20359.213,
+      "surface": "asteroid|wreck",
+      "merged": 30
+    },
+    {
+      "type": "entity:killed",
+      "tick": 1979,
+      "simTime": 33.4833,
+      "playerInvolved": false,
+      "magnitude": 19072.494,
+      "surface": "asteroid|wreck",
+      "merged": 42
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2009,
+      "simTime": 33.9833,
+      "playerInvolved": false,
+      "magnitude": 47123.833,
+      "surface": "asteroid|ship",
+      "merged": 70
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2039,
+      "simTime": 34.4833,
+      "playerInvolved": false,
+      "magnitude": 34439.404,
+      "surface": "asteroid|wreck",
+      "merged": 75
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2069,
+      "simTime": 34.9833,
+      "playerInvolved": true,
+      "magnitude": 52746.008,
+      "surface": "asteroid|wreck",
+      "merged": 85
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2099,
+      "simTime": 35.4833,
+      "playerInvolved": false,
+      "magnitude": 46499.588,
+      "surface": "asteroid|wreck",
+      "merged": 92
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2129,
+      "simTime": 35.9833,
+      "playerInvolved": true,
+      "magnitude": 4686608,
+      "surface": "asteroid|wreck",
+      "merged": 74
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2159,
+      "simTime": 36.4833,
+      "playerInvolved": true,
+      "magnitude": 31635.577,
+      "surface": "asteroid",
+      "merged": 81
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2189,
+      "simTime": 36.9833,
+      "playerInvolved": false,
+      "magnitude": 840791.6,
+      "surface": "asteroid|wreck",
+      "merged": 60
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2219,
+      "simTime": 37.4833,
+      "playerInvolved": false,
+      "magnitude": 39524.817,
+      "surface": "asteroid|wreck",
+      "merged": 66
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2249,
+      "simTime": 37.9833,
+      "playerInvolved": true,
+      "magnitude": 36660.8,
+      "surface": "asteroid|wreck",
+      "merged": 91
+    },
+    {
+      "type": "entity:killed",
+      "tick": 2279,
+      "simTime": 38.4833,
+      "playerInvolved": false,
+      "magnitude": 41541.975,
+      "surface": "asteroid|wreck",
+      "merged": 69
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2309,
+      "simTime": 38.9833,
+      "playerInvolved": false,
+      "magnitude": 42035.029,
+      "surface": "asteroid|wreck",
+      "merged": 84
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2339,
+      "simTime": 39.4833,
+      "playerInvolved": false,
+      "magnitude": 41913.967,
+      "surface": "asteroid|wreck",
+      "merged": 80
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2369,
+      "simTime": 39.9833,
+      "playerInvolved": false,
+      "magnitude": 46713.992,
+      "surface": "asteroid|ship",
+      "merged": 99
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2399,
+      "simTime": 40.4833,
+      "playerInvolved": false,
+      "magnitude": 42188.975,
+      "surface": "asteroid|ship",
+      "merged": 78
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2429,
+      "simTime": 40.9833,
+      "playerInvolved": false,
+      "magnitude": 35847.304,
+      "surface": "asteroid|ship",
+      "merged": 81
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2459,
+      "simTime": 41.4833,
+      "playerInvolved": false,
+      "magnitude": 35468.667,
+      "surface": "asteroid|ship",
+      "merged": 94
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2489,
+      "simTime": 41.9833,
+      "playerInvolved": false,
+      "magnitude": 38548.829,
+      "surface": "asteroid|ship",
+      "merged": 70
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2519,
+      "simTime": 42.4833,
+      "playerInvolved": false,
+      "magnitude": 39849.658,
+      "surface": "asteroid|ship",
+      "merged": 48
+    },
+    {
+      "type": "entity:killed",
+      "tick": 2549,
+      "simTime": 42.9833,
+      "playerInvolved": false,
+      "magnitude": 33773.86,
+      "surface": "asteroid|wreck",
+      "merged": 47
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2579,
+      "simTime": 43.4833,
+      "playerInvolved": false,
+      "magnitude": 32967.873,
+      "surface": "asteroid|wreck",
+      "merged": 77
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2609,
+      "simTime": 43.9833,
+      "playerInvolved": false,
+      "magnitude": 23025653.333,
+      "surface": "asteroid|wreck",
+      "merged": 46
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 2639,
+      "simTime": 44.4833,
+      "playerInvolved": false,
+      "magnitude": 23436.823,
+      "surface": "terrain",
+      "merged": 36
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2669,
+      "simTime": 44.9833,
+      "playerInvolved": false,
+      "magnitude": 44535.233,
+      "surface": "asteroid|wreck",
+      "merged": 48
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 2699,
+      "simTime": 45.4833,
+      "playerInvolved": false,
+      "magnitude": 14045.841,
+      "surface": "terrain",
+      "merged": 46
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2729,
+      "simTime": 45.9833,
+      "playerInvolved": false,
+      "magnitude": 13169.271,
+      "surface": "asteroid|wreck",
+      "merged": 44
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 2759,
+      "simTime": 46.4833,
+      "playerInvolved": false,
+      "magnitude": 12045.871,
+      "surface": "terrain",
+      "merged": 51
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2789,
+      "simTime": 46.9833,
+      "playerInvolved": false,
+      "magnitude": 25101.365,
+      "surface": "asteroid|wreck",
+      "merged": 41
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 2819,
+      "simTime": 47.4833,
+      "playerInvolved": false,
+      "magnitude": 3934162.133,
+      "surface": "terrain",
+      "merged": 71
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2849,
+      "simTime": 47.9833,
+      "playerInvolved": false,
+      "magnitude": 630126.333,
+      "surface": "asteroid|wreck",
+      "merged": 84
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 2879,
+      "simTime": 48.4833,
+      "playerInvolved": false,
+      "magnitude": 44270.771,
+      "surface": "terrain",
+      "merged": 74
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2909,
+      "simTime": 48.9833,
+      "playerInvolved": false,
+      "magnitude": 44353.5,
+      "surface": "asteroid|ship",
+      "merged": 65
+    },
+    {
+      "type": "combat:collisionConsequence",
+      "tick": 2939,
+      "simTime": 49.4833,
+      "playerInvolved": false,
+      "magnitude": 34650.775,
+      "surface": "terrain",
+      "merged": 74
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2969,
+      "simTime": 49.9833,
+      "playerInvolved": false,
+      "magnitude": 34858.927,
+      "surface": "asteroid|ship",
+      "merged": 52
+    },
+    {
+      "type": "physics:impact",
+      "tick": 2999,
+      "simTime": 50.4833,
+      "playerInvolved": false,
+      "magnitude": 34984.867,
+      "surface": "asteroid|ship",
+      "merged": 49
+    }
+  ],
+  "frames": [
+    {
+      "index": 0,
+      "file": "frame_000.jpg",
+      "tick": 1868,
+      "simTime": 31.6333,
+      "wallS": 0,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 6,
+      "playerSpeed": 0.43,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.496,
+        0.499
+      ],
+      "playerWorldXZ": [
+        -1886.537,
+        -2204.178
+      ],
+      "cameraWorldXZ": [
+        -1887.855,
+        -2312.784
+      ],
+      "playerRot": 0,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 6,
+      "alignMs": 6,
+      "nearMoment": true
+    },
+    {
+      "index": 1,
+      "file": "frame_001.jpg",
+      "tick": 1879,
+      "simTime": 31.8167,
+      "wallS": 0.186,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 6,
+      "playerSpeed": 0.43,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.496,
+        0.496
+      ],
+      "playerWorldXZ": [
+        -1886.456,
+        -2204.2
+      ],
+      "cameraWorldXZ": [
+        -1887.917,
+        -2313.424
+      ],
+      "playerRot": 0,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 6,
+      "alignMs": 4,
+      "nearMoment": true
+    },
+    {
+      "index": 2,
+      "file": "frame_002.jpg",
+      "tick": 1889,
+      "simTime": 31.9833,
+      "wallS": 0.357,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 6,
+      "playerSpeed": 0.43,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.496,
+        0.494
+      ],
+      "playerWorldXZ": [
+        -1886.383,
+        -2204.219
+      ],
+      "cameraWorldXZ": [
+        -1887.85,
+        -2313.859
+      ],
+      "playerRot": 0,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 6,
+      "alignMs": 4,
+      "nearMoment": true
+    },
+    {
+      "index": 3,
+      "file": "frame_003.jpg",
+      "tick": 1894,
+      "simTime": 32.0667,
+      "wallS": 0.751,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 6,
+      "playerSpeed": 12.33,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.497,
+        0.493
+      ],
+      "playerWorldXZ": [
+        -1886.109,
+        -2204.15
+      ],
+      "cameraWorldXZ": [
+        -1887.099,
+        -2314.126
+      ],
+      "playerRot": 0,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 6,
+      "alignMs": 22,
+      "nearMoment": true
+    },
+    {
+      "index": 4,
+      "file": "frame_004.jpg",
+      "tick": 1906,
+      "simTime": 32.2667,
+      "wallS": 1.036,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 8,
+      "playerSpeed": 72.59,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.514,
+        0.491
+      ],
+      "playerWorldXZ": [
+        -1876.726,
+        -2204.099
+      ],
+      "cameraWorldXZ": [
+        -1871.198,
+        -2321.151
+      ],
+      "playerRot": 0,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 8,
+      "alignMs": 1,
+      "nearMoment": true
+    },
+    {
+      "index": 5,
+      "file": "frame_005.jpg",
+      "tick": 1919,
+      "simTime": 32.4833,
+      "wallS": 1.249,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 8,
+      "playerSpeed": 82.98,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.511,
+        0.491
+      ],
+      "playerWorldXZ": [
+        -1859.421,
+        -2204.125
+      ],
+      "cameraWorldXZ": [
+        -1854.72,
+        -2333.43
+      ],
+      "playerRot": 0,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 2,
+      "nearMoment": true
+    },
+    {
+      "index": 6,
+      "file": "frame_006.jpg",
+      "tick": 1933,
+      "simTime": 32.7167,
+      "wallS": 1.489,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 84.2,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.508,
+        0.491
+      ],
+      "playerWorldXZ": [
+        -1839.441,
+        -2205.103
+      ],
+      "cameraWorldXZ": [
+        -1835.822,
+        -2345.479
+      ],
+      "playerRot": 0,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 10,
+      "alignMs": 8,
+      "nearMoment": true
+    },
+    {
+      "index": 7,
+      "file": "frame_007.jpg",
+      "tick": 1946,
+      "simTime": 32.9333,
+      "wallS": 1.735,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 83.85,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.507,
+        0.491
+      ],
+      "playerWorldXZ": [
+        -1821.253,
+        -2205.203
+      ],
+      "cameraWorldXZ": [
+        -1817.486,
+        -2354.109
+      ],
+      "playerRot": 0,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 10,
+      "alignMs": 3,
+      "nearMoment": true
+    },
+    {
+      "index": 8,
+      "file": "frame_008.jpg",
+      "tick": 1961,
+      "simTime": 33.1833,
+      "wallS": 1.984,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 83.8,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.506,
+        0.492
+      ],
+      "playerWorldXZ": [
+        -1800.3,
+        -2205.262
+      ],
+      "cameraWorldXZ": [
+        -1797.333,
+        -2359.715
+      ],
+      "playerRot": 0,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 10,
+      "alignMs": 2,
+      "nearMoment": true
+    },
+    {
+      "index": 9,
+      "file": "frame_009.jpg",
+      "tick": 1976,
+      "simTime": 33.4333,
+      "wallS": 2.238,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 83.77,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.506,
+        0.495
+      ],
+      "playerWorldXZ": [
+        -1779.357,
+        -2205.328
+      ],
+      "cameraWorldXZ": [
+        -1776.005,
+        -2362.825
+      ],
+      "playerRot": 0,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 10,
+      "alignMs": 6,
+      "nearMoment": true
+    },
+    {
+      "index": 10,
+      "file": "frame_010.jpg",
+      "tick": 1991,
+      "simTime": 33.6833,
+      "wallS": 2.49,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 83.74,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.507,
+        0.498
+      ],
+      "playerWorldXZ": [
+        -1758.421,
+        -2205.407
+      ],
+      "cameraWorldXZ": [
+        -1754.806,
+        -2364.894
+      ],
+      "playerRot": 0,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 10,
+      "alignMs": 0,
+      "nearMoment": true
+    },
+    {
+      "index": 11,
+      "file": "frame_011.jpg",
+      "tick": 2004,
+      "simTime": 33.9,
+      "wallS": 2.739,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 83.71,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.513,
+        0.5
+      ],
+      "playerWorldXZ": [
+        -1740.285,
+        -2205.487
+      ],
+      "cameraWorldXZ": [
+        -1733.314,
+        -2366.482
+      ],
+      "playerRot": 0,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 10,
+      "alignMs": 14,
+      "nearMoment": true
+    },
+    {
+      "index": 12,
+      "file": "frame_012.jpg",
+      "tick": 2018,
+      "simTime": 34.1333,
+      "wallS": 3.055,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 78.25,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.509,
+        0.507
+      ],
+      "playerWorldXZ": [
+        -1723.074,
+        -2200.505
+      ],
+      "cameraWorldXZ": [
+        -1717.873,
+        -2359.711
+      ],
+      "playerRot": 0.2091,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 7,
+      "nearMoment": true
+    },
+    {
+      "index": 13,
+      "file": "frame_013.jpg",
+      "tick": 2035,
+      "simTime": 34.4167,
+      "wallS": 3.335,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 81.64,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.502,
+        0.515
+      ],
+      "playerWorldXZ": [
+        -1711.464,
+        -2181.11
+      ],
+      "cameraWorldXZ": [
+        -1710.701,
+        -2338.299
+      ],
+      "playerRot": 0.6205,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 3,
+      "nearMoment": true
+    },
+    {
+      "index": 14,
+      "file": "frame_014.jpg",
+      "tick": 2043,
+      "simTime": 34.55,
+      "wallS": 3.537,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 81.64,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.486,
+        0.515
+      ],
+      "playerWorldXZ": [
+        -1709.18,
+        -2170.497
+      ],
+      "cameraWorldXZ": [
+        -1716.774,
+        -2330.345
+      ],
+      "playerRot": 0.8141,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 5,
+      "nearMoment": true
+    },
+    {
+      "index": 15,
+      "file": "frame_015.jpg",
+      "tick": 2048,
+      "simTime": 34.6333,
+      "wallS": 3.713,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 81.58,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.469,
+        0.534
+      ],
+      "playerWorldXZ": [
+        -1708.824,
+        -2163.719
+      ],
+      "cameraWorldXZ": [
+        -1725.812,
+        -2317.181
+      ],
+      "playerRot": 0.9351,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 8,
+      "nearMoment": true
+    },
+    {
+      "index": 16,
+      "file": "frame_016.jpg",
+      "tick": 2056,
+      "simTime": 34.7667,
+      "wallS": 3.974,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 81.49,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.449,
+        0.552
+      ],
+      "playerWorldXZ": [
+        -1709.978,
+        -2152.945
+      ],
+      "cameraWorldXZ": [
+        -1737.576,
+        -2300.685
+      ],
+      "playerRot": 1.1287,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 1,
+      "nearMoment": true
+    },
+    {
+      "index": 17,
+      "file": "frame_017.jpg",
+      "tick": 2062,
+      "simTime": 34.8667,
+      "wallS": 4.181,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 81.46,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.437,
+        0.562
+      ],
+      "playerWorldXZ": [
+        -1712.211,
+        -2145.131
+      ],
+      "cameraWorldXZ": [
+        -1745.969,
+        -2289.649
+      ],
+      "playerRot": 1.2739,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 1,
+      "nearMoment": true
+    },
+    {
+      "index": 18,
+      "file": "frame_018.jpg",
+      "tick": 2067,
+      "simTime": 34.95,
+      "wallS": 4.37,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 81.46,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.432,
+        0.563
+      ],
+      "playerWorldXZ": [
+        -1714.93,
+        -2138.927
+      ],
+      "cameraWorldXZ": [
+        -1751.851,
+        -2282.79
+      ],
+      "playerRot": 1.3949,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 5,
+      "nearMoment": true
+    },
+    {
+      "index": 19,
+      "file": "frame_019.jpg",
+      "tick": 2073,
+      "simTime": 35.05,
+      "wallS": 4.567,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 81.49,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.429,
+        0.561
+      ],
+      "playerWorldXZ": [
+        -1719.164,
+        -2131.99
+      ],
+      "cameraWorldXZ": [
+        -1757.561,
+        -2277.023
+      ],
+      "playerRot": 1.5401,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 7,
+      "nearMoment": true
+    },
+    {
+      "index": 20,
+      "file": "frame_020.jpg",
+      "tick": 2078,
+      "simTime": 35.1333,
+      "wallS": 4.753,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 81.53,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.428,
+        0.557
+      ],
+      "playerWorldXZ": [
+        -1723.44,
+        -2126.731
+      ],
+      "cameraWorldXZ": [
+        -1762.339,
+        -2272.997
+      ],
+      "playerRot": 1.6611,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 6,
+      "nearMoment": true
+    },
+    {
+      "index": 21,
+      "file": "frame_021.jpg",
+      "tick": 2090,
+      "simTime": 35.3333,
+      "wallS": 5.271,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 78.77,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.436,
+        0.54
+      ],
+      "playerWorldXZ": [
+        -1724.885,
+        -2114.053
+      ],
+      "cameraWorldXZ": [
+        -1763.67,
+        -2262.073
+      ],
+      "playerRot": 1.7503,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 4,
+      "nearMoment": true
+    },
+    {
+      "index": 22,
+      "file": "frame_022.jpg",
+      "tick": 2095,
+      "simTime": 35.4167,
+      "wallS": 5.465,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 80.95,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.436,
+        0.535
+      ],
+      "playerWorldXZ": [
+        -1726.382,
+        -2107.555
+      ],
+      "cameraWorldXZ": [
+        -1762.911,
+        -2257.743
+      ],
+      "playerRot": 1.7503,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 5,
+      "nearMoment": true
+    },
+    {
+      "index": 23,
+      "file": "frame_023.jpg",
+      "tick": 2102,
+      "simTime": 35.5333,
+      "wallS": 5.721,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 82.08,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.437,
+        0.523
+      ],
+      "playerWorldXZ": [
+        -1728.225,
+        -2098.221
+      ],
+      "cameraWorldXZ": [
+        -1762.307,
+        -2253.62
+      ],
+      "playerRot": 1.7503,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 1,
+      "nearMoment": true
+    },
+    {
+      "index": 24,
+      "file": "frame_024.jpg",
+      "tick": 2108,
+      "simTime": 35.6333,
+      "wallS": 5.954,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 82.39,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.441,
+        0.514
+      ],
+      "playerWorldXZ": [
+        -1729.699,
+        -2090.138
+      ],
+      "cameraWorldXZ": [
+        -1762.178,
+        -2249.334
+      ],
+      "playerRot": 1.7503,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 13,
+      "nearMoment": true
+    },
+    {
+      "index": 25,
+      "file": "frame_025.jpg",
+      "tick": 2120,
+      "simTime": 35.8333,
+      "wallS": 6.381,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 9,
+      "playerSpeed": 82.59,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.446,
+        0.489
+      ],
+      "playerWorldXZ": [
+        -1732.591,
+        -2073.91
+      ],
+      "cameraWorldXZ": [
+        -1762.712,
+        -2242.444
+      ],
+      "playerRot": 1.7503,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 4,
+      "nearMoment": true
+    },
+    {
+      "index": 26,
+      "file": "frame_026.jpg",
+      "tick": 2124,
+      "simTime": 35.9,
+      "wallS": 6.539,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 9,
+      "playerSpeed": 82.63,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.447,
+        0.481
+      ],
+      "playerWorldXZ": [
+        -1733.553,
+        -2068.494
+      ],
+      "cameraWorldXZ": [
+        -1763.134,
+        -2240.017
+      ],
+      "playerRot": 1.7503,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 3,
+      "nearMoment": true
+    },
+    {
+      "index": 27,
+      "file": "frame_027.jpg",
+      "tick": 2134,
+      "simTime": 36.0667,
+      "wallS": 6.898,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 9,
+      "playerSpeed": 82.72,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.449,
+        0.461
+      ],
+      "playerWorldXZ": [
+        -1735.962,
+        -2054.94
+      ],
+      "cameraWorldXZ": [
+        -1764.504,
+        -2234.093
+      ],
+      "playerRot": 1.7503,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 8,
+      "alignMs": 6,
+      "nearMoment": true
+    },
+    {
+      "index": 28,
+      "file": "frame_028.jpg",
+      "tick": 2140,
+      "simTime": 36.1667,
+      "wallS": 7.089,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 9,
+      "playerSpeed": 82.78,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.451,
+        0.448
+      ],
+      "playerWorldXZ": [
+        -1737.412,
+        -2046.801
+      ],
+      "cameraWorldXZ": [
+        -1765.327,
+        -2230.958
+      ],
+      "playerRot": 1.7503,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 8,
+      "alignMs": 7,
+      "nearMoment": true
+    },
+    {
+      "index": 29,
+      "file": "frame_029.jpg",
+      "tick": 2146,
+      "simTime": 36.2667,
+      "wallS": 7.314,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 9,
+      "playerSpeed": 82.83,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.453,
+        0.442
+      ],
+      "playerWorldXZ": [
+        -1738.926,
+        -2040.107
+      ],
+      "cameraWorldXZ": [
+        -1766.394,
+        -2227.622
+      ],
+      "playerRot": 1.7503,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 8,
+      "alignMs": 1,
+      "nearMoment": true
+    },
+    {
+      "index": 30,
+      "file": "frame_030.jpg",
+      "tick": 2154,
+      "simTime": 36.4,
+      "wallS": 7.659,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 82.87,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.456,
+        0.435
+      ],
+      "playerWorldXZ": [
+        -1741.82,
+        -2040.367
+      ],
+      "cameraWorldXZ": [
+        -1768.019,
+        -2230.696
+      ],
+      "playerRot": 1.7503,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 4,
+      "nearMoment": true
+    },
+    {
+      "index": 31,
+      "file": "frame_031.jpg",
+      "tick": 2161,
+      "simTime": 36.5167,
+      "wallS": 7.993,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 76.29,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.458,
+        0.424
+      ],
+      "playerWorldXZ": [
+        -1744.089,
+        -2040.059
+      ],
+      "cameraWorldXZ": [
+        -1769.04,
+        -2234.73
+      ],
+      "playerRot": 1.6863,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 7,
+      "nearMoment": true
+    },
+    {
+      "index": 32,
+      "file": "frame_032.jpg",
+      "tick": 2168,
+      "simTime": 36.6333,
+      "wallS": 8.34,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 78.8,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.461,
+        0.417
+      ],
+      "playerWorldXZ": [
+        -1741.871,
+        -2040.393
+      ],
+      "cameraWorldXZ": [
+        -1765.491,
+        -2238.135
+      ],
+      "playerRot": 1.5169,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 2,
+      "nearMoment": true
+    },
+    {
+      "index": 33,
+      "file": "frame_033.jpg",
+      "tick": 2179,
+      "simTime": 36.8167,
+      "wallS": 8.868,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 82.07,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.462,
+        0.407
+      ],
+      "playerWorldXZ": [
+        -1731.452,
+        -2040.363
+      ],
+      "cameraWorldXZ": [
+        -1755.766,
+        -2242.875
+      ],
+      "playerRot": 1.2507,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 7,
+      "nearMoment": true
+    },
+    {
+      "index": 34,
+      "file": "frame_034.jpg",
+      "tick": 2184,
+      "simTime": 36.9,
+      "wallS": 9.046,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 82.49,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.459,
+        0.399
+      ],
+      "playerWorldXZ": [
+        -1725.185,
+        -2038.569
+      ],
+      "cameraWorldXZ": [
+        -1751.117,
+        -2243.541
+      ],
+      "playerRot": 1.1297,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 10,
+      "alignMs": 3,
+      "nearMoment": true
+    },
+    {
+      "index": 35,
+      "file": "frame_035.jpg",
+      "tick": 2193,
+      "simTime": 37.05,
+      "wallS": 9.379,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 82.8,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.452,
+        0.385
+      ],
+      "playerWorldXZ": [
+        -1713.515,
+        -2034.455
+      ],
+      "cameraWorldXZ": [
+        -1742.627,
+        -2243.384
+      ],
+      "playerRot": 0.912,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 10,
+      "alignMs": 7,
+      "nearMoment": true
+    },
+    {
+      "index": 36,
+      "file": "frame_036.jpg",
+      "tick": 2198,
+      "simTime": 37.1333,
+      "wallS": 9.547,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 82.88,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.448,
+        0.381
+      ],
+      "playerWorldXZ": [
+        -1706.745,
+        -2033.141
+      ],
+      "cameraWorldXZ": [
+        -1737.841,
+        -2243.58
+      ],
+      "playerRot": 0.791,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 10,
+      "alignMs": 5,
+      "nearMoment": true
+    },
+    {
+      "index": 37,
+      "file": "frame_037.jpg",
+      "tick": 2210,
+      "simTime": 37.3333,
+      "wallS": 9.955,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 83,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.439,
+        0.374
+      ],
+      "playerWorldXZ": [
+        -1690.223,
+        -2033.369
+      ],
+      "cameraWorldXZ": [
+        -1727.035,
+        -2247.076
+      ],
+      "playerRot": 0.5006,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 10,
+      "alignMs": 10,
+      "nearMoment": true
+    },
+    {
+      "index": 38,
+      "file": "frame_038.jpg",
+      "tick": 2215,
+      "simTime": 37.4167,
+      "wallS": 10.128,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 83.04,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.435,
+        0.371
+      ],
+      "playerWorldXZ": [
+        -1683.477,
+        -2034.871
+      ],
+      "cameraWorldXZ": [
+        -1722.918,
+        -2249.7
+      ],
+      "playerRot": 0.3796,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 10,
+      "alignMs": 2,
+      "nearMoment": true
+    },
+    {
+      "index": 39,
+      "file": "frame_039.jpg",
+      "tick": 2222,
+      "simTime": 37.5333,
+      "wallS": 10.306,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 83.09,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.428,
+        0.372
+      ],
+      "playerWorldXZ": [
+        -1674.434,
+        -2038.314
+      ],
+      "cameraWorldXZ": [
+        -1718.308,
+        -2252.924
+      ],
+      "playerRot": 0.2102,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 10,
+      "alignMs": 0,
+      "nearMoment": true
+    },
+    {
+      "index": 40,
+      "file": "frame_040.jpg",
+      "tick": 2235,
+      "simTime": 37.75,
+      "wallS": 10.518,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 81.21,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.415,
+        0.371
+      ],
+      "playerWorldXZ": [
+        -1657.777,
+        -2042.54
+      ],
+      "cameraWorldXZ": [
+        -1708.736,
+        -2257.249
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 10,
+      "alignMs": 7,
+      "nearMoment": true
+    },
+    {
+      "index": 41,
+      "file": "frame_041.jpg",
+      "tick": 2248,
+      "simTime": 37.9667,
+      "wallS": 10.741,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 83.1,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.404,
+        0.367
+      ],
+      "playerWorldXZ": [
+        -1639.973,
+        -2041.098
+      ],
+      "cameraWorldXZ": [
+        -1697.134,
+        -2257.879
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 10,
+      "alignMs": 4,
+      "nearMoment": true
+    },
+    {
+      "index": 42,
+      "file": "frame_042.jpg",
+      "tick": 2260,
+      "simTime": 38.1667,
+      "wallS": 10.989,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 83.22,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.4,
+        0.371
+      ],
+      "playerWorldXZ": [
+        -1623.562,
+        -2039.126
+      ],
+      "cameraWorldXZ": [
+        -1685.6,
+        -2257.19
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 10,
+      "alignMs": 7,
+      "nearMoment": true
+    },
+    {
+      "index": 43,
+      "file": "frame_043.jpg",
+      "tick": 2270,
+      "simTime": 38.3333,
+      "wallS": 11.205,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 83.2,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.39,
+        0.37
+      ],
+      "playerWorldXZ": [
+        -1610.047,
+        -2037.151
+      ],
+      "cameraWorldXZ": [
+        -1677.919,
+        -2255.592
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 10,
+      "hostilesDrawing": 10,
+      "alignMs": 6,
+      "nearMoment": true
+    },
+    {
+      "index": 44,
+      "file": "frame_044.jpg",
+      "tick": 2284,
+      "simTime": 38.5667,
+      "wallS": 11.438,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 83.15,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.374,
+        0.368
+      ],
+      "playerWorldXZ": [
+        -1590.775,
+        -2034.981
+      ],
+      "cameraWorldXZ": [
+        -1666.696,
+        -2253.791
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 10,
+      "alignMs": 7,
+      "nearMoment": true
+    },
+    {
+      "index": 45,
+      "file": "frame_045.jpg",
+      "tick": 2298,
+      "simTime": 38.8,
+      "wallS": 11.673,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 83.1,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.361,
+        0.367
+      ],
+      "playerWorldXZ": [
+        -1571.516,
+        -2032.811
+      ],
+      "cameraWorldXZ": [
+        -1654.557,
+        -2251.967
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 10,
+      "alignMs": 5,
+      "nearMoment": true
+    },
+    {
+      "index": 46,
+      "file": "frame_046.jpg",
+      "tick": 2308,
+      "simTime": 38.9667,
+      "wallS": 11.908,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 83.07,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.362,
+        0.374
+      ],
+      "playerWorldXZ": [
+        -1557.767,
+        -2031.26
+      ],
+      "cameraWorldXZ": [
+        -1645.146,
+        -2250.765
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 10,
+      "nearMoment": true
+    },
+    {
+      "index": 47,
+      "file": "frame_047.jpg",
+      "tick": 2317,
+      "simTime": 39.1167,
+      "wallS": 12.112,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 83.04,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.355,
+        0.375
+      ],
+      "playerWorldXZ": [
+        -1545.396,
+        -2029.864
+      ],
+      "cameraWorldXZ": [
+        -1638.408,
+        -2249.633
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 7,
+      "nearMoment": true
+    },
+    {
+      "index": 48,
+      "file": "frame_048.jpg",
+      "tick": 2327,
+      "simTime": 39.2833,
+      "wallS": 12.327,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 83.03,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.343,
+        0.372
+      ],
+      "playerWorldXZ": [
+        -1531.656,
+        -2028.31
+      ],
+      "cameraWorldXZ": [
+        -1629.861,
+        -2248.38
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 7,
+      "nearMoment": true
+    },
+    {
+      "index": 49,
+      "file": "frame_049.jpg",
+      "tick": 2344,
+      "simTime": 39.5667,
+      "wallS": 12.605,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 83.01,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.328,
+        0.368
+      ],
+      "playerWorldXZ": [
+        -1508.304,
+        -2025.661
+      ],
+      "cameraWorldXZ": [
+        -1612.854,
+        -2246.111
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 8,
+      "nearMoment": true
+    },
+    {
+      "index": 50,
+      "file": "frame_050.jpg",
+      "tick": 2358,
+      "simTime": 39.8,
+      "wallS": 12.838,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 10,
+      "playerSpeed": 83,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.33,
+        0.37
+      ],
+      "playerWorldXZ": [
+        -1489.075,
+        -2023.47
+      ],
+      "cameraWorldXZ": [
+        -1593.769,
+        -2244.223
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 5,
+      "nearMoment": true
+    },
+    {
+      "index": 51,
+      "file": "frame_051.jpg",
+      "tick": 2369,
+      "simTime": 39.9833,
+      "wallS": 13.045,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 9,
+      "playerSpeed": 83.01,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.333,
+        0.372
+      ],
+      "playerWorldXZ": [
+        -1473.968,
+        -2021.741
+      ],
+      "cameraWorldXZ": [
+        -1578.8,
+        -2242.762
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 11,
+      "nearMoment": true
+    },
+    {
+      "index": 52,
+      "file": "frame_052.jpg",
+      "tick": 2380,
+      "simTime": 40.1667,
+      "wallS": 13.291,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 9,
+      "playerSpeed": 83.03,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.339,
+        0.376
+      ],
+      "playerWorldXZ": [
+        -1458.858,
+        -2020.006
+      ],
+      "cameraWorldXZ": [
+        -1563.821,
+        -2241.325
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 9,
+      "alignMs": 5,
+      "nearMoment": true
+    },
+    {
+      "index": 53,
+      "file": "frame_053.jpg",
+      "tick": 2394,
+      "simTime": 40.4,
+      "wallS": 13.543,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 8,
+      "playerSpeed": 33.15,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.337,
+        0.375
+      ],
+      "playerWorldXZ": [
+        -1442.62,
+        -2018.163
+      ],
+      "cameraWorldXZ": [
+        -1547.288,
+        -2238.836
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 7,
+      "alignMs": 4,
+      "nearMoment": true
+    },
+    {
+      "index": 54,
+      "file": "frame_054.jpg",
+      "tick": 2405,
+      "simTime": 40.5833,
+      "wallS": 13.769,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 8,
+      "playerSpeed": 3.61,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.336,
+        0.374
+      ],
+      "playerWorldXZ": [
+        -1440.224,
+        -2017.967
+      ],
+      "cameraWorldXZ": [
+        -1544.295,
+        -2237.407
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 6,
+      "alignMs": 7,
+      "nearMoment": true
+    },
+    {
+      "index": 55,
+      "file": "frame_055.jpg",
+      "tick": 2418,
+      "simTime": 40.8,
+      "wallS": 13.997,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 7,
+      "playerSpeed": 0.44,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.329,
+        0.369
+      ],
+      "playerWorldXZ": [
+        -1439.982,
+        -2018.042
+      ],
+      "cameraWorldXZ": [
+        -1543.622,
+        -2236.572
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 6,
+      "alignMs": 2,
+      "nearMoment": true
+    },
+    {
+      "index": 56,
+      "file": "frame_056.jpg",
+      "tick": 2428,
+      "simTime": 40.9667,
+      "wallS": 14.207,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 6,
+      "playerSpeed": 0.5,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.328,
+        0.368
+      ],
+      "playerWorldXZ": [
+        -1440.001,
+        -2018.123
+      ],
+      "cameraWorldXZ": [
+        -1543.323,
+        -2235.982
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 6,
+      "alignMs": 5,
+      "nearMoment": true
+    },
+    {
+      "index": 57,
+      "file": "frame_057.jpg",
+      "tick": 2439,
+      "simTime": 41.15,
+      "wallS": 14.431,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 6,
+      "playerSpeed": 0.52,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.332,
+        0.371
+      ],
+      "playerWorldXZ": [
+        -1440.043,
+        -2018.214
+      ],
+      "cameraWorldXZ": [
+        -1543.114,
+        -2235.546
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 6,
+      "alignMs": 1,
+      "nearMoment": true
+    },
+    {
+      "index": 58,
+      "file": "frame_058.jpg",
+      "tick": 2448,
+      "simTime": 41.3,
+      "wallS": 14.629,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 6,
+      "playerSpeed": 0.52,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.331,
+        0.37
+      ],
+      "playerWorldXZ": [
+        -1440.08,
+        -2018.29
+      ],
+      "cameraWorldXZ": [
+        -1543.004,
+        -2235.306
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 6,
+      "alignMs": 1,
+      "nearMoment": true
+    },
+    {
+      "index": 59,
+      "file": "frame_059.jpg",
+      "tick": 2463,
+      "simTime": 41.55,
+      "wallS": 14.866,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 6,
+      "playerSpeed": 0.53,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.327,
+        0.368
+      ],
+      "playerWorldXZ": [
+        -1440.142,
+        -2018.416
+      ],
+      "cameraWorldXZ": [
+        -1542.919,
+        -2235.105
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 6,
+      "alignMs": 3,
+      "nearMoment": true
+    },
+    {
+      "index": 60,
+      "file": "frame_060.jpg",
+      "tick": 2470,
+      "simTime": 41.6667,
+      "wallS": 15.037,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 6,
+      "playerSpeed": 0.53,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.328,
+        0.368
+      ],
+      "playerWorldXZ": [
+        -1440.171,
+        -2018.475
+      ],
+      "cameraWorldXZ": [
+        -1542.874,
+        -2235.008
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 5,
+      "alignMs": 3,
+      "nearMoment": true
+    },
+    {
+      "index": 61,
+      "file": "frame_061.jpg",
+      "tick": 2482,
+      "simTime": 41.8667,
+      "wallS": 15.238,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 4,
+      "playerSpeed": 0.53,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.327,
+        0.367
+      ],
+      "playerWorldXZ": [
+        -1440.221,
+        -2018.576
+      ],
+      "cameraWorldXZ": [
+        -1542.856,
+        -2234.947
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 5,
+      "alignMs": 4,
+      "nearMoment": true
+    },
+    {
+      "index": 62,
+      "file": "frame_062.jpg",
+      "tick": 2497,
+      "simTime": 42.1167,
+      "wallS": 15.508,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 4,
+      "playerSpeed": 0.53,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.326,
+        0.367
+      ],
+      "playerWorldXZ": [
+        -1440.283,
+        -2018.702
+      ],
+      "cameraWorldXZ": [
+        -1542.856,
+        -2234.931
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 4,
+      "alignMs": 29,
+      "nearMoment": true
+    },
+    {
+      "index": 63,
+      "file": "frame_063.jpg",
+      "tick": 2520,
+      "simTime": 42.5,
+      "wallS": 15.919,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 4,
+      "playerSpeed": 0.53,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.327,
+        0.368
+      ],
+      "playerWorldXZ": [
+        -1440.379,
+        -2018.896
+      ],
+      "cameraWorldXZ": [
+        -1542.874,
+        -2234.976
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 5,
+      "alignMs": 12,
+      "nearMoment": true
+    },
+    {
+      "index": 64,
+      "file": "frame_064.jpg",
+      "tick": 2537,
+      "simTime": 42.7833,
+      "wallS": 16.215,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 4,
+      "playerSpeed": 0.53,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.326,
+        0.367
+      ],
+      "playerWorldXZ": [
+        -1440.449,
+        -2019.039
+      ],
+      "cameraWorldXZ": [
+        -1542.908,
+        -2235.054
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 5,
+      "alignMs": 12,
+      "nearMoment": true
+    },
+    {
+      "index": 65,
+      "file": "frame_065.jpg",
+      "tick": 2564,
+      "simTime": 43.2333,
+      "wallS": 16.68,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 3,
+      "playerSpeed": 76.82,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.33,
+        0.37
+      ],
+      "playerWorldXZ": [
+        -1427.331,
+        -2017.686
+      ],
+      "cameraWorldXZ": [
+        -1529.822,
+        -2233.793
+      ],
+      "playerRot": 0.121,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 3,
+      "alignMs": 0,
+      "nearMoment": true
+    },
+    {
+      "index": 66,
+      "file": "frame_066.jpg",
+      "tick": 2576,
+      "simTime": 43.4333,
+      "wallS": 17.723,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 3,
+      "playerSpeed": 76.88,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.334,
+        0.374
+      ],
+      "playerWorldXZ": [
+        -1413.772,
+        -2011.816
+      ],
+      "cameraWorldXZ": [
+        -1516.622,
+        -2228.707
+      ],
+      "playerRot": 0.3059,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 2,
+      "alignMs": 7,
+      "nearMoment": true
+    },
+    {
+      "index": 67,
+      "file": "frame_067.jpg",
+      "tick": 2586,
+      "simTime": 43.6,
+      "wallS": 17.96,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 3,
+      "playerSpeed": 81.26,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.335,
+        0.377
+      ],
+      "playerWorldXZ": [
+        -1407.026,
+        -2000.489
+      ],
+      "cameraWorldXZ": [
+        -1510.328,
+        -2218.307
+      ],
+      "playerRot": 0.5479,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 6,
+      "nearMoment": true
+    },
+    {
+      "index": 68,
+      "file": "frame_068.jpg",
+      "tick": 2595,
+      "simTime": 43.75,
+      "wallS": 18.155,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 2,
+      "playerSpeed": 82.27,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.335,
+        0.379
+      ],
+      "playerWorldXZ": [
+        -1403.819,
+        -1988.67
+      ],
+      "cameraWorldXZ": [
+        -1507.562,
+        -2207.564
+      ],
+      "playerRot": 0.7657,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 11,
+      "nearMoment": true
+    },
+    {
+      "index": 69,
+      "file": "frame_069.jpg",
+      "tick": 2611,
+      "simTime": 44.0167,
+      "wallS": 18.456,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 2,
+      "playerSpeed": 82.69,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.336,
+        0.38
+      ],
+      "playerWorldXZ": [
+        -1404.77,
+        -1966.834
+      ],
+      "cameraWorldXZ": [
+        -1508.034,
+        -2187.338
+      ],
+      "playerRot": 1.1529,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 24,
+      "nearMoment": true
+    },
+    {
+      "index": 70,
+      "file": "frame_070.jpg",
+      "tick": 2625,
+      "simTime": 44.25,
+      "wallS": 18.729,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 2,
+      "playerSpeed": 82.86,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.334,
+        0.374
+      ],
+      "playerWorldXZ": [
+        -1412.382,
+        -1949.192
+      ],
+      "cameraWorldXZ": [
+        -1512.969,
+        -2170.895
+      ],
+      "playerRot": 1.4917,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 5,
+      "nearMoment": true
+    },
+    {
+      "index": 71,
+      "file": "frame_071.jpg",
+      "tick": 2639,
+      "simTime": 44.4833,
+      "wallS": 18.958,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 2,
+      "playerSpeed": 82.98,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.338,
+        0.373
+      ],
+      "playerWorldXZ": [
+        -1425.449,
+        -1935.057
+      ],
+      "cameraWorldXZ": [
+        -1522.87,
+        -2157.544
+      ],
+      "playerRot": 1.8305,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 3,
+      "nearMoment": true
+    },
+    {
+      "index": 72,
+      "file": "frame_072.jpg",
+      "tick": 2653,
+      "simTime": 44.7167,
+      "wallS": 19.196,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 2,
+      "playerSpeed": 83.07,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.342,
+        0.373
+      ],
+      "playerWorldXZ": [
+        -1442.494,
+        -1926.055
+      ],
+      "cameraWorldXZ": [
+        -1537.567,
+        -2149.178
+      ],
+      "playerRot": 2.1692,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 1,
+      "nearMoment": true
+    },
+    {
+      "index": 73,
+      "file": "frame_073.jpg",
+      "tick": 2668,
+      "simTime": 44.9667,
+      "wallS": 19.431,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 2,
+      "playerSpeed": 83.14,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.345,
+        0.373
+      ],
+      "playerWorldXZ": [
+        -1462.965,
+        -1923.27
+      ],
+      "cameraWorldXZ": [
+        -1556.771,
+        -2146.862
+      ],
+      "playerRot": 2.5322,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 2,
+      "nearMoment": true
+    },
+    {
+      "index": 74,
+      "file": "frame_074.jpg",
+      "tick": 2678,
+      "simTime": 45.1333,
+      "wallS": 19.635,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 2,
+      "playerSpeed": 83.18,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.344,
+        0.379
+      ],
+      "playerWorldXZ": [
+        -1476.596,
+        -1925.57
+      ],
+      "cameraWorldXZ": [
+        -1573.536,
+        -2148.404
+      ],
+      "playerRot": 2.7742,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 15,
+      "nearMoment": true
+    },
+    {
+      "index": 75,
+      "file": "frame_075.jpg",
+      "tick": 2689,
+      "simTime": 45.3167,
+      "wallS": 19.877,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 2,
+      "playerSpeed": 81.31,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.342,
+        0.383
+      ],
+      "playerWorldXZ": [
+        -1490.499,
+        -1931.697
+      ],
+      "cameraWorldXZ": [
+        -1586.636,
+        -2152.047
+      ],
+      "playerRot": 3.0298,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 3,
+      "nearMoment": true
+    },
+    {
+      "index": 76,
+      "file": "frame_076.jpg",
+      "tick": 2703,
+      "simTime": 45.55,
+      "wallS": 20.103,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 2,
+      "playerSpeed": 82.73,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.348,
+        0.376
+      ],
+      "playerWorldXZ": [
+        -1509.117,
+        -1933.159
+      ],
+      "cameraWorldXZ": [
+        -1603.681,
+        -2156.061
+      ],
+      "playerRot": 3.0328,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 8,
+      "nearMoment": true
+    },
+    {
+      "index": 77,
+      "file": "frame_077.jpg",
+      "tick": 2712,
+      "simTime": 45.7,
+      "wallS": 20.29,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 2,
+      "playerSpeed": 83.46,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.349,
+        0.373
+      ],
+      "playerWorldXZ": [
+        -1521.544,
+        -1932.049
+      ],
+      "cameraWorldXZ": [
+        -1616.337,
+        -2156.251
+      ],
+      "playerRot": 3.0328,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 4,
+      "nearMoment": true
+    },
+    {
+      "index": 78,
+      "file": "frame_078.jpg",
+      "tick": 2725,
+      "simTime": 45.9167,
+      "wallS": 20.527,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 2,
+      "playerSpeed": 83.59,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.351,
+        0.372
+      ],
+      "playerWorldXZ": [
+        -1539.546,
+        -1930.196
+      ],
+      "cameraWorldXZ": [
+        -1633.479,
+        -2154.637
+      ],
+      "playerRot": 3.0328,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 2,
+      "nearMoment": true
+    },
+    {
+      "index": 79,
+      "file": "frame_079.jpg",
+      "tick": 2737,
+      "simTime": 46.1167,
+      "wallS": 20.739,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 2,
+      "playerSpeed": 83.59,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.35,
+        0.375
+      ],
+      "playerWorldXZ": [
+        -1556.168,
+        -1928.452
+      ],
+      "cameraWorldXZ": [
+        -1653.33,
+        -2153.106
+      ],
+      "playerRot": 3.0328,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 5,
+      "nearMoment": true
+    },
+    {
+      "index": 80,
+      "file": "frame_080.jpg",
+      "tick": 2748,
+      "simTime": 46.3,
+      "wallS": 20.93,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 2,
+      "playerSpeed": 83.58,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.348,
+        0.369
+      ],
+      "playerWorldXZ": [
+        -1571.402,
+        -1926.852
+      ],
+      "cameraWorldXZ": [
+        -1666.241,
+        -2151.622
+      ],
+      "playerRot": 3.0328,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 2,
+      "nearMoment": true
+    },
+    {
+      "index": 81,
+      "file": "frame_081.jpg",
+      "tick": 2755,
+      "simTime": 46.4167,
+      "wallS": 21.13,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 2,
+      "playerSpeed": 83.57,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.348,
+        0.37
+      ],
+      "playerWorldXZ": [
+        -1581.096,
+        -1925.833
+      ],
+      "cameraWorldXZ": [
+        -1676.974,
+        -2150.682
+      ],
+      "playerRot": 3.0328,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 16,
+      "nearMoment": true
+    },
+    {
+      "index": 82,
+      "file": "frame_082.jpg",
+      "tick": 2773,
+      "simTime": 46.7167,
+      "wallS": 22.953,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 2,
+      "playerSpeed": 83.57,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.355,
+        0.367
+      ],
+      "playerWorldXZ": [
+        -1606.021,
+        -1923.209
+      ],
+      "cameraWorldXZ": [
+        -1695.079,
+        -2148.142
+      ],
+      "playerRot": 3.0328,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 6,
+      "nearMoment": true
+    },
+    {
+      "index": 83,
+      "file": "frame_083.jpg",
+      "tick": 2785,
+      "simTime": 46.9167,
+      "wallS": 23.154,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 2,
+      "playerSpeed": 83.57,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.367,
+        0.372
+      ],
+      "playerWorldXZ": [
+        -1622.639,
+        -1921.457
+      ],
+      "cameraWorldXZ": [
+        -1707.095,
+        -2146.426
+      ],
+      "playerRot": 3.0328,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 5,
+      "nearMoment": true
+    },
+    {
+      "index": 84,
+      "file": "frame_084.jpg",
+      "tick": 2792,
+      "simTime": 47.0333,
+      "wallS": 23.331,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 2,
+      "playerSpeed": 83.58,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.372,
+        0.374
+      ],
+      "playerWorldXZ": [
+        -1632.332,
+        -1920.433
+      ],
+      "cameraWorldXZ": [
+        -1715.243,
+        -2145.425
+      ],
+      "playerRot": 3.0328,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 1,
+      "nearMoment": true
+    },
+    {
+      "index": 85,
+      "file": "frame_085.jpg",
+      "tick": 2803,
+      "simTime": 47.2167,
+      "wallS": 23.526,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 2,
+      "playerSpeed": 83.58,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.376,
+        0.369
+      ],
+      "playerWorldXZ": [
+        -1647.565,
+        -1918.822
+      ],
+      "cameraWorldXZ": [
+        -1724.881,
+        -2143.83
+      ],
+      "playerRot": 3.0328,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 0,
+      "nearMoment": true
+    },
+    {
+      "index": 86,
+      "file": "frame_086.jpg",
+      "tick": 2817,
+      "simTime": 47.45,
+      "wallS": 23.759,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 1,
+      "playerSpeed": 83.6,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.386,
+        0.369
+      ],
+      "playerWorldXZ": [
+        -1666.955,
+        -1916.767
+      ],
+      "cameraWorldXZ": [
+        -1738.256,
+        -2141.786
+      ],
+      "playerRot": 3.0328,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 1,
+      "nearMoment": true
+    },
+    {
+      "index": 87,
+      "file": "frame_087.jpg",
+      "tick": 2838,
+      "simTime": 47.8,
+      "wallS": 24.933,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 1,
+      "playerSpeed": 8.69,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.391,
+        0.367
+      ],
+      "playerWorldXZ": [
+        -1685.507,
+        -1914.832
+      ],
+      "cameraWorldXZ": [
+        -1751.695,
+        -2137.97
+      ],
+      "playerRot": 3.0328,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 17,
+      "nearMoment": true
+    },
+    {
+      "index": 88,
+      "file": "frame_088.jpg",
+      "tick": 2851,
+      "simTime": 48.0167,
+      "wallS": 25.14,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 1,
+      "playerSpeed": 0.64,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.394,
+        0.367
+      ],
+      "playerWorldXZ": [
+        -1686.164,
+        -1914.81
+      ],
+      "cameraWorldXZ": [
+        -1750.028,
+        -2136.072
+      ],
+      "playerRot": 3.0328,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 4,
+      "nearMoment": true
+    },
+    {
+      "index": 89,
+      "file": "frame_089.jpg",
+      "tick": 2862,
+      "simTime": 48.2,
+      "wallS": 25.317,
+      "phase": "active",
+      "wave": 1,
+      "hostilesAlive": 10,
+      "hostilesOnScreen": 1,
+      "playerSpeed": 0.2,
+      "playerOnScreen": true,
+      "playerScreenXY": [
+        0.397,
+        0.367
+      ],
+      "playerWorldXZ": [
+        -1686.202,
+        -1914.846
+      ],
+      "cameraWorldXZ": [
+        -1748.042,
+        -2134.909
+      ],
+      "playerRot": 3.0328,
+      "tetherActive": false,
+      "hullPartsDrawn": 11,
+      "hostilesDrawing": 1,
+      "alignMs": 12,
+      "nearMoment": true
+    }
+  ]
+}

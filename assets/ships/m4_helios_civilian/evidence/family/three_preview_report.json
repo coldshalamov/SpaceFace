@@ -1,0 +1,342 @@
+{
+  "schema": "spaceface.m4HeliosCivilianThreePreview.v1",
+  "packet": "M4-HELIOS-CIVILIAN-REPAIR-001",
+  "wiringStatus": "candidate_not_default_play",
+  "threeRoot": "node_modules/three",
+  "capturedAt": "2026-07-11T11:27:54.088Z",
+  "shots": [
+    {
+      "ship": "lark",
+      "shot": "three_readability_close",
+      "mode": "close",
+      "w": 960,
+      "h": 540,
+      "evidence": "assets/ships/m4_helios_civilian/evidence/lark/renders/three_readability_close.png",
+      "devshot": ".devshots/m4-helios-civilian/three-lark-readability_close.png",
+      "bytes": 43287,
+      "sha256": "C817DC652411AA78C3B903191BF2F2F1865B87D05BB1546F6F1BDEFA1D0D0FE9",
+      "brightPixels": 11509,
+      "meshCount": 8,
+      "centerPixel": [
+        187,
+        177,
+        164,
+        255
+      ],
+      "metrics": {
+        "size": [
+          18.57499885559082,
+          2.6850000619888306,
+          7.399999618530273
+        ],
+        "center": [
+          1.0124998092651367,
+          0.11750000715255737,
+          0
+        ],
+        "maxDim": 18.57499885559082,
+        "dist": 34.36374788284302,
+        "mode": "close",
+        "w": 960,
+        "h": 540,
+        "glbUrl": "/assets/ships/m4_helios_civilian/source/wholeships/helios_lark.glb"
+      }
+    },
+    {
+      "ship": "lark",
+      "shot": "three_readability_120px",
+      "mode": "mid",
+      "w": 128,
+      "h": 128,
+      "evidence": "assets/ships/m4_helios_civilian/evidence/lark/renders/three_readability_120px.png",
+      "devshot": ".devshots/m4-helios-civilian/three-lark-readability_120px.png",
+      "bytes": 2223,
+      "sha256": "BAD7954DC4555F6B9252AD63908AE68184E426A1E8CBF16AA194ABAE9248C1B9",
+      "brightPixels": 292,
+      "meshCount": 8,
+      "centerPixel": [
+        202,
+        194,
+        183,
+        255
+      ],
+      "metrics": {
+        "size": [
+          18.57499885559082,
+          2.6850000619888306,
+          7.399999618530273
+        ],
+        "center": [
+          1.0124998092651367,
+          0.11750000715255737,
+          0
+        ],
+        "maxDim": 18.57499885559082,
+        "dist": 53.867496681213375,
+        "mode": "mid",
+        "w": 128,
+        "h": 128,
+        "glbUrl": "/assets/ships/m4_helios_civilian/source/wholeships/helios_lark.glb"
+      }
+    },
+    {
+      "ship": "lark",
+      "shot": "three_readability_under45px",
+      "mode": "far",
+      "w": 48,
+      "h": 48,
+      "evidence": "assets/ships/m4_helios_civilian/evidence/lark/renders/three_readability_under45px.png",
+      "devshot": ".devshots/m4-helios-civilian/three-lark-readability_under45px.png",
+      "bytes": 402,
+      "sha256": "4FAA58529950F07AB1A4215430CCF69599F77B0EF858A5DC7D8E95618B67EB6A",
+      "brightPixels": 17,
+      "meshCount": 8,
+      "centerPixel": [
+        131,
+        135,
+        136,
+        255
+      ],
+      "metrics": {
+        "size": [
+          18.57499885559082,
+          2.6850000619888306,
+          7.399999618530273
+        ],
+        "center": [
+          1.0124998092651367,
+          0.11750000715255737,
+          0
+        ],
+        "maxDim": 18.57499885559082,
+        "dist": 96.58999404907227,
+        "mode": "far",
+        "w": 48,
+        "h": 48,
+        "glbUrl": "/assets/ships/m4_helios_civilian/source/wholeships/helios_lark.glb"
+      }
+    },
+    {
+      "ship": "cradle",
+      "shot": "three_readability_close",
+      "mode": "close",
+      "w": 960,
+      "h": 540,
+      "evidence": "assets/ships/m4_helios_civilian/evidence/cradle/renders/three_readability_close.png",
+      "devshot": ".devshots/m4-helios-civilian/three-cradle-readability_close.png",
+      "bytes": 52779,
+      "sha256": "418182FECC08895BBDD41F13F672EC4254BB5622728B42F1CD4B1EF08101BE6F",
+      "brightPixels": 18622,
+      "meshCount": 9,
+      "centerPixel": [
+        209,
+        201,
+        189,
+        255
+      ],
+      "metrics": {
+        "size": [
+          22.149999618530273,
+          8.359999656677246,
+          9.079999923706055
+        ],
+        "center": [
+          0.7249994277954102,
+          0.869999885559082,
+          0
+        ],
+        "maxDim": 22.149999618530273,
+        "dist": 40.97749929428101,
+        "mode": "close",
+        "w": 960,
+        "h": 540,
+        "glbUrl": "/assets/ships/m4_helios_civilian/source/wholeships/helios_cradle.glb"
+      }
+    },
+    {
+      "ship": "cradle",
+      "shot": "three_readability_120px",
+      "mode": "mid",
+      "w": 128,
+      "h": 128,
+      "evidence": "assets/ships/m4_helios_civilian/evidence/cradle/renders/three_readability_120px.png",
+      "devshot": ".devshots/m4-helios-civilian/three-cradle-readability_120px.png",
+      "bytes": 2791,
+      "sha256": "F641787EB99944B5FF73613025F2087ADC7FE49EB6E65D2B2826DAB9A815BCBC",
+      "brightPixels": 469,
+      "meshCount": 9,
+      "centerPixel": [
+        207,
+        200,
+        191,
+        255
+      ],
+      "metrics": {
+        "size": [
+          22.149999618530273,
+          8.359999656677246,
+          9.079999923706055
+        ],
+        "center": [
+          0.7249994277954102,
+          0.869999885559082,
+          0
+        ],
+        "maxDim": 22.149999618530273,
+        "dist": 64.2349988937378,
+        "mode": "mid",
+        "w": 128,
+        "h": 128,
+        "glbUrl": "/assets/ships/m4_helios_civilian/source/wholeships/helios_cradle.glb"
+      }
+    },
+    {
+      "ship": "cradle",
+      "shot": "three_readability_under45px",
+      "mode": "far",
+      "w": 48,
+      "h": 48,
+      "evidence": "assets/ships/m4_helios_civilian/evidence/cradle/renders/three_readability_under45px.png",
+      "devshot": ".devshots/m4-helios-civilian/three-cradle-readability_under45px.png",
+      "bytes": 443,
+      "sha256": "1C4BA73E4F641AAB740FBEB6D541E014B7B276FC12A7CE04B6D581683761DD29",
+      "brightPixels": 25,
+      "meshCount": 9,
+      "centerPixel": [
+        179,
+        170,
+        156,
+        255
+      ],
+      "metrics": {
+        "size": [
+          22.149999618530273,
+          8.359999656677246,
+          9.079999923706055
+        ],
+        "center": [
+          0.7249994277954102,
+          0.869999885559082,
+          0
+        ],
+        "maxDim": 22.149999618530273,
+        "dist": 115.17999801635743,
+        "mode": "far",
+        "w": 48,
+        "h": 48,
+        "glbUrl": "/assets/ships/m4_helios_civilian/source/wholeships/helios_cradle.glb"
+      }
+    },
+    {
+      "ship": "span",
+      "shot": "three_readability_close",
+      "mode": "close",
+      "w": 960,
+      "h": 540,
+      "evidence": "assets/ships/m4_helios_civilian/evidence/span/renders/three_readability_close.png",
+      "devshot": ".devshots/m4-helios-civilian/three-span-readability_close.png",
+      "bytes": 52138,
+      "sha256": "5A0EF77FAE9351211B85E7A3A9FD6450DBFEF64F04954AE84ED6997F81522D55",
+      "brightPixels": 18958,
+      "meshCount": 8,
+      "centerPixel": [
+        213,
+        206,
+        197,
+        255
+      ],
+      "metrics": {
+        "size": [
+          28.324999809265137,
+          4.550000190734863,
+          8.699999809265137
+        ],
+        "center": [
+          -0.16249990463256836,
+          -0.02500009536743164,
+          0
+        ],
+        "maxDim": 28.324999809265137,
+        "dist": 52.4012496471405,
+        "mode": "close",
+        "w": 960,
+        "h": 540,
+        "glbUrl": "/assets/ships/m4_helios_civilian/source/wholeships/helios_span.glb"
+      }
+    },
+    {
+      "ship": "span",
+      "shot": "three_readability_120px",
+      "mode": "mid",
+      "w": 128,
+      "h": 128,
+      "evidence": "assets/ships/m4_helios_civilian/evidence/span/renders/three_readability_120px.png",
+      "devshot": ".devshots/m4-helios-civilian/three-span-readability_120px.png",
+      "bytes": 2590,
+      "sha256": "A56397A5A102EF6DAB3C897A1CD87A988556123BC7D26053434F18C6147E5622",
+      "brightPixels": 455,
+      "meshCount": 8,
+      "centerPixel": [
+        213,
+        215,
+        200,
+        255
+      ],
+      "metrics": {
+        "size": [
+          28.324999809265137,
+          4.550000190734863,
+          8.699999809265137
+        ],
+        "center": [
+          -0.16249990463256836,
+          -0.02500009536743164,
+          0
+        ],
+        "maxDim": 28.324999809265137,
+        "dist": 82.1424994468689,
+        "mode": "mid",
+        "w": 128,
+        "h": 128,
+        "glbUrl": "/assets/ships/m4_helios_civilian/source/wholeships/helios_span.glb"
+      }
+    },
+    {
+      "ship": "span",
+      "shot": "three_readability_under45px",
+      "mode": "far",
+      "w": 48,
+      "h": 48,
+      "evidence": "assets/ships/m4_helios_civilian/evidence/span/renders/three_readability_under45px.png",
+      "devshot": ".devshots/m4-helios-civilian/three-span-readability_under45px.png",
+      "bytes": 425,
+      "sha256": "406E0A6C9FA6BFF5FDB82E8124F02D53EB224C559A4DCD2BAE8015521AB4E32B",
+      "brightPixels": 25,
+      "meshCount": 8,
+      "centerPixel": [
+        213,
+        205,
+        196,
+        255
+      ],
+      "metrics": {
+        "size": [
+          28.324999809265137,
+          4.550000190734863,
+          8.699999809265137
+        ],
+        "center": [
+          -0.16249990463256836,
+          -0.02500009536743164,
+          0
+        ],
+        "maxDim": 28.324999809265137,
+        "dist": 147.2899990081787,
+        "mode": "far",
+        "w": 48,
+        "h": 48,
+        "glbUrl": "/assets/ships/m4_helios_civilian/source/wholeships/helios_span.glb"
+      }
+    }
+  ]
+}

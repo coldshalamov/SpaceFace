@@ -1,0 +1,1064 @@
+{
+  "schema": "spaceface.pq022-corridor-asset-leaves-h1.v1",
+  "row": 7,
+  "disposition": "PASS",
+  "runtime": "browser-chromium-headed",
+  "brokerManifestId": "pq022-corridor-asset-leaves",
+  "fixedSeed": 47,
+  "recordedSeed": 47,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "gpu": {
+    "available": true,
+    "vendor": "Google Inc. (Intel)",
+    "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
+  "routeContract": "visible fixed-seed New Game -> production owners -> controlled game-camera stills",
+  "compressions": [
+    {
+      "kind": "owner-fixture",
+      "subject": "relay-collar",
+      "detail": "asteroidSites._ensureBeacon placed the shipped relay on a live Helios asteroid; no fixture renderer or entity shape"
+    },
+    {
+      "kind": "owner-fixture",
+      "subject": "corridor-traffic-bodies",
+      "detail": "the harness selected courier/hauler/miner roles deterministically; makeShipEntitySpec, traffic durable identity and cargo manifest, partsLibrary whole-ship selection, renderer composition, and authored admission stayed production-owned",
+      "distributionClaim": false
+    },
+    {
+      "kind": "travel",
+      "subject": "corridor-station-identity",
+      "detail": "called the registered world.enterSector(sector_ceres_belt) owner instead of flying the route; this row is presentation evidence, not route-completion evidence"
+    },
+    {
+      "kind": "travel",
+      "subject": "corridor-lane-furniture",
+      "detail": "called the registered world.enterSector(sector_tethys_junction) owner instead of flying the route; the nav buoy remains the live poi_blackmkt place entity"
+    }
+  ],
+  "relayPlacement": {
+    "relayId": 319,
+    "rockId": 4,
+    "rockRadius": 11.910888727754354,
+    "sectorId": "sector_helios_prime",
+    "placeId": "place_claim_outpost_relay",
+    "placeScale": 0.16,
+    "worldDressing": true,
+    "collides": false,
+    "contactRingDistance": 18.910888727754326
+  },
+  "trafficFixtures": {
+    "courier": {
+      "entityId": 320,
+      "defId": "ship_kestrel",
+      "trafficRole": "courier",
+      "trafficLabel": "Courier",
+      "worldRecordId": "wr_convoy_c956ec56",
+      "cargoManifestId": "fm_2a6b284d",
+      "visual": {
+        "file": "wholeships/helios_lark.glb",
+        "assetId": "SF_WHOLESHIP_HELIOS_LARK",
+        "roleId": "courier",
+        "required": true
+      },
+      "fixtureKind": "controlled-role-draw-through-traffic-owner"
+    },
+    "hauler": {
+      "entityId": 321,
+      "defId": "ship_mule",
+      "trafficRole": "hauler",
+      "trafficLabel": "Cargo Hauler",
+      "worldRecordId": "wr_convoy_77125d1e",
+      "cargoManifestId": "fm_490673bd",
+      "visual": {
+        "file": "wholeships/helios_span.glb",
+        "assetId": "SF_WHOLESHIP_HELIOS_SPAN",
+        "roleId": "hauler",
+        "required": true
+      },
+      "fixtureKind": "controlled-role-draw-through-traffic-owner"
+    },
+    "miner": {
+      "entityId": 322,
+      "defId": "ship_pelican",
+      "trafficRole": "miner",
+      "trafficLabel": "Mining Barge",
+      "worldRecordId": "wr_convoy_ebd9c839",
+      "cargoManifestId": "fm_3d63ed5a",
+      "visual": {
+        "file": "wholeships/helios_cradle.glb",
+        "assetId": "SF_WHOLESHIP_HELIOS_CRADLE",
+        "roleId": "miner",
+        "required": true
+      },
+      "fixtureKind": "controlled-role-draw-through-traffic-owner"
+    }
+  },
+  "manifestIdentity": [
+    {
+      "key": "relay-collar",
+      "assetId": "place_claim_outpost_relay",
+      "manifestId": "place_claim_outpost_relay",
+      "family": "relay-collar",
+      "source": "assets/ships/parts/places/place_claim_outpost_relay.glb",
+      "release": "assets/ships/release/parts/places/place_claim_outpost_relay.glb",
+      "sourceSha256": "a93c7b4d8fd23fa925fb99c025a544dacf13716e374261b8c487399c2196fda8",
+      "releaseSha256": "dc07ebef0ea61a45e778ecbb8a9ac4dfda4e71e4970433337e0ead084fffdcc2",
+      "sourceBytes": 13230948,
+      "releaseBytes": 8303864,
+      "sourceManifestFile": "places/place_claim_outpost_relay.glb"
+    },
+    {
+      "key": "station-trade-hub",
+      "assetId": "place_station_trade_hub",
+      "manifestId": "place_station_trade_hub",
+      "family": "corridor-station-identity",
+      "source": "assets/ships/parts/places/place_station_trade_hub.glb",
+      "release": "assets/ships/release/parts/places/place_station_trade_hub.glb",
+      "sourceSha256": "94cb9dc727d606df2f7c32f2c0ffb274ee6a572a8fa7bd40836d721563d1a578",
+      "releaseSha256": "9540c8fa263359ff3b78302a9d48080af17cb903f47d43361814ba3666f0754a",
+      "sourceBytes": 79717896,
+      "releaseBytes": 79051580,
+      "sourceManifestFile": "places/place_station_trade_hub.glb"
+    },
+    {
+      "key": "station-refinery",
+      "assetId": "place_station_refinery",
+      "manifestId": "place_station_refinery",
+      "family": "corridor-station-identity",
+      "source": "assets/ships/parts/places/place_station_refinery.glb",
+      "release": "assets/ships/release/parts/places/place_station_refinery.glb",
+      "sourceSha256": "93fce6a0401a3375cad4269cc59dbf1ad5ba3eafb822a4a6f6d464410d9093a9",
+      "releaseSha256": "52653b6b9fd0859c076bbd5912feb827a099c1f3220bfea99c4881281a5d5f57",
+      "sourceBytes": 23431088,
+      "releaseBytes": 9885532,
+      "sourceManifestFile": "places/place_station_refinery.glb"
+    },
+    {
+      "key": "station-military",
+      "assetId": "place_station_military",
+      "manifestId": "place_station_military",
+      "family": "corridor-station-identity",
+      "source": "assets/ships/parts/places/place_station_military.glb",
+      "release": "assets/ships/release/parts/places/place_station_military.glb",
+      "sourceSha256": "fe2676f628c8a7382e6827883128d63c53407c9a828493cac8ccb65a9ed2491e",
+      "releaseSha256": "a92f5c2b53262defcbfea27b22ec07ce8d7798f856dbd8e3fc9b12475ea67806",
+      "sourceBytes": 6761824,
+      "releaseBytes": 4232420,
+      "sourceManifestFile": "places/place_station_military.glb"
+    },
+    {
+      "key": "station-mining",
+      "assetId": "place_station_mining",
+      "manifestId": "place_station_mining",
+      "family": "corridor-station-identity",
+      "source": "assets/ships/parts/places/place_station_mining.glb",
+      "release": "assets/ships/release/parts/places/place_station_mining.glb",
+      "sourceSha256": "82be5e687143b333adb2ea11659bebf2eb2112edcdd575c06c225d3318a95bfe",
+      "releaseSha256": "b14c82ec6add74c525def05ca57e081805f3f4a09f8773ab662847ad41314b3a",
+      "sourceBytes": 8450956,
+      "releaseBytes": 7482876,
+      "sourceManifestFile": "places/place_station_mining.glb"
+    },
+    {
+      "key": "gate-jump-ring",
+      "assetId": "place_gate_jump_ring",
+      "manifestId": "place_gate_jump_ring",
+      "family": "corridor-lane-furniture",
+      "source": "assets/ships/parts/places/place_gate_jump_ring.glb",
+      "release": "assets/ships/release/parts/places/place_gate_jump_ring.glb",
+      "sourceSha256": "fcf7b6b6693a081a7ddb2d0b36479263cc7f2f01b77df4ee1569f037944668ec",
+      "releaseSha256": "01ccf2695678cb42c5b086308b7bea6dc366b029b4efc9e12393a10e8b209ead",
+      "sourceBytes": 10024660,
+      "releaseBytes": 7776184,
+      "sourceManifestFile": "places/place_gate_jump_ring.glb"
+    },
+    {
+      "key": "station-billboard",
+      "assetId": "place_station_billboard",
+      "manifestId": "place_station_billboard",
+      "family": "corridor-lane-furniture",
+      "source": "assets/ships/parts/places/place_station_billboard.glb",
+      "release": "assets/ships/release/parts/places/place_station_billboard.glb",
+      "sourceSha256": "557d5065d0435e3dc8128b4623135addf0b372d282ecb9f331e6a289b0d9ff7a",
+      "releaseSha256": "598b130176e2e1b4b0bf89ec57cec7993e411ca548b28ac858dd04473f2c3098",
+      "sourceBytes": 4486260,
+      "releaseBytes": 6658368,
+      "sourceManifestFile": "places/place_station_billboard.glb"
+    },
+    {
+      "key": "nav-buoy",
+      "assetId": "place_nav_buoy",
+      "manifestId": "place_nav_buoy",
+      "family": "corridor-lane-furniture",
+      "source": "assets/ships/parts/places/place_nav_buoy.glb",
+      "release": "assets/ships/release/parts/places/place_nav_buoy.glb",
+      "sourceSha256": "f1599e2f5ff47aca1bff2ff311f111bee9ce3ae076123b36eb71e32343ab7b4d",
+      "releaseSha256": "c227ec86343f3105d312c4127daf4e2516ca45ac4a26e7fb27368ae308a02c20",
+      "sourceBytes": 3775832,
+      "releaseBytes": 5570068,
+      "sourceManifestFile": "places/place_nav_buoy.glb"
+    },
+    {
+      "key": "traffic-lark",
+      "assetId": "helios_lark",
+      "manifestId": "wholeship_helios_lark",
+      "family": "corridor-traffic-bodies",
+      "source": "assets/ships/parts/wholeships/helios_lark.glb",
+      "release": "assets/ships/release/parts/wholeships/helios_lark.glb",
+      "sourceSha256": "9090e7c21980d0d87d1da422bdb940a7731ceb3b39f4648adc0968df931b708f",
+      "releaseSha256": "5dfb6c2a2baaa4c8e92758f4e969d262ee668cbf22e5de73020df659e782a473",
+      "sourceBytes": 25286680,
+      "releaseBytes": 14087972,
+      "sourceManifestFile": "wholeships/helios_lark.glb"
+    },
+    {
+      "key": "traffic-span",
+      "assetId": "helios_span",
+      "manifestId": "wholeship_helios_span",
+      "family": "corridor-traffic-bodies",
+      "source": "assets/ships/parts/wholeships/helios_span.glb",
+      "release": "assets/ships/release/parts/wholeships/helios_span.glb",
+      "sourceSha256": "c4ceaa020861cdd1bc9f7e20172bbc6f00531290aa3753e4757dc6b89b47f2ab",
+      "releaseSha256": "5fb2a62c79d3bc07777c5bf5ff9d2e26554e2bf3bfca051ba470d28adb6ed1b5",
+      "sourceBytes": 26048088,
+      "releaseBytes": 14153500,
+      "sourceManifestFile": "wholeships/helios_span.glb"
+    },
+    {
+      "key": "traffic-cradle",
+      "assetId": "helios_cradle",
+      "manifestId": "wholeship_helios_cradle",
+      "family": "corridor-traffic-bodies",
+      "source": "assets/ships/parts/wholeships/helios_cradle.glb",
+      "release": "assets/ships/release/parts/wholeships/helios_cradle.glb",
+      "sourceSha256": "1f10de2d7f2ae083fdac768c735f1e444616ccc59bb19088cc8418f63e88dd72",
+      "releaseSha256": "6f400dfd7caf7e18df1b0cb951e77ec2c8773a4cd8321243e4c259c840c778de",
+      "sourceBytes": 25245508,
+      "releaseBytes": 14123188,
+      "sourceManifestFile": "wholeships/helios_cradle.glb"
+    }
+  ],
+  "captures": [
+    {
+      "subjectKey": "relay-collar",
+      "assetId": "place_claim_outpost_relay",
+      "manifestId": "place_claim_outpost_relay",
+      "family": "relay-collar",
+      "file": ".devshots/pq022-corridor-asset-leaves/01-relay-close.png",
+      "bytes": 435868,
+      "sha256": "52b985a635fe22fe15a6fb677e5d4c327c2eb0da6b31973d064159a47eb50854",
+      "framing": "close",
+      "requestedLod": "lod0",
+      "mode": "flight",
+      "sectorId": "sector_helios_prime",
+      "entityId": 319,
+      "entityType": "fx",
+      "runtimeIdentity": {
+        "stationId": null,
+        "archetypeGlb": null,
+        "placeId": "place_claim_outpost_relay",
+        "poiId": null,
+        "isGate": false,
+        "trafficRole": null,
+        "defId": null,
+        "worldRecordId": null
+      },
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_place_claim_outpost_relay",
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_claim_outpost_relay.glb"
+        ]
+      },
+      "visibleMeshes": 1,
+      "materialNames": [
+        "SF_Shared_accent_accent_a0eef8",
+        "SF_Shared_canopy_none_native",
+        "SF_Shared_hull_textured_hull_808090",
+        "SF_Shared_mechanical_dark_206070"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        15.752687704992809,
+        12.319772720336914,
+        15.120438383775742
+      ],
+      "cameraDistance": 33.64741892032732,
+      "centerNdc": {
+        "x": 0,
+        "y": 0,
+        "z": 0.9940702510285413
+      },
+      "centerOnScreen": true
+    },
+    {
+      "subjectKey": "relay-collar",
+      "assetId": "place_claim_outpost_relay",
+      "manifestId": "place_claim_outpost_relay",
+      "family": "relay-collar",
+      "file": ".devshots/pq022-corridor-asset-leaves/02-relay-default.png",
+      "bytes": 425459,
+      "sha256": "d76e096f75cf59f6622f28e0ed9283552425aa76ef6a7579c1be801404836277",
+      "framing": "default",
+      "requestedLod": "lod1",
+      "mode": "flight",
+      "sectorId": "sector_helios_prime",
+      "entityId": 319,
+      "entityType": "fx",
+      "runtimeIdentity": {
+        "stationId": null,
+        "archetypeGlb": null,
+        "placeId": "place_claim_outpost_relay",
+        "poiId": null,
+        "isGate": false,
+        "trafficRole": null,
+        "defId": null,
+        "worldRecordId": null
+      },
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_place_claim_outpost_relay",
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_claim_outpost_relay.glb"
+        ]
+      },
+      "visibleMeshes": 1,
+      "materialNames": [
+        "SF_Shared_accent_accent_a0eef8",
+        "SF_Shared_canopy_none_native",
+        "SF_Shared_hull_textured_hull_808090",
+        "SF_Shared_mechanical_dark_206070"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        15.687249533259205,
+        12.320099830627441,
+        15.036876299310165
+      ],
+      "cameraDistance": 104.25051558625503,
+      "centerNdc": {
+        "x": 0,
+        "y": 0,
+        "z": 0.9980958163732082
+      },
+      "centerOnScreen": true
+    },
+    {
+      "subjectKey": "relay-collar",
+      "assetId": "place_claim_outpost_relay",
+      "manifestId": "place_claim_outpost_relay",
+      "family": "relay-collar",
+      "file": ".devshots/pq022-corridor-asset-leaves/03-relay-far.png",
+      "bytes": 350198,
+      "sha256": "bc0e564d184cea25ed5dd2b264394832a6002b0da6a034a19eec29238a0c6780",
+      "framing": "far",
+      "requestedLod": "lod2",
+      "mode": "flight",
+      "sectorId": "sector_helios_prime",
+      "entityId": 319,
+      "entityType": "fx",
+      "runtimeIdentity": {
+        "stationId": null,
+        "archetypeGlb": null,
+        "placeId": "place_claim_outpost_relay",
+        "poiId": null,
+        "isGate": false,
+        "trafficRole": null,
+        "defId": null,
+        "worldRecordId": null
+      },
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_place_claim_outpost_relay",
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_claim_outpost_relay.glb"
+        ]
+      },
+      "visibleMeshes": 1,
+      "materialNames": [
+        "SF_Shared_accent_accent_a0eef8",
+        "SF_Shared_canopy_none_native",
+        "SF_Shared_hull_textured_hull_808090",
+        "SF_Shared_mechanical_dark_206070"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        15.555251337025538,
+        12.320425987243652,
+        14.874105640418854
+      ],
+      "cameraDistance": 336.47418920327306,
+      "centerNdc": {
+        "x": 4.528620212336059e-16,
+        "y": 1.8114480849344236e-16,
+        "z": 0.9994198823375486
+      },
+      "centerOnScreen": true
+    },
+    {
+      "subjectKey": "station-trade-hub",
+      "assetId": "place_station_trade_hub",
+      "manifestId": "place_station_trade_hub",
+      "family": "corridor-station-identity",
+      "file": ".devshots/pq022-corridor-asset-leaves/04-station-trade-hub.png",
+      "bytes": 308738,
+      "sha256": "263a081c0992e72599d7fbddd4270726257896335ca586ca5c159e93c667a280",
+      "framing": "default",
+      "requestedLod": "lod1",
+      "mode": "flight",
+      "sectorId": "sector_helios_prime",
+      "entityId": 2,
+      "entityType": "station",
+      "runtimeIdentity": {
+        "stationId": "station_helios",
+        "archetypeGlb": "place_station_trade_hub",
+        "placeId": null,
+        "poiId": null,
+        "isGate": false,
+        "trafficRole": null,
+        "defId": null,
+        "worldRecordId": null
+      },
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_place_station_trade_hub",
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_station_trade_hub.glb"
+        ]
+      },
+      "visibleMeshes": 4,
+      "materialNames": [
+        "SF_Shared_none_none_native",
+        "SF_Shared_none_textured_none_native"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        179.99515533447266,
+        45.423136711120605,
+        129.95774841308594
+      ],
+      "cameraDistance": 390.50386214522206,
+      "centerNdc": {
+        "x": 7.804090877793497e-16,
+        "y": -7.804090877793497e-17,
+        "z": 0.9995021233309604
+      },
+      "centerOnScreen": true
+    },
+    {
+      "subjectKey": "station-military",
+      "assetId": "place_station_military",
+      "manifestId": "place_station_military",
+      "family": "corridor-station-identity",
+      "file": ".devshots/pq022-corridor-asset-leaves/05-station-military.png",
+      "bytes": 347830,
+      "sha256": "4d4e563aa9ec1b8d48f8b369f9baed048f1f0a5b00de546997e7e8a9f30fb558",
+      "framing": "default",
+      "requestedLod": "lod1",
+      "mode": "flight",
+      "sectorId": "sector_helios_prime",
+      "entityId": 3,
+      "entityType": "station",
+      "runtimeIdentity": {
+        "stationId": "station_coalition",
+        "archetypeGlb": "place_station_military",
+        "placeId": null,
+        "poiId": null,
+        "isGate": false,
+        "trafficRole": null,
+        "defId": null,
+        "worldRecordId": null
+      },
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_place_station_military",
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_station_military.glb"
+        ]
+      },
+      "visibleMeshes": 1,
+      "materialNames": [
+        "SF_Shared_accent_accent_a0c4ff",
+        "SF_Shared_canopy_none_native",
+        "SF_Shared_dark_textured_dark_1a3a8f",
+        "SF_Shared_hull_textured_hull_c8d8f0",
+        "SF_Shared_none_textured_none_native"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        139.81153106689453,
+        142.99795532226562,
+        61.66655921936035
+      ],
+      "cameraDistance": 360.6468917591181,
+      "centerNdc": {
+        "x": 0,
+        "y": -7.393898951312423e-17,
+        "z": 0.9994597227987282
+      },
+      "centerOnScreen": true
+    },
+    {
+      "subjectKey": "station-refinery",
+      "assetId": "place_station_refinery",
+      "manifestId": "place_station_refinery",
+      "family": "corridor-station-identity",
+      "file": ".devshots/pq022-corridor-asset-leaves/06-station-refinery.png",
+      "bytes": 287917,
+      "sha256": "acfd011bcc0bcc54c6b7f5987e77b1c7fd931195f5740ac408f6ba51f77abd5d",
+      "framing": "default",
+      "requestedLod": "lod1",
+      "mode": "flight",
+      "sectorId": "sector_ceres_belt",
+      "entityId": 86,
+      "entityType": "station",
+      "runtimeIdentity": {
+        "stationId": "station_ceres",
+        "archetypeGlb": "place_station_refinery",
+        "placeId": null,
+        "poiId": null,
+        "isGate": false,
+        "trafficRole": null,
+        "defId": null,
+        "worldRecordId": null
+      },
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_place_station_refinery",
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_station_refinery.glb"
+        ]
+      },
+      "visibleMeshes": 1,
+      "materialNames": [
+        "SF_Shared_accent_accent_e8a060",
+        "SF_Shared_canopy_none_native",
+        "SF_Shared_hull_textured_hull_a08050",
+        "SF_Shared_mechanical_dark_7a4010"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        136.8768196105957,
+        77.52231216430664,
+        89.18080139160156
+      ],
+      "cameraDistance": 311.6123745783368,
+      "centerNdc": {
+        "x": -1.9559734316934436e-15,
+        "y": -3.911946863386887e-16,
+        "z": 0.9993724581968296
+      },
+      "centerOnScreen": true
+    },
+    {
+      "subjectKey": "station-mining",
+      "assetId": "place_station_mining",
+      "manifestId": "place_station_mining",
+      "family": "corridor-station-identity",
+      "file": ".devshots/pq022-corridor-asset-leaves/07-station-mining.png",
+      "bytes": 306785,
+      "sha256": "af02268e816e2b4a158f22c0e10b05be21c666e86d7c6463514a22abb569d6fe",
+      "framing": "default",
+      "requestedLod": "lod1",
+      "mode": "flight",
+      "sectorId": "sector_ceres_belt",
+      "entityId": 87,
+      "entityType": "station",
+      "runtimeIdentity": {
+        "stationId": "station_beltout",
+        "archetypeGlb": "place_station_mining",
+        "placeId": null,
+        "poiId": null,
+        "isGate": false,
+        "trafficRole": null,
+        "defId": null,
+        "worldRecordId": null
+      },
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_place_station_mining",
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_station_mining.glb"
+        ]
+      },
+      "visibleMeshes": 1,
+      "materialNames": [
+        "SF_Shared_accent_accent_e8a060",
+        "SF_Shared_canopy_none_native",
+        "SF_Shared_hull_textured_hull_a08050",
+        "SF_Shared_mechanical_dark_7a4010"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        109.00547409057617,
+        104.3543815612793,
+        50.30363082885742
+      ],
+      "cameraDistance": 274.1160380043785,
+      "centerNdc": {
+        "x": 2.223531064068558e-15,
+        "y": 0,
+        "z": 0.9992846625880124
+      },
+      "centerOnScreen": true
+    },
+    {
+      "subjectKey": "gate-jump-ring",
+      "assetId": "place_gate_jump_ring",
+      "manifestId": "place_gate_jump_ring",
+      "family": "corridor-lane-furniture",
+      "file": ".devshots/pq022-corridor-asset-leaves/08-gate-jump-ring.png",
+      "bytes": 333922,
+      "sha256": "68e0e814c18128f76c26ea3cdd209717a0136f3708bbd620056342e29786a5b6",
+      "framing": "default",
+      "requestedLod": "lod1",
+      "mode": "flight",
+      "sectorId": "sector_helios_prime",
+      "entityId": 74,
+      "entityType": "station",
+      "runtimeIdentity": {
+        "stationId": null,
+        "archetypeGlb": "place_gate_jump_ring",
+        "placeId": null,
+        "poiId": null,
+        "isGate": true,
+        "trafficRole": null,
+        "defId": null,
+        "worldRecordId": null
+      },
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_place_gate_jump_ring",
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_gate_jump_ring.glb"
+        ]
+      },
+      "visibleMeshes": 1,
+      "materialNames": [
+        "SF_Shared_accent_accent_a0c4ff",
+        "SF_Shared_canopy_none_native",
+        "SF_Shared_hull_textured_hull_c8d8f0",
+        "SF_Shared_mechanical_dark_1a3a8f"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        21.267427444458008,
+        85.50360107421875,
+        87.10194778442383
+      ],
+      "cameraDistance": 213.50393847615845,
+      "centerNdc": {
+        "x": -2.8547741555137347e-15,
+        "y": -1.4273870777568674e-16,
+        "z": 0.999077528255745
+      },
+      "centerOnScreen": true
+    },
+    {
+      "subjectKey": "station-billboard",
+      "assetId": "place_station_billboard",
+      "manifestId": "place_station_billboard",
+      "family": "corridor-lane-furniture",
+      "file": ".devshots/pq022-corridor-asset-leaves/09-station-billboard.png",
+      "bytes": 288236,
+      "sha256": "f124a8228bb9ad548d15f59399da7986f1802538ea451b82e66ee43b34db4927",
+      "framing": "default",
+      "requestedLod": "lod1",
+      "mode": "flight",
+      "sectorId": "sector_helios_prime",
+      "entityId": 78,
+      "entityType": "fx",
+      "runtimeIdentity": {
+        "stationId": null,
+        "archetypeGlb": null,
+        "placeId": "place_station_billboard",
+        "poiId": "poi_memorial",
+        "isGate": false,
+        "trafficRole": null,
+        "defId": null,
+        "worldRecordId": null
+      },
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_place_station_billboard",
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_station_billboard.glb"
+        ]
+      },
+      "visibleMeshes": 2,
+      "materialNames": [
+        "SF_Shared_accent_accent_a0eef8",
+        "SF_Shared_canopy_none_native",
+        "SF_Shared_hull_textured_hull_808090",
+        "SF_Shared_mechanical_dark_206070",
+        "SF_Shared_none_textured_none_native"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        14.798020243644714,
+        3.047999486675973,
+        2.99591600894928
+      ],
+      "cameraDistance": 26.54320833882135,
+      "centerNdc": {
+        "x": 0,
+        "y": 4.592553529188014e-15,
+        "z": 0.9924793478378946
+      },
+      "centerOnScreen": true
+    },
+    {
+      "subjectKey": "nav-buoy",
+      "assetId": "place_nav_buoy",
+      "manifestId": "place_nav_buoy",
+      "family": "corridor-lane-furniture",
+      "file": ".devshots/pq022-corridor-asset-leaves/10-nav-buoy.png",
+      "bytes": 275053,
+      "sha256": "5c4bab48f6832d67ac4afa72c8252516022c2beb4831715dc8813fc2c0172538",
+      "framing": "default",
+      "requestedLod": "lod1",
+      "mode": "flight",
+      "sectorId": "sector_tethys_junction",
+      "entityId": 466,
+      "entityType": "fx",
+      "runtimeIdentity": {
+        "stationId": null,
+        "archetypeGlb": null,
+        "placeId": "place_nav_buoy",
+        "poiId": "poi_blackmkt",
+        "isGate": false,
+        "trafficRole": null,
+        "defId": null,
+        "worldRecordId": null
+      },
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_place_nav_buoy",
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_nav_buoy.glb"
+        ]
+      },
+      "visibleMeshes": 1,
+      "materialNames": [
+        "SF_Shared_accent_accent_b090e8",
+        "SF_Shared_hull_textured_hull_706080",
+        "SF_Shared_mechanical_dark_3a2060",
+        "SF_Shared_none_textured_none_native"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        2.7951172590255737,
+        15.299558162689209,
+        2.795117139816284
+      ],
+      "cameraDistance": 27.231008411813068,
+      "centerNdc": {
+        "x": -1.1191387341310016e-14,
+        "y": 0,
+        "z": 0.9926696650972916
+      },
+      "centerOnScreen": true
+    },
+    {
+      "subjectKey": "traffic-lark",
+      "assetId": "helios_lark",
+      "manifestId": "wholeship_helios_lark",
+      "family": "corridor-traffic-bodies",
+      "file": ".devshots/pq022-corridor-asset-leaves/11-helios-lark-courier.png",
+      "bytes": 690858,
+      "sha256": "d5228852a6574a63de5305d2da67b57b31943d6c109d0c07eb410305c0b02c1a",
+      "framing": "default",
+      "requestedLod": "lod1",
+      "mode": "flight",
+      "sectorId": "sector_helios_prime",
+      "entityId": 320,
+      "entityType": "ship",
+      "runtimeIdentity": {
+        "stationId": null,
+        "archetypeGlb": null,
+        "placeId": null,
+        "poiId": null,
+        "isGate": false,
+        "trafficRole": "courier",
+        "defId": "ship_kestrel",
+        "worldRecordId": "wr_convoy_c956ec56"
+      },
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_ship_kestrel_46b99dd0",
+      "authoredSlots": {
+        "hull": [
+          "assets/ships/release/parts/wholeships/helios_lark.glb"
+        ]
+      },
+      "visibleMeshes": 5,
+      "materialNames": [
+        "SF_Shared_canopy_none_native",
+        "SF_Shared_drive_core_none_native",
+        "SF_Shared_hull_textured_hull_c8d8f0",
+        "SF_Shared_mechanical_dark_1a3a8f",
+        "SF_Shared_none_textured_none_native"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        24.077365842670588,
+        4.416182726621628,
+        9.776699900627136
+      ],
+      "cameraDistance": 45.42392486586733,
+      "centerNdc": {
+        "x": -6.709080374075364e-15,
+        "y": 6.709080374075365e-16,
+        "z": 0.9956112882952582
+      },
+      "centerOnScreen": true
+    },
+    {
+      "subjectKey": "traffic-span",
+      "assetId": "helios_span",
+      "manifestId": "wholeship_helios_span",
+      "family": "corridor-traffic-bodies",
+      "file": ".devshots/pq022-corridor-asset-leaves/12-helios-span-hauler.png",
+      "bytes": 708004,
+      "sha256": "46a87667ea6ebc808380dec375f28b73ff87825d2fef4f2d492a186592b47f0b",
+      "framing": "default",
+      "requestedLod": "lod1",
+      "mode": "flight",
+      "sectorId": "sector_helios_prime",
+      "entityId": 321,
+      "entityType": "ship",
+      "runtimeIdentity": {
+        "stationId": null,
+        "archetypeGlb": null,
+        "placeId": null,
+        "poiId": null,
+        "isGate": false,
+        "trafficRole": "hauler",
+        "defId": "ship_mule",
+        "worldRecordId": "wr_convoy_77125d1e"
+      },
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_ship_mule_9aca5d5a",
+      "authoredSlots": {
+        "hull": [
+          "assets/ships/release/parts/wholeships/helios_span.glb"
+        ]
+      },
+      "visibleMeshes": 5,
+      "materialNames": [
+        "SF_Shared_canopy_none_native",
+        "SF_Shared_drive_core_none_native",
+        "SF_Shared_hull_textured_hull_c8d8f0",
+        "SF_Shared_mechanical_dark_1a3a8f",
+        "SF_Shared_none_textured_none_native"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        30.959769453101444,
+        5.553908050060272,
+        9.694596648216248
+      ],
+      "cameraDistance": 56.71983073875823,
+      "centerNdc": {
+        "x": -5.372949087854359e-15,
+        "y": 0,
+        "z": 0.9964881570183974
+      },
+      "centerOnScreen": true
+    },
+    {
+      "subjectKey": "traffic-cradle",
+      "assetId": "helios_cradle",
+      "manifestId": "wholeship_helios_cradle",
+      "family": "corridor-traffic-bodies",
+      "file": ".devshots/pq022-corridor-asset-leaves/13-helios-cradle-miner.png",
+      "bytes": 467606,
+      "sha256": "f7b6e6e529f87e67bf44e0260ad42d71411987aef7d41ad740e347355e49bef4",
+      "framing": "default",
+      "requestedLod": "lod1",
+      "mode": "flight",
+      "sectorId": "sector_helios_prime",
+      "entityId": 322,
+      "entityType": "ship",
+      "runtimeIdentity": {
+        "stationId": null,
+        "archetypeGlb": null,
+        "placeId": null,
+        "poiId": null,
+        "isGate": false,
+        "trafficRole": "miner",
+        "defId": "ship_pelican",
+        "worldRecordId": "wr_convoy_ebd9c839"
+      },
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_ship_pelican_ef83feda",
+      "authoredSlots": {
+        "hull": [
+          "assets/ships/release/parts/wholeships/helios_cradle.glb"
+        ]
+      },
+      "visibleMeshes": 6,
+      "materialNames": [
+        "MeshStandardMaterial",
+        "SF_Shared_canopy_none_native",
+        "SF_Shared_drive_core_none_native",
+        "SF_Shared_hull_textured_hull_c8d8f0",
+        "SF_Shared_mechanical_dark_1a3a8f",
+        "SF_Shared_none_textured_none_native"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        29.522049482606235,
+        12.26068974092109,
+        23.22643213088635
+      ],
+      "cameraDistance": 68.0929300752574,
+      "centerNdc": {
+        "x": 4.475541917409762e-15,
+        "y": -4.475541917409762e-16,
+        "z": 0.9970771023471978
+      },
+      "centerOnScreen": true
+    }
+  ],
+  "uniqueAssetCount": 11,
+  "screenshotCount": 13,
+  "pageIssues": [],
+  "informational_contended": true,
+  "informational_contended_note": "Phase H1 ran contended by design. This receipt contains identity, admission, visibility, and still-image facts only; no time-valued field is performance evidence.",
+  "noPerformanceEvidence": true,
+  "noPerformanceEvidenceNote": "Matched performance remains Phase H3."
+}

@@ -1,0 +1,67 @@
+<!-- LIFETIME: STABLE -->
+# SpaceFace program control surface
+
+> **Current front door (owner, 2026-11-06):** the [master plan](./finish/MASTER_PLAN.md) owns the 29
+> campaigns, [master lanes](./finish/MASTER_LANES.md) owns dispatch and path collisions, and
+> [execution status](./finish/EXECUTION_STATUS_2026-11-06.md) is the live outcome matrix. This
+> directory remains the mutation window (`NOW.md`), the queue/plan-family index, and retained
+> detail. The rows below are reference; they do not dispatch work.
+
+This directory keeps short live mutation windows, machine-indexed work, executable packets, and
+retained evidence so an agent can orient without ingesting the repository's history.
+
+## Read by need
+
+| Need | Read |
+|---|---|
+| Build inhabited districts, optional military heists, huge surfaces/interiors and a coherent reactive story | [THE OPEN REACH](living-world/README.md) — eight source-grounded district briefs, native contracts, model commissions and executable agent handoffs; future gameplay remains planned |
+| Mature the existing game through concrete workflows and ten bounded cloud assignments | [Maturity and cloud implementation pack](../archive/program/maturity-cloud-2026-10-20/README.md) — source-backed companion to existing build-map rows, not a second queue |
+| Owner-directed production-quality planning and physics-playground first wave | [`PRODUCTION_QUALITY_COMPOUNDING.md`](./PRODUCTION_QUALITY_COMPOUNDING.md) — six finite bundles preserving NXB-001–060, resolved first-wave designs, bounded architecture; supporting plan, not a queue |
+| Design the mature world and commission genuinely missing 3D/content families | [World-depth target and production slices](../archive/program/world-depth-2026-10-02/README.md); routed through existing FINISH_LANES and INFERENCE §0.2, not another queue |
+| Make the game better with INFERENCE (look, infer, rotate — detect is a hint) | [`INFERENCE_LANES.md`](./INFERENCE_LANES.md) (prompt [`INFERENCE_GOAL.txt`](./INFERENCE_GOAL.txt)). Thin rows do not count |
+| INFERENCE overlay when the sim is busy but undesigned | [`INFERENCE_INTENTIONAL_FUN.md`](./INFERENCE_INTENTIONAL_FUN.md) (prompt [`INFERENCE_INTENTIONAL_FUN_GOAL.txt`](./INFERENCE_INTENTIONAL_FUN_GOAL.txt)). Fun Loop still owns guts |
+| Close the gap between the build and the owner's vision (combat feel, visual energy, living world, rewards) | [`VISION_ALIGNMENT_PLAN.md`](./VISION_ALIGNMENT_PLAN.md) — audited file-level gap map, the Big Five unlocks, phased fixes |
+| Harvest leftover worktrees / unused models | [`ORPHAN_HARVEST_GOAL.txt`](./ORPHAN_HARVEST_GOAL.txt) → [`ORPHAN_HARVEST_PLAYBOOK.md`](./ORPHAN_HARVEST_PLAYBOOK.md) + [`ORPHAN_HARVEST_LEDGER.md`](./ORPHAN_HARVEST_LEDGER.md) |
+| The game is hitching / not playing smoothly | the Finish Program's [Lane 1 board](./finish/LANE_1_MACHINE_AND_PICTURE.md) owns performance; [`design/perf/`](../perf/README.md) is the folded perf index |
+| Copy-ready prompt for any thread | [`AGENT_TASK_PROMPTS.md`](./AGENT_TASK_PROMPTS.md) |
+| First exact ready unit, every ready unit, or one parent row | `node scripts/program-dispatch.mjs --next`, `--ready`, or `--id PQ-XXX` |
+| Threads editing now and exact dirty hunks to preserve | [`NOW.md`](./NOW.md) |
+| Long-horizon VM / Blender / cloud-agent lanes (not the shared local checkout) | [`VM_LANES.md`](./VM_LANES.md) |
+| Finish the game — own an area end to end (the nine condensed lanes) | [`FINISH_LANES.md`](./FINISH_LANES.md) — open-ended area assignments absorbing the queue, §22, §23, §25 |
+| Maintain stable packet IDs, dependencies, broad checks/evidence | [`roadmap/program-queue.json`](./roadmap/program-queue.json) |
+| Executable instructions for admitted packets | [`roadmap/active/README.md`](./roadmap/active/README.md) |
+| Finite implementation/review/verification protocol | [`roadmap/00_EXECUTION_PROTOCOL.md`](./roadmap/00_EXECUTION_PROTOCOL.md) |
+| Verified outcomes | [`01_VERIFIED_DONE.md`](./01_VERIFIED_DONE.md) |
+| Admitted remaining work | [`02_REMAINING_WORK.md`](./02_REMAINING_WORK.md) |
+| Live acceptance evidence | [`03_LIVE_ACCEPTANCE_MATRIX.md`](./03_LIVE_ACCEPTANCE_MATRIX.md) |
+| Worktree/integration history when specifically needed | [`04_WORKTREE_AND_INTEGRATION.md`](./04_WORKTREE_AND_INTEGRATION.md) |
+| Retained unscheduled ideas | [`06_RETAINED_FUTURE_BACKLOG.md`](./06_RETAINED_FUTURE_BACKLOG.md) |
+| Plan-family navigation | [`PROGRAM_MAP.md`](./PROGRAM_MAP.md) |
+
+## State model
+
+Lifecycle and acceptance are tracked separately:
+
+- lifecycle: `planned`, `ready`, `claimed`, `implemented`, `integrated`, plus `blocked`, `deferred`, `historical`;
+- acceptance: `unproven`, `focused_green`, `route_accepted`, `milestone_accepted`.
+
+Never infer one axis from the other. A source asset can be implemented but not runtime-wired.
+Integrated code can retain an open route or visual acceptance debt. The legacy `blocked` value is
+retained for schema compatibility and has no current queue rows. Human-only action uses `deferred`;
+another thread, an in-repo dependency, a dirty unrelated path, Blender, a GPU, or a missing in-repo
+implementation never becomes durable task status.
+
+The queue's parent `state` field is a transitional legacy value and can contain acceptance-like
+labels. Exact `dispatchUnits` own claimability, dependencies, and terminal receipt references. Use
+the active packet and exact-revision receipts for separate claims; the compact dispatch command
+labels the parent field accordingly and omits narrative payloads.
+
+## Maintenance
+
+- `NOW.md` contains only active mutation rows, exact dirty-hunk preservation notes, brief publication windows, and an expiry marker.
+- `VM_LANES.md` is the volatile board for Cursor cloud VMs and remote Blender work; it is not a substitute for `NOW.md` on a shared checkout.
+- Queue rows stay compact over time; exact dispatch units link receipts instead of embedding incident histories and test transcripts.
+- Active packets are the implementation handoff. Retire or replace them when the live seam changes materially.
+- The finishing agent updates its packet checkboxes, receipt, exact queue row, and affected global
+  status in one bounded transaction. It reports `DONE` or `NOT DONE`; no coordinator handoff is needed.
+- Run `node scripts/check-program-docs.mjs` after changing these control surfaces.

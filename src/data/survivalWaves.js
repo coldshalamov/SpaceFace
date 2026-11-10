@@ -1,0 +1,1161 @@
+// Survival wave-recipe catalog and pure validator (CRU-009).
+// Data only: no runtime writes, no imports from src/systems/**.
+// Recipe field names follow design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md Appendix A.2.
+// Waves 1–10 per arena are the template block for the thirty-wave Foundry arc
+// (survivalActs.js). PQ-133.04 replaces only Foundry's placeholder wave-ten boss
+// (R5 product disposition, recorded in design/program/roadmap/receipts/PQ-133.04.md:
+// Foundry alone fields mirrorjaw_foreman in the wave-ten elite slot; the six other
+// arenas keep dreadnought_boss, and the owning tests carry that disposition).
+
+import { COMBAT_LAB_ARENAS } from './combatLabSetups.js';
+import { ENEMY_TYPES } from './enemies.js';
+
+export const SURVIVAL_WAVE_SCHEMA_VERSION = 1;
+
+// Role slots from §21.3 (lines 2949–2962): Mass, Pressure, Control, Reach,
+// Support, Anchor, Disruptor, Elite. Not every wave uses every slot.
+export const SURVIVAL_WAVE_ROLES = Object.freeze([
+  'mass',
+  'pressure',
+  'control',
+  'reach',
+  'support',
+  'anchor',
+  'disruptor',
+  'elite',
+]);
+
+// Gate groups a recipe may name. Corner gates from Appendix A.1 spawnGates
+// (line 6038: nw, ne, sw, se). diagonal_a / rear from Appendix A.2 packages
+// (lines 6063, 6072). front / diagonal_b are the pincer complements implied
+// by §21.4 Pincer (lines 2976–2978: two or more spawn directions).
+export const SURVIVAL_GATE_GROUPS = Object.freeze([
+  'nw',
+  'ne',
+  'sw',
+  'se',
+  'front',
+  'rear',
+  'diagonal_a',
+  'diagonal_b',
+]);
+
+// Canonical room phases a wave recipe may name (PQ-133.02 shared-change #2).
+// Owned HERE (data), not in src/systems/survivalArena.js: the validator below pins
+// recipe bodies against this list, and the arena consumer imports it rather than
+// carrying its own copy that can drift. Helios `idle` installs nothing; law arenas
+// keep their law on idle.
+export const SURVIVAL_ARENA_PHASES = Object.freeze([
+  'idle',
+  'shutter_slow',
+  'furnace_active',
+  'loose_plate',
+  'shutter_alternating',
+  'shutter_lane_close',
+  'absorbent_screen',
+  'boss',
+]);
+
+// DEFAULT_MAX at src/systems/spawnBudget.js:26 — do not import the private constant.
+const SPAWN_BUDGET_DEFAULT_MAX = 24;
+
+const ENEMY_IDS = new Set(ENEMY_TYPES.map((enemy) => enemy.id));
+/** PQ-140 — authored mass per roster id, for the physical-problem props gate below. */
+const ENEMY_MASS = new Map(ENEMY_TYPES.map((enemy) => [enemy.id, enemy.mass]));
+const ROLE_SET = new Set(SURVIVAL_WAVE_ROLES);
+const GATE_SET = new Set(SURVIVAL_GATE_GROUPS);
+/** Set view of SURVIVAL_ARENA_PHASES for the validator below. Kept private on purpose:
+ * an exported mutable Set would let any importer silently change validation repo-wide.
+ * Consumers ask `hasArenaPhase(phase)` instead. */
+const ARENA_PHASE_SET = new Set(SURVIVAL_ARENA_PHASES);
+
+/** Whether `phase` is one of the eight authored room phases. */
+export function hasArenaPhase(phase) {
+  return typeof phase === 'string' && ARENA_PHASE_SET.has(phase);
+}
+const ARENA_IDS = new Set(COMBAT_LAB_ARENAS.map((arena) => arena.id));
+
+function freezeDeep(value) {
+  if (!value || typeof value !== 'object') return value;
+  if (Array.isArray(value)) {
+    for (const item of value) freezeDeep(item);
+  } else {
+    for (const key of Object.keys(value)) freezeDeep(value[key]);
+  }
+  return Object.freeze(value);
+}
+
+/**
+ * PQ-174.03 — Support / Anchor / Disruptor / Elite as positioning problems.
+ *
+ * A role is the problem it creates, not a stat block. The counter is a starter-kit verb
+ * (well, rope, shove, throw). Recipe bodies for waves 1, 5 and 10 stay byte-identical;
+ * this table does not live on those packages.
+ */
+export const SURVIVAL_PROBLEM_ROLES = Object.freeze(['support', 'anchor', 'disruptor', 'elite']);
+
+export const SURVIVAL_ROLE_PROBLEMS = freezeDeep({
+  support: {
+    role: 'support',
+    enemyId: 'pd_screen_escort',
+    counterVerb: 'well',
+    alternatives: ['guns', 'shove', 'rope'],
+    telegraphCue: 'pd_curtain',
+    telegraphLine: 'Point-defense curtain spinning up. Hold missiles.',
+    problem: 'A huddle of screens covers the pack. Well the cluster so they share one hole.',
+    throwable: true,
+    cluster: true,
+    lightCount: 3,
+    resolve: 'cluster_dead',
+    consequences: ['cluster_clump', 'screen_drops'],
+  },
+  anchor: {
+    role: 'anchor',
+    enemyId: 'field_anchor_controller',
+    counterVerb: 'rope',
+    alternatives: ['guns', 'well', 'shove'],
+    telegraphCue: 'field_spool',
+    telegraphLine: 'Anchor field winding. Break radius or move the hull.',
+    problem: 'A snare well holds the room. Rope the hull so the well moves with it.',
+    throwable: true,
+    fieldAnchor: true,
+    resolve: 'snare_gone',
+    consequences: ['snare_moves', 'room_opens'],
+  },
+  disruptor: {
+    role: 'disruptor',
+    enemyId: 'mine_layer_jackal',
+    counterVerb: 'shove',
+    alternatives: ['guns', 'well', 'rope'],
+    telegraphCue: 'wake_mines',
+    telegraphLine: 'Wake is salted. Turn now or fly through our work.',
+    problem: 'It salts the lane. Shove it into the elite so its mass does the kill.',
+    throwable: true,
+    ammunition: true,
+    resolve: 'body_dead',
+    consequences: ['thrown_into_elite', 'wake_clears'],
+  },
+  elite: {
+    role: 'elite',
+    enemyId: 'corsair_raider',
+    counterVerb: 'throw',
+    alternatives: ['guns', 'well', 'rope'],
+    telegraphCue: 'weapon_charge',
+    telegraphLine: 'The ace is lining a pass. Throw mass, do not chase its guns.',
+    problem: 'The ace is the hull that matters. Throw the disruptor into it rather than grinding DPS.',
+    throwable: true,
+    resolve: 'body_dead',
+    consequences: ['takes_thrown_mass', 'priority_target'],
+  },
+});
+
+export function survivalRoleProblem(role) {
+  if (typeof role !== 'string') return null;
+  return SURVIVAL_ROLE_PROBLEMS[role] || null;
+}
+
+/** PQ-175.00 — answering verbs reuse PQ-174.03. Do not invent a second vocabulary. */
+export const SURVIVAL_ANSWER_VERBS = Object.freeze(['well', 'rope', 'shove', 'throw']);
+const ANSWER_VERB_SET = new Set(SURVIVAL_ANSWER_VERBS);
+
+/**
+ * One physical question per template wave. The thirty-wave arc reuses this block;
+ * consecutive template ids never match. Wave 20 overlays screens on the fortress.
+ */
+export const SURVIVAL_TEMPLATE_QUESTIONS = freezeDeep({
+  1: {
+    id: 'identical_mass',
+    question: 'Six identical lights on one bearing. Throw them into each other before they close.',
+    answerVerb: 'throw',
+  },
+  2: {
+    id: 'split_behind',
+    question: 'The second pack arrives behind you. Shove the rear so you can turn.',
+    answerVerb: 'shove',
+  },
+  3: {
+    id: 'tether_pull',
+    question: 'A tether on the far end is pulling your line. Rope it so the well moves with you.',
+    answerVerb: 'rope',
+  },
+  4: {
+    id: 'three_gate_anvil',
+    question: 'A hull that will not shake, a salted wake, chaff from a third door. Shove the miner into the brawler.',
+    answerVerb: 'shove',
+  },
+  5: {
+    id: 'ace_in_the_noise',
+    question: 'The ace is behind the chaff. Throw mass into it rather than grinding the swarm.',
+    answerVerb: 'throw',
+  },
+  6: {
+    id: 'snare_holds_the_room',
+    question: 'A snare well holds the room. Rope the hull so the well moves.',
+    answerVerb: 'rope',
+  },
+  7: {
+    id: 'ghosts_and_choir',
+    question: 'Shooters leave after every shot while the choir fills the lane. Well the choir so they share one hole.',
+    answerVerb: 'well',
+  },
+  8: {
+    id: 'twin_silhouette',
+    question: 'The second seven wear the first seven silhouette and are not the same problem. Well the zealots, not the wasps.',
+    answerVerb: 'well',
+  },
+  9: {
+    id: 'exam_screens',
+    question: 'Screens cover the pack, lances punish holding still, raiders punish tunnel vision. Well the cluster first.',
+    answerVerb: 'well',
+  },
+  10: {
+    id: 'fortress_behind',
+    question: 'A slow fortress while escorts refresh behind you. Throw the screen into the dreadnought.',
+    answerVerb: 'throw',
+  },
+});
+
+export const WAVE_20_QUESTION = freezeDeep({
+  id: 'plate_theft',
+  question: 'Screens steal the plate while the fortress holds. Well the escorts, then throw the hull that matters.',
+  answerVerb: 'well',
+});
+
+// ── PQ-140 — the roster is a set of physical problems ────────────────────────────────────────
+// A named question is only honest if the wave fields the bodies the question names. The rows
+// below are that promise, machine-checked by questionPropsIssues() so a later composition edit
+// cannot silently de-grade a wave into a question its packages cannot answer.
+//
+// Physical classes, in authored mass units (src/data/enemies.js). Do not import
+// src/systems/impulseKernel.js from here — this file is data-only — so the heavy boundary is
+// copied with its citation: HEAVY_AS_TERRAIN_MASS = 150 at impulseKernel.js:215, the roster's own
+// heavy line (ships.js gives every mass-150+ hull a heavyMotion profile). A hull at or above it is
+// terrain: gun-scale impulses do nothing (leaf .01, B11), and a thrown light dies ON it rather
+// than hurting it. Everything at or below THROW_CLASS_MAX_MASS is ammunition: light enough for
+// the starter kit's momentum budget (concussion S is 520 per hit; INF-026 re-massed the corsair
+// to 32 on exactly this argument) to be thrown, whipped or well-flung as a projectile.
+export const THROW_CLASS_MAX_MASS = 32;
+export const HEAVY_TERRAIN_MIN_MASS = 150;
+
+/**
+ * The physical props each template question names, by template wave number (1..10). Wave 20
+ * overlays the fortress question on the wave-10 template, so it shares this row's props.
+ *
+ *   bodies     — enemyIds the question text names; every one must ship in the wave's packages.
+ *   pair       — for a shove question: [mover, receiver]; both must ship, the mover must be
+ *                starter-movable (mass ≤ 96, the roster's heaviest non-heavy screen), and the
+ *                receiver must be the body whose mass does the receiving.
+ *   clusterMin — for a well question: some single gate + tick must field at least this many
+ *                bodies, so the well has something to share one hole.
+ *   throwable  — at least one package must field a body of mass ≤ THROW_CLASS_MAX_MASS.
+ *   heavyMin   — at least one package must field a body of mass ≥ this value (moving terrain).
+ */
+export const SURVIVAL_QUESTION_PROPS = freezeDeep({
+  1: { id: 'identical_mass', bodies: ['wasp_swarmer'], throwable: true },
+  2: { id: 'split_behind', bodies: ['wasp_swarmer', 'reaver_pirate', 'detonator_dart'], pair: ['reaver_pirate', 'wasp_swarmer'] },
+  3: { id: 'tether_pull', bodies: ['tether_control_raider'] },
+  4: { id: 'three_gate_anvil', bodies: ['mine_layer_jackal', 'bruiser_brawler'], pair: ['mine_layer_jackal', 'bruiser_brawler'] },
+  5: { id: 'ace_in_the_noise', bodies: ['wasp_swarmer', 'corsair_raider'], throwable: true },
+  6: { id: 'snare_holds_the_room', bodies: ['field_anchor_controller'], heavyMin: HEAVY_TERRAIN_MIN_MASS },
+  7: { id: 'ghosts_and_choir', bodies: ['choir_zealot'], clusterMin: 3 },
+  8: { id: 'twin_silhouette', bodies: ['wasp_swarmer', 'choir_zealot'], clusterMin: 3 },
+  9: { id: 'exam_screens', bodies: ['pd_screen_escort'], clusterMin: 2 },
+  10: { id: 'fortress_behind', bodies: ['wasp_swarmer'], throwable: true, heavyMin: HEAVY_TERRAIN_MIN_MASS },
+});
+
+/** Wave 20 re-uses the fortress props under its own question id. */
+export const WAVE_20_QUESTION_PROPS = freezeDeep({
+  id: 'plate_theft',
+  bodies: ['pd_screen_escort'],
+  clusterMin: 2,
+});
+
+export function questionPropsFor(wave) {
+  if (!Number.isInteger(wave) || wave < 1) return null;
+  if (wave === 20) return WAVE_20_QUESTION_PROPS;
+  return SURVIVAL_QUESTION_PROPS[((wave - 1) % 10) + 1] || null;
+}
+
+function packageBodies(packages) {
+  const counts = new Map();
+  for (const pkg of packages || []) {
+    if (!pkg || typeof pkg.enemyId !== 'string') continue;
+    counts.set(pkg.enemyId, (counts.get(pkg.enemyId) || 0) + (Number.isInteger(pkg.count) ? pkg.count : 0));
+  }
+  return counts;
+}
+
+/**
+ * PQ-140 — does this recipe's composition still answer the question it names? Returns issues
+ * (empty when honest). Shared shape with catalogQuestionIssues so the catalog gate and any
+ * single-recipe caller speak one vocabulary.
+ */
+export function questionPropsIssues(recipe) {
+  if (!isPlainObject(recipe)) return [issue('', 'recipe missing')];
+  const wave = recipe.wave;
+  const props = questionPropsFor(wave);
+  if (!props) return []; // factory override recipes and non-template waves name no props
+  const issues = [];
+  const bodies = packageBodies(recipe.packages);
+  for (const enemyId of props.bodies || []) {
+    if (!(bodies.get(enemyId) > 0)) {
+      issues.push(issue('packages', `question ${props.id} names ${enemyId} but no package fields it`));
+    }
+  }
+  if (props.pair) {
+    const [mover, receiver] = props.pair;
+    const moverMass = ENEMY_MASS.get(mover);
+    if (moverMass != null && moverMass > 96) {
+      issues.push(issue('packages', `question ${props.id} shoves ${mover} at mass ${moverMass}: beyond the starter kit's momentum budget`));
+    }
+    const receiverMass = ENEMY_MASS.get(receiver);
+    if (receiverMass != null && receiverMass <= 0) {
+      issues.push(issue('packages', `question ${props.id} shoves into ${receiver} at mass ${receiverMass}: nothing to receive`));
+    }
+  }
+  if (Number.isInteger(props.clusterMin)) {
+    let best = 0;
+    for (const pkg of recipe.packages || []) {
+      if (!pkg || typeof pkg.gateGroup !== 'string') continue;
+      if (props.bodies && !props.bodies.includes(pkg.enemyId)) continue;
+      best = Math.max(best, Number.isInteger(pkg.count) ? pkg.count : 0);
+    }
+    if (best < props.clusterMin) {
+      issues.push(issue('packages', `question ${props.id} wells a cluster of ${props.clusterMin}+ but the largest named package fields ${best}`));
+    }
+  }
+  if (props.throwable) {
+    const lightest = Math.min(...[...bodies.keys()].map((id) => ENEMY_MASS.get(id) ?? Infinity));
+    if (!(lightest <= THROW_CLASS_MAX_MASS)) {
+      issues.push(issue('packages', `question ${props.id} throws mass but the lightest body fields at mass ${lightest} > ${THROW_CLASS_MAX_MASS}`));
+    }
+  }
+  if (Number.isInteger(props.heavyMin)) {
+    let heaviest = 0;
+    for (const id of bodies.keys()) heaviest = Math.max(heaviest, ENEMY_MASS.get(id) ?? 0);
+    if (heaviest < props.heavyMin) {
+      issues.push(issue('packages', `question ${props.id} leans on terrain but the heaviest body fields at mass ${heaviest} < ${props.heavyMin}`));
+    }
+  }
+  return issues;
+}
+
+/** The room is itself a question (current, furnace, snare). Swarm consecutive ids include it. */
+export const SURVIVAL_ROOM_QUESTIONS = freezeDeep({
+  idle: { id: 'quiet_room', clause: 'The room is quiet. The fight is the arrivals.' },
+  loose_plate: { id: 'cover_plate', clause: 'Cover is the toy — throw into the plate.' },
+  furnace_active: { id: 'furnace_shove', clause: 'The centre shoves. Do not camp the middle.' },
+  shutter_slow: { id: 'room_leans', clause: 'The current runs against you.' },
+  shutter_lane_close: { id: 'lane_current', clause: 'A cross-current cuts the arrival lane.' },
+  shutter_alternating: { id: 'split_flanks', clause: 'One flank pulls, the other shoves.' },
+  absorbent_screen: { id: 'drinks_momentum', clause: 'The room drinks momentum.' },
+  boss: { id: 'boss_pit', clause: 'The pit is the boss room.' },
+});
+
+export function templateQuestionOf(wave) {
+  if (!Number.isInteger(wave) || wave < 1) return null;
+  if (wave === 20) return WAVE_20_QUESTION;
+  const template = ((wave - 1) % 10) + 1;
+  return SURVIVAL_TEMPLATE_QUESTIONS[template] || null;
+}
+
+function freezeQuestion(row) {
+  if (!row || typeof row !== 'object') return null;
+  return Object.freeze({
+    id: row.id,
+    question: row.question,
+    answerVerb: row.answerVerb,
+  });
+}
+
+function swarmProblemFromPackages(packages) {
+  const roles = new Set();
+  const gates = new Set();
+  let champion = false;
+  for (const pkg of packages || []) {
+    if (!pkg) continue;
+    if (typeof pkg.role === 'string') roles.add(pkg.role);
+    if (typeof pkg.gateGroup === 'string') gates.add(pkg.gateGroup);
+    if (pkg.champion) champion = true;
+  }
+  if (champion && roles.has('support')) {
+    return {
+      id: 'screened_champion',
+      question: 'A screen covers the champion. Well the cluster so they share one hole.',
+      answerVerb: 'well',
+    };
+  }
+  if (champion && roles.has('anchor')) {
+    return {
+      id: 'anchored_champion',
+      question: 'The champion sits in a snare. Rope the well so it moves.',
+      answerVerb: 'rope',
+    };
+  }
+  if (champion) {
+    return {
+      id: 'champion_in_the_swarm',
+      question: 'The champion is the hull that matters. Throw mass into it.',
+      answerVerb: 'throw',
+    };
+  }
+  if (roles.has('support')) {
+    // PQ-140 — self-contained on purpose: this reader also names the problem for swapped act
+    // II/III and endless compositions, where the template row's "lances / raiders" clauses would
+    // name hulls that are not on the field.
+    return {
+      id: 'screened_pack',
+      question: 'Screens cover the pack. Well the screens so they share one hole.',
+      answerVerb: 'well',
+    };
+  }
+  if (roles.has('anchor')) return SURVIVAL_TEMPLATE_QUESTIONS[6];
+  if (roles.has('disruptor')) {
+    return {
+      id: 'wake_is_salted',
+      question: 'The wake is salted. Shove the miner into the heavy.',
+      answerVerb: 'shove',
+    };
+  }
+  if (roles.has('control')) return SURVIVAL_TEMPLATE_QUESTIONS[3];
+  if (roles.has('elite')) return SURVIVAL_TEMPLATE_QUESTIONS[5];
+  if (roles.has('reach')) {
+    return {
+      id: 'shooters_leave',
+      question: 'Shooters leave after every shot. Close and throw, do not chase.',
+      answerVerb: 'throw',
+    };
+  }
+  if (gates.size >= 3) {
+    return {
+      id: 'surrounded',
+      question: 'You are surrounded. Shove a hole and keep it.',
+      answerVerb: 'shove',
+    };
+  }
+  if (gates.size === 2) return SURVIVAL_TEMPLATE_QUESTIONS[2];
+  // Self-contained fallback (see screened_pack): "six identical lights on one bearing" would
+  // misname any other count or bearing.
+  return {
+    id: 'bare_mass',
+    question: 'Bare mass on a bearing. Throw a body through the pack, or shoot it down.',
+    answerVerb: 'throw',
+  };
+}
+
+/**
+ * PQ-140 — the package-level problem reader, exported for consumers that must name the physical
+ * problem from a plan's ACTUAL bodies (the wave announcer in act II/III and endless, where the
+ * arc composer swaps roles, so the template row could misname the room). Same reader the swarm
+ * question uses; arc packages never set `champion`, where that branch is inert.
+ */
+export const physicalProblemFromPackages = swarmProblemFromPackages;
+
+/** Swarm plans have no authored recipe. The question is the opening plus the room. */
+export function questionFromSwarmPlan(plan) {
+  if (!plan || typeof plan !== 'object') return null;
+  const problem = swarmProblemFromPackages(plan.packages);
+  const phase = typeof plan.arenaPhase === 'string' ? plan.arenaPhase : 'idle';
+  const room = SURVIVAL_ROOM_QUESTIONS[phase] || SURVIVAL_ROOM_QUESTIONS.idle;
+  return freezeQuestion({
+    id: `${problem.id}+${room.id}`,
+    question: `${problem.question} ${room.clause}`,
+    answerVerb: problem.answerVerb,
+  });
+}
+
+/** Arc / endless look up the template. Swarm reads the generated opening. */
+export function questionForGeneratedPlan(plan, wave) {
+  if (plan && plan.swarm) return questionFromSwarmPlan(plan);
+  return freezeQuestion(templateQuestionOf(wave));
+}
+
+export function catalogQuestionIssues(recipes = SURVIVAL_WAVES) {
+  const issues = [];
+  if (!Array.isArray(recipes)) {
+    return [{ path: '', message: 'catalog must be an array' }];
+  }
+  for (const recipe of recipes) {
+    if (!recipe || typeof recipe !== 'object') {
+      issues.push({ path: '', message: 'recipe missing' });
+      continue;
+    }
+    const path = recipe.id || '';
+    if (!recipe.questionId || !recipe.question || !recipe.answerVerb) {
+      issues.push({ path, message: 'missing question fields' });
+    }
+    // PQ-140 — the question must also be TRUE of the composition: the bodies it names ship,
+    // the shoved pair is starter-movable, the well has a cluster, the throw has ammunition.
+    for (const item of questionPropsIssues(recipe)) {
+      issues.push({ path: `${path}.${item.path}`, message: item.message });
+    }
+    const result = validateWaveRecipe(recipe);
+    if (!result.ok) {
+      for (const item of result.issues) issues.push(item);
+    }
+  }
+  const byArena = new Map();
+  for (const recipe of recipes) {
+    if (!recipe || typeof recipe.arenaId !== 'string') continue;
+    const list = byArena.get(recipe.arenaId) || [];
+    list.push(recipe);
+    byArena.set(recipe.arenaId, list);
+  }
+  for (const [arenaId, list] of byArena) {
+    const ordered = list.slice().sort((a, b) => a.wave - b.wave);
+    const ids = ordered.map((row) => row.questionId);
+    for (const item of consecutiveQuestionIssues(ids)) {
+      issues.push({ path: `${arenaId}.${item.path}`, message: item.message });
+    }
+  }
+  // Catalog-level ids: question props, role problems and endless overlays all name enemy ids
+  // OUTSIDE the package loop above. A typo there used to survive every gate (the props check
+  // only proves packages field the named id). Authored content may not lean on the spawn
+  // fallback — every named id must be a live catalog member.
+  for (const item of catalogEnemyIdIssues()) issues.push(item);
+  return issues;
+}
+
+function catalogEnemyIdIssues() {
+  const issues = [];
+  const checkId = (path, value) => {
+    if (typeof value !== 'string' || !ENEMY_IDS.has(value)) {
+      issues.push(issue(path, `unknown enemyId ${JSON.stringify(value)}`));
+    }
+  };
+  for (const [wave, props] of Object.entries(SURVIVAL_QUESTION_PROPS)) {
+    for (const enemyId of props.bodies || []) {
+      checkId(`questionProps[${wave}].bodies`, enemyId);
+    }
+    for (const enemyId of props.pair || []) {
+      checkId(`questionProps[${wave}].pair`, enemyId);
+    }
+  }
+  for (const enemyId of WAVE_20_QUESTION_PROPS.bodies || []) {
+    checkId('wave20QuestionProps.bodies', enemyId);
+  }
+  for (const [role, problem] of Object.entries(SURVIVAL_ROLE_PROBLEMS)) {
+    checkId(`roleProblems.${role}.enemyId`, problem && problem.enemyId);
+  }
+  for (const overlay of SURVIVAL_ENDLESS_OVERLAYS) {
+    for (const key of ['massEnemyId', 'pressureEnemyId', 'controlEnemyId']) {
+      if (overlay[key] != null) checkId(`endlessOverlays.${overlay.id}.${key}`, overlay[key]);
+    }
+  }
+  return issues;
+}
+
+export function consecutiveQuestionIssues(questionIds) {
+  const issues = [];
+  if (!Array.isArray(questionIds)) {
+    return [{ path: 'questions', message: 'question ids must be an array' }];
+  }
+  for (let i = 0; i < questionIds.length; i += 1) {
+    const id = questionIds[i];
+    if (typeof id !== 'string' || id.length === 0) {
+      issues.push({ path: `waves[${i}]`, message: 'missing question id' });
+      continue;
+    }
+    if (i > 0 && id === questionIds[i - 1]) {
+      issues.push({
+        path: `waves[${i}]`,
+        message: `consecutive question ${id} repeats`,
+      });
+    }
+  }
+  return issues;
+}
+
+function isPlainObject(value) {
+  return value != null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function issue(path, message) {
+  return { path, message };
+}
+
+/**
+ * Peak concurrent demand is the no-death occupancy of the spawn timeline:
+ * every scheduled body occupies a slot from its spawn tick through wave
+ * completion. A pure planner has no death model, so this equals total
+ * package count. Cap is 24 (src/systems/spawnBudget.js:26 DEFAULT_MAX).
+ */
+export function peakConcurrentDemand(packages) {
+  if (!Array.isArray(packages)) return 0;
+  let total = 0;
+  for (const pkg of packages) {
+    if (!pkg || typeof pkg !== 'object') continue;
+    if (!Number.isInteger(pkg.count) || pkg.count < 0) continue;
+    total += pkg.count;
+  }
+  return total;
+}
+
+// Recipe completion uses Appendix A.2 `blockingRolesResolved`.
+// The planner's output `completionRules` uses `blockingRoles` — the fight-instance
+// list of roles that actually spawned. The names stay different on purpose:
+// the recipe is an authoring record; the plan is a fight instance.
+
+export function validateWaveRecipe(recipe) {
+  try {
+    return validateWaveRecipeInner(recipe);
+  } catch {
+    return { ok: false, issues: [issue('', 'invalid recipe')] };
+  }
+}
+
+// Difficulty comes from geometry and mass, never from wave-authored hit points.
+// Inspect nested overrides too; a future consumer must not silently activate an
+// old recipe's ignored health multiplier.
+const WAVE_HEALTH_OVERRIDES = new Set([
+  'hp', 'hpmax', 'maxhp', 'health', 'maxhealth', 'hull', 'maxhull', 'hullmax',
+  'hpscale', 'healthscale', 'hullscale', 'hpmultiplier', 'healthmultiplier', 'hullmultiplier',
+]);
+export function waveHealthOverrideIssues(value, path = '', seen = new Set()) {
+  if (!value || typeof value !== 'object' || seen.has(value)) return [];
+  seen.add(value);
+  const issues = [];
+  for (const [key, child] of Object.entries(value)) {
+    const childPath = path ? `${path}.${key}` : key;
+    const normalized = key.replace(/[_-]/g, '').toLowerCase();
+    if (WAVE_HEALTH_OVERRIDES.has(normalized)) {
+      issues.push(issue(childPath, 'Difficulty comes from geometry, mass and numbers, never enemy hit points (PQ-174.07)'));
+    } else {
+      issues.push(...waveHealthOverrideIssues(child, childPath, seen));
+    }
+  }
+  return issues;
+}
+
+function validateWaveRecipeInner(recipe) {
+  const issues = [];
+  if (!isPlainObject(recipe)) {
+    return { ok: false, issues: [issue('', 'recipe must be an object')] };
+  }
+
+  issues.push(...waveHealthOverrideIssues(recipe));
+
+  if (typeof recipe.id !== 'string' || recipe.id.length === 0) {
+    issues.push(issue('id', 'id must be a non-empty string'));
+  }
+
+  if (recipe.schemaVersion !== SURVIVAL_WAVE_SCHEMA_VERSION) {
+    issues.push(issue('schemaVersion', `schemaVersion must be ${SURVIVAL_WAVE_SCHEMA_VERSION}`));
+  }
+
+  if (typeof recipe.arenaId !== 'string' || !ARENA_IDS.has(recipe.arenaId)) {
+    issues.push(issue('arenaId', 'unknown arenaId'));
+  }
+
+  if (!Number.isInteger(recipe.wave) || recipe.wave < 1) {
+    issues.push(issue('wave', 'wave must be an integer >= 1'));
+  }
+
+  if (!isPlainObject(recipe.objective) || typeof recipe.objective.kind !== 'string' || recipe.objective.kind.length === 0) {
+    issues.push(issue('objective', 'missing objective'));
+  }
+
+  if (!Number.isFinite(recipe.threatBudget) || recipe.threatBudget < 0) {
+    issues.push(issue('threatBudget', 'threatBudget must be a non-negative finite number'));
+  }
+
+  if (!hasArenaPhase(recipe.arenaPhase)) {
+    issues.push(issue('arenaPhase', 'unknown arenaPhase'));
+  }
+
+  const packages = recipe.packages;
+  const providedRoles = new Set();
+  if (!Array.isArray(packages)) {
+    issues.push(issue('packages', 'packages must be an array'));
+  } else {
+    for (let i = 0; i < packages.length; i++) {
+      const pkg = packages[i];
+      const path = `packages[${i}]`;
+      if (!isPlainObject(pkg)) {
+        issues.push(issue(path, 'package must be an object'));
+        continue;
+      }
+      if (!Number.isInteger(pkg.atTick) || pkg.atTick < 0) {
+        issues.push(issue(`${path}.atTick`, 'atTick must be a non-negative integer'));
+      }
+      if (typeof pkg.gateGroup !== 'string' || !GATE_SET.has(pkg.gateGroup)) {
+        issues.push(issue(`${path}.gateGroup`, 'unknown gateGroup'));
+      }
+      if (typeof pkg.role !== 'string' || !ROLE_SET.has(pkg.role)) {
+        issues.push(issue(`${path}.role`, 'unknown role'));
+      } else {
+        providedRoles.add(pkg.role);
+      }
+      if (typeof pkg.enemyId !== 'string' || !ENEMY_IDS.has(pkg.enemyId)) {
+        issues.push(issue(`${path}.enemyId`, 'unknown enemyId'));
+      }
+      if (!Number.isInteger(pkg.count) || pkg.count < 1) {
+        issues.push(issue(`${path}.count`, 'count must be an integer >= 1'));
+      }
+      if (pkg.batchSize != null) {
+        if (!Number.isInteger(pkg.batchSize) || pkg.batchSize < 1) {
+          issues.push(issue(`${path}.batchSize`, 'batchSize must be an integer >= 1'));
+        } else if (Number.isInteger(pkg.count) && pkg.batchSize > pkg.count) {
+          issues.push(issue(`${path}.batchSize`, 'batchSize must not exceed count'));
+        }
+      }
+      if (pkg.batchGapTicks != null && (!Number.isInteger(pkg.batchGapTicks) || pkg.batchGapTicks < 0)) {
+        issues.push(issue(`${path}.batchGapTicks`, 'batchGapTicks must be a non-negative integer'));
+      }
+    }
+
+    const peak = peakConcurrentDemand(packages);
+    // 24 is DEFAULT_MAX at src/systems/spawnBudget.js:26 — do not import the private constant.
+    if (peak > 24) {
+      issues.push(issue('packages', `peak concurrent demand ${peak} exceeds 24`));
+    }
+  }
+
+  if (!isPlainObject(recipe.completion)) {
+    issues.push(issue('completion', 'completion must be an object'));
+  } else {
+    const completion = recipe.completion;
+    if (typeof completion.requiredPackagesMaterialized !== 'boolean') {
+      issues.push(issue('completion.requiredPackagesMaterialized', 'requiredPackagesMaterialized must be a boolean'));
+    }
+    if (!Number.isInteger(completion.cleanupTicks) || completion.cleanupTicks < 0) {
+      issues.push(issue('completion.cleanupTicks', 'cleanupTicks must be a non-negative integer'));
+    }
+    if (!Array.isArray(completion.blockingRolesResolved)) {
+      issues.push(issue('completion.blockingRolesResolved', 'blockingRolesResolved must be an array'));
+    } else {
+      for (let i = 0; i < completion.blockingRolesResolved.length; i++) {
+        const role = completion.blockingRolesResolved[i];
+        const path = `completion.blockingRolesResolved[${i}]`;
+        if (typeof role !== 'string' || !ROLE_SET.has(role)) {
+          issues.push(issue(path, 'unknown role'));
+        } else if (Array.isArray(packages) && !providedRoles.has(role)) {
+          issues.push(issue(path, 'blockingRoles entry that no package provides'));
+        }
+      }
+    }
+  }
+
+  if (!isPlainObject(recipe.rewards)) {
+    issues.push(issue('rewards', 'rewards must be an object'));
+  } else {
+    if (!Number.isInteger(recipe.rewards.xp) || recipe.rewards.xp < 0) {
+      issues.push(issue('rewards.xp', 'xp must be a non-negative integer'));
+    }
+    if (!Number.isInteger(recipe.rewards.credits) || recipe.rewards.credits < 0) {
+      issues.push(issue('rewards.credits', 'credits must be a non-negative integer'));
+    }
+  }
+
+  // Factory override recipes (contentFactoryExamples) are not the thirty-wave catalog and do
+  // not carry question fields. Once a recipe names any question field, all three must be valid.
+  // SURVIVAL_WAVES always names them; catalogQuestionIssues is the catalog-wide gate.
+  const questionTouched = Object.prototype.hasOwnProperty.call(recipe, 'questionId')
+    || Object.prototype.hasOwnProperty.call(recipe, 'question')
+    || Object.prototype.hasOwnProperty.call(recipe, 'answerVerb');
+  if (questionTouched) {
+    if (typeof recipe.questionId !== 'string' || recipe.questionId.length === 0) {
+      issues.push(issue('questionId', 'each wave recipe must name its physical question'));
+    }
+    if (
+      typeof recipe.question !== 'string'
+      || recipe.question.length < 24
+      || recipe.question.includes('\n')
+    ) {
+      issues.push(issue('question', 'question must be one line a player can name from a strip'));
+    }
+    if (!ANSWER_VERB_SET.has(recipe.answerVerb)) {
+      issues.push(issue('answerVerb', `answerVerb must be one of ${SURVIVAL_ANSWER_VERBS.join(', ')}`));
+    }
+  }
+
+  return { ok: issues.length === 0, issues };
+}
+
+function pkg(atTick, gateGroup, role, enemyId, count, batchSize, batchGapTicks) {
+  const size = batchSize == null ? count : batchSize;
+  const gap = batchGapTicks == null ? 0 : batchGapTicks;
+  return {
+    atTick,
+    gateGroup,
+    role,
+    enemyId,
+    count,
+    batchSize: size,
+    batchGapTicks: gap,
+  };
+}
+
+/**
+ * A third bearing for the waves whose question is "you are surrounded".
+ * tenWaveBlock only receives two authored gates, so a wave that wants a genuine third side
+ * derives one deterministically: walk the gate list from the one after gateB and take the first
+ * id that is neither authored gate. Every live arena pair yields a distinct third bearing
+ * (nw/se -> front, ne/sw -> se, diagonal_a/rear -> diagonal_b) rather than collapsing onto one.
+ */
+function thirdGate(gateA, gateB) {
+  const n = SURVIVAL_GATE_GROUPS.length;
+  const start = Math.max(0, SURVIVAL_GATE_GROUPS.indexOf(gateB)) + 1;
+  for (let k = 0; k < n; k++) {
+    const gate = SURVIVAL_GATE_GROUPS[(start + k) % n];
+    if (gate !== gateA && gate !== gateB) return gate;
+  }
+  return gateA;
+}
+
+/**
+ * PQ-133.04 — the authored Foundry wave-ten question. Mirrorjaw replaces the generic fortress,
+ * and its question names the committed pass rather than the fortress behind. Named here (not
+ * inline in waveRecipe) so the question gates assert against the same row the recipe ships.
+ */
+export const WAVE_10_FOUNDRY_QUESTION = freezeDeep({
+  id: 'foundry_foreman_commit',
+  question: 'Cross the Foreman\'s committed pass and punish its slow turn. Throw the escort screen into its hull.',
+  answerVerb: 'throw',
+});
+
+/**
+ * The question a shipped recipe carries for this arena and template wave — the one authority for
+ * the Foundry wave-ten override (PQ-133.04), shared by waveRecipe and by the combat net
+ * (survivalAnnounce) so the bark names exactly the row the wave ships.
+ */
+export function shippedQuestionFor(arenaId, wave) {
+  if (arenaId === 'helios_core' && wave === 10) return WAVE_10_FOUNDRY_QUESTION;
+  return SURVIVAL_TEMPLATE_QUESTIONS[wave] || null;
+}
+
+function waveRecipe({
+  arenaId,
+  wave,
+  shape,
+  objectiveKind,
+  threatBudget,
+  packages,
+  arenaPhase,
+  blockingRoles,
+  cleanupTicks,
+  xp,
+  credits,
+}) {
+  const asked = shippedQuestionFor(arenaId, wave);
+  return {
+    id: `${arenaId}_w${String(wave).padStart(2, '0')}_${shape}`,
+    schemaVersion: SURVIVAL_WAVE_SCHEMA_VERSION,
+    arenaId,
+    wave,
+    objective: { kind: objectiveKind },
+    threatBudget,
+    packages,
+    arenaPhase,
+    completion: {
+      requiredPackagesMaterialized: true,
+      blockingRolesResolved: blockingRoles,
+      cleanupTicks,
+    },
+    rewards: { xp, credits },
+    questionId: asked ? asked.id : '',
+    question: asked ? asked.question : '',
+    answerVerb: asked ? asked.answerVerb : '',
+  };
+}
+
+// Ten-wave block from §21.5 (lines 3014–3027), using only live ENEMY_TYPES ids.
+//
+// AUTHORING RULES THIS BLOCK OBEYS (each one is a real constraint, not a preference):
+//
+//  * Difficulty rises through COMPOSITION, never HP (§33 fails a leaf for HP inflation as
+//    difficulty). Nothing here can scale stats anyway — levelForWave() is the only scaler and it
+//    runs 1..4 across the whole block. The levers are which archetypes, how many, from where,
+//    in what batches, and when.
+//  * Every wave's LAST batch must land by tick 200. The wave 1–7 walk in
+//    test/crucible-wave-materialization.js ticks 200 and then requires the wave to be clearable;
+//    a batch scheduled later leaves a package owed and the run never advances.
+//  * cleanupTicks stays <= 180 outside the boss for the same walk (it ticks 181 to leave cleanup).
+//  * Peak concurrent demand stays well under 24 (spawnBudget DEFAULT_MAX). Nothing here exceeds 14.
+//  * Only six distinct SILHOUETTES exist across fifteen archetypes (wasp/choir share drone_swarm,
+//    lancer/ghost share sniper_lance, bruiser/pd-screen/anchor share bruiser_armor,
+//    reaver/mine-layer share pirate_swoop, corsair/tether share corsair_blade). Two archetypes
+//    that share a silhouette are never on camera at the same time unless the wave's question IS
+//    the misread — see wave 8.
+//  * patrol_lawman, customs_cutter and mule_trader are deliberately absent. The first two are
+//    factionLawful, so scanner.isHostileToPlayer sends them down the WANTED gate a Crucible run
+//    never sets: they spawn INERT, and as a blocking role they would stall the run forever.
+//    mule_trader is a fleeing_trader (alwaysFlee, defensiveOnly) marked illegalToKill.
+//
+// Waves 1 and 5 retain their existing plan content. PQ-133.04 deliberately replaces
+// the Foundry wave-10 enemy with Mirrorjaw; other arenas retain Iron Maw. Question
+// fields are authoring records the planner does not copy. Their content is asserted in
+// three files this lane does not own: the seed-47 snapshot in test/crucible-wave-planner.js
+// (waves 1/5/10), the wave-1 body count and roles in test/crucible-wave-materialization.js,
+// and the wave-1 / wave-10 chip arithmetic in test/crucible-credit-pickup.js.
+function tenWaveBlock(arenaId, gateA, gateB) {
+  const gateC = thirdGate(gateA, gateB);
+  return [
+    // Q: Can you turn, track and kill six identical things that all want the same thing?
+    // One gate, one archetype, one arrival, a quiet room. Nothing to prioritise — the only
+    // question is whether you can fly and shoot at all.
+    waveRecipe({
+      arenaId, wave: 1, shape: 'intro_mass',
+      objectiveKind: 'resolve_hostiles', threatBudget: 8,
+      packages: [pkg(0, gateA, 'mass', 'wasp_swarmer', 6)],
+      arenaPhase: 'idle', blockingRoles: ['mass'], cleanupTicks: 180,
+      xp: 52, credits: 12,
+    }),
+    // Q: The second group arrives from the far side while you are still committed to the first —
+    // do you finish the kill or break off? Same quiet room as wave 1 on purpose: the only new
+    // thing is that the fight now has a behind.
+    waveRecipe({
+      arenaId, wave: 2, shape: 'split_arrival',
+      objectiveKind: 'resolve_hostiles', threatBudget: 12,
+      packages: [
+        pkg(0, gateA, 'mass', 'wasp_swarmer', 5),
+        pkg(75, gateB, 'pressure', 'reaver_pirate', 3),
+        // Two fuse-lit darts land in the rear push half a second behind the raiders — the wave's
+        // shove lesson now pays double: a dart shoved forward converts into the front pack.
+        pkg(105, gateB, 'pressure', 'detonator_dart', 2),
+      ],
+      arenaPhase: 'idle', blockingRoles: ['mass', 'pressure'], cleanupTicks: 180,
+      xp: 64, credits: 16,
+    }),
+    // Q: Can you keep your own Massline when something on the far end is pulling back?
+    // The tether raider arrives ALONE and telegraphs its attach, so the specialist is legible
+    // before the chaff shows up to punish you for staring at it.
+    waveRecipe({
+      arenaId, wave: 3, shape: 'tether_specialist',
+      objectiveKind: 'resolve_hostiles', threatBudget: 12,
+      packages: [
+        pkg(0, gateB, 'control', 'tether_control_raider', 1),
+        pkg(90, gateA, 'mass', 'wasp_swarmer', 8, 4, 45),
+      ],
+      arenaPhase: 'shutter_slow', blockingRoles: ['control', 'mass'], cleanupTicks: 180,
+      xp: 76, credits: 20,
+    }),
+    // Q: One hull that will not be shaken, a salted wake, and chaff from a third side — can you
+    // still choose where to be? The brawler commits for ~90-120 ticks before it breaks away, so
+    // "just outrun it" is off the table for exactly as long as the mines are being laid.
+    waveRecipe({
+      arenaId, wave: 4, shape: 'three_gate_anvil',
+      objectiveKind: 'resolve_hostiles', threatBudget: 14,
+      packages: [
+        pkg(0, gateA, 'pressure', 'bruiser_brawler', 1),
+        pkg(60, gateC, 'disruptor', 'mine_layer_jackal', 1),
+        pkg(105, gateB, 'mass', 'wasp_swarmer', 8, 4, 45),
+      ],
+      arenaPhase: 'loose_plate', blockingRoles: ['pressure', 'disruptor', 'mass'], cleanupTicks: 180,
+      xp: 88, credits: 24,
+    }),
+    // Q: Can you pick the one hull that matters out of the noise and kill it before the noise
+    // kills you? The chaff is already on you when the elite arrives, so this is target priority
+    // under load rather than a duel.
+    waveRecipe({
+      arenaId, wave: 5, shape: 'elite_hunt',
+      objectiveKind: 'elite_hunt', threatBudget: 16,
+      packages: [
+        pkg(0, gateA, 'mass', 'wasp_swarmer', 6),
+        pkg(60, gateB, 'elite', 'corsair_raider', 1),
+      ],
+      arenaPhase: 'furnace_active', blockingRoles: ['mass', 'elite'], cleanupTicks: 180,
+      xp: 100, credits: 28,
+    }),
+    // Q: Can you fight while the room itself drags you sideways toward the thing you have to kill?
+    // The anchor controller is the only enemy carrying a fieldAnchor: in live play it registers a
+    // ~235wu snare well on spawn, and the well only ends when the hull does (or is displaced).
+    // Everything else in the wave is timed to arrive while you are still inside that radius.
+    waveRecipe({
+      arenaId, wave: 6, shape: 'anchor_field',
+      objectiveKind: 'resolve_hostiles', threatBudget: 18,
+      packages: [
+        pkg(0, gateA, 'anchor', 'field_anchor_controller', 1),
+        pkg(60, gateB, 'pressure', 'reaver_pirate', 2),
+        pkg(105, gateA, 'mass', 'wasp_swarmer', 6, 3, 45),
+      ],
+      arenaPhase: 'absorbent_screen', blockingRoles: ['anchor', 'pressure', 'mass'], cleanupTicks: 180,
+      xp: 112, credits: 32,
+    }),
+    // Q: Can you close on a shooter that leaves after every shot and comes back on a new bearing,
+    // while the lanes keep flipping under you? The ghosts sit at ~780wu and disengage on contact;
+    // the zealot pack trickles in four at a time so you can never fully commit to the chase.
+    waveRecipe({
+      arenaId, wave: 7, shape: 'ghost_choir',
+      objectiveKind: 'resolve_hostiles', threatBudget: 20,
+      packages: [
+        pkg(0, gateA, 'reach', 'quiet_ghost', 2),
+        pkg(45, gateB, 'mass', 'choir_zealot', 8, 4, 45),
+      ],
+      arenaPhase: 'shutter_alternating', blockingRoles: ['reach', 'mass'], cleanupTicks: 180,
+      xp: 124, credits: 36,
+    }),
+    // Q: The second seven wear the same silhouette as the first seven and are NOT the same
+    // problem — do you re-read the room, or trust the read you already paid for? This is the one
+    // wave where the shared drone_swarm silhouette is the point: a zealot carries ~40% more
+    // effective HP than a wasp and a missile rack the wasp does not have (the speed difference,
+    // 125 vs 118, is not something a player can see). They arrive from another door while the
+    // room is closing, so the first read has already been paid for by the time it goes wrong.
+    waveRecipe({
+      arenaId, wave: 8, shape: 'twin_flood',
+      objectiveKind: 'resolve_hostiles', threatBudget: 22,
+      packages: [
+        pkg(0, gateA, 'mass', 'wasp_swarmer', 7),
+        pkg(90, gateB, 'pressure', 'choir_zealot', 7),
+      ],
+      arenaPhase: 'shutter_lane_close', blockingRoles: ['mass', 'pressure'], cleanupTicks: 180,
+      xp: 136, credits: 40,
+    }),
+    // Q: Four things that each punish a different habit land on top of each other — does your
+    // build have a second answer? The screen eats missiles, the lances punish holding still, the
+    // raiders punish tunnel vision, the swarm punishes a slow clear. None of them hard-counters a
+    // build; each of them taxes one. Keeps a `reach` and a `support` package on purpose: the
+    // planner's wave-9 build-pressure branch rewrites exactly those two slots.
+    waveRecipe({
+      arenaId, wave: 9, shape: 'exam',
+      objectiveKind: 'resolve_hostiles', threatBudget: 24,
+      packages: [
+        pkg(0, gateA, 'support', 'pd_screen_escort', 2),
+        pkg(30, gateB, 'reach', 'lancer_sniper', 2),
+        pkg(90, gateC, 'elite', 'corsair_raider', 2),
+        pkg(120, gateA, 'mass', 'wasp_swarmer', 8, 4, 30),
+      ],
+      arenaPhase: 'furnace_active',
+      blockingRoles: ['support', 'reach', 'elite', 'mass'], cleanupTicks: 180,
+      xp: 148, credits: 44,
+    }),
+    // Foundry's committed ram arrives ahead of six staggered escorts. Other arenas
+    // retain their fortress. The budget, arrival cadence and completion roles stay shared.
+    waveRecipe({
+      arenaId, wave: 10, shape: 'boss',
+      objectiveKind: 'boss', threatBudget: 28,
+      packages: [
+        pkg(0, gateA, 'elite', arenaId === 'helios_core' ? 'mirrorjaw_foreman' : 'dreadnought_boss', 1),
+        pkg(90, gateB, 'mass', 'wasp_swarmer', 6, 3, 90),
+      ],
+      arenaPhase: 'boss', blockingRoles: ['elite', 'mass'], cleanupTicks: 240,
+      xp: 160, credits: 48,
+    }),
+  ];
+}
+
+export const SURVIVAL_WAVES = freezeDeep([
+  ...tenWaveBlock('helios_core', 'nw', 'se'),
+  ...tenWaveBlock('ceres_belt', 'ne', 'sw'),
+  ...tenWaveBlock('tethys_hub', 'diagonal_a', 'rear'),
+  ...tenWaveBlock('lagrange_crucible', 'sw', 'ne'),
+  ...tenWaveBlock('cinder_sluice', 'front', 'rear'),
+  ...tenWaveBlock('cryo_drift', 'se', 'nw'),
+  ...tenWaveBlock('storm_lattice', 'diagonal_b', 'front'),
+  // SWARM-07 B4 — the new biomes join the catalog with their own authored thirty.
+  ...tenWaveBlock('asteroid_mill', 'ne', 'sw'),
+  ...tenWaveBlock('the_hive', 'rear', 'diagonal_a'),
+]);
+
+/** First wave that is not part of the authored thirty. Default planWave still rejects it. */
+export const SURVIVAL_ENDLESS_START_WAVE = 31;
+export const SURVIVAL_ENDLESS_WAVE_MAX = 999;
+
+/**
+ * Five live arenas for the boss circuit. Ceres Belt and Tethys Hub stay in the
+ * catalog as lab rooms; they are not on this gauntlet.
+ */
+export const SURVIVAL_LIVE_CIRCUIT_ARENAS = freezeDeep([
+  'helios_core',
+  'lagrange_crucible',
+  'cinder_sluice',
+  'cryo_drift',
+  'storm_lattice',
+]);
+
+/**
+ * Consecutive bosses, one authored wave-10 recipe per live arena, with compressed
+ * refits (every step is a refit, no drafts). Fought in the launched room; the
+ * recipe supplies composition and gates, not a mid-run arena-law swap.
+ */
+export const SURVIVAL_BOSS_CIRCUIT = freezeDeep(
+  SURVIVAL_LIVE_CIRCUIT_ARENAS.map((arenaId, index) => ({
+    step: index + 1,
+    arenaId,
+    templateWave: 10,
+    bossEnemyId: SURVIVAL_WAVES.find(recipe => recipe.arenaId === arenaId && recipe.wave === 10)
+      .packages.find(entry => entry.role === 'elite').enemyId,
+  })),
+);
+
+export const SURVIVAL_BOSS_CIRCUIT_LENGTH = SURVIVAL_BOSS_CIRCUIT.length;
+
+/**
+ * Endless composition overlays. Each row swaps roles/enemies without touching
+ * counts. Indexed by endless cycle so wave 60, 120 and 300 do not collapse
+ * onto one escort mix. Counts never rise.
+ */
+export const SURVIVAL_ENDLESS_OVERLAYS = freezeDeep([
+  {
+    id: 'pressure_wall',
+    massEnemyId: 'reaver_pirate',
+    massRole: 'pressure',
+    arenaPhase: 'shutter_alternating',
+  },
+  {
+    id: 'ghost_net',
+    massEnemyId: 'quiet_ghost',
+    massRole: 'reach',
+    arenaPhase: 'absorbent_screen',
+  },
+  {
+    id: 'mine_garden',
+    massEnemyId: 'mine_layer_jackal',
+    massRole: 'disruptor',
+    arenaPhase: 'shutter_lane_close',
+  },
+  {
+    id: 'anchor_snare',
+    massEnemyId: 'field_anchor_controller',
+    massRole: 'anchor',
+    arenaPhase: 'absorbent_screen',
+  },
+  {
+    id: 'choir_tide',
+    massEnemyId: 'choir_zealot',
+    massRole: 'mass',
+    arenaPhase: 'furnace_active',
+  },
+  {
+    id: 'screen_exam',
+    massEnemyId: 'choir_zealot',
+    massRole: 'mass',
+    pressureEnemyId: 'pd_screen_escort',
+    pressureRole: 'support',
+    arenaPhase: 'furnace_active',
+  },
+  {
+    id: 'tether_special',
+    massEnemyId: 'reaver_pirate',
+    massRole: 'pressure',
+    controlEnemyId: 'tether_control_raider',
+    controlRole: 'control',
+    arenaPhase: 'shutter_slow',
+  },
+  {
+    id: 'corsair_hunt',
+    massEnemyId: 'corsair_raider',
+    massRole: 'elite',
+    arenaPhase: 'boss',
+  },
+  {
+    // Endless pressure rows become fuse runners: the closing push IS the ordnance, and the
+    // shove answer the arc taught stays the correct one — shove the dart back into its pack.
+    id: 'fuse_runners',
+    massEnemyId: 'reaver_pirate',
+    massRole: 'pressure',
+    pressureEnemyId: 'detonator_dart',
+    pressureRole: 'pressure',
+    arenaPhase: 'shutter_lane_close',
+  },
+]);
+
+/** Extraction cash-out windows: every ten-wave boundary from wave 10 onward. */
+export const SURVIVAL_EXTRACTION_PERIOD = 10;
+export const SURVIVAL_EXTRACTION_MIN_WAVE = 10;
+
+export function isExtractionWindow(wave) {
+  return Number.isInteger(wave)
+    && wave >= SURVIVAL_EXTRACTION_MIN_WAVE
+    && wave % SURVIVAL_EXTRACTION_PERIOD === 0;
+}

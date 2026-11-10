@@ -1,0 +1,703 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "15703bca47750a60937bbe5997a7b16c59828d709192887b116efe92b403d267",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          12.469457754112488,
+          15.287536524233246,
+          16.10955810546875
+        ],
+        "min": [
+          -12.469457754112488,
+          -15.287536524233246,
+          -16.10955810546875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "255d998cd29e1a8a58dab9bab9cbc91da35ece1f55e4c9fa76738c4f6d8eb947",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod0-deb-ore-freighter-hopper-lid-material-insulation.primitive.0",
+      "indexCount": 12750,
+      "indexed": true,
+      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_deb_ore_freighter_hopper_lid_Material_Insulation_mesh",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod0-deb-ore-freighter-hopper-lid-material-insulation",
+      "primitiveIndex": 0,
+      "vertexCount": 6067
+    },
+    {
+      "bounds": {
+        "max": [
+          12.469457754112488,
+          15.287536524233246,
+          16.10955810546875
+        ],
+        "min": [
+          -12.469457754112488,
+          -15.287536524233246,
+          -16.10955810546875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "21ac42e5b6e059dda980a3b881c4dd33d5782afd44e5b69ac4bc15a2a6d6e7ed",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod1-deb-ore-freighter-hopper-lid-material-insulation.primitive.0",
+      "indexCount": 6120,
+      "indexed": true,
+      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_deb_ore_freighter_hopper_lid_Material_Insulation_mesh",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod1-deb-ore-freighter-hopper-lid-material-insulation",
+      "primitiveIndex": 0,
+      "vertexCount": 4243
+    },
+    {
+      "bounds": {
+        "max": [
+          12.469457754112488,
+          15.287536524233246,
+          16.10955810546875
+        ],
+        "min": [
+          -12.469457754112488,
+          -15.287536524233246,
+          -16.10955810546875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "77d9abba51949fd5da10a4f39cd4b91ba213322541804a58f90bdb83834a891d",
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod2-deb-ore-freighter-hopper-lid-material-insulation.primitive.0",
+      "indexCount": 2550,
+      "indexed": true,
+      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_deb_ore_freighter_hopper_lid_Material_Insulation_mesh",
+      "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod2-deb-ore-freighter-hopper-lid-material-insulation",
+      "primitiveIndex": 0,
+      "vertexCount": 1999
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "id": "material:d405a7105bef6f7b733d5dbb",
+      "name": "Material_Insulation",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_rupture_insulation_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_rupture_insulation_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_rupture_insulation_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_rupture_insulation_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.deb-ore-freighter-hopper-lid",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "deb_ore_freighter_hopper_lid",
+      "nodeName": "deb_ore_freighter_hopper_lid",
+      "nodePath": [
+        1
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.deb-ore-freighter-hopper-lid-001",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "deb_ore_freighter_hopper_lid.001",
+      "nodeName": "deb_ore_freighter_hopper_lid.001",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod0-deb-ore-freighter-hopper-lid",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "LOD0_deb_ore_freighter_hopper_lid",
+      "nodeName": "LOD0_deb_ore_freighter_hopper_lid",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.deb-ore-freighter-hopper-lid-001",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod0-deb-ore-freighter-hopper-lid-material-insulation",
+      "localTransform": [
+        16.10955810546875,
+        0,
+        0,
+        0,
+        0,
+        16.10955810546875,
+        0,
+        0,
+        0,
+        0,
+        16.10955810546875,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_deb_ore_freighter_hopper_lid_Material_Insulation",
+      "nodeName": "LOD0_deb_ore_freighter_hopper_lid_Material_Insulation",
+      "nodePath": [
+        0,
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod0-deb-ore-freighter-hopper-lid",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.body",
+      "worldTransform": [
+        16.10955810546875,
+        0,
+        0,
+        0,
+        0,
+        16.10955810546875,
+        0,
+        0,
+        0,
+        0,
+        16.10955810546875,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod1-deb-ore-freighter-hopper-lid",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "LOD1_deb_ore_freighter_hopper_lid",
+      "nodeName": "LOD1_deb_ore_freighter_hopper_lid",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.deb-ore-freighter-hopper-lid-001",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod1-deb-ore-freighter-hopper-lid-material-insulation",
+      "localTransform": [
+        16.10955810546875,
+        0,
+        0,
+        0,
+        0,
+        16.10955810546875,
+        0,
+        0,
+        0,
+        0,
+        16.10955810546875,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_deb_ore_freighter_hopper_lid_Material_Insulation",
+      "nodeName": "LOD1_deb_ore_freighter_hopper_lid_Material_Insulation",
+      "nodePath": [
+        0,
+        1,
+        0
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod1-deb-ore-freighter-hopper-lid",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.body",
+      "worldTransform": [
+        16.10955810546875,
+        0,
+        0,
+        0,
+        0,
+        16.10955810546875,
+        0,
+        0,
+        0,
+        0,
+        16.10955810546875,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod2-deb-ore-freighter-hopper-lid",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "LOD2_deb_ore_freighter_hopper_lid",
+      "nodeName": "LOD2_deb_ore_freighter_hopper_lid",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.deb-ore-freighter-hopper-lid-001",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod2-deb-ore-freighter-hopper-lid-material-insulation",
+      "localTransform": [
+        16.10955810546875,
+        0,
+        0,
+        0,
+        0,
+        16.10955810546875,
+        0,
+        0,
+        0,
+        0,
+        16.10955810546875,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_deb_ore_freighter_hopper_lid_Material_Insulation",
+      "nodeName": "LOD2_deb_ore_freighter_hopper_lid_Material_Insulation",
+      "nodePath": [
+        0,
+        2,
+        0
+      ],
+      "parentId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod2-deb-ore-freighter-hopper-lid",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.body",
+      "worldTransform": [
+        16.10955810546875,
+        0,
+        0,
+        0,
+        0,
+        16.10955810546875,
+        0,
+        0,
+        0,
+        0,
+        16.10955810546875,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "33868d2e0c15ede093b538e229c10390ab809583d420914964eaf558430702b5"
+    },
+    "sourceGlb": {
+      "bytes": 318664,
+      "sha256": "3cf8e771f5fd04c261e5d122f4d14693def01f6177bdcba90c2463e465e8e102",
+      "uri": "place_aftermath_deb_ore_freighter_hopper_lid_authored_down.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 306704,
+    "sha256": "faed2284a55aa37976c7dabad6cb99fb1f9d08b3a7ad11224869447372581713",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        12.469457754112488,
+        15.287536524233246,
+        16.10955810546875
+      ],
+      "min": [
+        -12.469457754112488,
+        -15.287536524233246,
+        -16.10955810546875
+      ],
+      "size": [
+        24.938915508224976,
+        30.575073048466493,
+        32.2191162109375
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [],
+    "materialProfileRoles": {
+      "geology": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "geology"
+      }
+    ],
+    "nodeCount": 9,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          16.10955810546875,
+          0,
+          0,
+          0,
+          0,
+          16.10955810546875,
+          0,
+          0,
+          0,
+          0,
+          16.10955810546875,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_deb_ore_freighter_hopper_lid_Material_Insulation",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          16.10955810546875,
+          0,
+          0,
+          0,
+          0,
+          16.10955810546875,
+          0,
+          0,
+          0,
+          0,
+          16.10955810546875,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_deb_ore_freighter_hopper_lid_Material_Insulation",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          16.10955810546875,
+          0,
+          0,
+          0,
+          0,
+          16.10955810546875,
+          0,
+          0,
+          0,
+          0,
+          16.10955810546875,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_deb_ore_freighter_hopper_lid_Material_Insulation",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_hopper_lid_authored_down.glb"
+  },
+  "runtimeHash": "35d2472cb2e4a84f70b1744f59a82d81bcc9cdc5435513b5110247afe2962548",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          12.469457754112488,
+          15.287536524233246,
+          16.10955810546875
+        ],
+        "min": [
+          -12.469457754112488,
+          -15.287536524233246,
+          -16.10955810546875
+        ]
+      },
+      "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.body",
+      "nodeIds": [
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.deb-ore-freighter-hopper-lid",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.deb-ore-freighter-hopper-lid-001",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod0-deb-ore-freighter-hopper-lid",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod0-deb-ore-freighter-hopper-lid-material-insulation",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod1-deb-ore-freighter-hopper-lid",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod1-deb-ore-freighter-hopper-lid-material-insulation",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod2-deb-ore-freighter-hopper-lid",
+        "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod2-deb-ore-freighter-hopper-lid-material-insulation"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "label": "micromotion-settled-skip",
+  "before": {
+    "ms": 167.731,
+    "ships": 80,
+    "frames": 4000,
+    "calls": 320000,
+    "heave": -0.021938,
+    "roll": 0.006907,
+    "settledSkip": false
+  },
+  "after": {
+    "ms": 94.498,
+    "ships": 80,
+    "frames": 4000,
+    "calls": 320000,
+    "heave": -0.021938,
+    "roll": 0.006907,
+    "settledSkip": true
+  },
+  "speedup": 1.775,
+  "breathAlive": true,
+  "note": "Portable CPU. Soft-GPU fps not claimed. Before=full path; After=settled fast-path (idle breath kept)."
+}

@@ -1,0 +1,115 @@
+TAP version 13
+# Subtest: far rocks and haulers leave the Rapier set without being deleted
+ok 1 - far rocks and haulers leave the Rapier set without being deleted
+  ---
+  duration_ms: 4.511643
+  ...
+# Subtest: later ticks do not reclassify the full live list
+ok 2 - later ticks do not reclassify the full live list
+  ---
+  duration_ms: 2.304815
+  ...
+# Subtest: stable entity-index membership skips the fat unstamped rescan
+ok 3 - stable entity-index membership skips the fat unstamped rescan
+  ---
+  duration_ms: 1.304374
+  ...
+# Subtest: same-tick projectile spawns append without reclassifying the world
+ok 4 - same-tick projectile spawns append without reclassifying the world
+  ---
+  duration_ms: 0.710718
+  ...
+# Subtest: off-glass pursuer stays exact and in physics
+ok 5 - off-glass pursuer stays exact and in physics
+  ---
+  duration_ms: 0.712465
+  ...
+# Subtest: tethered payload stays exact after leaving the glass
+ok 6 - tethered payload stays exact after leaving the glass
+  ---
+  duration_ms: 0.425918
+  ...
+# Subtest: job-pinned far actor stays exact
+ok 7 - job-pinned far actor stays exact
+  ---
+  duration_ms: 0.48518
+  ...
+# Subtest: mined rock keeps remaining ore after leaving and returning
+ok 8 - mined rock keeps remaining ore after leaving and returning
+  ---
+  duration_ms: 0.993252
+  ...
+# Subtest: destroyed records are not the same as dematerialized far actors
+ok 9 - destroyed records are not the same as dematerialized far actors
+  ---
+  duration_ms: 0.52258
+  ...
+# Subtest: stamped dormant owners never think; unstamped hostiles still do
+ok 10 - stamped dormant owners never think; unstamped hostiles still do
+  ---
+  duration_ms: 0.586607
+  ...
+# Subtest: consecutive ticks demote a far hauler after grace instead of restarting it
+ok 11 - consecutive ticks demote a far hauler after grace instead of restarting it
+  ---
+  duration_ms: 3.379425
+  ...
+# Subtest: mining lock and authored activity slots stay exact off the table
+ok 12 - mining lock and authored activity slots stay exact off the table
+  ---
+  duration_ms: 0.440962
+  ...
+# Subtest: SG-06 pursuit activity pins a far hostile
+ok 13 - SG-06 pursuit activity pins a far hostile
+  ---
+  duration_ms: 0.267953
+  ...
+# Subtest: demoting a durable hauler writes the world ledger without deleting it
+ok 14 - demoting a durable hauler writes the world ledger without deleting it
+  ---
+  duration_ms: 5.169598
+  ...
+# Subtest: spatial hash membership is the Rapier active set, not the whole sector
+ok 15 - spatial hash membership is the Rapier active set, not the whole sector
+  ---
+  duration_ms: 1.459728
+  ...
+# Subtest: production physics, AI, and traffic call the activity runtime
+ok 16 - production physics, AI, and traffic call the activity runtime
+  ---
+  duration_ms: 24.528381
+  ...
+# Subtest: S1 near actors think on a reduced cadence, not every tick
+ok 17 - S1 near actors think on a reduced cadence, not every tick
+  ---
+  duration_ms: 0.493827
+  ...
+# Subtest: generic unobserved far ships become aggregate population, not 60 Hz bodies
+ok 18 - generic unobserved far ships become aggregate population, not 60 Hz bodies
+  ---
+  duration_ms: 0.507499
+  ...
+# Subtest: activity manager publishes glass and exact sets from the live classifier
+ok 19 - activity manager publishes glass and exact sets from the live classifier
+  ---
+  duration_ms: 0.385738
+  ...
+# Subtest: incremental classify revisits fast non-physics movers the hash cannot see
+ok 20 - incremental classify revisits fast non-physics movers the hash cannot see
+  ---
+  duration_ms: 0.887782
+  ...
+# Subtest: incremental classify closed-form catch-up uses entity-index lane when ready
+ok 21 - incremental classify closed-form catch-up uses entity-index lane when ready
+  ---
+  duration_ms: 1.192122
+  ...
+1..21
+# tests 21
+# suites 0
+# pass 21
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 271.908303

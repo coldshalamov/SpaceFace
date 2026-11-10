@@ -1,0 +1,123 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: docking cradle quiet-latches after idle fade and wakes on corridor berth
+ok 1 - docking cradle quiet-latches after idle fade and wakes on corridor berth
+  ---
+  duration_ms: 100.378513
+  ...
+# Subtest: docking cradle boundary reset clears quiet latch
+ok 2 - docking cradle boundary reset clears quiet latch
+  ---
+  duration_ms: 43.033677
+  ...
+# Subtest: inactive plan is frozen and only tumbling or thrown trails look active
+ok 3 - inactive plan is frozen and only tumbling or thrown trails look active
+  ---
+  duration_ms: 1.267387
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: law-heat quiet-latches after idle empty and wakes on scan accept
+ok 4 - law-heat quiet-latches after idle empty and wakes on scan accept
+  ---
+  duration_ms: 109.712028
+  ...
+# Subtest: law-heat quiet-latches wake on heat:changed suspicion
+ok 5 - law-heat quiet-latches wake on heat:changed suspicion
+  ---
+  duration_ms: 35.175778
+  ...
+# Subtest: law-heat boundary clear resets quiet latch
+ok 6 - law-heat boundary clear resets quiet latch
+  ---
+  duration_ms: 27.910145
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: suspicionFromHeat scales to the WANTED threshold without inventing values
+ok 7 - suspicionFromHeat scales to the WANTED threshold without inventing values
+  ---
+  duration_ms: 1.971234
+  ...
+# Subtest: resolveScanSweepStamp requires a real scanned hull fact
+ok 8 - resolveScanSweepStamp requires a real scanned hull fact
+  ---
+  duration_ms: 0.465784
+  ...
+# Subtest: resolveHeatTelegraphStamps keys suspicion and WANTED flip on heat edges
+ok 9 - resolveHeatTelegraphStamps keys suspicion and WANTED flip on heat edges
+  ---
+  duration_ms: 0.548279
+  ...
+# Subtest: reduced-motion intensities are static steps; full motion sweeps without strobe
+ok 10 - reduced-motion intensities are static steps; full motion sweeps without strobe
+  ---
+  duration_ms: 0.494845
+  ...
+# Subtest: controller stamps appear and expire exactly with authoritative events
+ok 11 - controller stamps appear and expire exactly with authoritative events
+  ---
+  duration_ms: 1.100715
+  ...
+# Subtest: worst-case pool occupancy is bounded and fits EVENT_LIGHT_POOL_SIZE
+ok 12 - worst-case pool occupancy is bounded and fits EVENT_LIGHT_POOL_SIZE
+  ---
+  duration_ms: 0.203741
+  ...
+# Subtest: vfx layer: scan event lights a sweep slot; expiry retires it
+ok 13 - vfx layer: scan event lights a sweep slot; expiry retires it
+  ---
+  duration_ms: 111.999712
+  ...
+# Subtest: vfx layer: heat:changed drives suspicion then one WANTED flip pulse
+ok 14 - vfx layer: heat:changed drives suspicion then one WANTED flip pulse
+  ---
+  duration_ms: 37.762821
+  ...
+# Subtest: vfx layer: reduced-flash / reduced-motion keep facts, never invent intensity
+ok 15 - vfx layer: reduced-flash / reduced-motion keep facts, never invent intensity
+  ---
+  duration_ms: 30.097836
+  ...
+# Subtest: headless heat system emit carries telegraph fields the VFX layer consumes
+ok 16 - headless heat system emit carries telegraph fields the VFX layer consumes
+  ---
+  duration_ms: 4.09735
+  ...
+# Subtest: worst-case simultaneous law-heat lights stay within the shared pool math
+ok 17 - worst-case simultaneous law-heat lights stay within the shared pool math
+  ---
+  duration_ms: 15.36613
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# {
+#   "ok": true,
+#   "test": "vfx-save-restore-destroy",
+#   "saveRestore": {
+#     "liveParticles": 0,
+#     "liveSprites": 0,
+#     "activeLights": 0
+#   },
+#   "normalDestroy": {
+#     "liveParticles": 15,
+#     "liveSprites": 14,
+#     "activeLights": 2
+#   },
+#   "combatReason": {
+#     "liveParticles": 15,
+#     "liveSprites": 14,
+#     "activeLights": 2
+#   }
+# }
+# Subtest: /workspace/spaceface-scratch/hillclimb-20260924h/test/vfx-save-restore-destroy.test.mjs
+ok 5 - /workspace/spaceface-scratch/hillclimb-20260924h/test/vfx-save-restore-destroy.test.mjs
+  ---
+  duration_ms: 605.833673
+  ...
+1..18
+# tests 18
+# suites 0
+# pass 18
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 625.119705

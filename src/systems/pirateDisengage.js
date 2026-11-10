@@ -1,0 +1,796 @@
+// BP-13/B8 Intentional combat exits.
+//
+// Trigger layer only: detects lawful patrol pressure, bad robbery economics, critical damage, and
+// wing collapse, waits a short nerve beat, then supplies existing AI-facing surrender/flee fields
+// and one readable bark. Authored bosses, aces, fanatics, and named hunters remain exempt.
+import { barkFor, FRONTIER_FIRST_NAMES, FRONTIER_LAST_NAMES } from '../data/barks.js';
+import { pirateDoctrineForEntity } from '../data/pirateDoctrines.js';
+import { hash32 } from '../core/rng.js';
+import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
+import { massline2Flag } from '../data/featureFlags.js';
+import { entityIndexVersion, entityIndexLaneVersion, indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { spawnPayloadEntity } from '../combat/industrialBeam.js';
+import { JETTISONED_CARGO_PAYLOAD_TYPE } from './lootShards.js';
+import { rememberMoralDebt } from './moralMemory.js';
+
+/** Bench A/B: production default ON. Quiet latch skips pirateDisengage's dual
+ * shipLike census (lawfulPatrols + combatantSquads) when no active combatants
+ * remain. Soft-GPU fps not claimed. Fresh combat residual after #149 bountyHunt
+ * (not bounty/salvage/sanctuary/cones/catch-nets/weapons deepen). */
+let PIRATE_DISENGAGE_EMPTY_QUIET_LATCH = true;
+export function setPirateDisengageEmptyQuietLatchForBench(enabled) {
+  PIRATE_DISENGAGE_EMPTY_QUIET_LATCH = enabled !== false;
+}
+export function getPirateDisengageEmptyQuietLatchForBench() {
+  return PIRATE_DISENGAGE_EMPTY_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const PIRATE_DISENGAGE_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+/** Membership lanes for the quiet latch — patrols + combatant squads read shipLike only. */
+const PIRATE_DISENGAGE_QUIET_LANES = ['shipLike'];
+
+function publishPirateDisengageQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.pirateDisengageRuntime || (state.pirateDisengageRuntime = {});
+  rt.emptyQuietLatched = !!latched;
+}
+
+
+const PATROL_RADIUS = 900;
+const NERVE_DELAY_S = 1.0;
+const FLEE_DURATION_S = 18.0;
+// How long the deck holds an accepted-yield offer before neglect reads as "let them go".
+const SURRENDER_OFFER_WINDOW_S = 12.0;
+// What a yielding crew dumps for passage: their take, as ordinary scoopable pods. Stolen goods
+// on purpose — mercy pays in hot cargo, and the fence is the player's problem.
+const YIELD_COMMODITY_ID = 'cmdty_stolen_goods';
+const PLAYER_TEAM = 0;
+const SURRENDER_HULL_FRACTION = 0.16;
+const DAMAGE_RETREAT_HULL_FRACTION = 0.28;
+const WING_LOSS_HULL_FRACTION = 0.62;
+const WING_LOSS_LIVE_RATIO = 0.5;
+// Massline tumble morale (Wave M2 §3.4): the fling-shock window and the "already worn" bar a crew
+// must be under for a squadmate's tumble to break them (healthy crews shrug one tumble off).
+const TUMBLE_MORALE_WINDOW_S = 8;
+const TUMBLE_RETREAT_HULL_FRACTION = 0.8;
+
+export const pirateDisengage = {
+  name: 'pirateDisengage',
+
+  init(ctx) {
+    this.state = ctx.state;
+    this.bus = ctx.bus || null;
+    this.helpers = ctx.helpers || {};
+    this._subs = [];
+    this._combatantsQuiet = null;
+    this._combatantWakeSeq = 0;
+    this._listen('entity:spawned', (p) => this._onEntitySpawned(p));
+    // Boundary wakes: newGame() is not dispatched on the live route (this system is
+    // not in FRESH_RUN_SYSTEMS), so save/run/sector transitions arrive only here.
+    // A parley resolution can stamp forcePlayerTarget without a spawn — wake there too.
+    this._listen('save:loaded', () => this.noteCombatantWake());
+    this._listen('game:new', () => this.noteCombatantWake());
+    this._listen('game:newGame', () => this.noteCombatantWake());
+    this._listen('sector:enter', () => this.noteCombatantWake());
+    this._listen('pirateParley:resolved', () => this.noteCombatantWake());
+    // The surrendered crew's offered yield: the deck answers here.
+    this._listen('pirateDisengage:verdict', (p) => this._onYieldVerdict(p || {}));
+    // Killing a yielding crew is itself the answer — close the open offer at the
+    // kill, not at the deck's stale-card grace.
+    this._listen('entity:killed', (p) => this._onYieldCrewKilled(p));
+  },
+
+  /** External wake when a combatant role is stamped without a fresh spawn index bump. */
+  noteCombatantWake() {
+    this._combatantWakeSeq = (this._combatantWakeSeq | 0) + 1;
+    this._combatantsQuiet = null;
+  },
+
+  _onEntitySpawned(payload) {
+    const entity = payload && payload.entity;
+    if (!entity || !this.state) return;
+    if (!isActiveCombatant(entity, this.state)) return;
+    this.noteCombatantWake();
+  },
+
+  _listen(evt, fn) {
+    if (!this.bus || typeof this.bus.on !== 'function') return;
+    const off = this.bus.on(evt, fn);
+    if (typeof off === 'function') this._subs.push(off);
+  },
+
+  newGame() {
+    if (this.state) this.state.pirateDisengage = freshState();
+    this._combatantsQuiet = null;
+    this._combatantWakeSeq = 0;
+    publishPirateDisengageQuiet(this.state, false);
+  },
+
+  update(_dt, state) {
+    if (state.mode && state.mode !== 'flight') return;
+    this.state = state;
+    const own = ensureState(state);
+    // Quiet open flight: no active pirate/hostile combatants still paid TWO full
+    // shipLike censuses (lawfulPatrols + combatantSquads / isActiveCombatant) every
+    // tick. Latch when combatantSquads stays empty; wake on membership, combatant
+    // spawn/tag, or 0.5 s rescan. Soft-GPU fps not claimed. Fresh combat residual
+    // after #149 bountyHunt (not bounty/salvage/sanctuary/cones/catch-nets).
+    if (PIRATE_DISENGAGE_EMPTY_QUIET_LATCH !== false) {
+      const laneVersion = entityIndexLaneVersion(state, PIRATE_DISENGAGE_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+      const tick = state.tick | 0;
+      const wakeSeq = this._combatantWakeSeq | 0;
+      const quiet = this._combatantsQuiet;
+      if (quiet
+        && membership != null
+        && quiet.membership === membership
+        && quiet.wakeSeq === wakeSeq
+        && ((tick - (quiet.armedTick | 0)) < PIRATE_DISENGAGE_EMPTY_QUIET_RESCAN_TICKS)) {
+        publishPirateDisengageQuiet(state, true);
+        return;
+      }
+    } else if (this._combatantsQuiet) {
+      this._combatantsQuiet = null;
+      publishPirateDisengageQuiet(state, false);
+    }
+    const now = state.simTime || 0;
+    const patrols = lawfulPatrols(state);
+    const squads = combatantSquads(state);
+    // The yield window is producer-owned: the deck display-expires a stale card,
+    // but this system's own deterministic resolution stays authoritative. An open
+    // offer resolves on neglect (neglect reads as "let them go"), and a crew that
+    // died waiting closes on the corpses — even once it no longer scans as a
+    // combatant squad.
+    for (const squadId of Object.keys(own.squads)) {
+      const yieldRec = own.squads[squadId];
+      if (yieldRec && yieldRec.yieldState === 'offered') this._tickOpenYield(yieldRec, now, state);
+    }
+    if (PIRATE_DISENGAGE_EMPTY_QUIET_LATCH !== false) {
+      if (squads.size === 0) {
+        const laneVersion = entityIndexLaneVersion(state, PIRATE_DISENGAGE_QUIET_LANES);
+        const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+        if (membership != null) {
+          this._combatantsQuiet = {
+            membership,
+            wakeSeq: this._combatantWakeSeq | 0,
+            armedTick: state.tick | 0,
+          };
+          publishPirateDisengageQuiet(state, true);
+        } else {
+          this._combatantsQuiet = null;
+          publishPirateDisengageQuiet(state, false);
+        }
+        return;
+      }
+      this._combatantsQuiet = null;
+      publishPirateDisengageQuiet(state, false);
+    }
+    for (const [squadId, members] of squads) {
+      let rec = own.squads[squadId];
+      if (rec && rec.disengaged) continue;
+      const baseline = Math.max(own.baselines[squadId] || 0, members.length);
+      own.baselines[squadId] = baseline;
+      const patrol = nearestPatrol(members, patrols);
+      const decision = moraleDecision(members, state, baseline, patrol);
+      if (!decision) {
+        if (rec && !rec.disengaged) delete own.squads[squadId];
+        continue;
+      }
+      const { reason, outcome, threat } = decision;
+      if (!rec) {
+        rec = {
+          squadId,
+          patrolId: patrol ? patrol.id : null,
+          reason,
+          outcome,
+          firstSeenAt: now,
+          triggerAt: now + NERVE_DELAY_S,
+          disengaged: false,
+          spoken: false,
+        };
+        own.squads[squadId] = rec;
+      } else if (rec.reason !== reason || rec.outcome !== outcome) {
+        rec.reason = reason;
+        rec.outcome = outcome;
+        rec.firstSeenAt = now;
+        rec.triggerAt = now + NERVE_DELAY_S;
+      }
+      rec.memberIds = members.map((e) => e.id);
+      rec.patrolId = patrol ? patrol.id : null;
+      rec.reason = reason;
+      rec.outcome = outcome;
+      if (now < rec.triggerAt) continue;
+      if (outcome === 'surrendered') this._surrender(rec, members, now, state);
+      else this._disengage(rec, members, threat, now, state);
+    }
+  },
+
+  _disengage(rec, members, threat, now, state) {
+    rec.disengaged = true;
+    rec.disengagedAt = now;
+    rec.until = now + FLEE_DURATION_S;
+    for (const entity of members) markFleeing(entity, threat, rec, state);
+    this._speak(rec, members[0] || null);
+    rememberFledWing(state, rec, members, threat, now);
+    this._emit('pirateDisengage:triggered', {
+      squadId: rec.squadId,
+      patrolId: rec.patrolId,
+      memberIds: rec.memberIds.slice(),
+      reason: rec.reason,
+      outcome: 'fled',
+      t: now,
+    });
+  },
+
+  _surrender(rec, members, now, state) {
+    rec.disengaged = true;
+    rec.disengagedAt = now;
+    rec.until = now + FLEE_DURATION_S;
+    rec.outcome = 'surrendered';
+    for (const entity of members) {
+      markSurrendered(entity, rec, state);
+      this._emit('combat:surrendered', {
+        entityId: entity.id,
+        squadId: rec.squadId,
+        reason: rec.reason,
+        factionId: entity.factionId || null,
+        type: entity.type,
+        t: now,
+      });
+    }
+    this._speak(rec, members[0] || null);
+    this._emit('pirateDisengage:triggered', {
+      squadId: rec.squadId,
+      patrolId: rec.patrolId,
+      memberIds: rec.memberIds.slice(),
+      reason: rec.reason,
+      outcome: 'surrendered',
+      t: now,
+    });
+    // A surrendered crew offers its take for passage. The deck surfaces the offer; silence or
+    // refusal leaves them drifting passive exactly as before — the verb adds, never takes away.
+    rec.yieldState = 'offered';
+    rec.offerUntil = now + SURRENDER_OFFER_WINDOW_S;
+    this._emit('pirateDisengage:surrenderOffer', {
+      squadId: rec.squadId,
+      memberIds: rec.memberIds.slice(),
+      leaderId: (members[0] && members[0].id) != null ? members[0].id : null,
+      factionId: (members[0] && members[0].factionId) || null,
+      offerUntil: rec.offerUntil,
+      t: now,
+    });
+  },
+
+  // A negotiated safe-passage offer uses the same AI authority as a combat surrender.
+  acceptCrewSurrender(entityId, reason = 'safe_passage') {
+    const entity = this.state.entities.get(entityId);
+    if (!entity?.alive || entity.id === this.state.playerId) return false;
+    const rec = { squadId: `parley:${entityId}`, reason, until: (this.state.simTime || 0) + 90 };
+    markSurrendered(entity, rec, this.state);
+    this._emit('combat:surrendered', { entityId, reason, factionId: entity.factionId, t: this.state.simTime });
+    return true;
+  },
+
+  attemptCustodyBreakout(entityId) {
+    const entity=this.state.entities.get(entityId),pilot=this.state.entities.get(this.state.playerId);
+    if(!entity?.alive||!pilot?.alive)return false;
+    markFleeing(entity,pilot,{squadId:`custody:${entityId}`,reason:'maintenance_intrusion',until:(this.state.simTime||0)+20},this.state);
+    this._emit('ai:flee',{entityId,reason:'intrusion_breakout'});
+    return true;
+  },
+
+  _onYieldVerdict(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.squadId == null) return;
+    const own = ensureState(state);
+    const rec = own.squads[payload.squadId];
+    if (!rec || rec.outcome !== 'surrendered' || rec.yieldState !== 'offered') return;
+    if (this._liveYieldMembers(rec, state).length === 0) {
+      // A verdict landing on a corpse: the kill was the answer, not the button.
+      this._closeYieldKilled(rec, state);
+      return;
+    }
+    if (payload.accept !== true) {
+      this._refuseYield(rec, state, 'refused');
+      return;
+    }
+    this._acceptYield(rec, state);
+  },
+
+  _onYieldCrewKilled(payload) {
+    const state = this.state;
+    const id = payload && payload.id;
+    if (!state || id == null) return;
+    const own = ensureState(state);
+    for (const squadId of Object.keys(own.squads)) {
+      const rec = own.squads[squadId];
+      if (!rec || rec.yieldState !== 'offered') continue;
+      if (!Array.isArray(rec.memberIds) || rec.memberIds.indexOf(id) === -1) continue;
+      this._tickOpenYield(rec, state.simTime || 0, state);
+    }
+  },
+
+  _liveYieldMembers(rec, state) {
+    return (Array.isArray(rec && rec.memberIds) ? rec.memberIds : [])
+      .map((id) => entityFor(state, id))
+      .filter((entity) => entity && entity.alive !== false && entity.pos);
+  },
+
+  _tickOpenYield(rec, now, state) {
+    const members = (Array.isArray(rec && rec.memberIds) ? rec.memberIds : [])
+      .map((id) => entityFor(state, id));
+    let corpses = 0;
+    let live = 0;
+    for (const entity of members) {
+      if (!entity) continue;
+      if (entity.alive === false) corpses += 1;
+      else if (entity.pos) live += 1;
+    }
+    if (live === 0) {
+      // Every yielding body is gone. A corpse the player left is the receipt —
+      // close the deck now, not at the stale-card grace. Bodies that simply left
+      // the sim close quietly; there is no dead crew to toast about.
+      if (corpses > 0) this._closeYieldKilled(rec, state);
+      else rec.yieldState = 'void';
+      return;
+    }
+    // Neglect reads as "let them go": the deck display-expires the card on the
+    // window, and the producer's own deterministic timeout stays authoritative.
+    if (Number.isFinite(rec.offerUntil) && now >= rec.offerUntil) {
+      this._refuseYield(rec, state, 'expired');
+    }
+  },
+
+  _refuseYield(rec, state, reason) {
+    rec.yieldState = 'refused';
+    this._emit('pirateDisengage:yieldResolved', {
+      squadId: rec.squadId, accepted: false, pods: 0, reason: reason || 'refused',
+      t: (state && state.simTime) || 0,
+    });
+  },
+
+  _closeYieldKilled(rec, state) {
+    rec.yieldState = 'killed';
+    this._emit('pirateDisengage:yieldResolved', {
+      squadId: rec.squadId, accepted: false, pods: 0, reason: 'killed',
+      t: (state && state.simTime) || 0,
+    });
+  },
+
+  // The generous verb: the squad dumps its take as ordinary jettisoned-cargo pods, then runs
+  // for the lane empty. Provenance files it as a secured nonlethal resolution; moral memory
+  // remembers the mercy. Killing the same crew would have paid nothing and cost the ledger.
+  _acceptYield(rec, state) {
+    const now = state.simTime || 0;
+    const members = (rec.memberIds || [])
+      .map((id) => (state.entities ? state.entities.get(id) : null))
+      .filter((entity) => entity && entity.alive !== false && entity.pos);
+    const seed = state.meta && state.meta.seed;
+    let pods = 0;
+    for (const entity of members) {
+      const bearing = ((hash32(seed == null ? 0 : seed, entity.id, 'yield_bearing') % 6283) / 1000);
+      const range = 14 + (hash32(seed == null ? 0 : seed, entity.id, 'yield_range') % 12);
+      const amount = 6 + (hash32(seed == null ? 0 : seed, entity.id, 'yield_amount') % 9);
+      const pod = spawnPayloadEntity(state, {
+        pos: { x: entity.pos.x + Math.cos(bearing) * range, z: entity.pos.z + Math.sin(bearing) * range },
+        vel: { x: 0, z: 0 },
+        radius: 5,
+        mass: 24,
+        physicsBody: { mass: 24 },
+        hull: 100,
+        hullMax: 100,
+        ownerId: null,
+        factionId: entity.factionId || null,
+        salvagePool: { [YIELD_COMMODITY_ID]: amount },
+        payloadType: JETTISONED_CARGO_PAYLOAD_TYPE,
+        worldRecordId: null,
+        transientSector: false,
+      }, this.helpers);
+      if (!pod) continue;
+      pods += 1;
+      entity.data = entity.data || {};
+      const ai = entity.data.ai || (entity.data.ai = {});
+      ai.disengageUntil = now + FLEE_DURATION_S;
+    }
+    for (const entity of members) {
+      markFleeing(entity, state.entities ? state.entities.get(state.playerId) : null, rec, state);
+      // markFleeing owns the pirateDisengage data shape — stamp after it, not before.
+      entity.data.pirateDisengage.yieldDumped = true;
+    }
+    rec.yieldState = 'accepted';
+    rec.until = now + FLEE_DURATION_S;
+    if (members.length) {
+      rememberMoralDebt(state, {
+        id: `yield:${rec.squadId}`,
+        name: 'Yielded Crew',
+        cause: 'accepted_surrender',
+        factionId: members[0].factionId || null,
+        archetype: 'pirate_squad',
+        t: now,
+        source: 'pirateDisengage:yield',
+      });
+      this._emit('combat:nonlethalResolution', {
+        squadId: rec.squadId,
+        count: members.length,
+        factionId: members[0].factionId || null,
+        sectorId: state.world && state.world.currentSectorId || null,
+        text: `Squad ${rec.squadId} yielded its take and ran clean.`,
+        t: now,
+      });
+    }
+    const leader = members[0] || null;
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({
+        channel: 'bark',
+        text: 'Yield\'s in the drift. Count it fair. We\'re gone.',
+        kind: 'pirateDisengage',
+        // ttl doubles as the queue stale-drop deadline: 1 s expired inside the 1.5 s bark gap.
+        ttl: 3,
+        id: `pirateDisengage:yield:${rec.squadId}`,
+        factionId: (leader && leader.factionId) || 'faction_reach',
+      });
+    } else {
+      this._emit('toast', { text: 'Yield\'s in the drift. We\'re gone.', kind: 'pirateDisengage', ttl: 3 });
+    }
+    this._emit('pirateDisengage:yieldResolved', {
+      squadId: rec.squadId, accepted: true, pods, t: now,
+    });
+  },
+
+  _speak(rec, entity) {
+    if (rec.spoken) return;
+    rec.spoken = true;
+    const seed = this.state && this.state.meta && this.state.meta.seed;
+    const factionId = entity && entity.factionId || 'faction_reach';
+    const situation = rec.outcome === 'surrendered' ? 'surrender' : 'flee';
+    const text = decisionBark(rec, entity, seed);
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({
+        channel: 'bark',
+        text,
+        kind: 'pirateDisengage',
+        ttl: 3,
+        id: `pirateDisengage:${rec.squadId}`,
+        factionId,
+      });
+    } else {
+      this._emit('toast', { text, kind: 'pirateDisengage', ttl: 3 });
+    }
+    this._emit('pirateDisengage:voice', {
+      squadId: rec.squadId,
+      patrolId: rec.patrolId,
+      situation,
+      reason: rec.reason,
+      text,
+      factionId,
+    });
+  },
+
+  _emit(evt, payload) {
+    if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(evt, payload);
+  },
+  destroy() {
+    for (const off of this._subs || []) {
+      try { off(); } catch (err) { /* cleanup must not throw */ }
+    }
+    this._subs = [];
+  },
+};
+
+function freshState() {
+  return { squads: {}, baselines: {} };
+}
+
+function ensureState(state) {
+  if (!state.pirateDisengage || typeof state.pirateDisengage !== 'object') state.pirateDisengage = freshState();
+  if (!state.pirateDisengage.squads || typeof state.pirateDisengage.squads !== 'object') state.pirateDisengage.squads = {};
+  if (!state.pirateDisengage.baselines || typeof state.pirateDisengage.baselines !== 'object') state.pirateDisengage.baselines = {};
+  return state.pirateDisengage;
+}
+
+function lawfulPatrols(state) {
+  const out = [];
+  const list = indexedShipLikeScan(state);
+  for (const entity of list) {
+    if (!entity || entity.alive === false || (entity.type !== 'ship' && entity.type !== 'drone')) continue;
+    const ai = entity.data && entity.data.ai || {};
+    const context = String(ai.spawnContext || ai.context || '').toLowerCase();
+    const archetype = String(ai.archetype || ai.role || '').toLowerCase();
+    if (ai.lawful === true && (context.includes('patrol') || archetype.includes('patrol') || ai.doctrine === 'official')) {
+      out.push(entity);
+    }
+  }
+  return out;
+}
+
+function combatantSquads(state) {
+  const out = new Map();
+  const list = indexedShipLikeScan(state);
+  for (const entity of list) {
+    if (!isActiveCombatant(entity, state)) continue;
+    const ai = entity.data && entity.data.ai || {};
+    if (ai.pirateDisengaged === true) continue;
+    const squadId = String(ai.squadId || ai.encounterId || `entity:${entity.id}`);
+    if (!out.has(squadId)) out.set(squadId, []);
+    out.get(squadId).push(entity);
+  }
+  return out;
+}
+
+/** The shared "hostile pirate-class hull" predicate (also read by ai/podHunt.js). */
+export function isActiveCombatant(entity, state) {
+  if (!entity || entity.alive === false || (entity.type !== 'ship' && entity.type !== 'drone')) return false;
+  if (entity.id === state.playerId || entity.team === PLAYER_TEAM || entity.team === 2) return false;
+  const data = entity.data || {};
+  const ai = data.ai || {};
+  if (!ai || ai.lawful || ai.passive || moraleExempt(entity)) return false;
+  const doctrine = pirateDoctrineForEntity(entity);
+  const words = `${ai.doctrine || ''} ${ai.archetype || ''} ${ai.role || ''} ${data.role || ''} ${data.encounterKind || ''}`.toLowerCase();
+  const pirate = !!doctrine || words.includes('pirate') || words.includes('raider') || words.includes('scavenger');
+  if (pirate) return true;
+  const combat = data.combat || {};
+  const playerTeam = entityFor(state, state.playerId)?.team ?? PLAYER_TEAM;
+  return ai.forcePlayerTarget === true
+    || ai.huntPlayer === true
+    || combat.targetId === state.playerId
+    || combat.lockTarget === state.playerId
+    || Array.isArray(ai.hostileTeams) && ai.hostileTeams.includes(playerTeam);
+}
+
+function moraleExempt(entity) {
+  const data = entity && entity.data || {};
+  const ai = data.ai || {};
+  if (data.isBoss === true || data.encounterBoss === true || data.missionBoss === true
+    || data.aceMemory || data.storyTargetId || data.missionTag || data.missionId
+    || ai.isBoss === true || ai.fanatic === true || ai.ace === true
+    || ai.moraleImmune === true || ai.surrenderImmune === true) return true;
+  const authored = [
+    ai.archetype, ai.aiArchetype, ai.role, ai.preferredRole, ai.encounterRole,
+    ai.spawnContext, ai.encounterKind, ai.engagementTrigger, data.aiArchetype,
+    data.role, data.storyTargetRole, data.encounterKind,
+  ].filter(Boolean).join(' ').toLowerCase();
+  return /(^|[\s_-])(boss|miniboss|fanatic)([\s_-]|$)/.test(authored)
+    || authored.includes('named_hunter')
+    || authored.includes('ace_return')
+    || authored.includes('named_ace');
+}
+
+function nearestPatrol(members, patrols) {
+  let best = null;
+  let bestD2 = Infinity;
+  const limit2 = PATROL_RADIUS * PATROL_RADIUS;
+  for (const member of members) {
+    for (const patrol of patrols) {
+      const d2 = dist2(member, patrol);
+      if (d2 <= limit2 && d2 < bestD2) {
+        bestD2 = d2;
+        best = patrol;
+      }
+    }
+  }
+  return best;
+}
+
+function moraleDecision(members, state, baseline, patrol) {
+  const player = entityFor(state, state.playerId);
+  // X-02 v4: the Claim Jumper's wing holds its nerve while its raid beat is live — a lawful
+  // patrol on glass does not send it home. Its designed exits stay: ≤30% hull or beat done.
+  const wingBeat = (m) => m && m.data?.onboardingRaidWing === true
+    && state?.onboarding?.raid?.active && !state?.onboarding?.raid?.wingDone;
+  if (patrol && !members.every(wingBeat)) return { reason: 'lawful-patrol-nearby', outcome: 'fled', threat: patrol };
+  if (badProfitRisk(members, state)) return { reason: 'profit-risk-bad', outcome: 'fled', threat: player };
+
+  const average = averageHullFraction(members);
+  // Massline tumble morale (Wave M2 §3.4, flag massline2.tumble — OFF headless so this file's
+  // deterministic contract check is untouched): a squadmate physically flung into a helpless spin
+  // inside the last few seconds is a morale shock. Healthy crews shrug ONE tumble off; a crew
+  // already worn below the retreat-adjacent bar breaks and leaves — routing an enemy by yeeting
+  // his wingman is a story, not a kill. Deterministic (no RNG); relentless narrative combatants
+  // keep their authored contract.
+  if (massline2Flag('tumble') && !members.some(isRelentlessNarrativeCombatant)
+    && average <= TUMBLE_RETREAT_HULL_FRACTION && squadTumbledRecently(members, state)) {
+    return { reason: 'massline-tumbled', outcome: 'fled', threat: player };
+  }
+  // Authored vendettas retain their distinct dramatic contract. Explicit boss/ace/fanatic cases
+  // are already filtered by moraleExempt; this narrower exception preserves the existing hunter
+  // behavior without making every ordinary hostile suicidal.
+  const relentless = members.some(isRelentlessNarrativeCombatant);
+  if (!relentless && average <= SURRENDER_HULL_FRACTION) {
+    return { reason: 'damage-critical', outcome: 'surrendered', threat: player };
+  }
+  if (!relentless && average <= DAMAGE_RETREAT_HULL_FRACTION) {
+    return { reason: 'damage-retreat', outcome: 'fled', threat: player };
+  }
+  if (baseline > 1
+    && members.length / baseline <= WING_LOSS_LIVE_RATIO
+    && average <= WING_LOSS_HULL_FRACTION) {
+    const outcome = average <= SURRENDER_HULL_FRACTION ? 'surrendered' : 'fled';
+    return { reason: 'wing-loss', outcome, threat: player };
+  }
+  return null;
+}
+
+function dist2(a, b) {
+  const dx = (a.pos && a.pos.x || 0) - (b.pos && b.pos.x || 0);
+  const dz = (a.pos && a.pos.z || 0) - (b.pos && b.pos.z || 0);
+  return dx * dx + dz * dz;
+}
+
+// True when any squadmate carries a fresh tumble stamp (written by systems/tumbleStates.js at
+// tumble entry; durable past recovery so the shock window outlives the spin itself).
+function squadTumbledRecently(members, state) {
+  const now = state.simTime || 0;
+  for (const m of members) {
+    const at = m && m.data && m.data.tumbledAt;
+    if (Number.isFinite(at) && now - at <= TUMBLE_MORALE_WINDOW_S) return true;
+  }
+  return false;
+}
+
+// The wing that ran from the pilot keeps its face: the leader is remembered on the moral
+// ledger as a spared escape, so the return encounter can bring that named crew back —
+// grateful or armed, the seed's own roll — and the band's hails and news desk can say the
+// name. Only a flight FROM the pilot records (a patrol that merely scared them off is not
+// the pilot's mercy). Deterministic id per squad: a wing that breaks off twice is still
+// one account, and rememberMoralDebt's dedupe never double-counts the mercy.
+function rememberFledWing(state, rec, members, threat, now) {
+  if (!threat || threat.id !== state.playerId || !members.length) return null;
+  const leader = members[0];
+  const seed = state.meta && state.meta.seed;
+  const roll = hash32(seed == null ? 0 : seed, rec.squadId, 'fled-wing-name');
+  const name = `${FRONTIER_FIRST_NAMES[roll % FRONTIER_FIRST_NAMES.length]} `
+    + `${FRONTIER_LAST_NAMES[(roll >>> 9) % FRONTIER_LAST_NAMES.length]}`;
+  return rememberMoralDebt(state, {
+    id: `wing:${rec.squadId}`,
+    name,
+    cause: 'spared_escape',
+    factionId: leader.factionId || 'faction_reach',
+    archetype: 'pirate_squad',
+    t: now,
+    source: 'pirateDisengage:fled',
+    witness: { kind: 'crew', source: 'pirateDisengage:fled' },
+  });
+}
+
+function markFleeing(entity, patrol, rec, state) {
+  const data = entity.data || (entity.data = {});
+  const ai = data.ai || (data.ai = {});
+  ai.fsm = 'flee';
+  ai.passive = true;
+  ai.forcePlayerTarget = false;
+  ai.huntPlayer = false;
+  ai.pirateDisengaged = true;
+  ai.disengageUntil = rec.until;
+  ai.engagementTrigger = 'risk_disengage';
+  ai.roe = RulesOfEngagement.HOLD_FIRE;
+  ai.activity = normalizeActivity({
+    kind: ActivityKind.FLEE,
+    reason: `pirate_disengage:${rec.reason}`,
+    anchor: entity.pos,
+    leashRadius: PATROL_RADIUS * 2,
+    startedTick: state.tick | 0,
+    targetId: null,
+  });
+  if (rec.reason === 'profit-risk-bad') ai.motiveSatisfied = true;
+  if (Array.isArray(ai.hostileTeams)) ai.hostileTeams = ai.hostileTeams.filter((team) => team !== PLAYER_TEAM);
+  const combat = data.combat || (data.combat = {});
+  if (combat.targetId === state.playerId) combat.targetId = null;
+  if (combat.lockTarget === state.playerId) combat.lockTarget = null;
+  const intent = data.intent || (data.intent = {});
+  intent.fire = false;
+  intent.fireGroup = null;
+  const away = fleeVector(entity, patrol);
+  intent.moveX = away.x;
+  intent.moveZ = away.z;
+  data.pirateDisengage = {
+    squadId: rec.squadId,
+    patrolId: rec.patrolId,
+    phase: 'flee',
+    reason: rec.reason,
+    until: rec.until,
+  };
+}
+
+function markSurrendered(entity, rec, state) {
+  const data = entity.data || (entity.data = {});
+  const ai = data.ai || (data.ai = {});
+  ai.fsm = 'surrender';
+  ai.passive = true;
+  ai.forcePlayerTarget = false;
+  ai.huntPlayer = false;
+  ai.pirateDisengaged = true;
+  ai.disengageUntil = rec.until;
+  ai.motiveSatisfied = true;
+  ai.engagementTrigger = 'combat_surrender';
+  ai.roe = RulesOfEngagement.HOLD_FIRE;
+  ai.activity = normalizeActivity({
+    kind: ActivityKind.DISENGAGE,
+    reason: `combat_surrender:${rec.reason}`,
+    anchor: entity.pos,
+    leashRadius: 0,
+    startedTick: state.tick | 0,
+    targetId: null,
+  });
+  if (Array.isArray(ai.hostileTeams)) ai.hostileTeams = ai.hostileTeams.filter((team) => team !== PLAYER_TEAM);
+  const combat = data.combat || (data.combat = {});
+  combat.targetId = null;
+  combat.lockTarget = null;
+  const intent = data.intent || (data.intent = {});
+  intent.fire = false;
+  intent.fireGroup = null;
+  intent.moveX = 0;
+  intent.moveZ = 0;
+  intent.boost = false;
+  data.pirateDisengage = {
+    squadId: rec.squadId,
+    patrolId: rec.patrolId,
+    phase: 'surrender',
+    reason: rec.reason,
+    until: rec.until,
+  };
+}
+
+function badProfitRisk(members, state) {
+  if (!members.length || !members.every(isProfitMotivated)) return false;
+  const player = entityFor(state, state.playerId);
+  if (!player || player.alive === false || hullFraction(player) < 0.35) return false;
+  const average = members.reduce((sum, entity) => sum + hullFraction(entity), 0) / members.length;
+  return average <= 0.38;
+}
+
+function isProfitMotivated(entity) {
+  const ai = entity && entity.data && entity.data.ai || {};
+  return ai.motive === 'cargo_extortion' || ai.motive === 'toll_collection';
+}
+
+function isRelentlessNarrativeCombatant(entity) {
+  const ai = entity && entity.data && entity.data.ai || {};
+  return ai.motive === 'personal_vendetta';
+}
+
+function averageHullFraction(members) {
+  return members.length
+    ? members.reduce((sum, entity) => sum + hullFraction(entity), 0) / members.length
+    : 1;
+}
+
+function hullFraction(entity) {
+  const max = Math.max(1, Number(entity && entity.hullMax) || 1);
+  return Math.max(0, Math.min(1, (Number(entity && entity.hull) || 0) / max));
+}
+
+function entityFor(state, id) {
+  return id == null || !state.entities || typeof state.entities.get !== 'function'
+    ? null
+    : state.entities.get(id) || null;
+}
+
+function fleeVector(entity, patrol) {
+  const dx = (entity.pos && entity.pos.x || 0) - (patrol && patrol.pos && patrol.pos.x || 0);
+  const dz = (entity.pos && entity.pos.z || 0) - (patrol && patrol.pos && patrol.pos.z || 0);
+  const len = Math.hypot(dx, dz) || 1;
+  return { x: dx / len, z: dz / len };
+}
+
+function decisionBark(rec, entity, seed) {
+  if (rec.outcome === 'surrendered') return 'Weapons cold. We yield.';
+  if (rec.reason === 'damage-retreat') return "Drive's failing. Breaking off.";
+  if (rec.reason === 'wing-loss') return "Wing broken. We're pulling out.";
+  const factionId = entity && entity.factionId || 'faction_reach';
+  return barkFor(factionId, 'flee', hash32(seed == null ? 0 : seed, rec.squadId, 'pirateDisengageFlee'));
+}
+
+export function isPirateDisengaged(entity) {
+  if (!entity || !entity.data) return false;
+  const ai = entity.data.ai;
+  if (ai && (ai.pirateDisengaged === true || ai.fsm === 'flee' || ai.fsm === 'surrender')) return true;
+  const pd = entity.data.pirateDisengage;
+  if (pd && (pd.phase === 'flee' || pd.phase === 'surrender')) return true;
+  return false;
+}
+
+export default pirateDisengage;

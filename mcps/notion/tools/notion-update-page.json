@@ -1,0 +1,153 @@
+{
+  "name": "notion-update-page",
+  "description": "Update a Notion page's properties, content, icon, or cover.\n\n## Required parameters\n\n- `page_id`: Must be a UUID (with or without dashes). Do NOT pass a full Notion URL -- extract the UUID from the URL first.\n- `command`: One of: `update_properties`, `update_content`, `replace_content`, `insert_content`, `apply_template`, `update_verification`.\n\n## Command-specific required fields\n\n- `update_properties` => requires `properties` object.\n- `update_content` => requires `content_updates` array of {old_str, new_str}.\n- `replace_content` => requires `new_str`.\n- `insert_content` => requires `content` string.\n\n## Property value formats\n\n- Date: expanded keys `\"date:PropName:start\"`, `\"date:PropName:end\"`, `\"date:PropName:is_datetime\"`\n- Checkbox: `\"__YES__\"` / `\"__NO__\"` (not boolean true/false)\n- Number: actual numbers (not strings)\n- Properties named `id` or `url`: prefix with `\"userDefined:\"` (e.g. `\"userDefined:URL\"`)\n\n## Workflow\n\n1. Call notion-fetch first to get the page's current content and data source schema.\n2. Use the exact property names from the schema.\n3. For `update_content`, match `old_str` exactly against the fetched content.\n\n<example description=\"Update title\">{\"page_id\": \"abc123\", \"command\": \"update_properties\", \"properties\": {\"title\": \"New Title\"}}</example>\n<example description=\"Append content\">{\"page_id\": \"abc123\", \"command\": \"insert_content\", \"content\": \"## New Section\\nContent here\"}</example>",
+  "inputSchema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "page_id": {
+        "type": "string",
+        "description": "The ID of the page to update, with or without dashes."
+      },
+      "command": {
+        "type": "string",
+        "enum": [
+          "update_properties",
+          "update_content",
+          "replace_content",
+          "insert_content",
+          "apply_template",
+          "update_verification"
+        ]
+      },
+      "properties": {
+        "description": "Required for \"update_properties\" command. A JSON object that updates the page's properties. For pages in a database, use the SQLite schema definition shown in <database>. For pages outside of a database, the only allowed property is \"title\", which is the title of the page in inline markdown format. Use null to remove a property's value.",
+        "type": "object",
+        "propertyNames": {
+          "type": "string"
+        },
+        "additionalProperties": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "new_str": {
+        "description": "Required for \"replace_content\" command. The new content string to replace the entire page content with.",
+        "type": "string"
+      },
+      "content": {
+        "description": "Required for \"insert_content\" command. The markdown content to insert into the page.",
+        "type": "string"
+      },
+      "content_updates": {
+        "description": "Required for \"update_content\" command. An array of search-and-replace operations, each with old_str (content to find) and new_str (replacement content).",
+        "maxItems": 100,
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "old_str": {
+              "type": "string",
+              "description": "The existing content string to find and replace. Must exactly match the page content."
+            },
+            "new_str": {
+              "type": "string",
+              "description": "The new content string to replace old_str with."
+            },
+            "replace_all_matches": {
+              "description": "If true, replaces all occurrences of old_str. If false (default), the operation fails if there are multiple matches.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "old_str",
+            "new_str"
+          ],
+          "additionalProperties": {}
+        }
+      },
+      "position": {
+        "description": "Optional for \"insert_content\" command. Use {\"type\":\"start\"} to prepend content or {\"type\":\"end\"} to append content. Omit to append.",
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "start"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": {}
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "end"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": {}
+          }
+        ]
+      },
+      "allow_deleting_content": {
+        "description": "Optional for \"replace_content\" and \"update_content\" commands. Set to true to allow deletion of child pages and databases that are not referenced in the new content. If false or omitted, the operation will fail with an error listing the pages/databases that would be deleted.",
+        "type": "boolean"
+      },
+      "template_id": {
+        "description": "Required for \"apply_template\" command. The ID of a template to apply to this page. Template content is appended to any existing page content.",
+        "type": "string"
+      },
+      "verification_status": {
+        "type": "string",
+        "enum": [
+          "verified",
+          "unverified"
+        ]
+      },
+      "verification_expiry_days": {
+        "description": "Optional for \"update_verification\" command when verification_status is \"verified\". Number of days until verification expires (e.g. 7, 30, 90). Omit for indefinite verification.",
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 9007199254740991
+      },
+      "icon": {
+        "description": "An emoji character (e.g. \"🚀\"), a custom emoji by name (e.g. \":rocket_ship:\"), or an external image URL. Use \"none\" to remove the icon. Omit to leave unchanged. Can be set alongside any command.",
+        "type": "string"
+      },
+      "cover": {
+        "description": "An external image URL for the page cover. Use \"none\" to remove the cover. Omit to leave unchanged. Can be set alongside any command.",
+        "type": "string"
+      },
+      "allow_async": {
+        "description": "Optional. Set to true to opt into an async_task response after the update_page request is validated, durably persisted, and accepted for queued execution. If omitted or false, the tool waits for a synchronous result when possible, but may still return a pollable async_task response if queued execution exceeds the synchronous wait deadline.",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "page_id",
+      "command"
+    ],
+    "additionalProperties": {}
+  }
+}

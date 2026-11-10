@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Field Hardware — the kit</title>
+<link rel="stylesheet" href="../tokens/tokens.css">
+<link rel="stylesheet" href="motion.css">
+<link rel="stylesheet" href="fh.css">
+<style>
+  /* Page chrome only. Every component below is drawn by the produced assets through fh.css. */
+  body { margin: 0; }
+  .page { padding: 0 0 96px; }
+  .head { padding: 44px 44px 10px; }
+  .head p { color: var(--fh-text-resting); max-width: 84ch; margin: 14px 0 0; }
+  section { padding: 6px 44px 30px; }
+  h2 { font-family: var(--fh-face-display);
+       font-variation-settings: 'wght' 600, 'wdth' 62; letter-spacing: var(--fh-track-legend);
+       text-transform: uppercase; font-size: var(--fh-size-fine); color: var(--fh-legend);
+       margin: 34px 0 14px; }
+  .note { color: var(--fh-text-tertiary); font-size: var(--fh-size-fine); max-width: 86ch;
+          line-height: 1.55; margin: 10px 0 0; }
+  .grid { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  .cap { font-family: var(--fh-face-display);
+         font-variation-settings: 'wght' 600, 'wdth' 62; letter-spacing: var(--fh-track-legend);
+         text-transform: uppercase; font-size: 11px; color: var(--fh-text-tertiary);
+         margin-top: 6px; display: block; }
+  figure { margin: 0; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+  .sw { width: 132px; }
+  .sw i { display: block; height: 52px; }
+  .sw code { font-family: var(--fh-face-text); font-size: 11px; color: var(--fh-text-resting); }
+  .over-world { background-image: url('../../../../design/frontend/direction/approved/plates/plate-title-v2.png');
+                background-size: cover; background-position: center; padding: 34px;
+                display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+  .icons { display: grid; grid-template-columns: repeat(auto-fill, 58px); gap: 12px; }
+  .icons figure { text-align: center; }
+  .icons .cap { font-size: 9px; word-break: break-all; }
+  .marks { display: grid; grid-template-columns: repeat(auto-fill, 108px); gap: 14px; }
+  .marks figure { text-align: center; }
+</style>
+</head>
+<body class="fh-root">
+<div class="page">
+
+<header class="head">
+  <h1 class="fh-title">THE KIT</h1>
+  <p class="fh-body">Every surface on this page is a produced asset — a Cycles render of real
+     modelled geometry with real thickness, a real lit top edge and real alpha. There is no
+     <code>linear-gradient</code>, no <code>box-shadow</code> and no <code>border:</code>
+     standing in for a material anywhere in <code>fh.css</code>. Strings are the game's own.</p>
+</header>
+
+<section>
+  <h2>Colour</h2>
+  <div class="swatches" id="swatches"></div>
+
+  <h2>Type — every step of the scale, in the shipped faces</h2>
+  <div class="fh-stack">
+    <span class="fh-name">SPACEFACE</span>
+    <span class="fh-hero">HELIOS STATION</span>
+    <span class="fh-title">STATION EXCHANGE</span>
+    <span class="fh-heronum">95</span>
+    <span class="fh-menu-item">NEW GAME</span>
+    <span class="fh-subhead">RICOCHET FOUNDRY</span>
+    <span class="fh-emphasis">Trade Hub · Class L · Solar Concord Navy</span>
+    <p class="fh-body">Demand ↑ Trade Hub consumes Iron Ore · Tight core · No conflict · Cyclic</p>
+    <span class="fh-data">5,000 cr</span>
+    <span class="fh-legend" data-fh-lit="on">SECTOR LAW</span>
+    <span class="fh-legend" data-fh-lit="rest">JURISDICTION</span>
+    <span class="fh-legend" data-fh-lit="off">NO GHOST FOR THIS SEED YET</span>
+    <span class="fh-fine">v0.9.4 · build 2026.09.10</span>
+  </div>
+  <p class="note">The three legends are the same colour token at three light levels. The state
+     is the light, not a different colour — that is why a disabled legend reads as unlit
+     hardware rather than as grey text.</p>
+</section>
+
+<section>
+  <h2>Plates and windows</h2>
+  <div class="grid">
+    <figure><div class="fh-plate" style="width:300px;height:180px"></div>
+      <span class="cap">plate.bench.primary</span></figure>
+    <figure><div class="fh-plate fh-plate--raised" style="width:240px;height:180px"></div>
+      <span class="cap">plate.bench.raised</span></figure>
+    <figure><div class="fh-plate fh-plate--sunk" style="width:240px;height:180px"></div>
+      <span class="cap">plate.bench.sunk</span></figure>
+    <figure><div class="fh-plate fh-plate--paper" style="width:240px;height:180px">
+        <p class="fh-body" style="font-size:13px;margin:0">Kestrel, that pulse is the job. Tag
+          the sealed mass. Do not open it.</p></div>
+      <span class="cap">plate.bench.paper</span></figure>
+    <figure><div class="fh-plate fh-plate--edge" style="width:200px;height:110px"></div>
+      <span class="cap">plate.edge.small</span></figure>
+    <figure><div class="fh-rail" style="width:64px;height:180px"></div>
+      <span class="cap">plate.poster.rail</span></figure>
+  </div>
+  <p class="note">Each is one nine-sliced render. The stretch test at 2× width and 3× height is
+     in the return under <code>build/stretch/</code>: corners stay self-contained and the lit
+     top edge continues along the stretched edge.</p>
+
+  <h2>The same windows, over the world</h2>
+  <div class="over-world">
+    <div class="fh-window" style="width:280px;height:150px">
+      <span class="fh-legend" data-fh-lit="on">SMOKED · 45%</span></div>
+    <div class="fh-window fh-window--deep" style="width:280px;height:150px">
+      <span class="fh-legend" data-fh-lit="on">DEEP · 60%</span></div>
+    <div class="fh-window fh-window--viewport" style="width:280px;height:150px">
+      <span class="fh-legend" data-fh-lit="on">VIEWPORT · RIM ONLY</span></div>
+  </div>
+  <p class="note">The scene behind stays sharp: the darkening is in the asset, and there is no
+     <code>backdrop-filter</code> anywhere — it is banned in flight and it blurs the world.</p>
+</section>
+
+<section>
+  <h2>Keys — every state, live</h2>
+  <div class="grid">
+    <button class="fh-key fh-key--primary fh-pressable" data-fh-cue="ui_confirm">Confirm purchase</button>
+    <button class="fh-key fh-key--secondary fh-pressable">Back</button>
+    <button class="fh-key fh-key--hazard fh-pressable" data-fh-cue="ui_crucible_enter">Launch Swarm</button>
+    <button class="fh-key fh-key--small fh-pressable">New seed</button>
+    <button class="fh-key fh-key--secondary fh-pressable" disabled>Continue</button>
+  </div>
+  <div class="grid" style="margin-top:14px">
+    <button class="fh-key fh-key--legend is-lit" aria-selected="true">ALL STOCK 45</button>
+    <button class="fh-key fh-key--legend">IN HOLD 0</button>
+    <button class="fh-key fh-key--legend">RAW &amp; RARE 21</button>
+    <button class="fh-key fh-key--legend">INDUSTRY 12</button>
+    <button class="fh-key fh-key--legend">RESTRICTED 0</button>
+  </div>
+  <p class="note">Hover raises the edge light, press sinks the plate 2 px inside its own
+     bounds, disabled turns the light off. Every state is its own render at identical bounds —
+     the registration check measured 0.00–0.03 px of centroid drift across all of them.</p>
+
+  <h2>Sockets — the action bar is machined recesses, not buttons</h2>
+  <div class="fh-socket-group" style="width:max-content" id="sockets"></div>
+
+  <h2>Toggles, sliders, steppers, inputs</h2>
+  <div class="grid">
+    <button class="fh-toggle" role="switch" aria-checked="false" aria-label="Reduce motion"></button>
+    <button class="fh-toggle" role="switch" aria-checked="true" aria-label="Flash reduce"></button>
+    <div class="fh-slider" style="width:260px" data-min="0" data-max="100" data-value="62">
+      <span class="fh-slider-track"></span><span class="fh-slider-fill"></span>
+      <button class="fh-slider-thumb" aria-label="Sound"></button>
+    </div>
+    <div class="fh-stepper" data-value="1" data-step="1" data-unit="u">
+      <button class="fh-stepper-minus" aria-label="Fewer">−</button>
+      <span class="fh-stepper-well"></span>
+      <button class="fh-stepper-plus" aria-label="More">+</button>
+    </div>
+    <input class="fh-input" style="width:240px" value="4242" aria-label="Seed">
+  </div>
+
+  <h2>Engraved rows, with the selected light</h2>
+  <div class="fh-plate" style="width:520px;padding:10px">
+    <div class="fh-rows">
+      <div class="fh-row is-selected" tabindex="0"><span>IRON ORE</span>
+        <span class="fh-data" style="margin-left:auto">79 CR</span></div>
+      <div class="fh-row" tabindex="0"><span>FUEL CELLS</span>
+        <span class="fh-data" style="margin-left:auto">124 CR</span></div>
+      <div class="fh-row" tabindex="0"><span>SALVAGE PLATE</span>
+        <span class="fh-data" style="margin-left:auto">41 CR</span></div>
+    </div>
+  </div>
+
+  <h2>Tiles — a list of things that exist in the world is imaged, never a row of words</h2>
+  <div class="grid" id="tiles"></div>
+</section>
+
+<section>
+  <h2>Instruments</h2>
+  <div class="grid" style="align-items:flex-end">
+    <figure>
+      <div class="fh-gauge" id="gauge">
+        <div class="fh-gauge-face"><span class="fh-heronum" data-gauge-readout>95</span></div>
+      </div>
+      <span class="cap">gauge.speed · live needle</span>
+    </figure>
+    <figure>
+      <div class="fh-radar" id="radar"></div>
+      <span class="cap">radar · face, rings, sweep and class glyphs</span>
+    </figure>
+    <div class="fh-stack">
+      <figure><div class="fh-bar" id="bar-energy" style="width:240px"></div>
+        <span class="cap">ENERGY 80</span></figure>
+      <figure><div class="fh-bar" id="bar-drive" style="width:240px"></div>
+        <span class="cap">DRIVE 100</span></figure>
+      <figure><div class="fh-bar" id="bar-heat" style="width:240px"></div>
+        <span class="cap">HEAT 10</span></figure>
+      <figure><div class="fh-strip" id="status" style="width:240px"></div>
+        <span class="cap">STATUS 0 / 10</span></figure>
+      <figure><div class="fh-badge"></div><span class="cap">badge.law</span></figure>
+      <figure>
+        <span class="fh-tape"><span class="fh-tape-mid fh-legend">BAND OFF ---</span></span>
+        <span class="cap">comms tape</span>
+      </figure>
+      <figure><span class="fh-tag">Payload · TOW · 69% · READY</span>
+        <span class="cap">tag.world</span></figure>
+    </div>
+  </div>
+
+  <h2>Status lights — all four colours, three levels</h2>
+  <div class="grid" id="lights"></div>
+
+  <h2>Safety paint — one hazard element per screen</h2>
+  <div class="fh-hazard" style="width:420px"></div>
+</section>
+
+<section>
+  <h2>The icon family — 86 glyphs, one construction</h2>
+  <div class="icons" id="icons"></div>
+
+  <h2>Marks</h2>
+  <div class="marks" id="marks"></div>
+</section>
+
+</div>
+
+<script src="sprites.js"></script>
+<script src="sound-recipes.js"></script>
+<script src="motion.js"></script>
+<script src="sound.js"></script>
+<script src="fh.js"></script>
+<script>
+(function () {
+  var K = FH.kit.init({ sprite: window.FH_SPRITES.all });
+
+  // colour swatches, read from the token layer rather than re-typed here
+  var TOKENS = ['ground', 'plate', 'plate-raised', 'plate-sunk', 'edge-light', 'bone',
+                'legend', 'signal', 'hazard', 'wanted', 'cold', 'good', 'bad', 'paper'];
+  document.getElementById('swatches').innerHTML = TOKENS.map(function (t) {
+    return '<div class="sw"><i style="background:var(--fh-' + t + ')"></i>' +
+           '<code>--fh-' + t + '</code></div>';
+  }).join('');
+
+  // tiles: the Crucible's starter builds, imaged with their marks and weapon icons
+  var BUILDS = [['Web Weaver', 'line'], ['Ricochet Runner', 'boost'],
+                ['Baseline Energy', 'energy'], ['Baseline Kinetic', 'munitions'],
+                ['Physics Toolkit', 'well'], ['Massline Rig', 'tow']];
+  document.getElementById('tiles').innerHTML = BUILDS.map(function (b, i) {
+    return '<button class="fh-tile"' + (i === 1 ? ' aria-selected="true"' : '') + '>' +
+      '<span class="fh-tile-art">' + FH.kit.icon(b[1], 48) + '</span>' +
+      '<span class="fh-tile-legend">' + b[0] + '</span></button>';
+  }).join('');
+
+  document.getElementById('sockets').innerHTML =
+    [['seed', 'lit', 'Seed'], ['well', 'rest', 'Well'], ['repel', 'cooling', 'Repel'],
+     ['cone', 'locked', 'Cone'], ['skim', 'empty', 'Skim']].map(function (s) {
+      return '<button class="fh-socket" data-state="' + s[1] + '" aria-label="' + s[2] +
+        '">' + FH.kit.icon(s[0], 32) + '</button>';
+    }).join('');
+
+  // indicators
+  FH.kit.bar(document.getElementById('bar-energy'), 8, 10);
+  FH.kit.bar(document.getElementById('bar-drive'), 10, 10);
+  FH.kit.bar(document.getElementById('bar-heat'), 1, 10, 'hot');
+  var strip = document.getElementById('status');
+  for (var i = 0; i < 10; i++) {
+    var l = document.createElement('span');
+    l.className = 'fh-light';
+    l.setAttribute('data-level', 'off');
+    strip.appendChild(l);
+  }
+
+  document.getElementById('lights').innerHTML =
+    ['legend', 'cold', 'wanted', 'good'].map(function (c) {
+      return ['on', 'dim', 'off'].map(function (lv) {
+        return '<figure><span class="fh-light" data-colour="' + c + '" data-level="' + lv +
+               '"></span><span class="cap">' + c + ' · ' + lv + '</span></figure>';
+      }).join('');
+    }).join('');
+
+  FH.kit.radar(document.getElementById('radar'), {
+    sweepAngle: 42,
+    contacts: [{ cls: 'derelict', x: 0.32, y: 0.44 }, { cls: 'freighter', x: -0.51, y: 0.12 },
+               { cls: 'pirate', x: 0.18, y: -0.36, hostile: true },
+               { cls: 'asteroid', x: -0.22, y: -0.58 }, { cls: 'station', x: 0.62, y: -0.1 },
+               { cls: 'you', x: 0, y: 0 }],
+  });
+  FH.kit.gauge(document.getElementById('gauge'), 95, 200);
+
+  // the whole icon family and the marks, from the produced sprites
+  var NAMES = Array.from(window.FH_SPRITES.icons24.matchAll(/id="icon-([^"]+)"/g))
+    .map(function (m) { return m[1]; });
+  document.getElementById('icons').innerHTML = NAMES.map(function (n) {
+    return '<figure>' + FH.kit.icon(n, 32) + '<span class="cap">' + n + '</span></figure>';
+  }).join('');
+
+  var MARKS = Array.from(window.FH_SPRITES.marks.matchAll(/id="((?:crest|mark|insignia)-[^"]+)"/g))
+    .map(function (m) { return m[1]; });
+  document.getElementById('marks').innerHTML = MARKS.map(function (n) {
+    return '<figure>' + FH.kit.mark(n) + '<span class="cap">' +
+      n.replace(/^(crest|mark|insignia)-/, '') + '</span></figure>';
+  }).join('');
+})();
+</script>
+</body>
+</html>

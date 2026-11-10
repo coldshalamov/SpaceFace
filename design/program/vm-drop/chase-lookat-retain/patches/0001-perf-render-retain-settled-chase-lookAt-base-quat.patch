@@ -1,0 +1,223 @@
+From 1dc05e5d91e34dcd46a14f760b3e2644996fd719 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 04:37:46 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20retain=20settled=20chase=20look?=
+ =?UTF-8?q?At=20base=20quat=20(~2.1=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet hover re-paid Three Object3D.lookAt every follow frame after eye+target
+bit-settled. Cache the base look quat and restore on unchanged eye/target;
+roll/shake still post-multiply. Soft-GPU fps not claimed.
+---
+ src/render/camera.js              |  56 ++++++++++++++++-
+ test/chase-lookat-retain.test.mjs | 101 ++++++++++++++++++++++++++++++
+ 2 files changed, 156 insertions(+), 1 deletion(-)
+ create mode 100644 test/chase-lookat-retain.test.mjs
+
+diff --git a/src/render/camera.js b/src/render/camera.js
+index c24eea683..67d10cbc7 100644
+--- a/src/render/camera.js
++++ b/src/render/camera.js
+@@ -99,6 +99,46 @@ const LOOKAHEAD_LEAD_SMOOTHING_S = 0.10; // smooth latest-tick velocity against
+ // pair out of the safe frame during a dodge. Combat keeps 0.6 of the lead — 0.30 s of velocity —
+ // so the pilot's dodge still reads without the camera abandoning the threat.
+ export const ACTIVE_ATTACKER_LOOKAHEAD_SCALE = 0.6;
++// Chase lookAt retain: follow() writes eye then lookAt every frame. Once focus/zoom/kick
++// settle, eye+target are bit-identical and Three Object3D.lookAt still pays
++// updateWorldMatrix + Matrix4.lookAt + setFromRotationMatrix. Cache the base look quat and
++// restore it on unchanged eye/target; roll/shake still post-multiply after. Soft-GPU fps not claimed.
++let CHASE_LOOKAT_RETAIN = true;
++export function setChaseLookAtRetainForBench(enabled) {
++  CHASE_LOOKAT_RETAIN = enabled !== false;
++  return CHASE_LOOKAT_RETAIN;
++}
++export function getChaseLookAtRetainForBench() {
++  return CHASE_LOOKAT_RETAIN !== false;
++}
++
++/**
++ * Apply chase look-at. Caller must set cam.position to (eyeX,eyeY,eyeZ) first.
++ * cache bag (per camera): { eyeX, eyeY, eyeZ, targetX, targetZ, baseQuat }.
++ * Returns true when Three lookAt ran; false when the cached base quat was restored.
++ */
++export function applyChaseLookAt(cam, eyeX, eyeY, eyeZ, targetX, targetZ, cache = null) {
++  if (!cam) return false;
++  const tx = Number.isFinite(targetX) ? targetX : 0;
++  const tz = Number.isFinite(targetZ) ? targetZ : 0;
++  if (CHASE_LOOKAT_RETAIN && cache && cache.baseQuat
++      && eyeX === cache.eyeX && eyeY === cache.eyeY && eyeZ === cache.eyeZ
++      && tx === cache.targetX && tz === cache.targetZ) {
++    cam.quaternion.copy(cache.baseQuat);
++    return false;
++  }
++  cam.lookAt(tx, 0, tz);
++  if (cache) {
++    if (!cache.baseQuat) cache.baseQuat = cam.quaternion.clone();
++    else cache.baseQuat.copy(cam.quaternion);
++    cache.eyeX = eyeX;
++    cache.eyeY = eyeY;
++    cache.eyeZ = eyeZ;
++    cache.targetX = tx;
++    cache.targetZ = tz;
++  }
++  return true;
++}
+ // Sticky composed-threat hold: dense furballs thrash nearest/active identity every few frames and
+ // the composition bias slews between anchors. Hold the current anchor briefly unless a challenger
+ // is meaningfully closer or a new active attacker appears.
+@@ -1195,6 +1235,10 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
+   // World-Y floor reported by the renderer's structure bounds. Kept between frames so the
+   // release can ease the camera back down after a structure roof stops containing it.
+   let _clearanceY = 0;
++  // Retained chase lookAt base quat — see applyChaseLookAt.
++  const _lookAtCache = {
++    eyeX: NaN, eyeY: NaN, eyeZ: NaN, targetX: NaN, targetZ: NaN, baseQuat: null,
++  };
+   let _compositionBiasX = 0;
+   let _compositionBiasZ = 0;
+   let _contextZoomBias = 0;
+@@ -1261,6 +1305,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
+     computeOffset(_dynamicZoom);
+     cam.position.set(c.focus.x + offset.x, offset.y, c.focus.z + offset.z);
+     cam.lookAt(c.focus.x, 0, c.focus.z);
++    _lookAtCache.eyeX = NaN;
+     cam.updateMatrixWorld(true);
+     _directorFrame = cameraDirector.reset(px, pz, _dynamicZoom);
+     _snappedPlayerId = p.id;
+@@ -1423,6 +1468,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
+         }
+         cam.position.set(c.focus.x + offset.x, offset.y, c.focus.z + offset.z);
+         cam.lookAt(c.focus.x, 0, c.focus.z);
++        _lookAtCache.eyeX = NaN;
+         if (_directorFrame) {
+           _directorFrame.mode = CameraDirectorMode.FOLLOW;
+           _directorFrame.focusX = c.focus.x;
+@@ -1849,7 +1895,15 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
+         if (_clearanceY > camY) camY = _clearanceY;
+       }
+       cam.position.set(camX, camY, camZ);
+-      cam.lookAt(c.focus.x + c.kickOffset.x, 0, c.focus.z + c.kickOffset.z);
++      applyChaseLookAt(
++        cam,
++        camX,
++        camY,
++        camZ,
++        c.focus.x + c.kickOffset.x,
++        c.focus.z + c.kickOffset.z,
++        _lookAtCache,
++      );
+       // apply a gentle, damped roll in the camera's local frame — counter to the ship's bank so the
+       // view tips into the turn. lookAt() set the quaternion; we post-multiply a local-Z rotation so
+       // we never clobber the heading (safe with the no-yaw-follow rule).
+diff --git a/test/chase-lookat-retain.test.mjs b/test/chase-lookat-retain.test.mjs
+new file mode 100644
+index 000000000..afae0fdab
+--- /dev/null
++++ b/test/chase-lookat-retain.test.mjs
+@@ -0,0 +1,101 @@
++/**
++ * Chase lookAt retain: settled eye+target restores cached base quat; moving and
++ * bench-off paths still match Three lookAt. Soft-GPU fps not claimed.
++ */
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import * as THREE from 'three';
++import {
++  applyChaseLookAt,
++  setChaseLookAtRetainForBench,
++  getChaseLookAtRetainForBench,
++} from '../src/render/camera.js';
++
++function freshCache() {
++  return {
++    eyeX: NaN, eyeY: NaN, eyeZ: NaN, targetX: NaN, targetZ: NaN, baseQuat: null,
++  };
++}
++
++function quatDelta(a, b) {
++  return 1 - Math.abs(a.dot(b));
++}
++
++test('retain is on by default and bench toggle restores always-lookAt', () => {
++  assert.equal(getChaseLookAtRetainForBench(), true);
++  setChaseLookAtRetainForBench(false);
++  assert.equal(getChaseLookAtRetainForBench(), false);
++  setChaseLookAtRetainForBench(true);
++  assert.equal(getChaseLookAtRetainForBench(), true);
++});
++
++test('settled eye+target retains after the first lookAt', () => {
++  setChaseLookAtRetainForBench(true);
++  const cam = new THREE.PerspectiveCamera(50, 16 / 9, 1, 14000);
++  const cache = freshCache();
++  cam.position.set(10, 80, -40);
++  assert.equal(applyChaseLookAt(cam, 10, 80, -40, 1, -2, cache), true);
++  const first = cam.quaternion.clone();
++  cam.position.set(10, 80, -40);
++  assert.equal(applyChaseLookAt(cam, 10, 80, -40, 1, -2, cache), false);
++  assert.ok(quatDelta(first, cam.quaternion) < 1e-12);
++});
++
++test('eye change forces a fresh lookAt', () => {
++  setChaseLookAtRetainForBench(true);
++  const cam = new THREE.PerspectiveCamera(50, 16 / 9, 1, 14000);
++  const cache = freshCache();
++  cam.position.set(10, 80, -40);
++  applyChaseLookAt(cam, 10, 80, -40, 1, -2, cache);
++  cam.position.set(11, 80, -40);
++  assert.equal(applyChaseLookAt(cam, 11, 80, -40, 1, -2, cache), true);
++});
++
++test('retain on/off agree on settled and moving sequences', () => {
++  const camOff = new THREE.PerspectiveCamera(50, 16 / 9, 1, 14000);
++  const camOn = new THREE.PerspectiveCamera(50, 16 / 9, 1, 14000);
++  const cacheOff = freshCache();
++  const cacheOn = freshCache();
++  const _rollQ = new THREE.Quaternion();
++  const forward = new THREE.Vector3(0, 0, -1);
++
++  for (let i = 0; i < 60; i++) {
++    const settled = i % 4 !== 0;
++    const t = i * 0.11;
++    const ex = settled ? 12 : 12 + Math.sin(t);
++    const ey = 90;
++    const ez = settled ? -50 : -50 + Math.cos(t);
++    const tx = settled ? 3 : 3 + Math.sin(t * 0.25);
++    const tz = settled ? -2 : -2 + Math.cos(t * 0.25);
++    const roll = settled ? 0 : Math.sin(t) * 0.04;
++
++    setChaseLookAtRetainForBench(false);
++    camOff.position.set(ex, ey, ez);
++    applyChaseLookAt(camOff, ex, ey, ez, tx, tz, cacheOff);
++    _rollQ.setFromAxisAngle(forward, roll);
++    camOff.quaternion.multiply(_rollQ);
++
++    setChaseLookAtRetainForBench(true);
++    camOn.position.set(ex, ey, ez);
++    applyChaseLookAt(camOn, ex, ey, ez, tx, tz, cacheOn);
++    _rollQ.setFromAxisAngle(forward, roll);
++    camOn.quaternion.multiply(_rollQ);
++
++    assert.ok(
++      quatDelta(camOff.quaternion, camOn.quaternion) < 1e-9,
++      `quat drift at i=${i}`,
++    );
++  }
++  setChaseLookAtRetainForBench(true);
++});
++
++test('bench-off never retains', () => {
++  setChaseLookAtRetainForBench(false);
++  const cam = new THREE.PerspectiveCamera(50, 16 / 9, 1, 14000);
++  const cache = freshCache();
++  cam.position.set(10, 80, -40);
++  assert.equal(applyChaseLookAt(cam, 10, 80, -40, 0, 0, cache), true);
++  cam.position.set(10, 80, -40);
++  assert.equal(applyChaseLookAt(cam, 10, 80, -40, 0, 0, cache), true);
++  setChaseLookAtRetainForBench(true);
++});
+-- 
+2.47.3
+

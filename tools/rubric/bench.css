@@ -1,0 +1,49 @@
+:root{font-family:Arial,Helvetica,sans-serif;color:#d9d6cc;background:#0a0d12;font-synthesis:none}
+*{box-sizing:border-box}
+body{margin:0;overflow:hidden}
+#view{position:fixed;inset:0;width:100%;height:100%;outline:none}
+header{position:fixed;top:28px;left:36px;right:36px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e8b4a026;padding-bottom:18px;pointer-events:none}
+.brand{font-size:14px;font-weight:700;letter-spacing:.24em;color:#f0e8d6;text-decoration:none;pointer-events:auto}
+.brand span{font:10px monospace;letter-spacing:.12em;color:#9a8e84;margin-left:24px}
+.coordinates{font:11px monospace;letter-spacing:.12em;color:#d99a82}
+.coordinates span{color:#7c7068;margin-left:12px}
+.identity{position:fixed;top:112px;left:48px;pointer-events:none}
+.eyebrow{font:10px monospace;letter-spacing:.2em;color:#e0735a}
+h1{font-size:clamp(46px,6vw,88px);font-weight:400;letter-spacing:.09em;margin:12px 0 18px;line-height:1}
+h1 span{display:block;font-size:12px;letter-spacing:.4em;color:#ecd9a8;margin-top:17px}
+.identity p{font-size:13px;line-height:1.7;color:#a39a8e;max-width:290px}
+#readout{position:fixed;right:36px;top:108px;display:flex;gap:20px;font:11px monospace;color:#d7b9a8}
+#phase{color:#ff7a5a;min-width:90px}
+#comms{position:fixed;bottom:216px;left:48px;width:min(560px,calc(100vw - 96px));pointer-events:none}
+#comms>span{font:10px monospace;letter-spacing:.16em;color:#e0735a}
+#line{font-size:14px;line-height:1.6;color:#e2ddd0;min-height:45px;margin:9px 0}
+nav{position:fixed;left:48px;right:48px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+nav[aria-label="Encounter actions"]{bottom:150px}
+#review{bottom:108px}
+#review span{font:9px monospace;letter-spacing:.2em;color:#7c7068;margin:0 4px 0 10px}
+button{appearance:none;border:1px solid #d9806045;background:#1a1315cc;color:#d8c6bc;padding:10px 13px;border-radius:2px;font:11px monospace;cursor:pointer}
+button:hover,button:focus-visible{background:#43241f;border-color:#ff9a7a;outline:none;color:#fff}
+button[aria-pressed=true]{background:#4a2a22;border-color:#ecd9a8}
+footer{position:fixed;bottom:17px;left:48px;right:48px;border-top:1px solid #e8b4a026;padding-top:10px;font:10px monospace;color:#8f847a;display:grid;grid-template-columns:1fr auto;gap:6px 20px}
+footer p{margin:0;line-height:1.7}
+kbd{font:inherit;color:#e0cfc2}
+i{font-style:normal;color:#6c5f58;margin:0 9px}
+#target{display:block;color:#ecd9a8}
+.options{display:flex;gap:14px;align-items:flex-start;font-size:10px}
+label{display:flex;gap:4px;align-items:center;white-space:nowrap;cursor:pointer}
+input{accent-color:#ff7a5a;margin:0}
+small{grid-column:1/-1;font:9px monospace;letter-spacing:.03em;color:#74685f}
+#error{position:fixed;inset:30%;padding:30px;background:#2a1a1a;color:#ffc9b2;white-space:pre-wrap;overflow:auto}
+body.study .identity{top:105px}
+body.study #comms{opacity:0}
+body.study #readout{opacity:.5}
+@media(max-width:760px){
+  header{left:18px;right:18px;top:18px}.brand span{display:none}.coordinates{font-size:9px}
+  .identity{left:22px;top:90px}h1{font-size:43px}.identity p{display:none}.eyebrow{font-size:8px}
+  #readout{top:206px;left:22px;right:auto;font-size:9px;gap:12px;flex-wrap:wrap;max-width:calc(100vw - 44px)}
+  #comms{left:22px;bottom:262px;width:calc(100vw - 44px)}#line{font-size:12px;min-height:35px}
+  nav{left:22px;right:22px;gap:5px}nav[aria-label="Encounter actions"]{bottom:178px}#review{bottom:128px}
+  button{font-size:10px;padding:8px 9px}
+  footer{left:22px;right:22px;bottom:12px;display:block;font-size:9px}.options{margin:8px 0;font-size:9px;gap:10px}small{font-size:8px;display:block}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}

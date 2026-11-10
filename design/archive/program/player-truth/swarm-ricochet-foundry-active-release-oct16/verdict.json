@@ -1,0 +1,1577 @@
+{
+ "meta": {
+  "mode": "swarm",
+  "rounds": true,
+  "hasLoadout": true,
+  "gate": "active",
+  "requireRounds": 3,
+  "performanceContext": {
+   "quietHost": false,
+   "contended": true,
+   "authority": "diagnostic-only",
+   "observer": {
+    "pixelSplitPasses": 3,
+    "pixelSplitEveryFrames": 24,
+    "screenshotEveryMs": 1000
+   }
+  },
+  "sourceOverlay": {
+   "manifest": ".devshots/release-prep-oct16/candidate-source.json",
+   "requested": {
+    "schema": "spaceface.sourceBaseline.v1",
+    "sourceCommit": "d062a50e6bd448c8b3ebb1796e9eecf94f6d7bb0",
+    "sourceOverlayDigest": "ed6ff8adaaa66b1d630a0cb01c6cdb43271af4cefcfa87efc9d749398c1aba57",
+    "fileCount": 2562,
+    "totalBytes": 68921495
+   },
+   "served": {
+    "schema": "spaceface.sourceBaseline.v1",
+    "sourceCommit": "d062a50e6bd448c8b3ebb1796e9eecf94f6d7bb0",
+    "sourceOverlayDigest": "ed6ff8adaaa66b1d630a0cb01c6cdb43271af4cefcfa87efc9d749398c1aba57",
+    "fileCount": 2562,
+    "totalBytes": 68921495
+   }
+  },
+  "loadavg": {
+   "start": [
+    0,
+    0,
+    0
+   ],
+   "end": [
+    0,
+    0,
+    0
+   ]
+  },
+  "environmentRetry": null,
+  "firstStopReason": null,
+  "gradedRun": null,
+  "preparationSamplesOmitted": 1322,
+  "playStartSim": 1.6999999999999988,
+  "runSeed": 4242,
+  "commit": "545c8b68a7",
+  "dirty": true,
+  "startCommit": "545c8b68a7",
+  "startDirtySourcePaths": [
+   "src/data/environmentalMachinery.js",
+   "src/data/newGameDefaults.js",
+   "src/data/sectorWayOfLife.js",
+   "src/localization/catalogs/en-US.generated.js",
+   "src/ui/galaxyMap.js"
+  ],
+  "endCommit": "545c8b68a7",
+  "endDirty": true,
+  "endDirtySourcePaths": [
+   "src/data/environmentalMachinery.js",
+   "src/data/newGameDefaults.js",
+   "src/data/sectorWayOfLife.js",
+   "src/localization/catalogs/en-US.generated.js",
+   "src/ui/galaxyMap.js",
+   "src/ui/orrery/chartLayouts.js"
+  ],
+  "label": "swarm-ricochet-foundry-active-release-oct16",
+  "browserExecutable": "playwright-bundled",
+  "hullPicked": null,
+  "hullsOffered": [
+   {
+    "id": "web_weaver",
+    "face": "Web Weaverrun Web to wave 5Hornet · 4/8 ",
+    "locked": true
+   },
+   {
+    "id": "ricochet_runner",
+    "face": "Ricochet RunnerHornet · 4/8 fitted",
+    "locked": false
+   },
+   {
+    "id": "energy_baseline",
+    "face": "Baseline EnergyHitch · 1/7 fitted",
+    "locked": false
+   },
+   {
+    "id": "kinetic_baseline",
+    "face": "Baseline KineticHornet · 1/8 fitted",
+    "locked": false
+   },
+   {
+    "id": "physics_toolkit",
+    "face": "Physics Toolkitrun Tag to wave 5Hornet ·",
+    "locked": true
+   },
+   {
+    "id": "massline_rig",
+    "face": "Massline Rigrun Whip to wave 8Drifter · ",
+    "locked": true
+   },
+   {
+    "id": "storm_carom_forge",
+    "face": "Storm Carom ForgeClosed.Ranger · 6/13 fi",
+    "locked": true
+   },
+   {
+    "id": "hornet_fast_clumsy",
+    "face": "Boltclear wave 10Hornet · 3/8 fitted",
+    "locked": true
+   },
+   {
+    "id": "hornet_nimble_slow",
+    "face": "Hingeclear wave 15Hornet · 3/8 fitted",
+    "locked": true
+   },
+   {
+    "id": "mirror_demonstrator",
+    "face": "Mirror DemonstratorDrifter · 4/10 fitted",
+    "locked": false
+   }
+  ],
+  "idleSeconds": 3,
+  "seedSet": true,
+  "arena": "Ricochet Foundry",
+  "seed": 4242,
+  "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "softwareGl": false,
+  "headed": true,
+  "browserVersion": "149.0.7827.55",
+  "resolution": "1280x720",
+  "when": "2026-10-16T14:07:30.678Z",
+  "wallSeconds": 481,
+  "simSeconds": 262.3,
+  "frames": 8580,
+  "shots": 352,
+  "rowStorage": {
+   "rows": 2547962,
+   "packedRows": 2547962,
+   "nullableFrames": 0,
+   "unrecognizedFrames": 0,
+   "maxBatchSamples": 32,
+   "pendingPeak": 52
+  },
+  "script": "idle 3 s → thrust/yaw probes → kiting fighter: RMB select a reachable hostile, track its visible lead pip or hull while firing, hold 230–400 u range, burn away from packs, chase a fresh public radar bearing with sustained forward thrust and aligned boost, reposition after selection misses, latch every 7th beat; probes + shots at every round start · gate active pass · public gameplay admission; no probe-owned invulnerability toggle",
+  "stopReason": "wall-clock cap",
+  "pageErrors": [],
+  "arenasOffered": [
+   {
+    "name": "Ricochet Foundry",
+    "disabled": false,
+    "pressed": true
+   },
+   {
+    "name": "Lagrange Crucible",
+    "disabled": true,
+    "pressed": false
+   },
+   {
+    "name": "Cinder Sluice",
+    "disabled": true,
+    "pressed": false
+   },
+   {
+    "name": "Cryo Drift",
+    "disabled": true,
+    "pressed": false
+   },
+   {
+    "name": "Storm Lattice",
+    "disabled": true,
+    "pressed": false
+   },
+   {
+    "name": "Asteroid Mill",
+    "disabled": true,
+    "pressed": false
+   },
+   {
+    "name": "The Hive",
+    "disabled": true,
+    "pressed": false
+   }
+  ],
+  "sessionSignals": [],
+  "chromePid": 31304,
+  "chromePgid": null,
+  "chromeSid": null,
+  "chromeOwnSession": null,
+  "harnessFreezes": [],
+  "hostPressure": [],
+  "hostPressureError": "spawnSync dmesg ENOENT",
+  "overall": "INCOMPLETE"
+ },
+ "overall": "INCOMPLETE",
+ "results": [
+  {
+   "id": "route",
+   "title": "Public route plays end to end",
+   "status": "PASS",
+   "value": "main menu → mode select → preparation → spawn → play",
+   "threshold": "every step through public controls",
+   "detail": "5 steps",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "round_resolution",
+   "title": "Round resolves by play",
+   "status": "PASS",
+   "value": "shortest 87.6 s",
+   "threshold": "finite quota materialized and resolved, and ≥1 input (src/data/swarmMode.js rules 2–3: the finite cohort must arrive and resolve; no fixed time-to-death target)",
+   "detail": "2 round(s) resolved",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "kills_before_input",
+   "title": "Kills before the player acts",
+   "status": "PASS",
+   "value": "0 kills",
+   "threshold": "0",
+   "detail": "non-player kills between round start and first flight input · whole run: 62 hostile deaths, 26 not credited to the player (info)",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "reward_before_input",
+   "title": "Score before the player acts",
+   "status": "PASS",
+   "value": "+0 score",
+   "threshold": "0",
+   "detail": "HUD score credited between round start and the first flight input — the player is rewarded for doing nothing",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "spawn_motion",
+   "title": "Unexplained motion at spawn",
+   "status": "PASS",
+   "value": "0 bodies",
+   "threshold": "0 passive bodies >8 u/s within 900 u",
+   "detail": "3 spawn moment(s) checked",
+   "offenders": [],
+   "moments": [],
+   "causal": {
+    "status": "unavailable",
+    "explained": 0,
+    "proofFailures": 0,
+    "residualFailures": 0
+   }
+  },
+  {
+   "id": "player_control",
+   "title": "Ship answers input",
+   "status": "PASS",
+   "value": "0/6 probes dead · 0 pinned spans",
+   "threshold": "thrust Δv≥3 u/s and moves ≥25% of its velocity · yaw Δ≥0.2 rad",
+   "detail": "round 1 thrust 167.97 · round 1 yaw -1.51 · round 2 thrust 0.04 · round 2 yaw -2.17 · round 3 thrust 61.05 · round 3 yaw -2.5",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "tumble",
+   "title": "Ship stays in the play plane",
+   "status": "PASS",
+   "value": "longest 0 s",
+   "threshold": "<0.5 s out of plane / uncommanded spin",
+   "detail": "0 s total; limits pitch 0.35, bank 0.75 rad, |y| 4, spin 2.5 rad/s",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "player_ship",
+   "title": "Player ship visible as hero model",
+   "status": "PASS",
+   "value": "0% frames bad (0/8184)",
+   "threshold": "≤0.5%",
+   "detail": "missing / hidden / off-frame / non-lod0 / placeholder (<300 tris) while alive in play",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "lod_churn",
+   "title": "LOD / model swap churn",
+   "status": "PASS",
+   "value": "max 2/10s per entity · 0.45/s total · 59 real LOD · 58 loading",
+   "threshold": "≤3/10s per entity · ≤max(1, 1.5× master same-window)/s total",
+   "detail": "59 real LOD/model swaps · 58 visible loading-state swaps (awaiting/loading/compiling, still counted) over 262.5 sim s across 116 entities (331 more off screen, not graded); 159 metadata-only transitions with unchanged drawn contents (diagnostic)",
+   "offenders": [
+    {
+     "line": "entity 645 (enemy) 2 swaps in 10 s (0 real LOD, 2 loading-state) — last DIRECT_AUTHORED_ADMISSION@-/compiling-pipelines → ship_drifter_418ad5eb@lod0 at sim 112.9 s",
+     "t": 240541.7,
+     "sim": 112.867,
+     "box": [
+      616.6,
+      101.6,
+      667.4,
+      152.4
+     ]
+    },
+    {
+     "line": "entity 348 (enemy) 1 swaps in 10 s (0 real LOD, 1 loading-state) — last DIRECT_AUTHORED_ADMISSION@-/compiling-pipelines → ship_wasp_ba80fbfa@lod0 at sim 3.5 s",
+     "t": 77896.7,
+     "sim": 3.533,
+     "box": [
+      849.2,
+      421.2,
+      926.8,
+      498.8
+     ]
+    },
+    {
+     "line": "entity 444 (enemy) 1 swaps in 10 s (0 real LOD, 1 loading-state) — last DIRECT_AUTHORED_ADMISSION@-/compiling-pipelines → ship_wasp_55a6c9f3@lod0 at sim 17.2 s",
+     "t": 91887.2,
+     "sim": 17.183,
+     "box": [
+      -1.3999999999999986,
+      310.6,
+      37.4,
+      349.4
+     ]
+    },
+    {
+     "line": "entity 384 (asteroid) 1 swaps in 10 s (1 real LOD, 0 loading-state) — last Asteroid_384@lod1 → Asteroid_384@lod2 at sim 19 s",
+     "t": 93615.6,
+     "sim": 19,
+     "box": [
+      1006.2,
+      33.2,
+      1025.8,
+      52.8
+     ]
+    }
+   ],
+   "moments": [
+    {
+     "line": "entity 645 (enemy) 2 swaps in 10 s (0 real LOD, 2 loading-state) — last DIRECT_AUTHORED_ADMISSION@-/compiling-pipelines → ship_drifter_418ad5eb@lod0 at sim 112.9 s",
+     "t": 240541.7,
+     "sim": 112.867,
+     "box": [
+      616.6,
+      101.6,
+      667.4,
+      152.4
+     ]
+    },
+    {
+     "line": "entity 348 (enemy) 1 swaps in 10 s (0 real LOD, 1 loading-state) — last DIRECT_AUTHORED_ADMISSION@-/compiling-pipelines → ship_wasp_ba80fbfa@lod0 at sim 3.5 s",
+     "t": 77896.7,
+     "sim": 3.533,
+     "box": [
+      849.2,
+      421.2,
+      926.8,
+      498.8
+     ]
+    },
+    {
+     "line": "entity 444 (enemy) 1 swaps in 10 s (0 real LOD, 1 loading-state) — last DIRECT_AUTHORED_ADMISSION@-/compiling-pipelines → ship_wasp_55a6c9f3@lod0 at sim 17.2 s",
+     "t": 91887.2,
+     "sim": 17.183,
+     "box": [
+      -1.3999999999999986,
+      310.6,
+      37.4,
+      349.4
+     ]
+    }
+   ],
+   "churn": {
+    "span": 262.47,
+    "times": [
+     2.02,
+     15.67,
+     17.48,
+     17.48,
+     17.48,
+     17.48,
+     17.48,
+     18.53,
+     18.53,
+     18.73,
+     18.73,
+     18.73,
+     18.73,
+     18.8,
+     18.87,
+     18.87,
+     19.92,
+     20.12,
+     20.25,
+     20.32,
+     20.32,
+     20.72,
+     22.18,
+     23.38,
+     25.22,
+     29.33,
+     50.15,
+     50.15,
+     51.15,
+     51.23,
+     51.23,
+     51.23,
+     52.87,
+     52.87,
+     52.87,
+     53.73,
+     53.73,
+     53.73,
+     53.73,
+     54,
+     72.12,
+     82.97,
+     82.97,
+     82.97,
+     83.1,
+     83.1,
+     83.17,
+     83.2,
+     92.32,
+     93.42,
+     93.52,
+     93.52,
+     94.42,
+     94.53,
+     96.62,
+     99.18,
+     101.62,
+     103.08,
+     104.02,
+     104.02,
+     108.38,
+     108.38,
+     108.72,
+     108.72,
+     109.02,
+     109.6,
+     110.62,
+     111.35,
+     111.48,
+     111.68,
+     112.35,
+     113.62,
+     116.42,
+     127.95,
+     129.2,
+     130.52,
+     136.07,
+     157.17,
+     157.17,
+     161.07,
+     161.07,
+     184.47,
+     184.97,
+     186.07,
+     190.67,
+     192.45,
+     192.5,
+     192.6,
+     192.72,
+     193.58,
+     193.72,
+     193.78,
+     194.73,
+     194.73,
+     195.58,
+     199.22,
+     199.42,
+     199.45,
+     199.55,
+     199.62,
+     199.65,
+     199.78,
+     201.73,
+     201.93,
+     203.47,
+     208.1,
+     209.03,
+     209.48,
+     217.65,
+     217.68,
+     217.93,
+     223.3,
+     223.3,
+     223.85,
+     224.75,
+     226.15,
+     241.95
+    ],
+    "maxPer10": 2,
+    "lodN": 59,
+    "loadN": 58
+   }
+  },
+  {
+   "id": "popping",
+   "title": "Pop-in / pop-out on screen",
+   "status": "PASS",
+   "value": "0.2/min · worst entity 0 toggles · 1 visibility · 0 loading",
+   "threshold": "≤6/min · ≤2 toggles",
+   "detail": "1 visibility pops · 0 visible loading-state pops (awaiting/loading/compiling, still counted) inside the inner 80% of the view; 231 non-projectile bodies born on screen (info)",
+   "offenders": [
+    {
+     "line": "entity 368 (asteroid) removed without death on screen 1× (1 visibility, 0 loading-state) — first sim 89 s",
+     "t": 197521.9,
+     "sim": 89.017,
+     "box": [
+      657.5,
+      104.5,
+      782.5,
+      229.5
+     ]
+    }
+   ],
+   "moments": [
+    {
+     "line": "entity 368 (asteroid) removed without death on screen 1× (1 visibility, 0 loading-state) — first sim 89 s",
+     "t": 197521.9,
+     "sim": 89.017,
+     "box": [
+      657.5,
+      104.5,
+      782.5,
+      229.5
+     ]
+    }
+   ]
+  },
+  {
+   "id": "readability",
+   "title": "Enemy / asteroid / projectile readable",
+   "status": "UNKNOWN",
+   "value": "min separation n/a",
+   "threshold": "≥1 per class pair; ≤50% low-contrast",
+   "detail": "samples: enemy 21, asteroid 220, projectile 0, pickup 0; capture coherence: 7098 body samples rejected for capture-motion, identity/visibility changes, or HUD occlusion; 0 screenshots lack a recorded capture interval; body/player coverage uses native opaque ID/depth pixels, radius-box overlap remains diagnostic; opaque body/player coverage UNKNOWN for wreck:: 422 measured/1 unknown (missing-opaque-geometry); hull contrast UNKNOWN: enemy: missing enemy silhouette pixel ownership; inner radius square mixes body and backdrop; asteroid: missing asteroid silhouette pixel ownership; inner radius square mixes body and backdrop; radius-square contrast and affected class separation remain diagnostic",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "vfx_coverage",
+   "title": "Combat VFX coverage / occlusion",
+   "status": "PASS",
+   "value": "p95 1% screen · player hidden 0% · threats hidden p95 0% · 0 s persist",
+   "threshold": "≤25% · ≤10% · ≤30% · ≤3 s",
+   "detail": "257 per-pixel splits (offscreen render with combat VFX hidden vs shown, pre-bloom reader target; backdrop layers graded separately) · skipped 11",
+   "offenders": [
+    {
+     "line": "player ship ≥50% under combat VFX pixels in 0% of splits (first sim 249.3 s)",
+     "t": 445201.9,
+     "sim": 249.317,
+     "box": [
+      658,
+      267,
+      724,
+      328
+     ]
+    },
+    {
+     "line": "peak combat-VFX pixels 5% of screen at sim 147.5 s (52 combat layers lit)",
+     "t": 284575.1,
+     "sim": 147.517,
+     "box": null
+    }
+   ],
+   "moments": [
+    {
+     "line": "player ship ≥50% under combat VFX pixels in 0% of splits (first sim 249.3 s)",
+     "t": 445201.9,
+     "sim": 249.317,
+     "box": [
+      658,
+      267,
+      724,
+      328
+     ]
+    }
+   ]
+  },
+  {
+   "id": "backdrop_coverage",
+   "title": "Backdrop stays behind the play",
+   "status": "PASS",
+   "value": "backdrop lights median 1% / p95 1% of screen · threats on bright backdrop p95 0%",
+   "threshold": "threats on bright backdrop p95 ≤30%",
+   "detail": "257 per-pixel splits with backdrop layers hidden vs shown · skipped 11",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "loadout",
+   "title": "Loadout readable and relevant",
+   "status": "PASS",
+   "value": "0 irrelevant · 0 undescribed · 0 silent swaps · row-on-select (inferred)",
+   "threshold": "0 · 0 · 0",
+   "detail": "63 offers read; 4 fitted; swap probe: no install possible; explanation surface: reading, row, row-on-select (inferred)",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "frame_time",
+   "title": "Frame time / long tasks",
+   "status": "UNKNOWN",
+   "value": "p50 33 ms · p99 118 ms · 4 long tasks ≥250 ms",
+   "threshold": "p99 ≤50 ms · 0 long tasks ≥250 ms",
+   "detail": "8184 play frames · unmarked/contended development host: diagnostic wall-clock only; quiet-host performance unmeasured (QUIET_HOST_PROGRAM §0). Reader windows (pixel readbacks) are excluded when the trace records them; screenshots remain included.",
+   "offenders": [
+    {
+     "line": "long task 1000 ms (1003 ms less 3 ms harness reader) at sim 24.9 s (frame 1993)",
+     "t": 100747.36499999464,
+     "sim": 24.9,
+     "box": null
+    },
+    {
+     "line": "long task 787 ms at sim 89.8 s (frame 4226)",
+     "t": 199481.1400000006,
+     "sim": 89.833,
+     "box": null
+    },
+    {
+     "line": "long task 319 ms at sim 190 s (frame 6773)",
+     "t": 330834.4549999982,
+     "sim": 190,
+     "box": null
+    },
+    {
+     "line": "frame 1993: 1011 ms at sim 24.9 s (213 entities, 0 draws)",
+     "t": 101745.7,
+     "sim": 24.9,
+     "box": null
+    }
+   ],
+   "moments": [
+    {
+     "line": "long task 1000 ms (1003 ms less 3 ms harness reader) at sim 24.9 s (frame 1993)",
+     "t": 100747.36499999464,
+     "sim": 24.9,
+     "box": null
+    },
+    {
+     "line": "long task 787 ms at sim 89.8 s (frame 4226)",
+     "t": 199481.1400000006,
+     "sim": 89.833,
+     "box": null
+    }
+   ]
+  },
+  {
+   "id": "round_transitions",
+   "title": "Every round starts playable",
+   "status": "PASS",
+   "value": "0/2 round starts broken",
+   "threshold": "ship whole · probes answer · in plane, first 8 s of each round",
+   "detail": "round 2: 207 frames, hull 100%, 0 bad ship, 0 out of plane, 0/2 dead probes, 0 pinned · round 3: 214 frames, hull 98%, 0 bad ship, 0 out of plane, 0/2 dead probes, 0 pinned",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "rounds_reached",
+   "title": "Run reaches the gate round",
+   "status": "PASS",
+   "value": "round 3",
+   "threshold": "≥ round 3",
+   "detail": "stopped: wall-clock cap",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "crucible_realm",
+   "title": "Crucible plays in the Crucible",
+   "status": "PASS",
+   "value": "0/347 Adventure frames · armory 63 offers",
+   "threshold": "0 Adventure frames · armory > 0 offers",
+   "detail": "sectors seen: sector_helios_prime",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "sim_stalled",
+   "title": "Sim kept moving",
+   "status": "PASS",
+   "value": "+262.25 s / 397 s wall",
+   "threshold": "≥0.5 s sim per 60 s wall while phase is active and not loading",
+   "detail": "sim advanced through the watched active span",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "play_interrupted",
+   "title": "Play stays on the flight HUD",
+   "status": "PASS",
+   "value": "HUD held",
+   "threshold": "flight HUD only during active play; a screen the script did not open fails",
+   "detail": "no non-HUD screen during active play",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "offscreen_marker",
+   "title": "Off-screen shooter has an edge marker",
+   "status": "PASS",
+   "value": "219 samples with an off-screen hostile and an edge marker",
+   "threshold": "one screen-edge marker while a hostile is off-screen; none while every hostile is in frame; the side matches that hostile",
+   "detail": "markers sat on the screen edge beside an off-screen hostile",
+   "offenders": [],
+   "moments": []
+  }
+ ],
+ "rounds": [
+  {
+   "wave": 1,
+   "startSim": 1.6999999999999988,
+   "startT": 76044.87999999523,
+   "endSim": 89.29999999999622,
+   "endT": 198218.2950000018,
+   "endPhase": "cleanup",
+   "startHull": 1
+  },
+  {
+   "wave": 2,
+   "startSim": 92.04999999999606,
+   "startT": 206081,
+   "endSim": 189.93333333337662,
+   "endT": 330802.88500000536,
+   "endPhase": "cleanup",
+   "startHull": 1
+  },
+  {
+   "wave": 3,
+   "startSim": 191.8666666667115,
+   "startT": 333558.8949999958,
+   "endSim": null,
+   "endT": null,
+   "endPhase": null,
+   "startHull": 0.978,
+   "cutSim": 263.9833333334219
+  }
+ ],
+ "probes": [
+  {
+   "label": "round 1 thrust",
+   "key": "KeyW",
+   "kind": "thrust",
+   "startSim": 4.966666666666654,
+   "endSim": 6.399999999999983,
+   "startT": 79331.00499999523,
+   "endT": 80888.20999999344,
+   "value": 167.9734414783444,
+   "moved": 166.08557635043377,
+   "expect": 170.95044468543148
+  },
+  {
+   "label": "round 1 yaw",
+   "key": "KeyD",
+   "kind": "yaw",
+   "startSim": 6.466666666666649,
+   "endSim": 7.683333333333311,
+   "startT": 80968.78000000119,
+   "endT": 82178.91500000656,
+   "value": -1.5065718599552091
+  },
+  {
+   "label": "round 2 thrust",
+   "key": "KeyW",
+   "kind": "thrust",
+   "startSim": 92.14999999999606,
+   "endSim": 93.59999999999597,
+   "startT": 206418.75499999523,
+   "endT": 208946.15000000596,
+   "value": 0.04409449618262329,
+   "moved": 314.04912619277184,
+   "expect": 314.065467092927
+  },
+  {
+   "label": "round 2 yaw",
+   "key": "KeyD",
+   "kind": "yaw",
+   "startSim": 93.59999999999597,
+   "endSim": 94.69999999999591,
+   "startT": 209061.75,
+   "endT": 211295.09000000358,
+   "value": -2.1703068970711756
+  },
+  {
+   "label": "round 3 thrust",
+   "key": "KeyW",
+   "kind": "thrust",
+   "startSim": 192.33333333337853,
+   "endSim": 193.81666666671305,
+   "startT": 334063.1899999976,
+   "endT": 335573.299999997,
+   "value": 61.04586056113779,
+   "moved": 26.12393357222079,
+   "expect": 28.862930054714006
+  },
+  {
+   "label": "round 3 yaw",
+   "key": "KeyD",
+   "kind": "yaw",
+   "startSim": 193.8666666667131,
+   "endSim": 194.96666666671396,
+   "startT": 335659.5,
+   "endT": 336905.79000000656,
+   "value": -2.5021752044999044
+  }
+ ],
+ "route": {
+  "steps": [
+   {
+    "name": "main menu",
+    "ok": true,
+    "detail": "menu visible",
+    "t": null
+   },
+   {
+    "name": "mode select",
+    "ok": true,
+    "detail": "Crucible · swarm · arena Ricochet Foundry · seed 4242",
+    "t": null
+   },
+   {
+    "name": "preparation",
+    "ok": true,
+    "detail": "hull Ricochet RunnerHornet · 4/8 fitted · 63 armory offers read · 4 fitted · no install possible",
+    "t": null
+   },
+   {
+    "name": "spawn",
+    "ok": true,
+    "detail": "flight · round 1 active at sim 1.7 s",
+    "t": null
+   },
+   {
+    "name": "play",
+    "ok": true,
+    "detail": "3 round(s): 1:cleanup@87.6s 2:cleanup@97.9s 3:cut",
+    "t": null
+   }
+  ]
+ },
+ "pacing": null,
+ "readability": {
+  "classes": {
+   "enemy": {
+    "n": 21,
+    "lowContrastFrac": 0.19047619047619047,
+    "exampleT": 347437.58499999344,
+    "exampleBox": [
+     664.3,
+     164.8,
+     736.7,
+     237.2
+    ],
+    "markerRate": 0.047619047619047616,
+    "threatRate": 0.9047619047619048,
+    "worst": [
+     {
+      "t": 378614.8550000042,
+      "box": [
+       272.7,
+       163.7,
+       324.3,
+       215.3
+      ],
+      "deltaL": 2.7
+     },
+     {
+      "t": 347437.58499999344,
+      "box": [
+       664.3,
+       164.8,
+       736.7,
+       237.2
+      ],
+      "deltaL": 3.5
+     }
+    ],
+    "meanLab": [
+     26.2,
+     21.9,
+     14.7
+    ],
+    "contrast": {
+     "status": "unmeasured",
+     "method": "radius-square",
+     "reason": "missing enemy silhouette pixel ownership; inner radius square mixes body and backdrop"
+    }
+   },
+   "asteroid": {
+    "n": 220,
+    "lowContrastFrac": 0.21818181818181817,
+    "exampleT": 81142.98999999464,
+    "exampleBox": [
+     221.4,
+     60.4,
+     340.6,
+     179.6
+    ],
+    "markerRate": 0.14545454545454545,
+    "threatRate": 0,
+    "worst": [
+     {
+      "t": 399719.9050000012,
+      "box": [
+       384,
+       533,
+       533,
+       682
+      ],
+      "deltaL": 0
+     },
+     {
+      "t": 100251.7650000006,
+      "box": [
+       222.4,
+       49.9,
+       272.6,
+       100.1
+      ],
+      "deltaL": 0.5
+     }
+    ],
+    "meanLab": [
+     36.8,
+     0.2,
+     5.1
+    ],
+    "contrast": {
+     "status": "unmeasured",
+     "method": "radius-square",
+     "reason": "missing asteroid silhouette pixel ownership; inner radius square mixes body and backdrop"
+    }
+   },
+   "projectile": {
+    "n": 0,
+    "lowContrastFrac": 0,
+    "markerRate": 0,
+    "threatRate": 0,
+    "worst": [],
+    "meanLab": null
+   },
+   "pickup": {
+    "n": 0,
+    "lowContrastFrac": 0,
+    "markerRate": 0,
+    "threatRate": 0,
+    "worst": [],
+    "meanLab": null
+   }
+  },
+  "pairs": [
+   {
+    "a": "enemy",
+    "b": "asteroid",
+    "nA": 21,
+    "nB": 220,
+    "sep": 2.7255266904850295,
+    "dColor": 25.962269644981543,
+    "sizeRatio": 1.5152354570637119,
+    "markerCredit": 1.5,
+    "exampleT": 232371.1400000006,
+    "exampleBox": [
+     817.7,
+     67.7,
+     858.3,
+     108.3
+    ]
+   },
+   {
+    "a": "enemy",
+    "b": "projectile",
+    "nA": 21,
+    "nB": 0,
+    "sep": null
+   },
+   {
+    "a": "asteroid",
+    "b": "projectile",
+    "nA": 220,
+    "nB": 0,
+    "sep": null
+   },
+   {
+    "a": "enemy",
+    "b": "pickup",
+    "nA": 21,
+    "nB": 0,
+    "sep": null
+   }
+  ],
+  "census": [
+   {
+    "cls": "asteroid",
+    "ty": 4,
+    "n": 220,
+    "litLab": [
+     48.2,
+     -0.7,
+     5.7
+    ],
+    "look": "grey",
+    "meanRadiusPx": 55.3,
+    "overPlayerFrac": 0.186,
+    "exampleT": 100251.7650000006,
+    "exampleBox": [
+     603.3,
+     441.8,
+     721.7,
+     560.2
+    ],
+    "name": "asteroid:"
+   },
+   {
+    "cls": "enemy",
+    "ty": 118,
+    "n": 21,
+    "litLab": [
+     51,
+     40.3,
+     29.1
+    ],
+    "look": "orange",
+    "meanRadiusPx": 34.4,
+    "overPlayerFrac": 0,
+    "exampleT": 232371.1400000006,
+    "exampleBox": [
+     817.7,
+     67.7,
+     858.3,
+     108.3
+    ],
+    "name": "ship:"
+   },
+   {
+    "cls": "other",
+    "ty": 20,
+    "n": 18,
+    "litLab": [
+     30.5,
+     0.4,
+     2.3
+    ],
+    "look": "dark",
+    "meanRadiusPx": 42.1,
+    "overPlayerFrac": 0,
+    "exampleT": 121405.26999999583,
+    "exampleBox": [
+     225.1,
+     255.6,
+     330.9,
+     361.4
+    ],
+    "occlusion": {
+     "cls": "other",
+     "ty": 20,
+     "n": 422,
+     "covered": 0,
+     "unknown": 1,
+     "reasons": {
+      "missing-opaque-geometry": 1
+     },
+     "radiusSum": 15058.999999999984,
+     "exampleT": null,
+     "exampleBox": null
+    },
+    "name": "wreck:"
+   },
+   {
+    "cls": "other",
+    "ty": 144,
+    "n": 17,
+    "litLab": [
+     17.1,
+     0.6,
+     0.1
+    ],
+    "look": "dark",
+    "meanRadiusPx": 25,
+    "overPlayerFrac": 0.118,
+    "exampleT": 436982.30500000715,
+    "exampleBox": [
+     561.2,
+     368.2,
+     617.8,
+     424.8
+    ],
+    "occlusion": {
+     "cls": "other",
+     "ty": 144,
+     "n": 634,
+     "covered": 0,
+     "unknown": 0,
+     "reasons": {},
+     "radiusSum": 8104.599999999994,
+     "exampleT": null,
+     "exampleBox": null
+    },
+    "name": "wreck:wreck"
+   },
+   {
+    "cls": "station",
+    "ty": 101,
+    "n": 13,
+    "litLab": [
+     21.6,
+     0,
+     -1.6
+    ],
+    "look": "dark",
+    "meanRadiusPx": 96.9,
+    "overPlayerFrac": 0.538,
+    "exampleT": 433105.49500000477,
+    "exampleBox": [
+     472.4,
+     237.9,
+     678.6,
+     444.1
+    ],
+    "occlusion": {
+     "cls": "station",
+     "ty": 101,
+     "n": 88,
+     "covered": 0,
+     "unknown": 0,
+     "reasons": {},
+     "radiusSum": 7476.599999999996,
+     "exampleT": null,
+     "exampleBox": null
+    },
+    "name": "station:plate"
+   },
+   {
+    "cls": "station",
+    "ty": 102,
+    "n": 5,
+    "litLab": [
+     24,
+     0.1,
+     -1.2
+    ],
+    "look": "dark",
+    "meanRadiusPx": 27.9,
+    "overPlayerFrac": 0,
+    "exampleT": 343425.0600000024,
+    "exampleBox": [
+     902.6,
+     150.6,
+     957.4,
+     205.4
+    ],
+    "occlusion": {
+     "cls": "station",
+     "ty": 102,
+     "n": 88,
+     "covered": 0,
+     "unknown": 0,
+     "reasons": {},
+     "radiusSum": 2079.1,
+     "exampleT": null,
+     "exampleBox": null
+    },
+    "name": "station:gate"
+   },
+   {
+    "cls": "station",
+    "ty": 1409,
+    "n": 0,
+    "look": "unmeasured",
+    "meanRadiusPx": 35.748571428571424,
+    "occlusion": {
+     "cls": "station",
+     "ty": 1409,
+     "n": 35,
+     "covered": 0,
+     "unknown": 0,
+     "reasons": {},
+     "radiusSum": 1251.1999999999998,
+     "exampleT": null,
+     "exampleBox": null
+    },
+    "name": "station:shutter"
+   }
+  ],
+  "captureCoherence": {
+   "rejected": {
+    "enemy": {
+     "capture-motion": 870,
+     "capture-identity-or-visibility": 134,
+     "hud-occlusion": 1
+    },
+    "asteroid": {
+     "capture-motion": 3769,
+     "capture-identity-or-visibility": 587,
+     "hud-occlusion": 47
+    },
+    "projectile": {},
+    "pickup": {
+     "capture-motion": 64,
+     "capture-identity-or-visibility": 34
+    },
+    "station": {
+     "capture-identity-or-visibility": 33,
+     "capture-motion": 207,
+     "hud-occlusion": 1
+    },
+    "neutral": {},
+    "other": {
+     "capture-identity-or-visibility": 162,
+     "capture-motion": 1182,
+     "hud-occlusion": 7
+    }
+   },
+   "unboundedShots": 0
+  },
+  "measurementNote": "capture coherence: 7098 body samples rejected for capture-motion, identity/visibility changes, or HUD occlusion; 0 screenshots lack a recorded capture interval; body/player coverage uses native opaque ID/depth pixels, radius-box overlap remains diagnostic"
+ },
+ "loadout": {
+  "items": [
+   {
+    "name": "Ordnance top-up",
+    "category": "Service",
+    "desc": "Impulse charges racked to full for the charge-rack builds."
+   },
+   {
+    "name": "Autocannon S",
+    "category": "Weapons",
+    "desc": "Armor-biting slugs kick light hulls sideways. Aim off-center to spoil their firing line."
+   },
+   {
+    "name": "Concussion Cannon S",
+    "category": "Weapons",
+    "desc": "Punch light hulls into rocks. Direct damage is low; the collision is the payoff."
+   },
+   {
+    "name": "Heavy-Duty Winch",
+    "category": "Rigs",
+    "desc": "The line hauls them to you. You are the winch, not the bait."
+   },
+   {
+    "name": "Impulse Charge Rack",
+    "category": "Rigs",
+    "desc": "Impulse charges on the rack — a shove for whatever is on top of you."
+   },
+   {
+    "name": "Ion Thruster M",
+    "category": "Motion",
+    "desc": "The yard drive."
+   },
+   {
+    "name": "Loot Magnet Ring S",
+    "category": "Rigs",
+    "desc": "Debris and pods drift into the hull as you fly past."
+   },
+   {
+    "name": "Pulse Laser S",
+    "category": "Weapons",
+    "desc": "Quick, precise bolts that nudge light hulls. Keep the nose on target and leave room to cool."
+   },
+   {
+    "name": "Ram Plate",
+    "category": "Rigs",
+    "desc": "A ram plate. Flying through something stops being your problem."
+   },
+   {
+    "name": "Shield Booster S",
+    "category": "Defense",
+    "desc": "A heavier screen between the swarm and your hull."
+   },
+   {
+    "name": "Stripped RCS S",
+    "category": "Motion",
+    "desc": "You give up turn, slide and brake."
+   },
+   {
+    "name": "Swing Drive S",
+    "category": "Rigs",
+    "desc": "The same swing-around dash, in the small bay a starter hull can fit."
+   },
+   {
+    "name": "Thermal Sink S",
+    "category": "Rigs",
+    "desc": "Heat leaves the guns so you can hold the trigger."
+   },
+   {
+    "name": "Veil Step",
+    "category": "Rigs",
+    "desc": "Hold Shift and a shadow of the ship sits ahead."
+   },
+   {
+    "name": "Bank Stream M",
+    "category": "Weapons",
+    "desc": "A fast stream that ricochets off stone. Use the wall to reach around a firing line."
+   },
+   {
+    "name": "Cryo Payload",
+    "category": "Rigs",
+    "desc": "Hits freeze a hull stiff so the next blow lands on something that cannot yield."
+   },
+   {
+    "name": "Endurance Drive M",
+    "category": "Motion",
+    "desc": "Faster long straights than Fusion, with less power draw."
+   },
+   {
+    "name": "Flak/PD Turret S",
+    "category": "Weapons",
+    "desc": "A tracking flak turret that also intercepts incoming missiles. Its firing arc leaves your rear exposed."
+   },
+   {
+    "name": "Forked Core",
+    "category": "Rigs",
+    "desc": "Every shot splits. One trigger pull, two things to hit."
+   },
+   {
+    "name": "Fusion Drive M",
+    "category": "Motion",
+    "desc": "More thrust under you. The whole fight gets faster."
+   },
+   {
+    "name": "Grav Anchor",
+    "category": "Weapons",
+    "desc": "Shoot two different bodies to spring-link them. The line contracts and turns their mass into a collision."
+   },
+   {
+    "name": "Gravity Bumper S",
+    "category": "Rigs",
+    "desc": "Boost into a body to throw it from the nose. More closing speed means a harder shove."
+   },
+   {
+    "name": "Gravity Marker S",
+    "category": "Weapons",
+    "desc": "Tag a body so wells and sinks grip it harder. The mark prepares your next move; it is not a killing shot."
+   },
+   {
+    "name": "Gravity Tag",
+    "category": "Rigs",
+    "desc": "Hits mark a hull so the well takes that one."
+   },
+   {
+    "name": "Grip Bumper S",
+    "category": "Rigs",
+    "desc": "Boost to catch a light hostile on the nose. Carry it into the pile, then release boost to let it go."
+   },
+   {
+    "name": "Hardlight Prism",
+    "category": "Weapons",
+    "desc": "Place an angled reflector ahead of you. Bank a cutting beam through it or make a nearby surface reflective."
+   },
+   {
+    "name": "Heat Lure Beacon",
+    "category": "Rigs",
+    "desc": "Throw a charge that burns hotter than you, and heat-hunters chase it."
+   },
+   {
+    "name": "Herald Fan",
+    "category": "Rigs",
+    "desc": "Shots spread as they travel — worse on one, better on eight."
+   },
+   {
+    "name": "Incendiary Payload",
+    "category": "Rigs",
+    "desc": "Hits keep burning after the shot has gone."
+   },
+   {
+    "name": "Inertial Shunt S",
+    "category": "Weapons",
+    "desc": "A fitted ram plate transfers your closing speed into the other hull. The collision does the work."
+   },
+   {
+    "name": "Ion Payload",
+    "category": "Rigs",
+    "desc": "Hits bleed into systems, not just plating."
+   },
+   {
+    "name": "Missile Rack M",
+    "category": "Weapons",
+    "desc": "Guided missiles chase a locked target and explode on contact. Give the lock time to settle."
+   },
+   {
+    "name": "Momentum Sink S",
+    "category": "Weapons",
+    "desc": "Latch a ship to your motion, or tag a rock and burn away. Trigger again to release the stored slingshot."
+   },
+   {
+    "name": "Piercing Core",
+    "category": "Rigs",
+    "desc": "Shots carry through the first hull into whatever is behind it."
+   },
+   {
+    "name": "Polarity Inverter",
+    "category": "Weapons",
+    "desc": "Shots alternate positive and negative charge. Opposites pull together; matching poles push apart."
+   },
+   {
+    "name": "Pulse Laser M",
+    "category": "Weapons",
+    "desc": "Heavier pulse bolts with a stronger shove. A steady aim beats spraying the room."
+   },
+   {
+    "name": "Quantum Sympathy",
+    "category": "Weapons",
+    "desc": "Shoot two different bodies to link their impulses. Hit one and the other shares the kick."
+   },
+   {
+    "name": "Railgun M",
+    "category": "Weapons",
+    "desc": "A fast armor-piercing spear with a solid kick. Lead the target; a missed shot has a long pause."
+   },
+   {
+    "name": "Relay Arc",
+    "category": "Rigs",
+    "desc": "A hit jumps to the next hull in reach. Tight packs kill themselves."
+   },
+   {
+    "name": "Seismic Gong",
+    "category": "Weapons",
+    "desc": "Turn a struck body into a pulsing shock source. A heavy host makes the surrounding pile jump."
+   },
+   {
+    "name": "Shield Capacitor M",
+    "category": "Defense",
+    "desc": "A much thicker shield, and it comes back faster."
+   },
+   {
+    "name": "Signal Decoy Buoy S",
+    "category": "Rigs",
+    "desc": "Puts a false contact in the water and missiles go for it."
+   },
+   {
+    "name": "Sprint Drive M",
+    "category": "Motion",
+    "desc": "Leaves a corner harder than Fusion, but runs slower on long straights and draws more power."
+   },
+   {
+    "name": "Tether Capacitor",
+    "category": "Rigs",
+    "desc": "Shots into the hull on your line hit harder, up to a cap."
+   },
+   {
+    "name": "Thruster Hijacker",
+    "category": "Weapons",
+    "desc": "Attach a rogue thruster that spins and drives its host. Let the room finish what the dart starts."
+   },
+   {
+    "name": "Twin Mount",
+    "category": "Rigs",
+    "desc": "Every gun grows a second barrel."
+   },
+   {
+    "name": "Vector Mine M",
+    "category": "Weapons",
+    "desc": "Drop a scatter charge that throws nearby bodies apart. It deals no direct damage; hard landings still hurt."
+   },
+   {
+    "name": "Vernier Cluster M",
+    "category": "Motion",
+    "desc": "The nose comes around harder, and you slide and stop with more authority."
+   },
+   {
+    "name": "Viscosity Field",
+    "category": "Weapons",
+    "desc": "Lay a short-lived gel field ahead of the nose. Crossing bodies lose motion; heat can ignite the trap."
+   },
+   {
+    "name": "Hull weld",
+    "category": "Service",
+    "desc": "Plate, weld and rinse the scars. Back to full before the next pack."
+   },
+   {
+    "name": "Beam Laser M",
+    "category": "Weapons",
+    "desc": "Hold a continuous cutting beam on the target. Break contact to let the gun cool."
+   },
+   {
+    "name": "EMP Disruptor M",
+    "category": "Weapons",
+    "desc": "Bypasses shields to disable ship systems. Use the opening to ram, capture or switch to a hull-damaging weapon."
+   },
+   {
+    "name": "Fire Lance S",
+    "category": "Rigs",
+    "desc": "Boost to light a narrow burning lance on the nose. Drive it through a target while the boost lasts."
+   },
+   {
+    "name": "Gravity Bumper S Mk2",
+    "category": "Rigs",
+    "desc": "Boost with a wider, stronger gravity bumper. The upgrade stays active while your boost is burning."
+   },
+   {
+    "name": "Gravity Wellhead M",
+    "category": "Weapons",
+    "desc": "Draw a fight into a sustained gravity well. Follow the clump with a blast or a heavy body."
+   },
+   {
+    "name": "Grip Bumper S Mk2",
+    "category": "Rigs",
+    "desc": "Boost with a wider grip to catch and carry a hostile hull. Release boost to release the catch."
+   },
+   {
+    "name": "Plasma Cannon M",
+    "category": "Weapons",
+    "desc": "Luminous slugs burst into a hot splash. Clustered targets pay for each other."
+   },
+   {
+    "name": "Point-Defense Servo S",
+    "category": "Rigs",
+    "desc": "Knocks down a shot or a missile that gets in close."
+   },
+   {
+    "name": "RCS Disruptor M",
+    "category": "Weapons",
+    "desc": "Interrupt steering and leave the target drifting. Strike before its helm recovers."
+   },
+   {
+    "name": "Snarl Webcaster",
+    "category": "Weapons",
+    "desc": "Pin two bodies with a web and let their struggle pull the fight apart."
+   },
+   {
+    "name": "Vector Charge Rack",
+    "category": "Rigs",
+    "desc": "Carries the same charges, and you can kick one out behind you."
+   },
+   {
+    "name": "Fire Lance S Mk2",
+    "category": "Rigs",
+    "desc": "Boost with a longer, hotter nose lance. Keep contact while the boost meter is paying for it."
+   },
+   {
+    "name": "Storm Carom",
+    "category": "Rigs",
+    "desc": "A bounced hit storms through ionized targets."
+   }
+  ],
+  "fitted": [
+   {
+    "name": "Bank Stream M",
+    "category": "Weapon M",
+    "desc": "A fast stream that ricochets off stone. Use the wall to reach around a firing line."
+   },
+   {
+    "name": "Concussion Cannon M",
+    "category": "Weapon M",
+    "desc": "A heavy momentum punch. Line up a ship, a rock and the impact you want to cause."
+   },
+   {
+    "name": "Bank Shot",
+    "category": "Utility S",
+    "desc": "Shots bounce off stone."
+   },
+   {
+    "name": "Repulsion Trap",
+    "category": "Utility S",
+    "desc": "Brake and throw to drop a charge behind you that shoves whoever flies into it."
+   }
+  ],
+  "irrelevant": [],
+  "undescribed": [],
+  "silentSwaps": [],
+  "announcedSwaps": 0,
+  "buys": 0,
+  "swapProbe": "no install possible",
+  "offerSource": "cards",
+  "offerQuote": null,
+  "fittedClaimed": 4,
+  "fittedRead": true,
+  "fittedError": null,
+  "doorQuote": "Ricochet RunnerHornet · 4/8 fitted · Hornet — Bank a stream of bullets around cover. Shove the pack into the rocks, then boost through.",
+  "shotT": 59625.760000005364
+ }
+}

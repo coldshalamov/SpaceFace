@@ -1,0 +1,43 @@
+version: 1
+job: SG-03
+recorded_at: 2026-06-21
+implementation:
+  repository: coldshalamov/SpaceFace
+  authored_for: SpaceFace
+  clean_room: true
+  external_source_code_seen_by_implementation_agent: false
+  copied_code: false
+references:
+  - project: FreeSpace 2 Source Code Project
+    license_note: source-available, noncommercial; behavioral/design reference only
+    access_in_this_job: "No upstream source accessed. Used only the behavior summary already written in docs/Spec/MASTER_MAKEOVER_PLAN.md."
+    semantics_extracted:
+      - spatial subsystem volumes
+      - functional subsystem disablement
+      - shared hit/damage routing concept
+    code_or_constants_reused: false
+  - project: Endless Sky
+    license_note: GPLv3; clean-room semantic reference only
+    access_in_this_job: "No upstream source accessed. Used only the behavior summary already written in docs/Spec/MASTER_MAKEOVER_PLAN.md."
+    semantics_extracted:
+      - data-authored outfit/action semantics
+      - validated declarative definitions
+    code_or_constants_reused: false
+spaceface_sources_read:
+  - docs/Spec/MASTER_MAKEOVER_PLAN.md
+  - src/core/sim.js
+  - src/core/entity.js
+  - src/core/coreSystem.js
+  - src/core/registry.js
+  - src/core/physics.js
+  - src/core/rapierCollisionWorld.js
+  - src/systems/combat.js
+  - src/systems/weapons.js
+  - src/systems/flight.js
+  - src/systems/ai.js
+  - src/systems/heat.js
+  - src/systems/ships.js
+  - src/data/weapons.js
+notes:
+  - "All identifiers, constants, schemas, algorithms, and tests in SG-03 were independently authored."
+  - "The physics integration is an abstract SpaceFace port because SG-02 was not present on inspected master."

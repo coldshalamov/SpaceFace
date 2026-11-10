@@ -1,0 +1,102 @@
+{
+  "name": "classify-flying-rock-retain-floor",
+  "packages": [
+    {
+      "package": 0,
+      "medianSpeedup": 2.369,
+      "minSpeedup": 2.262,
+      "maxSpeedup": 2.494,
+      "pairs": [
+        2.367,
+        2.262,
+        2.47,
+        2.32,
+        2.401,
+        2.445,
+        2.369,
+        2.459,
+        2.361,
+        2.494,
+        2.347
+      ]
+    },
+    {
+      "package": 1,
+      "medianSpeedup": 2.472,
+      "minSpeedup": 2.161,
+      "maxSpeedup": 2.647,
+      "pairs": [
+        2.161,
+        2.182,
+        2.512,
+        2.355,
+        2.529,
+        2.472,
+        2.401,
+        2.509,
+        2.366,
+        2.473,
+        2.647
+      ]
+    },
+    {
+      "package": 2,
+      "medianSpeedup": 2.448,
+      "minSpeedup": 2.338,
+      "maxSpeedup": 2.54,
+      "pairs": [
+        2.462,
+        2.338,
+        2.496,
+        2.359,
+        2.487,
+        2.388,
+        2.448,
+        2.54,
+        2.357,
+        2.481,
+        2.373
+      ]
+    },
+    {
+      "package": 3,
+      "medianSpeedup": 2.433,
+      "minSpeedup": 2.035,
+      "maxSpeedup": 2.697,
+      "pairs": [
+        2.035,
+        2.433,
+        2.485,
+        2.138,
+        2.489,
+        2.373,
+        2.422,
+        2.697,
+        2.348,
+        2.565,
+        2.456
+      ]
+    },
+    {
+      "package": 4,
+      "medianSpeedup": 2.404,
+      "minSpeedup": 2.242,
+      "maxSpeedup": 2.663,
+      "pairs": [
+        2.65,
+        2.663,
+        2.313,
+        2.504,
+        2.404,
+        2.539,
+        2.368,
+        2.444,
+        2.397,
+        2.351,
+        2.242
+      ]
+    }
+  ],
+  "packageFloorMin": 2.035,
+  "medianOfMedians": 2.433
+}

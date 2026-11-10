@@ -1,0 +1,122 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  countShadowReceivers,
+  createShadowReceiverTally,
+  noteShadowPolicyChanged,
+} from '../src/render/shadowReceiverTally.js';
+
+function mesh(receiveShadow, children = []) {
+  return {
+    receiveShadow,
+    children,
+    traverse(fn) {
+      fn(this);
+      for (const child of children) {
+        if (typeof child.traverse === 'function') child.traverse(fn);
+        else fn(child);
+      }
+    },
+  };
+}
+
+test('add/remove keep the receiver count without a full recount', () => {
+  const tally = createShadowReceiverTally();
+  const ship = mesh(true, [mesh(true), mesh(false)]);
+  const rock = mesh(true);
+  assert.equal(countShadowReceivers(ship), 2);
+  tally.noteAdded(ship);
+  tally.noteAdded(rock);
+  assert.equal(tally.count, 3);
+  tally.noteRemoved(ship);
+  assert.equal(tally.count, 1);
+  assert.equal(tally.dirty, true);
+});
+
+test('dirty fallback recounts the live scene exactly once', () => {
+  const tally = createShadowReceiverTally();
+  const scene = mesh(false, [mesh(true), mesh(true), mesh(false)]);
+  tally.markDirty();
+  assert.equal(tally.resolve(scene), 2);
+  assert.equal(tally.dirty, false);
+  assert.equal(tally.resolve(scene), 2);
+});
+
+test('owner dirty forces a recount even when the incremental dirty bit is clear', () => {
+  const tally = createShadowReceiverTally();
+  const ship = mesh(true);
+  tally.noteAdded(ship);
+  const scene = mesh(false, [ship]);
+  tally.recount(scene);
+  assert.equal(tally.dirty, false);
+  ship.receiveShadow = false;
+  assert.equal(tally.resolve(scene), 1, 'stale incremental count would keep shadows on');
+  assert.equal(tally.resolve(scene, { force: true }), 0);
+  assert.equal(tally.count, 0);
+});
+
+test('live shadow-map gate routes owner dirty through the tally paced recount', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.match(source, /if \(this\._shadowReceiversDirty && !this\._shadowReceiverTally\.dirty\)/);
+});
+
+test('LOD receiveShadow churn without a dirty signal can walk the tally to zero', () => {
+  const tally = createShadowReceiverTally();
+  const farChild = mesh(false);
+  const ship = mesh(true, [farChild]);
+  const scene = mesh(false, [ship]);
+  tally.noteAdded(ship);
+  tally.recount(scene);
+  assert.equal(tally.count, 1);
+  farChild.receiveShadow = true;
+  ship.receiveShadow = true;
+  tally.noteRemoved(ship);
+  assert.equal(tally.count, 0, 'subtracting the later LOD0 count underflows past the live receivers');
+});
+
+test('a policy refresh marks the tally dirty so the next resolve recounts live flags', () => {
+  const tally = createShadowReceiverTally();
+  const farChild = mesh(false);
+  const ship = mesh(true, [farChild]);
+  const scene = mesh(false, [ship]);
+  tally.noteAdded(ship);
+  tally.recount(scene);
+  farChild.receiveShadow = true;
+  assert.equal(noteShadowPolicyChanged(tally, true), true);
+  assert.equal(tally.dirty, true);
+  assert.equal(tally.resolve(scene), 2);
+  tally.noteRemoved(ship);
+  assert.equal(tally.resolve(scene), 0);
+});
+
+test('a policy traverse carrying its measured delta settles the tally with no recount', () => {
+  const tally = createShadowReceiverTally();
+  const ship = mesh(true, [mesh(true)]);
+  const scene = mesh(false, [ship]);
+  tally.noteAdded(ship);
+  tally.recount(scene);
+  assert.equal(tally.dirty, false);
+  // A cast-only change reports receiverDelta 0 — the tally must not dirty.
+  assert.equal(noteShadowPolicyChanged(tally, { changed: true, receiverDelta: 0 }), true);
+  assert.equal(tally.dirty, false, 'a zero delta must not trigger the whole-scene recount');
+  assert.equal(tally.resolve(scene), 2);
+  // A real receiver flip is debited exactly — still no dirty mark.
+  ship.receiveShadow = false;
+  assert.equal(noteShadowPolicyChanged(tally, { changed: true, receiverDelta: -1 }), true);
+  assert.equal(tally.dirty, false);
+  assert.equal(tally.count, 1);
+  assert.equal(tally.resolve(scene), 1);
+  // A result without a delta falls back to the dirty recount contract.
+  assert.equal(noteShadowPolicyChanged(tally, { changed: true }), false);
+  assert.equal(noteShadowPolicyChanged(tally, true), true);
+  assert.equal(tally.dirty, true);
+});
+
+test('live LOD shadow policy refresh dirties the receiver tally', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.match(source, /syncShadowCasterPolicy\(/);
+  assert.match(source, /noteShadowPolicyChanged\(/);
+});

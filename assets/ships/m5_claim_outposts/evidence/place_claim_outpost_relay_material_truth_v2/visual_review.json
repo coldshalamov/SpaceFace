@@ -1,0 +1,190 @@
+{
+  "schema": "spaceface.claimOutpostRelayMaterialTruthVisualReview.v1",
+  "assetId": "place_claim_outpost_relay",
+  "dispatchUnit": "PQ-022.relay-reauthor",
+  "reviewMode": "independent-subagent-causal-rereview",
+  "reviewer": "codex:/root/visual_gap_census",
+  "scope": "whole_asset",
+  "reviewedSubjects": [
+    "asteroid body and contact boundary",
+    "clamp shoes, drilled bolts, gussets, and outboard load paths",
+    "core shell and recessed service bay",
+    "paired freight vessels, caps, saddles, manways, and junctions",
+    "transfer-spine roots, open trusses, braces, flanges, and collector members",
+    "recovery receiver, inner throat, lock lugs, inspection window, and diagnostics",
+    "lattice mast, gimbal, reflector, rear ribs, feed, and waveguide",
+    "module hardpoints, service cables, glands, instruments, and ownership markers"
+  ],
+  "inspection": {
+    "openedAtOriginalResolution": true,
+    "viewsInspected": [
+      "baseline/front",
+      "baseline/front_three_quarter",
+      "baseline/rear",
+      "baseline/rear_three_quarter",
+      "baseline/side",
+      "baseline/top",
+      "candidate/front",
+      "candidate/front_three_quarter",
+      "candidate/rear",
+      "candidate/rear_three_quarter",
+      "candidate/side",
+      "candidate/top"
+    ]
+  },
+  "changedZones": [
+    "rock-gripping clamp and visible load paths",
+    "stepped core and recessed service bay",
+    "asymmetric formed freight vessels and supports",
+    "open transfer trusses and terminating flanges",
+    "deep recovery receiver and lock hardware",
+    "lattice mast, reflector, feed, and waveguide",
+    "raceways, cables, hardpoints, instruments, and localized ownership signals"
+  ],
+  "dominantInheritedOrRetainedZones": [
+    "asteroid body and contact boundary",
+    "frozen root identity and 104.3364 x 55.3196 x 95.859 metre envelope",
+    "seven frozen socket transforms",
+    "frozen broadphase-only collision proxy"
+  ],
+  "openP0P1Defects": [],
+  "reviewedCandidate": {
+    "blendPath": "assets/ships/m5_claim_outposts/blender/place_claim_outpost_relay_material_truth_v2.blend",
+    "blendSha256": "091428F4C4DA171F24487D4703D75692496BA499344475512BA7C958C96CE0A7",
+    "sourcePath": "assets/ships/m5_claim_outposts/source_candidates/material_truth_v2/places/place_claim_outpost_relay.glb",
+    "sourceSha256": "242748956EC90AD328E6CABAA52823FEFF213C3C6FA17A9E1FD4920F022A76E3",
+    "imageDimensions": "1280x720",
+    "cameraContract": "matched fixed camera orientation, framing, lens, exposure, and neutral review fill"
+  },
+  "renderProvenance": {
+    "path": "tools/blender/render_claim_outpost_relay_material_truth_v2.py",
+    "sha256": "AA006A4733588337D18240AEE99AAFD5C3A1D423381636811908ABF7322A1ACA",
+    "runtime": "Blender 5.1 EEVEE",
+    "resolution": "1280x720",
+    "lensMm": 58,
+    "sensorWidthMm": 36,
+    "exposure": 0.85,
+    "viewTransform": "AgX",
+    "look": "AgX - Medium High Contrast"
+  },
+  "technicalCandidate": {
+    "blendPath": "assets/ships/m5_claim_outposts/blender/place_claim_outpost_relay_material_truth_v2.blend",
+    "blendSha256": "7B069F78A8FF289B32705FB0614E156E24E37FF4A0D432CC57CBC6D8040D810F",
+    "sourcePath": "assets/ships/m5_claim_outposts/source_candidates/material_truth_v2/places/place_claim_outpost_relay.glb",
+    "sourceSha256": "A8789308E39F733BC6565198B2AFEE0BA5FD106AFFC54A22DD7D30E40AC10A7A",
+    "sourceBytes": 13416020,
+    "releaseCandidatePath": "assets/ships/m5_claim_outposts/release_candidates/material_truth_v2/places/place_claim_outpost_relay.glb",
+    "releaseCandidateSha256": "A8789308E39F733BC6565198B2AFEE0BA5FD106AFFC54A22DD7D30E40AC10A7A",
+    "validatedArtifactSha256": "A8789308E39F733BC6565198B2AFEE0BA5FD106AFFC54A22DD7D30E40AC10A7A",
+    "validatorReports": {
+      "foundry": {
+        "path": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/validation/foundry/place_claim_outpost_relay.glb.report.json",
+        "sha256": "32E6D7EC958A770F3CF21A9A4BB9687FCDC4494AFF23B7294B7C5925FC5161B3"
+      },
+      "khronos": {
+        "path": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/validation/khronos/place_claim_outpost_relay.glb.report.json",
+        "sha256": "D8B661BD2395564A6907008073A1B9FF5FB807A2FA89042CD89CCCF9C2BB1B5C"
+      }
+    },
+    "technicalDeltaOnly": [
+      "deterministic triangulation of all fifteen draw groups for portable tangent export",
+      "LOD1 and LOD2 kept viewport-visible during selected GLB export",
+      "explicit frozen export-set accounting",
+      "four coincident service-bay frame boxes replaced by one closed frame with the same visible envelope and opening",
+      "one-micrometre position-welded topology regression proves every visible edge has exactly two incident faces"
+    ],
+    "constructionOrMaterialAuthoringChangedAfterReview": false,
+    "foundry": {
+      "pass": true,
+      "failures": 0,
+      "warnings": 0
+    },
+    "khronos": {
+      "errors": 0,
+      "warnings": 0,
+      "infos": 0,
+      "hints": 0
+    },
+    "lodTriangles": {
+      "lod0": 62992,
+      "lod1": 27592,
+      "lod2": 8384,
+      "collision": 44
+    },
+    "drawGroupsPerLod": 5,
+    "allSixteenMeshPrimitivesCarryTangents": true,
+    "frozenContractVerifiedUnchanged": true
+  },
+  "verdict": {
+    "G1": "KEEP",
+    "G2": "KEEP",
+    "G4": "KEEP"
+  },
+  "verdictAppliesToSourceSha256": "242748956EC90AD328E6CABAA52823FEFF213C3C6FA17A9E1FD4920F022A76E3",
+  "reviewedCandidateEvidenceSufficient": true,
+  "evidenceSufficientFor": "lineage-bound reviewedCandidate only",
+  "exactFinalVisualBinding": false,
+  "implementationDisposition": "integration_candidate",
+  "nextGate": "PQ-022.relay-reauthor-h1 then PQ-022.relay-reauthor-review",
+  "decision": "Promote the technically valid source as a focused-green integration candidate. Preserve the KEEP verdict as lineage-bound authoring evidence; do not relabel it as exact-final or route acceptance. The downstream one-use live-route capture and causal review bind the promoted release hash.",
+  "findings": {
+    "G1": "Separated rock shoes and braces visibly carry load into the stepped core; asymmetric formed vessels, open transfer trusses, deep receiver, mast, reflector, feed, hardpoints, raceways, cables, and housed instruments replace the baseline primitive assembly.",
+    "G2": "Cool hulls, dark mechanics, warm load-bearing members, faceted rock, and localized cyan instruments remain distinct without bloom carrying the design.",
+    "G4": "All six angles retain one coherent asteroid-bolted recovery and communications relay identity at silhouette and meso scale."
+  },
+  "evidence": [
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/baseline/front.png",
+      "sha256": "04C512E7C3BA57746549460E183C4D32DBF7F9FCA705F674DF564C2FD9800D3B"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/baseline/front_three_quarter.png",
+      "sha256": "0051C3D78B516D4924451A4D0B34370033208949D28F1CC3958DE3D98AD4F4C5"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/baseline/rear.png",
+      "sha256": "3D985568E143C61749B30669875A7ABB5E57EADDDF4090B389F24660B684DBE5"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/baseline/rear_three_quarter.png",
+      "sha256": "43C60B25EC4EC2FA8AD342B5D5EFB566519D5F46CEEF4E844B2B9189D4BCF72D"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/baseline/side.png",
+      "sha256": "0C7907ED87566B49D46723BD7CC68B062EF386F8B45020CF5D65EB67BD1CCB46"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/baseline/top.png",
+      "sha256": "EFB47EFFBC4CF16A34B3F6CB80D5AE72F08C99C8BD3E7F60FC48B0DF49EEE7F4"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/candidate/front.png",
+      "sha256": "8E7B4C5CAEF9ABFCD47DF7584B5E6818E47DFA6CE37B9BB8E99BD0820F7DF286"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/candidate/front_three_quarter.png",
+      "sha256": "1F8D80C715C2C2B6F31E97EC2D2678FA715088999BD780229A6A6345CEA3ED61"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/candidate/rear.png",
+      "sha256": "61DEEC76FA83271BF60939B7F5B3808B3E6DC580F8F3C5FD48D61F4F0046E47A"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/candidate/rear_three_quarter.png",
+      "sha256": "8434A16CFF88E4E7E908780D2430FFA0D34E7516EFCDB967EC9EB8BB0E50C460"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/candidate/side.png",
+      "sha256": "E15E31584F8CCCE64B495A28A83EC69AA9DC003F7B824DA8A3B61619F876E29D"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/candidate/top.png",
+      "sha256": "187293C123F97ABD28D2EFAEFAD8748D72C630BFE387DF23EB2ADB1C49B54395"
+    }
+  ],
+  "boundaries": [
+    "No Browser, Electron, native performance, route acceptance, or exact-final visual claim is made by this offline review.",
+    "The technical rebuild changed the producer and artifact hashes, so the reviewed images cannot be receipt-only rebound to the final source hash.",
+    "No additional offline render is justified solely to close the implementation unit; the next useful evidence is the promoted release on the ordinary player route."
+  ]
+}

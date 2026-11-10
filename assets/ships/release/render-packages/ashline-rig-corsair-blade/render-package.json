@@ -1,0 +1,7443 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.4840104579925537,
+        0.5147500038146973,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentNodeId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.4840104579925537,
+        0.5147500038146973,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.anchor.socket-cargo-ventral",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9386296272277832,
+        -0.625,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentNodeId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9386296272277832,
+        -0.625,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.399999618530273,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentNodeId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.399999618530273,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.anchor.socket-mining-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.097259521484375,
+        0.3647499680519104,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentNodeId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.097259521484375,
+        0.3647499680519104,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.anchor.socket-rcs-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9386296272277832,
+        0.5147500038146973,
+        -1.964468240737915,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentNodeId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9386296272277832,
+        0.5147500038146973,
+        -1.964468240737915,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.anchor.socket-rcs-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9386296272277832,
+        0.5147500038146973,
+        1.964468240737915,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentNodeId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9386296272277832,
+        0.5147500038146973,
+        1.964468240737915,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.3111674785614014,
+        0.8522499799728394,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentNodeId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.3111674785614014,
+        0.8522499799728394,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.820000648498535,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentNodeId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.820000648498535,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.anchor.socket-trail-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.820000648498535,
+        0.10000000149011612,
+        -0.818528413772583,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentNodeId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.820000648498535,
+        0.10000000149011612,
+        -0.818528413772583,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.anchor.socket-trail-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.820000648498535,
+        0.10000000149011612,
+        0.818528413772583,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentNodeId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.820000648498535,
+        0.10000000149011612,
+        0.818528413772583,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.anchor.socket-utility-dorsal",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9386296272277832,
+        1.6545000076293945,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentNodeId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9386296272277832,
+        1.6545000076293945,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.197259902954102,
+        0.5147500038146973,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentNodeId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.197259902954102,
+        0.5147500038146973,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.ashline-rig-corsair-blade",
+  "collisions": [
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.collision",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "ee17641c608241f39d8a3655c381c79b8761518224e4592d32ab3c12606803b0",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-drive-core.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-drive-core"
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-nav-port.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-nav-port"
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-nav-starboard.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-drive-core.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-drive-core"
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-nav-port.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-nav-port"
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-nav-starboard.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hook-drive-core.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hook-drive-core"
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hook-nav-port.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hook-nav-port"
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hook-nav-starboard.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hook-nav-starboard"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          10.597331047058105,
+          1.704433912587609,
+          3.2745785938320804
+        ],
+        "min": [
+          -8.720000267028809,
+          -0.6749340241675039,
+          -3.2745785938320804
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dde0f914ed74aaaeec110ee0ab63a01d2639430217e3f70a390e45bec701bd07",
+      "id": "sf.render.ashline-rig-corsair-blade.node.collision-hull.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 726
+    },
+    {
+      "bounds": {
+        "max": [
+          10.197845458984375,
+          0.9045638081486597,
+          3.0994450288466924
+        ],
+        "min": [
+          -7.586852073669434,
+          -0.6694473263676538,
+          -3.0994450288466924
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9518101eb8fa9493ab4b6734ea2f35724f012863ab5a4e0c6537dd1b3c19b691",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-armor.primitive.0",
+      "indexCount": 11907,
+      "indexed": true,
+      "materialHash": "8d4dd9f85e120f7b933880a49573fd10a730e176c84930835a0cc0ee284bda22",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Armor",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 3927
+    },
+    {
+      "bounds": {
+        "max": [
+          7.159499645233154,
+          1.7045301022778028,
+          2.290251393573861
+        ],
+        "min": [
+          -4.679999828338623,
+          0.18696981940169388,
+          -2.290251393573861
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4d8f1b16a7f073635f7527d82dca99e5e003c853402c0d8e392d5fa6d398fda1",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-beacon-amber.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 120
+    },
+    {
+      "bounds": {
+        "max": [
+          10.597259521484375,
+          0.7997221405943815,
+          3.2738963044275096
+        ],
+        "min": [
+          -7.304410934448242,
+          0.24027786596212947,
+          -3.2738963044275096
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "908258ee79669f72319ab366ef10732e1aac6c17d9d96d3123aec2da21456103",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-brushedmetal.primitive.0",
+      "indexCount": 5184,
+      "indexed": true,
+      "materialHash": "60f26c857f395e7babbd1cc44652e8cd6a6e73f5f654cd002523ce393204c350",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_BrushedMetal",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 1544
+    },
+    {
+      "bounds": {
+        "max": [
+          5.699999809265137,
+          1.2579261217347382,
+          0.41853234587246274
+        ],
+        "min": [
+          3.5999999046325684,
+          0.9400453414686919,
+          -0.41853234587246274
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "21aa01e4cba954fa168ff39edc1874f4cefaf6a1aa9d971458fb805a586ae5f2",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-canopy.primitive.0",
+      "indexCount": 1428,
+      "indexed": true,
+      "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD0_MOTION_HULL_CORE_CANOPY",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 336
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.440005859791838,
+          0.8006069209027247,
+          1.4155998229980469
+        ],
+        "min": [
+          -8.114993968546786,
+          -0.6006068732190089,
+          -1.415600299835205
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "28d4a559fac488c7d9013249294353d328237294d158767cbc1674d7e518bf70",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-drive-core.primitive.0",
+      "indexCount": 3612,
+      "indexed": true,
+      "materialHash": "af386acd88d6551a3dfc52af02b10b39086bbe0b8f7e5ccefe4f4016763f59b0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 1120
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.670000076293945,
+          0.8360026036102814,
+          -2.9700000286102295
+        ],
+        "min": [
+          -4.829999923706055,
+          0.7239973391692596,
+          -3.129999876022339
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ffa4ea55e09c5830a3611226d52522c3e395df4c24244e2b6ed51addc858dd5f",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-nav-port.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.670000076293945,
+          0.8360026036102814,
+          3.129999876022339
+        ],
+        "min": [
+          -4.829999923706055,
+          0.7239973391692596,
+          2.9700000286102295
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2db668a7e1bfff13ce21dfba9dbb4beb5d8ef0ec063fe8cbb1e53395c691cdff",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-nav-starboard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          10.199999809265137,
+          1.0468990668139653,
+          3.1001038162054955
+        ],
+        "min": [
+          -7.360913276672363,
+          0.20012509678981744,
+          -3.1001038162054955
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4d5f79c0cce091584a4975267d6257fb64de190f273c6db624b2a9dcd5fdb322",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hull.primitive.0",
+      "indexCount": 7434,
+      "indexed": true,
+      "materialHash": "c10d873b9d8db09bde0ac765d24876c9a3c78d136df9040569964b27a03b3dc1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Hull",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 2156
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5782252910650727,
+          0.8798510531654152,
+          3.100490093231201
+        ],
+        "min": [
+          -4.89985857038865,
+          0.7519212265739647,
+          -3.100510835647583
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2567d4757b597282d1c3436bf6e7ed8eeb2808cb027fa0684644392b38ac588c",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-lights-cyan-sodium.primitive.0",
+      "indexCount": 2655,
+      "indexed": true,
+      "materialHash": "accc96276be1d8579e44cc57ad81cf26f424c442f1928d6272b458105e0b8e61",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Lights_Cyan_sodium",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-lights-cyan-sodium",
+      "primitiveIndex": 0,
+      "vertexCount": 932
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5199999883770943,
+          0.5290023245038586,
+          0.07000000029802322
+        ],
+        "min": [
+          0.3799999877810478,
+          0.43099762423614685,
+          -0.07000000029802322
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "41f5055dab268822806358568ededae0b53d1784ad1f935a6b1aa0f834fd94f5",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-lights-warm.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          10.197842597961426,
+          1.049771806524364,
+          2.7591888239601476
+        ],
+        "min": [
+          -3.537112236022949,
+          -0.0065374735940672,
+          -2.7591888239601476
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "130b84ebe45bec25d61b126f1fa8c78b1610070079d1b15369c43642c6fd5d81",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-livery.primitive.0",
+      "indexCount": 1290,
+      "indexed": true,
+      "materialHash": "6964fe8e4109c4f9f01c8072647a7b5f8954520df93426e56d22a82dbf1ece4a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Livery",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 477
+    },
+    {
+      "bounds": {
+        "max": [
+          7.21999979019165,
+          1.6797453713741934,
+          2.9307086503105153
+        ],
+        "min": [
+          -8.720000267028809,
+          -0.6747454357472098,
+          -2.9307086503105153
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "746119d8ad106c0ff2e1d075622955fbe1fa704926cb974c300c879c4b0acdc6",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-mechanical.primitive.0",
+      "indexCount": 15516,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Mechanical",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 5088
+    },
+    {
+      "bounds": {
+        "max": [
+          6.949999809265137,
+          1.3682726830790688,
+          2.9518440953069973
+        ],
+        "min": [
+          -8.720000267028809,
+          -0.6287951082537819,
+          -2.9518440953069973
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ad1c40c5d90ddfd7261389560dbdaba4c8f00e5fe6b57eca2624b1aba5302eef",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
+      "indexCount": 19914,
+      "indexed": true,
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 6298
+    },
+    {
+      "bounds": {
+        "max": [
+          4.900000095367432,
+          0.9196399505601089,
+          1.3199822905080583
+        ],
+        "min": [
+          -5.2852959632873535,
+          -0.6196399982438248,
+          -1.3199822905080583
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c6637698b5c87223063ef4f0a74df46afade725e391345b879df22575578e484",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-warning.primitive.0",
+      "indexCount": 2508,
+      "indexed": true,
+      "materialHash": "f7ab29a8754d4f9ff7bb1479203da31d15cb1b7711620aecc9f8d2e885a5abba",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Warning",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 1026
+    },
+    {
+      "bounds": {
+        "max": [
+          10.19859504699707,
+          0.9027282121509498,
+          3.0996295728379906
+        ],
+        "min": [
+          -7.587095737457275,
+          -0.6691996577114051,
+          -3.099606684654397
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d754614b37502232d75b2fbfbcb4639d7cf4f689058187049bb62932ffda53da",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-armor.primitive.0",
+      "indexCount": 3903,
+      "indexed": true,
+      "materialHash": "8d4dd9f85e120f7b933880a49573fd10a730e176c84930835a0cc0ee284bda22",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_Armor",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 1390
+    },
+    {
+      "bounds": {
+        "max": [
+          7.159499645233154,
+          1.7045301022778028,
+          2.290251393573861
+        ],
+        "min": [
+          -4.679999828338623,
+          0.18696981940169388,
+          -2.290251393573861
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0276d37c1f6879affe753cb5a39d491e014a0cbb9cb1cc0f7c423bdc9da23a60",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-beacon-amber.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_Beacon_Amber",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 120
+    },
+    {
+      "bounds": {
+        "max": [
+          10.59822940826416,
+          0.799981942755448,
+          3.2751554663422073
+        ],
+        "min": [
+          -7.304312705993652,
+          0.2405104279692301,
+          -3.2751413996460403
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "72c87b18f42d55c863ed2291a46316fe5d36c7d0f029bc5ebe12839a09779812",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-brushedmetal.primitive.0",
+      "indexCount": 1974,
+      "indexed": true,
+      "materialHash": "60f26c857f395e7babbd1cc44652e8cd6a6e73f5f654cd002523ce393204c350",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_BrushedMetal",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 914
+    },
+    {
+      "bounds": {
+        "max": [
+          5.700036525726318,
+          1.2579553196085098,
+          0.41855068746970686
+        ],
+        "min": [
+          3.599944591522217,
+          0.9400606086599229,
+          -0.41855068746970686
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b59be668a64f9f6a3f53b4324333d5e764b84f318d9c9e2b6c4f615e1659f7eb",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-canopy.primitive.0",
+      "indexCount": 936,
+      "indexed": true,
+      "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD1_MOTION_HULL_CORE_CANOPY",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 227
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.440434189032246,
+          0.7997999841410832,
+          1.4146674450821592
+        ],
+        "min": [
+          -8.114977626611065,
+          -0.5997999364573674,
+          -1.4146675292067812
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3118259af6fdf357cf59e84a98ca0495f36f01b0920aabcbf8850d6daa424dd1",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-drive-core.primitive.0",
+      "indexCount": 1884,
+      "indexed": true,
+      "materialHash": "af386acd88d6551a3dfc52af02b10b39086bbe0b8f7e5ccefe4f4016763f59b0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 512
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.670000076293945,
+          0.8360026036102814,
+          -2.9700000286102295
+        ],
+        "min": [
+          -4.829999923706055,
+          0.7239973391692596,
+          -3.129999876022339
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1696b2dcb4a57c75178ee5c31328fee9971818699c064275ba38d00868e08601",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-nav-port.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.670000076293945,
+          0.8360026036102814,
+          3.129999876022339
+        ],
+        "min": [
+          -4.829999923706055,
+          0.7239973391692596,
+          2.9700000286102295
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "647f1142902a4df902b8138b28173ab476fd71cf0adb1d61fdc7b021c43f7eac",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-nav-starboard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          10.199999809265137,
+          1.0451047164507519,
+          3.099861575412835
+        ],
+        "min": [
+          -7.365549564361572,
+          0.2002514856747975,
+          -3.099838687229241
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6c8c96483b95081ac226bda3cee28fd08da30c7fdb9b900eebf340db9d0adc0f",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hull.primitive.0",
+      "indexCount": 1041,
+      "indexed": true,
+      "materialHash": "c10d873b9d8db09bde0ac765d24876c9a3c78d136df9040569964b27a03b3dc1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_Hull",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 312
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5779536376167314,
+          0.8800095562690469,
+          3.1005029678344727
+        ],
+        "min": [
+          -4.899572492616274,
+          0.7520927543884544,
+          -3.0998666286468506
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6417f21b2396d0401e4527cb3f623bd65569a64968df5936dd3225979ac504b8",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-lights-cyan-sodium.primitive.0",
+      "indexCount": 234,
+      "indexed": true,
+      "materialHash": "accc96276be1d8579e44cc57ad81cf26f424c442f1928d6272b458105e0b8e61",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_Lights_Cyan_sodium",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-lights-cyan-sodium",
+      "primitiveIndex": 0,
+      "vertexCount": 138
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5199999883770943,
+          0.5290023245038586,
+          0.07000000029802322
+        ],
+        "min": [
+          0.3799999877810478,
+          0.43099762423614685,
+          -0.07000000029802322
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "50caab848bf5b49fa10d07dcf8b4224978f4711c9a60096fbf2b1dc88d3412f7",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-lights-warm.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_Lights_Warm",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          10.197684288024902,
+          1.04861153265562,
+          2.5999535454288374
+        ],
+        "min": [
+          -2.948309898376465,
+          0.22856660583887156,
+          -2.5999497307315718
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d53a97cc3f57779f5cf6c2891d7ce9d26098cb816a6e3b869ca600a231785810",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-livery.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "6964fe8e4109c4f9f01c8072647a7b5f8954520df93426e56d22a82dbf1ece4a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_Livery",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 34
+    },
+    {
+      "bounds": {
+        "max": [
+          7.220092296600342,
+          1.67975217361353,
+          2.929840222310768
+        ],
+        "min": [
+          -8.720000267028809,
+          -0.674752297591191,
+          -2.9296652230737075
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d2d4856fafaee54cb658678475284093e0828f52b75fc357b7ab6ca705353e38",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-mechanical.primitive.0",
+      "indexCount": 8487,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_Mechanical",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 3106
+    },
+    {
+      "bounds": {
+        "max": [
+          6.949499607086182,
+          1.368799214986376,
+          2.9517498694715654
+        ],
+        "min": [
+          -8.720000267028809,
+          -0.6282048279319324,
+          -2.9517498694715654
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3ac5fbd2e9e19d2670b8bad1cef30a172729416059e198b6f56914a9869d2582",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-mechanicaldark.primitive.0",
+      "indexCount": 8562,
+      "indexed": true,
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_MechanicalDark",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 2971
+    },
+    {
+      "bounds": {
+        "max": [
+          5.093822956085205,
+          0.9193853904467374,
+          1.3196481391748873
+        ],
+        "min": [
+          -5.289394855499268,
+          -0.619385497735098,
+          -1.3196481391748873
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "38a883e65803508f08b2a5dbf16df96757f8ad2b8fdf05fe1ba7989548bd10c5",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-warning.primitive.0",
+      "indexCount": 1107,
+      "indexed": true,
+      "materialHash": "f7ab29a8754d4f9ff7bb1479203da31d15cb1b7711620aecc9f8d2e885a5abba",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_Warning",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 569
+    },
+    {
+      "bounds": {
+        "max": [
+          10.19931411743164,
+          0.8982766425347282,
+          3.0995979112625176
+        ],
+        "min": [
+          -7.58619499206543,
+          -0.6671217238640739,
+          -3.099575023078924
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3824d0de3749a2b951223de063b00a215a3388cdaf1dd6bd6aa4578416a56097",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-armor.primitive.0",
+      "indexCount": 1707,
+      "indexed": true,
+      "materialHash": "8d4dd9f85e120f7b933880a49573fd10a730e176c84930835a0cc0ee284bda22",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_Armor",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 712
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.529878064261971,
+          0.9759444052160058,
+          2.2899999618530273
+        ],
+        "min": [
+          -4.680121854675712,
+          0.18705559728738935,
+          -2.2899999618530273
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0e254a2bcbef87c976ad671f7ead035e3e93e66c462c0e981ff99350666aac9d",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-beacon-amber.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          10.599640846252441,
+          0.7976960643955858,
+          3.272491504479747
+        ],
+        "min": [
+          -5.085920810699463,
+          0.24048930855306072,
+          -3.272773076821666
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d8680b680a5455643b074745dc0dba707fcdee8b0cc031a252120dd1ccbf5927",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-brushedmetal.primitive.0",
+      "indexCount": 948,
+      "indexed": true,
+      "materialHash": "60f26c857f395e7babbd1cc44652e8cd6a6e73f5f654cd002523ce393204c350",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_BrushedMetal",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 500
+    },
+    {
+      "bounds": {
+        "max": [
+          5.700240612030029,
+          1.258018874145607,
+          0.4183205366457524
+        ],
+        "min": [
+          3.5995335578918457,
+          0.9397746095885239,
+          -0.4172309339369359
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "149c7a9a5795f6775223554b6ed7bd784a944494dee8a9bf9db916847b4216da",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-canopy.primitive.0",
+      "indexCount": 540,
+      "indexed": true,
+      "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD2_MOTION_HULL_CORE_CANOPY",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 143
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.441953328253385,
+          0.7975189231640125,
+          1.4128454986494035
+        ],
+        "min": [
+          -8.11493811309183,
+          -0.5975188605791355,
+          -1.4128454860765487
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "628b037a3e902576a820fa26cf2548f053a894fe10b179531e01fe6d8034eace",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hook-drive-core.primitive.0",
+      "indexCount": 936,
+      "indexed": true,
+      "materialHash": "af386acd88d6551a3dfc52af02b10b39086bbe0b8f7e5ccefe4f4016763f59b0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 340
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.670000076293945,
+          0.8360026036102814,
+          -2.9700000286102295
+        ],
+        "min": [
+          -4.829999923706055,
+          0.7239973391692596,
+          -3.129999876022339
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1696b2dcb4a57c75178ee5c31328fee9971818699c064275ba38d00868e08601",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hook-nav-port.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.670000076293945,
+          0.8360026036102814,
+          3.129999876022339
+        ],
+        "min": [
+          -4.829999923706055,
+          0.7239973391692596,
+          2.9700000286102295
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "647f1142902a4df902b8138b28173ab476fd71cf0adb1d61fdc7b021c43f7eac",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hook-nav-starboard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          10.199999809265137,
+          1.047949183661442,
+          3.0997467953739606
+        ],
+        "min": [
+          -7.370976448059082,
+          0.19425509504606214,
+          -3.099723907190367
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4a14eda4355c6fad6a80d7688100bcedb5af0274027e791b3c18cda9464e80c9",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hull.primitive.0",
+      "indexCount": 666,
+      "indexed": true,
+      "materialHash": "c10d873b9d8db09bde0ac765d24876c9a3c78d136df9040569964b27a03b3dc1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_Hull",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 236
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5780437955993261,
+          0.8799939935103026,
+          3.0997815132141113
+        ],
+        "min": [
+          -4.899662948622092,
+          0.7521083171471986,
+          -3.0990793704986572
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e0c60072acd54886ed16afbd97676c5a489226c6f5165b5f71bf71c9df6d13a3",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-lights-cyan-sodium.primitive.0",
+      "indexCount": 150,
+      "indexed": true,
+      "materialHash": "accc96276be1d8579e44cc57ad81cf26f424c442f1928d6272b458105e0b8e61",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_Lights_Cyan_sodium",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-lights-cyan-sodium",
+      "primitiveIndex": 0,
+      "vertexCount": 100
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5199999883770943,
+          0.5290023245038586,
+          0.07000000029802322
+        ],
+        "min": [
+          0.3799999877810478,
+          0.43099762423614685,
+          -0.07000000029802322
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "50caab848bf5b49fa10d07dcf8b4224978f4711c9a60096fbf2b1dc88d3412f7",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-lights-warm.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_Lights_Warm",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          10.19937801361084,
+          1.0486871213392552,
+          2.600288522346458
+        ],
+        "min": [
+          -2.948309898376465,
+          0.22853654020268344,
+          -2.6002847076491924
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "741b5414277d5f25bd008603035370d082dd127ba6400b40022413e947513b98",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-livery.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "6964fe8e4109c4f9f01c8072647a7b5f8954520df93426e56d22a82dbf1ece4a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_Livery",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 26
+    },
+    {
+      "bounds": {
+        "max": [
+          6.798188209533691,
+          1.3672263133515663,
+          2.288729597623069
+        ],
+        "min": [
+          -8.720653533935547,
+          -0.6749882805337257,
+          -2.288729597623069
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7eeca89d9e2f90c17a566c6e02057036e860a2a3a0cd9ab38a9130e7299b0ca8",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-mechanical.primitive.0",
+      "indexCount": 3126,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_Mechanical",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 1230
+    },
+    {
+      "bounds": {
+        "max": [
+          6.947817802429199,
+          1.367107033022854,
+          2.469553372961603
+        ],
+        "min": [
+          -8.720653533935547,
+          -0.6278532140340541,
+          -2.469551227194391
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a74e4cab6c67bdb558f42d75832a8332e922d3e01257b870c1ed5c6a272ef584",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-mechanicaldark.primitive.0",
+      "indexCount": 2379,
+      "indexed": true,
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_MechanicalDark",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 1092
+    },
+    {
+      "bounds": {
+        "max": [
+          5.0968194007873535,
+          0.9186688693572318,
+          1.3182388827326126
+        ],
+        "min": [
+          -5.285282611846924,
+          -0.6186692746688163,
+          -1.3182390019419021
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "41d53533d99fadd405e34f69ef7194719972c830b8c69f3a66a1a6d6ed34ae76",
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-warning.primitive.0",
+      "indexCount": 606,
+      "indexed": true,
+      "materialHash": "f7ab29a8754d4f9ff7bb1479203da31d15cb1b7711620aecc9f8d2e885a5abba",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_Warning",
+      "nodeId": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 352
+    }
+  ],
+  "hlods": [],
+  "kind": "ship",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "id": "material:1ee807a3355d83d28693fa8c",
+      "name": "Material_Canopy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "60f26c857f395e7babbd1cc44652e8cd6a6e73f5f654cd002523ce393204c350",
+      "id": "material:60f26c857f395e7babbd1cc4",
+      "name": "Material_BrushedMetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6964fe8e4109c4f9f01c8072647a7b5f8954520df93426e56d22a82dbf1ece4a",
+      "id": "material:6964fe8e4109c4f9f01c8072",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "id": "material:7dbce0f058ce69aeee64664b",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "8d4dd9f85e120f7b933880a49573fd10a730e176c84930835a0cc0ee284bda22",
+      "id": "material:8d4dd9f85e120f7b933880a4",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "id": "material:935effa788e2e47cba8a2bfc",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "accc96276be1d8579e44cc57ad81cf26f424c442f1928d6272b458105e0b8e61",
+      "id": "material:accc96276be1d8579e44cc57",
+      "name": "Material_Emissive_Cyan_sodium",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "af386acd88d6551a3dfc52af02b10b39086bbe0b8f7e5ccefe4f4016763f59b0",
+      "id": "material:af386acd88d6551a3dfc52af",
+      "name": "Material_Thruster",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "id": "material:be05a75f6364bf5672ea6503",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c10d873b9d8db09bde0ac765d24876c9a3c78d136df9040569964b27a03b3dc1",
+      "id": "material:c10d873b9d8db09bde0ac765",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f7ab29a8754d4f9ff7bb1479203da31d15cb1b7711620aecc9f8d2e885a5abba",
+      "id": "material:f7ab29a8754d4f9ff7bb1479",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.collision-hull",
+      "localTransform": [
+        9.658665657043457,
+        0,
+        0,
+        0,
+        0,
+        9.658665657043457,
+        0,
+        0,
+        0,
+        0,
+        9.658665657043457,
+        0,
+        0.9386653900146484,
+        0.5147499442100525,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        9.658665657043457,
+        0,
+        0,
+        0,
+        0,
+        9.658665657043457,
+        0,
+        0,
+        0,
+        0,
+        9.658665657043457,
+        0,
+        0.9386653900146484,
+        0.5147499442100525,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-armor",
+      "localTransform": [
+        8.892348766326904,
+        0,
+        0,
+        0,
+        0,
+        8.892348766326904,
+        0,
+        0,
+        0,
+        0,
+        8.892348766326904,
+        0,
+        1.3054966926574707,
+        0.11755824089050293,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Armor",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Armor",
+      "nodePath": [
+        0,
+        1,
+        0
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        8.892348766326904,
+        0,
+        0,
+        0,
+        0,
+        8.892348766326904,
+        0,
+        0,
+        0,
+        0,
+        8.892348766326904,
+        0,
+        1.3054966926574707,
+        0.11755824089050293,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-beacon-amber",
+      "localTransform": [
+        5.919749736785889,
+        0,
+        0,
+        0,
+        0,
+        5.919749736785889,
+        0,
+        0,
+        0,
+        0,
+        5.919749736785889,
+        0,
+        1.2397499084472656,
+        0.9457499608397484,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+      "nodePath": [
+        0,
+        1,
+        1
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        5.919749736785889,
+        0,
+        0,
+        0,
+        0,
+        5.919749736785889,
+        0,
+        0,
+        0,
+        0,
+        5.919749736785889,
+        0,
+        1.2397499084472656,
+        0.9457499608397484,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-brushedmetal",
+      "localTransform": [
+        8.950835227966309,
+        0,
+        0,
+        0,
+        0,
+        8.950835227966309,
+        0,
+        0,
+        0,
+        0,
+        8.950835227966309,
+        0,
+        1.6464242935180664,
+        0.5200000032782555,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_BrushedMetal",
+      "nodeName": "LOD0_MOTION_HULL_CORE_BrushedMetal",
+      "nodePath": [
+        0,
+        1,
+        2
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        8.950835227966309,
+        0,
+        0,
+        0,
+        0,
+        8.950835227966309,
+        0,
+        0,
+        0,
+        0,
+        8.950835227966309,
+        0,
+        1.6464242935180664,
+        0.5200000032782555,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-canopy",
+      "localTransform": [
+        1.0499999523162842,
+        0,
+        0,
+        0,
+        0,
+        1.0499999523162842,
+        0,
+        0,
+        0,
+        0,
+        1.0499999523162842,
+        0,
+        4.6499998569488525,
+        1.098985731601715,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_CANOPY",
+      "nodeName": "LOD0_MOTION_HULL_CORE_CANOPY",
+      "nodePath": [
+        0,
+        1,
+        3
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        1.0499999523162842,
+        0,
+        0,
+        0,
+        0,
+        1.0499999523162842,
+        0,
+        0,
+        0,
+        0,
+        1.0499999523162842,
+        0,
+        4.6499998569488525,
+        1.098985731601715,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-drive-core",
+      "localTransform": [
+        1.415600061416626,
+        0,
+        0,
+        0,
+        0,
+        1.415600061416626,
+        0,
+        0,
+        0,
+        0,
+        1.415600061416626,
+        0,
+        -7.7774999141693115,
+        0.10000002384185791,
+        -2.384185791015625e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        1,
+        4
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        1.415600061416626,
+        0,
+        0,
+        0,
+        0,
+        1.415600061416626,
+        0,
+        0,
+        0,
+        0,
+        1.415600061416626,
+        0,
+        -7.7774999141693115,
+        0.10000002384185791,
+        -2.384185791015625e-7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-nav-port",
+      "localTransform": [
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        -4.75,
+        0.7799999713897705,
+        -3.049999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        1,
+        5
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        -4.75,
+        0.7799999713897705,
+        -3.049999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-nav-starboard",
+      "localTransform": [
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        -4.75,
+        0.7799999713897705,
+        3.049999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        1,
+        6
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        -4.75,
+        0.7799999713897705,
+        3.049999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hull",
+      "localTransform": [
+        8.78045654296875,
+        0,
+        0,
+        0,
+        0,
+        8.78045654296875,
+        0,
+        0,
+        0,
+        0,
+        8.78045654296875,
+        0,
+        1.4195432662963867,
+        0.6235120818018913,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Hull",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Hull",
+      "nodePath": [
+        0,
+        1,
+        7
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        8.78045654296875,
+        0,
+        0,
+        0,
+        0,
+        8.78045654296875,
+        0,
+        0,
+        0,
+        0,
+        8.78045654296875,
+        0,
+        1.4195432662963867,
+        0.6235120818018913,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-lights-cyan-sodium",
+      "localTransform": [
+        3.100500464439392,
+        0,
+        0,
+        0,
+        0,
+        3.100500464439392,
+        0,
+        0,
+        0,
+        0,
+        3.100500464439392,
+        0,
+        -2.160816639661789,
+        0.8158861398696899,
+        -0.000010371208190917969,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Cyan_sodium",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Lights_Cyan_sodium",
+      "nodePath": [
+        0,
+        1,
+        8
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        3.100500464439392,
+        0,
+        0,
+        0,
+        0,
+        3.100500464439392,
+        0,
+        0,
+        0,
+        0,
+        3.100500464439392,
+        0,
+        -2.160816639661789,
+        0.8158861398696899,
+        -0.000010371208190917969,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-lights-warm",
+      "localTransform": [
+        0.07000000029802322,
+        0,
+        0,
+        0,
+        0,
+        0.07000000029802322,
+        0,
+        0,
+        0,
+        0,
+        0.07000000029802322,
+        0,
+        0.44999998807907104,
+        0.47999997437000275,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+      "nodePath": [
+        0,
+        1,
+        9
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        0.07000000029802322,
+        0,
+        0,
+        0,
+        0,
+        0.07000000029802322,
+        0,
+        0,
+        0,
+        0,
+        0.07000000029802322,
+        0,
+        0.44999998807907104,
+        0.47999997437000275,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-livery",
+      "localTransform": [
+        6.8674774169921875,
+        0,
+        0,
+        0,
+        0,
+        6.8674774169921875,
+        0,
+        0,
+        0,
+        0,
+        6.8674774169921875,
+        0,
+        3.3303651809692383,
+        0.5216171664651483,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Livery",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Livery",
+      "nodePath": [
+        0,
+        1,
+        10
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        6.8674774169921875,
+        0,
+        0,
+        0,
+        0,
+        6.8674774169921875,
+        0,
+        0,
+        0,
+        0,
+        6.8674774169921875,
+        0,
+        3.3303651809692383,
+        0.5216171664651483,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-mechanical",
+      "localTransform": [
+        7.9700000286102295,
+        0,
+        0,
+        0,
+        0,
+        7.9700000286102295,
+        0,
+        0,
+        0,
+        0,
+        7.9700000286102295,
+        0,
+        -0.7500002384185791,
+        0.5024999678134918,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Mechanical",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Mechanical",
+      "nodePath": [
+        0,
+        1,
+        11
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        7.9700000286102295,
+        0,
+        0,
+        0,
+        0,
+        7.9700000286102295,
+        0,
+        0,
+        0,
+        0,
+        7.9700000286102295,
+        0,
+        -0.7500002384185791,
+        0.5024999678134918,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-mechanicaldark",
+      "localTransform": [
+        7.835000038146973,
+        0,
+        0,
+        0,
+        0,
+        7.835000038146973,
+        0,
+        0,
+        0,
+        0,
+        7.835000038146973,
+        0,
+        -0.8850002288818359,
+        0.36973878741264343,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+      "nodeName": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+      "nodePath": [
+        0,
+        1,
+        12
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        7.835000038146973,
+        0,
+        0,
+        0,
+        0,
+        7.835000038146973,
+        0,
+        0,
+        0,
+        0,
+        7.835000038146973,
+        0,
+        -0.8850002288818359,
+        0.36973878741264343,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-warning",
+      "localTransform": [
+        5.092648029327393,
+        0,
+        0,
+        0,
+        0,
+        5.092648029327393,
+        0,
+        0,
+        0,
+        0,
+        5.092648029327393,
+        0,
+        -0.19264793395996094,
+        0.1499999761581421,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Warning",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Warning",
+      "nodePath": [
+        0,
+        1,
+        13
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        5.092648029327393,
+        0,
+        0,
+        0,
+        0,
+        5.092648029327393,
+        0,
+        0,
+        0,
+        0,
+        5.092648029327393,
+        0,
+        -0.19264793395996094,
+        0.1499999761581421,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-armor",
+      "localTransform": [
+        8.892845392227173,
+        0,
+        0,
+        0,
+        0,
+        8.892845392227173,
+        0,
+        0,
+        0,
+        0,
+        8.892845392227173,
+        0,
+        1.3057496547698975,
+        0.11676427721977234,
+        0.000011444091796875,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Armor",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Armor",
+      "nodePath": [
+        0,
+        1,
+        14
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        8.892845392227173,
+        0,
+        0,
+        0,
+        0,
+        8.892845392227173,
+        0,
+        0,
+        0,
+        0,
+        8.892845392227173,
+        0,
+        1.3057496547698975,
+        0.11676427721977234,
+        0.000011444091796875,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-beacon-amber",
+      "localTransform": [
+        5.919749736785889,
+        0,
+        0,
+        0,
+        0,
+        5.919749736785889,
+        0,
+        0,
+        0,
+        0,
+        5.919749736785889,
+        0,
+        1.2397499084472656,
+        0.9457499608397484,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Beacon_Amber",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Beacon_Amber",
+      "nodePath": [
+        0,
+        1,
+        15
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        5.919749736785889,
+        0,
+        0,
+        0,
+        0,
+        5.919749736785889,
+        0,
+        0,
+        0,
+        0,
+        5.919749736785889,
+        0,
+        1.2397499084472656,
+        0.9457499608397484,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-brushedmetal",
+      "localTransform": [
+        8.951271057128906,
+        0,
+        0,
+        0,
+        0,
+        8.951271057128906,
+        0,
+        0,
+        0,
+        0,
+        8.951271057128906,
+        0,
+        1.646958351135254,
+        0.520246185362339,
+        0.000007033348083496094,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_BrushedMetal",
+      "nodeName": "LOD1_MOTION_HULL_CORE_BrushedMetal",
+      "nodePath": [
+        0,
+        1,
+        16
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        8.951271057128906,
+        0,
+        0,
+        0,
+        0,
+        8.951271057128906,
+        0,
+        0,
+        0,
+        0,
+        8.951271057128906,
+        0,
+        1.646958351135254,
+        0.520246185362339,
+        0.000007033348083496094,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-canopy",
+      "localTransform": [
+        1.0500459671020508,
+        0,
+        0,
+        0,
+        0,
+        1.0500459671020508,
+        0,
+        0,
+        0,
+        0,
+        1.0500459671020508,
+        0,
+        4.649990558624268,
+        1.0990079641342163,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_CANOPY",
+      "nodeName": "LOD1_MOTION_HULL_CORE_CANOPY",
+      "nodePath": [
+        0,
+        1,
+        17
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        1.0500459671020508,
+        0,
+        0,
+        0,
+        0,
+        1.0500459671020508,
+        0,
+        0,
+        0,
+        0,
+        1.0500459671020508,
+        0,
+        4.649990558624268,
+        1.0990079641342163,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-drive-core",
+      "localTransform": [
+        1.4146674871444702,
+        0,
+        0,
+        0,
+        0,
+        1.4146674871444702,
+        0,
+        0,
+        0,
+        0,
+        1.4146674871444702,
+        0,
+        -7.777705907821655,
+        0.10000002384185791,
+        -4.2062310967594385e-8,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodeName": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        1,
+        18
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        1.4146674871444702,
+        0,
+        0,
+        0,
+        0,
+        1.4146674871444702,
+        0,
+        0,
+        0,
+        0,
+        1.4146674871444702,
+        0,
+        -7.777705907821655,
+        0.10000002384185791,
+        -4.2062310967594385e-8,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-nav-port",
+      "localTransform": [
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        -4.75,
+        0.7799999713897705,
+        -3.049999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodeName": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        1,
+        19
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        -4.75,
+        0.7799999713897705,
+        -3.049999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-nav-starboard",
+      "localTransform": [
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        -4.75,
+        0.7799999713897705,
+        3.049999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        1,
+        20
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        -4.75,
+        0.7799999713897705,
+        3.049999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hull",
+      "localTransform": [
+        8.782774686813354,
+        0,
+        0,
+        0,
+        0,
+        8.782774686813354,
+        0,
+        0,
+        0,
+        0,
+        8.782774686813354,
+        0,
+        1.4172251224517822,
+        0.6226781010627747,
+        0.000011444091796875,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Hull",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Hull",
+      "nodePath": [
+        0,
+        1,
+        21
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        8.782774686813354,
+        0,
+        0,
+        0,
+        0,
+        8.782774686813354,
+        0,
+        0,
+        0,
+        0,
+        8.782774686813354,
+        0,
+        1.4172251224517822,
+        0.6226781010627747,
+        0.000011444091796875,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-lights-cyan-sodium",
+      "localTransform": [
+        3.1001847982406616,
+        0,
+        0,
+        0,
+        0,
+        3.1001847982406616,
+        0,
+        0,
+        0,
+        0,
+        3.1001847982406616,
+        0,
+        -2.160809427499771,
+        0.8160511553287506,
+        0.00031816959381103516,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Lights_Cyan_sodium",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Lights_Cyan_sodium",
+      "nodePath": [
+        0,
+        1,
+        22
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        3.1001847982406616,
+        0,
+        0,
+        0,
+        0,
+        3.1001847982406616,
+        0,
+        0,
+        0,
+        0,
+        3.1001847982406616,
+        0,
+        -2.160809427499771,
+        0.8160511553287506,
+        0.00031816959381103516,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-lights-warm",
+      "localTransform": [
+        0.07000000029802322,
+        0,
+        0,
+        0,
+        0,
+        0.07000000029802322,
+        0,
+        0,
+        0,
+        0,
+        0.07000000029802322,
+        0,
+        0.44999998807907104,
+        0.47999997437000275,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Lights_Warm",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Lights_Warm",
+      "nodePath": [
+        0,
+        1,
+        23
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        0.07000000029802322,
+        0,
+        0,
+        0,
+        0,
+        0.07000000029802322,
+        0,
+        0,
+        0,
+        0,
+        0.07000000029802322,
+        0,
+        0.44999998807907104,
+        0.47999997437000275,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-livery",
+      "localTransform": [
+        6.572997093200684,
+        0,
+        0,
+        0,
+        0,
+        6.572997093200684,
+        0,
+        0,
+        0,
+        0,
+        6.572997093200684,
+        0,
+        3.6246871948242188,
+        0.6385890692472458,
+        0.0000019073486328125,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Livery",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Livery",
+      "nodePath": [
+        0,
+        1,
+        24
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        6.572997093200684,
+        0,
+        0,
+        0,
+        0,
+        6.572997093200684,
+        0,
+        0,
+        0,
+        0,
+        6.572997093200684,
+        0,
+        3.6246871948242188,
+        0.6385890692472458,
+        0.0000019073486328125,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-mechanical",
+      "localTransform": [
+        7.970046281814575,
+        0,
+        0,
+        0,
+        0,
+        7.970046281814575,
+        0,
+        0,
+        0,
+        0,
+        7.970046281814575,
+        0,
+        -0.7499539852142334,
+        0.5024999380111694,
+        0.00008749961853027344,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Mechanical",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Mechanical",
+      "nodePath": [
+        0,
+        1,
+        25
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        7.970046281814575,
+        0,
+        0,
+        0,
+        0,
+        7.970046281814575,
+        0,
+        0,
+        0,
+        0,
+        7.970046281814575,
+        0,
+        -0.7499539852142334,
+        0.5024999380111694,
+        0.00008749961853027344,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-mechanicaldark",
+      "localTransform": [
+        7.834749937057495,
+        0,
+        0,
+        0,
+        0,
+        7.834749937057495,
+        0,
+        0,
+        0,
+        0,
+        7.834749937057495,
+        0,
+        -0.8852503299713135,
+        0.3702971935272217,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_MechanicalDark",
+      "nodeName": "LOD1_MOTION_HULL_CORE_MechanicalDark",
+      "nodePath": [
+        0,
+        1,
+        26
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        7.834749937057495,
+        0,
+        0,
+        0,
+        0,
+        7.834749937057495,
+        0,
+        0,
+        0,
+        0,
+        7.834749937057495,
+        0,
+        -0.8852503299713135,
+        0.3702971935272217,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-warning",
+      "localTransform": [
+        5.191608905792236,
+        0,
+        0,
+        0,
+        0,
+        5.191608905792236,
+        0,
+        0,
+        0,
+        0,
+        5.191608905792236,
+        0,
+        -0.09778594970703125,
+        0.1499999463558197,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Warning",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Warning",
+      "nodePath": [
+        0,
+        1,
+        27
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        5.191608905792236,
+        0,
+        0,
+        0,
+        0,
+        5.191608905792236,
+        0,
+        0,
+        0,
+        0,
+        5.191608905792236,
+        0,
+        -0.09778594970703125,
+        0.1499999463558197,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-armor",
+      "localTransform": [
+        8.892754554748535,
+        0,
+        0,
+        0,
+        0,
+        8.892754554748535,
+        0,
+        0,
+        0,
+        0,
+        8.892754554748535,
+        0,
+        1.3065595626831055,
+        0.11557745933532715,
+        0.000011444091796875,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Armor",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Armor",
+      "nodePath": [
+        0,
+        1,
+        28
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        8.892754554748535,
+        0,
+        0,
+        0,
+        0,
+        8.892754554748535,
+        0,
+        0,
+        0,
+        0,
+        8.892754554748535,
+        0,
+        1.3065595626831055,
+        0.11557745933532715,
+        0.000011444091796875,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-beacon-amber",
+      "localTransform": [
+        2.2899999618530273,
+        0,
+        0,
+        0,
+        0,
+        2.2899999618530273,
+        0,
+        0,
+        0,
+        0,
+        2.2899999618530273,
+        0,
+        -3.1049999594688416,
+        0.5815000012516975,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
+      "nodePath": [
+        0,
+        1,
+        29
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        2.2899999618530273,
+        0,
+        0,
+        0,
+        0,
+        2.2899999618530273,
+        0,
+        0,
+        0,
+        0,
+        2.2899999618530273,
+        0,
+        -3.1049999594688416,
+        0.5815000012516975,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-brushedmetal",
+      "localTransform": [
+        7.842780828475952,
+        0,
+        0,
+        0,
+        0,
+        7.842780828475952,
+        0,
+        0,
+        0,
+        0,
+        7.842780828475952,
+        0,
+        2.7568600177764893,
+        0.5190926864743233,
+        -0.00014078617095947266,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_BrushedMetal",
+      "nodeName": "LOD2_MOTION_HULL_CORE_BrushedMetal",
+      "nodePath": [
+        0,
+        1,
+        30
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        7.842780828475952,
+        0,
+        0,
+        0,
+        0,
+        7.842780828475952,
+        0,
+        0,
+        0,
+        0,
+        7.842780828475952,
+        0,
+        2.7568600177764893,
+        0.5190926864743233,
+        -0.00014078617095947266,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-canopy",
+      "localTransform": [
+        1.0503535270690918,
+        0,
+        0,
+        0,
+        0,
+        1.0503535270690918,
+        0,
+        0,
+        0,
+        0,
+        1.0503535270690918,
+        0,
+        4.6498870849609375,
+        1.0988967418670654,
+        0.0005448013544082642,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_CANOPY",
+      "nodeName": "LOD2_MOTION_HULL_CORE_CANOPY",
+      "nodePath": [
+        0,
+        1,
+        31
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        1.0503535270690918,
+        0,
+        0,
+        0,
+        0,
+        1.0503535270690918,
+        0,
+        0,
+        0,
+        0,
+        1.0503535270690918,
+        0,
+        4.6498870849609375,
+        1.0988967418670654,
+        0.0005448013544082642,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hook-drive-core",
+      "localTransform": [
+        1.412845492362976,
+        0,
+        0,
+        0,
+        0,
+        1.412845492362976,
+        0,
+        0,
+        0,
+        0,
+        1.412845492362976,
+        0,
+        -7.778445720672607,
+        0.10000003129243851,
+        6.28642737865448e-9,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodeName": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        1,
+        32
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        1.412845492362976,
+        0,
+        0,
+        0,
+        0,
+        1.412845492362976,
+        0,
+        0,
+        0,
+        0,
+        1.412845492362976,
+        0,
+        -7.778445720672607,
+        0.10000003129243851,
+        6.28642737865448e-9,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hook-nav-port",
+      "localTransform": [
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        -4.75,
+        0.7799999713897705,
+        -3.049999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodeName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        1,
+        33
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        -4.75,
+        0.7799999713897705,
+        -3.049999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hook-nav-starboard",
+      "localTransform": [
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        -4.75,
+        0.7799999713897705,
+        3.049999952316284,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        1,
+        34
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        0,
+        0,
+        0,
+        0.07999992370605469,
+        0,
+        -4.75,
+        0.7799999713897705,
+        3.049999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hull",
+      "localTransform": [
+        8.78548812866211,
+        0,
+        0,
+        0,
+        0,
+        8.78548812866211,
+        0,
+        0,
+        0,
+        0,
+        8.78548812866211,
+        0,
+        1.4145116806030273,
+        0.6211021393537521,
+        0.000011444091796875,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Hull",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Hull",
+      "nodePath": [
+        0,
+        1,
+        35
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        8.78548812866211,
+        0,
+        0,
+        0,
+        0,
+        8.78548812866211,
+        0,
+        0,
+        0,
+        0,
+        8.78548812866211,
+        0,
+        1.4145116806030273,
+        0.6211021393537521,
+        0.000011444091796875,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-lights-cyan-sodium",
+      "localTransform": [
+        3.0994304418563843,
+        0,
+        0,
+        0,
+        0,
+        3.0994304418563843,
+        0,
+        0,
+        0,
+        0,
+        3.0994304418563843,
+        0,
+        -2.160809576511383,
+        0.8160511553287506,
+        0.0003510713577270508,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Lights_Cyan_sodium",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Lights_Cyan_sodium",
+      "nodePath": [
+        0,
+        1,
+        36
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        3.0994304418563843,
+        0,
+        0,
+        0,
+        0,
+        3.0994304418563843,
+        0,
+        0,
+        0,
+        0,
+        3.0994304418563843,
+        0,
+        -2.160809576511383,
+        0.8160511553287506,
+        0.0003510713577270508,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-lights-warm",
+      "localTransform": [
+        0.07000000029802322,
+        0,
+        0,
+        0,
+        0,
+        0.07000000029802322,
+        0,
+        0,
+        0,
+        0,
+        0.07000000029802322,
+        0,
+        0.44999998807907104,
+        0.47999997437000275,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Lights_Warm",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Lights_Warm",
+      "nodePath": [
+        0,
+        1,
+        37
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        0.07000000029802322,
+        0,
+        0,
+        0,
+        0,
+        0.07000000029802322,
+        0,
+        0,
+        0,
+        0,
+        0.07000000029802322,
+        0,
+        0.44999998807907104,
+        0.47999997437000275,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-livery",
+      "localTransform": [
+        6.573843955993652,
+        0,
+        0,
+        0,
+        0,
+        6.573843955993652,
+        0,
+        0,
+        0,
+        0,
+        6.573843955993652,
+        0,
+        3.6255340576171875,
+        0.6386118307709694,
+        0.0000019073486328125,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Livery",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Livery",
+      "nodePath": [
+        0,
+        1,
+        38
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        6.573843955993652,
+        0,
+        0,
+        0,
+        0,
+        6.573843955993652,
+        0,
+        0,
+        0,
+        0,
+        6.573843955993652,
+        0,
+        3.6255340576171875,
+        0.6386118307709694,
+        0.0000019073486328125,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-mechanical",
+      "localTransform": [
+        7.759420871734619,
+        0,
+        0,
+        0,
+        0,
+        7.759420871734619,
+        0,
+        0,
+        0,
+        0,
+        7.759420871734619,
+        0,
+        -0.9612326622009277,
+        0.3461190164089203,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Mechanical",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Mechanical",
+      "nodePath": [
+        0,
+        1,
+        39
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        7.759420871734619,
+        0,
+        0,
+        0,
+        0,
+        7.759420871734619,
+        0,
+        0,
+        0,
+        0,
+        7.759420871734619,
+        0,
+        -0.9612326622009277,
+        0.3461190164089203,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-mechanicaldark",
+      "localTransform": [
+        7.834235668182373,
+        0,
+        0,
+        0,
+        0,
+        7.834235668182373,
+        0,
+        0,
+        0,
+        0,
+        7.834235668182373,
+        0,
+        -0.8864178657531738,
+        0.3696269094944,
+        0.0000010728836059570312,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_MechanicalDark",
+      "nodeName": "LOD2_MOTION_HULL_CORE_MechanicalDark",
+      "nodePath": [
+        0,
+        1,
+        40
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        7.834235668182373,
+        0,
+        0,
+        0,
+        0,
+        7.834235668182373,
+        0,
+        0,
+        0,
+        0,
+        7.834235668182373,
+        0,
+        -0.8864178657531738,
+        0.3696269094944,
+        0.0000010728836059570312,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-warning",
+      "localTransform": [
+        5.191051006317139,
+        0,
+        0,
+        0,
+        0,
+        5.191051006317139,
+        0,
+        0,
+        0,
+        0,
+        5.191051006317139,
+        0,
+        -0.09423160552978516,
+        0.14999979734420776,
+        -5.960464477539063e-8,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Warning",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Warning",
+      "nodePath": [
+        0,
+        1,
+        41
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        5.191051006317139,
+        0,
+        0,
+        0,
+        0,
+        5.191051006317139,
+        0,
+        0,
+        0,
+        0,
+        5.191051006317139,
+        0,
+        -0.09423160552978516,
+        0.14999979734420776,
+        -5.960464477539063e-8,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_HULL_CORE",
+      "nodeName": "MOTION_HULL_CORE",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_M4_ASHLINE_RIG_CORSAIR_BLADE_ROOT",
+      "nodeName": "SF_M4_ASHLINE_RIG_CORSAIR_BLADE_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.4840104579925537,
+        0.5147500038146973,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.4840104579925537,
+        0.5147500038146973,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.socket-cargo-ventral",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9386296272277832,
+        -0.625,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Cargo_Ventral",
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9386296272277832,
+        -0.625,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.socket-engine-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.399999618530273,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Engine_Main",
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.399999618530273,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.socket-mining-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.097259521484375,
+        0.3647499680519104,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Mining_Front",
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.097259521484375,
+        0.3647499680519104,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.socket-rcs-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9386296272277832,
+        0.5147500038146973,
+        -1.964468240737915,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Port",
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9386296272277832,
+        0.5147500038146973,
+        -1.964468240737915,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.socket-rcs-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9386296272277832,
+        0.5147500038146973,
+        1.964468240737915,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Starboard",
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9386296272277832,
+        0.5147500038146973,
+        1.964468240737915,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.socket-tether-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.3111674785614014,
+        0.8522499799728394,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tether_Massline",
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.3111674785614014,
+        0.8522499799728394,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.socket-trail-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.820000648498535,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Main",
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.820000648498535,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.socket-trail-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.820000648498535,
+        0.10000000149011612,
+        -0.818528413772583,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Port",
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.820000648498535,
+        0.10000000149011612,
+        -0.818528413772583,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.socket-trail-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.820000648498535,
+        0.10000000149011612,
+        0.818528413772583,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Starboard",
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.820000648498535,
+        0.10000000149011612,
+        0.818528413772583,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.socket-utility-dorsal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9386296272277832,
+        1.6545000076293945,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Utility_Dorsal",
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9386296272277832,
+        1.6545000076293945,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ashline-rig-corsair-blade.node.socket-weapon-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.197259902954102,
+        0.5147500038146973,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Weapon_Front",
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ashline-rig-corsair-blade.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.197259902954102,
+        0.5147500038146973,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "1aead27e2c6a4927a9d0e58be0128f01ec0fc94c96c6807183fe4cac7ade876c"
+    },
+    "sourceGlb": {
+      "bytes": 933956,
+      "sha256": "abfc0010067b94ad901029d9b0173f0acb9f397a831ecf1bb3e58d942a44d10f",
+      "uri": "ashline_rig_corsair_blade.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 941988,
+    "sha256": "9f016ea6a4921a1fcf5904448f4cd46f915a5d97ce618434a7502578777ec1ef",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.9394936561584473,
+        0.5147709108720385,
+        0.000007033348083496094
+      ],
+      "max": [
+        10.599640846252441,
+        1.7045301022778028,
+        3.2751554663422073
+      ],
+      "min": [
+        -8.720653533935547,
+        -0.6749882805337257,
+        -3.2751413996460403
+      ],
+      "size": [
+        19.32029438018799,
+        2.3795183828115283,
+        6.550296865988248
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "MOTION_HULL_CORE",
+        "planIndex": 3,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "hull_core",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_HULL_CORE",
+          "spaceface": {
+            "motionGroup": "hull_core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_HULL_CORE",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.node.motion-hull-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.415600061416626,
+          0,
+          0,
+          0,
+          0,
+          1.415600061416626,
+          0,
+          0,
+          0,
+          0,
+          1.415600061416626,
+          0,
+          -7.7774999141693115,
+          0.10000002384185791,
+          -2.384185791015625e-7,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "planIndex": 8,
+        "tags": {
+          "drive": "core",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -4.75,
+          0.7799999713897705,
+          -3.049999952316284,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "planIndex": 10,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -4.75,
+          0.7799999713897705,
+          3.049999952316284,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "planIndex": 12,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.4146674871444702,
+          0,
+          0,
+          0,
+          0,
+          1.4146674871444702,
+          0,
+          0,
+          0,
+          0,
+          1.4146674871444702,
+          0,
+          -7.777705907821655,
+          0.10000002384185791,
+          -4.2062310967594385e-8,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "planIndex": 25,
+        "tags": {
+          "drive": "core",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -4.75,
+          0.7799999713897705,
+          -3.049999952316284,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "planIndex": 27,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -4.75,
+          0.7799999713897705,
+          3.049999952316284,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "planIndex": 29,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1.412845492362976,
+          0,
+          0,
+          0,
+          0,
+          1.412845492362976,
+          0,
+          0,
+          0,
+          0,
+          1.412845492362976,
+          0,
+          -7.778445720672607,
+          0.10000003129243851,
+          6.28642737865448e-9,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "planIndex": 42,
+        "tags": {
+          "drive": "core",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -4.75,
+          0.7799999713897705,
+          -3.049999952316284,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "planIndex": 44,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -4.75,
+          0.7799999713897705,
+          3.049999952316284,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "planIndex": 46,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2.4840104579925537,
+          0.5147500038146973,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 55,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.anchor.socket-camera-focus",
+              "sf.render.ashline-rig-corsair-blade.node.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.9386296272277832,
+          -0.625,
+          0,
+          1
+        ],
+        "name": "SOCKET_Cargo_Ventral",
+        "planIndex": 56,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            -1,
+            0
+          ],
+          "socketRole": "cargo"
+        },
+        "userData": {
+          "name": "SOCKET_Cargo_Ventral",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              -1,
+              0
+            ],
+            "role": "cargo",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cargo_Ventral",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.anchor.socket-cargo-ventral",
+              "sf.render.ashline-rig-corsair-blade.node.socket-cargo-ventral"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8.399999618530273,
+          0.10000000149011612,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 57,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.anchor.socket-engine-main",
+              "sf.render.ashline-rig-corsair-blade.node.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          10.097259521484375,
+          0.3647499680519104,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front",
+        "planIndex": 58,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "mining",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.anchor.socket-mining-front",
+              "sf.render.ashline-rig-corsair-blade.node.socket-mining-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.9386296272277832,
+          0.5147500038146973,
+          -1.964468240737915,
+          1
+        ],
+        "name": "SOCKET_RCS_Port",
+        "planIndex": 59,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            -1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              -1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Port",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.anchor.socket-rcs-port",
+              "sf.render.ashline-rig-corsair-blade.node.socket-rcs-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.9386296272277832,
+          0.5147500038146973,
+          1.964468240737915,
+          1
+        ],
+        "name": "SOCKET_RCS_Starboard",
+        "planIndex": 60,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Starboard",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.anchor.socket-rcs-starboard",
+              "sf.render.ashline-rig-corsair-blade.node.socket-rcs-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.3111674785614014,
+          0.8522499799728394,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 61,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.anchor.socket-tether-massline",
+              "sf.render.ashline-rig-corsair-blade.node.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8.820000648498535,
+          0.10000000149011612,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 62,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.anchor.socket-trail-main",
+              "sf.render.ashline-rig-corsair-blade.node.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8.820000648498535,
+          0.10000000149011612,
+          -0.818528413772583,
+          1
+        ],
+        "name": "SOCKET_Trail_Port",
+        "planIndex": 63,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Port",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.anchor.socket-trail-port",
+              "sf.render.ashline-rig-corsair-blade.node.socket-trail-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8.820000648498535,
+          0.10000000149011612,
+          0.818528413772583,
+          1
+        ],
+        "name": "SOCKET_Trail_Starboard",
+        "planIndex": 64,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Starboard",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.anchor.socket-trail-starboard",
+              "sf.render.ashline-rig-corsair-blade.node.socket-trail-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.9386296272277832,
+          1.6545000076293945,
+          0,
+          1
+        ],
+        "name": "SOCKET_Utility_Dorsal",
+        "planIndex": 65,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "utility"
+        },
+        "userData": {
+          "name": "SOCKET_Utility_Dorsal",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "utility",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Utility_Dorsal",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.anchor.socket-utility-dorsal",
+              "sf.render.ashline-rig-corsair-blade.node.socket-utility-dorsal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          10.197259902954102,
+          0.5147500038146973,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 66,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "weapon",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.ashline-rig-corsair-blade.anchor.socket-weapon-front",
+              "sf.render.ashline-rig-corsair-blade.node.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 3,
+      "drive": 3,
+      "glass": 3,
+      "hull": 7,
+      "mechanical": 9,
+      "signal": 15,
+      "warning": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 47,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 51,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 54,
+        "role": "warning"
+      }
+    ],
+    "motionBank": {
+      "bytes": 7155,
+      "rigId": "hull",
+      "sha256": "b5c897269a03770f4d6e02e658c612ac1094ea79e369aa92c88cf570e44ebe5b",
+      "uri": "assets/ships/motions/ashline-rig-corsair-blade.motion.json"
+    },
+    "nodeCount": 67,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          8.892348766326904,
+          0,
+          0,
+          0,
+          0,
+          8.892348766326904,
+          0,
+          0,
+          0,
+          0,
+          8.892348766326904,
+          0,
+          1.3054966926574707,
+          0.11755824089050293,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Armor",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.919749736785889,
+          0,
+          0,
+          0,
+          0,
+          5.919749736785889,
+          0,
+          0,
+          0,
+          0,
+          5.919749736785889,
+          0,
+          1.2397499084472656,
+          0.9457499608397484,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.950835227966309,
+          0,
+          0,
+          0,
+          0,
+          8.950835227966309,
+          0,
+          0,
+          0,
+          0,
+          8.950835227966309,
+          0,
+          1.6464242935180664,
+          0.5200000032782555,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_BrushedMetal",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1.0499999523162842,
+          0,
+          0,
+          0,
+          0,
+          1.0499999523162842,
+          0,
+          0,
+          0,
+          0,
+          1.0499999523162842,
+          0,
+          4.6499998569488525,
+          1.098985731601715,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_CANOPY",
+        "planIndex": 7,
+        "tags": {
+          "canopy": true,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.415600061416626,
+          0,
+          0,
+          0,
+          0,
+          1.415600061416626,
+          0,
+          0,
+          0,
+          0,
+          1.415600061416626,
+          0,
+          -7.7774999141693115,
+          0.10000002384185791,
+          -2.384185791015625e-7,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE_1",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            1.415600061416626,
+            0,
+            0,
+            0,
+            0,
+            1.415600061416626,
+            0,
+            0,
+            0,
+            0,
+            1.415600061416626,
+            0,
+            -7.7774999141693115,
+            0.10000002384185791,
+            -2.384185791015625e-7,
+            1
+          ],
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -4.75,
+          0.7799999713897705,
+          -3.049999952316284,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT_1",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -4.75,
+          0.7799999713897705,
+          3.049999952316284,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD_1",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.78045654296875,
+          0,
+          0,
+          0,
+          0,
+          8.78045654296875,
+          0,
+          0,
+          0,
+          0,
+          8.78045654296875,
+          0,
+          1.4195432662963867,
+          0.6235120818018913,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Hull",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.100500464439392,
+          0,
+          0,
+          0,
+          0,
+          3.100500464439392,
+          0,
+          0,
+          0,
+          0,
+          3.100500464439392,
+          0,
+          -2.160816639661789,
+          0.8158861398696899,
+          -0.000010371208190917969,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Lights_Cyan_sodium",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.07000000029802322,
+          0,
+          0,
+          0,
+          0,
+          0.07000000029802322,
+          0,
+          0,
+          0,
+          0,
+          0.07000000029802322,
+          0,
+          0.44999998807907104,
+          0.47999997437000275,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.8674774169921875,
+          0,
+          0,
+          0,
+          0,
+          6.8674774169921875,
+          0,
+          0,
+          0,
+          0,
+          6.8674774169921875,
+          0,
+          3.3303651809692383,
+          0.5216171664651483,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Livery",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.9700000286102295,
+          0,
+          0,
+          0,
+          0,
+          7.9700000286102295,
+          0,
+          0,
+          0,
+          0,
+          7.9700000286102295,
+          0,
+          -0.7500002384185791,
+          0.5024999678134918,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Mechanical",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.835000038146973,
+          0,
+          0,
+          0,
+          0,
+          7.835000038146973,
+          0,
+          0,
+          0,
+          0,
+          7.835000038146973,
+          0,
+          -0.8850002288818359,
+          0.36973878741264343,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.092648029327393,
+          0,
+          0,
+          0,
+          0,
+          5.092648029327393,
+          0,
+          0,
+          0,
+          0,
+          5.092648029327393,
+          0,
+          -0.19264793395996094,
+          0.1499999761581421,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Warning",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.892845392227173,
+          0,
+          0,
+          0,
+          0,
+          8.892845392227173,
+          0,
+          0,
+          0,
+          0,
+          8.892845392227173,
+          0,
+          1.3057496547698975,
+          0.11676427721977234,
+          0.000011444091796875,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_Armor",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.919749736785889,
+          0,
+          0,
+          0,
+          0,
+          5.919749736785889,
+          0,
+          0,
+          0,
+          0,
+          5.919749736785889,
+          0,
+          1.2397499084472656,
+          0.9457499608397484,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_Beacon_Amber",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.951271057128906,
+          0,
+          0,
+          0,
+          0,
+          8.951271057128906,
+          0,
+          0,
+          0,
+          0,
+          8.951271057128906,
+          0,
+          1.646958351135254,
+          0.520246185362339,
+          0.000007033348083496094,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_BrushedMetal",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1.0500459671020508,
+          0,
+          0,
+          0,
+          0,
+          1.0500459671020508,
+          0,
+          0,
+          0,
+          0,
+          1.0500459671020508,
+          0,
+          4.649990558624268,
+          1.0990079641342163,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_CANOPY",
+        "planIndex": 24,
+        "tags": {
+          "canopy": true,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.4146674871444702,
+          0,
+          0,
+          0,
+          0,
+          1.4146674871444702,
+          0,
+          0,
+          0,
+          0,
+          1.4146674871444702,
+          0,
+          -7.777705907821655,
+          0.10000002384185791,
+          -4.2062310967594385e-8,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE_1",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            1.4146674871444702,
+            0,
+            0,
+            0,
+            0,
+            1.4146674871444702,
+            0,
+            0,
+            0,
+            0,
+            1.4146674871444702,
+            0,
+            -7.777705907821655,
+            0.10000002384185791,
+            -4.2062310967594385e-8,
+            1
+          ],
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -4.75,
+          0.7799999713897705,
+          -3.049999952316284,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT_1",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -4.75,
+          0.7799999713897705,
+          3.049999952316284,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD_1",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.782774686813354,
+          0,
+          0,
+          0,
+          0,
+          8.782774686813354,
+          0,
+          0,
+          0,
+          0,
+          8.782774686813354,
+          0,
+          1.4172251224517822,
+          0.6226781010627747,
+          0.000011444091796875,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_Hull",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.1001847982406616,
+          0,
+          0,
+          0,
+          0,
+          3.1001847982406616,
+          0,
+          0,
+          0,
+          0,
+          3.1001847982406616,
+          0,
+          -2.160809427499771,
+          0.8160511553287506,
+          0.00031816959381103516,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_Lights_Cyan_sodium",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.07000000029802322,
+          0,
+          0,
+          0,
+          0,
+          0.07000000029802322,
+          0,
+          0,
+          0,
+          0,
+          0.07000000029802322,
+          0,
+          0.44999998807907104,
+          0.47999997437000275,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_Lights_Warm",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.572997093200684,
+          0,
+          0,
+          0,
+          0,
+          6.572997093200684,
+          0,
+          0,
+          0,
+          0,
+          6.572997093200684,
+          0,
+          3.6246871948242188,
+          0.6385890692472458,
+          0.0000019073486328125,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_Livery",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.970046281814575,
+          0,
+          0,
+          0,
+          0,
+          7.970046281814575,
+          0,
+          0,
+          0,
+          0,
+          7.970046281814575,
+          0,
+          -0.7499539852142334,
+          0.5024999380111694,
+          0.00008749961853027344,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_Mechanical",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.834749937057495,
+          0,
+          0,
+          0,
+          0,
+          7.834749937057495,
+          0,
+          0,
+          0,
+          0,
+          7.834749937057495,
+          0,
+          -0.8852503299713135,
+          0.3702971935272217,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_MechanicalDark",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.191608905792236,
+          0,
+          0,
+          0,
+          0,
+          5.191608905792236,
+          0,
+          0,
+          0,
+          0,
+          5.191608905792236,
+          0,
+          -0.09778594970703125,
+          0.1499999463558197,
+          0,
+          1
+        ],
+        "name": "LOD1_MOTION_HULL_CORE_Warning",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.892754554748535,
+          0,
+          0,
+          0,
+          0,
+          8.892754554748535,
+          0,
+          0,
+          0,
+          0,
+          8.892754554748535,
+          0,
+          1.3065595626831055,
+          0.11557745933532715,
+          0.000011444091796875,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_Armor",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.2899999618530273,
+          0,
+          0,
+          0,
+          0,
+          2.2899999618530273,
+          0,
+          0,
+          0,
+          0,
+          2.2899999618530273,
+          0,
+          -3.1049999594688416,
+          0.5815000012516975,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.842780828475952,
+          0,
+          0,
+          0,
+          0,
+          7.842780828475952,
+          0,
+          0,
+          0,
+          0,
+          7.842780828475952,
+          0,
+          2.7568600177764893,
+          0.5190926864743233,
+          -0.00014078617095947266,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_BrushedMetal",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1.0503535270690918,
+          0,
+          0,
+          0,
+          0,
+          1.0503535270690918,
+          0,
+          0,
+          0,
+          0,
+          1.0503535270690918,
+          0,
+          4.6498870849609375,
+          1.0988967418670654,
+          0.0005448013544082642,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_CANOPY",
+        "planIndex": 41,
+        "tags": {
+          "canopy": true,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.412845492362976,
+          0,
+          0,
+          0,
+          0,
+          1.412845492362976,
+          0,
+          0,
+          0,
+          0,
+          1.412845492362976,
+          0,
+          -7.778445720672607,
+          0.10000003129243851,
+          6.28642737865448e-9,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE_1",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            1.412845492362976,
+            0,
+            0,
+            0,
+            0,
+            1.412845492362976,
+            0,
+            0,
+            0,
+            0,
+            1.412845492362976,
+            0,
+            -7.778445720672607,
+            0.10000003129243851,
+            6.28642737865448e-9,
+            1
+          ],
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -4.75,
+          0.7799999713897705,
+          -3.049999952316284,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT_1",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          0,
+          0,
+          0,
+          0.07999992370605469,
+          0,
+          -4.75,
+          0.7799999713897705,
+          3.049999952316284,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD_1",
+        "planIndex": 47,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.78548812866211,
+          0,
+          0,
+          0,
+          0,
+          8.78548812866211,
+          0,
+          0,
+          0,
+          0,
+          8.78548812866211,
+          0,
+          1.4145116806030273,
+          0.6211021393537521,
+          0.000011444091796875,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_Hull",
+        "planIndex": 48,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.0994304418563843,
+          0,
+          0,
+          0,
+          0,
+          3.0994304418563843,
+          0,
+          0,
+          0,
+          0,
+          3.0994304418563843,
+          0,
+          -2.160809576511383,
+          0.8160511553287506,
+          0.0003510713577270508,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_Lights_Cyan_sodium",
+        "planIndex": 49,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.07000000029802322,
+          0,
+          0,
+          0,
+          0,
+          0.07000000029802322,
+          0,
+          0,
+          0,
+          0,
+          0.07000000029802322,
+          0,
+          0.44999998807907104,
+          0.47999997437000275,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_Lights_Warm",
+        "planIndex": 50,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.573843955993652,
+          0,
+          0,
+          0,
+          0,
+          6.573843955993652,
+          0,
+          0,
+          0,
+          0,
+          6.573843955993652,
+          0,
+          3.6255340576171875,
+          0.6386118307709694,
+          0.0000019073486328125,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_Livery",
+        "planIndex": 51,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.759420871734619,
+          0,
+          0,
+          0,
+          0,
+          7.759420871734619,
+          0,
+          0,
+          0,
+          0,
+          7.759420871734619,
+          0,
+          -0.9612326622009277,
+          0.3461190164089203,
+          0,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_Mechanical",
+        "planIndex": 52,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.834235668182373,
+          0,
+          0,
+          0,
+          0,
+          7.834235668182373,
+          0,
+          0,
+          0,
+          0,
+          7.834235668182373,
+          0,
+          -0.8864178657531738,
+          0.3696269094944,
+          0.0000010728836059570312,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_MechanicalDark",
+        "planIndex": 53,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.191051006317139,
+          0,
+          0,
+          0,
+          0,
+          5.191051006317139,
+          0,
+          0,
+          0,
+          0,
+          5.191051006317139,
+          0,
+          -0.09423160552978516,
+          0.14999979734420776,
+          -5.960464477539063e-8,
+          1
+        ],
+        "name": "LOD2_MOTION_HULL_CORE_Warning",
+        "planIndex": 54,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/wholeships/ashline_rig_corsair_blade.glb"
+  },
+  "runtimeHash": "38d39ac7040e85a42ffae13df4546a25287e53876f9bb3fb6b2a1c54771add62",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          10.599640846252441,
+          1.7045301022778028,
+          3.2751554663422073
+        ],
+        "min": [
+          -8.720653533935547,
+          -0.6749882805337257,
+          -3.2751413996460403
+        ]
+      },
+      "id": "sf.render.ashline-rig-corsair-blade.body",
+      "nodeIds": [
+        "sf.render.ashline-rig-corsair-blade.node.collision-hull",
+        "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-armor",
+        "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-beacon-amber",
+        "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-brushedmetal",
+        "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-canopy",
+        "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-drive-core",
+        "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-nav-port",
+        "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hook-nav-starboard",
+        "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-hull",
+        "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-lights-cyan-sodium",
+        "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-lights-warm",
+        "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-livery",
+        "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-mechanical",
+        "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-mechanicaldark",
+        "sf.render.ashline-rig-corsair-blade.node.lod0-motion-hull-core-warning",
+        "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-armor",
+        "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-beacon-amber",
+        "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-brushedmetal",
+        "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-canopy",
+        "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-drive-core",
+        "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-nav-port",
+        "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hook-nav-starboard",
+        "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-hull",
+        "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-lights-cyan-sodium",
+        "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-lights-warm",
+        "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-livery",
+        "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-mechanical",
+        "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-mechanicaldark",
+        "sf.render.ashline-rig-corsair-blade.node.lod1-motion-hull-core-warning",
+        "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-armor",
+        "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-beacon-amber",
+        "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-brushedmetal",
+        "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-canopy",
+        "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hook-drive-core",
+        "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hook-nav-port",
+        "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hook-nav-starboard",
+        "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-hull",
+        "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-lights-cyan-sodium",
+        "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-lights-warm",
+        "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-livery",
+        "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-mechanical",
+        "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-mechanicaldark",
+        "sf.render.ashline-rig-corsair-blade.node.lod2-motion-hull-core-warning",
+        "sf.render.ashline-rig-corsair-blade.node.motion-hull-core",
+        "sf.render.ashline-rig-corsair-blade.node.sf-m4-ashline-rig-corsair-blade-root",
+        "sf.render.ashline-rig-corsair-blade.node.socket-camera-focus",
+        "sf.render.ashline-rig-corsair-blade.node.socket-cargo-ventral",
+        "sf.render.ashline-rig-corsair-blade.node.socket-engine-main",
+        "sf.render.ashline-rig-corsair-blade.node.socket-mining-front",
+        "sf.render.ashline-rig-corsair-blade.node.socket-rcs-port",
+        "sf.render.ashline-rig-corsair-blade.node.socket-rcs-starboard",
+        "sf.render.ashline-rig-corsair-blade.node.socket-tether-massline",
+        "sf.render.ashline-rig-corsair-blade.node.socket-trail-main",
+        "sf.render.ashline-rig-corsair-blade.node.socket-trail-port",
+        "sf.render.ashline-rig-corsair-blade.node.socket-trail-starboard",
+        "sf.render.ashline-rig-corsair-blade.node.socket-utility-dorsal",
+        "sf.render.ashline-rig-corsair-blade.node.socket-weapon-front"
+      ]
+    }
+  ]
+}

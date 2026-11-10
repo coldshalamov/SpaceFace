@@ -1,0 +1,287 @@
+From 3464b9fce03447ba9c38a8a2e13f420f227fb1c9 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 13:33:21 -0400
+Subject: [PATCH] =?UTF-8?q?perf(salvage):=20quiet-latch=20empty=20unstable?=
+ =?UTF-8?q?-reactor=20census=20(~4.3=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet open flight still paid salvageActions.update's entities.values()
+walk (isWreck / unstableReactor bag) every tick while no live unstable
+reactors existed. Quiet latch short-circuits when the census stays empty;
+wakes on membership, reactor arm/annotate, or 0.5 s rescan. Prefers the
+wrecks index for the live census. Soft-GPU fps not claimed. Fresh salvage
+residual after #146 catch-nets / #147 sanctuary.
+---
+ src/systems/salvageActions.js                 |  85 ++++++++++++-
+ ...alvage-unstable-quiet-empty-latch.test.mjs | 120 ++++++++++++++++++
+ 2 files changed, 203 insertions(+), 2 deletions(-)
+ create mode 100644 test/salvage-unstable-quiet-empty-latch.test.mjs
+
+diff --git a/src/systems/salvageActions.js b/src/systems/salvageActions.js
+index ebfbc11aa..414455a05 100644
+--- a/src/systems/salvageActions.js
++++ b/src/systems/salvageActions.js
+@@ -6,9 +6,30 @@
+ 
+ import { actionForWreck, actionReadoutForWreck, poolForAction } from '../data/salvageActions.js';
+ import { salvagePoolForWreck } from '../data/salvageLegality.js';
++import { entityIndexVersion, indexedTypeScan } from '../world/livingWorldViews.js';
+ 
+ const TETHER_AWAY_DISTANCE = 260;
+ 
++/** Bench A/B: production default ON. Quiet latch skips salvage unstable-reactor
++ * entities.values() census when no live unstable reactors remain. Soft-GPU fps not
++ * claimed. Fresh salvage residual after #146 catch-nets / #147 sanctuary. */
++let SALVAGE_UNSTABLE_QUIET_LATCH = true;
++export function setSalvageUnstableQuietLatchForBench(enabled) {
++  SALVAGE_UNSTABLE_QUIET_LATCH = enabled !== false;
++}
++export function getSalvageUnstableQuietLatchForBench() {
++  return SALVAGE_UNSTABLE_QUIET_LATCH !== false;
++}
++
++/** Membership rescan while latched (0.5 s @ 60 Hz). */
++const SALVAGE_UNSTABLE_QUIET_RESCAN_TICKS = 30;
++
++function publishSalvageUnstableQuiet(state, latched) {
++  if (!state) return;
++  const rt = state.salvageActionsRuntime || (state.salvageActionsRuntime = {});
++  rt.unstableQuietLatched = !!latched;
++}
++
+ function ensureUi(state) {
+   if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+   return state.ui;
+@@ -62,6 +83,8 @@ export const salvageActions = {
+     this._state = ctx && ctx.state;
+     this._bus = ctx && ctx.bus;
+     this._registry = ctx && ctx.registry;
++    this._unstableQuiet = null;
++    this._unstableWakeSeq = 0;
+     this._onEntitySpawned = (p) => this._annotate(p && p.entity);
+     this._onScan = (p) => this._onScanCompleted(p);
+     this._onVent = (p) => this._vent(p && (p.wreckId != null ? p.wreckId : p.targetId));
+@@ -76,6 +99,13 @@ export const salvageActions = {
+     const now = (this._state && this._state.simTime) || 0;
+     const data = applyAuthoredWreckConfiguration(entity, options, now);
+     if (!data) return null;
++    if (data.unstableReactor
++      && !data.unstableReactor.vented
++      && !data.unstableReactor.burst
++      && !data.unstableReactor.towedClear) {
++      this._unstableWakeSeq = (this._unstableWakeSeq | 0) + 1;
++      this._unstableQuiet = null;
++    }
+     this._annotate(entity);
+     return data;
+   },
+@@ -114,6 +144,9 @@ export const salvageActions = {
+       burst: !!existing.burst,
+       towedClear: !!existing.towedClear,
+     };
++    // Live unstable reactor: wake quiet latch so the dueAt / tow census resumes.
++    this._unstableWakeSeq = (this._unstableWakeSeq | 0) + 1;
++    this._unstableQuiet = null;
+   },
+ 
+   _onScanCompleted(p) {
+@@ -143,11 +176,44 @@ export const salvageActions = {
+   },
+ 
+   update(_dt, state) {
+-    if (!state || !state.entities || !state.entities.values) return;
+-    for (const entity of state.entities.values()) {
++    if (!state) return;
++    // Quiet open flight: no live unstable reactors still paid a full entities.values()
++    // walk (isWreck / unstableReactor bag) every tick. Latch when the census stays
++    // empty; wake on membership, reactor arm/annotate, or 0.5 s rescan. Soft-GPU fps
++    // not claimed. Fresh salvage residual after #146 catch-nets / #147 sanctuary.
++    if (SALVAGE_UNSTABLE_QUIET_LATCH !== false) {
++      const membership = entityIndexVersion(state);
++      const tick = state.tick | 0;
++      const wakeSeq = this._unstableWakeSeq | 0;
++      const quiet = this._unstableQuiet;
++      if (quiet
++        && membership != null
++        && quiet.membership === membership
++        && quiet.wakeSeq === wakeSeq
++        && ((tick - (quiet.armedTick | 0)) < SALVAGE_UNSTABLE_QUIET_RESCAN_TICKS)) {
++        publishSalvageUnstableQuiet(state, true);
++        return;
++      }
++    } else if (this._unstableQuiet) {
++      this._unstableQuiet = null;
++    }
++
++    const index = state.entityIndex;
++    const useWrecks = !!(index && index.__spacefaceEntityIndexV1 && index.ready === true
++      && Array.isArray(index.wrecks));
++    const list = useWrecks
++      ? indexedTypeScan(state, 'wrecks')
++      : (state.entities && typeof state.entities.values === 'function'
++        ? state.entities.values()
++        : null);
++    if (!list) return;
++
++    let liveUnstable = 0;
++    for (const entity of list) {
+       if (!isWreck(entity) || entity.alive === false) continue;
+       const unstable = entity.data && entity.data.unstableReactor;
+       if (!unstable || unstable.vented || unstable.burst || unstable.towedClear) continue;
++      liveUnstable++;
+       if (this._isTowedClear(entity, state)) {
+         unstable.towedClear = true;
+         if (this._bus && this._bus.emit) {
+@@ -157,6 +223,21 @@ export const salvageActions = {
+       }
+       if ((state.simTime || 0) >= unstable.dueAt) this._burst(entity, unstable, state);
+     }
++
++    if (SALVAGE_UNSTABLE_QUIET_LATCH !== false) {
++      const membership = entityIndexVersion(state);
++      if (membership != null && liveUnstable === 0) {
++        this._unstableQuiet = {
++          membership,
++          wakeSeq: this._unstableWakeSeq | 0,
++          armedTick: state.tick | 0,
++        };
++        publishSalvageUnstableQuiet(state, true);
++      } else {
++        this._unstableQuiet = null;
++        publishSalvageUnstableQuiet(state, false);
++      }
++    }
+   },
+ 
+   _isTowedClear(entity, state) {
+diff --git a/test/salvage-unstable-quiet-empty-latch.test.mjs b/test/salvage-unstable-quiet-empty-latch.test.mjs
+new file mode 100644
+index 000000000..10590ac3d
+--- /dev/null
++++ b/test/salvage-unstable-quiet-empty-latch.test.mjs
+@@ -0,0 +1,120 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createGameState } from '../src/core/gameState.js';
++import { createBus } from '../src/core/eventBus.js';
++import { core } from '../src/core/coreSystem.js';
++import {
++  salvageActions,
++  setSalvageUnstableQuietLatchForBench,
++  getSalvageUnstableQuietLatchForBench,
++} from '../src/systems/salvageActions.js';
++
++function boot() {
++  const state = createGameState(1481);
++  state.mode = 'flight';
++  state.tick = 0;
++  state.simTime = 0;
++  const bus = createBus();
++  const helpers = {};
++  core.init({ state, bus, helpers, registry: null });
++  const player = helpers.spawnEntity({
++    type: 'ship', pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
++    radius: 8, mass: 12, hull: 100, hullMax: 100, collides: true, team: 0, data: {},
++  });
++  state.playerId = player.id;
++  // Fat roster: ships + asteroids + a few inert wrecks (no unstable reactors).
++  const ships = [player];
++  for (let i = 0; i < 24; i++) {
++    ships.push(helpers.spawnEntity({
++      type: 'ship',
++      pos: { x: 80 + i * 15, z: 40 },
++      vel: { x: 0, z: 0 },
++      radius: 8, mass: 12, hull: 80, hullMax: 80, collides: true, team: 1,
++      data: { ai: { passive: true } },
++    }));
++  }
++  for (let i = 0; i < 40; i++) {
++    helpers.spawnEntity({
++      type: 'asteroid',
++      pos: { x: -200 + i * 12, z: -100 },
++      radius: 20, mass: 200, hull: 50, hullMax: 50, collides: true,
++      data: {},
++    });
++  }
++  const wrecks = [];
++  for (let i = 0; i < 6; i++) {
++    wrecks.push(helpers.spawnEntity({
++      type: 'wreck',
++      pos: { x: 300 + i * 20, z: 200 },
++      radius: 10, mass: 40, hull: 1, hullMax: 1, collides: true,
++      data: { salvagePool: { scrap: 1 } },
++    }));
++  }
++  if (state.entityIndex) {
++    state.entityIndex.ready = true;
++    state.entityIndex.__spacefaceEntityIndexV1 = true;
++    state.entityIndex.ships = ships;
++    state.entityIndex.shipLike = ships;
++    state.entityIndex.wrecks = wrecks;
++    state.entityIndex.version = 1;
++  }
++  salvageActions.init({ state, bus, helpers, registry: null });
++  // Annotate inert wrecks (no unstable action for generic scrap).
++  for (const w of wrecks) salvageActions._annotate(w);
++  return { state, helpers, wrecks, bus };
++}
++
++test('salvage unstable quiet latch arms and skips census', () => {
++  assert.equal(getSalvageUnstableQuietLatchForBench(), true);
++  const { state } = boot();
++  setSalvageUnstableQuietLatchForBench(true);
++  for (let i = 0; i < 5; i++) {
++    state.tick++;
++    salvageActions.update(1 / 60, state);
++  }
++  assert.equal(state.salvageActionsRuntime?.unstableQuietLatched, true);
++  assert.ok(salvageActions._unstableQuiet);
++  const membership = salvageActions._unstableQuiet.membership;
++  for (let i = 0; i < 10; i++) {
++    state.tick++;
++    salvageActions.update(1 / 60, state);
++  }
++  assert.equal(state.salvageActionsRuntime?.unstableQuietLatched, true);
++  assert.equal(salvageActions._unstableQuiet.membership, membership);
++});
++
++test('salvage unstable quiet latch wakes on reactor arm and bursts', () => {
++  const { state, helpers, wrecks } = boot();
++  setSalvageUnstableQuietLatchForBench(true);
++  for (let i = 0; i < 5; i++) {
++    state.tick++;
++    salvageActions.update(1 / 60, state);
++  }
++  assert.equal(state.salvageActionsRuntime?.unstableQuietLatched, true);
++
++  const hot = wrecks[0];
++  salvageActions.configureAuthoredWreck(hot, { reactorTimerS: 0.05, salvagePool: { scrap: 2 } });
++  assert.ok(hot.data.unstableReactor);
++  assert.equal(hot.data.unstableReactor.burst, false);
++  // Wake clears latch.
++  assert.equal(salvageActions._unstableQuiet, null);
++
++  state.simTime = 1; // past dueAt
++  state.tick++;
++  salvageActions.update(1 / 60, state);
++  assert.equal(hot.data.unstableReactor.burst, true);
++  assert.equal(hot.alive, false);
++});
++
++test('salvage unstable quiet latch can disable for bench', () => {
++  const { state } = boot();
++  setSalvageUnstableQuietLatchForBench(false);
++  assert.equal(getSalvageUnstableQuietLatchForBench(), false);
++  for (let i = 0; i < 5; i++) {
++    state.tick++;
++    salvageActions.update(1 / 60, state);
++  }
++  assert.equal(state.salvageActionsRuntime?.unstableQuietLatched, undefined);
++  assert.equal(salvageActions._unstableQuiet, null);
++  setSalvageUnstableQuietLatchForBench(true);
++});
+-- 
+2.47.3
+

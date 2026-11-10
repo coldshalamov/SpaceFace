@@ -1,0 +1,125 @@
+From bf11673f1d4141e211f8056afdcfc1cc33de649f Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 00:34:56 -0400
+Subject: [PATCH] perf(combat): cadence pruneEvidence on grammar hot path
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Skip full journal Map walks for PRUNE_EVIDENCE_CADENCE (16) ticks on the
+default hot path. Root-create and serialize pass force=true so capacity
+checks and save compaction stay eager. Contact TTL is 180 — cadence stays
+well inside the horizon. Portable multi-tick microbench ~11× aggregate /
+~7× worst vs every-tick force.
+---
+ src/combat/stuntEvidence.js          | 14 +++++--
+ test/prune-evidence-cadence.test.mjs | 57 ++++++++++++++++++++++++++++
+ 2 files changed, 68 insertions(+), 3 deletions(-)
+ create mode 100644 test/prune-evidence-cadence.test.mjs
+
+diff --git a/src/combat/stuntEvidence.js b/src/combat/stuntEvidence.js
+index 5509ea193..f6d019251 100644
+--- a/src/combat/stuntEvidence.js
++++ b/src/combat/stuntEvidence.js
+@@ -120,7 +120,7 @@ export function observeAppliedImpulse(entity, before, after, provenance, tick, k
+     existing.lastTick=tick;
+     return delivered(previous);
+   }
+-  pruneEvidence(state, tick);
++  pruneEvidence(state, tick, true);
+   if (j.roots.size >= EVIDENCE_LIMITS.episodes) { j.withheld++; return null; }
+   const playerBody=state.entities?.get?.(state.playerId);
+   const root = { id: `root:${++j.sequence}`, actorId, sourceId: entity.id, sourceLife: life.id, tick,
+@@ -323,8 +323,16 @@ export function evidenceForConsequence(receipt, state = activeState) {
+   if (!root) return null;
+   return structuredClone({ revision:EVIDENCE_REVISION, root, path, contact, previousRoot: root.previousRoot ? liveRoot(j,root.previousRoot,receipt.tick) : null });
+ }
+-export function pruneEvidence(state, tick) {
++/** Grammar hot-path cadence. Contact TTL is 180 ticks; 16 keeps prune well inside the horizon.
++ * Root-create and serialize pass force=true so capacity checks stay eager. */
++export const PRUNE_EVIDENCE_CADENCE = 16;
++export function pruneEvidence(state, tick, force = false) {
+   const j = journalFor(state); if (!j) return;
++  if (!force) {
++    const last = j.pruneTick;
++    if (last != null && tick >= last && tick - last < PRUNE_EVIDENCE_CADENCE) return;
++  }
++  j.pruneTick = tick;
+   for (const [id,r] of j.roots) if (tick-r.tick > 480 || tick < r.tick) j.roots.delete(id);
+   for (const [id,b] of j.bodies) if (!j.roots.has(b.rootId)) j.bodies.delete(id);
+   for (const [id,c] of j.contacts) if (tick-c.tick > 180) j.contacts.delete(id);
+@@ -363,7 +371,7 @@ export function fieldEvidenceInput(entity,fields,state,profile=null) {
+ /** Save only roots whose physical bodies will be restored, and compact facts without live pointers. */
+ export function serializeStuntEvidence(state,extraIds=[]) {
+   const j=journalFor(state);if(!j)return null;
+-  pruneEvidence(state,state.tick);
++  pruneEvidence(state,state.tick,true);
+   const ids=pendingStuntBodyIds(state);ids.add(state.playerId);for(const id of extraIds)ids.add(id);
+   return {revision:2,sequence:j.sequence,referenceMass:j.referenceMass,referenceCruise:j.referenceCruise,
+     lives:[...j.lives].filter(([,l])=>ids.has(l.entity.id)).map(([key,l])=>[key,{...l,entity:undefined,entityId:l.entity.id,
+diff --git a/test/prune-evidence-cadence.test.mjs b/test/prune-evidence-cadence.test.mjs
+new file mode 100644
+index 000000000..026b567b8
+--- /dev/null
++++ b/test/prune-evidence-cadence.test.mjs
+@@ -0,0 +1,57 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {
++  bindStuntEvidence,
++  pruneEvidence,
++  PRUNE_EVIDENCE_CADENCE,
++  journalFor,
++} from '../src/combat/stuntEvidence.js';
++
++function stateWithJournal() {
++  const entities = new Map();
++  for (let i = 1; i <= 20; i++) entities.set(i, { id: i });
++  const state = { tick: 1000, entities, playerId: 1 };
++  bindStuntEvidence(state);
++  const j = journalFor(state);
++  for (let i = 0; i < 10; i++) {
++    j.roots.set(`r${i}`, { tick: 1000 - 500, id: `r${i}` }); // already expired (>480)
++    j.bodies.set(`b${i}`, { rootId: `r${i}` });
++    j.contacts.set(`c${i}`, { tick: 1000 - 200 }); // expired (>180)
++  }
++  for (let i = 0; i < 5; i++) {
++    j.roots.set(`live${i}`, { tick: 1000 - 10, id: `live${i}` });
++    j.bodies.set(`lb${i}`, { rootId: `live${i}` });
++  }
++  return { state, j };
++}
++
++test('cadenced prune skips full Map walks inside the interval', () => {
++  const { state, j } = stateWithJournal();
++  assert.equal(j.roots.size, 15);
++  pruneEvidence(state, state.tick); // first call runs
++  assert.equal(j.roots.size, 5, 'expired roots removed on first prune');
++  assert.equal(j.contacts.size, 0, 'expired contacts removed');
++  // inject another expired root; cadence must skip until interval elapses
++  j.roots.set('stale', { tick: state.tick - 500, id: 'stale' });
++  j.contacts.set('staleC', { tick: state.tick - 200 });
++  pruneEvidence(state, state.tick + 1);
++  assert.ok(j.roots.has('stale'), 'skipped inside cadence');
++  assert.ok(j.contacts.has('staleC'), 'contacts also deferred');
++  pruneEvidence(state, state.tick + PRUNE_EVIDENCE_CADENCE);
++  assert.equal(j.roots.has('stale'), false, 'runs again after cadence');
++  assert.equal(j.contacts.has('staleC'), false);
++});
++
++test('force=true prunes even inside the cadence window', () => {
++  const { state, j } = stateWithJournal();
++  pruneEvidence(state, state.tick);
++  j.roots.set('stale', { tick: state.tick - 500, id: 'stale' });
++  pruneEvidence(state, state.tick + 1, true);
++  assert.equal(j.roots.has('stale'), false);
++});
++
++test('PRUNE_EVIDENCE_CADENCE stays well under contact TTL', () => {
++  assert.ok(PRUNE_EVIDENCE_CADENCE >= 8);
++  assert.ok(PRUNE_EVIDENCE_CADENCE <= 60);
++  assert.ok(PRUNE_EVIDENCE_CADENCE * 4 < 180, 'several cadences fit inside contact TTL');
++});
+-- 
+2.47.3
+

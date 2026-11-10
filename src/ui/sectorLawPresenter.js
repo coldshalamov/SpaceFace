@@ -1,0 +1,503 @@
+// Compact sector-law + authority response presenter.
+//
+// Read-only over simulation state. The lawSecurity system remains the sole incident/AI authority;
+// this module renders its public events and the shared sectorLawProfile contract using sim time.
+import { FACTION_META } from '../data/factions.js';
+import { SECTORS } from '../data/sectors.js';
+import { sectorLawProfile } from './securityReadout.js';
+import { INK_SHADOW } from './hudBrackets.js';
+import { openingInstructionSolo } from './hudAttention.js';
+import { isPlayerWanted } from '../systems/heat.js';
+import { classifyImpactResponsibility } from '../combat/killCausality.js';
+import { targetDisplayName } from './targetPanel.js';
+
+const STYLE_ID = 'sf-sector-law-style';
+const RECEIPT_TTL_S = 4;
+// G8: a law change is one line, then the badge. The paragraph stays off the flight card.
+export const LAW_LINE_TTL_S = 4;
+
+export function lawChangeLine(profile) {
+  const name = String(profile && profile.sectorName || 'SECTOR').toUpperCase();
+  const level = String(profile && profile.level || 'LAW');
+  return `${name} · ${level}`;
+}
+
+export function visibleLawNodes(mode) {
+  if (mode === 'line') return ['line'];
+  if (mode === 'badge') return ['badge'];
+  return [];
+}
+
+export function stepLawHud(active, input, now) {
+  const t = Number(now) || 0;
+  if (!input) {
+    if (active && active.mode === 'line' && t >= active.hideAt) {
+      return {
+        mode: 'badge',
+        profile: active.profile,
+        badge: active.profile && active.profile.level || '',
+        line: '',
+      };
+    }
+    return active;
+  }
+  if (input.type === 'change') {
+    return {
+      mode: 'line',
+      profile: input.profile,
+      hideAt: t + LAW_LINE_TTL_S,
+      badge: '',
+      line: lawChangeLine(input.profile),
+    };
+  }
+  return {
+    mode: 'badge',
+    profile: input.profile,
+    hideAt: Infinity,
+    badge: input.profile && input.profile.level || '',
+    line: '',
+  };
+}
+const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
+
+function entityById(state, id) {
+  if (!state || id == null) return null;
+  if (state.entities && typeof state.entities.get === 'function') return state.entities.get(id) || null;
+  return null;
+}
+
+function entityName(entity) {
+  const data = entity && entity.data || {};
+  return String(data.callsign || data.displayName || data.name || entity && entity.name || '').trim();
+}
+
+function factionName(id) {
+  const faction = FACTION_BY_ID.get(id);
+  return String(faction && faction.name || id || 'Unknown authority').replace(/^faction_/, '');
+}
+
+export function stationName(state, stationId) {
+  for (const sector of SECTORS) {
+    const station = (sector.stations || []).find((row) => row.id === stationId);
+    if (station) return station.name;
+  }
+  const byStationId = state && state.entityIndex && state.entityIndex.byStationId;
+  const indexed = byStationId && byStationId.get && byStationId.get(stationId);
+  if (indexed) return entityName(indexed) || String(stationId || 'protected station').replace(/^station_/, '').replace(/_/g, ' ');
+  return String(stationId || 'protected station').replace(/^station_/, '').replace(/_/g, ' ');
+}
+
+export function authorityTargetText(payload, state) {
+  if (!payload || payload.attackerId == null) return 'UNKNOWN AGGRESSOR';
+  if (payload.attackerId === state.playerId) {
+    return /^player_(assault|piracy)$/.test(String(payload.cause || '')) ? 'YOU · AGGRESSOR' : 'YOU · INCIDENT SUBJECT';
+  }
+  // The same display-name path as the roster/panel: readableIdentity rejects id-shaped names,
+  // a def resolves to its catalog name, and an entity that is gone reads as a contact — the
+  // raw attackerId (npc_12ab, ship_removed_hull) never reaches the law card.
+  const attacker = entityById(state, payload.attackerId);
+  return attacker ? targetDisplayName(attacker) : 'CONTACT';
+}
+
+export function authorityAggressorText(target) {
+  const value = String(target || '');
+  return /AGGRESSOR|INCIDENT SUBJECT/.test(value) ? value : `AGGRESSOR ${value}`;
+}
+
+function causeText(cause) {
+  switch (String(cause || '')) {
+    case 'player_assault': return 'Patrol assault inside protected jurisdiction';
+    case 'player_piracy': return 'Attack on a protected civilian';
+    case 'npc_piracy': return 'Civilian distress inside protected jurisdiction';
+    case 'hostile_fire': return 'Hostile fire inside protected jurisdiction';
+    case 'self_defense': return 'Self-defense response';
+    default: return 'Verified aggression inside protected jurisdiction';
+  }
+}
+
+/** Options the pilot can still take before a player-caused distress escalates. */
+export function firstLawOptionLine(payload, state) {
+  if (!payload) return '';
+  const cause = String(payload.cause || '');
+  if (cause !== 'player_assault' && cause !== 'player_piracy') return '';
+  const status = String(payload.status || 'distress');
+  if (status !== 'distress') return '';
+  if (isPlayerWanted(state)) {
+    return ' You are already wanted. Leaving the ring does not stand this patrol down.';
+  }
+  return ' Leave the station ring and hold fire — patrol stands down. Keep firing and they arrive armed.';
+}
+
+/**
+ * Why a collision kill is or is not the pilot's. Only collision causes — a gun kill
+ * already has its own receipt. Returns null when this event is not that question.
+ */
+function collisionChargeLine(payload) {
+  if (payload.playerCaused !== true) return 'Not your collision. You are not responsible.';
+  if (payload.outcome === 'lawful') return 'Your collision killed a hostile. Law clears it.';
+  if (payload.outcome === 'unwitnessed') {
+    return payload.sustainedAssault === true
+      ? 'You kept at them, but nobody saw the collision. No charge yet.'
+      : 'Your collision. Nobody saw it, so there is no charge yet.';
+  }
+  if (payload.outcome === 'charged_unstable') {
+    return 'Authorities witnessed your collision. No charge has been filed.';
+  }
+  if (payload.kind === 'lawful_kill') return 'Your collision killed a protected patrol. A charge has been filed.';
+  if (payload.sustainedAssault === true || payload.kind === 'unlawful_kill') {
+    return 'You kept hitting them. This collision is the attack, not an accident.';
+  }
+  if (payload.outcome === 'charged' || payload.kind === 'reckless_kill') {
+    return 'Your collision killed a civilian. Charged reckless, not a continued attack.';
+  }
+  return null;
+}
+
+export function collisionResponsibilityLine(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  const cause = payload.cause;
+  if (cause !== 'terrain_collision' && cause !== 'ship_collision') return null;
+  const classified = payload.impactLink ? classifyImpactResponsibility(payload.impactLink) : null;
+  if (classified && classified.responsible === false) return classified.line;
+  const charge = collisionChargeLine(payload);
+  if (classified && classified.responsible && charge) return `${classified.line} ${charge}`;
+  if (classified && classified.responsible) return classified.line;
+  return charge;
+}
+
+export function collisionResponsibilityReceipt(payload) {
+  const line = collisionResponsibilityLine(payload);
+  if (!line) return null;
+  const charged = payload.outcome === 'charged' || payload.outcome === 'discovered';
+  return { outcome: 'collision_responsibility', text: line, cause: payload.cause,
+    stationId: payload.stationId ?? null, danger: charged,
+    statusText: charged ? 'CHARGE FILED' : payload.outcome === 'lawful' ? 'CLEARED' : 'NO CHARGE FILED' };
+}
+
+export function authorityIncidentReadout(payload, state, simTime = state && state.simTime || 0) {
+  if (!payload || !payload.id) return null;
+  // A player may only be presented as an enforcement target when the incident's canonical cause
+  // proves player aggression. Never turn a neutral-player payload into an invented police pursuit.
+  if (payload.attackerId === state.playerId
+    && !/^player_(assault|piracy)$/.test(String(payload.cause || ''))) return null;
+  const target = authorityTargetText(payload, state || {});
+  const authority = factionName(payload.factionId);
+  const station = stationName(state, payload.stationId);
+  const status = String(payload.status || 'distress');
+  const eta = payload.dispatchAt == null ? null : Math.max(0, Number(payload.dispatchAt) - Number(simTime || 0));
+  const units = Array.isArray(payload.responderIds) ? payload.responderIds.length : 0;
+  if (status === 'resolved') {
+    const disengaged = payload.outcome === 'disengaged';
+    return Object.freeze({
+      mode: 'receipt', danger: false,
+      flag: 'AUTHORITY RECEIPT', authority, station, target,
+      headline: disengaged ? 'CONTACT BROKEN · PATROL STOOD DOWN' : 'THREAT CLEARED · APPROACH SECURE',
+      detail: disengaged ? 'Aggressor cleared the station ring.' : 'Incident target is no longer active.',
+      statusText: 'RESOLVED', eta: null,
+    });
+  }
+  if (status === 'responding') {
+    return Object.freeze({
+      mode: 'incident', danger: true,
+      flag: 'INTERCEPT ACTIVE', authority, station, target,
+      headline: `${units} PATROL UNIT${units === 1 ? '' : 'S'} INTERCEPTING`,
+      detail: causeText(payload.cause), statusText: 'WEAPONS AUTHORIZED', eta: null,
+    });
+  }
+  if (status === 'monitoring') {
+    return Object.freeze({
+      mode: 'incident', danger: true,
+      flag: 'DISTRESS ACTIVE', authority, station, target,
+      headline: 'NO PATROL IN RANGE',
+      detail: `${causeText(payload.cause)} · distress remains active.`, statusText: 'NO ETA', eta: null,
+    });
+  }
+  return Object.freeze({
+    mode: 'incident', danger: true,
+    flag: 'DISTRESS LOGGED', authority, station, target,
+    headline: 'PATROL DISPATCH PENDING',
+    detail: `${causeText(payload.cause)}${firstLawOptionLine(payload, state)}`, statusText: eta == null ? 'ETA —' : `ETA ${eta.toFixed(1)} S`, eta,
+  });
+}
+
+export function directLawReceiptText(receipt) {
+  if (!receipt || receipt.incidentId) return null;
+  switch (receipt.outcome) {
+    case 'protected_withdrawal': return 'CONTACT WITHDREW · station protection prevented return fire';
+    case 'retaliation_authorized': return 'SELF-DEFENSE AUTHORIZED · you fired first; break contact to disengage';
+    default: return receipt.text ? String(receipt.text).replace(/\s+/g, ' ').trim() : null;
+  }
+}
+
+export function createSectorLawPresenter(ctx) {
+  const { state, bus } = ctx;
+  injectStyle();
+  const root = document.createElement('aside');
+  root.id = 'sf-sector-law';
+  root.hidden = true;
+  root.setAttribute('role', 'status');
+  root.setAttribute('aria-live', 'polite');
+  root.setAttribute('aria-atomic', 'true');
+  root.innerHTML = `
+    <div class="sf-law__head"><span data-k="flag">SECTOR LAW</span><span data-k="status">—</span></div>
+    <div class="sf-law__headline" data-k="headline">—</div>
+    <div class="sf-law__meta" data-k="meta">—</div>
+    <div class="sf-law__detail" data-k="detail">—</div>`;
+  const tacticalRail = document.querySelector('.sf-rightdock');
+  if (tacticalRail) tacticalRail.prepend(root);
+  else document.getElementById('ui-root').appendChild(root);
+  const els = Object.fromEntries(['flag', 'status', 'headline', 'meta', 'detail'].map((key) => [key, root.querySelector(`[data-k=${key}]`)]));
+  let active = null;
+  let lastEtaText = '';
+  let destroyed = false;
+  let registeredHud = null;
+  let registeredCritical = false;
+  let resizeFrame = 0;
+  const unsubscribers = [];
+
+  function syncFlightPlacement() {
+    const mobile = document.documentElement?.dataset?.sfMobile === '1';
+    const hud = ctx.registry?.get?.('ui')?.hud || ctx.ui?.hud || null;
+    const critical = !!active && active.mode !== 'badge';
+    if ((!mobile || root.hidden || registeredCritical !== critical) && registeredHud) {
+      registeredHud.releaseExternalFlightCaption?.(root);
+      registeredHud = null;
+      registeredCritical = false;
+    }
+    if (mobile) {
+      const host = document.getElementById('ui-root');
+      if (host && root.parentNode !== host) host.appendChild(root);
+      if (critical) root.dataset.flightCritical = 'true';
+      else delete root.dataset.flightCritical;
+      root.setAttribute('tabindex', '0');
+      if (!root.hidden && hud?.registerExternalFlightCaption) {
+        if (registeredHud !== hud) {
+          registeredHud?.releaseExternalFlightCaption?.(root);
+          hud.registerExternalFlightCaption(root);
+          registeredHud = hud;
+          registeredCritical = critical;
+        } else hud.refreshExternalFlightCaption?.(root);
+      }
+    } else {
+      delete root.dataset.flightCritical;
+      root.removeAttribute('tabindex');
+      const dock = document.querySelector('.sf-rightdock');
+      if (dock && root.parentNode !== dock) dock.prepend(root);
+    }
+  }
+  const onResize = () => {
+    if (resizeFrame) return;
+    if (typeof requestAnimationFrame !== 'function') { syncFlightPlacement(); return; }
+    resizeFrame = requestAnimationFrame(() => { resizeFrame = 0; if (!destroyed) syncFlightPlacement(); });
+  };
+  if (typeof window !== 'undefined') window.addEventListener?.('resize', onResize);
+
+  function text(el, value) {
+    const next = String(value == null ? '' : value);
+    if (el.textContent !== next) el.textContent = next;
+  }
+
+  function hide() {
+    root.hidden = true;
+    syncFlightPlacement();
+    root.className = '';
+    active = null;
+    lastEtaText = '';
+  }
+
+  function paintLaw(view) {
+    if (!view || !view.profile) return;
+    const profile = view.profile;
+    active = view;
+    const nodes = visibleLawNodes(view.mode);
+    root.className = `sf-law--${view.mode} sf-law--${profile.levelKey || 'high'}`;
+    root.dataset.lawMode = view.mode;
+    root.dataset.lawNodes = String(nodes.length);
+    text(els.flag, view.mode === 'badge' ? (view.badge || profile.level) : '');
+    text(els.status, '');
+    text(els.headline, view.mode === 'line' ? view.line : '');
+    text(els.meta, '');
+    text(els.detail, '');
+    if (els.meta) els.meta.hidden = true;
+    if (els.detail) els.detail.hidden = true;
+    if (els.status) els.status.hidden = true;
+    if (els.headline) els.headline.hidden = view.mode !== 'line';
+    if (els.flag) els.flag.hidden = view.mode !== 'badge';
+    root.setAttribute('aria-label', view.mode === 'line' ? view.line : (view.badge || profile.level));
+    root.hidden = false;
+    syncFlightPlacement();
+  }
+
+  function showSector(sectorId) {
+    const id = sectorId || state.world && state.world.currentSectorId;
+    if (!id || state.mode !== 'flight' || state.ui && state.ui.docked) return false;
+    // Opening one-instruction rule (hudAttention): the jurisdiction paragraph is flavor beside
+    // the first objective — the entry card retires while it owns the screen. Live incidents and
+    // authority receipts still surface; danger is not an instruction.
+    if (openingInstructionSolo(state)) return false;
+    const profile = sectorLawProfile(state, id);
+    const previous = active && active.profile;
+    const changed = !previous || previous.levelKey !== profile.levelKey || previous.sectorId !== id;
+    const stamped = { ...profile, sectorId: id };
+    const view = stepLawHud(null, { type: changed ? 'change' : 'steady', profile: stamped }, state.simTime);
+    view.profile = stamped;
+    paintLaw(view);
+    return true;
+  }
+
+  function renderIncident(payload) {
+    if (drillUiOpen()) return false;
+    const view = authorityIncidentReadout(payload, state, state.simTime);
+    if (!view) return false;
+    active = { mode: view.mode, incident: { ...payload }, hideAt: view.mode === 'receipt' ? Number(state.simTime || 0) + RECEIPT_TTL_S : Infinity };
+    root.className = view.danger ? 'sf-law--incident sf-law--danger' : 'sf-law--receipt';
+    for (const el of Object.values(els)) if (el) el.hidden = false;
+    text(els.flag, view.flag);
+    text(els.status, view.statusText);
+    text(els.headline, view.headline);
+    const aggressor = authorityAggressorText(view.target);
+    text(els.meta, `${view.authority.toUpperCase()} · ${view.station.toUpperCase()} · ${aggressor}`);
+    text(els.detail, view.detail);
+    root.setAttribute('aria-label', `${view.flag}. ${view.headline}. Authority ${view.authority}. ${aggressor}. ${view.detail}. ${view.statusText}.`);
+    lastEtaText = view.statusText;
+    root.hidden = false;
+    syncFlightPlacement();
+    return true;
+  }
+
+  function showDirectReceipt(receipt) {
+    if (drillUiOpen()) return false;
+    const receiptText = directLawReceiptText(receipt);
+    if (!receiptText) return false;
+    active = { mode: 'receipt', hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
+    root.className = receipt.outcome === 'retaliation_authorized' || receipt.danger ? 'sf-law--receipt sf-law--danger' : 'sf-law--receipt';
+    for (const el of Object.values(els)) if (el) el.hidden = false;
+    text(els.flag, 'AUTHORITY RECEIPT');
+    text(els.status, receipt.statusText || (receipt.outcome === 'retaliation_authorized' ? 'SELF-DEFENSE'
+      : receipt.outcome === 'customs_complied' ? 'COMPLIANCE LOGGED' : 'STAND DOWN'));
+    text(els.headline, receiptText);
+    text(els.meta, receipt.stationId ? stationName(state, receipt.stationId).toUpperCase() : 'OUTSIDE PROTECTED JURISDICTION');
+    text(els.detail, receipt.cause === 'player_attack' ? 'Cause: player fired first.'
+      : receipt.cause === 'customs_scan' ? 'Manifest read acknowledged.'
+      : receipt.cause === 'terrain_collision' ? 'Cause: the body hit terrain.'
+      : receipt.cause === 'ship_collision' ? 'Cause: hull on hull.'
+      : 'Incident closed.');
+    root.setAttribute('aria-label', `${receiptText}. ${els.detail.textContent}`);
+    root.hidden = false;
+    syncFlightPlacement();
+    return true;
+  }
+
+  function drillUiOpen() {
+    // Deep-core extraction freezes flight but keeps mode:'flight'; the law card must not sit
+    // over the drill feed while the sim is paused behind that screen.
+    return !!(state && state.drill && state.drill.active);
+  }
+
+  function tick() {
+    if (destroyed || !active) return;
+    if (state.mode !== 'flight' || state.ui && state.ui.docked || drillUiOpen()) { hide(); return; }
+    const now = Number(state.simTime || 0);
+    if (active.mode === 'line' && active.hideAt <= now) {
+      paintLaw(stepLawHud(active, null, now));
+      return;
+    }
+    if (active.mode !== 'badge' && active.hideAt <= now) { hide(); return; }
+    if (active.mode === 'incident' && active.incident && active.incident.status === 'distress') {
+      const view = authorityIncidentReadout(active.incident, state, now);
+      if (view && view.statusText !== lastEtaText) {
+        lastEtaText = view.statusText;
+        text(els.status, view.statusText);
+      }
+    }
+  }
+
+  function subscribe(event, handler) {
+    const unsubscribe = bus.on(event, handler);
+    if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
+    else if (bus && typeof bus.off === 'function') unsubscribers.push(() => bus.off(event, handler));
+  }
+
+  function destroy() {
+    if (destroyed) return;
+    destroyed = true;
+    if (resizeFrame && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(resizeFrame);
+    if (typeof window !== 'undefined') window.removeEventListener?.('resize', onResize);
+    registeredHud?.releaseExternalFlightCaption?.(root);
+    registeredHud = null;
+    for (const unsubscribe of unsubscribers.splice(0)) {
+      try { unsubscribe(); } catch (_) {}
+    }
+    root.remove();
+  }
+
+  subscribe('sector:enter', (payload = {}) => showSector(payload.sectorId));
+  subscribe('game:started', () => showSector(state.world && state.world.currentSectorId));
+  subscribe('law:distressRaised', renderIncident);
+  subscribe('law:dispatchStarted', renderIncident);
+  subscribe('law:incidentResolved', renderIncident);
+  subscribe('law:incidentReceipt', showDirectReceipt);
+  subscribe('law:killedAdjudicated', (payload) => {
+    const receipt = collisionResponsibilityReceipt(payload);
+    return receipt ? showDirectReceipt(receipt) : false;
+  });
+  subscribe('drill:start', hide);
+  subscribe('drill:end', hide);
+  subscribe('pirateParley:demand', () => { if (active && active.mode === 'entry') hide(); });
+  subscribe('signal:scanResults', () => { if (active && active.mode === 'entry') hide(); });
+  subscribe('recovery:started', () => { if (active && active.mode === 'entry') hide(); });
+  subscribe('game:new', hide);
+  subscribe('game:load', hide);
+
+  return { el: root, tick, hide, destroy, showSector, renderIncident, showDirectReceipt };
+}
+
+function injectStyle() {
+  if (document.getElementById(STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = STYLE_ID;
+  style.textContent = `
+  /* The law card sits back on the HUD's standard translucent plate (same material as the contact
+     roster below it): corner brackets over open vacuum lost the headline to the render — a lit
+     gas giant fills this corner, and the band tuner chip used to anchor inside the block. */
+  #sf-sector-law { position:relative; width:100%; z-index:1070;
+    box-sizing:border-box; padding:9px 11px 10px; pointer-events:none; contain:layout paint style;
+    background:rgba(10,14,20,.88);
+    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    border:1px solid var(--hud-line, rgba(148,178,205,.2));
+    border-radius:4px; box-shadow:0 14px 30px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.05);
+    color:#e7edf5; text-shadow:${INK_SHADOW};
+    font-family:var(--hud-body,"IBM Plex Sans","Segoe UI",sans-serif); transition:opacity .16s ease-out, transform .16s ease-out; }
+  #ui-root > #sf-sector-law { position:absolute; top:112px; right:20px; width:min(300px, calc(100vw - 40px)); }
+  #sf-sector-law[hidden] { display:none !important; }
+  #sf-sector-law.sf-law--badge { width:max-content; max-width:100%; padding:4px 10px; }
+  #sf-sector-law.sf-law--badge .sf-law__headline,
+  #sf-sector-law.sf-law--badge .sf-law__meta,
+  #sf-sector-law.sf-law--badge .sf-law__detail { display:none; }
+  #sf-sector-law.sf-law--line .sf-law__head,
+  #sf-sector-law.sf-law--line .sf-law__meta,
+  #sf-sector-law.sf-law--line .sf-law__detail { display:none; }
+  .sf-law__head { display:flex; justify-content:space-between; gap:12px;
+    font:700 12px var(--hud-display,"IBM Plex Sans",sans-serif); letter-spacing:.06em;
+    color:var(--accent,#4f8fdd); }
+  .sf-law__headline { margin-top:5px; font:700 14px/1.2 var(--hud-display,"IBM Plex Sans",sans-serif); letter-spacing:.035em; }
+  .sf-law__meta { margin-top:3px; font:500 12px/1.35 var(--hud-data,"IBM Plex Mono",monospace); letter-spacing:.05em; color:#718298; }
+  .sf-law__detail { margin-top:5px; font-size:12px; line-height:1.4; color:#aebdce; }
+  /* Level colour is the semantic set, by meaning: lawful/high reads as the Concord accent,
+     medium/low as goal amber, lawless/incident as foe red. The plate edge carries the same tint. */
+  #sf-sector-law.sf-law--medium, #sf-sector-law.sf-law--low { border-color:rgba(217,160,84,.4); border-top-color:var(--sf-goal,#d9a054); }
+  #sf-sector-law.sf-law--medium .sf-law__head, #sf-sector-law.sf-law--low .sf-law__head { color:var(--sf-goal,#d9a054); }
+  #sf-sector-law.sf-law--lawless, #sf-sector-law.sf-law--danger { border-color:rgba(217,95,106,.45); border-top-color:var(--sf-foe,#d95f6a); }
+  #sf-sector-law.sf-law--lawless .sf-law__head, #sf-sector-law.sf-law--danger .sf-law__head { color:var(--sf-foe,#d95f6a); }
+  #sf-sector-law.sf-law--receipt .sf-law__headline { color:#4f8fdd; font-size:12px; }
+  @media (max-width:900px), (max-height:620px) {
+    #ui-root > #sf-sector-law { top:78px; left:12px; right:12px; width:auto; padding:8px 10px; }
+    .sf-law__headline { font-size:12px; }
+    .sf-law__detail { font-size:12px; }
+  }
+  @media (prefers-reduced-motion:reduce) { #sf-sector-law { transition:none; } }
+  html.sf-reduce-motion #sf-sector-law { transition:none; }`;
+  document.head.appendChild(style);
+}
+
+export default createSectorLawPresenter;

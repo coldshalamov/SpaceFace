@@ -1,0 +1,111 @@
+/* Credits — ORRERY. Unique to [data-screen=credits] / .of-credits.
+   The composition (frame grid, ladder, reel, emblem, drift field, back) is styled by the shared
+   sheet injected from src/ui/orrery/settingsLayouts.js; the emblem is src/ui/orrery/creditsLayouts.js.
+   This sheet keeps only what it owns: the screen frame's padding, the display title, and the states
+   the shared sheet does not author — press feedback, the focused reel's spine, the quiet ESC key
+   hint, and the licence text unfolding. Colours are --dp-* tokens (design/frontend/ORRERY.md §3). */
+
+#screens .of-credits.k-screen {
+  padding: clamp(28px, 6vh, 96px) clamp(28px, 6vw, 120px) clamp(20px, 3vh, 48px);
+}
+
+#screens .of-credits .k-title {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+/* the display title: Archivo wdth 125 w800, tight tracking, ink on void (ORRERY.md §3.4) */
+#screens .of-credits .k-t-title {
+  font-family: var(--dp-face-etch);
+  font-variation-settings: 'wght' 800, 'wdth' 125;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 0.92;
+  font-size: clamp(64px, min(8vw, 14vh), 140px);
+  color: var(--dp-ink);
+}
+
+/* ── Press states ──────────────────────────────────────────────────────────────
+   The shared sheet authors hover and focus for every control; a press dips the
+   light for a beat (snap, not a new colour channel). Selectors sit one class
+   above the shared sheet's so the press wins while it is down. */
+
+/* a rung goes bright while the pick is down */
+html body #screens > .k-screen.of-credits.orr-credits > .k-hang > .k-words .k-word:active {
+  color: rgb(255 253 248) !important;
+  text-shadow: 0 0 14px rgb(255 250 236 / .3) !important;
+}
+
+/* ‹ BACK: the word flares and its underline pulls taut */
+html body #screens > .k-screen.of-credits.orr-credits > .k-foot > .k-words .sf-back:active {
+  color: rgb(255 253 248) !important;
+  background: linear-gradient(0deg, rgb(236 230 216 / .55) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important;
+}
+
+/* Read the licence: the bead flares while held */
+html body #screens > .k-screen.of-credits.orr-credits .of-credits-notice .orr-cr-unfold:active {
+  color: rgb(255 253 248) !important;
+}
+html body #screens > .k-screen.of-credits.orr-credits .of-credits-notice .orr-cr-unfold:active::before {
+  background: rgb(255 253 248) !important;
+  box-shadow: 0 0 9px rgb(255 250 236 / .65) !important;
+}
+
+/* the licence text unfolds from its head (ORRERY.md §4 #24): it never just appears */
+@keyframes orr-cr-unfold-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+html body #screens .of-credits .orr-cr-full:not([hidden]) {
+  animation: orr-cr-unfold-in 260ms var(--dp-ease-out, ease-out) both;
+}
+html.sf-reduce-motion #screens .of-credits .orr-cr-full:not([hidden]) { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  #screens .of-credits .orr-cr-full:not([hidden]) { animation: none; }
+}
+
+/* ── The focused reel ──────────────────────────────────────────────────────────
+   The reel is a control (it scrolls by keyboard); focus must be visible without
+   a border. Its spine — a scale's edge of light on the stage's left, outside the
+   scroll — answers (ORRERY.md §3.1: a glass edge is a scale or nothing). */
+html body #screens > .k-screen.of-credits.orr-credits > .k-stage:focus-visible {
+  background: linear-gradient(180deg, transparent, rgb(236 230 216 / .6) 12%, rgb(236 230 216 / .6) 88%, transparent) 0 0 / 1.5px 100% no-repeat !important;
+}
+
+/* ── The key hint ──────────────────────────────────────────────────────────────
+   ESC after ‹ BACK wears the same hairline keycap as the Records Wall, Settings
+   and Save/Load feet, so the way out reads as a key, not a loose word. */
+html body #screens > .k-screen.of-credits.orr-credits > .k-foot > .k-words .sf-back::after {
+  background: rgb(236 230 216 / .1) !important;
+  border: 1px solid rgb(236 230 216 / .5) !important;
+  border-radius: 3px !important;
+  box-shadow: inset 0 -1px 0 rgb(0 0 0 / .35) !important;
+  padding: 3px 7px 4px !important;
+  margin-left: 16px !important;
+  color: rgb(236 230 216 / .9) !important;
+}
+html body #screens > .k-screen.of-credits.orr-credits > .k-foot > .k-words .sf-back:is(:hover, :focus-visible)::after {
+  color: rgb(255 253 248) !important;
+  border-color: rgb(255 253 248 / .45) !important;
+}
+
+/* ── The catch zone ────────────────────────────────────────────────────────────
+   The emblem's Hand and its caption stand at the reel's right shoulder; the reel
+   stops short of them at wide widths so no reel text (rows, values, unfolded
+   licences) runs under the instrument. Narrow widths park the emblem further
+   right and already clear (their media rules keep their own caps). */
+@media (min-width:1501px) {
+  html body #screens > .k-screen.of-credits.orr-credits > .k-stage .orr-cr-reel { max-width: min(560px, 100%); }
+}
+
+/* Forced colours: the system's palette replaces the instrument light. */
+@media (forced-colors: active) {
+  #screens .of-credits.k-screen::before { background: Canvas; }
+  #screens .of-credits > .k-stage { background: Canvas; }
+  #screens .of-credits .k-hang .k-word,
+  #screens .of-credits .k-foot .k-word,
+  #screens .of-credits .orr-cr-unfold { color: CanvasText; }
+  #screens .of-credits :is(.k-word, .orr-cr-unfold, .k-stage):focus-visible { outline: 2px solid Highlight; }
+}

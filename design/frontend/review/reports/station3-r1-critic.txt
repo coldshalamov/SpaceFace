@@ -1,0 +1,266 @@
+STATION TABS FACTIONS / LEDGER / MARKET + STATION SHELL — ROUND 1 UNDER THE OWNER CRITERIA (independent critic)
+Stills: wt-before-* (pre-sweep), wt-a6-* (post-sweep, 1920/1280/2560), wt-st-factions-hover, wt-st-market-blur, wt-st-ledger-blur.
+All coordinates are 1x px in the 1920 shot unless marked. Lum = mean RGB of composited pixels (sharp .raw()); contrast = WCAG
+ratio of the band's lum against the glass beside it. Scripts: scratchpad/s3-diff.cjs, s3-diff2.cjs, s3-samp.cjs, s3-cr.cjs;
+crops under scratchpad/crops/s3/.
+Bench artefacts not scored: TRADE CLEARED toast, CYCLE 0001, frozen motion, the Market's "—" stock column as bench data.
+
+WHAT THE SWEEP CHANGED (40 px grid diff, before -> after, 1920)
+- Factions: orbit, sun, crest tracks, chords, standing scale, POWERS spine, shell. 233 changed cells.
+- Ledger: tape, stems, value axis, now cursor, leader, purse, list spine, shell. 181 cells.
+- Market: ONLY the shell (title rule band y 80-160, vital dials, tab rail y 1040). 86 cells, every one of them shell. The
+  Market body (ladder, price trace, dial, trade block) is pixel-identical to before. The staged foreign edit to market.js is
+  quote logic, not drawing. marketLayouts.js was not in 73b5a87aa..138988b43.
+
+SUMMARY
+                 overall (prev)   comp  hier  legib  ORRERY  craft  inter   (a) weight        (b) signature   VERDICT
+  Shell          8.0 (8.0)        8.2   8.0   8.2    7.9     7.9    7.8     PASS (on the line) PASS (narrow)   PASSED, zero margin
+  Factions       8.0 (8.0)        8.1   8.1   8.0    8.1     7.8    8.0     FAIL (sun rings)   PASS            NOT PASSED — one small fix
+  Ledger         8.1 (8.1)        7.9   8.2   8.0    8.3     8.2    8.1     PASS               PASS            PASSED
+  Market         7.3 (8.0-8.1)    7.6   7.5   8.0    6.7     7.0    7.0     FAIL               FAIL            NOT PASSED — structural
+
+=====================================================================================================================
+A. THE SHELL (title band, vital dials, tab rail, UNDOCK)
+=====================================================================================================================
+1. VERDICT: PASSED, on the line. Overall 8.0 (48.0/6). The weight landed. The rail is a real band. The vital dials have
+   lit fills. The remaining wires are the MUNITIONS dial and the UNDOCK glyph. UNDOCK is the only verb every tab shares, and
+   it is still a word with a 1 px arrow.
+
+2. AXES
+   Composition       8.2  title top-left, vitals top-right, rail and verb along the foot. It frames every tab and never
+                          competes with the tab.
+   Hierarchy         8.0  the station name (Archivo 800) and CREDITS 18,400 lead. The chosen tab word (FACTIONS 248) sits over
+                          the needle. The dial numerals are heavy (wt ~700), not the thin display numerals §3.4 asks for.
+   Legibility        8.2  the tab words and dial labels read cleanly at 1280. FIND A SERVICE / CTRL K (top right, ~50 lum)
+                          is the one faint item.
+   ORRERY fidelity   7.9  the ruled rail, needle and bead are the law. UNDOCK is bone text plus a glyph: no Lamp Key cut
+                          and no Hold Ring, although §4 #11 names "undock with risk" as a Hold Ring.
+   Craft/detail      7.9  rail band 7 px (1053-1059) with a 2 px core (175) and even tick phases. The needle has a bead
+                          glow (1041-1063, 248). The title rule is a 2 px gradient. The munitions ring is a dashed wire.
+   Interaction       7.8  the rail answers focus (band 67 -> 91) and the needle marks the tab. UNDOCK gives no hint that
+                          it is pressable, beyond READY.
+
+3. PREVIOUS-ROUND ITEMS (the sweep's claims)
+   - Tab rail as a band: DONE. At rest (blur shot) the band is 67-68 on glass 9 = 2.01:1. Over the lighter glass
+     (x 660-840) it is 72 on 15 = 2.09:1. When the rail holds focus (a6 shots) it is 91 on 9 = 2.93:1. Core 166-177, 2 px.
+     Before the sweep it was a 40-lum hairline.
+   - Heavier needle: DONE. 23 px tall (1041-1063), 248 core, with a bead glow.
+   - Title rule 2 px: DONE.
+   - Vital dials with a lit fill: DONE for HULL and FUEL (fill core 213-239 over a 4 px band at 53). HOLD track band 84-95 on
+     8 = 2.6-3.0:1.
+   - MUNITIONS: NOT. The ring is dashes (2-3 px segments, 25-51 lum at y 150, up to 82 at the crown). 51 on 7 = 1.59:1.
+     It reads as a dotted wire.
+
+4. RANKED FIXES
+   1. UNDOCK (1718-1880, 995-1030): the one shared verb is a word plus a 1 px arrow glyph (1865-1880). Give it body. Set the
+      arrow to 2 px inside a 40 px ring band (bone .28, 6 px) that becomes the Hold Ring when there is undock risk. Leave the
+      word as it is.
+   2. MUNITIONS dial (1790-1855, 120-180): replace the dash ring with the same 4 px band track as HOLD (bone .4). Keep the
+      per-round ticks as 1.5 px cuts through the band, the way the Industry bezel does it.
+   3. Dial numerals 86 / 100 / 0 / 0 (y 140-160): drop them from ~700 weight to Archivo 300-350 at the current size.
+      "Thin numerals for readings" is the most expensive signal the shell is missing.
+   4. Tab rail at rest (y 1053-1059): 2.01:1 is zero margin. Raise the rest alpha .27 -> .30, which measures about 2.3:1.
+   5. FIND A SERVICE / CTRL K (1720-1890, 30-45): about 50 lum on glass. Lift it to ink-dim .72.
+
+5. MEMORABLE: nothing yet makes the shell arrive. A single sweep of the needle across the rail on dock, with the vitals
+   counting up, would make docking a ritual.
+
+7. OWNER CRITERIA
+   (a) PASS, on the line. The rail band is 2.01:1 at rest and 2.93:1 on focus. The HOLD track is 2.6-3.0:1. The HULL/FUEL fills
+       are bright over bands. The two named wires, the MUNITIONS dash ring (1.59:1) and the 1 px UNDOCK arrow, are small
+       elements.
+   (b) PASS (narrow; the shell is chrome, not a tab). Its own gesture is the needle riding a ruled rail to the tab you
+       choose. It is distinct from web tabs, but it would be stronger with fix 1 (hold-to-undock ring) as the shell's verb.
+
+=====================================================================================================================
+B. FACTIONS
+=====================================================================================================================
+1. VERDICT: NOT PASSED on owner criterion (a), and only on the sun. Overall 8.0 (48.1/6; previous 8.0). No axis is under 7.
+   The orbit, standing tracks, standing scale and spine now carry body. The two rings of the SUN, the centre of the hero
+   instrument, still measure under the bar. It is a one-line fix. One craft collision remains: the leaders strike through
+   the tier figures.
+
+2. AXES
+   Composition       8.1  orbit (360-940) versus standing column (1020-1850) is balanced. The band 1020-1880 x 920-990 is
+                          still empty.
+   Hierarchy         8.1  the chosen Concord crest (amber ring) and its amber arm lead. The ghost crest behind the "0"
+                          numeral is a good produced-art touch.
+   Legibility        8.0  the figures are now 10 px at 153-155 lum on ~9 (about 7:1). Before, they were about 3:1.
+                          ACCEPTED/TRUSTED/ALLIED words are 95-110 lum, fine. At 1280 the standing scale's figures are
+                          small but read.
+   ORRERY fidelity   8.1  crests on an orbit ring with the Hand as the arm. Relations are chords with beads. Standing is on
+                          a ruled scale. Deduction: §6 asks for standing arcs "red through bone to amber", but Vael −120 and
+                          Reach −50 fill their crest tracks in bone.
+   Craft/detail      7.8  bands are well made (orbit 6 px at 70 with a 2 px core at 141). The leaders cut through the
+                          figures. The Vael chord bead (about 760,617) lands on the left end of Vael's standing track. The
+                          inner sun ring is a 2 px hairline.
+   Interaction       8.0  the hover shot moves only the spine (68 -> 91) and brightens the row tick (192). The row word is
+                          unchanged (box mean 57.2 in both) and nothing previews on the orbit.
+
+3. PREVIOUS ROUND (r10) ITEMS
+   - Standing graduation figures under the §8 gate: DONE. 10 px at 153-155 on 9, about 7:1.
+   - Cursor bisecting NEUTRAL: DONE. The 2.4 px cursor breaks around the word (586-608, then 620-650).
+   - Rung detail brighter than its rung word: not re-measured this round, and it looks unchanged at a glance.
+   Weight sweep claims:
+   - Orbit band: DONE. At row 538, x 500-507: band 70 on 9 = 2.11:1, core 141-142 (2 px). Before: 41 core, no band (1.2:1).
+   - Sun rings: HALF. The outer ring band is 59-62 on 7-8 on the horizontal axis (x 584-589, 738-743) = 1.84:1. It reaches
+     60-69 only at the crown (x 640, y 463-468). The inner ring (x 600-601) is a 2 px line at 38 on 7 = 1.32:1, which is a wire.
+   - Crest standing tracks: DONE. For example, above Quiet the band is 66-68 at y 549-554 over glass 7, about 2.0:1.
+   - Relation chords lit with beads: DONE. Rivals are red chords with red beads; allies are bone.
+   - Standing scale band + 2 px line + ticks: DONE.
+   - POWERS spine: DONE. 7 px band at 67 on 9-10 (x 36-42) = 2.0:1, 2 px core at 155, ticks 155.
+
+4. RANKED FIXES
+   1. Sun rings, crestOrbit (outer at r≈80 around 663,538; inner at x 600): raise the outer band alpha to ~.32 so it measures
+      ≥70 everywhere (currently 59-62 at the sides). Turn the inner 2 px ring (38 lum) into a 5 px band at .26 under a 1.5 px
+      edge, or delete it. This is the (a) blocker.
+   2. Rung leaders through the tier figures (-149 at 1297, -29 at ~1390, +30 at ~1482, +150 at 1574, +400 at ~1667; y 641-672).
+      The leader (77-85 lum) runs straight through every figure (153). Start each leader 4 px below the figure's baseline
+      (y≈660), or offset the figure 6 px to the left of its tick. §3.2 says labels never touch connectors.
+   3. Hostile standing fills (Vael track about 760-800,600-620; Reach at about 815,480): fill below-neutral standing in
+      --dp-danger at .8, and above-accepted in amber-dim, per §6.
+   4. Vael chord bead (about 760,617): end the chord 6 px short of the standing track so the bead sits clear of it.
+   5. POWERS rail arm (y 333) points into the gap between AUTHORITY and "Solar Concord Navy" (name baseline 343). Drop the arm
+      to the name's x-height centre (about y 340).
+   6. Hover (wt-st-factions-hover, Ascendant Choir row 564-580): lift the hovered word to 250 and ghost the Hand on the orbit
+      toward that crest (a 40 % amber arm). Hovering the list should preview the orbit.
+   7. Empty foot 1020-1880 x 920-990: move RELATIONS · 5 there as the chord legend (5 beads with names), or pull the column
+      up 40 px.
+
+5. MEMORABLE: the chosen crest is still flat. The ghost crest behind the numeral wants to be the §6 Tilt Plate, a large
+   produced crest that tilts toward the cursor with a sheen, while the chords re-draw from it.
+
+7. OWNER CRITERIA
+   (a) FAIL, narrowly. The orbit (2.11:1), crest tracks (~2.0:1), standing scale and spine meet the bar. The sun is the
+       centre of the hero instrument and does not: outer band 1.84:1 at its sides, inner ring a 2 px line at 1.32:1. By the
+       brief's own rule ("a ring whose only visible part is its core fails") the inner sun ring is a wire. Fix 1 clears it.
+   (b) PASS. Signature: turn the orbit to a crest and its relation chords draw from the sun, red to rivals and bone to
+       allies, with beads. No other tab does this. The still proves it (5 chords from Concord). The hover state shows the
+       interaction is weak before commit (fix 6).
+
+=====================================================================================================================
+C. LEDGER
+=====================================================================================================================
+1. VERDICT: PASSED. Overall 8.1 (48.7/6; previous 8.1). Every instrument has body, and the Hand (the amber now-cursor with a
+   2 px leader to the -930 reading) is the clearest Hand in the station. Composition is the weakest axis. Two large voids
+   remain, and the purse is too small for the job §6 gives it.
+
+2. AXES
+   Composition       7.9  hero numeral −930 plus the tape read well. The voids are 900-1680 x 650-990 and 50-640 x 540-990,
+                          and the purse is 120 px in a far corner.
+   Hierarchy         8.2  −930 (thin, ~110 px) leads, then the tape and Hand, then the purse −130, then the list.
+   Legibility        8.0  axis figures and stem values are crisp. At 1280 the axis labels 2,500 CR / 1,250 crowd each
+                          other (about 20 px apart).
+   ORRERY fidelity   8.3  one ruled tape, past to NOW, the Hand as the arm, the purse as an arc gauge, bone rest light,
+                          one amber.
+   Craft/detail      8.2  tape band 7 px (410-416) at 72 with a 2 px core (174). Stems have a 2 px core (147-161) over a
+                          54-lum glow. The leader is 2 px at 122, uniform along its run (the r9 "dims mid-run" defect is
+                          gone). The purse track is a bright band (96-132 around a 203-235 core).
+   Interaction       8.1  scrub the tape: the stems and the Hand's leader tie the chosen entry to the reading. The list's arm
+                          (bone) matches the chosen row.
+
+3. PREVIOUS / SWEEP ITEMS
+   - Tape as a band: DONE. 72 on 12 = 2.14:1 (before: 55 on 12 = 1.64:1). Over the bright truss (x 1700) 81 on 26 = 2.19:1.
+   - Value axis ruler with band: DONE. x 664-668 at 69 on 11-12, about 2.05:1, 2 px core 148.
+   - Stems 2 px + glow: DONE. Core 147-161 was 115-142 at 1 px; glow 54 (a glow, not claimed as a band).
+   - Hand's leader 2 px: DONE. y 634-635 at 122 on 9 = 4.6:1. The r9 mid-run dimming is fixed.
+   - Purse band track: DONE. Lit sums and beads; the before shot had a 1 px thread to the bead feet.
+   - List spine: DONE (x 63-70). It is a short rail for 3 rows.
+   - r9 item "empty-state axis 58 px past last major": NOT MEASURED (no empty shot this round).
+
+4. RANKED FIXES
+   1. Purse gauge (1695-1815, 660-810): scale it to 200 px and anchor it under the tape's NOW end (centre about 1740,560) so
+      the Hand, the reading and the purse form one cluster. That fills the 900-1680 x 650-990 void.
+   2. Left void 50-640 x 540-990: carry the ledger's summaries there, for example per-commodity arcs (BOUGHT / SOLD split)
+      as three small arc gauges, or let the list's spine run to y 900 with a READ scale. Do not leave half a screen of glass.
+   3. 1280 axis labels (1280 shot, 650-715 x 245-360): drop the ±1,250 figures at 1280, or set the axis majors to ±2,500 only.
+   4. The tape has 3 stems on a 1170 px ruler. At −1,250 and −2,500 give the scale's minor ticks a 1.5 px faint band, so
+      the empty lower half reads as a measured field rather than empty.
+   5. List arm (66-80, y 411): the arm is bone by ruling. Give it a 3 px bead at the tick so it matches the POWERS rail's arm.
+
+5. MEMORABLE: nothing yet makes money feel like mass. Let a scrub past a SELL stem send a salvage burst down the stem into
+   the purse, so the purse sweeps visibly.
+
+7. OWNER CRITERIA
+   (a) PASS. Tape 2.14:1, axis ~2.05:1, purse track well over 2:1, stems 2 px lit cores, spine banded. No hairline-only
+       instrument remains.
+   (b) PASS. Signature: scrub the tape through time. Stems rise, the amber Hand's leader re-points to the reading, and the
+       purse sweeps. It belongs to this tab alone. It would be memorable with fix 1 (Hand, reading and purse as one
+       machine) and the salvage-into-purse beat.
+
+=====================================================================================================================
+D. MARKET
+=====================================================================================================================
+1. VERDICT: NOT PASSED. Overall 7.3 (it passed ORRERY's letter at 8.0-8.1; the owner criteria now apply). The weight sweep
+   never reached this tab. The diff shows every changed pixel belongs to the shell. The Market is the one station tab still
+   drawn in 1 px lines, and it keeps the most generic web furniture in the station: underlined filter tabs, an underlined
+   search field, three full-width divider rules, two stat grids, and a BUY/SELL/STOCK table with the commodity pictograms
+   switched off.
+
+2. AXES
+   Composition       7.6  a left register and a right reading, dial, verb. It is orderly but it is a dashboard layout.
+                          The eye has no single hero instrument.
+   Hierarchy         7.5  "Iron Ore" (large) and the price 14 (top right, 1800-1870) compete. The dial's 0 and
+                          "Unavailable" (large) compete below. Four levels of medium-large type.
+   Legibility        8.0  the table and readouts are all legible. BUY 0 (disabled) is 45 % bone, deliberately dim.
+   ORRERY fidelity   6.7  §6 asks for a Ladder with pictograms. The pictograms (done 2026-09-22) are hidden
+                          (.of-commodity-icon display:none). The price instrument is a flat 2 px line with no band or Lens.
+                          There are divider rules (§3.2: no rectangles or borders) and stat grids, and no BUY↔SELL Morph
+                          Word visible.
+   Craft/detail      7.0  the dial is a 50-57 lum hairline with a dotted inner circle and 1 px ticks. The ladder rail is
+                          1 px. Three 1 px dividers cross the reading.
+   Interaction       7.0  the dial exists and can be dragged. At rest it is a wire at 0 of 0 with the verb disabled. Nothing
+                          on the screen shows prices moving: there is no ticker in the picture, and no ticker element in the
+                          market code (marketLayouts.js, market.js).
+
+3. SWEEP CLAIMS (task: "check what the sweep did")
+   - The sweep did nothing to the Market body (before == after outside the shell).
+   - Ladder rail: NOT. x 59, 1 px at 57 on 9 = 1.6:1. The ticks are 8x1 px at .38.
+   - Quantity dial track: NOT. 2-4 px at 50-57 on 14-15, about 1.5:1. Ticks are 1 px at .4. The inner circle is a 1 px dotted
+     ring at .1.
+   - Price trace: a bare 2 px line (242/73) on 18, with no band or bloom under it.
+   - Dividers: 1 px rules at y 348 (36 on 15), y 581 (64 on 19) and y 711 (37 on 12), running the full reading width
+     (600-1870).
+
+4. RANKED FIXES
+   1. Ladder (the .sx-mkt-table tbody gradient, x 52-66, y 410-990): replace the 1 px .22 column with the shared rail()
+      spine the other tabs got: 2 px line at .55 over a 7 px band at .27 (measured 67 on 9 on the other tabs). Use 1.5 px
+      minor ticks and 2 px row ticks. Show the commodity pictograms (drop display:none) on the ticks at 16 px, bone .8,
+      with the chosen one hot.
+   2. Quantity dial (.orr-qdial, 620-790, 760-930): make the track an 8 px band at bone .28 under a 2 px edge at .6, with
+      1.5 px ticks and 2 px majors. Delete the dotted inner ring. Make the fill a 3 px lit core over a 10 px bloom.
+   3. Divider rules (y 348, 581, 711): delete them. Separate the zones with the instrument's own scale (the price trace's
+      time ruler already exists at y 580-600) and with space.
+   4. Price instrument (645-1870, 495-600): give the trace a band (6 px at .26 under the 2 px line). Add the §6 crosshair
+      Lens under the cursor. Mark BUY/SELL as beads on a right-edge scale rather than the two text flags.
+   5. The 4-up LOCAL/SPREAD/SECTOR/TREND grid (600-1010, 365-405) and the 3-up GALACTIC AVG/DEMAND/MARGIN (600-1300, 620-665):
+      put them on the instrument. Make spread a bracket on the price scale, trend the trace's slope, demand an arc, and the
+      galactic average the dashed reference line already on the trace. Stat grids are the generic element here.
+   6. Filter tabs (52-535, 335-355) with a 16x2 underline, and the search field (330-550, 297-315) with a 1 px underline:
+      put the filters on a short arc or ruled scale with the Hand index. Make the search a scale line with a cursor, not an
+      underlined input.
+   7. The verb: BUY 0 / SELL › (845-1025, 880-900). Make it the §3.6 Lamp Key (amber, 45° cut) with a BUY↔SELL Morph Word.
+      This is the screen's one primary verb and it is plain text.
+   8. The hero price 14 (1800-1870, 265-310) competes with the name. Set it as the thin display numeral (Archivo 250, 96 px)
+      on the price scale's right end, which also ties it to the trace.
+   9. The empty STOCK column ("—" in every row, 495-545): if stock is unknown, hide the column rather than print 17 dashes.
+
+5. MEMORABLE: the dial should do what nothing else in the game does. Spin it and the total counter rolls, the hold arc
+   fills, and the price trace shows your own trade's price impact as a ghost segment before you commit.
+
+7. OWNER CRITERIA
+   (a) FAIL. Every Market instrument is hairline: ladder rail 1 px at 1.6:1, dial track ~1.5:1 with a dotted 1 px inner ring
+       and 1 px ticks, a bandless 2 px price trace. The generic elements are named in fixes 3, 5 and 6: divider rules, stat
+       grids, underlined filter tabs, underlined search input, and a column table without its pictograms.
+   (b) FAIL. The claimed signature is "turn the quantity dial, the ledger ticker streams prices". The dial exists and is
+       draggable, but at rest it is a wire at 0/0 over "Unavailable". The ticker is not in the picture and has no element in
+       the market code. A signature the player cannot see, beside a wire dial that does nothing at rest, is not strong or
+       memorable. Make it with fix 2 plus the MEMORABLE line: the spin drives the counter, hold arc and price-impact ghost.
+
+=====================================================================================================================
+THE ONE STRUCTURAL CHANGE TO LAND FIRST, PER SURFACE
+- Shell: UNDOCK becomes an instrument, a 2 px arrow in a 40 px banded ring that is the Hold Ring when undocking carries risk.
+- Factions: the sun's two rings become bands at ≥2:1 (outer .26 -> ~.32; inner 2 px hairline -> 5 px band). This clears (a).
+- Ledger: the purse grows to 200 px and docks under the tape's NOW end, so Hand, reading and purse are one machine.
+- Market: bring the tab onto the weighted library. Use the rail() spine with pictograms for the ladder and an 8 px banded
+  dial track with no dotted ring, and delete the three divider rules. Until this lands the Market cannot pass (a).

@@ -1,0 +1,122 @@
+
+> spaceface@0.1.0 check:baseline
+> node scripts/check-baseline.mjs
+
+
+check:baseline
+  PASS    2011ms  ui-screen-imports
+  PASS     159ms  ui-glyphs
+  PASS     228ms  ui-control-labels
+  PASS     352ms  vfx-techniques
+  PASS    1743ms  pq020-ceres-topology
+  FAIL     427ms  save-schema
+  PASS     735ms  opening-mesh-defer
+  PASS     659ms  smooth-flight
+  PASS     808ms  flight-v3
+  PASS     570ms  m1-tether-mass
+  PASS    2843ms  sim-v3-compare
+  PASS    3383ms  render-package-plan
+  FAIL    2066ms  sim-compare
+  FAIL   12121ms  sim-v3
+  FAIL    2265ms  sim
+  PASS   33683ms  massline
+
+  12/16 green in 33683ms wall (parallel:2+1x2), budget 90000ms, headroom 56317ms
+  concurrency allowance 4 from availableParallelism — split, not multiplied (see the header)
+
+--- save-schema (exit 1) :: node scripts/generate-save-schema.mjs --check
+'| `$.player.droneTierCap` | number | 1 |\n' +
+    '| `$.player.efficiencyMods` | object | {} |\n' +
+    '| `$.player.efficiencyMods.cargoCapMult` | number | 1 |\n' +
+    '| `$.player.efficiencyMods.energyRegenMult` | number | 1 |\n' +
+    '| `$.player.efficiencyMods.miningYieldMult` | number | 1 |\n' +
+    '| `$.player.efficiencyMods.shieldRegenMult` | number | 1 |\n' +
+    '| `$.player.efficiencyMods.tradeFeeMult` | number | 1 |\n' +
+    '| `$.player.fireGroups` | object | {} |\n' +
+    '| `$.player.fireGroups.1` | array | length 0 |\n' +
+    '| `$.player.fireGroups.2` | array | length 0 |\n' +
+    '| `$.player.heat` | number | 0 |\n' +
+    '| `$.player.heatZone` | object | {} |\n' +
+    '| `$.player.heatZone.active` | boolean | false |\n' +
+    '| `$.player.heatZone.center` | object | {} |\n' +
+    '| `$.player.heatZone.center.x` | number | 0 |\n' +
+    '| `$.player.heatZone.center.z` | number | 0 |\n' +
+    '| `$.player.heatZone.clearAfterS` | number | 0 |\n' +
+    '| `$.player.heatZone.level` | number | 0 |\n' +
+    '| `$.player.heatZone.outsideS` | number | 0 |\n' +
+    '| `$.player.heatZone.radius` | number | 0 |\n' +
+    '| `$.player.hints` | object | {} |\n' +
+    '| `$.player.hints.firstCargoFull` | boolean | false |\n' +
+    '| `$.player.hints.firstCombat` | boolean | false |\n' +
+    '| `$.player.hints.firstFlight` | boolean | false |\n' +
+    '| `$.player.hints.firstGate` | boolean | false |\n' +
+    '| `$.player.hints.firstShieldDrop` | boolean | false |\n' +
+    '| `$.player.hints.firstStation` | boolean | false |\n' +
+    '| `$.player.insurance` | object | {} |\n' +
+    '| `$.player.insurance.deductibleCr` | number | 500 |\n' +
+    '| `$.player.insurance.insuredModules` | boolean | false |\n' +
+    '| `$.player.insurance.lastStationId` | null | null |\n' +
+    '| `$.player.insurance.rate` | number | 0.6 |\n' +
+    '| `$.player.loadoutPresets` | array | length 0 |\n' +
+    '| `$.player.magnetRange` | number | 250 |\n' +
+    '| `$.player.massSeed` | object '... 5286 more characters,
+  operator: 'strictEqual'
+}
+
+Node.js v20.19.2
+
+--- sim-compare (exit 1) :: node scripts/sf-sim.mjs compare 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --reload-at 600
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: 47-A Phase 0 tape should land at least one projectile hit
+    at assert47aPhase0Metrics (file:///workspace/spaceface-master-witness/scripts/sf-sim.mjs:1220:3)
+    at file:///workspace/spaceface-master-witness/scripts/sf-sim.mjs:175:3 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '=='
+}
+
+Node.js v20.19.2
+
+--- sim-v3 (exit 1) :: node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.v3.expected.json --hash --repeat 20 --reload-at 60 --flight-system v3
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: 47-A authoritative hash drifted from expected telemetry envelope
++ actual - expected
+
++ 'fe0070c14a9d62ef73b209742b419cc0611f3fb401f918cc464c20de1b1c1a9f'
+- '5c84097c2c15ff3493b362a7c92c7cfcdee374e4c6467c770df63db4c50c40ad'
+    at assertExpectedEnvelope (file:///workspace/spaceface-master-witness/scripts/sf-sim.mjs:685:12)
+    at file:///workspace/spaceface-master-witness/scripts/sf-sim.mjs:223:25 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 'fe0070c14a9d62ef73b209742b419cc0611f3fb401f918cc464c20de1b1c1a9f',
+  expected: '5c84097c2c15ff3493b362a7c92c7cfcdee374e4c6467c770df63db4c50c40ad',
+  operator: 'strictEqual'
+}
+
+Node.js v20.19.2
+
+--- sim (exit 1) :: node scripts/sf-sim.mjs run 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --expect test/47a.telemetry.expected.json --hash --repeat 20 --reload-at 600
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: 47-A Phase 0 tape should land at least one projectile hit
+    at assert47aPhase0Metrics (file:///workspace/spaceface-master-witness/scripts/sf-sim.mjs:1220:3)
+    at file:///workspace/spaceface-master-witness/scripts/sf-sim.mjs:212:3 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '=='
+}
+
+Node.js v20.19.2
+

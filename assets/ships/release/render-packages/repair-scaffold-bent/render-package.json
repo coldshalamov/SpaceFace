@@ -1,0 +1,1462 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.repair-scaffold-bent",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "c17c111abb63a608fabc16c2e2a974ae7986bc1849fa916eaa2abaaddc132e6c",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.2324017747794627,
+          0.08606075495481491,
+          0.07793120419709514
+        ],
+        "min": [
+          2.717598034485674,
+          -0.7860607504844666,
+          -0.07793120419709514
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "66193adb5f8734244f66a8e5f5797a9d7c4688bdf9a3ca8303db7586142ea825",
+      "id": "sf.render.repair-scaffold-bent.mesh.clamparm0.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.013",
+      "nodeId": "sf.render.repair-scaffold-bent.mesh.clamparm0",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          3.7606112933535054,
+          -0.6176137334196212,
+          0.800000011920929
+        ],
+        "min": [
+          2.7393887066464946,
+          -1.482386230817592,
+          -0.800000011920929
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fb2d10ba75a3107519c254d85c8fe2aad8562a4a65a11d555042e5e3e5bb9d14",
+      "id": "sf.render.repair-scaffold-bent.mesh.clampjaw0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "c4d232af0c91939b2fe36a452cebf6eacd8473e0a14efdb01faee1a6dd88c9f2",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.repair-scaffold-bent.mesh.clampjaw0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.700000047683716,
+          2.475148874428302,
+          1.3000244377668382
+        ],
+        "min": [
+          -2.700000047683716,
+          2.324851316306561,
+          -1.3000244377668382
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "57ba2892b3e420d766cdd85bd0b67d00eb76f47119bdec834662823c97bd50b0",
+      "id": "sf.render.repair-scaffold-bent.mesh.deck-a.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f7b4b4e644b409cbcb6304cd02f6aed938041962775c5e0e438c8a154483182b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.repair-scaffold-bent.mesh.deck-a",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.139240026473999,
+          5.85145801006538,
+          1.1831871246685461
+        ],
+        "min": [
+          -2.3392398357391357,
+          4.348541799199757,
+          -1.7831872677196936
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "230972793b12a2922216d97c02a95b66a938bd03259cf081f06bca8f01cfff42",
+      "id": "sf.render.repair-scaffold-bent.mesh.deck-sprung.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f7b4b4e644b409cbcb6304cd02f6aed938041962775c5e0e438c8a154483182b",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.repair-scaffold-bent.mesh.deck-sprung",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.877932017136272,
+          7.599999904632568,
+          -1.3100069965445846
+        ],
+        "min": [
+          2.7220678874962965,
+          0,
+          -1.4899929557716995
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fbee34f9f561a9a6c4a80c140cd0405931ee8755379d2b5f002559d0103c8146",
+      "id": "sf.render.repair-scaffold-bent.mesh.post0.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.012",
+      "nodeId": "sf.render.repair-scaffold-bent.mesh.post0",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          3.386364803657813,
+          4.015666961669922,
+          1.9863648274996708
+        ],
+        "min": [
+          2.7136351009747552,
+          -0.015667011961340904,
+          1.3136351248166134
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4e8ae44053bcdd54e4a59a81cdf7f4de41ffc94aa0d49b02dfd0ee9474dbba10",
+      "id": "sf.render.repair-scaffold-bent.mesh.post1a.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.014",
+      "nodeId": "sf.render.repair-scaffold-bent.mesh.post1a",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          3.386363144196229,
+          7.414777755737305,
+          1.9863632872473764
+        ],
+        "min": [
+          2.8136366650689077,
+          3.985222101211548,
+          1.4136368081200552
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "98e8d2baf242cfbbb238ad714ca20666879129284213099d84719b0e12e9910d",
+      "id": "sf.render.repair-scaffold-bent.mesh.post1b.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.repair-scaffold-bent.mesh.post1b",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.7220678874962965,
+          7.599999904632568,
+          -1.3100069965445846
+        ],
+        "min": [
+          -2.877932017136272,
+          0,
+          -1.4899929557716995
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fbee34f9f561a9a6c4a80c140cd0405931ee8755379d2b5f002559d0103c8146",
+      "id": "sf.render.repair-scaffold-bent.mesh.post2.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.repair-scaffold-bent.mesh.post2",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.720254596025475,
+          3.4186623096466064,
+          1.4891100417184
+        ],
+        "min": [
+          -3.479745213239662,
+          -0.018662145361304283,
+          0.9108901132536764
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e9c802418308b70a7e0f6befba9412c1a90a4b88079a909b70b22d8cc8dc6b8f",
+      "id": "sf.render.repair-scaffold-bent.mesh.post3a.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.003",
+      "nodeId": "sf.render.repair-scaffold-bent.mesh.post3a",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.615884299680923,
+          7.22121524810791,
+          1.6876787814616458
+        ],
+        "min": [
+          -3.4841160817888035,
+          3.3787853717803955,
+          0.9123210635662777
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3ee7e9c5e01b0d9aedeb33c77b87020ce6fb20d16f5158a12fd45acb76b090ff",
+      "id": "sf.render.repair-scaffold-bent.mesh.post3b.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.004",
+      "nodeId": "sf.render.repair-scaffold-bent.mesh.post3b",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          2.860621929168701,
+          7.669994527504799,
+          1.46063318728462
+        ],
+        "min": [
+          -2.799999475479126,
+          2.3300040419837265,
+          -1.4606323528195932
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1f145a87bbbfd2332c59773eb7c1d8dd907e64953a93fdaaadcb2435e2fae2f3",
+      "id": "sf.render.repair-scaffold-bent.mesh.rails.primitive.0",
+      "indexCount": 360,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.005",
+      "nodeId": "sf.render.repair-scaffold-bent.mesh.rails",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          3.8819050324659132,
+          5.017141819000244,
+          1.924687577071769
+        ],
+        "min": [
+          2.1180949675340868,
+          2.582858085632324,
+          1.2753124706119467
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e116dcf17225eda05b4aaf172dbba8fc4e71557facf8d7264f2aa7cf3b3fd1e6",
+      "id": "sf.render.repair-scaffold-bent.mesh.scorch.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "01f412e3f0fdec2e47df35033460e28928da5997ea2424b9c0409193507c7d5a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.repair-scaffold-bent.mesh.scorch",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "01f412e3f0fdec2e47df35033460e28928da5997ea2424b9c0409193507c7d5a",
+      "id": "material:01f412e3f0fdec2e47df3503",
+      "name": "esk_scorch",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "id": "material:143624083cd581b0939afdce",
+      "name": "esk_bare_steel",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "c4d232af0c91939b2fe36a452cebf6eacd8473e0a14efdb01faee1a6dd88c9f2",
+      "id": "material:c4d232af0c91939b2fe36a45",
+      "name": "esk_paint_service_blue",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f7b4b4e644b409cbcb6304cd02f6aed938041962775c5e0e438c8a154483182b",
+      "id": "material:f7b4b4e644b409cbcb6304cd",
+      "name": "esk_deck_grate",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.repair-scaffold-bent.mesh.clamparm0",
+      "localTransform": [
+        0.43606075271964073,
+        0,
+        0,
+        0,
+        0,
+        0.43606075271964073,
+        0,
+        0,
+        0,
+        0,
+        0.43606075271964073,
+        0,
+        2.9749999046325684,
+        -0.3499999977648258,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "clamparm0",
+      "nodeName": "clamparm0",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.repair-scaffold-bent.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.repair-scaffold-bent.body",
+      "worldTransform": [
+        0.43606075271964073,
+        0,
+        0,
+        0,
+        0,
+        0.43606075271964073,
+        0,
+        0,
+        0,
+        0,
+        0.43606075271964073,
+        0,
+        2.9749999046325684,
+        -0.3499999977648258,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.repair-scaffold-bent.mesh.clampjaw0",
+      "localTransform": [
+        0.800000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.800000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.800000011920929,
+        0,
+        3.25,
+        -1.0499999821186066,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "clampjaw0",
+      "nodeName": "clampjaw0",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.repair-scaffold-bent.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.repair-scaffold-bent.body",
+      "worldTransform": [
+        0.800000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.800000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.800000011920929,
+        0,
+        3.25,
+        -1.0499999821186066,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.repair-scaffold-bent.mesh.deck-a",
+      "localTransform": [
+        2.700000047683716,
+        0,
+        0,
+        0,
+        0,
+        2.700000047683716,
+        0,
+        0,
+        0,
+        0,
+        2.700000047683716,
+        0,
+        0,
+        2.4000000953674316,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "deck_a",
+      "nodeName": "deck_a",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.repair-scaffold-bent.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.repair-scaffold-bent.body",
+      "worldTransform": [
+        2.700000047683716,
+        0,
+        0,
+        0,
+        0,
+        2.700000047683716,
+        0,
+        0,
+        0,
+        0,
+        2.700000047683716,
+        0,
+        0,
+        2.4000000953674316,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.repair-scaffold-bent.mesh.deck-sprung",
+      "localTransform": [
+        2.7392399311065674,
+        0,
+        0,
+        0,
+        0,
+        2.7392399311065674,
+        0,
+        0,
+        0,
+        0,
+        2.7392399311065674,
+        0,
+        0.40000009536743164,
+        5.099999904632568,
+        -0.30000007152557373,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "deck_sprung",
+      "nodeName": "deck_sprung",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.repair-scaffold-bent.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.repair-scaffold-bent.body",
+      "worldTransform": [
+        2.7392399311065674,
+        0,
+        0,
+        0,
+        0,
+        2.7392399311065674,
+        0,
+        0,
+        0,
+        0,
+        2.7392399311065674,
+        0,
+        0.40000009536743164,
+        5.099999904632568,
+        -0.30000007152557373,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.repair-scaffold-bent.mesh.post0",
+      "localTransform": [
+        3.799999952316284,
+        0,
+        0,
+        0,
+        0,
+        3.799999952316284,
+        0,
+        0,
+        0,
+        0,
+        3.799999952316284,
+        0,
+        2.799999952316284,
+        3.799999952316284,
+        -1.399999976158142,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "post0",
+      "nodeName": "post0",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.repair-scaffold-bent.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.repair-scaffold-bent.body",
+      "worldTransform": [
+        3.799999952316284,
+        0,
+        0,
+        0,
+        0,
+        3.799999952316284,
+        0,
+        0,
+        0,
+        0,
+        3.799999952316284,
+        0,
+        2.799999952316284,
+        3.799999952316284,
+        -1.399999976158142,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.repair-scaffold-bent.mesh.post1a",
+      "localTransform": [
+        2.0156669868156314,
+        0,
+        0,
+        0,
+        0,
+        2.0156669868156314,
+        0,
+        0,
+        0,
+        0,
+        2.0156669868156314,
+        0,
+        3.049999952316284,
+        1.9999999748542905,
+        1.649999976158142,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "post1a",
+      "nodeName": "post1a",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.repair-scaffold-bent.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.repair-scaffold-bent.body",
+      "worldTransform": [
+        2.0156669868156314,
+        0,
+        0,
+        0,
+        0,
+        2.0156669868156314,
+        0,
+        0,
+        0,
+        0,
+        2.0156669868156314,
+        0,
+        3.049999952316284,
+        1.9999999748542905,
+        1.649999976158142,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.repair-scaffold-bent.mesh.post1b",
+      "localTransform": [
+        1.7147778272628784,
+        0,
+        0,
+        0,
+        0,
+        1.7147778272628784,
+        0,
+        0,
+        0,
+        0,
+        1.7147778272628784,
+        0,
+        3.0999999046325684,
+        5.699999928474426,
+        1.7000000476837158,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "post1b",
+      "nodeName": "post1b",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.repair-scaffold-bent.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.repair-scaffold-bent.body",
+      "worldTransform": [
+        1.7147778272628784,
+        0,
+        0,
+        0,
+        0,
+        1.7147778272628784,
+        0,
+        0,
+        0,
+        0,
+        1.7147778272628784,
+        0,
+        3.0999999046325684,
+        5.699999928474426,
+        1.7000000476837158,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.repair-scaffold-bent.mesh.post2",
+      "localTransform": [
+        3.799999952316284,
+        0,
+        0,
+        0,
+        0,
+        3.799999952316284,
+        0,
+        0,
+        0,
+        0,
+        3.799999952316284,
+        0,
+        -2.799999952316284,
+        3.799999952316284,
+        -1.399999976158142,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "post2",
+      "nodeName": "post2",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.repair-scaffold-bent.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.repair-scaffold-bent.body",
+      "worldTransform": [
+        3.799999952316284,
+        0,
+        0,
+        0,
+        0,
+        3.799999952316284,
+        0,
+        0,
+        0,
+        0,
+        3.799999952316284,
+        0,
+        -2.799999952316284,
+        3.799999952316284,
+        -1.399999976158142,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.repair-scaffold-bent.mesh.post3a",
+      "localTransform": [
+        1.7186622275039554,
+        0,
+        0,
+        0,
+        0,
+        1.7186622275039554,
+        0,
+        0,
+        0,
+        0,
+        1.7186622275039554,
+        0,
+        -3.0999999046325684,
+        1.700000082142651,
+        1.2000000774860382,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "post3a",
+      "nodeName": "post3a",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.repair-scaffold-bent.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.repair-scaffold-bent.body",
+      "worldTransform": [
+        1.7186622275039554,
+        0,
+        0,
+        0,
+        0,
+        1.7186622275039554,
+        0,
+        0,
+        0,
+        0,
+        1.7186622275039554,
+        0,
+        -3.0999999046325684,
+        1.700000082142651,
+        1.2000000774860382,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.repair-scaffold-bent.mesh.post3b",
+      "localTransform": [
+        1.9212149381637573,
+        0,
+        0,
+        0,
+        0,
+        1.9212149381637573,
+        0,
+        0,
+        0,
+        0,
+        1.9212149381637573,
+        0,
+        -3.0500001907348633,
+        5.300000309944153,
+        1.2999999225139618,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "post3b",
+      "nodeName": "post3b",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.repair-scaffold-bent.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.repair-scaffold-bent.body",
+      "worldTransform": [
+        1.9212149381637573,
+        0,
+        0,
+        0,
+        0,
+        1.9212149381637573,
+        0,
+        0,
+        0,
+        0,
+        1.9212149381637573,
+        0,
+        -3.0500001907348633,
+        5.300000309944153,
+        1.2999999225139618,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.repair-scaffold-bent.mesh.rails",
+      "localTransform": [
+        2.8303107023239136,
+        0,
+        0,
+        0,
+        0,
+        2.8303107023239136,
+        0,
+        0,
+        0,
+        0,
+        2.8303107023239136,
+        0,
+        0.030311226844787598,
+        4.999999284744263,
+        4.172325134277344e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "rails",
+      "nodeName": "rails",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.repair-scaffold-bent.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.repair-scaffold-bent.body",
+      "worldTransform": [
+        2.8303107023239136,
+        0,
+        0,
+        0,
+        0,
+        2.8303107023239136,
+        0,
+        0,
+        0,
+        0,
+        2.8303107023239136,
+        0,
+        0.030311226844787598,
+        4.999999284744263,
+        4.172325134277344e-7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.repair-scaffold-bent.mesh.scorch",
+      "localTransform": [
+        1.21714186668396,
+        0,
+        0,
+        0,
+        0,
+        1.21714186668396,
+        0,
+        0,
+        0,
+        0,
+        1.21714186668396,
+        0,
+        3,
+        3.799999952316284,
+        1.600000023841858,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "scorch",
+      "nodeName": "scorch",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.repair-scaffold-bent.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.repair-scaffold-bent.body",
+      "worldTransform": [
+        1.21714186668396,
+        0,
+        0,
+        0,
+        0,
+        1.21714186668396,
+        0,
+        0,
+        0,
+        0,
+        1.21714186668396,
+        0,
+        3,
+        3.799999952316284,
+        1.600000023841858,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.repair-scaffold-bent.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "repair_scaffold_bent",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.repair-scaffold-bent.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "031a71dea75ec7b0f24a40c3737dc9d83a75319a7971fd66024c75459f306ed2"
+    },
+    "sourceGlb": {
+      "bytes": 18816,
+      "sha256": "16d241fb01bb1e0378e50cbe17f8f8fde4933dd2d19196295b0ff8a989863e3b",
+      "uri": "place_repair_scaffold_bent.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 22848,
+    "sha256": "f2ee568947c085ab4a8f26f87647f2bb474b5a0b7c74a160e258462a6ce4c4a3",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.19889447533855487,
+        3.0938041483436036,
+        0.1015887798899886
+      ],
+      "max": [
+        3.8819050324659132,
+        7.669994527504799,
+        1.9863648274996708
+      ],
+      "min": [
+        -3.4841160817888035,
+        -1.482386230817592,
+        -1.7831872677196936
+      ],
+      "size": [
+        7.366021114254717,
+        9.15238075832239,
+        3.7695520952193644
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [],
+    "materialProfileRoles": {
+      "hull": 10,
+      "rubber": 1,
+      "service": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "service"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 14,
+        "role": "rubber"
+      }
+    ],
+    "nodeCount": 15,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.43606075271964073,
+          0,
+          0,
+          0,
+          0,
+          0.43606075271964073,
+          0,
+          0,
+          0,
+          0,
+          0.43606075271964073,
+          0,
+          2.9749999046325684,
+          -0.3499999977648258,
+          0,
+          1
+        ],
+        "name": "clamparm0",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.800000011920929,
+          0,
+          0,
+          0,
+          0,
+          0.800000011920929,
+          0,
+          0,
+          0,
+          0,
+          0.800000011920929,
+          0,
+          3.25,
+          -1.0499999821186066,
+          0,
+          1
+        ],
+        "name": "clampjaw0",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.700000047683716,
+          0,
+          0,
+          0,
+          0,
+          2.700000047683716,
+          0,
+          0,
+          0,
+          0,
+          2.700000047683716,
+          0,
+          0,
+          2.4000000953674316,
+          0,
+          1
+        ],
+        "name": "deck_a",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.7392399311065674,
+          0,
+          0,
+          0,
+          0,
+          2.7392399311065674,
+          0,
+          0,
+          0,
+          0,
+          2.7392399311065674,
+          0,
+          0.40000009536743164,
+          5.099999904632568,
+          -0.30000007152557373,
+          1
+        ],
+        "name": "deck_sprung",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.799999952316284,
+          0,
+          0,
+          0,
+          0,
+          3.799999952316284,
+          0,
+          0,
+          0,
+          0,
+          3.799999952316284,
+          0,
+          2.799999952316284,
+          3.799999952316284,
+          -1.399999976158142,
+          1
+        ],
+        "name": "post0",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.0156669868156314,
+          0,
+          0,
+          0,
+          0,
+          2.0156669868156314,
+          0,
+          0,
+          0,
+          0,
+          2.0156669868156314,
+          0,
+          3.049999952316284,
+          1.9999999748542905,
+          1.649999976158142,
+          1
+        ],
+        "name": "post1a",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.7147778272628784,
+          0,
+          0,
+          0,
+          0,
+          1.7147778272628784,
+          0,
+          0,
+          0,
+          0,
+          1.7147778272628784,
+          0,
+          3.0999999046325684,
+          5.699999928474426,
+          1.7000000476837158,
+          1
+        ],
+        "name": "post1b",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.799999952316284,
+          0,
+          0,
+          0,
+          0,
+          3.799999952316284,
+          0,
+          0,
+          0,
+          0,
+          3.799999952316284,
+          0,
+          -2.799999952316284,
+          3.799999952316284,
+          -1.399999976158142,
+          1
+        ],
+        "name": "post2",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.7186622275039554,
+          0,
+          0,
+          0,
+          0,
+          1.7186622275039554,
+          0,
+          0,
+          0,
+          0,
+          1.7186622275039554,
+          0,
+          -3.0999999046325684,
+          1.700000082142651,
+          1.2000000774860382,
+          1
+        ],
+        "name": "post3a",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.9212149381637573,
+          0,
+          0,
+          0,
+          0,
+          1.9212149381637573,
+          0,
+          0,
+          0,
+          0,
+          1.9212149381637573,
+          0,
+          -3.0500001907348633,
+          5.300000309944153,
+          1.2999999225139618,
+          1
+        ],
+        "name": "post3b",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.8303107023239136,
+          0,
+          0,
+          0,
+          0,
+          2.8303107023239136,
+          0,
+          0,
+          0,
+          0,
+          2.8303107023239136,
+          0,
+          0.030311226844787598,
+          4.999999284744263,
+          4.172325134277344e-7,
+          1
+        ],
+        "name": "rails",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.21714186668396,
+          0,
+          0,
+          0,
+          0,
+          1.21714186668396,
+          0,
+          0,
+          0,
+          0,
+          1.21714186668396,
+          0,
+          3,
+          3.799999952316284,
+          1.600000023841858,
+          1
+        ],
+        "name": "scorch",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_repair_scaffold_bent.glb"
+  },
+  "runtimeHash": "420ed64e111be77db8dac6569e99b5595defab58f82ed34f0c4c05fa68ab7a05",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.8819050324659132,
+          7.669994527504799,
+          1.9863648274996708
+        ],
+        "min": [
+          -3.4841160817888035,
+          -1.482386230817592,
+          -1.7831872677196936
+        ]
+      },
+      "id": "sf.render.repair-scaffold-bent.body",
+      "nodeIds": [
+        "sf.render.repair-scaffold-bent.mesh.clamparm0",
+        "sf.render.repair-scaffold-bent.mesh.clampjaw0",
+        "sf.render.repair-scaffold-bent.mesh.deck-a",
+        "sf.render.repair-scaffold-bent.mesh.deck-sprung",
+        "sf.render.repair-scaffold-bent.mesh.post0",
+        "sf.render.repair-scaffold-bent.mesh.post1a",
+        "sf.render.repair-scaffold-bent.mesh.post1b",
+        "sf.render.repair-scaffold-bent.mesh.post2",
+        "sf.render.repair-scaffold-bent.mesh.post3a",
+        "sf.render.repair-scaffold-bent.mesh.post3b",
+        "sf.render.repair-scaffold-bent.mesh.rails",
+        "sf.render.repair-scaffold-bent.mesh.scorch",
+        "sf.render.repair-scaffold-bent.root"
+      ]
+    }
+  ]
+}

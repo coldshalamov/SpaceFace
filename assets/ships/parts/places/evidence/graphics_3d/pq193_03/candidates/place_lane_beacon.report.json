@@ -1,0 +1,23 @@
+{
+  "asset": "place_lane_beacon",
+  "output": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\pq193_03\\candidates\\place_lane_beacon.glb",
+  "bytes": 742064,
+  "groups": [
+    "LOD0_Merged_Material_Hull",
+    "LOD0_Merged_Material_Mechanical",
+    "LOD0_Merged_Material_Warm",
+    "LOD0_HOOK_EMISSIVE",
+    "LOD1_Merged_Material_Hull",
+    "LOD1_Merged_Material_Mechanical",
+    "LOD1_Merged_Material_Warm",
+    "LOD1_HOOK_EMISSIVE",
+    "LOD2_Merged_Material_Hull",
+    "LOD2_Merged_Material_Mechanical",
+    "LOD2_Merged_Material_Warm",
+    "LOD2_HOOK_EMISSIVE"
+  ],
+  "helpers": [
+    "SOCKET_Structure_Core",
+    "COLLISION_HULL"
+  ]
+}

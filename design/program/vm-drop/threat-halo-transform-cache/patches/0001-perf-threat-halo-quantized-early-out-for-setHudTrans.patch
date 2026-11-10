@@ -1,0 +1,41 @@
+From 933ac2e85fca1edaf9e90c50956ee749444369ee Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Wed, 23 Sep 2026 00:06:22 -0400
+Subject: [PATCH] perf(threat-halo): quantized early-out for setHudTransform
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Settled edge chevrons rebuilt translate3d(...toFixed(1)...) every overlay
+tick only to strcmp _sfTransform. Cache tenths-of-a-px so a still cue skips
+toFixed + template. Same rounding → same picture.
+---
+ src/ui/threatHalo.js | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/src/ui/threatHalo.js b/src/ui/threatHalo.js
+index bef42e827..06e9b5ede 100644
+--- a/src/ui/threatHalo.js
++++ b/src/ui/threatHalo.js
+@@ -282,9 +282,16 @@ function setOpacity(el, opacity) {
+   el.style.opacity = next;
+ }
+ 
++// Quantized numeric early-out: settled chevrons rebuilt translate3d every overlay tick
++// just to strcmp _sfTransform. Cache tenths-of-a-px so a still cue skips toFixed + template.
++// Picture unchanged (same toFixed(1) rounding).
+ function setHudTransform(el, x, y) {
+-  const next = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) translate(-50%,-50%)`;
+-  if (el._sfTransform === next) return;
++  const qx = Math.round(Number(x) * 10);
++  const qy = Math.round(Number(y) * 10);
++  if (el._sfHudTx === qx && el._sfHudTy === qy) return;
++  el._sfHudTx = qx;
++  el._sfHudTy = qy;
++  const next = `translate3d(${(qx / 10).toFixed(1)}px,${(qy / 10).toFixed(1)}px,0) translate(-50%,-50%)`;
+   el._sfTransform = next;
+   el.style.transform = next;
+ }
+-- 
+2.47.3
+

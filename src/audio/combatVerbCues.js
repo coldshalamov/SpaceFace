@@ -1,0 +1,543 @@
+// Every player-caused gameplay emit names an existing recipe, or SILENT with a reason.
+// No new recordings. Internal bookkeeping may be SILENT.
+
+const SILENT = (reason) => Object.freeze({ recipe: 'SILENT', reason });
+
+// One refusal voice and one withdrawal shape. The deny recipe is already a short
+// falling tick (186 → 124 Hz); every refusal row points at that same voice.
+export const REFUSAL_VOICE = 'sfx_massline_deny';
+export const REFUSAL_AMMO_VOICE = 'sfx_refusal_empty';
+export const REFUSAL_TARGET_VOICE = 'sfx_refusal_target';
+export const REFUSAL_SHAPE = 'withdrawal';
+export const REFUSAL_ADMIT_MS = 40;
+
+const AMMO_REASONS = new Set([
+  'ammo', 'no_ammo', 'no_stock', 'nostock', 'not_loaded', 'empty_rack', 'empty',
+  'spent', 'dry', 'out_of_ammo', 'outofammo',
+]);
+const TARGET_REASONS = new Set([
+  'target', 'no_target', 'invalid_target', 'bad_target', 'bad_lock', 'not_a_target',
+]);
+
+/** SF-235 — ammo and invalid-target refusals do not share the generic deny tick. */
+export function refusalReasonClass(reason) {
+  const text = String(reason || '').toLowerCase().replace(/[\s-]+/g, '_');
+  if (!text) return 'generic';
+  if (AMMO_REASONS.has(text)) return 'ammo';
+  if (TARGET_REASONS.has(text)) return 'target';
+  return 'generic';
+}
+
+export function resolveRefusalRecipe(reason) {
+  const klass = refusalReasonClass(reason);
+  if (klass === 'ammo') return REFUSAL_AMMO_VOICE;
+  if (klass === 'target') return REFUSAL_TARGET_VOICE;
+  return REFUSAL_VOICE;
+}
+
+export function refusalCaption(reason) {
+  const klass = refusalReasonClass(reason);
+  if (klass === 'ammo') return 'No ammunition.';
+  if (klass === 'target') return 'No valid target.';
+  return 'Action refused.';
+}
+const REFUSAL_ROW = Object.freeze({
+  recipe: REFUSAL_VOICE,
+  shape: REFUSAL_SHAPE,
+  reason: '',
+});
+
+export const COMBAT_VERB_CUES = Object.freeze({
+  fire: 'sfx_wpn_pulse_laser',
+  hit: 'sfx_hull_scrape',
+  // The player's collapse layer is the bare discharge — the pop recipe embeds
+  // sfx_shield_break_crack, which the universal signature (sfx.shieldBreak) already played.
+  shield: 'sfx_shield_blowout_discharge',
+  hull: 'sfx_hull_stress_groan',
+  shove: 'sfx_bomb_concussion_shove',
+  throwRelease: 'sfx_tether_twang',
+  latch: 'sfx_tether_latch_lock',
+  break: 'sfx_tether_crack',
+  slam: 'sfx_hull_decompress',
+  // The kill verb's own voice is the layered first-hour signature (blended body + rising
+  // confirm in one recipe). Light/heavy/capital kills still add the bare confirm layer on
+  // their mass-graded bodies — see _onKilled.
+  kill: 'sfx.killConfirmed',
+  dock: 'sfx_dock_clunk',
+  undock: 'sfx_undock_release',
+});
+
+export const PLAYER_ACTION_CUES = Object.freeze({
+  ...COMBAT_VERB_CUES,
+  'combat:fire': 'sfx_wpn_pulse_laser',
+  'combat:shove': 'sfx_bomb_concussion_shove',
+  'projectile:hit': 'sfx_hull_scrape',
+  shieldRestored: 'sfx_shield_restore',
+
+  'mining:start': 'sfx_mining_beam',
+  'mining:stop': SILENT('The beam stopping is the absence of the mining tone.'),
+  'mining:tick': 'sfx_mining_impact',
+  'mining:yield': SILENT('Ore yield is the semantic mining voice (mining.yield.collected); a verb-cue play would double it.'),
+  'mining:seamHit': SILENT('A seam reward is the semantic mining voice (mining.seam.reward); a verb-cue play would double it.'),
+  'mining:beamLocked': 'sfx_mining_cutter_lock',
+  'mining:heatChanged': SILENT('Heat is a meter, not a sting; the WANTED crossing already has its own heat voice.'),
+  // mining:ventReady row lives in the packet-C block at the foot of this table
+  // (sfx_vent_chime, shared with the presentation route); it is not duplicated here.
+  'mining:ventBonus': 'sfx_mining_impact',
+  'mining:richCoreChargeStart': 'sfx_mining_beam',
+  'mining:richCoreCompleted': 'sfx_mining_impact',
+  'mining:richCoreExposed': 'sfx_mining_impact',
+  'mining:richCoreFizzle': 'sfx_hull_scrape',
+  'mining:podSplit': SILENT('Pod split is a cargo bookkeeping split.'),
+  'mining:bulkHaulDelivered': 'sfx_cash_register',
+  'mining:bulkRequiresTether': SILENT('The refusal is the missing line, already shown.'),
+  'mining:npcExtraction': SILENT('NPC extraction is bookkeeping, not the player\'s tool.'),
+
+  scrape: 'sfx_hull_scrape',
+  'ship:boostStart': 'sfx_engine_boost',
+  'ship:boostStop': SILENT('Boost release is the engine returning to the thrust voice.'),
+  'ship:boostPreKick': SILENT('The pre-kick is the same boost voice winding up.'),
+  boost: 'sfx_engine_boost',
+
+  // jump:start/arrive rows live in the packet-C block at the foot of this table
+  // (semantic journey voices); they are not duplicated here.
+  'jump:chargeStart': SILENT('Jump charge is the travel drive already heard as thrust.'),
+  'jump:chargeTick': SILENT('Jump charge ticks are the travel drive, not a new sting.'),
+  'jump:chargeAbort': SILENT('Aborting a jump adds no authored sting.'),
+  'jump:departurePreflight': SILENT('Preflight is a checklist, not a sting.'),
+  'jump:unfiledConfirmed': SILENT('The unfiled confirm is UI, not a world sting.'),
+  'world:requestJump': SILENT('The jump request is the same unauthored gate transit.'),
+  'world:abortJumpCharge': SILENT('Aborting the charge adds no authored sting.'),
+  'world:confirmUnfiledJump': SILENT('The confirm is UI copy, not a world sting.'),
+  'world:requestUnfiledJump': SILENT('The request is UI copy, not a world sting.'),
+
+  alarm: SILENT('The wanted alarm is the existing heat voice, not a new siren.'),
+  // The bazaar bouncer's warning speaks as its comms popup line; the cleared record is bookkeeping.
+  'bouncer:wanted': SILENT('The bouncer warns through the comms popup line, not a second sting.'),
+  'bouncer:wantedCleared': SILENT('A cooled bazaar record is bookkeeping; nothing audible happened.'),
+  // Hired muscle physically shoving a hull off the berth is the shove's own voice, at the hull.
+  'bouncer:muscleShove': 'sfx_bomb_concussion_shove',
+
+  // ── Ear-audit coverage: every landed gameplay emit names a voice or its documented silence ──
+  // Drill charge sequence: the arming toggle detents, the charge bites the rock on a latch, the
+  // fuse beats on the snare arm tick, the blast is the small explosion, and the pushback that
+  // reaches your own hull is the decompression thud.
+  'drill:chargeArm': 'sfx_ui_switch_detent',
+  'drill:chargePlanted': 'sfx_hitch_latch',
+  'drill:chargeTick': 'sfx_snare_arm_tick',
+  'drill:chargeBlast': 'sfx_explosion_small',
+  'drill:backblast': 'sfx_hull_decompress',
+  // The roof speaks in the rock samples' own register: a groan before it lets go, a calve when
+  // it does. The gas seam vents as a decompression hiss.
+  'drill:rockCreak': 'sfx_ambient_rock_groan',
+  'drill:caveIn': 'sfx_ambient_rock_calve',
+  'drill:gasVent': 'sfx_hull_decompress',
+  // Cruise wrestle: the mass snare catching is the line snapping taut; slipping free is the same
+  // family letting go. Losing the wrestle keeps cruise:snared's scrape.
+  'cruise:wrestleStarted': 'sfx_tether_twang',
+  'cruise:wrestleEscaped': 'sfx_tether_twang',
+  // Shield pylon pair: placing and linking already play their confirm cue; the pane soak speaks
+  // as the shield-hit; energizing and recovering are the restore register; the pair dying is the
+  // blowout; the expiry warning is the neutral alert tick. Strain is a meter, the deny already
+  // plays its ui_deny cue, and a recall rides credits:changed.
+  'shieldPylon:placed': SILENT('The place confirm cue (audio:cue confirm) already speaks the beat.'),
+  'shieldPylon:linking': SILENT('The link confirm cue already speaks; a second voice would double it.'),
+  'shieldPylon:contact': 'sfx.shieldHit',
+  'shieldPylon:active': 'sfx_shield_restore',
+  'shieldPylon:recovered': 'sfx_shield_restore',
+  'shieldPylon:overloaded': 'sfx_shield_blowout_discharge',
+  'shieldPylon:warning': 'sfx_ui_alert',
+  'shieldPylon:strained': SILENT('Strain is a meter the pane\'s light carries, not a sting.'),
+  'shieldPylon:denied': SILENT('The refusal already plays its ui_deny cue and the warn toast.'),
+  'shieldPylon:retired': SILENT('A recall is bookkeeping; the refund rides credits:changed.'),
+  // The brood linker's wall eats the shot — the projectile's own impact voice already plays it.
+  'swarm:broodShielded': SILENT('The shielded hit is the linker wall eating the shot; the projectile\'s impact voice already speaks for it.'),
+  // Hails speak as their own bark/comms line, never a second sting (npc:hailed's rule).
+  'archive:courierHail': SILENT('The courier hails through its bark line.'),
+  'vael:patrolHail': SILENT('The patrol hail speaks as its ledger bark line.'),
+  'choir:relicAlarm': SILENT('The relic alarm is the comms line from the Choir.'),
+  // Claim disputes protest through their toasts, law reports and comms lines (salvage:claimJumped's rule).
+  'frontier:disputeJumped': SILENT('The protest is the justice filing and the stead\'s log line.'),
+  'helix:noticeJumped': SILENT('The protest is the filed verdict, not a second sting.'),
+  'pitborn:claimJumped': SILENT('The protest is the filed suspicion and the claim toast.'),
+  'helix:lienScraped': SILENT('The scraping is the impact voices already heard; this is the lien record.'),
+  // The interdiction pull is felt as thrust and says itself in the toast; the rope's weigh rides
+  // the strain instrument, and the reading is the customs desk's record.
+  'jump:interdictionWarning': SILENT('The pull is the toast and the felt thrust; no second siren.'),
+  'tether:massWeighed': SILENT('The strain instrument already carries the rope; the weigh is the desk\'s record.'),
+
+  // ── The thrown-charge sequence earns its ladder (the detonation was already its own voice) ──
+  // The throw rides the massline throw's whoosh, the bite into the host is the hitch latch, and
+  // the arming beat is the readiness tick — the blast stays the payoff, never doubled here.
+  'charge:thrown': 'sfx_massline_throw',
+  'charge:stuck': 'sfx_hitch_latch',
+  'charge:armed': 'sfx_snare_arm_tick',
+
+  // ── Crew casualties answer under their own comms words (one voice per event window) ─────────
+  // An injury is a warn tick; a death is the hull's own low groan — somber, never a chime.
+  'crew:injured': 'sfx_ui_alert',
+  'crew:lost': 'sfx_hull_stress_groan',
+  'credits:changed': 'sfx_cash_register',
+  payout: 'sfx_cash_register',
+
+  'contactHail:offer': SILENT('The hail is the comms voice line, not a second sting.'),
+  'contactHail:response': SILENT('The reply is the comms voice line.'),
+  'contactHail:availability': SILENT('Hail availability is bookkeeping.'),
+  'contactHail:clear': SILENT('Clearing a hail is bookkeeping.'),
+  'contactHail:handoff': SILENT('The handoff is bookkeeping between comms speakers.'),
+  hail: SILENT('The hail is the comms voice line, not a second sting.'),
+  // The NPC's own greeting lands as the bark voice on the same tick.
+  'npc:hailed': SILENT('The hail speaks as its bark; a sting would double the greeting.'),
+
+  'tether:latched': 'sfx_tether_latch_lock',
+  'tether:attached': 'sfx_tether_latch_lock',
+  'tether:broke': 'sfx_tether_crack',
+  'tether:broken': 'sfx_tether_crack',
+  'tether:cut': 'sfx_tether_twang',
+  'tether:snagged': 'sfx_tether_twang',
+  // Same twang family as a snag. The strain instrument owns nearBreak / loaded phase.
+  'tether:rebound': 'sfx_tether_twang',
+  'tether:snagCleared': SILENT('A cleared snag is the reel moving again, which already has its voice.'),
+  'tether:released': 'sfx_tether_twang',
+  'tether:releaseRated': 'sfx_tether_twang',
+  'tether:strain': SILENT('Strain is the continuous rope voice, not a one-shot.'),
+  'tether:reel': SILENT('Reel is the continuous winch voice.'),
+  'tether:reelPump': SILENT('Reel pump is the same winch voice.'),
+  'tether:nearBreak': 'sfx_tether_crack',
+  'tether:whipImpact': 'sfx_hull_decompress',
+  'tether:whipSnap': 'sfx_tether_crack',
+  'tether:snapCatch': 'sfx_tether_latch_lock',
+  // FB-013 receipts. The tractor capture lands the same tick as tether:latched, whose latch
+  // lock already speaks it; the coupler's rigid lock is the line's load voice rising. Both
+  // receipts are for the picture and the first-use line.
+  'tether:tractorCapture': SILENT('The same-tick latch lock already speaks the capture.'),
+  'tether:couplerLock': SILENT('The rigid lock reads as the load voice rising, not a new sting.'),
+  'tether:latchDenied': REFUSAL_ROW,
+  'tether:cutDenied': REFUSAL_ROW,
+  'tether:lineControlDenied': REFUSAL_ROW,
+  'massSeed:deployDenied': REFUSAL_ROW,
+  'fields:deployDenied': REFUSAL_ROW,
+  'bombs:denied': REFUSAL_ROW,
+  'beam:denied': REFUSAL_ROW,
+  'countermeasure:denied': REFUSAL_ROW,
+  'fields:hitchLatched': 'sfx_hitch_latch',
+  'cloak:faded': 'sfx_cloak_fade',
+  'cloak:dropped': 'sfx_massline_cloak_off',
+  'massline:releaseCancelled': 'sfx_ui_switch_detent',
+  'weapons:momentumSinkPlanted': 'sfx_vector_mine',
+  'weapons:momentumSinkReleased': 'sfx_ui_drawer_latch',
+  'fields:hitchCut': 'sfx_tether_twang',
+
+  'cruise:engaged': SILENT('Cruise engage is owned by the lane-lock voice (presentation.travel.lane_lock); a boost row would double it.'),
+  'cruise:dropped': SILENT('Dropping cruise is the thrust voice falling back.'),
+  'cruise:charging': SILENT('Cruise charge is the thrust voice, not a new sting.'),
+  'cruise:snared': 'sfx_hull_scrape',
+  'cruise:snareRequest': SILENT('The snare request is bookkeeping until the line meets.'),
+
+  'drill:start': 'sfx_mining_beam',
+  'drill:end': SILENT('The drill stopping is the beam ending.'),
+  'drill:break': 'sfx_mining_impact',
+  'drill:spark': 'sfx_mining_impact',
+  'drill:yield': 'sfx_mining_impact',
+  'drill:gasHit': 'sfx_hull_scrape',
+  'drill:cargoFull': SILENT('A full hold is a meter, not a sting.'),
+  'drill:rockDepleted': 'sfx_asteroid_depleted',
+  'drill:scanPulse': 'sfx_mining_scan_root',
+  'drill:warn': SILENT('The drill warning is the existing alarm voice.'),
+  'drill:approachStarted': SILENT('Approach is flight, already the thrust voice.'),
+  'drill:approachCompleted': SILENT('Arrival is flight, not a new sting.'),
+  'drill:approachCancelled': SILENT('A cancelled approach adds no sting.'),
+  'drill:retry': SILENT('Retry is bookkeeping.'),
+
+  'salvage:cutComplete': 'sfx_mining_impact',
+  'salvage:actionRead': SILENT('Reading a salvage action is UI.'),
+  'salvage:communicatorFound': SILENT('The find is the comms voice.'),
+  'salvage:completed': 'sfx_cash_register',
+  'salvage:fieldVulture': SILENT('An NPC vulture is not the player\'s tool.'),
+  'salvage:npcExtraction': SILENT('NPC extraction is bookkeeping.'),
+  'salvage:npcUnload': SILENT('NPC unload is bookkeeping.'),
+  'salvage:placed': SILENT('Placement is the same cut, already heard when it completes.'),
+  // SF-029 sort-pocket receipts. The sheared clamp speaks as the comms line and the loose rope;
+  // the impact is the warn toast; the delivery plays its scan-resolve cue directly; the loss is
+  // bookkeeping on a job that no longer exists.
+  'salvage:sortSeparated': SILENT('The shear is the comms line and the line going slack.'),
+  'salvage:sortImpact': SILENT('The debris strike is the warn toast on the tow.'),
+  'salvage:sortDelivered': SILENT('The delivery plays its own scan-resolve cue directly.'),
+  'salvage:sortLost': SILENT('Losing a job is the absence of the job, not a sting.'),
+  'salvage:reactorBurst': 'sfx_hull_decompress',
+  'salvage:reactorTowedClear': 'sfx_wanted_clear',
+  'salvage:reactorVented': 'sfx_hull_stress_groan',
+  'salvage:changed': SILENT('Salvage bay fill is a meter, not a sting.'),
+  'salvage:bayCashedIn': SILENT('The cash-in already plays sfx_loot_collect.'),
+  'salvage:claimJumped': SILENT('The protest is the claim toast and the law report, not a second sting.'),
+  'salvage:coreEjected': SILENT('The eject is the warning toast and the loose core, not a second sting.'),
+  'salvage:cookerFlight': SILENT('The cooking core is the crew bark, not a second sting.'),
+  'salvage:coreDetonated': SILENT('The blast is the damage packet; this emit is the chain record.'),
+  'gate:verdict': SILENT('The verdict is the comms line and the toll; this emit is the record.'),
+  'intervention:jumperRipped': SILENT('The rip is the tether toast; the line already has its own voice.'),
+
+  'dock:docked': 'sfx_dock_clunk',
+  'dock:undocked': 'sfx_undock_release',
+
+  // EAR+FIGHT shared packet C: every player-caused emit in the audit names an existing
+  // recipe, or stays SILENT with a reason. No new recordings.
+  // bombs:detonated already emits a per-payload audio:cue from bombs._emitDetonated
+  // (def.audioCue / def.collapseAudioCue, e.g. bombs.concussion.shove -> sfx_bomb_concussion_shove).
+  // This row lets the normalized verb-cue route (combatVerbRecipe) resolve the same family
+  // without duplicating that direct cue.
+  'bombs:detonated': 'sfx_bomb_concussion_shove',
+  // hull:fractured is a brittle rock/hull split: the mining fracture break (sub + noise) reads
+  // as breakage, not combustion, and stays distinct from sfx_explosion_small.
+  'hull:fractured': 'sfx_mining_fracture_break',
+  // cargo:hotDockSpill announces through cargo's own undock receipt (toast + audio:cue 'alert'):
+  // the spill lands under the dock clunk with the station hub up, so a verb-route sting here
+  // would play into the hub instead of the moment the player can act on it.
+  'cargo:hotDockSpill': SILENT('The spill receipt is the undock toast + alert cue; the dock clunk owns the arrival moment.'),
+  // jump start/arrive own semantic journey voices (travel.jump.committed / travel.arrival ->
+  // sfx_travel_commit / sfx_travel_arrival). The raw bus rows deliberately stay out of the
+  // verb-cue route so the audio lane never stacks a direct voice with the journey voice.
+  'jump:start': SILENT('Jump departure is owned by the semantic journey voice (travel.jump.committed); a verb-cue row would double it.'),
+  'jump:arrive': SILENT('Jump arrival is owned by the semantic journey voice (travel.arrival); a verb-cue row would double it.'),
+  // mining:ventReady already chimes via presentation (mining.vent.ready -> sfx_vent_chime).
+  // combatVerbRecipe must resolve the same existing recipe so a verb-route audit sees it.
+  'mining:ventReady': 'sfx_vent_chime',
+  // mining:heatChanged is a continuous meter, not a sting. The WANTED crossing already has a
+  // voice via the heat:changed packet; the mining meter itself stays silent (row above).
+  // player:respawn already chimes via audioSystem._onPlayerRespawn (sfx_respawn_chime x2).
+  // brake has no bus event at all: the brake's rising-edge bite (sfx_brake_bite) is played
+  // directly in audioSystem._updateBrakeHiss, one cue per press. There is no 'brake' verb
+  // to map, so no row is added here.
+  // BP-02 weak-point hit: the player's shot landed in the exposed subsystem arc.
+  // VFX + floating text already answer it; this is its one ear owner. A bright lock
+  // tick, not another thud — the combat:damage layer voice owns the impact on the
+  // same tick, so the crit reads as skill on top of the hit, never a doubled hit.
+  'combat:weakPointHit': 'sfx_lock_acquired',
+  // A dumb round names its cause: the guidance-loss tick borrows the falling
+  // resolve (lock gone, not a hit). One play per round, guarded by _guidanceLostEmitted.
+  'missile:guidanceLost': 'sfx_wanted_clear',
+  // A wing striking colors is the same falling resolution the WANTED-clear voice owns —
+  // relief, not reward, and never the reactor-overload rising threat. One voice per squad
+  // burst; the members emit on the same tick (admitted in playAuthoredVerbCue).
+  'combat:surrendered': 'sfx_wanted_clear',
+  'player:respawn': 'sfx_respawn_chime',
+});
+
+export const COMBAT_VERB_IDS = Object.freeze(Object.keys(COMBAT_VERB_CUES));
+
+export function combatVerbCueRow(verbId) {
+  const row = PLAYER_ACTION_CUES[verbId] || COMBAT_VERB_CUES[verbId];
+  if (!row) return null;
+  if (typeof row === 'string') return { recipe: row, reason: '', shape: '' };
+  return row;
+}
+
+export function combatVerbRecipe(verbId) {
+  const row = combatVerbCueRow(verbId);
+  if (!row || row.recipe === 'SILENT') return '';
+  return row.recipe || '';
+}
+
+// Rows that already have one ear owner. A second subscription would double the voice.
+// Aliases (no ':' and not in this map) are not bus events.
+export const VERB_CUE_OWNED_BY = Object.freeze({
+  'combat:fire': 'audioSystem._onFire',
+  'combat:shove': 'audioSystem combat:shove',
+  'projectile:hit': 'audioSystem._onHit',
+  shieldRestored: 'audioSystem shieldRestored',
+  'mining:start': 'audioSystem._onMiningStart',
+  'mining:tick': 'audioSystem._onMiningTick',
+  'mining:beamLocked': 'worldFeelSeams',
+  'mining:richCoreChargeStart': 'mining beam loop (mining:start)',
+  'mining:ventReady': 'presentation.mining.vent.ready',
+  'ship:boostStart': 'audioSystem ship:boostStart',
+  'credits:changed': 'audioSystem credits:changed',
+  'tether:latched': 'audioSystem tether:latched',
+  'tether:attached': 'masslineInstrument attach',
+  'tether:broke': 'audioSystem tether:broke',
+  'tether:broken': 'masslineInstrument break',
+  'tether:cut': 'audioSystem tether:cut',
+  'tether:snagged': 'audioSystem tether:snagged',
+  'tether:rebound': 'audioSystem tether:rebound',
+  'tether:released': 'tether:cut / tether:releaseRated',
+  'tether:releaseRated': 'masslineInstrument release',
+  'tether:nearBreak': 'masslineInstrument strain',
+  'tether:latchDenied': 'minimalActionAudio',
+  'tether:cutDenied': 'minimalActionAudio',
+  'cloak:faded': 'audioSystem cloak:faded',
+  'cloak:dropped': 'audioSystem cloak:dropped',
+  'massline:releaseCancelled': 'audioSystem massline:releaseCancelled',
+  'weapons:momentumSinkPlanted': 'audioSystem weapons:momentumSinkPlanted',
+  'weapons:momentumSinkReleased': 'audioSystem weapons:momentumSinkReleased',
+  'cruise:snared': 'audioSystem cruise:snared',
+  'drill:start': 'audioSystem drill:start',
+  'drill:break': 'audioSystem drill:break',
+  'drill:spark': 'audioSystem drill:spark',
+  'drill:yield': 'audioSystem drill:yield',
+  'drill:gasHit': 'audioSystem drill:gasHit',
+  'drill:rockDepleted': 'audioSystem drill:rockDepleted',
+  'drill:scanPulse': 'audioSystem drill:scanPulse',
+  'salvage:cutComplete': 'audioSystem salvage:cutComplete',
+  'salvage:reactorTowedClear': 'salvage._onReactorTowedClear',
+  'dock:docked': 'audioSystem._onDocked',
+  'dock:undocked': 'audioSystem._onUndocked',
+  'bombs:detonated': 'bombs detonation audio cue',
+  'player:respawn': 'audioSystem._onPlayerRespawn',
+});
+
+export const REFUSAL_EVENT_IDS = Object.freeze([
+  'tether:latchDenied',
+  'tether:cutDenied',
+  'tether:lineControlDenied',
+  'massSeed:deployDenied',
+  'fields:deployDenied',
+  'bombs:denied',
+  'beam:denied',
+  'countermeasure:denied',
+]);
+
+/**
+ * Every authored row has exactly one dispatcher: the table, a named owner, an alias, or silence.
+ */
+export function verbCueCoverage() {
+  const rows = [];
+  for (const id of Object.keys(PLAYER_ACTION_CUES)) {
+    const row = combatVerbCueRow(id);
+    if (!row) continue;
+    if (row.recipe === 'SILENT') {
+      rows.push({ id, recipe: 'SILENT', shape: '', dispatcher: 'silent', owner: row.reason });
+      continue;
+    }
+    const owner = VERB_CUE_OWNED_BY[id];
+    if (owner) {
+      rows.push({ id, recipe: row.recipe, shape: row.shape || '', dispatcher: 'owner', owner });
+      continue;
+    }
+    if (!id.includes(':')) {
+      rows.push({ id, recipe: row.recipe, shape: row.shape || '', dispatcher: 'alias', owner: '' });
+      continue;
+    }
+    rows.push({ id, recipe: row.recipe, shape: row.shape || '', dispatcher: 'table', owner: '' });
+  }
+  return rows;
+}
+
+export function verbCueDispatchIds() {
+  const ids = [];
+  for (const row of verbCueCoverage()) {
+    if (row.dispatcher === 'table') ids.push(row.id);
+  }
+  return ids;
+}
+
+/** One refusal per source inside the admission gap. A held key cannot machine-gun the tick. */
+export function admitRefusalVoice(book, sourceId, nowMs, gapMs = REFUSAL_ADMIT_MS) {
+  if (!book || sourceId == null) return false;
+  const now = Number(nowMs);
+  if (!Number.isFinite(now)) return false;
+  const key = String(sourceId);
+  const last = book[key];
+  if (last != null && now - last < gapMs) return false;
+  book[key] = now;
+  return true;
+}
+
+/** Weak-point crit admission: one bright tick per target per burst. Spraying a
+ * capital's exposed arc must read as earned ticks, not a machine-gun. Uses the
+ * sim tick when the payload carries one, else the host's wall clock. */
+export const WEAK_POINT_ADMIT_TICKS = 10;
+
+export function admitWeakPointVoice(book, targetId, nowTick, gapTicks = WEAK_POINT_ADMIT_TICKS) {
+  if (!book || targetId == null) return false;
+  const now = Number(nowTick);
+  if (!Number.isFinite(now)) return false;
+  const key = String(targetId);
+  const last = book[key];
+  if (last != null && now - last < gapTicks) return false;
+  book[key] = now;
+  return true;
+}
+
+/** One strike-colors voice per squad burst. A surrendering wing marks every member on the same
+ * tick; the squad's yield is one moment, so the members collapse into one voice. */
+export function admitSurrenderVoice(book, groupId, nowMs, gapMs = 250) {
+  if (!book || groupId == null) return false;
+  const now = Number(nowMs);
+  if (!Number.isFinite(now)) return false;
+  const key = String(groupId);
+  const last = book[key];
+  if (last != null && now - last < gapMs) return false;
+  book[key] = now;
+  return true;
+}
+
+export function playAuthoredVerbCue(host, id, payload) {
+  const row = combatVerbCueRow(id);
+  if (!host || !row || row.recipe === 'SILENT' || !row.recipe) return null;
+  if (row.shape === REFUSAL_SHAPE) {
+    const rt = host.rt || (host.rt = {});
+    const book = rt._refusalAdmit || (rt._refusalAdmit = Object.create(null));
+    const now = typeof host._wallClockMs === 'function' ? host._wallClockMs() : 0;
+    const source = payload && (payload.sourceId != null ? payload.sourceId
+      : payload.ownerId != null ? payload.ownerId
+        : payload.targetId != null ? payload.targetId
+          : id);
+    if (!admitRefusalVoice(book, `${id}:${source}`, now)) return null;
+  }
+  if (id === 'combat:weakPointHit') {
+    const rt = host.rt || (host.rt = {});
+    const book = rt._weakPointAdmit || (rt._weakPointAdmit = Object.create(null));
+    const tick = payload && Number.isFinite(payload.tick) ? payload.tick
+      : (host.state && Number.isFinite(host.state.tick) ? host.state.tick
+        : (typeof host._wallClockMs === 'function' ? host._wallClockMs() : NaN));
+    if (!admitWeakPointVoice(book, payload && payload.targetId, tick)) return null;
+  }
+  if (id === 'combat:surrendered') {
+    const rt = host.rt || (host.rt = {});
+    const book = rt._surrenderAdmit || (rt._surrenderAdmit = Object.create(null));
+    const now = typeof host._wallClockMs === 'function' ? host._wallClockMs() : 0;
+    const group = payload && (payload.squadId != null ? payload.squadId : payload.entityId);
+    if (!admitSurrenderVoice(book, group, now)) return null;
+  }
+  if (id === 'crew:injured' || id === 'crew:lost') {
+    // One voice per event type per window: a mass-casualty tick is one dark beat, not a chorus.
+    const rt = host.rt || (host.rt = {});
+    const book = rt._casualtyAdmit || (rt._casualtyAdmit = Object.create(null));
+    const now = typeof host._wallClockMs === 'function' ? host._wallClockMs() : 0;
+    if (!admitSurrenderVoice(book, id, now)) return null;
+  }
+  if (typeof host.play !== 'function') return null;
+  // Emitters name a point two ways: pos {x,z} or bare x/z (pirateDisengage's surrender).
+  const pos = payload
+    ? (Number.isFinite(payload.pos?.x) && Number.isFinite(payload.pos?.z)
+      ? payload.pos
+      : (Number.isFinite(payload.x) && Number.isFinite(payload.z)
+        ? { x: payload.x, z: payload.z } : null))
+    : null;
+  const recipe = row.shape === REFUSAL_SHAPE
+    ? resolveRefusalRecipe(payload && payload.reason)
+    : row.recipe;
+  const played = host.play(recipe, {
+    gain: row.shape === REFUSAL_SHAPE ? 0.62 : 0.55,
+    refusalSource: row.shape === REFUSAL_SHAPE ? id : undefined,
+    reason: payload && payload.reason,
+    shape: row.shape || '',
+    position: pos && Number.isFinite(pos.x) && Number.isFinite(pos.z) ? pos : null,
+  });
+  if (played && row.shape === REFUSAL_SHAPE && typeof host._emitPresentationCaption === 'function') {
+    host._emitPresentationCaption(refusalCaption(payload && payload.reason), {
+      assertive: true,
+      channel: 'refusal',
+    });
+  }
+  return played;
+}
+
+/** Subscribe every row the table itself authors. Owned rows keep their one existing writer. */
+export function installCombatVerbCueDispatch(host, bus) {
+  const ids = verbCueDispatchIds();
+  if (!bus || typeof bus.on !== 'function') return ids;
+  for (const id of ids) {
+    bus.on(id, (payload) => playAuthoredVerbCue(host, id, payload));
+  }
+  return ids;
+}

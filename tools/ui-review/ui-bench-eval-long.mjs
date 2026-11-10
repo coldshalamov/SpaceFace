@@ -1,0 +1,49 @@
+#!/usr/bin/env node
+// ui-bench-eval.mjs — open one real screen in the UI bench (no game boot) and evaluate JS in it.
+//
+//   node scripts/ui-bench-eval.mjs <screen-id> "<expression>" [screenshot.png] [pre-js]
+//   VW=1280 VH=720 node scripts/ui-bench-eval.mjs station-market "document.title"
+//   HOVER=90,1018 node scripts/ui-bench-eval.mjs station-market "..."   (park the pointer first)
+//
+// The expression may be async (an IIFE returning a promise); its JSON result is printed. Use it to
+// measure what a still cannot show: computed styles, boxes, which element holds focus, or a state
+// the screen only reaches after a click. The bench exposes window.__BENCH_STATE and
+// window.__BENCH_BUS, so a probe can change the state a mounted screen reads and emit the event
+// that makes it refresh (the station refreshes on 'economy:tradeCompleted'). The screenshot, if a
+// path is given, is taken after the expression settles. Screen ids: scripts/lib/uiBenchCatalog.mjs.
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+process.env.SPACEFACE_PLAYER_STORE_DIR = '';
+const ROOT = 'C:/Users/93rob/Documents/GitHub/SpaceFace/';
+const { startBenchServer } = await import(pathToFileURL(ROOT + 'scripts/lib/benchServer.mjs').href);
+const { loadPlaywright } = await import(pathToFileURL(ROOT + 'scripts/lib/load-playwright.mjs').href);
+const { resolveShot } = await import(pathToFileURL(ROOT + 'scripts/lib/uiBenchCatalog.mjs').href);
+
+const [id, expr = 'null', shotPath, preJs] = process.argv.slice(2);
+if (!id || !resolveShot(id)) { console.error('unknown or missing screen id:', id); process.exit(1); }
+const server = await startBenchServer();
+const { chromium } = await loadPlaywright();
+const browser = await chromium.launch({ headless: true });
+try {
+  const page = await browser.newPage({ viewport: { width: Number(process.env.VW || 1920), height: Number(process.env.VH || 1080) } });
+  if (process.env.RM) await page.addInitScript(() => { const tryAdd = () => { const h = document.documentElement; if (h) h.classList.add('sf-reduce-motion'); else setTimeout(tryAdd, 0); }; tryAdd(); });
+  page.on('pageerror', (e) => console.error('pageerror', e.message));
+  // a busy machine (other lanes' browsers) can stretch a cold module load well past the 30 s default
+  await page.goto(`${server.baseUrl}tools/ui-bench.html?${new URLSearchParams({ screen: id, chrome: '0' })}`, { timeout: Number(process.env.LOAD_TIMEOUT_MS || 120000) });
+  await page.waitForFunction(() => document.documentElement.dataset.benchReady === '1' || window.__benchReady === true || window.__BENCH_READY === true,
+    null, { timeout: Number(process.env.READY_TIMEOUT_MS || 150000) }).catch(() => { console.error("NOT READY"); });
+  await page.waitForTimeout(1500);
+  if (preJs) { await page.evaluate((src) => Function(src)(), preJs); await page.waitForTimeout(300); }
+  if (process.env.HOVER) {
+    const [hx, hy] = process.env.HOVER.split(',').map(Number);
+    await page.mouse.move(hx, hy);
+    await page.waitForTimeout(200);
+  }
+  // eslint-disable-next-line no-new-func
+  const out = await page.evaluate((src) => Function(`return (${src});`)(), expr);
+  console.log(JSON.stringify(out, null, 2));
+  if (shotPath) { const c = process.env.CLIP ? process.env.CLIP.split(',').map(Number) : null; await page.screenshot(c ? { path: shotPath, clip: { x: c[0], y: c[1], width: c[2], height: c[3] } } : { path: shotPath }); }
+} finally {
+  await browser.close();
+  await server.close();
+}

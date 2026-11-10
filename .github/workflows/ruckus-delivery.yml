@@ -1,0 +1,59 @@
+name: RUCKUS delivery archive
+on:
+  push:
+    branches: [character/ruckus-last-demolition]
+    paths: [.github/workflows/ruckus-delivery.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          fetch-depth: 1
+          sparse-checkout: |
+            src
+            test
+            scripts
+            assets/characters/ruckus
+            tools/ruckus
+            tools/blender/characters
+            tools/blender/forge
+            design/characters
+            docs/characters/ruckus
+      - name: Export the exact authored diff, including binary assets
+        run: |
+          BASE=df1af22e5a1f1b10d36cdab91473799b704dcd6a
+          git fetch --no-tags --filter=blob:none --depth=1 origin "$BASE"
+          mkdir -p delivery
+          git diff --binary --full-index "$BASE" HEAD -- src test assets/characters/ruckus tools/ruckus tools/blender/characters/ruckus.py design/characters/RUCKUS.md docs/characters/ruckus .github/workflows/ruckus-character.yml .github/workflows/ruckus-delivery.yml > delivery/RUCKUS.patch
+          BASE="$BASE" python3 - <<'PY'
+          import pathlib, subprocess, zipfile, json, os, hashlib
+          root=pathlib.Path.cwd(); base=os.environ['BASE']; head=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          paths=subprocess.check_output(['git','diff','--name-only','-z',base,'HEAD']).decode().split('\0')
+          paths=[p for p in paths if p]
+          assert all('ruckus' in p.lower() or p in {'src/core/registry.js','src/data/audioRecipes.js','src/data/sectors.js','src/render/visualFactory.js','src/runtime/authoritativeSystemManifest.js','src/runtime/nodeSystemFactoryTable.js','src/save/saveSystem.js','test/authoritative-manifest.test.mjs'} for p in paths)
+          manifest={'base':base,'head':head,'files':[]}
+          with zipfile.ZipFile(root/'delivery'/'RUCKUS-complete.zip','w',zipfile.ZIP_DEFLATED) as z:
+              for name in paths:
+                  data=subprocess.check_output(['git','show',f'{head}:{name}'])
+                  z.writestr('overlay/'+name,data)
+                  manifest['files'].append({'path':name,'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)})
+              z.write(root/'delivery'/'RUCKUS.patch','RUCKUS.patch')
+              z.writestr('MANIFEST.json',json.dumps(manifest,indent=2)+'\n')
+              z.writestr('README.txt','RUCKUS for SpaceFace, PR #223\n\nPreferred: merge PR #223. This is a complete source-and-asset backup, not the entire game.\n\nPatch path: from a clean checkout descended from the recorded base, run git apply --check /path/to/RUCKUS.patch, then git apply /path/to/RUCKUS.patch. Stop on any conflict; do not overwrite concurrent work. The overlay/ tree is provided for inspection or deliberate per-file integration; shared integration files must not be blindly copied over newer code.\n\nAuthoring, gameplay, tests and acceptance notes: overlay/design/characters/RUCKUS.md.\n')
+          print(json.dumps({'files':len(paths),'head':head,'zipBytes':(root/'delivery'/'RUCKUS-complete.zip').stat().st_size}))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ruckus-complete-delivery
+          path: delivery/RUCKUS-complete.zip
+          retention-days: 14
+          compression-level: 0

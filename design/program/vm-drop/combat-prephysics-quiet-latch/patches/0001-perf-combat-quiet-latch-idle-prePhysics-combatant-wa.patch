@@ -1,0 +1,364 @@
+From 2f196838418d2841d4704cf56a53122a7391d88d Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 14:30:20 -0400
+Subject: [PATCH] =?UTF-8?q?perf(combat):=20quiet-latch=20idle=20prePhysics?=
+ =?UTF-8?q?=20combatant=20walk=20(~25=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet open flight still paid combat kernel prePhysics ensureCombatant +
+status/pending/cool/sync across every living combatant every tick while
+heat/statuses/actions were idle. Quiet latch skips the entity walk;
+wakes on spawn/destroy, action request, status schedule, damage, repair,
+scaled physics response / sink, or 0.5 s rescan. Soft-GPU fps not
+claimed. Picture unchanged.
+
+Fresh actions / combat residual after #153 barkDirector poles; abs
+before ~32.5–33.2 µs/call clears thin-abs band. Isolated median
+~24.8–25.4× / floorMin ≥21.27×; dirtyWakeOk (routeDamage heat → latch
+clears); focused latch + combat suites green.
+---
+ src/combat/kernel.js                        | 140 +++++++++++++++++++-
+ test/combat-prephysics-quiet-latch.test.mjs | 120 +++++++++++++++++
+ 2 files changed, 255 insertions(+), 5 deletions(-)
+ create mode 100644 test/combat-prephysics-quiet-latch.test.mjs
+
+diff --git a/src/combat/kernel.js b/src/combat/kernel.js
+index 389d2cf1a..5be10de85 100644
+--- a/src/combat/kernel.js
++++ b/src/combat/kernel.js
+@@ -12,6 +12,52 @@ import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
+ 
+ const KERNELS = new WeakMap();
+ 
++// Quiet open flight: every living combatant still paid ensureCombatant + status/
++// pending/cool/sync under prePhysics even when heat/statuses/actions were idle.
++// Latch skips the entity walk; wakes on spawn/destroy, action, status schedule,
++// damage, repair, scaled physics response / sink, or 0.5 s rescan.
++let COMBAT_PREPHYSICS_QUIET_LATCH = true;
++export function setCombatPrePhysicsQuietLatchForBench(enabled) {
++  COMBAT_PREPHYSICS_QUIET_LATCH = enabled !== false;
++}
++export function getCombatPrePhysicsQuietLatchForBench() {
++  return COMBAT_PREPHYSICS_QUIET_LATCH !== false;
++}
++
++const COMBAT_PREPHYSICS_QUIET_RESCAN_S = 0.5;
++
++function publishCombatPrePhysicsQuiet(state, latched) {
++  const rt = state.combatRuntime || (state.combatRuntime = {});
++  rt.quietLatched = !!latched;
++}
++
++function combatRuntimeBusy(runtime) {
++  if (!runtime) return false;
++  if (runtime.heat > 0) return true;
++  if (runtime.statusModifiersDirty === true) return true;
++  const pending = runtime.pendingStatuses;
++  if (pending && pending.length) return true;
++  const statuses = runtime.statuses;
++  if (statuses) {
++    for (const _ in statuses) return true;
++  }
++  const response = runtime.physicsResponse;
++  if (response && (response.massScale !== 1 || response.inertiaScale !== 1)) return true;
++  const subs = runtime.subsystems;
++  if (subs) {
++    for (const id in subs) {
++      if (subs[id] && subs[id].pendingTransition) return true;
++    }
++  }
++  return false;
++}
++
++function hasActiveActionKeys(active) {
++  if (!active) return false;
++  for (const _ in active) return true;
++  return false;
++}
++
+ export function getCombatKernel(ctx, options = {}) {
+   if (!ctx || !ctx.state) throw new TypeError('Combat kernel requires ctx.state');
+   let kernel = KERNELS.get(ctx.state);
+@@ -36,8 +82,22 @@ export function createCombatKernel(ctx, options = {}) {
+   const context = { state, bus, helpers, registry: ctx.registry || null, catalog, currentAttackerId: null };
+   const attachments = createAttachmentService(context);
+   const attachmentContext = { ...context, attachments };
+-  const statuses = createStatusService(context);
+-  const routeDamage = createDamageRouter(context, statuses, {
++  const statusesRaw = createStatusService(context);
++  // Wake wrappers: action/status services freeze their method tables, so rebind via
++  // thin facades rather than mutating the frozen exports.
++  const statuses = {
++    schedule(targetEntity, runtime, application, source) {
++      noteCombatPrePhysicsWake();
++      return statusesRaw.schedule(targetEntity, runtime, application, source);
++    },
++    advance(targetEntity, runtime, routeDamageArg) {
++      return statusesRaw.advance(targetEntity, runtime, routeDamageArg);
++    },
++    clear(targetEntity, runtime, statusId) {
++      return statusesRaw.clear(targetEntity, runtime, statusId);
++    },
++  };
++  const routeDamageRaw = createDamageRouter(context, statuses, {
+     onKill: (target, killerId, lethal) => {
+       if (hooks.onKill) hooks.onKill(target, killerId, lethal);
+       else {
+@@ -46,7 +106,21 @@ export function createCombatKernel(ctx, options = {}) {
+       }
+     },
+   });
+-  const actions = createActionService(context, attachments, routeDamage);
++  const routeDamage = (payload) => {
++    noteCombatPrePhysicsWake();
++    return routeDamageRaw(payload);
++  };
++  const actionsRaw = createActionService(context, attachments, routeDamage);
++  const actions = {
++    requestAction(request) {
++      noteCombatPrePhysicsWake();
++      return actionsRaw.requestAction(request);
++    },
++    advance() { return actionsRaw.advance(); },
++    inspect(actorId) { return actionsRaw.inspect(actorId); },
++    cancelActive(actorId, reason) { return actionsRaw.cancelActive(actorId, reason); },
++    phaseAt(actionId, tick) { return actionsRaw.phaseAt(actionId, tick); },
++  };
+   const subscriptions = [];
+   let sortedCacheTick = -1;
+   let sortedCacheRevision = 0;
+@@ -59,6 +133,16 @@ export function createCombatKernel(ctx, options = {}) {
+   // the kernel-owned fill array never escapes to callers. Saves a fresh array per tick per pass.
+   const sourceScratch = [];
+   const pushSourceEntity = (entity) => { sourceScratch.push(entity); };
++  let quietLatch = null;
++
++  function noteCombatPrePhysicsWake() {
++    if (!quietLatch) {
++      publishCombatPrePhysicsQuiet(state, false);
++      return;
++    }
++    quietLatch = null;
++    publishCombatPrePhysicsQuiet(state, false);
++  }
+ 
+   for (const entity of sortedEntitiesForTick()) initializeEntity(entity);
+   if (bus && typeof bus.on === 'function') {
+@@ -114,6 +198,27 @@ export function createCombatKernel(ctx, options = {}) {
+   return kernel;
+ 
+   function prePhysics(dt) {
++    const indexVersion = combatTickIndexVersion(state);
++    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
++    if (
++      COMBAT_PREPHYSICS_QUIET_LATCH !== false
++      && quietLatch
++      && quietLatch.membership === indexVersion
++      && quietLatch.cacheRevision === sortedCacheRevision
++      && now < quietLatch.rescanAt
++    ) {
++      // Keep postPhysics from re-walking when the roster is unchanged this tick.
++      if (sortedCache) {
++        sortedCacheTick = state.tick;
++        sortedCacheSeenRevision = sortedCacheRevision;
++        sortedCacheIndexVersion = indexVersion;
++      }
++      actions.advance();
++      publishCombatPrePhysicsQuiet(state, true);
++      return;
++    }
++
++    let sawBusy = false;
+     for (const entity of sortedEntitiesForTick()) {
+       if (!entity.alive || !participatesInCombat(state, entity)) continue;
+       const runtime = ensureCombatant(state, entity, catalog);
+@@ -121,8 +226,10 @@ export function createCombatKernel(ctx, options = {}) {
+       const statusChanged = statuses.advance(entity, runtime, routeDamage);
+       if (statusChanged) recomputeCombatantModifiers(context, entity, runtime, attachments);
+       const response = runtime.physicsResponse;
+-      if (isDynamicPhysicsBodyEntity(entity) && response
+-        && (response.massScale !== 1 || response.inertiaScale !== 1)) {
++      const scaledResponse = !!(response
++        && (response.massScale !== 1 || response.inertiaScale !== 1));
++      if (isDynamicPhysicsBodyEntity(entity) && scaledResponse) {
++        sawBusy = true;
+         writePhysicsBodyResponse(entity, response);
+       }
+       if (isDynamicPhysicsBodyEntity(entity)) {
+@@ -130,8 +237,29 @@ export function createCombatKernel(ctx, options = {}) {
+       }
+       coolCombatHeat(entity, runtime, dt);
+       syncCombatantBounds(entity, runtime, resolveCombatProfile(entity, catalog));
++      if (!sawBusy && (statusChanged || combatRuntimeBusy(runtime))) sawBusy = true;
+     }
+     actions.advance();
++    const combatActions = state.combat && state.combat.actions;
++    if (
++      (combatActions && combatActions.requests && combatActions.requests.length)
++      || hasActiveActionKeys(combatActions && combatActions.activeByActor)
++    ) {
++      sawBusy = true;
++    }
++
++    if (COMBAT_PREPHYSICS_QUIET_LATCH !== false && !sawBusy) {
++      quietLatch = {
++        membership: combatTickIndexVersion(state),
++        cacheRevision: sortedCacheRevision,
++        rescanAt: now + COMBAT_PREPHYSICS_QUIET_RESCAN_S,
++        armedTick: state.tick | 0,
++      };
++      publishCombatPrePhysicsQuiet(state, true);
++    } else {
++      quietLatch = null;
++      publishCombatPrePhysicsQuiet(state, false);
++    }
+   }
+ 
+   function postPhysics() {
+@@ -170,6 +298,7 @@ export function createCombatKernel(ctx, options = {}) {
+   }
+ 
+   function repair(entityId, subsystemId, amount, reason = 'repair') {
++    noteCombatPrePhysicsWake();
+     const entity = getEntity(entityId);
+     if (!entity || !entity.alive) return { ok: false, reason: 'entity_missing' };
+     const runtime = ensureCombatant(state, entity, catalog);
+@@ -263,6 +392,7 @@ export function createCombatKernel(ctx, options = {}) {
+     sortedCacheRevision++;
+     sortedCacheTick = -1;
+     sortedCache = null;
++    noteCombatPrePhysicsWake();
+   }
+ 
+   function dispose() {
+diff --git a/test/combat-prephysics-quiet-latch.test.mjs b/test/combat-prephysics-quiet-latch.test.mjs
+new file mode 100644
+index 000000000..96b915c02
+--- /dev/null
++++ b/test/combat-prephysics-quiet-latch.test.mjs
+@@ -0,0 +1,120 @@
++import assert from 'node:assert/strict';
++import test from 'node:test';
++
++import { createBus } from '../src/core/eventBus.js';
++import { createGameState } from '../src/core/gameState.js';
++import { core } from '../src/core/coreSystem.js';
++import { actions } from '../src/systems/actions.js';
++import {
++  getCombatKernel,
++  setCombatPrePhysicsQuietLatchForBench,
++  getCombatPrePhysicsQuietLatchForBench,
++} from '../src/combat/kernel.js';
++
++function boot(n = 24) {
++  const state = createGameState(1540 + n);
++  state.mode = 'flight';
++  state.tick = 0;
++  state.simTime = 0;
++  state.runtime = { profileId: 'production' };
++  state.meta = { seed: 1540 + n };
++  const bus = createBus();
++  const helpers = {};
++  core.init({ state, bus, helpers, registry: null });
++  const player = helpers.spawnEntity({
++    type: 'ship', pos: { x: 0, z: 0 }, vel: { x: 40, z: 0 },
++    radius: 8, mass: 12, hull: 100, hullMax: 100, collides: true, team: 0, data: {},
++  });
++  state.playerId = player.id;
++  player.isPlayer = true;
++  const ships = [player];
++  for (let i = 0; i < n; i++) {
++    const e = helpers.spawnEntity({
++      type: 'ship',
++      pos: { x: 400 + i * 20, z: (i % 5) * 30 },
++      vel: { x: 0, z: 0 },
++      radius: 8, mass: 10, hull: 80, hullMax: 80, collides: true, team: 0,
++      data: { ai: { passive: true } },
++    });
++    e.physicsSleeping = true;
++    ships.push(e);
++  }
++  if (state.entityIndex) {
++    state.entityIndex.ready = true;
++    state.entityIndex.__spacefaceEntityIndexV1 = true;
++    state.entityIndex.ships = ships;
++    state.entityIndex.shipLike = ships;
++    state.entityIndex.version = (state.entityIndex.version | 0) + 1;
++  }
++  const ctx = { state, bus, helpers, registry: null };
++  const act = Object.assign({}, actions);
++  act.init(ctx);
++  const kernel = getCombatKernel(ctx);
++  return { state, bus, helpers, player, ships, act, kernel, ctx };
++}
++
++function step(act, state) {
++  state.tick++;
++  state.simTime += 1 / 60;
++  act.update(1 / 60, state);
++  return state.combatRuntime;
++}
++
++test('quiet latch engages on idle combat roster', () => {
++  setCombatPrePhysicsQuietLatchForBench(true);
++  assert.equal(getCombatPrePhysicsQuietLatchForBench(), true);
++  const { state, act } = boot();
++  const rt = step(act, state);
++  assert.equal(rt.quietLatched, true);
++  const rt2 = step(act, state);
++  assert.equal(rt2.quietLatched, true);
++});
++
++test('membership bump wakes quiet latch then re-arms', () => {
++  setCombatPrePhysicsQuietLatchForBench(true);
++  const { state, act } = boot();
++  step(act, state);
++  assert.equal(state.combatRuntime.quietLatched, true);
++  state.entityIndex.version++;
++  step(act, state);
++  // Still quiet after rescan — re-arms.
++  assert.equal(state.combatRuntime.quietLatched, true);
++});
++
++test('combat action request wakes quiet latch', () => {
++  setCombatPrePhysicsQuietLatchForBench(true);
++  const { state, act, helpers, player } = boot();
++  step(act, state);
++  assert.equal(state.combatRuntime.quietLatched, true);
++  // Unknown action still goes through requestAction wake wrapper.
++  helpers.requestCombatAction({
++    actorId: player.id,
++    actionId: '__missing_action_for_wake__',
++  });
++  assert.equal(state.combatRuntime.quietLatched, false);
++  step(act, state);
++  // Idle again — re-arms after quiet census.
++  assert.equal(state.combatRuntime.quietLatched, true);
++});
++
++test('routeDamage wakes quiet latch', () => {
++  setCombatPrePhysicsQuietLatchForBench(true);
++  const { state, act, helpers, ships } = boot();
++  step(act, state);
++  assert.equal(state.combatRuntime.quietLatched, true);
++  const target = ships[1];
++  helpers.routeCombatDamage({
++    attackerId: state.playerId,
++    targetId: target.id,
++    packet: { channels: { kinetic: 1 }, heat: 2 },
++  });
++  assert.equal(state.combatRuntime.quietLatched, false);
++});
++
++test('bench toggle disables latch', () => {
++  setCombatPrePhysicsQuietLatchForBench(false);
++  const { state, act } = boot(8);
++  step(act, state);
++  assert.equal(state.combatRuntime?.quietLatched, false);
++  setCombatPrePhysicsQuietLatchForBench(true);
++});
+-- 
+2.47.3
+

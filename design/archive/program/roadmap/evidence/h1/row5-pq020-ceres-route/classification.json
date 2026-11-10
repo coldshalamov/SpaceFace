@@ -1,0 +1,44 @@
+{
+  "schema": "spaceface.h1-row-classification.v1",
+  "row": 5,
+  "subject": "PQ-020 Ceres functional route and relocated PQ-018 Phase-4 route claim",
+  "result": "PASS",
+  "classification": "FUNCTIONAL_ACCEPTANCE",
+  "manifestId": "pq020-ceres-topology",
+  "candidateCommit": "04514d0bfe3c1b1a7ea9b85a02905418ad675033",
+  "fixedSeed": 47,
+  "browserClaimId": "26052-3223fa474a1b497e1638943b",
+  "candidateDigest": "c864caec77a6ba911efab9c2dbae1ae3f11bf2a2bbb1bc7fde993830a49f7f46",
+  "browser": {
+    "disposition": "PASS",
+    "declaredFrames": 21,
+    "pageIssues": 0,
+    "gpu": "Intel ANGLE D3D11",
+    "receiptSha256": "70687669c36a30233c0c3afd27b27be376a2bd355d00da49d0fab6ee86c29ef1"
+  },
+  "electron": {
+    "disposition": "PASS",
+    "declaredFrames": 21,
+    "pageIssues": 0,
+    "gpu": "Intel ANGLE D3D11",
+    "normalizedGameplayParity": true,
+    "ownedRuntimeClosed": true,
+    "receiptSha256": "ae10134fa9905117667a5e8466e12504be41fec1f510692ce71bdadb2e4feca0"
+  },
+  "acceptedClaims": [
+    "public Helios-to-Ceres and Tethys-to-Ceres source-direction arrivals",
+    "natural production-autopilot arrival at refinery, Belt Outpost, beacon, and Cathedral",
+    "authored Cathedral admission with seven components and public-control far/default/close framing",
+    "F5, canonical cold reload, visible Continue, pose restoration, and exact static-entity counts",
+    "repeated post-Continue beacon and Cathedral selection",
+    "keyboard and pointer map selection with non-color text semantics"
+  ],
+  "historicalSupersededArtifacts": [
+    "failure-row5.png",
+    "latest-acceptance-failure.json",
+    "design/program/roadmap/receipts/PQ-020-ceres-h1-capture-BLOCKER.md"
+  ],
+  "noPerformanceEvidence": true,
+  "h2VerdictClaimed": false,
+  "physicalControllerClaimed": false
+}

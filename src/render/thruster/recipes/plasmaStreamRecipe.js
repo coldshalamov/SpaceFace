@@ -1,0 +1,234 @@
+/**
+ * Player thruster recipe — a raymarched exhaust volume plus a stylistic history thread.
+ *
+ *  1. `jet`    Physical envelope of the exhaust: length, exit radius, exhaust speed, shock train.
+ *              These are engine properties, so the plume never scales with hull speed. The volume
+ *              block below says what the gas inside this envelope looks like.
+ *  2. `throat` The over-range pinpoint inside the bell that an emission integral cannot reach.
+ *  3. `thread` Path-thread release timing. The legacy hidden "snake" strip mesh was deleted; the
+ *              live jet is the swept ribbon plume and the recorded wake is the contrail.
+ *
+ * There is no layer stack and no wake-parcel cloud here any more. Those described camera-facing
+ * sheets, which are physically incapable of self-occlusion and could only ever render banding on a
+ * cone; `../materials/volumetricPlumeMaterial.js` explains what replaced them.
+ *
+ * Scale reference: lab ship ~8 WU long, nozzle bell radius ~1.35 WU.
+ */
+
+function freezeDeep(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) freezeDeep(child);
+  return Object.freeze(value);
+}
+
+export function smoothstep(edge0, edge1, x) {
+  if (!(edge1 > edge0)) return x >= edge1 ? 1 : 0;
+  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
+
+export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
+  id: 'player_liquid_plasma_v29.0',
+  kind: 'raymarched_plasma_volume',
+  displayName: 'Player continuous liquid plasma thruster',
+  notes: 'v29: the live jet grew rotational memory (owner ruling 2026-09-30 — a turn must bend '
+    + 'the jet and let it flow back onto the bell, not swing it like a bolted tail): '
+    + 'jet.lag drives the heading-history spine in ribbon/exhaustLag.js. The column gains a '
+    + 'standing shock-cell train (jet.shock, already authored) and a petal-clumped sheet fan '
+    + '(ribbon.clump), and the bell reads as machinery: hotter structured throat, brighter forge '
+    + 'lip, and the sustained hull light that the family-plume path used to owe the bell. '
+    + 'v28: wake rework — the recorded contrail grows a searing burn core pinned on the flown '
+    + 'line (the inner strand pair) inside a tighter corded sheath, and the live jet roots inside '
+    + 'the bell (uEmbed) so exhaust visibly exits the throat instead of appearing beside it. '
+    + 'Hotter sear phase, tighter ribbon cord, lit throat. v27: raymarched density volume notes '
+    + 'below describe the retired reference block; the live jet is the swept ribbon plume.',
+
+  // ---- Physical envelope of the plume -------------------------------------------------------
+  jet: {
+    lengthWU: 17,
+    exitRadiusWU: 1.32,
+    // Length at zero throttle as a fraction of lengthWU (a lit engine is never zero-length).
+    driveLengthFloor: 0.45,
+    // Advection speed of the filament field, WU/s. A steady jet's coherent structure is nearly
+    // standing (it is set by the nozzle), so this is deliberately far below any literal exhaust
+    // velocity: axialFreq * this must land around 3 cycles/s or the filaments read as static.
+    exhaustSpeedWU: 30,
+    boostSpeedMul: 1.6,
+    boostCollimate: 0.28,
+    // Standing shock train. Kept compact near the throat: a train that survives far downstream
+    // reads as a rung ladder rather than the couple of diamonds a real nozzle shows.
+    shock: {
+      pitchWU: 1.5,
+      amplitude: 0.34,
+      boostGain: 0.4,
+      pinch: 0.14,
+      decayWU: 5.0,
+    },
+    // One-shot ignition transient so boost reads as an event, not a width ramp.
+    ignition: { decayPerS: 3.6, lengthOvershoot: 0.24, radianceOvershoot: 0.7, shockGain: 0.8 },
+    // Rotational memory of the live jet (owner ruling 2026-09-30). `exhaustRefSpeedWU` is the
+    // convection speed of the visible structure: tipAgeS = jetLength / that, so a stubbier
+    // throttle jet is stiffer and boost's longer jet lags more. `maxMemoryS` caps the reach;
+    // `maxBendRad` soft-caps the root-to-tip bend via tanh — a hard pivot corkscrews the jet,
+    // it does not knot it around the bell. The jet ROOT is always exactly on the bell; only the
+    // downstream shape carries history. Recorded flight history is the contrail's and is untouched.
+    lag: {
+      exhaustRefSpeedWU: 20,
+      maxMemoryS: 0.85,
+      minTipAgeS: 0.12,
+      maxBendRad: 1.4,
+    },
+  },
+
+  // ---- Exhaust volume (the raymarched plume) ------------------------------------------------
+  // Every number here is a property of the density field the shader integrates, not of a mesh.
+  // `jet.lengthWU` and `jet.exitRadiusWU` still set the plume's physical size; this block sets
+  // what the gas inside that envelope looks like.
+  volume: {
+    maxNozzles: 4,
+    // Marching budget. Close framing gets the ceiling; the system scales down by apparent size.
+    minSteps: 12,
+    maxSteps: 56,
+    quality: 1,
+
+    // Envelope. Roughly a 1:3 width-to-length plume: wide enough that the tail is clearly a
+    // dissipating cloud, narrow enough that it still reads as a directed jet rather than a bloom.
+    tailFlare: 2.0,
+    spread: 0.62,
+    fadeStart: 0.42,
+
+    // Structure. `stretch` elongates noise features along the flow: without it the field resolves
+    // as blobs of smoke instead of strands. `threshold` opens the dark veins between filaments,
+    // and is the single strongest control over whether the plume reads as gas or as fog.
+    // Low on purpose: this sets how many strands span the plume, and the target is roughly eight
+    // thick ropes, not a fine fuzz. Fine fuzz is also the frequency the march cannot resolve, so
+    // raising this trades visible structure for speckle that the mip filter then has to erase.
+    noiseScale: 0.18,
+    stretch: 2.8,
+    threshold: 0.50,
+    // Extinction is set so a centre ray accumulates roughly 0.8 opacity over the plume's length.
+    // Higher saturates the whole cone to white and erases every filament inside it.
+    sigma: 0.58,
+    // Small. The veil is a smooth term added everywhere, so it fills the dark veins between
+    // strands and is the fastest way to turn a plasma jet back into fog.
+    veil: 0.05,
+    // Length of the unbroken supersonic core, as a fraction of plume length, before the shear
+    // layer breaks down into filaments. Wispiness right at the lip is the classic fake-jet tell.
+    coherence: 0.15,
+    coreDensity: 0.5,
+    radialTight: 2.0,
+
+    // Curl warp — the reason filaments braid instead of running parallel. Amplitude grows with the
+    // square of axial distance so eddies visibly widen from the lip to the tail.
+    warpAmp: 1.2,
+    warpScale: 0.24,
+    warpGrowth: 2.0,
+    warpBoostGain: 0.3,
+
+    // Downstream advection of the density field, as a fraction of `jet.exhaustSpeedWU`.
+    flowScale: 0.22,
+    shockScale: 0.12,
+    radiance: 2.3,
+
+    // Temperature ramp: searing white at the throat through electric cyan to a deep blue fringe.
+    // Red is kept very low in the mid and edge tones on purpose. These are additive HDR values and
+    // radiance pushes green and blue past 1.0, so the tone mapper compresses those channels while
+    // red stays where it is — the surviving red is what decides how saturated the plume looks. Set
+    // red anywhere near green and the whole cloud desaturates to grey smoke on the way through ACES.
+    coreColor: [1.0, 0.99, 0.97],
+    midColor: [0.14, 0.62, 1.0],
+    edgeColor: [0.02, 0.10, 0.72],
+  },
+
+  // ---- Swept ribbon sheets (the live jet) ------------------------------------------------------
+  // Consumed by plasmaStream._ribbonBase -> resolvePlumeShape. A collimated hot cord: the jet
+  // spears out of the bell and only shreds downstream — the earlier wide fan read as gauze
+  // hanging next to the hull rather than exhaust leaving a nozzle.
+  // `clump` pulls the sheet fan toward three coarse lobes: bright folds bunched into petals with
+  // dark interior between them (the standard's engine-jet row demands exactly that read), instead
+  // of an even pinwheel that silhouettes as one solid cone.
+  ribbon: {
+    jetLength: 17,
+    throatRadius: 1.32,
+    spread: 1.7,
+    radiance: 1.55,
+    opacity: 0.115,
+    clump: 0.55,
+  },
+
+  // ---- Path-thread release --------------------------------------------------------------------
+  // The retained live-head sampler drains after thrust stops (it also gates the cold-drive sleep
+  // path). The strip mesh this timing once fed was force-hidden dead weight and is deleted.
+  thread: {
+    eraseS: 1.5,
+  },
+
+  path: {
+    // 288 * 0.5 = 144 WU of retained thread — a little over twice the previous 48 WU.
+    capacity: 288,
+    sampleSpacingWU: 0.5,
+    sampleHz: 90,
+    discontinuityFloorWU: 160,
+    discontinuityMaxWU: 640,
+  },
+
+  drive: {
+    idleFloor: 0.04,
+    // Boost is length + heat, NOT width. A uniform width multiply is what made boost read as a
+    // triangle inflating in place.
+    boostLengthMul: 1.55,
+    boostWidthMul: 1.08,
+    boostRadianceMul: 1.5,
+  },
+
+  // Nozzle-interior glow discs (one per socket): the lit engine core inside the bell.
+  // (retro jets are configured separately — PLAYER_RETRO_VOLUME_RECIPE, same ribbon family)
+  // v29: brighter and structured. The owner's read on the shipped base was "cheap"; the disc now
+  // carries a drive-driven bell-interior ring with gas spokes scrubbing the wall and a mottled
+  // combustion face, so the mouth is machinery you look INTO, not a decal stuck on the hull.
+  // Still radius-bound (the oversized white ball is a documented failure) — the extra light is
+  // earned by structure, not by size.
+  throat: {
+    radiusWU: 1.15,
+    opacity: 0.72,
+    radiance: 2.7,
+    color: [0.62, 0.93, 1.0],
+  },
+});
+
+/**
+ * Bow retro jets — the exhaust that fires FORWARD when braking or backing up.
+ *
+ * These used to be drawn by the attitude-control impulse system, which can only produce short
+ * discrete pops. It fired one roughly every 0.11 s, so holding the brake — a sustained action —
+ * rendered as about nine separate puffs a second in a line. That mismatch between a continuous
+ * input and a burst-only renderer is what read as a dotted line, and no amount of tuning inside
+ * the burst system could have fixed it.
+ *
+ * Retro is the same swept-ribbon + forge family as the main drive, only small: stubby and hard,
+ * because a braking thruster is a short high-pressure jet rather than a long cruising plume.
+ * Genuinely impulsive attitude pops (strafe, yaw) stay on the burst system, where that model is
+ * correct. An isotropic density volume cannot make the crease the drive sheets do, so it is not
+ * this recipe.
+ */
+export const PLAYER_RETRO_VOLUME_RECIPE = freezeDeep({
+  id: 'player_retro_jet_v7',
+  // Open, directional high-pressure exhaust. Avoid a short, wide envelope that integrates to a bulb.
+  // v7: a slimmer dart with a live tail — the column holds collimated out of the lip, then frays
+  // into curling streamer sheets that dissolve downstream (the sheet rules, M2/E2). Long enough to
+  // read at chase height (~140 WU), still well under the main drive's 17 WU jet.
+  lengthWU: 8.6,
+  exitRadiusWU: 1.0,
+  tailFlare: 1.16,
+  spread: 0.58,
+  radiance: 1.8,
+  opacity: 0.155,
+  ribbons: 8,
+  stations: 40,
+  across: 5,
+
+  // Same temperature ramp as the main drive sheets so a stranger reads one engine family.
+  coreColor: [1.0, 0.99, 0.97],
+  midColor: [0.09, 0.55, 1.0],
+  edgeColor: [0.015, 0.08, 0.86],
+});

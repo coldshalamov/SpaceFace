@@ -1,0 +1,787 @@
+{
+  "schema": "spaceface.funMeasure.v1",
+  "timestamp": "2026-09-03T21:03:09.536Z",
+  "bench": "crucible",
+  "seed": 8008,
+  "bars": [
+    {
+      "id": "B1",
+      "key": "feel.earned_speed_kept",
+      "title": "Earned speed is kept",
+      "statement": "After leaving the cap at 2× cruise by ANY means (rope release, shove, well fling, bounce), speed 10 s later is ≥ 99 % of the exit speed with hands off, and ≥ 99 % with forward held. Only the brake spends it.",
+      "target": "≥ 99 % of exit speed 10 s later, hands off and forward held",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.rope_swing_release — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B2",
+      "key": "feel.reversal_course",
+      "title": "Nimble regime",
+      "statement": "From rest to cruise ≤ 1.5 s. Full 180° velocity reversal ≤ 3.0 s. Turn radius at cruise ≤ 1 screen depth.",
+      "target": "rest→cruise ≤ 1.5 s; 180° velocity reversal ≤ 3.0 s; turn radius at cruise ≤ 1 screen depth",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by flight-reversal / flight-accel-brake — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B3",
+      "key": "feel.screen_crossing",
+      "title": "The fight stays on screen",
+      "statement": "At cruise the hull needs ≥ 1.2 s to cross the visible depth. Above the cap the camera opens so that a 2× cruise exit still shows ≥ 2 s of travel.",
+      "target": "≥ 1.2 s to cross the visible depth at cruise",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.stroke_speed — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B4",
+      "key": "feel.shove_magnitude",
+      "title": "Shove magnitude",
+      "statement": "The dedicated shove weapon changes a light hostile's velocity by ≥ 30 % of its cruise per hit. The starter gun changes it by ≥ 5 % per hit. A light hostile already at cruise gets faster when shoved along its motion.",
+      "target": "shove ΔV ≥ 30 % of light-hostile cruise per hit (starter gun ≥ 5 %)",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.shove_magnitude — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B5",
+      "key": "feel.shove_displacement",
+      "title": "Shove displacement",
+      "statement": "2 s after a shove-weapon hit, a light hostile is ≥ 1 screen depth off the line it was flying and has not fired.",
+      "target": "≥ 1 screen depth off the original line 2 s after the hit",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.shove_magnitude — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B6",
+      "key": "feel.terrain_slam",
+      "title": "Terrain is lethal",
+      "statement": "A light hostile meeting rock at ≥ 50 % of cruise loses ≥ 60 % of hull and its helm; at ≥ 75 % of cruise it dies. A heavy at the same speed loses ≤ 15 % and keeps its helm.",
+      "target": "dies at ≥ 75 % cruise closing; ≥ 60 % hull + helm lost at ≥ 50 %; heavy ≤ 15 %",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.terrain_slam — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B7",
+      "key": "feel.rope_swing_release",
+      "title": "The rope is a rope",
+      "statement": "Swinging at 1.5× cruise on a 100 WU line around a heavy anchor stretches the line < 10 % and does not break; releasing at the tangent keeps ≥ 95 % of tangential speed 5 s later.",
+      "target": "stretch < 10 %; release keeps ≥ 95 % of tangential speed at 5 s",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.rope_swing_release — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B8",
+      "key": "feel.stroke_speed",
+      "title": "Draw-to-fly rips",
+      "statement": "Mean speed along any hand-drawn stroke ≥ 70 % of cruise; the slowest point ≥ 35 % of cruise. Speed is the pass criterion; track is the constraint.",
+      "target": "mean stroke speed ≥ 70 % of cruise; slowest point ≥ 35 %",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.stroke_speed — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B9",
+      "key": "feel.impact_feedback",
+      "title": "Impacts answer",
+      "statement": "Every collision with ΔV ≥ 8 WU/s produces hitstop and camera trauma scaled by exchanged momentum. Collision audio differs by ≥ one octave of pitch and ≥ 12 dB between a scout kissing a rock and a freighter broadsiding a station. A Massline release has a time-domain snap.",
+      "target": "hitstop + trauma at ΔV ≥ 8 WU/s; audio ≥ 1 octave and ≥ 12 dB apart; release snaps",
+      "reachable": false,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "hitstop, camera trauma and audio are presentation-layer; the headless bench has no instrument for them. the bar is listed here for completeness; this bench cannot measure it.",
+      "fedBy": []
+    },
+    {
+      "id": "B10",
+      "key": "world.reaction_trio",
+      "title": "The world reacts",
+      "statement": "Within 10 s of a kill in a patrol's sight, the patrol makes a visible stay-with-wreck / chase choice. Spilled cargo attracts an NPC within 30 s. Civilians within 300 WU of gunfire change course within 3 s.",
+      "target": "patrol chooses within 10 s; salvor arrives ≤ 30 s; civilians turn within 3 s",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by world.cargo_spill — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B11",
+      "key": "feel.hitstun_curve",
+      "title": "Hitstun law is universal",
+      "statement": "Helm-loss duration is one function of (ΔV ÷ cruise) and (attacker mass ÷ victim mass) for guns, throws, flings and collisions alike; lights at ≥ 30 % ΔV lose the helm ≥ 1 s; heavies at gun-scale ΔV never do. NPCs recover with real thruster torque, never a hidden gyro.",
+      "target": "one universal curve; lights ≥ 30 % ΔV stunned ≥ 1 s; heavies at gun-scale ΔV never",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.shove_magnitude / feel.terrain_slam — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B12",
+      "key": "proof.sixty_seconds",
+      "title": "The 60-second proof",
+      "statement": "At the reference site, the VISION.md sequence (op working → hauler leaves → pirates intercept → shove spins one → rope-swing-release makes a projectile → collateral → cargo spills → hauler flees → patrol arrives → grab pod → run WANTED) occurs in a deterministic scenario with ≥ 9 of the 11 beats, and in a headed capture at the shipping camera.",
+      "target": "≥ 9 of 11 beats in a deterministic scenario plus a headed capture at the shipping camera",
+      "reachable": false,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "needs the PQ-141 60-second proof scenario, which does not exist yet. the bar is listed here for completeness; this bench cannot measure it.",
+      "fedBy": []
+    },
+    {
+      "id": "B13",
+      "key": "feel.knock_budget",
+      "title": "The player is never knocked around",
+      "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+      "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+      "reachable": true,
+      "coverage": "partial",
+      "values": [
+        {
+          "label": "contact knocks per minute on the player, crucible (worst of 9 run(s))",
+          "value": 5,
+          "unit": "events/min",
+          "met": false
+        },
+        {
+          "label": "largest single knock, fraction of cruise, crucible (worst of 9 run(s))",
+          "value": 0.04742929759131487,
+          "unit": "fraction",
+          "met": true
+        }
+      ],
+      "met": false,
+      "notes": "crucible knock counts come from short wave runs (~25 s of flight), not the contract's ten minutes of ordinary flight. the visible-jitter clause and the legible-deliberate-event clause are unbenched.",
+      "fedBy": [
+        "crucible/helios_core/energy_baseline/s8008",
+        "crucible/helios_core/physics_toolkit/s8008",
+        "crucible/helios_core/massline_rig/s8008",
+        "crucible/lagrange_crucible/energy_baseline/s8008",
+        "crucible/lagrange_crucible/physics_toolkit/s8008",
+        "crucible/lagrange_crucible/massline_rig/s8008",
+        "crucible/cinder_sluice/energy_baseline/s8008",
+        "crucible/cinder_sluice/physics_toolkit/s8008",
+        "crucible/cinder_sluice/massline_rig/s8008"
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "runRef": "crucible helios_core/energy_baseline seed 8008",
+      "bench": "crucible",
+      "arenaId": "helios_core",
+      "loadoutId": "energy_baseline",
+      "seed": 8008,
+      "runHash": "5966ca2e659e8ccb6e06704d967a45366942539a9ede95a4fbaf41458cbbf9dd",
+      "bars": [
+        {
+          "id": "B13",
+          "key": "feel.knock_budget",
+          "title": "The player is never knocked around",
+          "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+          "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "contact knocks per minute on the player, crucible (worst of 9 run(s))",
+              "value": 5,
+              "unit": "events/min",
+              "met": false
+            },
+            {
+              "label": "largest single knock, fraction of cruise, crucible (worst of 9 run(s))",
+              "value": 0.04742929759131487,
+              "unit": "fraction",
+              "met": true
+            }
+          ],
+          "met": false,
+          "notes": "crucible knock counts come from short wave runs (~25 s of flight), not the contract's ten minutes of ordinary flight. the visible-jitter clause and the legible-deliberate-event clause are unbenched.",
+          "fedBy": [
+            "crucible/helios_core/energy_baseline/s8008",
+            "crucible/helios_core/physics_toolkit/s8008",
+            "crucible/helios_core/massline_rig/s8008",
+            "crucible/lagrange_crucible/energy_baseline/s8008",
+            "crucible/lagrange_crucible/physics_toolkit/s8008",
+            "crucible/lagrange_crucible/massline_rig/s8008",
+            "crucible/cinder_sluice/energy_baseline/s8008",
+            "crucible/cinder_sluice/physics_toolkit/s8008",
+            "crucible/cinder_sluice/massline_rig/s8008"
+          ]
+        }
+      ],
+      "funMetrics": {
+        "verbsPerMinute": 7.5,
+        "verbsUsed": 3,
+        "consequencesPerAction": 1.0140845070422535,
+        "timeToFirstConsequenceS": 0.3333333333333333,
+        "momentsPerMinute": 0,
+        "nothingHappenedSeconds": 0,
+        "deathsByCause": {
+          "weapon": 71
+        },
+        "knockBudget": {
+          "eventsPerMinute": 2.5,
+          "maxDeltaVFractionOfCruise": 0.02623525219702018,
+          "headingChangeEvents": 0,
+          "met": false,
+          "source": "run"
+        },
+        "gaps": []
+      }
+    },
+    {
+      "runRef": "crucible helios_core/physics_toolkit seed 8008",
+      "bench": "crucible",
+      "arenaId": "helios_core",
+      "loadoutId": "physics_toolkit",
+      "seed": 8008,
+      "runHash": "37aa808f251c863ee6cadaac4c62f4c950024239013fd62f6da62fa13eb5ca00",
+      "bars": [
+        {
+          "id": "B13",
+          "key": "feel.knock_budget",
+          "title": "The player is never knocked around",
+          "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+          "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "contact knocks per minute on the player, crucible (worst of 9 run(s))",
+              "value": 5,
+              "unit": "events/min",
+              "met": false
+            },
+            {
+              "label": "largest single knock, fraction of cruise, crucible (worst of 9 run(s))",
+              "value": 0.04742929759131487,
+              "unit": "fraction",
+              "met": true
+            }
+          ],
+          "met": false,
+          "notes": "crucible knock counts come from short wave runs (~25 s of flight), not the contract's ten minutes of ordinary flight. the visible-jitter clause and the legible-deliberate-event clause are unbenched.",
+          "fedBy": [
+            "crucible/helios_core/energy_baseline/s8008",
+            "crucible/helios_core/physics_toolkit/s8008",
+            "crucible/helios_core/massline_rig/s8008",
+            "crucible/lagrange_crucible/energy_baseline/s8008",
+            "crucible/lagrange_crucible/physics_toolkit/s8008",
+            "crucible/lagrange_crucible/massline_rig/s8008",
+            "crucible/cinder_sluice/energy_baseline/s8008",
+            "crucible/cinder_sluice/physics_toolkit/s8008",
+            "crucible/cinder_sluice/massline_rig/s8008"
+          ]
+        }
+      ],
+      "funMetrics": {
+        "verbsPerMinute": 10,
+        "verbsUsed": 4,
+        "consequencesPerAction": 1.1126760563380282,
+        "timeToFirstConsequenceS": 0.3333333333333333,
+        "momentsPerMinute": 15,
+        "nothingHappenedSeconds": 0,
+        "deathsByCause": {
+          "weapon": 71
+        },
+        "knockBudget": {
+          "eventsPerMinute": 5,
+          "maxDeltaVFractionOfCruise": 0.03733158529604311,
+          "headingChangeEvents": 0,
+          "met": false,
+          "source": "run"
+        },
+        "gaps": []
+      }
+    },
+    {
+      "runRef": "crucible helios_core/massline_rig seed 8008",
+      "bench": "crucible",
+      "arenaId": "helios_core",
+      "loadoutId": "massline_rig",
+      "seed": 8008,
+      "runHash": "25ef2cfbd426b92f843fee165e40ba8344f22f4c4731020a8a41f55855e5ace4",
+      "bars": [
+        {
+          "id": "B13",
+          "key": "feel.knock_budget",
+          "title": "The player is never knocked around",
+          "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+          "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "contact knocks per minute on the player, crucible (worst of 9 run(s))",
+              "value": 5,
+              "unit": "events/min",
+              "met": false
+            },
+            {
+              "label": "largest single knock, fraction of cruise, crucible (worst of 9 run(s))",
+              "value": 0.04742929759131487,
+              "unit": "fraction",
+              "met": true
+            }
+          ],
+          "met": false,
+          "notes": "crucible knock counts come from short wave runs (~25 s of flight), not the contract's ten minutes of ordinary flight. the visible-jitter clause and the legible-deliberate-event clause are unbenched.",
+          "fedBy": [
+            "crucible/helios_core/energy_baseline/s8008",
+            "crucible/helios_core/physics_toolkit/s8008",
+            "crucible/helios_core/massline_rig/s8008",
+            "crucible/lagrange_crucible/energy_baseline/s8008",
+            "crucible/lagrange_crucible/physics_toolkit/s8008",
+            "crucible/lagrange_crucible/massline_rig/s8008",
+            "crucible/cinder_sluice/energy_baseline/s8008",
+            "crucible/cinder_sluice/physics_toolkit/s8008",
+            "crucible/cinder_sluice/massline_rig/s8008"
+          ]
+        }
+      ],
+      "funMetrics": {
+        "verbsPerMinute": 15,
+        "verbsUsed": 6,
+        "consequencesPerAction": 1.028169014084507,
+        "timeToFirstConsequenceS": 0.3333333333333333,
+        "momentsPerMinute": 0,
+        "nothingHappenedSeconds": 0,
+        "deathsByCause": {
+          "weapon": 71
+        },
+        "knockBudget": {
+          "eventsPerMinute": 5,
+          "maxDeltaVFractionOfCruise": 0.029350303988900237,
+          "headingChangeEvents": 0,
+          "met": false,
+          "source": "run"
+        },
+        "gaps": []
+      }
+    },
+    {
+      "runRef": "crucible lagrange_crucible/energy_baseline seed 8008",
+      "bench": "crucible",
+      "arenaId": "lagrange_crucible",
+      "loadoutId": "energy_baseline",
+      "seed": 8008,
+      "runHash": "1114d86af65284fb2e01ec266fa7c5b742f0587e0cac09739d9e76fed6bfaa5a",
+      "bars": [
+        {
+          "id": "B13",
+          "key": "feel.knock_budget",
+          "title": "The player is never knocked around",
+          "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+          "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "contact knocks per minute on the player, crucible (worst of 9 run(s))",
+              "value": 5,
+              "unit": "events/min",
+              "met": false
+            },
+            {
+              "label": "largest single knock, fraction of cruise, crucible (worst of 9 run(s))",
+              "value": 0.04742929759131487,
+              "unit": "fraction",
+              "met": true
+            }
+          ],
+          "met": false,
+          "notes": "crucible knock counts come from short wave runs (~25 s of flight), not the contract's ten minutes of ordinary flight. the visible-jitter clause and the legible-deliberate-event clause are unbenched.",
+          "fedBy": [
+            "crucible/helios_core/energy_baseline/s8008",
+            "crucible/helios_core/physics_toolkit/s8008",
+            "crucible/helios_core/massline_rig/s8008",
+            "crucible/lagrange_crucible/energy_baseline/s8008",
+            "crucible/lagrange_crucible/physics_toolkit/s8008",
+            "crucible/lagrange_crucible/massline_rig/s8008",
+            "crucible/cinder_sluice/energy_baseline/s8008",
+            "crucible/cinder_sluice/physics_toolkit/s8008",
+            "crucible/cinder_sluice/massline_rig/s8008"
+          ]
+        }
+      ],
+      "funMetrics": {
+        "verbsPerMinute": 7.5,
+        "verbsUsed": 3,
+        "consequencesPerAction": 1.028169014084507,
+        "timeToFirstConsequenceS": 0.3333333333333333,
+        "momentsPerMinute": 0,
+        "nothingHappenedSeconds": 0,
+        "deathsByCause": {
+          "weapon": 71
+        },
+        "knockBudget": {
+          "eventsPerMinute": 5,
+          "maxDeltaVFractionOfCruise": 0.030615059059547558,
+          "headingChangeEvents": 0,
+          "met": false,
+          "source": "run"
+        },
+        "gaps": []
+      }
+    },
+    {
+      "runRef": "crucible lagrange_crucible/physics_toolkit seed 8008",
+      "bench": "crucible",
+      "arenaId": "lagrange_crucible",
+      "loadoutId": "physics_toolkit",
+      "seed": 8008,
+      "runHash": "a86a2addba85282b15f2f2271ed9236496aedf34d5e687c1a2a437c7297ff3e7",
+      "bars": [
+        {
+          "id": "B13",
+          "key": "feel.knock_budget",
+          "title": "The player is never knocked around",
+          "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+          "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "contact knocks per minute on the player, crucible (worst of 9 run(s))",
+              "value": 5,
+              "unit": "events/min",
+              "met": false
+            },
+            {
+              "label": "largest single knock, fraction of cruise, crucible (worst of 9 run(s))",
+              "value": 0.04742929759131487,
+              "unit": "fraction",
+              "met": true
+            }
+          ],
+          "met": false,
+          "notes": "crucible knock counts come from short wave runs (~25 s of flight), not the contract's ten minutes of ordinary flight. the visible-jitter clause and the legible-deliberate-event clause are unbenched.",
+          "fedBy": [
+            "crucible/helios_core/energy_baseline/s8008",
+            "crucible/helios_core/physics_toolkit/s8008",
+            "crucible/helios_core/massline_rig/s8008",
+            "crucible/lagrange_crucible/energy_baseline/s8008",
+            "crucible/lagrange_crucible/physics_toolkit/s8008",
+            "crucible/lagrange_crucible/massline_rig/s8008",
+            "crucible/cinder_sluice/energy_baseline/s8008",
+            "crucible/cinder_sluice/physics_toolkit/s8008",
+            "crucible/cinder_sluice/massline_rig/s8008"
+          ]
+        }
+      ],
+      "funMetrics": {
+        "verbsPerMinute": 10,
+        "verbsUsed": 4,
+        "consequencesPerAction": 1.0985915492957747,
+        "timeToFirstConsequenceS": 0.3333333333333333,
+        "momentsPerMinute": 15,
+        "nothingHappenedSeconds": 0,
+        "deathsByCause": {
+          "weapon": 71
+        },
+        "knockBudget": {
+          "eventsPerMinute": 2.5,
+          "maxDeltaVFractionOfCruise": 0.02527349710918432,
+          "headingChangeEvents": 0,
+          "met": false,
+          "source": "run"
+        },
+        "gaps": []
+      }
+    },
+    {
+      "runRef": "crucible lagrange_crucible/massline_rig seed 8008",
+      "bench": "crucible",
+      "arenaId": "lagrange_crucible",
+      "loadoutId": "massline_rig",
+      "seed": 8008,
+      "runHash": "20c1fef66d2a39561fa339d1c7a01394a5367eb994389ba8b3601def6dd7b012",
+      "bars": [
+        {
+          "id": "B13",
+          "key": "feel.knock_budget",
+          "title": "The player is never knocked around",
+          "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+          "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "contact knocks per minute on the player, crucible (worst of 9 run(s))",
+              "value": 5,
+              "unit": "events/min",
+              "met": false
+            },
+            {
+              "label": "largest single knock, fraction of cruise, crucible (worst of 9 run(s))",
+              "value": 0.04742929759131487,
+              "unit": "fraction",
+              "met": true
+            }
+          ],
+          "met": false,
+          "notes": "crucible knock counts come from short wave runs (~25 s of flight), not the contract's ten minutes of ordinary flight. the visible-jitter clause and the legible-deliberate-event clause are unbenched.",
+          "fedBy": [
+            "crucible/helios_core/energy_baseline/s8008",
+            "crucible/helios_core/physics_toolkit/s8008",
+            "crucible/helios_core/massline_rig/s8008",
+            "crucible/lagrange_crucible/energy_baseline/s8008",
+            "crucible/lagrange_crucible/physics_toolkit/s8008",
+            "crucible/lagrange_crucible/massline_rig/s8008",
+            "crucible/cinder_sluice/energy_baseline/s8008",
+            "crucible/cinder_sluice/physics_toolkit/s8008",
+            "crucible/cinder_sluice/massline_rig/s8008"
+          ]
+        }
+      ],
+      "funMetrics": {
+        "verbsPerMinute": 15,
+        "verbsUsed": 6,
+        "consequencesPerAction": 1.0140845070422535,
+        "timeToFirstConsequenceS": 0.3333333333333333,
+        "momentsPerMinute": 0,
+        "nothingHappenedSeconds": 0,
+        "deathsByCause": {
+          "weapon": 71
+        },
+        "knockBudget": {
+          "eventsPerMinute": 2.5,
+          "maxDeltaVFractionOfCruise": 0.019632533389146983,
+          "headingChangeEvents": 0,
+          "met": false,
+          "source": "run"
+        },
+        "gaps": []
+      }
+    },
+    {
+      "runRef": "crucible cinder_sluice/energy_baseline seed 8008",
+      "bench": "crucible",
+      "arenaId": "cinder_sluice",
+      "loadoutId": "energy_baseline",
+      "seed": 8008,
+      "runHash": "4f989b8c62080da3b1e694ff708cbfbc61fecdd2c3dc36abe46c0460968e6d82",
+      "bars": [
+        {
+          "id": "B13",
+          "key": "feel.knock_budget",
+          "title": "The player is never knocked around",
+          "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+          "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "contact knocks per minute on the player, crucible (worst of 9 run(s))",
+              "value": 5,
+              "unit": "events/min",
+              "met": false
+            },
+            {
+              "label": "largest single knock, fraction of cruise, crucible (worst of 9 run(s))",
+              "value": 0.04742929759131487,
+              "unit": "fraction",
+              "met": true
+            }
+          ],
+          "met": false,
+          "notes": "crucible knock counts come from short wave runs (~25 s of flight), not the contract's ten minutes of ordinary flight. the visible-jitter clause and the legible-deliberate-event clause are unbenched.",
+          "fedBy": [
+            "crucible/helios_core/energy_baseline/s8008",
+            "crucible/helios_core/physics_toolkit/s8008",
+            "crucible/helios_core/massline_rig/s8008",
+            "crucible/lagrange_crucible/energy_baseline/s8008",
+            "crucible/lagrange_crucible/physics_toolkit/s8008",
+            "crucible/lagrange_crucible/massline_rig/s8008",
+            "crucible/cinder_sluice/energy_baseline/s8008",
+            "crucible/cinder_sluice/physics_toolkit/s8008",
+            "crucible/cinder_sluice/massline_rig/s8008"
+          ]
+        }
+      ],
+      "funMetrics": {
+        "verbsPerMinute": 7.5,
+        "verbsUsed": 3,
+        "consequencesPerAction": 1.0140845070422535,
+        "timeToFirstConsequenceS": 0.3333333333333333,
+        "momentsPerMinute": 0,
+        "nothingHappenedSeconds": 0,
+        "deathsByCause": {
+          "weapon": 71
+        },
+        "knockBudget": {
+          "eventsPerMinute": 2.5,
+          "maxDeltaVFractionOfCruise": 0.037132948912911745,
+          "headingChangeEvents": 0,
+          "met": false,
+          "source": "run"
+        },
+        "gaps": []
+      }
+    },
+    {
+      "runRef": "crucible cinder_sluice/physics_toolkit seed 8008",
+      "bench": "crucible",
+      "arenaId": "cinder_sluice",
+      "loadoutId": "physics_toolkit",
+      "seed": 8008,
+      "runHash": "c10c8c13ab2970411903d6db9e9d1e94b72adc12f1fb6671243b9a9037f93ffe",
+      "bars": [
+        {
+          "id": "B13",
+          "key": "feel.knock_budget",
+          "title": "The player is never knocked around",
+          "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+          "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "contact knocks per minute on the player, crucible (worst of 9 run(s))",
+              "value": 5,
+              "unit": "events/min",
+              "met": false
+            },
+            {
+              "label": "largest single knock, fraction of cruise, crucible (worst of 9 run(s))",
+              "value": 0.04742929759131487,
+              "unit": "fraction",
+              "met": true
+            }
+          ],
+          "met": false,
+          "notes": "crucible knock counts come from short wave runs (~25 s of flight), not the contract's ten minutes of ordinary flight. the visible-jitter clause and the legible-deliberate-event clause are unbenched.",
+          "fedBy": [
+            "crucible/helios_core/energy_baseline/s8008",
+            "crucible/helios_core/physics_toolkit/s8008",
+            "crucible/helios_core/massline_rig/s8008",
+            "crucible/lagrange_crucible/energy_baseline/s8008",
+            "crucible/lagrange_crucible/physics_toolkit/s8008",
+            "crucible/lagrange_crucible/massline_rig/s8008",
+            "crucible/cinder_sluice/energy_baseline/s8008",
+            "crucible/cinder_sluice/physics_toolkit/s8008",
+            "crucible/cinder_sluice/massline_rig/s8008"
+          ]
+        }
+      ],
+      "funMetrics": {
+        "verbsPerMinute": 10,
+        "verbsUsed": 4,
+        "consequencesPerAction": 1.0985915492957747,
+        "timeToFirstConsequenceS": 0.3333333333333333,
+        "momentsPerMinute": 15,
+        "nothingHappenedSeconds": 0,
+        "deathsByCause": {
+          "weapon": 71
+        },
+        "knockBudget": {
+          "eventsPerMinute": 2.5,
+          "maxDeltaVFractionOfCruise": 0.04041106900951085,
+          "headingChangeEvents": 0,
+          "met": false,
+          "source": "run"
+        },
+        "gaps": []
+      }
+    },
+    {
+      "runRef": "crucible cinder_sluice/massline_rig seed 8008",
+      "bench": "crucible",
+      "arenaId": "cinder_sluice",
+      "loadoutId": "massline_rig",
+      "seed": 8008,
+      "runHash": "0fbbe73525856f38f97716908c62d2ec43bd8403bb1726034378c86ac9c6d749",
+      "bars": [
+        {
+          "id": "B13",
+          "key": "feel.knock_budget",
+          "title": "The player is never knocked around",
+          "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+          "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "contact knocks per minute on the player, crucible (worst of 9 run(s))",
+              "value": 5,
+              "unit": "events/min",
+              "met": false
+            },
+            {
+              "label": "largest single knock, fraction of cruise, crucible (worst of 9 run(s))",
+              "value": 0.04742929759131487,
+              "unit": "fraction",
+              "met": true
+            }
+          ],
+          "met": false,
+          "notes": "crucible knock counts come from short wave runs (~25 s of flight), not the contract's ten minutes of ordinary flight. the visible-jitter clause and the legible-deliberate-event clause are unbenched.",
+          "fedBy": [
+            "crucible/helios_core/energy_baseline/s8008",
+            "crucible/helios_core/physics_toolkit/s8008",
+            "crucible/helios_core/massline_rig/s8008",
+            "crucible/lagrange_crucible/energy_baseline/s8008",
+            "crucible/lagrange_crucible/physics_toolkit/s8008",
+            "crucible/lagrange_crucible/massline_rig/s8008",
+            "crucible/cinder_sluice/energy_baseline/s8008",
+            "crucible/cinder_sluice/physics_toolkit/s8008",
+            "crucible/cinder_sluice/massline_rig/s8008"
+          ]
+        }
+      ],
+      "funMetrics": {
+        "verbsPerMinute": 15,
+        "verbsUsed": 6,
+        "consequencesPerAction": 1.028169014084507,
+        "timeToFirstConsequenceS": 0.3333333333333333,
+        "momentsPerMinute": 0,
+        "nothingHappenedSeconds": 0,
+        "deathsByCause": {
+          "weapon": 71
+        },
+        "knockBudget": {
+          "eventsPerMinute": 5,
+          "maxDeltaVFractionOfCruise": 0.04742929759131487,
+          "headingChangeEvents": 0,
+          "met": false,
+          "source": "run"
+        },
+        "gaps": []
+      }
+    }
+  ]
+}

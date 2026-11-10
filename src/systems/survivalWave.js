@@ -1,0 +1,2245 @@
+// Survival wave owner (PQ-133 / CRU-012 + CRU-013).
+//
+// Turns the pure plan from survivalWavePlanner into live hostiles, then reports when the wave is
+// resolved. Two rules shape the whole file:
+//
+//   * Spawning goes through spawnBudget and makeEnemySpawnSpec only (see waveMaterialization.js).
+//     A batch that the cap refuses is still DISPATCHED — waiting on bodies the cap will never
+//     allow would strand the player in `active` forever with nothing to shoot.
+//   * `run:waveCleared` is bookkeeping over THIS wave's own admitted ids. A member resolves on
+//     its entity:killed receipt; entity:destroyed stays the backstop for bodies removed without
+//     dying (sweeps, carry-overs gone stale). A corpse that lingers as a wreck — or a member
+//     whose destroy receipt never arrives — cannot hold its wave open, and a recycled id cannot
+//     drop the live body that now carries it. It is never "are there any hostiles left in the
+//     sector?" — no phase is inferred from an entity scan (§27.3).
+//
+// Never writes state.run (runSession is the sole writer) and never touches campaign economy.
+
+import { mulberry32 } from '../core/rng.js';
+import { validateRunState } from '../core/runState.js';
+import {
+  SWARM_ARRIVAL_GRACE_S,
+  SWARM_SPAWN_RETRY_TICKS,
+  noteSwarmPilotAction,
+  swarmPilotHasActed,
+  swarmPilotIsActing,
+} from './swarmSafety.js';
+import { catalogQuestionIssues } from '../data/survivalWaves.js';
+import {
+  SWARM_BOSS_ENEMY_ID,
+  SWARM_GATE_FLARE_S,
+  SWARM_LAST_THREE_DOCTRINE,
+  SWARM_LAST_THREE_MAX,
+  SWARM_LAST_THREE_OFFSCREEN_WU,
+  SWARM_WAVE_DURATION_TICKS,
+  expireSwarmPressureHold,
+  pickSwarmArchetype,
+  resetSwarmPressureState,
+  swarmCatalogIssues,
+  swarmGateFor,
+  swarmLevel,
+  swarmPressureAt,
+  swarmPressureSuppressing,
+  swarmReinforceCount,
+  tickSwarmPressureHold,
+} from '../data/swarmMode.js';
+import { validateCombatChoreography } from '../presentation/combatChoreography.js';
+import { WAVE_CLEARED_SEAM } from './survivalRun.js';
+import {
+  CIRCUIT_DEFEND_AIM_TICKS,
+  CIRCUIT_DEFEND_PURSE_CUT,
+  CIRCUIT_ESCORT_LANE,
+  CIRCUIT_ESCORT_PURSE_CUT,
+  CIRCUIT_ESCORT_SPEED,
+  CIRCUIT_VIEW_AHEAD,
+} from './survivalCircuit.js';
+import {
+  SURVIVAL_SPAWN_DISTANCE,
+  levelForWave,
+  materializeWaveBatch,
+} from './waveMaterialization.js';
+import { SWARM_THREAT_MARK_SCALE } from '../data/swarmThreatMark.js';
+import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
+import { turretLossCount } from '../combat/turretSubsystems.js';
+
+export const SURVIVAL_WAVE_OWNER_PREFIX = 'survival-wave:';
+
+// Three rooted sacs, ahead of the ship, with the far edge inside the swarm picture.
+const CIRCUIT_NODE_SPOTS = Object.freeze([
+  Object.freeze({ x: -38, z: 86 }),
+  Object.freeze({ x: 0, z: 108 }),
+  Object.freeze({ x: 40, z: 88 }),
+]);
+
+// A core that fell outside the picture is brought forward onto one of these spots.
+const CIRCUIT_CORE_SPOTS = Object.freeze([
+  Object.freeze({ x: -46, z: 64 }),
+  Object.freeze({ x: -16, z: 92 }),
+  Object.freeze({ x: 18, z: 90 }),
+  Object.freeze({ x: 48, z: 66 }),
+]);
+
+/**
+ * The opening lesson's pack hold is a ceiling, not a sentence. The tick the board has nothing
+ * left to fight — the lone hull dead or disabled — the held schedule advances to this far out,
+ * and the wave clock shrinks by the same shift, so the pack still gets its full minute measured
+ * from its own arrival. A player who shoots the wasp waits one beat, not forty-five seconds.
+ */
+export const OPENING_LESSON_RELEASE_TICKS = 3 * 60;
+
+// Re-exported so callers that already import the scale from the wave owner
+// stay on the leaf in src/data/swarmThreatMark.js. Do not redeclare 1.12 here.
+export { SWARM_THREAT_MARK_SCALE };
+// After the lesson the pack arrives in readable groups, a breath apart, instead of the whole
+// room landing on a new pilot inside one second.
+const OPENING_ARRIVAL_WINDOW_TICKS = 8 * 60;
+const OPENING_ARRIVAL_GAP_TICKS = 80;
+// Swarm fire shaping. A new pilot reads one or two guns, not ten: only the nearest few cohort
+// hulls are cleared to shoot at once (more each wave), a fresh arrival holds its guns for a beat,
+// and a hull the pilot just hit is prioritised within that cap. Independent of encounter holds.
+const SWARM_SHOOTERS_BY_WAVE = Object.freeze([2, 2, 3, 4, 5, 6, 6, 7, 8]);
+const SWARM_ARRIVAL_HOLD_S = SWARM_ARRIVAL_GRACE_S;
+const SWARM_RETURN_FIRE_S = 2;
+// A breath is SWARM_BREATH_TICKS of held stream; this window is more than two of them. A hold
+// still suppressing owed work after it is not a breath — it is the D195 stall, and the owner
+// lifts it rather than let a finite round starve on a quota nothing can deliver.
+export const SWARM_STALL_RELEASE_TICKS = 9 * 60;
+
+// S7 — the reaver's pack call: the caller announces, then its Wasps ride the ordinary stream
+// through a lit gate. 48 ticks (0.8 s) keeps the tell inside the sheet's 0.6 s floor.
+const SWARM_PACK_CALL_LEAD_TICKS = 48;
+// Called batches seed and gate off a namespace that can never collide with the plan schedule
+// or the reinforcement stream's indices.
+const SWARM_PACK_CALL_SEED_OFFSET = 0x4000;
+
+/**
+ * SWARM REINFORCEMENT (PQ-135).
+ *
+ * The arc names its batches up front. Swarm fills a finite round quota in paced groups,
+ * maintaining concurrency until that quota has arrived. All survivors must be defeated;
+ * then the player spends, refits or saves and explicitly starts the next round.
+ * Both use materializeWaveBatch and the same physical enemy/weapon builders. Legacy timed
+ * plans remain readable, but the current ruleset never ends a round over a living champion.
+ */
+function swarmStreamSeed(seed, wave, index) {
+  const label = `swarm-reinforce-v1|w${wave}|n${index}`;
+  let h = (seed >>> 0) ^ 0x85ebca6b;
+  for (let i = 0; i < label.length; i++) {
+    h = Math.imul(h ^ label.charCodeAt(i), 0x01000193);
+  }
+  return (h >>> 0) || 1;
+}
+
+function liveSurvivalRun(state) {
+  if (!state) return null;
+  const run = state.run;
+  if (!run || typeof run !== 'object' || Array.isArray(run)) return null;
+  if (run.kind !== 'survival') return null;
+  if (run.phase === 'inactive') return null;
+  if (!validateRunState(run).ok) return null;
+  return run;
+}
+
+export function waveOwnerId(wave) {
+  return `${SURVIVAL_WAVE_OWNER_PREFIX}${Number.isInteger(wave) ? wave : 0}`;
+}
+
+/**
+ * One startup audit over every content catalog this system's pipeline consumes — arc wave
+ * recipes plus the catalog-level ids they lean on (question props, role problems, endless
+ * overlays — catalogQuestionIssues already runs catalogEnemyIdIssues internally), the swarm
+ * roster + boss rotation, and the combat choreography grammars.
+ *
+ * These validators used to be test-only, so a typo'd enemyId survived until spawn time and
+ * surfaced only as a silent wasp fallback from makeEnemySpawnSpec. init() runs this once on
+ * the default route's system init and reports every issue. `opts.recipes` exists so the
+ * focused test can drive the same collector over a deliberately broken recipe list.
+ */
+export function collectContentCatalogIssues(opts = {}) {
+  const issues = [];
+  const pushAll = (source, list) => {
+    for (const item of list || []) {
+      if (!item) continue;
+      issues.push(typeof item === 'string'
+        ? { source, path: '', message: item }
+        : { source, path: item.path || '', message: item.message || String(item) });
+    }
+  };
+  pushAll('survivalWaves', catalogQuestionIssues(opts.recipes));
+  pushAll('swarmMode', swarmCatalogIssues());
+  const choreography = validateCombatChoreography();
+  if (choreography && choreography.ok === false) {
+    pushAll('combatChoreography', choreography.issues);
+  }
+  return issues;
+}
+
+// The leash is the anti-hunt instrument: every authored doctrine orbits inside ~400 WU, so a
+// cohort hull that stays past ~2.5 screens for the whole grace window is not fighting — it is
+// trailing a kiting pilot or circling a stale point. Player-truth s10-active watched wave 2 hold
+// ~11 hulls at 800–1800 WU for 200+ s under the old 1800 leash: inside it, nothing ever committed
+// and the pilot had to walk each one down. 800 still leaves a diving hull's approach untouched —
+// only a body that never re-enters the fight commits.
+const SWARM_STRAGGLER_LEASH_WU = 800;
+const SWARM_STRAGGLER_GRACE_TICKS = 8 * 60;
+// The pack's last few lights kept their orbiting pursuit long after the round clock ran out, so a
+// round with three wasps circling at 70 u/s stayed open for two more minutes (player-truth
+// m6-active). Once the clock is spent they stop circling and commit to the pilot: a climax.
+const SWARM_LAST_STAND_MAX = 3;
+const SWARM_LAST_STAND_DOCTRINE = 'brawler_commit';
+
+function playerIsAlive(state) {
+  if (!state || state.playerId == null || !state.entities || typeof state.entities.get !== 'function') {
+    return false;
+  }
+  const player = state.entities.get(state.playerId);
+  return !!(player && player.alive !== false);
+}
+
+const TRANSITIONAL_PHASES = new Set(['cleanup', 'wave_intro', 'arena_intro', 'draft', 'refit']);
+
+export const survivalWave = {
+  name: 'survivalWave',
+
+  init(ctx) {
+    this.destroy();
+    this.state = ctx.state;
+    this.bus = ctx.bus || null;
+    this.helpers = ctx.helpers || null;
+    this.ctx = ctx;
+    this._unsubs = [];
+    this._resetWave();
+    this._owners = [];
+    this._reportContentIssues();
+    if (!this.bus || typeof this.bus.on !== 'function') return;
+    this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
+    this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
+    this._unsubs.push(this.bus.on('run:transitioned', (p) => this._onTransitioned(p)));
+    this._unsubs.push(this.bus.on('run:ended', () => this._teardown()));
+    this._unsubs.push(this.bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p)));
+    this._unsubs.push(this.bus.on('entity:killed', (p) => this._onEntityKilled(p)));
+    // combat:damage is synchronous and runs before the lethal check.
+    this._unsubs.push(this.bus.on('combat:damage', (p) => this._holdLessonHull(p)));
+    // FB-024 — a capital score's wing members spawn through the score's own port, mid-wave and
+    // outside the schedule. Joining them here keeps the cohort honest: they still have to be
+    // defeated before the round clears, and their deaths resolve like any other member's.
+    this._unsubs.push(this.bus.on('survivalWave:cohortJoined', (p) => this._onCohortJoined(p)));
+  },
+
+  destroy() {
+    if (this._characterFightId) {
+      this._emit('capitalBoss:detach', { fightId: this._characterFightId });
+      this._characterFightId = null;
+    }
+    for (const off of this._unsubs || []) if (typeof off === 'function') off();
+    this._unsubs = [];
+  },
+
+  newGame() {
+    this._teardown();
+  },
+
+  update() {
+    const run = liveSurvivalRun(this.state);
+    if (!run) return;
+    // Across cleanup / introduction / auto-draft the clock is frozen, but an empty board is
+    // still an emergency. Use the carried cohort and the current plan through the same
+    // materializer so a sixty-second boundary cannot disable the refill.
+    // SWARM-08 B5 — once a timed round has CLEARED, the refill stops: its survivors carry into
+    // the next round and the armory between rounds must not quietly add bodies to them.
+    if (this._swarm && !this._swarm.killTarget && this._plan && !this._cleared
+      && TRANSITIONAL_PHASES.has(run.phase)) {
+      this._reinforceSwarm(run, { emergencyOnly: true });
+      return;
+    }
+    if (run.phase !== 'active') return;
+    if (!this._active) return;
+
+    this._cursor += 1;
+    this._maybeReleaseOpeningLesson();
+    this._dispatchDue();
+    this._shapeSwarmFire();
+    this._reinforceSwarm(run);
+    this._sweepFlares();
+    this._commitLastThree();
+    this._commitStragglers();
+    this._commitLastStand();
+    this._swarmPackCalls();
+    this._tickCircuitObjective();
+    this._publishWaveProgress();
+    this._checkCleared(run);
+    this._watchSwarmStall();
+  },
+
+  // ---- receipts -------------------------------------------------------------
+
+  _onWavePlanned(payload) {
+    const run = liveSurvivalRun(this.state);
+    if (!run) return;
+    const sourcePlan = payload && payload.plan;
+    const plan = sourcePlan && { ...sourcePlan,
+      swarm: sourcePlan.swarm ? { ...sourcePlan.swarm } : sourcePlan.swarm,
+      schedule: Array.isArray(sourcePlan.schedule) ? sourcePlan.schedule.map(entry => ({ ...entry })) : sourcePlan.schedule,
+    };
+    if (!plan || plan.ok === false || !Array.isArray(plan.schedule)) return;
+    const wave = Number.isInteger(payload.wave) ? payload.wave : run.wave;
+    if (this._wave === wave && this._plan && (this._sourcePlan === sourcePlan || this._started)) return;
+    const swarm = plan.swarm && typeof plan.swarm === 'object' ? plan.swarm : null;
+    // A swarm wave INHERITS the survivors of the last one. They were never chased down, they still
+    // hold their budget slots, and their deaths still count — so the new wave opens under the
+    // pressure the old one left behind instead of in a room that was briefly empty.
+    //
+    // SWARM-08 B5 — a Circuit survive round is timed (no quota). Its survivors must also carry
+    // INTO the following finite cohort round, which is the case a plain swarm never hit: carry
+    // when the incoming round has no quota (as before) OR when the OUTGOING round had none.
+    const incomingQuota = Number.isInteger(swarm && swarm.killTarget) && swarm.killTarget > 0;
+    const outgoingTimed = !!this._swarm && !(Number.isInteger(this._swarm.killTarget) && this._swarm.killTarget > 0);
+    const canCarry = !!swarm && !!this._swarm && (incomingQuota ? outgoingTimed : true);
+    const carried = canCarry ? this._cohort : null;
+    const carriedBosses = canCarry ? this._bossIds : null;
+    this._resetWave();
+    if (carried && carried.size > 0) this._cohort = carried;
+    // Carried members are already admitted and occupied when the new round starts: they count
+    // toward admission accounting exactly once, and their deaths still resolve the round.
+    this._carriedAdmitted = carried ? carried.size : 0;
+    // A boss that survived its own wave is still a boss. Carrying the ids keeps a later wave from
+    // treating it as ordinary chaff if it is somehow still alive.
+    if (carriedBosses && carriedBosses.size > 0) this._bossIds = carriedBosses;
+    this._wave = wave;
+    this._plan = plan;
+    this._sourcePlan = sourcePlan;
+    if (swarm && swarm.circuit && typeof swarm.circuit === 'object') {
+      swarm.circuit = {
+        ...swarm.circuit,
+        fill: 0,
+        nodesMarked: 0,
+        nodesDown: 0,
+        commanderMarked: false,
+        commanderDown: false,
+      };
+    }
+    this._swarm = swarm;
+    this._circuitCores = [];
+    this._coresFound = 0;
+    this._placeCircuitMark();
+    this._pending = plan.schedule.map((entry, index) => ({ entry, index }));
+    // A later Swarm wave opens the same way the first one does after its lesson: batch by batch,
+    // a breath apart, so the escalation reads as packs arriving instead of one dump in 3 s.
+    if (swarm && wave > 1 && !plan.openingLesson) this._spaceOpeningArrivals();
+    const rules = plan.completionRules || {};
+    const roles = Array.isArray(rules.blockingRoles) ? rules.blockingRoles : [];
+    this._blockingRoles = new Set(roles);
+    if (swarm) {
+      // A pressure hold is a breath between arrivals INSIDE one wave — never a lid on the next
+      // wave's opening. Carried across the boundary its suppressed schedule keeps the census at
+      // target, so the reservoir is never consulted and the hold cannot spend: the D195 freeze
+      // arriving on purpose instead of late. The debt is what lawfully carries — expire the
+      // clock, keep `holding`/`stored`/`killsSinceReinforce` on the books, and the new wave's
+      // first real deficit pays the owed group through the ordinary spend. A hold the old wave
+      // was not owed re-raises only if this wave earns the same air.
+      expireSwarmPressureHold();
+      const rulesDuration = Number.isInteger(rules.durationTicks) && rules.durationTicks > 0
+        ? rules.durationTicks
+        : 0;
+      const swarmDuration = Number.isInteger(swarm.durationTicks) && swarm.durationTicks > 0
+        ? swarm.durationTicks
+        : 0;
+      this._durationTicks = rulesDuration || swarmDuration || SWARM_WAVE_DURATION_TICKS;
+      const reference = Number.isInteger(swarm.rewardReferenceKills) && swarm.rewardReferenceKills > 0
+        ? swarm.rewardReferenceKills
+        : (Number.isInteger(swarm.quota) && swarm.quota > 0 ? swarm.quota : 10);
+      this._rewardReferenceKills = reference;
+      // SWARM-08 B5 — carried survivors are part of this round's planned and admitted bodies.
+      // The quota the stream owes is still exactly `killTarget` NEW arrivals; adding the carried
+      // count to BOTH sides cancels out in the stream math while keeping progress honest.
+      this._plannedBodies = (Number.isInteger(swarm.killTarget) && swarm.killTarget > 0
+        ? swarm.killTarget : reference) + (Number.isInteger(swarm.killTarget) && swarm.killTarget > 0
+        ? this._carriedAdmitted : 0);
+      this._concurrent = Number.isInteger(swarm.concurrent) && swarm.concurrent > 0
+        ? swarm.concurrent
+        : 8;
+      // The stake's pressure scale, stamped on the plan beside the concurrency it already moved.
+      // Without it the stream would chase the BASELINE pressure curve up to the scaled ceiling —
+      // a contracted 65% room that re-fills to 100% is not the contract anyone picked.
+      this._pressureScale = Number.isFinite(swarm.pressureScale) && swarm.pressureScale > 0
+        ? swarm.pressureScale
+        : 1;
+      this._reinforceGap = Number.isInteger(swarm.reinforceGapTicks) && swarm.reinforceGapTicks > 0
+        ? swarm.reinforceGapTicks
+        : 24;
+      this._reinforceBatch = Number.isInteger(swarm.reinforceBatch) && swarm.reinforceBatch > 0
+        ? swarm.reinforceBatch
+        : 3;
+      this._spawnDistance = Number.isFinite(swarm.spawnDistance) && swarm.spawnDistance > 0
+        ? swarm.spawnDistance
+        : SURVIVAL_SPAWN_DISTANCE;
+    } else {
+      // Publish the wave's planned body count so a readout can say how many are still out there.
+      this._plannedBodies = plan.schedule.reduce(
+        (sum, entry) => sum + (Number.isInteger(entry.count) ? entry.count : 0),
+        0,
+      );
+    }
+    this._publishThreat();
+  },
+
+  _onWaveStarted(payload) {
+    const run = liveSurvivalRun(this.state);
+    if (!run || run.phase !== 'active') return;
+    const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
+    if (this._plan == null || this._wave !== wave || this._started) return;
+    this._started = true;
+    this._active = true;
+    // Carried survivors were admitted into the room before this round began; count them once so
+    // a cohort round cannot clear while a carried body is still flying.
+    this._admittedTotal = this._carriedAdmitted > 0 ? this._carriedAdmitted : 0;
+    this._requestedTotal = 0;
+    this._resolved = 0;
+    this._lastThreeAnnounced = false;
+    this._flares = [];
+    this._waveStartedSimTime = this.state && Number.isFinite(this.state.simTime)
+      ? this.state.simTime
+      : 0;
+    this._lastProgressSecond = null;
+    // Dispatch tick-0 batches on the same tick the wave goes active so the fight starts
+    // immediately instead of one frame late.
+    this._cursor = 0;
+    // The opening burst counts as this wave's first reinforcement, so the stream waits one full
+    // gap before topping up rather than doubling the arrival on tick 0.
+    this._lastReinforceTick = 0;
+    this._reinforceIndex = 0;
+    this._dispatchDue();
+    this._shapeSwarmFire();
+    this._publishWaveProgress({ force: true });
+    this._checkCleared(run);
+  },
+
+  _onTransitioned(payload) {
+    const phase = payload && payload.phase;
+    if (phase === 'active') return;
+    // Leaving `active` stops dispatch. Live bodies keep their bound budget slots and release
+    // themselves through entity:destroyed; this owner is not the entity lifecycle owner.
+    this._active = false;
+  },
+
+  /** Late joins outside the schedule — today, a capital score's wing screen. */
+  _onCohortJoined(payload) {
+    if (!payload || payload.wave !== this._wave || !Array.isArray(payload.ids)) return;
+    if (!this._active || !this._cohort) return;
+    for (const id of payload.ids) {
+      if (id == null || this._cohort.has(id)) continue;
+      this._cohort.set(id, {
+        role: 'wing',
+        entity: this.state && this.state.entities && typeof this.state.entities.get === 'function'
+          ? this.state.entities.get(id) || null
+          : null,
+      });
+    }
+  },
+
+  _onEntityDestroyed(payload) {
+    const id = payload && payload.id;
+    if (id == null || !this._cohort) return;
+    const entry = this._cohort.get(id);
+    if (!entry) return;
+    // Same-tick id reuse, decided by IDENTITY. core recycles a dead body's id into freeIds
+    // immediately but QUEUES its entity:destroyed to the end of the step, so a batch dispatched
+    // in the same tick can be handed the id of a body whose removal receipt has not been
+    // delivered yet. The single-removal path stamps the destroyed object on the receipt — if
+    // that object is not the member this id currently names, the receipt belongs to a recycled
+    // predecessor and must not drop the live occupant. (spawnBudget's binding applies the same
+    // generation check; the batch sweep omits the ref, so the live-occupant guard below stays
+    // as the fallback for ref-less receipts.)
+    if (payload.entity != null && entry.entity != null && payload.entity !== entry.entity) return;
+    const live = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(id)
+      : null;
+    if (live && live !== entry.entity && live.alive !== false
+      && live.data && live.data.runCohort === 'survival') return;
+    if (live && live === entry.entity && live.alive !== false) return;
+    this._resolveCohort(id);
+  },
+
+  /**
+   * Death resolves a cohort slot at the kill, not at corpse disposal. Combat emits
+   * entity:killed synchronously while the body is still in the entity map; a hull that then
+   * lingers as a wreck — or is reaped by a path that never emits entity:destroyed — can no
+   * longer hold its wave open on a dead entry. entity:destroyed remains the backstop for
+   * removals that never went through a kill.
+   */
+  _onEntityKilled(payload) {
+    const id = payload && payload.id;
+    if (id == null || !this._cohort) return;
+    const entry = this._cohort.get(id);
+    if (!entry) return;
+    // Stale-receipt guard, same generation rule as the destroyed path: if the id already
+    // reports a different occupant, this receipt belongs to a predecessor and the live member
+    // keeps its entry. With no recorded ref, only a demonstrably dead (or gone) holder resolves.
+    const holder = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(id)
+      : null;
+    if (entry.entity && holder && holder !== entry.entity) return;
+    if (!entry.entity && holder && holder.alive !== false) return;
+    // SF-069: a receipt for a holder that is demonstrably STILL ALIVE is not a death — the same
+    // live-occupant law the destroyed path applies. Every real emitter (combat kill(), kernel
+    // onKill, damage fallbackKill) marks the body dead before emitting, so this only refuses a
+    // manufactured kill: a surviving enemy can never be counted as resolved.
+    if (holder && holder === entry.entity && holder.alive !== false) return;
+    this._resolveCohort(id);
+  },
+
+  /**
+   * A cohort clear counts disabled bodies resolved — so the clear also ends
+   * them. Without this they drift on as unowned bodies holding budget slots
+   * (slots release only on entity:destroyed) into every later round. The
+   * retirement is unattributed: no killer, so no score, no chain, no popup —
+   * but the purse still pays the resolved body and the wreck path still runs.
+   * Boss-flagged bodies are left to their own machinery, and timed rounds
+   * never call this (their survivors carry as pressure by design).
+   */
+  _retireDisabledLeftovers() {
+    if (!this._cohort || this._cohort.size === 0) return;
+    const tick = this._cursor;
+    for (const [id, member] of this._cohort.entries()) {
+      // Damage can mark the admitted hull dead before its lifecycle receipt arrives.
+      // Resolve that recorded generation before publishing the clear; aftermath may
+      // replace its id with a live wreck before the delayed receipt is delivered.
+      if (member.entity && member.entity.alive === false) {
+        this._resolveCohort(id);
+        continue;
+      }
+      if (this._bossIds && this._bossIds.has(id)) continue;
+      const entity = this._resolveCohortEntity(id, member);
+      if (!entity || entity.alive === false) {
+        this._resolveCohort(id);
+        continue;
+      }
+      const data = entity.data || {};
+      if (data.isBoss === true || data.bossId != null
+        || data.missionTag === 'capital_boss' || data.bossDressing != null) continue;
+      // A hull the morale rules routed — surrendered or broken off — resolves the round
+      // without a kill: its crew's fate belongs to the surrender-recovery/aftermath flow,
+      // and executing it here would record a death the pilot never ordered.
+      if (this._isCohortMemberOutOfFight(id, member, entity)) {
+        this._resolveCohort(id);
+        continue;
+      }
+      if (!this._isCohortMemberDisabled(id, member)) continue;
+      // The defeat the round already recorded, pronounced honestly: dead
+      // before the emit, exactly like every real emitter (SF-069).
+      entity.alive = false;
+      this._emit('entity:killed', { id, tick });
+    }
+  },
+
+  _resolveCohort(id) {
+    if (!this._cohort) return;
+    const entry = this._cohort.get(id);
+    if (!entry || !this._cohort.delete(id)) return;
+    this._noteCircuitResolution(entry);
+    this._bossIds.delete(id);
+    this._resolved += 1;
+    // S7 — the reaver's counter ships: its called Wasps scatter when it dies. The authored
+    // forceFlee egress is the existing owner — they break off and fly out, and the
+    // out-of-fight seam resolves them so the round closes on the rout, not a hunt.
+    const pack = entry.entity && entry.entity.data && entry.entity.data.calledPack;
+    if (this._swarm && Array.isArray(pack)) {
+      for (const waspId of pack) {
+        const wasp = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+          ? this.state.entities.get(waspId) : null;
+        if (!wasp || wasp.alive === false || !wasp.data) continue;
+        wasp.data.ai = wasp.data.ai || {};
+        wasp.data.ai.forceFlee = true;
+        wasp.data.ai.swarmPanicked = true;
+      }
+    }
+    this._publishThreat();
+  },
+
+  _markCircuitMember(member) {
+    const spec = this._swarm && this._swarm.circuit;
+    const entity = member && member.entity;
+    if (!spec || !entity) return;
+    if (spec.kind === 'nodes' && (spec.nodesMarked || 0) < (spec.nodeCount || 0)) {
+      member.circuitNode = true;
+      entity.data = entity.data || {};
+      entity.data.circuitNode = true;
+      entity.data.scanLabel = 'Hive node';
+      const index = spec.nodesMarked || 0;
+      const spot = CIRCUIT_NODE_SPOTS[index % CIRCUIT_NODE_SPOTS.length];
+      const player = this._playerPos();
+      const origin = player && Number.isFinite(player.x) && Number.isFinite(player.z)
+        ? player
+        : (entity.pos || { x: 0, z: 0 });
+      const radius = Number(entity.radius) > 0 ? Number(entity.radius) : 8;
+      const dist = Math.hypot(spot.x, spot.z);
+      const maxCenter = Math.max(0, CIRCUIT_VIEW_AHEAD - radius);
+      let center = dist;
+      if (center > maxCenter) center = maxCenter;
+      const outside = Math.min(radius + 8, maxCenter);
+      if (center < outside) center = outside;
+      const scale = dist > 0 ? center / dist : 1;
+      const x = origin.x + spot.x * scale;
+      const z = origin.z + spot.z * scale;
+      member.root = { x, z };
+      if (!entity.pos) entity.pos = { x, z };
+      else { entity.pos.x = x; entity.pos.z = z; }
+      if (entity.vel) { entity.vel.x = 0; entity.vel.z = 0; }
+      spec.nodesMarked = index + 1;
+    } else if (spec.kind === 'commander' && !spec.commanderMarked) {
+      member.circuitCommander = true;
+      entity.data = entity.data || {};
+      entity.data.circuitCommander = true;
+      entity.data.callsign = spec.commanderName;
+      entity.data.scanLabel = spec.commanderName;
+      spec.commanderMarked = true;
+    }
+  },
+
+  _noteCircuitResolution(entry) {
+    const spec = this._swarm && this._swarm.circuit;
+    if (!spec || !entry) return;
+    if (spec.kind === 'nodes' && entry.circuitNode) spec.nodesDown = (spec.nodesDown || 0) + 1;
+    if (spec.kind === 'commander' && entry.circuitCommander) {
+      spec.commanderDown = true;
+      this._emit('run:objectiveKill', {
+        name: spec.commanderName,
+        word: `${spec.commanderName} down`,
+      });
+    }
+    if (spec.kind === 'collect' && (this._circuitCores?.length || 0) < (spec.coreCount || 0)) {
+      const pos = entry.entity && entry.entity.pos;
+      if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) this._dropCircuitCore(pos);
+    }
+  },
+
+  _forgetSpawn(id) {
+    if (id == null) return;
+    const remove = this.helpers && this.helpers.removeEntity;
+    if (typeof remove === 'function') {
+      remove(id, { immediate: true });
+      return;
+    }
+    const entities = this.state && this.state.entities;
+    if (entities && typeof entities.delete === 'function') entities.delete(id);
+  },
+
+  /**
+   * Keep a core that already fell in front of the ship. Anything outside that picture
+   * is set down on a forward spot so the token can be seen and flown to.
+   */
+  _circuitCorePos(pos) {
+    const player = this._playerPos();
+    const radius = 6;
+    if (player && pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)
+      && Number.isFinite(player.x) && Number.isFinite(player.z)) {
+      const dx = pos.x - player.x;
+      const dz = pos.z - player.z;
+      const dist = Math.hypot(dx, dz);
+      if (dz > 16 && Math.abs(dx) <= 80 && dist > 12 && dist + radius <= CIRCUIT_VIEW_AHEAD) {
+        return { x: pos.x, z: pos.z };
+      }
+    }
+    const index = this._circuitCores ? this._circuitCores.length : 0;
+    const spot = CIRCUIT_CORE_SPOTS[index % CIRCUIT_CORE_SPOTS.length];
+    const origin = player && Number.isFinite(player.x) && Number.isFinite(player.z)
+      ? player
+      : (pos || { x: 0, z: 0 });
+    return { x: origin.x + spot.x, z: origin.z + spot.z };
+  },
+
+  /** A core is a marker in the fight, not a credit chip and not an invisible coordinate. */
+  _dropCircuitCore(pos) {
+    const placed = this._circuitCorePos(pos);
+    const core = { x: placed.x, z: placed.z, taken: false, markId: null };
+    if (!this._circuitCores) this._circuitCores = [];
+    this._circuitCores.push(core);
+    this._ensureCircuitCoreMark(core);
+  },
+
+  _ensureCircuitCoreMark(core) {
+    if (!core || core.taken) return;
+    const entities = this.state && this.state.entities;
+    const existing = core.markId != null && entities && typeof entities.get === 'function'
+      ? entities.get(core.markId)
+      : null;
+    const onSpot = existing && existing.alive !== false && existing.pos
+      && existing.collides === false && existing.physicsBody === false
+      && existing.data && existing.data.circuitCore === true
+      && Math.hypot(existing.pos.x - core.x, existing.pos.z - core.z) < 1;
+    if (onSpot) return;
+    if (core.markId != null) this._forgetSpawn(core.markId);
+    core.markId = null;
+    const spawn = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawn !== 'function') return;
+    const entity = spawn({
+      type: 'beacon',
+      pos: { x: core.x, z: core.z },
+      vel: { x: 0, z: 0 },
+      radius: 6,
+      mass: 1,
+      collides: false,
+      physicsBody: false,
+      hull: 1,
+      hullMax: 1,
+      data: {
+        parentType: 'story_prop',
+        scanLabel: 'Core',
+        storyPropKind: 'circuit_core',
+        circuitCore: true,
+        tetherable: false,
+        masslineTetherable: false,
+      },
+    });
+    core.markId = entity && entity.id != null ? entity.id : null;
+  },
+
+  _takeCircuitCore(core) {
+    if (!core || core.taken) return;
+    core.taken = true;
+    this._coresFound = (this._coresFound || 0) + 1;
+    this._forgetSpawn(core.markId);
+    core.markId = null;
+  },
+
+  _clearCircuitCores() {
+    for (const core of this._circuitCores || []) {
+      if (core && core.markId != null) this._forgetSpawn(core.markId);
+    }
+    this._circuitCores = [];
+  },
+
+  _clearCircuitMark() {
+    const id = this._circuitMarkId;
+    this._circuitMarkId = null;
+    if (id == null) return;
+    const remove = this.helpers && this.helpers.removeEntity;
+    if (typeof remove === 'function') {
+      remove(id, { immediate: true });
+      return;
+    }
+    const entities = this.state && this.state.entities;
+    if (entities && typeof entities.delete === 'function') entities.delete(id);
+  },
+
+  /** A beacon the renderer already draws, sitting on the ring or the gate. Not a combatant. */
+  _placeCircuitMark() {
+    const spec = this._swarm && this._swarm.circuit;
+    if (!spec || (spec.kind !== 'hold' && spec.kind !== 'reach')) return;
+    const spot = spec.kind === 'hold' ? spec.zone : spec.gate;
+    if (!spot || !Number.isFinite(spot.x) || !Number.isFinite(spot.z)) return;
+    const entities = this.state && this.state.entities;
+    const existing = this._circuitMarkId != null && entities && typeof entities.get === 'function'
+      ? entities.get(this._circuitMarkId)
+      : null;
+    const onSpot = existing && existing.alive !== false && existing.pos
+      && existing.collides === false && existing.physicsBody === false
+      && existing.data && existing.data.circuitMark === true
+      && Number(existing.data.ringRadius) === Number(spot.radius)
+      && Math.hypot(existing.pos.x - spot.x, existing.pos.z - spot.z) < 1;
+    if (onSpot) return;
+    if (existing) this._clearCircuitMark();
+    this._circuitMarkId = null;
+    const spawn = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawn !== 'function') return;
+    const entity = spawn({
+      type: 'beacon',
+      pos: { x: spot.x, z: spot.z },
+      vel: { x: 0, z: 0 },
+      radius: 8,
+      mass: 1,
+      collides: false,
+      physicsBody: false,
+      hull: 1,
+      hullMax: 1,
+      data: {
+        parentType: 'story_prop',
+        scanLabel: spec.kind === 'hold' ? 'Hold ring' : 'Gate',
+        storyPropKind: 'circuit_mark',
+        circuitMark: true,
+        ringRadius: spot.radius,
+        tetherable: false,
+        masslineTetherable: false,
+      },
+    });
+    this._circuitMarkId = entity && entity.id != null ? entity.id : null;
+  },
+
+  _playerPos() {
+    const state = this.state;
+    const player = state?.entities?.get?.(state.playerId);
+    if (!player || player.alive === false || !player.pos) return null;
+    return player.pos;
+  },
+
+  /** One damageable friendly hull. Missing after it has spawned counts as death. */
+  _ensureDefendBeacon() {
+    if (this._defendBeaconId != null) return false;
+    const spawn = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawn !== 'function') return false;
+    const pos = this._playerPos() || { x: 0, z: 0 };
+    const entity = spawn({
+      type: 'beacon',
+      pos: { x: pos.x, z: pos.z + 70 },
+      vel: { x: 0, z: 0 },
+      radius: 7,
+      mass: 30,
+      collides: true,
+      physicsBody: true,
+      hull: 90,
+      hullMax: 90,
+      faction: 'player',
+      data: {
+        circuitBeacon: true,
+        scanLabel: 'Beacon',
+        friendly: true,
+        tetherable: false,
+        masslineTetherable: false,
+        ai: { role: 'hold' },
+      },
+    });
+    this._defendBeaconId = entity && entity.id != null ? entity.id : null;
+    return this._defendBeaconId != null;
+  },
+
+  _defendBeaconLost() {
+    const id = this._defendBeaconId;
+    if (id == null) return false;
+    const entities = this.state && this.state.entities;
+    const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
+    if (!entity || entity.alive === false) return true;
+    return Number.isFinite(entity.hull) && entity.hull <= 0;
+  },
+
+  _aimCohortAt(id, force) {
+    if (id == null || !this._cohort) return;
+    const restamp = force || (this._cursor % CIRCUIT_DEFEND_AIM_TICKS === 0);
+    for (const member of this._cohort.values()) {
+      const entity = member && member.entity;
+      if (!entity || entity.alive === false || entity.id === id) continue;
+      if (entity.data && (entity.data.circuitBeacon || entity.data.circuitEscort)) continue;
+      if (!entity.data) entity.data = {};
+      if (!entity.data.ai || typeof entity.data.ai !== 'object') entity.data.ai = {};
+      if (!restamp && entity.data.ai.focusTargetId === id) continue;
+      entity.data.ai.focusTargetId = id;
+      entity.data.ai.targetId = id;
+    }
+  },
+
+  _aimDefendPack(force) {
+    this._aimCohortAt(this._defendBeaconId, force);
+  },
+
+  _cutCircuitPurse(reason, cap = CIRCUIT_DEFEND_PURSE_CUT) {
+    const run = liveSurvivalRun(this.state);
+    const held = run && Number.isFinite(run.credits) ? run.credits : 0;
+    const cut = Math.min(held, cap);
+    if (!(cut > 0)) return;
+    this._emit('run:spendRequested', { credits: cut, reason });
+  },
+
+  _escortEntity() {
+    const id = this._escortId;
+    if (id == null) return null;
+    const entities = this.state && this.state.entities;
+    return entities && typeof entities.get === 'function' ? entities.get(id) : null;
+  },
+
+  /** One slow unarmed hull. The lane is fixed from the ship at the moment it spawns. */
+  _ensureEscort() {
+    if (this._escortId != null) return false;
+    const spawn = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawn !== 'function') return false;
+    const pos = this._playerPos() || { x: 0, z: 0 };
+    const start = { x: pos.x, z: pos.z + CIRCUIT_ESCORT_LANE.startZ };
+    const end = { x: pos.x, z: pos.z + CIRCUIT_ESCORT_LANE.endZ };
+    const spec = this._swarm && this._swarm.circuit;
+    if (spec) {
+      spec.laneStart = start;
+      spec.laneEnd = end;
+      spec.escortSpeed = CIRCUIT_ESCORT_SPEED;
+    }
+    const entity = spawn({
+      type: 'freighter',
+      pos: { x: start.x, z: start.z },
+      vel: { x: 0, z: CIRCUIT_ESCORT_SPEED },
+      radius: 8,
+      mass: 80,
+      collides: true,
+      physicsBody: true,
+      hull: 80,
+      hullMax: 80,
+      faction: 'player',
+      data: {
+        circuitEscort: true,
+        scanLabel: 'Freighter',
+        friendly: true,
+        unarmed: true,
+        weapons: [],
+        tetherable: false,
+        masslineTetherable: false,
+        ai: { role: 'hold' },
+      },
+    });
+    this._escortId = entity && entity.id != null ? entity.id : null;
+    this._escortArrived = false;
+    return this._escortId != null;
+  },
+
+  _escortLost() {
+    const id = this._escortId;
+    if (id == null) return false;
+    const entity = this._escortEntity();
+    if (!entity || entity.alive === false) return true;
+    return Number.isFinite(entity.hull) && entity.hull <= 0;
+  },
+
+  _tickEscort() {
+    const spawned = this._ensureEscort();
+    this._aimCohortAt(this._escortId, spawned === true);
+    const entity = this._escortEntity();
+    if (!entity || entity.alive === false || this._escortArrived) return;
+    const spec = this._swarm && this._swarm.circuit;
+    const end = spec && spec.laneEnd;
+    if (!end || !entity.pos) return;
+    const dx = end.x - entity.pos.x;
+    const dz = end.z - entity.pos.z;
+    const dist = Math.hypot(dx, dz);
+    const step = CIRCUIT_ESCORT_SPEED / 60;
+    if (!(dist > step)) {
+      entity.pos.x = end.x;
+      entity.pos.z = end.z;
+      if (entity.vel) { entity.vel.x = 0; entity.vel.z = 0; }
+      this._escortArrived = true;
+      return;
+    }
+    const nx = dx / dist;
+    const nz = dz / dist;
+    entity.pos.x += nx * step;
+    entity.pos.z += nz * step;
+    if (entity.vel) {
+      entity.vel.x = nx * CIRCUIT_ESCORT_SPEED;
+      entity.vel.z = nz * CIRCUIT_ESCORT_SPEED;
+    }
+  },
+
+  _tickCircuitObjective() {
+    const spec = this._swarm && this._swarm.circuit;
+    if (!spec) return;
+    if (spec.kind === 'defend') {
+      const spawned = this._ensureDefendBeacon();
+      this._aimDefendPack(spawned === true);
+      return;
+    }
+    if (spec.kind === 'escort') {
+      this._tickEscort();
+      return;
+    }
+    if (spec.kind === 'nodes') {
+      for (const member of this._cohort.values()) {
+        if (!member.circuitNode || !member.entity || !member.root || !member.entity.pos) continue;
+        member.entity.pos.x = member.root.x;
+        member.entity.pos.z = member.root.z;
+        if (member.entity.vel) { member.entity.vel.x = 0; member.entity.vel.z = 0; }
+      }
+      return;
+    }
+    const pos = this._playerPos();
+    if ((spec.kind === 'hold' || spec.kind === 'reach') && pos) {
+      this._placeCircuitMark();
+      const zone = spec.kind === 'hold' ? spec.zone : spec.gate;
+      const inside = !!(zone && Math.hypot(pos.x - zone.x, pos.z - zone.z) <= zone.radius);
+      if (inside) spec.fill = (spec.fill || 0) + 1;
+      // The gate is a sit, the same as the hold. Leaving drains the clock; dipping in and out does not add up.
+      else spec.fill = Math.max(0, (spec.fill || 0) - 1);
+      return;
+    }
+    if (spec.kind !== 'collect' || !pos) return;
+    for (const core of this._circuitCores || []) {
+      if (core.taken) continue;
+      this._ensureCircuitCoreMark(core);
+      if (Math.hypot(pos.x - core.x, pos.z - core.z) <= 48) this._takeCircuitCore(core);
+    }
+  },
+
+  _circuitObjectiveMet() {
+    const spec = this._swarm && this._swarm.circuit;
+    if (!spec) return false;
+    if (spec.kind === 'nodes') {
+      return (spec.nodesMarked || 0) >= (spec.nodeCount || 0) && (spec.nodesDown || 0) >= (spec.nodeCount || 0);
+    }
+    if (spec.kind === 'hold' || spec.kind === 'reach') return (spec.fill || 0) >= (spec.need || 1);
+    if (spec.kind === 'collect') return (this._coresFound || 0) >= (spec.coreCount || 0);
+    if (spec.kind === 'commander') return spec.commanderMarked === true && spec.commanderDown === true;
+    return false;
+  },
+
+  /** Hand the live wave census to runSession, the only writer of state.run. */
+  _publishThreat() {
+    this._emit('run:threatRequested', {
+      threatBudget: this._plannedBodies,
+      spawnedThreat: this._admittedTotal,
+      resolvedThreat: this._resolved,
+    });
+  },
+
+  // ---- dispatch -------------------------------------------------------------
+
+  _dispatchDue() {
+    if (!this._pending || this._pending.length === 0) return;
+    const plan = this._plan;
+    if (!plan) return;
+    const run = liveSurvivalRun(this.state);
+    const seed = run && Number.isInteger(run.seed) ? run.seed : 1;
+    // The swarm always materializes at swarmLevel 1 so scaleCombatant cannot inflate hull.
+    const level = this._swarm ? swarmLevel(this._wave) : levelForWave(this._wave);
+    const ownerId = waveOwnerId(this._wave);
+    if (!this._owners.includes(ownerId)) this._owners.push(ownerId);
+
+    let write = 0;
+    for (let i = 0; i < this._pending.length; i++) {
+      const item = this._pending[i];
+      const entry = item.entry;
+      const atTick = Number.isInteger(entry.atTick) ? entry.atTick : 0;
+      if (atTick > this._cursor) {
+        this._pending[write++] = item;
+        continue;
+      }
+      const holding = this._swarm && swarmPressureSuppressing();
+      // A wipe is an earned breath, including when no hull survives. Keep scheduled
+      // bodies owed instead of silently dropping them or refilling through the hold.
+      // The flag is the RUNNING breath only: a hold whose clock is already out is owed
+      // a spend, not more suppression — work goes through so the stream can reach it.
+      if (this._swarm && holding) {
+        this._stallSuppressed = true;
+        this._pending[write++] = item;
+        continue;
+      }
+      // A swarm wave's opening burst is bounded by the SAME concurrency target the stream uses.
+      // Without this, a wave inheriting a full room from the last one would stack its own burst on
+      // top and hand the whole overflow to the spawn cap to sort out.
+      //
+      // A CHAMPION IS NEVER CLAMPED. And nothing the schedule owed is silently dropped, either:
+      // the clamp used to `continue` without re-queueing, which was catastrophic for a boss —
+      // the Dreadnought's batch once computed min(1, 18 - 20) = 0 and was thrown away,
+      // `requireBoss` had nothing to require, and the boss wave cleared on chaff. Chaff is
+      // owed too, just cheaply: a planned group the room cannot seat retries on the same
+      // short delay a held batch already rides, keeping its own roster pick and gate instead
+      // of dissolving into whatever the stream's remaining math might later approximate. The
+      // spawn budget (raised to 38 for the run) is the real authority on whether there is
+      // room, and it has plenty.
+      let count = entry.count;
+      // A debut body is owed like a champion is owed (SF-064): the wave's staged introduction
+      // must not be silently dropped because the room happened to be full when its tick came.
+      // The same debt applies to a mass-gap wall's late heavies (SF-062) — they ARE the lesson.
+      const spec = this._swarm && this._swarm.circuit;
+      const oweObjective = !!spec && (
+        (spec.kind === 'commander' && !spec.commanderMarked)
+        || (spec.kind === 'nodes' && (spec.nodesMarked || 0) < (spec.nodeCount || 0))
+      );
+      if (this._swarm && entry.champion !== true && entry.debut !== true && entry.wall !== true
+        && !entry.characterScoreId && !oweObjective) {
+        count = Math.min(count, Math.max(0, this._concurrent - this._cohort.size));
+        if (count <= 0) {
+          this._pending[write++] = { ...item, entry: { ...entry, atTick: this._cursor + SWARM_SPAWN_RETRY_TICKS } };
+          continue;
+        }
+      }
+      const capitalChampion = this._swarm
+        && entry.champion === true
+        && typeof this._swarm.bossScoreId === 'string'
+        && this._swarm.bossScoreId
+        && entry.enemyId === this._swarm.bossEnemyId;
+      const characterScore = this._swarm && typeof entry.characterScoreId === 'string'
+        && entry.characterScoreId;
+      const receipt = materializeWaveBatch(this.ctx, {
+        ownerId,
+        enemyId: entry.enemyId,
+        level,
+        count,
+        gateGroup: entry.gateGroup,
+        seed,
+        wave: this._wave,
+        packageIndex: Number.isInteger(entry.packageIndex) ? entry.packageIndex : 0,
+        batchIndex: item.index,
+        role: entry.role,
+        swarm: !!this._swarm,
+        champion: entry.champion === true,
+        distance: Number.isFinite(entry.distance) ? entry.distance : this._spawnDistance,
+        // PQ-133.08: law arenas stamp their wave-10 boss's dressing kind off this id.
+        arenaId: run && run.arenaId,
+        // FB-024: the capital champion's single hull runs the authored score. FB-027: a
+        // compositional champion's bodies carry the row's hunter trick.
+        capitalBoss: !!(capitalChampion || characterScore),
+        trickId: this._swarm && entry.champion === true && this._swarm.bossTrickId
+          ? this._swarm.bossTrickId
+          : null,
+        trickContractId: this._swarm && entry.champion === true && this._swarm.bossTrickId
+          ? `swarm:champion:w${this._wave}`
+          : null,
+      });
+      this._requestedTotal += receipt.requested;
+      this._admittedTotal += receipt.admitted;
+      for (const id of receipt.spawnedIds) {
+        // Record the spawned OBJECT, not just the id: entity ids recycle through freeIds inside
+        // a step, so the kill/destroy seams resolve membership by identity, never by id alone.
+        const admitted = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+          ? this.state.entities.get(id) || null
+          : null;
+        const member = { role: entry.role, entity: admitted };
+        this._markCircuitMember(member);
+        this._cohort.set(id, member);
+        // S7 — a called body remembers its caller so the counter can ship: the caller's
+        // ledger records it, and if the caller already died during the call beat the late
+        // arrival reads the rout and scatters with the rest of its pack.
+        if (entry.callerId != null && admitted) {
+          admitted.data = admitted.data || {};
+          admitted.data.calledBy = entry.callerId;
+          const caller = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+            ? this.state.entities.get(entry.callerId) : null;
+          if (caller && caller.data) {
+            (caller.data.calledPack = caller.data.calledPack || []).push(id);
+          }
+          if (!caller || caller.alive === false) {
+            admitted.data.ai = admitted.data.ai || {};
+            admitted.data.ai.forceFlee = true;
+            admitted.data.ai.swarmPanicked = true;
+          }
+        }
+        // The champion is the wave's WORK, not one more body in the count. Remembering which hulls
+        // they are means a kill quota met on chaff cannot end a boss wave with the boss still
+        // flying — and because the marker is a FLAG rather than an enemy id, a wave can owe a wing
+        // of three raiders exactly as easily as it owes one Dreadnought.
+        if (entry.champion === true || entry.enemyId === SWARM_BOSS_ENEMY_ID || characterScore) this._bossIds.add(id);
+      }
+      // FB-024 — the capital champion lands as an ordinary cohort body first (budget, gate,
+      // cohort stamp, `requireBoss` debt all unchanged); only then is its hull handed to the
+      // score system. Emitted once per wave — a refused/re-materialized boss rebinds the same
+      // fight id instead of minting a second fight.
+      if (capitalChampion && receipt.spawnedIds.length > 0 && !this._capitalFightId) {
+        this._capitalFightId = `swarm:w${this._wave}`;
+        this._emit('capitalBoss:start', {
+          encounterId: this._swarm.bossScoreId,
+          fightId: this._capitalFightId,
+          bossId: receipt.spawnedIds[0],
+          targetId: this.state && this.state.playerId != null ? this.state.playerId : null,
+        });
+      }
+      if (characterScore && receipt.spawnedIds.length > 0 && !this._characterFightId) {
+        this._characterFightId = `swarm:w${this._wave}:kraken`;
+        const bossId = receipt.spawnedIds[0];
+        this._emit('capitalBoss:start', { encounterId: characterScore, fightId: this._characterFightId,
+          bossId, targetId: this.state?.playerId ?? null });
+      }
+      // A champion refused by the budget is still owed; ordinary reinforcements cannot replace it.
+      // The same is true of a staged debut, a wall's heavies, or an act round's staged body: a
+      // staged body must land, not vanish. And on a finite-quota round the clamp-shaved tail of
+      // an ordinary batch is owed too — `entry.count - admitted` is what the schedule still has
+      // coming, not what the room could seat this tick.
+      const stillOwed = this._swarm?.circuit?.kind === 'commander' && !this._swarm.circuit.commanderMarked
+        || this._swarm?.circuit?.kind === 'nodes' && (this._swarm.circuit.nodesMarked || 0) < (this._swarm.circuit.nodeCount || 0);
+      const clampShaved = count < entry.count;
+      if ((this._swarm?.killTarget || stillOwed) && (receipt.deferred > 0 || clampShaved || entry.champion === true || entry.debut === true || entry.wall === true || entry.staged === true || stillOwed)
+        && receipt.admitted < entry.count) {
+        this._pending[write++] = { ...item, entry: { ...entry, count: entry.count - receipt.admitted,
+          atTick: this._cursor + SWARM_SPAWN_RETRY_TICKS } };
+      }
+      // A refused swarm batch must never shrink the planned figure — the stream will bring
+      // those bodies later, up to the finite quota.
+      if (!this._swarm) {
+        this._plannedBodies = Math.max(0, this._plannedBodies - receipt.rejected);
+      }
+      this._publishThreat();
+      if (receipt.arrival && receipt.admitted > 0) this._lightArrivalGate(receipt);
+      this._emit('run:waveMaterialized', {
+        wave: this._wave,
+        role: entry.role,
+        enemyId: entry.enemyId,
+        gateGroup: receipt.gateGroup || entry.gateGroup,
+        ...(receipt.sourceGateGroup ? { sourceGateGroup: receipt.sourceGateGroup } : {}),
+        ...(receipt.ingressPose ? { ingressPose: receipt.ingressPose } : {}),
+        ...(receipt.arrival ? { arrival: receipt.arrival } : {}),
+        atTick,
+        requested: receipt.requested,
+        admitted: receipt.admitted,
+        rejected: receipt.rejected,
+        tick: this._cursor,
+      });
+    }
+    this._pending.length = write;
+  },
+
+  /**
+   * The opening lesson is one hull the pilot is meant to shoot. A foundry collision is not
+   * that shot: idle seed 4242 loses the wasp to a wreck at sim 29.9, and the active run loses
+   * it to an asteroid at sim 8.3, three seconds after the thrust probe. Either death empties
+   * the cohort and releases the pack. This listener runs inside combat:damage, before the
+   * lethal check, so restoring hull and armor cancels that death. Shields remain a normal
+   * collision consequence because shieldDown is emitted before this listener runs.
+   * flags.invuln would also refuse the pilot's gun. The hold clock does not set _lessonReleased,
+   * so the guard has to read the clock itself; a player-attributed hit (gun or thrown rock) is the kill
+   * the lesson is for and is left alone.
+   */
+  _holdLessonHull(payload) {
+    if (!payload || !payload.origin || payload.origin.kind !== 'collision') return;
+    const lesson = this._plan && this._plan.openingLesson;
+    if (!lesson || this._lessonReleased) return;
+    if (!Number.isFinite(lesson.holdTicks) || this._cursor >= lesson.holdTicks) return;
+    const targetId = payload.targetId;
+    if (targetId == null || !this._cohort || !this._cohort.has(targetId)) return;
+    const playerId = this.state && this.state.playerId;
+    if (playerId != null && payload.attackerId === playerId) return;
+    const before = payload.before;
+    if (!before) return;
+    const target = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(targetId)
+      : null;
+    if (!target || target.alive === false) return;
+    if (Number.isFinite(before.hull)) target.hull = before.hull;
+    // snapshotVitals names this field `armor`; the entity stores it as armorHp.
+    if (Number.isFinite(before.armor)) target.armorHp = before.armor;
+    // A centerline hit zeros Power, and Power's loss drops drive and weapon together.
+    // That is "not actionable" on the next tick, which releases the pack without a kill.
+    // The destruction is still pending (it applies at tick+1), so cancelling it here
+    // leaves the hull fightable. Only this payload's subsystem is touched, and only the
+    // health this hit removed comes back — an earlier chip on that part stays gone.
+    this._cancelLessonSubsystemLoss(target, payload);
+  },
+
+  _cancelLessonSubsystemLoss(target, payload) {
+    const subsystemId = payload && payload.subsystemId;
+    if (!subsystemId) return;
+    // damageSubsystem has already subtracted `applied` from health. Zero means this hit
+    // did not consume the part, so a destroy armed earlier this tick is not ours to clear.
+    const applied = Number(payload.subsystemDamage);
+    if (!(applied > 0)) return;
+    const table = this.state && this.state.combat && this.state.combat.entities;
+    const runtime = table && table[target.id];
+    if (!runtime || !runtime.subsystems) return;
+    const subsystem = runtime.subsystems[subsystemId];
+    const tick = this.state.tick >>> 0;
+    if (!subsystem || subsystem.lastDamageTick !== tick) return;
+    const pending = subsystem.pendingTransition;
+    // Armed by this hit: damageSubsystem schedules the destroy for the next tick.
+    if (!pending || pending.destroyed !== true || pending.atTick !== tick + 1) return;
+    const restored = subsystem.health + applied;
+    const cap = Number(subsystem.maxHealth);
+    subsystem.health = cap > 0 ? Math.min(cap, restored) : restored;
+    subsystem.destroyed = false;
+    subsystem.pendingTransition = null;
+    if ((runtime.pendingSubsystemTransitionCount | 0) > 0) {
+      runtime.pendingSubsystemTransitionCount -= 1;
+    }
+  },
+
+  /**
+   * The opening lesson's hold ends the tick the board runs out of fight — the lone hull dead or
+   * disabled — rather than at the authored ceiling. Every held entry advances to one short beat
+   * out and the wave clock shrinks by the same shift. A lesson hull the budget refused to admit
+   * releases on the same rule: an empty lesson is already over.
+   */
+  _maybeReleaseOpeningLesson() {
+    const lesson = this._plan && this._plan.openingLesson;
+    if (!lesson || this._lessonReleased) return;
+    if (!Number.isFinite(lesson.holdTicks) || this._cursor >= lesson.holdTicks) return;
+    if (this._actionableCohortCount() > 0) return;
+    this._lessonReleased = true;
+    this._lessonOpenedAt = this._cursor;
+    const shift = lesson.holdTicks - (this._cursor + OPENING_LESSON_RELEASE_TICKS);
+    if (shift > 0) {
+      for (const item of this._pending) {
+        const entry = item && item.entry;
+        if (entry && Number.isInteger(entry.atTick) && entry.atTick > this._cursor) {
+          entry.atTick -= shift;
+        }
+      }
+      if (Number.isInteger(this._durationTicks) && this._durationTicks > shift) {
+        this._durationTicks -= shift;
+      }
+      if (this._swarm && Number.isInteger(this._swarm.durationTicks) && this._swarm.durationTicks > shift) {
+        this._swarm.durationTicks -= shift;
+      }
+    }
+    this._spaceOpeningArrivals();
+    this._emit('run:openingLessonReleased', { wave: this._wave, tick: this._cursor });
+  },
+
+  _shapeSwarmFire() {
+    if (!this._cohort?.size) return;
+    const state = this.state;
+    const player = state?.entities?.get?.(state.playerId);
+    if (!player || player.alive === false || !player.pos) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    // Both authored Crucible routes await this wave's first deliberate pilot act.
+    // The Gauntlet releases its ordinary full roster then; only Swarm owns the
+    // arrival grace, ranked shooter cap, and marks below.
+    if (swarmPilotIsActing(state)) noteSwarmPilotAction(state);
+    const quiet = !swarmPilotHasActed(state);
+    if (!this._swarm) {
+      for (const [id, member] of this._cohort) {
+        const entity = this._resolveCohortEntity(id, member);
+        const ai = entity && entity.alive !== false && entity.data?.ai;
+        if (!ai) continue;
+        if (quiet) {
+          ai.swarmFireHeld = true;
+          ai.swarmFireHoldUntil = now + 2 / 60;
+          member.firstActHeld = true;
+        } else if (member.firstActHeld) {
+          ai.swarmFireHeld = false;
+          ai.swarmFireHoldUntil = now;
+          member.firstActHeld = false;
+        }
+      }
+      return;
+    }
+    const rank = [];
+    for (const [id, member] of this._cohort) {
+      const entity = this._resolveCohortEntity(id, member);
+      if (!entity || entity.alive === false || !entity.pos || !entity.data?.ai) continue;
+      // A hive node is a rooted sac, not a shooter. Hold the gun for the whole round.
+      if (entity.data.circuitNode === true) {
+        entity.data.ai.swarmFireHeld = true;
+        entity.data.ai.swarmFireHoldUntil = now + 2 / 60;
+        continue;
+      }
+      // Opt-in bracket. The default plate stays on entity.radius so a hull without
+      // this field cannot grow a halo. The stroke stays just outside the hull
+      // (see SWARM_THREAT_MARK_SCALE). The in-hull glyph is what lifts the dark
+      // body off the sky; widening this rim paints the background ring.
+      const bodyR = Math.max(2, Number(entity.radius) || 2);
+      entity.data.swarmMarkRadius = bodyR * SWARM_THREAT_MARK_SCALE;
+      const ai = entity.data.ai;
+      if (!Number.isFinite(member.armedAt)) {
+        member.armedAt = Number.isFinite(ai.swarmArmedAt) ? ai.swarmArmedAt : now + SWARM_ARRIVAL_HOLD_S;
+      }
+      // A separate lease: never erase an arrival/encounter hold owned by another system.
+      // Refresh every tick so the warmup cannot expire between half-second roster updates.
+      ai.swarmFireHoldUntil = Math.max(member.armedAt, now + 2 / 60);
+      ai.swarmFireHeld = true;
+      if (quiet || member.armedAt > now) continue;
+      const boss = this._bossIds?.has(id);
+      const answering = Number.isFinite(entity.lastDamageT) && now - entity.lastDamageT < SWARM_RETURN_FIRE_S;
+      const distance = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
+      rank.push({ id, ai, key: boss ? 0 : answering ? 1 : 2, distance });
+    }
+    if (quiet) return;
+    const index = Math.max(0, Math.min(SWARM_SHOOTERS_BY_WAVE.length - 1, (this._wave | 0) - 1));
+    const character = this._characterFightId && state.capitalBossEncounters?.fights?.[this._characterFightId];
+    // LW-04 — an authored act may carry its own simultaneous-fire budget on the plan. It is a
+    // ceiling on the wave table's number, never a raise, and the character's clamps still
+    // apply on top of it. Absent or non-positive means the legacy cap, byte-identical.
+    const authored = this._swarm && Number.isInteger(this._swarm.shooterCap) && this._swarm.shooterCap > 0
+      ? this._swarm.shooterCap
+      : null;
+    const waveCap = authored != null
+      ? Math.min(SWARM_SHOOTERS_BY_WAVE[index], authored)
+      : SWARM_SHOOTERS_BY_WAVE[index];
+    // A character's readable move earns breathing room from its henchmen: three cohort
+    // shooters during the tell/attack, five while the mantle is open. Population is unchanged.
+    // LW-05 — a Kraken-sourced momentum sink outlives its cast into that open window: while the
+    // player is still hauled to the boss's frame the wave stays at tell/attack volume through
+    // recovery. Only the character's own boss extends it — a sink from any other attacker, or
+    // one already expired, restores the ordinary recovery budget.
+    const playerRuntime = state.combat && state.combat.entities
+      ? state.combat.entities[state.playerId] : null;
+    const sink = playerRuntime && playerRuntime.statuses
+      ? playerRuntime.statuses[MOMENTUM_SINK_STATUS_ID] : null;
+    const tick = Number.isInteger(state.tick) ? state.tick : Math.floor(now * 60);
+    const krakenGrip = !!sink && !!character && sink.attackerId === character.bossId
+      && (sink.expiresTick | 0) > tick;
+    const cap = character && !character.terminal && !character.suspended
+      ? Math.min(waveCap, character.phase === 'recovery' && !krakenGrip ? 5 : 3)
+      : waveCap;
+    rank.sort((a, b) => a.key - b.key || a.distance - b.distance || a.id - b.id);
+    for (let i = 0; i < rank.length; i++) {
+      if (i >= cap && rank[i].key !== 0) continue; // authored champions keep their own attack score
+      rank[i].ai.swarmFireHoldUntil = now;
+      rank[i].ai.swarmFireHeld = false;
+    }
+  },
+
+  /**
+   * The held batches would otherwise all land inside the release beat: a new pilot who just won
+   * the one-on-one meets the whole pack at once. Successive batches keep their order and their
+   * shared tick, a breath apart.
+   */
+  _spaceOpeningArrivals() {
+    const ticks = [];
+    const cursor = Number.isInteger(this._cursor) ? this._cursor : 0;
+    for (const item of this._pending) {
+      const entry = item && item.entry;
+      if (entry && Number.isInteger(entry.atTick) && entry.atTick > cursor) ticks.push(entry.atTick);
+    }
+    if (ticks.length < 2) return;
+    ticks.sort((x, y) => x - y);
+    const moved = new Map();
+    let prev = null;
+    for (const t of ticks) {
+      if (moved.has(t)) continue;
+      const next = prev == null ? t : Math.max(t, prev + OPENING_ARRIVAL_GAP_TICKS);
+      moved.set(t, next);
+      prev = next;
+    }
+    for (const item of this._pending) {
+      const entry = item && item.entry;
+      if (entry && moved.has(entry.atTick)) entry.atTick = moved.get(entry.atTick);
+    }
+  },
+
+  /**
+   * Hold the room at strength. Runs only for a swarm wave; a no-op everywhere else, including on
+   * ticks where the room is already full — the common case, and the cheap one.
+   */
+  _reinforceSwarm(run, opts = {}) {
+    if (!this._swarm || !this._plan) return;
+    const lesson = this._plan.openingLesson;
+    if (lesson && !this._lessonReleased && Number.isFinite(lesson.holdTicks)
+      && this._cursor < lesson.holdTicks) return;
+    const emergencyOnly = opts.emergencyOnly === true;
+    if (!emergencyOnly && (this._cleared || !this._active)) return;
+    if (!emergencyOnly && this._cursor < 0) return;
+    // Refill an empty active fight promptly while the quota is still owed. The finite
+    // remainder below stops arrivals after the earned clear; the armory owns that breathing room.
+    const roomIsEmpty = this._cohort.size === 0 && this._pendingBodies() === 0;
+    if (emergencyOnly && !roomIsEmpty) return;
+    let gap = this._reinforceGap;
+    if (lesson && Number.isFinite(lesson.holdTicks)) {
+      const openedAt = Number.isInteger(this._lessonOpenedAt) ? this._lessonOpenedAt : lesson.holdTicks;
+      if (this._cursor - openedAt < OPENING_ARRIVAL_WINDOW_TICKS) gap = Math.max(gap, OPENING_ARRIVAL_GAP_TICKS);
+    }
+    if (!emergencyOnly && !roomIsEmpty && this._cursor - this._lastReinforceTick < gap) return;
+
+    // Current rounds build pressure with resolved quota progress. Timed plans use elapsed
+    // time only for compatibility with older saved/replay plans.
+    const durationSeconds = this._durationSeconds();
+    const progress = this._swarm.killTarget
+      ? this._resolved / Math.max(1, this._plannedBodies)
+      : (durationSeconds > 0 ? Math.max(0, Math.min(1, this._elapsedSeconds() / durationSeconds)) : 1);
+    const target = Math.min(this._concurrent, Math.round(swarmPressureAt(this._wave, progress) * this._pressureScale));
+    const alive = this._cohort.size + this._pendingBodies();
+    if (alive >= target) {
+      // The consult is suppressed by a full ledger — but a standing breath's clock only
+      // moves inside the consult itself, so skipping it here would freeze the hold open
+      // and starve the very schedule the hold is suppressing (D195-class stall: pending
+      // counted as alive, nothing allowed to land, nothing allowed to age the hold).
+      // Tick the hold on the skipped consult so the breath still runs its four seconds.
+      tickSwarmPressureHold();
+      return;
+    }
+
+    const remaining = this._swarm.killTarget
+      ? Math.max(0, this._plannedBodies - this._admittedTotal - this._pendingBodies())
+      : target;
+    if (remaining <= 0) return;
+    const want = Math.min(remaining, swarmReinforceCount(target - alive));
+    if (want <= 0) {
+      // A zero consult is the running breath refusing a top-up — the same predicate the
+      // dispatch clamp reads. A hold whose clock is already out spends inside the consult
+      // instead (and clears `holding` there), so it never stands here refusing anything.
+      if (swarmPressureSuppressing()) this._stallSuppressed = true;
+      return;
+    }
+
+    this._lastReinforceTick = this._cursor;
+    const index = this._reinforceIndex++;
+    const seed = run && Number.isInteger(run.seed) ? run.seed : 1;
+    const rng = mulberry32(swarmStreamSeed(seed, this._wave, index));
+    // The plan's roster may carry build-pressure shares (SF-072); an unbent plan roster is
+    // weight-identical to the static one, so an unpressured run picks exactly as before.
+    let roster = this._swarm && this._swarm.roster;
+    // SF-064: while a debut is still owed, the stream must not field the specialist early —
+    // the fresh-silhouette boost would otherwise make its first sighting a mid-room batch.
+    const newcomerId = this._swarm && this._swarm.newcomer && this._swarm.newcomer.enemyId;
+    if (newcomerId && Array.isArray(roster)
+      && this._pending.some((it) => it && it.entry && it.entry.debut === true)) {
+      const held = roster.filter((entry) => entry.enemyId !== newcomerId);
+      if (held.length > 0) roster = held;
+    }
+    const archetype = pickSwarmArchetype(this._wave, rng(), roster);
+    const gateGroup = swarmGateFor(this._wave, index + 4);
+    const ownerId = waveOwnerId(this._wave);
+    if (!this._owners.includes(ownerId)) this._owners.push(ownerId);
+
+    const receipt = materializeWaveBatch(this.ctx, {
+      ownerId,
+      enemyId: archetype.enemyId,
+      level: swarmLevel(this._wave),
+      count: want,
+      gateGroup,
+      distance: this._spawnDistance,
+      seed,
+      wave: this._wave,
+      // Reinforcements live above the opening burst's package indices so their placement stream
+      // can never collide with a scheduled batch's.
+      packageIndex: 64,
+      batchIndex: index,
+      role: archetype.role,
+      swarm: true,
+      champion: false,
+      arenaId: run && run.arenaId,
+    });
+    this._requestedTotal += receipt.requested;
+    this._admittedTotal += receipt.admitted;
+    for (const id of receipt.spawnedIds) {
+      this._cohort.set(id, {
+        role: archetype.role,
+        entity: this.state && this.state.entities && typeof this.state.entities.get === 'function'
+          ? this.state.entities.get(id) || null
+          : null,
+      });
+    }
+    if (receipt.admitted > 0) {
+      this._publishThreat();
+      if (receipt.arrival) this._lightArrivalGate(receipt);
+      this._emit('run:waveMaterialized', {
+        wave: this._wave,
+        role: archetype.role,
+        enemyId: archetype.enemyId,
+        gateGroup,
+        ...(receipt.arrival ? { arrival: receipt.arrival } : {}),
+        atTick: this._cursor,
+        requested: receipt.requested,
+        admitted: receipt.admitted,
+        rejected: receipt.rejected,
+        tick: this._cursor,
+        reinforcement: true,
+      });
+    }
+  },
+
+  /**
+   * E4 — the lit gate. A swarm batch never pops in unannounced: a one-second claim-kind
+   * beacon flare stands at the exact point the group materialised, drawn by the ordinary
+   * buoy/lamp machinery and retired by the wave's own sweep after its second. It is a
+   * story-prop, not cover — no physics body, no collision.
+   */
+  _lightArrivalGate(receipt) {
+    const spawn = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawn !== 'function' || !receipt || !receipt.arrival) return;
+    const now = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
+    const flare = spawn({
+      type: 'beacon',
+      pos: { x: receipt.arrival.x, z: receipt.arrival.z },
+      vel: { x: 0, z: 0 },
+      radius: 5,
+      mass: 1e6,
+      hull: 1,
+      hullMax: 1,
+      data: {
+        parentType: 'story_prop',
+        storyPropKind: 'claim_beacon',
+        scanLabel: 'Gate flare',
+        swarmGateFlare: true,
+        gateGroup: receipt.gateGroup || null,
+        wave: this._wave,
+        expireAt: now + SWARM_GATE_FLARE_S,
+        despawnAt: now + SWARM_GATE_FLARE_S,
+      },
+    });
+    if (flare && flare.id != null) {
+      if (!this._flares) this._flares = [];
+      this._flares.push({ id: flare.id, despawnAt: now + SWARM_GATE_FLARE_S });
+    }
+  },
+
+  /**
+   * The flare is a wave-owned story-prop, not a beacons-system record — nothing else
+   * sweeps it, so the wave retires its own lights on the second they were promised for.
+   */
+  _sweepFlares() {
+    if (!this._flares || this._flares.length === 0) return;
+    const remove = this.helpers && this.helpers.removeEntity;
+    const now = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
+    let write = 0;
+    for (let i = 0; i < this._flares.length; i++) {
+      const flare = this._flares[i];
+      if (now >= flare.despawnAt) {
+        if (typeof remove === 'function') remove(flare.id);
+        continue;
+      }
+      this._flares[write++] = flare;
+    }
+    this._flares.length = write;
+  },
+
+  /**
+   * Bodies due to land inside the next `withinTicks`. A batch arriving three seconds from
+   * now is ledger debt, not present pressure — the refill consult measures the room by
+   * what can actually be in it before the next consult runs.
+   */
+  _pendingBodiesDueWithin(withinTicks) {
+    if (!this._pending || this._pending.length === 0) return 0;
+    const due = this._cursor + withinTicks;
+    let n = 0;
+    for (const item of this._pending) {
+      const entry = item && item.entry;
+      if (!entry || !Number.isInteger(entry.count)) continue;
+      const at = Number.isInteger(entry.atTick) ? entry.atTick : 0;
+      if (at <= due) n += entry.count;
+    }
+    return n;
+  },
+
+  /** Bodies the schedule still owes but has not dispatched yet. */
+  _pendingBodies() {
+    if (!this._pending || this._pending.length === 0) return 0;
+    let total = 0;
+    for (const item of this._pending) {
+      const count = item && item.entry && Number.isInteger(item.entry.count) ? item.entry.count : 0;
+      if (count > 0) total += count;
+    }
+    return total;
+  },
+
+  _resolveCohortEntity(id, member) {
+    if (member && member.entity && member.entity.alive !== false) return member.entity;
+    if (this.state && this.state.entities && typeof this.state.entities.get === 'function') {
+      const live = this.state.entities.get(id);
+      if (live) return live;
+    }
+    return member ? member.entity : null;
+  },
+
+  _isCohortMemberDisabled(id, member) {
+    const entity = this._resolveCohortEntity(id, member);
+    if (!entity) return false;
+    if (entity.alive === false) return true;
+    if (entity.disabled === true || entity.data?.disabled === true || entity.data?.neutralized === true) {
+      return true;
+    }
+    if (entity.flags && entity.flags.disabled === true) {
+      return true;
+    }
+    if (entity.data && entity.data.ai && entity.data.ai.state === 'disabled') {
+      return true;
+    }
+    const combat = this.state && this.state.combat && this.state.combat.entities
+      ? this.state.combat.entities[String(id)] : null;
+    if (combat && combat.capabilities) {
+      if (combat.capabilities.drive === false && combat.capabilities.weapon === false) {
+        return true;
+      }
+    }
+    return false;
+  },
+
+  _isCohortMemberActionable(id, member) {
+    const entity = this._resolveCohortEntity(id, member);
+    if (!entity || entity.alive === false) return false;
+    return !this._isCohortMemberOutOfFight(id, member, entity)
+      && !this._isCohortMemberDisabled(id, member);
+  },
+
+  /**
+   * A hull the morale rules already took out of the fight — surrendered or broken off —
+   * has lost the round: combatOutcome records 'surrendered'/'fled' as its terminal outcome
+   * the same way a kill is recorded, and `ai.passive` drops it out of the hostile target
+   * seam at once. Counting it as still fightable strands the wave on a non-combatant the
+   * pilot cannot even select: the round can never end through public controls. The same
+   * covers an ordinary hull's authored forceFlee retreat. Boss phases keep their existing
+   * defeat authority. `ai.fsm` alone is not trusted — tacticalAI may
+   * rewrite it next tick — so the check binds the durable morale stamps instead.
+   */
+  _isCohortMemberOutOfFight(id, _member, entity) {
+    if (!entity || !entity.data) return false;
+    if (this._bossIds && this._bossIds.has(id)) return false;
+    const data = entity.data;
+    if (data.isBoss === true || data.bossId != null
+      || data.missionTag === 'capital_boss' || data.bossDressing != null) return false;
+    const ai = data.ai;
+    if (ai && (ai.forceFlee === true || ai.pirateDisengaged === true)) return true;
+    const disengage = data.pirateDisengage;
+    return disengage?.phase === 'flee' || disengage?.phase === 'surrender';
+  },
+
+  _disabledCohortCount() {
+    if (!this._cohort || this._cohort.size === 0) return 0;
+    let count = 0;
+    for (const [id, member] of this._cohort.entries()) {
+      if (this._isCohortMemberDisabled(id, member)) count += 1;
+    }
+    return count;
+  },
+
+  /**
+   * A pilot can outrun the pack by thousands of units. Distant survivors commit to pursuit
+   * after a grace window; they remain physical members of the wave and must still be resolved.
+   */
+  /**
+   * S10 — the last three come to you. A kill-round down to SWARM_LAST_THREE_MAX or fewer
+   * actionable hulls, with every one of them sitting off-frame, commits them all to
+   * pack_pursuit: the grinder presses the ~130 WU ring instead of orbiting at range.
+   * The rule fires on count and position alone — not on the wave clock — so the tail can
+   * never hold a won round open. `swarm:lastThree` names the committed hulls once per
+   * wave for edge pointers. Hulls still on-screen leave the fight alone (the player is
+   * already engaged); hulls the deeper machinery already committed keep their doctrine.
+   */
+  _commitLastThree() {
+    if (!this._swarm || !this._swarm.killTarget || !this._cohort || this._cohort.size === 0) return;
+    const state = this.state;
+    if (!state || !state.entities) return;
+    const player = state.entities.get(state.playerId);
+    if (!player || player.alive === false || !player.pos) return;
+    const rows = [];
+    let committed = 0;
+    const off2 = SWARM_LAST_THREE_OFFSCREEN_WU * SWARM_LAST_THREE_OFFSCREEN_WU;
+    for (const [id, member] of this._cohort.entries()) {
+      if (!this._isCohortMemberActionable(id, member)) continue;
+      if (this._bossIds && this._bossIds.has(id)) return;
+      const entity = this._resolveCohortEntity(id, member);
+      if (!entity || !entity.pos) continue;
+      const data = entity && entity.data;
+      if (data && (data.isBoss === true || data.bossId != null)) return;
+      rows.push([id, member, entity]);
+      if (rows.length > SWARM_LAST_THREE_MAX) return;
+      if (data && data.ai && data.ai.swarmLastStand === true) committed++;
+      const dx = entity.pos.x - player.pos.x;
+      const dz = entity.pos.z - player.pos.z;
+      if (dx * dx + dz * dz <= off2) return; // one is still in frame — the fight is live
+    }
+    if (rows.length === 0 || committed === rows.length) return;
+    if (!this._lastThreeAnnounced) {
+      this._lastThreeAnnounced = true;
+      this._emit('swarm:lastThree', {
+        wave: this._wave,
+        ids: rows.map(([id]) => id),
+        at: rows.map(([, , entity]) => ({ x: entity.pos.x, z: entity.pos.z })),
+        tick: this._cursor,
+      });
+    }
+    for (const [, member, entity] of rows) {
+      const data = entity && entity.data;
+      if (!data || !data.ai || data.ai.swarmLastStand === true) continue;
+      data.ai.combatDoctrineId = SWARM_LAST_THREE_DOCTRINE;
+      data.ai.swarmLastStand = true;
+      if (member) member.strayTicks = 0;
+    }
+  },
+
+  _commitStragglers() {
+    if (!this._swarm || !this._swarm.killTarget || !this._cohort || this._cohort.size === 0) return;
+    // The ledger gate guards the arrival phase only: while the wave is still inside its
+    // authored duration, outstanding quota may still be inbound. Past that budget the quota
+    // is debt, not arrival — a stalled ledger (a pending batch retrying a refused arrival,
+    // clamp-dropped chaff the stream cannot refill while far stragglers hold the room) must
+    // not prevent a distant survivor from committing to the fight.
+    const pastBudget = !(this._elapsedSeconds() < this._durationSeconds());
+    if ((this._admittedTotal < this._plannedBodies || (this._pending && this._pending.length))
+      && !pastBudget) return;
+    const state = this.state;
+    if (!state || !state.entities) return;
+    const player = state.entities.get(state.playerId);
+    if (!player || player.alive === false || !player.pos) return;
+    const leash2 = SWARM_STRAGGLER_LEASH_WU * SWARM_STRAGGLER_LEASH_WU;
+    // Range first (two subtractions), the heavier actionable read only for bodies already past
+    // the leash — the whole cohort is walked each tick now that no head-count gate cuts it short.
+    for (const [id, member] of this._cohort.entries()) {
+      if (this._bossIds && this._bossIds.has(id)) continue;
+      const entity = this._resolveCohortEntity(id, member);
+      if (!entity || !entity.pos) continue;
+      const data = entity.data || {};
+      if (data.isBoss === true || data.bossId != null) continue;
+      const dx = entity.pos.x - player.pos.x;
+      const dz = entity.pos.z - player.pos.z;
+      if (dx * dx + dz * dz < leash2) { member.strayTicks = 0; continue; }
+      if (!this._isCohortMemberActionable(id, member)) continue;
+      member.strayTicks = (member.strayTicks || 0) + 1;
+      if (member.strayTicks >= SWARM_STRAGGLER_GRACE_TICKS && data.ai && data.ai.swarmLastStand !== true) {
+        data.ai.combatDoctrineId = SWARM_LAST_STAND_DOCTRINE;
+        data.ai.swarmLastStand = true;
+      }
+    }
+  },
+
+  _commitLastStand() {
+    if (!this._cohort || this._cohort.size === 0) return;
+    const swarmKillRound = !!(this._swarm && this._swarm.killTarget);
+    if (swarmKillRound) {
+      // Same stalemate as the distant pursuit above: inside the finite duration the ledger
+      // check is already implied by the clock; past it, owed quota is debt. A late tail
+      // commits regardless of what the stream still owes — it still has to be killed, and
+      // _checkCleared still waits for the full quota before clearing.
+      if (this._elapsedSeconds() < this._durationSeconds()) return;
+    } else {
+      // An ordinary/scored wave owns the same tail the swarm clock was built for: once every
+      // scheduled threat is in the field and the wave has outlived its round budget — the
+      // plan's authored completionRules.durationTicks when it declares one, else the same
+      // finite wave duration a swarm round uses — the last few live hulls stop orbiting at
+      // range and commit to the pilot. A kited survivor that holds a won round open for
+      // minutes (player-truth gauntlet-repaired: one wasp jousted 5–8 km out for 300+ s) is
+      // a cleanup chore, not a fight. Nothing is resolved or removed here: the committed
+      // body stays actionable and still has to be killed.
+      if (this._swarm) return; // a legacy timed swarm still clears on its own clock
+      if (this._pending && this._pending.length) return;
+      if (!playerIsAlive(this.state)) return;
+      const authored = this._plan && this._plan.completionRules
+        && Number.isInteger(this._plan.completionRules.durationTicks)
+        && this._plan.completionRules.durationTicks > 0
+        ? this._plan.completionRules.durationTicks : 0;
+      const budgetSeconds = authored > 0 ? authored / 60 : this._durationSeconds();
+      if (this._elapsedSeconds() < budgetSeconds) return;
+    }
+    const rows = [];
+    for (const [id, member] of this._cohort.entries()) {
+      if (!this._isCohortMemberActionable(id, member)) continue;
+      rows.push([id, member]);
+      if (rows.length > SWARM_LAST_STAND_MAX) return;
+    }
+    for (const [id, member] of rows) {
+      if (this._bossIds && this._bossIds.has(id)) continue;
+      const entity = this._resolveCohortEntity(id, member);
+      const data = entity && entity.data;
+      if (!data || !data.ai || data.ai.swarmLastStand === true) continue;
+      if (data.isBoss === true || data.bossId != null) continue;
+      // An ordinary wave also honors the staged-boss marks — a capital boss or a
+      // boss-dressed hull is never the tail this commitment exists to close.
+      if (!swarmKillRound && (data.missionTag === 'capital_boss' || data.bossDressing != null)) continue;
+      data.ai.combatDoctrineId = SWARM_LAST_STAND_DOCTRINE;
+      data.ai.swarmLastStand = true;
+    }
+  },
+
+  /**
+   * S7 — the reaver's pack call, live-route. The authored `data.reinforcements` contract is
+   * read here by the wave owner itself (the single writer of cohort spawns — the legacy
+   * ai.js consumer cannot run under the tactical backend). A caller wounded past its
+   * authored threshold announces once, then its Wasps ride the ordinary stream through a
+   * lit gate — same arrival contract as every scheduled group. `callerId` rides the pending
+   * entry so admission can stamp `data.calledBy`; the counter ("kill it and its Wasps
+   * scatter") lives in _resolveCohort through the authored forceFlee egress.
+   */
+  _swarmPackCalls() {
+    if (!this._swarm || !this._cohort || this._cohort.size === 0) return;
+    if (!Array.isArray(this._pending)) return;
+    const entities = this.state && this.state.entities;
+    if (!entities || typeof entities.get !== 'function') return;
+    const run = liveSurvivalRun(this.state);
+    const seed = run && Number.isInteger(run.seed) ? run.seed : 1;
+    for (const [id, member] of this._cohort.entries()) {
+      const entity = this._resolveCohortEntity(id, member);
+      if (!entity || entity.alive === false) continue;
+      const data = entity.data;
+      const call = data && data.reinforcements;
+      if (!call || data.swarmPackCalled === true) continue;
+      if (Number.isFinite(call.turretsLostAtLeast)) {
+        const runtime = this.state.combat && this.state.combat.entities
+          && this.state.combat.entities[String(id)];
+        if (turretLossCount(runtime) < call.turretsLostAtLeast) continue;
+      }
+      const threshold = Number.isFinite(call.hullThreshold) ? call.hullThreshold : 0.3;
+      const hullMax = Number.isFinite(entity.hullMax) && entity.hullMax > 0 ? entity.hullMax : 1;
+      if (!Number.isFinite(entity.hull) || entity.hull / hullMax > threshold) continue;
+      data.swarmPackCalled = true;
+      const index = (this._packCallIndex = (this._packCallIndex || 0) + 1);
+      const rng = mulberry32(swarmStreamSeed(seed, this._wave, SWARM_PACK_CALL_SEED_OFFSET + index));
+      const range = Array.isArray(call.count) && call.count.length >= 2 ? call.count : [1, 2];
+      const lo = Number.isFinite(range[0]) ? Math.max(1, Math.floor(range[0])) : 1;
+      const hi = Number.isFinite(range[1]) ? Math.max(lo, Math.floor(range[1])) : lo;
+      const count = lo + Math.floor(rng() * (hi - lo + 1));
+      const type = typeof call.type === 'string' ? call.type : 'wasp_swarmer';
+      const rosterRow = this._swarm && Array.isArray(this._swarm.roster)
+        ? this._swarm.roster.find((row) => row && row.enemyId === type) : null;
+      this._emit('alert', { key: 'swarm-pack-call', sev: 'danger',
+        text: 'ENEMY CALLING REINFORCEMENTS', ttl: 3 });
+      this._emit('ai:telegraph', { entityId: id, kind: 'pack_call',
+        durationTicks: SWARM_PACK_CALL_LEAD_TICKS, tick: this._cursor });
+      this._pending.push({ entry: {
+        atTick: this._cursor + SWARM_PACK_CALL_LEAD_TICKS,
+        count,
+        enemyId: type,
+        role: rosterRow && rosterRow.role,
+        gateGroup: swarmGateFor(this._wave, SWARM_PACK_CALL_SEED_OFFSET + index),
+        callerId: id,
+      }, index: SWARM_PACK_CALL_SEED_OFFSET + index });
+    }
+  },
+
+  _actionableCohortCount() {
+    if (!this._cohort || this._cohort.size === 0) return 0;
+    let count = 0;
+    for (const [id, member] of this._cohort.entries()) {
+      if (this._isCohortMemberActionable(id, member)) count += 1;
+    }
+    return count;
+  },
+
+  _checkCleared(run) {
+    if (this._cleared) return;
+    if (!this._active) return;
+    // Swarm waves clear one of two ways. A kill-target round ends when every body it admitted
+    // has RESOLVED — kills count at the kill, corpses that linger no longer stall the check.
+    // A legacy timed round clears on the duration clock: survivors are left flying and become
+    // the next wave's opening pressure. Either way a living champion keeps the wave open, and
+    // death at the boundary is a death, not a surviving-wave award.
+    if (this._swarm) {
+      if (run.phase !== 'active') return;
+      if (!playerIsAlive(this.state)) return;
+      const specKind = this._swarm.circuit?.kind;
+      if (specKind === 'defend') {
+        if (this._defendBeaconId == null) return;
+        const dead = this._defendBeaconLost();
+        const timeUp = this._elapsedTicks() >= this._durationTicks;
+        if (!dead && !timeUp) return;
+        if (dead) this._cutCircuitPurse('circuit_beacon_lost');
+        const spec = this._swarm.circuit;
+        this._cleared = true;
+        this._active = false;
+        this._publishWaveProgress({ force: true });
+        this._emit(WAVE_CLEARED_SEAM, {
+          wave: this._wave,
+          completionKind: 'defend',
+          objectiveName: null,
+          killWord: dead ? 'Beacon lost' : null,
+          found: dead ? 0 : 1,
+          total: spec.need,
+          durationTicks: this._durationTicks,
+          requested: this._requestedTotal,
+          admitted: this._admittedTotal,
+          killed: this._resolved,
+          survivors: this._cohort.size,
+          disabledSurvivors: this._disabledCohortCount(),
+          starved: false,
+          tick: this._cursor,
+          runWave: run && Number.isInteger(run.wave) ? run.wave : this._wave,
+        });
+        return;
+      }
+      if (specKind === 'escort') {
+        if (this._escortId == null) return;
+        const dead = this._escortLost();
+        const arrived = this._escortArrived === true;
+        if (!dead && !arrived) return;
+        if (dead) this._cutCircuitPurse('circuit_escort_lost', CIRCUIT_ESCORT_PURSE_CUT);
+        this._cleared = true;
+        this._active = false;
+        this._publishWaveProgress({ force: true });
+        this._emit(WAVE_CLEARED_SEAM, {
+          wave: this._wave,
+          completionKind: 'escort',
+          objectiveName: null,
+          killWord: dead ? 'Freighter lost' : null,
+          found: arrived ? 1 : 0,
+          total: 1,
+          durationTicks: this._cursor,
+          requested: this._requestedTotal,
+          admitted: this._admittedTotal,
+          killed: this._resolved,
+          survivors: this._cohort.size,
+          disabledSurvivors: this._disabledCohortCount(),
+          starved: false,
+          tick: this._cursor,
+          runWave: run && Number.isInteger(run.wave) ? run.wave : this._wave,
+        });
+        return;
+      }
+      if (specKind === 'nodes' || specKind === 'hold' || specKind === 'collect'
+        || specKind === 'commander' || specKind === 'reach') {
+        if (!this._circuitObjectiveMet()) return;
+        const spec = this._swarm.circuit;
+        this._cleared = true;
+        this._active = false;
+        this._publishWaveProgress({ force: true });
+        this._emit(WAVE_CLEARED_SEAM, {
+          wave: this._wave,
+          completionKind: specKind,
+          objectiveName: spec.commanderName || null,
+          killWord: specKind === 'commander' ? `${spec.commanderName} down` : null,
+          found: specKind === 'collect' ? this._coresFound
+            : specKind === 'nodes' ? spec.nodesDown
+              : specKind === 'commander' ? 1
+                : spec.fill,
+          total: spec.need,
+          durationTicks: this._durationTicks,
+          requested: this._requestedTotal,
+          admitted: this._admittedTotal,
+          killed: this._resolved,
+          survivors: this._cohort.size,
+          disabledSurvivors: this._disabledCohortCount(),
+          starved: false,
+          tick: this._cursor,
+          runWave: run && Number.isInteger(run.wave) ? run.wave : this._wave,
+        });
+        return;
+      }
+      const durationSeconds = this._durationSeconds();
+      if (this._swarm.killTarget) {
+        if (this._admittedTotal < this._plannedBodies || this._pending.length || this._actionableCohortCount() > 0) return;
+        this._retireDisabledLeftovers();
+      } else if (this._swarm.circuit?.kind === 'survive'
+        ? this._elapsedTicks() < this._durationTicks
+        : this._elapsedSeconds() < durationSeconds) return;
+      this._cleared = true;
+      this._active = false;
+      this._publishWaveProgress({ force: true });
+      this._emit(WAVE_CLEARED_SEAM, {
+        wave: this._wave,
+        completionKind: this._swarm.killTarget ? 'cohort' : 'duration',
+        ...(this._swarm.killTarget > 0 ? {
+          objectiveKind: this._plan?.objective?.kind || 'resolve_hostiles',
+          objectivePopulation: this._plan?.objective?.population || 'ships',
+          supplementalPopulation: this._plan?.objective?.supplementalPopulation || 'brood',
+        } : {}),
+        durationTicks: this._durationTicks,
+        requested: this._requestedTotal,
+        admitted: this._admittedTotal,
+        killed: this._resolved,
+        survivors: this._cohort.size,
+        disabledSurvivors: this._disabledCohortCount(),
+        starved: this._requestedTotal > 0 && this._admittedTotal === 0,
+        tick: this._cursor,
+        runWave: run && Number.isInteger(run.wave) ? run.wave : this._wave,
+      });
+      return;
+    }
+    if (this._pending && this._pending.length > 0) return;
+    for (const [id, member] of this._cohort.entries()) {
+      if (this._isCohortMemberActionable(id, member)) {
+        if (this._blockingRoles.size === 0 || this._blockingRoles.has(member && member.role)) return;
+      }
+    }
+    this._retireDisabledLeftovers();
+    this._cleared = true;
+    this._active = false;
+    this._emit(WAVE_CLEARED_SEAM, {
+      wave: this._wave,
+      requested: this._requestedTotal,
+      admitted: this._admittedTotal,
+      survivors: this._cohort.size,
+      disabledSurvivors: this._disabledCohortCount(),
+      // A wave the cap starved completely resolves rather than deadlocking; the receipt says so
+      // instead of leaving a silent empty wave that reads like a cleared one.
+      starved: this._requestedTotal > 0 && this._admittedTotal === 0,
+      tick: this._cursor,
+      runWave: run && Number.isInteger(run.wave) ? run.wave : this._wave,
+    });
+  },
+
+  /**
+   * D195 — a pressure hold only unwinds while the stream keeps consulting it: every breath tick
+   * is a `swarmReinforceCount` call. A hold that lands while the schedule still owes bodies can
+   * freeze instead — held batches keep the room census at target, so the decision is never
+   * reached again — and the round starves on a quota nothing can deliver. Count consecutive
+   * sim-ticks that still owe kills, where the hold suppressed a dispatch or a top-up, and no
+   * spawn or resolution landed; past a conservative window the owner lifts the hold with the
+   * same reset teardown and a fresh run already use. Any spawn or kill resets the clock.
+   */
+  _watchSwarmStall() {
+    const suppressed = this._stallSuppressed === true;
+    this._stallSuppressed = false;
+    const progressed = this._resolved !== this._stallSeenResolved
+      || this._admittedTotal !== this._stallSeenAdmitted;
+    this._stallSeenResolved = this._resolved;
+    this._stallSeenAdmitted = this._admittedTotal;
+    const quotaOwed = !!this._swarm && this._swarm.killTarget > 0
+      && !this._cleared
+      && this._resolved < this._plannedBodies;
+    if (!suppressed || !quotaOwed || progressed) {
+      this._stallTicks = 0;
+      return;
+    }
+    this._stallTicks += 1;
+    if (this._stallTicks < SWARM_STALL_RELEASE_TICKS) return;
+    const heldTicks = this._stallTicks;
+    this._stallTicks = 0;
+    // The lightest lawful release: drop the hold. Held batches dispatch on the next tick and
+    // the reservoir decision is consultable again — the stream's own law resumes the round.
+    resetSwarmPressureState();
+    this._emit('swarm:stallReleased', {
+      wave: this._wave,
+      heldTicks,
+      cause: 'pressure_hold',
+    });
+  },
+
+  // ---- lifecycle ------------------------------------------------------------
+
+  _resetWave() {
+    this._plan = null;
+    this._sourcePlan = null;
+    this._wave = 0;
+    this._pending = [];
+    this._cohort = new Map();
+    this._blockingRoles = new Set();
+    this._cursor = -1;
+    this._active = false;
+    this._started = false;
+    this._cleared = false;
+    this._admittedTotal = 0;
+    this._requestedTotal = 0;
+    this._plannedBodies = 0;
+    this._resolved = 0;
+    this._carriedAdmitted = 0;
+    this._spawnDistance = SURVIVAL_SPAWN_DISTANCE;
+    this._swarm = null;
+    this._rewardReferenceKills = 0;
+    this._durationTicks = 0;
+    this._waveStartedSimTime = null;
+    this._lastProgressSecond = null;
+    this._concurrent = 0;
+    this._pressureScale = 1;
+    this._reinforceGap = 24;
+    this._reinforceBatch = 3;
+    this._reinforceIndex = 0;
+    this._lastReinforceTick = -9999;
+    this._lessonReleased = false;
+    this._lessonOpenedAt = null;
+    this._stallSuppressed = false;
+    this._stallTicks = 0;
+    this._stallSeenResolved = 0;
+    this._stallSeenAdmitted = 0;
+    this._bossIds = new Set();
+    this._clearCircuitMark();
+    this._clearCircuitCores();
+    this._defendBeaconId = null;
+    this._escortId = null;
+    this._escortArrived = false;
+    this._coresFound = 0;
+    // A capital champion's fight record never outlives its wave: terminal, surviving or
+    // run-ended, the next wave (or teardown) starts from an empty fight ledger.
+    if (this._capitalFightId) {
+      this._emit('capitalBoss:detach', { fightId: this._capitalFightId });
+      this._capitalFightId = null;
+    }
+    if (this._characterFightId) {
+      this._emit('capitalBoss:detach', { fightId: this._characterFightId });
+      this._characterFightId = null;
+    }
+  },
+
+  _teardown() {
+    this._resetWave();
+    const budget = this.ctx && this.ctx.helpers && this.ctx.helpers.spawnBudget;
+    if (budget && typeof budget.release === 'function') {
+      for (const ownerId of this._owners || []) budget.release(ownerId);
+    }
+    this._owners = [];
+  },
+
+  /**
+   * Startup content audit — runs once per system init (the default route's boot). Reports are
+   * loud but NEVER thrown: a typo'd catalog row must light up the log, not kill the route.
+   * Channels: one console.error summary, one console.warn per issue (systems-style warn), and
+   * a `survival:contentIssues` bus event for observers/diagnostics.
+   */
+  _reportContentIssues() {
+    let issues = null;
+    try {
+      issues = collectContentCatalogIssues();
+    } catch (err) {
+      try {
+        if (typeof console !== 'undefined' && console.error) {
+          console.error('[survivalWave] content catalog audit failed to run', err);
+        }
+      } catch { /* reporting must never throw */ }
+      return;
+    }
+    if (!issues || issues.length === 0) return;
+    try {
+      if (typeof console !== 'undefined' && console.error) {
+        console.error(`[survivalWave] content catalog audit: ${issues.length} issue(s)`);
+      }
+      if (typeof console !== 'undefined' && console.warn) {
+        for (const item of issues) {
+          const where = item.path ? `${item.source}.${item.path}` : item.source;
+          console.warn(`[survivalWave] content issue ${where}: ${item.message}`);
+        }
+      }
+      this._emit('survival:contentIssues', { issues });
+    } catch { /* reporting must never throw */ }
+  },
+
+  _emit(event, payload) {
+    if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(event, payload);
+  },
+
+  _elapsedSeconds() {
+    const start = this._waveStartedSimTime;
+    const now = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    if (Number.isFinite(start)) {
+      const fromSim = now - start;
+      if (fromSim > 0) return fromSim;
+    }
+    // Focused harnesses that do not tick core still advance `_cursor` during active combat.
+    return this._cursor > 0 ? this._cursor / 60 : 0;
+  },
+
+  _durationSeconds() {
+    const ticks = Number.isInteger(this._durationTicks) && this._durationTicks > 0
+      ? this._durationTicks
+      : SWARM_WAVE_DURATION_TICKS;
+    return ticks / 60;
+  },
+
+  _elapsedTicks() {
+    // Circuit duration is an exact count of active 60 Hz updates. Subtracting accumulated
+    // simTime seconds can leave tick 3,600 just below sixty seconds and delay the clear.
+    // Use the same count for completion and the HUD; ordinary Swarm keeps its clock contract.
+    const circuitKind = this._swarm?.circuit?.kind;
+    if (circuitKind === 'survive' || circuitKind === 'defend') return Math.max(0, this._cursor);
+    return Math.max(0, Math.floor(this._elapsedSeconds() * 60 + 1e-9));
+  },
+
+  _publishWaveProgress({ force = false } = {}) {
+    if (!this._swarm) return;
+    // SWARM-08 B5 — the journey descriptor rides every progress receipt so a HUD can name the
+    // stage and local round while paused on the armory (the plan itself is not replayed).
+    const spec = this._swarm.circuit && typeof this._swarm.circuit === 'object' ? this._swarm.circuit : null;
+    const circuit = spec
+      ? { stage: spec.stage, localRound: spec.localRound, kind: spec.kind }
+      : null;
+    if (spec && (spec.kind === 'collect' || spec.kind === 'hold' || spec.kind === 'reach'
+      || spec.kind === 'nodes' || spec.kind === 'commander')) {
+      const found = spec.kind === 'collect' ? (this._coresFound || 0)
+        : spec.kind === 'nodes' ? (spec.nodesDown || 0)
+          : spec.kind === 'commander' ? (spec.commanderDown ? 1 : 0)
+            : (spec.fill || 0);
+      const total = spec.kind === 'collect' ? spec.coreCount
+        : spec.kind === 'nodes' ? spec.nodeCount
+          : (spec.need || 1);
+      const stamp = `${spec.kind}:${found}`;
+      if (!force && stamp === this._lastProgressSecond) return;
+      this._lastProgressSecond = stamp;
+      this._emit('run:waveProgress', {
+        wave: this._wave,
+        completionKind: spec.kind,
+        found,
+        total,
+        remainingTicks: spec.kind === 'hold' || spec.kind === 'reach' ? Math.max(0, (spec.need || 0) - found) : null,
+        durationTicks: spec.kind === 'hold' || spec.kind === 'reach' ? spec.need : null,
+        killWord: spec.kind === 'commander' ? spec.commanderName : null,
+        circuit,
+      });
+      return;
+    }
+    if (this._plan?.swarm?.killTarget > 0) {
+      const remaining = Math.max(0, this._plannedBodies - this._resolved);
+      if (!force && remaining === this._lastProgressSecond) return;
+      this._lastProgressSecond = remaining;
+      this._emit('run:waveProgress', {
+        wave: this._wave,
+        remaining,
+        total: this._plannedBodies,
+        completionKind: 'cohort',
+        objectiveKind: this._plan?.objective?.kind || 'resolve_hostiles',
+        objectivePopulation: this._plan?.objective?.population || 'ships',
+        supplementalPopulation: this._plan?.objective?.supplementalPopulation || 'brood',
+        circuit,
+      });
+      return;
+    }
+    const durationTicks = Number.isInteger(this._durationTicks) && this._durationTicks > 0
+      ? this._durationTicks
+      : SWARM_WAVE_DURATION_TICKS;
+    const remainingTicks = Math.max(0, durationTicks - this._elapsedTicks());
+    const displaySecond = Math.ceil(remainingTicks / 60);
+    if (!force && displaySecond === this._lastProgressSecond) return;
+    this._lastProgressSecond = displaySecond;
+    this._emit('run:waveProgress', {
+      wave: this._wave,
+      remainingTicks,
+      durationTicks,
+      completionKind: 'duration',
+      circuit,
+    });
+  },
+};

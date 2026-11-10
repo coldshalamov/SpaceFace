@@ -1,0 +1,1 @@
+ktxid.mjs over all 259 git-tracked render.glb: checked 259 failed 0 (bytes handed to KTX2Loader identical ON vs OFF; e.g. aftermath-aft-weapon-spar: 9 images, parser bufferViews cached 30 -> 21)

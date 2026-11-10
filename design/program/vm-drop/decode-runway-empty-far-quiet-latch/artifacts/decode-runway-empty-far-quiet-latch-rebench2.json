@@ -1,0 +1,26 @@
+{
+  "empty": {
+    "label": "empty-far-decode-runway",
+    "beforeMed": 22.061,
+    "afterMed": 2.362,
+    "medianSpeedup": 9.338,
+    "minSpeedup": 3.066,
+    "maxSpeedup": 10.342,
+    "beforeLatched": false,
+    "afterLatched": true,
+    "afterFarRows": 0
+  },
+  "withFar": {
+    "label": "with-far-rows",
+    "beforeMed": 20.837,
+    "afterMed": 20.69,
+    "medianSpeedup": 1.007,
+    "minSpeedup": 0.876,
+    "maxSpeedup": 1.061,
+    "beforeLatched": false,
+    "afterLatched": false,
+    "afterFarRows": 24
+  },
+  "iters": 60000,
+  "runs": 11
+}

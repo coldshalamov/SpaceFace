@@ -1,0 +1,3012 @@
+import { maxAffordableQuantity } from '../../../economy/tradePlanning.js';
+import { MARKET_FILTERS, marketFamily, marketBrowserHtml, marketRowHtml, marketQuoteHtml, marketTradeHtml, marketReceiptRow as rowKV, saleLineHtml, rememberedSurveyFreshness } from '../../views/marketPresentation.js';
+import { marketFrameHtml } from '../../views/stationFrames.js';
+// src/ui/station/screens/market.js — "Market": the dense register (Frontend Task C §1.3).
+// Left half: the commodity table — name, buy, sell, stock, held — twelve rows visible with hairlines,
+// the selected row marked by a gold rule on its left edge. Right half: the selected commodity's name
+// at screen-title size and its price at hero size, one sentence of why, and Buy and Sell as two
+// words with a quantity beside them. Emits ui:buy / ui:sell {commodityId, qty}; the trade math, the
+// quotes and the route logic are untouched. Field Hardware chrome (kit plates, keys, quiet type)
+// is pinned from this module; buy/sell stay the same verbs.
+import { COMMODITIES, commodityPresentationFor } from '../../../data/commodities.js';
+import { createLaunderService, requestLaunderQuote } from '../launderService.js';
+import { canLaunderSalvageAtStation } from '../../../data/salvageLegality.js';
+import { FACTION_LABELS } from '../../../data/encounters.js';
+import { volatileClassOf } from '../../../data/commodityVolatileClasses.js';
+import { fragileCargoGlyphFor } from '../../../systems/fragileCargo.js';
+import { injectOrreryMarket, qtyFromDialPoint, setQtyDial } from '../../orrery/marketLayouts.js';
+import { syncScrollExtent } from '../../orrery/scrollExtent.js';
+import { injectStationMarketLayouts } from '../../orrery/station-marketLayouts.js';
+import { isPhoneLayout } from '../../../systems/mobile/model.js';
+import { dressLampKey } from '../../orrery/lampKey.js';
+import { arcD, polar } from '../../orrery/svg.js';
+import { SECTORS } from '../../../data/sectors.js';
+import { isUnsellableCargo, releasableContractUnits, reservedCargoQuantity, sellableCargoQuantity } from '../../../systems/cargo.js';
+import { compareDockedFreight, formatFreightComparison, marketStockStatus } from '../../../systems/economy.js';
+import { economyPulseReport } from '../../../economy/economyPulse.js';
+import { marketPulseRead, marketPulseHtml } from '../../marketPulsePresenter.js';
+import { partialDeliverySettlement } from '../../../systems/missions.js';
+import { predictPriceCurve, regimeLabel } from '../../../systems/economyCycles.js';
+import { escapeHtml } from '../../comms.js';
+import { entitySpanHtml } from '../../entityResolver.js';
+import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
+import { focusNamedStationControl } from '../../outfittingSpendConfirm.js';
+import { mountDataState } from '../../uiPrimitives.js';
+import { renderAdBoardNotice } from '../adBoard.js';
+import { lastMoveCause, marketQuoteValue, presentMarketDrivers, reputationFromQuotes } from '../../marketDriverPresenter.js';
+import { latestTradeReceipt } from '../../sim/tradeTruth.js';
+import { clearTradeExpectation, TRADE_EXPECTATION_KEY } from '../tradeReceipt.js';
+import { presentCommodityIntel, presentInspectorRows } from '../../marketIntelPresenter.js';
+import { starvedNeedLine } from '../../worldNewsBeats.js';
+// Trade-route intel + course plotting reuse the canonical market logic (same waypoint/ui:setCourse
+// contract the legacy panel used) — never re-derive routes or nav here.
+import { computeBestTrades, applyTradeNavigation, formatRouteCard, routeIsActionable } from '../../market/tradeLogic.js';
+import { chooseAdventureDecision, presentSurfaceDecisions } from '../../adventureDecisions.js';
+import {
+  dressState,
+  ensureInteriorStyle,
+  paintHero,
+  paintInput,
+  paintKey,
+  paintLegend,
+  paintMarking,
+  paintPlate,
+  paintRow,
+  paintSelectedTableRow,
+  pinKeyrack,
+  syncKeys,
+} from './fhChrome.js';
+import { bindStationMarkup, stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
+import { laneCommandSink, laneRpc, nextLaneToken } from '../../../core/simLaneCommands.js';
+// DUST P5: the register's category glyphs (one distinct silhouette per catalogue category)
+// graft into the presentation layer's row HTML — the row's author stays marketPresentation.js.
+import { applyCommodityGlyph } from '../../icons/index.js';
+
+const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+function marketIntentSessionToken() {
+  const cryptoApi = globalThis.crypto;
+  if (cryptoApi && typeof cryptoApi.randomUUID === 'function') return cryptoApi.randomUUID();
+  if (cryptoApi && typeof cryptoApi.getRandomValues === 'function') {
+    const bytes = cryptoApi.getRandomValues(new Uint8Array(16));
+    return Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('');
+  }
+  // Legacy runtime fallback; include independent entropy as well as the lane token's clock/seq.
+  return `${Math.random().toString(36).slice(2)}:${nextLaneToken('marketSession')}`;
+}
+const MARKET_INTENT_SESSION = marketIntentSessionToken();
+const STATION_NAME = new Map();
+const STATION_TYPE = new Map();
+for (const sec of SECTORS) {
+  for (const s of (sec.stations || [])) {
+    STATION_NAME.set(s.id, s.name || s.id);
+    if (s.type) STATION_TYPE.set(s.id, s.type);
+  }
+}
+
+
+// Meaning roles kept for the instrument-hierarchy tests and the help screen's shared vocabulary.
+export function chartTrendRole(up) { return up ? 'you' : 'foe'; }
+export function chartTrendColor(up) { return up ? 'var(--dp-lamp)' : 'var(--dp-danger)'; }
+export { maxAffordableQuantity } from '../../../economy/tradePlanning.js';
+
+// The market screen's own count and age words (words-yard-count-lines): the route's
+// review verb can count to one ("Review 1 unit of …"), and the chart cursor reads a
+// sample's age in words instead of a stopwatch "25 s ago". Pure text — exported so the
+// focused test reads exactly what the screen says, cursor label and screen-reader
+// label alike.
+export function reviewLoadLabel(units, name) {
+  const n = Math.max(0, Math.floor(Number(units) || 0));
+  const good = String(name || '').trim() || 'cargo';
+  return n === 1 ? `Review 1 unit of ${good}` : `Review ${n} units of ${good}`;
+}
+
+export function sampleAgeLabel(sec, kind) {
+  const n = Number(sec);
+  if (!Number.isFinite(n)) return kind === 'f' ? 'forecast' : '';
+  if (kind === 'f') {
+    if (n <= 0) return 'now';
+    const ahead = Math.max(1, Math.round(n / 60));
+    return ahead === 1 ? 'in 1 minute' : `in ${ahead} minutes`;
+  }
+  const ago = -n;
+  if (ago < 20) return 'now';
+  if (ago < 90) {
+    const s = Math.round(ago);
+    return s === 1 ? '1 second ago' : `${s} seconds ago`;
+  }
+  const m = Math.round(ago / 60);
+  return m === 1 ? '1 minute ago' : `${m} minutes ago`;
+}
+
+// Reveal the selected commodity without scrolling the station's outer body or header.
+export function revealMarketRowInRail(rail, row) {
+  if (!rail || !row || typeof rail.getBoundingClientRect !== 'function'
+    || typeof row.getBoundingClientRect !== 'function') return;
+  const box = rail.getBoundingClientRect();
+  const selected = row.getBoundingClientRect();
+  const scale = rail.offsetHeight > 0 ? box.height / rail.offsetHeight : 1;
+  if (!(scale > 0) || !(rail.clientHeight > 0)) return;
+  const top = box.top + (rail.clientTop || 0) * scale;
+  const bottom = top + rail.clientHeight * scale;
+  const delta = selected.top < top ? selected.top - top
+    : selected.bottom > bottom ? selected.bottom - bottom : 0;
+  if (!delta) return;
+  const max = Math.max(0, rail.scrollHeight - rail.clientHeight);
+  rail.scrollTop = Math.max(0, Math.min(max, rail.scrollTop + delta / scale));
+}
+/**
+ * INF-084: the stated-terms binding for the go handler. Returns the rounded quoted
+ * total when the stashed render quote covers exactly the confirmed quantity, else
+ * undefined (no binding — the authority settles at the live price, as before).
+ */
+export function expectedTotalForTerms(lastQuotedTerms, qty, commodityId) {
+  if (!lastQuotedTerms || lastQuotedTerms.qty !== qty) return undefined;
+  if (commodityId != null && lastQuotedTerms.commodityId != null && lastQuotedTerms.commodityId !== commodityId) return undefined;
+  const total = Math.round(Number(lastQuotedTerms.total));
+  return Number.isFinite(total) && total >= 0 ? total : undefined;
+}
+
+/**
+ * The receipt and the commit name one commodity. A refresh that drops the lot does not
+ * adopt the next row; a filter that only hides it keeps the same trade.
+ */
+export function resolveMarketSelection({ selectedId = null, visibleIds = [], tradedIds = [] } = {}) {
+  const visible = Array.isArray(visibleIds) ? visibleIds.filter(Boolean) : [];
+  const traded = Array.isArray(tradedIds) ? tradedIds.filter(Boolean) : [];
+  if (!selectedId) {
+    const first = visible[0] || traded[0] || null;
+    return { selectedId: first, tradeId: first, focusId: first, cleared: false, adoptedInitial: !!first };
+  }
+  if (traded.includes(selectedId)) {
+    return {
+      selectedId,
+      tradeId: selectedId,
+      focusId: visible.includes(selectedId) ? selectedId : (visible[0] || selectedId),
+      cleared: false,
+      adoptedInitial: false,
+    };
+  }
+  return {
+    selectedId,
+    tradeId: null,
+    focusId: visible[0] || traded[0] || null,
+    cleared: true,
+    adoptedInitial: false,
+  };
+}
+
+/**
+ * A full paint may lift an empty quantity to one unit. It must not rewrite a named
+ * quantity down to whatever the hold or the shelf can take.
+ */
+export function marketQuantityAfterRefresh(qty, maxQty) {
+  const named = Math.floor(Number(qty));
+  const limit = Math.floor(Number(maxQty));
+  const safeNamed = Number.isFinite(named) ? Math.max(0, named) : 0;
+  const safeLimit = Number.isFinite(limit) ? Math.max(0, limit) : 0;
+  if (safeNamed < 1 && safeLimit >= 1) return 1;
+  return safeNamed;
+}
+
+/** A quote can commit only when it fills the named quantity on the named side. A short fill does not. */
+export function marketQuoteIsExecutable(quote, qty, side) {
+  if (!quote || quote.ok !== true || quote.partial === true) return false;
+  const named = Math.floor(Number(qty));
+  if (!Number.isFinite(named) || named <= 0) return false;
+  if (Math.floor(Number(quote.qty)) !== named) return false;
+  if (side != null && quote.side != null && quote.side !== side) return false;
+  return true;
+}
+
+/**
+ * Returning to the market keeps the lot and quantity already on screen.
+ * A requested mode, a job commodity, or a tracked contract applies only while
+ * nothing is selected yet.
+ */
+export function marketResumeSelection({
+  selectedId = null,
+  qty = 1,
+  requestedMode = null,
+  requestedCommodityId = null,
+  trackedCommodityId = null,
+  listedIds = [],
+} = {}) {
+  const namedQty = Math.floor(Number(qty));
+  const safeQty = Number.isFinite(namedQty) ? Math.max(0, namedQty) : 0;
+  if (selectedId) {
+    return { selectedId, qty: safeQty, applyMode: null };
+  }
+  const listed = new Set(Array.isArray(listedIds) ? listedIds.filter(Boolean) : []);
+  const applyMode = requestedMode === 'buy' || requestedMode === 'sell' ? requestedMode : null;
+  let nextId = null;
+  let nextQty = safeQty > 0 ? safeQty : 1;
+  if (requestedCommodityId && listed.has(requestedCommodityId)) {
+    nextId = requestedCommodityId;
+    nextQty = 1;
+  } else if (applyMode !== 'sell' && trackedCommodityId && listed.has(trackedCommodityId)) {
+    nextId = trackedCommodityId;
+  }
+  return { selectedId: nextId, qty: nextId ? nextQty : safeQty, applyMode };
+}
+
+/** Null when the click would trade a different lot, side, or quantity than the receipt just named. */
+export function marketCommitPayload(lastQuotedTerms, selectedId, qty, side) {
+  const tradeQty = Math.max(0, Math.floor(Number(qty) || 0));
+  if (!selectedId || tradeQty <= 0 || !lastQuotedTerms) return null;
+  if (lastQuotedTerms.commodityId !== selectedId || lastQuotedTerms.qty !== tradeQty) return null;
+  if (side != null && lastQuotedTerms.side != null && lastQuotedTerms.side !== side) return null;
+  const expectedTotal = expectedTotalForTerms(lastQuotedTerms, tradeQty, selectedId);
+  if (expectedTotal === undefined) return null;
+  return { commodityId: selectedId, qty: tradeQty, expectedTotal };
+}
+
+/**
+ * The go control emits only when the receipt, the selection, and a fresh quote
+ * still name the same lot, side, quantity, and total.
+ */
+export function marketGoDecision({ lastQuotedTerms = null, selectedId = null, qty = 0, side = null, freshQuote = null } = {}) {
+  const payload = marketCommitPayload(lastQuotedTerms, selectedId, qty, side);
+  if (!payload) return { emit: false, payload: null, reason: 'mismatch' };
+  if (!marketQuoteIsExecutable(freshQuote, payload.qty, side)) {
+    return { emit: false, payload: null, reason: 'quote' };
+  }
+  if (freshQuote.commodityId != null && freshQuote.commodityId !== payload.commodityId) {
+    return { emit: false, payload: null, reason: 'quote' };
+  }
+  const liveTotal = Math.round(Number(freshQuote.total));
+  if (!Number.isFinite(liveTotal) || liveTotal !== payload.expectedTotal) {
+    return {
+      emit: false,
+      payload: null,
+      reason: 'price',
+      liveTotal: Number.isFinite(liveTotal) ? liveTotal : null,
+      expectedTotal: payload.expectedTotal,
+    };
+  }
+  return { emit: true, payload, reason: null };
+}
+
+/**
+ * Rebuild the selected console's quote from the transaction authority's refusal.
+ *
+ * In the worker lane the market facade can be one cold mirror pass behind the
+ * authoritative economy. A stale displayed sell total can therefore be sent
+ * repeatedly after the worker correctly refuses it. The refusal already carries
+ * the exact live total for the exact lot and quantity; retain that read-only
+ * value until the normal market mirror catches up. The economy's strict
+ * expectedTotal check remains the final authority.
+ */
+export function marketPriceChangedQuote(failure, { stationId: currentStationId = null, selectedId = null, side = null, qty = 0 } = {}) {
+  if (!failure || failure.reason !== 'price_changed') return null;
+  if (currentStationId != null && failure.stationId !== currentStationId) return null;
+  const namedQty = Math.floor(Number(qty));
+  const failedQty = Math.floor(Number(failure.qty));
+  if (!selectedId || failure.commodityId !== selectedId || failure.side !== side
+    || !Number.isFinite(namedQty) || namedQty <= 0 || failedQty !== namedQty) return null;
+  const total = Math.round(Number(failure.liveTotal));
+  if (!Number.isFinite(total) || total < 0) return null;
+  return {
+    ok: true,
+    partial: false,
+    commodityId: selectedId,
+    side,
+    qty: namedQty,
+    total,
+    unitAvg: total / namedQty,
+    priceImpactPct: null,
+  };
+}
+
+/** After the trade console is rebuilt, the Hand returns to the go control, the quantity, or the selected row. */
+export function marketTradeFocusChoice({ goEnabled = false, hasQuantity = false, hasRow = false } = {}) {
+  if (goEnabled) return 'go';
+  if (hasQuantity) return 'quantity';
+  if (hasRow) return 'row';
+  return null;
+}
+
+export function legalityRole(legal) {
+  if (legal === 'contraband') return 'foe';
+  if (legal === 'restricted') return 'goal';
+  return 'calm';
+}
+
+/**
+ * The tracked contract's delivery line for the quote stage. NXI-111 / NXB-028: a short
+ * manifest is a real settlement on recorded terms, not a failure — so before the pilot
+ * commits to the dock, the line names the units the berth will actually sign for and what
+ * they pay, instead of letting a short (or sealed-out) hold read as the full-contract
+ * reward. Deliverable units are counted the owner's way: a sealed manifest draws only its
+ * own reservation, loose freight only unsealed stock. Pure over state — the view-model
+ * behind the .sx-mkt-tracked line rendered by marketQuoteHtml.
+ */
+export function trackedCargoGuidance(state, cmdtyId, commodityName) {
+  const trackedId = state && state.ui && state.ui.trackedMissionId;
+  const active = (state && state.missions && state.missions.active) || [];
+  const mission = trackedId ? active.find((entry) => entry && entry.id === trackedId) : null;
+  const missionCmdty = mission && ((mission.cargo && mission.cargo.commodityId)
+    || (mission.params && mission.params.cmdtyId));
+  if (!mission || !missionCmdty || missionCmdty !== cmdtyId) {
+    return { state: 'missing', text: `Buy ${commodityName} here to load your job.` };
+  }
+  const requested = Math.max(1, Math.floor(Number(
+    (mission.cargo && mission.cargo.qty) || (mission.params && mission.params.qty) || 1,
+  ) || 1));
+  const held = heldQty(state, cmdtyId);
+  const destination = mission.destinationName || mission.destName
+    || (mission.params && (mission.params.destinationName || mission.params.destName))
+    || mission.destStationId || mission.destSectorId || 'the marked destination';
+  // A delivery contract that cannot fill its manifest settles the deliverable fraction —
+  // say so, with the owner's own numbers (accepted quantity, recorded-terms payment).
+  const isDelivery = mission.type === 'cargo_delivery';
+  const settlement = isDelivery ? partialDeliverySettlement(mission, state) : null;
+  if (settlement) {
+    const shortfall = Math.max(0, Math.floor(Number(settlement.shortfallUnits) || 0));
+    const fullCr = Math.max(0, Math.round(Number(mission.reward_cr) || 0));
+    return {
+      state: 'partial',
+      text: `Delivers ${fmt(settlement.deliverQty)} of ${fmt(settlement.needQty)}u as held — the dock pays ${fmt(settlement.payCr)} cr, not the full ${fmt(fullCr)} cr. Load ${fmt(shortfall)}u more to settle in full.`,
+    };
+  }
+  let aboard = held >= requested;
+  let remaining = Math.max(0, requested - held);
+  let sealedElsewhere = 0;
+  if (isDelivery) {
+    const sealed = mission.preloadedCargo === true;
+    const need = sealed && mission.params && mission.params.sealedRemaining != null
+      ? Math.max(0, Math.floor(Number(mission.params.sealedRemaining) || 0))
+      : requested;
+    const releasable = sealed
+      ? Math.max(0, Math.floor(Number(releasableContractUnits(state, mission)) || 0))
+      : sellableCargoQuantity(state, cmdtyId);
+    const deliverable = Math.min(need, releasable);
+    aboard = deliverable >= need;
+    remaining = Math.max(0, need - deliverable);
+    sealedElsewhere = Math.max(0, held - deliverable);
+  }
+  if (aboard) {
+    return {
+      state: 'aboard',
+      text: `Cargo is aboard — undock and follow nav to ${destination}.`,
+    };
+  }
+  return {
+    state: 'missing',
+    text: `Load ${fmt(remaining)}u more ${commodityName} before undocking${sealedElsewhere > 0 ? ` — ${fmt(sealedElsewhere)}u aboard is sealed to other contracts` : ''}.`,
+  };
+}
+
+
+function stationId(state) { return state && state.ui && state.ui.dockedStationId; }
+
+function stationRecordId(station) {
+  if (!station) return null;
+  if (typeof station.stationId === 'string' && station.stationId) return station.stationId;
+  return (typeof station.id === 'string' && station.id) ? station.id : null;
+}
+
+function typeFromRecord(record) {
+  if (!record) return '';
+  return String(record.type || record.stationTypeId || '');
+}
+
+function typeFromEntity(entity) {
+  const data = entity && entity.data;
+  if (!data) return '';
+  return String(data.stationTypeId || data.type || '');
+}
+
+function eachWorldSector(state, visit) {
+  const active = state && state.world && state.world.activeSector;
+  if (active && visit(active)) return true;
+  const sectors = state && state.world && state.world.sectors;
+  if (!sectors) return false;
+  const list = Array.isArray(sectors) ? sectors : Object.values(sectors);
+  for (const sector of list) {
+    if (visit(sector)) return true;
+  }
+  return false;
+}
+
+/** Live dock type: entity first, then the sector station record, then the catalog. */
+export function resolveDockStationType(state) {
+  const id = stationId(state);
+  if (!id) return '';
+  const byStationId = state && state.entityIndex && state.entityIndex.byStationId;
+  const indexed = byStationId && typeof byStationId.get === 'function' ? byStationId.get(id) : null;
+  if (indexed && indexed.type === 'station') {
+    const live = typeFromEntity(indexed);
+    if (live) return live;
+  }
+  const stations = state && state.entityIndex && state.entityIndex.stations;
+  const entities = Array.isArray(stations) ? stations : ((state && state.entityList) || []);
+  for (const entity of entities) {
+    if (!entity || entity.type !== 'station') continue;
+    const data = entity.data || {};
+    if (data.stationId === id || entity.id === id) {
+      const live = typeFromEntity(entity);
+      if (live) return live;
+    }
+  }
+  let fromSector = '';
+  eachWorldSector(state, (sector) => {
+    const rec = ((sector && sector.stations) || []).find((station) => stationRecordId(station) === id);
+    const typed = typeFromRecord(rec);
+    if (typed) {
+      fromSector = typed;
+      return true;
+    }
+    return false;
+  });
+  if (fromSector) return fromSector;
+  return STATION_TYPE.get(id) || '';
+}
+
+function marketTable(state) {
+  const id = stationId(state);
+  const markets = state && state.economy && state.economy.markets;
+  return (markets && id && markets[id]) || null;
+}
+function heldQty(state, id) {
+  const items = state && state.player && state.player.cargo && state.player.cargo.items;
+  return Math.max(0, Math.floor(Number(items && items[id]) || 0));
+}
+function credits(state) { return Math.max(0, Math.floor(Number(state && state.player && state.player.credits) || 0)); }
+function holdFree(state) {
+  const c = state && state.player && state.player.cargo;
+  if (!c || !(c.capVolume > 0)) return Infinity;
+  return Math.max(0, c.capVolume - (c.usedVolume || 0));
+}
+function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
+const r2 = (n) => Math.round(Number(n) * 100) / 100;
+
+/** The quote's price impact as a 0..1 fraction (economy.quote reports percent points). */
+function impact01Of(quote) {
+  if (!quote || !quote.ok) return 0;
+  return Math.max(0, Math.min(1, Math.abs(Number(quote.priceImpactPct) || 0) / 100));
+}
+
+/** Demand as an arc: a 120-degree track with a needle at low, normal or high. Pure markup. */
+function demandArcHtml(level, word) {
+  const cx = 32, cy = 38, r = 26;
+  const ang = level >= 3 ? 50 : level <= 1 ? -50 : 0;
+  const track = arcD(cx, cy, r, -60, 60);
+  let stops = '';
+  for (const a of [-50, 0, 50]) {
+    const [x0, y0] = polar(cx, cy, r - 4, a);
+    const [x1, y1] = polar(cx, cy, r + 3, a);
+    stops += `M ${r2(x0)} ${r2(y0)} L ${r2(x1)} ${r2(y1)} `;
+  }
+  const [nx, ny] = polar(cx, cy, r - 6, ang);
+  const safeWord = word === 'high' || word === 'low' ? word : 'normal';
+  return `<span class="orr-mkt-demand"><svg viewBox="0 0 64 40" aria-hidden="true" focusable="false">`
+    + `<path d="${track}" fill="none" stroke="rgb(236 230 216 / .27)" stroke-width="5" stroke-linecap="round"/>`
+    + `<path d="${track}" fill="none" stroke="rgb(236 230 216 / .6)" stroke-width="1.5"/>`
+    + `<path d="${stops}" fill="none" stroke="rgb(236 230 216 / .55)" stroke-width="1.5"/>`
+    + `<path d="M ${cx} ${cy} L ${r2(nx)} ${r2(ny)}" fill="none" stroke="rgb(248 244 234)" stroke-width="2" stroke-linecap="round"/>`
+    + `<circle cx="${r2(nx)}" cy="${r2(ny)}" r="2.6" fill="rgb(248 244 234)"/>`
+    + `</svg><span class="orr-mkt-demand__w">${safeWord}</span></span>`;
+}
+
+/** The hold after this trade as an arc: used over capacity, the fill to the contemplated level. */
+function holdArcHtml(used, cap) {
+  if (!(cap > 0)) return '';
+  const frac = Math.max(0, Math.min(1, used / cap));
+  const cx = 52, cy = 56, r = 44;
+  const track = arcD(cx, cy, r, -90, 90);
+  const end = -90 + 180 * frac;
+  const fill = frac > 0.001 ? arcD(cx, cy, r, -90, end) : '';
+  const [bx, by] = polar(cx, cy, r, end);
+  return `<svg viewBox="0 0 104 62" aria-hidden="true" focusable="false">`
+    + `<path d="${track}" fill="none" stroke="rgb(236 230 216 / .27)" stroke-width="5" stroke-linecap="round"/>`
+    + `<path d="${track}" fill="none" stroke="rgb(236 230 216 / .6)" stroke-width="1.5"/>`
+    + (fill
+      ? `<path d="${fill}" fill="none" stroke="rgb(248 244 234 / .2)" stroke-width="8" stroke-linecap="round"/>`
+        + `<path d="${fill}" fill="none" stroke="rgb(248 244 234)" stroke-width="2.5" stroke-linecap="round"/>`
+      : '')
+    + `<circle cx="${r2(bx)}" cy="${r2(by)}" r="3" fill="rgb(248 244 234)"/>`
+    + `</svg><span class="orr-mkt-holdarc__t">Hold after<b>${fmt(used)} / ${fmt(cap)} u</b></span>`;
+}
+
+/**
+ * Ask the dock to wash papers at a black-market berth.
+ * The register does not write the ledger, the cut, or the pod.
+ */
+export function requestMarketLaunder(bus, state) {
+  if (!bus || typeof bus.emit !== 'function') return false;
+  const sid = stationId(state);
+  if (!sid || !canLaunderSalvageAtStation(sid)) return false;
+  requestLaunderQuote(bus, state, 'market-preview', 'market-preview');
+  return true;
+}
+
+/** The corrupt dock owns the wash; the register only reads its durable receipt. */
+export function marketLaunderLedgerHtml(state) {
+  const sid = stationId(state);
+  const ledger = state && state.player && state.player.launderLedger;
+  const receipt = sid && Array.isArray(ledger)
+    ? ledger.find((entry) => entry && entry.stationId === sid && entry.side === 'launder')
+    : null;
+  if (!receipt) return '';
+  const pods = Array.isArray(receipt.pods) ? receipt.pods : [];
+  const units = pods.reduce((sum, pod) => sum + Math.max(0, Math.floor(Number(pod.amount) || 0)), 0);
+  const names = [...new Set(pods.map((pod) => {
+    const def = CMDTY_BY_ID.get(pod.fromId);
+    return def ? def.name : 'Cargo';
+  }))];
+  return `<section data-launder-ledger aria-label="Laundering ledger">` +
+    `<p class="k-caps">Laundering ledger · last wash here</p>` +
+    `<ul class="k-rows sx-mkt-stats">` +
+      rowKV('Papers washed', `${fmt(units)} u · ${names.join(', ')}`) +
+      rowKV(`Cut paid (${fmt((Number(receipt.cutFrac) || 0) * 100)}%)`, `${fmt(receipt.cut)} cr`, 'loss') +
+    `</ul></section>`;
+}
+
+// ── Held-lot disposition (NXI-019 custody / NXI-031 condition) ──────────────────────
+// The sell detail is the freight's last handover before settlement. Two identical commodities
+// can sit in the hold under different custody: units bought or mined are simply yours, while
+// units collected out of a convoy's open freight custody are still somebody's manifest until
+// the record closes. The durable ledger the parent custody work persists
+// (state.encounterDirector.stats.openFreightCustodies) carries exactly the disposition facts —
+// whose freight it was, how many units are already in your hold, and whether the law accepted
+// a report. A closed custody leaves the ledger entirely, so the wording only ever claims
+// "custody open"; silence means settled, never "clean".
+
+const FREIGHT_CUSTODY_MAX_ROWS = 2;
+
+function openFreightCustodyRecords(state, commodityId) {
+  const dir = state && state.encounterDirector;
+  const list = dir && dir.stats && dir.stats.openFreightCustodies;
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const envelope of list) {
+    const record = envelope && (envelope.record || envelope);
+    if (!record || typeof record !== 'object' || record.terminal === true) continue;
+    if (record.commodityId !== commodityId) continue;
+    if (!(Math.floor(Number(record.playerCollectedQty) || 0) > 0)) continue;
+    out.push(record);
+  }
+  out.sort((a, b) => String(a.custodyId || '').localeCompare(String(b.custodyId || '')));
+  return out;
+}
+
+function freightOwnerWord(record) {
+  const faction = record && FACTION_LABELS[record.legalOwnerFactionId];
+  if (faction) return `${faction} freight`;
+  if (record && record.legalOwnerKind === 'civilian') return 'civilian freight';
+  return "another owner's freight";
+}
+
+/** Custody disposition rows for the selected held lot — pure read, sell-side only.
+ * `playerCollectedQty` is the record's own aggregate (a partial collect leaves its pod live,
+ * so per-pod sums undercount it); the pod lineage only tells whether a lawful carrier's units
+ * could be among them, which decides the wording — the legally worse claim wins. Units are
+ * fungible, so every count is bounded by what the hold actually carries. */
+export function heldFreightCustodyRows(state, commodityId, held) {
+  let aboard = Math.max(0, Math.floor(Number(held) || 0));
+  if (!commodityId || aboard <= 0) return [];
+  const rows = [];
+  for (const record of openFreightCustodyRecords(state, commodityId)) {
+    if (rows.length >= FREIGHT_CUSTODY_MAX_ROWS || aboard <= 0) break;
+    const units = Math.min(Math.max(0, Math.floor(Number(record.playerCollectedQty) || 0)), aboard);
+    if (!(units > 0)) continue;
+    aboard -= units;
+    const pods = Array.isArray(record.pods) ? record.pods : [];
+    const lawfulLineage = pods.some((pod) => pod && pod.custodySourceKind === 'lawful_carrier');
+    const raiderLineage = pods.some((pod) => pod && pod.custodySourceKind === 'hostile_raider');
+    const owner = freightOwnerWord(record);
+    if (record.lawTheftIncidentReceiptId) {
+      rows.push({ text: `up to ${units} u aboard is reported ${owner} — the take is on the warrant ledger` });
+    } else if (lawfulLineage) {
+      rows.push({ text: `up to ${units} u aboard is still ${owner} — custody open, no report logged` });
+    } else if (raiderLineage) {
+      rows.push({ text: `up to ${units} u aboard was recovered from raiders — yours to settle` });
+    } else {
+      rows.push({ text: `up to ${units} u aboard traces to an open freight claim` });
+    }
+  }
+  return rows;
+}
+
+// The held state is the truth the pod record cannot reach: cargo in the hold is intact by
+// definition (exposure lives on the world pod and dies with it; fragile cracks spill at the
+// knock). The label therefore names the class hazard — what a spilled pod does — and says the
+// riding lot is stable. A hazard state, never a fuse (NXI-031).
+const VOLATILE_HELD_WORDS = Object.freeze({
+  explosive: 'explosive class — stable while it rides; a knocked or burning pod cooks off',
+  corrosive: 'corrosive class — stable while it rides; a breached pod bites the hull',
+  superdense: 'superdense class — dead mass aboard; stable while it rides',
+  cryogenic: 'cryogenic class — stable while it rides; a hard slam flashes it off',
+});
+
+/** Condition rows for the selected held lot: hazard class and handling, never a countdown. */
+export function heldShipmentConditionRows(commodityId) {
+  const rows = [];
+  const klass = volatileClassOf(commodityId);
+  if (klass && VOLATILE_HELD_WORDS[klass.id]) rows.push({ text: VOLATILE_HELD_WORDS[klass.id] });
+  if (fragileCargoGlyphFor(commodityId)) {
+    rows.push({ text: 'fragile — hard impacts crack units' });
+  }
+  return rows;
+}
+
+/** The disposition sentence for the selected sell lot, or '' when nothing is aboard —
+ * a sold-out selection never keeps a hazard label for cargo it no longer carries. */
+export function sellDispositionText(state, commodityId, held) {
+  if (!(Math.floor(Number(held) || 0) > 0)) return '';
+  const parts = [];
+  for (const row of heldFreightCustodyRows(state, commodityId, held)) parts.push(row.text);
+  for (const row of heldShipmentConditionRows(commodityId)) parts.push(row.text);
+  if (!parts.length) return '';
+  const sentence = parts.join(' · ');
+  return `${sentence.charAt(0).toUpperCase()}${sentence.slice(1)}.`;
+}
+
+// unit prices — station BUY (what you pay) / SELL (what station pays you)
+function unitBuy(entry, def) { return marketQuoteValue(entry, def, 'buy'); }
+function unitSell(entry, def) { return marketQuoteValue(entry, def, 'sell'); }
+function demandLevel(entry) {
+  const multiplier = Number(entry && entry.demandMult) || 1;
+  return multiplier > 1.08 ? 3 : multiplier < 0.94 ? 1 : 2;
+}
+function demandWord(level) { return level >= 3 ? 'high' : level === 1 ? 'low' : 'normal'; }
+
+// Economy samples every 15s. Use the same cadence for the visible worker-lane refresh so a
+// station-wide history RPC can pick up at most one new sample per request.
+const MARKET_HISTORY_REFRESH_MS = 15_000;
+const TEN_MIN_S = 600;
+const TEN_MIN_SAMPLES = 40;
+
+function parseHistoryPoints(points) {
+  points = Array.isArray(points) ? points : [];
+  const out = [];
+  for (const point of points) {
+    if (point && typeof point === 'object') {
+      const mid = Number(point.mid != null ? point.mid : point);
+      const t = Number(point.t);
+      if (Number.isFinite(mid) && mid > 0) {
+        const row = Number.isFinite(t) ? { t, mid } : { mid };
+        if (point.origin === 'modelled' || point.origin === 'observed') row.origin = point.origin;
+        out.push(row);
+      }
+    } else {
+      const mid = Number(point);
+      if (Number.isFinite(mid) && mid > 0) out.push({ mid });
+    }
+  }
+  return out;
+}
+
+function windowHistory(points, nowS) {
+  const now = Number(nowS);
+  const timed = points.filter((point) => Number.isFinite(point.t));
+  if (Number.isFinite(now) && timed.length) {
+    const cut = now - TEN_MIN_S;
+    const windowed = points.filter((point) => !Number.isFinite(point.t) || point.t >= cut);
+    if (windowed.length) return windowed;
+  }
+  return points.length > TEN_MIN_SAMPLES ? points.slice(-TEN_MIN_SAMPLES) : points;
+}
+
+function priceHistory(points, entry, def, nowS) {
+  const values = windowHistory(parseHistoryPoints(points), nowS).map((point) => point.mid);
+  // A missing worker-side ring is not a flat market. Keep an actual singleton when one
+  // exists, and let the row presenter label an empty/singleton series as unavailable.
+  return values;
+}
+
+function priceHistorySeries(points, entry, def, nowS) {
+  const windowed = windowHistory(parseHistoryPoints(points), nowS);
+  // The graph must contain recorded samples only. In particular, do not turn a pending
+  // backfill into [current,current], which reads as a confirmed flat market.
+  return windowed;
+}
+
+function historyRowsFromAck(ack) {
+  let cursor = ack;
+  for (let depth = 0; depth < 3 && cursor && typeof cursor === 'object'; depth++) {
+    if (Object.prototype.hasOwnProperty.call(cursor, 'histories')) {
+      return { found: true, rows: cursor.histories };
+    }
+    cursor = cursor.result;
+  }
+  return { found: false, rows: null };
+}
+
+function historyAckFailed(ack) {
+  let cursor = ack;
+  for (let depth = 0; depth < 3 && cursor && typeof cursor === 'object'; depth++) {
+    if (cursor.ok === false) return true;
+    cursor = cursor.result;
+  }
+  return false;
+}
+
+/**
+ * A station-scoped history request is UI cache state, not economy state. Keep its generation
+ * separate from the worker's RPC id so reopening the same berth, loading a save, or starting a
+ * new world invalidates both the old ACK and its retry chain before either can paint.
+ */
+export function createMarketHistoryBackfill({
+  request = laneRpc,
+  onChange = null,
+  maxAttempts = 2,
+  refreshMs = MARKET_HISTORY_REFRESH_MS,
+  scheduleRefresh = null,
+  cancelRefresh = null,
+} = {}) {
+  const retryLimit = Math.max(1, Math.floor(Number(maxAttempts) || 2));
+  const refreshInterval = Math.max(0, Number(refreshMs) || 0);
+  const cache = new Map();
+  let station = null;
+  let context = null;
+  let snapshot = null;
+  let generation = 0;
+  let requestSeq = 0;
+  let status = 'idle'; // idle | inflight | done | failed
+  let attempts = 0;
+  let refreshHandle = null;
+
+  const notify = () => { if (typeof onChange === 'function') onChange(); };
+  const tokenIsCurrent = (token) => token.generation === generation && token.seq === requestSeq;
+
+  function cancelScheduledRefresh() {
+    if (refreshHandle == null) return;
+    if (typeof cancelRefresh === 'function') {
+      try { cancelRefresh(refreshHandle); } catch (_) {}
+    }
+    refreshHandle = null;
+  }
+
+  function refresh() {
+    if (status !== 'done' || !station || !snapshot) return false;
+    cancelScheduledRefresh();
+    const nextStation = station;
+    const nextContext = context;
+    status = 'idle';
+    attempts = 0;
+    ensure(snapshot, nextStation, nextContext);
+    return true;
+  }
+
+  function scheduleNextRefresh() {
+    cancelScheduledRefresh();
+    if (typeof scheduleRefresh !== 'function' || !(refreshInterval > 0) || status !== 'done' || !station) return;
+    const scheduledGeneration = generation;
+    let handle = null;
+    handle = scheduleRefresh(() => {
+      // A timer from a retired dock session must not re-open a request after reset/onHide.
+      if (refreshHandle === handle) refreshHandle = null;
+      if (scheduledGeneration !== generation || status !== 'done') return;
+      refresh();
+    }, refreshInterval);
+    refreshHandle = handle == null ? null : handle;
+  }
+
+  function reset(nextStation = null, nextContext = null) {
+    cancelScheduledRefresh();
+    station = nextStation || null;
+    context = nextContext;
+    snapshot = null;
+    generation += 1;
+    requestSeq += 1;
+    attempts = 0;
+    status = 'idle';
+    cache.clear();
+  }
+
+  function ensure(nextSnapshot, stationId, contextKey = null) {
+    if (!stationId) return;
+    if (station !== stationId || (contextKey != null && context !== contextKey)) {
+      reset(stationId, contextKey);
+    }
+    // Keep the latest visible projection for the scheduled station refresh. It is intentionally
+    // a reference, so the existing screen state can carry newly mirrored prices into the next RPC.
+    snapshot = nextSnapshot;
+    if (status !== 'idle') return;
+    const market = nextSnapshot && nextSnapshot.economy && nextSnapshot.economy.markets
+      && nextSnapshot.economy.markets[stationId];
+    if (!market) return;
+
+    status = 'inflight';
+    attempts += 1;
+    const token = { generation, seq: ++requestSeq, stationId };
+    let pending;
+    try {
+      pending = request('marketHistory', { stationId });
+    } catch (error) {
+      pending = Promise.reject(error);
+    }
+    Promise.resolve(pending).then((ack) => {
+      // Stale ACKs are completely inert: do not mark the new generation done and do not
+      // transfer old rows into a reopened/new-world cache.
+      if (!tokenIsCurrent(token)) return;
+      if (historyAckFailed(ack)) {
+        if (attempts < retryLimit) status = 'idle';
+        else status = 'failed';
+        notify();
+        return;
+      }
+      const parsed = historyRowsFromAck(ack);
+      if (!parsed.found) {
+        if (attempts < retryLimit) status = 'idle';
+        else status = 'failed';
+        notify();
+        return;
+      }
+      const rows = parsed.rows;
+      if (rows && typeof rows === 'object' && !Array.isArray(rows)) {
+        cache.clear();
+        for (const [commodityId, points] of Object.entries(rows)) {
+          // An explicit empty array is authoritative too: it prevents a stale inline
+          // projection from resurfacing after a successful empty response.
+          if (Array.isArray(points)) cache.set(commodityId, points);
+        }
+      }
+      status = 'done';
+      scheduleNextRefresh();
+      notify();
+    }, () => {
+      if (!tokenIsCurrent(token)) return;
+      if (attempts < retryLimit) status = 'idle';
+      else status = 'failed';
+      notify();
+    });
+  }
+
+  function pointsFor(stationId, commodityId, entry) {
+    if (stationId === station && cache.has(commodityId)) return cache.get(commodityId);
+    return entry && entry.history;
+  }
+
+  function chartState(stationId, commodityId, entry) {
+    if (parseHistoryPoints(pointsFor(stationId, commodityId, entry)).length) return 'confirmed';
+    if (stationId === station && status === 'inflight') return 'loading';
+    return 'unavailable';
+  }
+
+  return {
+    ensure,
+    refresh,
+    reset,
+    pointsFor,
+    chartState,
+    get status() { return status; },
+    get attempts() { return attempts; },
+    get generation() { return generation; },
+  };
+}
+
+export function marketPriceHistory(points, entry, def, nowS) {
+  return priceHistory(points, entry, def, nowS);
+}
+
+export function marketPriceHistorySeries(points, entry, def, nowS) {
+  return priceHistorySeries(points, entry, def, nowS);
+}
+
+function liveRegimeWord(state, sid, commodityId) {
+  const cycle = state && state.economy && state.economy.cycles
+    && sid && commodityId && state.economy.cycles[sid] && state.economy.cycles[sid][commodityId];
+  return regimeLabel(cycle && (cycle.regime || cycle.family) || 'stable');
+}
+
+// The docked chart says "fresh quote" from the live feed in renderStage.
+// Opening the market restamps seenAt, so a word computed only from that
+// stamp was a constant. Survey packets are labeled separately.
+export function quoteAgeWord(_state, _sid, _commodityId) {
+  return '';
+}
+
+function marketDecisionHtml(state, stationId) {
+  if (!stationId) return '';
+  const shown = presentSurfaceDecisions(state, stationId, 'market');
+  if (!shown.length) return '';
+  return shown.map((decision) => (
+    `<section class="sx-decision">` +
+      `<p class="k-sentence">${escapeHtml(decision.situation)}</p>` +
+      decision.options.map((option) => (
+        `<button type="button" ${stationControlAttrs('decision-option')} class="k-row sx-decision__opt" data-adventure-id="${escapeHtml(decision.id)}" data-adventure-option="${escapeHtml(option.id)}">` +
+          `<span class="k-row__name">${escapeHtml(option.label)}</span>` +
+          `<span class="k-row__sub">${escapeHtml(option.tradeoff)}</span>` +
+        `</button>`
+      )).join('') +
+    `</section>`
+  )).join('');
+}
+
+export function createMarketScreen(ctx) {
+  const el = document.createElement('div');
+  el.className = 'k-panel k-panel--split sx-mkt orr-market';
+  // ORRERY: the Ladder, the trace as light, the quantity dial (src/ui/orrery/marketLayouts.js)
+  // plus this screen's own layout home (receipt lane, arrival — station-marketLayouts.js).
+  injectOrreryMarket(document);
+  injectStationMarketLayouts(document);
+  el.innerHTML = marketFrameHtml();
+  const adBoardEl = el.querySelector('[data-ad-board]');
+  const listEl = el.querySelector('.sx-mkt__list');
+  const stageEl = el.querySelector('.sx-mkt__stage');
+  const quoteEl = el.querySelector('.sx-mkt__quote');
+  const consoleEl = el.querySelector('.sx-mkt__console');
+  const tradeEl = el.querySelector('.sx-mkt__trade');
+  const routesEl = el.querySelector('.sx-mkt__routes');
+  const pulseEl = el.querySelector('.sx-mkt__pulse');
+  const decisionEl = el.querySelector('.sx-mkt__decision');
+  const papers = createLaunderService({ bus: ctx.bus, getState: () => ctx.state || {}, document });
+  // The market frame always parents the quote; a detached frame keeps the papers desk unmounted
+  // rather than failing the whole Market (same guard as the tape anchor below).
+  if (quoteEl && quoteEl.parentNode) quoteEl.parentNode.insertBefore(papers.el, quoteEl.nextSibling);
+  let tradeBusy = false;
+  let tradeCooldownUntil = 0;
+  let tradeCooldownTimer = null;
+  let pendingTrade = null;
+  let visible = true;
+  let disposed = false;
+  let historyRefreshTimer = null;
+
+  function scheduleHistoryRefresh(callback, delay) {
+    if (!visible || disposed || typeof setTimeout !== 'function') return null;
+    const timer = setTimeout(() => {
+      if (historyRefreshTimer === timer) historyRefreshTimer = null;
+      if (visible && !disposed && laneCommandSink()) callback();
+    }, delay);
+    // Node-based screen fixtures should not stay alive for a production cadence timer. Browsers
+    // do not expose unref, so this remains a normal visible-session timer there.
+    if (timer && typeof timer.unref === 'function') timer.unref();
+    historyRefreshTimer = timer;
+    return timer;
+  }
+
+  function cancelHistoryRefresh(timer) {
+    if (timer != null && typeof clearTimeout === 'function') clearTimeout(timer);
+    if (historyRefreshTimer === timer) historyRefreshTimer = null;
+  }
+
+  function setTradeExpectation(state, pending) {
+    if (!state || !pending) return;
+    if (!state.ui) state.ui = {};
+    const current = state.ui[TRADE_EXPECTATION_KEY];
+    if (current && current.intentId === pending.intentId) {
+      current.status = pending.recoveryAttempt ? 'recovering' : pending.status;
+      current.transport = pending.transport;
+      return;
+    }
+    const lastReceipt = latestTradeReceipt(state);
+    state.ui[TRADE_EXPECTATION_KEY] = {
+      intentId: pending.intentId,
+      commodityId: pending.commodityId,
+      side: pending.side,
+      qty: pending.qty,
+      total: pending.expectedTotal,
+      stationId: pending.stationId,
+      afterSequence: lastReceipt ? lastReceipt.tradeSequence : 0,
+      atSimTime: Number(state.simTime) || 0,
+      status: pending.recoveryAttempt ? 'recovering' : pending.status,
+      transport: pending.transport,
+    };
+  }
+
+  function newTradeIntentId(state) {
+    const committed = state && state.economy && state.economy.committedIntents;
+    for (let attempt = 0; attempt < 32; attempt += 1) {
+      const candidate = `market:${MARKET_INTENT_SESSION}:${nextLaneToken('intent')}:${Math.random().toString(36).slice(2)}`;
+      if (!committed || !Object.prototype.hasOwnProperty.call(committed, candidate)) return candidate;
+    }
+    return null;
+  }
+
+  function clearPendingTradeTimer(pending = pendingTrade) {
+    if (pending && pending.ackTimer != null) {
+      clearTimeout(pending.ackTimer);
+      pending.ackTimer = null;
+    }
+  }
+
+  function beginTradeCooldown() {
+    tradeCooldownUntil = Date.now() + 80;
+    if (tradeCooldownTimer != null) clearTimeout(tradeCooldownTimer);
+    tradeBusy = true;
+    const until = tradeCooldownUntil;
+    tradeCooldownTimer = setTimeout(() => {
+      if (tradeCooldownUntil !== until) return;
+      tradeCooldownTimer = null;
+      if (pendingTrade) {
+        tradeBusy = pendingTrade.status === 'pending';
+        return;
+      }
+      tradeBusy = false;
+      if (visible && !disposed) renderAll(ctx.state || {});
+    }, Math.max(0, until - Date.now()));
+  }
+
+  function syncTradeBusyAfterIntent() {
+    tradeBusy = !!(pendingTrade && pendingTrade.status === 'pending')
+      || (!pendingTrade && Date.now() < tradeCooldownUntil);
+  }
+
+  function finishTradeIntent(intentId) {
+    if (!pendingTrade || pendingTrade.intentId !== intentId) return false;
+    const finished = pendingTrade;
+    clearPendingTradeTimer(finished);
+    clearTradeExpectation(ctx.state || {}, { intentId });
+    pendingTrade = null;
+    // A terminal result clears pending intent state but never shortens the 80 ms click guard.
+    // For slow replies the guard has already elapsed; this immediately releases the control.
+    syncTradeBusyAfterIntent();
+    if (visible && !disposed) renderAll(ctx.state || {});
+    return true;
+  }
+
+  function markTradeUnknown(intentId) {
+    if (!pendingTrade || pendingTrade.intentId !== intentId) return false;
+    clearPendingTradeTimer(pendingTrade);
+    pendingTrade.status = 'unknown';
+    selectedId = pendingTrade.commodityId;
+    mode = pendingTrade.side;
+    qty = pendingTrade.qty;
+    marketFilter = mode === 'sell' ? 'hold' : 'all';
+    marketQuery = '';
+    listRenderSignature = '';
+    tradeBusy = false;
+    const state = ctx.state || {};
+    const expectation = state.ui && state.ui[TRADE_EXPECTATION_KEY];
+    if (expectation && expectation.intentId === intentId) expectation.status = 'unknown';
+    if (visible && !disposed) renderAll(state);
+    return true;
+  }
+
+  function retirePendingTrade() {
+    if (!pendingTrade) return;
+    const oldId = pendingTrade.intentId;
+    clearPendingTradeTimer(pendingTrade);
+    if (ctx.bus && typeof ctx.bus.emit === 'function') {
+      ctx.bus.emit('station:marketTradeIntentRetired', { intentId: oldId });
+    }
+    clearTradeExpectation(ctx.state || {}, { intentId: oldId });
+    pendingTrade = null;
+    tradeBusy = false;
+  }
+
+  function hydratePendingTrade(state) {
+    const expectation = state && state.ui && state.ui[TRADE_EXPECTATION_KEY];
+    if (!expectation || typeof expectation.intentId !== 'string' || !expectation.intentId) {
+      pendingTrade = null;
+      tradeBusy = false;
+      return;
+    }
+    if (pendingTrade && pendingTrade.intentId === expectation.intentId) return;
+    pendingTrade = {
+      intentId: expectation.intentId,
+      commodityId: expectation.commodityId,
+      side: expectation.side,
+      qty: expectation.qty,
+      expectedTotal: expectation.total,
+      stationId: expectation.stationId,
+      transport: expectation.transport === 'worker' ? 'worker' : 'main',
+      // A new screen instance cannot inherit the old RPC promise. Re-enter as UNKNOWN
+      // and let the same ID's idempotent transport recover its committed result.
+      status: 'unknown',
+      payload: {
+        intentId: expectation.intentId,
+        commodityId: expectation.commodityId,
+        side: expectation.side,
+        qty: expectation.qty,
+        expectedTotal: expectation.total,
+        stationId: expectation.stationId,
+        sourceStationId: expectation.stationId,
+      },
+      ackTimer: null,
+    };
+    selectedId = pendingTrade.commodityId;
+    mode = pendingTrade.side;
+    qty = pendingTrade.qty;
+    tradeBusy = pendingTrade.status === 'pending';
+  }
+
+  function authoritativeTradeReply(ack) {
+    if (!ack || ack.ok !== true) return null;
+    let result = ack.result;
+    for (let depth = 0; depth < 4 && result && typeof result === 'object'; depth++) {
+      if (result.result && typeof result.result === 'object') {
+        result = result.result;
+        continue;
+      }
+      if (typeof result.ok === 'boolean') return result;
+      return null;
+    }
+    return null;
+  }
+
+  function committedTradeResult(state, pending) {
+    const committed = state && state.economy && state.economy.committedIntents;
+    const record = committed && committed[pending.intentId];
+    const receipt = record && record.receipt;
+    if (!receipt || receipt.stationId !== pending.stationId
+      || receipt.good !== pending.commodityId || receipt.side !== pending.side
+      || receipt.requestedQty !== pending.qty) return null;
+    return record.result && record.result.ok === true ? record.result : null;
+  }
+
+  function finishFromTradeReply(pending, result) {
+    if (!pendingTrade || pendingTrade.intentId !== pending.intentId) return;
+    if (result && result.ok === true) {
+      // This is a presentation-only bridge for an authoritative RPC/journal result.
+      // Never impersonate economy:tradeCompleted: the owner event also drives mission
+      // history and other simulation listeners.
+      if (ctx.bus && typeof ctx.bus.emit === 'function') {
+        ctx.bus.emit('station:marketTradeReceiptRecovered', {
+          presentationOnly: 'market-rpc-recovery',
+          intentId: pending.intentId,
+          stationId: pending.stationId,
+          commodityId: pending.commodityId,
+          side: pending.side,
+          qty: result.qty,
+          total: result.total,
+          shortagePremium: result.shortagePremium === true,
+        });
+      }
+    }
+    if (result && result.ok === false && result.reason === 'price_changed') {
+      const retained = marketPriceChangedQuote({
+        ...result,
+        stationId: pending.stationId,
+        commodityId: pending.commodityId,
+        side: pending.side,
+        qty: pending.qty,
+      }, {
+        stationId: pending.stationId,
+        selectedId: pending.commodityId,
+        side: pending.side,
+        qty: pending.qty,
+      });
+      if (retained) authoritativeTradeQuote = retained;
+    }
+    finishTradeIntent(pending.intentId);
+  }
+
+  function submitPendingTrade(pending) {
+    const wasUnknown = pending.status === 'unknown';
+    beginTradeCooldown();
+    if (wasUnknown && pending.transport === 'main') {
+      const prior = committedTradeResult(ctx.state || {}, pending);
+      if (prior) {
+        finishFromTradeReply(pending, prior);
+        return;
+      }
+    }
+    pending.status = 'pending';
+    pending.recoveryAttempt = wasUnknown;
+    tradeBusy = true;
+    setTradeExpectation(ctx.state || {}, pending);
+    pending.ackTimer = setTimeout(() => markTradeUnknown(pending.intentId), 5000);
+    if (pending.transport === 'worker') {
+      // A disconnected worker must remain an unknown same-ID intent. Never fall back
+      // to ui:buy/ui:sell, which would be a second execution transport.
+      if (!laneCommandSink()) {
+        markTradeUnknown(pending.intentId);
+        return;
+      }
+      let rpc;
+      try {
+        rpc = laneRpc('economyTrade', {
+          commodityId: pending.commodityId,
+          side: pending.side,
+          qty: pending.qty,
+          expectedTotal: pending.expectedTotal,
+          sourceStationId: pending.stationId,
+          intentId: pending.intentId,
+        });
+      } catch (_) {
+        markTradeUnknown(pending.intentId);
+        return;
+      }
+      Promise.resolve(rpc).then((ack) => {
+        if (!pendingTrade || pendingTrade.intentId !== pending.intentId) return;
+        const result = authoritativeTradeReply(ack);
+        if (!result) {
+          markTradeUnknown(pending.intentId);
+          return;
+        }
+        if (result.ok === false && ['intent_pending', 'trade_pending'].includes(result.reason)) {
+          markTradeUnknown(pending.intentId);
+          return;
+        }
+        // A contextual no-dock/other-station refusal cannot resolve the original result:
+        // handleTrade/execute reject that retry before consulting the committed-ID journal.
+        if (result.ok === false && pending.recoveryAttempt
+          && ['not_docked', 'station_changed'].includes(result.reason)) {
+          markTradeUnknown(pending.intentId);
+          return;
+        }
+        // In the normal worker flow, the authoritative terminal event is replayed before its
+        // RPC ACK and owns the player-facing receipt. An ACK-only success is used to recover
+        // an unknown/replayed intent, never to race that ordinary receipt path.
+        if (result.ok === true && result.duplicate !== true && !pending.recoveryAttempt
+          && pending.status === 'pending') return;
+        finishFromTradeReply(pending, result);
+      }, () => markTradeUnknown(pending.intentId));
+      return;
+    }
+    if (!ctx.bus || typeof ctx.bus.emit !== 'function') {
+      markTradeUnknown(pending.intentId);
+      return;
+    }
+    try {
+      ctx.bus.emit(pending.side === 'buy' ? 'ui:buy' : 'ui:sell', {
+        commodityId: pending.commodityId,
+        qty: pending.qty,
+        expectedTotal: pending.expectedTotal,
+        sourceStationId: pending.stationId,
+        intentId: pending.intentId,
+      });
+      // The main lane is synchronous. If its bus swallowed a throw or no terminal
+      // event arrived, inspect the existing durable journal before exposing a same-ID
+      // retry; never mint a fresh ID for an unknown outcome.
+      if (pendingTrade && pendingTrade.intentId === pending.intentId) {
+        const prior = committedTradeResult(ctx.state || {}, pending);
+        if (prior) finishFromTradeReply(pending, prior);
+        else markTradeUnknown(pending.intentId);
+      }
+    } catch (_) {
+      markTradeUnknown(pending.intentId);
+    }
+  }
+
+  let selectedId = null;
+  let mode = 'buy';   // 'buy' | 'sell'
+  let qty = 1;
+  // INF-084: the stated accepted terms — the live quote behind the receipt the pilot is
+  // looking at when they press Buy/Sell. The go handler binds the trade to these, so a
+  // market move between render and confirm aborts with an explanation instead of a
+  // surprise settlement. Refreshed on every console render; never read blind.
+  let lastQuotedTerms = null;
+  // A worker refusal carries the authoritative live total even when the main
+  // market facade is still on its cold cadence. Retain that read-only quote
+  // until the ordinary mirror catches up, so retrying does not resend stale
+  // terms forever.
+  let authoritativeTradeQuote = null;
+  let cargoOnly = false;
+  let marketFilter = 'all';
+  let marketQuery = '';
+  let listRenderSignature = '';
+  // The verb's last side: the Lamp Key morphs its word only when buy becomes sell or back.
+  let lastVerbMode = null;
+  // The register's chrome (filters, search, table) is built once and updated in place.
+  let modeEl = null;
+  let searchEl = null;
+  let filterEls = null;
+  let pressedFilterEl = null;
+  let tbodyEl = null;
+
+  function dressBrowser() {
+    ensureInteriorStyle();
+    pinKeyrack(listEl.querySelector('.sx-mkt-browser__filters'));
+    for (const btn of listEl.querySelectorAll('[data-market-filter]')) paintKey(btn, 'legend');
+    paintInput(searchEl);
+    paintLegend(modeEl);
+    for (const th of listEl.querySelectorAll('th')) paintLegend(th);
+    dressRows();
+  }
+
+  function dressRows() {
+    for (const row of rowEls()) {
+      paintSelectedTableRow(row, row.classList.contains('is-active') || row.getAttribute('aria-selected') === 'true');
+    }
+    syncKeys(listEl);
+  }
+
+  function dressStage() {
+    ensureInteriorStyle();
+    if (quoteEl.querySelector('.sf-state')) { dressState(quoteEl); return; }
+    paintLegend(quoteEl.querySelector('.sx-mkt-cat-inline'), true);
+    paintMarking(quoteEl.querySelector('.sx-mkt-title'));
+    paintHero(quoteEl.querySelector('.k-hero__n'));
+    paintLegend(quoteEl.querySelector('.k-hero__w'));
+    const chart = quoteEl.querySelector('.sx-mkt-chart');
+    // The chart wears NO window. ONE_PHOTOGRAPH.md section 4.5: an instrument shows real data
+    // as light, or it is not on the screen. A bezel around a price line is a picture of an
+    // instrument; the line itself is the instrument, and the darkening it used to sit on is
+    // the berth veil's job now. This is also where the smudge came from: the glass render's
+    // centre specular, stretched by border-image-slice:fill across a 440px-wide chart.
+    for (const row of quoteEl.querySelectorAll('.k-row')) paintRow(row, false);
+  }
+
+  function renderLaunderLedger(state) {
+    const html = marketLaunderLedgerHtml(state);
+    if (!html) return;
+    quoteEl.insertAdjacentHTML('beforeend', html);
+    const ledger = quoteEl.querySelector('[data-launder-ledger]');
+    paintLegend(ledger.querySelector('.k-caps'), true);
+    for (const row of ledger.querySelectorAll('.k-row')) paintRow(row, false);
+  }
+
+  function dressConsole() {
+    ensureInteriorStyle();
+    const trade = tradeEl.querySelector('.sx-trade') || tradeEl;
+    paintPlate(trade, 'sunk');
+    paintLegend(tradeEl.querySelector('.sx-qty__k'));
+    paintInput(tradeEl.querySelector('.sx-qty__in'));
+    pinKeyrack(tradeEl.querySelector('.sx-qty__words'));
+    pinKeyrack(tradeEl.querySelector('.sx-trade__words, .sx-seg'));
+    for (const btn of tradeEl.querySelectorAll('[data-q]')) paintKey(btn, 'small');
+    const buy = tradeEl.querySelector('.sx-trade__go--buy, [data-mode="buy"]');
+    const sell = tradeEl.querySelector('.sx-trade__go--sell, [data-mode="sell"]');
+    // A DISABLED VERB IS NOT THE HEAVIEST THING ON THE SCREEN. ONE_PHOTOGRAPH.md section 4.4 asks
+    // whether the most consequential control is the heaviest object; with no credits, BUY wore the
+    // full amber cap while SELL -- the only trade the player could actually make -- was a bare
+    // word beside it. The live side earns mass only while it can be pressed.
+    const heavy = (btn) => btn.hasAttribute('data-go') && !btn.disabled ? 'primary' : 'legend';
+    if (buy) paintKey(buy, heavy(buy));
+    if (sell) paintKey(sell, heavy(sell));
+    for (const row of tradeEl.querySelectorAll('.k-row')) paintRow(row, false);
+    dressState(tradeEl);
+    syncKeys(tradeEl);
+  }
+
+  function dressRoutes() {
+    ensureInteriorStyle();
+    paintLegend(routesEl.querySelector('.sx-mkt__routes-head'), true);
+    for (const row of routesEl.querySelectorAll('.sx-route-row')) paintRow(row, false);
+    for (const btn of routesEl.querySelectorAll('[data-course]')) paintKey(btn, 'small');
+  }
+
+  // ARRIVAL. Marks a region `.is-arriving` for one settle so a rebuilt reading plays the
+  // station-marketLayouts entry (reduced motion reaches the end state instantly). Only real
+  // state changes call this — price ticks rebuild the same markup bare and replay nothing.
+  let arriveTimers = new Map();
+  function arrive(region) {
+    if (!region || !region.classList) return;
+    const prior = arriveTimers.get(region);
+    if (prior) clearTimeout(prior);
+    region.classList.remove('is-arriving');
+    // restart the entry even when the previous settle is still running
+    void (region.offsetWidth || 0);
+    region.classList.add('is-arriving');
+    arriveTimers.set(region, setTimeout(() => {
+      arriveTimers.delete(region);
+      region.classList.remove('is-arriving');
+    }, 720));
+  }
+
+  // The commodity your tracked contract wants loaded. Market flags it so the accept→buy→deliver loop
+  // is legible ("buy this here for your job"). Prefer an explicit trade waypoint; else fall back to
+  // the tracked mission's own cargo commodity (works even when nav points elsewhere).
+  function trackedCmdty(state) {
+    const wp = state && state.nav && state.nav.waypoint;
+    if (wp && wp.kind === 'trade' && wp.commodityId) return wp.commodityId;
+    const tid = state && state.ui && state.ui.trackedMissionId;
+    const active = (state && state.missions && state.missions.active) || [];
+    const m = tid ? active.find((x) => x && x.id === tid) : null;
+    const cid = m && ((m.cargo && m.cargo.commodityId) || (m.params && m.params.cmdtyId));
+    return cid || null;
+  }
+
+  function tradedList(state) {
+    const table = marketTable(state);
+    const ids = table ? Object.keys(table) : COMMODITIES.map((c) => c.id);
+    const rows = ids.map((id) => ({ id, def: CMDTY_BY_ID.get(id), entry: table && table[id] }))
+      .filter((r) => r.def);
+    // Sell is the hold. A sealed lot stays on that list so the pilot can see what they
+    // are carrying; the sell limit below is what keeps the counter from buying it.
+    return cargoOnly
+      ? rows.filter((r) => heldQty(state, r.id) > 0)
+      : rows;
+  }
+
+  // Keep the commodity instrument honest: exact quantity pricing comes from the live economy
+  // authority; remembered quotes stay in the pure presenter, and a route margin only appears for
+  // a route the existing Market has actually found from this station.
+  function selectedMarketIntel(state, row, quote) {
+    const sid = stationId(state);
+    let route = null;
+    if (mode === 'buy' && sid) {
+      try { route = (quotedRoutes(state, sid) || []).find((trade) => trade.cmdtyId === row.id) || null; } catch (_) { route = null; }
+    }
+    const view = presentCommodityIntel({
+      state,
+      commodityId: row.id,
+      stationId: sid,
+      liveBuy: unitBuy(row.entry, row.def),
+      liveSell: unitSell(row.entry, row.def),
+      qty,
+      quoteUnit: quote && quote.ok ? quote.unitAvg : null,
+      priceImpactPct: quote && quote.ok ? quote.priceImpactPct : null,
+      side: mode,
+      def: row.def,
+      route,
+    });
+    const rows = presentInspectorRows(view).filter((intelRow) => {
+      if (intelRow.id === 'age' || intelRow.id === 'conf' || intelRow.id === 'kvl') return true;
+      if (intelRow.id === 'cargo') return mode === 'buy' && qty >= 1;
+      return (intelRow.id === 'margin' || intelRow.id === 'route') && !!route;
+    });
+    const starved = starvedNeedLine(state, sid, row.id);
+    if (starved) rows.push({ id: 'starved', label: 'NEED', value: starved });
+    return rows;
+  }
+
+  function counterQuote(def, side) {
+    const owner = ctx.registry && typeof ctx.registry.get === 'function' ? ctx.registry.get('economy') : null;
+    const sid = stationId(ctx.state || {});
+    if (!owner || typeof owner.quote !== 'function' || !sid || !def) return null;
+    try { return owner.quote(sid, def.id, side, 1) || null; } catch (_) { return null; }
+  }
+  function counterUnit(def, side) {
+    const q = counterQuote(def, side);
+    return q && q.ok && q.qty === 1 && Number.isSafeInteger(q.total) ? q.total : null;
+  }
+  function unitBuy(_entry, def) { return counterUnit(def, 'buy'); }
+  function unitSell(_entry, def) { return counterUnit(def, 'sell'); }
+
+  function quotedRoutes(state, sid) {
+    const owner = ctx.registry && typeof ctx.registry.get === 'function' ? ctx.registry.get('economy') : null;
+    return computeBestTrades(state, sid, { quote: (...args) => owner && typeof owner.quote === 'function' ? owner.quote(...args) : null });
+  }
+
+  function selectedTradeQuote(state, row, quantity = qty) {
+    const sid = stationId(state);
+    const economy = ctx.registry && typeof ctx.registry.get === 'function' ? ctx.registry.get('economy') : null;
+    if (!economy || typeof economy.quote !== 'function' || !sid || quantity < 1) return null;
+    let live = null;
+    try { live = economy.quote(sid, row.id, mode, quantity); } catch (_) { live = null; }
+    const retained = authoritativeTradeQuote;
+    if (!retained) return live;
+    const sameTerms = retained.commodityId === row.id
+      && retained.side === mode
+      && retained.qty === Math.floor(Number(quantity));
+    // Quantity-limit planning probes several candidate quantities before the
+    // selected console quote is rendered. Those probes are read-only and must
+    // not discard an authority refusal for the currently selected terms; the
+    // render boundary below clears it when the pilot actually changes the
+    // selected quantity/lot/side.
+    if (!sameTerms) return live;
+    // Once the ordinary mirror reports the same total, return its complete
+    // quote (impact, stock and fill fields) and release the temporary value.
+    const mirrorTotal = live && live.ok === true ? Math.round(Number(live.total)) : null;
+    if (Number.isFinite(mirrorTotal) && mirrorTotal === retained.total) {
+      authoritativeTradeQuote = null;
+      return live;
+    }
+    return retained;
+  }
+
+  // INF-083: the contemplated-sale line quotes the FULL batch through the economy
+  // owner (stock-sensitive average, partial-aware), never unit×qty. Quoting writes
+  // nothing — stock moves only in execute() on confirm.
+  function contemplatedSaleQuote(sid, cmdtyId, quantity) {
+    const economy = ctx.registry && typeof ctx.registry.get === 'function' ? ctx.registry.get('economy') : null;
+    if (!economy || typeof economy.quote !== 'function' || !sid) return null;
+    try {
+      const q = economy.quote(sid, cmdtyId, 'sell', Math.max(1, Math.floor(Number(quantity) || 1)));
+      if (!q || !q.ok) return null;
+      // The sale is at the berth the pilot is already in, so no jump remains to subtract.
+      // Settling at the counter does not charge automation upkeep. Both stay on the line
+      // so a later non-zero bill cannot hide inside the gross.
+      return { ...q, travelCost: 0, operatingCost: 0 };
+    } catch (_) { return null; }
+  }
+
+  function tradeQuantityLimit(state, row) {
+    if (mode === 'sell' && row) return sellableCargoQuantity(state, row.id);
+    const free = holdFree(state);
+    const volume = Number(row.def.volPerU) > 0 ? Number(row.def.volPerU) : 1;
+    const stock = Math.max(0, Math.floor(Number(row.entry && row.entry.stock) || 0) - 1);
+    const limit = Math.min(stock, free === Infinity ? stock : Math.floor(free / volume));
+    return maxAffordableQuantity({ limit, credits: credits(state), quote: (n) => selectedTradeQuote(state, row, n) });
+  }
+
+  // A sealed lot stays on the sell list. The dial, the sale line, and the hold
+  // arc must describe no sale of it, including after Fewer or More. NXB-025:
+  // the pin binds the sealed count — units free of the reservation still dial.
+  function pinSealedSellQuantity(state, id = selectedId) {
+    if (pendingTrade) return;
+    if (mode === 'sell' && id && reservedCargoQuantity(state, id) > 0) {
+      qty = Math.min(qty, sellableCargoQuantity(state, id));
+    }
+  }
+
+  function sellOpeningQuantity(state, id) {
+    return sellableCargoQuantity(state, id);
+  }
+
+  function openTradeMode(nextMode, state, options = {}) {
+    if (pendingTrade) return;
+    authoritativeTradeQuote = null;
+    mode = nextMode === 'sell' ? 'sell' : 'buy';
+    // Sell is a cargo operation, so its selector always begins with things actually in the hold.
+    // options.cargoOnly remains accepted for call-site compatibility, but never widens Sell into
+    // forty-two commodities the player does not own.
+    cargoOnly = mode === 'sell';
+    marketFilter = cargoOnly ? 'hold' : 'all';
+    marketQuery = '';
+    listRenderSignature = '';
+    const rows = tradedList(state);
+    if (mode === 'sell' && rows.length) {
+      const held = rows.find((r) => heldQty(state, r.id) > 0) || rows[0];
+      selectedId = held.id;
+      qty = sellOpeningQuantity(state, held.id);
+      pinSealedSellQuantity(state, held.id);
+    } else {
+      qty = 1;
+    }
+  }
+
+  // Feature 16 — direct profit badge. Cost basis is the FIFO trade-lot average the economy ledger
+  // keeps on the player; cargo without a purchase record (mined, salvaged) falls back to the
+  // catalog base price, so a smart route reads the same whether goods were bought or dug out.
+  function heldProfitPct(state, cmdtyId, sellUnit, def) {
+    if (!Number.isFinite(sellUnit) || sellUnit <= 0) return null;
+    let basis = 0;
+    const lots = state && state.player && state.player.tradeLots
+      && state.player.tradeLots[cmdtyId];
+    if (Array.isArray(lots) && lots.length) {
+      let qty = 0, cost = 0;
+      for (const lot of lots) {
+        const q = Math.max(0, Math.floor(Number(lot && lot.qty) || 0));
+        const u = Number(lot && lot.unit) || 0;
+        if (q > 0 && u > 0) { qty += q; cost += q * u; }
+      }
+      if (qty > 0) basis = cost / qty;
+    }
+    if (!(basis > 0)) basis = Number(def && def.basePrice) || 0;
+    if (!(basis > 0)) return null;
+    return ((sellUnit - basis) / basis) * 100;
+  }
+
+  // One register row: name (◆ before it when tracked), buy + trend, sell, stock, held.
+  // Worker lane: the commodity wire mirror projects `history` out of market leaves —
+  // the 64-point rings stay sim-side and arrive via the marketHistory rpc (stage-7
+  // item B). A miss remains an explicit loading/unavailable state; it never becomes a
+  // fabricated flat trend. Reopening the same berth starts a new cache generation.
+  const historyBackfill = createMarketHistoryBackfill({
+    scheduleRefresh: scheduleHistoryRefresh,
+    cancelRefresh: cancelHistoryRefresh,
+    onChange() {
+      if (!disposed && visible) renderAll(ctx.state || {});
+    },
+  });
+  function historyContextKey(state) {
+    const meta = state && state.meta || {};
+    const world = state && state.world || {};
+    return [meta.seed, meta.version, world.currentSectorId, world.worldRecordId].map((value) => String(value ?? '')).join('|');
+  }
+  function laneHistoryPoints(sid, commodityId, entry) {
+    return historyBackfill.pointsFor(sid, commodityId, entry);
+  }
+  function ensureMarketHistory(state, sid) {
+    if (!sid || !laneCommandSink() || disposed) return;
+    const contextKey = historyContextKey(state);
+    historyBackfill.ensure(state, sid, contextKey);
+  }
+  function marketHistoryNotice(sid, commodityId, entry) {
+    const state = historyBackfill.chartState(sid, commodityId, entry);
+    const empty = quoteEl.querySelector('.k-empty');
+    if (!empty) return;
+    empty.setAttribute('data-market-history', state);
+    if (state === 'loading') {
+      empty.textContent = 'Loading price history…';
+      empty.setAttribute('role', 'status');
+    }
+  }
+
+  function commodityRowHtml(r, state, tracked_, selected, order = 0) {
+    const sid = stationId(state);
+    const hist = priceHistory(laneHistoryPoints(sid, r.id, r.entry), r.entry, r.def, state && state.simTime);
+    const buy = unitBuy(r.entry, r.def);
+    const sell = unitSell(r.entry, r.def);
+    const stock = Math.max(0, Math.floor(Number(r.entry && r.entry.stock) || 0));
+    const demand = demandLevel(r.entry);
+    const drivers = presentMarketDrivers({ state, stationId: sid, commodity: r.def, entry: r.entry });
+    const held = heldQty(state, r.id);
+    // DUST P5: swap the presentation layer's generic per-category pictogram for the DUST
+    // glyph set (distinct silhouette per category + a rare-grade keel bar). Class and
+    // data-commodity-glyph are preserved, so the row's CSS contract is unchanged.
+    return applyCommodityGlyph(marketRowHtml({ id: r.id, name: r.def.name, category: r.def.category,
+      buy, sell, stock, held, hist, demandWord: demandWord(demand),
+      ...marketStockStatus(state, sid, r.id),
+      profitPct: heldProfitPct(state, r.id, sell, r.def),
+      driversSummary: drivers.accessibleSummary, selected, tracked: r.id === tracked_,
+      order,
+      presentation: commodityPresentationFor(r.def) }), r.def);
+  }
+
+  function emptyFilterLabel() {
+    return marketQuery || MARKET_FILTERS.find((f) => f.id === marketFilter)?.label || 'this filter';
+  }
+
+  // The register chrome (exchange line, family filters, search, table) is built once and then
+  // updated in place, so typing in the search and arrowing through the rows survive price ticks.
+  function buildBrowserChrome() {
+    listEl.innerHTML = bindStationMarkup(marketBrowserHtml());
+    modeEl = listEl.querySelector('.sx-mkt-browser__mode');
+    searchEl = listEl.querySelector('[data-market-search]');
+    // The find is a scale line with a cursor: the input keeps its hooks, the span carries the rule.
+    if (searchEl && typeof searchEl.replaceWith === 'function' && typeof document !== 'undefined'
+      && typeof document.createElement === 'function') {
+      const wrap = document.createElement('span');
+      wrap.className = 'orr-mkt-find';
+      searchEl.replaceWith(wrap);
+      wrap.appendChild(searchEl);
+      const cursor = document.createElement('span');
+      cursor.className = 'orr-mkt-find__cursor';
+      cursor.setAttribute('aria-hidden', 'true');
+      wrap.appendChild(cursor);
+    }
+    tbodyEl = listEl.querySelector('tbody');
+    filterEls = new Map();
+    for (const btn of listEl.querySelectorAll('[data-market-filter]')) {
+      filterEls.set(btn.getAttribute('data-market-filter'), btn);
+    }
+    dressBrowser();
+  }
+
+  // The register's rows (the fake DOM in tests has no HTMLTableSectionElement.rows).
+  function rowEls() { return tbodyEl ? [...tbodyEl.querySelectorAll('.sx-mkt-row')] : []; }
+
+  // Selection follows focus and the pointer alike: restyle the two rows whose state moved, then
+  // redraw the two panels that read `selectedId`.
+  function selectCommodity(id, { focus = false } = {}) {
+    if (!id || !tbodyEl || pendingTrade) return;
+    const changed = id !== selectedId;
+    selectedId = id;
+    if (changed) authoritativeTradeQuote = null;
+    for (const row of rowEls()) {
+      const on = row.getAttribute('data-cmdty') === id;
+      row.classList.toggle('is-active', on);
+      row.setAttribute('aria-selected', String(on));
+      row.setAttribute('tabindex', on ? '0' : '-1');
+      if (on && focus) { try { row.focus({ preventScroll: false }); } catch (_) {} }
+    }
+    dressRows();
+    if (!changed) return;
+    qty = mode === 'sell' ? sellOpeningQuantity(ctx.state || {}, id) : 1;
+    pinSealedSellQuantity(ctx.state || {}, id);
+    const state = ctx.state || {};
+    arrive(quoteEl);
+    if (decisionEl) arrive(decisionEl);
+    renderStage(state); renderConsole(state);
+    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+  }
+
+  // The register's rows are keyed by commodity: a price tick rewrites only the cells that moved and
+  // keeps every row node, so the row under the pointer, its focus and the rail's Hand survive the
+  // tick (the rows used to be rebuilt wholesale on any price, stock or demand change). A DOM
+  // without <template> content (the node test shim) takes the rebuild.
+  const rowTpl = typeof document !== 'undefined' && document.createElement ? document.createElement('template') : null;
+  function syncRows(keyed) {
+    const canPatch = !!(rowTpl && rowTpl.content && typeof tbodyEl.insertBefore === 'function');
+    if (!canPatch) { tbodyEl.innerHTML = keyed.map(([, html]) => html).join(''); return; }
+    const existing = new Map(rowEls().map((row) => [row.getAttribute('data-cmdty'), row]));
+    let prev = null;
+    for (const [id, html] of keyed) {
+      rowTpl.innerHTML = `<table><tbody>${html}</tbody></table>`;
+      const next = rowTpl.content.querySelector('tr');
+      if (!next) continue;
+      let row = existing.get(id);
+      if (row && row.children.length === next.children.length) {
+        for (const name of ['aria-selected', 'tabindex', 'aria-label', 'data-family']) {
+          const v = next.getAttribute(name);
+          if (v == null) row.removeAttribute(name);
+          else if (row.getAttribute(name) !== v) row.setAttribute(name, v);
+        }
+        row.classList.toggle('is-active', next.classList.contains('is-active'));
+        row.classList.toggle('is-tracked', next.classList.contains('is-tracked'));
+        [...next.children].forEach((cell, i) => {
+          const old = row.children[i];
+          if (old.innerHTML !== cell.innerHTML) old.innerHTML = cell.innerHTML;
+        });
+        existing.delete(id);
+      } else {
+        if (row) { row.remove(); existing.delete(id); }
+        row = next;
+      }
+      const at = prev ? prev.nextElementSibling : tbodyEl.firstElementChild;
+      if (row !== at) tbodyEl.insertBefore(row, at);
+      prev = row;
+    }
+    for (const row of existing.values()) row.remove();
+  }
+
+  function placeTradeHand() {
+    const go = tradeEl && tradeEl.querySelector('[data-go]');
+    const qtyIn = tradeEl && tradeEl.querySelector('.sx-qty__in');
+    const row = tbodyEl && tbodyEl.querySelector('.sx-mkt-row.is-active');
+    const choice = marketTradeFocusChoice({
+      goEnabled: !!(go && !go.disabled && !go.hidden),
+      hasQuantity: !!(qtyIn && !qtyIn.hidden),
+      hasRow: !!(row && !row.hidden),
+    });
+    const target = choice === 'go' ? go : choice === 'quantity' ? qtyIn : choice === 'row' ? row : null;
+    const host = choice === 'row' ? listEl : tradeEl;
+    if (!focusNamedStationControl(target, host)) focusNamedStationControl(searchEl, listEl);
+  }
+
+  function placeMarketHand(preferredId) {
+    const listed = rowEls();
+    const row = listed.find((node) => node.getAttribute('data-cmdty') === preferredId);
+    if (focusNamedStationControl(row, listEl)) return;
+    if (focusNamedStationControl(searchEl, listEl)) return;
+    focusNamedStationControl(pressedFilterEl, listEl);
+  }
+
+  function renderList(state) {
+    const sid = stationId(state);
+    ensureMarketHistory(state, sid);
+    const rows = tradedList(state);
+    const tracked_ = trackedCmdty(state);
+    const query = marketQuery.trim().toLocaleLowerCase();
+    const visible = rows.filter((r) => {
+      const family = marketFamily(r.def.category || '');
+      if (marketFilter === 'hold' && heldQty(state, r.id) <= 0) return false;
+      if (marketFilter !== 'all' && marketFilter !== 'hold' && family !== marketFilter) return false;
+      return !query || `${r.def.name} ${r.def.category || ''}`.toLocaleLowerCase().includes(query);
+    });
+    const decision = resolveMarketSelection({
+      selectedId,
+      visibleIds: visible.map((r) => r.id),
+      tradedIds: rows.map((r) => r.id),
+    });
+    // First open may adopt a listed lot. A later refresh must not replace the lot the receipt names.
+    if (decision.adoptedInitial && decision.selectedId) {
+      selectedId = decision.selectedId;
+      qty = mode === 'sell' ? heldQty(state, selectedId) : 1;
+      pinSealedSellQuantity(state, selectedId);
+    }
+    // Unknown stock prints no column of dashes: when no visible row carries a stock figure or
+    // held cargo, the STOCK column yields.
+    const stockKnown = visible.some((r) => Number.isFinite(r.entry && r.entry.stock) || heldQty(state, r.id) > 0);
+    if (listEl && listEl.classList && typeof listEl.classList.toggle === 'function') {
+      listEl.classList.toggle('is-stockless', !stockKnown);
+    }
+
+    if (!tbodyEl) buildBrowserChrome();
+
+    // `tracked_` is rendered into every row (the ◆ flag), so it belongs in the signature; the
+    // selection is applied in place by selectCommodity and stays out of it.
+    const signature = JSON.stringify({
+      marketFilter, marketQuery, cargoOnly, tracked: tracked_,
+      rows: visible.map((r) => [r.id, unitBuy(r.entry, r.def), unitSell(r.entry, r.def), r.entry && r.entry.stock,
+        heldQty(state, r.id), r.entry && r.entry.demandMult, priceHistory(laneHistoryPoints(sid, r.id, r.entry), r.entry, r.def, state.simTime).at(-1),
+        // The badge moves with the cost basis, not only the price — include it so a fresh buy
+        // reprices the row even when quantity is unchanged.
+        Math.round(heldProfitPct(state, r.id, unitSell(r.entry, r.def), r.def) || 0)]),
+    });
+    if (signature !== listRenderSignature) {
+      listRenderSignature = signature;
+      modeEl.firstChild.textContent = cargoOnly ? 'Your cargo hold' : 'Station exchange';
+      // "10 of 10" says nothing; the count earns its place only when a filter or search narrows the list.
+      modeEl.querySelector('b').textContent = visible.length < rows.length ? ` · ${visible.length} of ${rows.length}` : '';
+      for (const [id, btn] of filterEls) {
+        btn.classList.toggle('is-on', id === marketFilter);
+        btn.setAttribute('aria-pressed', String(id === marketFilter));
+      }
+      // Written only when it actually differs: assigning to a focused search field on every price
+      // tick would drop the caret to the end mid-word.
+      if (searchEl.value !== marketQuery) searchEl.value = marketQuery;
+
+      const prior = typeof document !== 'undefined' ? document.activeElement : null;
+      const focused = !!(prior && tbodyEl.contains(prior));
+      const priorCmdty = prior && prior.getAttribute ? prior.getAttribute('data-cmdty') : null;
+      syncRows(visible.map((r, index) => [r.id, commodityRowHtml(r, state, tracked_, r.id === selectedId, index)]));
+      const emptyEl = listEl.querySelector('.sx-mkt-browser__empty');
+      emptyEl.hidden = visible.length > 0;
+      emptyEl.textContent = visible.length ? '' : `No commodities match ${emptyFilterLabel()}.`;
+      dressRows();
+      const listed = rowEls();
+      const priorGone = !!(priorCmdty && !listed.some((row) => row.getAttribute('data-cmdty') === priorCmdty));
+      if (priorGone) {
+        placeMarketHand(decision.focusId);
+      } else if (focused) {
+        const active = tbodyEl.querySelector('.is-active');
+        if (!focusNamedStationControl(active, listEl)) focusNamedStationControl(searchEl, listEl);
+      }
+    } else if (selectedId) {
+      for (const row of rowEls()) {
+        const on = row.getAttribute('data-cmdty') === selectedId;
+        if (row.classList.contains('is-active') !== on) {
+          row.classList.toggle('is-active', on);
+          row.setAttribute('aria-selected', String(on));
+          row.setAttribute('tabindex', on ? '0' : '-1');
+        }
+      }
+    }
+    // The extent cursor and overflow fold follow the inner rail that actually scrolls the rows.
+    syncScrollExtent(listEl.querySelector('.sx-mkt-browser__rail'));
+  }
+
+  function renderStage(state) {
+    const rows = tradedList(state);
+    const r = rows.find((x) => x.id === selectedId) || null;
+    if (!r) {
+      stageEl.removeAttribute('aria-labelledby');
+      stageEl.removeAttribute('aria-label');
+      stageEl.removeAttribute('aria-describedby');
+      consoleEl.hidden = true;
+      if (decisionEl) decisionEl.innerHTML = '';
+      const next = rows[0] || null;
+      const lotGone = !!selectedId && !!next;
+      mountDataState(quoteEl, 'empty', {
+        code: lotGone ? 'LOT_GONE' : (mode === 'sell' ? 'HOLD_EMPTY' : 'EXCHANGE_DARK'),
+        headline: lotGone ? 'That lot left the board.' : (mode === 'sell' ? 'Your hold is empty.' : 'No market at this berth.'),
+        fills: lotGone
+          ? 'The confirmation still names the lot you had. Choose a listed lot before anything else is traded.'
+          : (mode === 'sell'
+            ? 'An empty hold is an opinion the market already priced. Buy cargo here, or come back with something worth weighing.'
+            : 'Nothing here trades — no stock, no buyers, no board. Another berth still quotes.'),
+        verb: lotGone
+          ? {
+            label: 'Show ' + next.def.name,
+            onActivate: () => selectCommodity(next.id, { focus: true }),
+          }
+          : (mode === 'sell'
+            ? {
+              label: 'Switch to Buy',
+              onActivate: () => {
+                openTradeMode('buy', ctx.state || {});
+                renderAll(ctx.state || {});
+              },
+            }
+            : {
+              label: 'Plot another berth',
+              onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'market-empty' }),
+            }),
+      });
+      dressStage();
+      renderLaunderLedger(state);
+      return;
+    }
+    consoleEl.hidden = false;
+    pinSealedSellQuantity(state, r.id);
+    const def = r.def, entry = r.entry;
+    const sid = stationId(state);
+    ensureMarketHistory(state, sid);
+    const hist = priceHistorySeries(laneHistoryPoints(sid, r.id, entry), entry, def, state && state.simTime);
+    const forecast = sid ? predictPriceCurve(state, sid, r.id) : [];
+    const buyQ = counterQuote(def, 'buy');
+    const sellQ = counterQuote(def, 'sell');
+    const quotedUnit = (q) => (q && q.ok && q.qty === 1 && Number.isSafeInteger(q.total) ? q.total : null);
+    const buy = quotedUnit(buyQ), sell = quotedUnit(sellQ);
+    const avg = Number(def.basePrice) || buy;
+    const demand = demandLevel(entry);
+    const drivers = presentMarketDrivers({
+      state, stationId: sid, commodity: def, entry,
+      reputation: reputationFromQuotes(buyQ, sellQ),
+    });
+    const cause = lastMoveCause({ state, stationId: sid, commodity: def, entry });
+    const legal = def.legality || 'legal';
+    const isTracked = trackedCmdty(state) === r.id;
+    const trackedGuidance = isTracked ? trackedCargoGuidance(state, r.id, def.name) : null;
+    stageEl.setAttribute('aria-labelledby', `sx-market-tab-${r.id}`);
+    stageEl.setAttribute('aria-label', def.name);
+    stageEl.setAttribute('aria-describedby', 'sx-market-driver-summary');
+    const dispositionText = mode === 'sell' ? sellDispositionText(state, r.id, heldQty(state, r.id)) : '';
+    quoteEl.innerHTML = (dispositionText
+      ? `<p class="k-sentence sx-mkt-disposition" data-disposition="sell">${escapeHtml(dispositionText)}</p>`
+      : '') + marketQuoteHtml({ id: r.id, name: def.name, category: def.category, legal,
+      titleHtml: entitySpanHtml('commodity:' + r.id, escapeHtml(def.name)), mode, buy, sell, avg,
+      demandWord: demandWord(demand), driversSummary: drivers.accessibleSummary, drivers: drivers.primary, hist, trackedGuidance,
+      producedBy: def.producedBy, consumedBy: def.consumedBy, stationType: resolveDockStationType(state),
+      forecast, now: state && state.simTime, regime: liveRegimeWord(state, sid, r.id),
+      quoteAge: 'fresh', quoteSource: 'live',
+      survey: rememberedSurveyFreshness(state, r.id),
+      cause,
+      saleQty: qty,
+      saleQuote: contemplatedSaleQuote(sid, r.id, qty) }) + (decisionEl ? '' : marketDecisionHtml(state, sid));
+    marketHistoryNotice(sid, r.id, entry);
+    if (decisionEl) {
+      const decisionHtml = marketDecisionHtml(state, sid);
+      if (decisionEl.innerHTML !== decisionHtml) decisionEl.innerHTML = decisionHtml;
+    }
+    dressStage();
+    renderLaunderLedger(state);
+    instrumentStage(state, r, { buy, sell, demandLevel: demand, demandWord: demandWord(demand) });
+    syncTicker();
+  }
+
+  // THE INSTRUMENT DRESSING. The quote's grids dissolve onto the trace: the hero numeral moves to
+  // the price scale's right end, the driver words join the foot key, spread brackets the scale,
+  // demand becomes an arc, the trace gains its band and the trade's price-impact ghost. Cosmetic
+  // only — every reading it moves stays in the DOM for assistive technology and the checks.
+  function instrumentStage(state, r, info) {
+    const heroEl = quoteEl.querySelector('.sx-mkt__hero');
+    const instrumentEl = quoteEl.querySelector('.sx-mkt-instrument');
+    const plot = quoteEl.querySelector('.sx-mkt-instrument__plot');
+    if (heroEl && instrumentEl && quoteEl.children && typeof getComputedStyle === 'function') {
+      heroEl.style.gridColumn = '2';
+      heroEl.style.gridRow = String(quoteHeroRow(quoteEl, heroEl, instrumentEl));
+    }
+    dissolveDrivers(quoteEl);
+    const demandVal = quoteEl.querySelector('.sx-mkt-readouts__item--demand dd');
+    if (demandVal) demandVal.innerHTML = demandArcHtml(info.demandLevel, info.demandWord);
+    syncDemandKey(info);
+    if (plot) {
+      syncTraceBand(plot);
+      syncSpreadBracket(plot, info.buy, info.sell);
+      syncGhost(plot, impact01Of(selectedTradeQuote(state, r)), mode);
+    }
+  }
+
+  // THE DEMAND READING RIDES THE TRACE'S KEY. The readouts grid that owns the arc is the quote's
+  // last row: below the analysis fold at rest on tall screens, its label sliced by the scroll
+  // fade — an instrument the player never sees. The key line under the trace has the room, and
+  // the readings were always the trace's key (marketPresentation readoutsHtml) — so the arc joins
+  // it, aria-hidden like the dissolved driver words; the readouts grid stays in the DOM for
+  // assistive technology and the tests (station-marketLayouts lifts it out of the scroll flow).
+  function syncDemandKey(info) {
+    if (typeof document === 'undefined' || typeof document.createElement !== 'function') return;
+    const key = quoteEl.querySelector('.sx-mkt-chart-key');
+    if (!key) return;
+    let host = key.querySelector('.orr-mkt-demand-key');
+    if (!host) {
+      host = document.createElement('span');
+      host.className = 'orr-mkt-demand-key';
+      host.setAttribute('aria-hidden', 'true');
+      key.appendChild(host);
+    }
+    const html = `<span class="orr-mkt-demand-key__k">Demand</span>`
+      + demandArcHtml(info.demandLevel, info.demandWord);
+    if (host.innerHTML !== html) host.innerHTML = html;
+  }
+
+  // The hero numeral's grid row: the instrument's own row, counting only the siblings that take
+  // part in grid auto-placement (the essay and cone read are absolutely placed, the drivers are
+  // folded, the tracked line carries order 20, the hero is explicitly placed and takes no slot).
+  function quoteHeroRow(quoteRoot, heroEl, instrumentEl) {
+    let row = 1;
+    for (const sib of quoteRoot.children) {
+      if (sib === instrumentEl) break;
+      if (sib === heroEl) continue;
+      if (sib.classList && sib.classList.contains('sx-mkt-tracked')) continue;
+      let cs = null;
+      try { cs = getComputedStyle(sib); } catch (_) { cs = null; }
+      if (cs && (cs.display === 'none' || cs.position === 'absolute' || cs.position === 'fixed')) continue;
+      row += 1;
+    }
+    return row;
+  }
+
+  // The driver grid dissolves: its words join the instrument's foot key while the spread's
+  // value brackets the price scale.
+  function dissolveDrivers(quoteRoot) {
+    if (typeof document === 'undefined' || typeof document.createElement !== 'function') return;
+    const items = quoteRoot.querySelectorAll ? [...quoteRoot.querySelectorAll('.sx-mkt-drivers__item')] : [];
+    const bits = [];
+    for (const it of items) {
+      const k = it.querySelector('.sx-mkt-drivers__k');
+      const v = it.querySelector('.sx-mkt-drivers__v');
+      const kind = k ? k.textContent.trim() : '';
+      const value = v ? v.textContent.trim() : '';
+      if (!value) continue;
+      bits.push({ kind, value, dir: it.getAttribute('data-dir') || 'flat', tip: it.getAttribute('title') || '' });
+    }
+    const key = quoteRoot.querySelector('.sx-mkt-chart-key');
+    if (key && bits.length && key.parentNode) {
+      const p = document.createElement('p');
+      p.className = 'orr-mkt-subkey';
+      p.setAttribute('aria-hidden', 'true');
+      for (const bit of bits) {
+        const s = document.createElement('span');
+        s.className = 'orr-mkt-subkey__bit';
+        s.setAttribute('data-dir', bit.dir);
+        if (bit.tip) s.setAttribute('title', bit.tip);
+        const kk = document.createElement('span');
+        kk.textContent = bit.kind;
+        const b = document.createElement('b');
+        b.textContent = bit.value;
+        s.appendChild(kk);
+        s.appendChild(document.createTextNode(' '));
+        s.appendChild(b);
+        p.appendChild(s);
+      }
+      key.parentNode.insertBefore(p, key.nextSibling);
+    }
+  }
+
+  // The trace's band: the history line drawn again beneath itself, wide and faint, so the trace
+  // is a body of light and not a wire.
+  function syncTraceBand(plot) {
+    if (typeof document === 'undefined' || typeof document.createElementNS !== 'function') return;
+    const svg = plot.querySelector('svg.sx-mkt-chart');
+    const line = svg ? svg.querySelector('.sx-mkt-line[data-history-line]') : null;
+    const d = line ? line.getAttribute('d') : '';
+    if (!svg || !line || !d || svg.querySelector('.sx-mkt-band')) return;
+    const band = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    band.setAttribute('class', 'sx-mkt-band');
+    band.setAttribute('d', d);
+    band.setAttribute('fill', 'none');
+    band.setAttribute('vector-effect', 'non-scaling-stroke');
+    band.setAttribute('stroke-linejoin', 'round');
+    band.setAttribute('stroke-linecap', 'round');
+    band.setAttribute('aria-hidden', 'true');
+    svg.insertBefore(band, line);
+  }
+
+  // The spread bracket on the scale between the BUY and SELL beads, labelled with the margin.
+  function syncSpreadBracket(plot, buy, sell) {
+    if (typeof document === 'undefined' || typeof document.createElement !== 'function') return;
+    if (plot.querySelector('.orr-mkt-spread')) return;
+    const readTop = (sel) => {
+      const tick = plot.querySelector(sel);
+      const raw = tick && tick.style ? String(tick.style.top || '') : '';
+      const v = raw ? Number(raw.replace('%', '')) : NaN;
+      return Number.isFinite(v) ? v : null;
+    };
+    const a = readTop('.sx-mkt-instrument__tick--buy');
+    const b = readTop('.sx-mkt-instrument__tick--sell');
+    if (a == null || b == null) return;
+    const el = document.createElement('div');
+    el.className = 'orr-mkt-spread';
+    el.setAttribute('aria-hidden', 'true');
+    const h = Number(plot.clientHeight) || 0;
+    if (h > 0) {
+      const topPx = (Math.min(a, b) / 100) * h;
+      const botPx = (Math.max(a, b) / 100) * h;
+      const height = Math.max(40, botPx - topPx);
+      const top = Math.max(0, Math.min(h - height, ((topPx + botPx) / 2) - (height / 2)));
+      el.style.top = `${Math.round(top)}px`;
+      el.style.height = `${Math.round(height)}px`;
+    } else {
+      el.style.top = `${Math.min(a, b)}%`;
+      el.style.height = `${Math.max(2, Math.abs(b - a))}%`;
+    }
+    const margin = Math.max(0, Math.round((Number(buy) || 0) - (Number(sell) || 0)));
+    const v = document.createElement('span');
+    v.className = 'orr-mkt-spread__v';
+    v.appendChild(document.createTextNode(fmt(margin)));
+    const k = document.createElement('span');
+    k.className = 'orr-mkt-spread__k';
+    k.textContent = 'spread';
+    v.appendChild(k);
+    el.appendChild(v);
+    plot.appendChild(el);
+  }
+
+  // The price-impact ghost: the contemplated trade's own segment on the trace, from the live end
+  // toward where the trade would move the price — up when buying, down when selling. Updates in
+  // place while the dial turns; removed when there is no live impact.
+  function syncGhost(plot, impact01, tradeMode) {
+    if (typeof document === 'undefined' || typeof document.createElementNS !== 'function') return;
+    const svg = plot.querySelector('svg.sx-mkt-chart');
+    const line = svg ? svg.querySelector('.sx-mkt-line[data-history-line]') : null;
+    const d = line ? line.getAttribute('d') : '';
+    const m = d ? /([\d.]+),([\d.]+)\s*$/.exec(d) : null;
+    const ghost = svg ? svg.querySelector('.sx-mkt-ghost') : null;
+    const bead = svg ? svg.querySelector('.sx-mkt-ghostbead') : null;
+    if (!svg || !m || !(impact01 > 0)) {
+      if (ghost) ghost.remove();
+      if (bead) bead.remove();
+      return;
+    }
+    const x1 = Number(m[1]);
+    const y1 = Number(m[2]);
+    const dy = Math.max(6, Math.min(110, impact01 * 140));
+    const x2 = Math.min(996, x1 + 64);
+    const y2 = Math.max(6, Math.min(234, tradeMode === 'sell' ? y1 + dy : y1 - dy));
+    const NS = 'http://www.w3.org/2000/svg';
+    let g = ghost;
+    if (!g) {
+      g = document.createElementNS(NS, 'path');
+      g.setAttribute('class', 'sx-mkt-ghost');
+      g.setAttribute('fill', 'none');
+      g.setAttribute('vector-effect', 'non-scaling-stroke');
+      g.setAttribute('aria-hidden', 'true');
+      svg.appendChild(g);
+    }
+    g.setAttribute('d', `M ${r2(x1)} ${r2(y1)} L ${r2(x2)} ${r2(y2)}`);
+    let dot = bead;
+    if (!dot) {
+      dot = document.createElementNS(NS, 'ellipse');
+      dot.setAttribute('class', 'sx-mkt-ghostbead');
+      dot.setAttribute('rx', '4');
+      dot.setAttribute('ry', '6.5');
+      dot.setAttribute('aria-hidden', 'true');
+      svg.appendChild(dot);
+    }
+    dot.setAttribute('cx', String(r2(x2)));
+    dot.setAttribute('cy', String(r2(y2)));
+  }
+
+  function refreshGhost() {
+    const plot = quoteEl.querySelector('.sx-mkt-instrument__plot');
+    if (!plot) return;
+    const state = ctx.state || {};
+    const row = tradedList(state).find((x) => x.id === selectedId);
+    if (!row) return;
+    syncGhost(plot, impact01Of(selectedTradeQuote(state, row)), mode);
+  }
+
+  // The tape: the ladder's prices streaming under the trace. Built from the rendered rows
+  // (the same numbers the player reads), in ladder order, capped; two identical halves loop
+  // the marquee. The ladder holds every reading accessibly, so the tape is motion only.
+  let tickerSig = '';
+  function syncTicker() {
+    const instrument = quoteEl.querySelector('.sx-mkt-instrument');
+    // the tape foots the analysis: after the sale line when there is one, else the instrument
+    const anchor = quoteEl.querySelector('.sx-mkt-sale') || instrument;
+    const prev = quoteEl.querySelector('.orr-mkt-tape');
+    const items = [];
+    if (anchor && typeof document !== 'undefined' && typeof document.createElement === 'function') {
+      for (const row of rowEls().slice(0, 14)) {
+        const def = CMDTY_BY_ID.get(row.getAttribute('data-cmdty') || '');
+        const priceCell = row.querySelector('.sx-mkt-row__price');
+        const price = priceCell && priceCell.firstChild ? String(priceCell.firstChild.textContent || '').trim() : '';
+        const tr = row.querySelector('.sx-mkt-row__tr');
+        const flat = !tr || (tr.classList && tr.classList.contains('is-flat')) || tr.getAttribute('aria-label') === 'History unavailable';
+        const trend = tr && !flat ? String(tr.textContent || '').trim() : '';
+        if (!def || !price) continue;
+        items.push({ name: def.name, price, trend });
+      }
+    }
+    if (!anchor || !items.length) {
+      if (prev) prev.remove();
+      tickerSig = '';
+      return;
+    }
+    const sig = items.map((it) => `${it.name}|${it.price}|${it.trend}`).join('~');
+    if (prev && sig === tickerSig) return;
+    tickerSig = sig;
+    const half = items.map((it) => `<span class="orr-mkt-tape__it">${escapeHtml(String(it.name)).toUpperCase()} `
+      + `<span class="orr-mkt-tape__p">${escapeHtml(it.price)}</span>`
+      + (it.trend ? ` <span class="orr-mkt-tape__t">${escapeHtml(it.trend)}</span>` : '') + '</span>').join('');
+    const tape = document.createElement('div');
+    tape.className = 'orr-mkt-tape';
+    tape.setAttribute('aria-hidden', 'true');
+    tape.innerHTML = `<div class="orr-mkt-tape__run"><div class="orr-mkt-tape__half">${half}</div><div class="orr-mkt-tape__half">${half}</div></div>`;
+    if (prev) prev.replaceWith(tape);
+    else if (anchor.parentNode) anchor.parentNode.insertBefore(tape, anchor.nextSibling);
+    else quoteEl.appendChild(tape);
+  }
+
+  // The total as a rolling counter: the digits roll, the unit suffix stands beside them.
+  function setTradeTotal(el, text) {
+    const str = String(text == null ? '' : text);
+    const m = /^([\d,]+)(.*)$/.exec(str);
+    if (!el || !m || typeof document === 'undefined' || typeof document.createElement !== 'function') {
+      if (el) el.textContent = str;
+      return;
+    }
+    const kids = el.children ? [...el.children] : [];
+    const has = (cls) => kids.find((k) => k.classList && typeof k.classList.contains === 'function' && k.classList.contains(cls)) || null;
+    let num = has('orr-mkt-totalnum');
+    if (!num) {
+      el.textContent = '';
+      num = document.createElement('span');
+      num.className = 'orr-mkt-totalnum';
+      el.appendChild(num);
+    }
+    // A live trade total must match the executable quote while Buy/Sell are enabled. Rolling
+    // these digits through intermediate amounts made the visible price disagree with the action.
+    num.classList.remove('orr-counter');
+    num.textContent = m[1];
+    el.setAttribute('aria-label', `${m[1]}${m[2] || ''}`.trim());
+    const sufText = m[2] || '';
+    const suf = has('orr-mkt-totalsuf');
+    if (sufText) {
+      if (!suf) {
+        const s = document.createElement('span');
+        s.className = 'orr-mkt-totalsuf';
+        s.textContent = sufText;
+        el.appendChild(s);
+      } else if (suf.textContent !== sufText) suf.textContent = sufText;
+    } else if (suf) suf.remove();
+  }
+
+  // The hold arc under the total: what the hold looks like after this trade fills.
+  function syncHoldArc(state, def) {
+    const total = tradeEl.querySelector('.so-trade-total');
+    if (!total || typeof document === 'undefined' || typeof document.createElement !== 'function') return;
+    const cargo = state && state.player && state.player.cargo;
+    const cap = Math.max(0, Number(cargo && cargo.capVolume) || 0);
+    const kids = total.children ? [...total.children] : [];
+    const host = kids.find((k) => k.classList && typeof k.classList.contains === 'function' && k.classList.contains('orr-mkt-holdarc')) || null;
+    if (!(cap > 0)) {
+      if (host) host.hidden = true;
+      return;
+    }
+    let box = host;
+    if (!box) {
+      box = document.createElement('div');
+      box.className = 'orr-mkt-holdarc';
+      box.setAttribute('aria-hidden', 'true');
+      total.appendChild(box);
+    }
+    box.hidden = false;
+    const used = Math.max(0, Number(cargo && cargo.usedVolume) || 0);
+    const vol = Number(def && def.volPerU) > 0 ? Number(def.volPerU) : 1;
+    const amount = Math.max(0, qty);
+    const after = mode === 'buy' ? used + amount * vol : Math.max(0, used - amount * vol);
+    const html = holdArcHtml(after, cap);
+    if (box.innerHTML !== html) box.innerHTML = html;
+  }
+
+  function renderConsole(state, { receiptOnly = false } = {}) {
+    if (pendingTrade) {
+      selectedId = pendingTrade.commodityId;
+      mode = pendingTrade.side;
+      qty = pendingTrade.qty;
+    }
+    if (authoritativeTradeQuote
+      && (authoritativeTradeQuote.commodityId !== selectedId
+        || authoritativeTradeQuote.side !== mode
+        || authoritativeTradeQuote.qty !== Math.floor(Number(qty)))) {
+      authoritativeTradeQuote = null;
+    }
+    const rows = tradedList(state);
+    const r = rows.find((x) => x.id === selectedId) || null;
+    if (!r) {
+      lastQuotedTerms = null;
+      tradeEl.innerHTML =
+        `<div class="sx-trade sx-trade--empty">` +
+          `<ul class="k-words k-words--row sx-seg" role="tablist">` +
+            `<li><button type="button" ${stationControlAttrs('buy')} class="k-word k-word--emph sx-seg__btn${mode === 'buy' ? ' is-on' : ''}" data-mode="buy" aria-pressed="${mode === 'buy'}">${stationControlLabel('buy')}</button></li>` +
+            `<li><button type="button" ${stationControlAttrs('sell')} class="k-word k-word--emph sx-seg__btn${mode === 'sell' ? ' is-on' : ''}" data-mode="sell" aria-pressed="${mode === 'sell'}">${stationControlLabel('sell')}</button></li>` +
+          `</ul>` +
+          `<p class="k-empty sx-trade-empty">${selectedId ? 'That lot left the board. Choose another before confirming.' : 'Nothing in the hold. Switch to Buy to load cargo.'}</p>` +
+        `</div>`;
+      dressConsole();
+      return;
+    }
+    const def = r.def, entry = r.entry;
+    const buy = unitBuy(entry, def), sell = unitSell(entry, def);
+    const unit = mode === 'buy' ? buy : sell;
+    const held = heldQty(state, r.id);
+    const cr = credits(state);
+    const free = holdFree(state);
+    const maxQty = tradeQuantityLimit(state, r);
+    pinSealedSellQuantity(state, r.id);
+    if (!receiptOnly && !pendingTrade) qty = marketQuantityAfterRefresh(qty, maxQty);
+    // This one selected-quantity quote drives both the receipt the pilot sees and the presenter.
+    // execute() reuses the same economy integral, including the bulk price impact, on confirm.
+    const quote = selectedTradeQuote(state, r);
+    const quoteReady = marketQuoteIsExecutable(quote, qty, mode);
+    lastQuotedTerms = quoteReady ? { commodityId: r.id, side: mode, qty, total: quote.total } : null;
+    const total = quoteReady ? quote.total : unit * qty;
+    const quoteUnit = quoteReady ? quote.unitAvg : unit;
+    const creditReady = mode !== 'buy' || (quoteReady && quote.total <= cr);
+    const pendingMatchesSelection = !!(pendingTrade
+      && pendingTrade.commodityId === r.id
+      && pendingTrade.side === mode
+      && pendingTrade.qty === qty
+      && pendingTrade.stationId === stationId(state));
+    const retryPending = pendingMatchesSelection && pendingTrade.status === 'unknown';
+    const pendingAtOriginalStation = !pendingTrade || pendingTrade.stationId === stationId(state);
+    const canAct = pendingTrade
+      ? retryPending
+      : !tradeBusy && quoteReady && creditReady && qty >= 1 && qty <= maxQty && maxQty >= 1;
+    const intelRows = selectedMarketIntel(state, r, quote);
+    const receiptHtml = rowKV('Quantity', fmt(qty) + ' u') +
+      rowKV('Average unit', quoteReady ? fmt(quoteUnit) + ' cr/u' : 'Unavailable') +
+      rowKV(mode === 'buy' ? 'Total cost' : 'Sale proceeds', quoteReady ? fmt(total) + ' cr' : 'Unavailable', mode === 'buy' ? 'loss' : 'gain') +
+      (quoteReady && quote.shortagePremium ? rowKV('Shortage premium', 'Included in sale price', 'gain') : '') +
+      rowKV('You hold', fmt(held) + ' u') + rowKV('Credits', fmt(cr) + ' cr') +
+      (quoteReady ? rowKV('Credits after', fmt(mode === 'buy' ? cr - total : cr + total) + ' cr') : '') +
+      (free !== Infinity ? rowKV('Hold free', fmt(free) + ' u') : '') +
+      intelRows.map((intelRow) => rowKV(intelRow.label, intelRow.value,
+        intelRow.tone === 'good' ? 'gain' : (intelRow.tone === 'danger' || intelRow.tone === 'warn' ? 'loss' : ''))).join('');
+    // Priority matters: with no quote yet (qty 0, or nothing affordable) creditReady is false by
+    // construction, and checking it first blamed credits on first paint of a stockless market.
+    const freeSell = mode === 'sell' ? sellableCargoQuantity(state, r.id) : 0;
+    const sealedUnits = mode === 'sell' ? reservedCargoQuantity(state, r.id) : 0;
+    const sealedHold = mode === 'sell' && isUnsellableCargo(state, r.id) && freeSell <= 0;
+    const note = pendingTrade && pendingTrade.status === 'pending' ? 'Trade sent. Waiting for the station to confirm what settled.'
+      : retryPending ? 'The result is unknown. Retry the original confirmed order with the same terms and ID. If it already committed, the station returns its saved result without another charge.'
+      : pendingTrade && !pendingAtOriginalStation ? 'The original order is still unresolved. Return to the original station to retry these same confirmed terms; do not place a fresh order.'
+      : pendingTrade ? 'A trade result is still unknown. Its original lot and quantity stay selected so you can safely retry the same order.'
+      : sealedHold ? 'Sealed contract cargo cannot be sold'
+      : sealedUnits > 0 ? `${sealedUnits} u sealed on contract — sell limit is ${freeSell} u`
+      : maxQty < 1 ? (mode === 'buy' ? 'Not enough credits, stock, or hold space.' : 'Nothing to sell here.')
+      : qty < 1 ? ''
+      : qty > maxQty ? 'This quantity exceeds available stock or hold space.'
+      : !quoteReady ? (quote && quote.partial ? 'The board cannot fill this quantity. Lower it before confirming.' : 'Live quote unavailable.')
+      : mode === 'buy' && quote && quote.total > cr ? 'Not enough credits for this quantity.'
+      : '';
+    const goLabel = (side) => retryPending ? 'Retry order'
+      : pendingTrade ? (pendingTrade.status === 'pending' ? 'Waiting for result' : 'Return to original station')
+        : `${side === 'buy' ? 'Buy' : 'Sell'} ${fmt(qty)}`;
+    if (receiptOnly && tradeEl.querySelector('[data-market-intel]')) {
+      // Keep the focused numeric input alive while each keystroke updates its actual quote.
+      // A sealed lot has no quantity to type: put the field back to zero.
+      const typed = tradeEl.querySelector('.sx-qty__in');
+      if (typed && sealedHold) typed.value = '0';
+      tradeEl.querySelector('[data-market-intel]').innerHTML = receiptHtml;
+      setQtyDial(tradeEl, qty, maxQty);
+      const totalEl = tradeEl.querySelector('[data-trade-total]');
+      if (totalEl) setTradeTotal(totalEl, quoteReady ? fmt(total) + ' cr' : 'Unavailable');
+      tradeEl.querySelector('[data-trade-total-label]').textContent = mode === 'buy' ? 'Total cost' : 'Sale proceeds';
+      const go = tradeEl.querySelector('[data-go]');
+      go.disabled = !canAct;
+      const goWord = go.querySelector('.orr-lampkey__word');
+      if (goWord) goWord.textContent = goLabel(mode);
+      else go.textContent = goLabel(mode);
+      const noteEl = tradeEl.querySelector('.sx-trade__note');
+      noteEl.textContent = note;
+      noteEl.hidden = !note;
+      syncHoldArc(state, r.def);
+      for (const row of tradeEl.querySelectorAll('.k-row')) paintRow(row, false);
+      syncKeys(tradeEl);
+      return;
+    }
+
+    // Preserve the native event contract: the live side commits, the other side switches mode.
+    tradeEl.innerHTML = bindStationMarkup(marketTradeHtml({ mode, qty, canAct, receiptHtml, totalLabel: mode === 'buy' ? 'Total cost' : 'Sale proceeds', totalText: quoteReady ? fmt(total) + ' cr' : 'Unavailable', note, limit: maxQty }));
+    dressConsole();
+    // The commit is the tab's one Lamp Key; its word morphs between BUY and SELL.
+    const goBtn = tradeEl.querySelector('[data-go]');
+    if (goBtn && goBtn.ownerDocument) {
+      dressLampKey(goBtn);
+      // marketTradeHtml renders the ordinary Buy/Sell verb. Keep the Lamp Key's
+      // visible and accessible label in sync with the recovery action on full renders too.
+      const goWord = goBtn.querySelector('.orr-lampkey__word');
+      const actionLabel = goLabel(mode);
+      if (goWord) goWord.textContent = actionLabel;
+      else goBtn.textContent = actionLabel;
+      goBtn.setAttribute('aria-label', actionLabel);
+      if (mode !== lastVerbMode) {
+        const word = goBtn.querySelector('.orr-lampkey__word');
+        if (word) word.classList.add('orr-mkt-morph');
+      }
+    }
+    lastVerbMode = mode;
+    const tradeTotal = tradeEl.querySelector('[data-trade-total]');
+    if (tradeTotal) setTradeTotal(tradeTotal, quoteReady ? fmt(total) + ' cr' : 'Unavailable');
+    syncHoldArc(state, def);
+  }
+
+  // Best trade runs from here + one-click course plotting (canonical logic, same nav contract).
+  // INF-085: the card is a forecast with distinct spread/cost/limit/age (formatRouteCard);
+  // the Set course action below is untouched.
+  function renderRoutes(state) {
+    let trades = [];
+    try { trades = quotedRoutes(state, stationId(state)) || []; } catch (_) { trades = []; }
+    const rows = trades.slice(0, 3).map((t, index) => {
+      const dest = STATION_NAME.get(t.destStation) || t.destStation;
+      const card = formatRouteCard(t);
+      if (!routeIsActionable(t)) {
+        // A refused load explains itself; there is no run to review and no destination to plot.
+        return (
+          `<li class="k-row k-row--static sx-route-row">` +
+            `<span class="sx-route-row__body"><span class="k-row__name sx-route-row__t">${entitySpanHtml('commodity:' + t.cmdtyId, escapeHtml(t.cmdtyName || t.cmdtyId))}</span>` +
+              `<span class="k-row__sub">${escapeHtml(card.sub)}</span></span>` +
+            `<span class="k-row__num sx-route-row__s">${escapeHtml(card.profitText)}</span><span></span>` +
+          `</li>`
+        );
+      }
+      let comparison = '';
+      if (index === 0 && t.sourceQuoteExact !== true) {
+        try {
+          const freight = compareDockedFreight(state, stationId(state), t);
+          comparison = freight ? ` · ${formatFreightComparison(freight)}` : '';
+        } catch (_) { comparison = ''; }
+      }
+      return (
+        `<li class="k-row k-row--static sx-route-row">` +
+          `<span class="sx-route-row__body"><span class="k-row__name sx-route-row__t">${entitySpanHtml('commodity:' + t.cmdtyId, escapeHtml(t.cmdtyName || t.cmdtyId))} → ${entitySpanHtml('station:' + t.destStation, escapeHtml(dest))}</span>` +
+            `<span class="k-row__sub">${escapeHtml(card.sub + comparison)}</span>` +
+            `<button type="button" ${stationControlAttrs('review-load')} class="k-word k-word--fine" data-review-load="${escapeHtml(t.cmdtyId)}" aria-label="${escapeHtml(reviewLoadLabel(t.loadUnits, t.cmdtyName))}">${stationControlLabel('review-load')}</button></span>` +
+          `<span class="k-row__num sx-route-row__s${t.loadProfit > 0 ? ' k-good' : ''}">${escapeHtml(card.profitText)}</span>` +
+          `<button type="button" ${stationControlAttrs('set-course')} class="k-word k-word--fine sx-lead__go" data-course="${escapeHtml(t.cmdtyId)}" data-dest="${escapeHtml(t.destStation)}">${stationControlLabel('set-course')}</button>` +
+        `</li>`
+      );
+    }).join('');
+    routesEl.innerHTML =
+      `<p class="k-caps sx-mkt__routes-head">Estimated routes from here</p>` +
+      (rows ? `<ul class="k-rows" style="--k-row-cols: minmax(0,1fr) auto auto">${rows}</ul><p class="k-sentence sx-muted">Margin excludes flight costs and destination price impact. Arrival prices may change. Set course does not buy cargo.</p>`
+        : `<p class="k-sentence sx-muted">No affordable positive-margin load is known. Check hold space, local stock and credits, or refresh destination prices.</p>`);
+    dressRoutes();
+  }
+
+  // WF-06 — the berth's own pulse, read. The economy already bins twelve hours of observed
+  // cash in/out, contract offers and field work (src/economy/economyPulse.js) but no surface
+  // ever read it; this paints that measured flow beside the routes it feeds. Quiet stays quiet.
+  function renderPulse(state) {
+    if (!pulseEl) return;
+    let read = null;
+    try {
+      read = marketPulseRead(economyPulseReport(state && state.economy, state && state.simTime));
+    } catch (_) { read = null; }
+    const next = marketPulseHtml(read);
+    if (pulseEl.dataset.pulseHtml !== next) {
+      pulseEl.dataset.pulseHtml = next;
+      pulseEl.innerHTML = next;
+    }
+  }
+
+  function renderAll(state) {
+    renderAdBoardNotice(adBoardEl, state);
+    const active = typeof document !== 'undefined' ? document.activeElement : null;
+    const editingQuantity = !!(active && tradeEl.contains(active) && active.classList.contains('sx-qty__in'));
+    renderList(state); renderStage(state);
+    renderConsole(state, { receiptOnly: editingQuantity });
+    renderRoutes(state);
+    renderPulse(state);
+  }
+
+  // A worker-side price refusal is already an authoritative quote for this exact
+  // lot. The domain mirror may not carry the changed market row until its cold
+  // cadence, so retain the refusal's total and let the next render show/submit it.
+  // This keeps the strict economy expectedTotal guard intact while preventing a
+  // retry loop that resends the same stale terms.
+  const onTradeFailed = (failure = {}) => {
+    if (disposed || (!pendingTrade && failure.intentId != null)
+      || (pendingTrade && failure.intentId !== pendingTrade.intentId)) return;
+    if (pendingTrade && ['intent_pending', 'trade_pending'].includes(failure.reason)) {
+      markTradeUnknown(failure.intentId);
+      return;
+    }
+    if (pendingTrade && pendingTrade.recoveryAttempt
+      && ['not_docked', 'station_changed'].includes(failure.reason)) {
+      markTradeUnknown(failure.intentId);
+      return;
+    }
+    if (failure.reason === 'price_changed' && (!pendingTrade || pendingTrade.intentId === failure.intentId)) {
+      const retained = marketPriceChangedQuote(failure, {
+        stationId: pendingTrade ? pendingTrade.stationId : stationId(ctx.state || {}),
+        selectedId: pendingTrade ? pendingTrade.commodityId : selectedId,
+        side: pendingTrade ? pendingTrade.side : mode,
+        qty: pendingTrade ? pendingTrade.qty : qty,
+      });
+      if (retained) authoritativeTradeQuote = retained;
+    }
+    if (pendingTrade) finishTradeIntent(failure.intentId);
+    else if (visible && !disposed) renderAll(ctx.state || {});
+  };
+  const onTradeCompleted = (receipt = {}) => {
+    if (disposed || !pendingTrade || receipt.intentId !== pendingTrade.intentId) return;
+    authoritativeTradeQuote = null;
+    finishTradeIntent(receipt.intentId);
+  };
+  if (ctx.bus && typeof ctx.bus.on === 'function') {
+    ctx.bus.on('economy:tradeFailed', onTradeFailed);
+    ctx.bus.on('economy:tradeCompleted', onTradeCompleted);
+  }
+  const historyResetEvents = ['game:new', 'game:newGame', 'save:loaded'];
+  const historyResetOffs = [];
+  const onHistoryWorldReset = () => {
+    historyBackfill.reset();
+    authoritativeTradeQuote = null;
+    retirePendingTrade();
+    if (visible && !disposed) renderAll(ctx.state || {});
+  };
+  if (ctx.bus && typeof ctx.bus.on === 'function') {
+    for (const event of historyResetEvents) {
+      const off = ctx.bus.on(event, onHistoryWorldReset);
+      if (typeof off === 'function') historyResetOffs.push(off);
+    }
+  }
+
+  const deferred = new Set();
+  function cancelDeferred() {
+    for (const timer of deferred) clearTimeout(timer);
+    deferred.clear();
+    tradeBusy = !!(pendingTrade && pendingTrade.status === 'pending')
+      || (!pendingTrade && Date.now() < tradeCooldownUntil);
+  }
+  function deferRefresh(delay, restoreHand = false) {
+    const timer = setTimeout(() => {
+      deferred.delete(timer);
+      if (visible && !disposed) {
+        renderAll(ctx.state || {});
+        if (restoreHand) placeTradeHand();
+      }
+    }, delay);
+    deferred.add(timer);
+  }
+
+  // ---- interactions ----
+  listEl.addEventListener('click', (ev) => {
+    const filter = ev.target.closest('[data-market-filter]');
+    if (filter) {
+      pressedFilterEl = filter;
+      marketFilter = filter.getAttribute('data-market-filter') || 'all';
+      listRenderSignature = '';
+      const state = ctx.state || {};
+      renderList(state); renderStage(state); renderConsole(state);
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tick' });
+      return;
+    }
+    const row = ev.target.closest('.sx-mkt-row[data-cmdty]');
+    if (row) selectCommodity(row.getAttribute('data-cmdty'));
+  });
+  // The register rebuilds its rows on every price/stock tick, so a press that lands on a row
+  // node replaced between pointerdown and pointerup never dispatches click — the player sees
+  // "click did nothing". Track the press by commodity id and select on release over the same
+  // id: survives node replacement while keeping same-row click semantics (drag-off cancels).
+  let pressCmdtyId = null;
+  listEl.addEventListener('pointerdown', (ev) => {
+    const row = ev.target.closest && ev.target.closest('.sx-mkt-row[data-cmdty]');
+    pressCmdtyId = row ? row.getAttribute('data-cmdty') : null;
+  });
+  listEl.addEventListener('pointerup', (ev) => {
+    const row = ev.target.closest && ev.target.closest('.sx-mkt-row[data-cmdty]');
+    const upId = row ? row.getAttribute('data-cmdty') : null;
+    if (pressCmdtyId && upId && upId === pressCmdtyId) selectCommodity(upId);
+    pressCmdtyId = null;
+  });
+  listEl.addEventListener('pointercancel', () => { pressCmdtyId = null; });
+  listEl.addEventListener('input', (ev) => {
+    if (!ev.target.matches('[data-market-search]')) return;
+    marketQuery = ev.target.value || '';
+    listRenderSignature = '';
+    const state = ctx.state || {};
+    renderList(state); renderStage(state); renderConsole(state);
+  });
+  listEl.addEventListener('keydown', (ev) => {
+    if (ev.target.matches('[data-market-search]')) {
+      if (ev.key !== 'Escape' || !marketQuery) return;
+      ev.preventDefault();
+      // Clearing Find owns this Escape; the document's modal router must not also depart.
+      ev.stopPropagation();
+      marketQuery = '';
+      listRenderSignature = '';
+      const state = ctx.state || {};
+      renderList(state); renderStage(state); renderConsole(state);
+      return;
+    }
+    // Arrow / Home / End over the register rows: selection follows focus.
+    const row = ev.target.closest && ev.target.closest('.sx-mkt-row[data-cmdty]');
+    if (!row || !tbodyEl) return;
+    const rows = rowEls();
+    const cur = rows.indexOf(row);
+    let next = -1;
+    if (ev.key === 'ArrowDown') next = Math.min(rows.length - 1, cur + 1);
+    else if (ev.key === 'ArrowUp') next = Math.max(0, cur - 1);
+    else if (ev.key === 'Home') next = 0;
+    else if (ev.key === 'End') next = rows.length - 1;
+    else if (ev.key === 'PageDown') next = Math.min(rows.length - 1, cur + 12);
+    else if (ev.key === 'PageUp') next = Math.max(0, cur - 12);
+    else return;
+    ev.preventDefault();
+    if (next >= 0 && rows[next]) selectCommodity(rows[next].getAttribute('data-cmdty'), { focus: true });
+  });
+
+  // Delegation rides the screen root, not consoleEl: the route table and trade leads live in
+  // .sx-mkt__stage outside the console, and their Set Course buttons must reach this handler.
+  el.addEventListener('click', async (ev) => {
+    const adventure = ev.target.closest('[data-adventure-option]');
+    if (adventure) {
+      const decisionId = adventure.getAttribute('data-adventure-id');
+      const optionId = adventure.getAttribute('data-adventure-option');
+      const chosen = await chooseAdventureDecision(ctx.state || {}, decisionId, optionId, {
+        bus: ctx.bus,
+        economy: null,
+      });
+      renderStage(ctx.state || {});
+      renderConsole(ctx.state || {});
+      if (ctx.bus) {
+        ctx.bus.emit('audio:cue', { id: chosen && chosen.ok ? 'ui_accept' : 'ui_deny' });
+        if (chosen && !chosen.ok && ['price_changed', 'load_changed', 'station_changed', 'credits'].includes(chosen.reason)) {
+          const text = {
+            price_changed: 'The price rose since this offer. Nothing bought or plotted — review the new quote.',
+            load_changed: 'Stock or hold space changed. Nothing bought or plotted — review the load.',
+            station_changed: 'This offer belongs to another berth. Nothing bought or plotted.',
+            credits: 'Not enough credits for this load. Nothing bought or plotted.',
+          }[chosen.reason];
+          ctx.bus.emit('toast', { text, kind: 'warn', ttl: 4 });
+        }
+      }
+      return;
+    }
+    const review = ev.target.closest('[data-review-load]');
+    if (review) {
+      if (tradeBusy || pendingTrade) return;
+      const state = ctx.state || {};
+      const id = review.getAttribute('data-review-load');
+      const plan = quotedRoutes(state, stationId(state)).find((row) => row.cmdtyId === id);
+      if (!plan || plan.loadUnits < 1) { renderAll(state); return; }
+      openTradeMode('buy', state);
+      selectedId = id;
+      qty = plan.loadUnits;
+      renderAll(state);
+      const quantity = tradeEl.querySelector('.sx-qty__in');
+      if (quantity && typeof quantity.focus === 'function') quantity.focus();
+      return;
+    }
+    const course = ev.target.closest('[data-course]');
+    if (course) {
+      const cmdtyId = course.getAttribute('data-course');
+      const dest = course.getAttribute('data-dest');
+      try { applyTradeNavigation(ctx, dest, cmdtyId); } catch (_) {}
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      deferRefresh(60);
+      return;
+    }
+    const go = ev.target.closest('[data-go]');
+    if (go) {
+      if (go.disabled) return;
+      if (pendingTrade) {
+        const sameTerms = pendingTrade.commodityId === selectedId
+          && pendingTrade.side === mode
+          && pendingTrade.qty === Math.max(0, Math.floor(Number(qty) || 0))
+          && pendingTrade.stationId === stationId(ctx.state || {});
+        if (pendingTrade.status !== 'unknown' || !sameTerms) return;
+        // Reuse the exact intent ID and payload. The worker's existing committed-intent
+        // journal returns the old result for duplicates without another economy mutation.
+        submitPendingTrade(pendingTrade);
+        if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_click' });
+        renderAll(ctx.state || {});
+        return;
+      }
+      if (tradeBusy) return;
+      let tradeQty = Math.max(0, Math.floor(Number(qty) || 0));
+      if (tradeQty <= 0) return;
+      const tradeState = ctx.state || {};
+      if (mode === 'sell' && reservedCargoQuantity(tradeState, selectedId) > 0
+        && tradeQty > sellableCargoQuantity(tradeState, selectedId)) return;
+      const quotedRow = tradedList(tradeState).find((row) => row.id === selectedId) || null;
+      const freshQuote = quotedRow ? selectedTradeQuote(tradeState, quotedRow, tradeQty) : null;
+      const decision = marketGoDecision({
+        lastQuotedTerms,
+        selectedId,
+        qty: tradeQty,
+        side: mode,
+        freshQuote,
+      });
+      if (!decision.emit || !decision.payload) {
+        if (ctx.bus) {
+          const text = decision.reason === 'price'
+            ? `Price changed since the quote (${decision.liveTotal == null ? 'unavailable' : decision.liveTotal} vs ${decision.expectedTotal} cr). Review it and confirm again.`
+            : decision.reason === 'quote'
+              ? 'The board cannot fill that quantity. Review it and confirm again.'
+              : 'That confirmation no longer matches the lot on screen. Review it and confirm again.';
+          ctx.bus.emit('toast', { text, kind: 'error', ttl: 3 });
+        }
+        renderAll(tradeState);
+        placeTradeHand();
+        return;
+      }
+      const intentId = newTradeIntentId(tradeState);
+      if (!intentId) {
+        if (ctx.bus) ctx.bus.emit('toast', { text: 'Unable to prepare a unique trade receipt. Nothing was sent; try confirming again.', kind: 'error', ttl: 4 });
+        return;
+      }
+      tradeBusy = true;
+      go.disabled = true;
+      const pending = {
+        intentId,
+        commodityId: decision.payload.commodityId,
+        side: mode,
+        qty: decision.payload.qty,
+        expectedTotal: decision.payload.expectedTotal,
+        stationId: stationId(tradeState) || null,
+        transport: laneCommandSink() ? 'worker' : 'main',
+        status: 'pending',
+        payload: null,
+        ackTimer: null,
+      };
+      pending.payload = {
+        intentId,
+        commodityId: pending.commodityId,
+        side: pending.side,
+        qty: pending.qty,
+        expectedTotal: pending.expectedTotal,
+        sourceStationId: pending.stationId,
+      };
+      pendingTrade = pending;
+      // One transport only: in worker mode the economy RPC returns an authoritative result;
+      // in main mode the existing ui:buy/ui:sell bus path remains synchronous.
+      submitPendingTrade(pending);
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      renderAll(tradeState);
+      deferRefresh(80, true);
+      return;
+    }
+    const seg = ev.target.closest('[data-mode]');
+    if (seg) {
+      if (pendingTrade) return;
+      const nextMode = seg.getAttribute('data-mode');
+      if (nextMode === mode) return;
+      openTradeMode(nextMode, ctx.state || {}, { cargoOnly: nextMode === 'sell' });
+      arrive(quoteEl);
+      if (decisionEl) arrive(decisionEl);
+      renderList(ctx.state || {}); renderStage(ctx.state || {}); renderConsole(ctx.state || {});
+      placeTradeHand();
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tick' });
+      return;
+    }
+    const q = ev.target.closest('[data-q]');
+    if (q) {
+      if (pendingTrade) return;
+      const v = q.getAttribute('data-q');
+      const state = ctx.state || {};
+      const rows = tradedList(state); const r = rows.find((x) => x.id === selectedId);
+      const def = r && r.def; const entry = r && r.entry;
+      const maxQty = tradeQuantityLimit(state, { id: selectedId, entry, def });
+      if (v === 'max') qty = maxQty;
+      else if (maxQty < 1) qty = 0;
+      else qty = Math.max(1, Math.min(maxQty, qty + Number(v)));
+      renderStage(state);
+      renderConsole(state);
+      placeTradeHand();
+    }
+  });
+
+  // THE CROSSHAIR. The quote's trace carries every sample in data-points ("x%:y%:price:secondsFromNow:h|f");
+  // hovering the plot parks a hairline on the nearest one and reads its price and age beside it.
+  // Nothing re-renders: the cursor is one element inside the plot, moved by transform.
+  function relAge(sec, kind) {
+    return sampleAgeLabel(sec, kind);
+  }
+  function chartSamples(host) {
+    if (host._samples && host._samplesSrc === host.dataset.points) return host._samples;
+    host._samplesSrc = host.dataset.points || '';
+    host._samples = host._samplesSrc.split(';').filter(Boolean).map((row) => {
+      const [x, y, price, sec, kind] = row.split(':');
+      return { x: Number(x), y: Number(y), price: Number(price), sec: sec === '' ? NaN : Number(sec), kind };
+    }).filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+    return host._samples;
+  }
+  function showSample(plot, index, { announce = false } = {}) {
+    const host = plot.closest('[data-chart-host]');
+    const cursor = plot.querySelector('[data-chart-cursor]');
+    const samples = host ? chartSamples(host) : [];
+    if (!cursor || !samples.length) return;
+    const i = Math.max(0, Math.min(samples.length - 1, index));
+    const best = samples[i];
+    plot._index = i;
+    cursor.hidden = false;
+    cursor.style.setProperty('--cx', `${best.x}%`);
+    cursor.style.setProperty('--cy', `${best.y}%`);
+    cursor.dataset.kind = best.kind;
+    cursor.classList.toggle('is-left', best.x > 70);
+    const age = relAge(best.sec, best.kind);
+    const text = `${fmt(best.price)} cr${age ? ' · ' + age : ''}`;
+    const label = cursor.querySelector('b');
+    if (label) label.textContent = text;
+    if (announce) {
+      const live = plot.querySelector('[data-chart-live]');
+      if (live) live.textContent = `${best.kind === 'f' ? 'Forecast' : 'Sample'} ${i + 1} of ${samples.length}: ${fmt(best.price)} credits${age ? ', ' + age : ''}.`;
+    }
+  }
+  quoteEl.addEventListener('pointermove', (ev) => {
+    const plot = ev.target.closest && ev.target.closest('.sx-mkt-instrument__plot');
+    if (!plot) return;
+    const host = plot.closest('[data-chart-host]');
+    const samples = host ? chartSamples(host) : [];
+    if (!samples.length) return;
+    const rect = plot.getBoundingClientRect();
+    if (!rect.width) return;
+    const fx = ((ev.clientX - rect.left) / rect.width) * 100;
+    let best = 0;
+    for (let i = 1; i < samples.length; i++) if (Math.abs(samples[i].x - fx) < Math.abs(samples[best].x - fx)) best = i;
+    showSample(plot, best);
+  });
+  quoteEl.addEventListener('pointerleave', () => {
+    const cursor = quoteEl.querySelector('[data-chart-cursor]');
+    const plot = quoteEl.querySelector('.sx-mkt-instrument__plot');
+    if (cursor && (!plot || plot !== document.activeElement)) cursor.hidden = true;
+  });
+  // Keyboard: the plot takes focus; Left/Right step through the samples (Home/End jump), and each
+  // step is read aloud -- the same inspection the older probe offered, on the new instrument.
+  quoteEl.addEventListener('keydown', (ev) => {
+    const plot = ev.target.closest && ev.target.closest('.sx-mkt-instrument__plot');
+    if (!plot || plot !== ev.target) return;
+    const host = plot.closest('[data-chart-host]');
+    const n = host ? chartSamples(host).length : 0;
+    if (!n) return;
+    const at = Number.isInteger(plot._index) ? plot._index : n - 1;
+    const next = ev.key === 'ArrowLeft' ? at - 1 : ev.key === 'ArrowRight' ? at + 1
+      : ev.key === 'Home' ? 0 : ev.key === 'End' ? n - 1 : null;
+    if (next === null) return;
+    ev.preventDefault();
+    showSample(plot, next, { announce: true });
+  });
+  quoteEl.addEventListener('focusin', (ev) => {
+    const plot = ev.target.closest && ev.target.closest('.sx-mkt-instrument__plot');
+    if (plot && plot === ev.target) {
+      const host = plot.closest('[data-chart-host]');
+      const n = host ? chartSamples(host).length : 0;
+      if (n) showSample(plot, Number.isInteger(plot._index) ? plot._index : n - 1, { announce: true });
+    }
+  });
+  quoteEl.addEventListener('focusout', (ev) => {
+    const plot = ev.target.closest && ev.target.closest('.sx-mkt-instrument__plot');
+    const cursor = plot && plot.querySelector('[data-chart-cursor]');
+    if (cursor) cursor.hidden = true;
+  });
+
+  // THE SCRUB. Press on the quantity numeral and drag sideways: the amount runs from 0 to what you
+  // can move, the total rolling live. One unit per 6px, faster the further you pull, clamped to
+  // the trade limit -- the same limit Max uses. Typing still works; so do Fewer/More/Max and the
+  // arrow keys, which are the keyboard channel for the same control.
+  let scrub = null;
+  function scrubLimit() {
+    if (pendingTrade) return 0;
+    const state = ctx.state || {};
+    const rows = tradedList(state); const r = rows.find((x) => x.id === selectedId);
+    return r ? tradeQuantityLimit(state, { id: selectedId, entry: r.entry, def: r.def }) : 0;
+  }
+  // THE DIAL. Press on the ring and turn: the amount is where the pointer points, from 0 at the
+  // foot's left end to all you can move at its right, the total rolling live (one quote a frame).
+  let turn = null;
+  consoleEl.addEventListener('pointerdown', (ev) => {
+    const dial = ev.target.closest && ev.target.closest('.orr-qdial');
+    if (!dial || ev.button !== 0) return;
+    const limit = scrubLimit();
+    if (limit < 1) return;
+    ev.preventDefault();
+    turn = { id: ev.pointerId, dial, limit, host: dial.closest('.sx-qty') };
+    try { dial.setPointerCapture(ev.pointerId); } catch (_) {}
+    if (turn.host) turn.host.classList.add('is-turning');
+    turnTo(ev);
+  });
+  function turnTo(ev) {
+    const next = qtyFromDialPoint(turn.dial, ev.clientX, ev.clientY, turn.limit);
+    if (next == null || next === qty) return;
+    qty = next;
+    const input = tradeEl.querySelector('.sx-qty__in');
+    if (input) input.value = String(qty);
+    if (!scrubFrame) scrubFrame = requestAnimationFrame(flushScrub);
+  }
+  consoleEl.addEventListener('pointermove', (ev) => {
+    if (!turn || ev.pointerId !== turn.id) return;
+    ev.preventDefault();
+    turnTo(ev);
+  });
+  function endTurn(ev) {
+    if (!turn || (ev && ev.pointerId !== turn.id)) return;
+    if (turn.host) turn.host.classList.remove('is-turning');
+    turn = null;
+    if (scrubFrame) { cancelAnimationFrame(scrubFrame); scrubFrame = 0; }
+    renderStage(ctx.state || {}); renderConsole(ctx.state || {});
+  }
+  consoleEl.addEventListener('pointerup', endTurn);
+  consoleEl.addEventListener('pointercancel', endTurn);
+
+  consoleEl.addEventListener('pointerdown', (ev) => {
+    const input = ev.target.closest && ev.target.closest('.sx-qty__in');
+    if (!input || ev.button !== 0) return;
+    scrub = { x: ev.clientX, base: qty, limit: scrubLimit(), moved: false, id: ev.pointerId, input };
+  });
+  consoleEl.addEventListener('pointermove', (ev) => {
+    if (!scrub || ev.pointerId !== scrub.id) return;
+    const dx = ev.clientX - scrub.x;
+    if (!scrub.moved && Math.abs(dx) < 4) return;
+    if (!scrub.moved) {
+      scrub.moved = true;
+      try { scrub.input.setPointerCapture(ev.pointerId); } catch (_) {}
+      consoleEl.classList.add('is-scrubbing');
+    }
+    ev.preventDefault();
+    const steps = Math.sign(dx) * Math.floor(Math.pow(Math.abs(dx) / 6, 1.25));
+    const next = Math.max(0, Math.min(scrub.limit, scrub.base + steps));
+    if (next === qty) return;
+    qty = next;
+    scrub.input.value = String(qty);
+    // no selection may grow under the drag: park the caret at the end of the number
+    try { scrub.input.setSelectionRange(scrub.input.value.length, scrub.input.value.length); } catch (_) {}
+    // One quote per frame, and only the console's: the pointer can fire far faster than a frame,
+    // and the quote above (its trace, its readings) does not depend on the quantity until release.
+    if (!scrubFrame) scrubFrame = requestAnimationFrame(flushScrub);
+  });
+  let scrubFrame = 0;
+  function refreshSaleLine() {
+    const line = quoteEl.querySelector('[data-sale-line]');
+    if (!line) return;
+    const state = ctx.state || {};
+    const r = tradedList(state).find((x) => x.id === selectedId);
+    if (!r) return;
+    const html = saleLineHtml({ sell: unitSell(r.entry, r.def), saleQty: qty, saleQuote: contemplatedSaleQuote(stationId(state), r.id, qty) });
+    if (line.outerHTML !== html) line.outerHTML = html;
+  }
+  function flushScrub() {
+    scrubFrame = 0;
+    renderConsole(ctx.state || {}, { receiptOnly: true });
+    refreshSaleLine();
+    refreshGhost();
+    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tick' });
+  }
+  consoleEl.addEventListener('selectstart', (ev) => { if (scrub && scrub.moved) ev.preventDefault(); });
+  function endScrub(ev) {
+    if (!scrub || (ev && ev.pointerId !== scrub.id)) return;
+    const moved = scrub.moved;
+    scrub = null;
+    consoleEl.classList.remove('is-scrubbing');
+    if (scrubFrame) { cancelAnimationFrame(scrubFrame); scrubFrame = 0; }
+    if (moved) { renderStage(ctx.state || {}); renderConsole(ctx.state || {}); }
+  }
+  consoleEl.addEventListener('pointerup', endScrub);
+  consoleEl.addEventListener('pointercancel', endScrub);
+  consoleEl.addEventListener('keydown', (ev) => {
+    if (pendingTrade) return;
+    if (!ev.target.classList || !ev.target.classList.contains('sx-qty__in')) return;
+    if (ev.key !== 'ArrowUp' && ev.key !== 'ArrowDown') return;
+    ev.preventDefault();
+    const step = ev.shiftKey ? 10 : 1;
+    qty = Math.max(0, Math.min(scrubLimit(), qty + (ev.key === 'ArrowUp' ? step : -step)));
+    ev.target.value = String(qty);
+    renderStage(ctx.state || {});
+    renderConsole(ctx.state || {}, { receiptOnly: true });
+  });
+
+  consoleEl.addEventListener('input', (ev) => {
+    if (pendingTrade) return;
+    if (!ev.target.classList.contains('sx-qty__in')) return;
+    const n = parseInt(ev.target.value, 10);
+    qty = Number.isFinite(n) ? Math.max(0, n) : 0;
+    renderStage(ctx.state || {});
+    renderConsole(ctx.state || {}, { receiptOnly: true });
+  });
+
+  return {
+    el,
+    onShow(c) {
+      if (disposed) return;
+      visible = true;
+      authoritativeTradeQuote = null;
+      const open = c || ctx;
+      const st = open.state || {};
+      hydratePendingTrade(st);
+      // Screen instances are cached by the station app. Every show is a new dock session,
+      // including a same-station reopen, so the prior generation cannot satisfy this one.
+      historyBackfill.reset(stationId(st), historyContextKey(st));
+      // Enable trading: the economy system opens/initializes this station's live market on show
+      // (parity with the legacy market panel — without this, ui:buy/ui:sell are no-ops).
+      const sid = stationId(st);
+      if (ctx.bus && sid) ctx.bus.emit('economy:marketOpened', { stationId: sid });
+      papers.show();
+      const requestedMode = open.tradeMode === 'sell' || open.tradeMode === 'buy' ? open.tradeMode : null;
+      // An explicit handoff ("Sell what I hauled") always applies its mode — even with a lot
+      // already on screen, where the implicit resume below would otherwise keep Buy and leave
+      // the hold hidden. openTradeMode itself focuses a held lot for Sell.
+      if (requestedMode) openTradeMode(requestedMode, st);
+      const resume = marketResumeSelection({
+        selectedId,
+        qty,
+        requestedMode,
+        requestedCommodityId: open.commodityId,
+        trackedCommodityId: (cargoOnly || requestedMode === 'sell') ? null : trackedCmdty(st),
+        listedIds: tradedList(st).map((row) => row.id),
+      });
+      // A lot already on screen stays there. The job and the tracked contract apply on the first open only.
+      if (!selectedId) {
+        if (resume.applyMode) openTradeMode(resume.applyMode, st, { cargoOnly: resume.applyMode === 'sell' });
+        if (resume.selectedId) {
+          selectedId = resume.selectedId;
+          qty = resume.qty;
+        }
+      }
+      if (pendingTrade) {
+        selectedId = pendingTrade.commodityId;
+        mode = pendingTrade.side;
+        qty = pendingTrade.qty;
+        marketFilter = mode === 'sell' ? 'hold' : 'all';
+        marketQuery = '';
+        listRenderSignature = '';
+      }
+      pinSealedSellQuantity(st, selectedId);
+      renderAll(st);
+      const active = tbodyEl && tbodyEl.querySelector('.is-active');
+      // A phone's market shares the berth's page scroll. Opening the tab must preserve the
+      // station header; only the desktop's independent commodity rail scrolls to its selection.
+      if (!isPhoneLayout() && active) revealMarketRowInRail(listEl.querySelector('.sx-mkt-browser__rail'), active);
+    },
+    refresh(c) { if (visible && !disposed) renderAll((c || ctx).state || {}); },
+    onHide() {
+      papers.hide();
+      visible = false;
+      historyBackfill.reset();
+      cancelDeferred();
+    },
+    dispose() {
+      papers.dispose();
+      disposed = true;
+      visible = false;
+      historyBackfill.reset();
+      if (pendingTrade && pendingTrade.status === 'pending') markTradeUnknown(pendingTrade.intentId);
+      cancelDeferred();
+      if (tradeCooldownTimer != null) clearTimeout(tradeCooldownTimer);
+      tradeCooldownTimer = null;
+      tradeCooldownUntil = 0;
+      tradeBusy = false;
+      for (const timer of arriveTimers.values()) clearTimeout(timer);
+      arriveTimers.clear();
+      if (ctx.bus && typeof ctx.bus.off === 'function') {
+        ctx.bus.off('economy:tradeFailed', onTradeFailed);
+        ctx.bus.off('economy:tradeCompleted', onTradeCompleted);
+      }
+      for (const off of historyResetOffs.splice(0)) {
+        try { off(); } catch (_) {}
+      }
+    },
+  };
+}

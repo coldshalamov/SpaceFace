@@ -1,0 +1,3069 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.rock-reef-metal-monolith.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9989017844200134,
+        -0.11507129669189453,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9989017844200134,
+        -0.11507129669189453,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.anchor.socket-cargo-ventral",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.26662683486938477,
+        -8.2216796875,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.26662683486938477,
+        -8.2216796875,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.9761810302734375,
+        -0.11507129669189453,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.9761810302734375,
+        -0.11507129669189453,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.anchor.socket-mining-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.142927169799805,
+        -0.265071302652359,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.142927169799805,
+        -0.265071302652359,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.anchor.socket-rcs-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.26662683486938477,
+        -0.11507129669189453,
+        -4.527247905731201,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.26662683486938477,
+        -0.11507129669189453,
+        -4.527247905731201,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.anchor.socket-rcs-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.26662683486938477,
+        -0.11507129669189453,
+        4.527247905731201,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.26662683486938477,
+        -0.11507129669189453,
+        4.527247905731201,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.746830701828003,
+        4.020768642425537,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.746830701828003,
+        4.020768642425537,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.2761812210083,
+        -0.11507129669189453,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.2761812210083,
+        -0.11507129669189453,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.anchor.socket-trail-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.2761812210083,
+        -0.11507129669189453,
+        -1.8863532543182373,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.2761812210083,
+        -0.11507129669189453,
+        -1.8863532543182373,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.anchor.socket-trail-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.2761812210083,
+        -0.11507129669189453,
+        1.8863532543182373,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.2761812210083,
+        -0.11507129669189453,
+        1.8863532543182373,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.anchor.socket-utility-dorsal",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.26662683486938477,
+        7.991537094116211,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.26662683486938477,
+        7.991537094116211,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.242927074432373,
+        -0.11507129669189453,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentNodeId": "sf.render.rock-reef-metal-monolith.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.242927074432373,
+        -0.11507129669189453,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.rock-reef-metal-monolith",
+  "collisions": [
+    {
+      "id": "sf.render.rock-reef-metal-monolith.collision",
+      "nodeId": "sf.render.rock-reef-metal-monolith.mesh.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "f6211fafd1829aa7237fe9033e217ef75dcb1db2821a9671c29842954fe1b4db",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          7.643027821011214,
+          8.04150104522705,
+          8.630706591147304
+        ],
+        "min": [
+          -8.17628196758714,
+          -8.271679878234863,
+          -7.545066637534022
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b429e0f7b0adb0dbcd9c1a08edc0d3e8dcc01375bc7ca59f53f651289421b42c",
+      "id": "sf.render.rock-reef-metal-monolith.mesh.collision-hull.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.rock-reef-metal-monolith.mesh.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 886
+    },
+    {
+      "bounds": {
+        "max": [
+          7.320666790008545,
+          5.816350439813797,
+          6.649358036818822
+        ],
+        "min": [
+          -6.517118453979492,
+          -3.4313628471166533,
+          -7.115790131392797
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6346f45f2b8cc04397c621a136922abd6f0252eae39e715849e8078fbb808fc5",
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod0-brushedmetal.primitive.0",
+      "indexCount": 3384,
+      "indexed": true,
+      "materialHash": "74b914c054ab2b7acf53bc783d6b648594a9f32ee80bd8596943c3fd62d2c7a5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_BrushedMetal",
+      "nodeId": "sf.render.rock-reef-metal-monolith.mesh.lod0-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 1036
+    },
+    {
+      "bounds": {
+        "max": [
+          0.07854167791664723,
+          5.746563396877477,
+          5.991230010986328
+        ],
+        "min": [
+          -5.4432196435576685,
+          -3.0631429771844836,
+          -3.254122734069824
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4fd190cba6249f647e295be923ac29984e0bc34b67433a0607bdc8fca11bbad3",
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod0-lights-cyan.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "fa3cc734dc2d886d3f09f4ae79872eed85da27bcfc0fb43bbe1c76eb9dfbb4c1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Cyan",
+      "nodeId": "sf.render.rock-reef-metal-monolith.mesh.lod0-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          4.6245642825413125,
+          8.041537284851074,
+          8.631116903035224
+        ],
+        "min": [
+          -8.176519505624809,
+          -5.040616989135742,
+          -3.5152004124804144
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "282bbadba7fbd6b4ff2a3a1c61f3afcecfdee2e1ac4cb40c9fb86ddb03a4e53a",
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod0-stone-deep.primitive.0",
+      "indexCount": 11520,
+      "indexed": true,
+      "materialHash": "a803b74d57ed6b7aa6c5c09918de55c20a6a716e81198aec30c93e9d177b3123",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone_deep",
+      "nodeId": "sf.render.rock-reef-metal-monolith.mesh.lod0-stone-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 8088
+    },
+    {
+      "bounds": {
+        "max": [
+          7.073833465576172,
+          2.9393882867156096,
+          6.54474760575294
+        ],
+        "min": [
+          -6.8738908767700195,
+          -4.605927478915317,
+          -6.74915720505714
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6c102ea392f7cc9c3c18324b395a861d3025d17180d496afdcf5a4d1c2ef7355",
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod0-stone-strata.primitive.0",
+      "indexCount": 1548,
+      "indexed": true,
+      "materialHash": "56145e710d0d685ce7e25def6f8b41789d37cf84f7b550268d087431fcd8758a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone_strata",
+      "nodeId": "sf.render.rock-reef-metal-monolith.mesh.lod0-stone-strata",
+      "primitiveIndex": 0,
+      "vertexCount": 950
+    },
+    {
+      "bounds": {
+        "max": [
+          7.642927169799805,
+          6.705316524835663,
+          6.880099975801196
+        ],
+        "min": [
+          -7.6746015548706055,
+          -8.271895389886932,
+          -7.545499527192797
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c2cea67ce1fbbf472653d14b702f37f4a1ab505fc81ef9cc318afbd728a3118f",
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod0-stone.primitive.0",
+      "indexCount": 4392,
+      "indexed": true,
+      "materialHash": "8e47ccb7104aae16d78c2a76321711925c446bd71b02c82a37ce9e04c2f06341",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone",
+      "nodeId": "sf.render.rock-reef-metal-monolith.mesh.lod0-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 2952
+    },
+    {
+      "bounds": {
+        "max": [
+          7.318933963775635,
+          5.816993237047442,
+          6.649515782582203
+        ],
+        "min": [
+          -6.517172336578369,
+          -3.4312870507528865,
+          -7.115651284443775
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c36c51658d54a2f4854698c9842aeee070397da5cff0fa4bb028e81c6a75c2bd",
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod1-brushedmetal.primitive.0",
+      "indexCount": 216,
+      "indexed": true,
+      "materialHash": "74b914c054ab2b7acf53bc783d6b648594a9f32ee80bd8596943c3fd62d2c7a5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_BrushedMetal",
+      "nodeId": "sf.render.rock-reef-metal-monolith.mesh.lod1-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          0.07854167791664723,
+          5.669817165641268,
+          5.991230010986328
+        ],
+        "min": [
+          -5.4432196435576685,
+          -2.986397222785433,
+          -3.254122734069824
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "71fd8512a3ca4245f8172ba721b6fb89fa23fa80034fadf4ca282335f52c285e",
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod1-lights-cyan.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "fa3cc734dc2d886d3f09f4ae79872eed85da27bcfc0fb43bbe1c76eb9dfbb4c1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Lights_Cyan",
+      "nodeId": "sf.render.rock-reef-metal-monolith.mesh.lod1-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          4.564916814421699,
+          8.044045448303223,
+          8.628223449312838
+        ],
+        "min": [
+          -8.19572564468293,
+          -5.021228790283203,
+          -3.5183706584803174
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5ea44a90fdbaee95dea09d29ce95cd3387cd329bb3fdb2e11ab7827f9e000423",
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod1-stone-deep.primitive.0",
+      "indexCount": 4908,
+      "indexed": true,
+      "materialHash": "a803b74d57ed6b7aa6c5c09918de55c20a6a716e81198aec30c93e9d177b3123",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone_deep",
+      "nodeId": "sf.render.rock-reef-metal-monolith.mesh.lod1-stone-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 3462
+    },
+    {
+      "bounds": {
+        "max": [
+          7.128602981567383,
+          3.340908370943681,
+          6.545718176821042
+        ],
+        "min": [
+          -7.088124752044678,
+          -4.894875369997636,
+          -6.693926794985105
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "55ffd7234b50e634ee806532e867906c8141b69df8bc4375fb60fb10d254fe42",
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod1-stone-strata.primitive.0",
+      "indexCount": 447,
+      "indexed": true,
+      "materialHash": "56145e710d0d685ce7e25def6f8b41789d37cf84f7b550268d087431fcd8758a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone_strata",
+      "nodeId": "sf.render.rock-reef-metal-monolith.mesh.lod1-stone-strata",
+      "primitiveIndex": 0,
+      "vertexCount": 313
+    },
+    {
+      "bounds": {
+        "max": [
+          7.642927169799805,
+          6.705316524835663,
+          6.880099975801196
+        ],
+        "min": [
+          -7.6746015548706055,
+          -8.271895389886932,
+          -7.545499527192797
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5941edfbc884a3c7e37b5ea07e1f199f9144e93c6b0899683d3a8a6dcb236f05",
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod1-stone.primitive.0",
+      "indexCount": 2769,
+      "indexed": true,
+      "materialHash": "8e47ccb7104aae16d78c2a76321711925c446bd71b02c82a37ce9e04c2f06341",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone",
+      "nodeId": "sf.render.rock-reef-metal-monolith.mesh.lod1-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 1954
+    },
+    {
+      "bounds": {
+        "max": [
+          7.341350078582764,
+          5.829112090335234,
+          6.664228002898523
+        ],
+        "min": [
+          -6.517172336578369,
+          -3.4510691540101606,
+          -7.114781420104333
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "17d9d5e319aef51d81cf57ff1e3d702840f7f6644c29a40498ae07643b59d659",
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod2-brushedmetal.primitive.0",
+      "indexCount": 102,
+      "indexed": true,
+      "materialHash": "74b914c054ab2b7acf53bc783d6b648594a9f32ee80bd8596943c3fd62d2c7a5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_BrushedMetal",
+      "nodeId": "sf.render.rock-reef-metal-monolith.mesh.lod2-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 78
+    },
+    {
+      "bounds": {
+        "max": [
+          0.07854167791664723,
+          5.669817165641268,
+          5.991230010986328
+        ],
+        "min": [
+          -5.4432196435576685,
+          -2.986397222785433,
+          -3.254122734069824
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ac16d15bb2e9ed9ccdb29155e6d686197928c5bcfbb6ca90f14c0b35dc9d45f2",
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod2-lights-cyan.primitive.0",
+      "indexCount": 9,
+      "indexed": true,
+      "materialHash": "fa3cc734dc2d886d3f09f4ae79872eed85da27bcfc0fb43bbe1c76eb9dfbb4c1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Lights_Cyan",
+      "nodeId": "sf.render.rock-reef-metal-monolith.mesh.lod2-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 9
+    },
+    {
+      "bounds": {
+        "max": [
+          4.52988419209859,
+          8.030227661132812,
+          8.581223398033204
+        ],
+        "min": [
+          -8.195783468831989,
+          -4.950563430786133,
+          -3.539120345893922
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3deaf521076aa405f4301a8790963f458f52aea1859518803e7c077bfdc6bfa3",
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod2-stone-deep.primitive.0",
+      "indexCount": 2022,
+      "indexed": true,
+      "materialHash": "a803b74d57ed6b7aa6c5c09918de55c20a6a716e81198aec30c93e9d177b3123",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Stone_deep",
+      "nodeId": "sf.render.rock-reef-metal-monolith.mesh.lod2-stone-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 1474
+    },
+    {
+      "bounds": {
+        "max": [
+          7.015667915344238,
+          3.5571965057645345,
+          6.534889561200006
+        ],
+        "min": [
+          -6.974515914916992,
+          -4.830850966671517,
+          -6.691890579724176
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b316a624f1b20298aec633e0168269b4b2a367c3098bcfff98026e26cb29f8e3",
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod2-stone-strata.primitive.0",
+      "indexCount": 225,
+      "indexed": true,
+      "materialHash": "56145e710d0d685ce7e25def6f8b41789d37cf84f7b550268d087431fcd8758a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Stone_strata",
+      "nodeId": "sf.render.rock-reef-metal-monolith.mesh.lod2-stone-strata",
+      "primitiveIndex": 0,
+      "vertexCount": 175
+    },
+    {
+      "bounds": {
+        "max": [
+          7.688157558441162,
+          6.68497646270056,
+          6.879858164354069
+        ],
+        "min": [
+          -7.781845569610596,
+          -8.282689456322387,
+          -7.5665856881577795
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7f3dfd52c17615df32e6391286486d3e48cccae65f8b188437fb44270450309c",
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod2-stone.primitive.0",
+      "indexCount": 1401,
+      "indexed": true,
+      "materialHash": "8e47ccb7104aae16d78c2a76321711925c446bd71b02c82a37ce9e04c2f06341",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Stone",
+      "nodeId": "sf.render.rock-reef-metal-monolith.mesh.lod2-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 994
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "56145e710d0d685ce7e25def6f8b41789d37cf84f7b550268d087431fcd8758a",
+      "id": "material:56145e710d0d685ce7e25def",
+      "name": "Material_Stone_strata",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "74b914c054ab2b7acf53bc783d6b648594a9f32ee80bd8596943c3fd62d2c7a5",
+      "id": "material:74b914c054ab2b7acf53bc78",
+      "name": "Material_BrushedMetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "8e47ccb7104aae16d78c2a76321711925c446bd71b02c82a37ce9e04c2f06341",
+      "id": "material:8e47ccb7104aae16d78c2a76",
+      "name": "Material_Stone",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "a803b74d57ed6b7aa6c5c09918de55c20a6a716e81198aec30c93e9d177b3123",
+      "id": "material:a803b74d57ed6b7aa6c5c099",
+      "name": "Material_Stone_deep",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "fa3cc734dc2d886d3f09f4ae79872eed85da27bcfc0fb43bbe1c76eb9dfbb4c1",
+      "id": "material:fa3cc734dc2d886d3f09f4ae",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.rock-reef-metal-monolith.mesh.collision-hull",
+      "localTransform": [
+        8.156590461730957,
+        0,
+        0,
+        0,
+        0,
+        8.156590461730957,
+        0,
+        0,
+        0,
+        0,
+        8.156590461730957,
+        0,
+        -0.26662707328796387,
+        -0.11508941650390625,
+        0.5428199768066406,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.rock-reef-metal-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-monolith.body",
+      "worldTransform": [
+        8.156590461730957,
+        0,
+        0,
+        0,
+        0,
+        8.156590461730957,
+        0,
+        0,
+        0,
+        0,
+        8.156590461730957,
+        0,
+        -0.26662707328796387,
+        -0.11508941650390625,
+        0.5428199768066406,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod0-brushedmetal",
+      "localTransform": [
+        6.9188926219940186,
+        0,
+        0,
+        0,
+        0,
+        6.9188926219940186,
+        0,
+        0,
+        0,
+        0,
+        6.9188926219940186,
+        0,
+        0.40177416801452637,
+        1.1924937963485718,
+        -0.2332160472869873,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_BrushedMetal",
+      "nodeName": "LOD0_BrushedMetal",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.rock-reef-metal-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-monolith.body",
+      "worldTransform": [
+        6.9188926219940186,
+        0,
+        0,
+        0,
+        0,
+        6.9188926219940186,
+        0,
+        0,
+        0,
+        0,
+        6.9188926219940186,
+        0,
+        0.40177416801452637,
+        1.1924937963485718,
+        -0.2332160472869873,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod0-lights-cyan",
+      "localTransform": [
+        4.622676372528076,
+        0,
+        0,
+        0,
+        0,
+        4.622676372528076,
+        0,
+        0,
+        0,
+        0,
+        4.622676372528076,
+        0,
+        -2.682338982820511,
+        1.3417102098464966,
+        1.368553638458252,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lights_Cyan",
+      "nodeName": "LOD0_Lights_Cyan",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.rock-reef-metal-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-monolith.body",
+      "worldTransform": [
+        4.622676372528076,
+        0,
+        0,
+        0,
+        0,
+        4.622676372528076,
+        0,
+        0,
+        0,
+        0,
+        4.622676372528076,
+        0,
+        -2.682338982820511,
+        1.3417102098464966,
+        1.368553638458252,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod0-stone",
+      "localTransform": [
+        7.658764362335205,
+        0,
+        0,
+        0,
+        0,
+        7.658764362335205,
+        0,
+        0,
+        0,
+        0,
+        7.658764362335205,
+        0,
+        -0.01583719253540039,
+        -0.7832894325256348,
+        -0.3326997756958008,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Stone",
+      "nodeName": "LOD0_Stone",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.rock-reef-metal-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-monolith.body",
+      "worldTransform": [
+        7.658764362335205,
+        0,
+        0,
+        0,
+        0,
+        7.658764362335205,
+        0,
+        0,
+        0,
+        0,
+        7.658764362335205,
+        0,
+        -0.01583719253540039,
+        -0.7832894325256348,
+        -0.3326997756958008,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod0-stone-deep",
+      "localTransform": [
+        6.541077136993408,
+        0,
+        0,
+        0,
+        0,
+        6.541077136993408,
+        0,
+        0,
+        0,
+        0,
+        6.541077136993408,
+        0,
+        -1.775977611541748,
+        1.500460147857666,
+        2.557958245277405,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Stone_deep",
+      "nodeName": "LOD0_Stone_deep",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.rock-reef-metal-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-monolith.body",
+      "worldTransform": [
+        6.541077136993408,
+        0,
+        0,
+        0,
+        0,
+        6.541077136993408,
+        0,
+        0,
+        0,
+        0,
+        6.541077136993408,
+        0,
+        -1.775977611541748,
+        1.500460147857666,
+        2.557958245277405,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod0-stone-strata",
+      "localTransform": [
+        6.973862171173096,
+        0,
+        0,
+        0,
+        0,
+        6.973862171173096,
+        0,
+        0,
+        0,
+        0,
+        6.973862171173096,
+        0,
+        0.09997129440307617,
+        -0.8332695960998535,
+        -0.10220479965209961,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Stone_strata",
+      "nodeName": "LOD0_Stone_strata",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.rock-reef-metal-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-monolith.body",
+      "worldTransform": [
+        6.973862171173096,
+        0,
+        0,
+        0,
+        0,
+        6.973862171173096,
+        0,
+        0,
+        0,
+        0,
+        6.973862171173096,
+        0,
+        0.09997129440307617,
+        -0.8332695960998535,
+        -0.10220479965209961,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod1-brushedmetal",
+      "localTransform": [
+        6.918053150177002,
+        0,
+        0,
+        0,
+        0,
+        6.918053150177002,
+        0,
+        0,
+        0,
+        0,
+        6.918053150177002,
+        0,
+        0.4008808135986328,
+        1.1928530931472778,
+        -0.23306775093078613,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_BrushedMetal",
+      "nodeName": "LOD1_BrushedMetal",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.rock-reef-metal-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-monolith.body",
+      "worldTransform": [
+        6.918053150177002,
+        0,
+        0,
+        0,
+        0,
+        6.918053150177002,
+        0,
+        0,
+        0,
+        0,
+        6.918053150177002,
+        0,
+        0.4008808135986328,
+        1.1928530931472778,
+        -0.23306775093078613,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod1-lights-cyan",
+      "localTransform": [
+        4.622676372528076,
+        0,
+        0,
+        0,
+        0,
+        4.622676372528076,
+        0,
+        0,
+        0,
+        0,
+        4.622676372528076,
+        0,
+        -2.682338982820511,
+        1.3417099714279175,
+        1.368553638458252,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Lights_Cyan",
+      "nodeName": "LOD1_Lights_Cyan",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.rock-reef-metal-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-monolith.body",
+      "worldTransform": [
+        4.622676372528076,
+        0,
+        0,
+        0,
+        0,
+        4.622676372528076,
+        0,
+        0,
+        0,
+        0,
+        4.622676372528076,
+        0,
+        -2.682338982820511,
+        1.3417099714279175,
+        1.368553638458252,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod1-stone",
+      "localTransform": [
+        7.658764362335205,
+        0,
+        0,
+        0,
+        0,
+        7.658764362335205,
+        0,
+        0,
+        0,
+        0,
+        7.658764362335205,
+        0,
+        -0.01583719253540039,
+        -0.7832894325256348,
+        -0.3326997756958008,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone",
+      "nodeName": "LOD1_Stone",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.rock-reef-metal-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-monolith.body",
+      "worldTransform": [
+        7.658764362335205,
+        0,
+        0,
+        0,
+        0,
+        7.658764362335205,
+        0,
+        0,
+        0,
+        0,
+        7.658764362335205,
+        0,
+        -0.01583719253540039,
+        -0.7832894325256348,
+        -0.3326997756958008,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod1-stone-deep",
+      "localTransform": [
+        6.532637119293213,
+        0,
+        0,
+        0,
+        0,
+        6.532637119293213,
+        0,
+        0,
+        0,
+        0,
+        6.532637119293213,
+        0,
+        -1.8154044151306152,
+        1.5114083290100098,
+        2.5549263954162598,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone_deep",
+      "nodeName": "LOD1_Stone_deep",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.rock-reef-metal-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-monolith.body",
+      "worldTransform": [
+        6.532637119293213,
+        0,
+        0,
+        0,
+        0,
+        6.532637119293213,
+        0,
+        0,
+        0,
+        0,
+        6.532637119293213,
+        0,
+        -1.8154044151306152,
+        1.5114083290100098,
+        2.5549263954162598,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod1-stone-strata",
+      "localTransform": [
+        7.10836386680603,
+        0,
+        0,
+        0,
+        0,
+        7.10836386680603,
+        0,
+        0,
+        0,
+        0,
+        7.10836386680603,
+        0,
+        0.02023911476135254,
+        -0.7769834995269775,
+        -0.07410430908203125,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone_strata",
+      "nodeName": "LOD1_Stone_strata",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.rock-reef-metal-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-monolith.body",
+      "worldTransform": [
+        7.10836386680603,
+        0,
+        0,
+        0,
+        0,
+        7.10836386680603,
+        0,
+        0,
+        0,
+        0,
+        7.10836386680603,
+        0,
+        0.02023911476135254,
+        -0.7769834995269775,
+        -0.07410430908203125,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod2-brushedmetal",
+      "localTransform": [
+        6.929261207580566,
+        0,
+        0,
+        0,
+        0,
+        6.929261207580566,
+        0,
+        0,
+        0,
+        0,
+        6.929261207580566,
+        0,
+        0.41208887100219727,
+        1.1890214681625366,
+        -0.22527670860290527,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_BrushedMetal",
+      "nodeName": "LOD2_BrushedMetal",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.rock-reef-metal-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-monolith.body",
+      "worldTransform": [
+        6.929261207580566,
+        0,
+        0,
+        0,
+        0,
+        6.929261207580566,
+        0,
+        0,
+        0,
+        0,
+        6.929261207580566,
+        0,
+        0.41208887100219727,
+        1.1890214681625366,
+        -0.22527670860290527,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod2-lights-cyan",
+      "localTransform": [
+        4.622676372528076,
+        0,
+        0,
+        0,
+        0,
+        4.622676372528076,
+        0,
+        0,
+        0,
+        0,
+        4.622676372528076,
+        0,
+        -2.682338982820511,
+        1.3417099714279175,
+        1.368553638458252,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Lights_Cyan",
+      "nodeName": "LOD2_Lights_Cyan",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.rock-reef-metal-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-monolith.body",
+      "worldTransform": [
+        4.622676372528076,
+        0,
+        0,
+        0,
+        0,
+        4.622676372528076,
+        0,
+        0,
+        0,
+        0,
+        4.622676372528076,
+        0,
+        -2.682338982820511,
+        1.3417099714279175,
+        1.368553638458252,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod2-stone",
+      "localTransform": [
+        7.735001564025879,
+        0,
+        0,
+        0,
+        0,
+        7.735001564025879,
+        0,
+        0,
+        0,
+        0,
+        7.735001564025879,
+        0,
+        -0.0468440055847168,
+        -0.7988564968109131,
+        -0.34336376190185547,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone",
+      "nodeName": "LOD2_Stone",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.rock-reef-metal-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-monolith.body",
+      "worldTransform": [
+        7.735001564025879,
+        0,
+        0,
+        0,
+        0,
+        7.735001564025879,
+        0,
+        0,
+        0,
+        0,
+        7.735001564025879,
+        0,
+        -0.0468440055847168,
+        -0.7988564968109131,
+        -0.34336376190185547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod2-stone-deep",
+      "localTransform": [
+        6.490395545959473,
+        0,
+        0,
+        0,
+        0,
+        6.490395545959473,
+        0,
+        0,
+        0,
+        0,
+        6.490395545959473,
+        0,
+        -1.8329496383666992,
+        1.5398321151733398,
+        2.521051526069641,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone_deep",
+      "nodeName": "LOD2_Stone_deep",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.rock-reef-metal-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-monolith.body",
+      "worldTransform": [
+        6.490395545959473,
+        0,
+        0,
+        0,
+        0,
+        6.490395545959473,
+        0,
+        0,
+        0,
+        0,
+        6.490395545959473,
+        0,
+        -1.8329496383666992,
+        1.5398321151733398,
+        2.521051526069641,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.mesh.lod2-stone-strata",
+      "localTransform": [
+        6.995091915130615,
+        0,
+        0,
+        0,
+        0,
+        6.995091915130615,
+        0,
+        0,
+        0,
+        0,
+        6.995091915130615,
+        0,
+        0.020576000213623047,
+        -0.6368272304534912,
+        -0.07850050926208496,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone_strata",
+      "nodeName": "LOD2_Stone_strata",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.rock-reef-metal-monolith.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-monolith.body",
+      "worldTransform": [
+        6.995091915130615,
+        0,
+        0,
+        0,
+        0,
+        6.995091915130615,
+        0,
+        0,
+        0,
+        0,
+        6.995091915130615,
+        0,
+        0.020576000213623047,
+        -0.6368272304534912,
+        -0.07850050926208496,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-reef-metal-monolith.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_PLACE_ROCK_REEF_METAL_MONOLITH_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-reef-metal-monolith.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "5ada3ddc65b03dbbd0550e3c8a74d4be1ec45ef1fe73efcb5f1c019084f86206"
+    },
+    "sourceGlb": {
+      "bytes": 490916,
+      "sha256": "d999a6aeaa15be3000a668c6a1eb2abbf85cdc04d05847ea2abc1203f62ec5c9",
+      "uri": "place_rock_reef_metal_monolith.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 495836,
+    "sha256": "f0dbfe659c5ca9124f85629af504502841d148c8aa47ef35739ed0ba0818a5b2",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.25381295519541336,
+        -0.11932200400958237,
+        0.5322656074387222
+      ],
+      "max": [
+        7.688157558441162,
+        8.044045448303223,
+        8.631116903035224
+      ],
+      "min": [
+        -8.195783468831989,
+        -8.282689456322387,
+        -7.5665856881577795
+      ],
+      "size": [
+        15.883941027273151,
+        16.32673490462561,
+        16.197702591193003
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.9989017844200134,
+          -0.11507129669189453,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 18,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.rock-reef-metal-monolith.anchor.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.26662683486938477,
+          -8.2216796875,
+          0,
+          1
+        ],
+        "name": "SOCKET_Cargo_Ventral",
+        "planIndex": 19,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            -1,
+            0
+          ],
+          "socketRole": "cargo"
+        },
+        "userData": {
+          "name": "SOCKET_Cargo_Ventral",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              -1,
+              0
+            ],
+            "role": "cargo",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cargo_Ventral",
+            "recordIds": [
+              "sf.render.rock-reef-metal-monolith.anchor.socket-cargo-ventral"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7.9761810302734375,
+          -0.11507129669189453,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 20,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.rock-reef-metal-monolith.anchor.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          7.142927169799805,
+          -0.265071302652359,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front",
+        "planIndex": 21,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "mining",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front",
+            "recordIds": [
+              "sf.render.rock-reef-metal-monolith.anchor.socket-mining-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.26662683486938477,
+          -0.11507129669189453,
+          -4.527247905731201,
+          1
+        ],
+        "name": "SOCKET_RCS_Port",
+        "planIndex": 22,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            -1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              -1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Port",
+            "recordIds": [
+              "sf.render.rock-reef-metal-monolith.anchor.socket-rcs-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.26662683486938477,
+          -0.11507129669189453,
+          4.527247905731201,
+          1
+        ],
+        "name": "SOCKET_RCS_Starboard",
+        "planIndex": 23,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Starboard",
+            "recordIds": [
+              "sf.render.rock-reef-metal-monolith.anchor.socket-rcs-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.746830701828003,
+          4.020768642425537,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 24,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.rock-reef-metal-monolith.anchor.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8.2761812210083,
+          -0.11507129669189453,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 25,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.rock-reef-metal-monolith.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8.2761812210083,
+          -0.11507129669189453,
+          -1.8863532543182373,
+          1
+        ],
+        "name": "SOCKET_Trail_Port",
+        "planIndex": 26,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Port",
+            "recordIds": [
+              "sf.render.rock-reef-metal-monolith.anchor.socket-trail-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8.2761812210083,
+          -0.11507129669189453,
+          1.8863532543182373,
+          1
+        ],
+        "name": "SOCKET_Trail_Starboard",
+        "planIndex": 27,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Starboard",
+            "recordIds": [
+              "sf.render.rock-reef-metal-monolith.anchor.socket-trail-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.26662683486938477,
+          7.991537094116211,
+          0,
+          1
+        ],
+        "name": "SOCKET_Utility_Dorsal",
+        "planIndex": 28,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "utility"
+        },
+        "userData": {
+          "name": "SOCKET_Utility_Dorsal",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "utility",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Utility_Dorsal",
+            "recordIds": [
+              "sf.render.rock-reef-metal-monolith.anchor.socket-utility-dorsal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          7.242927074432373,
+          -0.11507129669189453,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 29,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "weapon",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.rock-reef-metal-monolith.anchor.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "geology": 10,
+      "mechanical": 3,
+      "signal": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "geology"
+      }
+    ],
+    "nodeCount": 30,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          6.9188926219940186,
+          0,
+          0,
+          0,
+          0,
+          6.9188926219940186,
+          0,
+          0,
+          0,
+          0,
+          6.9188926219940186,
+          0,
+          0.40177416801452637,
+          1.1924937963485718,
+          -0.2332160472869873,
+          1
+        ],
+        "name": "LOD0_BrushedMetal",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.622676372528076,
+          0,
+          0,
+          0,
+          0,
+          4.622676372528076,
+          0,
+          0,
+          0,
+          0,
+          4.622676372528076,
+          0,
+          -2.682338982820511,
+          1.3417102098464966,
+          1.368553638458252,
+          1
+        ],
+        "name": "LOD0_Lights_Cyan",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.658764362335205,
+          0,
+          0,
+          0,
+          0,
+          7.658764362335205,
+          0,
+          0,
+          0,
+          0,
+          7.658764362335205,
+          0,
+          -0.01583719253540039,
+          -0.7832894325256348,
+          -0.3326997756958008,
+          1
+        ],
+        "name": "LOD0_Stone",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.541077136993408,
+          0,
+          0,
+          0,
+          0,
+          6.541077136993408,
+          0,
+          0,
+          0,
+          0,
+          6.541077136993408,
+          0,
+          -1.775977611541748,
+          1.500460147857666,
+          2.557958245277405,
+          1
+        ],
+        "name": "LOD0_Stone_deep",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.973862171173096,
+          0,
+          0,
+          0,
+          0,
+          6.973862171173096,
+          0,
+          0,
+          0,
+          0,
+          6.973862171173096,
+          0,
+          0.09997129440307617,
+          -0.8332695960998535,
+          -0.10220479965209961,
+          1
+        ],
+        "name": "LOD0_Stone_strata",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.918053150177002,
+          0,
+          0,
+          0,
+          0,
+          6.918053150177002,
+          0,
+          0,
+          0,
+          0,
+          6.918053150177002,
+          0,
+          0.4008808135986328,
+          1.1928530931472778,
+          -0.23306775093078613,
+          1
+        ],
+        "name": "LOD1_BrushedMetal",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.622676372528076,
+          0,
+          0,
+          0,
+          0,
+          4.622676372528076,
+          0,
+          0,
+          0,
+          0,
+          4.622676372528076,
+          0,
+          -2.682338982820511,
+          1.3417099714279175,
+          1.368553638458252,
+          1
+        ],
+        "name": "LOD1_Lights_Cyan",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.658764362335205,
+          0,
+          0,
+          0,
+          0,
+          7.658764362335205,
+          0,
+          0,
+          0,
+          0,
+          7.658764362335205,
+          0,
+          -0.01583719253540039,
+          -0.7832894325256348,
+          -0.3326997756958008,
+          1
+        ],
+        "name": "LOD1_Stone",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.532637119293213,
+          0,
+          0,
+          0,
+          0,
+          6.532637119293213,
+          0,
+          0,
+          0,
+          0,
+          6.532637119293213,
+          0,
+          -1.8154044151306152,
+          1.5114083290100098,
+          2.5549263954162598,
+          1
+        ],
+        "name": "LOD1_Stone_deep",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.10836386680603,
+          0,
+          0,
+          0,
+          0,
+          7.10836386680603,
+          0,
+          0,
+          0,
+          0,
+          7.10836386680603,
+          0,
+          0.02023911476135254,
+          -0.7769834995269775,
+          -0.07410430908203125,
+          1
+        ],
+        "name": "LOD1_Stone_strata",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.929261207580566,
+          0,
+          0,
+          0,
+          0,
+          6.929261207580566,
+          0,
+          0,
+          0,
+          0,
+          6.929261207580566,
+          0,
+          0.41208887100219727,
+          1.1890214681625366,
+          -0.22527670860290527,
+          1
+        ],
+        "name": "LOD2_BrushedMetal",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.622676372528076,
+          0,
+          0,
+          0,
+          0,
+          4.622676372528076,
+          0,
+          0,
+          0,
+          0,
+          4.622676372528076,
+          0,
+          -2.682338982820511,
+          1.3417099714279175,
+          1.368553638458252,
+          1
+        ],
+        "name": "LOD2_Lights_Cyan",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          7.735001564025879,
+          0,
+          0,
+          0,
+          0,
+          7.735001564025879,
+          0,
+          0,
+          0,
+          0,
+          7.735001564025879,
+          0,
+          -0.0468440055847168,
+          -0.7988564968109131,
+          -0.34336376190185547,
+          1
+        ],
+        "name": "LOD2_Stone",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.490395545959473,
+          0,
+          0,
+          0,
+          0,
+          6.490395545959473,
+          0,
+          0,
+          0,
+          0,
+          6.490395545959473,
+          0,
+          -1.8329496383666992,
+          1.5398321151733398,
+          2.521051526069641,
+          1
+        ],
+        "name": "LOD2_Stone_deep",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          6.995091915130615,
+          0,
+          0,
+          0,
+          0,
+          6.995091915130615,
+          0,
+          0,
+          0,
+          0,
+          6.995091915130615,
+          0,
+          0.020576000213623047,
+          -0.6368272304534912,
+          -0.07850050926208496,
+          1
+        ],
+        "name": "LOD2_Stone_strata",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_rock_reef_metal_monolith.glb"
+  },
+  "runtimeHash": "f4caaba6ca7d302c04bdc54f39b0282b9c5cff9d8d942a8d6764cd32618f93d8",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          7.688157558441162,
+          8.044045448303223,
+          8.631116903035224
+        ],
+        "min": [
+          -8.195783468831989,
+          -8.282689456322387,
+          -7.5665856881577795
+        ]
+      },
+      "id": "sf.render.rock-reef-metal-monolith.body",
+      "nodeIds": [
+        "sf.render.rock-reef-metal-monolith.mesh.collision-hull",
+        "sf.render.rock-reef-metal-monolith.mesh.lod0-brushedmetal",
+        "sf.render.rock-reef-metal-monolith.mesh.lod0-lights-cyan",
+        "sf.render.rock-reef-metal-monolith.mesh.lod0-stone",
+        "sf.render.rock-reef-metal-monolith.mesh.lod0-stone-deep",
+        "sf.render.rock-reef-metal-monolith.mesh.lod0-stone-strata",
+        "sf.render.rock-reef-metal-monolith.mesh.lod1-brushedmetal",
+        "sf.render.rock-reef-metal-monolith.mesh.lod1-lights-cyan",
+        "sf.render.rock-reef-metal-monolith.mesh.lod1-stone",
+        "sf.render.rock-reef-metal-monolith.mesh.lod1-stone-deep",
+        "sf.render.rock-reef-metal-monolith.mesh.lod1-stone-strata",
+        "sf.render.rock-reef-metal-monolith.mesh.lod2-brushedmetal",
+        "sf.render.rock-reef-metal-monolith.mesh.lod2-lights-cyan",
+        "sf.render.rock-reef-metal-monolith.mesh.lod2-stone",
+        "sf.render.rock-reef-metal-monolith.mesh.lod2-stone-deep",
+        "sf.render.rock-reef-metal-monolith.mesh.lod2-stone-strata",
+        "sf.render.rock-reef-metal-monolith.root"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,650 @@
+// Accessibility controller (V2 §9/§12 — vestibular/visual/cognitive support).
+//
+// WIRED. main.js imports applyAccessibility and calls it on boot + every `settings:changed` +
+// `save:loaded`. styles/accessibility.css is <link>d in index.html after ui.css. radar.js imports
+// semanticColor / semanticShape to recolor canvas blips under colorblind modes and draw redundant
+// shapes. The settings screen exposes an "Access" tab with all toggles.
+// Nothing here mutates sim state; it only toggles document-root classes / CSS custom properties
+// and exposes runtime booleans for vfx/feel/camera to read.
+//
+// Why this lives in JS at all: the radar (src/ui/radar.js) draws blips with hardcoded JS hex via
+// g.fillStyle — CSS classes can never recolor it. So the colorblind-safe blip palette + redundant
+// shapes are defined HERE as data, and the canvas systems consume the registry. The CSS handles the
+// DOM/CSS-var-driven UI (status bars, badges, alerts); JS handles the canvas.
+//
+// TWO SEPARATE motion flags (accessibility contract):
+//   - motionReduced  → vestibular: camera shake / FOV punch / hit-stop / parallax. This is the SAME
+//     field feel.js:131 and vfx.js:674 already read: settings.video.motionReduce. We do NOT fork a
+//     second source of truth — getMotionReduced() derives from that exact field so all three agree.
+//   - flashReduced   → photosensitive: strobing/flash/rapid opacity pulses (death flash, alarm blink).
+//     This is genuinely NEW — grep confirms nothing reads a flash flag today — so it is our net-new
+//     field (settings.accessibility.flashReduce), surfaced via getFlashReduced() for vfx to honor.
+
+import { currentGameLocale, isLocaleReady, setGameLocale } from '../localization/sourceText.js';
+import { applyHudPresentationFromSettings } from './hudLayout.js';
+
+// ---------------------------------------------------------------------------------------------------
+// Runtime-readable state (other systems poll these every frame; keep them plain module-scope booleans).
+// ---------------------------------------------------------------------------------------------------
+let _motionReduced = false;   // mirrors settings.video.motionReduce (existing field)
+let _flashReduced = false;    // settings.accessibility.flashReduce (new field)
+let _motionMediaQuery = null;
+let _motionMediaListener = null;
+let _motionSettings = null;
+let _motionRoot = null;
+let _forcedColorsActive = false;
+let _forcedColorsMediaQuery = null;
+let _forcedColorsMediaListener = null;
+let _forcedColorsRoot = null;
+
+/** True when vestibular motion (shake / FOV punch / hit-stop / parallax) should be suppressed.
+ *  Mirrors settings.video.motionReduce — the same field feel.js & vfx.js already consult. */
+export function getMotionReduced() { return _motionReduced; }
+
+/** True when flashing / strobing / rapid opacity pulses should be suppressed (photosensitivity).
+ *  Distinct from motion-reduce: a player may want a steady camera yet still tolerate no strobe. */
+export function getFlashReduced() { return _flashReduced; }
+
+/** Runtime OS/browser forced-colors state. This is deliberately not a saved setting. */
+export function getForcedColorsActive() { return _forcedColorsActive; }
+
+// ---------------------------------------------------------------------------------------------------
+// Colorblind palettes. Keyed by mode; each maps the document-root to a set of CSS custom properties.
+// These drive the CSS-var-based UI (status bars, badges, alert severities). `none` is the identity
+// palette (the game's shipped colors from styles/ui.css:8-9) so applyAccessibility can always reset.
+//
+// Values are Okabe-Ito-derived / Bang-Wong colorblind-safe hues, nudged to fit the cyan/orange theme.
+// We deliberately keep hull≈red-orange, shield≈blue, energy≈yellow but maximize luminance separation so
+// the three remain distinguishable under each dichromacy — and pair every state with a SHAPE/ICON below
+// so color is never the sole channel.
+// ---------------------------------------------------------------------------------------------------
+export const COLORBLIND_MODES = ['none', 'protanopia', 'deuteranopia', 'tritanopia'];
+export const MOTION_PREFERENCES = ['system', 'reduce', 'full'];
+export const MOTION_ASK_CHOICES = ['full', 'reduce'];
+export const CAPTION_SIZES = ['small', 'medium', 'large'];
+export const FIRST_BOOT_MOTION_ASK_ID = 'motionAsk';
+
+const PALETTES = {
+  none: {
+    // identity — the shipped deckplate theme: bone for information (friends, allies, good news), the
+    // lamp amber for energy and caution, red only for threat. No green, blue or cyan in the default;
+    // the dichromacy palettes below keep their own separations. Listed so we can hard-reset every var.
+    '--sf-hostile': '#ff5038', '--sf-neutral': '#8f8d88', '--sf-friendly': '#c9c4b6', '--sf-ally': '#e8e2d4',
+    '--sf-hull': '#e8e2d4', '--sf-shield': '#c9c4b6', '--sf-energy': '#f2b950', '--sf-cargo': '#c9c4b6',
+    '--sf-warn': '#ffd08a', '--sf-danger': '#ff5038', '--sf-good': '#d8d2c4',
+  },
+  // Protan (no L-cones): red is dark/ambiguous. Push hostile toward orange-vermillion, friendly toward
+  // bluish-green, keep shield a strong blue; widen luminance gaps.
+  protanopia: {
+    '--sf-hostile': '#ff7a18', '--sf-neutral': '#9aa8bc', '--sf-friendly': '#00b7c2', '--sf-ally': '#4db4ff',
+    '--sf-hull': '#ff7a18', '--sf-shield': '#4db4ff', '--sf-energy': '#f0e442', '--sf-cargo': '#00b7c2',
+    '--sf-warn': '#f0e442', '--sf-danger': '#ff7a18', '--sf-good': '#00b7c2',
+  },
+  // Deutan (no M-cones): red/green confusion. Same strategy — vermillion vs sky-blue vs amber.
+  deuteranopia: {
+    '--sf-hostile': '#ff6f3c', '--sf-neutral': '#9aa8bc', '--sf-friendly': '#26c6da', '--sf-ally': '#56b4e9',
+    '--sf-hull': '#ff6f3c', '--sf-shield': '#56b4e9', '--sf-energy': '#f0e442', '--sf-cargo': '#26c6da',
+    '--sf-warn': '#f0e442', '--sf-danger': '#ff6f3c', '--sf-good': '#26c6da',
+  },
+  // Tritan (no S-cones): blue/yellow confusion. Trade the yellow/blue axis for a red/cyan/pink axis.
+  tritanopia: {
+    '--sf-hostile': '#ff4d6d', '--sf-neutral': '#aeb6bf', '--sf-friendly': '#2dd4bf', '--sf-ally': '#0aa3c2',
+    '--sf-hull': '#ff4d6d', '--sf-shield': '#0aa3c2', '--sf-energy': '#ff9d2f', '--sf-cargo': '#2dd4bf',
+    '--sf-warn': '#ff9d2f', '--sf-danger': '#ff4d6d', '--sf-good': '#2dd4bf',
+  },
+};
+
+// ---------------------------------------------------------------------------------------------------
+// SEMANTIC PALETTE REGISTRY — color + REDUNDANT SHAPE/ICON per state. This is the artifact the lead
+// imports into radar.js (and could use in hud.js) so that color is never the sole channel.
+//
+// REAL semantic states + the file:line where color is currently the ONLY differentiator:
+//
+//   RADAR BLIPS (src/ui/radar.js) — ALL ship/drone blips are identical 3.2px SQUARES (radar.js:102-103);
+//   hostile vs neutral vs friendly is conveyed by FILL COLOR ALONE (blipColor radar.js:23-35, COL:18-21,
+//   FACTION_COLOR:13-17). Asteroid (small dot, radar.js:99), pickup (diamond, :97) and station (square,
+//   :100-101) already have distinct shapes; the gap is ship hostility. Each ship state below therefore
+//   carries a distinct `shape` the lead can draw so a protanope can read threat without color.
+//     - hostile : e.team !== playerTeam && e.team !== 0           (radar.js:30,33)
+//     - neutral : team 0 / unaligned                              (radar.js:34, COL.neutral :19)
+//     - friendly: same faction tint, same/ally team              (radar.js:31 returns FACTION_COLOR)
+//     - ally    : the player triangle + team-0 allies            (COL.player :19)
+//     - target  : currently only a white ring (radar.js:105-108) — already shape-redundant, kept here.
+//
+//   STATUS BARS (src/ui/hud.js barDefs hud.js:61-67; gradients in src/ui/uiRoot.js:315-319) — hull /
+//   shield / energy / heat / boost are distinguished by BAR COLOR + a fixed text label (HULL/SHLD/…).
+//   The label already gives a non-color channel, so bars are lower-risk than blips; we still register
+//   colorblind-safe hues + an icon for parity and for any future label-less compact HUD.
+//
+//   ALERT SEVERITY (src/ui/alerts.js, hud.js raises sev:'warn'|'danger') — severity is color-coded;
+//   we pair each with an icon glyph so a flashing red vs amber strip is also a ⊘ vs ⚠ strip.
+//
+// `shape` values are a small enum the canvas code can switch on: 'triangle' (hostile — reads as a
+// threat caret), 'square' (neutral), 'diamond' (friendly), 'chevron' (ally heading), 'ring' (target).
+//
+// ---------------------------------------------------------------------------------------------------
+// TWO ICON CHANNELS, AND WHY BOTH MUST STAY
+//
+// `icon`  — a single PLAIN-TEXT character, for `textContent` call sites.
+// `glyph` — a key into `station/icons.js`, for `innerHTML` call sites that want vector art.
+//
+// They are not redundant, and `icon` must never be replaced with SVG markup. At least one consumer
+// writes it as text: `hud.js` builds DOCTRINE_TELL_ICON from `.icon` and renders it through
+// `setText(slot.iconEl, icon)`. Assigning SVG markup there prints a literal `<svg viewBox=…>` string
+// across the combat HUD — and `check:ui-identity` stays green while it happens, because that check
+// verifies the palette is *imported*, not that its glyphs render. If you add a consumer, pick the
+// channel that matches how you write it into the DOM.
+//
+// J05 de-emojified the `icon` column (was 🛡 ⚡ ♨ ⛔). Those four have Unicode
+// Emoji_Presentation=Yes, so the OS substituted a full-colour emoji font mid-sentence and the strips
+// shipped with cartoon glyphs. Replacements are geometric text-presentation characters that match
+// the ▲ ■ ◆ set already here. `⚠` is kept deliberately: it is Emoji_Presentation=No, renders as
+// text everywhere, and is the standard warning mark.
+// ---------------------------------------------------------------------------------------------------
+export const SEMANTIC_PALETTE = {
+  // --- radar / target states (canvas — color was the sole channel; shape is the fix) ---
+  hostile:  { color: '#d95f6a', cssVar: '--sf-hostile',  shape: 'triangle', icon: '▲', glyph: 'target',      label: 'Hostile' },
+  neutral:  { color: '#9aa8bc', cssVar: '--sf-neutral',  shape: 'square',   icon: '■', glyph: 'info',        label: 'Neutral' },
+  friendly: { color: '#4fbf8f', cssVar: '--sf-friendly', shape: 'diamond',  icon: '◆', glyph: 'info',        label: 'Friendly' },
+  ally:     { color: '#4f8fdd', cssVar: '--sf-ally',     shape: 'chevron',  icon: '➤', glyph: 'chevron',     label: 'Ally / You' },
+  target:   { color: '#ffffff', cssVar: null,            shape: 'ring',     icon: '◎', glyph: 'target',      label: 'Target' },
+
+  // --- status bars (label-redundant today; registered for completeness + colorblind hues) ---
+  hull:     { color: '#d95f6a', cssVar: '--sf-hull',     shape: 'bar',      icon: '▣', glyph: 'slot_hull',   label: 'Hull' },
+  shield:   { color: '#4f8fdd', cssVar: '--sf-shield',   shape: 'bar',      icon: '◇', glyph: 'shield',      label: 'Shield' },
+  energy:   { color: '#d4b45f', cssVar: '--sf-energy',   shape: 'bar',      icon: '↯', glyph: 'energy',      label: 'Energy (cap)' },
+  // NOTE: armor IS a real stat — entities carry armorHp/armorMax and combat/damage.js consumes
+  // them; the command bar pins an ARMR row (commandBar.js). The non-armor bars (energy=cap, heat,
+  // boost) are listed alongside hull/shield/armor for completeness.
+  heat:     { color: '#ff8a3d', cssVar: '--sf-warn',     shape: 'bar',      icon: '≋', glyph: 'heat',        label: 'Heat' },
+  boost:    { color: '#c98cff', cssVar: '--sf-cargo',    shape: 'bar',      icon: '»', glyph: 'boost',       label: 'Boost' },
+
+  // --- alert severities (color-coded strips; icon makes them non-color-only) ---
+  // ⚠ carries \uFE0E (text presentation): it defaults to color emoji on emoji-font platforms,
+  // which would break the monochrome text channel this palette feeds.
+  warning:  { color: '#ffb347', cssVar: '--sf-warn',     shape: 'tri-bang', icon: '⚠\uFE0E', glyph: 'warning',     label: 'Warning' },
+  danger:   { color: '#ff5470', cssVar: '--sf-danger',   shape: 'octagon',  icon: '⊘', glyph: 'danger',      label: 'Danger' },
+};
+
+// ---------------------------------------------------------------------------------------------------
+// Settings fields exposed by Settings > Access and Settings > Video. This schema is metadata for
+// docs, probes, and future UI work; every field below is part of the shipped settings tree.
+//
+// The accessibility subtree owns the Access toggles. motionReduce stays under settings.video (where
+// feel.js/vfx.js read it) and uiScale stays at root —
+// applyAccessibility() reconciles by reading from all three locations.
+// ---------------------------------------------------------------------------------------------------
+export const ACCESSIBILITY_SETTINGS_SCHEMA = [
+  {
+    key: 'colorblindMode', path: 'accessibility.colorblindMode', type: 'select',
+    options: COLORBLIND_MODES, default: 'none', status: 'EXISTS',
+    label: 'Colorblind palette', help: 'Recolors radar blips, bars and alerts for dichromacy.',
+  },
+  {
+    key: 'motionPreference', path: 'accessibility.motionPreference', type: 'select',
+    options: MOTION_PREFERENCES, default: 'full', status: 'EXISTS',
+    label: 'Motion effects', help: 'Full by default. Reduce calms camera shake, zoom punch and hit-stop; System follows the operating system.',
+  },
+  {
+    key: 'captions', path: 'accessibility.captions', type: 'toggle', default: true, status: 'EXISTS',
+    label: 'Gameplay captions', help: 'Shows readable text for important audio and gameplay cues.',
+  },
+  {
+    key: 'audioCues', path: 'accessibility.audioCues', type: 'toggle', default: true, status: 'EXISTS',
+    label: 'Audio cues', help: 'Plays sounds for wells, taut tethers, and combat telegraphs.',
+  },
+  {
+    key: 'captionSize', path: 'accessibility.captionSize', type: 'select',
+    options: CAPTION_SIZES, default: 'medium', status: 'EXISTS',
+    label: 'Caption size', help: 'Changes caption text size without scaling the flight view.',
+  },
+  {
+    key: 'textScale', path: 'accessibility.textScale', type: 'slider', default: 1, status: 'EXISTS',
+    label: 'Text scale', help: 'Changes type size without moving layout. Independent of UI scale.',
+  },
+  {
+    key: 'captionBackground', path: 'accessibility.captionBackground', type: 'toggle',
+    default: true, status: 'EXISTS', label: 'Solid caption backing',
+    help: 'Places captions on an opaque dark panel for consistent contrast.',
+  },
+  {
+    key: 'highContrast', path: 'accessibility.highContrast', type: 'toggle', default: false, status: 'EXISTS',
+    label: 'High contrast', help: 'Stronger panel borders, opaque backdrops, brighter text.',
+  },
+  {
+    key: 'flashReduce', path: 'accessibility.flashReduce', type: 'toggle', default: false, status: 'EXISTS',
+    label: 'Reduce flashing', help: 'Suppresses strobe / death-flash / alarm-blink (photosensitivity).',
+  },
+  {
+    key: 'dyslexiaFont', path: 'accessibility.dyslexiaFont', type: 'toggle', default: false, status: 'EXISTS',
+    label: 'Readable font', help: 'Switches UI to a higher-legibility font with looser spacing.',
+  },
+  {
+    // Separate from flashReduce by design: this one is the vestibular flag. It remains under
+    // settings.video so feel.js, vfx.js, and this accessibility adapter all read one source.
+    key: 'motionReduce', path: 'video.motionReduce', type: 'toggle', default: false, status: 'EXISTS',
+    label: 'Reduce motion', help: 'Suppresses camera shake, FOV punch, hit-stop, and parallax.',
+  },
+  {
+    // Existing root-level UI scale, driven by the Settings > Video slider and the --ui-scale path.
+    key: 'uiScale', path: 'uiScale', type: 'slider', min: 0.75, max: 2, step: 0.05, default: 1, status: 'EXISTS',
+    label: 'UI scale', help: 'Scales the HUD and menus for readability.',
+  },
+];
+
+// ---------------------------------------------------------------------------------------------------
+// Document-root tokens / classes the CSS reacts to (kept here so the class contract is one source).
+// ---------------------------------------------------------------------------------------------------
+const PALETTE_CLASSES = COLORBLIND_MODES.filter((m) => m !== 'none').map((m) => 'sf-cb-' + m);
+const CAPTION_SIZE_CLASSES = CAPTION_SIZES.map((size) => `sf-caption-size-${size}`);
+
+function normalizedMotionPreference(settings) {
+  const explicit = pick(settings, 'accessibility.motionPreference', null);
+  if (MOTION_PREFERENCES.includes(explicit)) return explicit;
+  // Old profiles had only the effective boolean. Preserve an explicit reduced choice; otherwise
+  // full effects. Following the operating system is an explicit pick (System), never the fallback:
+  // Windows "Animation effects: off" is a desktop tweak, and inheriting it silently stripped
+  // hit-stop, trauma, event lights and force-field motion from players who never asked.
+  return pick(settings, 'video.motionReduce', false) ? 'reduce' : 'full';
+}
+
+function systemMotionReduced() {
+  if (_motionMediaQuery) return !!_motionMediaQuery.matches;
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+  try { return !!window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+  catch (_) { return false; }
+}
+
+/**
+ * First boot with the OS reduced-motion hint must ask Full or Reduce. Full without motionAsked is
+ * the silent default, never a stored answer. An explicit Reduce or System is already a choice.
+ * Pass `osReduced` from tests; omit it to read the live media query.
+ */
+export function shouldAskMotionPreference(settings, osReduced) {
+  const reduced = osReduced == null ? systemMotionReduced() : !!osReduced;
+  if (!reduced) return false;
+  const access = settings && settings.accessibility && typeof settings.accessibility === 'object'
+    ? settings.accessibility
+    : {};
+  if (access.motionAsked === true) return false;
+  const preference = normalizedMotionPreference(settings);
+  return preference !== 'reduce' && preference !== 'system';
+}
+
+export function firstBootScreenId(settings, osReduced) {
+  return shouldAskMotionPreference(settings, osReduced) ? FIRST_BOOT_MOTION_ASK_ID : 'mainMenu';
+}
+
+function applyMotionPreference(settings, root) {
+  const preference = normalizedMotionPreference(settings);
+  const reduced = preference === 'reduce' || (preference === 'system' && systemMotionReduced());
+  _motionReduced = reduced;
+  // video.motionReduce is the existing runtime contract polled by feel/vfx/camera. Keep it as the
+  // effective value while accessibility.motionPreference remains the persisted user choice.
+  if (settings && settings.video && typeof settings.video === 'object') settings.video.motionReduce = reduced;
+  if (root && root.classList) root.classList.toggle('sf-reduce-motion', reduced);
+  // The OS hint is honored only under an explicit System preference — never alone. CSS scopes its
+  // own prefers-reduced-motion rules to this class, so Full keeps its motion on a reduce-OS machine
+  // and Reduce keeps its stillness on a full-motion one (orrery/tokens.js states the rule).
+  if (root && root.classList) root.classList.toggle('sf-motion-system', preference === 'system');
+  return { preference, reduced };
+}
+
+function bindSystemMotionPreference(settings, root) {
+  _motionSettings = settings || null;
+  _motionRoot = root || null;
+  if (_motionMediaQuery || typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+  try { _motionMediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)'); }
+  catch (_) { return; }
+  _motionMediaListener = () => applyMotionPreference(_motionSettings, _motionRoot);
+  if (typeof _motionMediaQuery.addEventListener === 'function') {
+    _motionMediaQuery.addEventListener('change', _motionMediaListener);
+  } else if (typeof _motionMediaQuery.addListener === 'function') {
+    _motionMediaQuery.addListener(_motionMediaListener);
+  }
+}
+
+function systemForcedColorsActive() {
+  if (_forcedColorsMediaQuery) return !!_forcedColorsMediaQuery.matches;
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+  try { return !!window.matchMedia('(forced-colors: active)').matches; }
+  catch (_) { return false; }
+}
+
+function applyForcedColors(root) {
+  _forcedColorsActive = systemForcedColorsActive();
+  if (root && root.classList) root.classList.toggle('sf-forced-colors', _forcedColorsActive);
+  return _forcedColorsActive;
+}
+
+function bindSystemForcedColors(root) {
+  _forcedColorsRoot = root || null;
+  if (_forcedColorsMediaQuery || typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+  try { _forcedColorsMediaQuery = window.matchMedia('(forced-colors: active)'); }
+  catch (_) { return; }
+  _forcedColorsMediaListener = () => applyForcedColors(_forcedColorsRoot);
+  if (typeof _forcedColorsMediaQuery.addEventListener === 'function') {
+    _forcedColorsMediaQuery.addEventListener('change', _forcedColorsMediaListener);
+  } else if (typeof _forcedColorsMediaQuery.addListener === 'function') {
+    _forcedColorsMediaQuery.addListener(_forcedColorsMediaListener);
+  }
+}
+
+// Pull a value from the settings tree by dotted path, tolerating missing intermediates.
+function pick(settings, path, fallback) {
+  if (!settings) return fallback;
+  let v = settings;
+  for (const seg of path.split('.')) {
+    if (v == null || typeof v !== 'object') return fallback;
+    v = v[seg];
+  }
+  return v === undefined ? fallback : v;
+}
+
+/**
+ * Apply accessibility settings to the document root. Idempotent — safe to call on boot and on every
+ * `settings:changed`. Reads from three locations (so it works before the lead consolidates):
+ *   - settings.accessibility.{colorblindMode,highContrast,flashReduce,dyslexiaFont}  (NEW subtree)
+ *   - settings.video.motionReduce                                                    (existing)
+ *   - settings.uiScale                                                               (existing, root)
+ *   - settings.locale                                                                (existing, root)
+ *
+ * @param {object} settings  state.settings (or any object with the same shape)
+ * @param {Document|HTMLElement} [target=document.documentElement]  root to toggle classes/vars on
+ */
+export function applyAccessibility(settings, target) {
+  const a = settings && settings.accessibility ? settings.accessibility : {};
+
+  // Resolve the runtime-readable flags FIRST, before any DOM work, so getMotionReduced()/getFlashReduced()
+  // are correct even on a headless path (no document) or if the early-return below fires. vfx/feel poll
+  // these regardless of the DOM.
+  _flashReduced = !!a.flashReduce;
+  applyLocaleFromSettings(settings);
+
+  let mode = a.colorblindMode || 'none';
+  if (COLORBLIND_MODES.indexOf(mode) < 0) mode = 'none';
+  const highContrast = !!a.highContrast;
+  const dyslexia = !!a.dyslexiaFont;
+  const captions = a.captions !== false;
+  const captionSize = CAPTION_SIZES.includes(a.captionSize) ? a.captionSize : 'medium';
+  const captionBackground = a.captionBackground !== false;
+
+  const root = target || (typeof document !== 'undefined' ? document.documentElement : null);
+  // Bind the additive forced-colors observer first. A few minimal test/embedded matchMedia shims
+  // reuse one listener slot for every query; binding motion last preserves the older live contract.
+  bindSystemForcedColors(root);
+  const forcedColorsActive = applyForcedColors(root);
+  bindSystemMotionPreference(settings, root);
+  const motion = applyMotionPreference(settings, root);
+  if (!root || !root.classList) {
+    // headless / node — booleans above are set; nothing to toggle on the DOM.
+    return { motionReduced: motion.reduced, motionPreference: motion.preference, flashReduced: _flashReduced,
+      forcedColorsActive, colorblindMode: mode, highContrast, dyslexia, captions, captionSize, captionBackground };
+  }
+
+  // --- colorblind palette: one active sf-cb-* class + the var set for that mode ---
+  for (const c of PALETTE_CLASSES) root.classList.remove(c);
+  if (mode !== 'none') root.classList.add('sf-cb-' + mode);
+  const pal = PALETTES[mode] || PALETTES.none;
+  for (const k in pal) root.style.setProperty(k, pal[k]);
+
+  // --- toggles → root classes (CSS does the visual work) ---
+  root.classList.toggle('sf-high-contrast', highContrast);
+  root.classList.toggle('sf-reduce-flash', _flashReduced);
+  root.classList.toggle('sf-dyslexia', dyslexia);
+  root.classList.toggle('sf-captions-off', !captions);
+  root.classList.toggle('sf-caption-backing', captionBackground);
+  for (const c of CAPTION_SIZE_CLASSES) root.classList.remove(c);
+  root.classList.add(`sf-caption-size-${captionSize}`);
+
+  // Same `--ui-scale` property the Video/Access sliders write on live drag. Applying it here is
+  // what makes a saved scale survive boot and Continue; it does not introduce a second scale var.
+  applyUiScaleFromSettings(settings, root);
+  applyTextScaleFromSettings(settings, root);
+  // FB-100: the HUD's own scale/opacity keys ride the same boot + settings:changed path so a
+  // saved pair survives Continue exactly like --ui-scale.
+  applyHudPresentationFromSettings(settings, root);
+
+  return { motionReduced: motion.reduced, motionPreference: motion.preference, flashReduced: _flashReduced,
+    forcedColorsActive, colorblindMode: mode, highContrast, dyslexia, captions, captionSize, captionBackground };
+}
+
+function applyLocaleFromSettings(settings) {
+  const next = settings && typeof settings.locale === 'string' ? settings.locale.trim() : '';
+  if (!next || next === currentGameLocale() || !isLocaleReady(next)) return;
+  setGameLocale(next);
+}
+
+function applyUiScaleFromSettings(settings, fallbackRoot) {
+  const raw = Number(settings && settings.uiScale);
+  const uiScale = Number.isFinite(raw) ? Math.min(2, Math.max(0.75, raw)) : 1;
+  let el = null;
+  if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+    el = document.getElementById('ui-root') || document.documentElement;
+  }
+  if (!el) el = fallbackRoot;
+  if (el && el.style && typeof el.style.setProperty === 'function') {
+    el.style.setProperty('--ui-scale', String(uiScale));
+  }
+}
+
+/** Type size only. Does not write --ui-scale and does not change the root font size. */
+export function applyTextScaleFromSettings(settings, fallbackRoot) {
+  const raw = settings && settings.accessibility ? Number(settings.accessibility.textScale) : NaN;
+  const scale = Number.isFinite(raw) ? Math.min(1.5, Math.max(0.85, raw)) : 1;
+  let el = null;
+  if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+    // Type tokens are declared at :root; their dependencies must resolve there
+    // so inherited, responsive and screen-specific sizes keep their own base.
+    el = document.documentElement || document.getElementById('ui-root');
+  }
+  if (!el) el = fallbackRoot;
+  if (!el || !el.style || typeof el.style.setProperty !== 'function') return scale;
+  el.style.setProperty('--sf-text-scale', String(scale));
+  return scale;
+}
+
+/** Resolve a semantic state ('hostile'|'shield'|'danger'|…) to its active color, honoring the current
+ *  colorblind mode. Canvas systems (radar.js) call this instead of reading a hardcoded hex, so blips
+ *  recolor with the palette. Falls back to the state's base color for unknown modes/states. */
+export function semanticColor(state, mode) {
+  const def = SEMANTIC_PALETTE[state];
+  if (!def) return '#ffffff';
+  const pal = PALETTES[mode] || PALETTES.none;
+  if (def.cssVar && pal[def.cssVar]) return pal[def.cssVar];
+  return def.color;
+}
+
+/** Resolve a semantic state to its redundant shape token (for canvas) — the non-color channel. */
+export function semanticShape(state) {
+  const def = SEMANTIC_PALETTE[state];
+  return def ? def.shape : 'square';
+}
+
+// ---------------------------------------------------------------------------------------------------
+// INF-007 — first-boot motion choice (asked once, only when the OS requests reduced motion).
+// Contract: fresh/migrated/explicitly-reduced/explicitly-full profiles each take the correct path;
+// the prompt appears no more than once; explicit prior choices and the existing migration are
+// preserved; settled settings are never reopened.
+// ---------------------------------------------------------------------------------------------------
+
+/** Short visual + brief copy for the first-boot Full/Reduce choice. Both options named plainly. */
+export const MOTION_CHOICE_COPY = Object.freeze({
+  title: 'Motion effects',
+  body: 'Your system asks for reduced motion. Full keeps camera shake, zoom punch and hit-stop. Reduce calms them. You can change this later in Settings > Access.',
+  fullLabel: 'Full',
+  reduceLabel: 'Reduce',
+});
+
+/** True when the settings tree already carries an explicit persisted motion choice.
+ *  Reconciled (PQ-210.07): the shipped defaults carry motionPreference 'full' AND
+ *  video.motionReduce, so key/value presence cannot prove a choice — only the motionAsked
+ *  marker does. Reduce/System exist only when someone set them; unmarked Full is the default. */
+export function hasExplicitMotionChoice(settings) {
+  const a = settings && settings.accessibility && typeof settings.accessibility === 'object'
+    ? settings.accessibility : null;
+  if (a && a.motionAsked === true) return true;
+  const explicit = pick(settings, 'accessibility.motionPreference', null);
+  return explicit === 'reduce' || explicit === 'system';
+}
+
+/** True when the one-time motion prompt has already been answered or shown. */
+export function motionPromptSettled(settings) {
+  const a = settings && settings.accessibility && typeof settings.accessibility === 'object'
+    ? settings.accessibility : null;
+  return !!(a && a.motionPrompted === true);
+}
+
+/**
+ * Pure gate: should the first-boot Full/Reduce choice be offered?
+ * Only when the OS requests reduced motion, no explicit choice exists yet, and the prompt
+ * has not already been settled. Never reopens settled settings.
+ */
+export function shouldPromptMotionChoice(settings, osReduced) {
+  if (!osReduced) return false;
+  if (!settings || typeof settings !== 'object') return false;
+  if (motionPromptSettled(settings)) return false;
+  if (hasExplicitMotionChoice(settings)) return false;
+  return true;
+}
+
+/**
+ * Persist an explicit motion choice exactly once. Accepts 'full', 'reduce', and 'system'
+ * (the Settings screen offers all three; the first-boot prompt offers Full / Reduce).
+ * Sets accessibility.motionPreference plus BOTH settled flags — motionPrompted (INF-007
+ * one-time gate) and motionAsked (first-boot screen gate) — and syncs the existing
+ * video.motionReduce runtime contract for explicit reduce/full ('system' resolves to the
+ * effective value inside applyMotionPreference). Returns the persisted choice, null when
+ * the input is not a motion preference. `target` is an optional root element override.
+ */
+export function recordMotionChoice(settings, choice, target) {
+  if (!settings || typeof settings !== 'object') return null;
+  if (!MOTION_PREFERENCES.includes(choice)) return null;
+  const s = settings;
+  if (!s.accessibility || typeof s.accessibility !== 'object') s.accessibility = {};
+  s.accessibility.motionPreference = choice;
+  s.accessibility.motionAsked = true;
+  s.accessibility.motionPrompted = true;
+  if (!s.video || typeof s.video !== 'object') s.video = {};
+  if (choice === 'reduce') s.video.motionReduce = true;
+  else if (choice === 'full') s.video.motionReduce = false;
+  // Apply immediately so the live runtime booleans agree without waiting for the next
+  // settings:changed cycle. applyMotionPreference is idempotent and headless-safe.
+  const root = target || (typeof document !== 'undefined' ? document.documentElement : null);
+  try { applyMotionPreference(s, root); } catch (_) {}
+  return choice;
+}
+
+/**
+ * Headless-safe one-time prompt driver for the default route. When the gate passes, builds a
+ * minimal DOM dialog with the Full/Reduce copy, records the choice once, then removes itself.
+ * Returns true when a prompt was shown, false otherwise. Safe to call on every boot.
+ */
+export function maybePromptMotionChoice(settings, root, osReduced) {
+  if (!shouldPromptMotionChoice(settings, osReduced)) return false;
+  if (typeof document === 'undefined') return false;
+  const host = root || document.documentElement || document.body;
+  if (!host || typeof document.createElement !== 'function') return false;
+  if (host.querySelector && host.querySelector('[data-sf-motion-choice]')) return false;
+  const dialog = document.createElement('div');
+  dialog.setAttribute('data-sf-motion-choice', 'true');
+  dialog.setAttribute('role', 'dialog');
+  dialog.setAttribute('aria-label', MOTION_CHOICE_COPY.title);
+  dialog.className = 'sf-motion-choice';
+  const title = document.createElement('p');
+  title.className = 'sf-motion-choice__title';
+  title.textContent = MOTION_CHOICE_COPY.title;
+  const body = document.createElement('p');
+  body.className = 'sf-motion-choice__body';
+  body.textContent = MOTION_CHOICE_COPY.body;
+  const row = document.createElement('div');
+  row.className = 'sf-motion-choice__row';
+  const fullBtn = document.createElement('button');
+  fullBtn.type = 'button';
+  fullBtn.textContent = MOTION_CHOICE_COPY.fullLabel;
+  const reduceBtn = document.createElement('button');
+  reduceBtn.type = 'button';
+  reduceBtn.textContent = MOTION_CHOICE_COPY.reduceLabel;
+  const choose = (choice) => {
+    recordMotionChoice(settings, choice);
+    if (dialog.parentNode) dialog.parentNode.removeChild(dialog);
+  };
+  if (typeof fullBtn.addEventListener === 'function') {
+    fullBtn.addEventListener('click', () => choose('full'));
+    reduceBtn.addEventListener('click', () => choose('reduce'));
+  } else {
+    fullBtn.onclick = () => choose('full');
+    reduceBtn.onclick = () => choose('reduce');
+  }
+  row.appendChild(fullBtn);
+  row.appendChild(reduceBtn);
+  dialog.appendChild(title);
+  dialog.appendChild(body);
+  dialog.appendChild(row);
+  host.appendChild(dialog);
+  return true;
+}
+
+// ---------------------------------------------------------------------------------------------------
+// FIRST LIGHT — the calm opening offer on the real title screen (build-map row 473).
+//
+// A stranger's first screen should be able to hand them a legible, still game once, before they have
+// any reason to go looking through Settings. This is an OFFER and never a default: nothing changes
+// until the player accepts, the marker records only that the question was ASKED, and every key it
+// writes stays individually editable in Settings > Access afterwards.
+//
+// It is deliberately separate from the INF-007 motion question above: that one is asked only when
+// the OS requests reduced motion, and its Full/Reduce contract is untouched. A player who says yes
+// here simply gets both — the calmer motion answer AND the rest of the bundle.
+//
+// Scope discipline: this never touches audio levels, bindings, assists, quality settings, UI scale or
+// gameplay numbers, and it adds no simulation state (it is a presentation preference, like its
+// neighbours). A missing marker means "not yet offered", so every existing profile is offered once.
+// ---------------------------------------------------------------------------------------------------
+
+/** The exact opt-in bundle. Frozen: a call site must not hand-tune half of it. */
+export const FIRST_LIGHT_PRESET = Object.freeze({
+  flashReduce: true,
+  highContrast: true,
+  textScale: 1.15,
+  captions: true,
+  captionSize: 'large',
+  captionBackground: true,
+});
+
+/**
+ * True until the first-light offer has been SHOWN once. Only the literal `firstLightOffered === true`
+ * suppresses it — a hand-edited or migrated profile carrying junk must not silently swallow the
+ * offer, and an absent accessibility subtree is simply "not offered yet".
+ */
+export function shouldOfferFirstLight(settings) {
+  const a = settings && settings.accessibility && typeof settings.accessibility === 'object'
+    ? settings.accessibility
+    : null;
+  return !(a && a.firstLightOffered === true);
+}
+
+/**
+ * Apply the first-light bundle and mark it as the player's answer. Returns true when it ran.
+ *
+ * Order is deliberate: recordMotionChoice() first, because it owns the two settled flags and the
+ * settings.video.motionReduce contract every feel/vfx/camera reader polls; then the rest of the
+ * bundle; then one applyAccessibility() pass so the screen answers immediately instead of waiting
+ * for the next `settings:changed` cycle. `target` is an optional document root override (tests).
+ */
+export function applyFirstLightPreset(settings, target) {
+  if (!settings || typeof settings !== 'object') return false;
+  const s = settings;
+  if (!s.accessibility || typeof s.accessibility !== 'object') s.accessibility = {};
+  recordMotionChoice(s, 'reduce', target);
+  const a = s.accessibility;
+  a.flashReduce = FIRST_LIGHT_PRESET.flashReduce;
+  a.highContrast = FIRST_LIGHT_PRESET.highContrast;
+  a.textScale = FIRST_LIGHT_PRESET.textScale;
+  a.captions = FIRST_LIGHT_PRESET.captions;
+  a.captionSize = FIRST_LIGHT_PRESET.captionSize;
+  a.captionBackground = FIRST_LIGHT_PRESET.captionBackground;
+  a.firstLightChoice = 'applied';
+  applyAccessibility(s, target);
+  return true;
+}

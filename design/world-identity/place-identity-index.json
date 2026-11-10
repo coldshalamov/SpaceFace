@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "story_map": "design/world-identity/STORY_SECTOR_MAP.md",
+  "pipeline": "design/world-identity/PIPELINE.md",
+  "navigation_spec": "design/world-identity/WORLD_NAVIGATION_SPEC.md",
+  "sectors": [
+    {
+      "sector_id": "sector_helios_prime",
+      "story_band": "S1",
+      "style_spec": "design/world-identity/sectors/sector_helios_prime.md",
+      "signature_landmark": "poi_memorial",
+      "station_archetype": "place_station_trade_hub",
+      "concept_ids": ["concept_helios_overview", "concept_faction_scn"]
+    },
+    {
+      "sector_id": "sector_ceres_belt",
+      "story_band": "S2-S3",
+      "style_spec": "design/world-identity/sectors/sector_ceres_belt.md",
+      "signature_landmark": "poi_driller",
+      "station_archetype": "place_station_refinery",
+      "concept_ids": ["concept_ceres_overview", "concept_faction_dmc"]
+    },
+    {
+      "sector_id": "sector_tethys_junction",
+      "story_band": "S2-S3",
+      "style_spec": "design/world-identity/sectors/sector_tethys_junction.md",
+      "signature_landmark": "station_tethys",
+      "station_archetype": "place_station_trade_hub",
+      "concept_ids": ["concept_tethys_overview", "concept_faction_mts"]
+    },
+    {
+      "sector_id": "sector_vesta_forge",
+      "story_band": "S2-S3",
+      "style_spec": "design/world-identity/sectors/sector_vesta_forge.md",
+      "signature_landmark": "poi_freighter",
+      "station_archetype": "place_station_fab",
+      "concept_ids": ["concept_vesta_overview"]
+    },
+    {
+      "sector_id": "sector_pallas_drift",
+      "story_band": "S4-S5",
+      "style_spec": "design/world-identity/sectors/sector_pallas_drift.md",
+      "signature_landmark": "station_smuggler",
+      "station_archetype": "place_station_blackmarket",
+      "concept_ids": ["concept_pallas_overview"]
+    },
+    {
+      "sector_id": "sector_io_reach",
+      "story_band": "S4-S5",
+      "style_spec": "design/world-identity/sectors/sector_io_reach.md",
+      "signature_landmark": "poi_cruiser",
+      "station_archetype": "place_station_trade_hub",
+      "concept_ids": ["concept_io_overview"]
+    },
+    {
+      "sector_id": "sector_charon_expanse",
+      "story_band": "S6-S7",
+      "style_spec": "design/world-identity/sectors/sector_charon_expanse.md",
+      "signature_landmark": "poi_colony",
+      "station_archetype": "place_station_refinery",
+      "concept_ids": ["concept_charon_overview"]
+    },
+    {
+      "sector_id": "sector_sker_haven",
+      "story_band": "S6-S7",
+      "style_spec": "design/world-identity/sectors/sector_sker_haven.md",
+      "signature_landmark": "station_sker",
+      "station_archetype": "place_station_blackmarket",
+      "concept_ids": ["concept_sker_overview"]
+    },
+    {
+      "sector_id": "sector_veil_nebula",
+      "story_band": "S8",
+      "style_spec": "design/world-identity/sectors/sector_veil_nebula.md",
+      "signature_landmark": "poi_anomaly",
+      "station_archetype": "place_station_research",
+      "concept_ids": ["concept_veil_overview"]
+    },
+    {
+      "sector_id": "sector_ashfall_reach",
+      "story_band": "S9",
+      "style_spec": "design/world-identity/sectors/sector_ashfall_reach.md",
+      "signature_landmark": "poi_boss",
+      "station_archetype": "place_station_blackmarket",
+      "concept_ids": ["concept_ashfall_overview"]
+    }
+  ],
+  "archetypes": [
+    { "blender_part_id": "place_station_trade_hub", "concept_id": "concept_station_trade_hub", "station_types": ["trade_hub"] },
+    { "blender_part_id": "place_station_refinery", "concept_id": "concept_station_refinery", "station_types": ["refinery"] },
+    { "blender_part_id": "place_station_military", "concept_id": "concept_station_military", "station_types": ["military"] },
+    { "blender_part_id": "place_station_blackmarket", "concept_id": "concept_station_blackmarket", "station_types": ["blackmarket"] },
+    { "blender_part_id": "place_gate_jump_ring", "concept_id": "concept_gate_jump_ring", "station_types": ["gate"] },
+    { "blender_part_id": "place_station_mining", "station_types": ["mining"] },
+    { "blender_part_id": "place_station_fab", "station_types": ["fab"] },
+    { "blender_part_id": "place_station_research", "station_types": ["research"] }
+  ]
+}

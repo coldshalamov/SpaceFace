@@ -1,0 +1,12 @@
+{
+  "ticks": 8000,
+  "cadence": 16,
+  "beforeMs": 16.433825000000013,
+  "afterMs": 1.4960089999999866,
+  "speedup": 10.9851110521395,
+  "beforeWorstMs": 0.2987629999999797,
+  "afterWorstMs": 0.040739999999999554,
+  "worstSpeedup": 7.333406971035418,
+  "beforeSink": 123461,
+  "afterSink": 128736
+}

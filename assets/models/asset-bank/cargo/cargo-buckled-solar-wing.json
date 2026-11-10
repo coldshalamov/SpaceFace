@@ -1,0 +1,146 @@
+{
+  "assetId": "cargo-buckled-solar-wing",
+  "category": "cargo",
+  "description": "Three impact-buckled solar leaves and broken spar",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        -0.0856713056564331,
+        0.9942458868026733,
+        -0.08398899435997009
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        1.628657341003418,
+        0.5971229448914528,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.45,
+          -0.0
+        ],
+        "size": [
+          1,
+          0.15,
+          1.6
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "aftermath",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -1.7999999523162842,
+      0.20000000298023224,
+      -1.0179779529571533
+    ],
+    "max": [
+      1.628657341003418,
+      0.9942458868026733,
+      0.8499999642372131
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-buckled-solar-wing_lod0.glb",
+      "triangles": 5084,
+      "draws": 4,
+      "bytes": 438820,
+      "method": "source",
+      "sha256": "7e2632f7e1c4ba32435f98e2cf2d01ce8f67daf20c53935c1672b7cdca62cec5"
+    },
+    {
+      "level": 1,
+      "file": "cargo-buckled-solar-wing_lod1.glb",
+      "triangles": 412,
+      "draws": 4,
+      "bytes": 203296,
+      "method": "authored-topology",
+      "sha256": "a76b87e5c9c8a6f560c392040ee48de4d3326a9c87d98b4acd387d13d4f45199"
+    },
+    {
+      "level": 2,
+      "file": "cargo-buckled-solar-wing_lod2.glb",
+      "triangles": 380,
+      "draws": 4,
+      "bytes": 201568,
+      "method": "authored-topology",
+      "sha256": "9663b415fcbde4a571e9ce95c519a24ed3319eee91d4f78258db4d53a9f0d1e4"
+    }
+  ]
+}

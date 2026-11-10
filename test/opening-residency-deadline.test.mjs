@@ -1,0 +1,42 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const residencySrc = readFileSync(join(root, 'src/render/startupGpuResidency.js'), 'utf8');
+const rendererSrc = readFileSync(join(root, 'src/render/renderer.js'), 'utf8');
+
+test('prepareStartupGpuResidency honors deadlineMs and stops early', () => {
+  assert.match(residencySrc, /deadlineMs/);
+  assert.match(residencySrc, /loading-deadline-partial/);
+  assert.match(residencySrc, /partial:\s*true/);
+  assert.match(residencySrc, /hitDeadline/);
+});
+
+test('soft-GPU partial residency continues past skipped=false', () => {
+  const residencySrc = readFileSync(join(root, 'src/render/startupGpuResidency.js'), 'utf8');
+  assert.match(residencySrc, /loading-deadline-partial/);
+  assert.doesNotMatch(
+    residencySrc.slice(residencySrc.indexOf('hitDeadline'), residencySrc.indexOf('hitDeadline') + 800),
+    /skipped:\s*true/,
+    'deadline partial must not set skipped:true',
+  );
+});
+
+test('soft-GPU opening cook passes deadlineMs into residency', () => {
+  const start = rendererSrc.indexOf('state.render.prepareOpeningGpuResources');
+  assert.ok(start > 0);
+  const residencyCall = rendererSrc.indexOf('prepareStartupGpuResidency(', start);
+  assert.ok(residencyCall > start, 'opening cook calls prepareStartupGpuResidency');
+  const section = rendererSrc.slice(start, residencyCall + 4000);
+  assert.match(section, /deadlineMs:\s*options.required !== true && softGpuOpening\s*\?\s*residencyBudgetMs/);
+  assert.match(section, /const residencyBudgetMs = resourcePolicy\.residencyBudgetMs/,
+    'residency budget is read from the opening-load policy');
+  const policySrc = readFileSync(join(root, 'src/render/openingLoadPolicy.js'), 'utf8');
+  assert.match(policySrc, /SERIAL_RESIDENCY_BUDGET_MS:\s*750/,
+    'serial-link (soft-GPU) route keeps the 750 ms residency budget');
+  assert.match(policySrc, /PARALLEL_RESIDENCY_BUDGET_MS:\s*5000/,
+    'parallel route keeps the 5000 ms residency budget');
+});

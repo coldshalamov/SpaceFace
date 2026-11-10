@@ -1,0 +1,539 @@
+/* GENERATED from sound-recipes.json by tools/build_sound_js.py.
+ * A classic script, because `fetch` of a local JSON file is blocked under file:// and the
+ * prototypes must open without a server. The JSON stays the deliverable; this is its
+ * loader shim, and the two are built together so they cannot disagree.
+ */
+window.FH_SOUND_RECIPES = {
+ "$shape": "src/data/audioRecipes.js RECIPES \u2014 same keys, same units, so these drop into the game's own table without a translation layer. The game has no audio files; every sound is synthesised.",
+ "$voice": "Low and mechanical (02_ART_DIRECTION \u00a710). No beeps, no chirps, no rising arpeggios. The whole set is one instrument: a small machined thing with a damped body. Silence is the default and the game ships muted.",
+ "$budget": "14 cues, 3.16 s of audio in total. Nothing sustains past 900 ms except ui_wanted, which is the one sustained tone the direction asks for.",
+ "recipes": [
+  {
+   "id": "ui_key_press",
+   "category": "ui",
+   "type": "layered",
+   "layers": [
+    "ui_key_press_body",
+    "ui_key_press_click"
+   ],
+   "gainMult": 0.9,
+   "gainEnvelope": {
+    "attack": 0.001,
+    "sustain": 0.0,
+    "release": 0.075
+   },
+   "$note": "a short thock: a damped low body under a dry contact click. 78 ms."
+  },
+  {
+   "id": "ui_key_press_body",
+   "category": "ui",
+   "type": "oscillator",
+   "wave": "triangle",
+   "baseFreq": 168,
+   "freqSweep": [
+    168,
+    96
+   ],
+   "sweepTimeS": 0.055,
+   "gainEnvelope": {
+    "attack": 0.001,
+    "sustain": 0.0,
+    "release": 0.07
+   },
+   "filterType": "lowpass",
+   "filterFreq": 640,
+   "filterQ": 0.9,
+   "subBass": {
+    "startFreq": 84,
+    "endFreq": 52,
+    "dur": 0.07,
+    "gain": 0.45
+   }
+  },
+  {
+   "id": "ui_key_press_click",
+   "category": "ui",
+   "type": "noise_filtered",
+   "noiseColor": "white",
+   "gainMult": 0.3,
+   "gainEnvelope": {
+    "attack": 0.0005,
+    "sustain": 0.0,
+    "release": 0.018
+   },
+   "filterType": "bandpass",
+   "filterFreq": 2100,
+   "filterQ": 1.1
+  },
+  {
+   "id": "ui_plate_slide",
+   "category": "ui",
+   "type": "noise_filtered",
+   "noiseColor": "pink",
+   "gainMult": 0.52,
+   "gainEnvelope": {
+    "attack": 0.012,
+    "sustain": 0.0,
+    "release": 0.2
+   },
+   "filterType": "lowpass",
+   "filterFreq": 900,
+   "filterQ": 0.7,
+   "filterSweep": [
+    1500,
+    420
+   ],
+   "sweepTimeS": 0.2,
+   "$note": "a damped whoosh with the top rolling off as the plate settles. 212 ms, matched to the BENCH slide of 180\u2013220 ms."
+  },
+  {
+   "id": "ui_legend_on",
+   "category": "ui",
+   "type": "noise_filtered",
+   "noiseColor": "white",
+   "gainMult": 0.14,
+   "gainEnvelope": {
+    "attack": 0.0004,
+    "sustain": 0.0,
+    "release": 0.012
+   },
+   "filterType": "highpass",
+   "filterFreq": 3200,
+   "filterQ": 0.6,
+   "$note": "a barely-there tick. If it is audible as an event rather than as texture, it is too loud."
+  },
+  {
+   "id": "ui_legend_off",
+   "category": "ui",
+   "type": "noise_filtered",
+   "noiseColor": "white",
+   "gainMult": 0.1,
+   "gainEnvelope": {
+    "attack": 0.0004,
+    "sustain": 0.0,
+    "release": 0.01
+   },
+   "filterType": "highpass",
+   "filterFreq": 2400,
+   "filterQ": 0.6
+  },
+  {
+   "id": "ui_confirm",
+   "category": "ui",
+   "type": "oscillator",
+   "wave": "sine",
+   "baseFreq": 392,
+   "gainMult": 0.5,
+   "gainEnvelope": {
+    "attack": 0.004,
+    "sustain": 0.0,
+    "release": 0.3
+   },
+   "filterType": "lowpass",
+   "filterFreq": 1800,
+   "filterQ": 0.8,
+   "subBass": {
+    "startFreq": 196,
+    "endFreq": 196,
+    "dur": 0.24,
+    "gain": 0.32
+   },
+   "$note": "one clear tone, G4, with its octave beneath. Clear, not bright \u2014 no partials above 1.8 kHz."
+  },
+  {
+   "id": "ui_deny",
+   "category": "ui",
+   "type": "layered",
+   "layers": [
+    "ui_deny_a",
+    "ui_deny_b"
+   ],
+   "gainMult": 0.55,
+   "gainEnvelope": {
+    "attack": 0.003,
+    "sustain": 0.0,
+    "release": 0.26
+   },
+   "$note": "a dull two-note fall, a minor third down. Damped so it thuds rather than rings."
+  },
+  {
+   "id": "ui_deny_a",
+   "category": "ui",
+   "type": "oscillator",
+   "wave": "triangle",
+   "baseFreq": 233,
+   "gainEnvelope": {
+    "attack": 0.003,
+    "sustain": 0.0,
+    "release": 0.11
+   },
+   "filterType": "lowpass",
+   "filterFreq": 900,
+   "filterQ": 0.7
+  },
+  {
+   "id": "ui_deny_b",
+   "category": "ui",
+   "type": "oscillator",
+   "wave": "triangle",
+   "baseFreq": 196,
+   "startOffsetS": 0.1,
+   "gainEnvelope": {
+    "attack": 0.003,
+    "sustain": 0.0,
+    "release": 0.22
+   },
+   "filterType": "lowpass",
+   "filterFreq": 760,
+   "filterQ": 0.7
+  },
+  {
+   "id": "ui_open",
+   "category": "ui",
+   "type": "layered",
+   "layers": [
+    "ui_plate_slide",
+    "ui_open_tone"
+   ],
+   "gainMult": 0.7,
+   "gainEnvelope": {
+    "attack": 0.008,
+    "sustain": 0.0,
+    "release": 0.26
+   },
+   "$note": "a screen opening: the plate slide with a low note under it."
+  },
+  {
+   "id": "ui_open_tone",
+   "category": "ui",
+   "type": "oscillator",
+   "wave": "sine",
+   "baseFreq": 131,
+   "freqSweep": [
+    110,
+    131
+   ],
+   "sweepTimeS": 0.18,
+   "gainMult": 0.42,
+   "gainEnvelope": {
+    "attack": 0.02,
+    "sustain": 0.0,
+    "release": 0.24
+   },
+   "filterType": "lowpass",
+   "filterFreq": 620,
+   "filterQ": 0.6
+  },
+  {
+   "id": "ui_back",
+   "category": "ui",
+   "type": "layered",
+   "layers": [
+    "ui_plate_slide",
+    "ui_back_tone"
+   ],
+   "gainMult": 0.62,
+   "gainEnvelope": {
+    "attack": 0.008,
+    "sustain": 0.0,
+    "release": 0.22
+   },
+   "$note": "the open cue with its tone inverted \u2014 going back is the same machine running the other way."
+  },
+  {
+   "id": "ui_back_tone",
+   "category": "ui",
+   "type": "oscillator",
+   "wave": "sine",
+   "baseFreq": 110,
+   "freqSweep": [
+    131,
+    110
+   ],
+   "sweepTimeS": 0.18,
+   "gainMult": 0.38,
+   "gainEnvelope": {
+    "attack": 0.015,
+    "sustain": 0.0,
+    "release": 0.2
+   },
+   "filterType": "lowpass",
+   "filterFreq": 560,
+   "filterQ": 0.6
+  },
+  {
+   "id": "ui_tab",
+   "category": "ui",
+   "type": "layered",
+   "layers": [
+    "ui_key_press_click",
+    "ui_tab_body"
+   ],
+   "gainMult": 0.62,
+   "gainEnvelope": {
+    "attack": 0.001,
+    "sustain": 0.0,
+    "release": 0.06
+   },
+   "$note": "a detent: the key press, drier and a fifth up, so moving between tabs is not the same event as committing."
+  },
+  {
+   "id": "ui_tab_body",
+   "category": "ui",
+   "type": "oscillator",
+   "wave": "triangle",
+   "baseFreq": 252,
+   "freqSweep": [
+    252,
+    176
+   ],
+   "sweepTimeS": 0.035,
+   "gainMult": 0.55,
+   "gainEnvelope": {
+    "attack": 0.001,
+    "sustain": 0.0,
+    "release": 0.05
+   },
+   "filterType": "lowpass",
+   "filterFreq": 1100,
+   "filterQ": 0.8
+  },
+  {
+   "id": "ui_dock",
+   "category": "ui",
+   "type": "layered",
+   "layers": [
+    "ui_dock_swell",
+    "ui_dock_clamp"
+   ],
+   "gainMult": 0.8,
+   "gainEnvelope": {
+    "attack": 0.05,
+    "sustain": 0.0,
+    "release": 0.55
+   },
+   "$note": "a low swell that arrives and clamps. 760 ms, the longest cue after ui_wanted."
+  },
+  {
+   "id": "ui_dock_swell",
+   "category": "ui",
+   "type": "oscillator",
+   "wave": "sine",
+   "baseFreq": 65,
+   "freqSweep": [
+    49,
+    65
+   ],
+   "sweepTimeS": 0.46,
+   "gainEnvelope": {
+    "attack": 0.18,
+    "sustain": 0.12,
+    "release": 0.34
+   },
+   "filterType": "lowpass",
+   "filterFreq": 340,
+   "filterQ": 0.9,
+   "subBass": {
+    "startFreq": 33,
+    "endFreq": 41,
+    "dur": 0.6,
+    "gain": 0.5
+   }
+  },
+  {
+   "id": "ui_dock_clamp",
+   "category": "ui",
+   "type": "noise_filtered",
+   "noiseColor": "brown",
+   "gainMult": 0.34,
+   "startOffsetS": 0.42,
+   "gainEnvelope": {
+    "attack": 0.002,
+    "sustain": 0.0,
+    "release": 0.13
+   },
+   "filterType": "bandpass",
+   "filterFreq": 380,
+   "filterQ": 1.4,
+   "distortionAmount": 0.18,
+   "distortionCurve": "tanh"
+  },
+  {
+   "id": "ui_undock",
+   "category": "ui",
+   "type": "layered",
+   "layers": [
+    "ui_undock_swell",
+    "ui_undock_release"
+   ],
+   "gainMult": 0.8,
+   "gainEnvelope": {
+    "attack": 0.01,
+    "sustain": 0.0,
+    "release": 0.5
+   },
+   "$note": "the dock swell reversed: the clamp lets go first, then the note falls away."
+  },
+  {
+   "id": "ui_undock_release",
+   "category": "ui",
+   "type": "noise_filtered",
+   "noiseColor": "brown",
+   "gainMult": 0.3,
+   "gainEnvelope": {
+    "attack": 0.002,
+    "sustain": 0.0,
+    "release": 0.11
+   },
+   "filterType": "bandpass",
+   "filterFreq": 420,
+   "filterQ": 1.3,
+   "distortionAmount": 0.16,
+   "distortionCurve": "tanh"
+  },
+  {
+   "id": "ui_undock_swell",
+   "category": "ui",
+   "type": "oscillator",
+   "wave": "sine",
+   "baseFreq": 49,
+   "freqSweep": [
+    65,
+    44
+   ],
+   "sweepTimeS": 0.5,
+   "startOffsetS": 0.06,
+   "gainEnvelope": {
+    "attack": 0.04,
+    "sustain": 0.1,
+    "release": 0.42
+   },
+   "filterType": "lowpass",
+   "filterFreq": 300,
+   "filterQ": 0.9,
+   "subBass": {
+    "startFreq": 41,
+    "endFreq": 28,
+    "dur": 0.58,
+    "gain": 0.46
+   }
+  },
+  {
+   "id": "ui_wanted",
+   "category": "ui",
+   "type": "layered",
+   "layers": [
+    "ui_wanted_tone",
+    "ui_wanted_beat"
+   ],
+   "gainMult": 0.46,
+   "gainEnvelope": {
+    "attack": 0.22,
+    "sustain": 0.55,
+    "release": 0.75
+   },
+   "$note": "ONE sustained cold tone \u2014 the whole temperature shift, not an alarm. 1.52 s and it does not repeat. A minor second between the two voices is what makes it read as cold."
+  },
+  {
+   "id": "ui_wanted_tone",
+   "category": "ui",
+   "type": "oscillator",
+   "wave": "sine",
+   "baseFreq": 147,
+   "gainEnvelope": {
+    "attack": 0.22,
+    "sustain": 0.55,
+    "release": 0.72
+   },
+   "filterType": "lowpass",
+   "filterFreq": 1300,
+   "filterQ": 0.6
+  },
+  {
+   "id": "ui_wanted_beat",
+   "category": "ui",
+   "type": "oscillator",
+   "wave": "sine",
+   "baseFreq": 155.6,
+   "gainMult": 0.62,
+   "gainEnvelope": {
+    "attack": 0.3,
+    "sustain": 0.5,
+    "release": 0.7
+   },
+   "filterType": "lowpass",
+   "filterFreq": 1100,
+   "filterQ": 0.6
+  },
+  {
+   "id": "ui_crucible_enter",
+   "category": "ui",
+   "type": "layered",
+   "layers": [
+    "ui_crucible_strike",
+    "ui_crucible_tail"
+   ],
+   "gainMult": 0.92,
+   "gainEnvelope": {
+    "attack": 0.0008,
+    "sustain": 0.0,
+    "release": 0.7
+   },
+   "$note": "a hard metallic strike: a saturated transient with a long metal tail. The only cue in the set allowed to be loud."
+  },
+  {
+   "id": "ui_crucible_strike",
+   "category": "ui",
+   "type": "noise_filtered",
+   "noiseColor": "white",
+   "gainMult": 0.64,
+   "gainEnvelope": {
+    "attack": 0.0006,
+    "sustain": 0.0,
+    "release": 0.055
+   },
+   "filterType": "bandpass",
+   "filterFreq": 1650,
+   "filterQ": 0.9,
+   "distortionAmount": 0.42,
+   "distortionCurve": "tanh"
+  },
+  {
+   "id": "ui_crucible_tail",
+   "category": "ui",
+   "type": "oscillator",
+   "wave": "square",
+   "baseFreq": 233,
+   "freqSweep": [
+    262,
+    208
+   ],
+   "sweepTimeS": 0.62,
+   "gainMult": 0.26,
+   "gainEnvelope": {
+    "attack": 0.004,
+    "sustain": 0.06,
+    "release": 0.62
+   },
+   "filterType": "bandpass",
+   "filterFreq": 820,
+   "filterQ": 3.2
+  },
+  {
+   "id": "ui_tick",
+   "category": "ui",
+   "type": "noise_filtered",
+   "noiseColor": "white",
+   "gainMult": 0.11,
+   "gainEnvelope": {
+    "attack": 0.0003,
+    "sustain": 0.0,
+    "release": 0.008
+   },
+   "filterType": "bandpass",
+   "filterFreq": 4200,
+   "filterQ": 1.6,
+   "$note": "a stepper detent or a value crossing a gradation. Deliberately at the edge of audibility: it fires often."
+  }
+ ]
+};

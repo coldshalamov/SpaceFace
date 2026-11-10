@@ -1,0 +1,95 @@
+{
+  "label": "shadow-caster-pose-quiet-skip",
+  "scenario": {
+    "roots": 80,
+    "iters": 40000
+  },
+  "inProcess": {
+    "beforeMs": 114.711,
+    "afterMs": 28.523,
+    "speedup": 4.022,
+    "beforeNotes": 3200000,
+    "afterNotes": 0
+  },
+  "isolatedPairs": [
+    {
+      "speedup": 3.47,
+      "beforeMs": 106.422,
+      "afterMs": 30.667,
+      "beforeNotes": 3200000,
+      "afterNotes": 0
+    },
+    {
+      "speedup": 3.554,
+      "beforeMs": 110.149,
+      "afterMs": 30.992,
+      "beforeNotes": 3200000,
+      "afterNotes": 0
+    },
+    {
+      "speedup": 3.582,
+      "beforeMs": 117.166,
+      "afterMs": 32.712,
+      "beforeNotes": 3200000,
+      "afterNotes": 0
+    },
+    {
+      "speedup": 3.356,
+      "beforeMs": 107.934,
+      "afterMs": 32.158,
+      "beforeNotes": 3200000,
+      "afterNotes": 0
+    },
+    {
+      "speedup": 3.891,
+      "beforeMs": 116.892,
+      "afterMs": 30.043,
+      "beforeNotes": 3200000,
+      "afterNotes": 0
+    },
+    {
+      "speedup": 3.628,
+      "beforeMs": 119.305,
+      "afterMs": 32.884,
+      "beforeNotes": 3200000,
+      "afterNotes": 0
+    },
+    {
+      "speedup": 3.803,
+      "beforeMs": 117.437,
+      "afterMs": 30.878,
+      "beforeNotes": 3200000,
+      "afterNotes": 0
+    },
+    {
+      "speedup": 4.61,
+      "beforeMs": 135.84,
+      "afterMs": 29.468,
+      "beforeNotes": 3200000,
+      "afterNotes": 0
+    },
+    {
+      "speedup": 2.49,
+      "beforeMs": 109.944,
+      "afterMs": 44.15,
+      "beforeNotes": 3200000,
+      "afterNotes": 0
+    },
+    {
+      "speedup": 4.453,
+      "beforeMs": 144.805,
+      "afterMs": 32.518,
+      "beforeNotes": 3200000,
+      "afterNotes": 0
+    },
+    {
+      "speedup": 5.755,
+      "beforeMs": 172.363,
+      "afterMs": 29.948,
+      "beforeNotes": 3200000,
+      "afterNotes": 0
+    }
+  ],
+  "medianSpeedup": 3.628,
+  "floorMinSpeedup": 2.49
+}

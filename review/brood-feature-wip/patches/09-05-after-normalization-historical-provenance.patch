@@ -1,0 +1,30 @@
+diff --git a/src/data/broodBodies.js b/src/data/broodBodies.js
+index bf8f34f..f183b69 100644
+--- a/src/data/broodBodies.js
++++ b/src/data/broodBodies.js
+@@ -16,6 +16,17 @@ const rig = (id,pivot,foldRadians,support) => ({
+   id, node:`MOTION_${id.toUpperCase()}`, pivot, axis:'x', foldRadians, support,
+   collisionAuthority:'fixed-solid-scute',
+ });
++// These three contracts describe the historical v01 fixtures used to verify behavior.
++// They do not describe the frozen M7 replacement or approve rejected art for publication.
++// A replacement must regenerate its own geometry, sockets, mass properties and source seal.
++export const BROOD_FIRST_THREE_GEOMETRY_STATUS = freeze({
++  brood_mite: { geometryRevision:'historical-v01', publicationAccepted:false,
++    replacement:'M7 frozen static art; runtime body reconciliation pending' },
++  brood_charger: { geometryRevision:'historical-v01', publicationAccepted:false,
++    replacement:'primary-form replacement and physical body reconciliation pending' },
++  brood_spitter: { geometryRevision:'historical-v01', publicationAccepted:false,
++    replacement:'primary-form replacement and physical body reconciliation pending' },
++});
+ const shared = {
+   schema:'spaceface.broodBody.v1', sourceScale:1,
+   coordinates:{forward:'+X',up:'+Y',starboard:'+Z',unit:'WU'},
+@@ -25,6 +36,7 @@ const shared = {
+   productionCap:40, densityProbes:[100,200,400],
+ };
+ const build = (id,values) => ({...shared, enemyId:id, id,
++  geometryStatus:BROOD_FIRST_THREE_GEOMETRY_STATUS[id],
+   assetId:`SF_${id.toUpperCase()}_V01`, partId:`wholeship_${id}_v01`,
+   file:`wholeships/${id}_v01.glb`, ...values,
+ });

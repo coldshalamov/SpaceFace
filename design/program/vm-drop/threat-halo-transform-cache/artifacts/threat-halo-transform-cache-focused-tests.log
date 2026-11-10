@@ -1,0 +1,45 @@
+TAP version 13
+# Subtest: near-equal contacts keep their arcs stable while jitter stays inside one band
+ok 1 - near-equal contacts keep their arcs stable while jitter stays inside one band
+  ---
+  duration_ms: 6.213345
+  ...
+# Subtest: a fighter flying at the player holds a slot over an opening drifter when the cap bites
+ok 2 - a fighter flying at the player holds a slot over an opening drifter when the cap bites
+  ---
+  duration_ms: 0.645569
+  ...
+# Subtest: a telegraphed attacker is favored inside its tier, then the cue expires quietly
+ok 3 - a telegraphed attacker is favored inside its tier, then the cue expires quietly
+  ---
+  duration_ms: 0.980786
+  ...
+# Subtest: harmless contacts never surface and mass still anchors the top slot
+ok 4 - harmless contacts never surface and mass still anchors the top slot
+  ---
+  duration_ms: 0.428021
+  ...
+# Subtest: no arc lands on the projected objective marker
+ok 5 - no arc lands on the projected objective marker
+  ---
+  duration_ms: 0.594108
+  ...
+# Subtest: G4 quadrant sides, and in-frame or unarmed shooters get no mark
+ok 6 - G4 quadrant sides, and in-frame or unarmed shooters get no mark
+  ---
+  duration_ms: 1.52244
+  ...
+# Subtest: G4 places one marker on the shooter quadrant and none for an in-frame or dead attacker
+ok 7 - G4 places one marker on the shooter quadrant and none for an in-frame or dead attacker
+  ---
+  duration_ms: 2.502327
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 198.223296

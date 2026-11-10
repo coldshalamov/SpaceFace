@@ -1,0 +1,27 @@
+{
+  "label": "volatile-index-cadence",
+  "ships": 120,
+  "ticks": 24000,
+  "period": 8,
+  "before": {
+    "ms": 37.393,
+    "refreshes": 24000,
+    "ai": 80,
+    "weapons": 90
+  },
+  "after": {
+    "ms": 8.378,
+    "refreshes": 3000,
+    "ai": 80,
+    "weapons": 90
+  },
+  "speedup": 4.463,
+  "refreshRatio": 8,
+  "oracle": {
+    "absentBeforeAttach": true,
+    "admittedWithinPeriod": true,
+    "admittedAt": 8,
+    "period": 8
+  },
+  "note": "Portable CPU. Soft-GPU fps not claimed. Before=every-tick volatile rebuild; After=8-tick cadence (append/remove authoritative)."
+}

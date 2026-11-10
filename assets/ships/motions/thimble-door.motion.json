@@ -1,0 +1,64 @@
+{
+  "schema": "spaceface.rigidMotionBank.v1",
+  "rigId": "thimble_door_controls",
+  "sourceAssetId": "SF_PLACE_THIMBLE_DOOR",
+  "sourceGlbSha256": "44b567c3d398d3833edf2b87408689abaf347401e0f85527bd1461bb32966d99",
+  "fps": 60,
+  "bindings": [
+    {
+      "id": "thimble_cable",
+      "node": "MOTION_THIMBLE_CABLE",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -46,
+          -2,
+          -32.122222900390625
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "clips": [
+    {
+      "name": "source_rest_pose",
+      "durationS": 0.016666666666666666,
+      "loop": false,
+      "endMode": "hold",
+      "channels": [
+        {
+          "group": "thimble_cable",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,156 @@
+{
+  "evidence": "real-settings-screen-in-existing-isolated-UI-bench",
+  "base": "6a9eec796e3b25e2b08526cd4412503d32cccb12",
+  "gameplayEvidence": false,
+  "errors": [],
+  "failedResources": [],
+  "controls": [
+    {
+      "label": "Cinematic lighting",
+      "off": false,
+      "on": true,
+      "passed": true
+    },
+    {
+      "label": "Local light shadows",
+      "off": false,
+      "on": true,
+      "passed": true
+    },
+    {
+      "label": "Volumetric atmosphere",
+      "off": false,
+      "on": true,
+      "passed": true
+    },
+    {
+      "label": "Lighting quality",
+      "requested": "integrated",
+      "actual": "integrated",
+      "passed": true
+    },
+    {
+      "label": "Lighting quality",
+      "requested": "balanced",
+      "actual": "balanced",
+      "passed": true
+    },
+    {
+      "label": "Lighting quality",
+      "requested": "high",
+      "actual": "high",
+      "passed": true
+    },
+    {
+      "label": "Lighting quality",
+      "requested": "auto",
+      "actual": "auto",
+      "passed": true
+    }
+  ],
+  "assets": [
+    "assets/ui/kit/tokens/tokens.css",
+    "assets/ui/kit/kit/fh.css",
+    "assets/ui/kit/kit/fonts/instrument-sans-var.woff2",
+    "assets/ui/backdrops/backdrop-title.jpg",
+    "assets/ui/kit/kit/fonts/archivo-var-latin-standard-normal.woff2",
+    "assets/ui/kit/icons/48/icon-repel.svg",
+    "assets/ui/kit/icons/48/icon-cone.svg",
+    "assets/ui/kit/icons/48/icon-well.svg",
+    "assets/ui/kit/icons/48/icon-munitions.svg",
+    "assets/ui/renders/hulls/ship_kestrel.holo.webp",
+    "assets/ui/kit/icons/48/icon-seed.svg",
+    "assets/ui/kit/icons/48/icon-line.svg"
+  ],
+  "before": {
+    "video": {
+      "renderScale": 1,
+      "bloom": true,
+      "bloomStrength": 0.52,
+      "bloomThreshold": 1,
+      "vsync": true,
+      "fov": 50,
+      "particleQuality": "medium",
+      "engineTrails": true,
+      "pixelRatioCap": 2,
+      "motionReduce": false,
+      "shadows": false,
+      "shadowsDefaultVersion": 1,
+      "nocturne": true,
+      "nocturneShadows": true,
+      "nocturneAtmosphere": true,
+      "nocturneQuality": "auto",
+      "energyMaterials": true,
+      "renderGraph": false,
+      "dynamicResolution": false,
+      "chaseClose": false,
+      "qualityPreset": "medium",
+      "frameCap": 0,
+      "bloomLevels": 2,
+      "postFx": true,
+      "sharpen": false,
+      "screenShake": 100,
+      "hudScale": 1,
+      "hudOpacity": 1,
+      "arcadeEffects": "full"
+    },
+    "layout": {
+      "broken": "",
+      "overlay": "",
+      "overlaps": [],
+      "clipped": [],
+      "offscreen": [],
+      "controlReachability": [],
+      "tangled": [],
+      "buried": [],
+      "severed": [],
+      "dead": []
+    }
+  },
+  "after": {
+    "video": {
+      "renderScale": 1,
+      "bloom": true,
+      "bloomStrength": 0.52,
+      "bloomThreshold": 1,
+      "vsync": true,
+      "fov": 50,
+      "particleQuality": "medium",
+      "engineTrails": true,
+      "pixelRatioCap": 2,
+      "motionReduce": false,
+      "shadows": false,
+      "shadowsDefaultVersion": 1,
+      "nocturne": true,
+      "nocturneShadows": true,
+      "nocturneAtmosphere": true,
+      "nocturneQuality": "auto",
+      "energyMaterials": true,
+      "renderGraph": false,
+      "dynamicResolution": false,
+      "chaseClose": false,
+      "qualityPreset": "medium",
+      "frameCap": 0,
+      "bloomLevels": 2,
+      "postFx": true,
+      "sharpen": false,
+      "screenShake": 100,
+      "hudScale": 1,
+      "hudOpacity": 1,
+      "arcadeEffects": "full"
+    },
+    "layout": {
+      "broken": "",
+      "overlay": "",
+      "overlaps": [],
+      "clipped": [],
+      "offscreen": [],
+      "controlReachability": [],
+      "tangled": [],
+      "buried": [],
+      "severed": [],
+      "dead": []
+    }
+  },
+  "complete": true
+}

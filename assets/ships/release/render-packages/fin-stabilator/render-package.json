@@ -1,0 +1,542 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.fin-stabilator",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "081809fd5557a1bb083782a43b3ca1fd18020cec1092f1509e52ee5dca0e2535",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.274993154441382,
+          0.6000778184360146,
+          1.524999976158142
+        ],
+        "min": [
+          2.9250068932423336,
+          0.4999221756035209,
+          -1.524999976158142
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9268dc1ea4ff72f8bf26f7a3f70748aae0a750113a2418df4771914adaf59e35",
+      "id": "sf.render.fin-stabilator.mesh.fin-stabilator-material-accent-merged.primitive.0",
+      "indexCount": 288,
+      "indexed": true,
+      "materialHash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "materialPipelineKey": "opaque",
+      "meshName": "fin_stabilator_Material_Accent_Merged",
+      "nodeId": "sf.render.fin-stabilator.mesh.fin-stabilator-material-accent-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 108
+    },
+    {
+      "bounds": {
+        "max": [
+          4.599999904632568,
+          0.5698746359689459,
+          1.7999084098281344
+        ],
+        "min": [
+          -0.20000000298023224,
+          -0.17487464014127102,
+          -1.7999084098281344
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "57811055410dced51e781c357f927cb7e7287a2fb9682b1394a1605d7c13286f",
+      "id": "sf.render.fin-stabilator.mesh.fin-stabilator-material-hull-merged.primitive.0",
+      "indexCount": 408,
+      "indexed": true,
+      "materialHash": "345a2ca5e0bd4360fdc384bfede2f0daf1ebbe16ffd0edbbc31d64c12ec6aca5",
+      "materialPipelineKey": "opaque",
+      "meshName": "fin_stabilator_Material_Hull_Merged",
+      "nodeId": "sf.render.fin-stabilator.mesh.fin-stabilator-material-hull-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 167
+    },
+    {
+      "bounds": {
+        "max": [
+          2.6399731830503264,
+          0.6600433490991002,
+          1.600000023841858
+        ],
+        "min": [
+          0.5600268646333895,
+          0.37995667235857183,
+          -1.600000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "67f63c9e837516c76f761a57d2d576a6f14c4cd496cfb1563aaa573ceba08655",
+      "id": "sf.render.fin-stabilator.mesh.fin-stabilator-material-mechanical-merged.primitive.0",
+      "indexCount": 864,
+      "indexed": true,
+      "materialHash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "materialPipelineKey": "opaque",
+      "meshName": "fin_stabilator_Material_Mechanical_Merged",
+      "nodeId": "sf.render.fin-stabilator.mesh.fin-stabilator-material-mechanical-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 180
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "345a2ca5e0bd4360fdc384bfede2f0daf1ebbe16ffd0edbbc31d64c12ec6aca5",
+      "id": "material:345a2ca5e0bd4360fdc384bf",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "id": "material:4bbfc0af06e03d63cd7b8818",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "id": "material:7af6f768ac4f1f4c9ee04b14",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.fin-stabilator.mesh.fin-stabilator-material-accent-merged",
+      "localTransform": [
+        1.524999976158142,
+        0,
+        0,
+        0,
+        0,
+        1.524999976158142,
+        0,
+        0,
+        0,
+        0,
+        1.524999976158142,
+        0,
+        3.100000023841858,
+        0.5499999970197678,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fin_stabilator_Material_Accent_Merged",
+      "nodeName": "fin_stabilator_Material_Accent_Merged",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.fin-stabilator.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-stabilator.body",
+      "worldTransform": [
+        1.524999976158142,
+        0,
+        0,
+        0,
+        0,
+        1.524999976158142,
+        0,
+        0,
+        0,
+        0,
+        1.524999976158142,
+        0,
+        3.100000023841858,
+        0.5499999970197678,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-stabilator.mesh.fin-stabilator-material-hull-merged",
+      "localTransform": [
+        2.3999999538064003,
+        0,
+        0,
+        0,
+        0,
+        2.3999999538064003,
+        0,
+        0,
+        0,
+        0,
+        2.3999999538064003,
+        0,
+        2.199999950826168,
+        0.19749999791383743,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fin_stabilator_Material_Hull_Merged",
+      "nodeName": "fin_stabilator_Material_Hull_Merged",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.fin-stabilator.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-stabilator.body",
+      "worldTransform": [
+        2.3999999538064003,
+        0,
+        0,
+        0,
+        0,
+        2.3999999538064003,
+        0,
+        0,
+        0,
+        0,
+        2.3999999538064003,
+        0,
+        2.199999950826168,
+        0.19749999791383743,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-stabilator.mesh.fin-stabilator-material-mechanical-merged",
+      "localTransform": [
+        1.600000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.600000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.600000023841858,
+        0,
+        1.600000023841858,
+        0.5200000107288361,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "fin_stabilator_Material_Mechanical_Merged",
+      "nodeName": "fin_stabilator_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.fin-stabilator.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-stabilator.body",
+      "worldTransform": [
+        1.600000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.600000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.600000023841858,
+        0,
+        1.600000023841858,
+        0.5200000107288361,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.fin-stabilator.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "fin_stabilator",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.fin-stabilator.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "2c1ad0324d59c5a73d76a882b7838fb63aa2e33bb425eb0de7be2c42c89507cc"
+    },
+    "sourceGlb": {
+      "bytes": 376796,
+      "sha256": "2838c0fa8c5ac98b4f7424cbbe6cddf656ec8b753e8a25366d073e115ed9f83b",
+      "uri": "fin_stabilator.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 377080,
+    "sha256": "a63b3be6a622b99a4ce1ac7f7c85d9287a76b6d6d4166c60b1b002b349698215",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        2.199999950826168,
+        0.2425843544789146,
+        0
+      ],
+      "max": [
+        4.599999904632568,
+        0.6600433490991002,
+        1.7999084098281344
+      ],
+      "min": [
+        -0.20000000298023224,
+        -0.17487464014127102,
+        -1.7999084098281344
+      ],
+      "size": [
+        4.799999907612801,
+        0.8349179892403713,
+        3.5998168196562688
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "HOOK_Emissive",
+        "planIndex": 5,
+        "tags": {},
+        "userData": {
+          "name": "HOOK_Emissive",
+          "spacefaceHook": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 1,
+      "hull": 1,
+      "mechanical": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "accent"
+      }
+    ],
+    "nodeCount": 14,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          2.3999999538064003,
+          0,
+          0,
+          0,
+          0,
+          2.3999999538064003,
+          0,
+          0,
+          0,
+          0,
+          2.3999999538064003,
+          0,
+          2.199999950826168,
+          0.19749999791383743,
+          0,
+          1
+        ],
+        "name": "fin_stabilator_Material_Hull_Merged",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.600000023841858,
+          0,
+          0,
+          0,
+          0,
+          1.600000023841858,
+          0,
+          0,
+          0,
+          0,
+          1.600000023841858,
+          0,
+          1.600000023841858,
+          0.5200000107288361,
+          0,
+          1
+        ],
+        "name": "fin_stabilator_Material_Mechanical_Merged",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.524999976158142,
+          0,
+          0,
+          0,
+          0,
+          1.524999976158142,
+          0,
+          0,
+          0,
+          0,
+          1.524999976158142,
+          0,
+          3.100000023841858,
+          0.5499999970197678,
+          0,
+          1
+        ],
+        "name": "fin_stabilator_Material_Accent_Merged",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "fin",
+    "url": "assets/ships/release/parts/fins/fin_stabilator.glb"
+  },
+  "runtimeHash": "8e6cba9b67af7c8747ee7eb7cd65c6772d2810911b18b7ee0ddf096c60d39ba9",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          4.599999904632568,
+          0.6600433490991002,
+          1.7999084098281344
+        ],
+        "min": [
+          -0.20000000298023224,
+          -0.17487464014127102,
+          -1.7999084098281344
+        ]
+      },
+      "id": "sf.render.fin-stabilator.body",
+      "nodeIds": [
+        "sf.render.fin-stabilator.mesh.fin-stabilator-material-accent-merged",
+        "sf.render.fin-stabilator.mesh.fin-stabilator-material-hull-merged",
+        "sf.render.fin-stabilator.mesh.fin-stabilator-material-mechanical-merged",
+        "sf.render.fin-stabilator.root"
+      ]
+    }
+  ]
+}

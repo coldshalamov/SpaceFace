@@ -1,0 +1,4280 @@
+// The Crucible door (PQ-133 / CRU-018) and the run results surface.
+//
+// The door picks a hull and a seed and launches through the ordinary New Game route
+// (src/ui/crucibleLaunch.js). The results surface explains how the run ended and offers the same
+// seed again. Neither writes state.run, the phase, or a fitting.
+//
+// The door composes the shared ORRERY words, tiles, keys and stage selectors. Results tell the
+// run's story through its score, consequences and build. The DOM uses `el` + appendChild so
+// the results surface also mounts against the focused test document.
+
+import { COMBAT_LAB_ARENAS, COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
+import { todayRankedRuns } from '../../chronicler/recordsWall.js';
+import { SHIPS } from '../../data/ships.js';
+import { WEAPONS } from '../../data/weapons.js';
+
+import {
+  CRUCIBLE_ARENA_ID,
+  CRUCIBLE_DEFAULT_RULESET,
+  buildCrucibleRetryRequest,
+  crucibleHullChoices,
+  crucibleHullSetupFor,
+  crucibleSetupFor,
+  crucibleStarterIdForSetup,
+  freshSeed,
+  lastCrucibleRuleset,
+  lastCrucibleSetup,
+  normalizeSeed,
+  practiceLaunchFor,
+  canChooseSwarmOpeningLesson,
+} from '../crucibleLaunch.js';
+import {
+  SWARM_STAKES,
+  normalizeSwarmStake,
+  swarmStakeFor,
+  swarmStakePitch,
+} from '../../data/swarmStakes.js';
+import { SWARM_EVENT_BY_ID, SWARM_EVENT_TABLES } from '../../data/swarmEvents.js';
+import {
+  swarmArcadeSeedFor,
+  swarmArenaIsUnlocked,
+  SWARM_ARENA_STAR_GATES,
+  SWARM_LADDER_ARENA_ORDER,
+  swarmCheckpointPurseFor,
+  swarmCheckpointStartWave,
+  swarmLadderStarTotal,
+  swarmZoneChainTarget,
+  swarmZoneFor,
+  swarmZoneIndexFor,
+} from '../../data/swarmLadder.js';
+import {
+  emptyHangar,
+  HANGAR_TRACKS,
+  hangarHullRackView,
+  hangarRank,
+  trackPrice,
+} from '../../data/swarmHangar.js';
+import {
+  SWARM_THREATS,
+  SWARM_THREAT_BY_ID,
+  normalizeThreatIds,
+  swarmThreatBountyMult,
+} from '../../data/swarmThreats.js';
+import { SWARM_CROSSOVER_CATALOG, swarmCrossoverEarned } from '../../data/swarmCrossover.js';
+import {
+  SWARM_PERKS,
+  SWARM_PERK_SLOTS,
+} from '../../data/swarmPerks.js';
+import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
+import { createStationRow } from '../orrery/stopDial.js';
+import { createCruciblePreparation } from '../orrery/cruciblePreparation.js';
+import { reducedMotion as orreryMotionReduced } from '../orrery/motion.js';
+import { cabinetDailySnapshot, createCabinetAttract, createCabinetEntryBand, renderCabinetBoard } from '../swarmCabinet.js';
+import { SWARM_CABINET_ATTRACT_TAPE } from '../swarmCabinetAttractTape.js';
+import { injectOrreryScreens } from '../orrery/screenLayouts.js';
+import { injectCrucibleDoorLayouts } from '../orrery/crucible-doorLayouts.js';
+import { createDeathDial, initials as deathDialInitials } from '../orrery/deathDial.js';
+import { injectCrucibleResultsLayouts } from '../orrery/crucibleResultsLayouts.js';
+import {
+  buildCodeFor,
+  buildNameFor,
+  trickCountRows,
+} from '../../systems/survivalResults.js';
+import { ensureStuntCallout, releaseStuntCallout } from '../stuntCallout.js';
+// FB-086: the killReplay ring import retired with the ring's results words — the killcam tape
+// is the one results replay.
+import {
+  clearKillcamTape,
+  killcamStageRequestFor,
+  skipKillcamPlayback,
+  takeKillcamTape,
+} from '../../sim/killcamTape.js';
+import {
+  SWARM_DRAFT_EVERY,
+  SWARM_REFIT_EVERY,
+  SWARM_RULESET,
+} from '../../data/swarmMode.js';
+import { survivalArenaById } from '../../data/survivalArenas.js';
+import { SURVIVAL_RUN_WAVE_COUNT, BLOCK_RULESET } from '../../systems/survivalRun.js';
+import { CIRCUIT_TOTAL_ROUNDS } from '../../systems/survivalCircuit.js';
+import { decorateEntityNode, entityLabel, entitySpanHtml } from '../entityResolver.js';
+import { dpIcon } from '../deckplate/icons.js';
+import {
+  ghostRaceOffer,
+  lastGhostRowByHash,
+  loadCrucibleMeta,
+  weeklyMutatorForNow,
+  bestLineRows,
+  normalizeBestLine,
+  OVERCONFIDENCE_STREAK_AT,
+  roundProgress,
+  buyCrucibleHangarTrack,
+  buyCrucibleHangarHull,
+  crucibleSwarmDepthView,
+  setCruciblePerkLoadout,
+  kitBalanceBoard,
+  overconfidenceStreak,
+  runWhatKilledYouOffer,
+  grudgeLedgerFor,
+  caseFilesFor,
+  trickBookFor,
+} from '../../systems/survivalRecords.js';
+import {
+  applyRunShareCode,
+  copyShareText,
+  doorRunShareCode,
+  ghostShareForRun,
+  importGhostShareText,
+  runShareCodeForRun,
+  requestSharedCrucibleRun,
+  runShareSummary,
+  runCardModel,
+  runCardSvg,
+  runCardHref,
+  shareTextHref,
+} from './shareCode.js';
+import {
+  buildSandboxLaunchConfig,
+  emitSandboxEmbarkSpeculation,
+  requestSandboxGame,
+  SCENARIO_PRESETS,
+} from '../sandbox/sandboxSetup.js';
+import { ensurePhysicsLabRoute, notePracticeLaunch } from './crucibleLabControls.js';
+import { SURVIVAL_MUTATOR_BY_ID, SURVIVAL_TRIAL_BY_RULESET, POWERED_CONVEYOR_RULESET } from '../../data/survivalMutators.js';
+import { clearQueuedChallenge, queueGhostPlayback, queuePracticeRun, queueSurvivalChallenge } from '../../systems/survivalMutators.js';
+import {
+  availableOptions,
+  isModeAvailable,
+  isStarterAvailable,
+  meetsUnlockCondition,
+  starterUnlockEntry,
+} from '../../systems/survivalUnlocks.js';
+import { compileAttackSpec } from '../../combat/attackSpec.js';
+import { STUNT_RULE_REVISIONS, stuntAssistProfile } from '../../combat/stuntRunRules.js';
+import { normalizeGameSpeed } from '../../core/timeEffects.js';
+import { causalKindsFromSpec } from '../../systems/adventureMigration.js';
+import { comboSummary } from '../../systems/stuntCombo.js';
+import { el, settle, stamp, cue } from '../kit/index.js';
+import { renderResultsSheet, resultsSheetModel, recordedKitId } from './resultsSheet.js';
+import { capPins, platePins, panePins, channelPins, rowPins }
+  from '../kit/computedMaterial.js';
+
+const FH_KEY = {
+  primary: { file: 'key.primary', width: '18px', minW: '132px', minH: '44px', pad: '0 16px', font: '16px' },
+  hazard: { file: 'key.hazard', width: '18px', minW: '280px', minH: '72px', pad: '0 22px', font: '20px' },
+  legend: { file: 'key.legend', width: '14px', minW: '72px', minH: '32px', pad: '0 10px', font: '12px' },
+  small: { file: 'key.small', width: '12px', minW: '88px', minH: '36px', pad: '0 10px', font: '12px' },
+};
+function kitUrl(rel) {
+  try { return new URL('../../../assets/ui/kit/' + rel, import.meta.url).href; }
+  catch { return 'assets/ui/kit/' + rel; }
+}
+function fhUrl(rel) {
+  return kitUrl('assets/' + rel);
+}
+function forcedColorsActive() {
+  return typeof matchMedia === 'function' && matchMedia('(forced-colors: active)').matches;
+}
+// Materials (sprite borders, fills) are the deckplate sheet's, bridged from the fh-* classes; a pin
+// that set them inline would outrank the sheet. Forced colours keeps every pin (the system palette).
+const DP_MATERIAL_PROP = /^(border-image|border-style$|border-width$|background)/;
+function pin(node, props) {
+  if (!node || !node.style || typeof node.style.setProperty !== 'function') return node;
+  const materialsToBridge = !forcedColorsActive();
+  for (const name of Object.keys(props)) {
+    if (materialsToBridge && DP_MATERIAL_PROP.test(name)) continue;
+    node.style.setProperty(name, props[name], 'important');
+  }
+  return node;
+}
+// ORRERY (design/frontend/ORRERY.md §6 Crucible): the Field Hardware helpers pinned plates, key
+// sprites and tile panes inline with !important. Under ORRERY they only mark nodes for the composition
+// sheet (src/ui/orrery/screenLayouts.js, .orr-crucible) and pin nothing; ids, hooks, aria and
+// handlers are untouched.
+const ORRERY = true;
+const mark = (node, ...cls) => { if (node && node.classList && typeof node.classList.add === 'function') node.classList.add(...cls); return node; };
+function paintMarking(node) {
+  if (!node) return node;
+  if (ORRERY) return mark(node, 'fh-title', 'orr-mark');
+  if (node.classList && typeof node.classList.add === 'function') node.classList.add('fh-title');
+  return pin(node, {
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 900, 'wdth' 125",
+    'letter-spacing': 'var(--fh-track-display)',
+    'text-transform': 'uppercase',
+    'line-height': '0.9',
+    // Width AND height: 12vw alone gave a 153 px marking at 1280x800, which with its tagline ate a
+    // third of the frame and left the door's stage 270 px tall for three tile rows. 15vh keeps the
+    // approved frame's proportion (162 px at 1080) and shrinks with the short viewports.
+    'font-size': 'clamp(64px, min(12vw, 15vh), 160px)',
+    color: 'var(--fh-text)',
+    margin: '0',
+  });
+}
+function paintLegend(node, lit = false) {
+  if (!node) return node;
+  if (ORRERY) {
+    if (typeof node.setAttribute === 'function' && !node.getAttribute('data-fh-lit')) node.setAttribute('data-fh-lit', lit ? 'on' : 'off');
+    return mark(node, 'fh-legend', 'orr-legend');
+  }
+  if (node.classList && typeof node.classList.add === 'function') node.classList.add('fh-legend');
+  if (typeof node.setAttribute === 'function' && !node.getAttribute('data-fh-lit')) {
+    node.setAttribute('data-fh-lit', lit ? 'on' : 'off');
+  }
+  return pin(node, {
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 600, 'wdth' 62",
+    'letter-spacing': 'var(--fh-track-legend)',
+    'text-transform': 'uppercase',
+    'font-size': 'var(--fh-size-fine)',
+    color: lit ? 'var(--fh-legend-lit, var(--fh-legend))' : 'var(--fh-legend-rest, var(--fh-legend))',
+    margin: '0',
+  });
+}
+function paintWindow(node) {
+  if (!node) return node;
+  if (ORRERY) return mark(node, 'fh-window', 'orr-window');
+  if (node.classList && typeof node.classList.add === 'function') node.classList.add('fh-window', 'fh-window--deep');
+  if (forcedColorsActive()) {
+    return pin(node, { 'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid', background: 'transparent' });
+  }
+  return pin(node, {
+    ...panePins('deep', '20px'),
+    'box-sizing': 'border-box',
+    padding: '12px 16px',
+  });
+}
+function paintInput(input) {
+  if (!input) return input;
+  if (ORRERY) return mark(input, 'fh-input', 'orr-input');
+  if (input.classList && typeof input.classList.add === 'function') input.classList.add('fh-input');
+  const apply = (state) => {
+    if (forcedColorsActive()) {
+      pin(input, { 'border-image-source': 'none', 'border-bottom': '1px solid CanvasText', background: 'transparent' });
+      return;
+    }
+    pin(input, {
+      ...channelPins(state, '12px'),
+      color: 'var(--fh-text)',
+      'min-height': '40px',
+      padding: '0 8px',
+      'box-sizing': 'border-box',
+      'font-family': 'var(--fh-face-display)',
+      'font-variation-settings': "'wght' 800, 'wdth' 125",
+      'font-size': 'var(--fh-size-menu, 40px)',
+      'font-variant-numeric': 'tabular-nums',
+    });
+  };
+  apply('rest');
+  if (input.dataset && input.dataset.fhBound !== '1') {
+    input.dataset.fhBound = '1';
+    input.addEventListener('focus', () => apply('focus'));
+    input.addEventListener('blur', () => apply('rest'));
+  }
+  return input;
+}
+function paintKey(button, kind = 'legend') {
+  if (!button) return button;
+  if (ORRERY) { mark(button, 'k-word', 'orr-key', 'orr-key--' + kind); button._fhSync = () => {}; return button; }
+  const spec = FH_KEY[kind] || FH_KEY.legend;
+  if (button.classList && typeof button.classList.add === 'function') {
+    button.classList.add('k-word', 'fh-key', 'fh-key--' + kind);
+  }
+  const apply = (state) => {
+    if (forcedColorsActive()) {
+      pin(button, {
+        'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+        background: 'transparent', color: 'CanvasText',
+      });
+      return;
+    }
+    pin(button, {
+      display: 'inline-flex',
+      width: 'max-content',
+      'max-width': '100%',
+      'min-width': spec.minW,
+      'min-height': spec.minH,
+      // a key's padding is the sheet's (room for its lamp); a legend tab keeps the kit's
+      ...(kind === 'legend' ? { padding: spec.pad } : {}),
+      'font-size': spec.font,
+      'text-transform': 'uppercase',
+      'justify-content': 'center',
+      'align-items': 'center',
+      'box-sizing': 'border-box',
+      ...capPins(kind, state, spec.width),
+    });
+  };
+  const sync = () => {
+    const disabled = button.getAttribute && (button.getAttribute('aria-disabled') === 'true' || button.disabled);
+    apply(disabled ? 'disabled' : (kind === 'legend' && button.getAttribute && button.getAttribute('aria-pressed') === 'true' ? 'lit' : 'rest'));
+  };
+  button._fhSync = sync;
+  if (!(button.dataset && button.dataset.fhBound === '1')) {
+    if (button.dataset) button.dataset.fhBound = '1';
+    if (typeof button.addEventListener === 'function') {
+      button.addEventListener('pointerenter', () => {
+        if (button.getAttribute && (button.getAttribute('aria-disabled') === 'true' || button.disabled)) return;
+        apply('hover');
+      });
+      button.addEventListener('pointerleave', sync);
+      button.addEventListener('pointerdown', () => {
+        if (button.getAttribute && (button.getAttribute('aria-disabled') === 'true' || button.disabled)) return;
+        apply('pressed');
+      });
+      button.addEventListener('pointerup', sync);
+    }
+  }
+  sync();
+  return button;
+}
+function paintTile(button, selected) {
+  if (!button) return button;
+  if (ORRERY) return mark(button, 'fh-tile', 'orr-tile');
+  if (button.classList && typeof button.classList.add === 'function') button.classList.add('fh-tile');
+  if (forcedColorsActive()) {
+    return pin(button, {
+      'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+      background: 'transparent', color: 'CanvasText',
+    });
+  }
+  // The tile follows the kit scale (--k-s: 0.75 at 1280x800, 1 at 1920x1080, 1.25 at 2560x1440).
+  // Fixed 132x116 tiles made the three tile rows of the door (approved/frames/frame-crucible-door.png)
+  // taller than the stage at every default viewport below 1080p, so the hull row scrolled out of
+  // sight: the player saw the mode row and never learned there was a hull to pick.
+  // Hull tiles set data-tile-fit="fill" so eight kits stay one row. A second row pushed Bolt
+  // and Hinge under the window edge, where they read as cut-off squares.
+  const fill = button.dataset && button.dataset.tileFit === 'fill';
+  return pin(button, {
+    display: 'grid',
+    'grid-template-rows': '1fr auto',
+    width: fill ? '100%' : 'calc(132px * var(--k-s, 1))',
+    'min-width': fill ? '0' : 'calc(132px * var(--k-s, 1))',
+    'max-width': fill ? '100%' : 'none',
+    'min-height': fill ? 'calc(96px * var(--k-s, 1))' : 'calc(116px * var(--k-s, 1))',
+    padding: '0',
+    cursor: 'pointer',
+    'box-sizing': 'border-box',
+    color: selected ? 'var(--fh-text)' : 'var(--fh-text-resting)',
+    ...panePins(selected ? 'viewport' : 'glass', '20px'),
+  });
+}
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function choiceTile(label, className, artSrc, iconName) {
+  const button = el('button', 'fh-tile ' + className);
+  button.type = 'button';
+  const art = el('span', 'fh-tile-art');
+  if (iconName) {
+    // Inline, not <img>: kit SVGs are currentColor, and an external image paints black
+    // on the glass — a blank square. Forced colours keeps inline SVG.
+    const markup = dpIcon(iconName, 48, { className: 'sf-crd-glyph' });
+    if (markup && typeof art.insertAdjacentHTML === 'function') art.insertAdjacentHTML('beforeend', markup);
+  } else if (artSrc) {
+    const img = el('img');
+    img.src = artSrc;
+    img.alt = '';
+    if (typeof img.setAttribute === 'function') img.setAttribute('aria-hidden', 'true');
+    pin(img, { width: 'calc(48px * var(--k-s, 1))', height: 'calc(48px * var(--k-s, 1))', 'object-fit': 'contain' });
+    art.appendChild(img);
+  }
+  button.appendChild(art);
+  button.appendChild(el('span', 'fh-tile-legend', label));
+  paintTile(button, false);
+  return button;
+}
+function syncChoice(button, on) {
+  if (!button || typeof button.setAttribute !== 'function') return;
+  button.setAttribute('aria-pressed', String(on));
+  button.setAttribute('aria-selected', String(on));
+  button.setAttribute('aria-checked', String(on));
+  paintTile(button, on);
+}
+
+const MODE_TILE = Object.freeze({
+  swarm: 'assets/tiles/tile.mode.swarm.png',
+  scored: 'assets/tiles/tile.mode.gauntlet.png',
+  // The bounded block plays the same authored Foundry the Gauntlet opens with; the Gauntlet
+  // tile is its face. No new art for a ruleset.
+  [BLOCK_RULESET]: 'assets/tiles/tile.mode.gauntlet.png',
+});
+const HULL_ICON = Object.freeze({
+  web_weaver: 'line',
+  ricochet_runner: 'boost',
+  energy_baseline: 'energy',
+  kinetic_baseline: 'weapon',
+  physics_toolkit: 'well',
+  massline_rig: 'tow',
+  hornet_fast_clumsy: 'drive',
+  hornet_nimble_slow: 'brake',
+});
+const ARENA_TILE = Object.freeze({
+  helios_core: 'assets/tiles/tile.arena.ricochet-foundry.png',
+  lagrange_crucible: 'assets/tiles/tile.arena.lagrange-crucible.png',
+  cinder_sluice: 'assets/tiles/tile.arena.cinder-sluice.png',
+  cryo_drift: 'assets/tiles/tile.arena.cryo-drift.png',
+  storm_lattice: 'assets/tiles/tile.arena.storm-lattice.png',
+});
+// S9 — untiled arenas never wear another room's picture. An arena with no authored tile
+// art yet presents its own glyph; the hero panel shows the active mode's art instead of
+// a mislabeled Foundry still.
+const ARENA_GLYPH = Object.freeze({
+  asteroid_mill: 'asteroid',
+  the_hive: 'seed',
+});
+
+/** A kit word (`button.k-word`). The caller appends it. */
+function word(label, className) {
+  const button = el('button', 'k-word' + (className ? ' ' + className : ''), label);
+  button.type = 'button';
+  return button;
+}
+
+/** A kit hero block built without `append` (the results test's fake document has appendChild only). */
+function heroBlock(number, text, className) {
+  const block = el('div', 'k-hero' + (className ? ' ' + className : ''));
+  block.appendChild(el('div', 'k-hero__n', number));
+  if (text) block.appendChild(el('div', 'k-hero__w', text));
+  return block;
+}
+
+/** A static kit row: a name (with an optional sub line) and a number. */
+function staticRow(name, value, { sub = '', valueClass = '', className = '' } = {}) {
+  const row = el('li', 'k-row k-row--static' + (className ? ' ' + className : ''));
+  const left = el('div');
+  left.appendChild(el('span', 'k-row__name', name));
+  if (sub) left.appendChild(el('div', 'k-row__sub', sub));
+  row.appendChild(left);
+  row.appendChild(el('span', 'k-row__num' + (valueClass ? ' ' + valueClass : ''), value));
+  return row;
+}
+
+/** Guarded kit motion: the unit tests mount these screens under a fake document with no frame clock. */
+function canAnimate() {
+  return typeof requestAnimationFrame === 'function' && typeof document !== 'undefined'
+    && typeof document.createElement === 'function' && typeof HTMLElement === 'function';
+}
+
+function hullBlurb(starter) {
+  if (starter.blurb) return starter.blurb;
+  const count = Array.isArray(starter.loadout) ? starter.loadout.length : 0;
+  return `${starter.hullId.replace(/^ship_/, '')} · ${count} hardpoint${count === 1 ? '' : 's'} fitted`;
+}
+
+// `freshSeed` lives in crucibleLaunch.js — the title's one-press Swarm launch uses the same
+// roll the door does, so the two entries can never drift on what "a new run" means.
+
+function arenaName() {
+  const arena = survivalArenaById(CRUCIBLE_ARENA_ID);
+  return arena && arena.label ? arena.label : CRUCIBLE_ARENA_ID;
+}
+
+/* --- THE RECORD BAND ------------------------------------------------------------------------
+   The Crucible's answer to "why come back". The map's phase-10 exit gate asks for reasons to
+   replay beyond raw score AND for a fresh account to stay competitive, and those two pull against
+   each other unless the reward is possibility rather than power. Every unlock in the catalog is
+   zero on all seven power axes, so this band shows the SHAPE of what is still closed and the exact
+   condition that opens it. A returning player gets more ways to play and not one point of damage.
+   ------------------------------------------------------------------------------------------- */
+
+/**
+ * Phrase the earn condition as the thing the player would go and do.
+ *
+ * Every kind the catalog actually uses gets a real sentence. The generic fallback exists only so a
+ * kind added later still renders something, and a test fails if a live kind ever reaches it — a
+ * player reading "pick and waves 10" has been told nothing.
+ *
+ * Note the two different keys: pick_and_waves carries minWaves, the rest carry min. Reading only
+ * `min` printed "clear wave 0" for four of the five starters.
+ */
+export function unlockConditionText(entry) {
+  if (!entry) return '';
+  if (entry.defaultUnlocked) return 'open from the start';
+  const earn = entry.earn;
+  if (!earn || typeof earn !== 'object') return 'condition not yet set';
+  const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  switch (earn.kind) {
+    case 'pick_and_waves': {
+      const waves = num(earn.minWaves != null ? earn.minWaves : earn.min);
+      return earn.verb ? `run ${earn.verb} to wave ${waves}` : `run it to wave ${waves}`;
+    }
+    case 'waves_cleared': return `clear wave ${num(earn.min)}`;
+    case 'deepest_wave': return `reach wave ${num(earn.min)}`;
+    case 'authored_victory': return 'win the authored run';
+    case 'victory_and_physics_pick': return 'win with a physics verb';
+    default: return `${String(earn.kind).replace(/_/g, ' ')} ${num(earn.min)}`;
+  }
+}
+
+/** One row per catalog entry: is it open, and if not, what opens it. Stable, catalog-ordered. */
+export function unlockLadderRows(profile) {
+  const owned = (profile && profile.unlocks) || {};
+  const stats = (profile && profile.records) || null;
+  return SURVIVAL_UNLOCK_CATALOG.map((entry) => {
+    let open = !!entry.defaultUnlocked || !!owned[entry.id];
+    if (!open && stats) {
+      // Ask the systems layer rather than re-deriving the rule here; a second copy would drift.
+      try { open = !!meetsUnlockCondition(entry, profile); } catch { open = false; }
+    }
+    return {
+      id: entry.id,
+      kind: entry.kind,
+      label: entry.label,
+      blurb: entry.blurb,
+      open,
+      condition: open ? '' : unlockConditionText(entry),
+    };
+  });
+}
+
+/** The lifetime figures, each keeping its own word. */
+export function lifetimeFigures(profile) {
+  const life = (profile && profile.records && profile.records.lifetime) || {};
+  const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  return [
+    { key: 'runs', label: 'Runs', value: n(life.runs) },
+    { key: 'victories', label: 'Won', value: n(life.victories) },
+    { key: 'deepestWave', label: 'Deepest', value: n(life.deepestWave) },
+    { key: 'bestScore', label: 'Best score', value: n(life.bestScore) },
+    { key: 'bestKills', label: 'Best kills', value: n(life.bestKills) },
+  ];
+}
+
+/** Today's daily board row as the band shows it. Missing row → null (the band omits it). */
+export function todayBoardFigures(profile, dateKey) {
+  const daily = profile && profile.daily && typeof profile.daily === 'object' ? profile.daily : null;
+  const byDate = daily && daily.byDate && typeof daily.byDate === 'object' ? daily.byDate : null;
+  const row = byDate && dateKey ? byDate[dateKey] : null;
+  if (!row || typeof row !== 'object') return null;
+  const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  return {
+    label: 'Today',
+    score: n(row.bestScore),
+    wave: n(row.deepestWave),
+  };
+}
+
+const OUTCOME_WORD = Object.freeze({ victory: 'WON', defeat: 'LOST', aborted: 'LEFT' });
+
+export function renderTodayBoard(profile, dateKey) {
+  const board = el('section', 'sf-crd-today');
+  board.setAttribute('aria-label', "Today's local daily board");
+  board.appendChild(el('p', 'k-caps', `Today · ${dateKey} · local daily runs`));
+  const ranked = todayRankedRuns(profile, dateKey);
+  if (!ranked.length) board.appendChild(el('p', 'k-sentence', 'No daily result yet. Fly Today’s challenge to put a run on this board.'));
+  const list = el('ol', 'k-rows');
+  for (const run of ranked) list.appendChild(el('li', 'k-row k-row--static',
+    `${run.rank}. ${run.score} points · wave ${run.wave} · seed ${run.seed}`));
+  board.appendChild(list); return board;
+}
+
+/** The most recent runs, newest first. History is stored oldest→newest (settleCrucibleRun
+ *  appends); the door reads the tail. Never re-sorted by score — the order is the record. */
+export function recentRunRows(profile, limit = 5) {
+  const hist = (profile && Array.isArray(profile.history)) ? profile.history : [];
+  return hist.slice(-Math.max(0, limit)).reverse().map((run) => ({
+    outcome: OUTCOME_WORD[run && run.outcome] || String((run && run.outcome) || '—').toUpperCase(),
+    wave: Number(run && run.wave) || 0,
+    score: Number(run && run.score) || 0,
+    arena: (run && run.arenaId) || '',
+  }));
+}
+
+/** The full run log behind the five-row teaser — every recorded run, newest first, with the
+ *  context the results-history surface exists to show: where, how far, and what it was. */
+export function historyRunRows(profile) {
+  const hist = (profile && Array.isArray(profile.history)) ? profile.history : [];
+  return hist.slice().reverse().map((run) => {
+    const mutators = Array.isArray(run && run.mutators) ? run.mutators.length : 0;
+    const ruleset = String((run && run.ruleset) || '').trim();
+    const context = [
+      run && run.arenaId ? String(run.arenaId).replace(/^arena_/, '').replace(/_/g, ' ') : '',
+      ruleset && ruleset !== 'scored' ? ruleset.replace(/_/g, ' ') : '',
+      run && run.trialId ? 'trial' : '',
+      mutators > 0 ? `${mutators} mutator${mutators === 1 ? '' : 's'}` : '',
+      run && run.dailyDateKey ? 'daily' : '',
+      run && run.ghostHash ? 'ghost on file' : '',
+      run && run.bestLineId ? 'best line' : '',
+    ].filter(Boolean).join(' · ');
+    const distance = Number(run && run.deepestWave) > Number(run && run.wave)
+      ? `${run.wave}/${run.deepestWave}` : `${run.wave}`;
+    const tally = [
+      Number.isInteger(run && run.kills) && run.kills > 0 ? `${run.kills} kills` : '',
+      Number.isInteger(run && run.wavesCleared) && run.wavesCleared > 0 ? `${run.wavesCleared} cleared` : '',
+      Number.isInteger(run && run.credits) && run.credits > 0 ? `${run.credits} cr` : '',
+    ].filter(Boolean).join(' · ');
+    return {
+      outcome: OUTCOME_WORD[run && run.outcome] || String((run && run.outcome) || '—').toUpperCase(),
+      wave: Number(run && run.wave) || 0,
+      distance,
+      score: Number(run && run.score) || 0,
+      context,
+      tally,
+    };
+  });
+}
+
+/**
+ * The record's figures for the door's corner: today's board when it exists, then the lifetime
+ * figures, each a small hero (number over word).
+ */
+function renderRecordCorner(profile, dateKey) {
+  const corner = el('aside', 'k-corner sf-crd-rec');
+  corner.setAttribute('aria-label', 'Your record');
+  const today = todayBoardFigures(profile, dateKey);
+  if (today) {
+    corner.appendChild(heroBlock(String(today.score), 'today · score', 'sf-crd-fig'));
+    corner.appendChild(heroBlock(String(today.wave), 'today · wave', 'sf-crd-fig'));
+  }
+  const ranked = todayRankedRuns(profile, dateKey);
+  if (ranked.length) {
+    const board = el('ol', 'k-rows');
+    board.setAttribute('aria-label', "Today's local daily board");
+    for (const run of ranked) board.appendChild(el('li', 'k-row k-row--static',
+      `${run.rank}. ${run.score} points · wave ${run.wave} · seed ${run.seed}`));
+    corner.appendChild(board);
+  }
+  for (const f of lifetimeFigures(profile)) {
+    corner.appendChild(heroBlock(String(f.value), f.label.toLowerCase(), 'sf-crd-fig'));
+  }
+  return corner;
+}
+
+/**
+ * The unlock ladder and the recent runs, as kit rows under the three settings. Closed first — the
+ * band exists to show what is still ahead, so the answer sits at the top.
+ */
+function renderRecordRows(profile, hooks = {}) {
+  const band = el('div', 'sf-crd-rec__rows');
+  const bests = Object.values(profile?.records?.byKey || {}).filter(row => row.bestResult?.recordRules?.complete).slice(-5);
+  if (bests.length) {
+    band.appendChild(el('p', 'k-caps', 'Survival records'));
+    const records = el('ul', 'k-rows');
+    for (const row of bests) {
+      const best = row.bestResult, progress = roundProgress(best);
+      const fraction = progress.roundThreatBudget != null && progress.roundThreatResolved != null
+        ? `${Math.floor(progress.roundThreatResolved / progress.roundThreatBudget * 100)}% resolved` : 'progress unknown';
+      records.appendChild(staticRow(`${best.recordRules?.mode || 'Unclassified'} · ${best.arenaId || 'arena unknown'}`,
+        `Round ${progress.highestRoundEntered ?? '?'} · ${fraction} · ${best.score} points`,
+        { sub: `Last cleared ${progress.lastRoundCleared ?? '?'} · ${progress.remainingEnemies ?? '?'} enemies remain${row.tieCount > 1 ? ` · ${row.tieCount} tied runs` : ''}` }));
+    }
+    band.appendChild(records);
+  }
+  for (const line of bestLineRows(profile)) band.appendChild(renderBestLineReview(line, hooks));
+  const rows = unlockLadderRows(profile);
+  const openCount = rows.filter((r) => r.open).length;
+  // The heading and the figure must count the same thing. "Still to open" beside "1 / 14" read as
+  // one-of-fourteen-remaining when it meant one-of-fourteen-open — the label and the number were
+  // describing opposite sets.
+  band.appendChild(el('p', 'k-caps', `Unlocks · ${openCount} of ${rows.length} open`));
+  const ladder = el('ul', 'k-rows sf-crd-ladder');
+  ladder.setAttribute('role', 'list');
+  const ordered = [...rows.filter((r) => !r.open), ...rows.filter((r) => r.open)];
+  for (const r of ordered) {
+    // A glyph, not colour alone: forced-colors and colour-blind readers get the same answer.
+    const row = staticRow(`${r.open ? '+' : '·'} ${r.label}`, r.open ? 'open' : r.condition, {
+      sub: r.blurb || '',
+      valueClass: 'k-t-fine ' + (r.open ? 'k-38' : 'k-62'),
+      className: `sf-crd-lock ${r.open ? 'is-open' : 'is-shut'}`,
+    });
+    row.setAttribute('role', 'listitem');
+    row.setAttribute('aria-label', `${r.label}. ${r.open ? 'Open.' : 'Closed — ' + r.condition + '.'}`);
+    ladder.appendChild(row);
+  }
+  band.appendChild(ladder);
+
+  const runs = recentRunRows(profile);
+  band.appendChild(el('p', 'k-caps', 'Recent runs'));
+  if (runs.length) {
+    const list = el('ul', 'k-rows sf-crd-runs');
+    for (const r of runs) {
+      list.appendChild(staticRow(`${r.outcome.toLowerCase()} · wave ${r.wave}`, String(r.score), { className: 'sf-crd-run' }));
+    }
+    band.appendChild(list);
+  } else {
+    band.appendChild(el('p', 'k-sentence sf-crd-none', 'No runs recorded yet. The first one starts the record.'));
+  }
+
+  // The run log: the dedicated results-history surface behind the five-row teaser. Every recorded
+  // run, newest first — outcome, arena, ruleset terms, distance, tally. Closed until asked; the
+  // door's job stays starting a run.
+  const log = historyRunRows(profile);
+  if (log.length) {
+    const drawer = el('details', 'sf-crd-log');
+    const summary = el('summary', 'k-t-fine fh-legend', `Run log · ${log.length} run${log.length === 1 ? '' : 's'} recorded`);
+    paintLegend(summary, false);
+    drawer.appendChild(summary);
+    const list = el('ul', 'k-rows sf-crd-log__list');
+    list.setAttribute('role', 'list');
+    for (const r of log) {
+      const row = staticRow(
+        `${r.outcome.toLowerCase()} · wave ${r.distance}`,
+        String(r.score),
+        { sub: [r.context, r.tally].filter(Boolean).join(' · '), className: 'sf-crd-log__row' },
+      );
+      row.setAttribute('role', 'listitem');
+      row.setAttribute('aria-label',
+        `${r.outcome === 'WON' ? 'Won' : r.outcome === 'LOST' ? 'Lost' : 'Left'} at wave ${r.distance}, `
+        + `${r.score} points${r.context ? ` — ${r.context}` : ''}${r.tally ? ` — ${r.tally}` : ''}.`);
+      list.appendChild(row);
+    }
+    drawer.appendChild(list);
+    band.appendChild(drawer);
+  }
+  return band;
+}
+
+/**
+ * The two rulesets behind one door. Swarm is first and is the default: it is the fast game — the
+ * room never empties, the wave rolls on a kill count, and only every fifth wave stops for an
+ * upgrade. Gauntlet is the authored thirty-wave arc, kept because it asks a different question.
+ */
+const CRUCIBLE_MODE_CARDS = Object.freeze([
+  {
+    ruleset: SWARM_RULESET,
+    label: 'Swarm',
+    verb: 'Launch Swarm',
+    blurb: 'Bring the swarm. Turn the room against it.',
+    sub: 'Clear a round. Spend the spoils or save for a bigger toy. Push your build as far as it goes.',
+  },
+  {
+    ruleset: 'scored',
+    label: 'Gauntlet',
+    verb: 'Enter the Gauntlet',
+    blurb: 'Thirty authored waves in three acts. One question per wave.',
+    sub: 'Thirty waves in three acts. Every wave you rearm; every ten you refit. '
+      + 'Nothing you earn here follows you home.',
+  },
+]);
+
+const DAILY_CARD = Object.freeze({
+  label: 'Daily',
+  verb: 'Play today',
+  blurb: 'The same seed for everyone, today.',
+  sub: 'One seed for the whole day. Same run on every machine. Nothing you earn here follows you home.',
+});
+
+const GHOST_CARD = Object.freeze({
+  label: 'Ghost',
+  blurbOn: 'Race the last recorded hull for this seed.',
+  blurbOff: 'No ghost for this seed yet.',
+});
+
+function weeklyDoorCard() {
+  const id = weeklyMutatorForNow();
+  const def = id ? SURVIVAL_MUTATOR_BY_ID[id] : null;
+  const name = def && def.label ? def.label : 'Weekly';
+  const blurb = def && def.blurb ? def.blurb : 'This week\'s twist is locked to UTC.';
+  return {
+    id,
+    label: 'Weekly',
+    name,
+    blurb: `${name}. ${blurb}`,
+    sub: `${name}. ${blurb} Locked for this UTC week. Nothing you earn here follows you home.`,
+  };
+}
+
+export const crucibleScreen = {
+  id: 'crucible',
+
+  // The foundry running hot behind the door (design/frontend/direction/approved/frames/
+  // frame-crucible-door.png). ScreenManager turns this into state.ui.stageRequest while the door is
+  // on top, and owns this root's data-k-ready with it — the door is ready when the arena is lit.
+  stage: { scene: 'arena-foundry' },
+
+  mount(rootEl, ctx) {
+    this._embarkSpecActive = false;
+    const door = this;
+    let enterButton = null;
+    let preparation = null;
+    let syncTrainingChoice = () => {};
+    ensurePhysicsLabRoute(ctx);
+    // PQ-146 Phase 3: the Crucible play view's trick callouts mount with the door — this screen
+    // family owns the layer (its own fixed overlay in src/ui/stuntCallout.js); the flight HUD is
+    // never touched. The layer gates itself to a live survival run and stays hidden otherwise.
+    try { ensureStuntCallout(ctx); } catch { /* presentation must never block the door */ }
+    rootEl.innerHTML = '';
+    rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible-door', 'of-crucible-door');
+    rootEl.dataset.kReady = '0';
+    rootEl.dataset.stamp = 'CRUCIBLE / SURVIVAL';
+    rootEl.setAttribute('data-fh-register', 'poster');
+    rootEl.setAttribute('role', 'dialog');
+    rootEl.setAttribute('aria-labelledby', 'sf-crucible-title');
+    pin(rootEl, { background: 'transparent' });
+    if (ORRERY) { injectOrreryScreens(); rootEl.classList.add('orr-crucible'); }
+
+    const previous = lastCrucibleSetup();
+    let starterId = crucibleStarterIdForSetup(previous);
+    let arenaId = previous?.arenaId || CRUCIBLE_ARENA_ID;
+    let ruleset = previous ? lastCrucibleRuleset() : CRUCIBLE_DEFAULT_RULESET;
+    let daily = !!(previous && previous.dailyDateKey);
+    let dailySnapshot = cabinetDailySnapshot();
+    if (daily) ruleset = SWARM_RULESET;
+    let weekly = !!(previous && previous.weeklyMutatorId);
+    let freeSeed = previous && !previous.dailyDateKey ? String(previous.seed) : null;
+    let doorProfile = null;
+    try { doorProfile = loadCrucibleMeta(); } catch { doorProfile = null; }
+    if (!isStarterAvailable(doorProfile, starterId)) starterId = 'ricochet_runner';
+    if (ruleset === 'boss_circuit' && !isModeAvailable(doorProfile, 'boss_circuit')) {
+      ruleset = CRUCIBLE_DEFAULT_RULESET;
+    }
+    const selectedModifiers = new Set();
+    let raceGhost = !!(previous && previous.ghostHash);
+    // PQ-160.02: a pasted run code's challenge terms ride to launch through here.
+    let pendingShare = null;
+    // PQ-146: a Best Line's "Practice this line" stages the same seed, the recorded ruleset and
+    // your own ghost — flagged so the launch files under the 'practice' record mode.
+    let practiceQueued = false;
+    // S5: the swarm's difficulty contract, remembered with the rest of the launch. Contender is
+    // the tuning baseline — an absent or unknown stake normalizes to it, never silently higher.
+    let stake = normalizeSwarmStake(previous && previous.swarmStake);
+    // SWARM-06 §6.4: the Threat wager — opt-in cards that stack, each paying a Bounty
+    // multiplier for the honestly harder run. A retry restores the wager it flew; a daily
+    // never carries one (shared challenge, shared purse — same law as the stake).
+    const threatPicks = new Set(normalizeThreatIds(previous && previous.swarmThreats));
+    // SWARM-06 §4.3: the perk loadout the profile carries. The pick itself persists through
+    // setCruciblePerkLoadout; the door only toggles and repaints.
+    let depthView = null;
+    // SWARM-04: the ladder at the door. `startWave` is the picked checkpoint entry (1 = the
+    // ladder's first round); `seedCustom` marks a seed the player typed, rolled, or staged —
+    // the arena's authored ladder seed fills the field but never overwrites a deliberate
+    // Custom run. A previous CUSTOM swarm seed restores its flag; a ladder or other-mode seed
+    // does not (the last launch's number was not a side-door pick).
+    let startWave = 1;
+    let seedCustom = !!(previous && !previous.dailyDateKey
+      && lastCrucibleRuleset() === SWARM_RULESET
+      && Number.isInteger(previous.seed)
+      && previous.seed !== swarmArcadeSeedFor(previous.arenaId));
+
+    // .k-title — stencil marking and the live mode's blurb (syncMode writes it).
+    const title = el('header', 'k-title');
+    const h = el('h1', 'k-display k-t-name fh-hero', 'Crucible');
+    h.id = 'sf-crucible-title';
+    paintMarking(h);
+    title.appendChild(h);
+    const sub = el('p', 'k-t-emph k-62 sf-crd-sub fh-legend', '');
+    paintLegend(sub, true);
+    title.appendChild(sub);
+    rootEl.appendChild(title);
+
+    // ORRERY §6 door: the arena you are about to fight in stands at the right as its own produced
+    // render, large, with its name engraved under it; choosing another arena cross-fades it. The
+    // form keeps the left. For the eye only: the arena tiles carry the words and the choice.
+    // r2: the arena row is an Orbit Carousel — Left/Right orbit through the five rooms (wrapping),
+    // and each change cross-fades the key art plus its caption with a ~300ms settle.
+    let paintHero = () => {};
+    if (ORRERY && typeof document !== 'undefined' && typeof document.createElementNS === 'function') {
+      const hero = el('div', 'orr-door-hero');
+      hero.setAttribute('aria-hidden', 'true');
+      const layers = [el('img', 'orr-door-hero__art'), el('img', 'orr-door-hero__art')];
+      for (const img of layers) { img.alt = ''; img.decoding = 'async'; hero.appendChild(img); }
+      const heroName = el('p', 'orr-door-hero__name', '');
+      const heroLine = el('p', 'orr-door-hero__line', '');
+      const heroWords = el('div', 'orr-door-hero__words');
+      heroWords.append(heroName, heroLine);
+      hero.appendChild(heroWords);
+      rootEl.appendChild(hero);
+      // Every room's art loads with the door, so orbiting never cross-fades to an empty frame.
+      if (typeof Image === 'function') {
+        for (const key of Object.keys(ARENA_TILE)) {
+          const preload = new Image();
+          preload.decoding = 'async';
+          preload.src = kitUrl(ARENA_TILE[key].replace(/\.png$/, '@2x.png'));
+        }
+      }
+      let front = 0;
+      let shown = null;
+      let heroTurn = 0;
+      paintHero = (id, name, line) => {
+        const src = kitUrl((ARENA_TILE[id] || MODE_TILE[ruleset] || MODE_TILE.swarm).replace(/\.png$/, '@2x.png'));
+        const reduce = document.documentElement
+          && document.documentElement.classList.contains('sf-reduce-motion');
+        if (shown === src) {
+          heroName.textContent = name || '';
+          heroLine.textContent = line || '';
+          return;
+        }
+        shown = src;
+        const next = layers[1 - front];
+        next.src = src;
+        next.classList.add('is-on');
+        layers[front].classList.remove('is-on');
+        front = 1 - front;
+        // The caption dips and returns on the new words inside the art's settle; reduced motion
+        // swaps the words with no dip. A fast orbit never lands a stale caption (turn token).
+        if (reduce) {
+          heroName.textContent = name || '';
+          heroLine.textContent = line || '';
+          return;
+        }
+        const turn = ++heroTurn;
+        heroWords.classList.add('is-turning');
+        setTimeout(() => {
+          if (turn !== heroTurn) return;
+          heroName.textContent = name || '';
+          heroLine.textContent = line || '';
+          heroWords.classList.remove('is-turning');
+        }, 150);
+      };
+    }
+
+    // .k-stage — Mode, Hull and Seed as imaged tiles inside a smoked window.
+    const stage = el('section', 'k-stage fh-window fh-window--deep');
+    paintWindow(stage);
+    const settings = el('ul', 'k-rows sf-crd-settings');
+    // One column: the caption (MODE / STARTER BUILD) sits above its tile row, as the approved
+    // frame composes it. A side caption column cost ~80 px and wrapped the six hull tiles onto a
+    // second line inside the frame's 48 %-wide window at every default viewport.
+    settings.style.setProperty('--k-row-cols', 'minmax(0, 1fr)');
+    settings.setAttribute('aria-label', 'Run settings');
+    stage.appendChild(settings);
+
+    function settingRow(label, hook) {
+      const row = el('li', 'k-row k-row--static ' + hook);
+      const cap = el('span', 'k-row__name k-62 fh-legend', label);
+      paintLegend(cap, true);
+      row.appendChild(cap);
+      const body = el('div');
+      row.appendChild(body);
+      settings.appendChild(row);
+      return body;
+    }
+
+    // THE MODE COMES FIRST, because it is the biggest difference between two runs — bigger than
+    // the hull and much bigger than the seed. Swarm leads: it is what the Crucible is.
+    // Daily sits beside the two rulesets as its own control (not a third .sf-crd-mode) so the
+    // existing two-mode door check still sees Swarm/Gauntlet as the ruleset pair. Weekly is the
+    // same kind of sibling: it locks this UTC week's mutator without becoming a fourth ruleset.
+    const modeBody = settingRow('Mode', 'sf-crd-row--mode');
+    const modes = el('ul', 'k-words k-words--row sf-crd-modes fh-cluster');
+    modes.setAttribute('aria-label', 'Mode');
+    pin(modes, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
+    const modeButtons = [];
+    let dailyButton = null;
+    // PQ-133.04 R4: the bounded block rides beside the pair like Daily does — its own control,
+    // declared before the loop so every card's click can unpress it.
+    let blockButton = null;
+    const addWord = (list, button) => {
+      const li = el('li');
+      li.appendChild(button);
+      list.appendChild(li);
+      return button;
+    };
+    for (const entry of CRUCIBLE_MODE_CARDS) {
+      const card = choiceTile(entry.label, 'sf-crd-mode', kitUrl(MODE_TILE[entry.ruleset] || MODE_TILE.swarm));
+      card.dataset.ruleset = entry.ruleset;
+      syncChoice(card, !daily && entry.ruleset === ruleset);
+      card.addEventListener('click', () => {
+        if (daily) {
+          daily = false;
+          if (freeSeed) seedInput.value = freeSeed;
+        }
+        practiceQueued = false;
+        ruleset = entry.ruleset;
+        for (const other of modeButtons) syncChoice(other, other.dataset.ruleset === ruleset);
+        if (dailyButton) syncChoice(dailyButton, false);
+        if (blockButton) syncChoice(blockButton, false);
+        cue('confirm');
+        syncMode();
+      });
+      modeButtons.push(card);
+      addWord(modes, card);
+    }
+    if (isModeAvailable(doorProfile, 'boss_circuit')) {
+      const card = choiceTile('Boss Circuit', 'sf-crd-mode', kitUrl(MODE_TILE.scored));
+      card.dataset.ruleset = 'boss_circuit';
+      syncChoice(card, ruleset === 'boss_circuit');
+      card.addEventListener('click', () => {
+        if (daily) {
+          daily = false;
+          if (freeSeed) seedInput.value = freeSeed;
+        }
+        practiceQueued = false;
+        ruleset = 'boss_circuit';
+        for (const other of modeButtons) syncChoice(other, other.dataset.ruleset === ruleset);
+        if (dailyButton) syncChoice(dailyButton, false);
+        if (blockButton) syncChoice(blockButton, false);
+        cue('confirm');
+        syncMode();
+      });
+      modeButtons.push(card);
+      addWord(modes, card);
+    }
+    // PQ-133.04 R4 — THE FOUNDRY BLOCK. The bounded public route: the same ten authored Foundry
+    // waves the Gauntlet opens with, ending in victory at wave ten instead of a refit bench. It
+    // is deliberately NOT a third .sf-crd-mode — the door check counts exactly the Swarm/Gauntlet
+    // pair, and a bounded block is a sibling control in the Daily/Weekly family, not a new
+    // permanent door. Same seed field, same starter row, public from a fresh profile.
+    blockButton = choiceTile('Foundry Block', 'sf-crd-block', kitUrl(MODE_TILE[BLOCK_RULESET] || MODE_TILE.scored));
+    syncChoice(blockButton, !daily && ruleset === BLOCK_RULESET);
+    blockButton.addEventListener('click', () => {
+      if (daily) {
+        daily = false;
+        if (freeSeed) seedInput.value = freeSeed;
+      }
+      practiceQueued = false;
+      ruleset = BLOCK_RULESET;
+      for (const other of modeButtons) syncChoice(other, false);
+      if (dailyButton) syncChoice(dailyButton, false);
+      syncChoice(blockButton, true);
+      cue('confirm');
+      syncMode();
+    });
+    addWord(modes, blockButton);
+    dailyButton = choiceTile(DAILY_CARD.label, 'sf-crd-daily', kitUrl('assets/tiles/tile.mode.daily.png'));
+    syncChoice(dailyButton, daily);
+    dailyButton.addEventListener('click', () => {
+      if (!daily) freeSeed = seedInput.value;
+      practiceQueued = false;
+      daily = true;
+      ruleset = SWARM_RULESET;
+      for (const other of modeButtons) syncChoice(other, false);
+      if (blockButton) syncChoice(blockButton, false);
+      syncChoice(dailyButton, true);
+      cue('confirm');
+      syncMode();
+    });
+    addWord(modes, dailyButton);
+    // PQ-169.02: weekly rotation is local. No live-ops feed.
+    const weeklyCard = weeklyDoorCard();
+    const weeklyButton = choiceTile(weeklyCard.label, 'sf-crd-weekly', kitUrl('assets/tiles/tile.mode.weekly.png'));
+    syncChoice(weeklyButton, weekly);
+    weeklyButton.addEventListener('click', () => {
+      weekly = !weekly;
+      if (weekly) practiceQueued = false;
+      syncChoice(weeklyButton, weekly);
+      cue('confirm');
+      syncMode();
+    });
+    addWord(modes, weeklyButton);
+    const ghostButton = choiceTile(GHOST_CARD.label, 'sf-crd-ghost', kitUrl('assets/tiles/tile.mode.ghost.png'));
+    ghostButton.addEventListener('click', () => {
+      const offer = currentGhostOffer();
+      if (!offer.available) {
+        raceGhost = false;
+        cue('deny');
+        syncGhost();
+        return;
+      }
+      raceGhost = !raceGhost;
+      cue('confirm');
+      syncGhost();
+    });
+    addWord(modes, ghostButton);
+    modeBody.appendChild(modes);
+    // The mode's sentence, and beneath it the ghost's one line.
+    const modeSentence = el('p', 'k-sentence sf-crd-mode-sub', '');
+    modeBody.appendChild(modeSentence);
+    const ghostBlurb = el('p', 'k-t-fine k-38 sf-crd-ghost-sub', GHOST_CARD.blurbOff);
+    modeBody.appendChild(ghostBlurb);
+
+    // The challenge terms, computed once for the launch and the ghost offer alike, so the
+    // compatibility check races the same configuration the Enter key will stamp. INF-037.
+    function doorChallengeTerms() {
+      const shareMutators = pendingShare ? pendingShare.mutators : [];
+      const shareWeeklyId = pendingShare ? pendingShare.weeklyMutatorId : null;
+      const weeklyMutatorId = weekly ? weeklyMutatorForNow() : shareWeeklyId;
+      const challengeMutators = shareMutators.concat(
+        weeklyMutatorId && !shareMutators.includes(weeklyMutatorId) ? [weeklyMutatorId] : [],
+      );
+      for (const id of selectedModifiers) {
+        if (id && !challengeMutators.includes(id)) challengeMutators.push(id);
+      }
+      const shareDailyKey = pendingShare ? pendingShare.dailyDateKey : null;
+      return { shareMutators, shareWeeklyId, weeklyMutatorId, challengeMutators, shareDailyKey };
+    }
+
+    // The pending run's launch config in record-rules shape — the same fields a settled run
+    // stamps, minus difficulty, which varies wave by wave and the door never selects. INF-037.
+    function currentGhostRules() {
+      const terms = doorChallengeTerms();
+      return {
+        mode: practiceQueued ? 'practice' : (ruleset === SWARM_RULESET ? 'swarm' : (ruleset ?? 'arc')),
+        arenaId: arenaId || null,
+        ...STUNT_RULE_REVISIONS,
+        loadoutRules: JSON.stringify({
+          ruleset,
+          mutators: terms.challengeMutators,
+          starter: starterId ?? null,
+          stake: daily || ruleset !== SWARM_RULESET ? null : normalizeSwarmStake(stake),
+        }),
+        simulationAssistProfile: stuntAssistProfile(ctx.state),
+        ...(normalizeGameSpeed(ctx.state.settings?.gameplay?.gameSpeed) < 1
+          ? { simulationSpeedAssist: normalizeGameSpeed(ctx.state.settings?.gameplay?.gameSpeed) }
+          : {}),
+      };
+    }
+
+    function currentGhostOffer() {
+      return ghostRaceOffer(
+        doorProfile,
+        normalizeSeed(seedInput ? seedInput.value : (daily ? dailySnapshot.seed : 1)),
+        currentGhostRules(),
+      );
+    }
+
+    function syncGhost() {
+      const offer = currentGhostOffer();
+      if (!offer.available) raceGhost = false;
+      // The offer's own blurb names the compatibility — same rules, unknown stamp, or the
+      // exact fields that differ — beside the ghost record. INF-037.
+      ghostBlurb.textContent = offer.blurb || (offer.available ? GHOST_CARD.blurbOn : GHOST_CARD.blurbOff);
+      syncChoice(ghostButton, !!(raceGhost && offer.available));
+      ghostButton.setAttribute('aria-disabled', String(!offer.available));
+      // r2: no ghost on file reads as a bone word with a dotted strike — never as dimmed text.
+      if (ghostButton.classList && typeof ghostButton.classList.toggle === 'function') {
+        ghostButton.classList.toggle('is-unavail', !offer.available);
+      }
+    }
+
+    function practiceFromLine(line) {
+      const launch = practiceLaunchFor(line);
+      if (!launch) { cue('deny'); return; }
+      daily = false; weekly = false; pendingShare = null;
+      ruleset = launch.ruleset;
+      if (launch.arenaId && arenaDescriptions[launch.arenaId]) arenaId = launch.arenaId;
+      seedInput.value = String(launch.seed);
+      freeSeed = seedInput.value;
+      seedCustom = true;
+      raceGhost = true;
+      practiceQueued = true;
+      syncMode();
+      syncArena();
+      syncGhost();
+      const offer = currentGhostOffer();
+      sub.textContent = `Practice — seed ${launch.seed}. ${offer.available ? 'Your ghost for this seed is loaded.' : 'No ghost was recorded for this seed.'}`;
+      cue('confirm');
+      if (preparation) preparation.focus();
+      else if (enterButton && typeof enterButton.focus === 'function') {
+        try { enterButton.focus({ preventScroll: true }); } catch { try { enterButton.focus(); } catch { /* best-effort */ } }
+      }
+    }
+
+    function syncMode() {
+      syncTrainingChoice();
+      // The presentation is refreshed after the mode's own labels have settled below.
+      const week = weeklyDoorCard();
+      // SWARM-05 §7.2: the hangar reads the mode before every early return — a Daily or a
+      // mode switch must never leave a stale swarm workshop on the door.
+      syncHangar();
+      if (daily) {
+        sub.textContent = DAILY_CARD.blurb;
+        // INF-038: the current daily challenge names itself — UTC date key and seed — so the
+        // door shows WHICH shared run today is, not just that a daily exists.
+        const challenge = `Today's challenge ${dailySnapshot.dateKey} · seed ${dailySnapshot.seed}.`;
+        modeSentence.textContent = weekly
+          ? `${DAILY_CARD.sub} This week: ${week.name}. ${week.blurb} ${challenge}`
+          : `${DAILY_CARD.sub} ${challenge}`;
+        if (enterButton) enterButton.textContent = weekly ? `Play ${week.name}` : DAILY_CARD.verb;
+        seedInput.readOnly = true;
+        seedInput.setAttribute('aria-readonly', 'true');
+        seedInput.value = String(dailySnapshot.seed);
+        reroll.disabled = true;
+        reroll.setAttribute('aria-disabled', 'true');
+        if (typeof reroll._fhSync === 'function') reroll._fhSync();
+        for (const other of modeButtons) syncChoice(other, false);
+        if (dailyButton) syncChoice(dailyButton, true);
+        syncStake();
+        syncThreat();
+        syncPerk();
+        syncGhost();
+        return;
+      }
+      const entry = ruleset === POWERED_CONVEYOR_RULESET
+        ? {
+          blurb: SURVIVAL_TRIAL_BY_RULESET[POWERED_CONVEYOR_RULESET].label,
+          sub: SURVIVAL_TRIAL_BY_RULESET[POWERED_CONVEYOR_RULESET].blurb,
+          verb: 'Enter conveyor trial',
+        }
+        : ruleset === 'boss_circuit'
+        ? {
+          blurb: 'Five champions. Refit between them. No drafts.',
+          sub: 'The authored wave-ten bosses, one after another, in the room you picked.',
+          verb: 'Enter the circuit',
+        }
+        : (ruleset === BLOCK_RULESET
+          ? {
+            // PQ-133.04 R4 — the bounded block's own voice. Ten authored waves with an ending.
+            blurb: 'One authored block. Ten waves. An ending.',
+            sub: 'The Foundry teaches in one bounded block: the same ten authored waves the '
+              + 'Gauntlet opens with, ending in victory at wave ten. Nothing you earn here follows you home.',
+            verb: 'Fly the Block',
+          }
+          : (CRUCIBLE_MODE_CARDS.find((m) => m.ruleset === ruleset) || CRUCIBLE_MODE_CARDS[0]));
+      sub.textContent = entry.blurb;
+      modeSentence.textContent = weekly ? week.sub : entry.sub;
+      if (enterButton) enterButton.textContent = weekly ? `Play ${week.name}` : entry.verb;
+      seedInput.readOnly = false;
+      seedInput.removeAttribute('aria-readonly');
+      reroll.disabled = false;
+      reroll.removeAttribute('aria-disabled');
+      if (typeof reroll._fhSync === 'function') reroll._fhSync();
+      for (const other of modeButtons) syncChoice(other, !daily && other.dataset.ruleset === ruleset);
+      if (dailyButton) syncChoice(dailyButton, false);
+      if (blockButton) syncChoice(blockButton, !daily && ruleset === BLOCK_RULESET);
+      syncStake();
+      syncThreat();
+      syncPerk();
+      // The arena card's event line is a swarm sentence — it re-renders with the mode.
+      syncArena();
+      syncGhost();
+    }
+
+    // THE STAKE ROW (swarm only): the run's difficulty contract as four tiles, each naming its
+    // purse, its pressure and its earn — the same numbers the results surface reads back. Daily
+    // hides the row and rides Contender: a shared challenge cannot let the purse be a door choice.
+    const stakeBody = settingRow('Stake', 'sf-crd-row--stake');
+    const stakeLi = stakeBody.parentNode;
+    const stakes = el('ul', 'k-words k-words--row sf-crd-stakes fh-cluster');
+    stakes.setAttribute('aria-label', 'Stake');
+    pin(stakes, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
+    const stakeButtons = [];
+    const stakeSentence = el('p', 'k-sentence sf-crd-stake-sub', '');
+    const STAKE_ICON = Object.freeze({
+      exhibition: 'credits', contender: 'boost', veteran: 'weapon', ironbound: 'hull',
+    });
+    function syncStake() {
+      if (preparation) preparation.update();
+      const on = !daily && ruleset === SWARM_RULESET;
+      if (stakeLi && stakeLi.style) { stakeLi.hidden = !on; stakeLi.style.display = on ? '' : 'none'; }
+      const def = swarmStakeFor(stake);
+      // The blurb only: purse, pressure, pay and score all read on the tiles themselves.
+      stakeSentence.textContent = def.blurb;
+      for (const other of stakeButtons) syncChoice(other, other.dataset.stakeId === stake);
+    }
+    for (const entry of SWARM_STAKES) {
+      const card = choiceTile(entry.label, 'sf-crd-stake', '', STAKE_ICON[entry.id] || 'hull');
+      card.dataset.tileFit = 'fill';
+      card.dataset.stakeId = entry.id;
+      card.appendChild(el('span', 'sf-crd-stake-nums', swarmStakePitch(entry.id)));
+      syncChoice(card, entry.id === stake);
+      card.addEventListener('click', () => {
+        stake = entry.id;
+        cue('confirm');
+        syncStake();
+        // The stake is part of the launch rules the ghost offer compares — re-resolve it.
+        syncGhost();
+      });
+      stakeButtons.push(card);
+      addWord(stakes, card);
+    }
+    stakeBody.appendChild(stakes);
+    stakeBody.appendChild(stakeSentence);
+
+    // THE THREAT ROW (SWARM-06 §6.4): the wager layer for a strong account — toggle cards
+    // that stack, each paying its Bounty multiplier because the room it buys is honestly
+    // harder. Same parity law as the stake: a daily is a shared challenge, so the row hides
+    // and no wager rides. The sentence reads the stacked bounty the settle will apply.
+    const threatBody = settingRow('Threat', 'sf-crd-row--threat');
+    const threatLi = threatBody.parentNode;
+    const threats = el('ul', 'k-words k-words--row sf-crd-threats fh-cluster');
+    threats.setAttribute('aria-label', 'Threat wagers');
+    pin(threats, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
+    const threatButtons = [];
+    const threatSentence = el('p', 'k-sentence sf-crd-threat-sub', '');
+    function syncThreat() {
+      const on = !daily && ruleset === SWARM_RULESET;
+      if (threatLi && threatLi.style) { threatLi.hidden = !on; threatLi.style.display = on ? '' : 'none'; }
+      for (const other of threatButtons) syncChoice(other, threatPicks.has(other.dataset.threatId));
+      if (!threatPicks.size) {
+        threatSentence.textContent = 'No wager — the room plays at its honest difficulty.';
+        return;
+      }
+      const names = [...threatPicks].map((id) => SWARM_THREAT_BY_ID[id].name).join(' + ');
+      const mult = swarmThreatBountyMult([...threatPicks]);
+      threatSentence.textContent = `${names} — the bounty lands at ×${mult.toFixed(2)}.`;
+    }
+    for (const threat of SWARM_THREATS) {
+      const card = word(`${threat.name} · +${Math.round(threat.bounty * 100)}%`, 'k-word--fine sf-crd-threat');
+      paintKey(card, 'small');
+      card.dataset.threatId = threat.id;
+      card.title = threat.blurb;
+      card.addEventListener('click', () => {
+        if (threatPicks.has(threat.id)) threatPicks.delete(threat.id);
+        else threatPicks.add(threat.id);
+        cue('confirm');
+        syncThreat();
+      });
+      threatButtons.push(card);
+      addWord(threats, card);
+    }
+    threatBody.appendChild(threats);
+    threatBody.appendChild(threatSentence);
+    threatLi.hidden = true;
+
+    // THE PERK ROW (SWARM-06 §4.3): the two-slot loadout the pilot brings in. Earns are
+    // derived off the same profile the run reads — stars and finished challenges — so the
+    // door's toggle and the begin's stamp can never disagree. Locked perks keep their earn
+    // line as the goal; a toggle writes the profile through its own seam, then repaints.
+    const perkBody = settingRow('Perks', 'sf-crd-row--perks');
+    const perkLi = perkBody.parentNode;
+    const perks = el('ul', 'k-words k-words--row sf-crd-perks fh-cluster');
+    perks.setAttribute('aria-label', 'Swarm perks');
+    pin(perks, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
+    const perkSentence = el('p', 'k-sentence sf-crd-perk-sub', '');
+    const perkChallenge = el('p', 'k-t-fine k-38 sf-crd-perk-challenge', '');
+    function syncPerk() {
+      const on = ruleset === SWARM_RULESET;
+      if (perkLi && perkLi.style) { perkLi.hidden = !on; perkLi.style.display = on ? '' : 'none'; }
+      if (!on) return;
+      try { doorProfile = loadCrucibleMeta(); } catch { /* keep the prior read */ }
+      depthView = crucibleSwarmDepthView(doorProfile);
+      const earnedSet = new Set(depthView.perks.earned);
+      const loadout = new Set(depthView.perks.loadout);
+      perks.innerHTML = '';
+      for (const perk of SWARM_PERKS) {
+        const earned = earnedSet.has(perk.id);
+        const button = word(perk.name, 'k-word--fine sf-crd-perk');
+        paintKey(button, 'small');
+        const gate = Number.isInteger(perk.stars) ? `${perk.stars} stars`
+          : Number.isInteger(perk.challenges) ? `${perk.challenges} challenge${perk.challenges === 1 ? '' : 's'}`
+            : 'locked';
+        button.title = earned ? perk.blurb : `${perk.blurb} Earned at ${gate}.`;
+        button.setAttribute('aria-label', `${perk.name}. ${perk.blurb}${earned ? '' : ` Earned at ${gate}.`}`);
+        if (!earned) {
+          button.dataset.locked = '1';
+          const badge = el('span', 'sf-crd-lock');
+          const mark = dpIcon('lock', 14, { className: 'sf-crd-lock-glyph' });
+          if (mark && typeof badge.insertAdjacentHTML === 'function') badge.insertAdjacentHTML('beforeend', mark);
+          badge.setAttribute('aria-hidden', 'true');
+          button.appendChild(badge);
+        }
+        syncChoice(button, loadout.has(perk.id));
+        button.addEventListener('click', () => {
+          if (!earnedSet.has(perk.id)) {
+            perkSentence.dataset.kind = 'earn';
+            perkSentence.textContent = `${perk.name} is still locked — ${gate}.`;
+            cue('deny');
+            return;
+          }
+          const next = new Set(loadout);
+          if (next.has(perk.id)) next.delete(perk.id);
+          else {
+            if (next.size >= SWARM_PERK_SLOTS) {
+              perkSentence.dataset.kind = 'earn';
+              perkSentence.textContent = `The loadout holds ${SWARM_PERK_SLOTS} — drop one first.`;
+              cue('deny');
+              return;
+            }
+            next.add(perk.id);
+          }
+          const res = setCruciblePerkLoadout([...next]);
+          if (res && res.ok) {
+            delete perkSentence.dataset.kind;
+            cue('confirm');
+          } else {
+            perkSentence.dataset.kind = 'earn';
+            perkSentence.textContent = 'The pick did not land.';
+            cue('deny');
+          }
+          syncPerk();
+        });
+        addWord(perks, button);
+      }
+      const count = loadout.size;
+      perkSentence.textContent = count === 0
+        ? 'No perks slotted — the run flies clean.'
+        : `${count} of ${SWARM_PERK_SLOTS} slotted — ${[...loadout].map((id) => (SWARM_PERKS.find((row) => row.id === id) || {}).name || id).join(' + ')}.`;
+      // §8: the challenge purses, honestly stated — claimed reads claimed, never "almost".
+      const ch = depthView.challenges;
+      const dailyLine = ch.daily.claimed
+        ? `Today's bounty is claimed.`
+        : `Today's bounty — clear ${ch.daily.waves} rounds for +${ch.daily.bounty} cr — is on the table.`;
+      const weeklyLine = ch.weekly.mutatorId
+        ? (ch.weekly.claimed
+          ? `This week's bounty is claimed.`
+          : `This week's ${ch.weekly.mutatorId} bounty — clear ${ch.weekly.waves} rounds for +${ch.weekly.bounty} cr — is on the table.`)
+        : '';
+      perkChallenge.textContent = weeklyLine ? `${dailyLine} ${weeklyLine}` : dailyLine;
+    }
+    perkBody.appendChild(perks);
+    perkBody.appendChild(perkSentence);
+    perkBody.appendChild(perkChallenge);
+    perkLi.hidden = true;
+
+    // Hull — the starter names as words, the live one bright, its blurb beneath.
+    const hullBody = settingRow('Starter build', 'sf-crd-row--hull');
+    const hulls = el('ul', 'k-words k-words--row sf-crd-hulls fh-cluster');
+    hulls.setAttribute('aria-label', 'Starter build');
+    pin(hulls, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
+    const buttons = [];
+    const hullSentence = el('p', 'k-sentence sf-crd-hull-sub', '');
+    // Hull words pressed the same as kit tiles but stay word-shaped — not `syncChoice` tiles.
+    const hullButtons = [];
+    function syncHull() {
+      const hullPick = typeof starterId === 'string' && starterId.startsWith('hull:')
+        ? starterId.slice(5)
+        : null;
+      const hullShip = hullPick ? SHIPS.find((s) => s.id === hullPick) : null;
+      if (hullShip) {
+        delete hullSentence.dataset.kind;
+        const name = entityLabel('hull:' + hullShip.id) || hullShip.name;
+        hullSentence.innerHTML = `${entitySpanHtml('hull:' + hullShip.id, escapeHtml(name))}${escapeHtml(
+          ruleset === SWARM_RULESET
+            ? ' — bare hull. The opening armory is the kit; the purse buys it.'
+            : ' — bare hull. No fittings; the drafts decide.',
+        )}`;
+      } else {
+      const starter = COMBAT_LAB_STARTER_PACKAGES.find((s) => s.id === starterId) || COMBAT_LAB_STARTER_PACKAGES[0];
+      if (starter && starter.hullId) {
+        const name = entityLabel('hull:' + starter.hullId) || starter.hullId.replace(/^ship_/, '');
+        const blurb = hullBlurb(starter);
+        hullSentence.innerHTML = blurb.startsWith(name)
+          ? `${entitySpanHtml('hull:' + starter.hullId, escapeHtml(name))}${escapeHtml(blurb.slice(name.length))}`
+          : `${entitySpanHtml('hull:' + starter.hullId, escapeHtml(name))} — ${escapeHtml(blurb)}`;
+      } else {
+        hullSentence.textContent = starter ? hullBlurb(starter) : '';
+      }
+      }
+      if (preparation) preparation.update();
+      for (const other of buttons) syncChoice(other, other.dataset.starterId === starterId);
+      for (const other of hullButtons) {
+        const on = other.dataset.starterId === starterId;
+        other.setAttribute('aria-pressed', String(on));
+        if (other.classList && typeof other.classList.toggle === 'function') other.classList.toggle('is-on', on);
+      }
+      armEmbarkSpec();
+    }
+    // Picker dwell is real warm lead: the launch's sector + hull are knowable the moment a
+    // tile flips, so arm the same embark speculation the sandbox picker posts on hover. The
+    // renderer latches by signature — repeat re-syncs of an unchanged pick are near-free.
+    function armEmbarkSpec() {
+      // Hidden screen prewarming calls syncArena too. It must not decode an entire sector
+      // behind the title or compete with another screen's New Game preparation.
+      if (!door._embarkSpecActive || !ctx || !ctx.bus) return;
+      const arena = COMBAT_LAB_ARENAS.find((entry) => entry.id === arenaId) || COMBAT_LAB_ARENAS[0];
+      const hullPick = typeof starterId === 'string' && starterId.startsWith('hull:')
+        ? starterId.slice(5)
+        : ((COMBAT_LAB_STARTER_PACKAGES.find((s) => s.id === starterId) || {}).hullId || null);
+      // The seed row's const is declared after the first syncArena paint, so a TDZ read
+      // there just means the input isn't mounted yet — freeSeed already covers restores.
+      let seed = normalizeSeed(freeSeed);
+      try { seed = normalizeSeed(seedInput && seedInput.value); } catch { /* pre-mount */ }
+      emitSandboxEmbarkSpeculation(ctx.bus, {
+        sectorId: arena && arena.sectorId,
+        shipId: hullPick,
+        seed,
+      });
+    }
+    this._armEmbarkSpec = armEmbarkSpec;
+    for (const starter of COMBAT_LAB_STARTER_PACKAGES) {
+      const open = isStarterAvailable(doorProfile, starter.id);
+      const face = starter.id === 'hornet_fast_clumsy' ? 'Bolt'
+        : starter.id === 'hornet_nimble_slow' ? 'Hinge'
+          : starter.label;
+      const card = choiceTile(face, 'sf-crd-hull', '', HULL_ICON[starter.id] || 'hull');
+      card.dataset.tileFit = 'fill';
+      card.dataset.starterId = starter.id;
+      // The tile clips its legend to the cut shape — a word wider than one column is clipped on
+      // both ends ("DEMONSTRATOR" read "EMONSTRATO"), not wrapped. Give those kits two columns.
+      if (face.split(' ').some((w) => w.length > 10)) card.classList.add('sf-crd-hull--wide');
+      if (!open) {
+        const row = starterUnlockEntry(starter.id);
+        const earn = row ? unlockConditionText(row) : 'Closed.';
+        card.dataset.locked = '1';
+        card.dataset.earn = earn;
+        card.title = earn;
+        card.setAttribute('aria-label', `${starter.label}. ${earn}`);
+        const badge = el('span', 'sf-crd-lock');
+        const mark = dpIcon('lock', 18, { className: 'sf-crd-lock-glyph' });
+        if (mark && typeof badge.insertAdjacentHTML === 'function') badge.insertAdjacentHTML('beforeend', mark);
+        badge.setAttribute('aria-hidden', 'true');
+        card.appendChild(badge);
+      }
+      syncChoice(card, starter.id === starterId);
+      card.addEventListener('click', () => {
+        if (!isStarterAvailable(doorProfile, starter.id)) {
+          // A whole sentence: which kit, that it is locked, and what opens it. The bare condition
+          // ("clear wave 10") read as a stray fragment where the build's description had been.
+          const row = starterUnlockEntry(starter.id);
+          const earn = row ? unlockConditionText(row) : '';
+          hullSentence.dataset.kind = 'earn';
+          hullSentence.textContent = earn
+            ? `${face} is locked — ${earn} to open it.`
+            : `${face} is locked.`;
+          // The refusal reads in the body too: one horizontal shake, then it is over.
+          card.classList.remove('is-denied');
+          void card.offsetWidth;
+          card.classList.add('is-denied');
+          cue('deny');
+          return;
+        }
+        delete hullSentence.dataset.kind;
+        starterId = starter.id;
+        cue('confirm');
+        syncHull();
+      });
+      buttons.push(card);
+      addWord(hulls, card);
+    }
+    hullBody.appendChild(hulls);
+    // ANY HULL — every ship in the catalog, grouped by tier, launches bare. Under swarm the
+    // purse buys the kit at the opening armory; elsewhere a bare hull is a wager. Hull picks
+    // are never lock-gated — the lock story belongs to the authored kits.
+    const anyHull = el('div', 'sf-crd-anyhull');
+    const anyHullCap = el('p', 'k-t-fine k-38 sf-crd-anyhull-cap',
+      'Any hull, bare — the armory fits the kit.');
+    anyHull.appendChild(anyHullCap);
+    const hullTiers = new Map();
+    for (const choice of crucibleHullChoices()) {
+      if (!hullTiers.has(choice.tier)) hullTiers.set(choice.tier, []);
+      hullTiers.get(choice.tier).push(choice);
+    }
+    const TIER_MARK = ['0', 'I', 'II', 'III', 'IV', 'V', 'VI'];
+    for (const [tier, tierChoices] of [...hullTiers.entries()].sort((a, b) => a[0] - b[0])) {
+      const group = el('div', 'sf-crd-anyhull-tier');
+      group.appendChild(el('span', 'k-t-fine k-38 sf-crd-anyhull-mark', `T${TIER_MARK[tier] || tier}`));
+      const tierWords = el('div', 'k-words k-words--row sf-crd-anyhull-ships');
+      for (const choice of tierChoices) {
+        const button = word(choice.name, 'k-word--fine sf-crd-anyhull-ship');
+        button.dataset.starterId = `hull:${choice.hullId}`;
+        // SWARM-06: a swarmEarned hull the crossover ledger has not proven stays visible as
+        // the goal — name, earn line, lock — but refuses the pick, so a bare-hull launch can
+        // never hand the earn away for free.
+        const hullLocked = choice.swarmEarned && choice.earned === false;
+        if (hullLocked) {
+          button.dataset.locked = '1';
+          button.title = `${choice.name} — ${choice.earnText || 'Earned in Swarm.'}`;
+          button.setAttribute('aria-label', `${choice.name} — locked. ${choice.earnText || 'Earned in Swarm.'}`);
+          const badge = el('span', 'sf-crd-lock');
+          const mark = dpIcon('lock', 14, { className: 'sf-crd-lock-glyph' });
+          if (mark && typeof badge.insertAdjacentHTML === 'function') badge.insertAdjacentHTML('beforeend', mark);
+          badge.setAttribute('aria-hidden', 'true');
+          button.appendChild(badge);
+        } else {
+          button.title = `${choice.name} — bare hull, ${choice.slotCount} hardpoint${choice.slotCount === 1 ? '' : 's'}`;
+        }
+        button.addEventListener('click', () => {
+          if (hullLocked) {
+            hullSentence.dataset.kind = 'earn';
+            hullSentence.textContent = `${choice.name} is earned, not picked — ${choice.earnText || 'a Swarm run proves it first.'}`;
+            button.classList.remove('is-denied');
+            void button.offsetWidth;
+            button.classList.add('is-denied');
+            cue('deny');
+            return;
+          }
+          starterId = `hull:${choice.hullId}`;
+          delete hullSentence.dataset.kind;
+          cue('confirm');
+          syncHull();
+        });
+        hullButtons.push(button);
+        tierWords.appendChild(button);
+      }
+      group.appendChild(tierWords);
+      anyHull.appendChild(group);
+    }
+    hullBody.appendChild(anyHull);
+    hullBody.appendChild(hullSentence);
+
+    const earnedDoor = availableOptions(doorProfile);
+    const modifierChoices = [];
+    for (const id of earnedDoor.mutators) {
+      const def = SURVIVAL_MUTATOR_BY_ID[id];
+      modifierChoices.push({ id, label: def && def.label ? def.label : id });
+    }
+    if (earnedDoor.trials.includes('trial_one_hull')) modifierChoices.push({ id: 'one_hull', label: 'One hull' });
+    if (earnedDoor.trials.includes('trial_one_weapon')) modifierChoices.push({ id: 'one_weapon', label: 'One weapon' });
+    if (modifierChoices.length) {
+      const modBody = settingRow('Pact', 'sf-crd-row--modifiers');
+      const modList = el('ul', 'k-words k-words--row sf-crd-modifiers');
+      modList.setAttribute('aria-label', 'Pact: stack earned rule changes');
+      modBody.appendChild(el('p', 'k-sentence', 'Stack the rules you want to face. Copy code carries the whole pact.'));
+      for (const choice of modifierChoices) {
+        const button = word(choice.label, 'k-word--fine sf-crd-modifier');
+        button.dataset.modifierId = choice.id;
+        button.addEventListener('click', () => {
+          if (selectedModifiers.has(choice.id)) selectedModifiers.delete(choice.id);
+          else selectedModifiers.add(choice.id);
+          const on = selectedModifiers.has(choice.id);
+          button.setAttribute('aria-pressed', String(on));
+          if (button.classList && typeof button.classList.toggle === 'function') {
+            button.classList.toggle('is-on', on);
+          }
+          // SWARM-04: a mutator contract is a side door — the Zone row and the authored
+          // seed's meaning change the moment one is picked.
+          syncLadder();
+          cue('confirm');
+        });
+        addWord(modList, button);
+      }
+      modBody.appendChild(modList);
+    }
+
+    const arenaBody = settingRow('Arena', 'sf-crd-row--arena');
+    const arenas = el('ul', 'k-words k-words--row sf-crd-arenas fh-cluster');
+    arenas.setAttribute('aria-label', 'Arena');
+    pin(arenas, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
+    // Each arena card names the room's law AND its signature events — the signature names come
+    // off the swarm event table itself so the card never advertises a trick that cannot fire.
+    const signatureLine = (arenaId) =>
+      ((SWARM_EVENT_TABLES[arenaId] || []).map((id) => SWARM_EVENT_BY_ID[id] && SWARM_EVENT_BY_ID[id].name)
+        .filter(Boolean).join(' · '));
+    const arenaDescriptions = {
+      helios_core: ['Ricochet Foundry', 'Hard banks, tight gaps and moving machinery. Turn pursuit into a pile-up.', signatureLine('helios_core')],
+      lagrange_crucible: ['Lagrange Crucible', 'Gravity wells and sling routes. Bend the whole fight around an anchor.', signatureLine('lagrange_crucible')],
+      cinder_sluice: ['Cinder Sluice', 'Ride hot currents and force enemies across the flow.', signatureLine('cinder_sluice')],
+      cryo_drift: ['Cryo Drift', 'Slippery escape lanes and brittle targets. Set up a shattering collision.', signatureLine('cryo_drift')],
+      storm_lattice: ['Storm Lattice', 'Conductive relays reward a tightly packed, electrified swarm.', signatureLine('storm_lattice')],
+      asteroid_mill: ['Asteroid Mill', 'A dense ore seam on a slow grind. Break the rocks — the room pays ore.', signatureLine('asteroid_mill')],
+      the_hive: ['The Hive', 'Living walls grow shut while sacs birth the tide. Burn the sacs or be buried.', signatureLine('the_hive')],
+    };
+    const arenaSentence = el('p', 'k-sentence sf-crd-arena', '');
+    const syncArena = () => {
+      if (preparation) preparation.update();
+      // SWARM-04: the ladder's star gates. Under the swarm ruleset the rooms open in the
+      // authored order as the profile's star total climbs (§6.3); the Daily is exempt — a
+      // shared challenge is a side door, not the climb. Other modes keep the rooms open.
+      if (arenaLockedFor(arenaId)) {
+        const fallback = COMBAT_LAB_ARENAS.find((a) => arenaDescriptions[a.id] && !arenaLockedFor(a.id));
+        arenaId = fallback ? fallback.id : 'helios_core';
+      }
+      const described = arenaDescriptions[arenaId] || arenaDescriptions.helios_core;
+      delete arenaSentence.dataset.kind;
+      arenaSentence.textContent = ruleset === SWARM_RULESET && described[2]
+        ? `${described[1]} Signature events: ${described[2]}.`
+        : described[1];
+      paintHero(arenaId, described[0], described[1]);
+      for (const button of arenas.querySelectorAll('button')) {
+        const locked = arenaLockedFor(button.dataset.arenaId);
+        button.classList.toggle('is-unavail', locked);
+        button.setAttribute('aria-disabled', String(locked));
+        // A locked room names its unlock WITHOUT being clicked: hover, touch-hold and screen
+        // readers get the star gate up front instead of discovering it through a denial.
+        const roomName = (arenaDescriptions[button.dataset.arenaId] || [])[0] || button.dataset.arenaId;
+        if (locked) {
+          const need = SWARM_ARENA_STAR_GATES[button.dataset.arenaId] || 0;
+          const have = swarmLadderStarTotal(doorProfile && doorProfile.ladder);
+          const earn = `${roomName} — locked. Opens at ${need} ladder star${need === 1 ? '' : 's'} — you have ${have}. The Foundry's climb pays them.`;
+          button.title = earn;
+          button.setAttribute('aria-label', earn);
+        } else {
+          button.title = roomName;
+          button.removeAttribute('aria-label');
+        }
+        let badge = button.querySelector && button.querySelector('.sf-crd-lock');
+        if (locked && !badge) {
+          badge = el('span', 'sf-crd-lock');
+          const mark = dpIcon('lock', 18, { className: 'sf-crd-lock-glyph' });
+          if (mark && typeof badge.insertAdjacentHTML === 'function') badge.insertAdjacentHTML('beforeend', mark);
+          badge.setAttribute('aria-hidden', 'true');
+          button.appendChild(badge);
+        } else if (!locked && badge && typeof badge.remove === 'function') {
+          badge.remove();
+        }
+        syncChoice(button, button.dataset.arenaId === arenaId);
+      }
+      syncLadder();
+      armEmbarkSpec();
+    };
+    for (const arena of COMBAT_LAB_ARENAS.filter(entry => arenaDescriptions[entry.id])) {
+      const button = choiceTile(arenaDescriptions[arena.id][0], 'sf-crd-arena-choice',
+        ARENA_TILE[arena.id] ? kitUrl(ARENA_TILE[arena.id]) : null,
+        ARENA_TILE[arena.id] ? null : ARENA_GLYPH[arena.id]);
+      button.dataset.arenaId = arena.id;
+      button.addEventListener('click', () => {
+        if (arenaLockedFor(arena.id)) {
+          const need = SWARM_ARENA_STAR_GATES[arena.id] || 0;
+          const have = swarmLadderStarTotal(doorProfile && doorProfile.ladder);
+          arenaSentence.dataset.kind = 'earn';
+          arenaSentence.textContent = `${arenaDescriptions[arena.id][0]} opens at ${need} ladder `
+            + `star${need === 1 ? '' : 's'} — you have ${have}. The Foundry's climb pays them.`;
+          cue('deny');
+          return;
+        }
+        arenaId = arena.id;
+        cue('confirm');
+        syncArena();
+      });
+      addWord(arenas, button);
+    }
+    arenaBody.appendChild(arenas);
+    arenaBody.appendChild(arenaSentence);
+    syncArena();
+
+    // SWARM-04 — THE ZONE ROW (the ladder's entry point). Round 1 is always open; each zone
+    // boss cleared unlocks the next zone's checkpoint — "from Round 11" — and the star marks
+    // ride the words. Only the ladder shows it: a Custom seed or another mode starts at the
+    // top, so the row hides and startWave stays 1. syncLadder rebuilds it on every repaint.
+    const zoneBody = settingRow('Zone', 'sf-crd-row--zone');
+    const zoneLi = zoneBody.parentNode;
+    const zoneWords = el('ul', 'k-words k-words--row sf-crd-zones fh-cluster');
+    zoneWords.setAttribute('aria-label', 'Zone');
+    pin(zoneWords, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
+    zoneBody.appendChild(zoneWords);
+    const zoneSentence = el('p', 'k-sentence sf-crd-zone', '');
+    zoneBody.appendChild(zoneSentence);
+    zoneLi.hidden = true;
+
+    // SWARM-05 §7.2 — THE HANGAR AT THE DOOR. Swarm's persistent workshop reads where the
+    // run is staged: the bounty balance, the six upgrade tracks at their live rank and next
+    // price, and what the manifest already holds. Buys run through the profile owner
+    // (buyCrucibleHangarTrack loads, buys and saves in one seam) — the door never writes
+    // the bag itself. Swarm-only: the Gauntlet has no hangar and the side doors bank into
+    // the same one anyway.
+    const hangarBody = settingRow('Hangar', 'sf-crd-row--hangar');
+    const hangarLi = hangarBody.parentNode;
+    const hangarNote = el('p', 'k-sentence sf-crd-hangar', '');
+    hangarBody.appendChild(hangarNote);
+    const hangarTracks = el('ul', 'k-words k-words--row sf-crd-tracks fh-cluster');
+    hangarTracks.setAttribute('aria-label', 'Hangar upgrades');
+    pin(hangarTracks, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
+    hangarBody.appendChild(hangarTracks);
+    // SWARM-05 §4.2 — the hull rack under the tracks: the one spend that buys content, not a
+    // number. A bought hull joins the manifest of every later run (a free armory switch with
+    // its own kit), which is the permanence the door's bare pick and the per-run armory sale
+    // never offer. Same word/key parts as the track row; the earn-only hulls are never stock.
+    hangarBody.appendChild(el('p', 'k-t-fine k-38 sf-crd-hangar-note',
+      'The rack — a bought hull rides the manifest of every run.'));
+    const hangarHulls = el('ul', 'k-words k-words--row sf-crd-tracks fh-cluster');
+    hangarHulls.setAttribute('aria-label', 'Hangar hull rack');
+    pin(hangarHulls, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
+    hangarBody.appendChild(hangarHulls);
+    const hangarHint = el('p', 'k-t-fine k-38 sf-crd-hangar-note', '');
+    hangarBody.appendChild(hangarHint);
+    hangarLi.hidden = true;
+
+    // Seed — the number as an underlined input, "New seed" as a fine word, the arena in fine print.
+    const seedBody = settingRow('Seed', 'sf-crd-row--seed');
+    const seedRow = el('div', 'k-words k-words--row sf-crd-seed');
+    // The well only holds the input: the input's own rail is the one rule under the number. A
+    // well rail beneath it drew a second line, and its 14px frame pushed the number off the caption.
+    const seedWell = el('div', 'fh-stepper-well');
+    pin(seedWell, { display: 'inline-flex', 'align-items': 'center' });
+    const seedInput = el('input', 'k-input k-input--num');
+    seedInput.type = 'text';
+    seedInput.inputMode = 'numeric';
+    seedInput.spellcheck = false; seedInput.autocomplete = 'off';
+    seedInput.setAttribute('aria-label', 'Run seed');
+    seedInput.value = String(daily ? dailySnapshot.seed : (previous ? previous.seed : freshSeed()));
+    paintInput(seedInput);
+    seedWell.appendChild(seedInput);
+    seedRow.appendChild(seedWell);
+    const reroll = word('New seed', 'k-word--fine');
+    paintKey(reroll, 'small');
+    // r2: the seed is a mechanical Counter — its digits tumble and lock left to right on NEW
+    // SEED. The value is filed immediately (a fast launch never races the display); reduced
+    // motion (or no timers) sets it straight. A second press retires the first roll's timer.
+    let seedRoll = 0;
+    function rollSeed(finalSeed) {
+      freeSeed = String(finalSeed);
+      seedInput.value = freeSeed;
+      cue('confirm');
+      syncGhost();
+      armEmbarkSpec();
+      const reduce = typeof document !== 'undefined' && document.documentElement
+        && document.documentElement.classList.contains('sf-reduce-motion');
+      if (reduce || typeof setInterval !== 'function') return;
+      const digits = freeSeed.length;
+      const started = Date.now();
+      const dur = 420;
+      const mine = ++seedRoll;
+      const iv = setInterval(() => {
+        if (mine !== seedRoll) { clearInterval(iv); return; }
+        const t = Date.now() - started;
+        let shown = '';
+        for (let i = 0; i < digits; i += 1) {
+          const lockAt = ((i + 1) / digits) * dur * 0.8;
+          shown += t >= lockAt ? freeSeed[i] : String(Math.floor(Math.random() * 10));
+        }
+        seedInput.value = shown;
+        if (t >= dur) {
+          clearInterval(iv);
+          seedInput.value = freeSeed;
+        }
+      }, 40);
+    }
+    reroll.addEventListener('click', () => {
+      if (daily) { cue('deny'); return; }
+      seedCustom = true;
+      rollSeed(freshSeed());
+      syncLadder();
+    });
+    seedInput.addEventListener('input', () => {
+      if (!daily) { freeSeed = seedInput.value; seedCustom = true; }
+      syncGhost();
+      syncLadder();
+      armEmbarkSpec();
+    });
+    seedRow.appendChild(reroll);
+    seedBody.appendChild(seedRow);
+    // SWARM-04: the seed's honesty line. On the arena's authored seed the run is the ladder;
+    // on anything else it is a Custom run — the room still plays, stars and checkpoints do not.
+    const seedNote = el('p', 'k-t-fine k-38 sf-crd-seed-note', '');
+    seedBody.appendChild(seedNote);
+
+    // SWARM-04 — THE LADDER AT THE DOOR. Swarm's Play is the arena's authored seed: the field
+    // fills itself until the player types or rolls, and the Zone row offers every checkpoint
+    // the profile's ladder has opened (deepest picked by default — a checkpoint exists to skip
+    // what you mastered). Daily/weekly/practice/share/mutator doors never enter it: those
+    // contracts are side doors exactly like a Custom seed (isSwarmLadderRun settles the same
+    // list at run end).
+    function ladderArenaRec() {
+      const ladder = doorProfile && doorProfile.ladder;
+      const rec = ladder && ladder.arenas ? ladder.arenas[arenaId] : null;
+      return rec && typeof rec === 'object' && rec.zones && typeof rec.zones === 'object'
+        ? rec : { zones: {}, checkpoint: 0, bestWave: 0 };
+    }
+    function ladderGateOn() {
+      return ruleset === SWARM_RULESET && !daily;
+    }
+    function arenaLockedFor(id) {
+      return ladderGateOn()
+        && !swarmArenaIsUnlocked(doorProfile && doorProfile.ladder, id);
+    }
+    function ladderPlayOn() {
+      return ruleset === SWARM_RULESET && !daily && !weekly && !practiceQueued && !pendingShare
+        && selectedModifiers.size === 0 && swarmArcadeSeedFor(arenaId) != null;
+    }
+    function syncLadder() {
+      // The first arena paint runs before these rows exist (declared below it); the post-mount
+      // syncMode re-runs this with every element in place.
+      let els = null;
+      try { els = { zoneLi, zoneWords, zoneSentence, seedNote, seedInput }; }
+      catch { return; /* pre-mount */ }
+      const arcadeSeed = swarmArcadeSeedFor(arenaId);
+      const onPlay = ladderPlayOn();
+      if (onPlay && !seedCustom) els.seedInput.value = String(arcadeSeed);
+      const seedNow = normalizeSeed(els.seedInput.value);
+      const onLadder = onPlay && seedNow === arcadeSeed;
+      els.seedNote.textContent = !onPlay ? ''
+        : onLadder
+          ? 'The authored climb — this seed banks stars and checkpoints.'
+          : 'Custom seed — the room still plays; the ladder does not count it.';
+      els.zoneLi.hidden = !onLadder;
+      if (!onLadder) {
+        startWave = 1;
+        return;
+      }
+      const rec = ladderArenaRec();
+      const zones = rec.zones;
+      const checkpoint = Number.isInteger(rec.checkpoint) && rec.checkpoint > 0
+        ? rec.checkpoint : 0;
+      if (!Number.isInteger(startWave) || startWave < 1
+        || swarmZoneIndexFor(startWave) > checkpoint) {
+        startWave = swarmCheckpointStartWave(checkpoint);
+      }
+      els.zoneWords.innerHTML = '';
+      for (let z = 0; z <= checkpoint; z += 1) {
+        const wave = swarmCheckpointStartWave(z);
+        const zone = swarmZoneFor(wave);
+        const zRec = zones[String(z)];
+        const stars = zRec && Number.isInteger(zRec.stars)
+          ? Math.max(0, Math.min(3, zRec.stars)) : 0;
+        const label = z === 0 ? `Round 1 — ${zone.name}` : `${zone.name} — Round ${wave}`;
+        const button = word(label, 'k-word--fine sf-crd-zone-pick');
+        const mark = `${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`;
+        // The banked marks finally name their price: a zone at one or two stars says what the
+        // open asks still want — the chain target the marks never mentioned before.
+        const open = swarmStarAsks({
+          stars,
+          bestChain: zRec && Number.isInteger(zRec.bestChain) ? zRec.bestChain : 0,
+          zoneIndex: z,
+        });
+        const askText = open.length ? ` · still to earn: ${open.join(' and ')}` : '';
+        button.title = z === 0
+          ? `From the top — the whole ladder ahead.${open.length ? ` ${mark} banked${askText}.` : ''}`
+          : `Checkpoint start — the armory holds a working purse. ${mark} banked${askText}`;
+        button.setAttribute('aria-label',
+          `Zone ${zone.number}, ${zone.name}, from round ${wave}. ${stars} of 3 stars banked.`
+          + `${open.length ? ` Still to earn: ${open.join(' and ')}.` : ''}`);
+        button.addEventListener('click', () => {
+          startWave = wave;
+          cue('confirm');
+          syncLadder();
+        });
+        syncChoice(button, startWave === wave);
+        addWord(els.zoneWords, button);
+      }
+      const picked = swarmZoneFor(startWave);
+      // The picked zone's own open asks ride the sentence — the read line, not just the hover.
+      const pickedRec = zones[String(swarmZoneIndexFor(startWave))];
+      const pickedOpen = swarmStarAsks({
+        stars: pickedRec && Number.isInteger(pickedRec.stars) ? pickedRec.stars : 0,
+        bestChain: pickedRec && Number.isInteger(pickedRec.bestChain) ? pickedRec.bestChain : 0,
+        zoneIndex: swarmZoneIndexFor(startWave),
+      });
+      const pickedAsk = pickedOpen.length
+        ? ` The next star${pickedOpen.length > 1 ? 's' : ''} want${pickedOpen.length > 1 ? '' : 's'} ${pickedOpen.join(' and ')}.`
+        : '';
+      els.zoneSentence.textContent = (startWave > 1
+        ? `${picked.name} — checkpoint start at Round ${startWave}. The opening armory holds `
+          + `${swarmCheckpointPurseFor(swarmZoneIndexFor(startWave))} cr for a mid-build.`
+        : `${picked.name} — from Round 1. Clear each zone's boss for stars and the next checkpoint.`)
+        + pickedAsk;
+      // The verb says where Play goes (§7.2): only on the ladder's own door — weekly, daily
+      // and the other modes keep their own words.
+      if (enterButton && ruleset === SWARM_RULESET && !daily && !weekly) {
+        enterButton.textContent = startWave > 1
+          ? `Play ${picked.name} — Round ${startWave}`
+          : 'Launch Swarm';
+      }
+    }
+
+    // SWARM-05 §7.2 — the hangar strip. Swarm's persistent workshop: the bounty, each
+    // upgrade track at its live rank and next price, and the manifest's hulls. A buy goes
+    // through the profile owner's seam and repaints; the row hides off the swarm door.
+    function syncHangar() {
+      let els = null;
+      try { els = { hangarLi, hangarNote, hangarTracks, hangarHulls, hangarHint }; }
+      catch { return; /* pre-mount */ }
+      const on = ruleset === SWARM_RULESET;
+      els.hangarLi.hidden = !on;
+      if (!on) return;
+      try { doorProfile = loadCrucibleMeta(); } catch { /* keep the prior read */ }
+      const hangar = (doorProfile && doorProfile.hangar) || emptyHangar();
+      const bounty = Math.max(0, Math.round(Number(hangar.bounty) || 0));
+      const hulls = Array.isArray(hangar.ownedHulls) ? hangar.ownedHulls : [];
+      els.hangarNote.textContent = `Bounty ${bounty} cr — banked across runs, not the run purse.`
+        + (hulls.length ? ` ${hulls.length} hull${hulls.length === 1 ? '' : 's'} in the bay.` : '');
+      els.hangarTracks.innerHTML = '';
+      for (const track of HANGAR_TRACKS) {
+        const rank = hangarRank(hangar, track.id);
+        const price = trackPrice(track.id, rank);
+        const label = price == null
+          ? `${track.name} · maxed`
+          : `${track.name} ${rank}/5 · ${price} cr`;
+        const button = word(label, 'k-word--fine');
+        paintKey(button, 'small');
+        const buyable = price != null && bounty >= price;
+        button.disabled = !buyable;
+        button.setAttribute('aria-disabled', String(!buyable));
+        button.addEventListener('click', () => {
+          const res = buyCrucibleHangarTrack(track.id);
+          if (res && res.ok) {
+            els.hangarHint.textContent = '';
+            try { doorProfile = loadCrucibleMeta(); } catch { /* keep the prior read */ }
+            cue('confirm');
+          } else {
+            els.hangarHint.textContent = res && res.reason === 'short'
+              ? 'The bounty cannot stand it yet — bank more in the arena.'
+              : 'That upgrade did not land.';
+            cue('deny');
+          }
+          syncHangar();
+        });
+        addWord(els.hangarTracks, button);
+      }
+      // The rack's buttons are the track buttons' siblings: name · price, disabled until the
+      // bounty stands it or it is already in the bay. The buy goes through the same profile
+      // seam (buyCrucibleHangarHull loads, buys, saves) and the repaint re-reads the bag, so
+      // the bay count on the note line is the same ownedHulls the next run's manifest reads.
+      els.hangarHulls.innerHTML = '';
+      for (const row of hangarHullRackView(hangar)) {
+        const button = word(row.owned
+          ? `${row.name} · in the bay`
+          : `${row.name} · ${row.price} cr`, 'k-word--fine');
+        paintKey(button, 'small');
+        button.disabled = !row.buyable;
+        button.setAttribute('aria-disabled', String(!row.buyable));
+        button.title = row.owned
+          ? `${row.name} is in the bay — a free armory switch on every run.`
+          : `Buy the ${row.name} outright — it rides the manifest of every later run.`;
+        button.addEventListener('click', () => {
+          const res = buyCrucibleHangarHull(row.hullId, row.price);
+          if (res && res.ok) {
+            els.hangarHint.textContent = `${row.name} is in the bay — the armory switches to it free, every run.`;
+            try { doorProfile = loadCrucibleMeta(); } catch { /* keep the prior read */ }
+            cue('confirm');
+          } else {
+            els.hangarHint.textContent = res && res.reason === 'short'
+              ? 'The bounty cannot stand it yet — bank more in the arena.'
+              : res && res.reason === 'owned'
+                ? `${row.name} is already in the bay.`
+                : 'That hull did not land.';
+            cue('deny');
+          }
+          syncHangar();
+        });
+        addWord(els.hangarHulls, button);
+      }
+    }
+
+    // Share (PQ-160.02): a run travels as a code, a ghost as a share block — files and codes,
+    // never a service. Both fields are plain paste targets; a bad code fails closed with the
+    // reason on the note line.
+    const shareBody = settingRow('Share', 'sf-crd-row--share');
+    // ORRERY: the share fields live in a drawer under their caption; the word opens it.
+    if (ORRERY && shareBody.parentNode && typeof shareBody.parentNode.querySelector === 'function') {
+      const shareRow = shareBody.parentNode;
+      const cap = shareRow.querySelector('.k-row__name');
+      const toggle = el('button', 'orr-door-drawer', 'Share codes');
+      toggle.type = 'button';
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.addEventListener('click', () => {
+        const open = !shareRow.classList.contains('is-open');
+        shareRow.classList.toggle('is-open', open);
+        toggle.setAttribute('aria-expanded', String(open));
+      });
+      // the drawer's word sits on the seed row, where the codes belong; the row itself shows only open
+      if (cap) cap.remove();
+      if (seedRow && typeof seedRow.appendChild === 'function') seedRow.appendChild(toggle);
+      else shareRow.insertBefore(toggle, shareBody);
+    }
+    const shareNote = el('p', 'k-t-fine k-38 sf-crd-share-sub',
+      'A run code sets the seed, the build and the rules. A ghost code adds a hull to race.');
+    const codeRow = el('div', 'k-words k-words--row sf-crd-share');
+    const codeInput = el('input', 'k-input sf-crd-code');
+    codeInput.type = 'text';
+    codeInput.inputMode = 'text';
+    codeInput.spellcheck = false;
+    codeInput.autocomplete = 'off';
+    codeInput.setAttribute('aria-label', 'Run share code');
+    codeInput.placeholder = 'SFC1-…';
+    paintInput(codeInput);
+    const useCode = word('Use code', 'k-word--fine');
+    paintKey(useCode, 'small');
+    useCode.addEventListener('click', () => {
+      const res = applyRunShareCode(codeInput.value);
+      if (!res.ok) {
+        pendingShare = null;
+        shareNote.textContent = res.error;
+        cue('deny');
+        return;
+      }
+      pendingShare = {
+        mutators: res.mutators,
+        dailyDateKey: res.dailyDateKey,
+        weeklyMutatorId: res.weeklyMutatorId,
+        ghostHash: res.ghostHash,
+        ...(res.wreck ? { wreck: res.wreck } : {}),
+      };
+      starterId = res.starterId;
+      if (typeof res.stake === 'string' && res.stake) stake = normalizeSwarmStake(res.stake);
+      if (COMBAT_LAB_ARENAS.some((a) => a.id === res.arenaId)) arenaId = res.arenaId;
+      ruleset = res.ruleset;
+      daily = false;
+      weekly = false;
+      practiceQueued = false;
+      freeSeed = String(res.seed);
+      seedInput.value = freeSeed;
+      // A code's seed is a staged Custom — the ladder sync must not replace it.
+      seedCustom = true;
+      seedInput.readOnly = false;
+      seedInput.removeAttribute('aria-readonly');
+      reroll.disabled = false;
+      reroll.removeAttribute('aria-disabled');
+      for (const other of modeButtons) syncChoice(other, other.dataset.ruleset === ruleset);
+      if (dailyButton) syncChoice(dailyButton, false);
+      syncChoice(weeklyButton, false);
+      // A code may name the exporter's ghost; it only races when the block was imported too.
+      try { doorProfile = loadCrucibleMeta(); } catch { /* keep the prior read */ }
+      if (res.ghostHash != null && lastGhostRowByHash(doorProfile, res.ghostHash)) raceGhost = true;
+      shareNote.textContent = `Code loaded — seed ${res.seed}`
+        + (res.mutators.length ? `, ${res.mutators.length} mutator${res.mutators.length === 1 ? '' : 's'}` : '')
+        + '.';
+      cue('confirm');
+      syncHull();
+      syncArena();
+      syncMode();
+      syncStake();
+    });
+    codeRow.appendChild(codeInput);
+    codeRow.appendChild(useCode);
+    // INF-038: the share-code action goes both ways. Copy encodes THIS door — starter, seed,
+    // arena, ruleset, mutators, challenge keys — with the same envelope pasting decodes, so a
+    // copied code reproduces the intended configuration. The code lands selected in the field
+    // (manual copy always works); the clipboard write is a best-effort local convenience,
+    // never a service.
+    const copyCode = word('Copy code', 'k-word--fine');
+    paintKey(copyCode, 'small');
+    copyCode.addEventListener('click', () => {
+      const terms = doorChallengeTerms();
+      const dateKey = daily ? dailySnapshot.dateKey : terms.shareDailyKey;
+      const res = doorRunShareCode({
+        starterId,
+        seed: normalizeSeed(seedInput.value),
+        arenaId,
+        ruleset,
+        mutators: terms.challengeMutators,
+        dailyDateKey: dateKey,
+        weeklyMutatorId: terms.weeklyMutatorId,
+        stake: daily || ruleset !== SWARM_RULESET ? null : stake,
+      });
+      if (!res.ok) {
+        shareNote.textContent = res.error || 'Code could not be written for this setup.';
+        cue('deny');
+        return;
+      }
+      codeInput.value = res.code;
+      try { codeInput.focus(); codeInput.select(); } catch { /* manual copy stays available */ }
+      let copied = false;
+      try {
+        const clipboard = typeof navigator !== 'undefined' ? navigator.clipboard : null;
+        if (clipboard && typeof clipboard.writeText === 'function') {
+          copied = true;
+          clipboard.writeText(res.code).catch(() => { /* the selected field is the fallback */ });
+        }
+      } catch { /* the selected field is the fallback */ }
+      shareNote.textContent = copied
+        ? 'Code copied — pasting it elsewhere reproduces this seed, build, and rules.'
+        : 'Code ready in the field — copy it from there.';
+      cue('confirm');
+    });
+    codeRow.appendChild(copyCode);
+    const ghostRow = el('div', 'k-words k-words--row sf-crd-share');
+    const ghostInput = el('input', 'k-input sf-crd-ghost-code');
+    ghostInput.type = 'text';
+    ghostInput.inputMode = 'text';
+    ghostInput.spellcheck = false;
+    ghostInput.autocomplete = 'off';
+    ghostInput.setAttribute('aria-label', 'Ghost share code');
+    ghostInput.placeholder = 'SFG1-…';
+    paintInput(ghostInput);
+    const addGhost = word('Add ghost', 'k-word--fine');
+    paintKey(addGhost, 'small');
+    addGhost.addEventListener('click', () => {
+      const res = importGhostShareText(ghostInput.value);
+      if (!res.ok) {
+        shareNote.textContent = res.error;
+        cue('deny');
+        return;
+      }
+      try { doorProfile = loadCrucibleMeta(); } catch { /* keep the prior read */ }
+      // Point the door at the ghost's seed so its race offer resolves immediately.
+      freeSeed = String(res.seed);
+      seedInput.value = freeSeed;
+      seedCustom = true;
+      ghostInput.value = '';
+      shareNote.textContent = res.alreadyPresent
+        ? `Ghost ${res.hash} was already on this machine.`
+        : `Ghost ${res.hash} added — ${res.frameCount} frames on seed ${res.seed}.`;
+      cue('confirm');
+      syncMode();
+    });
+    ghostRow.appendChild(ghostInput);
+    ghostRow.appendChild(addGhost);
+    shareBody.appendChild(codeRow);
+    shareBody.appendChild(ghostRow);
+    shareBody.appendChild(shareNote);
+
+    // INF-039: the practice room — a fixed sling arrangement on the door, not a setup. One
+    // heavy anchor, two inert targets, the physics kit, one fixed seed. It launches into
+    // live flight through the ordinary sandbox route, but the preset grants nothing, inert
+    // targets pay nothing, and no survival run means no results settle and no records file.
+    // Relaunching rebuilds the identical room, which is the reset.
+    {
+      const practicePreset = SCENARIO_PRESETS.find((preset) => preset && preset.id === 'sling_practice');
+      if (practicePreset) {
+        const practiceRow = el('div', 'k-row sf-crd-practice');
+        const practiceWord = word('Practice room', 'k-word--emph');
+        practiceWord.setAttribute('aria-label', 'Practice room: sling range. No records, no rewards. Spawn, latch, throw, and slow time stay on screen. Relaunch to reset.');
+        // Hover/focus dwell on the door is real warm lead — the preset's sector + hull are
+        // fixed, so arm the same embark speculation the click re-arms at request time (the
+        // renderer latches by signature, repeat arms are near-free).
+        const armPracticeSpec = () => emitSandboxEmbarkSpeculation(ctx.bus, practicePreset.config);
+        practiceWord.addEventListener('pointerenter', armPracticeSpec);
+        practiceWord.addEventListener('focus', armPracticeSpec);
+        practiceWord.addEventListener('click', () => {
+          cue('confirm');
+          notePracticeLaunch(ctx);
+          requestSandboxGame(ctx.bus, buildSandboxLaunchConfig(practicePreset.config));
+        });
+        practiceRow.appendChild(practiceWord);
+        practiceRow.appendChild(el('p', 'k-t-fine k-38', practicePreset.description));
+        settings.appendChild(practiceRow);
+      }
+    }
+
+    // M20 is an authored trial under the ordinary Crucible door, with the same build and seed.
+    const conveyorTrial = SURVIVAL_TRIAL_BY_RULESET[POWERED_CONVEYOR_RULESET];
+    const conveyorRow = el('div', 'k-row sf-crd-practice');
+    const conveyorButton = word('Launch conveyor trial', 'k-word--emph');
+    conveyorButton.setAttribute('aria-label', `${conveyorTrial.label}: launch the Foundry conveyor trial with this build and seed`);
+    paintKey(conveyorButton, 'small');
+    conveyorButton.addEventListener('click', () => launchCurrent(POWERED_CONVEYOR_RULESET));
+    conveyorRow.appendChild(conveyorButton);
+    conveyorRow.appendChild(el('p', 'k-t-fine k-38', `${conveyorTrial.label}. ${conveyorTrial.blurb}`));
+    settings.appendChild(conveyorRow);
+
+    // RC-CRUCIBLE-DOOR (row 481): the door opens both ways — the last Adventure death files a
+    // note in the Crucible meta, and this row turns it into a seeded drill. It launches as a
+    // practice run: no records, no rewards, nothing carried back. Same receipt, same seed.
+    {
+      const drill = doorProfile ? runWhatKilledYouOffer(doorProfile) : null;
+      if (drill) {
+        const drillRow = el('div', 'k-row sf-crd-practice');
+        const drillWord = word('Run what killed you', 'k-word--emph');
+        const who = drill.attacker || 'unidentified fire';
+        drillWord.setAttribute('aria-label', `Run what killed you: a seeded drill of your last Adventure death (${who}). Practice — no records, no rewards.`);
+        paintKey(drillWord, 'small');
+        drillWord.addEventListener('click', () => {
+          daily = false; weekly = false; pendingShare = null;
+          ruleset = SWARM_RULESET;
+          seedInput.value = String(drill.seed);
+          freeSeed = seedInput.value;
+          seedCustom = true;
+          raceGhost = false;
+          practiceQueued = true;
+          syncMode();
+          syncGhost();
+          cue('confirm');
+          launchCurrent();
+        });
+        drillRow.appendChild(drillWord);
+        drillRow.appendChild(el('p', 'k-t-fine k-38',
+          `${who}${drill.weapon ? ` · ${drill.weapon}` : ''} ended the last Adventure. Its seed waits in the room — a drill, so nothing carries back.`));
+        settings.appendChild(drillRow);
+      }
+    }
+
+    // The record goes last, below the three settings: the door's job is to start a run, and the
+    // reason to start another one is context for that, not a competitor for it. Reading the
+    // profile must never be able to stop the door opening, so a broken or absent profile just
+    // omits the record.
+    let corner = null;
+    try {
+      if (doorProfile) {
+        const records = el('details', 'sf-crd-records');
+        const recSum = el('summary', 'k-t-fine fh-legend', 'Records & challenges');
+        paintLegend(recSum, false);
+        records.appendChild(recSum);
+        let todayBoard = renderTodayBoard(doorProfile, dailySnapshot.dateKey);
+        records.appendChild(todayBoard);
+        records.appendChild(renderRecordRows(doorProfile, { onPractice: practiceFromLine }));
+        let localBoard = renderCabinetBoard(rootEl.ownerDocument || document, doorProfile);
+        records.appendChild(localBoard);
+        // RC-CRUCIBLE-DOOR (row 481): Case Files of beaten champions and the Grudge Ledger of
+        // top causes of death — both read the same filed history the board above does.
+        {
+          const cases = caseFilesFor(doorProfile);
+          if (cases.length) {
+            const caseBlock = el('div', 'sf-crd-casefiles');
+            caseBlock.appendChild(el('p', 'k-t-fine fh-legend', 'Case Files'));
+            for (const row of cases) {
+              caseBlock.appendChild(el('p', 'k-t-fine k-38',
+                `${row.label} — beaten ${row.count === 1 ? 'once' : `${row.count} times`}.`));
+            }
+            records.appendChild(caseBlock);
+          }
+          const grudges = grudgeLedgerFor(doorProfile);
+          if (grudges.length) {
+            const grudgeBlock = el('div', 'sf-crd-grudges');
+            grudgeBlock.appendChild(el('p', 'k-t-fine fh-legend', 'Grudge Ledger'));
+            for (const row of grudges) {
+              grudgeBlock.appendChild(el('p', 'k-t-fine k-38',
+                `${row.attacker}${row.weapon ? ` · ${row.weapon}` : ''} ×${row.count}`));
+            }
+            records.appendChild(grudgeBlock);
+          }
+          // Row 475 — the Trick Book: all seventeen named tricks, proven ones marked by the
+          // filed Best Lines. The book always lists the full menu; proof is the margin note.
+          {
+            const book = trickBookFor(doorProfile);
+            if (book.length) {
+              const bookBlock = el('div', 'sf-crd-trickbook');
+              const provenCount = book.filter((row) => row.proven).length;
+              bookBlock.appendChild(el('p', 'k-t-fine fh-legend',
+                `Trick Book — ${provenCount} of ${book.length} proven`));
+              for (const row of book) {
+                const marks = row.variants.length ? ` · ${row.variants.join(', ')}` : '';
+                bookBlock.appendChild(el('p', 'k-t-fine k-38',
+                  `${row.proven ? '✓' : '·'} ${row.name}${row.family ? ` (${row.family})` : ''}${marks}`));
+              }
+              records.appendChild(bookBlock);
+            }
+          }
+        }
+        this._refreshCabinetBoard = () => {
+          const profile = loadCrucibleMeta();
+          const nextToday = renderTodayBoard(profile, dailySnapshot.dateKey);
+          records.replaceChild(nextToday, todayBoard); todayBoard = nextToday;
+          const next = renderCabinetBoard(rootEl.ownerDocument || document, profile);
+          records.removeChild(localBoard); localBoard = next; records.appendChild(localBoard);
+        };
+        stage.appendChild(records);
+        // r2: a short plate shortens the caption so the row stays above the fold.
+        if (typeof matchMedia === 'function') {
+          try {
+            const shortMq = matchMedia('(max-height: 800px)');
+            const applyRecSum = () => { recSum.textContent = shortMq.matches ? 'Records \u203a' : 'Records & challenges'; };
+            applyRecSum();
+            if (typeof shortMq.addEventListener === 'function') shortMq.addEventListener('change', applyRecSum);
+          } catch { /* the full caption stands */ }
+        }
+      }
+    } catch (err) {
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[crucible] record band skipped:', err && err.message ? err.message : err);
+      }
+    }
+    rootEl.appendChild(stage);
+    if (corner) rootEl.appendChild(corner);
+
+    // r2: Left/Right orbit a tile row, wrapping at its ends. The arena carousel selects as
+    // it orbits (each room cross-fades the hero); mode and build only move focus — their tiles
+    // include toggles and locks that must never fire from passing through. The station scale's
+    // needle follows aria-pressed on its spring (amber while the row holds focus, bone without).
+    function orbitRow(row, { select = false } = {}) {
+      if (!row || typeof row.addEventListener !== 'function') return;
+      row.addEventListener('keydown', (event) => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        if (typeof row.querySelectorAll !== 'function' || typeof document === 'undefined') return;
+        const buttons = [...row.querySelectorAll('button')].filter((b) => !b.disabled);
+        if (!buttons.length) return;
+        const here = buttons.indexOf(document.activeElement);
+        const step = event.key === 'ArrowRight' ? 1 : -1;
+        const next = here < 0
+          ? buttons[step > 0 ? 0 : buttons.length - 1]
+          : buttons[(here + step + buttons.length) % buttons.length];
+        if (!next) return;
+        event.preventDefault();
+        if (typeof next.focus === 'function') next.focus();
+        if (select && typeof next.click === 'function') next.click();
+      });
+    }
+    orbitRow(modes);
+    orbitRow(hulls);
+    orbitRow(arenas, { select: true });
+
+    // .k-foot — Enter as one word (the mode's verb), Back.
+    const foot = el('footer', 'k-foot sf-crd-foot');
+    const footWords = el('ul', 'k-words k-words--row');
+    footWords.setAttribute('aria-label', 'Crucible');
+    let trainingOpening = false;
+    // The one launch path, shared by Enter and Quick play. INF-038.
+    function launchCurrent(trialRuleset = null) {
+      const conveyor = trialRuleset === POWERED_CONVEYOR_RULESET || ruleset === POWERED_CONVEYOR_RULESET;
+      const launchRuleset = conveyor ? POWERED_CONVEYOR_RULESET : ruleset;
+      const launchArenaId = conveyor ? CRUCIBLE_ARENA_ID : arenaId;
+      const bareHull = typeof starterId === 'string' && starterId.startsWith('hull:');
+      if (!bareHull && !isStarterAvailable(doorProfile, starterId)) {
+        cue('deny');
+        return;
+      }
+      // SWARM-06: a swarmEarned hull the ledger has not proven refuses at launch the same
+      // way it refused the click — a restored or hand-staged starter can land here without
+      // ever passing the locked word's deny.
+      if (bareHull) {
+        const pickDef = SHIPS.find((row) => row && row.id === starterId.slice(5));
+        if (pickDef && pickDef.swarmEarned && !swarmCrossoverEarned(pickDef.swarmEarned)) {
+          hullSentence.dataset.kind = 'earn';
+          hullSentence.textContent = `${pickDef.name} is earned, not picked — a Swarm run proves it first.`;
+          cue('deny');
+          return;
+        }
+      }
+      // The stake lands on the validated setup (requestCrucibleRun reads setup.swarmStake).
+      // Daily rides Contender — a shared challenge does not get a purse choice; the same
+      // shared-challenge law keeps a daily's Threat list empty.
+      const launchStake = daily ? null : stake;
+      const launchThreats = daily ? null : [...threatPicks];
+      const setup = bareHull
+        ? crucibleHullSetupFor({
+          hullId: starterId.slice(5),
+          seed: normalizeSeed(seedInput.value),
+          arenaId: launchArenaId,
+          ruleset: launchRuleset,
+          swarmStake: launchStake,
+          swarmThreats: launchThreats,
+          startWave: conveyor ? 1 : startWave,
+        })
+        : crucibleSetupFor({
+          starterId,
+          seed: normalizeSeed(seedInput.value),
+          arenaId: launchArenaId,
+          ruleset: launchRuleset,
+          swarmStake: launchStake,
+          swarmThreats: launchThreats,
+          startWave: conveyor ? 1 : startWave,
+        });
+      if (!setup.ok || !setup.value) {
+        cue('deny');
+        ctx.bus.emit('toast', { text: 'Crucible setup invalid', kind: 'error', ttl: 4 });
+        return;
+      }
+      cue('confirm');
+      const payload = { ...setup.value };
+      const offer = currentGhostOffer();
+      let ghostHash = !conveyor && raceGhost && offer.available ? offer.hash : null;
+      // PQ-160.02: a code-named ghost races when its block was imported to this machine.
+      if (!conveyor && ghostHash == null && pendingShare && pendingShare.ghostHash != null
+        && lastGhostRowByHash(doorProfile, pendingShare.ghostHash)) {
+        ghostHash = pendingShare.ghostHash;
+      }
+      if (ghostHash != null) payload.ghostHash = ghostHash;
+      payload.openingLesson = !conveyor && launchRuleset === SWARM_RULESET && trainingOpening;
+      if (!conveyor && pendingShare?.wreck) payload.wreck = pendingShare.wreck;
+      const {
+        shareMutators, weeklyMutatorId, challengeMutators, shareDailyKey,
+      } = conveyor ? { challengeMutators: [] } : doorChallengeTerms();
+      if (weeklyMutatorId) payload.weeklyMutatorId = weeklyMutatorId;
+      if (!conveyor && (daily || weeklyMutatorId || challengeMutators.length || shareDailyKey)) {
+        const dateKey = daily ? dailySnapshot.dateKey : shareDailyKey;
+        if (dateKey) payload.dailyDateKey = dateKey;
+        queueSurvivalChallenge({
+          seed: payload.seed,
+          ruleset: daily ? SWARM_RULESET : ruleset,
+          mutators: challengeMutators,
+          dailyDateKey: dateKey,
+          weeklyMutatorId,
+          ghostHash,
+        });
+      } else {
+        clearQueuedChallenge();
+        if (ghostHash != null) queueGhostPlayback(ghostHash);
+        if (!conveyor && practiceQueued) queuePracticeRun();
+      }
+      requestSharedCrucibleRun(ctx.bus, payload, launchRuleset);
+    }
+    const training = word('Training: Off', 'k-word');
+    paintKey(training, 'small');
+    training.setAttribute('aria-pressed', 'false');
+    const trainingApplies = () => canChooseSwarmOpeningLesson({
+      ruleset, daily, weekly, raceGhost, pendingShare, practiceQueued,
+    });
+    syncTrainingChoice = () => {
+      const enabled = trainingApplies();
+      training.textContent = trainingOpening ? 'Training: On' : 'Training: Off';
+      training.disabled = !enabled;
+      training.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+      training.setAttribute('aria-label', enabled
+        ? `Training opening: ${trainingOpening ? 'on' : 'off'}. Select to ${trainingOpening ? 'turn off' : 'turn on'} the optional single-enemy lesson.`
+        : 'Training opening unavailable for the selected mode or challenge.');
+      training.title = enabled
+        ? 'Optional first-wave lesson. Off by default; the normal Swarm opening starts immediately.'
+        : 'Available for an ordinary Swarm run without a daily, weekly, or ghost challenge.';
+    };
+    syncTrainingChoice();
+    training.addEventListener('click', () => {
+      if (!trainingApplies()) return;
+      trainingOpening = !trainingOpening;
+      training.setAttribute('aria-pressed', trainingOpening ? 'true' : 'false');
+      syncTrainingChoice();
+      cue('confirm');
+    });
+    addWord(footWords, training);
+    const quick = word('Quick play', 'k-word--emph');
+    quick.setAttribute('aria-label', 'Quick play: Swarm now on your ladder');
+    quick.title = 'Swarm now on the arena\u2019s ladder, with this build and checkpoint.';
+    // A key like Back beside it, not loose words in front of the launch key.
+    paintKey(quick, 'small');
+    quick.addEventListener('click', () => {
+      // Quick play IS the ladder (§6.1/§7.2): Swarm on the arena's authored seed, at the
+      // picked checkpoint, no challenge keys, no ghost. Hull and arena stay — loadout is
+      // the player's to keep. seedCustom clears so the authored seed fills the field.
+      ruleset = SWARM_RULESET;
+      daily = false;
+      weekly = false;
+      practiceQueued = false;
+      pendingShare = null;
+      raceGhost = false;
+      seedCustom = false;
+      syncMode();
+      syncHull();
+      syncGhost();
+      launchCurrent();
+    });
+    addWord(footWords, quick);
+    const enter = word('Hold the line', 'k-word--emph k-word--primary');
+    enterButton = enter;
+    paintKey(enter, 'hazard');
+    enter.addEventListener('click', () => {
+      launchCurrent();
+    });
+    addWord(footWords, enter);
+    // The one way back, drawn by the deckplate sheet like every screen's (keycap + ESC chip).
+    const back = word('Back', 'k-word--emph sf-back');
+    back.addEventListener('click', () => { cue('close'); ctx.bus.emit('ui:popScreen', {}); });
+    addWord(footWords, back);
+    foot.appendChild(footWords);
+    // r2: the door documents its input — one quiet line under the keys.
+    foot.appendChild(el('p', 'k-t-fine orr-door-hint', '\u2190 \u2192 choose \u00b7 Enter launch'));
+    rootEl.appendChild(foot);
+
+    syncMode();
+    syncHull();
+    preparation = createCruciblePreparation({ root: rootEl, stage, title, foot, enter,
+      onPreviewVisibility: visible => this._cabinetAttract?.setVisible(visible),
+      read: () => ({ starterId, arenaId, arenaLabel: (arenaDescriptions[arenaId] || [])[0] || arenaId, ruleset, daily, dailySnapshot, weekly, stake, weeklyMutatorId: doorChallengeTerms().weeklyMutatorId, seed: seedInput.value }) });
+    this._preparation = preparation;
+    // The door unit's composition sheet lands after the prep sheet so its fixes win the cascade
+    // (crucible-doorLayouts.js documents what it carries).
+    injectCrucibleDoorLayouts(rootEl.ownerDocument || document);
+    this._cabinetAttract = createCabinetAttract({ host: preparation?.attractHost,
+      tape: SWARM_CABINET_ATTRACT_TAPE, reducedMotion: () => !canAnimate() || orreryMotionReduced() });
+    this._cabinetAttract.setVisible(!!preparation?.previewVisible);
+    this._refreshDaily = () => { dailySnapshot = cabinetDailySnapshot(); syncMode(); preparation?.update(); };
+    const cabinetDoc = rootEl.ownerDocument || document;
+    this._dailyVisibility = () => { if (!cabinetDoc.hidden) this._refreshDaily?.(); };
+    this._cabinetDoc = cabinetDoc;
+    // ORRERY: each tile row loses its cards and runs on a ruled line with the amber index under the
+    // chosen tile (the tiles keep their art, their words, aria-pressed and their handlers).
+    if (ORRERY && !preparation) this._stations = [modes, hulls, arenas].map((row) => createStationRow({ row }));
+    this._regions = { title, stage, foot, enter };
+    // data-k-ready belongs to the ScreenManager on a screen that declares `stage`: the door is not
+    // ready to photograph when its words are built, it is ready when the arena behind them is lit.
+    // Writing '1' here raced the stage and produced a capture of a door with nothing behind it.
+
+    if (preparation) preparation.focus();
+    else if (typeof enter.focus === 'function') {
+      try { enter.focus(); } catch { /* focus is best-effort */ }
+    }
+  },
+
+  onShow() {
+    this._embarkSpecActive = true;
+    this._refreshDaily?.();
+    this._armEmbarkSpec?.();
+    this._refreshCabinetBoard?.();
+    this._cabinetDoc?.addEventListener?.('visibilitychange', this._dailyVisibility);
+    this._cabinetAttract?.start();
+    const r = this._regions;
+    if (!r || !canAnimate()) return;
+    cue('open');
+    try {
+      settle(r.title, { from: 'top', state: 'crucible:open' });
+      settle(r.stage, { from: 'left', delay: 60, state: 'crucible:open' });
+      settle(r.foot, { from: 'bottom', delay: 120, state: 'crucible:open' });
+    } catch { /* motion is cosmetic */ }
+    if (this._preparation) this._preparation.focus();
+    else if (r.enter && typeof r.enter.focus === 'function') {
+      try { r.enter.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
+    }
+  },
+
+  onHide() {
+    this._embarkSpecActive = false;
+    this._cabinetAttract?.stop();
+    this._cabinetDoc?.removeEventListener?.('visibilitychange', this._dailyVisibility);
+    if (canAnimate()) cue('close');
+  },
+
+  dispose() {
+    this._embarkSpecActive = false;
+    this._armEmbarkSpec = null;
+    this._cabinetAttract?.dispose();
+    this._cabinetAttract = null;
+    this._cabinetDoc?.removeEventListener?.('visibilitychange', this._dailyVisibility);
+    this._cabinetDoc = null;
+    this._refreshDaily = this._dailyVisibility = this._refreshCabinetBoard = null;
+    this._preparation?.dispose();
+    this._preparation = null;
+    for (const station of this._stations || []) station?.dispose?.();
+    this._stations = [];
+    this._regions = null;
+  },
+};
+
+function resultsOwner(ctx) {
+  const registry = ctx && ctx.registry;
+  if (!registry || typeof registry.get !== 'function') return null;
+  return registry.get('survivalResults') || null;
+}
+
+/** Rows for the results grid. Exported so a check can assert them without a DOM. */
+export function reachedRow(result) {
+  const wave = (result && (result.deepestWave || result.wave)) || 0;
+  // A swarm run has no last wave, so it has no denominator. The arc has thirty — it never had ten,
+  // and printing "of 10" told every player of a thirty-wave run that they were two thirds done
+  // when they died on wave 7.
+  if (result && result.ruleset === SWARM_RULESET) return `Wave ${wave}`;
+  return `Wave ${wave} of ${SURVIVAL_RUN_WAVE_COUNT}`;
+}
+
+export function resultRows(result) {
+  if (!result) return [];
+  const progress = roundProgress(result);
+  return [
+    ['Outcome', result.stopReason === 'player_retired' ? 'Retired · unranked' : (result.outcome === 'victory' ? 'Survived' : (result.outcome === 'extracted' ? 'Extracted' : (result.outcome === 'aborted' ? 'Abandoned' : 'Lost')))],
+    ['Reached', reachedRow(result)],
+    ['Last round cleared', progress.lastRoundCleared == null ? 'Not recorded' : String(progress.lastRoundCleared)],
+    ['Enemies remaining', progress.remainingEnemies == null ? 'Not recorded' : String(progress.remainingEnemies)],
+    ['Round threat resolved', progress.roundThreatBudget != null && progress.roundThreatResolved != null
+      ? `${progress.roundThreatResolved} / ${progress.roundThreatBudget}` : 'Not recorded'],
+    ['Kills', String(result.kills || 0)],
+    // The swarm chain counts KILLS on a clock (swarmChain.js), not the combo band's chained
+    // tricks — it gets its own honest word so the two never read as one figure. The chain only
+    // exists in a swarm run, so the row only exists there — an arc plate must not carry a
+    // figure that is always zero.
+    ...(result.ruleset === SWARM_RULESET ? [['Best kill chain', String(result.bestChain || 0)]] : []),
+    // The stake the run launched under — the swarm's purse/pressure contract — filed beside the
+    // wallet it fed. Contender is the default: an unstaked run still names its contract.
+    ...(result.ruleset === SWARM_RULESET
+      ? [['Stake', `${swarmStakeFor(result.swarmStake).label} — ${swarmStakePitch(result.swarmStake)}`]]
+      : []),
+    ['Score', String(result.score || 0)],
+    ['Run purse', `${result.credits || 0} cr`],
+    ['Level', `${result.level || 1} · ${result.xp || 0} xp`],
+    ['Seed', String(result.seed || 0)],
+    // The stamp stays on the record (pq-ids and all). The row is the same grammar as Seed:
+    // a short label and plain words. An unstamped finish says so instead of omitting the row.
+    ['Rules version', rulesVersionWords(result.recordRules)],
+  ];
+}
+
+// Current stamps from stuntRunRules.js, written as words. Anything else is "recorded"
+// so a future id cannot land in the sentence by accident.
+function rulesVersionWords(rules) {
+  if (!rules || typeof rules !== 'object') return 'Not recorded';
+  const scoring = plainRevision(rules.scoringRevision, { 2: '2' });
+  const balance = plainRevision(rules.balanceRevision, { 'pq146-threat-2': '2' });
+  const physics = plainRevision(rules.physicsRevision, { 'rapier-dynamic-pq146-2': '2' });
+  if (scoring == null && balance == null && physics == null) return 'Not recorded';
+  const parts = [];
+  if (scoring != null) parts.push(`Scoring ${scoring}`);
+  if (balance != null) parts.push(`threat balance ${balance}`);
+  if (physics != null) parts.push(`dynamic physics ${physics}`);
+  return parts.join(', ');
+}
+
+function plainRevision(value, known) {
+  if (value == null || value === '') return null;
+  const key = String(value);
+  if (Object.prototype.hasOwnProperty.call(known, key)) return known[key];
+  if (/^[0-9]+$/.test(key)) return key;
+  return 'recorded';
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * The flight record — pure text builders.
+ *
+ * PQ-133 review question 7 asks whether a player can explain every link of a kill from what is on
+ * screen. survivalResults already publishes the whole causal receipt; until now the plate printed
+ * one sentence of it and dropped the rest. Everything below turns that receipt into words.
+ *
+ * All of it is DOM-free and exported so the wording is assertable in a node test. Read-only: these
+ * take the copy handed back by lastResult() and never touch a system.
+ * --------------------------------------------------------------------------------------------- */
+
+const WEAPON_NAME_BY_ID = new Map(WEAPONS.map((def) => [def.id, def.name]));
+
+/**
+ * The bearings a defeat receipt actually carries (impactDirection in src/combat/playerDefeat.js
+ * publishes exactly these, uppercase). Anything else renders as "bearing unknown" rather than a
+ * guess — the grammar's enumerated-bank rule: the UI never invents an explanatory phrase.
+ */
+export const BEARING_WORDS = Object.freeze({
+  FRONT: 'Off the bow',
+  AFT: 'Astern',
+  PORT: 'To port',
+  STARBOARD: 'To starboard',
+  CONTACT: 'Point blank',
+});
+
+/** Which side it came from, as a phrase a person says. */
+export function bearingWord(direction) {
+  return BEARING_WORDS[String(direction || '').toUpperCase()] || 'Bearing unknown';
+}
+
+/** The layer the killing damage went through. Enumerated: `dominantLayer` has three live values. */
+export const BREACH_PHRASES = Object.freeze({
+  hull: 'Through the hull',
+  armor: 'Through the armour',
+  shield: 'Through the shields',
+});
+
+export function breachPhrase(layer) {
+  return BREACH_PHRASES[String(layer || '').toLowerCase()] || 'Breach point unknown';
+}
+
+/**
+ * A weapon id as a player reads it. The damage trail carries ids (`wpn_autocannon_m`), not labels,
+ * and an id is frequently null — a hit whose weapon nothing recorded still has to name itself.
+ */
+export function weaponDisplayName(weaponId) {
+  if (!weaponId) return 'Unidentified fire';
+  const known = WEAPON_NAME_BY_ID.get(weaponId);
+  if (known) return known;
+  const words = String(weaponId).replace(/^(wpn|unique)_/, '').split('_').filter(Boolean);
+  if (!words.length) return 'Unidentified fire';
+  return words
+    .map((word) => (word.length === 1 ? word.toUpperCase() : word[0].toUpperCase() + word.slice(1)))
+    .join(' ');
+}
+
+/**
+ * A weapon's short name for the abbreviated hit legend: the size token goes, a weight class
+ * goes, and what is left names it ("Heavy Autocannon M" -> "Autocannon", "Pulse Laser M" ->
+ * "Pulse", "Unidentified fire" -> "unknown").
+ */
+export function shortWeaponName(weaponId) {
+  if (/^unidentified/i.test(String(weaponId || ''))) return 'unknown';
+  const words = String(weaponId || '').split(/\s+/).filter(Boolean);
+  if (words.length > 1 && /^[SMLX]+$/i.test(words[words.length - 1]) && words[words.length - 1].length <= 2) {
+    words.pop();
+  }
+  if (!words.length) return 'unknown';
+  if (words.length === 1) return words[0];
+  if (/^(heavy|light)$/i.test(words[0])) return words.slice(1).join(' ');
+  return words[0];
+}
+
+/**
+ * The hit legend in one abbreviated line for short plates ("HA Autocannon · PL Pulse ·
+ * ? unknown"): the same initials the dial prints under its ticks (deathDial.initials), the same
+ * groups the dial legends, so an abbreviation never stands undefined. DOM-free.
+ */
+export function abbreviatedHitLegend(result) {
+  const trail = result && Array.isArray(result.damageTrail) ? result.damageTrail : [];
+  const groups = damageBreakdown(trail).rows.slice(0, 3);
+  if (!groups.length) return '';
+  return groups.map((g) => `${deathDialInitials(g.weapon)} ${shortWeaponName(g.weapon)}`).join(' \u00b7 ');
+}
+
+/**
+ * What was actually taking the player apart, aggregated by weapon rather than dumped as eight rows.
+ * Amounts are applied damage, so they are fractional — they round once, here, at display.
+ * Sorted by damage done, heaviest first; ties settle by name so the order never wobbles.
+ */
+export function damageBreakdown(trail) {
+  const entries = Array.isArray(trail) ? trail : [];
+  const byWeapon = new Map();
+  let rawTotal = 0;
+  let hits = 0;
+  for (const entry of entries) {
+    if (!entry || typeof entry !== 'object') continue;
+    // Strings only: a null-prototype object would throw String(), and Number(Symbol)
+    // throws — both degrade to the unattributed bucket instead of breaking the plate.
+    const rawId = typeof entry.weaponId === 'string' ? entry.weaponId : null;
+    const name = weaponDisplayName(rawId);
+    const rawAmount = typeof entry.amount === 'number' || typeof entry.amount === 'string'
+      ? Number(entry.amount)
+      : NaN;
+    const amount = Number.isFinite(rawAmount) && rawAmount > 0 ? rawAmount : 0;
+    const bucket = byWeapon.get(name) || { weapon: name, hits: 0, raw: 0, attackers: [] };
+    bucket.hits += 1;
+    bucket.raw += amount;
+    // Who was holding the weapon, when the trail knows. Augments the weapon row; never
+    // replaces it — a missile is still a missile whoever racked it.
+    const label = typeof entry.attackerLabel === 'string' && entry.attackerLabel.length > 0
+      ? entry.attackerLabel
+      : null;
+    if (label && !bucket.attackers.includes(label)) bucket.attackers.push(label);
+    byWeapon.set(name, bucket);
+    rawTotal += amount;
+    hits += 1;
+  }
+  const rows = [...byWeapon.values()]
+    .sort((a, b) => (b.raw - a.raw) || (a.weapon < b.weapon ? -1 : a.weapon > b.weapon ? 1 : 0))
+    .map((bucket) => ({
+      weapon: bucket.weapon,
+      hits: bucket.hits,
+      amount: Math.round(bucket.raw),
+      share: rawTotal > 0 ? bucket.raw / rawTotal : 0,
+      attackers: bucket.attackers.slice(),
+    }));
+  return { hits, total: Math.round(rawTotal), rows };
+}
+
+/** The sentence over the damage rows. Every figure keeps its word. */
+export function lastSecondsLead(trail) {
+  const { hits, total } = damageBreakdown(trail);
+  if (!hits) return 'Nothing landed on you in the last seconds of the run.';
+  if (hits === 1) return `The last hit took ${total} damage off you.`;
+  return `The last ${hits} hits took ${total} damage off you.`;
+}
+
+/**
+ * The draft, in the order it was taken. `picks` is the story of the run: a Crucible build is a
+ * sequence of verbs, not a stat sheet. A pick with no verb still names itself from its weapon id.
+ */
+export function buildSteps(picks) {
+  const entries = Array.isArray(picks) ? picks : [];
+  const steps = [];
+  for (const pick of entries) {
+    if (!pick || typeof pick !== 'object') continue;
+    const verb = typeof pick.verb === 'string' && pick.verb
+      ? pick.verb
+      : (pick.defId ? weaponDisplayName(pick.defId) : '');
+    if (!verb) continue;
+    const wave = Number.isInteger(pick.wave) && pick.wave > 0 ? pick.wave : null;
+    steps.push({ wave, verb, text: wave ? `Wave ${wave} ${verb}` : verb });
+  }
+  return steps;
+}
+
+/** The sentence over the build chain. */
+export function buildLead(picks) {
+  const count = buildSteps(picks).length;
+  if (!count) return 'No draft taken — you flew the loadout you launched with.';
+  if (count === 1) return '1 draft changed what your guns do:';
+  return `${count} drafts changed what your guns do:`;
+}
+
+/**
+ * Who, with what, from which side, through which layer — plus, when the run recorded one, the
+ * recorded tell or earlier damage with its timing. Empty when no defeat receipt was published
+ * — which happens on a victory, on an abandoned run, AND on a defeat that carries no receipt
+ * (`run:ended` defaults its outcome to 'defeat' whether or not anything killed the player).
+ */
+export function killChainRows(defeat, death = null) {
+  if (!defeat) return [];
+  const killer = defeat.attacker
+    ? (defeat.faction ? `${defeat.attacker} — ${defeat.faction}` : defeat.attacker)
+    : 'Unidentified attacker';
+  const rows = [
+    ['Killed by', killer],
+    // A rock or a hazard has no gun; "Unidentified weapon" under an environmental kill reads as a bug.
+    ['Its weapon', defeat.source && defeat.source.kind === 'environment' ? 'Impact' : defeat.weapon || 'Unidentified weapon'],
+    ['It came from', bearingWord(defeat.direction)],
+    ['It got in', breachPhrase(defeat.dominantLayer)],
+  ];
+  const leadIn = deathLeadInRow(defeat, death);
+  if (leadIn) rows.push(leadIn);
+  return rows;
+}
+
+// Damage history is not an attack windup. The result's provenance outranks a richer old
+// defeat receipt; missing provenance stays neutral rather than borrowing its tell claim.
+function deathLeadInRow(receipt, death = null) {
+  const record = death ? { ...receipt, ...death, telegraphSource: death.telegraphSource } : receipt;
+  if (!record || record.source?.kind === 'environment'
+    || typeof record.telegraphName !== 'string' || !record.telegraphName) return null;
+  const label = record.telegraphSource === 'witnessed' ? 'Recorded tell'
+    : record.telegraphSource === 'incoming-fire' ? 'Earlier damage' : 'Recorded event';
+  const ms = record.telegraphLeadMs;
+  const lead = typeof ms === 'number' && Number.isFinite(ms)
+    ? ` — ${Math.max(0, Math.round(ms))} ms before the fatal hit` : '';
+  return [label, `${record.telegraphName}${lead}`];
+}
+
+/**
+ * What was left of the ship at the end. A vital the receipt did not measure is DROPPED, never
+ * reported: `Number(null)` is 0, so coercing here would tell a player their armour was at 0% when
+ * in fact nothing measured it. The test for that is the reason this reads the raw value.
+ */
+export function vitalsFigures(defeat) {
+  const vitals = defeat && defeat.vitalsPct;
+  if (!vitals || typeof vitals !== 'object') return [];
+  return [['Shields', vitals.shield], ['Armour', vitals.armor], ['Hull', vitals.hull]]
+    .filter(([, value]) => typeof value === 'number' && Number.isFinite(value))
+    .map(([word, value]) => ({ word, text: `${Math.round(value)}%` }));
+}
+
+/**
+ * The screen's identity word, and the stamp above it. A clear and a death are not one plate.
+ *
+ * `aborted` is deliberately NEUTRAL — "Run Ended", not "Run Abandoned". A plain abort is the
+ * player leaving the arena, but the arena failing to build a wave publishes 'aborted' too with
+ * stopReason 'wave_plan_failed' — and that one failed LOUDLY on purpose, so its title says so.
+ * The results grid's 'Abandoned' row predates this and is pinned by its own test.
+ */
+export function resultTitle(result) {
+  if (result && result.outcome === 'victory') return 'Arena Cleared';
+  if (result && result.stopReason === 'player_retired') return 'Run Retired';
+  if (result && result.stopReason === 'wave_plan_failed') return 'Arena Failed';
+  if (result && result.outcome === 'extracted') return 'Extracted';
+  if (result && result.outcome === 'aborted') return 'Run Ended';
+  return 'Run Over';
+}
+
+export function resultStamp(result) {
+  if (result && result.outcome === 'victory') return 'CRUCIBLE / ARENA CLEARED';
+  return 'CRUCIBLE / FLIGHT RECORD';
+}
+
+/**
+ * The run-identity signature refresh() compares against the mount's own stamp: the seed, where
+ * the run stopped, how it ended, and its end mark. It is only a fallback — a same-seed retry
+ * ending on the same tick CAN share every field, so the owner's monotonic result revision is
+ * the primary key whenever it offers one.
+ */
+function resultSignature(result) {
+  if (!result) return 'none';
+  const mark = result.endedAt || {};
+  return `${result.seed}|${result.wave}|${result.deepestWave}|${result.outcome}|${result.stopReason}`
+    + `|${mark.tick}|${mark.simTime}`;
+}
+
+/**
+ * The plate's freshness key: the owner's monotonic revision when it offers one — a retry can
+ * repeat a signature, never a revision. lastResult deep-clones, so identity cannot serve.
+ */
+function resultVersion(owner) {
+  if (owner && typeof owner.resultRevision === 'function') {
+    return `rev:${owner.resultRevision()}`;
+  }
+  const result = owner && typeof owner.lastResult === 'function' ? owner.lastResult() : null;
+  return resultSignature(result);
+}
+
+/**
+ * S14 — the run's first fallen champion leaves a pending stamp on run telemetry; the results
+ * plate reads it as a live-run victory beat. Only a pending stamp qualifies — a settled
+ * result at run end must never be shadowed by a milestone the fight already played.
+ */
+function swarmFirstBossMilestone(state) {
+  const run = state && state.run;
+  if (!run || run.ruleset !== SWARM_RULESET) return null;
+  const stamp = run.telemetry && run.telemetry.firstBossDown;
+  if (!stamp || stamp.pending !== true) return null;
+  return stamp;
+}
+
+/** The band name for a section. The damage band means something different after a clear. */
+export function sectionTitle(id, outcome) {
+  if (id === 'story') return 'The run';
+  if (id === 'kill_chain') return 'How it ended';
+  if (id === 'last_seconds') return outcome === 'defeat' ? 'The last seconds' : 'What you weathered';
+  if (id === 'ledger') return 'Run ledger';
+  if (id === 'build') return 'What you built';
+  return '';
+}
+
+/**
+ * Which bands the plate carries and which one leads. This — not a restyle — is what makes a clear
+ * and a death different screens: a clear leads with the build that got you there and has no kill
+ * chain at all; a death leads with what killed you and ends on the build that failed to stop it.
+ *
+ * Branching is on `outcome`, never on "is there a defeat receipt": a defeat can publish none.
+ */
+export function resultSectionOrder(result) {
+  if (!result) return [];
+  const hasStory = !!(result.death
+    || (Array.isArray(result.moments) && result.moments.length)
+    || result.buildName
+    || result.buildCode);
+  if (result.outcome === 'victory') {
+    return hasStory ? ['story', 'build', 'last_seconds', 'ledger'] : ['build', 'last_seconds', 'ledger'];
+  }
+  if (result.outcome === 'aborted') {
+    return hasStory ? ['story', 'ledger', 'build', 'last_seconds'] : ['ledger', 'build', 'last_seconds'];
+  }
+  if (result.defeat) {
+    return hasStory
+      ? ['story', 'kill_chain', 'last_seconds', 'ledger', 'build']
+      : ['kill_chain', 'last_seconds', 'ledger', 'build'];
+  }
+  return hasStory ? ['story', 'last_seconds', 'ledger', 'build'] : ['last_seconds', 'ledger', 'build'];
+}
+
+/**
+ * Swarm is a farthest-round challenge. Tricks and score explain the run below this record.
+ */
+export function resultHero(result) {
+  if (!result) return null;
+  if (result.recordRules?.circuit === 'invalid') {
+    return { number: '—', word: 'Circuit data invalid' };
+  }
+  if (result.ruleset === SWARM_RULESET && result.circuit) {
+    // SWARM-08 B5 — a Circuit run's headline is the journey, not an endless round count.
+    const circuit = result.circuit;
+    const rounds = String(Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 1));
+    if (result.outcome === 'victory' && circuit.status === 'completed') {
+      return { number: String(CIRCUIT_TOTAL_ROUNDS), word: 'rounds · Circuit cleared' };
+    }
+    if (circuit.status === 'overtime') {
+      return { number: rounds, word: 'rounds · overtime' };
+    }
+    // A defeat reads the stages actually COMPLETED, not the one the pilot fell in: that is the
+    // journey progress the Circuit owns.
+    const cleared = Number.isInteger(circuit.clearedStages)
+      ? Math.max(0, Math.min(4, circuit.clearedStages)) : 0;
+    return { number: rounds, word: `${cleared} of 4 stages` };
+  }
+  if (result.ruleset === SWARM_RULESET) return {
+    number: String(Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 1)),
+    word: 'round reached',
+  };
+  return { number: String(result.score || 0), word: 'score' };
+}
+
+/**
+ * The run as sentences a player can tell, not a table of labels. Built from the telemetry
+ * survivalResults already published: the death and its tell, the tracked moments, the build.
+ * Empty when the result has none of those fields (legacy plates stay a table).
+ */
+export function storySentences(result) {
+  if (!result) return [];
+  const lines = [];
+  const seen = new Set();
+  // Every line ends as a sentence (survivalResults' moments arrive bare), and none repeats one the
+  // plate already printed -- the headline above the band included.
+  const say = (text) => {
+    const line = sentence(text);
+    const key = line.toLowerCase();
+    if (!line || seen.has(key)) return;
+    seen.add(key);
+    lines.push(line);
+  };
+  if (typeof result.headline === 'string' && result.headline) seen.add(sentence(result.headline).toLowerCase());
+  const death = result.death;
+  const attacker = result.defeat && typeof result.defeat.attacker === 'string' && result.defeat.attacker
+    ? result.defeat.attacker : null;
+  if (death && typeof death === 'object') {
+    // With a defeat receipt, the headline has already said who killed you, with what and from
+    // where, and "How it ended" lists it row by row. causeText is that same receipt again in its
+    // enum words ("Reaver Corsair · Heavy Autocannon M · AFT · hull breach"), so the story starts
+    // at what the headline cannot say: the tell. causeText earns a line only without a receipt --
+    // the trail-only "... fire took you apart" sentence, which the headline does not carry.
+    if (!attacker && typeof death.causeText === 'string' && death.causeText) say(death.causeText);
+    const leadIn = deathLeadInRow(result.defeat, death);
+    if (leadIn) say(`${leadIn[0]}: ${leadIn[1]}`);
+    if (typeof death.counterplay === 'string' && death.counterplay) say(death.counterplay);
+  }
+  const moments = Array.isArray(result.moments) ? result.moments : [];
+  for (const moment of moments) {
+    const text = typeof moment === 'string' ? moment : (moment && moment.text);
+    if (typeof text === 'string' && text) say(text);
+  }
+  if (typeof result.buildName === 'string' && result.buildName) {
+    say(`You converged on ${result.buildName}.`);
+  }
+  if (typeof result.buildCode === 'string' && result.buildCode) {
+    lines.push(`Build code ${result.buildCode}`);
+  }
+  return lines;
+}
+
+/** A line as a sentence: trimmed, with its full stop when it has no closing mark. */
+function sentence(text) {
+  const line = String(text == null ? '' : text).trim();
+  if (!line) return '';
+  return /[.!?…:]$/.test(line) ? line : `${line}.`;
+}
+
+/* --- the stunt combo band. DOM-free builders over the stunt module's combo snapshot.
+ *
+ * PQ-146.01: the combo meter lives in the stunt module (state.stunts.combo, single writer
+ * stuntGrammar) and this surface reads it IN PARALLEL with survivalResults — which it never
+ * edits. Everything below takes the snapshot handed back by stuntComboFor() and never touches
+ * a system. Null-safe: a run with no tricks and no kills shows no band at all.
+ * ------------------------------------------------------------------------------------------ */
+
+/**
+ * The live combo snapshot for this run, or null when there is nothing to show. Reads
+ * ctx.state only; a context without state (or a run that never scored) yields null and the
+ * results plate renders exactly as before — existing plates are untouched.
+ */
+export function stuntComboFor(ctx) {
+  const state = ctx && ctx.state;
+  const combo = (state && state.stunts && state.stunts.combo) || (ctx && ctx.result && ctx.result.combo);
+  if (!combo || typeof combo !== 'object') return null;
+  try {
+    return comboSummary(combo);
+  } catch {
+    return null;
+  }
+}
+
+/** The sentence over the combo band. Every figure keeps its word. */
+export function comboLead(summary, ruleset) {
+  if (!summary || typeof summary !== 'object') return '';
+  const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const best = n(summary.bestChain);
+  const trickKills = n(summary.trickKills);
+  const gun = n(summary.gunKills) + n(summary.pulseKills);
+  if (best <= 0 && trickKills <= 0) {
+    if (gun <= 0) return '';
+    // SWARM-05 §7.4 — the swarm plate stays positive: a flat kill is honest work, never a
+    // missed multiplier. The gauntlet keeps its forensic read.
+    if (ruleset === SWARM_RULESET) {
+      return gun === 1
+        ? '1 clean kill — chains pay extra, but the gun did its work.'
+        : `${gun} clean kills — chains pay extra, but the gun did its work.`;
+    }
+    return gun === 1
+      ? 'No chained tricks — 1 flat kill, no multiplier.'
+      : `No chained tricks — ${gun} flat kills, no multiplier.`;
+  }
+  const chainWord = best === 1 ? '1 trick' : `${best} tricks`;
+  const pay = n(summary.bestChainPoints);
+  if (trickKills > 0) return `Best chain ${chainWord} for ${pay} — physics paid, guns never multiply.`;
+  return `Best chain ${chainWord} for ${pay} — chain it, bank it, run it again.`;
+}
+
+/** Rows for the combo grid. Gun rows appear only when that kind of kill happened. */
+export function comboRows(summary) {
+  if (!summary || typeof summary !== 'object') return [];
+  const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const rows = [['Combo score', String(n(summary.totalScore))]];
+  if (n(summary.bestChain) > 0) {
+    rows.push(['Best chain', `${n(summary.bestChain)} tricks · ${n(summary.bestChainPoints)}`]);
+  }
+  if (n(summary.trickKills) > 0) rows.push(['Trick kills', String(n(summary.trickKills))]);
+  if (n(summary.gunKills) > 0) rows.push(['Gun kills', String(n(summary.gunKills))]);
+  if (n(summary.pulseKills) > 0) rows.push(['Pulse kills', String(n(summary.pulseKills))]);
+  return rows;
+}
+
+/**
+ * The run's confidence, read back as advice (INF-040). DOM-free: the story band renders
+ * `text`. The estimate itself is settled facts (cleared waves); the streak answers repeated
+ * destructive overconfidence by naming a real assist — assisted flight — never a wager,
+ * never a staked reward. Null when the result carries no estimate, so older plates read
+ * exactly as before.
+ */
+export function confidenceLine(result) {
+  const confidence = result && typeof result.confidence === 'number' ? result.confidence : null;
+  if (confidence == null) return null;
+  const wave = Number.isInteger(result.wave) && result.wave > 0 ? result.wave : 0;
+  const text = `Confidence ${confidence.toFixed(2)} — held to wave ${wave}.`;
+  const streak = Number.isInteger(result.overconfidenceStreak) ? result.overconfidenceStreak : 0;
+  if (streak >= OVERCONFIDENCE_STREAK_AT) {
+    return `${text} Confident runs keep ending early — consider assisted flight (Settings → Flight mode) before the next one.`;
+  }
+  return text;
+}
+
+/** The recent chained tricks, newest last, as name/detail pairs for the chain list. */
+export function comboTrickLines(summary) {
+  const entries = summary && Array.isArray(summary.lastTricks) ? summary.lastTricks : [];
+  const lines = [];
+  for (const entry of entries) {
+    if (!entry || typeof entry !== 'object') continue;
+    const name = typeof entry.name === 'string' && entry.name ? entry.name : 'Unknown stunt';
+    const points = Number.isFinite(Number(entry.points)) ? Number(entry.points) : 0;
+    const rarity = typeof entry.rarity === 'string' && entry.rarity ? entry.rarity : 'common';
+    lines.push({ name, detail: `${rarity} · ${points}` });
+  }
+  return lines;
+}
+
+/**
+ * The run's one real achievement beside the score (INF-035). DOM-free: the ledger band
+ * renders `text`, nothing else. The stunt branch names ONLY what the strongest bank's
+ * normalized acts name — normalizeBestLine refuses acts without evidence, so a named
+ * launch, collision, or victim is always traced to receipts, never timed into existence.
+ * A run with no bank gets an honest alternative from its own figures, never a fake stunt;
+ * a run with nothing at all gets null and the ledger reads exactly as before.
+ */
+export function featDiagram(result) {
+  const line = normalizeBestLine({
+    ...(result && result.bestLine),
+    seed: result && result.seed,
+    recordRules: result && result.recordRules,
+  });
+  if (line && line.acts.length) {
+    return {
+      kind: 'stunt',
+      text: `Best stunt: ${line.acts.map((a) => a.name).join(' → ')} · ${line.points} banked`,
+    };
+  }
+  const stuntKills = Array.isArray(result && result.stuntKills)
+    ? result.stuntKills
+    : (Array.isArray(result && result.stunts) ? result.stunts : []);
+  if (stuntKills.length > 0) {
+    const names = stuntKills.map((s) => (typeof s === 'string' ? s : s?.name || s?.trickId)).filter(Boolean);
+    if (names.length > 0) {
+      const distinct = [...new Set(names)];
+      const pts = stuntKills.reduce((sum, s) => sum + (Number(s?.points) || 0), 0);
+      return {
+        kind: 'stunt',
+        text: pts > 0
+          ? `Stunt kills: ${distinct.join(', ')} · ${pts} banked`
+          : `Stunt kills: ${distinct.join(', ')}`,
+      };
+    }
+  }
+  const n = (v) => (Number.isInteger(v) && v > 0 ? v : 0);
+  const bestChain = n(result && result.bestChain);
+  if (bestChain > 0) return { kind: 'chain', text: `No stunts banked — best kill chain ${bestChain}.` };
+  const kills = n(result && result.kills);
+  if (kills > 0) {
+    return { kind: 'kills', text: kills === 1 ? 'No stunts banked — 1 kill.' : `No stunts banked — ${kills} kills.` };
+  }
+  return null;
+}
+
+/* --- band renderers. DOM assembly only; every word above them is already decided. --- */
+
+/** Label/value pairs as static kit rows. `hook` is the inert class a route check reads. */
+function pairRows(pairs, hook, valueClassFor) {
+  const list = el('ul', 'k-rows' + (hook ? ' ' + hook : ''));
+  for (const [label, value] of pairs) {
+    list.appendChild(staticRow(label, value, { valueClass: valueClassFor ? valueClassFor(label) : '' }));
+  }
+  return list;
+}
+
+/** Kit board + streak, both already settled by survivalRecords. A records miss is empty. */
+function crucibleSheetReadings() {
+  let history = [];
+  try {
+    const meta = loadCrucibleMeta();
+    history = meta && Array.isArray(meta.history) ? meta.history : [];
+  } catch {
+    history = [];
+  }
+  const cells = [];
+  for (const row of history) {
+    const kit = recordedKitId(row);
+    if (typeof kit !== 'string' || !kit) continue;
+    cells.push({ kit, seed: row.seed, score: row.score });
+  }
+  let board = null;
+  let streak = 0;
+  try { board = kitBalanceBoard(cells); } catch { board = null; }
+  try { streak = overconfidenceStreak(history); } catch { streak = 0; }
+  return { board, streak };
+}
+
+function renderStory(band, result) {
+  const lines = storySentences(result);
+  if (!lines.length) {
+    band.appendChild(el('p', 'k-empty sf-crres__empty', 'The run left no story.'));
+    return;
+  }
+  for (const line of lines) {
+    band.appendChild(el('p', 'k-sentence sf-crres__story-line', line));
+  }
+  // INF-040: the estimate, read back as advice on the existing review surface — one line,
+  // never a trait, never a wager.
+  const confidence = confidenceLine(result);
+  if (confidence) band.appendChild(el('p', 'k-sentence sf-crres__confidence', confidence));
+}
+
+function renderCombo(band, summary, ruleset) {
+  const lead = comboLead(summary, ruleset);
+  if (lead) band.appendChild(el('p', 'k-sentence sf-crres__lead', lead));
+  // PQ-146 Phase 3: the round's top named tricks with counts, read from the same combo snapshot
+  // survivalResults rows from — what the player DID, not only what it scored.
+  const trickRows = trickCountRows(summary);
+  if (trickRows.length) band.appendChild(pairRows(trickRows, 'sf-crres__tricks'));
+  band.appendChild(pairRows(comboRows(summary), 'sf-crd-grid'));
+  const lines = comboTrickLines(summary);
+  if (lines.length) {
+    const chain = el('ul', 'k-rows sf-crres__chain');
+    for (const line of lines) chain.appendChild(staticRow(line.name, line.detail, { valueClass: 'k-t-fine k-62' }));
+    band.appendChild(chain);
+  }
+}
+
+/** A truthful causal account. A pose tape or unavailable video is never labelled replay. */
+export function bestLineReviewRows(line) {
+  const normalized = normalizeBestLine(line);
+  if (!normalized) return [];
+  const rules = normalized.recordRules;
+  // The stake rides inside the loadout-rules JSON — surface it as its own row.
+  let stakeLabel = 'Not recorded';
+  try {
+    const lo = JSON.parse(rules.loadoutRules || '{}');
+    if (lo && typeof lo.stake === 'string' && lo.stake) stakeLabel = swarmStakeFor(lo.stake).label;
+  } catch { /* the raw JSON row still prints below */ }
+  return [
+    ['Banked style', String(normalized.points)], ['Seed', String(normalized.seed)],
+    ['Mode', rules.mode ?? 'Not recorded'], ['Arena', rules.arenaId ?? 'Not recorded'],
+    ['Difficulty', rules.difficulty ?? 'Not recorded'], ['Stake', stakeLabel],
+    ['Loadout rules', rules.loadoutRules ?? 'Not recorded'],
+    ['Simulation assist', rules.simulationAssistProfile ?? 'Not recorded'],
+    ['Game speed', rules.simulationSpeedAssist === 'mixed' ? 'assisted · mixed'
+      : (Number(rules.simulationSpeedAssist) < 1 ? `assisted · ${Math.round(Number(rules.simulationSpeedAssist) * 100)}%` : '100%')],
+    ['Physics revision', rules.physicsRevision ?? 'Not recorded'], ['Balance revision', rules.balanceRevision ?? 'Not recorded'],
+    ['Scoring revision', rules.scoringRevision == null ? 'Not recorded' : String(rules.scoringRevision)],
+    ['Video', 'Unavailable · causal account retained'],
+  ];
+}
+
+function renderBestLineReview(line, hooks = {}) {
+  const review = el('details', 'sf-crres__band');
+  const summary = el('summary', 'k-caps', `Best Line · ${line.points} banked style`);
+  review.appendChild(summary);
+  review.appendChild(el('p', 'k-sentence', (line.acts || []).map(a => a.name || a.trickId).join(' → ')));
+  review.appendChild(pairRows(bestLineReviewRows(line), 'sf-crd-grid'));
+  const acts = el('ol', 'k-rows');
+  for (const act of line.acts || []) {
+    const evidence = (act.evidence || []).map(e => String(e.kind || e.type || e.step || 'physical transfer').replaceAll('_', ' '));
+    acts.appendChild(staticRow(act.name || act.trickId,
+      Number.isFinite(act.tick) ? `${(act.tick / 60).toFixed(2)} simulation seconds` : 'Time not recorded',
+      { sub: evidence.join(' → ') }));
+  }
+  review.appendChild(acts);
+  review.appendChild(el('p', 'k-sentence', 'This account preserves the observed force route. Video is unavailable.'));
+  // Same-seed practice with your own ghost when the tape exists. Practice runs file under the
+  // 'practice' record mode — they can never enter the Swarm/Gauntlet comparisons.
+  if (hooks && typeof hooks.onPractice === 'function') {
+    const practice = word('Practice this line', 'k-word--fine');
+    practice.addEventListener('click', () => hooks.onPractice(line));
+    review.appendChild(practice);
+  }
+  return review;
+}
+
+function renderKillChain(band, defeat, death = null) {
+  // Threat colour on the two rows that name the enemy. The label beside each is the channel that
+  // survives forced-colors and colour blindness; the tint is never the only one.
+  const chain = pairRows(killChainRows(defeat, death), 'sf-crres__chain',
+    (label) => (label === 'Killed by' || label === 'Its weapon' ? 'k-bad' : ''));
+  band.appendChild(chain);
+
+  const vitals = vitalsFigures(defeat);
+  if (!vitals.length) return;
+  band.appendChild(el('p', 'k-sentence sf-crres__lead', 'What was left of you when it landed:'));
+  const row = el('ul', 'k-rows sf-crres__vitals');
+  for (const vital of vitals) {
+    row.appendChild(staticRow(vital.word, vital.text, { valueClass: 'k-bad' }));
+  }
+  band.appendChild(row);
+}
+
+function renderLastSeconds(band, trail) {
+  band.appendChild(el('p', 'k-sentence sf-crres__lead', lastSecondsLead(trail)));
+  const { rows } = damageBreakdown(trail);
+  if (!rows.length) return;
+  const list = el('ul', 'k-rows sf-crres__hits');
+  for (const row of rows) {
+    const line = el('li', 'k-row k-row--static sf-crres__hit');
+    const left = el('div');
+    left.appendChild(el('span', 'k-row__name sf-crres__hit-name', row.weapon));
+    const track = el('div', 'k-bar sf-crres__hit-track');
+    const fill = el('div', 'k-bar__fill sf-crres__hit-fill');
+    fill.style.width = `${Math.round(row.share * 100)}%`;
+    track.appendChild(fill);
+    left.appendChild(track);
+    line.appendChild(left);
+    const fig = el('span', 'k-row__num');
+    fig.appendChild(el('span', 'k-t-fine k-62 sf-crres__hit-fig', `${row.hits} hit${row.hits === 1 ? '' : 's'}`));
+    fig.appendChild(el('span', 'sf-crres__hit-fig', ` ${row.amount} damage`));
+    line.appendChild(fig);
+    list.appendChild(line);
+  }
+  band.appendChild(list);
+}
+
+function renderLedger(band, result) {
+  const ledger = el('ul', 'k-rows sf-crd-grid');
+  for (const [label, value] of resultRows(result)) {
+    if (label === 'Stake') {
+      ledger.appendChild(staticRow(label, swarmStakeFor(result.swarmStake).label,
+        { sub: swarmStakePitch(result.swarmStake) }));
+    } else ledger.appendChild(staticRow(label, value));
+  }
+  band.appendChild(ledger);
+  // INF-035: the one real achievement, small and beside the score — the strongest banked
+  // stunt as a cause-to-consequence line, or an honest alternative when there is none.
+  const feat = featDiagram(result);
+  if (feat) band.appendChild(el('p', 'k-sentence sf-crres__feat', feat.text));
+}
+
+/**
+ * HOW THIS BUILD LANDS ITS DAMAGE — the causal tags phase 5 deferred to the GPU lane.
+ *
+ * Read from the COMPILED SPEC, not from the run's hits. Nothing accumulates per-arrival counts
+ * during a run yet, so any figure claiming "8 direct, 16 chained" would be a model presented as a
+ * measurement. The kinds are exact and honest: this is what the fit you finished with actually
+ * does with a shot. Damage that arrives by CHAIN is a different game from damage that arrives by
+ * BANK, and until now the results screen could not say which one you had been playing.
+ *
+ * Picks mix weapons and modifiers in one list, so the weapon is whichever pick resolves to a known
+ * weapon and everything else is treated as a modifier. No weapon, no band — a results screen must
+ * never fail to open because a build could not be read.
+ */
+export function causalKindsFromPicks(picks) {
+  const entries = Array.isArray(picks) ? picks : [];
+  const ids = [];
+  for (const pick of entries) {
+    if (pick && typeof pick.defId === 'string' && pick.defId) ids.push(pick.defId);
+  }
+  if (!ids.length) return [];
+  const weaponIds = new Set(WEAPONS.map((w) => w && w.id).filter(Boolean));
+  const weaponId = ids.find((id) => weaponIds.has(id)) || null;
+  if (!weaponId) return [];
+  const modifiers = ids.filter((id) => id !== weaponId && !weaponIds.has(id));
+  const compile = (mods) => {
+    try {
+      const out = compileAttackSpec({ weapon: weaponId, modifiers: mods });
+      return out && out.ok === true && out.spec ? out : null;
+    } catch (_) {
+      return null;
+    }
+  };
+  // One unknown modifier used to take the whole band down, even though the weapon read perfectly.
+  // That happens for real: an old run whose trait has since been renamed or retired. Falling back
+  // to the weapon alone says less than the truth but never says nothing, and never leaves a results
+  // screen with a silently missing section that looks like a bug.
+  const compiled = compile(modifiers) || compile([]);
+  if (!compiled) return [];
+  try {
+    return causalKindsFromSpec(compiled.spec);
+  } catch (_) {
+    return [];
+  }
+}
+
+/** One sentence over the tags, so the figures keep their word. */
+export function causalKindsLead(kinds) {
+  const list = Array.isArray(kinds) ? kinds : [];
+  if (!list.length) return '';
+  if (list.length === 1 && list[0] === 'DIRECT') {
+    return 'Every shot arrived the plain way: straight into whatever you were pointing at.';
+  }
+  if (list.length === 1) return `This build put its damage in by one route: ${list[0].toLowerCase()}.`;
+  return `This build had ${list.length} ways in: ${list.map((k) => k.toLowerCase()).join(', ')}.`;
+}
+
+/** The build as one fine-print line — the sheet's "build code". */
+export function buildCodeLine(picks) {
+  return buildSteps(picks).map((step) => step.text).join(' · ');
+}
+
+function renderBuild(band, result) {
+  const picks = result && result.picks;
+  band.appendChild(el('p', 'k-sentence sf-crres__lead', buildLead(picks)));
+  if (result && typeof result.buildName === 'string' && result.buildName) {
+    band.appendChild(el('p', 'k-sentence sf-crres__build-name', result.buildName));
+  }
+  const kinds = causalKindsFromPicks(picks);
+  if (kinds.length) {
+    band.appendChild(el('p', 'k-sentence sf-crres__causal-lead', causalKindsLead(kinds)));
+    // The causal tags as fine static words, the plain route at 38 %.
+    const tags = el('div', 'k-words k-words--row sf-crres__causal');
+    for (const kind of kinds) {
+      const tag = el('span', 'k-t-fine sf-crres__causal-tag' + (kind === 'DIRECT' ? ' k-38' : ' k-62'), kind.toLowerCase());
+      tag.setAttribute('data-kind', kind.toLowerCase());
+      tags.appendChild(tag);
+    }
+    band.appendChild(tags);
+  }
+  const steps = buildSteps(picks);
+  if (steps.length) {
+    const chain = el('ul', 'k-rows sf-crres__build');
+    for (const step of steps) {
+      const node = el('li', 'k-row k-row--static sf-crres__step');
+      const left = el('div');
+      if (step.wave != null) {
+        const wave = el('span', 'k-row__sub');
+        wave.appendChild(el('span', 'sf-crres__step-word', 'Wave'));
+        wave.appendChild(el('span', 'sf-crres__step-fig', ` ${String(step.wave)}`));
+        left.appendChild(wave);
+      }
+      left.appendChild(el('span', 'k-row__name sf-crres__step-verb', step.verb));
+      node.appendChild(left);
+      node.appendChild(el('span', 'k-row__num', ''));
+      chain.appendChild(node);
+    }
+    band.appendChild(chain);
+  }
+  const code = (result && typeof result.buildCode === 'string' && result.buildCode)
+    ? result.buildCode
+    : buildCodeLine(picks);
+  if (code) band.appendChild(el('p', 'k-t-fine k-38 sf-crres__build-code', code));
+}
+
+/* --- SHARE BAND (PQ-160.02) ------------------------------------------------------------------
+   The run as a code and its ghost as a block — files and codes, never a service. The code carries
+   the seed, the build the run launched with, and the rules; the ghost block carries the recorded
+   pose tape. Both are selectable text and real download links on every host. The three ways out
+   stay the plate's only actions; the band adds two fine words, Copy result and Copy ghost —
+   ordinary buttons, so a pad reaches them — that put the finished run on the clipboard.
+   ------------------------------------------------------------------------------------------- */
+
+/** A kit-fine download link: a real anchor carrying a data URI, not a button. */
+function shareLink(row, label, text, filename, ariaLabel) {
+  const a = el('a', 'k-word k-word--fine sf-crres__share-link', label);
+  const href = shareTextHref(text);
+  if (!href) return;
+  a.href = href;
+  a.download = filename;
+  a.setAttribute('aria-label', ariaLabel || label);
+  row.appendChild(a);
+}
+
+function selectableText(row, className, value, ariaLabel) {
+  // The field is one line that scrolls inside its own box — never wraps over a neighbour.
+  const field = el('input', className);
+  field.type = 'text';
+  field.readOnly = true;
+  field.value = value;
+  field.setAttribute('aria-label', ariaLabel);
+  field.addEventListener('focus', () => { try { field.select(); } catch { /* stub DOM */ } });
+  field.addEventListener('click', () => { try { field.select(); } catch { /* stub DOM */ } });
+  row.appendChild(field);
+  return field;
+}
+
+/** One share item: a single aligned row — caption, field, save link. Returns the field. */
+function shareItem(band, { caption, value, ariaLabel, linkLabel, filename, linkAria }) {
+  const item = el('div', 'sf-crres__share-item');
+  const row = el('div', 'sf-crres__share-row');
+  row.appendChild(el('span', 'k-caps sf-crres__share-cap', caption));
+  const field = selectableText(row, 'k-input sf-crres__share-code', value, ariaLabel);
+  if (linkLabel) shareLink(row, linkLabel, value + '\n', filename, linkAria);
+  item.appendChild(row);
+  band.appendChild(item);
+  return field;
+}
+
+/**
+ * Select a field's text so a manual copy is one keystroke away. Best effort on any host. The
+ * share band sits at the foot of the scrolling ledger, whose last 28px fade out: a field only
+ * scrolled "nearest" lands inside that fade, so it is centred instead.
+ */
+function selectField(field) {
+  try { field.focus({ preventScroll: true }); field.select(); } catch { /* manual selection stays available */ }
+  revealInLedger(field);
+}
+
+/** Centre a node in the scrolling ledger so what just changed is read, not buried in the fade. */
+function revealInLedger(node) {
+  try { node.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch { /* stub DOM */ }
+}
+
+/**
+ * Copy result / Copy ghost: two fine words that put the finished run on the clipboard. The
+ * clipboard is a convenience, never a service: when the host refuses, the text lands selected in
+ * a field and the status line says so — the note follows what actually happened, not the click.
+ */
+function shareCopyRow(band, { summary, ghostText, ghostField }) {
+  if (!summary && !ghostText) return;
+  const actions = el('div', 'sf-crres__share-actions');
+  const status = el('p', 'k-t-fine k-62 sf-crres__share-status');
+  status.setAttribute('role', 'status');
+  status.setAttribute('aria-live', 'polite');
+  let resultField = null;
+  const copyWord = (label, ariaLabel, onClick) => {
+    const button = word(label, 'k-word--fine sf-crres__share-link sf-crres__share-copy');
+    button.setAttribute('aria-label', ariaLabel);
+    button.addEventListener('click', onClick);
+    actions.appendChild(button);
+    return button;
+  };
+  if (summary) {
+    copyWord('Copy result', 'Copy the result as one line to post', () => {
+      copyShareText(summary).then((copied) => {
+        if (copied) {
+          status.textContent = 'Result copied — paste it anywhere.';
+          revealInLedger(status);
+          cue('confirm');
+          return;
+        }
+        // No clipboard (or it refused): show the line itself, selected, in a field of its own.
+        // The note goes first: its line grows the band, and the field is scrolled into view
+        // against the finished height.
+        status.textContent = 'Result is selected in the field — copy it from there.';
+        if (!resultField) {
+          resultField = shareItem(band, {
+            caption: 'Result', value: summary, ariaLabel: 'Result line', linkLabel: null,
+          });
+        }
+        resultField.value = summary;
+        selectField(resultField);
+      });
+    });
+  }
+  if (ghostText) {
+    copyWord('Copy ghost', 'Copy the ghost block', () => {
+      copyShareText(ghostText).then((copied) => {
+        if (copied) {
+          status.textContent = 'Ghost copied — paste it into another copy of the game.';
+          revealInLedger(status);
+          cue('confirm');
+          return;
+        }
+        status.textContent = 'Ghost is selected in its field — copy it from there.';
+        if (ghostField) selectField(ghostField);
+      });
+    });
+  }
+  band.appendChild(actions);
+  band.appendChild(status);
+}
+
+export function buildShareBand(result) {
+  // SWARM-08 B5 — a Circuit run's route is not carried by the current run code, so the plate
+  // makes no reproduction claim it cannot honour.
+  if (result && (result.circuit || result.recordRules?.circuit)) return null;
+  const setup = lastCrucibleSetup();
+  let profile = null;
+  try { profile = loadCrucibleMeta(); } catch { profile = null; }
+  const ghost = ghostShareForRun(profile, {
+    seed: result && Number.isInteger(result.seed) ? result.seed : null,
+  });
+  const code = runShareCodeForRun(setup, result, { ghostHash: ghost ? ghost.hash : null });
+  const hasCard = result?.ruleset === SWARM_RULESET;
+  if (!code && !(ghost && ghost.text)) return null;
+
+  const band = el('div', 'sf-crres__band sf-crres__share');
+  band.dataset.band = 'share';
+  const title = el('p', 'k-caps sf-crres__band-title', 'Share');
+  title.setAttribute('role', 'heading');
+  title.setAttribute('aria-level', '2');
+  band.appendChild(title);
+
+  if (hasCard) {
+    const card = el('a', 'k-word', 'Save run card');
+    card.setAttribute('download', `spaceface-swarm-${result.seed ?? 'run'}.svg`);
+    band.refreshCard = initials => {
+      const saved = loadCrucibleMeta().cabinet.entries.find(row => row.id === result.cabinetEntryId);
+      const href = runCardHref(runCardSvg(runCardModel(result, { initials: initials || saved?.initials, code })));
+      if (href) card.setAttribute('href', href);
+    };
+    band.refreshCard(); band.appendChild(card);
+  }
+
+  if (code || (ghost && ghost.text)) {
+    // One explainer for the whole register — two per-item notes were what pushed the ghost row
+    // under the ledger's clip edge.
+    band.appendChild(el('p', 'k-t-fine k-38 sf-crres__share-note',
+      'Same seed, same build, same rules — another machine reproduces this run; the recorded hull races you there. '
+      + 'A code selects itself when you touch it.'));
+  }
+
+  if (code) {
+    shareItem(band, {
+      caption: 'Run code',
+      value: code,
+      ariaLabel: 'Run share code',
+      linkLabel: 'Save run code',
+      filename: `spaceface-run-${result && Number.isInteger(result.seed) ? result.seed : 'share'}.txt`,
+      linkAria: 'Download the run code as a file',
+    });
+  }
+
+  let ghostField = null;
+  if (ghost && ghost.text) {
+    ghostField = shareItem(band, {
+      caption: 'Ghost file',
+      value: ghost.text,
+      ariaLabel: 'Ghost share code',
+      linkLabel: 'Save ghost file',
+      filename: `spaceface-ghost-${ghost.hash}.txt`,
+      linkAria: 'Download the ghost as a file',
+    });
+  }
+  shareCopyRow(band, {
+    summary: runShareSummary(result, { code }),
+    ghostText: ghost && ghost.text ? ghost.text : null,
+    ghostField,
+  });
+  return band;
+}
+
+export const crucibleResultsScreen = {
+  id: 'crucibleResults',
+  data: { locked: true },
+
+  // THE INSTANT KILL-CAM (DEMO_READINESS_2026-09-20 §4, "The toy (swarm)"): the results
+  // screen stands on the recorded round tail — the last ~5 s of the fight, played once
+  // behind the plate. The manager asks this def for a stage spec while the screen is top;
+  // the spec is plain data (no renderer import), and null is the designed fallback every
+  // time: under reduced motion, after the visible SKIP, or when no tape was recorded.
+  stage(ctx) {
+    if (resultsOwner(ctx)?.lastResult?.()?.stopReason === 'player_retired') return null;
+    return killcamStageRequestFor(ctx && ctx.state);
+  },
+
+  mount(rootEl, ctx) {
+    rootEl.innerHTML = '';
+    rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible-door', 'sf-crucible-results');
+    if (ORRERY) { injectOrreryScreens(); injectCrucibleResultsLayouts(); rootEl.classList.add('orr-crucible'); }
+    // PQ-146 Phase 3: retry launches start here, so the callout layer re-ensures with the plate.
+    // The dispose below releases it — a finished run has nothing more to name.
+    try { ensureStuntCallout(ctx); } catch { /* presentation must never block the plate */ }
+    rootEl.dataset.kReady = '0';
+    rootEl.setAttribute('role', 'dialog');
+    rootEl.setAttribute('aria-modal', 'true');
+    rootEl.setAttribute('aria-labelledby', 'sf-crucible-results-title');
+
+    const owner = resultsOwner(ctx);
+    const result = owner && typeof owner.lastResult === 'function' ? owner.lastResult() : null;
+    // The screen manager mounts a screen once and re-shows the cached root on every later push.
+    // The plate's signature is what refresh() compares — a new run always ends at a new mark.
+    this._root = rootEl;
+    this._resultSig = resultVersion(owner);
+    rootEl.dataset.stamp = resultStamp(result);
+
+    // S14 — the first fallen champion is a victory beat, not a defeat: IRON MAW DOWN plays
+    // the Run Over plate's own geometry with the score's authored lesson, and three ways
+    // back out. The run underneath is still live — Keep going hands it back.
+    const milestone = swarmFirstBossMilestone(ctx && ctx.state);
+    if (milestone) {
+      this._mountBossMilestone(rootEl, ctx, milestone);
+      return;
+    }
+
+    rootEl.dataset.outcome = (result && result.outcome) || 'empty';
+
+    // Seal the kill-cam tape once, engraved with the run's seed; the stage's own seal is
+    // idempotent and gets exactly this tape. A seal failure must never take down the plate.
+    try { if (result?.stopReason !== 'player_retired') takeKillcamTape({ seed: result && result.seed }); } catch { /* the replay is optional */ }
+
+    // .k-title — the identity word, and the owner's sentence, verbatim. The structured chain below
+    // re-states it in fielded form; it never rewrites it, because survivalResults owns the wording.
+    const title = el('header', 'k-title');
+    const h = el('h1', 'k-display k-t-title', resultTitle(result));
+    h.id = 'sf-crucible-results-title';
+    title.appendChild(h);
+    title.appendChild(el('p', 'k-sentence k-sentence--emph sf-crd-headline',
+      result && result.headline ? result.headline : 'The run ended.'));
+    if (result?.stopReason === 'player_retired' && result.bankLine) {
+      title.appendChild(el('p', 'k-sentence', result.bankLine));
+    }
+    rootEl.appendChild(title);
+
+    // SWARM-05 §7.4 — celebrate FIRST, post-mortem second. The swarm plate leads with what
+    // the run just paid: the stars it minted, the checkpoint it banked, the bounty into the
+    // hangar total, any unlock it earned, the NEW BEST stamp, and the goal now ahead. Every
+    // figure reads the settled result straight — the plate never re-derives eligibility.
+    // A gauntlet (or recordless) plate reads exactly as before.
+    if (result && result.ruleset === SWARM_RULESET) {
+      const celebrate = resultCelebration(result);
+      if (celebrate) rootEl.appendChild(celebrate);
+    }
+
+    // .k-stage — two columns: the story (the sections in their order) and the ledger. The story is
+    // first in the DOM so a reader meets "How it ended" before the figures; the ledger column is
+    // ordered to the left of it by the kit (`k-order-first`).
+    const stage = el('section', 'k-stage k-panel sf-crres__stage');
+    const story = el('div', 'k-stage k-stage--scroll sf-crres__story');
+    const ledger = el('div', 'k-hang k-order-first sf-crres__ledger');
+    stage.appendChild(story);
+    stage.appendChild(ledger);
+
+    if (!result) {
+      // No record kept. Say so — a dead player must never be handed a blank plate — and still
+      // offer every way out below.
+      story.appendChild(el('p', 'k-empty sf-crres__empty', 'No flight record was kept for that run.'));
+    }
+
+    for (const id of resultSectionOrder(result)) {
+      const band = el('div', 'sf-crres__band');
+      band.dataset.band = id;
+      // A heading role rather than an <h2>, so the sections read as one column of sentences.
+      const bandTitle = el('p', 'k-caps sf-crres__band-title', sectionTitle(id, result.outcome));
+      bandTitle.setAttribute('role', 'heading');
+      bandTitle.setAttribute('aria-level', '2');
+      band.appendChild(bandTitle);
+      if (id === 'story') renderStory(band, result);
+      else if (id === 'kill_chain') renderKillChain(band, result.defeat, result.death);
+      else if (id === 'last_seconds') renderLastSeconds(band, result.damageTrail);
+      else if (id === 'ledger') renderLedger(band, result);
+      else if (id === 'build') renderBuild(band, result);
+      (id === 'ledger' ? ledger : story).appendChild(band);
+    }
+
+    // The stunt combo band reads the stunt module's combo snapshot in parallel with
+    // survivalResults (PQ-146.01). Absent state or an empty meter renders nothing, so every
+    // plate that predates the meter reads exactly as before.
+    try {
+      const combo = stuntComboFor(ctx);
+      if (combo) {
+        const band = el('div', 'sf-crres__band');
+        const bandTitle = el('p', 'k-caps sf-crres__band-title', 'Stunt combo');
+        bandTitle.setAttribute('role', 'heading');
+        bandTitle.setAttribute('aria-level', '2');
+        band.appendChild(bandTitle);
+        renderCombo(band, combo, result && result.ruleset);
+        ledger.appendChild(band);
+      }
+    } catch {
+      // A combo read failure must never take down the results plate.
+    }
+
+    const bestLine = normalizeBestLine({ ...(result?.bestLine || ctx?.state?.stunts?.combo?.bestLine),
+      seed: result?.seed, recordRules: result?.recordRules });
+    if (bestLine) story.appendChild(renderBestLineReview(bestLine));
+
+    // FB-028: the sheet prints the sim's stunt rows, the kit board, and the streak.
+    // It does not score them. A sheet failure must never take the plate down.
+    if (result) {
+      try {
+        const readings = crucibleSheetReadings();
+        ledger.appendChild(renderResultsSheet(resultsSheetModel({
+          result,
+          kitBoard: readings.board,
+          overconfidenceStreak: readings.streak,
+        })));
+      } catch {
+        // The story and the ledger already stand.
+      }
+    }
+
+    // PQ-160.02: the run as a code, its ghost as a block. Sharing must never take the plate down.
+    try {
+      const shareBand = buildShareBand(result);
+      const cabinetBand = createCabinetEntryBand({ doc: rootEl.ownerDocument || document, result,
+        onSaved: initials => shareBand?.refreshCard?.(initials) });
+      if (cabinetBand) ledger.appendChild(cabinetBand);
+      if (shareBand) ledger.appendChild(shareBand);
+    } catch {
+      // A share-surface failure must never take down the results plate.
+    }
+    rootEl.appendChild(stage);
+
+    // ORRERY §6: a death is read off an instrument -- the ship, what was left of it, the blow from
+    // its bearing, the last hits -- beside the story and the ledger. The kill-chain and last-seconds
+    // rows stay in the plate for the ear (the dial is aria-hidden); the eye reads the dial.
+    this._dial = null;
+    if (ORRERY && result && result.defeat) {
+      const dialHost = el('div', 'sf-crres__dial');
+      dialHost.setAttribute('aria-hidden', 'true');
+      // built detached; it joins the plate only where it can draw (a real layout, SVG). It stands in
+      // the right of the whole plate, beside the title as well as the columns, so it has the height.
+      this._dial = createDeathDial({ host: dialHost, ...deathDialSpec(result, ctx) });
+      if (this._dial.active()) {
+        rootEl.appendChild(dialHost);
+        rootEl.classList.add('has-deathdial');
+        // the run in four figures at the head of the left column; the full ledger stays for the ear
+        ledger.insertBefore(resultFigures(result), ledger.firstChild);
+        // r2: the abbreviated hit legend rides in the dial's caption, where the full legend sits;
+        // the stylesheet shows it exactly where the dial hides its own (a short plate).
+        const hitLegend = abbreviatedHitLegend(result);
+        if (hitLegend && dialHost.querySelector) {
+          const capEl = dialHost.querySelector('.orr-deathdial__caption');
+          if (capEl) capEl.appendChild(el('p', 'orr-crres-hitlegend', hitLegend));
+        }
+      }
+    }
+
+    // .k-corner — the hero number: the best chain (swarm) or the score (gauntlet).
+    const heroSpec = resultHero(result);
+    if (heroSpec) {
+      const corner = el('aside', 'k-corner sf-crres__hero');
+      corner.appendChild(heroBlock(heroSpec.number, heroSpec.word, 'k-hero--hero k-hero--signal'));
+      rootEl.appendChild(corner);
+    }
+
+    // .k-foot — the three ways out, as words.
+    const foot = el('footer', 'k-foot sf-crd-foot');
+    const footWords = el('ul', 'k-words k-words--row');
+    footWords.setAttribute('aria-label', 'After the run');
+    const addWord = (button) => {
+      const li = el('li');
+      li.appendChild(button);
+      footWords.appendChild(li);
+      return button;
+    };
+
+    // The kill-cam's visible SKIP: the fight is playing behind the plate right now, so the
+    // word leads the ways out. After it, the authored still is the picture and stays so.
+    if (result?.stopReason !== 'player_retired' && ctx && ctx.state && killcamStageRequestFor(ctx.state)) {
+      const skipCam = addWord(word('Skip the kill-cam', 'k-word--emph'));
+      skipCam.addEventListener('click', () => {
+        skipKillcamPlayback();
+        // The manager is the steady writer of stageRequest and re-syncs on screen moves;
+        // this screen is the top staged screen naming its own request null, and the
+        // manager re-owns the field on the next transition.
+        const ui = ctx.state && ctx.state.ui;
+        if (ui && ui.stageRequest && ui.stageRequest.scene === 'crucible-killcam') {
+          ui.stageRequest = null;
+        }
+        rootEl.dataset.kStage = 'plate'; // the authored still fades back in
+        if (skipCam.parentElement) skipCam.parentElement.hidden = true;
+      });
+    }
+
+    // FB-086 — one kill recorder: the results replay IS the killcam tape (the staged film above
+    // and its visible Skip). The two-body ring's words retired — the ring flattened the fight to
+    // two dots while the tape played the same five seconds with every hull and round. The result
+    // model keeps `result.killReplay` (survivalResults still records it) until the ring system's
+    // registry retirement lands.
+    // r2: the Lamp rule spans the verb's own words — the verb rides in a span of its own so
+    // the key beside it never inherits the rule. The live text node moves into the span; a stub
+    // DOM with no child text nodes keeps the button's own textContent either way.
+    const againLabel = result && (result.circuit || result.recordRules?.circuit)
+      ? 'Retry seed — choose Circuit in the armory'
+      : 'Run it again — same seed';
+    const againButton = word(againLabel, 'k-word--emph k-word--primary');
+    const againVerb = el('span', 'sf-crres-verb', '');
+    const againFirst = againButton.firstChild;
+    if (againFirst && typeof againButton.removeChild === 'function') {
+      againButton.removeChild(againFirst);
+      againVerb.appendChild(againFirst);
+    } else {
+      againVerb.textContent = againLabel;
+    }
+    againButton.appendChild(againVerb);
+    const again = addWord(againButton);
+    again.addEventListener('click', () => {
+      // INF-010: one explicit retry action — same seed and kit as the run began, deep-copied
+      // so the challenge cannot silently change; replays through the ordinary New Game route.
+      // The round boundary: the kill-cam stops and the last fight's tape goes now (the
+      // run:started listener clears it too — this is the same boundary, named early).
+      try { clearKillcamTape(); } catch { /* the replay is optional */ }
+      const retry = buildCrucibleRetryRequest();
+      if (!retry) {
+        ctx.bus.emit('ui:replaceScreen', { id: 'crucible' });
+        return;
+      }
+      const setup = retry.setup;
+      // Restart is a real New Game: runSession.newGame resets the envelope to inactive, so the
+      // begin below is accepted exactly as it was the first time.
+      // Replay the run as it BEGAN, ruleset included — a swarm death must not restart as a gauntlet.
+      if (setup.dailyDateKey || setup.weeklyMutatorId) {
+        queueSurvivalChallenge({
+          seed: setup.seed,
+          ruleset: retry.ruleset,
+          mutators: setup.weeklyMutatorId ? [setup.weeklyMutatorId] : [],
+          dailyDateKey: setup.dailyDateKey,
+          weeklyMutatorId: setup.weeklyMutatorId,
+          ghostHash: setup.ghostHash,
+        });
+      } else if (setup.ghostHash != null) {
+        queueGhostPlayback(setup.ghostHash);
+      }
+      requestSharedCrucibleRun(ctx.bus, setup, retry.ruleset);
+    });
+
+    // §7.4 — the ways out name where they go: Again (same seed above), the Hangar (the
+    // swarm door IS the hangar — bounty, tracks, zones all live there), or the Main menu.
+    const newSeed = addWord(word(
+      result && result.ruleset === SWARM_RULESET ? 'Back to the hangar' : 'New run',
+      'k-word--emph'));
+    newSeed.addEventListener('click', () => ctx.bus.emit('ui:replaceScreen', { id: 'crucible' }));
+
+    const menu = addWord(word('Main menu', 'k-word--emph k-word--danger'));
+    menu.addEventListener('click', () => {
+      // Same teardown pause uses: main.js consumes game:exitToMenu and returns state.mode to
+      // 'menu', runSession aborts and clears the run envelope.
+      ctx.bus.emit('game:over:dismissed', {});
+      ctx.bus.emit('game:exitToMenu', { source: 'crucible_results' });
+      ctx.bus.emit('ui:closeAll', {});
+      ctx.bus.emit('ui:pushScreen', { id: 'mainMenu' });
+    });
+
+    foot.appendChild(footWords);
+    rootEl.appendChild(foot);
+    if (this._dial && this._dial.active() && result && result.seed != null && again.parentElement) {
+      again.parentElement.appendChild(el('p', 'k-t-fine sf-crres__seed', `Seed ${result.seed}`));
+    }
+    const dialHost = this._dial && this._dial.active() && rootEl.querySelector
+      ? rootEl.querySelector('.sf-crres__dial') : null;
+    if (dialHost && typeof ResizeObserver === 'function') {
+      this._dialSeat = new ResizeObserver(() => seatDialAboveFoot(dialHost, foot));
+      for (const child of [...rootEl.children]) if (child !== dialHost) this._dialSeat.observe(child);
+      this._dialSeat.observe(rootEl);
+    }
+    this._regions = { title: h, story, ledger, foot, again };
+    rootEl.dataset.kReady = '1';
+    if (typeof again.focus === 'function') {
+      try { again.focus(); } catch { /* focus is best-effort */ }
+    }
+  },
+
+  // S14 — the victory variant of this plate: the champion's name in the title, its authored
+  // lesson in the band, the same three ways out. Keep going is the focused word because the
+  // run underneath is still live; Again and Main menu share the ordinary record's wiring.
+  _mountBossMilestone(rootEl, ctx, milestone) {
+    const bossName = String(milestone.name || 'BOSS').toUpperCase();
+    rootEl.dataset.outcome = 'milestone';
+
+    const head = el('header', 'k-head');
+    const h = el('h1', 'sf-crd-title', `${bossName} DOWN`);
+    h.id = 'sf-crucible-results-title';
+    head.appendChild(h);
+    rootEl.appendChild(head);
+    rootEl.appendChild(el('p', 'k-stamp sf-crd-stamp', 'CRUCIBLE / FIRST CHAMPION DOWN'));
+
+    const story = el('section', 'k-band k-band--story');
+    story.appendChild(el('p', 'k-sentence', milestone.line || `${bossName} is salvage.`));
+    if (milestone.lesson) story.appendChild(el('p', 'k-sentence k-t-fine', milestone.lesson));
+    rootEl.appendChild(story);
+
+    const foot = el('footer', 'k-foot sf-crd-foot');
+    const footWords = el('ul', 'k-words k-words--row');
+    footWords.setAttribute('aria-label', 'After the run');
+    const addWord = (button) => {
+      const li = el('li');
+      li.appendChild(button);
+      footWords.appendChild(li);
+      return button;
+    };
+
+    const keepGoing = addWord(word('Keep going', 'k-word--emph k-word--primary'));
+    keepGoing.addEventListener('click', () => ctx.bus.emit('ui:popScreen', {}));
+
+    const again = addWord(word('Run it again — same seed', 'k-word--emph'));
+    again.addEventListener('click', () => {
+      try { clearKillcamTape(); } catch { /* the replay is optional */ }
+      const retry = buildCrucibleRetryRequest();
+      if (!retry) {
+        ctx.bus.emit('ui:replaceScreen', { id: 'crucible' });
+        return;
+      }
+      const setup = retry.setup;
+      if (setup.dailyDateKey || setup.weeklyMutatorId) {
+        queueSurvivalChallenge({
+          seed: setup.seed,
+          ruleset: retry.ruleset,
+          mutators: setup.weeklyMutatorId ? [setup.weeklyMutatorId] : [],
+          dailyDateKey: setup.dailyDateKey,
+          weeklyMutatorId: setup.weeklyMutatorId,
+          ghostHash: setup.ghostHash,
+        });
+      } else if (setup.ghostHash != null) {
+        queueGhostPlayback(setup.ghostHash);
+      }
+      requestSharedCrucibleRun(ctx.bus, setup, retry.ruleset);
+    });
+
+    const hangar = addWord(word('Back to the hangar', 'k-word--emph'));
+    hangar.addEventListener('click', () => ctx.bus.emit('ui:replaceScreen', { id: 'crucible' }));
+
+    const menu = addWord(word('Main menu', 'k-word--emph k-word--danger'));
+    menu.addEventListener('click', () => {
+      ctx.bus.emit('game:over:dismissed', {});
+      ctx.bus.emit('game:exitToMenu', { source: 'crucible_results' });
+      ctx.bus.emit('ui:closeAll', {});
+      ctx.bus.emit('ui:pushScreen', { id: 'mainMenu' });
+    });
+
+    foot.appendChild(footWords);
+    rootEl.appendChild(foot);
+
+    // Mounting the plate IS the acknowledgement — clear the pending stamp so the run's real
+    // end renders the ordinary record instead of a milestone already played.
+    ctx.bus.emit('swarm:bossMilestoneAck', { wave: milestone.wave });
+    this._regions = { title: h, story, ledger: story, foot, again: keepGoing };
+    rootEl.dataset.kReady = '1';
+    if (typeof keepGoing.focus === 'function') {
+      try { keepGoing.focus(); } catch { /* focus is best-effort */ }
+    }
+  },
+
+  onShow() {
+    const r = this._regions;
+    if (!r || !canAnimate()) return;
+    cue('open');
+    // Under reduced motion nothing settles (the kit's settle is a cut); otherwise the title stamps
+    // and the rows settle from the left.
+    try {
+      stamp([r.title], { state: 'crucibleResults:open' });
+      settle(r.ledger, { from: 'left', delay: 60, state: 'crucibleResults:open' });
+      settle(r.story, { from: 'left', delay: 120, state: 'crucibleResults:open' });
+      settle(r.foot, { from: 'bottom', delay: 180, state: 'crucibleResults:open' });
+    } catch { /* motion is cosmetic */ }
+    if (r.again && typeof r.again.focus === 'function') {
+      try { r.again.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
+    }
+  },
+
+  onHide() {
+    if (canAnimate()) cue('close');
+  },
+
+  /**
+   * The manager mounts a screen once and re-shows the cached root on every later push — so a
+   * second results plate would stand on the previous run's DOM. When lastResult's signature has
+   * moved, the plate tears down the same way its dispose() does and rebuilds on the fresh run.
+   */
+  refresh(ctx) {
+    const root = this._root;
+    if (!root) return;
+    if (resultVersion(resultsOwner(ctx)) === this._resultSig) return;
+    this.dispose();
+    this.mount(root, ctx);
+  },
+
+  dispose() {
+    if (this._dialSeat) this._dialSeat.disconnect();
+    this._dialSeat = null;
+    if (this._dial) this._dial.dispose();
+    this._dial = null;
+    // PQ-146 Phase 3: the run is told — the trick callout layer goes with the plate. A retry
+    // re-ensures it from the door or from the next results mount.
+    try { releaseStuntCallout(); } catch { /* release is best-effort */ }
+  },
+};
+
+export const DIAL_FOOT_MIN_INSET_PX = 112;
+export const DIAL_FOOT_GAP_PX = 12;
+
+export function seatDialAboveFoot(dialHost, foot, view = globalThis) {
+  if (!dialHost || !dialHost.style || !foot) return null;
+  const parent = dialHost.offsetParent;
+  const laidOut = !!parent && foot.offsetParent === parent && parent.clientHeight > 0;
+  const top = laidOut ? foot.offsetTop
+    : (typeof foot.getBoundingClientRect === 'function' ? foot.getBoundingClientRect().top : 0);
+  const height = laidOut ? parent.clientHeight : Number(view && view.innerHeight);
+  if (!(top > 0) || !(height > 0)) return null;
+  const bottom = Math.max(DIAL_FOOT_MIN_INSET_PX, Math.ceil(height - top + DIAL_FOOT_GAP_PX));
+  dialHost.style.bottom = `${bottom}px`;
+  return bottom;
+}
+
+/**
+ * The star asks a zone still has open, as short phrases — 'a spotless zone', 'a chain of 18'.
+ *
+ * A cleared zone pays one star for the clear, one for never going down inside it, and one for
+ * the zone's chain target. Until this existed the marks were shown and never priced: every
+ * clean clear banks ★★☆, and neither the results band nor the door's zone row could say what
+ * the third star wanted. Both surfaces now read the same list — the door's zone rec carries
+ * only {stars, bestChain}, and the settle row's chainHit is already the all-time best chain
+ * (prev.bestChain is maxed in by applySwarmLadderResult), so the clean star reads off the
+ * banked count either way: clear + chain is 2, clear + spotless is 2, all three is 3.
+ *
+ * Open asks are only named for a zone that has banked at least the clear (stars 1–2): an
+ * untouched zone already reads as the whole ladder ahead. Pure — same counts, same asks.
+ */
+export function swarmStarAsks({ stars = 0, bestChain = 0, zoneIndex = 0, chainHit = null, chainTarget = null } = {}) {
+  const total = Number.isInteger(stars) ? Math.max(0, Math.min(3, stars)) : 0;
+  if (total < 1 || total >= 3) return [];
+  const target = Number.isFinite(Number(chainTarget)) && Number(chainTarget) > 0
+    ? Math.round(Number(chainTarget))
+    : swarmZoneChainTarget(zoneIndex);
+  const chainBanked = chainHit === true
+    || (Number.isFinite(bestChain) ? bestChain : 0) >= target;
+  // A banked clean star is the middle mark: with the chain paid the count must read 3, without
+  // it 2 — anything less and the spotless star is the open one.
+  const cleanBanked = total >= (chainBanked ? 3 : 2);
+  const asks = [];
+  if (!cleanBanked) asks.push('a spotless zone');
+  if (!chainBanked && target > 0) asks.push(`a chain of ${target}`);
+  return asks;
+}
+
+/**
+ * SWARM-05 §7.4 — the celebration band. Built once per plate from the settled result: the
+ * stars each touched zone now carries (new marks named, the asks still open named too), the
+ * checkpoint the run banked, the bounty into the hangar chest, every unlock the settlement
+ * earned, the NEW BEST stamp, and the next arena's star gate as the goal ahead. Positive copy
+ * only — a quiet run still says what the chest holds rather than what it missed. Null when the
+ * run settled nothing worth a band; the plate then reads exactly as before.
+ */
+export function resultCelebration(result) {
+  if (!result || result.ruleset !== SWARM_RULESET) return null;
+  const lines = [];
+  const delta = result.ladderDelta && typeof result.ladderDelta === 'object' ? result.ladderDelta : null;
+  const zones = delta && delta.zones && typeof delta.zones === 'object' ? delta.zones : {};
+  for (const key of Object.keys(zones).sort((a, b) => Number(a) - Number(b))) {
+    const row = zones[key];
+    const total = Math.max(0, Math.min(3, Number.isInteger(row && row.stars) ? row.stars : 0));
+    const gained = Math.max(0, Number.isInteger(row && row.gained) ? row.gained : 0);
+    const zoneIndex = Number(key) || 0;
+    const zone = swarmZoneFor(swarmCheckpointStartWave(zoneIndex));
+    const marks = '★'.repeat(total) + '☆'.repeat(3 - total);
+    // The asks still open ride the marks: the settle row's chainHit is already the all-time
+    // best chain, so a ★★☆ line can finally say the third star wants a chain of N.
+    const open = swarmStarAsks({ stars: total, zoneIndex,
+      chainHit: row && row.chainHit === true ? true : null, chainTarget: row && row.chainTarget });
+    lines.push(`${zone.name} — ${marks}${gained > 0 ? ` · ${gained} new` : ''}`
+      + `${open.length ? ` · still to earn: ${open.join(' and ')}` : ''}`);
+  }
+  if (delta && delta.newCheckpoint) {
+    const cp = delta.newCheckpoint;
+    lines.push(`Checkpoint banked — the next run can open at Round ${cp.startWave}`
+      + (Number.isFinite(Number(cp.purse)) ? ` with a ${cp.purse} cr purse.` : '.'));
+  }
+  const banked = Number.isFinite(result.bankedBounty) ? result.bankedBounty : null;
+  const chest = Number.isFinite(result.hangarBounty) ? result.hangarBounty : null;
+  if (banked != null && chest != null) {
+    lines.push(banked > 0
+      ? `${banked} cr banked into the hangar — the bounty now stands at ${chest} cr.`
+      : `The hangar bounty stands at ${chest} cr.`);
+    if (result.outcome === 'defeat' && result.stopReason !== 'player_retired') {
+      lines.push('Defeat banks 50% of the remaining run purse, including its starting funds.');
+    }
+  }
+  const unlocks = Array.isArray(result.unlocksEarned) ? result.unlocksEarned : [];
+  for (const row of unlocks) {
+    // The settled list is ids; an older or hand-shaped row may already carry its label —
+    // either way the player reads the name, never a raw shape.
+    const id = typeof row === 'string' ? row : row && (row.id || row.defId);
+    const named = row && typeof row === 'object' ? (row.label || row.name || null) : null;
+    const entry = typeof id === 'string'
+      ? SURVIVAL_UNLOCK_CATALOG.find((row2) => row2 && row2.id === id)
+      : null;
+    const label = (entry && entry.label) || named || (typeof id === 'string' ? id : null);
+    if (label) lines.push(`Unlocked — ${label}.`);
+  }
+  // SWARM-06 §8 — the crossover proof: the run just earned a hull Adventure can sell. It
+  // reads beside the unlocks, in the crossover row's own words.
+  const crossover = Array.isArray(result.crossoverEarned) ? result.crossoverEarned : [];
+  for (const id of crossover) {
+    const entry = SWARM_CROSSOVER_CATALOG.find((row) => row && row.id === id);
+    lines.push(`Proven — ${entry ? entry.name : id}. ${entry ? entry.blurb : 'Adventure shipyards will sell it.'}`);
+  }
+  // SWARM-06 §4.3 — the loadout that rode the run. The door's pick is what the begin stamp
+  // carried, so the plate names the same two slots the wager ran under.
+  const perks = Array.isArray(result.perks) ? result.perks : [];
+  if (perks.length) {
+    const names = perks
+      .map((id) => (SWARM_PERKS.find((row) => row && row.id === id) || {}).name || id)
+      .join(' + ');
+    lines.push(`Loadout — ${names} rode the run.`);
+  }
+  // SWARM-06 §6.4/§8 — the wager's payout and the challenge purses the run claimed, in
+  // bounty the hangar actually banked.
+  if (Number.isFinite(result.threatBountyBonus) && result.threatBountyBonus > 0) {
+    const threatNames = Array.isArray(result.threats)
+      ? result.threats.map((id) => (SWARM_THREAT_BY_ID[id] || {}).name || id).join(' + ')
+      : '';
+    lines.push(`Threat wager paid — ${threatNames ? `${threatNames} added ` : ''}+${result.threatBountyBonus} cr bounty.`);
+  }
+  const challenges = Array.isArray(result.challengeRewards) ? result.challengeRewards : [];
+  for (const row of challenges) {
+    const label = row && row.kind === 'weekly' ? 'Weekly challenge' : 'Daily challenge';
+    const bounty = Number.isFinite(row && row.bounty) ? row.bounty : 0;
+    if (bounty > 0) lines.push(`${label} claimed — +${bounty} cr bounty.`);
+  }
+  // The goal now ahead: the next arena's star gate off the settled profile — a settled
+  // read, never the door's own guess.
+  try {
+    const profile = loadCrucibleMeta();
+    const stars = swarmLadderStarTotal(profile && profile.ladder);
+    for (const arenaId of SWARM_LADDER_ARENA_ORDER) {
+      const gate = SWARM_ARENA_STAR_GATES[arenaId];
+      if (!Number.isInteger(gate) || stars >= gate) continue;
+      const arena = survivalArenaById(arenaId);
+      const name = arena && (arena.label || arena.name);
+      if (typeof name === 'string' && name) lines.push(`${name} opens at ${gate} stars — ${gate - stars} to go.`);
+      break;
+    }
+  } catch { /* the profile read is optional */ }
+  if (!lines.length && !result.bestLineId) return null;
+  const band = el('div', 'sf-crres__band sf-crres-celebrate');
+  const bandTitle = el('p', 'k-caps sf-crres__band-title', 'The take');
+  bandTitle.setAttribute('role', 'heading');
+  bandTitle.setAttribute('aria-level', '2');
+  band.appendChild(bandTitle);
+  if (result.bestLineId) {
+    band.appendChild(el('p', 'k-caps sf-crres-celebrate-stamp', 'NEW BEST'));
+  }
+  for (const line of lines) {
+    band.appendChild(el('p', 'k-sentence sf-crres-celebrate-line', line));
+  }
+  return band;
+}
+
+/** The run in four figures, for the head of the plate beside the death dial. */
+function resultFigures(result) {
+  const swarm = result.ruleset === SWARM_RULESET;
+  const reached = Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 0);
+  const figures = [
+    ['Wave', String(reached || 0)],
+    ['Kills', String(result.kills || 0)],
+    swarm ? ['Best kill chain', String(result.bestChain || 0)] : ['Score', String(result.score || 0)],
+    ['Run purse', `${result.credits || 0}`],
+  ];
+  const box = el('div', 'orr-crres-figures');
+  for (const [word, value] of figures) {
+    const fig = el('p', 'orr-crres-figure');
+    fig.appendChild(el('span', 'orr-crres-figure__n', value));
+    fig.appendChild(el('span', 'orr-crres-figure__w', word));
+    box.appendChild(fig);
+  }
+  const rest = [swarm ? `Score ${result.score || 0}` : null, `Level ${result.level || 1}`, `${result.xp || 0} xp`]
+    .filter(Boolean).join(' · ');
+  box.appendChild(el('p', 'k-t-fine orr-crres-figures__rest', rest));
+  return box;
+}
+
+/**
+ * What the death dial draws, in the plate's own words: the kill chain, what was left, the last hits.
+ * DOM-free; the dial only lays it out.
+ */
+export function deathDialSpec(result, ctx) {
+  const defeat = result && result.defeat;
+  if (!defeat) return {};
+  const vitals = defeat.vitalsPct && typeof defeat.vitalsPct === 'object' ? defeat.vitalsPct : {};
+  const trail = Array.isArray(result.damageTrail) ? result.damageTrail : [];
+  const breakdown = damageBreakdown(trail);
+  const death = result.death && typeof result.death === 'object' ? result.death : null;
+  const rows = new Map(killChainRows(defeat, death));
+  const leadIn = deathLeadInRow(defeat, death);
+  const player = ctx && ctx.state && ctx.state.player;
+  const ships = Array.isArray(player && player.ownedShips) ? player.ownedShips : [];
+  const index = Number.isInteger(player && player.activeShipIndex) ? player.activeShipIndex : 0;
+  return {
+    hullId: result.hullId || (ships[index] && ships[index].defId) || null,
+    direction: defeat.direction || null,
+    vitals: [['Shield', vitals.shield], ['Armour', vitals.armor], ['Hull', vitals.hull]]
+      .filter(([, v]) => typeof v === 'number' && Number.isFinite(v))
+      .map(([word, value]) => ({ word, value })),
+    hitAmounts: trail.map((e) => Number(e && e.amount)).filter((n) => Number.isFinite(n) && n > 0),
+    hitWeapons: trail.filter((e) => Number.isFinite(Number(e && e.amount)) && Number(e.amount) > 0)
+      .map((e) => weaponDisplayName(typeof e.weaponId === 'string' ? e.weaponId : null)),
+    hitGroups: breakdown.rows.map((r) => ({ weapon: r.weapon, hits: r.hits, amount: r.amount })),
+    hitSummary: breakdown.hits ? `Last ${breakdown.hits} hit${breakdown.hits === 1 ? '' : 's'} · ${breakdown.total} damage` : '',
+    engraving: Number(result.deepestWave || result.wave) > 0 ? `Wave ${Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 0)}` : '',
+    caption: {
+      label: 'Killed by',
+      name: rows.get('Killed by') || 'Unidentified attacker',
+      detail: [rows.get('Its weapon'), rows.get('It came from'), rows.get('It got in')].filter(Boolean).join(' · '),
+      warn: leadIn ? `${leadIn[0]}: ${leadIn[1]}` : '',
+    },
+  };
+}

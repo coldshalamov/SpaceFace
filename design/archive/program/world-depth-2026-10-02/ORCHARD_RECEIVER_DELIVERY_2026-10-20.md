@@ -1,0 +1,300 @@
+# Orchard receiving tender: finite buyer leg
+
+20 October 2026. Work in progress, not accepted or published. P01 normal-shift continuation, not whole P01/P02 completion.
+
+Reproducer: the original receiving tender only held position while its finite manifest filled to 48. No buyer leg existed, so ordinary work stopped permanently when it filled. The existing Hydrogen commodity explicitly lists trade_hub as a consumer; station_tethys is the existing Tethys Trade Hub. No new buyer, character, hull, player reward or inventory is introduced.
+
+Candidate: after a physical collector handoff, that same tender flies its real gas to an exterior approach at the existing buyer, settles through economy.applyFreightDelivery's persisted receipt authority, returns physically to the original berth, and enables the original collector's next shift. Shared Flight V3 and planetary fields remain authoritative. The collector waits while its tender is away, including retained residency records. Foreign job ownership wins.
+
+The existing freight journal gains an optional synchronous custody handshake before accepted stock/publication. Ordinary mission callers keep existing behavior. New finite owner validates exact stable identity, current manifest, actual physical arrival and exact accepted lines. A transient journal-scoped reservation rejects reentrant attempts during the handshake. Matching receipt replay never debits the hold twice. No generic ambient manifest is minted at delivery.
+
+Initial focused checks: new 15/15, adjacent original normal-work/freight-journal 15/15. Full-production native proof is pending. Its first observer attempt failed because the receiving tender legitimately shelved while following the collector. This is not native arrival success. The observation harness is being updated to read retained records, without pinning workers, removing obstacles, changing forces or nudging participant poses.
+
+Independent review is in progress. Early review identified and corrected persistence-before-receipt partial custody loss, retained-away tender chase, and cached stable-ID reuse. Explicit regressions, full-production route/Continue evidence, actual new visual evidence and exact-public validation remain required. No whole-game, browser or device-performance acceptance is claimed.
+
+
+## Development proof and retained failures
+
+Current focused suite: 31/31, also 31/31 against immutable public-base candidate 243357888c19c30e8c29e80993e4d00b3e29a0a0. This includes reentrant/duplicate/conflicting receipts, callback and manifest-setter rejection/throw, persistence failure, derived-price refresh throw, true world serialization inside the accepted observer, finite geometry, cached identity, commit-time station changes, and retained-away waiting. Canonical deterministic 47a compare reports ok=true and deterministic=true; feel regression 3/3. Adjacent 36 cases had one sparse asset ENOENT; restoring the exact existing public GLB/motion bytes made that case pass independently.
+
+The first full production route stalled at radius 981 because the existing fractional throttle ceiling prevented accepted field compensation from using available ordinary thrust. Removing only that redundant cap preserved maximum throttle 1, authored speed and braking. A real subsequent route observed initial handoff at 110.75s, accepted buyer custody at 229.58s, physical return and original collector outbound at 360.35s. This observation alone does not establish collision clearance.
+
+A continued route then found -0.43073 WU contact with the waiting collector on the tender's return. The candidate now physically moves that waiting collector to a bounded exterior lay-by with the existing flight owner. It does not snap positions or disable collisions. A fresh Continue run additionally found -0.25030 WU contact into native body 129 near the buyer, while the tender remained at hull 200/200. The target was no longer in entityList after that tick; its native-owner classification is pending. No route-clearance claim is made while this investigation and the lay-by proof remain incomplete.
+
+Private recovery includes a verified 471350-byte unaccepted WIP archive, SHA256 8c121f3a33f012931e90bd406826c8910c8fe9cd422e1c1fb7a505889af1e588, with source, observed outbound save, successful phase trace, and failed-contact traces. Subsequent source guards and diagnostic capture are newer than that archive and will be preserved at seal.
+
+
+## Route acceptance boundary, recorded before final proof
+
+The whole native route must have no authored-static or original collector/tender pair penetration beyond the solver tolerance of 0.05 WU. Every actual dynamic traffic/aftermath contact is retained separately with its actual native owner/type, normal, impulse, velocity, hull and cargo before/after. Unknown contact owners fail classification. This is not a collision-free or hazard-immunity claim. A drifting Pelican aftermath wreck produced -0.10879 WU contact in a retained failed attempt while the tender still had hull200/200 and its original1u; the world remains free to create and move that wreck.
+
+The buyer handoff is exterior freight custody, not player docking or a dock-permission grant. It uses the existing trade-hub manifest corridor mouth (13217.539,8587.859). The tender first physically settles within8 WU and speed8 at the outward perpendicular of that existing corridor's1.3× orbit radius (13358.617,8728.599), then flies the direct mouth chord at authored speed35. Independent201-point native-collider projection against all26 fixed admitted owners finds Parts Rack the nearest local fixture: surface distance43.676 WU, leaving17.676 WU after18 WU hull and8 WU settling tolerance. The moving local orbit carrot was rejected because its chord crosses that rack. The original mouth-derived outer planet arc radius is retained; expanding it for the ingress hit the Nereid gate and that failed trace is preserved. Nominal return arc audit clears fixed owners. These sampled geometric checks are not substitutes for the final full-production native dynamics/Continue proof.
+
+## Exact-public interruption found, 21:48 UTC
+
+The final-source candidate 34f124a30cf414d4842a06cb222abcded97f1ce5 did NOT pass. It reached settled buyer ingress with zero cargo and no accepted receipt. A bounded replay from its actual unedited outbound save isolated the first change at tick19667, sim327.783333: existing traffic panic_jettison by receiver118 after threat484 produced actual pod487 holding exactly1 hydrogen. Its manifest remained the same finite lot. This was not Continue corruption, stock settlement, hull damage or unexplained disappearance. The old empty delivery remained stuck, exposing a real interruption liveness defect.
+
+The correction leaves combat/panic behavior intact. Empty delivery retires its trip generation once and physically returns without any buyer receipt, stock or delivered-quantity credit. A subsequent real handoff starts a new manifest/lot rather than retaining the prior empty lot. Partial spills remain eligible to sell only their actual remainder. Existing pod pickup cannot also earn the NPC sale. The original-worker metadata binding repairs only authored name/named/trafficLabel and its existing traffic row's stable record key after residency; it does not restamp generic AI, reset jobs/routes, create bodies or pin residency. Delivery itinerary names Tethys so the existing spill owner tells the correct destination story. The existing Hail surface says empty hold on an aborted return.
+
+Exact-public candidate7f7b195 physically returned from the actual spill pose at sim374.533333 and resumed the original collector. This is diagnostic interruption evidence only: it predates the metadata fix, and still must prove a successful finite buyer leg followed by physical home return and another handoff. Native acceptance now checks every step that acquired receiver quantity equals its current hold plus exact accepted quantity plus quantity transferred into actual spill pods, with snapshots verifying those pods. Static/pair contact checks apply to interrupted returns too. No successful final native route, final visual acceptance or public PR is claimed yet.
+
+Latest private recovery at21:47 includes34f124 source, its actual public outbound save and failed zero-hold ingress:563878 bytes, SHA25627ea3c1578b96f72ff476e48cd0c36ac9a318dbe07c7d085b3690a21842f1c55, independently materialized and byte-verified. It is explicitly unaccepted.
+
+## Frozen candidate and local checkpoint, 21:57 UTC
+
+Runtime source and tests are frozen as immutable public projection ecac524e4b302d790726c28d1a914ec8fca5c8ff. Exact-public focused38/38 passed on the same source before only periodic native diagnostics were added. Independent review found no new source blocker and audited11 possible forecourt abort starts; minimum remaining static clearance17.737 WU after18 WU hull and8 WU start tolerance. The actual panic pose's first return chord has no nearby admitted fixed-native obstacle. This supports validation, not route acceptance.
+
+The full fresh production native route, Continue, far-residency roundtrip, actual panic consequences, buyer custody, home return and subsequent handoff are running in session20711. Log: /tmp/anvil-receiver-final-ecac.log. Evidence folder: orchard-receiver-delivery-20261020/final-ecac. Every30 simulated seconds logs actual hull, heat, live/retained status, post-authority intent, accepted field acceleration and native force. Original collector death and unexplained custody loss fail immediately. The900-second bounded observation budget has not been extended. Successful native completion remains pending.
+
+Latest private recovery is orchard-receiver-unaccepted-wip-2154.zip,624232 bytes, SHA25681a108f302392b89352296343c73eccdfbd1f74be94120c8934893bb835fe78a. It contains the current interruption/metadata source, actual panic event and pod, pre-fix zero-hold failure, qualified interrupted-return trace and focused38 results. Library materialization was byte-verified. This local checkpoint is explicitly WIP; no public source ref or PR has been created for this unit.
+
+## Dione gate obstruction is a blocking ordinary-route defect
+
+The ecac run is stopped as diagnostic (exit130), not accepted. Periodic evidence exposed a collector clear-band plateau from roughly60–210s before eventual escape. A separate bounded65-second exact-public full-factory probe confirms the actual authored Gate → Dione Lane native owner99: at49.05s contact penetration1.987 WU/impulse30.70; at52.05s penetration3.800 WU/impulse23.99; collector hull fell200→136.68 by53.05s. This is real obstructed work, not an insufficient-force or sleeping-body explanation. No thrust/stat/collision immunity adjustment is justified.
+
+A second bounded probe captured the exact clear-band transition before impact at44.733333s: position15079.0117/6423.1400, velocity-59.7749/-37.3302, heading1.85222; actual gate contact separation was still positive2.01261 WU. Both probes preserve full actor/native owner/contact evidence. Direct-home and current-angle-minus0.22 chords from the already lodged plateau fail actual fixed-native geometry, so they are not accepted fixes. Audit is now limited to an authored exterior home-side egress from the real pre-impact transition, before source changes.
+
+The next native fixture observes collector contacts throughout work, not just while it waits at berth, and preserves collector phase snapshots even when the receiver is legitimately shelved. This closes the evidence gap which let the old worker's gate collision go unnoticed. The receiver panic-return/finite custody correction remains intact and separately observed. Local checkpoint a88e181e75de10ecf5b4d53a13c2b479930384f1 is WIP only; whole district and final route acceptance remain open.
+
+## Minimal collection-arc correction, 22:13 UTC
+
+Rejected candidate913420d changed only the exit toward a southern waypoint, but its every-tick native probe failed at44.10s while still collecting, before the44.733s exit transition. Thus changing only egress was too late. Its source and failure remain preserved. The extra helper was removed entirely, including its reviewed opposite-limb chord bug.
+
+Chosen candidate88d3c27cac543f064c83b2248dfd189322d0ea09 changes only the collection carrot from+0.22 to−0.22 radians, using the open clockwise shallow band. Original radial clearance and original outer return remain. The same target is passed to both local weather lookahead and steering. An exact-public all-fixed audit over clockwise angles0→−1 and radial radius980→2800 finds minimum371.41 WU surface distance,353.41 WU after18 WU hull envelope. This is sampled geometry, not a claim about all possible worlds.
+
+The exact-public65-second native trial then passed with zero collector static contacts, full hull200/200, actual1u harvested gas and physical outward progress to16067.961/4626.801. The final fixture now observes both original actors' contacts throughout all phases, including a collector-only pose trail when the tender is shelved. Earlier fractional-force-cap evidence is separate: it mathematically suppressed accepted force compensation; the later remaining public plateau was proven Dione collision. No additional force/stat/sleep changes were made for this geometric correction.
+
+Requested weather, Continue/rematerialization and motion contracts were rerun once with the39 receiver/route-focused cases.57 passed initially; two failures were solely missing exact-public files in the validation loader's virtual filesystem, not failed behavioral assertions. Materializing the existing render package, GLB, motion bank and main.js directly from the immutable public tree allowed the affected9 cases to pass. No weather fixture coordinates or assertions changed. Full fresh buyer/return proof and old actual outbound-save panic compatibility remain pending before publication.
+
+## Original-pair service departure failure, 22:23 UTC
+
+Exact-public137bdeb283152e3bf75e0b5d38ddfe6df2fb766e completed39 focused cases but failed the native route at tick31519 (~525.3s): original tender119/collector113 penetration0.272209 WU, impulse34.266. The first healthy1u collector handoff at119.4667s survived Continue and real far residency, then the actual tender panic-jettisoned its1u pod and physically returned without credit. The subsequent collector weather retreat returned empty at523.5s, entered berthed within the old72 WU radius from the tender's outer side, then launched inward through it. This is a forbidden original-pair collision, not an unrelated moving hazard. No accepted buyer receipt occurred; the900-second budget was not reached or extended.
+
+Receiving brake-only behavior also let residual tender velocity drift its berth roughly33 WU. Diagnosis is a missing physical service/departure corridor and bounded station-keeping, not a force or collision-policy problem. A settled inner-side service point alone cannot repair arbitrary outer-side returns: its direct chord from the captured pose crosses within7.4 WU of tender center. A bounded side approach is under independent geometry review before implementation. Full and empty returns must use the same truthful physical admission; no timer, expanded transfer radius or pair exclusion is accepted.
+
+The full failed route, actual outbound save, progress/contact snapshots, terminal log and prior complete source recovery are preserved in orchard-receiver-unaccepted-wip-2223.zip,1305789 bytes, SHA2567224a0b73a28c18cabcad026c82ad19b3b6dbf201ed9d97319b7e799bb053d7b. Library materialization is byte-verified. Local90f95 remains WIP. No public PR or whole-district acceptance is claimed.
+
+## Bounded physical service corridor, 22:31 UTC
+
+Candidate30d9dc61ae40fdb64061e5b7157a2e50d466cc93 adds one shared finite-pose service admission:60 WU inward of the actual tender,12 WU arrival tolerance and existing8 WU/s relative-speed limit. Both full transfer and empty return require it, as does departure from berthed. Outer-side arrivals first clear sideways while preserving their radial coordinate, cross into the inner lane only beyond120 WU lateral separation (target160), then settle at the inner point. Receiving tender uses ordinary home station-keeping (reach8,speed20) instead of brake-only drift. No pose, velocity, collision, cargo or hazard override was added. Exact-public44 focused and12 existing normal-work/residency cases pass.
+
+An explicitly artificial full-production-factory diagnostic initializes each original actor once to the captured523.5s failure precursor pose/velocity, then leaves movement entirely to native production systems. Timestamp and exact pose assertions disambiguate it from the earlier119.47s berth snapshot. Empty return/departure, a focused2u full return and outer lay-by resumption all physically complete (62,65,41 simulated seconds respectively), with both hulls200 and no authored-static/original-pair contacts. This isolates the corrected corridor; it is not fresh-route acceptance. An earlier accidental first-matching-frame diagnostic also passed but is preserved separately as first-handoff geometry, not failure reproduction. The final ordinary fresh route on immutable public source remains required before publication.
+
+## Buyer ingress braking sweep, 22:37 UTC
+
+Fresh690452 ordinary route failed at tick15837/sim263.95 before ingress settlement: native Parts Rack132, penetration0.062730 WU, impulse39.938. Tender remained alive at hull200 with its actual1u; no buyer receipt or cargo loss. Service handoff at148.933s, Continue and far custody passed. At250.067s the tender was13778.269/8916.864 moving54.90 WU/s; at impact it was13294.462/8723.886,64.37 WU west of the ingress target, already turning back east. Thus the unproven arc→ingress braking sweep overshot into authored scenery. The previously audited physically settled ingress→mouth chord is not implicated. A targeted replay from the actual unedited outbound save is recording the transition and per-tick dynamics before selecting a terminal-speed/braking correction. No authored fixture is moved, contact waived or global force parameter changed.
+
+## Verified terminal ingress correction, 22:42 UTC
+
+The unedited690452 outbound-save replay reproduced the exact impact and identified the direct-ingress switch at239.5s, position14355.2245/8965.5121, velocity−54.9045/+1.1828, about1024 WU from ingress. Old55-speed capture first braked only136.84 WU away and resumed thrust while turning with residual lateral momentum. The correction preserves outer cruise55 and all geometric points, but selects terminal20 on that existing long direct-ingress segment. All other steerOutsideBand callers retain their prior speed by default; ingress8/speed8 admission and saved flag are unchanged.
+
+On candidate1b418 runtime (identical to f22f runtime), replaying the same actual save and far roundtrip reached the same exact239.5s transition, then physically settled at289.433s within7.966 WU and2.913 WU/s. The direct mouth approach produced the authoritative Tethys1u receipt at297.567s, with hull200, actual hold0, sequence1 and return_berth. No native contacts were observed throughout the recorded forecourt trajectory. The actual full transition save and every near-forecourt tick are retained. The focused test explicitly proves terminal20 braking and unchanged outer55 cruise. This is real continued-route buyer proof, not yet the final fresh whole-cycle result; its own home return, original collector resumption and next finite handoff remain required.
+
+## Curved accepted-return obstruction, 22:52 UTC
+
+Fresh4415 completed the actual1u Tethys sale at297.567s, then its own return failed at346.183s/tick20771 against Gate → Nereid Shoal98. Penetration0.210442 WU and impulse57.376 caused hull200→188.48. Actual radius2933.479 was25.57 WU outside the planned2907.912 arc at52.89 WU/s. This actual turning sweep invalidates an inference of safety from the nominal static centerline alone. The failed fresh sale/return remains intact, separately preserved.
+
+The minimal58ad/631629 runtime correction sets only the curved receiver return to35 WU/s, retaining its clear final home straight55, outgoing arc55 and buyer terminal20. Geometry, forces, damage and hazards are unchanged. A focused test distinguishes return bend braking from straight cruise. The next trial uses the known unedited690452 outbound envelope with the full native conservation/contact fixture through sale, physical home, original collector resumption and another real handoff. Accepted-return saves now require receipt identity matching sequence, deliveredQty matching accepted quantity and interruption=null before writing.
+
+An attempted diagnostic from an intermediate239.5s Continue envelope legitimately panic-jettisoned before sale, producing empty_load/deliveredQty0. Its return is NOT accepted-return evidence, despite the preliminary checkpoint filename. That provenance error was corrected immediately and the interrupted trace retained separately. No source, cargo or hazard was modified to force the desired story. Current631629 continued-route proof is running; final fresh complete proof and publication remain pending.
+
+### 23:07 UTC: real accepted-return exit and original district orbit (unaccepted)
+The actual accepted1u save from631629 was replayed with593bb runtime. Explicit reverse service chord settled at312.6s, tender physically returned473.6, collector resumed503.6. No authored-static/original-pair penetration exceeded solver tolerance. First new weather pass returned empty; second acquired3u and was physically returning at746.6 when the450-relative-second probe ended, so its required next-handoff assertion failed. Do not label this complete. Tender hull200; collector168.44 after real dynamic asteroid522, Hornet538 and Hull Debris540 contacts, all retained in return-exit2800-593bb.json. No hazard immunity or cargo replacement.
+The previous buyer-derived2907.912 return orbit was unsafe even at35 speed. Actual44-owner audit gives original2800 orbit139.73WU gate-surface clearance and2840 tracking envelope99.73, versus31.82 on old nominal orbit. Explicit low-speed reverse chord settlement is required before joining2800. This is not an arbitrary small radius pad.
+Current53c86 focused50/50 pass, including real Continue before/during/after exit and replayed receipt. Exit migration now requires reached-ingress or missing-marker legacy accepted state, plus nearby forecourt; explicit pre-ingress false cannot be inferred from proximity/prior sale.54 observed pre-ingress abort chords independently clear18hull+30tracking by33.35WU minimum; no claim for arbitrary foreign poses. Earlier global test-helper ingress marker made two fixtures prematurely sell; preserved failed log, corrected only explicit legacy test setup, not production admission.
+Remaining: finish accepted-save replay to original absolute900s bound (no terminal save from450-relative probe), then final fresh exact-public ordinary route, independent approval, same-run visuals and draft PR. Global P01/P02/world goals remain open.
+
+### 23:29 UTC: observer contamination isolated; bounded proof resumed
+The extension of the actual accepted-return replay failed original-pair contact at794.3s, but its observer fixture had first relocated the player onto the tender at763.6s (−10.47WU, impulse20187). That forced displacement invalidates the later pair contact as evidence of a runtime recovery defect. No speculative service speed gate was added. The original failure and traces remain preserved.
+The fixture now measures the compiled observer hull against every admitted non-sensor native collider, including owners absent from entityList, and uses a two-second relative-velocity Rapier shape sweep plus32WU clearance. Original retained-worker bounds remain. Crossing/near-miss regressions distinguish a real swept intersection from an excessively conservative speed-radius disk. Any actual observer/participant penetration or impulse immediately fails, because acceleration and rotation are not predicted by the translational sweep. Only observer relocation is allowed; workers, scenery, damage, cargo and hazards remain production-owned.
+The interrupted immutable a98fcf replay had no terminal result. It resumed from its genuine accepted-return envelope. The metadata playtime296 was not the actual restored simTime297.5667; the requested604-relative-second diagnostic budget could have exceeded900 by1.5667 if exhausted. Its actual next finite handoff occurred before771, safely within900. The final fresh proof likewise now counts its inner residency steps toward that same absolute bound. These controlled observer relocations validate worker native physics and Continue, not an ordinary player-flown route or live visual acceptance.
+The prior collector damage is retained: encounter rock522 was moving19.46WU/s before its first collision impulse, followed by Hornet538 and Hull Debris540. This is a genuinely drifting encounter-terrain hazard, not renamed traffic. A separate baseline issue remains open: terrainAnchors describes anchored intent, while physicsAuthority admits small non-landmark rocks as dynamic. Those baseline source blobs are unchanged by this increment. The damaged original collector still must complete a real finite handoff; no hull refill, cargo refill, omission, immunity or collision-free claim is permitted.
+
+
+### 23:44 UTC: preserved finite handoff, fresh survival failure and import fix
+The a98 resumed accepted-return diagnostic completed a real2u transfer from original collector113 to original receiver119 before771s. Terminal state confirms collector alive, hull179.851, empty hold; tender alive, hull200, receiving2u. Its206 contacts were197 with newly spawned encounter terrain535 and9 with its own debris540, with no fixed/pair/player contacts. This is NOT the earlier drift522 evidence:535's first deep contact was694.700, one tick after its inferred694.683 spawn, depth−2.801 and impulse5091.94. Unchanged terrainAnchors blob5e39285cc5ff2eced85f5aa031ba7be6fb3a2c91 spawns at zero velocity with900s TTL and its ordinary random placement lacks actor-clearance admission. Initial overlap versus the immediately following movement sweep remains unproven without spawn geometry. Record this separate baseline encounter-placement defect, not collision-free navigation or a retroactive drift exception.
+The fresh immutable0666 route completed harvest, finite buyer sale, Continue, distant residency, physical home and collector resumption, but failed the original collector alive assertion at tick40344 (~672.4s) before its next handoff. Its last live sample at670.083 was outbound, hull200; the failed read fell back to a retained berthed record. No cause is asserted yet. The actual accepted-return save and checkpoints are retained. A bounded replay preserves the original observer cadence and captures live/retained records, events and terminal state. The public test now also saves terminal state in finally on future success/failure; this cannot recover the already missing failure state.
+Independent adjacent validation found a real standalone contactHail import regression: the new anvilWork import of FlightV3's scalar pulled a scanner/contactHail initialization cycle. The fix keeps exactly1.3 as a named local buyer-orbit constant, removes that heavy dependency, and tests geometric parity against the existing FlightV3 value plus a separate-process standalone hail import. Candidate03cf focused55/55 and hail contracts21/21 pass. Earlier0666 native evidence is explicitly pre-import-fix, not an identical source-blob claim. Geometry and steering numbers are unchanged, independently reviewed. Complete fresh survival/second-handoff proof and draft publication remain pending.
+
+
+### 23:58 UTC: real destruction branch isolated, acceptance still blocked
+Fresh immutable85ad reproduces the0666 failure at672.4s/tick40344. The original collector113 actually dies: entity:killed identifies security Hornet514, cause ship_collision, impactDamage185.856, deltaV40 and exchangedMomentum2200. The immediately preceding collector hull185.3728 falls to0; native contact is−6.7143WU with impulse31568.854. Hornet514's SCN jurisdiction-enforcement pursuit is targeting nemesis493, not the collector. The original world record truthfully becomes destroyed; its retained berthed phase and stale hull200 are not a living ship or a resurrection permission. No death, collision, encounter or customs behavior was suppressed.
+The actual fatal terminal save was Continued for30 additional native seconds,672.4→702.4: original collector stays absent and durably destroyed, original collector hold0, tender hold0/deliveredQty1, exact original1u freight receipt unchanged, and zero new handoff or Anvil acceptance events. No replacement actor, phantom harvest, duplicate settlement or cargo refill was observed. The independently saved-return replay's successful2u next handoff belongs to a different continued world and does not satisfy this fresh-run survivor gate.
+Current exact85ad focused55/55 and03cf adjacent72/72 are green. The strict full-production native survival/next-handoff test is deliberately still failing and remains an acceptance blocker. Source55/72 evidence, the first native trip/Continue/far-residency/home proof, actual saved-return handoff and explicit destruction branch support a coherent reviewable draft, not a ready-to-merge or whole-game completion claim.
+The existing combat ManeuverPlanner includes ship collision avoidance, but passive civilian freighters intentionally skip that combat planner; no standard civilian yielding helper was found for the bespoke worker owner. A new intent-only predicted-crossing yield, if pursued, needs bounded crossing/moving-away/stationary cases and unchanged finite custody before another whole route. No global planner, force change, immunity, geometry move or revival is included here.
+
+Reproduce focused checks with node --test --test-skip-pattern='full production native receiver' test/anvil-receiver-delivery.test.mjs. Run the strict native gate with node --test --test-name-pattern='full production native receiver' test/anvil-receiver-delivery.test.mjs and ANVIL_RECEIVER_EVIDENCE_DIR set to a writable evidence directory. Its failure-safe captures retain raw terminal participants, silent record before/after fields, nearby native owners, lifecycle events and a genuine terminal save. Native evidence source tree85ad7728bc29721759a0845c2a54c9d8820fae3b; final documentation updates do not alter its source/test blobs.
+
+### 2026-10-21 00:11 UTC: published draft and bounded predictive yielding
+Draft PR #480 preserves the previous seven-path increment at verified remote commit 0dd9c9a04ce70d9064e81226aa5c78ed0c93ae83, tree 472e7cdf1bc309006c3a9ee3214be526861b2b29, sole public parent e38eb86f4b7bc6273167aed7680abdbbf3a41272. It explicitly retains the failing native survivor gate and is not accepted. Concurrent upstream master 98c72a10d77b6a6053a6f230bf76264f7814e031 repairs released render-manifest pins; this increment does not overwrite that work. CI is tracked separately, not claimed green.
+
+The next narrow candidate gives this civilian owner a bounded predicted-crossing brake. It compares current relative velocities and the existing collision-proxy outer envelopes (never bare visual radius alone), finding first envelope entry within actual reverse-thrust stopping time plus 0.75 seconds, capped at four seconds. Twelve WU of prediction clearance is not a physical collider change. Separating/parallel ships do not reserve the lane. Every faction and original partner is considered without immunity; only ordinary zero-throttle/brake intent changes. Arrival is not reported while yielding. No pose, velocity, force limit, cargo, receipt, encounter or survival assertion is modified.
+
+Immutable candidate 3c919e7bc2d609eb0615777fa0e6500dd5291575 passes 62 focused checks, explicitly excluding the full native route. Six decision cases cover crossing, moving away, near miss, stationary blocker, slow service pair and envelope entry before closest-center time. A constructed native lane uses actual Stormshift and Hornet hulls, ordinary Flight V3 propulsion, admitted native bodies and a nonphysical nearby observer. The Hornet physically crosses z5920→6068.454, the worker physically moves x16000→15953.289, yielding for103 ticks; minimum center distance42.980 WU and no penetrating/impulsive contact. Cargo is unchanged. Removing only the steering yield gate in a separate immutable negative control reproduces contact at tick69. The first fixture attempt failed native admission; an intermediate apparent pass exposed a stationary/unadmitted crossing ship and was rejected, then explicit admission and travel assertions were added.
+
+This is a constructed crossing, not a reconstruction of Hornet514's unknown pre-impact velocity. The full route remains unproven with yielding. Its next fresh attempt retains the strict original-survivor/next-finite-handoff gate and captures a bounded180-tick ring of actual nearby native ship states before each step, so a future collision can be analyzed without back-extrapolating post-impact motion. Final service approach and world/Continue acceptance still require the whole native route. All larger goals remain open.
+
+Review follow-up at00:12 UTC uses the existing compact indexedShipLikeScan with its unchanged fallback, rather than scanning rocks/FX for each worker. The envelope helper is module-level. Exact c37384ac36f1fc2d2a90e4e8cb2807eb4e0b617a passes63 focused checks, including indexed/fallback parity with a throwing fat-list getter and the actual native crossing. This is not a hard candidate-count or target-device performance claim. Only this paragraph changes in the following source-preservation tree; full-route yielding acceptance remains pending.
+
+### 2026-10-21 00:25 UTC: observer prediction defect isolated without runtime changes
+Fresh78d710 reaches the actual first sale, home475.967s and original collector resumption504.683s, but stops at668.0667s/tick40084 because all48 observer candidates are rejected. Both original world records remain alive, collector hull200. This is a failed observer fixture, not a fresh whole-route pass or worker death. Its real terminal save, raw participants and progress are retained; no later continued outcome can retroactively turn that run green.
+
+An immediate query on that unedited terminal save reproduces all48 rejections without stepping. The fixture predicted the observer's old velocity even though world.applySameSectorPlayerRelocation explicitly sets linear velocity and angular velocity to zero. The discarded motion incorrectly consumed213.883WU of the two-second clearance budget. Correcting only that post-relocation prediction selects an original300WU candidate with80.0751WU clearance. Native target velocities, compiled player envelope, all native colliders, two-second sweeps,32WU margin and the original retained/live-worker conservative bounds remain unchanged. No larger observer radius, new fallback, missing hazard or runtime behavior change is used.
+
+Exact fixture/test candidate949b3eeb23dee5f89d9c4d74b6c1d40c927c763d passes4 observer checks, including actual production relocation from180/−160WU/s and angular velocity2 to zero. Failure-safe terminal capture now includes the actual rejected observer placements. A bounded continuation of the genuine668s terminal world is running to absolute900s for the next real finite handoff; at788.067s originalcollector has actual5u/hull200 and is physically returning to the same tender. This is explicitly continued-world evidence, not fresh whole-route acceptance.
+
+The exact949b continuation completed at831.233333s: original collector113 transferred5u hydrogen, lot lot:wr_convoy_58ecee81:1, to original tender119. Both original actors survived with hull200;82 observer placements and zero native participant contacts were recorded during this continuation. Final collector hold0 and tender hold5 are captured in its real terminal save. This proves the remaining finite handoff after Continue from the failed668s fixture, not an uninterrupted fresh route. A fresh whole-route run with the corrected observer prediction remains required.
+
+## 2026-10-21: fresh recurrence failure and bounded harvest-budget repair
+
+The exact published d12216bedc054a382ab9c328b078b52ab54a9af5 full native attempt
+finished at absolute900s with exit1: both original workers survived, but the required
+second positive handoff was absent. Actual1u sale299.7167s, physical home475.9667s and
+collector resumption504.6833s passed. Next collect began570.7833s and cleared empty at
+708.5833s while hull was still200. Subsequent asteroid contacts at712.5667s and721.6333s
+reduced hull to150.6242 then93.7849. Damage therefore does not explain the initial empty
+abort. Receiver acquisition stayed1u with no receiver spill; the accepted-return and
+terminal Orchard ledgers both contain the same retained4u lot and sourceRemaining44.
+The separate949b continued-world5u handoff is not a substitute for this failed fresh gate.
+
+A real ten-second shelf/rematerialization diagnostic disproved stale witness identity:
+original life99 rematerialized as life100 and the existing traffic owner refreshed the
+planet witness binding to100. No witness-refresh patch was needed. A bounded replay of
+the accepted-return save instead produced four1u harvest events and a heat-triggered
+empty abort at550.4833s. That divergent continued world did not reproduce fresh starvation;
+its unrecorded final destination ledger must not be presented as a complete custody proof.
+
+A separate constructed, actual-owner budget test reproduced a narrower definite defect:
+0.35 units of admitted path yield disappeared when seven ordinary candidate ships consumed
+the bounded thermal budget. Readmitting the same worker in the same skim band restarted
+its fraction atzero. This proves fractional loss, not its causal role in the fresh failure.
+An independently instrumented fresh run remains frozen on d122 to capture that question.
+
+The narrow repair adds src/systems/planetRuntime.js to this unit's ownership. It retains
+only the current bound collector life's already-earned sub-unit fractions across thermal
+budget eviction. Stable record, occupant generation, site, collect phase and actual band
+are checked. It does not reserve a thermal slot, preserve heat, accrue while unadmitted,
+create whole cargo, or recover refused whole units. Death, replacement, band/phase exit and
+site invalidation clear the carry. As with the pre-existing transient fractional accumulator,
+Continue/sector teardown resets this unmaterialized fraction; no new save schema or private
+inventory is introduced. Eight focused actual-owner cases pass on candidate51a23177,
+including no extra slot/heat retention, no off-budget progress and invalidation/refusal cases.
+That runtime also passes90 focused/adjacent cases (full native route excluded). The unchanged
+runtime on d6d20854 additionally passes admitted-record-change and actual save/load cases:
+real load discards transient carry, binds a new occupant life, and grants no cargo on restore
+or100s of unadmitted producer calls. Independent review approved the narrow carry invariants. Full native recurrence remains
+RED; ordinary player-flight, visual and whole-game acceptance remain open.
+
+The frozen d122 comprehensive fresh diagnostic subsequently reproduced the exact second
+abort at708.5833s. It captured974 admitted harvest-eligible ticks,7191 untracked ticks,
+62 below-speed ticks and41 outside-band ticks. Seventy-two actual budget evictions discarded
+10.7650927 cumulative units of already-flown shallow fractional yield; no whole acceptance
+occurred during the second collection. Candidate order, before/after fractional records,
+actual witness life and both acceptance owners were captured in the same run. The original
+collector113/life279 remained correctly bound. At abort it had hull200/cargo0, region reentry,
+radius706.524WU and heat0.580833; local weather was null. Thus real heat triggered the empty
+retreat after repeated budget loss, before the later physical damage. Orchard source48→44
+and its single retained4u lot account for the first collection only. This diagnostic stopped
+at that abort by design; its successful diagnostic exit is NOT a passing full recurrence test.
+The carry repair still needs a new positive native recurrence proof, without changing thermal
+admission, heat consequences, encounters or the strict second-handoff requirement.
+
+The narrow repair also passes the public47a comparison:20 repeats,720ticks and actual
+reload at600, with public-matching input and expected telemetry files. No baseline was edited.
+
+Final bookkeeping cleanup moves fraction helpers to module scope and reuses the single
+validated carry object instead of allocating closures/arrays/replacement objects each tick.
+Exact candidate2b506a63 passes all92 focused and adjacent cases, including real save/load
+and same-object reuse. The full native recurrence test is explicitly excluded from that count.
+
+## 2026-10-21 strict public-source recurrence and next repair increment
+
+Exact published head `e654353fe68b1e7e4e5a936cb303d266ff5ca810`, tree
+`9088e3e720755dcacf702310cb87d9fdaf2af0ed`, passes the unchanged full native
+receiver test at 886.3833333328558s, before its absolute 900s deadline. All
+Continue, full 600-tick far residency, first buyer sale, physical return and next
+positive handoff gates pass. The actual next lot transfers 12u to the original
+receiver. Receiver custody balances 13u received = 1u buyer receipt + 12u held,
+with no receiver spills. Original collector survives at 86.97942854617318 hull,
+empty/berthed sequence2; receiver survives at 200 hull, receiving 12u sequence1.
+124 dynamic contacts and real damage remain; minimum fixed/original-pair gap is
++0.2810823321WU. Independent review verified all 1613 repository-module hashes
+against that exact tree. This is worker-native recurrence, not ordinary player
+flight, live-camera acceptance, or a collision-free claim. Historical failures
+remain preserved. CI's newer-master merge is a separate source and gate: its
+full receiver conjunction failed; attribution is pending, not dismissed.
+
+A bounded P02 follow-up reproduces injured berth relaunch on the previous source:
+a collector at 86.979 hull leaves `berthed` for `outbound` with no repair hint.
+The narrow replacement uses existing itinerary `serviceRequired` and
+`service_hold`, entering below 50% hull, releasing at 75% only when the actual
+existing drive capability is usable. It never writes hull or combat capability.
+Existing latch repair restores a disabled drive only at full hull; Hail states
+that requirement. Injury preserves loaded physical return and finite handoff,
+then routes to the existing exterior layby. A lateral 160WU leg precedes the
+outer leg so the home tender is not crossed. Missing/dead berth, foreign job,
+ambiguous identity and destroyed original guards remain authoritative. Hail
+retains tender-away/unavailable truth. No new charge, supply ledger or revival.
+
+Candidate `251e35d5774a2f0076200752a2a4edb83893c5f3` passes 101 focused/adjacent
+cases, explicitly skipping the already-proven full recurrence test. These include
+real save/load of injury/service state and drive-release guards. A bounded actual
+d122 damaged-world replay uses real runtime ticks and native attachment/reel/cut:
+physical layby arrival, 600-tick far shelving/rematerialization without healing
+or cargo grant, slack no repair, existing 92%-span repair eligibility heals
+93.78492239467835 to 150.18492239467759 in 4.7s, cut stops repair, and the same
+repaired worker physically departs outbound; the 400.626WU observed displacement
+includes its layby-to-berth return, not exclusively outbound travel. This eligibility may
+report zero tensile force and slack massline telemetry; it is the pre-existing
+repair-owner rule, not proof of loaded tension or ordinary player controls.
+The native clearance capture records 9652 participant ticks, zero captured contacts
+and a null minimum gap (not a numeric clearance proof). All 1472 module hashes
+match candidate251e. Independent review passes all nine new service cases.
+Source/probe recovery is libfile_475a47dc735081919ea809fdc2e3b76d; clearance
+recovery is libfile_42a05cc3ea088191ac6309e3a299d98f (byte-identical round trip,
+SHA a5fda369785a768f4fee9cdcaaaae2a9cb3eaa0771c796110de58cdfbd094114).
+Service code remains locally committed at e8d4e35f7, not yet on public PR480. An
+initial direct layby chord stalled against the home tender; that failed probe,
+and an 8s incomplete-repair probe, are preserved rather than counted as passes.
+All larger game, Orchard, visual, asset-bank, asset-quality, living-world,
+publication and recovery goals remain open. Do not rerun unchanged full routes
+instead of diagnosing the newer-master integration or finishing scoped service.
+
+## Newer-master integration timing diagnosis (2026-10-21)
+
+Public head9088 passes the original900s diagnostic at886.383s. Actual CI merge
+f02544410471e84600f77abfca5a63b1cc802459 with mastera2cfc0 misses only the next
+handoff at900s: healthy original collector returns with12u. Collection completes
+58.7s later under the changed world; at880s the existing2800WU safety arc still
+requires at least27.7s before final approach. Preserve that historical failure.
+The original P01/P02 gameplay requirements have no900s contract.
+
+The reviewed test-only service-level policy is a240s second collection budget,
+240s first positive-loaded clear-band to next actual handoff, and1200s absolute
+simulation cap. First-event clocks cannot reset on phase reentry, Continue or
+residency. These are diagnostic limits, not guarantees under all weather or
+thermal admission. No runtime speed, admission, hazard or health behavior changes.
+Negative tests require timeouts and reject zero/phantom transfer, death and
+replacement identity. The exact f025 test-only projection2262 fresh run was RED at956.7s under the
+initial180s loaded-return bound:206.4s collection,180.0167s loaded return, healthy
+original collector12u/tender0u, all six earlier gates true.1613 loaded module
+hashes match2262. Preserve this failure alongside the original900s miss.
+
+The omitted geometry was the authored20WU/s final service chord after the
+.35rad arc exit, up to roughly980WU (~49s) plus braking. Unchanged actual
+terminal-save continuation delivers12u at965.0667s,8.3667s later, same stable
+records (tender life119 becomes118 after Continue), hull200, zero captured
+contacts/yield;1472 module hashes match2262. This is a separate continued world,
+NOT a passing fresh route. The conservative revised240s bound accounts for
+33s radial +126s full-half-arc allowance +50s service chord +31s settlement.
+Independent review accepts this diagnostic policy, not a production guarantee.
+Negative cases test equality and just-over-bound failure. No speed, health,
+cargo, admission or hazard behavior is changed to make the test pass.
+
+Recovery libfile_b49bf82d8da48191b9727c8b541a4fe8 contains both failed fresh
+evidence and separate terminal continuation; SHA
+3d025818300cd973f2fae9fbf82c0f4419c7ae472d07b8f506519f402cede59d.
+Latest master1e7b59a0 adds six non-owned files, preserved in combined focused
+validation. A fresh combined service/timing route remains pending successorCI.
+The separate251e injured-service evidence and healthyf025 timing diagnosis
+do not establish ordinary-player repair input or whole P02 acceptance.

@@ -1,0 +1,334 @@
+// Combat target assist runs by default from the selected hostile. G separately enables the
+// relative dynamic combat stick; Backspace releases the combat lock for free aim.
+//
+// TARGET RECONCILIATION (the "two variables" rule). There are two target-ish values on the player:
+//   state.player.targetId        — the player's SELECTION. It seeds a newly latched throw's
+//                                  transient releaseTarget and still drives self-sling aim, the
+//                                  target panel, hails, and wingman attack orders. Once latched,
+//                                  only explicit aim intent may repaint the throw destination.
+//                                  Not ours to overwrite.
+//   state.player.tether.targetId — what the Massline is physically attached to.
+// The GUN target is neither of those directly: it is derived from both by resolvePlayerGunTarget()
+// below, and every gunnery consumer (fire path, missile lock, auto-aim, reticle lead) must ask that
+// one function so they cannot drift apart. The rule is: a line on a hostile ship IS the firing
+// solution, for as long as the line is attached. Latching is a deliberate press on a visible,
+// loud object, and cutting is one key — so this needs no hidden override, and the old failure
+// (orbiting your catch while the guns tracked a nearer third ship) cannot recur.
+import { followDrawFlightPath } from './drawFlightPath.js';
+import { solveLeadAngle } from './leadAngle.js';
+import { isHostileToPlayer } from '../systems/scannerReadModel.js';
+import { wrapAngle } from '../core/rng.js';
+import { massline2Flag } from '../data/featureFlags.js';
+import { solveTetherLeadSolution, orbitalConstraintState, masslineOwnsGuns } from './tetherFireControl.js';
+import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { applyAutoTargetHelmProfile, applyAutoTargetPathProfile } from '../core/flight/flightPresentationReads.js';
+import { concealedFromPlayer, observeSelection, selectionIsRecycled } from './targetIdentity.js';
+
+export const AUTO_TARGET_REFRESH_S = 0.12;
+const RETICLE_EDGE_MARGIN = 28;
+const AUTO_TARGET_HEADING_SOFT_ANGLE = 0.42;
+
+// VERB-17: the assist has an off and a strength (`settings.gameplay.targetAssistStrength`,
+// Gameplay row beside the orbit assist). Full is today's authored correction — the default,
+// so nothing already flying changes. Off yields zero aim correction; light/standard track
+// the same solution lazily by converging a fraction of the remaining error per tick.
+export const TARGET_ASSIST_SCALES = Object.freeze({ full: 1, standard: 0.75, light: 0.4, off: 0 });
+
+/** 0..1 fraction of the aim correction applied this tick. Unknown values fail to full. */
+export function targetAssistScale(state) {
+  const key = state && state.settings && state.settings.gameplay
+    ? state.settings.gameplay.targetAssistStrength
+    : undefined;
+  if (key == null) return 1;
+  const scale = TARGET_ASSIST_SCALES[key];
+  return typeof scale === 'number' ? scale : 1;
+}
+
+
+export function createAutoTargetRuntime() {
+  return { refreshT: 0 };
+}
+
+export function toggleAutoTarget(state, bus, runtime = createAutoTargetRuntime()) {
+  const inp = state && state.input;
+  if (!inp) return false;
+  inp.autoFire = !inp.autoFire;
+  runtime.path = null;
+  runtime.drawHeading = undefined;
+  runtime.drawTurnSign = 0;
+  if (inp.drawFlight) delete inp.drawFlight;
+  if (inp.autoTargetPath) inp.autoTargetPath.active = false;
+  if (inp.autoFire) {
+    runtime.refreshT = AUTO_TARGET_REFRESH_S;
+    // VERB-17: at assist off the toggle still arms the stick, but nothing is selected for
+    // it — selection is aim correction's source, and off means zero correction.
+    if (bus && inp.targetAssistDisabled !== true && targetAssistScale(state) > 0) {
+      bus.emit('ui:targetNearestHostileToPlayer');
+    }
+  } else {
+    runtime.refreshT = 0;
+    if (inp.autoAim && inp.targetAssistDisabled === true) inp.autoAim = null;
+  }
+  if (bus) {
+    bus.emit('toast', {
+      text: inp.autoFire ? 'Combat stick ON' : 'Combat stick OFF',
+      kind: 'info',
+      ttl: 2,
+    });
+  }
+  return inp.autoFire;
+}
+
+export function lockedHostileEntity(state) {
+  const id = state && state.player && state.player.targetId;
+  if (id == null || !state.entities || !state.entities.get) return null;
+  const e = state.entities.get(id);
+  if (!e || e.alive === false || !e.pos) return null;
+  if (e.type !== 'ship' && e.type !== 'drone') return null;
+  const player = state.entities.get(state.playerId);
+  if (!player || !isHostileToPlayer(e, player.team, state)) return null;
+  // Packet 02 target truth. The selection is a NUMBER; the player picked a BODY. A recycled id must
+  // not hand the old bracket (and the aim assist riding on it) to an unrelated hull, and a hull the
+  // player's sensors cannot see must not keep drawing the assist's aim — that is a wallhack. Both
+  // gates live in targetIdentity.js; sensor truth is cloak.js's single perception gate.
+  if (selectionIsRecycled(state, e)) return null;
+  if (concealedFromPlayer(state, e)) return null;
+  return e;
+}
+
+/**
+ * The hostile ship/drone currently on the player's Massline, or null. Asteroids and friendlies
+ * deliberately do NOT claim the guns: while you are swinging a rock you must still be able to shoot
+ * whatever you are swinging it at.
+ */
+export function tetheredGunTarget(state) {
+  if (!massline2Flag('fireControl')) return null;
+  const tether = state && state.player && state.player.tether;
+  if (!tether || tether.targetId == null) return null;
+  if (!state.entities || !state.entities.get) return null;
+  const e = state.entities.get(tether.targetId);
+  const player = state.entities.get(state.playerId);
+  if (!e || !player) return null;
+  return masslineOwnsGuns(tether, e, isHostileToPlayer(e, player.team, state)) ? e : null;
+}
+
+/**
+ * The single answer to "what are the player's guns shooting at". See the reconciliation note at the
+ * top of this file. Pure read — never writes state.player.targetId.
+ */
+export function resolvePlayerGunTarget(state) {
+  return tetheredGunTarget(state) || lockedHostileEntity(state);
+}
+
+// Representative projectile speed for the SHIP-LEVEL aim angle and the reticle lead pip — the
+// primary (first) mount, deliberately, because the pip can only draw one lead and the primary is the
+// gun the player reads as "mine". This is NOT the whole battery's solution: a mixed battery
+// (pulse 320 / autocannon 420 / railgun 700) re-solves per mount inside
+// weapons._serviceProjectileWeapon, which is why tickAutoTarget publishes `input.autoAim` below.
+export function playerLeadSpeed(state) {
+  const player = state && state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  if (!player) return 360;
+  const weapons = player.data && player.data.weapons;
+  if (weapons && weapons.length) {
+    for (const weapon of weapons) {
+      const speed = weapon.projSpeed != null ? weapon.projSpeed : 0;
+      if (speed > 0) return speed;
+    }
+  }
+  return 360;
+}
+
+export function computeLockedLeadPoint(state) {
+  const tethered = tetheredGunTarget(state);
+  const target = tethered || lockedHostileEntity(state);
+  if (!target) return null;
+  const player = state && state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  if (!player || !player.pos || !target.pos) return target.pos || null;
+  const shooter = { pos: player.pos, vel: player.vel || { x: 0, z: 0 }, mass: player.mass };
+  const victim = { pos: target.pos, vel: target.vel || { x: 0, z: 0 }, mass: target.mass };
+  const speed = playerLeadSpeed(state);
+  // If the guns are on a tethered hostile that is arcing about us, the pip must show the SAME
+  // constrained solution the fire path uses. Drawing a linear lead over a circular solve is the
+  // reticle telling the player a lie the guns will not honour.
+  const angle = tethered
+    ? solveTetherLeadSolution(shooter, victim, speed, {
+      taut: orbitalConstraintState(shooter, victim).constrained,
+    }).angle
+    : solveLeadAngle(shooter, victim, speed);
+  const distance = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z) || 180;
+  return {
+    x: player.pos.x + Math.cos(angle) * distance,
+    z: player.pos.z + Math.sin(angle) * distance,
+  };
+}
+
+export function tickAutoTarget(state, dt, bus, runtime = createAutoTargetRuntime()) {
+  const inp = state && state.input;
+  // Clear only when the marker is actually present: assigning `null` unconditionally would mint the
+  // key on every input object in the game and change the 47-A snapshot hash for a field nothing in
+  // that replay reads.
+  if (!inp || (state.mode && state.mode !== 'flight')
+    || inp.blocked || state.ui?.screenStack?.length) {
+    if (inp && inp.autoAim) inp.autoAim = null;
+    runtime.refreshT = 0;
+    // Drop the resampled route with the mode. Without this the cache outlived a G toggle and the
+    // next stroke could be matched against the previous one's geometry.
+    runtime.path = null;
+    runtime.drawHeading = undefined;
+    runtime.drawTurnSign = 0;
+    if (inp?.drawFlight) delete inp.drawFlight;
+    return;
+  }
+  const player = state.entities && state.entities.get(state.playerId);
+  if (!player || !player.pos) {
+    if (inp.autoAim) inp.autoAim = null;
+    return;
+  }
+  // Packet 02: bind the selection to its occupant and keep the sensor fix / last-known mark fresh
+  // even when no HUD is mounted. Runtime memory only — GameState is untouched.
+  observeSelection(state);
+
+  const target = (inp.targetAssistDisabled === true || targetAssistScale(state) <= 0)
+    ? null
+    : resolvePlayerGunTarget(state);
+  if (target) {
+    const lead = computeLockedLeadPoint(state) || target.pos;
+    const leadAngle = Math.atan2(lead.z - player.pos.z, lead.x - player.pos.x);
+    // VERB-17: full applies the authored solution; a partial strength converges a fraction
+    // of the remaining error per tick, so a light assist tracks lazily instead of snapping.
+    // Raw aim input itself is never touched — at off the branch above leaves it alone.
+    const scale = targetAssistScale(state);
+    if (scale >= 1) {
+      inp.aimAngle = leadAngle;
+    } else {
+      const current = Number.isFinite(inp.aimAngle) ? inp.aimAngle : leadAngle;
+      inp.aimAngle = current + wrapAngle(leadAngle - current) * scale;
+    }
+    // Keep the physical cursor point for Massline acquisition. G's draw mode retains its
+    // historical lead-point presentation; ordinary assisted combat does not move the cursor.
+    if (inp.autoFire) {
+      inp.aimWorld.x = lead.x;
+      inp.aimWorld.z = lead.z;
+    }
+  }
+  // Publish WHOSE lead this aim angle is. inp.aimAngle can only carry one solution, and it is the
+  // primary mount's; a mixed battery gimbaled to it fires every other barrel on the wrong intercept.
+  // weapons re-solves per mount when this marker is present, and ONLY then — an aim angle the player
+  // set with the cursor must never be silently re-led out from under their hand.
+  // Transient per-frame aim provenance, never serialized: mutated in place so a 60 Hz auto-target
+  // hold allocates nothing.
+  if (target) {
+    const marker = inp.autoAim && typeof inp.autoAim === 'object'
+      ? inp.autoAim
+      : (inp.autoAim = { targetId: null, leadSpeed: 0 });
+    marker.targetId = target.id;
+    marker.leadSpeed = playerLeadSpeed(state);
+  } else if (inp.autoAim) {
+    inp.autoAim = null;
+  }
+
+  const pathApplied = inp.autoFire && followAutoTargetPath(inp, player, state, runtime, dt);
+  const vector = inp.autoTargetVector;
+  if (inp.autoFire && !pathApplied && vector && vector.active
+    && !inp.brake && !inp.actions?.brake && !inp.drawFlightManual) {
+    const rawX = finite(vector.worldX);
+    const rawZ = finite(vector.worldZ);
+    const length = Math.hypot(rawX, rawZ);
+    const magnitude = Math.max(0, Math.min(1,
+      Number.isFinite(vector.magnitude) ? vector.magnitude : length));
+    if (length > 1e-6 && magnitude > 0) {
+      applyWorldFlightCommand(
+        inp,
+        player,
+        rawX / length,
+        rawZ / length,
+        magnitude,
+        rawX / length,
+        rawZ / length,
+        Math.sqrt(magnitude),
+      );
+    }
+  }
+
+  runtime.refreshT = Math.max(0, (runtime.refreshT || 0) - dt);
+  if (runtime.refreshT <= 0 && inp.targetAssistDisabled !== true && targetAssistScale(state) > 0) {
+    runtime.refreshT = AUTO_TARGET_REFRESH_S;
+    if (bus) bus.emit('ui:targetNearestHostileToPlayer', { quiet: true });
+  }
+}
+
+// Geometry supplies steering, not throttle. The pure propulsion kernel owns the finite-rate
+// momentum turn, and the physics authority remains the sole writer of ship motion.
+function followAutoTargetPath(inp, player, state, runtime, dt) {
+  if (inp.drawFlightManual || inp.brake || inp.actions?.brake) {
+    if (inp.drawFlight) delete inp.drawFlight;
+    if (inp.autoTargetPath) inp.autoTargetPath.active = false;
+    runtime.path = null;
+    runtime.drawHeading = undefined;
+    return false;
+  }
+  const profile = applyAutoTargetPathProfile(applyAutoTargetHelmProfile(resolvePropulsionProfile(player, state)));
+  const command = followDrawFlightPath(inp.autoTargetPath, player, runtime, profile, dt);
+  if (!command) {
+    if (inp.drawFlight) delete inp.drawFlight;
+    return false;
+  }
+  inp.drawFlight = command;
+  // Keep the ordinary intent consumers (thruster presentation, travel/autopilot cancellation)
+  // live. Translation itself uses the explicit command, never a reverse-throttle brake heuristic.
+  const x = Math.cos(command.heading), z = Math.sin(command.heading);
+  applyWorldFlightCommand(inp, player, x, z, 1);
+  return true;
+}
+function applyWorldFlightCommand(inp, player, worldX, worldZ, magnitude, headingX = worldX, headingZ = worldZ, turnScale = 1) {
+  const rotation = finite(player.rot);
+  const forwardX = Math.cos(rotation);
+  const forwardZ = Math.sin(rotation);
+  const rightX = -forwardZ;
+  const rightZ = forwardX;
+  inp.moveZ = Math.max(-1, Math.min(1,
+    (worldX * forwardX + worldZ * forwardZ) * magnitude));
+  inp.moveX = Math.max(-1, Math.min(1,
+    (worldX * rightX + worldZ * rightZ) * magnitude));
+  const desiredHeading = Math.atan2(headingZ, headingX);
+  const headingError = wrapAngle(desiredHeading - rotation);
+  inp.turnIntent = Math.max(-1, Math.min(1,
+    headingError / AUTO_TARGET_HEADING_SOFT_ANGLE)) * Math.max(0, Math.min(1, finite(turnScale, 1)));
+}
+
+function finite(value, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+export function projectLockedReticle(state, w2s, viewport = {}) {
+  if (!state || !state.input || state.input.targetAssistDisabled === true) return null;
+  // VERB-17: at assist off there is no lead solution to draw — the pip is the assist's voice.
+  if (targetAssistScale(state) <= 0) return null;
+  const lead = computeLockedLeadPoint(state);
+  const target = resolvePlayerGunTarget(state);
+  const point = lead || (target && target.pos) || null;
+  if (!point || !w2s) return null;
+
+  const width = Number.isFinite(viewport.width) ? viewport.width : 0;
+  const height = Number.isFinite(viewport.height) ? viewport.height : 0;
+  const centerX = width * 0.5;
+  const centerY = height * 0.5;
+  const projected = w2s({ x: point.x, y: 0, z: point.z });
+  if (!projected || !Number.isFinite(projected.x) || !Number.isFinite(projected.y)) return null;
+  if (projected.onScreen) return { x: projected.x, y: projected.y };
+
+  const dx = projected.x - centerX;
+  const dy = projected.y - centerY;
+  if (Math.abs(dx) < 1e-6 && Math.abs(dy) < 1e-6) return { x: centerX, y: centerY };
+  const scales = [];
+  if (Math.abs(dx) > 1e-6) {
+    scales.push(((dx > 0 ? width - RETICLE_EDGE_MARGIN : RETICLE_EDGE_MARGIN) - centerX) / dx);
+  }
+  if (Math.abs(dy) > 1e-6) {
+    scales.push(((dy > 0 ? height - RETICLE_EDGE_MARGIN : RETICLE_EDGE_MARGIN) - centerY) / dy);
+  }
+  const positive = scales.filter((value) => value > 0 && Number.isFinite(value));
+  if (!positive.length) return null;
+  const scale = Math.min(...positive);
+  return { x: centerX + dx * scale, y: centerY + dy * scale };
+}

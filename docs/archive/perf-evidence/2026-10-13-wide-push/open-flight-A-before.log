@@ -1,0 +1,298 @@
+  fat event payloads:
+    bufferFullUpload@1752.sourceData 0 KB
+    bufferFullUpload@1752.sourceData 0 KB
+    bufferFullUpload@1752.sourceData 0 KB
+    bufferFullUpload@1752.sourceData 4 KB
+    bufferFullUpload@1752.sourceData 4 KB
+    bufferFullUpload@1752.sourceData 4 KB
+    bufferFullUpload@1753.sourceData 0 KB
+    bufferFullUpload@1753.sourceData 0 KB
+    bufferFullUpload@1753.sourceData 0 KB
+    bufferFullUpload@1753.sourceData 0 KB
+    bufferFullUpload@1753.sourceData 6 KB
+    bufferFullUpload@1753.sourceData 6 KB
+    bufferFullUpload@1753.sourceData 4 KB
+    bufferFullUpload@1753.sourceData 0 KB
+    bufferFullUpload@1753.sourceData 0 KB
+    bufferFullUpload@1753.sourceData 0 KB
+    bufferFullUpload@1754.sourceData 0 KB
+    bufferFullUpload@1754.sourceData 0 KB
+    bufferFullUpload@1754.sourceData 0 KB
+    bufferFullUpload@1755.sourceData 0 KB
+
+SMOOTH-FLIGHT WITNESS
+  GPU                         ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)
+  whole-machine CPU busy      61 % of 14 logical cores during the sample (the game alone is ~10-15 %)
+  route                       open flight, new game; at end: 22 other ships, 0 projectiles (peak 0), 176 entities, 11 draw calls, 1k triangles
+  launch to flight            43.7 s
+  sample                      after 0 s of flight: 20 s, 339 frames, 18.6 fps mean
+  frame time p50/p95/p99      50.0 / 100.0 / 116.8 ms; worst 150 ms
+  frames over 33 / 50 / 100   206 (60.8 %) / 155 (45.7 %) / 23
+  typical frame costs (ms)    callback 39.4  sim 0.0  present 39.0  render 34.0  vfx 2.3  ui 2.5  feel 0.2  admission 2.8
+  before a LONG frame (ms)    callback 47.7  sim 0.0  present 47.3  render 41.0  vfx 2.7  ui 3.4  feel 0.2  admission 3.0
+  long frames paid in JS      205 of 205 (the rest: GPU, compositor or GC outside the game's callback)
+  worst freezes (ms): interval <- callback = sim + present(render, vfx, ui) ...
+    #   7   150 <- callback  121  sim    0  present  120  (render 105, vfx 7, ui 9)  admission 0  — no wave event within 2s
+    #  12   150 <- callback  105  sim    0  present  104  (render 88, vfx 7, ui 9)  admission 0  — no wave event within 2s
+    #  13   133 <- callback   75  sim    0  present   74  (render 64, vfx 3, ui 7)  admission 0  — no wave event within 2s
+    # 256   117 <- callback   87  sim    0  present   86  (render 82, vfx 2, ui 2)  admission 3  — no wave event within 2s
+    #  11   117 <- callback   70  sim    0  present   69  (render 60, vfx 4, ui 5)  admission 0  — no wave event within 2s
+    #   6   117 <- callback   77  sim    0  present   76  (render 66, vfx 6, ui 4)  admission 0  — no wave event within 2s
+    #   5   117 <- callback   87  sim    0  present   87  (render 75, vfx 5, ui 7)  admission 0  — no wave event within 2s
+    #  10   117 <- callback   77  sim    0  present   77  (render 61, vfx 5, ui 10)  admission 1  — no wave event within 2s
+    # 271   117 <- callback   28  sim    0  present   27  (render 24, vfx 1, ui 2)  admission 0  — no wave event within 2s
+    #  52   117 <- callback   86  sim    0  present   86  (render 55, vfx 24, ui 6)  admission 0  — no wave event within 2s
+  wave events (s into sample)   none captured
+  every frame >50 ms: +s into sample, interval ms, owner, callback breakdown, nearest wave
+      +0.1s #   1     67  render                   cb   68 (sim 0 ren 56 vfx 3 ui 8 adm 0 untr 0) gap 16 disp 6  — no wave event within 2s
+      +0.2s #   2    100  render                   cb   57 (sim 0 ren 51 vfx 3 ui 1 adm 0 untr 0) gap 32 disp 39  — no wave event within 2s
+      +0.3s #   3    100  render                   cb   81 (sim 0 ren 69 vfx 4 ui 8 adm 0 untr 0) gap 29 disp 24  — no wave event within 2s
+      +0.4s #   4    100  render                   cb   67 (sim 0 ren 58 vfx 3 ui 5 adm 0 untr 0) gap 11 disp 16  — no wave event within 2s
+      +0.5s #   5    117  render                   cb   87 (sim 0 ren 75 vfx 5 ui 7 adm 0 untr 0) gap 43 disp 26  — no wave event within 2s
+      +0.6s #   6    117  render                   cb   77 (sim 0 ren 66 vfx 6 ui 4 adm 0 untr 0) gap 33 disp 29  — no wave event within 2s
+      +0.7s #   7    150  render                   cb  121 (sim 0 ren 105 vfx 7 ui 9 adm 0 untr 0) gap 44 disp 32  — no wave event within 2s
+      +0.7s #   8     67  render                   cb   56 (sim 0 ren 48 vfx 3 ui 5 adm 0 untr 0) gap 10 disp 13  — no wave event within 2s
+      +0.8s #   9     67  render                   cb   59 (sim 0 ren 54 vfx 4 ui 1 adm 0 untr 0) gap 10 disp 12  — no wave event within 2s
+      +0.9s #  10    117  render                   cb   77 (sim 0 ren 61 vfx 5 ui 10 adm 1 untr 0) gap 27 disp 33  — no wave event within 2s
+      +1.0s #  11    117  render                   cb   70 (sim 0 ren 60 vfx 4 ui 5 adm 0 untr 0) gap 54 disp 48  — no wave event within 2s
+      +1.1s #  12    150  render                   cb  105 (sim 0 ren 88 vfx 7 ui 9 adm 0 untr 0) gap 48 disp 48  — no wave event within 2s
+      +1.2s #  13    133  render                   cb   75 (sim 0 ren 64 vfx 3 ui 7 adm 0 untr 1) gap 52 disp 55  — no wave event within 2s
+      +1.3s #  14     83  render                   cb   68 (sim 0 ren 55 vfx 3 ui 9 adm 0 untr 0) gap 19 disp 15  — no wave event within 2s
+      +1.4s #  15     67  render                   cb   59 (sim 0 ren 54 vfx 3 ui 1 adm 0 untr 0) gap 12 disp 12  — no wave event within 2s
+      +1.5s #  16     67  render                   cb   55 (sim 0 ren 47 vfx 2 ui 6 adm 0 untr 0) gap 10 disp 14  — no wave event within 2s
+      +1.6s #  17    100  render                   cb   53 (sim 0 ren 48 vfx 3 ui 2 adm 0 untr 0) gap 38 disp 41  — no wave event within 2s
+      +1.7s #  18     83  render                   cb   75 (sim 0 ren 63 vfx 4 ui 7 adm 0 untr 1) gap 23 disp 17  — no wave event within 2s
+      +1.8s #  19     67  render                   cb   45 (sim 0 ren 40 vfx 3 ui 1 adm 0 untr 0) gap 20 disp 28  — no wave event within 2s
+      +1.9s #  20     83  render                   cb   49 (sim 0 ren 41 vfx 2 ui 5 adm 0 untr 0) gap 30 disp 36  — no wave event within 2s
+      +2.0s #  21     67  render                   cb   49 (sim 0 ren 45 vfx 3 ui 1 adm 0 untr 0) gap 12 disp 14  — no wave event within 2s
+      +2.2s #  23     83  render                   cb   47 (sim 0 ren 41 vfx 4 ui 1 adm 0 untr 0) gap 26 disp 34  — no wave event within 2s
+      +2.3s #  24     67  render                   cb   50 (sim 0 ren 40 vfx 4 ui 6 adm 2 untr 0) gap 23 disp 22  — no wave event within 2s
+      +2.4s #  25     83  render                   cb   56 (sim 0 ren 50 vfx 4 ui 2 adm 0 untr 0) gap 23 disp 29  — no wave event within 2s
+      +2.5s #  26    100  render                   cb   62 (sim 0 ren 49 vfx 3 ui 9 adm 0 untr 0) gap 31 disp 32  — no wave event within 2s
+      +2.6s #  27    100  render                   cb   65 (sim 0 ren 53 vfx 3 ui 8 adm 0 untr 0) gap 38 disp 32  — no wave event within 2s
+      +2.7s #  28     67  render                   cb   60 (sim 0 ren 50 vfx 3 ui 7 adm 0 untr 0) gap 13 disp 10  — no wave event within 2s
+      +2.8s #  29     67  render                   cb   51 (sim 0 ren 47 vfx 2 ui 1 adm 0 untr 1) gap 10 disp 13  — no wave event within 2s
+      +2.9s #  30    100  render                   cb   77 (sim 0 ren 59 vfx 9 ui 9 adm 0 untr 0) gap 25 disp 23  — no wave event within 2s
+      +3.0s #  31     83  render                   cb   63 (sim 0 ren 55 vfx 3 ui 4 adm 0 untr 0) gap 24 disp 25  — no wave event within 2s
+      +3.1s #  32    100  render                   cb   63 (sim 0 ren 49 vfx 3 ui 10 adm 0 untr 1) gap 25 disp 29  — no wave event within 2s
+      +3.2s #  33     83  render                   cb   58 (sim 0 ren 50 vfx 3 ui 4 adm 0 untr 0) gap 32 disp 24  — no wave event within 2s
+      +3.3s #  34    100  render                   cb   81 (sim 0 ren 48 vfx 3 ui 29 adm 0 untr 1) gap 15 disp 13  — no wave event within 2s
+      +3.4s #  35    100  render                   cb   53 (sim 0 ren 47 vfx 3 ui 3 adm 0 untr 0) gap 47 disp 41  — no wave event within 2s
+      +3.6s #  37     67  render                   cb   49 (sim 0 ren 44 vfx 2 ui 2 adm 0 untr 1) gap 9 disp 16  — no wave event within 2s
+      +3.7s #  38     67  render                   cb   48 (sim 0 ren 40 vfx 2 ui 5 adm 0 untr 1) gap 29 disp 28  — no wave event within 2s
+      +3.8s #  39     83  render                   cb   66 (sim 0 ren 58 vfx 2 ui 6 adm 0 untr 1) gap 13 disp 23  — no wave event within 2s
+      +3.9s #  40     67  render                   cb   49 (sim 0 ren 40 vfx 3 ui 5 adm 0 untr 0) gap 15 disp 21  — no wave event within 2s
+      +4.0s #  41     83  render                   cb   69 (sim 0 ren 54 vfx 3 ui 12 adm 0 untr 0) gap 16 disp 19  — no wave event within 2s
+      +4.2s #  42     67  render                   cb   61 (sim 0 ren 53 vfx 2 ui 5 adm 0 untr 0) gap 9 disp 14  — no wave event within 2s
+      +4.3s #  43    100  render                   cb   52 (sim 0 ren 42 vfx 6 ui 4 adm 0 untr 1) gap 37 disp 45  — no wave event within 2s
+      +4.4s #  44     67  render                   cb   61 (sim 0 ren 45 vfx 6 ui 9 adm 0 untr 0) gap 8 disp 5  — no wave event within 2s
+      +4.4s #  45     83  render                   cb   54 (sim 0 ren 44 vfx 4 ui 4 adm 0 untr 1) gap 32 disp 32  — no wave event within 2s
+      +4.5s #  46     83  render                   cb   67 (sim 0 ren 56 vfx 3 ui 6 adm 0 untr 1) gap 16 disp 18  — no wave event within 2s
+      +4.6s #  47     67  render                   cb   52 (sim 0 ren 43 vfx 5 ui 4 adm 0 untr 1) gap 19 disp 20  — no wave event within 2s
+      +4.7s #  48     83  render                   cb   63 (sim 0 ren 51 vfx 5 ui 5 adm 0 untr 1) gap 19 disp 24  — no wave event within 2s
+      +4.8s #  49     67  render                   cb   51 (sim 0 ren 44 vfx 3 ui 3 adm 0 untr 1) gap 13 disp 17  — no wave event within 2s
+      +4.8s #  50     67  render                   cb   57 (sim 0 ren 51 vfx 2 ui 3 adm 0 untr 0) gap 8 disp 9  — no wave event within 2s
+      +4.9s #  51     83  render                   cb   62 (sim 0 ren 53 vfx 4 ui 4 adm 1 untr 1) gap 25 disp 26  — no wave event within 2s
+      +5.0s #  52    117  render                   cb   86 (sim 0 ren 55 vfx 24 ui 6 adm 0 untr 1) gap 28 disp 32  — no wave event within 2s
+      +5.0s #  53    100  render                   cb   56 (sim 0 ren 46 vfx 5 ui 4 adm 0 untr 0) gap 38 disp 40  — no wave event within 2s
+      +5.1s #  54    116  render                   cb   50 (sim 0 ren 43 vfx 2 ui 4 adm 0 untr 0) gap 77 disp 72  — no wave event within 2s
+      +5.2s #  55     83  render                   cb   55 (sim 0 ren 47 vfx 3 ui 5 adm 0 untr 0) gap 18 disp 24  — no wave event within 2s
+      +5.3s #  56     67  render                   cb   48 (sim 0 ren 42 vfx 4 ui 1 adm 0 untr 1) gap 15 disp 12  — no wave event within 2s
+      +5.5s #  58     50  render                   cb   39 (sim 0 ren 35 vfx 2 ui 1 adm 0 untr 1) gap 10 disp 13  — no wave event within 2s
+      +5.5s #  59     67  render                   cb   57 (sim 0 ren 48 vfx 3 ui 5 adm 0 untr 0) gap 12 disp 13  — no wave event within 2s
+      +5.6s #  60     67  render                   cb   48 (sim 0 ren 41 vfx 4 ui 2 adm 0 untr 1) gap 13 disp 17  — no wave event within 2s
+      +5.7s #  61     67  render                   cb   53 (sim 0 ren 45 vfx 3 ui 5 adm 0 untr 0) gap 14 disp 12  — no wave event within 2s
+      +5.8s #  62     67  render                   cb   53 (sim 0 ren 47 vfx 3 ui 3 adm 0 untr 0) gap 12 disp 11  — no wave event within 2s
+      +5.9s #  63     67  render                   cb   58 (sim 0 ren 50 vfx 2 ui 6 adm 0 untr 0) gap 16 disp 13  — no wave event within 2s
+      +6.0s #  64     67  render                   cb   50 (sim 0 ren 43 vfx 3 ui 3 adm 0 untr 1) gap 17 disp 22  — no wave event within 2s
+      +6.1s #  65     83  render                   cb   63 (sim 0 ren 57 vfx 3 ui 3 adm 0 untr 0) gap 11 disp 17  — no wave event within 2s
+      +6.1s #  66     83  render                   cb   59 (sim 0 ren 52 vfx 3 ui 3 adm 1 untr 1) gap 23 disp 20  — no wave event within 2s
+      +6.2s #  67     83  render                   cb   62 (sim 0 ren 54 vfx 3 ui 5 adm 0 untr 0) gap 26 disp 21  — no wave event within 2s
+      +6.3s #  68     67  render                   cb   43 (sim 0 ren 39 vfx 2 ui 2 adm 2 untr 0) gap 19 disp 21  — no wave event within 2s
+      +6.4s #  69    100  render                   cb   61 (sim 0 ren 52 vfx 5 ui 4 adm 0 untr 0) gap 43 disp 40  — no wave event within 2s
+      +6.4s #  70     83  render                   cb   64 (sim 0 ren 55 vfx 3 ui 5 adm 0 untr 0) gap 18 disp 20  — no wave event within 2s
+      +6.5s #  71     83  render                   cb   55 (sim 0 ren 50 vfx 3 ui 2 adm 0 untr 1) gap 11 disp 11  — no wave event within 2s
+      +6.6s #  72     83  render                   cb   67 (sim 0 ren 58 vfx 2 ui 6 adm 0 untr 0) gap 31 disp 14  — no wave event within 2s
+      +6.7s #  73     67  render                   cb   48 (sim 0 ren 42 vfx 4 ui 2 adm 0 untr 0) gap 16 disp 13  — no wave event within 2s
+      +6.7s #  74    100  render                   cb   48 (sim 0 ren 40 vfx 1 ui 6 adm 0 untr 0) gap 64 disp 58  — no wave event within 2s
+      +6.8s #  75     67  render                   cb   53 (sim 0 ren 43 vfx 6 ui 3 adm 0 untr 1) gap 13 disp 19  — no wave event within 2s
+      +6.9s #  76     67  render                   cb   56 (sim 0 ren 47 vfx 3 ui 5 adm 0 untr 1) gap 9 disp 14  — no wave event within 2s
+      +7.0s #  77    100  render                   cb   63 (sim 0 ren 56 vfx 2 ui 4 adm 0 untr 0) gap 26 disp 29  — no wave event within 2s
+      +7.1s #  78     67  render                   cb   55 (sim 0 ren 47 vfx 3 ui 5 adm 0 untr 0) gap 14 disp 5  — no wave event within 2s
+      +7.1s #  79     67  render                   cb   63 (sim 0 ren 59 vfx 2 ui 1 adm 0 untr 1) gap 15 disp 9  — no wave event within 2s
+      +7.2s #  80     67  render                   cb   52 (sim 0 ren 46 vfx 2 ui 3 adm 0 untr 0) gap 8 disp 13  — no wave event within 2s
+      +7.3s #  81     67  render                   cb   54 (sim 0 ren 50 vfx 2 ui 1 adm 0 untr 1) gap 13 disp 11  — no wave event within 2s
+      +7.4s #  82     67  render                   cb   56 (sim 0 ren 47 vfx 3 ui 5 adm 0 untr 0) gap 17 disp 15  — no wave event within 2s
+      +7.5s #  83     67  render                   cb   44 (sim 0 ren 39 vfx 3 ui 2 adm 0 untr 1) gap 14 disp 18  — no wave event within 2s
+      +7.6s #  84     67  render                   cb   45 (sim 0 ren 36 vfx 3 ui 5 adm 1 untr 0) gap 27 disp 23  — no wave event within 2s
+      +7.7s #  85     67  render                   cb   51 (sim 0 ren 45 vfx 4 ui 2 adm 0 untr 0) gap 13 disp 14  — no wave event within 2s
+      +7.8s #  86     67  render                   cb   53 (sim 0 ren 44 vfx 2 ui 7 adm 0 untr 0) gap 10 disp 9  — no wave event within 2s
+      +7.8s #  87     67  render                   cb   51 (sim 0 ren 45 vfx 3 ui 2 adm 0 untr 1) gap 16 disp 11  — no wave event within 2s
+      +7.9s #  88     67  render                   cb   47 (sim 0 ren 40 vfx 2 ui 4 adm 0 untr 0) gap 21 disp 16  — no wave event within 2s
+      +7.9s #  89     50  render                   cb   47 (sim 0 ren 43 vfx 3 ui 1 adm 0 untr 0) gap 14 disp 11  — no wave event within 2s
+      +8.0s #  90     67  render                   cb   46 (sim 0 ren 40 vfx 2 ui 4 adm 0 untr 0) gap 8 disp 16  — no wave event within 2s
+      +8.1s #  91     67  render                   cb   48 (sim 0 ren 41 vfx 3 ui 4 adm 0 untr 0) gap 19 disp 15  — no wave event within 2s
+      +8.1s #  92     83  render                   cb   41 (sim 0 ren 36 vfx 2 ui 3 adm 0 untr 0) gap 44 disp 40  — no wave event within 2s
+      +8.2s #  93     50  render                   cb   43 (sim 0 ren 37 vfx 3 ui 3 adm 0 untr 1) gap 18 disp 16  — no wave event within 2s
+      +8.3s #  94     67  render                   cb   44 (sim 0 ren 38 vfx 2 ui 3 adm 0 untr 0) gap 12 disp 21  — no wave event within 2s
+      +8.4s #  96     67  render                   cb   46 (sim 0 ren 39 vfx 2 ui 4 adm 0 untr 0) gap 9 disp 19  — no wave event within 2s
+      +8.5s #  97     83  render                   cb   41 (sim 0 ren 37 vfx 2 ui 2 adm 0 untr 0) gap 45 disp 43  — no wave event within 2s
+      +8.6s #  98     67  render                   cb   56 (sim 0 ren 47 vfx 2 ui 6 adm 0 untr 0) gap 18 disp 19  — no wave event within 2s
+      +8.7s #  99     83  render                   cb   60 (sim 0 ren 55 vfx 3 ui 2 adm 0 untr 0) gap 12 disp 20  — no wave event within 2s
+      +8.8s # 100     83  render                   cb   68 (sim 0 ren 57 vfx 3 ui 7 adm 0 untr 0) gap 10 disp 7  — no wave event within 2s
+      +8.8s # 101     67  render                   cb   57 (sim 0 ren 50 vfx 3 ui 2 adm 0 untr 0) gap 23 disp 15  — no wave event within 2s
+      +8.9s # 102     83  render                   cb   63 (sim 0 ren 53 vfx 3 ui 7 adm 0 untr 1) gap 10 disp 15  — no wave event within 2s
+      +9.0s # 103     67  render                   cb   51 (sim 0 ren 47 vfx 2 ui 2 adm 2 untr 0) gap 22 disp 19  — no wave event within 2s
+      +9.1s # 104     83  render                   cb   60 (sim 0 ren 50 vfx 3 ui 6 adm 0 untr 0) gap 17 disp 21  — no wave event within 2s
+      +9.2s # 105     67  render                   cb   55 (sim 0 ren 52 vfx 1 ui 1 adm 0 untr 0) gap 13 disp 11  — no wave event within 2s
+      +9.2s # 106     50  render                   cb   44 (sim 0 ren 36 vfx 2 ui 5 adm 0 untr 0) gap 10 disp 10  — no wave event within 2s
+      +9.3s # 107     67  render                   cb   55 (sim 0 ren 50 vfx 2 ui 1 adm 0 untr 0) gap 10 disp 14  — no wave event within 2s
+      +9.4s # 108     83  render                   cb   65 (sim 0 ren 56 vfx 4 ui 5 adm 0 untr 0) gap 19 disp 21  — no wave event within 2s
+      +9.5s # 109     83  render                   cb   62 (sim 0 ren 54 vfx 4 ui 4 adm 0 untr 0) gap 17 disp 20  — no wave event within 2s
+      +9.5s # 110    100  render                   cb   61 (sim 0 ren 52 vfx 2 ui 6 adm 0 untr 1) gap 46 disp 44  — no wave event within 2s
+      +9.6s # 111    100  render                   cb   70 (sim 0 ren 57 vfx 3 ui 9 adm 0 untr 0) gap 16 disp 22  — no wave event within 2s
+      +9.7s # 112     83  render                   cb   70 (sim 0 ren 59 vfx 4 ui 6 adm 0 untr 1) gap 13 disp 5  — no wave event within 2s
+      +9.8s # 114     67  render                   cb   48 (sim 0 ren 42 vfx 2 ui 3 adm 0 untr 0) gap 12 disp 21  — no wave event within 2s
+     +10.1s # 118     67  render                   cb   37 (sim 0 ren 34 vfx 1 ui 1 adm 0 untr 0) gap 13 disp 23  — no wave event within 2s
+     +10.4s # 123     50  render                   cb   29 (sim 0 ren 25 vfx 2 ui 2 adm 0 untr 0) gap 11 disp 18  — no wave event within 2s
+     +10.5s # 125     50  render                   cb   39 (sim 0 ren 34 vfx 1 ui 3 adm 0 untr 0) gap 7 disp 12  — no wave event within 2s
+     +10.9s # 130     50  render                   cb   32 (sim 0 ren 28 vfx 2 ui 2 adm 0 untr 0) gap 19 disp 27  — no wave event within 2s
+     +10.9s # 131     50  render                   cb   29 (sim 0 ren 25 vfx 1 ui 2 adm 0 untr 0) gap 10 disp 18  — no wave event within 2s
+     +11.0s # 132     67  render                   cb   32 (sim 0 ren 25 vfx 3 ui 1 adm 0 untr 3) gap 44 disp 42  — no wave event within 2s
+     +11.8s # 142     50  render                   cb   34 (sim 0 ren 28 vfx 4 ui 2 adm 0 untr 0) gap 10 disp 14  — no wave event within 2s
+     +12.1s # 148     50  render                   cb   35 (sim 0 ren 29 vfx 3 ui 2 adm 0 untr 1) gap 14 disp 13  — no wave event within 2s
+     +12.3s # 151     50  render                   cb   26 (sim 0 ren 22 vfx 2 ui 2 adm 0 untr 0) gap 9 disp 20  — no wave event within 2s
+     +12.8s # 163     67  intraFrameTasks          cb   23 (sim 0 ren 20 vfx 1 ui 1 adm 0 untr 0) gap 43 disp 50  — no wave event within 2s
+     +12.8s # 164     50  render                   cb   31 (sim 0 ren 25 vfx 3 ui 2 adm 0 untr 0) gap 8 disp 15  — no wave event within 2s
+     +13.2s # 172     67  intraFrameTasks          cb   24 (sim 0 ren 22 vfx 1 ui 1 adm 0 untr 0) gap 36 disp 46  — no wave event within 2s
+     +13.2s # 173     50  admission                cb   35 (sim 0 ren 29 vfx 2 ui 4 adm 62 untr 0) gap 0 disp 17  — no wave event within 2s
+     +13.6s # 182     67  render                   cb   35 (sim 0 ren 30 vfx 2 ui 2 adm 2 untr 1) gap 10 disp 24  — no wave event within 2s
+     +13.9s # 191     67  render                   cb   29 (sim 0 ren 24 vfx 2 ui 3 adm 0 untr 0) gap 28 disp 39  — no wave event within 2s
+     +14.4s # 203     50  render                   cb   30 (sim 0 ren 27 vfx 1 ui 1 adm 0 untr 1) gap 6 disp 16  — no wave event within 2s
+     +14.4s # 205     50  render                   cb   26 (sim 0 ren 22 vfx 3 ui 1 adm 0 untr 0) gap 18 disp 31  — no wave event within 2s
+     +16.0s # 249     67  render                   cb   28 (sim 0 ren 25 vfx 1 ui 1 adm 0 untr 0) gap 41 disp 46  — no wave event within 2s
+     +16.3s # 256    117  render                   cb   87 (sim 0 ren 82 vfx 2 ui 2 adm 3 untr 0) gap 19 disp 32  — no wave event within 2s
+     +16.4s # 258     50  render                   cb   25 (sim 0 ren 22 vfx 1 ui 1 adm 1 untr 0) gap 11 disp 23  — no wave event within 2s
+     +16.5s # 261     50  admission                cb   46 (sim 0 ren 42 vfx 2 ui 2 adm 130 untr 0) gap 0 disp 14  — no wave event within 2s
+     +16.7s # 268     50  render                   cb   33 (sim 0 ren 28 vfx 2 ui 2 adm 0 untr 1) gap 5 disp 17  — no wave event within 2s
+     +16.8s # 271    117  render                   cb   28 (sim 0 ren 24 vfx 1 ui 2 adm 0 untr 0) gap 81 disp 87  — no wave event within 2s
+     +16.9s # 273     83  render                   cb   31 (sim 0 ren 27 vfx 2 ui 1 adm 0 untr 0) gap 42 disp 49  — no wave event within 2s
+     +16.9s # 275     50  render                   cb   28 (sim 0 ren 25 vfx 2 ui 1 adm 0 untr 0) gap 24 disp 21  — no wave event within 2s
+     +17.0s # 277     50  render                   cb   33 (sim 0 ren 28 vfx 1 ui 4 adm 0 untr 0) gap 6 disp 17  — no wave event within 2s
+     +17.1s # 279     50  render                   cb   43 (sim 0 ren 38 vfx 3 ui 1 adm 0 untr 0) gap 8 disp 10  — no wave event within 2s
+     +17.5s # 288     67  render                   cb   30 (sim 0 ren 27 vfx 1 ui 1 adm 0 untr 0) gap 27 disp 35  — no wave event within 2s
+     +17.6s # 289     50  render                   cb   42 (sim 0 ren 36 vfx 3 ui 3 adm 0 untr 0) gap 10 disp 9  — no wave event within 2s
+     +17.6s # 290     50  render                   cb   38 (sim 0 ren 34 vfx 2 ui 1 adm 0 untr 0) gap 8 disp 8  — no wave event within 2s
+     +17.7s # 292     50  render                   cb   25 (sim 0 ren 23 vfx 1 ui 1 adm 0 untr 0) gap 17 disp 18  — no wave event within 2s
+     +17.8s # 294     50  render                   cb   33 (sim 0 ren 29 vfx 2 ui 2 adm 0 untr 0) gap 8 disp 13  — no wave event within 2s
+     +18.2s # 302     67  render                   cb   52 (sim 0 ren 48 vfx 2 ui 1 adm 0 untr 0) gap 7 disp 15  — no wave event within 2s
+     +18.2s # 303     50  render                   cb   37 (sim 0 ren 34 vfx 1 ui 1 adm 0 untr 0) gap 9 disp 9  — no wave event within 2s
+     +18.3s # 304     67  render                   cb   55 (sim 0 ren 52 vfx 1 ui 2 adm 0 untr 0) gap 12 disp 9  — no wave event within 2s
+     +18.3s # 305     50  render                   cb   48 (sim 0 ren 45 vfx 1 ui 1 adm 0 untr 0) gap 12 disp 10  — no wave event within 2s
+     +18.4s # 306     83  render                   cb   53 (sim 0 ren 48 vfx 2 ui 3 adm 2 untr 0) gap 19 disp 28  — no wave event within 2s
+     +18.4s # 307     67  admission                cb   53 (sim 0 ren 50 vfx 1 ui 1 adm 202 untr 0) gap 0 disp 11  — no wave event within 2s
+     +18.5s # 308     67  render                   cb   48 (sim 0 ren 43 vfx 2 ui 3 adm 0 untr 0) gap 21 disp 18  — no wave event within 2s
+     +18.5s # 309     67  render                   cb   52 (sim 0 ren 49 vfx 2 ui 1 adm 0 untr 0) gap 11 disp 11  — no wave event within 2s
+     +18.6s # 310     67  render                   cb   53 (sim 0 ren 48 vfx 2 ui 2 adm 0 untr 0) gap 15 disp 11  — no wave event within 2s
+     +18.6s # 311     50  admission                cb   44 (sim 0 ren 41 vfx 2 ui 1 adm 189 untr 0) gap 0 disp 6  — no wave event within 2s
+     +18.6s # 312     67  render                   cb   51 (sim 0 ren 47 vfx 2 ui 2 adm 0 untr 0) gap 13 disp 13  — no wave event within 2s
+     +18.7s # 313     50  render                   cb   41 (sim 0 ren 38 vfx 1 ui 1 adm 0 untr 0) gap 10 disp 6  — no wave event within 2s
+     +18.7s # 314    100  render                   cb   27 (sim 0 ren 24 vfx 1 ui 2 adm 4 untr 0) gap 68 disp 69  — no wave event within 2s
+  hitch classifier (in-game)    hitches 361 of 370 frames, named 357 (coverage 99 %) — present 296 | externalScheduling 53 | admission 4 | unknown 4 | compose 3 | bloom 1  (scheduling split: gap-dominant 20, dispatch-dominant 33, extGap 1863 ms, dispLag 1978 ms)
+  last hitch verdicts: +s into sample, frame ms, owner, nearest wave
+     +20.4s     33  present  — no wave event within 2s
+     +20.5s     33  present  — no wave event within 2s
+     +20.5s     33  present  — no wave event within 2s
+     +20.5s     33  present  — no wave event within 2s
+     +20.6s     33  present  — no wave event within 2s
+     +20.6s     33  present  — no wave event within 2s
+     +20.6s     33  present  — no wave event within 2s
+     +20.7s     33  present  — no wave event within 2s
+     +20.7s     50  present  — no wave event within 2s
+     +20.8s     33  present  — no wave event within 2s
+     +20.8s     33  present  — no wave event within 2s
+     +20.9s     33  present  — no wave event within 2s
+     +20.9s     33  present  — no wave event within 2s
+     +20.9s     33  present  — no wave event within 2s
+     +21.0s     33  present  — no wave event within 2s
+     +21.0s     33  present  — no wave event within 2s
+  long tasks ≥100 ms between callbacks (largest first)
+      +3.5s     132 ms  self  unknown:
+      +0.1s     118 ms  self  unknown:
+      +4.0s     118 ms  self  unknown:
+      +2.4s     115 ms  self  unknown:
+     +11.5s     108 ms  self  unknown:
+      +1.5s     103 ms  self  unknown:
+      +3.3s     100 ms  self  unknown:
+      +7.3s     100 ms  self  unknown:
+  wave arrival in window      NOT COVERED — no wave materialized in this window. The link/upload counts below say nothing about wave-arrival cost, and must not be compared against a run that was covered.
+  kills in sample             n/a (run with --with-kill to force live kills)
+  program links / buffer uploads shaderLinks +737, bufferFullUploads +1728, bufferPartialUploads +19204
+  link placement                367 frame(s) paid a draw-time link; 2 link(s) landed off-frame (async compile); novelty: 0 NOVEL, 0 RELINK, 68 unkeyed
+  admissions queued at flight   pipelines 1, residency 0
+  roster prewarm at flight      1 roots, 1566 unready materials — opening-species-warm(5770m,1566/5778,null)
+  crucible warm at flight     {"profile":"opening","records":37,"instantiated":37,"packageInstances":37,"paletteSubjects":296,"chunkPromotions":0,"shipKicks":0,"shipStates":""}
+  ship pools at flight        0 chunks, 0 slot owners, 0 pending candidates
+  cook ledger                 live.rocksAndLeftoverMeshes 4ms resolved (firstFlightEntities=47) | live.meshBuilds2 51ms resolved (queued=9,passes=2,built=0,buildMs=0,yields=2,left=0) | cook.programs 0ms resolved (method=first-flight-hulls) | cook.touchCompile 749ms resolved (issued=572,unlinked=0,yields=15) | cook.touch 424ms resolved (subjects=572,firstPicture=94,touched=572,notReady=0,noProgram=0,switched=2,touchMs=205,maxTouchMs=2,yields=25) | cook.buffers 499ms resolved (roots=94,textures=224,yields=11) | cook.layers 303ms resolved (roots=174,yields=17) | cook.crucibleWarm 622ms resolved (progress={"profile":"opening","records":37,"instantiated":37,"packageInstances":37,"paletteSubjects":296,"chunkPromotions":0,"shi) | cook.rockPools 7638ms resolved (roots=53,units=1738,issued=1738,issueDedupeSkips=1647,touched=1738,hiddenTouchSkips=1661,yields=14,issueMs=758,drainMs=3680,touchMs=3000) | live.cook 21242ms resolved | live.leftoverUpgradeIdle 0ms resolved (pending=0,inFlight=0,compiling=false) | live.materialSettle 370ms resolved (unbound=557,names=Physical racing wakes/Next checkpoint/Draft pace beacon/Massline anchors and crossing refuges/L6_comet/L0-L2_deep-field-composite/L3_stars/L4_) | live.postOpeningPipelines 1519ms resolved | live.parkWarmRoots 39ms resolved (roots=1,nodes=129,stampedGeometries=553) | live.firstFramePoolCensus 1618ms resolved | live.finalPipelineSeal 0ms resolved (queuedPipelines=0) | wait.prepareLiveSectorBeforeFlight 24555ms resolved | opening.compositionTail 1ms resolved
+  opening tail settle         {"skipped":false,"waitedMs":1,"polls":1,"kicked":0,"kickedIds":[],"settled":true,"pending":0,"inFlight":0,"compiling":false,"residency":0,"budget":20000}
+    +19.5s  [?] ?  via wr:wr_convoy_4ae3f62e  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +19.5s  [?] ?  via wr:wr_convoy_4ae3f62e  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +19.6s  [?] ?  via GLTFKit_ship_pelican  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +19.6s  [?] ?  via GLTFKit_ship_pelican  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +19.6s  [?] ?  via GLTFKit_ship_bastion  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +19.6s  [?] ?  via GLTFKit_ship_bastion  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +19.7s  [?] ?  via GLTFKit_ship_bastion  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +19.7s  [?] ?  via GLTFKit_ship_bastion  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +19.8s  [?] ?  via wr:wr_convoy_9fefc90b  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +19.8s  [?] ?  via wr:wr_convoy_9fefc90b  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +19.8s  [?] ?  via wr:wr_convoy_9fefc90b  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +19.8s  [?] ?  via wr:wr_convoy_9fefc90b  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +19.9s  [?] ?  via GLTFKit_InstancePool_SF_WHOLESHIP_YARD_TUG_LOD0_Lights_Cyan_  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +19.9s  [?] ?  via GLTFKit_InstancePool_SF_WHOLESHIP_YARD_TUG_LOD0_Lights_Cyan_  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +20.0s  [?] ?  via wr:wr_convoy_23de998b  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +20.0s  [?] ?  via wr:wr_convoy_23de998b  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +20.0s  [?] ?  via wr:wr_convoy_23de998b  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +20.0s  [?] ?  via wr:wr_convoy_23de998b  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +20.1s  [?] ?  via wr:wr_convoy_23de998b  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +20.1s  [?] ?  via wr:wr_convoy_23de998b  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +20.1s  [?] ?  via Group:ship  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +20.1s  [?] ?  via Group:ship  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +20.2s  [?] ?  via wr:wr_convoy_9fefc90b  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+    +20.2s  [?] ?  via wr:wr_convoy_9fefc90b  drew SF_PrivateInstancedMeshDisposeRegistrationProbe:instanced  [at getProgram () <- at setProgram () <- at WebGLRenderer.renderBufferDirect () <- at WebGLRenderer.renderBufferDirect ()]
+  boundary census at flight   authored×45
+  buffer uploads in sample:
+    +19s  ×1    bufferData 4096B  via wr:wr_convoy_4ae3f62e  <- GLTFKit_InstancePool_SF_WHOLESHIP_YARD_TUG_LOD1_Lights_Warm_0.instanceMatrix
+    +19s  ×1    bufferData 4096B  via wr:wr_convoy_4ae3f62e  <- GLTFKit_InstancePool_SF_WHOLESHIP_YARD_TUG_LOD1_Warning_0.instanceMatrix
+    +19s  ×2    bufferData 36B  via res:SF_ProgramSpecimen_SF_ProgramSpecimen_SF_Shared_canopy_n
+    +19s  ×1    bufferData 24B  via res:SF_ProgramSpecimen_SF_ProgramSpecimen_SF_Shared_canopy_n
+    +19s  ×1    bufferData 6B  via res:SF_ProgramSpecimen_SF_ProgramSpecimen_SF_Shared_canopy_n
+    +19s  ×1    bufferData 6480B  via wr:wr_convoy_4ae3f62e  <- Ship_Shield_Bubble.position
+    +19s  ×1    bufferData 6480B  via wr:wr_convoy_4ae3f62e  <- Ship_Shield_Bubble.normal
+    +19s  ×1    bufferData 4320B  via wr:wr_convoy_4ae3f62e  <- Ship_Shield_Bubble.uv
+    +19s  ×1    bufferData 36B  via wr:wr_convoy_4ae3f62e
+    +19s  ×1    bufferData 24B  via wr:wr_convoy_4ae3f62e
+    +19s  ×1    bufferData 64B  via wr:wr_convoy_4ae3f62e
+    +19s  ×1    bufferData 36B  via GLTFKit_ship_pelican
+    +19s  ×1    bufferData 24B  via GLTFKit_ship_pelican
+    +19s  ×1    bufferData 64B  via GLTFKit_ship_pelican
+    +19s  ×2    bufferData 36B  via GLTFKit_ship_bastion
+    +19s  ×2    bufferData 24B  via GLTFKit_ship_bastion
+    +19s  ×2    bufferData 64B  via GLTFKit_ship_bastion
+    +19s  ×2    bufferData 36B  via wr:wr_convoy_9fefc90b
+    +19s  ×2    bufferData 24B  via wr:wr_convoy_9fefc90b
+    +19s  ×2    bufferData 64B  via wr:wr_convoy_9fefc90b
+    +19s  ×1    bufferData 36B  via GLTFKit_InstancePool_SF_WHOLESHIP_YARD_TUG_LOD0_Lights_Cyan_
+    +19s  ×1    bufferData 24B  via GLTFKit_InstancePool_SF_WHOLESHIP_YARD_TUG_LOD0_Lights_Cyan_
+    +19s  ×1    bufferData 64B  via GLTFKit_InstancePool_SF_WHOLESHIP_YARD_TUG_LOD0_Lights_Cyan_
+    +20s  ×13    bufferData 36B  via wr:wr_convoy_23de998b
+  SHIP LOST ITS PLACE         4 presents redrew an already-drawn moment (must be 0)
+  hitch callbacks             22 of 369 (world resumed two ticks on)
+  frames that shed sim time   140
+  game speed vs real time     67.8 % (hit-stop and hitches are the only things allowed to lower it)
+  OS says reduce motion       false
+  game motion setting         full -> effects FULL
+  rock batches                0/1  0/1  0/0  0/1  0/0
+  player speed at end         195 WU/s
+  console errors              0
+
+exit 0

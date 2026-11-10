@@ -1,0 +1,94 @@
+{
+  "schema": "spaceface.w4IpcCensus.v1",
+  "generatedAt": "2026-09-29T08:50:30.840Z",
+  "electron": "43.2.0",
+  "chrome": "150.0.7871.129",
+  "settleMs": 8000,
+  "bridgeBench": {
+    "iters": 400,
+    "invokePerfMetricsMs": 1.7862624999997205,
+    "invokeBuildInfoMs": 0.8686874999990687,
+    "baselineAsyncCallMs": 0.00015000000013969838,
+    "baselineStructuredCloneMs": 0.002049999999580905
+  },
+  "census": {
+    "after-flight-settle": {
+      "startedAt": "2026-09-29T08:50:05.908Z",
+      "sendRx": {},
+      "invokeRx": {
+        "spaceface:steam-status": {
+          "count": 2,
+          "totalMs": 0.15720000000055734,
+          "maxMs": 0.14350000000013097
+        },
+        "spaceface:build-info": {
+          "count": 1,
+          "totalMs": 0.11449999999967986,
+          "maxMs": 0.11449999999967986
+        }
+      },
+      "sendTx": {
+        "send:spaceface:shell-lifecycle": {
+          "count": 3,
+          "totalMs": 0,
+          "maxMs": 0
+        }
+      },
+      "sendTxOther": {}
+    },
+    "after-lifecycle-events": {
+      "startedAt": "2026-09-29T08:50:05.908Z",
+      "sendRx": {},
+      "invokeRx": {
+        "spaceface:steam-status": {
+          "count": 2,
+          "totalMs": 0.15720000000055734,
+          "maxMs": 0.14350000000013097
+        },
+        "spaceface:build-info": {
+          "count": 1,
+          "totalMs": 0.11449999999967986,
+          "maxMs": 0.11449999999967986
+        }
+      },
+      "sendTx": {
+        "send:spaceface:shell-lifecycle": {
+          "count": 6,
+          "totalMs": 0,
+          "maxMs": 0
+        }
+      },
+      "sendTxOther": {}
+    },
+    "after-bridge-bench": {
+      "startedAt": "2026-09-29T08:50:05.908Z",
+      "sendRx": {},
+      "invokeRx": {
+        "spaceface:steam-status": {
+          "count": 2,
+          "totalMs": 0.15720000000055734,
+          "maxMs": 0.14350000000013097
+        },
+        "spaceface:build-info": {
+          "count": 426,
+          "totalMs": 11.484300000000076,
+          "maxMs": 7.878799999998591
+        },
+        "spaceface:perf-metrics": {
+          "count": 425,
+          "totalMs": 335.389600000035,
+          "maxMs": 3.5064999999995052
+        }
+      },
+      "sendTx": {
+        "send:spaceface:shell-lifecycle": {
+          "count": 6,
+          "totalMs": 0,
+          "maxMs": 0
+        }
+      },
+      "sendTxOther": {}
+    }
+  },
+  "failures": []
+}

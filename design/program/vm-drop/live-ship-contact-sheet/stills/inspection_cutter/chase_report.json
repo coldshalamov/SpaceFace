@@ -1,0 +1,124 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/assets/ships/parts/wholeships/inspection_cutter.glb",
+  "out": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/inspection_cutter",
+  "focus": [
+    -0.275,
+    0.0,
+    1.065
+  ],
+  "boundsMin": [
+    -11.55,
+    -2.4963,
+    -1.72
+  ],
+  "boundsMax": [
+    11.0,
+    2.4963,
+    3.85
+  ],
+  "size": [
+    22.55,
+    4.9926,
+    5.57
+  ],
+  "lightScale": 2.088,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
+      "triangles": 480,
+      "materials": [
+        "Material_BrushedMetal_RemasterNickel"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Mechanical_RemasterOxidized",
+      "triangles": 2696,
+      "materials": [
+        "Material_Mechanical_RemasterOxidized"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Glass_RemasterOptical",
+      "triangles": 2640,
+      "materials": [
+        "Material_Glass_RemasterOptical"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Emissive_Warm_RemasterRecess",
+      "triangles": 2640,
+      "materials": [
+        "Material_Emissive_Warm_RemasterRecess"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Mechanical_RemasterHeatCopper",
+      "triangles": 120,
+      "materials": [
+        "Material_Mechanical_RemasterHeatCopper"
+      ]
+    },
+    {
+      "name": "LOD0_HOOK_DRIVE_CORE",
+      "triangles": 88,
+      "materials": [
+        "Material_Cyan"
+      ]
+    },
+    {
+      "name": "LOD0_HOOK_DRIVE_FAN",
+      "triangles": 168,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Cyan",
+      "triangles": 756,
+      "materials": [
+        "Material_Cyan"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Glass",
+      "triangles": 36,
+      "materials": [
+        "Material_Glass"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Hull",
+      "triangles": 1796,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Mechanical",
+      "triangles": 1124,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Warm",
+      "triangles": 268,
+      "materials": [
+        "Material_Warm"
+      ]
+    }
+  ],
+  "triangles": 12812,
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/inspection_cutter/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/inspection_cutter/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/inspection_cutter/play_chase_close.png"
+  },
+  "clay": null,
+  "clayClose": null
+}

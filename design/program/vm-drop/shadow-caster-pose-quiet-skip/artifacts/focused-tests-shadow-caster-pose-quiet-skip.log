@@ -1,0 +1,187 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: contact shadows publish retained matrix ranges and retire the owner through growth
+ok 1 - contact shadows publish retained matrix ranges and retire the owner through growth
+  ---
+  duration_ms: 12.26475
+  ...
+# Subtest: deferred growth clamps the frame, then activates an uploaded replacement
+ok 2 - deferred growth clamps the frame, then activates an uploaded replacement
+  ---
+  duration_ms: 5.296532
+  ...
+# Subtest: contact-shadow range validation fails before matrix or cache mutation
+ok 3 - contact-shadow range validation fails before matrix or cache mutation
+  ---
+  duration_ms: 1.139262
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: zero receivers gate the depth pass and culling camera while the program-key flags stay pinned
+ok 4 - zero receivers gate the depth pass and culling camera while the program-key flags stay pinned
+  ---
+  duration_ms: 3.723839
+  ...
+# Subtest: the shadows setting off gates the work regardless of receiver count
+ok 5 - the shadows setting off gates the work regardless of receiver count
+  ---
+  duration_ms: 0.217853
+  ...
+# Subtest: an active shadow map follows the local player and prepares each matrix exactly once
+ok 6 - an active shadow map follows the local player and prepares each matrix exactly once
+  ---
+  duration_ms: 0.629957
+  ...
+# Subtest: re-enabling shadows re-follows the moved player before the culling camera is published
+ok 7 - re-enabling shadows re-follows the moved player before the culling camera is published
+  ---
+  duration_ms: 0.354929
+  ...
+# Subtest: shadow follow stays stable within one texel and defers a crossing until commit
+ok 8 - shadow follow stays stable within one texel and defers a crossing until commit
+  ---
+  duration_ms: 0.371556
+  ...
+# Subtest: shadow policy skips unchanged LOD scene-graph traversals without changing visual rules
+ok 9 - shadow policy skips unchanged LOD scene-graph traversals without changing visual rules
+  ---
+  duration_ms: 3.388859
+  ...
+# Subtest: shadow policy refreshes once when an LOD transition changes visible meshes
+ok 10 - shadow policy refreshes once when an LOD transition changes visible meshes
+  ---
+  duration_ms: 0.435023
+  ...
+# Subtest: hierarchy invalidation configures newly admitted authored meshes at the same LOD
+ok 11 - hierarchy invalidation configures newly admitted authored meshes at the same LOD
+  ---
+  duration_ms: 0.472173
+  ...
+# Subtest: allowCast false drops casters but keeps opaque receivers
+ok 12 - allowCast false drops casters but keeps opaque receivers
+  ---
+  duration_ms: 0.375273
+  ...
+# Subtest: realtime caster pose invalidation accumulates one-shadow-texel movement
+ok 13 - realtime caster pose invalidation accumulates one-shadow-texel movement
+  ---
+  duration_ms: 0.717694
+  ...
+# Subtest: realtime caster pose invalidation covers silhouette rotation, scale, visibility, and cast band
+ok 14 - realtime caster pose invalidation covers silhouette rotation, scale, visibility, and cast band
+  ---
+  duration_ms: 0.755608
+  ...
+# Subtest: quiet-skip gate is on by default and restores always-note when bench-off
+ok 15 - quiet-skip gate is on by default and restores always-note when bench-off
+  ---
+  duration_ms: 0.567381
+  ...
+# Subtest: quiet skip suppresses note on an unchanged cast-band root with a recorded pose
+ok 16 - quiet skip suppresses note on an unchanged cast-band root with a recorded pose
+  ---
+  duration_ms: 0.506835
+  ...
+# Subtest: quiet skip still notes before the first pose is recorded
+ok 17 - quiet skip still notes before the first pose is recorded
+  ---
+  duration_ms: 0.566599
+  ...
+# Subtest: collects mesh casters from a root and skips non-casters
+ok 18 - collects mesh casters from a root and skips non-casters
+  ---
+  duration_ms: 2.140511
+  ...
+# Subtest: shadow depth compile runs the real shadow pass on exact casters and restores homes
+ok 19 - shadow depth compile runs the real shadow pass on exact casters and restores homes
+  ---
+  duration_ms: 1.059781
+  ...
+# Subtest: shadow depth admission records the actual generated depth binding and restores an existing driver hook
+ok 20 - shadow depth admission records the actual generated depth binding and restores an existing driver hook
+  ---
+  duration_ms: 0.444897
+  ...
+# Subtest: shadow depth admission fails closed when its actual depth draw has no program binding
+ok 21 - shadow depth admission fails closed when its actual depth draw has no program binding
+  ---
+  duration_ms: 0.26648
+  ...
+# Subtest: shadow depth admission restores the prior renderBufferDirect hook when the shadow pass throws
+ok 22 - shadow depth admission restores the prior renderBufferDirect hook when the shadow pass throws
+  ---
+  duration_ms: 0.517481
+  ...
+# Subtest: hidden zero-count instanced casters are revealed for the shadow pass
+ok 23 - hidden zero-count instanced casters are revealed for the shadow pass
+  ---
+  duration_ms: 0.371326
+  ...
+# Subtest: inactive shadows skip unless forceEnable is set
+ok 24 - inactive shadows skip unless forceEnable is set
+  ---
+  duration_ms: 0.362687
+  ...
+# Subtest: armAdmissionShadows toggles live shadow state only when enabled
+ok 25 - armAdmissionShadows toggles live shadow state only when enabled
+  ---
+  duration_ms: 0.313334
+  ...
+# Subtest: a late present skips one shadow refresh, then the map must update again
+ok 26 - a late present skips one shadow refresh, then the map must update again
+  ---
+  duration_ms: 1.342044
+  ...
+# Subtest: a clean shadow map stays idle while a late dirty map retains its one-frame recovery
+ok 27 - a clean shadow map stays idle while a late dirty map retains its one-frame recovery
+  ---
+  duration_ms: 0.145479
+  ...
+# Subtest: live shadow follow consults the late-present cadence
+ok 28 - live shadow follow consults the late-present cadence
+  ---
+  duration_ms: 12.47044
+  ...
+# Subtest: add/remove keep the receiver count without a full recount
+ok 29 - add/remove keep the receiver count without a full recount
+  ---
+  duration_ms: 2.032726
+  ...
+# Subtest: dirty fallback recounts the live scene exactly once
+ok 30 - dirty fallback recounts the live scene exactly once
+  ---
+  duration_ms: 0.413519
+  ...
+# Subtest: owner dirty forces a recount even when the incremental dirty bit is clear
+ok 31 - owner dirty forces a recount even when the incremental dirty bit is clear
+  ---
+  duration_ms: 0.21874
+  ...
+# Subtest: live shadow-map gate forces a recount when the owner dirty flag is set
+ok 32 - live shadow-map gate forces a recount when the owner dirty flag is set
+  ---
+  duration_ms: 13.542126
+  ...
+# Subtest: LOD receiveShadow churn without a dirty signal can walk the tally to zero
+ok 33 - LOD receiveShadow churn without a dirty signal can walk the tally to zero
+  ---
+  duration_ms: 0.483923
+  ...
+# Subtest: a policy refresh marks the tally dirty so the next resolve recounts live flags
+ok 34 - a policy refresh marks the tally dirty so the next resolve recounts live flags
+  ---
+  duration_ms: 0.289758
+  ...
+# Subtest: live LOD shadow policy refresh dirties the receiver tally
+ok 35 - live LOD shadow policy refresh dirties the receiver tally
+  ---
+  duration_ms: 8.945301
+  ...
+1..35
+# tests 35
+# suites 0
+# pass 35
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 738.619911

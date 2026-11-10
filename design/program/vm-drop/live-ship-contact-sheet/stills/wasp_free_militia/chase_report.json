@@ -1,0 +1,220 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/assets/ships/parts/wholeships/wasp_free_militia.glb",
+  "out": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/wasp_free_militia",
+  "focus": [
+    1.0,
+    0.0,
+    0.4724
+  ],
+  "boundsMin": [
+    -10.0,
+    -8.0818,
+    -1.38
+  ],
+  "boundsMax": [
+    12.0,
+    8.0818,
+    2.3247
+  ],
+  "size": [
+    22.0,
+    16.1637,
+    3.7047
+  ],
+  "lightScale": 2.037,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
+      "triangles": 3560,
+      "materials": [
+        "Material_BrushedMetal_RemasterNickel"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Mechanical_RemasterOxidized",
+      "triangles": 56,
+      "materials": [
+        "Material_Mechanical_RemasterOxidized"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Mechanical_RemasterHeatCopper",
+      "triangles": 120,
+      "materials": [
+        "Material_Mechanical_RemasterHeatCopper"
+      ]
+    },
+    {
+      "name": "LOD0_Accent",
+      "triangles": 916,
+      "materials": [
+        "Material_Accent"
+      ]
+    },
+    {
+      "name": "LOD0_Canopy",
+      "triangles": 268,
+      "materials": [
+        "Material_Canopy"
+      ]
+    },
+    {
+      "name": "LOD0_Hull",
+      "triangles": 652,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_Hull_Armor",
+      "triangles": 3416,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_Mechanical",
+      "triangles": 5424,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Thruster",
+      "triangles": 760,
+      "materials": [
+        "Material_Thruster"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_FREE_clamp0",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_FREE_clamp1",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_FREE_clamp2",
+      "triangles": 60,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_FREE_conduit",
+      "triangles": 144,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_FREE_light0",
+      "triangles": 60,
+      "materials": [
+        "KitMat_Emissive"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_FREE_light1",
+      "triangles": 60,
+      "materials": [
+        "KitMat_Emissive"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_FREE_light2",
+      "triangles": 60,
+      "materials": [
+        "KitMat_Emissive"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_FREE_patch",
+      "triangles": 120,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_FREE_plate0",
+      "triangles": 120,
+      "materials": [
+        "Material_Hull",
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_FREE_plate1",
+      "triangles": 120,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_FREE_plate2",
+      "triangles": 120,
+      "materials": [
+        "Material_Hull",
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_FREE_plate3",
+      "triangles": 120,
+      "materials": [
+        "Material_Hull",
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_FREE_plate4",
+      "triangles": 120,
+      "materials": [
+        "Material_Hull",
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_FREE_plate5",
+      "triangles": 120,
+      "materials": [
+        "Material_Hull",
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_VAR_FREE_pod",
+      "triangles": 124,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Warning",
+      "triangles": 216,
+      "materials": [
+        "Material_Warning"
+      ]
+    }
+  ],
+  "triangles": 16856,
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/wasp_free_militia/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/wasp_free_militia/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/wasp_free_militia/play_chase_close.png"
+  },
+  "clay": null,
+  "clayClose": null
+}

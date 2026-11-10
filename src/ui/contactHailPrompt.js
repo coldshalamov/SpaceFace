@@ -1,0 +1,423 @@
+// Compact target hail beside the comms log. Simulation validation lives in scanner.js; this module
+// only consumes scanner receipts, emits intents, and renders compact scanner-owned actions.
+
+import {
+  CONTACT_HAIL_RECEIPT_TTL_S,
+  CONTACT_HAIL_REQUEST_TTL_S,
+} from '../data/contactHail.js';
+import { markTold } from '../systems/deedRecord.js';
+import { isUiInteractionFenced } from './input.js';
+import { createMorphLabel } from './effects/morphLabel.js';
+import { factionIcon, icon as stationIcon } from './station/icons.js';
+import {
+  buildHailRibbonPath,
+  hailFrequencyText,
+  resolveHailVisual,
+} from './commsRadial.js';
+import { getPromptDeck } from './promptDeck.js';
+
+const STYLE_ID = 'sf-contact-hail-style';
+const ROUTE_READING_GRACE_S = 30;
+
+function clamp01(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  if (n <= 0) return 0;
+  if (n >= 1) return 1;
+  return n;
+}
+
+export function createContactHailPrompt(ctx) {
+  const { state, bus } = ctx;
+  injectStyle();
+
+  const root = document.createElement('div');
+  root.id = 'sf-contact-hail';
+  root.innerHTML = `
+    <button type="button" class="sf-contact-hail__button" data-k="hail" disabled
+      aria-label="Hail selected contact">HAIL</button>
+    <aside class="sf-contact-hail__panel" data-k="panel" role="region" aria-live="polite"
+      aria-atomic="true" hidden>
+      <button type="button" class="sf-contact-hail__deck" data-k="deck"
+        aria-label="Open tactical hail deck">
+        <span class="sf-contact-hail__crest" data-k="crest"></span>
+        <span class="sf-contact-hail__who">
+          <span class="sf-contact-hail__pilot" data-k="pilot">NO CONTACT</span>
+          <span class="sf-contact-hail__class" data-k="classword">CHANNEL IDLE</span>
+        </span>
+        <span class="sf-contact-hail__freq" data-k="freq"></span>
+        <svg class="sf-contact-hail__ribbon" viewBox="0 0 152 24" aria-hidden="true" focusable="false">
+          <path data-k="ribbon"></path>
+        </svg>
+      </button>
+      <div class="sf-contact-hail__lines" data-k="lines"></div>
+      <div class="sf-contact-hail__actions" data-k="actions"></div>
+      <button type="button" class="sf-contact-hail__close" data-k="close" hidden aria-label="Close route details">CLOSE DETAILS</button>
+    </aside>`;
+  const uiRoot = document.getElementById('ui-root');
+  uiRoot.appendChild(root);
+
+  const hailButton = root.querySelector('[data-k="hail"]');
+  const panel = root.querySelector('[data-k="panel"]');
+  // hud.js re-seats #sf-contact-hail into the comms tape inside .sf-leftcontext, and that column
+  // clips every descendant outside its box — the absolute panel would paint nowhere. The panel is
+  // an overlay, not tape content: it lives on #ui-root and anchors itself to the button's rect.
+  uiRoot.appendChild(panel);
+  const linesEl = panel.querySelector('[data-k="lines"]');
+  const actionsEl = panel.querySelector('[data-k="actions"]');
+  const closeBtn = panel.querySelector('[data-k="close"]');
+  const deckBtn = panel.querySelector('[data-k="deck"]');
+  const crestEl = panel.querySelector('[data-k="crest"]');
+  const pilotEl = panel.querySelector('[data-k="pilot"]');
+  const classEl = panel.querySelector('[data-k="classword"]');
+  const ribbonPath = panel.querySelector('[data-k="ribbon"]');
+  const freqHost = panel.querySelector('[data-k="freq"]');
+  const freqMorph = createMorphLabel(freqHost, { text: 'FREQ IDLE' });
+
+  let active = null;
+  let routeReadUntil = null;
+  let availability = { enabled: false, targetId: null, kind: null, label: 'HAIL' };
+  let destroyed = false;
+  let previousFreq = '';
+  let nextRibbonUpdateAt = 0;
+  let toldRequestId = null;
+
+  // Keep the authored relationship: the panel hangs 71px left and 38px below the channel button,
+  // wherever the button's live home puts it (the tape adoption moves it once, safe-insets after).
+  function syncPanelPosition() {
+    if (panel.hidden) return;
+    const r = root.getBoundingClientRect();
+    if (!r.width && !r.height) return;
+    panel.style.left = `${Math.max(8, Math.round(r.left) - 71)}px`;
+    panel.style.top = `${Math.round(r.top) + 38}px`;
+  }
+
+  function activePayload() {
+    if (active) return active;
+    if (!availability.enabled || availability.targetId == null) return null;
+    return {
+      targetId: availability.targetId,
+      kind: availability.kind || null,
+      lines: [availability.label || 'CONTACT'],
+      expiresAt: (Number(state.simTime) || 0) + CONTACT_HAIL_REQUEST_TTL_S,
+    };
+  }
+
+  function updateDeckVisual(force = false) {
+    if (panel.hidden && !force) return;
+    syncPanelPosition();
+    const payload = activePayload();
+    if (!payload) {
+      deckBtn.hidden = true;
+      return;
+    }
+    const visual = resolveHailVisual(state, payload, availability);
+    if (!visual) {
+      deckBtn.hidden = true;
+      return;
+    }
+    deckBtn.hidden = false;
+    crestEl.innerHTML = visual.factionId ? factionIcon(visual.factionId, 22) : stationIcon('target', 22);
+    pilotEl.textContent = visual.pilot;
+    // A selected route can contain actionable prose, not a ship-class word.
+    classEl.textContent = payload?.choice === 'route' ? 'ROUTE DETAILS · SNAPSHOT' : visual.classWord;
+    const now = Number(state.simTime) || 0;
+    const ttl = active && active.choice ? CONTACT_HAIL_RECEIPT_TTL_S : CONTACT_HAIL_REQUEST_TTL_S;
+    const amplitude = active
+      ? clamp01((Number(active.expiresAt) - now) / Math.max(1, ttl))
+      : 0.22;
+    ribbonPath.setAttribute('d', buildHailRibbonPath(visual.seed, amplitude, visual.density));
+    const freq = hailFrequencyText(amplitude, visual.density);
+    const dir = previousFreq && freq > previousFreq ? 'up' : previousFreq && freq < previousFreq ? 'down' : 'flat';
+    freqMorph.set(freq, { dir });
+    previousFreq = freq;
+  }
+
+  function hidePanel() {
+    active = null;
+    routeReadUntil = null;
+    if (panel.contains(document.activeElement)) hailButton.focus?.();
+    closeBtn.hidden = true;
+    panel.hidden = true;
+    panel.classList.remove('sf-contact-hail__panel--detail');
+    panel.removeAttribute('tabindex');
+    linesEl.replaceChildren();
+    actionsEl.replaceChildren();
+    updateDeckVisual(true);
+  }
+
+  function clearReceipt(payload) {
+    // Scanner still expires its receipt at four seconds. Only its exact expiry notice
+    // may leave this zero-action route snapshot on screen for reading.
+    if (active && routeReadUntil != null && payload?.reason === 'expired'
+      && active.requestId != null && payload.requestId === active.requestId
+      && payload.targetId === active.targetId) return;
+    hidePanel();
+  }
+
+  function render(payload) {
+    if (!payload || payload.targetId !== state.player.targetId) return false;
+    active = { ...payload };
+    const detail = payload.choice === 'route';
+    // Retain a read-only reply for reading, never extend simulation receipts or actions.
+    routeReadUntil = detail && !(payload.actions?.length)
+      ? (Number(state.simTime) || 0) + ROUTE_READING_GRACE_S : null;
+    closeBtn.hidden = !detail;
+    panel.classList.toggle('sf-contact-hail__panel--detail', detail);
+    // Keyboard users can focus and scroll a long chosen route.
+    if (detail) panel.setAttribute('tabindex', '0');
+    else panel.removeAttribute('tabindex');
+    const lines = Array.isArray(payload.lines) ? payload.lines : [];
+    const actions = Array.isArray(payload.actions) ? payload.actions : [];
+    // Scanner deliberately caps normal lines at two; advice has its own bounded
+    // transport field and one visible wrapped row. Never extend receipt lifetime.
+    const towAdvice=payload.kind==='tally_three'&&typeof payload.towAdvice==='string'
+      ?payload.towAdvice.trim().slice(0,240):'';
+    linesEl.replaceChildren(...lines.slice(0, 2).map((line) => {
+      const row = document.createElement('div');
+      row.className = 'sf-contact-hail__line';
+      row.textContent = line;
+      return row;
+    }));
+    if(towAdvice){
+      const row=document.createElement('div');
+      row.className='sf-contact-hail__line sf-contact-hail__tow-advice';
+      row.textContent=towAdvice;linesEl.appendChild(row);
+    }
+    actionsEl.replaceChildren(...actions.slice(0, 3).map((action, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.choice = action.id;
+      button.textContent = `${index + 1} · ${action.label}`;
+      button.setAttribute('aria-label', `${action.label}. Choice ${index + 1}.`);
+      return button;
+    }));
+    panel.hidden = false;
+    // THE WORLD REMEMBERS (U-E): a patrol that opened with a deed has now actually said it, once.
+    if (payload.deedId && payload.requestId !== toldRequestId) {
+      toldRequestId = payload.requestId;
+      markTold(state, payload.deedId, { by: `hail:${payload.targetId}` });
+    }
+    panel.setAttribute('aria-label', [...lines.slice(0,2),...(towAdvice?[towAdvice]:[])].join(' '));
+    nextRibbonUpdateAt = Number(state.simTime) || 0;
+    updateDeckVisual(true);
+    return true;
+  }
+
+  function applyAvailability(payload) {
+    availability = payload || { enabled: false, targetId: null, kind: null, label: 'HAIL' };
+    hailButton.disabled = !availability.enabled;
+    hailButton.textContent = 'HAIL';   // unavailable reads as a disabled key (and its aria-label), not a dash
+    hailButton.setAttribute('aria-label', availability.enabled
+      ? availability.label
+      : 'Hail unavailable for selected contact');
+    root.classList.toggle('sf-contact-hail--ready', !!availability.enabled);
+    if (active && (!availability.enabled || availability.targetId !== active.targetId)) hidePanel();
+    updateDeckVisual(true);
+  }
+
+  function request(source = 'pointer') {
+    if (isUiInteractionFenced(state) || !availability.enabled) return false;
+    bus.emit('contactHail:request', { targetId: availability.targetId, source });
+    return true;
+  }
+
+  function choose(choice, source = 'pointer') {
+    if (isUiInteractionFenced(state) || !active || !choice) return false;
+    bus.emit('contactHail:choice', {
+      requestId: active.requestId,
+      targetId: active.targetId,
+      choice,
+      source,
+    });
+    return true;
+  }
+
+  function onPanelClick(event) {
+    if (isUiInteractionFenced(state)) return;
+    const button = event.target && event.target.closest && event.target.closest('[data-choice]');
+    if (!button || !panel.contains(button)) return;
+    choose(button.dataset.choice, 'pointer');
+  }
+
+  function onDeckClick(event) {
+    event.preventDefault();
+    if (isUiInteractionFenced(state)) return;
+    const targetId = active && active.targetId != null
+      ? active.targetId
+      : availability && availability.targetId != null
+        ? availability.targetId
+        : null;
+    if (targetId == null) return;
+    bus.emit('contactHail:deck:open', { targetId, source: 'prompt' });
+  }
+
+  function onKeyDown(event) {
+    if (isUiInteractionFenced(state) || !active || event.altKey || event.ctrlKey || event.metaKey) return;
+    // The decision deck owns the digits while any decision is live — the hail panel's numbered
+    // choices step aside rather than race it (pre-deck, both capture listeners fired).
+    const deck = getPromptDeck();
+    if (deck && deck.size > 0) return;
+    const index = event.code === 'Digit1' || event.code === 'Numpad1' ? 0
+      : event.code === 'Digit2' || event.code === 'Numpad2' ? 1
+        : event.code === 'Digit3' || event.code === 'Numpad3' ? 2 : -1;
+    if (index < 0) return;
+    const action = active.actions && active.actions[index];
+    if (!action) return;
+    event.preventDefault();
+    event.stopPropagation();
+    choose(action.id, 'keyboard');
+  }
+
+  function tick() {
+    if (destroyed) return;
+    if (active) {
+      const now = Number(state.simTime) || 0;
+      if (active.targetId !== state.player.targetId
+        || state.mode !== 'flight' || state.ui && state.ui.docked
+        || (routeReadUntil == null ? Number(active.expiresAt) <= now
+          : routeReadUntil <= now && !panel.contains(document.activeElement))) hidePanel();
+    }
+    if (!panel.hidden) {
+      const now = Number(state.simTime) || 0;
+      if (now >= nextRibbonUpdateAt) {
+        updateDeckVisual();
+        nextRibbonUpdateAt = now + 0.12;
+      }
+    }
+  }
+
+  function destroy() {
+    destroyed = true;
+    for (const [event, handler] of busBindings) bus.off(event, handler);
+    document.removeEventListener('keydown', onKeyDown, true);
+    deckBtn.removeEventListener('click', onDeckClick);
+    closeBtn.removeEventListener('click', hidePanel);
+    try { freqMorph.dispose(); } catch (_) {}
+    panel.remove();
+    root.remove();
+  }
+
+  closeBtn.addEventListener('click', hidePanel);
+  hailButton.addEventListener('click', () => request('pointer'));
+  panel.addEventListener('click', onPanelClick);
+  deckBtn.addEventListener('click', onDeckClick);
+  document.addEventListener('keydown', onKeyDown, true);
+  const busBindings = [
+    ['contactHail:availability', applyAvailability],
+    ['contactHail:offer', render],
+    ['contactHail:response', render],
+    ['contactHail:clear', clearReceipt],
+    ['contactHail:handoff', hidePanel],
+    ['game:new', hidePanel],
+    ['game:load', hidePanel],
+    ['dock:docked', hidePanel],
+    ['mode:changed', hidePanel],
+  ];
+  for (const [event, handler] of busBindings) bus.on(event, handler);
+
+  return { el: root, tick, request, choose, hide: hidePanel, destroy };
+}
+
+function injectStyle() {
+  if (document.getElementById(STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = STYLE_ID;
+  style.textContent = `
+  /* No paint containment: the deck panel intentionally hangs 71px left of the button (left:-71px)
+     — contain:paint would clip it to the root's border box and it would never render. */
+  #sf-contact-hail { position:absolute; left:85px; top:20px; z-index:20;
+    font-family:var(--hud-data, var(--mono, Consolas, monospace)); contain:layout style; }
+  .sf-contact-hail__button { width:72px; height:32px; padding:0 10px; border-radius:4px;
+    border:1px solid color-mix(in srgb, var(--sf-calm) 38%, transparent);
+    background:color-mix(in srgb, var(--sf-surface) 90%, transparent); color:var(--sf-calm);
+    font:600 12px var(--sf-subhead-face, "IBM Plex Sans", sans-serif); letter-spacing:.04em; cursor:default;
+    transition:border-color .15s ease, background .15s ease, color .15s ease, box-shadow .15s ease, translate .1s ease; }
+  .sf-contact-hail--ready .sf-contact-hail__button { color:var(--sf-paper); border-color:var(--sf-goal);
+    cursor:pointer; }
+  .sf-contact-hail--ready .sf-contact-hail__button:hover {
+    background:color-mix(in srgb, var(--sf-surface) 80%, var(--sf-goal) 15%);
+    box-shadow:0 0 10px color-mix(in srgb, var(--sf-goal) 22%, transparent); }
+  .sf-contact-hail--ready .sf-contact-hail__button:active { translate:0 1px; }
+  .sf-contact-hail__button:hover:not(:disabled), .sf-contact-hail__button:focus-visible,
+  .sf-contact-hail__actions button:hover, .sf-contact-hail__actions button:focus-visible,
+  .sf-contact-hail__deck:focus-visible {
+    outline:2px solid var(--sf-goal); outline-offset:2px; }
+  .sf-contact-hail__button:disabled { opacity:.72; }
+  /* position:fixed on #ui-root — an overlay anchored to the button's rect by syncPanelPosition.
+     Anything inside the comms tape's clipped column would paint nowhere. pointer-events:auto:
+     #ui-root is pointer-transparent; the opt-in used to come from .sf-commtape__slots while the
+     panel lived inside it — without it the deck and its verbs are click-dead. */
+  .sf-contact-hail__panel { position:fixed; left:8px; top:58px; z-index:20; pointer-events:auto; width:min(332px, calc(100vw - 28px));
+    box-sizing:border-box; padding:10px 11px; border-radius:8px;
+    font-family:var(--hud-data, var(--mono, Consolas, monospace));
+    /* Glass register (hudStyles :root tokens) — no backdrop-filter, flight perf floor §7. */
+    background-color:var(--glass-fill, rgb(9 14 22 / .82));
+    background-image:var(--glass-sheen, linear-gradient(180deg, rgb(255 255 255 / .08), rgb(255 255 255 / 0) 46%));
+    color:var(--hud-paper, rgb(236 244 253 / .97));
+    border:1px solid var(--glass-edge, rgb(188 220 255 / .2)); border-top:2px solid var(--glass-neon, rgb(141 217 255));
+    box-shadow:var(--glass-drop, 0 10px 26px rgb(2 6 14 / .4)), var(--glass-inner, inset 0 1px 0 rgb(255 255 255 / .05));
+    animation:sf-contact-hail-in .15s ease-out 1; }
+  @keyframes sf-contact-hail-in { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+  .sf-contact-hail__panel[hidden] { display:none !important; }
+  .sf-contact-hail__deck { width:100%; border-radius:3px; border:1px solid var(--sf-edge);
+    background:color-mix(in srgb, var(--sf-surface) 88%, transparent);
+    color:var(--sf-paper); padding:8px; display:grid; grid-template-columns:24px 1fr; grid-template-rows:auto auto auto;
+    column-gap:9px; row-gap:2px; text-align:left; cursor:pointer; margin-bottom:8px;
+    transition:border-color .15s ease, background .15s ease, translate .1s ease; }
+  .sf-contact-hail__deck:hover {
+    background:color-mix(in srgb, var(--sf-surface) 75%, rgba(255,255,255,.06));
+    border-color:color-mix(in srgb, var(--sf-goal) 50%, var(--sf-edge)); }
+  .sf-contact-hail__deck:active { translate:0 1px; }
+  .sf-contact-hail__crest { grid-row:1 / span 2; width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center; color:var(--sf-calm); }
+  .sf-contact-hail__who { grid-column:2; display:grid; gap:1px; }
+  .sf-contact-hail__pilot { font:600 13px var(--hud-data, var(--mono, Consolas, monospace)); line-height:1.15; letter-spacing:.03em; }
+  .sf-contact-hail__class { font-size:12px; color:var(--hud-muted, rgb(178 199 222 / .8)); line-height:1.2; }
+  .sf-contact-hail__freq { grid-column:2; font:500 12px var(--hud-data, var(--mono, Consolas, monospace)); color:var(--glass-neon, rgb(141 217 255)); }
+  .sf-contact-hail__ribbon { grid-column:1 / -1; width:100%; height:22px; color:var(--sf-you); }
+  .sf-contact-hail__ribbon path { fill:none; stroke:currentColor; stroke-width:1.4; }
+  .sf-contact-hail__lines { display:grid; gap:2px; }
+  .sf-contact-hail__line { overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    font-size:12px; line-height:1.35; letter-spacing:.02em; }
+  .sf-contact-hail__panel--detail { max-height:min(480px, calc(100dvh - 90px));
+    overflow-y:auto; overscroll-behavior:contain; }
+  .sf-contact-hail__close { margin-top:8px; min-height:30px; width:100%;
+    border:1px solid var(--sf-edge); border-radius:3px; background:var(--sf-surface);
+    color:var(--sf-paper); font:500 12px var(--hud-data, monospace); cursor:pointer; }
+  .sf-contact-hail__close[hidden] { display:none; }
+  .sf-contact-hail__close:focus-visible { outline:2px solid var(--sf-goal); outline-offset:2px; }
+  .sf-contact-hail__panel--detail:focus-visible { outline:2px solid var(--sf-goal); outline-offset:2px; }
+  .sf-contact-hail__panel--detail .sf-contact-hail__line,
+  .sf-contact-hail__line.sf-contact-hail__tow-advice { white-space:normal;
+    overflow:visible; overflow-wrap:anywhere; text-overflow:clip; }
+  .sf-contact-hail__line + .sf-contact-hail__line { color:var(--sf-calm); }
+  .sf-contact-hail__actions { display:flex; gap:6px; margin-top:8px; }
+  .sf-contact-hail__actions:empty { display:none; }
+  .sf-contact-hail__actions button { min-height:30px; flex:1 1 0; border-radius:3px;
+    border:1px solid color-mix(in srgb, var(--sf-calm) 40%, transparent);
+    background:color-mix(in srgb, var(--sf-surface) 88%, transparent); color:var(--sf-paper); cursor:pointer;
+    font:500 12px var(--sf-data-face, "IBM Plex Mono", monospace); letter-spacing:.03em;
+    transition:border-color .15s ease, background .15s ease, color .15s ease, translate .1s ease; }
+  .sf-contact-hail__actions button:hover {
+    border-color:var(--sf-goal);
+    background:color-mix(in srgb, var(--sf-surface) 75%, var(--sf-goal) 14%);
+    color:var(--sf-paper); }
+  .sf-contact-hail__actions button:active { translate:0 1px; }
+  body.ui-modal-open #sf-contact-hail,
+  body.ui-live-screen #sf-contact-hail,
+  body.ui-modal-open .sf-contact-hail__panel,
+  body.ui-live-screen .sf-contact-hail__panel { opacity:0; visibility:hidden; pointer-events:none; }
+  @media (max-width:900px), (max-height:620px) {
+    #sf-contact-hail { left:85px; top:12px; }
+  }
+  @media (prefers-reduced-motion:reduce) {
+    #sf-contact-hail, .sf-contact-hail__button, .sf-contact-hail__panel, .sf-contact-hail__deck, .sf-contact-hail__actions button { transition:none; }
+    .sf-contact-hail__panel { animation:none; }
+  }
+  html.sf-reduce-motion #sf-contact-hail, html.sf-reduce-motion #sf-contact-hail .sf-contact-hail__button,
+  html.sf-reduce-motion #sf-contact-hail .sf-contact-hail__panel, html.sf-reduce-motion #sf-contact-hail .sf-contact-hail__deck,
+  html.sf-reduce-motion #sf-contact-hail .sf-contact-hail__actions button { transition:none; animation:none; }`;
+  document.head.appendChild(style);
+}
+
+export default createContactHailPrompt;

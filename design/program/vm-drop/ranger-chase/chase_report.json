@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/design/program/vm-drop/ranger-chase/ranger_c6_lod0.glb",
+  "ship": "ranger",
+  "engine": "CYCLES_CPU",
+  "samples": 24,
+  "runtimeScale": 1.9253731434635768,
+  "authoredX": 16.079999923706055,
+  "targetWU": 30.96,
+  "size": [
+    30.96,
+    13.5478,
+    5.5827
+  ],
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/ranger-chase/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/ranger-chase/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/ranger-chase/play_chase_close.png"
+  },
+  "clay": "/workspace/spaceface/design/program/vm-drop/ranger-chase/clay_play_chase.png",
+  "clayAbeam": "/workspace/spaceface/design/program/vm-drop/ranger-chase/clay_play_chase_abeam.png",
+  "clayClose": "/workspace/spaceface/design/program/vm-drop/ranger-chase/clay_play_chase_close.png"
+}

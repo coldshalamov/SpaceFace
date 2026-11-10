@@ -1,0 +1,67 @@
+{
+  "label": "phased-explosion-quiet-active-skip",
+  "primary": "quiet-explosion-active-zero-update",
+  "iters": 200000,
+  "capacity": 40,
+  "pairs": [
+    {
+      "beforeMs": 13.87,
+      "afterMs": 2.255,
+      "speedup": 6.151
+    },
+    {
+      "beforeMs": 11.347,
+      "afterMs": 1.841,
+      "speedup": 6.163
+    },
+    {
+      "beforeMs": 11.949,
+      "afterMs": 1.92,
+      "speedup": 6.223
+    },
+    {
+      "beforeMs": 12.446,
+      "afterMs": 1.925,
+      "speedup": 6.466
+    },
+    {
+      "beforeMs": 12.707,
+      "afterMs": 1.859,
+      "speedup": 6.837
+    },
+    {
+      "beforeMs": 13.781,
+      "afterMs": 1.98,
+      "speedup": 6.96
+    },
+    {
+      "beforeMs": 12.843,
+      "afterMs": 1.829,
+      "speedup": 7.023
+    },
+    {
+      "beforeMs": 14.078,
+      "afterMs": 1.92,
+      "speedup": 7.333
+    },
+    {
+      "beforeMs": 13.147,
+      "afterMs": 1.768,
+      "speedup": 7.438
+    },
+    {
+      "beforeMs": 14.029,
+      "afterMs": 1.733,
+      "speedup": 8.097
+    },
+    {
+      "beforeMs": 18.928,
+      "afterMs": 2.049,
+      "speedup": 9.239
+    }
+  ],
+  "medianSpeedup": 6.96,
+  "minSpeedup": 6.151,
+  "maxSpeedup": 9.239,
+  "note": "Picture unchanged: emit never runs for inactive entries."
+}

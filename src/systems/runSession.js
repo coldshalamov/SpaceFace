@@ -1,0 +1,531 @@
+// Event-only sole writer of state.run (PQ-133 / CRU-002).
+// Init-order only: never registered in PRODUCTION_UPDATE_ORDER, never ticks.
+// Must not emit economy:* events, write state.player.* / state.economy.*, or construct entities.
+// Golden-safety: every handler is a strict no-op when state.run is absent or malformed.
+
+import {
+  RUN_OUTCOMES,
+  canTransition,
+  createRunState,
+  runLevelForXp,
+  validateRunState,
+} from '../core/runState.js';
+import { migrateHangar, purseBonusFor } from '../data/swarmHangar.js';
+import { normalizeSwarmStake, swarmStakeFor } from '../data/swarmStakes.js';
+import { normalizePerkLoadout } from '../data/swarmPerks.js';
+import { normalizeThreatIds } from '../data/swarmThreats.js';
+import { crucibleEarnedPerkIds, loadCrucibleMeta } from './survivalRecords.js';
+import { isSwarmRuleset } from './survivalSwarm.js';
+import { swarmPilotHasActed } from './swarmSafety.js';
+
+const OUTCOME_SET = new Set(RUN_OUTCOMES);
+const PURCHASE_RECEIPT_LIMIT = 64;
+// Ephemeral identity survives the owner's immutable wallet/ledger commits. A new run or an
+// unrelated replacement cannot inherit a pending armory action merely by reusing its seed.
+const RUN_LIFETIMES = new WeakMap();
+export function runLifetime(run) { return run && typeof run === 'object' ? RUN_LIFETIMES.get(run) || null : null; }
+
+function cloneRun(run) {
+  try {
+    return JSON.parse(JSON.stringify(run));
+  } catch {
+    return null;
+  }
+}
+
+function toFiniteInt(value, fallback = 0) {
+  const n = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.trunc(n);
+}
+
+function toReason(value) {
+  return typeof value === 'string' ? value : null;
+}
+
+// A kill's displayed cause. Raw tags and weapon ids stay off the line.
+function toCausePhrase(value) {
+  if (typeof value !== 'string') return undefined;
+  const text = value.trim();
+  if (!text || text.length > 48) return undefined;
+  if (/[a-z0-9]+_[a-z0-9]+/.test(text) || /\bwpn_/.test(text)) return undefined;
+  return text;
+}
+
+// Style settlements name their acts; anything else (or nothing) rides bare.
+function toBankActs(value) {
+  if (!Array.isArray(value)) return undefined;
+  const names = value.filter((n) => typeof n === 'string' && n.trim().length > 0).slice(0, 8);
+  return names.length > 0 ? names : undefined;
+}
+function toNonNegativeInt(value) {
+  if (!Number.isFinite(value)) return 0;
+  const n = Math.trunc(value);
+  return n > 0 ? n : 0;
+}
+
+function rememberPurchaseReceipt(ledger, receipt) {
+  ledger.receipts.set(receipt.requestId, receipt);
+  while (ledger.receipts.size > PURCHASE_RECEIPT_LIMIT) {
+    const oldest = ledger.receipts.keys().next();
+    if (oldest.done) break;
+    ledger.receipts.delete(oldest.value);
+  }
+  return receipt;
+}
+
+function cachePurchaseResult(owner, ledger, receipt) {
+  rememberPurchaseReceipt(ledger, receipt);
+  owner._emit('run:purchaseResolved', receipt);
+  return receipt;
+}
+
+function safeRollback(commit) {
+  if (typeof commit?.rollback !== 'function') return;
+  try { commit.rollback(); } catch { /* Rollback diagnostics must not convert a refusal into a debit. */ }
+}
+
+// The stake's score factor rides every point the run tallies — kills, banks and chains all
+// pass through award, so scaling the seam scales the contract (integer-rounded, per
+// SWARM_PROGRAM.md §S1). A non-swarm or unstaked run reads 1.
+function swarmScoreScale(run) {
+  return run && isSwarmRuleset(run.ruleset)
+    ? swarmStakeFor(run.telemetry && run.telemetry.swarmStake).score
+    : 1;
+}
+
+export const runSession = {
+  name: 'runSession',
+
+  init(ctx) {
+    this.destroy();
+    this.state = ctx.state;
+    if (this.state?.run && typeof this.state.run === 'object') RUN_LIFETIMES.set(this.state.run, {});
+    this.bus = ctx.bus || null;
+    this.helpers = ctx.helpers || null;
+    this._unsubs = [];
+    if (!this.bus || typeof this.bus.on !== 'function') return;
+    this._unsubs.push(this.bus.on('run:beginRequested', (payload) => this.begin(payload)));
+    this._unsubs.push(this.bus.on('run:transitionRequested', (payload) => this.transition(payload)));
+    this._unsubs.push(this.bus.on('run:endRequested', (payload) => this.end(payload)));
+    this._unsubs.push(this.bus.on('run:retireRequested', (payload) => this.retire(payload)));
+    this._unsubs.push(this.bus.on('run:awardRequested', (payload) => this.award(payload)));
+    this._unsubs.push(this.bus.on('run:spendRequested', (payload) => this.spend(payload)));
+    this._unsubs.push(this.bus.on('run:modifierRecordRequested', (payload) => this.recordModifier(payload)));
+    this._unsubs.push(this.bus.on('run:threatRequested', (payload) => this.setThreat(payload)));
+    this._unsubs.push(this.bus.on('game:exitToMenu', (payload) => this._onExitToMenu(payload)));
+    // save:restoring fires first (before save:loaded). Reset here so a loaded Adventure
+    // save cannot inherit a live Survival run and suppress campaign autosaves forever.
+    this._unsubs.push(this.bus.on('save:restoring', () => this._onSaveLifecycle()));
+    this._unsubs.push(this.bus.on('save:loaded', () => this._onSaveLifecycle()));
+  },
+
+  destroy() {
+    for (const off of this._unsubs || []) if (typeof off === 'function') off();
+    this._unsubs = [];
+  },
+
+  // Sanctioned reset entry (not a bus handler): repair a present-but-malformed/null run;
+  // no-op when the run key is absent entirely so legacy trees stay untouched.
+  newGame() {
+    if (!this._hasRunField()) return;
+    this.state.run = createRunState();
+  },
+
+  begin(request) {
+    const run = this._liveRun();
+    if (!run || run.phase !== 'inactive') return;
+    const kind = request && request.kind != null ? request.kind : 'adventure';
+    const ruleset = request && request.ruleset != null ? request.ruleset : null;
+    const seed = request && request.seed;
+    const next = createRunState({ kind, ruleset, seed });
+    next.phase = 'loadout';
+    if (request && request.arenaId != null) next.arenaId = request.arenaId;
+    // SWARM-04: a checkpoint start. The phase machine plans `run.wave + 1`, so the run's
+    // counter parks on the wave BEFORE the bought entry point — a start at Round 11 means
+    // wave sits at 10 until the first plan lands. Swarm only: the arc, the block and the
+    // circuit always open at their authored first wave.
+    const startWave = Number.isInteger(request && request.startWave) ? request.startWave : 0;
+    if (isSwarmRuleset(ruleset) && startWave > 1) {
+      next.wave = startWave - 1;
+      if (!next.telemetry || typeof next.telemetry !== 'object') next.telemetry = {};
+      next.telemetry.startWave = startWave;
+    }
+    // The swarm stake rides telemetry (schema-free, run-lifelong, never serialized): the wave
+    // planner reads it to scale pressure, and the results surface reads it to say what the
+    // run cost. Absent means the tuned baseline — the door only sends it for swarm runs.
+    if (request && typeof request.swarmStake === 'string') {
+      next.telemetry.swarmStake = normalizeSwarmStake(request.swarmStake);
+    }
+    // S4 one-press Swarm: the quick-start's opt-out of the opening armory rides the begin
+    // request like the stake — schema-free, run-lifelong. The phase machine reads it once at
+    // the opening and enters round 1 in flight; absent means the armory opens as authored.
+    if (isSwarmRuleset(ruleset) && request && request.openArmoryBeforeRound1 === false) {
+      if (!next.telemetry || typeof next.telemetry !== 'object') next.telemetry = {};
+      next.telemetry.openArmoryBeforeRound1 = false;
+    }
+    if (next.kind === 'survival') {
+      this._retireSerial = (this._retireSerial || 0) + 1;
+      next.retireToken = this._retireSerial;
+      if (!next.telemetry || typeof next.telemetry !== 'object') next.telemetry = {};
+      const profile = loadCrucibleMeta();
+      next.telemetry.hangar = migrateHangar(profile && profile.hangar);
+      // SWARM-06: the Threat wager and the perk loadout ride telemetry the same way the stake
+      // does — schema-free, run-lifelong, never serialized. Threats normalize against the
+      // catalog so a door or a hand-rolled request can never name a wager that does not exist.
+      // Perks come off the profile's stored pick (a request may override it — sandbox drives
+      // and tests slot honestly), earned-checked against the same derived earns the door read.
+      if (isSwarmRuleset(ruleset)) {
+        const threats = normalizeThreatIds(request && request.threats);
+        if (threats.length) next.telemetry.threats = threats;
+        const earned = crucibleEarnedPerkIds(profile);
+        const pick = request && Array.isArray(request.perks) ? request.perks
+          : (profile && profile.perks && profile.perks.loadout);
+        const perks = normalizePerkLoadout(pick, earned);
+        if (perks.length) next.telemetry.perks = perks;
+      }
+    }
+    const committed = this._commitRun(next, 'run:started', {
+      schemaVersion: next.schemaVersion,
+      kind: next.kind,
+      ruleset: next.ruleset,
+      seed: next.seed,
+      phase: next.phase,
+      openingLesson: request && request.openingLesson === true,
+    });
+    // The war chest pays the run wallet only. A stake or anything else that already funded
+    // this run keeps the purse; adventure credits are never touched.
+    if (!committed || next.kind !== 'survival') return;
+    const live = this._liveRun();
+    if (!live || live.credits !== 0) return;
+    const hangar = (live.telemetry && live.telemetry.hangar) || next.telemetry.hangar;
+    const bonus = purseBonusFor(hangar);
+    if (bonus > 0) this.award({ credits: bonus, reason: 'hangar_war_chest' });
+  },
+
+  transition(request) {
+    const run = this._liveRun();
+    if (!run) return;
+    const expectedPhase = request && request.expectedPhase;
+    const nextPhase = request && request.nextPhase;
+    if (run.phase !== expectedPhase) return;
+    if (!canTransition(run.phase, nextPhase)) return;
+    const previousPhase = run.phase;
+    const next = cloneRun(run);
+    if (!next) return;
+    next.phase = nextPhase;
+    this._commitRun(next, 'run:transitioned', {
+      previousPhase,
+      phase: next.phase,
+      reason: request && request.reason != null ? request.reason : null,
+      tick: request && request.tick != null ? request.tick : 0,
+    });
+  },
+
+  retire(request) {
+    const run = this._liveRun();
+    if (!run || run.kind !== 'survival' || run.phase === 'inactive'
+      || run.phase === 'ended' || run.phase === 'victory'
+      || !Number.isSafeInteger(request?.token) || request.token !== run.retireToken) return false;
+    this.end({ outcome: 'aborted', reason: 'player_retired', tick: this.state?.tick });
+    return this.state.run?.result?.reason === 'player_retired';
+  },
+
+  end(request) {
+    const run = this._liveRun();
+    if (!run) return;
+    if (run.phase === 'victory' || run.phase === 'ended') return;
+    const outcome = request && request.outcome;
+    if (!OUTCOME_SET.has(outcome)) return;
+    const reason = toReason(request && request.reason);
+    const tick = toFiniteInt(request && request.tick, 0);
+    const phase = outcome === 'victory' ? 'victory' : 'ended';
+    if (!canTransition(run.phase, phase)) return;
+    const next = cloneRun(run);
+    if (!next) return;
+    next.phase = phase;
+    next.result = { outcome, reason, tick };
+    this._commitRun(next, 'run:ended', {
+      outcome,
+      reason,
+      seed: next.seed,
+      phase: next.phase,
+    });
+  },
+
+  // Run wallet + XP (CRU-014). This is the RUN economy and nothing else: it never emits
+  // economy:grantCredits / economy:chargeCredits, never reads or writes state.player.credits,
+  // and dies with the run. A negative amount is rejected rather than clamped so a bad caller
+  // shows up as a missing award instead of a silent drain.
+  award(request) {
+    const run = this._liveRun();
+    if (!run) return false;
+    if (run.kind === 'adventure') return false;
+    if (run.phase === 'inactive') return false;
+    const credits = toNonNegativeInt(request && request.credits);
+    const xp = toNonNegativeInt(request && request.xp);
+    // A quiet Crucible wave has not been played. Seed 4242 idle paid +202 at sim
+    // 41.1, in the same sample gap as the second pre-input death's resolve,
+    // before any flight input. Credits and XP still settle; the score line
+    // stays 0 until this wave's pilot acts. Outside live Swarm and Gauntlet rounds, the
+    // existing score admission is unchanged.
+    let scorePoints = toNonNegativeInt(request && request.score);
+    if (scorePoints > 0 && !swarmPilotHasActed(this.state)) scorePoints = 0;
+    const score = Math.round(scorePoints * swarmScoreScale(run));
+    if (credits === 0 && xp === 0 && score === 0) return false;
+    const next = cloneRun(run);
+    if (!next) return false;
+    next.credits += credits;
+    next.xp += xp;
+    next.score += score;
+    const previousLevel = next.level;
+    next.level = runLevelForXp(next.xp);
+    const committed = this._commitRun(next, 'run:awarded', {
+      credits, xp, score,
+      totalCredits: next.credits,
+      totalXp: next.xp,
+      totalScore: next.score,
+      level: next.level,
+      previousLevel,
+      reason: toReason(request && request.reason),
+      wave: Number.isInteger(request && request.wave) ? request.wave : null,
+      bankActs: toBankActs(request && request.bankActs),
+      causePhrase: toCausePhrase(request && request.causePhrase),
+    });
+    if (committed && next.level > previousLevel) {
+      this._emit('run:levelUp', { level: next.level, previousLevel, xp: next.xp });
+    }
+    return committed;
+  },
+
+  /** Spend from the run wallet. Refuses rather than going negative; the caller reads the result. */
+  spend(request) {
+    const run = this._liveRun();
+    if (!run) return false;
+    if (run.kind === 'adventure') return false;
+    const amount = toNonNegativeInt(request && request.credits);
+    if (amount <= 0) return false;
+    if (run.credits < amount) {
+      this._emit('run:spendRejected', {
+        credits: amount,
+        available: run.credits,
+        reason: toReason(request && request.reason),
+      });
+      return false;
+    }
+    const next = cloneRun(run);
+    if (!next) return false;
+    next.credits -= amount;
+    return this._commitRun(next, 'run:spent', {
+      credits: amount,
+      totalCredits: next.credits,
+      reason: toReason(request && request.reason),
+    });
+  },
+
+  /**
+   * Commit a run-wallet purchase only when its authoritative world commit succeeds.
+   * The callback is local to the sim owner; UI/worker commands carry data only. The callback may
+   * return { ok: true, rollback } after creating the purchased object. A failed/reentrant commit
+   * invokes rollback before returning and never publishes a debit.
+   */
+  purchase(request, commitWorld) {
+    const run = this._liveRun();
+    const receipt = (accepted, reason, credits = 0, totalCredits = run?.credits ?? 0) => Object.freeze({
+      requestId: request && request.requestId,
+      deviceId: request && typeof request.deviceId === 'string' ? request.deviceId : null,
+      socketId: request && typeof request.socketId === 'string' ? request.socketId : null,
+      accepted,
+      reason,
+      credits,
+      totalCredits,
+    });
+    if (!run || run.kind !== 'survival' || !isSwarmRuleset(run.ruleset)) return receipt(false, 'phase_closed');
+    const requestId = request && request.requestId;
+    if (!Number.isSafeInteger(requestId) || requestId < 1) return receipt(false, 'invalid_request');
+    const lifetime = runLifetime(run);
+    if (!lifetime) return receipt(false, 'run_lifetime_missing');
+    let ledger = lifetime.runPurchases;
+    if (!ledger) {
+      ledger = { highWatermark: 0, receipts: new Map(), committing: false };
+      lifetime.runPurchases = ledger;
+    }
+    if (ledger.receipts.has(requestId)) return ledger.receipts.get(requestId);
+    if (ledger.committing) return receipt(false, 'purchase_in_progress');
+    if (requestId <= ledger.highWatermark) return receipt(false, 'stale_request');
+    if (!['draft', 'refit'].includes(run.phase)) return receipt(false, 'phase_closed');
+    const amount = toNonNegativeInt(request && request.credits);
+    if (amount <= 0 || typeof commitWorld !== 'function') return receipt(false, 'invalid_purchase');
+    ledger.highWatermark = requestId;
+    if (run.credits < amount) {
+      const rejected = receipt(false, 'insufficient_funds');
+      rememberPurchaseReceipt(ledger, rejected);
+      this._emit('run:purchaseResolved', rejected);
+      return rejected;
+    }
+
+    ledger.committing = true;
+    let worldCommit = null;
+    let reason = 'world_commit_refused';
+    try {
+      worldCommit = commitWorld();
+      if (!worldCommit || worldCommit.ok !== true) {
+        reason = worldCommit && typeof worldCommit.reason === 'string' ? worldCommit.reason : reason;
+        safeRollback(worldCommit);
+        return cachePurchaseResult(this, ledger, receipt(false, reason));
+      }
+      // Spawn listeners run synchronously. They can end/replace the run or re-enter this API;
+      // publish no debit unless the exact wallet record and lifecycle survived the callback.
+      if (this.state.run !== run || runLifetime(this.state.run) !== lifetime
+        || run.credits < amount || !['draft', 'refit'].includes(run.phase)) {
+        reason = 'run_changed_during_purchase';
+        safeRollback(worldCommit);
+        return cachePurchaseResult(this, ledger, receipt(false, reason));
+      }
+      const next = cloneRun(run);
+      if (!next) {
+        reason = 'run_clone_failed';
+        safeRollback(worldCommit);
+        return cachePurchaseResult(this, ledger, receipt(false, reason));
+      }
+      next.credits -= amount;
+      if (!this._commitRun(next, 'run:spent', {
+        credits: amount,
+        totalCredits: next.credits,
+        reason: toReason(request && request.reason) || 'swarm_fortify',
+        requestId,
+      })) {
+        reason = 'wallet_commit_failed';
+        safeRollback(worldCommit);
+        return cachePurchaseResult(this, ledger, receipt(false, reason));
+      }
+      const accepted = receipt(true, null, amount, next.credits);
+      rememberPurchaseReceipt(ledger, accepted);
+      this._emit('run:purchaseResolved', accepted);
+      return accepted;
+    } catch {
+      safeRollback(worldCommit);
+      return cachePurchaseResult(this, ledger, receipt(false, 'world_commit_failed'));
+    } finally {
+      ledger.committing = false;
+    }
+  },
+
+  purchaseReceipt(requestId) {
+    const run = this._liveRun();
+    if (!run || run.kind !== 'survival' || !isSwarmRuleset(run.ruleset)
+      || !Number.isSafeInteger(requestId) || requestId < 1) return null;
+    const ledger = runLifetime(run)?.runPurchases;
+    return ledger && ledger.receipts instanceof Map ? ledger.receipts.get(requestId) || null : null;
+  },
+
+  /**
+   * Publish this wave's body count so a HUD can say "4 of 6 left" without reaching into the wave
+   * owner's private cohort map.
+   *
+   * NOTE ON NAMING: `threatBudget` here is the number of BODIES the current wave plan will
+   * materialize — not the recipe's abstract `threatBudget` difficulty figure in
+   * src/data/survivalWaves.js, which never reaches state.run. The player-facing question is
+   * "how many are left", so bodies is what this counts.
+   */
+  setThreat(request) {
+    const run = this._liveRun();
+    if (!run) return false;
+    if (run.kind === 'adventure') return false;
+    const next = cloneRun(run);
+    if (!next) return false;
+    let changed = false;
+    for (const key of ['threatBudget', 'spawnedThreat', 'resolvedThreat']) {
+      if (!request || !Number.isFinite(request[key])) continue;
+      const value = toNonNegativeInt(request[key]);
+      if (next[key] === value) continue;
+      next[key] = value;
+      changed = true;
+    }
+    if (!changed) return false;
+    // No bus receipt: this is a per-wave counter a readout polls, not an event anyone acts on.
+    // Emitting here would put a bus message on the same beat as every spawn and every death.
+    const previous = this.state.run;
+    RUN_LIFETIMES.set(next, runLifetime(previous) || {});
+    this.state.run = next;
+    if (!validateRunState(next).ok) {
+      this.state.run = previous;
+      return false;
+    }
+    return true;
+  },
+
+  /**
+   * Append one immutable draft/refit record (CRU-016). This is the ONLY place a run modifier is
+   * stored: the record is a note about what the player chose, never a live stat patch and never a
+   * write into player.ownedShips[].fittings.
+   */
+  recordModifier(request) {
+    const run = this._liveRun();
+    if (!run) return false;
+    if (run.kind === 'adventure') return false;
+    const record = request && request.record;
+    if (!record || typeof record !== 'object' || Array.isArray(record)) return false;
+    const next = cloneRun(run);
+    if (!next) return false;
+    const frozen = cloneRun(record);
+    if (!frozen) return false;
+    next.modifiers.push(frozen);
+    if (request.draft && typeof request.draft === 'object' && !Array.isArray(request.draft)) {
+      const draft = cloneRun(request.draft);
+      if (draft) next.draftHistory.push(draft);
+    }
+    return this._commitRun(next, 'run:modifierRecorded', {
+      record: frozen,
+      wave: Number.isInteger(request.wave) ? request.wave : null,
+      modifierCount: next.modifiers.length,
+    });
+  },
+
+  _onExitToMenu(payload) {
+    const run = this._liveRun();
+    if (!run) return;
+    if (run.kind !== 'adventure' && run.phase !== 'inactive') {
+      const tick = this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0;
+      this.end({
+        outcome: 'aborted',
+        reason: payload && payload.source != null ? payload.source : 'exit_to_menu',
+        tick,
+      });
+    }
+    this.state.run = createRunState();
+  },
+
+  _onSaveLifecycle() {
+    if (!this.state) return;
+    this.state.run = createRunState();
+  },
+
+  _commitRun(next, event, payload) {
+    const previous = this.state.run;
+    RUN_LIFETIMES.set(next, event === 'run:started' ? {} : runLifetime(previous) || {});
+    this.state.run = next;
+    if (!validateRunState(next).ok) {
+      this.state.run = previous;
+      return false;
+    }
+    this._emit(event, payload);
+    return true;
+  },
+
+  _emit(event, payload) {
+    if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(event, payload);
+  },
+
+  _hasRunField() {
+    return !!(this.state && Object.prototype.hasOwnProperty.call(this.state, 'run'));
+  },
+
+  _liveRun() {
+    if (!this.state) return null;
+    const run = this.state.run;
+    if (!run || typeof run !== 'object') return null;
+    if (!validateRunState(run).ok) return null;
+    return run;
+  },
+};

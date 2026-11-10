@@ -1,0 +1,277 @@
+TAP version 13
+# Subtest: a 90-degree dodge preserves cruise speed instead of braking into the ink
+ok 1 - a 90-degree dodge preserves cruise speed instead of braking into the ink
+  ---
+  duration_ms: 23.502306
+  ...
+# Subtest: a short flick is a heading, not a destination at which to park
+ok 2 - a short flick is a heading, not a destination at which to park
+  ---
+  duration_ms: 17.538931
+  ...
+# Subtest: a reversal turns at speed without first nulling forward momentum
+ok 3 - a reversal turns at speed without first nulling forward momentum
+  ---
+  duration_ms: 6.282374
+  ...
+# SpaceFace Flight V3 generated checks: PASS
+# Subtest: /workspace/spaceface-scratch/flight-propulsion-scratch/test/flightV3.spec.mjs
+ok 2 - /workspace/spaceface-scratch/flight-propulsion-scratch/test/flightV3.spec.mjs
+  ---
+  duration_ms: 416.179988
+  ...
+# Subtest: kernel weave cannot manufacture planar speed — "Thrusters have a cap; physics-earned speed does not get eaten by the brakes."
+ok 5 - kernel weave cannot manufacture planar speed — "Thrusters have a cap; physics-earned speed does not get eaten by the brakes."
+  ---
+  duration_ms: 26.108064
+  ...
+# Subtest: assisted translation publishes one finite control-made bound — "Thrusters have a cap; physics-earned speed does not get eaten by the brakes."
+ok 6 - assisted translation publishes one finite control-made bound — "Thrusters have a cap; physics-earned speed does not get eaten by the brakes."
+  ---
+  duration_ms: 0.797813
+  ...
+# Subtest: authored travel ceilings are byte-for-byte unchanged
+ok 7 - authored travel ceilings are byte-for-byte unchanged
+  ---
+  duration_ms: 0.47665
+  ...
+# Subtest: feel.governor_integrity is deterministic on seed 4242 and meets every clause
+ok 8 - feel.governor_integrity is deterministic on seed 4242 and meets every clause
+  ---
+  duration_ms: 1683.873999
+  ...
+# Subtest: feel.governor_integrity meets every clause on seed 8008
+ok 9 - feel.governor_integrity meets every clause on seed 8008
+  ---
+  duration_ms: 570.520622
+  ...
+# Subtest: the default new game spawns a ship that resolves to a REAL catalogue drive
+ok 10 - the default new game spawns a ship that resolves to a REAL catalogue drive
+  ---
+  duration_ms: 6.654152
+  ...
+# Subtest: the player ship accelerates and stops 15% faster than its catalogue drive
+ok 11 - the player ship accelerates and stops 15% faster than its catalogue drive
+  ---
+  duration_ms: 0.518243
+  ...
+# Subtest: spawned derived propulsion keeps the unbounded solver sentinel out of serializable state
+ok 12 - spawned derived propulsion keeps the unbounded solver sentinel out of serializable state
+  ---
+  duration_ms: 3.377589
+  ...
+# Subtest: assisted translation publishes a finite control-made speed bound on the real player ship
+ok 13 - assisted translation publishes a finite control-made speed bound on the real player ship
+  ---
+  duration_ms: 1.816004
+  ...
+# Subtest: the kernel body carries the ship's DERIVED stats, not invented fixture numbers
+ok 14 - the kernel body carries the ship's DERIVED stats, not invented fixture numbers
+  ---
+  duration_ms: 0.618819
+  ...
+# Subtest: every player-purchasable hull resolves its authored drive and engine tiers preserve its family
+ok 15 - every player-purchasable hull resolves its authored drive and engine tiers preserve its family
+  ---
+  duration_ms: 15.806926
+  ...
+# Subtest: the travel ceiling honours an authored per-drive override — the upgrade hook is live
+ok 16 - the travel ceiling honours an authored per-drive override — the upgrade hook is live
+  ---
+  duration_ms: 0.339698
+  ...
+# Subtest: fitted engine tiers raise Travel Burn V-MAX and advance thrust without touching the cap
+ok 17 - fitted engine tiers raise Travel Burn V-MAX and advance thrust without touching the cap
+  ---
+  duration_ms: 3.975199
+  ...
+# Subtest: bounded authored drives retain engine-tier scaling beneath their solver envelope
+ok 18 - bounded authored drives retain engine-tier scaling beneath their solver envelope
+  ---
+  duration_ms: 0.926207
+  ...
+# Subtest: assisted flight governs the REAL player ship to throttle x combatSpeed
+ok 19 - assisted flight governs the REAL player ship to throttle x combatSpeed
+  ---
+  duration_ms: 40.470359
+  ...
+# Subtest: Travel Burn raises the REAL ship above its assisted cap, and only while engaged
+ok 20 - Travel Burn raises the REAL ship above its assisted cap, and only while engaged
+  ---
+  duration_ms: 83.713549
+  ...
+# Subtest: RC-4 on the real player ship: held boost above the cap never commands reverse
+ok 21 - RC-4 on the real player ship: held boost above the cap never commands reverse
+  ---
+  duration_ms: 0.613755
+  ...
+# Subtest: held boost raises the real ship’s terminal speed rather than lowering it
+ok 22 - held boost raises the real ship’s terminal speed rather than lowering it
+  ---
+  duration_ms: 29.104951
+  ...
+# Subtest: the real ship spawns with a funded, bounded boost/dash pool
+ok 23 - the real ship spawns with a funded, bounded boost/dash pool
+  ---
+  duration_ms: 0.437011
+  ...
+# Subtest: propulsion resource demand on the real ship is finite, non-negative and load-bearing
+ok 24 - propulsion resource demand on the real ship is finite, non-negative and load-bearing
+  ---
+  duration_ms: 0.458495
+  ...
+# Subtest: the braking solution tells the truth about the real ship’s stopping distance
+ok 25 - the braking solution tells the truth about the real ship’s stopping distance
+  ---
+  duration_ms: 1.84989
+  ...
+# Subtest: OVERSHOOT REMAINS POSSIBLE: ignoring BRAKE NOW in a manual burn sails past the arrival radius
+ok 26 - OVERSHOOT REMAINS POSSIBLE: ignoring BRAKE NOW in a manual burn sails past the arrival radius
+  ---
+  duration_ms: 25.801706
+  ...
+# Subtest: a manual full brake still stops the real ship in a bounded time
+ok 27 - a manual full brake still stops the real ship in a bounded time
+  ---
+  duration_ms: 9.211597
+  ...
+# Subtest: a saturated burn on the real ship stays finite and never tunnels its own hull
+ok 28 - a saturated burn on the real ship stays finite and never tunnels its own hull
+  ---
+  duration_ms: 37.577504
+  ...
+# Subtest: the kernel refuses to produce NaN from hostile state on the real ship
+ok 29 - the kernel refuses to produce NaN from hostile state on the real ship
+  ---
+  duration_ms: 1.31297
+  ...
+# Subtest: flags off: every swept case is byte-identical to the pre-Travel-Burn kernel
+ok 30 - flags off: every swept case is byte-identical to the pre-Travel-Burn kernel
+  ---
+  duration_ms: 22.962857
+  ...
+# Subtest: flags off: a disrupted leftover cap on the input is ignored completely
+ok 31 - flags off: a disrupted leftover cap on the input is ignored completely
+  ---
+  duration_ms: 0.458001
+  ...
+# Subtest: flags off: an engaged travel drive on the input is ignored completely
+ok 32 - flags off: an engaged travel drive on the input is ignored completely
+  ---
+  duration_ms: 0.422322
+  ...
+# Subtest: RC-4: boost above the cap commands forward >= 0 with the flag on
+ok 33 - RC-4: boost above the cap commands forward >= 0 with the flag on
+  ---
+  duration_ms: 0.334997
+  ...
+# Subtest: the coast floor is unconditional: with the flag off, held boost above the cap still coasts
+ok 34 - the coast floor is unconditional: with the flag off, held boost above the cap still coasts
+  ---
+  duration_ms: 0.189085
+  ...
+# Subtest: the UNBOOSTED overspeed also coasts — the governor bounds thrust, never spends earned speed
+ok 35 - the UNBOOSTED overspeed also coasts — the governor bounds thrust, never spends earned speed
+  ---
+  duration_ms: 0.19214
+  ...
+# Subtest: travel drive states are the four D5 states and nothing else
+ok 36 - travel drive states are the four D5 states and nothing else
+  ---
+  duration_ms: 0.174203
+  ...
+# Subtest: Engaged ramps the cap monotonically toward the ceiling and never exceeds it
+ok 37 - Engaged ramps the cap monotonically toward the ceiling and never exceeds it
+  ---
+  duration_ms: 38.649788
+  ...
+# Subtest: the ramp approaches the ceiling asymptotically rather than hitting a wall
+ok 38 - the ramp approaches the ceiling asymptotically rather than hitting a wall
+  ---
+  duration_ms: 0.536629
+  ...
+# Subtest: disengaging sets physicsEarnedMomentum instead of snapping the velocity down
+ok 39 - disengaging sets physicsEarnedMomentum instead of snapping the velocity down
+  ---
+  duration_ms: 0.677646
+  ...
+# Subtest: disengaging spends leftover travel speed along the decaying cap over ~10s
+ok 40 - disengaging spends leftover travel speed along the decaying cap over ~10s
+  ---
+  duration_ms: 18.250128
+  ...
+# Subtest: a TORCH ship reaches a higher travel ceiling than a REACTION ship
+ok 41 - a TORCH ship reaches a higher travel ceiling than a REACTION ship
+  ---
+  duration_ms: 0.262644
+  ...
+# Subtest: authored travelCeiling keeps cross-map travel unchanged after the nimble-regime combat rescale
+ok 42 - authored travelCeiling keeps cross-map travel unchanged after the nimble-regime combat rescale
+  ---
+  duration_ms: 0.210592
+  ...
+# Subtest: every resolved ceiling stays inside the engineering bound
+ok 43 - every resolved ceiling stays inside the engineering bound
+  ---
+  duration_ms: 0.25933
+  ...
+# B1 with vectoring on (kernel): [{"throttle":0,"exitSpeed":420,"speedAt10s":420,"keptFraction":1},{"throttle":1,"exitSpeed":420,"speedAt10s":420,"keptFraction":1}]
+# kernel redirect table, Hitch player profile, cruise 195.0 WU/s:
+#   off                      twitch100->90deg 13.800 s (mean 192.4, min 177.3 WU/s, r 1690.0 WU) | W+turn 90deg 11.167 s (mean 107.3, min 2.1 WU/s, r 741.3 WU) | W+strafe+turn 90deg never (mean 107.2, min 6.7 WU/s, r - WU)
+#   1.2/0.7                  twitch100->90deg 1.983 s (mean 192.7, min 189.9 WU/s, r 241.9 WU) | W+turn 90deg 1.467 s (mean 185.6, min 151.8 WU/s, r 170.7 WU) | W+strafe+turn 90deg 1.200 s (mean 184.4, min 162.6 WU/s, r 139.9 WU)
+#   1.6/0.9 (band, default)  twitch100->90deg 1.617 s (mean 193.3, min 191.3 WU/s, r 198.8 WU) | W+turn 90deg 1.333 s (mean 190.3, min 175.0 WU/s, r 160.9 WU) | W+strafe+turn 90deg 1.083 s (mean 188.4, min 175.8 WU/s, r 128.1 WU)
+#   2.0/1.1                  twitch100->90deg 1.600 s (mean 193.3, min 191.4 WU/s, r 196.0 WU) | W+turn 90deg 1.333 s (mean 190.4, min 175.6 WU/s, r 159.1 WU) | W+strafe+turn 90deg 1.067 s (mean 188.7, min 176.9 WU/s, r 126.0 WU)
+# Subtest: opt-out is byte-identical: no flag, no vectoring key, no change — "If I swing well, slingshot well, fly well, I EARN speed and I KEEP it."
+ok 44 - opt-out is byte-identical: no flag, no vectoring key, no change — "If I swing well, slingshot well, fly well, I EARN speed and I KEEP it."
+  ---
+  duration_ms: 4.808026
+  ...
+# Subtest: above the cap the assist is zero: forces identical to the unassisted kernel — "If I swing well, slingshot well, fly well, I EARN speed and I KEEP it."
+ok 45 - above the cap the assist is zero: forces identical to the unassisted kernel — "If I swing well, slingshot well, fly well, I EARN speed and I KEEP it."
+  ---
+  duration_ms: 2.814014
+  ...
+# Subtest: B1 with the assist on: earned speed kept hands-off and forward-held (2x cruise, 10 s) — "If I swing well, slingshot well, fly well, I EARN speed and I KEEP it."
+ok 46 - B1 with the assist on: earned speed kept hands-off and forward-held (2x cruise, 10 s) — "If I swing well, slingshot well, fly well, I EARN speed and I KEEP it."
+  ---
+  duration_ms: 131.493957
+  ...
+# Subtest: below the cap the velocity rotates toward the command at the band rate and keeps its speed — "Turn NOW when I twitch."
+ok 47 - below the cap the velocity rotates toward the command at the band rate and keeps its speed — "Turn NOW when I twitch."
+  ---
+  duration_ms: 0.804631
+  ...
+# Subtest: the vectoring force never exceeds the drive's forward authority (hull identity survives)
+ok 48 - the vectoring force never exceeds the drive's forward authority (hull identity survives)
+  ---
+  duration_ms: 0.347898
+  ...
+# Subtest: gates: brake, drift, newtonian, no throttle, dead speed and a flip all leave the assist idle
+ok 49 - gates: brake, drift, newtonian, no throttle, dead speed and a flip all leave the assist idle
+  ---
+  duration_ms: 0.490558
+  ...
+# Subtest: the command is the nose offset by the strafe: W+D bends toward the strafe side, nose-left bends left
+ok 50 - the command is the nose offset by the strafe: W+D bends toward the strafe side, nose-left bends left
+  ---
+  duration_ms: 0.249984
+  ...
+# Subtest: rate overrides through the packet select a variant; determinism holds for the same input stream
+ok 51 - rate overrides through the packet select a variant; determinism holds for the same input stream
+  ---
+  duration_ms: 0.383303
+  ...
+# Subtest: kernel redirect table: twitch, W+turn sweep and W+strafe+turn per variant — "Turn NOW when I twitch."
+ok 52 - kernel redirect table: twitch, W+turn sweep and W+strafe+turn per variant — "Turn NOW when I twitch."
+  ---
+  duration_ms: 100.614799
+  ...
+1..52
+# tests 52
+# suites 0
+# pass 52
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3639.083304

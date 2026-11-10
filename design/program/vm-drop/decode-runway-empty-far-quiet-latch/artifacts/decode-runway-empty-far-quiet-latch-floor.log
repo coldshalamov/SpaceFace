@@ -1,0 +1,96 @@
+rebench1 8.38 2.476
+rebench2 9.338 3.066
+rebench3 9.562 3.095
+rebench4 9.975 2.395
+rebench5 9.174 2.917
+{
+  "primary": {
+    "label": "empty-far-decode-runway",
+    "beforeMed": 20.844,
+    "afterMed": 2.272,
+    "medianSpeedup": 9.174,
+    "minSpeedup": 2.917,
+    "maxSpeedup": 9.544,
+    "beforeLatched": false,
+    "afterLatched": true,
+    "afterFarRows": 0
+  },
+  "rebenches": [
+    {
+      "label": "empty-far-decode-runway",
+      "beforeMed": 23.078,
+      "afterMed": 2.754,
+      "medianSpeedup": 8.38,
+      "minSpeedup": 2.476,
+      "maxSpeedup": 9.522,
+      "beforeLatched": false,
+      "afterLatched": true,
+      "afterFarRows": 0
+    },
+    {
+      "label": "empty-far-decode-runway",
+      "beforeMed": 22.061,
+      "afterMed": 2.362,
+      "medianSpeedup": 9.338,
+      "minSpeedup": 3.066,
+      "maxSpeedup": 10.342,
+      "beforeLatched": false,
+      "afterLatched": true,
+      "afterFarRows": 0
+    },
+    {
+      "label": "empty-far-decode-runway",
+      "beforeMed": 21.472,
+      "afterMed": 2.245,
+      "medianSpeedup": 9.562,
+      "minSpeedup": 3.095,
+      "maxSpeedup": 10.217,
+      "beforeLatched": false,
+      "afterLatched": true,
+      "afterFarRows": 0
+    },
+    {
+      "label": "empty-far-decode-runway",
+      "beforeMed": 21.756,
+      "afterMed": 2.181,
+      "medianSpeedup": 9.975,
+      "minSpeedup": 2.395,
+      "maxSpeedup": 10.119,
+      "beforeLatched": false,
+      "afterLatched": true,
+      "afterFarRows": 0
+    },
+    {
+      "label": "empty-far-decode-runway",
+      "beforeMed": 20.844,
+      "afterMed": 2.272,
+      "medianSpeedup": 9.174,
+      "minSpeedup": 2.917,
+      "maxSpeedup": 9.544,
+      "beforeLatched": false,
+      "afterLatched": true,
+      "afterFarRows": 0
+    }
+  ],
+  "medians": [
+    9.174,
+    8.38,
+    9.338,
+    9.562,
+    9.975,
+    9.174
+  ],
+  "mins": [
+    2.917,
+    2.476,
+    3.066,
+    3.095,
+    2.395,
+    2.917
+  ],
+  "floorMinAcrossPackage": 2.395,
+  "medianBand": [
+    8.38,
+    9.975
+  ]
+}

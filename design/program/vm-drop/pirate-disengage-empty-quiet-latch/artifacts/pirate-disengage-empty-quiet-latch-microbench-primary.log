@@ -1,0 +1,19 @@
+pair 0: 50.925×  before=257.27ms after=5.05ms  abs=4.288→0.084 µs
+pair 1: 39.766×  before=222.13ms after=5.59ms  abs=3.702→0.093 µs
+pair 2: 43.495×  before=232.82ms after=5.35ms  abs=3.880→0.089 µs
+pair 3: 43.264×  before=241.30ms after=5.58ms  abs=4.022→0.093 µs
+pair 4: 49.315×  before=242.39ms after=4.92ms  abs=4.040→0.082 µs
+pair 5: 48.168×  before=243.81ms after=5.06ms  abs=4.064→0.084 µs
+pair 6: 41.508×  before=214.36ms after=5.16ms  abs=3.573→0.086 µs
+pair 7: 41.011×  before=214.66ms after=5.23ms  abs=3.578→0.087 µs
+pair 8: 53.204×  before=243.50ms after=4.58ms  abs=4.058→0.076 µs
+pair 9: 56.072×  before=276.40ms after=4.93ms  abs=4.607→0.082 µs
+pair 10: 41.883×  before=237.52ms after=5.67ms  abs=3.959→0.095 µs
+{
+  "medianSpeedup": 43.495055938291806,
+  "minSpeedup": 39.76565955405955,
+  "maxSpeedup": 56.07170750024803,
+  "medianBeforeAbsUs": 4.0216967,
+  "medianAfterAbsUs": 0.08607364999999992,
+  "dirtyWakeOk": true
+}

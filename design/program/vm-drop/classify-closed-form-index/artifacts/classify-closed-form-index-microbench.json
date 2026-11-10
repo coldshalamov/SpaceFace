@@ -1,0 +1,19 @@
+{
+  "label": "classifyClosedFormIndex",
+  "entities": 8000,
+  "closedForm": 24,
+  "iters": 4000,
+  "fullMs": 637.18,
+  "filterMs": 609.42,
+  "indexMs": 4.72,
+  "filterSpeedupVsFull": 1.046,
+  "indexSpeedupVsFull": 134.885,
+  "indexSpeedupVsFilter": 129.007,
+  "fullWorstMs": 1.2957,
+  "filterWorstMs": 0.2485,
+  "indexWorstMs": 0.9376,
+  "worstSpeedupVsFull": 1.382,
+  "hitsFull": 12,
+  "hitsFilter": 12,
+  "hitsIndex": 12
+}

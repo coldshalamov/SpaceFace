@@ -1,0 +1,36 @@
+{
+  "schema": "spaceface.validation-run-result.v1",
+  "recordedAt": "2026-08-01T09:03:18.614Z",
+  "status": "pass",
+  "exitCode": 0,
+  "signal": null,
+  "timedOut": false,
+  "durationMs": 43591,
+  "pidRecord": {
+    "pid": 19396,
+    "command": "C:\\Program Files\\nodejs\\node.exe",
+    "args": [
+      "scripts/probe-pq023-small-destruction-salience.mjs"
+    ],
+    "startedAt": "2026-08-01T09:02:35.023Z",
+    "platform": "win32",
+    "finishedAt": "2026-08-01T09:03:18.614Z",
+    "exitCode": 0,
+    "signal": null,
+    "timedOut": false,
+    "killResult": null
+  },
+  "ownership": {
+    "probeId": "pq023-small-destruction-salience",
+    "runtimeKind": "browser",
+    "browserOwned": true,
+    "serverOwned": true,
+    "pid": 19396
+  },
+  "fixedSeed": 47,
+  "failureFingerprint": null,
+  "family": null,
+  "routeDigest": "3aca5dbd12b5c94ae52bc8794f422cc8abbd564d97340ac2a92037d34d463746",
+  "regressionDigest": "b34628b157e9f89d67543401243517c311ecfaa87bacc04feee3443387dd80aa",
+  "candidateDigest": "fbabadf8cf040e799bccf440baae61efd36725994cfb6a716c4d5b0bf2c3b1bb"
+}

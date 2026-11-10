@@ -1,0 +1,185 @@
+From 212773a5891e373fe576bc0dac153e8ac44d6a47 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 04:25:23 -0400
+Subject: [PATCH] =?UTF-8?q?perf(combat):=20quiet-skip=20StuntFlightObserve?=
+ =?UTF-8?q?r=20history=20(~4.7=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Nearby-body history only serves needle-gap detection, which needs open
+tracks. While tracks are empty and the projectile lane is empty, skip
+history alloc + spatialDynamics walk; odd quiet ticks also skip bodyLife.
+Active tracks or live projectiles keep every-tick recording.
+---
+ src/combat/stuntFlightEvidence.js             | 27 ++++-
+ test/stunt-flight-history-quiet-skip.test.mjs | 98 +++++++++++++++++++
+ 2 files changed, 122 insertions(+), 3 deletions(-)
+ create mode 100644 test/stunt-flight-history-quiet-skip.test.mjs
+
+diff --git a/src/combat/stuntFlightEvidence.js b/src/combat/stuntFlightEvidence.js
+index 38efcbecd..90bfe10da 100644
+--- a/src/combat/stuntFlightEvidence.js
++++ b/src/combat/stuntFlightEvidence.js
+@@ -4,6 +4,15 @@ import { bodyLife, journalFor, observeAppliedImpulse, angleBetween } from './stu
+ 
+ const pt=p=>({x:p.x,z:p.z});
+ const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
++// Quiet history skip: with no open tracks and an empty projectile lane, the
++// nearby-body history ring only serves needle-gap detection (needs open tracks).
++// Skip history alloc + spatialDynamics walk entirely while quiet; odd quiet ticks
++// also skip bodyLife. Bench can disable to restore always-record history.
++let _quietHistorySkipEnabled = true;
++export function setStuntFlightHistoryQuietSkipForBench(enabled) {
++  _quietHistorySkipEnabled = enabled !== false;
++}
++
+ export function interceptSeconds(relative,velocity,radius) {
+   const a=velocity.x**2+velocity.z**2,b=2*(relative.x*velocity.x+relative.z*velocity.z),c=relative.x**2+relative.z**2-radius**2;
+   if(c<=0)return 0;
+@@ -72,9 +81,6 @@ export class StuntFlightObserver {
+     const tick=state.tick,player=state.entities?.get(state.playerId),j=journalFor(state);
+     if(!j||!player?.pos||!player.vel||player.alive===false||tick<=this.lastTick)return [];
+     this.lastTick=tick;
+-    const life=bodyLife(player,state),u=life.cruise,L=life.length,pr=life.radius;
+-    let incoming=false;const results=[];
+-    const previous=this.history.at(-1);
+     // Quiet cadence: with no open tracks and an empty projectile lane, ship/drone
+     // lock discovery can wait one tick (~16 ms). Active tracks and live projectiles
+     // keep the full every-tick walk. Stunt open-window is 0.2–1.2 s so a single
+@@ -83,6 +89,15 @@ export class StuntFlightObserver {
+     const projectiles=lanes?lanes[2]:null;
+     const quietNoAmmo=this.tracks.size===0&&Array.isArray(projectiles)&&projectiles.length===0;
+     const scanThreats=!quietNoAmmo||((tick&1)===0);
++    // Odd quiet tick: threat discovery already deferred (#49). History only serves
++    // needle-gap detection which needs open tracks — skip bodyLife + history entirely.
++    if(_quietHistorySkipEnabled&&quietNoAmmo&&!scanThreats){
++      j.pressure={incomingInterception:false,tick};
++      return [];
++    }
++    const life=bodyLife(player,state),u=life.cruise,L=life.length,pr=life.radius;
++    let incoming=false;const results=[];
++    const previous=this.history.at(-1);
+     if(scanThreats) forEachThreatCandidate(state, player.id, (e) => {
+       const dx=e.pos.x-player.pos.x,dz=e.pos.z-player.pos.z;
+       if(dx*dx+dz*dz>THREAT_SCAN_RANGE_SQ)return;
+@@ -145,6 +160,12 @@ export class StuntFlightObserver {
+         stuntEvidence:structuredClone({revision:2,root,path:{tick,edges:0,usefulDeltaV:dv,
+           momentum:root.kind==='flight'?0:life.mass*Math.hypot(root.dv.x,root.dv.z)},contact:null})});
+     }
++    // Even quiet tick after discovery still empty: history unused until a track opens.
++    // Needle-gap needs ~30 prior frames of an open episode; starting history when the
++    // first track opens is within the 0.2–1.2 s stunt window.
++    if(_quietHistorySkipEnabled&&quietNoAmmo&&this.tracks.size===0){
++      return results;
++    }
+     const frame={tick,pos:pt(player.pos),vel:pt(player.vel),bodies:[]};
+     const histLimit = L*8;
+     const histLimitSq = histLimit * histLimit;
+diff --git a/test/stunt-flight-history-quiet-skip.test.mjs b/test/stunt-flight-history-quiet-skip.test.mjs
+new file mode 100644
+index 000000000..5937c07f0
+--- /dev/null
++++ b/test/stunt-flight-history-quiet-skip.test.mjs
+@@ -0,0 +1,98 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { bindStuntEvidence, unbindStuntEvidence } from '../src/combat/stuntEvidence.js';
++import {
++  StuntFlightObserver,
++  setStuntFlightHistoryQuietSkipForBench,
++} from '../src/combat/stuntFlightEvidence.js';
++
++function makeQuietState() {
++  const player = {
++    id: 0, type: 'ship', alive: true, isPlayer: true, team: 0,
++    pos: { x: 0, z: 0 }, vel: { x: 40, z: 0 },
++    mass: 18, radius: 6, hull: 100, hullMax: 100,
++    data: { defId: 'ship_kestrel' }, collides: true,
++  };
++  const traffic = {
++    id: 1, type: 'ship', alive: true, team: 1,
++    pos: { x: 400, z: 0 }, vel: { x: -5, z: 0 },
++    mass: 14, radius: 5, hull: 80, hullMax: 80,
++    data: { ai: { passive: true }, combat: {} }, collides: true,
++  };
++  const ships = [player, traffic];
++  const movables = [player, traffic];
++  return {
++    mode: 'flight', tick: 0, simTime: 0, playerId: 0,
++    entities: new Map([[0, player], [1, traffic]]),
++    entityList: [player, traffic],
++    entityIndex: {
++      __spacefaceEntityIndexV1: true,
++      ready: true,
++      ships,
++      drones: [],
++      projectiles: [],
++      shipLike: ships,
++      movables,
++      spatialDynamics: movables,
++      collidables: movables,
++    },
++    input: {},
++    settings: {},
++    combat: {},
++  };
++}
++
++test('quiet history skip: no nearby-body frames while tracks empty and projectile lane empty', () => {
++  setStuntFlightHistoryQuietSkipForBench(true);
++  const state = makeQuietState();
++  bindStuntEvidence(state);
++  const observer = new StuntFlightObserver();
++  for (let t = 0; t < 30; t++) {
++    state.tick = t;
++    state.simTime = t / 60;
++    observer.update(state);
++  }
++  assert.equal(observer.tracks.size, 0);
++  assert.equal(observer.history.length, 0);
++  unbindStuntEvidence(state);
++});
++
++test('bench toggle off still records history on quiet ticks', () => {
++  setStuntFlightHistoryQuietSkipForBench(false);
++  const state = makeQuietState();
++  bindStuntEvidence(state);
++  const observer = new StuntFlightObserver();
++  for (let t = 0; t < 30; t++) {
++    state.tick = t;
++    state.simTime = t / 60;
++    observer.update(state);
++  }
++  assert.equal(observer.tracks.size, 0);
++  assert.ok(observer.history.length >= 20, `expected history, got ${observer.history.length}`);
++  unbindStuntEvidence(state);
++  setStuntFlightHistoryQuietSkipForBench(true);
++});
++
++test('live projectile lane keeps history recording even with no open tracks', () => {
++  setStuntFlightHistoryQuietSkipForBench(true);
++  const state = makeQuietState();
++  const shot = {
++    id: 2, type: 'projectile', alive: true, ownerId: 1, team: 1,
++    pos: { x: 300, z: 0 }, vel: { x: -50, z: 0 },
++    radius: 1, mass: 0.1, data: {}, collides: true,
++  };
++  state.entities.set(2, shot);
++  state.entityList.push(shot);
++  state.entityIndex.projectiles.push(shot);
++  state.entityIndex.movables.push(shot);
++  state.entityIndex.spatialDynamics.push(shot);
++  bindStuntEvidence(state);
++  const observer = new StuntFlightObserver();
++  for (let t = 0; t < 20; t++) {
++    state.tick = t;
++    state.simTime = t / 60;
++    observer.update(state);
++  }
++  assert.ok(observer.history.length >= 15, `expected history with live ammo, got ${observer.history.length}`);
++  unbindStuntEvidence(state);
++});
+-- 
+2.47.3
+

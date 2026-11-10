@@ -1,0 +1,749 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
+import * as THREE from 'three';
+
+import {
+  captureWebGlDisposeListenerDelta,
+  collectContextLossRoots,
+  CONTEXT_LOSS_TIME_EFFECT_SOURCE,
+  createWebGlDisposeListenerProvenance,
+  deferWebGlContextRestore,
+  describeWebGlDisposeListenerProvenance,
+  detachStaleWebGlDisposeListeners,
+  detachStashedStaleWebGlDisposeListeners,
+  isWebGlContextUnavailable,
+  pauseSimForContextLoss,
+  resumeSimAfterContextRestore,
+  snapshotWebGlDisposeListeners,
+  stashStaleWebGlDisposeProvenance,
+} from '../src/render/contextResourceLifecycle.js';
+import { createTimeEffects } from '../src/core/timeEffects.js';
+import {
+  receiptReportsContextLost,
+  queueContextRecoveryExactTargetTouch,
+  runWebGlContextRestoreRebuild,
+} from '../src/render/renderer.js';
+import { vfx } from '../src/render/vfx.js';
+import { ContinuousPlumeSystem } from '../src/render/thruster/systems/continuousPlume.js';
+import { RcsImpulseSystem } from '../src/render/thruster/systems/rcsImpulse.js';
+import { PlasmaStreamSystem } from '../src/render/thruster/systems/plasmaStream.js';
+import { createGasSystem } from '../src/render/combat/gas/gasVolumeField.js';
+
+test('context loss detaches only exact opaque renderer-generation callbacks by resource kind', () => {
+  const provenance = createWebGlDisposeListenerProvenance();
+  const exactObject = opaqueListener('a');
+  const exactGeometry = opaqueListener('b');
+  const exactMaterial = opaqueListener('c');
+  const exactShadowMaterial = opaqueListener('d');
+  const exactTexture = opaqueListener('e');
+  const exactRenderTarget = opaqueListener('f');
+  provenance.instancedMeshes.add(exactObject);
+  provenance.geometries.add(exactGeometry);
+  provenance.materials.add(exactMaterial);
+  provenance.materials.add(exactShadowMaterial);
+  provenance.textures.add(exactTexture);
+  provenance.renderTargets.add(exactRenderTarget);
+
+  const appDisposeListener = opaqueListener('c');
+  const texture = resource({ isTexture: true }, [exactTexture, appDisposeListener]);
+  const material = resource({
+    isMaterial: true,
+    map: texture,
+    uniforms: { glowMap: { value: texture } },
+  }, [exactMaterial, exactShadowMaterial, appDisposeListener]);
+  const geometry = resource({ isBufferGeometry: true }, [exactGeometry, appDisposeListener]);
+  const mesh = resource({
+    isInstancedMesh: true,
+    geometry,
+    material,
+    skeleton: { boneTexture: texture },
+  }, [exactObject, appDisposeListener]);
+  const root = { traverse(visitor) { visitor(mesh); visitor(mesh); } };
+
+  const receipt = detachStaleWebGlDisposeListeners([root, material], provenance);
+
+  assert.equal(receipt.provenanceComplete, true);
+  assert.deepEqual(receipt.provenanceMissingKinds, []);
+  assert.equal(receipt.objects, 1);
+  assert.equal(receipt.instancedMeshes, 1);
+  assert.equal(receipt.geometries, 1);
+  assert.equal(receipt.materials, 1);
+  assert.equal(receipt.textures, 1);
+  assert.equal(receipt.renderTargets, 0);
+  assert.equal(receipt.listenersDetached, 5);
+  assert.deepEqual(mesh._listeners.dispose, [appDisposeListener]);
+  assert.deepEqual(geometry._listeners.dispose, [appDisposeListener]);
+  assert.deepEqual(material._listeners.dispose, [appDisposeListener]);
+  assert.deepEqual(texture._listeners.dispose, [appDisposeListener]);
+});
+
+test('environment conversion provenance captures only newly attached source callbacks', () => {
+  const foreignListener = opaqueListener('application-owned');
+  const cubemapListener = opaqueListener('three-onCubemapDispose');
+  const source = resource({ isTexture: true }, [foreignListener]);
+  const before = snapshotWebGlDisposeListeners(source);
+  source._listeners.dispose.push(cubemapListener);
+
+  const provenance = createWebGlDisposeListenerProvenance();
+  assert.equal(captureWebGlDisposeListenerDelta(provenance, source, before, 'textures'), 1);
+  assert.equal(provenance.textures.has(cubemapListener), true);
+  assert.equal(provenance.textures.has(foreignListener), false);
+
+  const receipt = detachStaleWebGlDisposeListeners([source], provenance);
+  assert.equal(receipt.listenersDetached, 1);
+  assert.deepEqual(source._listeners.dispose, [foreignListener],
+    'pre-existing application callbacks must survive exact environment provenance cleanup');
+});
+
+test('context loss covers render-target attachments once and ignores unrelated objects', () => {
+  const provenance = completeProvenance();
+  const textureListener = [...provenance.textures][0];
+  const targetListener = [...provenance.renderTargets][0];
+  const color = resource({ isTexture: true }, [textureListener]);
+  const depth = resource({ isTexture: true }, [textureListener]);
+  const target = resource({ isWebGLRenderTarget: true, texture: color, textures: [color], depthTexture: depth }, [targetListener]);
+
+  const receipt = detachStaleWebGlDisposeListeners([target, {}, null], provenance);
+
+  assert.equal(receipt.renderTargets, 1);
+  assert.equal(receipt.textures, 2);
+  assert.equal(receipt.listenersDetached, 3);
+});
+
+test('context loss detaches BatchedMesh-owned matrix and indirect textures', () => {
+  const provenance = completeProvenance();
+  const exactTexture = [...provenance.textures][0];
+  const matrices = resource({ isTexture: true }, [exactTexture]);
+  const indirect = resource({ isTexture: true }, [exactTexture]);
+  const colors = resource({ isTexture: true }, [exactTexture]);
+  const geometry = resource({ isBufferGeometry: true }, []);
+  const material = resource({ isMaterial: true }, []);
+  const batch = {
+    isBatchedMesh: true,
+    geometry,
+    material,
+    _matricesTexture: matrices,
+    _indirectTexture: indirect,
+    _colorsTexture: colors,
+  };
+  const root = { traverse(visitor) { visitor(batch); } };
+
+  const receipt = detachStaleWebGlDisposeListeners(root, provenance);
+
+  assert.equal(receipt.objects, 1);
+  assert.equal(receipt.batchedMeshes, 1);
+  assert.equal(receipt.instancedMeshes, 0);
+  assert.equal(receipt.textures, 3);
+  assert.equal(receipt.listenersDetached, 3);
+  assert.deepEqual(matrices._listeners.dispose, []);
+  assert.deepEqual(indirect._listeners.dispose, []);
+  assert.deepEqual(colors._listeners.dispose, []);
+});
+
+test('incomplete provenance fails closed without name or source-text fallback', () => {
+  const namedButUnproven = function onGeometryDispose() {};
+  const sameNameForeign = function onGeometryDispose() {};
+  const geometry = resource({ isBufferGeometry: true }, [namedButUnproven, sameNameForeign]);
+  const provenance = createWebGlDisposeListenerProvenance();
+  provenance.materials.add(opaqueListener('m'));
+
+  const status = describeWebGlDisposeListenerProvenance(provenance);
+  assert.equal(status.complete, false);
+  assert.ok(status.missingKinds.includes('materials'),
+    'one material callback cannot stand in for both renderer and shadow ownership');
+
+  const receipt = detachStaleWebGlDisposeListeners([geometry], provenance);
+  assert.equal(receipt.provenanceComplete, false);
+  assert.equal(receipt.listenersDetached, 0);
+  assert.deepEqual(geometry._listeners.dispose, [namedButUnproven, sameNameForeign]);
+});
+
+test('context loss root collection includes scene, background, bloom, graph, and live entity resources', () => {
+  const scene = { name: 'scene' };
+  const environment = { name: 'environment' };
+  const backgroundTarget = { name: 'background-target' };
+  const bloomTarget = { name: 'bloom-target' };
+  const graphTarget = { name: 'graph-target' };
+  const vfxGeometry = { name: 'detached-vfx-geometry' };
+  const vfxTexture = { name: 'detached-vfx-texture' };
+  const vfxRoot = { name: 'detached-vfx-root' };
+  const entityMesh = { name: 'entity-mesh' };
+  const roots = collectContextLossRoots({
+    scene,
+    environment,
+    spaceBackground: { contextLossResources: () => [backgroundTarget] },
+    bloom: { contextLossResources: () => [bloomTarget] },
+    renderGraph: { contextLossResources: () => [graphTarget] },
+    vfxRoots: [vfxRoot],
+    vfxResources: [vfxGeometry, vfxTexture],
+    entities: [{ mesh: entityMesh }, null, {}],
+  });
+
+  assert.deepEqual(roots, [scene, environment, backgroundTarget, bloomTarget, graphTarget,
+    vfxRoot, vfxGeometry, vfxTexture, entityMesh]);
+});
+
+test('VFX context-loss roots retain detached gas and dedicated propulsion batches', () => {
+  const system = Object.create(vfx);
+  const gasMesh = new THREE.Group();
+  gasMesh.name = 'SF_VFX_gas_volumes';
+  const ceresPlume = new THREE.Group();
+  ceresPlume.name = 'ceres-plume';
+  const latchPlume = new THREE.Group();
+  latchPlume.name = 'latch-plume';
+  system._gas = { mesh: gasMesh };
+  system._energy = {
+    ceresWorkfleet: { plume: { group: ceresPlume } },
+    latchNine: { plume: { group: latchPlume } },
+    fleet: { families: [] },
+  };
+  system._ribbonTrails = new Map();
+
+  const roots = system._vfxOwnerRoots();
+
+  assert.ok(roots.includes(gasMesh), 'detached gas mesh must remain in the loss root set');
+  assert.ok(roots.includes(ceresPlume), 'Ceres wrapper must publish its plume group');
+  assert.ok(roots.includes(latchPlume), 'Latch wrapper must publish its plume group');
+
+  const gasFilm = { isTexture: true, name: 'gas-film' };
+  const ceresTier = { isBufferGeometry: true, name: 'ceres-dormant-tier' };
+  system._gas.contextLossResources = () => [gasFilm];
+  system._energy.ceresWorkfleet.plume.contextLossResources = () => [ceresTier];
+  const resources = system._vfxContextLossResources();
+  assert.ok(resources.includes(gasFilm), 'VFX must forward raw gas films to the loss walker');
+  assert.ok(resources.includes(ceresTier), 'VFX must forward raw propulsion tiers to the loss walker');
+});
+
+test('VFX context-loss resources publish sprite bucket textures held only by uniforms', () => {
+  const system = Object.create(vfx);
+  const densityTexture = { isTexture: true, name: 'SF_OfflineDensityFilm_RG8' };
+  system._spriteBatches = {
+    glow: { texture: null },
+    ring: { texture: null },
+    smoke: { texture: densityTexture },
+    combustion: { texture: densityTexture },
+  };
+
+  const resources = system._vfxContextLossResources();
+
+  assert.deepEqual(resources, [densityTexture],
+    'the shared transient density film must be detached even though it is only a uniform value');
+});
+
+test('VFX providers publish off-graph tier and raw texture resources', () => {
+  const plume = Object.create(ContinuousPlumeSystem.prototype);
+  const plumeTierGeometry = { isBufferGeometry: true, name: 'plume-medium-tier' };
+  const plumeTexture = { isTexture: true, name: 'plume-mask' };
+  plume.group = { isObject3D: true, name: 'plume-root' };
+  plume.layerBatches = [{
+    mesh: { isObject3D: true },
+    material: { isMaterial: true },
+    tierBuffers: {
+      high: { geo: { isBufferGeometry: true, name: 'plume-high-tier' } },
+      medium: { geo: plumeTierGeometry },
+      low: { geo: { isBufferGeometry: true, name: 'plume-low-tier' } },
+    },
+  }];
+  plume._textures = { default: plumeTexture };
+  const plumeResources = plume.contextLossResources();
+  assert.ok(plumeResources.includes(plumeTierGeometry), 'dormant plume tier must be published');
+  assert.ok(plumeResources.includes(plumeTexture), 'owned plume texture must be published');
+
+  const rcs = Object.create(RcsImpulseSystem.prototype);
+  const rcsTierGeometry = { isBufferGeometry: true, name: 'rcs-low-tier' };
+  const rcsTexture = { isTexture: true, name: 'rcs-mask' };
+  rcs.group = { isObject3D: true, name: 'rcs-root' };
+  rcs.layerBatches = [{
+    mesh: { isObject3D: true },
+    material: { isMaterial: true },
+    tierBuffers: { high: { geo: {} }, medium: { geo: {} }, low: { geo: rcsTierGeometry } },
+  }];
+  rcs._textures = { default: rcsTexture };
+  const rcsResources = rcs.contextLossResources();
+  assert.ok(rcsResources.includes(rcsTierGeometry), 'dormant RCS tier must be published');
+  assert.ok(rcsResources.includes(rcsTexture), 'owned RCS texture must be published');
+
+  const plasma = Object.create(PlasmaStreamSystem.prototype);
+  const centerTexture = { isTexture: true, name: 'plasma-center-field' };
+  const contrailTexture = { isTexture: true, name: 'plasma-path-field' };
+  plasma.group = { isObject3D: true, name: 'plasma-root' };
+  plasma._centerTex = centerTexture;
+  plasma._ribbons = { contextLossResources: () => [{ isBufferGeometry: true }] };
+  plasma._trails = [{ contextLossResources: () => [contrailTexture] }];
+  plasma._forges = [];
+  plasma._throats = [];
+  const plasmaResources = plasma.contextLossResources();
+  assert.ok(plasmaResources.includes(centerTexture), 'plasma center texture must be published');
+  assert.ok(plasmaResources.includes(contrailTexture), 'contrail path texture must be published');
+
+  const gas = createGasSystem(new THREE.Scene());
+  const gasResources = gas.contextLossResources();
+  assert.ok(gasResources.some((resource) => resource?.isTexture && resource.name === 'SF_GasDensityFilm_RG8'),
+    'shared gas density film must be published as a raw resource');
+  assert.ok(gasResources.some((resource) => resource?.isTexture && resource.name === 'SF_GasMotionField_RGBA8'),
+    'shared gas motion film must be published as a raw resource');
+  gas.dispose();
+});
+
+test('context restore rebuild stays paused until every listener in the restore event has returned', () => {
+  const order = [];
+  let queued = null;
+
+  const receipt = deferWebGlContextRestore(
+    () => order.push('spaceface-rebuild'),
+    (callback) => { queued = callback; },
+  );
+  order.push('three-context-cache-reset');
+
+  assert.deepEqual(order, ['three-context-cache-reset']);
+  assert.equal(receipt.pending, true);
+  assert.equal(typeof queued, 'function');
+
+  queued();
+  assert.deepEqual(order, ['three-context-cache-reset', 'spaceface-rebuild']);
+  assert.equal(receipt.pending, false);
+});
+
+test('context restore stays draw-gated through rebuild and remains gated after a rebuild failure', async () => {
+  const owner = { _contextLost: true };
+  const recovery = { restores: 2, generation: 7, pending: true, lastError: null };
+  const success = await runWebGlContextRestoreRebuild(owner, recovery, async () => {
+    assert.equal(owner._contextLost, true, 'draw remains gated during every rebuild step');
+    assert.equal(recovery.pending, true, 'readiness remains pending during every rebuild step');
+    await Promise.resolve();
+    assert.equal(owner._contextLost, true, 'async pipeline rebuild also remains draw-gated');
+    assert.equal(recovery.pending, true);
+  });
+
+  assert.equal(success.ok, true);
+  assert.equal(owner._contextLost, false);
+  assert.equal(recovery.pending, false);
+  assert.equal(recovery.restores, 3);
+  assert.equal(recovery.generation, 8);
+
+  owner._contextLost = true;
+  recovery.pending = true;
+  const failure = await runWebGlContextRestoreRebuild(owner, recovery, async () => {
+    assert.equal(owner._contextLost, true);
+    assert.equal(recovery.pending, true);
+    await Promise.resolve();
+    throw new Error('rebuild exploded');
+  });
+
+  assert.equal(failure.ok, false);
+  assert.match(String(failure.error?.message), /rebuild exploded/);
+  assert.equal(owner._contextLost, true,
+    'a failed rebuild must not reopen rendering onto half-restored resources');
+  assert.equal(recovery.pending, true,
+    'a failed rebuild remains unavailable to startup/readiness gates');
+  assert.equal(recovery.lastError, 'rebuild exploded');
+  assert.equal(recovery.restores, 3, 'failed rebuilds do not advance restore receipts');
+  assert.equal(recovery.generation, 8, 'failed rebuilds do not publish a fresh generation');
+
+  const contextLostReceipt = await runWebGlContextRestoreRebuild(owner, recovery, async () => ([
+    { skipped: false },
+    { contextLost: true, reason: 'driver reset during restored pipeline compile' },
+  ]));
+  assert.equal(contextLostReceipt.ok, false);
+  assert.equal(owner._contextLost, true,
+    'a fulfilled context-lost compile receipt must not reopen rendering');
+  assert.equal(recovery.pending, true);
+  assert.match(recovery.lastError, /driver reset during restored pipeline compile/);
+  assert.equal(recovery.restores, 3);
+  assert.equal(recovery.generation, 8);
+});
+
+test('state.render.contextLost mirrors the private flag through the rebuild cycle', async () => {
+  // D48/D111 evidence, pipelineReadiness and the runtime witness all read the PUBLISHED field;
+  // it must track the renderer's real _contextLost or every one of those readers reports a
+  // fabricated "not lost" during an actual loss.
+  const owner = { _contextLost: false, state: { render: {} } };
+  const recovery = { restores: 0, generation: 0, pending: false, lastError: null };
+
+  let publishedDuringRebuild = null;
+  const success = await runWebGlContextRestoreRebuild(owner, recovery, async () => {
+    publishedDuringRebuild = owner.state.render.contextLost;
+    await Promise.resolve();
+  });
+
+  assert.equal(success.ok, true);
+  assert.equal(publishedDuringRebuild, true,
+    'the published flag reports lost while the rebuild is in flight');
+  assert.equal(owner._contextLost, false);
+  assert.equal(owner.state.render.contextLost, false,
+    'a completed restore clears the published flag alongside the private one');
+
+  const failure = await runWebGlContextRestoreRebuild(owner, recovery, async () => {
+    throw new Error('rebuild exploded');
+  });
+  assert.equal(failure.ok, false);
+  assert.equal(owner.state.render.contextLost, true,
+    'a terminal rebuild failure keeps the published flag set — the context is still lost');
+  assert.equal(recovery.terminal, true);
+});
+
+test('a successful rebuild drains exact-target touches queued while recovery was pending', async () => {
+  const owner = { _contextLost: true };
+  const touched = [];
+  const subjectA = { name: 'authored-root-a' };
+  const subjectB = { name: 'authored-root-b' };
+  const recovery = {
+    restores: 0,
+    generation: 0,
+    pending: true,
+    lastError: null,
+    pendingExactTargetTouches: new Set([subjectA, subjectB]),
+    runQueuedExactTargetTouch(subject) { touched.push(subject); },
+  };
+  const success = await runWebGlContextRestoreRebuild(owner, recovery, async () => {
+    // A boundary publishing mid-rebuild queues its publish-seam touch — the rebuild's own
+    // scene warm already enumerated without it, so the touch must land here, on the same
+    // tick pending clears, before any presented frame can draw the root cold.
+    recovery.pendingExactTargetTouches.add({ name: 'authored-root-late' });
+  });
+
+  assert.equal(success.ok, true);
+  assert.equal(recovery.pending, false);
+  assert.equal(recovery.pendingExactTargetTouches, null,
+    'the queue is consumed — a second recovery must not re-touch stale subjects');
+  assert.deepEqual(touched.map((subject) => subject.name),
+    ['authored-root-a', 'authored-root-b', 'authored-root-late'],
+    'every subject queued during the pending window is re-touched before the gate opens');
+});
+
+test('recovery touch coalescing keeps the latest live owner and skips a retired BatchedMesh', async () => {
+  const owner = { _contextLost: true };
+  const liveBatch = new THREE.BatchedMesh(1, 3, 3, new THREE.MeshBasicMaterial());
+  liveBatch.name = 'live-batch';
+  const retiredBatch = new THREE.BatchedMesh(1, 3, 3, new THREE.MeshBasicMaterial());
+  retiredBatch.name = 'retired-batch';
+  let liveOwnerActive = true;
+  let retiredOwnerActive = true;
+  const touched = [];
+  const recovery = {
+    restores: 0,
+    generation: 0,
+    pending: true,
+    lastError: null,
+    runQueuedExactTargetTouch(subject, options) {
+      assert.equal(options.isActive(subject), true);
+      assert.ok(subject._indirectTexture, 'only a live BatchedMesh may reach the render touch');
+      touched.push(subject.name);
+    },
+  };
+
+  // A cancelled request for this subject is superseded by its newer live admission.
+  queueContextRecoveryExactTargetTouch(recovery, liveBatch, { isActive: () => false });
+  queueContextRecoveryExactTargetTouch(recovery, liveBatch, { isActive: () => liveOwnerActive });
+  // Late stale or throwing requests cannot replace that live queued owner.
+  queueContextRecoveryExactTargetTouch(recovery, liveBatch, { isActive: () => false });
+  queueContextRecoveryExactTargetTouch(recovery, liveBatch, { isActive: () => { throw new Error('retired owner'); } });
+  queueContextRecoveryExactTargetTouch(recovery, retiredBatch, { isActive: () => retiredOwnerActive });
+  retiredOwnerActive = false;
+  retiredBatch.dispose();
+
+  const success = await runWebGlContextRestoreRebuild(owner, recovery, async () => {});
+  assert.equal(success.ok, true);
+  assert.deepEqual(touched, ['live-batch']);
+  assert.equal(recovery.pendingExactTargetTouches, null);
+
+  liveBatch.dispose();
+  liveBatch.material.dispose();
+  retiredBatch.material.dispose();
+});
+
+test('a failed rebuild keeps queued exact-target touches for the retry', async () => {
+  const owner = { _contextLost: true };
+  const touched = [];
+  const subject = { name: 'authored-root' };
+  const recovery = {
+    restores: 0,
+    generation: 0,
+    pending: true,
+    lastError: null,
+    retryCount: 0,
+    scheduleRetry() {},
+    pendingExactTargetTouches: new Set([subject]),
+    runQueuedExactTargetTouch(entry) { touched.push(entry); },
+  };
+  const failure = await runWebGlContextRestoreRebuild(owner, recovery, async () => {
+    throw new Error('rebuild exploded');
+  });
+  assert.equal(failure.ok, false);
+  assert.equal(recovery.pending, true);
+  assert.equal(touched.length, 0,
+    'a failed rebuild must not touch against a still-dead context — the queue rides the retry');
+  assert.equal(recovery.pendingExactTargetTouches.has(subject), true);
+});
+
+test('a failed restore with scheduleRetry does not stay pending without another attempt', async () => {
+  const owner = { _contextLost: true };
+  let retries = 0;
+  const recovery = {
+    restores: 0,
+    generation: 0,
+    pending: true,
+    lastError: null,
+    retryCount: 0,
+    scheduleRetry() { retries += 1; },
+  };
+  const failure = await runWebGlContextRestoreRebuild(owner, recovery, async () => {
+    throw new Error('transient rebuild');
+  });
+  assert.equal(failure.ok, false);
+  assert.equal(failure.retryScheduled, true);
+  assert.equal(retries, 1);
+  assert.equal(recovery.pending, true);
+  assert.equal(recovery.retryCount, 1);
+});
+
+test('sliced compile receipts still count as context-lost', () => {
+  assert.equal(receiptReportsContextLost(null), false);
+  assert.equal(receiptReportsContextLost({ skipped: false }), false);
+  assert.equal(receiptReportsContextLost({ contextLost: true, reason: 'driver' }), true);
+  assert.equal(receiptReportsContextLost([
+    { skipped: false },
+    { contextLost: true, reason: 'lost mid-slice' },
+  ]), true);
+});
+
+test('successful restore clears the force-new-context latch for a later loss', async () => {
+  const owner = { _contextLost: true };
+  const recovery = {
+    restores: 0,
+    generation: 0,
+    pending: true,
+    lastError: null,
+    retryCount: 0,
+    forcedNewContext: true,
+  };
+  const success = await runWebGlContextRestoreRebuild(owner, recovery, async () => ({ ok: true }));
+  assert.equal(success.ok, true);
+  assert.equal(recovery.forcedNewContext, false);
+});
+
+test('exhausted restore retries force a new context instead of staying dead', async () => {
+  let forced = 0;
+  const owner = { _contextLost: true };
+  const recovery = {
+    restores: 0,
+    generation: 0,
+    pending: true,
+    lastError: null,
+    retryCount: 8,
+    scheduleRetry() {},
+    forceNewContext() { forced += 1; },
+  };
+  const failure = await runWebGlContextRestoreRebuild(owner, recovery, async () => {
+    throw new Error('still broken after retries');
+  });
+  assert.equal(failure.ok, false);
+  assert.equal(failure.forcedNewContext, true);
+  assert.equal(forced, 1);
+  assert.equal(recovery.retryCount, 0);
+  assert.equal(recovery.pending, true);
+  assert.equal(owner._contextLost, true);
+});
+
+test('a second exhausted restore after a forced context is a named terminal park', async () => {
+  const owner = { _contextLost: true };
+  const recovery = {
+    restores: 0,
+    generation: 0,
+    pending: true,
+    lastError: null,
+    retryCount: 8,
+    forcedNewContext: true,
+    scheduleRetry() {},
+    forceNewContext() { throw new Error('must not force twice'); },
+  };
+  const failure = await runWebGlContextRestoreRebuild(owner, recovery, async () => {
+    throw new Error('forced context also dead');
+  });
+  assert.equal(failure.ok, false);
+  assert.equal(failure.retryScheduled, false);
+  assert.equal(failure.terminal, true);
+  assert.equal(recovery.terminal, true);
+  assert.equal(recovery.pending, true);
+});
+
+test('draw boundary observes a lost GL context before its asynchronous event arrives', () => {
+  assert.equal(isWebGlContextUnavailable(true, null), true);
+  assert.equal(isWebGlContextUnavailable(false, {
+    getContext: () => ({ isContextLost: () => true }),
+  }), true);
+  assert.equal(isWebGlContextUnavailable(false, {
+    getContext: () => ({ isContextLost: () => false }),
+  }), false);
+  assert.equal(isWebGlContextUnavailable(false, {
+    getContext() { throw new Error('driver unavailable'); },
+  }), true);
+});
+
+test('context loss halts the sim through the time-effects ledger, never a direct write', () => {
+  const state = { timeScale: 1, render: { contextRecovery: {} } };
+  const prior = pauseSimForContextLoss(state);
+  assert.equal(prior, 1);
+  assert.equal(state.timeScale, 0);
+  assert.equal(state.render.contextRecovery.simPaused, true);
+  // A repeated loss is idempotent — one ledger source, still halted.
+  pauseSimForContextLoss(state);
+  assert.equal(state.timeScale, 0);
+  assert.equal(CONTEXT_LOSS_TIME_EFFECT_SOURCE, 'webgl-context-loss');
+});
+
+test('context loss never erases a surviving menu pause, and recovery never clears it', () => {
+  const state = { timeScale: 1, render: { contextRecovery: {} } };
+  createTimeEffects(state).set('menu', { scale: 0 });
+  pauseSimForContextLoss(state);
+  assert.equal(state.timeScale, 0);
+  const after = resumeSimAfterContextRestore(state);
+  assert.equal(after, 0, 'the menu hold must survive context recovery');
+  assert.equal(state.timeScale, 0);
+  assert.equal(state.render.contextRecovery.simPaused, false);
+  createTimeEffects(state).clear('menu');
+  assert.equal(state.timeScale, 1);
+});
+
+test('successful restore resumes the sim; failed states stay halted without a resume call', () => {
+  const state = { timeScale: 1, render: { contextRecovery: {} } };
+  pauseSimForContextLoss(state);
+  assert.equal(state.timeScale, 0);
+  const after = resumeSimAfterContextRestore(state);
+  assert.equal(after, 1);
+  assert.equal(state.timeScale, 1);
+  assert.equal(state.render.contextRecovery.simPaused, false);
+  // A second resume with no hold is a harmless no-op, never a timeScale write race.
+  assert.equal(resumeSimAfterContextRestore(state), 1);
+  assert.equal(resumeSimAfterContextRestore(null), 1);
+  assert.equal(pauseSimForContextLoss(null), 0);
+});
+
+// The v6 Electron storm's residual: parked trees (procedural world-site fixtures on detached
+// structures) kept the dying generation's dispose callbacks, and their later teardown fired
+// them against dead handles — every delete logged as `object does not belong to this context`.
+// The renderer stashes the dying generation's provenance at loss; the boundary-teardown
+// chokepoint strips those exact identities before any dispose fires.
+test('the loss stash is a no-op until a provenance is stashed, then strips only stashed identities from a parked tree', () => {
+  // No loss has stashed anything yet: the teardown strip must touch nothing at all.
+  assert.equal(detachStashedStaleWebGlDisposeListeners([]), null);
+
+  const staleGeometryListener = opaqueListener('stale-onGeometryDispose');
+  const staleMaterialListener = opaqueListener('stale-onMaterialDispose');
+  const foreignListener = opaqueListener('app-owned-dispose');
+  const unstashedGeometryListener = opaqueListener('unrelated-generation');
+
+  const fixtureGeometry = resource({ isBufferGeometry: true }, [staleGeometryListener, unstashedGeometryListener]);
+  const fixtureMaterial = resource({ isMaterial: true }, [staleMaterialListener, foreignListener]);
+  // A parked world-site-shaped tree: root -> fixture mount -> fixture mesh (geometry + material).
+  const fixtureMesh = resource({ geometry: fixtureGeometry, material: fixtureMaterial }, []);
+  const parkedRoot = { traverse: (visitor) => visitor(fixtureMesh) };
+
+  assert.equal(stashStaleWebGlDisposeProvenance({
+    geometries: new Set([staleGeometryListener]),
+    materials: new Set([staleMaterialListener]),
+  }), true);
+
+  const receipt = detachStashedStaleWebGlDisposeListeners([parkedRoot]);
+  assert.ok(receipt, 'a stashed provenance must arm the strip');
+  assert.equal(receipt.geometries, 1);
+  assert.equal(receipt.materials, 1);
+  assert.equal(receipt.listenersDetached, 2);
+  // The stale identities are gone; every listener the stash does not name survives.
+  assert.deepEqual(fixtureGeometry._listeners.dispose, [unstashedGeometryListener]);
+  assert.deepEqual(fixtureMaterial._listeners.dispose, [foreignListener]);
+  assert.equal(fixtureGeometry.hasEventListener('dispose', staleGeometryListener), false);
+  assert.equal(fixtureMaterial.hasEventListener('dispose', staleMaterialListener), false);
+});
+
+test('repeated losses merge provenance into one stash; empty stashes are rejected without disturbance', () => {
+  const firstLossListener = opaqueListener('gen1-onGeometryDispose');
+  const secondLossListener = opaqueListener('gen2-onGeometryDispose');
+  assert.equal(stashStaleWebGlDisposeProvenance({ geometries: new Set([firstLossListener]) }), true);
+  assert.equal(stashStaleWebGlDisposeProvenance({ geometries: new Set([secondLossListener]) }), true);
+  assert.equal(stashStaleWebGlDisposeProvenance(null), false);
+  assert.equal(stashStaleWebGlDisposeProvenance({}), false);
+
+  const geometry = resource({ isBufferGeometry: true }, [firstLossListener, secondLossListener]);
+  // Residency hands raw resources as roots, so the strip sees the geometry itself.
+  const receipt = detachStashedStaleWebGlDisposeListeners([geometry]);
+  assert.equal(receipt.listenersDetached, 2);
+  assert.deepEqual(geometry._listeners.dispose, []);
+});
+
+test('renderer wiring: the loss handler stashes the consumed provenance and teardown strips before any dispose fires', () => {
+  const source = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const lostAt = source.indexOf("lifecycle.listen(canvas, 'webglcontextlost'");
+  const lostEnd = source.indexOf("lifecycle.listen(canvas, 'webglcontextrestored'", lostAt);
+  const lostHandler = source.slice(lostAt, lostEnd);
+  assert.ok(lostAt >= 0 && lostEnd > lostAt, 'the webglcontextlost listener must be inspectable');
+  assert.match(
+    lostHandler,
+    /stashStaleWebGlDisposeProvenance\(contextDisposeProvenance\);/,
+    'the loss handler must stash the provenance the detach pass consumed',
+  );
+  assert.match(
+    lostHandler,
+    /collectVfxGpuResidencyRoots/,
+    'the loss handler must include detached VFX owner roots in the stale-listener detach pass',
+  );
+  assert.match(
+    lostHandler,
+    /collectVfxContextLossResources/,
+    'the loss handler must include detached raw VFX resources in the stale-listener detach pass',
+  );
+  assert.match(
+    lostHandler,
+    /contextRoots\.push\(this\._envMapTarget\)/,
+    'the loss handler must retain the owned PMREM target before abandoning it',
+  );
+  assert.match(
+    lostHandler,
+    /contextRoots\.push\(this\._foundryEnvTexture\)/,
+    'the loss handler must retain the owned foundry source before abandoning it',
+  );
+  assert.match(
+    source,
+    /equirectSourceDisposeListeners\s*=\s*snapshotWebGlDisposeListeners\(equirect\)[\s\S]*?captureWebGlDisposeListenerDelta\(/,
+    'environment bake must retain the lazy equirectangular callback identity delta',
+  );
+
+  const disposeAt = source.search(/function disposeObject\(obj\b/);
+  assert.ok(disposeAt >= 0, 'disposeObject must be inspectable');
+  const disposeBody = source.slice(disposeAt, source.indexOf('\nfunction ', disposeAt + 10));
+  const stripAt = disposeBody.indexOf('detachStashedStaleWebGlDisposeListeners([obj]);');
+  const traverseAt = disposeBody.indexOf('obj.traverse((c) => {');
+  assert.ok(stripAt >= 0, 'teardown must strip stashed stale listeners from the tree');
+  assert.ok(traverseAt > stripAt, 'the strip must run before the disposal traversal — any later and the world-site controller disposes fixture geometries through stale callbacks before their strip');
+});
+
+function resource(fields, listeners) {
+  return {
+    ...fields,
+    _listeners: { dispose: [...listeners] },
+    hasEventListener(type, listener) {
+      return this._listeners[type]?.includes(listener) === true;
+    },
+    removeEventListener(type, listener) {
+      this._listeners[type] = this._listeners[type].filter((candidate) => candidate !== listener);
+    },
+  };
+}
+
+function opaqueListener(name = '') {
+  const listener = () => {};
+  Object.defineProperty(listener, 'name', { configurable: true, value: name });
+  return listener;
+}
+
+function completeProvenance() {
+  const provenance = createWebGlDisposeListenerProvenance();
+  provenance.instancedMeshes.add(opaqueListener('a'));
+  provenance.geometries.add(opaqueListener('b'));
+  provenance.materials.add(opaqueListener('c'));
+  provenance.materials.add(opaqueListener('d'));
+  provenance.textures.add(opaqueListener('e'));
+  provenance.renderTargets.add(opaqueListener('f'));
+  return provenance;
+}

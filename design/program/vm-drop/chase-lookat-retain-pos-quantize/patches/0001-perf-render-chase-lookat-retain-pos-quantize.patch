@@ -1,0 +1,210 @@
+From 513716a694aacf8aa49669c6fa58f3b08ed74325 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 05:24:10 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20quantize=20chase=20lookAt=20ret?=
+ =?UTF-8?q?ain=20key=20(~1.9=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet chase drift missed #72 bit-identical lookAt retain every frame.
+Quantize the retain KEY (eye/target) to 0.25 WU; exact floats still
+drive Three lookAt on cell change. Soft-GPU fps not claimed.
+---
+ src/render/camera.js              | 41 ++++++++++++++----
+ test/chase-lookat-retain.test.mjs | 70 +++++++++++++++++++++++++++++--
+ 2 files changed, 100 insertions(+), 11 deletions(-)
+
+diff --git a/src/render/camera.js b/src/render/camera.js
+index 67d10cbc7..2c1f3e5c1 100644
+--- a/src/render/camera.js
++++ b/src/render/camera.js
+@@ -112,18 +112,45 @@ export function getChaseLookAtRetainForBench() {
+   return CHASE_LOOKAT_RETAIN !== false;
+ }
+ 
++// Quiet chase drift used to miss lookAt retain every frame: eye/target floats creep
++// by ≪ chase distance, so bit-identical keys never matched in flight (#72 settled-only).
++// Quantize the retain KEY (not the lookAt inputs) to the same 0.25 WU cell as
++// authored-instance / presentation-query / clearance-floor retain. Exact floats still
++// drive Three lookAt on cell change. At typical chase distance (~100–300 WU) a one-cell
++// delay is sub-degree. Soft-GPU fps not claimed.
++const CHASE_LOOKAT_RETAIN_POS_QUANT_WU = 0.25;
++let CHASE_LOOKAT_RETAIN_POS_QUANTIZE = true;
++export function setChaseLookAtRetainPosQuantizeForBench(enabled) {
++  CHASE_LOOKAT_RETAIN_POS_QUANTIZE = enabled !== false;
++  return CHASE_LOOKAT_RETAIN_POS_QUANTIZE;
++}
++export function getChaseLookAtRetainPosQuantizeForBench() {
++  return CHASE_LOOKAT_RETAIN_POS_QUANTIZE !== false;
++}
++function quantizeChaseLookAtRetainPos(value) {
++  if (CHASE_LOOKAT_RETAIN_POS_QUANTIZE === false) return value;
++  const q = CHASE_LOOKAT_RETAIN_POS_QUANT_WU;
++  return Math.round(value / q) * q;
++}
++
+ /**
+  * Apply chase look-at. Caller must set cam.position to (eyeX,eyeY,eyeZ) first.
+  * cache bag (per camera): { eyeX, eyeY, eyeZ, targetX, targetZ, baseQuat }.
++ * Retain keys may be quantized (0.25 WU); lookAt always uses exact floats.
+  * Returns true when Three lookAt ran; false when the cached base quat was restored.
+  */
+ export function applyChaseLookAt(cam, eyeX, eyeY, eyeZ, targetX, targetZ, cache = null) {
+   if (!cam) return false;
+   const tx = Number.isFinite(targetX) ? targetX : 0;
+   const tz = Number.isFinite(targetZ) ? targetZ : 0;
++  const qEyeX = quantizeChaseLookAtRetainPos(eyeX);
++  const qEyeY = quantizeChaseLookAtRetainPos(eyeY);
++  const qEyeZ = quantizeChaseLookAtRetainPos(eyeZ);
++  const qTx = quantizeChaseLookAtRetainPos(tx);
++  const qTz = quantizeChaseLookAtRetainPos(tz);
+   if (CHASE_LOOKAT_RETAIN && cache && cache.baseQuat
+-      && eyeX === cache.eyeX && eyeY === cache.eyeY && eyeZ === cache.eyeZ
+-      && tx === cache.targetX && tz === cache.targetZ) {
++      && qEyeX === cache.eyeX && qEyeY === cache.eyeY && qEyeZ === cache.eyeZ
++      && qTx === cache.targetX && qTz === cache.targetZ) {
+     cam.quaternion.copy(cache.baseQuat);
+     return false;
+   }
+@@ -131,11 +158,11 @@ export function applyChaseLookAt(cam, eyeX, eyeY, eyeZ, targetX, targetZ, cache
+   if (cache) {
+     if (!cache.baseQuat) cache.baseQuat = cam.quaternion.clone();
+     else cache.baseQuat.copy(cam.quaternion);
+-    cache.eyeX = eyeX;
+-    cache.eyeY = eyeY;
+-    cache.eyeZ = eyeZ;
+-    cache.targetX = tx;
+-    cache.targetZ = tz;
++    cache.eyeX = qEyeX;
++    cache.eyeY = qEyeY;
++    cache.eyeZ = qEyeZ;
++    cache.targetX = qTx;
++    cache.targetZ = qTz;
+   }
+   return true;
+ }
+diff --git a/test/chase-lookat-retain.test.mjs b/test/chase-lookat-retain.test.mjs
+index afae0fdab..668a18d54 100644
+--- a/test/chase-lookat-retain.test.mjs
++++ b/test/chase-lookat-retain.test.mjs
+@@ -1,6 +1,7 @@
+ /**
+- * Chase lookAt retain: settled eye+target restores cached base quat; moving and
+- * bench-off paths still match Three lookAt. Soft-GPU fps not claimed.
++ * Chase lookAt retain: settled eye+target restores cached base quat; quiet chase
++ * drift retains inside a 0.25 WU cell (#79); moving cell-cross and bench-off paths
++ * still match Three lookAt. Soft-GPU fps not claimed.
+  */
+ import assert from 'node:assert/strict';
+ import test from 'node:test';
+@@ -9,6 +10,8 @@ import {
+   applyChaseLookAt,
+   setChaseLookAtRetainForBench,
+   getChaseLookAtRetainForBench,
++  setChaseLookAtRetainPosQuantizeForBench,
++  getChaseLookAtRetainPosQuantizeForBench,
+ } from '../src/render/camera.js';
+ 
+ function freshCache() {
+@@ -29,8 +32,17 @@ test('retain is on by default and bench toggle restores always-lookAt', () => {
+   assert.equal(getChaseLookAtRetainForBench(), true);
+ });
+ 
++test('retain-key pos quantize is on by default and bench toggle restores bit-identical keys', () => {
++  assert.equal(getChaseLookAtRetainPosQuantizeForBench(), true);
++  setChaseLookAtRetainPosQuantizeForBench(false);
++  assert.equal(getChaseLookAtRetainPosQuantizeForBench(), false);
++  setChaseLookAtRetainPosQuantizeForBench(true);
++  assert.equal(getChaseLookAtRetainPosQuantizeForBench(), true);
++});
++
+ test('settled eye+target retains after the first lookAt', () => {
+   setChaseLookAtRetainForBench(true);
++  setChaseLookAtRetainPosQuantizeForBench(true);
+   const cam = new THREE.PerspectiveCamera(50, 16 / 9, 1, 14000);
+   const cache = freshCache();
+   cam.position.set(10, 80, -40);
+@@ -41,8 +53,9 @@ test('settled eye+target retains after the first lookAt', () => {
+   assert.ok(quatDelta(first, cam.quaternion) < 1e-12);
+ });
+ 
+-test('eye change forces a fresh lookAt', () => {
++test('eye change across a retain cell forces a fresh lookAt', () => {
+   setChaseLookAtRetainForBench(true);
++  setChaseLookAtRetainPosQuantizeForBench(true);
+   const cam = new THREE.PerspectiveCamera(50, 16 / 9, 1, 14000);
+   const cache = freshCache();
+   cam.position.set(10, 80, -40);
+@@ -51,7 +64,54 @@ test('eye change forces a fresh lookAt', () => {
+   assert.equal(applyChaseLookAt(cam, 11, 80, -40, 1, -2, cache), true);
+ });
+ 
+-test('retain on/off agree on settled and moving sequences', () => {
++test('retain-key pos quantize holds quiet chase drift inside a 0.25 WU cell', () => {
++  setChaseLookAtRetainForBench(true);
++  setChaseLookAtRetainPosQuantizeForBench(true);
++  const cam = new THREE.PerspectiveCamera(50, 16 / 9, 1, 14000);
++  const cache = freshCache();
++  const base = { x: 12, y: 90, z: -50, tx: 3, tz: -2 };
++  cam.position.set(base.x, base.y, base.z);
++  assert.equal(
++    applyChaseLookAt(cam, base.x, base.y, base.z, base.tx, base.tz, cache),
++    true,
++  );
++  const first = cam.quaternion.clone();
++  let retained = 0;
++  for (let i = 1; i <= 40; i++) {
++    const ex = base.x + ((i * 0.011) % 0.12);
++    const ey = base.y + ((i * 0.003) % 0.12);
++    const ez = base.z + ((i * 0.007) % 0.12);
++    const tx = base.tx + ((i * 0.005) % 0.12);
++    const tz = base.tz + ((i * 0.009) % 0.12);
++    cam.position.set(ex, ey, ez);
++    if (!applyChaseLookAt(cam, ex, ey, ez, tx, tz, cache)) retained += 1;
++  }
++  assert.equal(retained, 40);
++  assert.ok(quatDelta(first, cam.quaternion) < 1e-12);
++});
++
++test('bench toggle disables retain-key pos quantize (drift misses retain)', () => {
++  setChaseLookAtRetainForBench(true);
++  setChaseLookAtRetainPosQuantizeForBench(false);
++  const cam = new THREE.PerspectiveCamera(50, 16 / 9, 1, 14000);
++  const cache = freshCache();
++  const base = { x: 12, y: 90, z: -50, tx: 3, tz: -2 };
++  cam.position.set(base.x, base.y, base.z);
++  applyChaseLookAt(cam, base.x, base.y, base.z, base.tx, base.tz, cache);
++  let ran = 0;
++  for (let i = 1; i <= 20; i++) {
++    const ex = base.x + i * 0.01;
++    const ez = base.z + i * 0.01;
++    cam.position.set(ex, base.y, ez);
++    if (applyChaseLookAt(cam, ex, base.y, ez, base.tx, base.tz, cache)) ran += 1;
++  }
++  assert.equal(ran, 20);
++  setChaseLookAtRetainPosQuantizeForBench(true);
++});
++
++test('retain on/off agree on settled and cell-crossing sequences (quantize off)', () => {
++  // Bit-identical oracle: disable key quantize so retain only hits exact repeats.
++  setChaseLookAtRetainPosQuantizeForBench(false);
+   const camOff = new THREE.PerspectiveCamera(50, 16 / 9, 1, 14000);
+   const camOn = new THREE.PerspectiveCamera(50, 16 / 9, 1, 14000);
+   const cacheOff = freshCache();
+@@ -87,10 +147,12 @@ test('retain on/off agree on settled and moving sequences', () => {
+     );
+   }
+   setChaseLookAtRetainForBench(true);
++  setChaseLookAtRetainPosQuantizeForBench(true);
+ });
+ 
+ test('bench-off never retains', () => {
+   setChaseLookAtRetainForBench(false);
++  setChaseLookAtRetainPosQuantizeForBench(true);
+   const cam = new THREE.PerspectiveCamera(50, 16 / 9, 1, 14000);
+   const cache = freshCache();
+   cam.position.set(10, 80, -40);
+-- 
+2.47.3
+

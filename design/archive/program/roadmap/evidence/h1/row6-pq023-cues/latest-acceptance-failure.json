@@ -1,0 +1,18 @@
+{
+  "schema": "spaceface.validation-acceptance-failure.v1",
+  "generatedAt": "2026-07-29T08:47:05.285Z",
+  "pass": false,
+  "runtimeKind": "browser",
+  "primaryAcceptance": true,
+  "artifactKind": "probe-run",
+  "phase": "acceptance-probe",
+  "error": "node:internal/modules/run_main:107\r\n    triggerUncaughtException(\r\n    ^\r\n\r\npage.waitForFunction: Timeout 120000ms exceeded.\r\n    at waitForPq023CathedralState (C:\\Users\\93rob\\sf-h1\\scripts\\capture-combat-vfx-acceptance.mjs:1257:35)\r\n    at capturePq023WorldSiteSequences (C:\\Users\\93rob\\sf-h1\\scripts\\capture-combat-vfx-acceptance.mjs:1095:25)\r\n    at async file:///C:/Users/93rob/sf-h1/scripts/capture-combat-vfx-acceptance.mjs:286:23 {\r\n  log: [],\r\n  name: 'TimeoutError'\r\n}\r\n\r\nNode.js v24.15.0\r\n\nvideo C:\\Users\\93rob\\sf-h1\\.devshots\\pq023-corridor-cues\\combat-vfx-normal-route.webm\n\nexitCode=1",
+  "regressionDigest": "0ded0eb6ea7bbefed2ff0662eba86361195b7f2d64fc16433ae3e5770bb76dba",
+  "routeDigest": "b7869714ca477161517a7bd51662ee2000d8d747b3cda8b4efdb16a89724561c",
+  "candidateDigest": "317f02f82b1ac15d482018ff6569fe4e754a2d101622c45d454923b25c32d595",
+  "failureFingerprint": "7ff04a8ea6ab0485fe5b94ff19cbbdf47f9b10fa0c3f808b4e9aa2851f1000fa",
+  "family": "browser/acceptance-probe/node/none/none/internal-modules-run-main-triggeruncaughtexception-page-waitforfunction-timeout-ms-exceeded-at-waitforpqcathedralstate-c-users-rob-sf-h-scripts-capture-combat-vfx-acceptance-mjs-at-capturepqworldsitesequences-c-users-rob-sf-h-scripts-capture-combat-vfx-acceptance-mjs-at-async-file-c-users-rob-sf-h-scripts-capture-combat-vfx-acceptance-mjs-log-name-timeouterror-node-js-v-video-c-users-rob-sf-h-devshots-pq-corridor-cues-combat-vfx-normal-route-webm-exitcode",
+  "informational_contended": true,
+  "informational_contended_note": "The 120000ms timeout is a harness control, not a performance sample. Phase H1 ran contended by design; no time-valued field is performance evidence. Matched performance remains Phase H3.",
+  "noPerformanceEvidence": true
+}

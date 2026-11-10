@@ -1,0 +1,128 @@
+{
+  "assetId": "pressure_pipe_straight",
+  "category": "fluid",
+  "description": "pressure pipe straight",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_structure.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_FLOW_0",
+      "position": [
+        -2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_FLOW_1",
+      "position": [
+        2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          4.0,
+          0.74,
+          0.74
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0,
+          1.0
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "modular",
+    "reusable",
+    "Forge",
+    "attachment-metadata",
+    "library-only"
+  ],
+  "bounds": {
+    "min": [
+      -2.099721670150757,
+      -0.5550000071525574,
+      -0.5550000071525574
+    ],
+    "max": [
+      2.09761905670166,
+      0.5550000071525574,
+      0.5550000071525574
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "pressure_pipe_straight_lod0.glb",
+      "triangles": 1532,
+      "draws": 3,
+      "bytes": 255932,
+      "method": "source",
+      "sha256": "e6866767ed727c9b330109dfac787e5073a649d127d22af7c66eab8fc23f54ee"
+    },
+    {
+      "level": 1,
+      "file": "pressure_pipe_straight_lod1.glb",
+      "triangles": 612,
+      "draws": 3,
+      "bytes": 207712,
+      "method": "Forge-decimation",
+      "sha256": "794db6d2848aa79ae9275ec2bd88f8538de0f53eae6733aad6cb4a01aedc371d"
+    },
+    {
+      "level": 2,
+      "file": "pressure_pipe_straight_lod2.glb",
+      "triangles": 218,
+      "draws": 3,
+      "bytes": 181344,
+      "method": "Forge-decimation",
+      "sha256": "0774ed35308c4f2db222c44ac68339ceef5e4be4e332cab4b513d89d909a656d"
+    }
+  ]
+}

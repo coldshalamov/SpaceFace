@@ -1,0 +1,143 @@
+{
+  "id": "vfx-fragment-families",
+  "productionState": "integration_candidate",
+  "class": "debris-cargo",
+  "authoredBy": "src/render/vfx/fragmentFamilies.js",
+  "exportedBy": "assets/vfx/fragments/author-fragments.mjs",
+  "runtimeLoadsTheseFiles": false,
+  "runtimeLoadNote": "The runtime builds this geometry directly from the authored source, so there is no fetch, no async load and no first-use hitch. Promoting these GLBs to runtime loads would need assets/ships/parts/parts_manifest.json, the generated release manifest and a src/render/partsLibrary.js map, none of which are in this lane.",
+  "acceptanceNote": "integration_candidate, not accepted: the hash-bound independent visual review required by docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md has not been run on these forms.",
+  "camera": {
+    "chaseDistanceWu": 144,
+    "verticalFovDeg": 50,
+    "frameHeightPx": 800,
+    "pxPerWu": 5.957,
+    "note": "Detail is budgeted for this projection, not for a close lab view.",
+    "sizeNote": "nominalExtentWu and longestEdgePx are the authored mesh at scale 1. The runtime multiplies by each family startSize in src/render/vfx/quarksSystem.js, so a shipping hull plate is roughly 1.6x to 4.4x these numbers and a rock block 1.0x to 3.2x."
+  },
+  "atlas": {
+    "size": 256,
+    "pages": [
+      "atlas/fragment_albedo.png",
+      "atlas/fragment_surface.png"
+    ],
+    "surfaceChannels": {
+      "green": "roughness",
+      "blue": "metalness"
+    },
+    "layout": "2x2 family regions, three authored bands per region",
+    "sharedBy": "all solid families plus spent brass casings, via remapUvIntoBand"
+  },
+  "poolCeilings": {
+    "metal": 72,
+    "stone": 112,
+    "ice": 80,
+    "cargo": 56
+  },
+  "meshes": [
+    {
+      "family": "metal",
+      "detail": "near",
+      "file": "meshes/metal_near.glb",
+      "triangles": 112,
+      "vertices": 336,
+      "nominalExtentWu": [
+        0.8125,
+        0.166,
+        1.0972
+      ],
+      "longestEdgePx": 6.54
+    },
+    {
+      "family": "metal",
+      "detail": "far",
+      "file": "meshes/metal_far.glb",
+      "triangles": 40,
+      "vertices": 120,
+      "nominalExtentWu": [
+        0.7532,
+        0.166,
+        1.0932
+      ],
+      "longestEdgePx": 6.51
+    },
+    {
+      "family": "stone",
+      "detail": "near",
+      "file": "meshes/stone_near.glb",
+      "triangles": 62,
+      "vertices": 186,
+      "nominalExtentWu": [
+        0.8871,
+        0.5174,
+        0.8007
+      ],
+      "longestEdgePx": 5.28
+    },
+    {
+      "family": "stone",
+      "detail": "far",
+      "file": "meshes/stone_far.glb",
+      "triangles": 28,
+      "vertices": 84,
+      "nominalExtentWu": [
+        0.7909,
+        0.5174,
+        0.7863
+      ],
+      "longestEdgePx": 4.71
+    },
+    {
+      "family": "ice",
+      "detail": "near",
+      "file": "meshes/ice_near.glb",
+      "triangles": 36,
+      "vertices": 108,
+      "nominalExtentWu": [
+        0.56,
+        0.332,
+        0.96
+      ],
+      "longestEdgePx": 5.72
+    },
+    {
+      "family": "ice",
+      "detail": "far",
+      "file": "meshes/ice_far.glb",
+      "triangles": 20,
+      "vertices": 60,
+      "nominalExtentWu": [
+        0.56,
+        0.332,
+        0.96
+      ],
+      "longestEdgePx": 5.72
+    },
+    {
+      "family": "cargo",
+      "detail": "near",
+      "file": "meshes/cargo_near.glb",
+      "triangles": 66,
+      "vertices": 198,
+      "nominalExtentWu": [
+        0.73,
+        0.108,
+        0.992
+      ],
+      "longestEdgePx": 5.91
+    },
+    {
+      "family": "cargo",
+      "detail": "far",
+      "file": "meshes/cargo_far.glb",
+      "triangles": 38,
+      "vertices": 114,
+      "nominalExtentWu": [
+        0.73,
+        0.108,
+        0.992
+      ],
+      "longestEdgePx": 5.91
+    }
+  ]
+}

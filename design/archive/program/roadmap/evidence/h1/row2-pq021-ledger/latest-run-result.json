@@ -1,0 +1,38 @@
+{
+  "informational_contended": true,
+  "informational_contended_note": "Phase H1 ran contended by design. durationMs and any other time-valued fields in this broker process record are informational only and are not performance evidence. Matched performance is Phase H3.",
+  "schema": "spaceface.validation-run-result.v1",
+  "recordedAt": "2026-07-29T02:39:23.334Z",
+  "status": "pass",
+  "exitCode": 0,
+  "signal": null,
+  "timedOut": false,
+  "durationMs": 47102,
+  "pidRecord": {
+    "pid": 48796,
+    "command": "C:\\Program Files\\nodejs\\node.exe",
+    "args": [
+      "scripts/probe-pq021-ledger-route.mjs"
+    ],
+    "startedAt": "2026-07-29T02:38:36.232Z",
+    "platform": "win32",
+    "finishedAt": "2026-07-29T02:39:23.334Z",
+    "exitCode": 0,
+    "signal": null,
+    "timedOut": false,
+    "killResult": null
+  },
+  "ownership": {
+    "probeId": "pq021-ledger-route",
+    "runtimeKind": "browser",
+    "browserOwned": true,
+    "serverOwned": true,
+    "pid": 48796
+  },
+  "fixedSeed": 47,
+  "failureFingerprint": null,
+  "family": null,
+  "routeDigest": "7830b686469ae2027b384ded9c232a808bdfb6c3a3d505a21e8032e7f1569abd",
+  "regressionDigest": "2ee168fa6f1e3d9d3d9819bd2b3a1ac110f37d6817ebe953db8bee170f20f523",
+  "candidateDigest": "7d7b9adb2ac142cc2d82340994158e4f62e55b4ef35f426be1a3681a9b862205"
+}
