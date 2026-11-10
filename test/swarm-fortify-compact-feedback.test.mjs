@@ -10,11 +10,53 @@ test('compact Fortify keeps purchase refusal and repair feedback readable', { ti
   let browser;
   try {
     browser = await chromium.launch({ headless: true, args: ['--disable-gpu', '--disable-webgl', '--mute-audio'] });
-    for (const viewport of [{ width: 700, height: 461 }, { width: 844, height: 390 }, { width: 390, height: 844 }]) {
+    for (const viewport of [{ width: 651, height: 461 }, { width: 700, height: 461 },
+      { width: 844, height: 390 }, { width: 390, height: 844 }, { width: 960, height: 540 }, { width: 1920, height: 1080 }]) {
       const page = await browser.newPage({ viewport, reducedMotion: 'reduce' });
       try {
         await page.goto(`${server.baseUrl}tools/ui-bench.html?screen=crucible-fortify&chrome=0`, { waitUntil: 'domcontentloaded' });
         await page.waitForFunction(() => window.__BENCH_READY, null, { timeout: 120000 });
+        const devicesLink = page.locator('[aria-controls="sf-fortify-shelf"]');
+        const fieldLink = page.locator('[aria-controls="sf-fortify-state"]');
+        const position = page.locator('.sf-fortify-position');
+        assert.match(await devicesLink.innerText(), /Devices · 5/);
+        assert.match(await fieldLink.innerText(), /In the field · 1 · 1 needs service/);
+        assert.equal(await page.locator('.sf-fortify-layout').evaluate(element => {
+          const style = getComputedStyle(element);
+          const foot = document.querySelector('.sf-crucible-fortify > .k-foot');
+          return style.maskImage === 'none' && getComputedStyle(foot).boxShadow === 'none'
+            && !['""', "''"].includes(getComputedStyle(foot, '::before').content)
+            && element.getBoundingClientRect().bottom <= foot.getBoundingClientRect().top;
+        }), true, 'the scrollport stops before the footer, without masking useful content');
+        if (viewport.width >= 600) assert.equal(await page.locator('.sf-fortify-plan').evaluate(element =>
+          element.getBoundingClientRect().right <= document.querySelector('.sf-fortify-shelf').getBoundingClientRect().left
+        ), true, 'short landscape presents positions and devices side by side');
+        await fieldLink.click();
+        assert.equal(await page.locator('.sf-fortify-state [data-repair-id]').first().evaluate(element =>
+          document.activeElement === element && element.getBoundingClientRect().bottom <= document.querySelector('.k-foot').getBoundingClientRect().top
+        ), true, 'the ordinary pointer shortcut reveals a service control above the footer');
+        await devicesLink.focus(); await page.keyboard.press('Enter');
+        assert.equal(await page.locator('[data-device-id="gravity_beacon"]').evaluate(element => document.activeElement === element), true,
+          'keyboard activation returns to the selected device');
+        for (const deviceId of ['gravity_beacon', 'repulsor_pylon', 'tesla_pair', 'kinetic_turret', 'reflector_fin']) {
+          const device = page.locator(`[data-device-id="${deviceId}"]`);
+          await device.click();
+          assert.equal(await device.getAttribute('aria-pressed'), 'true');
+          const description = device.locator('small');
+          await description.scrollIntoViewIfNeeded();
+          assert.equal(await description.evaluate(element => {
+            const style = getComputedStyle(element);
+            const box = element.getBoundingClientRect();
+            const range = document.createRange(); range.selectNodeContents(element);
+            return style.webkitLineClamp === 'none' && box.height + 1 >= range.getBoundingClientRect().height
+              && box.bottom <= document.querySelector('.k-foot').getBoundingClientRect().top;
+          }), true, 'selected descriptions are complete and outside the action row');
+          assert.equal(await position.evaluate(element => {
+            const box = element.getBoundingClientRect();
+            return box.top >= 0 && box.bottom <= innerHeight && element.parentElement.classList.contains('k-foot');
+          }), true, 'selected placement remains in view while comparing all five devices');
+        }
+        await page.locator('[data-device-id="gravity_beacon"]').click();
         const note = page.locator('.sf-fortify-receipt');
         async function readableFeedback(pattern) {
           await page.waitForFunction(source => new RegExp(source).test(document.querySelector('.sf-fortify-receipt')?.textContent || ''), pattern.source);
