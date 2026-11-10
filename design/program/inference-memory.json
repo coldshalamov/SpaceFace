@@ -132,19 +132,6 @@
   ],
   "units": [
     {
-      "id": "inf-scar-history",
-      "date": "2026-11-02",
-      "wf": "WF-12",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Sustained fire leaves cool, target-bound hull scars that retain their identity across a fight.",
-      "fingerprint": "verb=remember,subject=hull-scar-history,sector=combat,domain=wf-12",
-      "references": [],
-      "integration": "live",
-      "commit": "f8b04d2c3ca3",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-mine-lane-drift",
       "date": "2026-11-02",
       "wf": "WF-02",
@@ -1689,6 +1676,19 @@
       "references": [],
       "integration": "live",
       "commit": "4d1621d19163",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-gun-vent-push",
+      "date": "2026-11-10",
+      "wf": "WF-02",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "A crew that sees your guns vent (the post-shot heat tell) now reads weakness and pushes in, saying so on the band - the heat tell becomes an enemy decision, not just a picture.",
+      "fingerprint": "verb=pushes-on-weakness,subject=gun-vent-crew,sector=flight-combat,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "3a2438ccc5b4",
       "verification": "focused_green"
     }
   ],
