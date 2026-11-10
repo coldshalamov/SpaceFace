@@ -1,0 +1,156 @@
+TAP version 13
+# Subtest: smoothstep is monotonic on unit interval
+ok 1 - smoothstep is monotonic on unit interval
+  ---
+  duration_ms: 1.512601
+  ...
+# Subtest: path sampler retains equal-spacing history
+ok 2 - path sampler retains equal-spacing history
+  ---
+  duration_ms: 0.699247
+  ...
+# Subtest: the exhaust is swept ribbon sheets, not points, sprites or a density field
+ok 3 - the exhaust is swept ribbon sheets, not points, sprites or a density field
+  ---
+  duration_ms: 35.629631
+  ...
+# Subtest: the live plume and immutable history are separate objects
+ok 4 - the live plume and immutable history are separate objects
+  ---
+  duration_ms: 10.965756
+  ...
+# Subtest: sheets are wide enough to carry a crease, not one-normal wire strips
+ok 5 - sheets are wide enough to carry a crease, not one-normal wire strips
+  ---
+  duration_ms: 0.804132
+  ...
+# Subtest: the jet is nozzle-local and about two hull lengths, never a dragged tail
+ok 6 - the jet is nozzle-local and about two hull lengths, never a dragged tail
+  ---
+  duration_ms: 2.328941
+  ...
+# Subtest: gas flows through the live jet: its form is not a still image
+ok 7 - gas flows through the live jet: its form is not a still image
+  ---
+  duration_ms: 0.719415
+  ...
+# Subtest: throttle moves live-jet length and never its opacity
+ok 8 - throttle moves live-jet length and never its opacity
+  ---
+  duration_ms: 0.340557
+  ...
+# Subtest: every contrail center sample is an exact position the emitting nozzle occupied
+ok 9 - every contrail center sample is an exact position the emitting nozzle occupied
+  ---
+  duration_ms: 5.654211
+  ...
+# Subtest: the contrail retains a volume of curved overlapping energy sheets
+ok 10 - the contrail retains a volume of curved overlapping energy sheets
+  ---
+  duration_ms: 1.522376
+  ...
+# Subtest: distance and speed cannot trim young history
+ok 11 - distance and speed cannot trim young history
+  ---
+  duration_ms: 3.716029
+  ...
+# Subtest: a parked ship thrusting lays down no spatial trail
+ok 12 - a parked ship thrusting lays down no spatial trail
+  ---
+  duration_ms: 2.181489
+  ...
+# Subtest: sub-step jitter never rewrites or densely resamples the newest fact
+ok 13 - sub-step jitter never rewrites or densely resamples the newest fact
+  ---
+  duration_ms: 4.173295
+  ...
+# Subtest: cutting thrust leaves every young sample fixed in space; age alone removes it
+ok 14 - cutting thrust leaves every young sample fixed in space; age alone removes it
+  ---
+  duration_ms: 1.75954
+  ...
+# Subtest: the history and forge have no pulse clock, travelling bands or live-nozzle override
+ok 15 - the history and forge have no pulse clock, travelling bands or live-nozzle override
+  ---
+  duration_ms: 1.949282
+  ...
+# Subtest: emission gaps and teleports start disconnected segments without deleting history
+ok 16 - emission gaps and teleports start disconnected segments without deleting history
+  ---
+  duration_ms: 1.12402
+  ...
+# Subtest: a full history buffer skips births instead of evicting young facts
+ok 17 - a full history buffer skips births instead of evicting young facts
+  ---
+  duration_ms: 0.650442
+  ...
+# Subtest: cutting thrust puts the live jet out while recorded light fades in place
+ok 18 - cutting thrust puts the live jet out while recorded light fades in place
+  ---
+  duration_ms: 10.00488
+  ...
+# Subtest: plasma stream reuses one fallback identity without sockets or owner
+ok 19 - plasma stream reuses one fallback identity without sockets or owner
+  ---
+  duration_ms: 4.96349
+  ...
+# Subtest: full throttle grows the plume inside 120 ms and zero throttle goes dark inside a quarter second
+ok 20 - full throttle grows the plume inside 120 ms and zero throttle goes dark inside a quarter second
+  ---
+  duration_ms: 0.467819
+  ...
+# Subtest: zero throttle is dark and speed contributes only while the throttle is open
+ok 21 - zero throttle is dark and speed contributes only while the throttle is open
+  ---
+  duration_ms: 0.343744
+  ...
+# Subtest: ordinary helm yaw keeps the live jet and its history on the yawing nozzle
+ok 22 - ordinary helm yaw keeps the live jet and its history on the yawing nozzle
+  ---
+  duration_ms: 19.090124
+  ...
+# Subtest: dash is a one-shot supernova with a long cooling tail
+ok 23 - dash is a one-shot supernova with a long cooling tail
+  ---
+  duration_ms: 0.571566
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: the paired mouths are physical hull parts, separated and mounted on every profile family
+ok 24 - the paired mouths are physical hull parts, separated and mounted on every profile family
+  ---
+  duration_ms: 20.10616
+  ...
+# Subtest: mounted retro exhaust follows presented yaw and world position, including a 90 degree turn
+ok 25 - mounted retro exhaust follows presented yaw and world position, including a 90 degree turn
+  ---
+  duration_ms: 1.5748
+  ...
+# Subtest: installed engine changes retro heat, axial flow and scale while staying two jets
+ok 26 - installed engine changes retro heat, axial flow and scale while staying two jets
+  ---
+  duration_ms: 2.830707
+  ...
+# Subtest: the high-speed brake has one subtle camera bite per engagement and respects reduced motion
+ok 27 - the high-speed brake has one subtle camera bite per engagement and respects reduced motion
+  ---
+  duration_ms: 2.778289
+  ...
+# Subtest: the live forge follows the current nozzle axis, never the recorded-history tangent
+ok 28 - the live forge follows the current nozzle axis, never the recorded-history tangent
+  ---
+  duration_ms: 2.806241
+  ...
+# Subtest: a legacy reel hint has zero authority over recorded world-space history
+ok 29 - a legacy reel hint has zero authority over recorded world-space history
+  ---
+  duration_ms: 7.426294
+  ...
+1..29
+# tests 29
+# suites 0
+# pass 29
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 392.979385

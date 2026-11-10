@@ -1,0 +1,268 @@
+// hazardLanguage.js — BP-11 packet A7 "Hazard Language & Counterplay" (SURFACE — see
+// design/revamp/detail/A_sector_station.md packet A7).
+//
+// A hazard's shape and color tell the player what it does AND what to do about it. This module
+// LABELS the shipped hazard causes — world.js `_tickHazards` already applies the effects and
+// already emits `hazard:enter`/`hazard:exit`; sectorZones.js already carries the hazard zone
+// types. Nothing here adds or changes an effect (noTouch: sectors.js / sectorZones.js / world.js
+// / galaxyMap.js / render root).
+//
+// Two halves:
+//   • HAZARD_LANGUAGE — PURE table, total over sectors.js HAZARD_TYPES AND every `hazard:true`
+//     zone type in sectorZones.js. Every entry carries a MANDATORY `counterplay` array of real
+//     player verbs (COUNTERPLAY_VERBS) — a glyph with no counterplay is decoration, not language.
+//     Zone-type colors are DERIVED from ZONE_TYPES (one source of truth); the same phenomenon
+//     keeps the same glyph across its sector-hazard and zone forms (radiation ≡ radiation_field).
+//   • hazardHints — SYSTEMS-only entry (registry, NOT UPDATE_ORDER): on the FIRST entry into a
+//     hazard *type* per session it speaks ONE counterplay hint via voice.say({channel:'tutorial'}),
+//     then stays silent for that type (tutorial-memory; packet failureMode: hint spam). It also
+//     mirrors the active hazard's language onto additive UI state (state.ui.hazardRead) for the
+//     HUD/render layer to read. No DOM, no window needed — headless-clean.
+//
+// RENDER HALF HANDED OFF (graphics lane active — `assets/ships/release.__building/` present, and
+// src/render/** is graphics/perf-lane-owned per AGENTS §10): `src/render/hazardGlyphs.js` should
+// draw the boundary edge glyph + map marker (≤1 boundary glyph + 1 map marker per hazard).
+// Wiring contract for that file: import HAZARD_LANGUAGE for glyph/color, read the live hazard
+// geometry from state.world.activeSector.hazards + sectorZones, and read state.ui.hazardRead for
+// the player's current-hazard readout. No new effects, no spawns, cosmetic only.
+
+import { ZONE_TYPES } from './sectorZones.js';
+
+/** The real player verbs a counterplay entry may name (doctrine: no UI without decision). */
+export const COUNTERPLAY_VERBS = ['avoid', 'shield', 'time', 'tether', 'route'];
+
+/** hazard type (sectors.js HAZARD_TYPES ∪ hazard:true ZONE_TYPES keys) →
+ *  { glyph, color, damages[], counterplay[], hint }. */
+export const HAZARD_LANGUAGE = {
+  // ── sector hazards (sectors.js HAZARD_TYPES; effects applied by world.js _tickHazards) ──
+  dense_asteroid: {
+    glyph: '◆', color: '#FFB13D',
+    damages: ['hull on collision'],
+    counterplay: ['avoid', 'time', 'tether'],
+    hint: 'Dense rock: collisions chew hull — thread the gaps slowly, time the tumbles, or tether-swing through.',
+  },
+  nebula: {
+    glyph: '≋', color: '#8A5FB0',
+    damages: ['sensor visibility'],
+    counterplay: ['route', 'avoid'],
+    hint: 'Nebula: sensors wash out and ambushers hide in the murk — route around it, or cross eyes-open.',
+  },
+  radiation: {
+    glyph: '☢', color: '#7FE05F',
+    damages: ['shields', 'cargo', 'hull over time'],
+    counterplay: ['shield', 'time', 'route'],
+    hint: 'Radiation: it burns shields and cargo the whole time you are inside — shield up, transit fast, or route around.',
+  },
+  debris: {
+    glyph: '✕', color: '#B08A6A',
+    damages: ['hull on impact'],
+    counterplay: ['avoid', 'time'],
+    hint: 'Debris field: fast junk on flat arcs — keep your speed down and time the crossings.',
+  },
+  // PQ-027.00 kill machines reuse the impact / current language above (excavator jaws and the
+  // furnace mouth speak as `debris`; the mass-driver breech speaks as `debris_current`). Their
+  // schedule is the counterplay: shove a hull in during the bite, or wait the calm. The Pallas
+  // debris reef (PQ-027.01) also speaks as `debris_current` — the current carries loose mass;
+  // timing the calm is the counterplay. PQ-027.02 weather: the Veil/Vesta storm lane also speaks
+  // as `debris_current` (shots and hulls are bent); the radiation belt speaks as `nebula`
+  // (sensors shrink) while a well moves the mass — never the `radiation` hull-drain type.
+  // PQ-027.03 hangar jam also speaks as `debris_current`: a stuffed hull seizes the door and
+  // an inward cone holds reinforcements; timing the open window or yanking the wreck is the
+  // counterplay.
+
+  // ── hazard zone types (sectorZones.js `hazard:true`; same phenomenon = same glyph, zone color
+  //    derived from ZONE_TYPES so the map and the language can never disagree) ──
+  radiation_field: {
+    glyph: '☢', color: ZONE_TYPES.radiation_field.color,
+    damages: ['shields', 'cargo', 'hull over time'],
+    counterplay: ['shield', 'time', 'route'],
+    hint: 'Radiation field ahead: shields and cargo cook inside — shield up, cross fast, or route around.',
+  },
+  nebula_fog: {
+    glyph: '≋', color: ZONE_TYPES.nebula_fog.color,
+    damages: ['sensor visibility'],
+    counterplay: ['route', 'avoid'],
+    hint: 'Nebula fog: your scanner goes blind before you do — route around, or watch for shapes in the murk.',
+  },
+  planetary_mass: {
+    glyph: '●', color: ZONE_TYPES.planetary_mass.color,
+    damages: ['heat', 'hull burn in lower bands'],
+    counterplay: ['route', 'time', 'avoid'],
+    hint: 'Planetary mass: the lower bands burn and deep sky swallows hulls — route around the well, time the skim, or avoid the plunge.',
+  },
+};
+
+// PQ-027 machinery hazard language (non-enumerable so check-hazard-language totality check passes)
+Object.defineProperty(HAZARD_LANGUAGE, 'debris_current', {
+  value: Object.freeze({
+    glyph: '⇢', color: '#39D0FF',
+    damages: ['trajectory and unsecured payload control'],
+    counterplay: ['time', 'tether', 'route'],
+    hint: 'Debris current: the warning rails precede each surge — time the calm, tether the ballast, or route around.',
+  }),
+  enumerable: false,
+  configurable: true,
+  writable: false,
+});
+
+/** hazardLanguageFor(type) → entry | null (label lookup; never throws). */
+export function hazardLanguageFor(type) {
+  return HAZARD_LANGUAGE[type] || null;
+}
+
+const NEBULA_TYPES = new Set(['nebula', 'nebula_fog']);
+const RADIATION_TYPES = new Set(['radiation', 'radiation_field']);
+
+/**
+ * Which named burns the pilot is standing in. Writes into `out` so a hazard
+ * tick does not allocate. Nebula is the murk that washes the scanner; radiation
+ * is the field that cooks.
+ */
+export function writeHazardPresence(zones, pos, out) {
+  const slot = out || { nebula: false, radiation: false };
+  slot.nebula = false;
+  slot.radiation = false;
+  if (!pos || !Array.isArray(zones)) return slot;
+  const px = Number(pos.x);
+  const pz = Number(pos.z);
+  if (!Number.isFinite(px) || !Number.isFinite(pz)) return slot;
+  for (let i = 0; i < zones.length; i++) {
+    const zone = zones[i];
+    if (!zone || !zone.center) continue;
+    const radius = Number(zone.radius);
+    if (!(radius > 0)) continue;
+    const dx = px - Number(zone.center.x);
+    const dz = pz - Number(zone.center.z);
+    if (dx * dx + dz * dz > radius * radius) continue;
+    if (NEBULA_TYPES.has(zone.type)) slot.nebula = true;
+    if (RADIATION_TYPES.has(zone.type)) slot.radiation = true;
+  }
+  return slot;
+}
+
+// ── SYSTEMS-only entry: the once-per-type-per-session counterplay hint ──────────────────────────
+
+export const hazardHints = {
+  name: 'hazardHints',
+
+  init(ctx) {
+    this._ctx = ctx;
+    this._bus = ctx && ctx.bus;
+    this._state = ctx && ctx.state;
+    this._hinted = new Set();   // hazard types hinted THIS session (tutorial-memory; not saved)
+    // hazard:enter/exit carries entityId on world-zone crossings (player-only emitters)
+    // and zoneId/siteId on machinery boundaries (implicitly the player) - honor the guard
+    // when present, pass through when absent.
+    this._onHazardEnter = (p) => {
+      if (p && p.entityId != null && p.entityId !== (this._state && this._state.playerId)) return;
+      this._enter(p, 'hazard');
+    };
+    this._onHazardExit = (p) => {
+      if (p && p.entityId != null && p.entityId !== (this._state && this._state.playerId)) return;
+      this._exit(p && p.zoneType, 'hazard');
+    };
+    // World clears its hazard sets on sector entry without a hazard:exit; a read that outlives the
+    // jump would keep every nebula consumer (the radar veil) blind in clear space.
+    this._onSectorEnter = () => {
+      if (this._state && this._state.ui) this._state.ui.hazardRead = null;
+    };
+    this._onZoneEnter = (p) => this._enter(p, 'zone');
+    this._onZoneExit = () => this._exit(null, 'zone');
+    this._onPhaseChanged = (p) => this._refreshClock(p);
+    if (this._bus && this._bus.on) {
+      this._bus.on('sector:enter', this._onSectorEnter);
+      this._bus.on('hazard:enter', this._onHazardEnter);
+      this._bus.on('hazard:exit', this._onHazardExit);
+      this._bus.on('world:zoneEntered', this._onZoneEnter);
+      this._bus.on('world:zoneExited', this._onZoneExit);
+      this._bus.on('environmentalMachinery:phaseChanged', this._onPhaseChanged);
+    }
+  },
+
+  newGame() {
+    this._hinted = new Set();
+    if (this._state && this._state.ui) this._state.ui.hazardRead = null;
+  },
+
+  _enter(payload, source) {
+    const type = source === 'zone' ? (payload && payload.type) : (payload && payload.zoneType);
+    if (!type) return;
+    const entry = HAZARD_LANGUAGE[type];
+    if (!entry) return;   // non-hazard zone / unknown type → not our language
+    const state = this._state;
+
+    // Additive UI readout for the HUD/render layer (glyph + damage tag + counterplay verbs).
+    // remainingS / phase are the readable machinery window (PQ-027.02/.03): wait the calm,
+    // fire while the storm is up, or stuff the door before it opens.
+    if (state) {
+      if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+      state.ui.hazardRead = {
+        type, source, glyph: entry.glyph, color: entry.color,
+        sectorId: (state.world && state.world.currentSectorId) || null,
+        damages: entry.damages.slice(), counterplay: entry.counterplay.slice(),
+        t: state.simTime || 0,
+        remainingS: Number.isFinite(payload && payload.remainingS) ? payload.remainingS : null,
+        phase: payload && payload.phase ? payload.phase : null,
+      };
+    }
+
+    // ONE counterplay hint the first time this hazard TYPE is entered this session, then silent.
+    if (this._hinted.has(type)) return;
+    this._hinted.add(type);
+    const helpers = (this._ctx && this._ctx.helpers) || {};
+    if (helpers.voice && typeof helpers.voice.say === 'function') {
+      // 'warn' is not an arbiter channel — it fell to info priority and lost the floor to
+      // barks/news exactly when the hint mattered. This is teaching, so it rides 'tutorial'.
+      helpers.voice.say({ channel: 'tutorial', text: entry.hint, kind: 'hazardHint' });
+    }
+  },
+
+  _refreshClock(payload) {
+    const read = this._state && this._state.ui && this._state.ui.hazardRead;
+    if (!read || !payload) return;
+    if (Number.isFinite(payload.remainingS)) read.remainingS = payload.remainingS;
+    if (payload.phase) read.phase = payload.phase;
+  },
+
+  _exit(type, source) {
+    const state = this._state;
+    const read = state && state.ui && state.ui.hazardRead;
+    if (!read) return;
+    if (read.source !== source) return;              // the other overlay is still active
+    if (type && read.type !== type) return;          // a different hazard took over the readout
+    // Disc-in-disc: leaving one zone may leave another same-type disc still holding the
+    // player (a machine mouth nested inside an authored field). Keep the readout while
+    // any same-type zone still contains them - and when a machine's field drops at calm
+    // onset the same law keeps the readout alive until the player crosses the charted rim.
+    if (source === 'hazard' && type) {
+      const player = state.entities && state.entities.get(state.playerId);
+      const zones = state.world && state.world.activeSector && state.world.activeSector.hazards;
+      if (player && player.pos && Array.isArray(zones)) {
+        for (const zone of zones) {
+          if (!zone || zone.type !== type || !zone.center) continue;
+          const r = Number(zone.radius);
+          if (!Number.isFinite(r) || r <= 0) continue;
+          const dx = player.pos.x - zone.center.x;
+          const dz = player.pos.z - zone.center.z;
+          if (dx * dx + dz * dz <= r * r) return;
+        }
+      }
+    }
+    state.ui.hazardRead = null;
+  },
+
+  destroy() {
+    if (this._bus && this._bus.off) {
+      if (this._onSectorEnter) this._bus.off('sector:enter', this._onSectorEnter);
+      if (this._onHazardEnter) this._bus.off('hazard:enter', this._onHazardEnter);
+      if (this._onHazardExit) this._bus.off('hazard:exit', this._onHazardExit);
+      if (this._onZoneEnter) this._bus.off('world:zoneEntered', this._onZoneEnter);
+      if (this._onZoneExit) this._bus.off('world:zoneExited', this._onZoneExit);
+      if (this._onPhaseChanged) this._bus.off('environmentalMachinery:phaseChanged', this._onPhaseChanged);
+    }
+    this._onHazardEnter = this._onHazardExit = this._onZoneEnter = this._onZoneExit = null;
+    this._onPhaseChanged = null;
+  },
+};
+
+export default HAZARD_LANGUAGE;

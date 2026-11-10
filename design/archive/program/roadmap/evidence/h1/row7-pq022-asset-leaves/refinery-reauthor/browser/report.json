@@ -1,0 +1,194 @@
+{
+  "schema": "spaceface.pq022-refinery-reauthor-h1.v1",
+  "row": 7,
+  "disposition": "PASS",
+  "runtime": "browser-chromium-headed",
+  "brokerManifestId": "pq022-refinery-reauthor-browser",
+  "broker": {
+    "reason": "broker-claim-consumed",
+    "diagnostic": false,
+    "primaryAcceptance": true,
+    "claimId": "23668-ef07462410790475af28f61d",
+    "mode": "acceptance",
+    "runtimeKind": "browser",
+    "candidateDigest": "45035c13407444741163c1ff35768df6c6322300a6054f7860685dd8472cc661",
+    "manifestDigest": "cef2f2a43af673f61ecebc561a8077e9d91a2a61dd56014cf24191e4eccc1fb9",
+    "inputDigest": "4be1d5b2a73fb560c7fec997384d00c644efa0bdc4f85c139b79c2eb5708fcb5"
+  },
+  "selector": "refinery",
+  "fixedSeed": 47,
+  "recordedSeed": 47,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "gpu": {
+    "available": true,
+    "vendor": "Google Inc. (Intel)",
+    "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
+  "routeContract": "visible fixed-seed New Game -> Ceres refinery owner -> ordinary and diagnostic game-canvas stills",
+  "compressions": [
+    {
+      "kind": "travel",
+      "subject": "corridor-station-identity",
+      "detail": "called the registered world.enterSector(sector_ceres_belt) owner instead of flying the route; this row is presentation evidence, not route-completion evidence"
+    }
+  ],
+  "relayPlacement": null,
+  "trafficFixtures": null,
+  "manifestIdentity": [
+    {
+      "key": "station-refinery",
+      "assetId": "place_station_refinery",
+      "manifestId": "place_station_refinery",
+      "family": "corridor-station-identity",
+      "source": "assets/ships/parts/places/place_station_refinery.glb",
+      "release": "assets/ships/release/parts/places/place_station_refinery.glb",
+      "sourceSha256": "9faf59a697a9faafbf18f3c74c6abc27b7fc38e0ec3ffe3ea803396f46365d88",
+      "releaseSha256": "3b673f761f8e47c32ffa0563b933ad099380d2df75629dca927481cec4c8b7c0",
+      "sourceBytes": 23088680,
+      "releaseBytes": 5725268,
+      "sourceManifestFile": "places/place_station_refinery.glb"
+    }
+  ],
+  "captures": [
+    {
+      "subjectKey": "station-refinery",
+      "assetId": "place_station_refinery",
+      "manifestId": "place_station_refinery",
+      "family": "corridor-station-identity",
+      "file": ".devshots/pq022-refinery-reauthor/browser/01-refinery-ordinary.png",
+      "bytes": 543680,
+      "sha256": "4575a655725ec7eabde4c133486fcc9bac48fd4b362793878c03aa7c1c57116c",
+      "framing": "default",
+      "requestedLod": "lod1",
+      "mode": "flight",
+      "sectorId": "sector_ceres_belt",
+      "entityId": 99,
+      "entityType": "station",
+      "runtimeIdentity": {
+        "stationId": "station_ceres",
+        "archetypeGlb": "place_station_refinery",
+        "placeId": null,
+        "poiId": null,
+        "isGate": false,
+        "trafficRole": null,
+        "defId": null,
+        "worldRecordId": null
+      },
+      "captureSurface": "game-render-canvas-hud-excluded",
+      "cameraRig": "shipping-chase-angle-and-zoom-target-centred",
+      "emissiveComparison": "not-supported-by-shared-public-rig",
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_place_station_refinery",
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_station_refinery.glb"
+        ]
+      },
+      "visibleMeshes": 5,
+      "materialNames": [
+        "SF_Shared_accent_accent",
+        "SF_Shared_canopy_none_native",
+        "SF_Shared_hull_textured_hull",
+        "SF_Shared_mechanical_dark"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        133.03588945680622,
+        68.05862275884682,
+        87.91639648668968
+      ],
+      "cameraDistance": 144,
+      "centerNdc": {
+        "x": 0,
+        "y": 1.6930709046170326e-15,
+        "z": 0.9862529863244199
+      },
+      "centerOnScreen": true
+    },
+    {
+      "subjectKey": "station-refinery",
+      "assetId": "place_station_refinery",
+      "manifestId": "place_station_refinery",
+      "family": "corridor-station-identity",
+      "file": ".devshots/pq022-refinery-reauthor/browser/02-refinery-diagnostic-close.png",
+      "bytes": 457923,
+      "sha256": "c35daf81a01078d8e6ee71a469dfe9beee92e0cd63ed6a2fdbbef8d3cdb89e49",
+      "framing": "close",
+      "requestedLod": "lod0",
+      "mode": "flight",
+      "sectorId": "sector_ceres_belt",
+      "entityId": 99,
+      "entityType": "station",
+      "runtimeIdentity": {
+        "stationId": "station_ceres",
+        "archetypeGlb": "place_station_refinery",
+        "placeId": null,
+        "poiId": null,
+        "isGate": false,
+        "trafficRole": null,
+        "defId": null,
+        "worldRecordId": null
+      },
+      "captureSurface": "game-render-canvas-hud-excluded",
+      "cameraRig": "diagnostic-low-angle",
+      "emissiveComparison": "not-supported-by-shared-public-rig",
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_place_station_refinery",
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_station_refinery.glb"
+        ]
+      },
+      "visibleMeshes": 5,
+      "materialNames": [
+        "SF_Shared_accent_accent",
+        "SF_Shared_canopy_none_native",
+        "SF_Shared_hull_textured_hull",
+        "SF_Shared_mechanical_dark"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        136.87682064847195,
+        77.51434026493314,
+        89.1848591962289
+      ],
+      "cameraDistance": 200.07598483031046,
+      "centerNdc": {
+        "x": -3.046370238682419e-15,
+        "y": 0,
+        "z": 0.9990146584559957
+      },
+      "centerOnScreen": true
+    }
+  ],
+  "uniqueAssetCount": 1,
+  "screenshotCount": 2,
+  "pageIssues": [],
+  "informational_contended": true,
+  "informational_contended_note": "Phase H1 ran contended by design. This receipt contains identity, admission, visibility, and still-image facts only; no time-valued field is performance evidence.",
+  "noPerformanceEvidence": true,
+  "noPerformanceEvidenceNote": "Matched performance remains Phase H3."
+}

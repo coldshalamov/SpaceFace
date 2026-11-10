@@ -1,0 +1,337 @@
+// src/data/commodityFlavor.js – trade-terminal flavor for all 44 commodities.
+// Pure data keyed by cmdty_* id: displayName, desc, lore. No balance fields.
+// Consumed by commodities.js (merge) and scripts/check-commodity-flavor.mjs.
+
+export const COMMODITY_FLAVOR = {
+  cmdty_ore_iron: {
+    displayName: 'Slag-Iron Ore, Ceres Belt',
+    desc: 'Magnetite-rich rubble in sealed ore drums.',
+    lore: 'Ceres miners strip it by the hold. Helios refineries pay on arrival weight, not assay.',
+  },
+  cmdty_ore_copper: {
+    displayName: 'Verdantite Copper, Kuiper Drift',
+    desc: 'Green-stained chalcopyrite chunks in mesh-lined crates.',
+    lore: 'Drift cutters sell it raw. Meridian fabs quote delivery before the refinery lot clears customs.',
+  },
+  cmdty_ore_titanium: {
+    displayName: 'Blackspire Titanium, Vael Fringe',
+    desc: 'Ilmenite grit bonded in vacuum-cast briquettes.',
+    lore: 'Fringe claims run lean yields. Refinery buyers know a Vael load waited months in cold storage.',
+  },
+  cmdty_silicate: {
+    displayName: 'Cinder Silicate, Outer Reach',
+    desc: 'Crushed feldspar aggregate in breathable bulk sacks.',
+    lore: 'Reach quarries sell cheap by the tonne. Fabs blend it into hull filler nobody prices separately.',
+  },
+  cmdty_ice_water: {
+    displayName: 'Bluepack Ice, Helios Lanes',
+    desc: 'Comet-core water ice in insulated liner drums.',
+    lore: 'Helios lane tankers skim comet tails for it. Military outposts and research labs book standing orders.',
+  },
+  cmdty_volatiles: {
+    displayName: 'Frostbite Volatiles, Ceres Cold Yards',
+    desc: 'Mixed methane and ammonia ice in pressure-rated pods.',
+    lore: 'Cold yards harvest it from outer ice. Refineries crack it; military buys the fraction lists quietly.',
+  },
+  cmdty_ore_platinoid: {
+    displayName: 'Deep Vein Platinoid, Meridian Claims',
+    desc: 'Dense PGM nodules in lead-lined sample cases.',
+    lore: 'Meridian survey crews guard these assay tags. Refinery buyers meet the courier, not the miner.',
+  },
+  cmdty_ore_bronzium: {
+    displayName: 'Ridge Nickel, Concord Survey Belt',
+    desc: 'Laterite nickel ore in magnetic separation bins.',
+    lore: 'Concord survey maps mark the good ridges. Trade hubs move it onward while fabs wait on alloy lots.',
+  },
+  cmdty_ore_silverium: {
+    displayName: 'Lunar Argentite, Helios Moons',
+    desc: 'Silver sulfide fines in vacuum-sealed foil packs.',
+    lore: 'Helios moon shafts produce steady lots. Refineries assay it; trade desks markup on purity rumors.',
+  },
+  cmdty_ore_goldium: {
+    displayName: 'Sunfall Gold Ore, Meridian Core',
+    desc: 'Microscopic gold in quartz matrix, assay-stamped.',
+    lore: 'Meridian core-sector assays travel under escort. Trade hubs price the rumor before refinery bars ship.',
+  },
+  cmdty_ore_platinium: {
+    displayName: 'Crown Platinum, Vael Deep Claims',
+    desc: 'Platinum-group pebbles in tamper-sealed grav cans.',
+    lore: 'Vael deep rigs pay fines for overclaiming. Refineries and trade desks both post armed pickup windows.',
+  },
+  cmdty_ore_einsteinium: {
+    displayName: 'Stellarite Lattice, Reach Anomaly Fields',
+    desc: 'Unstable transuranic lattice in magnetized shield casks.',
+    lore: 'Reach anomaly miners wear debt on their lungs. Refinery bids arrive with hazard waivers countersigned.',
+  },
+  cmdty_gem_emerald: {
+    displayName: 'Veridian Rough, Ceres Gem Pits',
+    desc: 'Uncut emerald crystals in foam-lined shock cases.',
+    lore: 'Ceres pit bosses grade by luster, not mass. Trade hubs move stones before refineries cut to spec.',
+  },
+  cmdty_gem_ruby: {
+    displayName: 'Bloodstar Ruby, Meridian Auction Lots',
+    desc: 'Uncut corundum rubies wrapped in static-proof mesh.',
+    lore: 'Meridian auctions leak prices a week early. Refinery cutters and trade desks fight over the same crate.',
+  },
+  cmdty_gem_diamond: {
+    displayName: 'Voidwhite Diamond, Vael High Auction',
+    desc: 'Raw carbonado diamonds in zero-g rated lockboxes.',
+    lore: 'Vael high auctions move single stones. Trade rumors outrun the refinery cutter invoice by a sector.',
+  },
+  cmdty_exotic_amazonite: {
+    displayName: 'Prism Shard, Reach Lab Auction',
+    desc: 'Iridescent lattice shards that refract in vacuum light.',
+    lore: 'Reach lab auctions license every gram. Research institutes outbid trade desks; miners never see closing price.',
+  },
+  cmdty_gas_hydrogen: {
+    displayName: 'Lane Hydrogen, Helios Collectors',
+    desc: 'Compressed hydrogen in filament-wound pressure spheres.',
+    lore: 'Helios collectors skim it from stellar wind. Refinery crackers buy bulk before trade hubs bottle retail lots.',
+  },
+  cmdty_gas_helium3: {
+    displayName: 'Luna Helium-3, Concord Extraction Yards',
+    desc: 'Tritium-depleted helium-3 in cryogenic dewar pods.',
+    lore: 'Concord yards meter every dewar leaving Luna. Research reactors book years ahead; refineries get overrun.',
+  },
+  cmdty_crystal_silica: {
+    displayName: 'Clearspire Silica, Ceres Crystal Vats',
+    desc: 'Optical-grade silica boules in padded isolation racks.',
+    lore: 'Ceres vats grow them slow. Fabs cut optics while research benches hoard the clear lots first.',
+  },
+  cmdty_crystal_lumin: {
+    displayName: 'Lantern Phosphor, Meridian Glow Works',
+    desc: 'Photoactive crystal rods that store ambient charge.',
+    lore: 'Meridian glow works grade by decay curve. Fabs embed them in panels; research wants the unstable cuts.',
+  },
+  cmdty_exotic_xenium: {
+    displayName: 'Black Xenium, Vael Fringe Labs',
+    desc: 'Resonant xenon-class isotope in braided shield tubes.',
+    lore: 'Fringe labs assay it under blackout orders. Research pays triple; Vael blackmarket runners quote higher still.',
+  },
+  cmdty_refined_metals: {
+    displayName: 'Helios Bar Stock, Refinery Grade',
+    desc: 'Stamped ingot stacks of smelted structural metals.',
+    lore: 'Helios refineries stamp heat lots on every bar. Military fabs clear manifests before civilian orders ship.',
+  },
+  cmdty_alloys: {
+    displayName: 'Forgeplate Alloy, Meridian Mills',
+    desc: 'Pre-mixed composite sheets rated for vacuum welding.',
+    lore: 'Meridian mills batch to military spec first. Fabs re-roll what refinery overflow cannot clear same cycle.',
+  },
+  cmdty_polymers: {
+    displayName: 'Flexweave Polymer, Helios Chemical Yards',
+    desc: 'Extruded polymer ribbon on spooled industrial cores.',
+    lore: 'Helios yards extrude by the kilometer. Fabs laminate hull seals; trade hubs retail cut lengths at markup.',
+  },
+  cmdty_fuel_cells: {
+    displayName: 'Cellbank Fuel, Ceres Depot Standard',
+    desc: 'Sealed fusion cells in shock-rated transport crates.',
+    lore: 'Ceres depots refill mining tugs on credit. Military requisitions jump the queue; trade hubs sell the remainder.',
+  },
+  cmdty_comp_hullplate: {
+    displayName: 'Ironweave Hull Plate, Concord Shipyards',
+    desc: 'Pre-drilled armor panels with weld-guide fiducials.',
+    lore: 'Concord yards stamp registry codes on every sheet. Military docks take priority lots; fabs get overrun cuts.',
+  },
+  cmdty_comp_circuitry: {
+    displayName: 'Traceway Circuitry, Meridian Fab Lines',
+    desc: 'Multi-layer printed boards in antistatic clamshell trays.',
+    lore: 'Meridian fab lines run three shifts on navy orders. Research benches pay late fees for cleared export lots.',
+  },
+  cmdty_microchips: {
+    displayName: 'Gatestack Microchips, Helios Logic Foundry',
+    desc: 'Silicon dies on wafer frames in vacuum packs.',
+    lore: 'Helios foundry gates test every lot twice. Military procurement holds allocation; trade desks sell what slips through.',
+  },
+  cmdty_electronics: {
+    displayName: 'Shelf Electronics, Ceres Trade Standard',
+    desc: 'Assembled modules: relays, boards, and harness bundles.',
+    lore: 'Ceres trade standard means shelf-ready boxes. Military requisitions tag priority SKUs before retail lots list.',
+  },
+  cmdty_purified_silica: {
+    displayName: 'Furnace-Grade Silica, Bore Standard',
+    desc: 'Vitrified silicate pucks, kiln-sealed against regolith dust.',
+    lore: 'Claim refineries fuse it from crushed matrix inside the rock. Meridian fabs print substrate from it without a second assay.',
+  },
+  cmdty_regocrete: {
+    displayName: 'Regocrete Castings, Claim Standard',
+    desc: 'Pressed regolith-and-metal structural blocks on pallet skids.',
+    lore: 'Every Ceres claim starts with a hold full of it. The ones that last learn to cast their own inside the rock.',
+  },
+  cmdty_control_unit: {
+    displayName: 'Sealed Machine Control Unit, Concord Pattern',
+    desc: 'One rated controller stack in a shock-isolated transit case.',
+    lore: 'The part no claim fabricates on day one. Concord outfitters price them knowing your extractor is a crate until it ships.',
+  },
+  cmdty_quantum_cores: {
+    displayName: 'Coherence Core, Reach Research Annex',
+    desc: 'Stabilized quantum matrices in magnetically damped housings.',
+    lore: 'Reach annex ships under Concord seal. Military fabs get allocation; civilian buyers wait on declassified lots.',
+  },
+  cmdty_consumer_goods: {
+    displayName: 'Lane Consumer Kit, Meridian Retail',
+    desc: 'Assorted hab goods packed for long haul resale.',
+    lore: 'Meridian retail kits stock trade hubs first. Mining camps buy them marked up before the next convoy.',
+  },
+  cmdty_textiles: {
+    displayName: 'Driftweave Textiles, Ceres Loomworks',
+    desc: 'Synthetic fabric bolts rated for vacuum hab cycles.',
+    lore: 'Ceres loomworks dye by contract number. Trade hubs move bolts; miners patch suits from offcut bins.',
+  },
+  cmdty_luxury_goods: {
+    displayName: 'Velvet Lot Luxury, Helios Promenade',
+    desc: 'Curated status goods in tamper-evident gift cases.',
+    lore: 'Helios promenade shops invoice by provenance story. Trade desks resell; Vael runners skim what customs misses.',
+  },
+  cmdty_art: {
+    displayName: 'Vaulted Antiques, Meridian Collector Circuit',
+    desc: 'Authenticated artworks with chain-of-custody manifests attached.',
+    lore: 'Meridian collector circuit tracks every transfer. Trade halls display openly; Vael lockers pay cash, no questions.',
+  },
+  cmdty_food: {
+    displayName: 'Hardtack Provisions, Ceres Galley Standard',
+    desc: 'Shelf-stable meal bricks and hydroponic supplement packs.',
+    lore: 'Ceres galleys stock the licensed brick. The second crop belongs to the broker. Blackmarket bins repack near-expiry lots cheap.',
+  },
+  cmdty_medical: {
+    displayName: 'Trauma Crate Medical, Concord Field Standard',
+    desc: 'Sterile kits: sutures, stabilizers, and dose-sealed meds.',
+    lore: 'Concord field standard clears military stock first. Trade hubs backfill miners; research fabs feed the refill pipeline.',
+  },
+  cmdty_scrap_metal: {
+    displayName: 'Hulk Scrap, Vael Salvage Yards',
+    desc: 'Twisted hull plating and frame cuttings in loose piles.',
+    lore: 'Vael salvage yards sort by alloy hint. Refineries melt it cheap; fabs cherry-pick plate with registry stamps intact.',
+  },
+  cmdty_salvage_electronics: {
+    displayName: 'Derelict Boards, Outer Reach Pickings',
+    desc: 'Stripped nav boards and relay packs from wreck hulks.',
+    lore: 'Reach pickers strip wrecks before Concord patrols note them. Fabs refurbish what military buyers do not seize first.',
+  },
+  cmdty_classified_salvage: {
+    displayName: 'Blackfile Salvage, Concord Seizure Locker',
+    desc: 'Restricted wreck evidence packed in sealed chain-of-custody crates.',
+    lore: 'Concord tags these crates before military review. Vael brokers pay quietly when blackmarket docks unlock the file.',
+  },
+  cmdty_narcotics: {
+    displayName: 'Lane Dust, Vael Locker Trade',
+    desc: 'Vacuum-sealed pouches of refined stimulant resin.',
+    lore: 'Vael lockers move it dockside after dark. Blackmarket ledgers clear same-day; Concord fines double if you are holding.',
+  },
+  cmdty_stolen_goods: {
+    displayName: 'Ghost Lot Cargo, Unmarked Tags',
+    desc: 'Mixed seized freight with serial plates filed smooth.',
+    lore: 'Vael runners flip ghost lots between blackmarket booths. No manifest survives a second sale; buyers count fast.',
+  },
+  cmdty_weapons: {
+    displayName: 'Ordnance Line Weapons, Concord Armories',
+    desc: 'Ship-mounted weapon assemblies in armored transit crates.',
+    lore: 'Concord armories log every crate by hull ID. Military docks clear allotments; Vael brokers quote what fell off the manifest.',
+  },
+  cmdty_munitions: {
+    displayName: 'Casehard Munitions, Helios Arsenal Lots',
+    desc: 'Guided warheads and belted ammunition in sealed magazines.',
+    lore: 'Helios arsenal lots move under escort schedules. Military buyers take allocation; blackmarket strips what convoys lose.',
+  },
+  cmdty_impulse_charge: {
+    displayName: 'Spike Impulse Charge, Meridian Ordnance',
+    desc: 'High-yield breaching charges in mag-safe foam cradles.',
+    lore: 'Meridian ordnance fills military racks first. Blackmarket charges match serials to wrecks nobody reports missing.',
+  },
+  // ── Alien-ecology harvest + precursor-protocol goods ───────────────────────────────────────
+  cmdty_filament_sample: {
+    displayName: 'Living Filament Sample, Charon Cinder Nursery',
+    desc: 'A still-growing strand sealed in a field-stasis vial.',
+    lore: 'Nursery collectors pay per viable meter. Research labs bid against Vael brokers who resell to no-questions buyers.',
+  },
+  cmdty_live_specimen: {
+    displayName: 'Cradled Live Specimen, Sker Deep Catch',
+    desc: 'A sedated fauna juvenile breathing inside a pressure cradle.',
+    lore: 'Keep it alive and Meridian research desks pay triple. Let the cradle fail and it is just exotic meat nobody insures.',
+  },
+  cmdty_dmc_black_box: {
+    displayName: 'DMC Flight Recorder, Charon Nursery Wreck',
+    desc: 'A battered voice-and-telemetry capsule in its crash cradle.',
+    lore: 'DMC pays finders for the tape, not the housing. Concord investigators quietly double the bounty when a crew list is missing.',
+  },
+  cmdty_calcified_filament: {
+    displayName: 'Calcified Filament, Ashfall Bonefields',
+    desc: 'Stone-hard strand sheaths cut from anchor-beast moorings.',
+    lore: 'Reach foundries grind it into abrasion liners. Harvest crews sell by the coil; refineries assay it like low-grade ore.',
+  },
+  cmdty_conductive_fiber: {
+    displayName: 'Conductive Fiber, Charon Swarm Harvest',
+    desc: 'Spun filaments that carry charge, wound on ceramic spools.',
+    lore: 'Needle-swarm sheds braid themselves into this. Meridian fabs pay clean rates for spools that still pass a current.',
+  },
+  cmdty_relay_nodule: {
+    displayName: 'Relay Nodule, Veil Shepherd Pods',
+    desc: 'A fist-sized signal organ that still answers a ping.',
+    lore: 'Blind shepherds use them to talk across a pocket. Meridian comms techs buy them intact; dead nodules sell as scrap glass.',
+  },
+  cmdty_membrane_laminate: {
+    displayName: 'Membrane Laminate, Sker Sail Cuts',
+    desc: 'Layered pressure skin peeled from a black sail\'s wing edge.',
+    lore: 'Sail cuts make superb gasket stock. Helios yard buyers sort by scarring; the unmarked panels go to military tenders.',
+  },
+  cmdty_cyst_resin: {
+    displayName: 'Cyst Resin, Lantern Cyst Harvest',
+    desc: 'Amber bio-resin set in chilled containment bricks.',
+    lore: 'Chem shops distill it into sealants and sedatives. Vael lockers pay cash for bricks with the cyst stamp intact.',
+  },
+  cmdty_nerve_glass: {
+    displayName: 'Mineralized Nerve Glass, Ashfall Rare Cut',
+    desc: 'Translucent neural lattice fused into silica plates.',
+    lore: 'One plate in a hundred reads as circuitry. Meridian labs pay assay rates; everyone else buys it for the rumor.',
+  },
+  cmdty_host_archive_sample: {
+    displayName: 'Host Archive Sample, Archive Crab Roosts',
+    desc: 'Tissue etched with a dead ecology\'s stored patterns.',
+    lore: 'Archive crabs carry a whole roost\'s memory in one organ. Ceres research desks bid by legibility, not weight.',
+  },
+  cmdty_sterile_shell: {
+    displayName: 'Sterile Shell, Veil Nursery Leavings',
+    desc: 'A spotless hatchery casing that never opened on schedule.',
+    lore: 'Sterile shells are the ones Concord lets collectors hold. Refineries ignore them; Meridian museums do not.',
+  },
+  cmdty_spore_chimney_core: {
+    displayName: 'Spore Chimney Core, Stone Lung Vents',
+    desc: 'A vent throat packed with dormant spore strata.',
+    lore: 'Cut it warm and the strata bloom worthless. Sold cold to Helios bio labs, a single core funds a crew for a month.',
+  },
+  cmdty_interface_tissue: {
+    displayName: 'Preserved Interface Tissue, Pilgrim Spine Grafts',
+    desc: 'Neural graft tissue suspended in buffered gel packs.',
+    lore: 'Pilgrim spines grew it to talk to their riders. Vael cybernetic labs pay on response latency; expired gel is compost.',
+  },
+  cmdty_glass_back_scale: {
+    displayName: 'Glassback Scale Plate, Veil Shatter Yards',
+    desc: 'A translucent armor plate shed by a glassback alpha.',
+    lore: 'The plates dampen sensor noise better than Meridian fab stock. Warship tenders buy discreetly; souvenir stalls sell the chipped ones.',
+  },
+  cmdty_spore_catalyst: {
+    displayName: 'Spore Catalyst, Harvest Deep Bloom',
+    desc: 'A compressed bloom-heart that wakes dormant cultures.',
+    lore: 'Helios labs use it to kick-start colony vats. Trade desks move it fast; a cracked catalyst is a hull-wide problem.',
+  },
+  cmdty_gate_handshake: {
+    displayName: 'Gate Handshake Token, Veil Relay Cache',
+    desc: 'A physical authorization spool lifted from a relay intercept.',
+    lore: 'Gate networks still honor the old handshake. Couriers lose them; Concord toll lanes pay premiums for ones that still answer.',
+  },
+  cmdty_inertial_datum: {
+    displayName: 'Inertial Datum, Precursor Measure Engine',
+    desc: 'A dense reference mass sealed in a machined gyro cage.',
+    lore: 'Precursor engines calibrated against it. Meridian nav fabs cannot synthesize one and pay standing bounty on intact cages.',
+  },
+  cmdty_revocation_beacon: {
+    displayName: 'Revocation Beacon, Veil Revoked Gate',
+    desc: 'A decommissioned kill-signal emitter, cold but intact.',
+    lore: 'It once told a gate to die. Collectors call it relic; Concord gate engineers call it evidence and pay accordingly.',
+  },
+  cmdty_unbroken_lens: {
+    displayName: 'Unbroken Lens, Veil Exception Chamber',
+    desc: 'A flawless optical element pulled from a sealed chamber.',
+    lore: 'Nothing in the catalog focuses like it. Research outposts write blank bids; Concord asks where you found it.',
+  },
+};

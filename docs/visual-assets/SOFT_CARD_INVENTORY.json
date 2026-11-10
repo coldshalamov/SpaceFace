@@ -1,0 +1,129 @@
+{
+  "schema": "spaceface.softCardInventory.v1",
+  "title": "Soft-card / blurry-square inventory",
+  "classificationSource": "docs/visual-assets/VFX_TECHNIQUE_STANDARD.md#2-family-assignment--one-primary-class-per-family",
+  "classificationRule": "effectClasses routes constructions to the standard's eight classes, not acceptance. Shared substrates list consumer classes; factories, offscreen mechanisms and UI have no world-effect class. Each actual effect family has one primary class in the standard.",
+  "rule": "A camera-facing soft square or disc may not stand in for a designed object. Distant background stars are the only exception, and only while they stay tiny, bright, and at sky depth. If the player can fly past it, it is not a star.",
+  "exceptionIds": ["bg-l3-stars", "bg-l4-flares"],
+  "scanRoots": ["src/render", "src/ui/asteroid"],
+  "scanPatterns": [
+    "new THREE\\.Points\\b",
+    "new THREE\\.Sprite\\b",
+    "new THREE\\.SpriteMaterial\\b",
+    "new THREE\\.PointsMaterial\\b",
+    "makeHalo\\(",
+    "makeGlowTexture\\(",
+    "makeStarTexture\\(",
+    "gl_PointSize",
+    "billboardGeometry\\(",
+    "_makeHazardTexture",
+    "createInstancedSpriteBuckets\\("
+  ],
+  "entries": [
+    {
+      "id": "bg-l3-stars",
+      "effectClasses": ["background"],
+      "status": "exception",
+      "playerSees": "Tiny bright stars with depth in the sky",
+      "technique": "Point sprites with round falloff, at sky depth",
+      "whyListed": "This is the one place the cheap card reads as the real thing: small, bright, far away. The UI stage's menu skies (P20) use the identical construction at the same depth.",
+      "files": ["src/render/spaceBackground.js", "src/render/deepFieldStars.js", "src/render/uiStage.js"]
+    },
+    {
+      "id": "bg-l4-flares",
+      "effectClasses": ["background"],
+      "status": "exception",
+      "playerSees": "A few brighter star flares in the same sky",
+      "technique": "Distant camera-facing flare cards at sky depth",
+      "whyListed": "Same exception as the star field: they stay in the sky, not in the flight path.",
+      "files": ["src/render/spaceBackground.js"]
+    },
+    {
+      "id": "bg-planet-impostors",
+      "effectClasses": ["background"],
+      "status": "distant-impostor",
+      "playerSees": "Distant planets as round discs in the sky",
+      "technique": "Textured camera-facing sprites of an authored planet bake",
+      "whyListed": "Allowed only as a far-sky stand-in for a designed planet. Not a license to sprite a field of rocks.",
+      "files": ["src/render/spaceBackground.js"]
+    },
+    {
+      "id": "bg-comet",
+      "effectClasses": ["background"],
+      "status": "distant-impostor",
+      "playerSees": "A rare comet crossing the sky: flaring head, braided ion-tail filaments, dust fan",
+      "technique": "Far-sky camera-facing card carrying authored comet art (head + structured tail), same class as the planet impostors",
+      "whyListed": "Upgraded 2026-09 from a smeared gradient streak to a designed head-plus-tail painting. Still listed because it is a sky-depth impostor card, not licensed at play scale.",
+      "files": ["src/render/spaceBackground.js"]
+    },
+    {
+      "id": "vfx-sprite-puffs",
+      "effectClasses": ["heavy-impact", "shield-response", "gas-smoke-dust", "massline"],
+      "classificationRole": "shared-substrate; classify each event consumer by the standard's family register",
+      "status": "pending-visual-acceptance",
+      "playerSees": "Shared transient impulses and compression fronts; animated smoke and combustion volumes",
+      "technique": "Instanced swept 3D impulse sheets and bounded ray-marched density/temperature films, with independent event progress, seed and force heading; legacy sprite API names retained",
+      "whyListed": "Candidate migration 2026-09-07 removes the camera-facing silhouette carrier. The scan still finds the compatibility API. Isolated WebGL frames and 140 focused tests are not normal-game or integrated-GPU acceptance; see VFX_UPGRADE_2026-09-07.md. Do not mark accepted from the method name or geometry alone.",
+      "files": ["src/render/vfx.js", "src/render/combat/instancedSpritePool.js"]
+    },
+    {
+      "id": "star-texture-factory",
+      "effectClasses": [],
+      "classificationRole": "factory; consumer family owns class and permission",
+      "status": "factory",
+      "playerSees": "Not on screen by itself",
+      "technique": "Shared radial-gradient texture used by stars and by every halo sprite",
+      "whyListed": "The factory that makes the blurry square. Stars may keep using it. World objects may not.",
+      "files": ["src/render/canvasTextures.js"]
+    },
+    {
+      "id": "startup-gpu-residency-proxy",
+      "effectClasses": [],
+      "classificationRole": "offscreen-mechanism; no player-facing effect",
+      "status": "offscreen-admission",
+      "playerSees": "Nothing; a clipped 1x1 loading/Continue pass only uploads live drawable buffers",
+      "technique": "Type-matched Three.js proxy, including Points, rendered with color writes disabled",
+      "whyListed": "The completeness scan finds Points and gl_PointSize, but this is an offscreen GPU-admission mechanism rather than a world object or player-facing effect.",
+      "files": ["src/render/startupGpuResidency.js"]
+    },
+    {
+      "id": "program-specimen-admission",
+      "effectClasses": [],
+      "classificationRole": "offscreen-mechanism; no player-facing effect",
+      "status": "offscreen-admission",
+      "playerSees": "Nothing; specimens mount only inside the unpublished admission root and detach after the compile binds the program",
+      "technique": "Type-matched specimen objects (Sprite, Points, Line, Mesh, SkinnedMesh, InstancedMesh) minted so the renderer's own program compile pins each canonical signature",
+      "whyListed": "The completeness scan finds new THREE.Sprite/Points here; they are program-binding proxies for authored material states, never drawn to the player — same class as the startup GPU-residency proxy.",
+      "files": ["src/render/programCanon.js"]
+    },
+    {
+      "id": "graphics-lab-sprites",
+      "effectClasses": ["engine-jet", "shield-response"],
+      "classificationRole": "lab-examples; class assignment is no production permission",
+      "status": "lab-only",
+      "playerSees": "Lab demos, not the game",
+      "technique": "Live demos of the correct additive geometry glow (ship nozzle and bolt sleeve); a stage-only sprite plume remains, plus camera-facing text-label sprites for legibility",
+      "whyListed": "Halo demos were restaged off the camera-facing card on 2026-09-22 (PIC-10): the ship and projectile glows are additive meshes coaxial with the drive/bolt, matching the live ship kit. The remaining sprite is the thruster stage plume, labeled a stand-in whose production form is authored sheets; text labels stay camera-facing for legibility.",
+      "files": ["src/render/graphicsLab.js"]
+    },
+    {
+      "id": "hero-pilot-lamp",
+      "effectClasses": ["engine-jet"],
+      "status": "pending-visual-acceptance",
+      "playerSees": "A small at-rest ember at the player ship's stern nozzle",
+      "technique": "Additive camera-facing sprite using a radial DataTexture; follows the presented hull and fades with flight presence",
+      "whyListed": "The HeroRig adds this live nozzle cue while the propulsion plume sleeps at rest. It is recorded here for technique review; listing it does not grant an exception or visual acceptance.",
+      "files": ["src/render/heroRig.js"]
+    },
+    {
+      "id": "asteroid-tier-badges",
+      "effectClasses": [],
+      "classificationRole": "ui-overlay; outside the world-effect matrix",
+      "status": "ui-overlay",
+      "playerSees": "Small tier icons floating on scanned rocks in the mining UI",
+      "technique": "Camera-facing sprites with an authored badge texture",
+      "whyListed": "UI chrome, not the rock. Keep off the world-object list.",
+      "files": ["src/ui/asteroid/asteroidRenderer3d.js"]
+    }
+  ]
+}

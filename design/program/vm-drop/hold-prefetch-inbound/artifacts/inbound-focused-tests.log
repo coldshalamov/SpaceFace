@@ -1,0 +1,164 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: evict stays farther than admit so a lip oscillation does not thrash
+ok 1 - evict stays farther than admit so a lip oscillation does not thrash
+  ---
+  duration_ms: 1.263367
+  ...
+# Subtest: decode runway sees an inbound far hull and can request promote
+ok 2 - decode runway sees an inbound far hull and can request promote
+  ---
+  duration_ms: 4.96143
+  ...
+# Subtest: a mesh already on the lip is kept when the live body is shelved
+ok 3 - a mesh already on the lip is kept when the live body is shelved
+  ---
+  duration_ms: 0.977383
+  ...
+# Subtest: a promoted inbound hull stays render-relevant when the last activity frame omitted it
+ok 4 - a promoted inbound hull stays render-relevant when the last activity frame omitted it
+  ---
+  duration_ms: 0.54713
+  ...
+# Subtest: flight first-render does not compose an ordinary on-glass hull
+ok 5 - flight first-render does not compose an ordinary on-glass hull
+  ---
+  duration_ms: 0.277528
+  ...
+# Subtest: time-to-glass solves entry for movers and rejects non-approachers
+ok 6 - time-to-glass solves entry for movers and rejects non-approachers
+  ---
+  duration_ms: 0.183352
+  ...
+# Subtest: admission anchor follows the near focus and falls back after a relocate
+ok 7 - admission anchor follows the near focus and falls back after a relocate
+  ---
+  duration_ms: 1.202343
+  ...
+# Subtest: a fast inbound hull beyond the decode disc is render-relevant on approach time
+ok 8 - a fast inbound hull beyond the decode disc is render-relevant on approach time
+  ---
+  duration_ms: 1.263593
+  ...
+# Subtest: player motion leans the residency oval forward and lets the trailing edge sleep
+ok 9 - player motion leans the residency oval forward and lets the trailing edge sleep
+  ---
+  duration_ms: 0.662349
+  ...
+# Subtest: a fast inbound row gets its mesh from the ledger; it does not thrash the live set
+ok 10 - a fast inbound row gets its mesh from the ledger; it does not thrash the live set
+  ---
+  duration_ms: 5.235068
+  ...
+# Subtest: a fast inbound row shelved long ago still admits on its extrapolated position
+ok 11 - a fast inbound row shelved long ago still admits on its extrapolated position
+  ---
+  duration_ms: 0.76374
+  ...
+# Subtest: mesh collect leans forward on approach vectors only
+ok 12 - mesh collect leans forward on approach vectors only
+  ---
+  duration_ms: 0.802587
+  ...
+# Subtest: first-flight hold still owes a mesh to an inbound prefetch contact
+ok 13 - first-flight hold still owes a mesh to an inbound prefetch contact
+  ---
+  duration_ms: 0.526229
+  ...
+# Subtest: first-flight hold admits static ledger rocks on player-vel collect horizon
+ok 14 - first-flight hold admits static ledger rocks on player-vel collect horizon
+  ---
+  duration_ms: 0.517192
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: dock, screen stack, and sector-shell cook freeze 3D submit
+ok 15 - dock, screen stack, and sector-shell cook freeze 3D submit
+  ---
+  duration_ms: 1.566428
+  ...
+# Subtest: first-flight streaming hold keeps the cooked GPU set until the latch
+ok 16 - first-flight streaming hold keeps the cooked GPU set until the latch
+  ---
+  duration_ms: 0.355176
+  ...
+# Subtest: sector-shell admission only keeps the first-flight cook set relevant
+ok 17 - sector-shell admission only keeps the first-flight cook set relevant
+  ---
+  duration_ms: 0.854768
+  ...
+# Subtest: residency service reports the first-flight hold and clears a banked full scan
+ok 18 - residency service reports the first-flight hold and clears a banked full scan
+  ---
+  duration_ms: 0.503094
+  ...
+# Subtest: same-sector F9 recook keeps resident GPU meshes
+ok 19 - same-sector F9 recook keeps resident GPU meshes
+  ---
+  duration_ms: 1.405105
+  ...
+# Subtest: same-sector F9 recook reattaches GPU meshes onto restored entities
+ok 20 - same-sector F9 recook reattaches GPU meshes onto restored entities
+  ---
+  duration_ms: 0.431786
+  ...
+# Subtest: place props carry a durable (sector, place, position) mesh key
+ok 21 - place props carry a durable (sector, place, position) mesh key
+  ---
+  duration_ms: 0.209379
+  ...
+# Subtest: kept place boundary rebinds to the matching restored row, not a recycled id
+ok 22 - kept place boundary rebinds to the matching restored row, not a recycled id
+  ---
+  duration_ms: 0.936647
+  ...
+# Subtest: intentional sector enter cooks the live next scene behind the jump shell
+ok 23 - intentional sector enter cooks the live next scene behind the jump shell
+  ---
+  duration_ms: 25.715504
+  ...
+# Subtest: isEntityMeshExpected mirrors the hold-exempt build contract
+ok 24 - isEntityMeshExpected mirrors the hold-exempt build contract
+  ---
+  duration_ms: 2.694831
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: first-flight hold enqueues the rescue set and on-glass rows instead of starving them
+ok 25 - first-flight hold enqueues the rescue set and on-glass rows instead of starving them
+  ---
+  duration_ms: 3.05319
+  ...
+# Subtest: protected first-flight drain caps to the ordinary runtime mesh budget
+ok 26 - protected first-flight drain caps to the ordinary runtime mesh budget
+  ---
+  duration_ms: 12.548294
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: wave-planned hull keys cover schedule enemies with silhouette-aware decode stubs
+ok 27 - wave-planned hull keys cover schedule enemies with silhouette-aware decode stubs
+  ---
+  duration_ms: 4.453177
+  ...
+# Subtest: noteWaveHullRunwayKeys stamps planned keys and holds swarm-spawn wasps mesh-expected
+ok 28 - noteWaveHullRunwayKeys stamps planned keys and holds swarm-spawn wasps mesh-expected
+  ---
+  duration_ms: 1.279606
+  ...
+# Subtest: collectWaveHullDecodeKeys ignores empty/failed plans and dedupes shared shipIds
+ok 29 - collectWaveHullDecodeKeys ignores empty/failed plans and dedupes shared shipIds
+  ---
+  duration_ms: 0.277669
+  ...
+# Subtest: renderer keeps wave-hull helpers but does not wire run:wavePlanned kick (inbound-only)
+ok 30 - renderer keeps wave-hull helpers but does not wire run:wavePlanned kick (inbound-only)
+  ---
+  duration_ms: 13.035785
+  ...
+1..30
+# tests 30
+# suites 0
+# pass 30
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 685.481743

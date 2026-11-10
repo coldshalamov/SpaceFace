@@ -1,0 +1,110 @@
+[
+  {
+    "kind": "roundtrip",
+    "rep": 0,
+    "faction": "faction_scn",
+    "before": {
+      "credits": 100000,
+      "stock": 32.76
+    },
+    "buy": {
+      "ok": true,
+      "qty": 1,
+      "unitAvg": 33,
+      "total": 33,
+      "priceImpactPct": 1.0738042868705124
+    },
+    "sell": {
+      "ok": true,
+      "qty": 1,
+      "unitAvg": 29,
+      "total": 29,
+      "priceImpactPct": -1.0623962306027495,
+      "profit": -4
+    },
+    "delta": -4,
+    "stockDelta": 0
+  },
+  {
+    "kind": "route",
+    "good": "cmdty_food",
+    "units": 16,
+    "shownCost": 992,
+    "actualQuote": 1005,
+    "accepted": 16,
+    "credits": 1000,
+    "shownMargin": 416
+  },
+  {
+    "kind": "route",
+    "good": "cmdty_refined_metals",
+    "units": 10,
+    "shownCost": 940,
+    "actualQuote": 937,
+    "accepted": 10,
+    "credits": 1000,
+    "shownMargin": 300
+  },
+  {
+    "kind": "route",
+    "good": "cmdty_consumer_goods",
+    "units": 13,
+    "shownCost": 949,
+    "actualQuote": 952,
+    "accepted": 13,
+    "credits": 1000,
+    "shownMargin": 91
+  },
+  {
+    "kind": "roundtrip",
+    "rep": 500,
+    "faction": "faction_scn",
+    "before": {
+      "credits": 100000,
+      "stock": 32.76
+    },
+    "buy": {
+      "ok": true,
+      "qty": 1,
+      "unitAvg": 28,
+      "total": 28,
+      "priceImpactPct": 1.0738042868705124
+    },
+    "sell": {
+      "ok": true,
+      "qty": 1,
+      "unitAvg": 32,
+      "total": 32,
+      "priceImpactPct": -1.0623962306027495,
+      "profit": 4
+    },
+    "delta": 4,
+    "stockDelta": 0
+  },
+  {
+    "kind": "roundtrip",
+    "rep": 1000,
+    "faction": "faction_scn",
+    "before": {
+      "credits": 100000,
+      "stock": 32.76
+    },
+    "buy": {
+      "ok": true,
+      "qty": 1,
+      "unitAvg": 23,
+      "total": 23,
+      "priceImpactPct": 1.0738042868705124
+    },
+    "sell": {
+      "ok": true,
+      "qty": 1,
+      "unitAvg": 35,
+      "total": 35,
+      "priceImpactPct": -1.0623962306027495,
+      "profit": 12
+    },
+    "delta": 12,
+    "stockDelta": 0
+  }
+]

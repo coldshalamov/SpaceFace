@@ -1,0 +1,278 @@
+From aee114930e53a4ebc8746f1ac906ae87b4f0e9e1 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 04:55:18 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20retain=20zero-dirty=20presentat?=
+ =?UTF-8?q?ion=20query=20(~6.9=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet syncEntityViews cull query: when presentationWorld.dirtyCount is 0 and
+layout/maxRadius/boundCount plus the cull rect, origin, and playerId are
+bit-identical, keep the prior visible set and skip spatial collect/sort/
+exactVisible/hidden diff. Bench toggle restores always-walk.
+---
+ src/render/presentationQueries.js             |  97 ++++++++++++++--
+ ...sentation-query-zero-dirty-retain.test.mjs | 106 ++++++++++++++++++
+ 2 files changed, 195 insertions(+), 8 deletions(-)
+ create mode 100644 test/presentation-query-zero-dirty-retain.test.mjs
+
+diff --git a/src/render/presentationQueries.js b/src/render/presentationQueries.js
+index 9d1d98108..3d959e2e2 100644
+--- a/src/render/presentationQueries.js
++++ b/src/render/presentationQueries.js
+@@ -4,6 +4,19 @@ import { PRESENTATION_FLAGS } from './presentationWorld.js';
+ 
+ const INVALID_SLOT = -1;
+ 
++// Quiet settled retain: when presentationWorld.dirtyCount is 0, layout/maxRadius are
++// unchanged, and the cull rectangle + origin + playerId are bit-identical, the visible
++// set cannot change — skip spatial collect / sort / exactVisible / hidden diff.
++// Soft-GPU fps not claimed. Bench toggle restores always-walk.
++let PRESENTATION_QUERY_ZERO_DIRTY_RETAIN = true;
++export function setPresentationQueryZeroDirtyRetainForBench(enabled) {
++  PRESENTATION_QUERY_ZERO_DIRTY_RETAIN = enabled !== false;
++  return PRESENTATION_QUERY_ZERO_DIRTY_RETAIN;
++}
++export function getPresentationQueryZeroDirtyRetainForBench() {
++  return PRESENTATION_QUERY_ZERO_DIRTY_RETAIN !== false;
++}
++
+ function finite(value) {
+   return Number.isFinite(value) ? value : 0;
+ }
+@@ -116,6 +129,21 @@ export function createPresentationQueries(world) {
+       && Math.abs(localZ - bounds.z) <= bounds.halfZ + radius;
+   }
+ 
++  const retainCache = {
++    primed: false,
++    layoutVersion: -1,
++    maxRadius: NaN,
++    boundCount: -1,
++    boundsX: NaN,
++    boundsZ: NaN,
++    halfX: NaN,
++    halfZ: NaN,
++    originX: NaN,
++    originZ: NaN,
++    playerId: null,
++    candidateCount: 0,
++  };
++
+   function query(options = {}) {
+     ensureCapacity();
+     const bounds = options.bounds || ZERO_BOUNDS;
+@@ -124,6 +152,45 @@ export function createPresentationQueries(world) {
+     originScratch.z = finite(sourceOrigin.z);
+     const origin = originScratch;
+     const playerId = options.playerId;
++    const boundsX = finite(bounds.x);
++    const boundsZ = finite(bounds.z);
++    const halfX = Math.max(0, finite(bounds.halfX));
++    const halfZ = Math.max(0, finite(bounds.halfZ));
++    const layoutVersion = Number.isFinite(world.layoutVersion) ? world.layoutVersion : -1;
++    const maxRadius = Number.isFinite(world.maxRadius) ? world.maxRadius : 0;
++    const boundCount = world.boundCount | 0;
++    if (PRESENTATION_QUERY_ZERO_DIRTY_RETAIN
++        && retainCache.primed
++        && (world.dirtyCount | 0) === 0
++        && retainCache.layoutVersion === layoutVersion
++        && retainCache.maxRadius === maxRadius
++        && retainCache.boundCount === boundCount
++        && retainCache.boundsX === boundsX
++        && retainCache.boundsZ === boundsZ
++        && retainCache.halfX === halfX
++        && retainCache.halfZ === halfZ
++        && retainCache.originX === origin.x
++        && retainCache.originZ === origin.z
++        && retainCache.playerId === playerId) {
++      newlyVisibleSlots.length = 0;
++      newlyVisibleGenerations.length = 0;
++      hiddenSlots.length = 0;
++      hiddenGenerations.length = 0;
++      result.visibleSlots = visibleSlots;
++      result.visibleGenerations = visibleGenerations;
++      result.candidateCount = retainCache.candidateCount;
++      result.visibleCount = visibleSlots.length;
++      result.newlyVisibleCount = 0;
++      result.hiddenCount = 0;
++      result.culledCount = Math.max(0, boundCount - visibleSlots.length);
++      diagnostics.queries++;
++      diagnostics.candidates = result.candidateCount;
++      diagnostics.visible = result.visibleCount;
++      diagnostics.newlyVisible = 0;
++      diagnostics.hidden = 0;
++      diagnostics.culled = result.culledCount;
++      return result;
++    }
+     const candidateEpoch = nextEpoch('candidate');
+     const frameEpoch = nextEpoch('visibility');
+     candidateSlots.length = 0;
+@@ -141,14 +208,14 @@ export function createPresentationQueries(world) {
+       previousMarkGenerations[slot] = visibleGenerations[index];
+     }
+ 
+-    const expansion = world.maxRadius;
+-    const centerX = finite(bounds.x) + origin.x;
+-    const centerZ = finite(bounds.z) + origin.z;
++    const expansion = maxRadius;
++    const centerX = boundsX + origin.x;
++    const centerZ = boundsZ + origin.z;
+     world.collectSpatialBounds(
+-      centerX - Math.max(0, finite(bounds.halfX)) - expansion,
+-      centerX + Math.max(0, finite(bounds.halfX)) + expansion,
+-      centerZ - Math.max(0, finite(bounds.halfZ)) - expansion,
+-      centerZ + Math.max(0, finite(bounds.halfZ)) + expansion,
++      centerX - halfX - expansion,
++      centerX + halfX + expansion,
++      centerZ - halfZ - expansion,
++      centerZ + halfZ + expansion,
+       candidateSlots,
+     );
+     world.collectSpecialSlots(candidateSlots);
+@@ -206,7 +273,20 @@ export function createPresentationQueries(world) {
+     result.visibleCount = visibleSlots.length;
+     result.newlyVisibleCount = newlyVisibleSlots.length;
+     result.hiddenCount = hiddenSlots.length;
+-    result.culledCount = Math.max(0, world.boundCount - visibleSlots.length);
++    result.culledCount = Math.max(0, boundCount - visibleSlots.length);
++
++    retainCache.primed = true;
++    retainCache.layoutVersion = layoutVersion;
++    retainCache.maxRadius = maxRadius;
++    retainCache.boundCount = boundCount;
++    retainCache.boundsX = boundsX;
++    retainCache.boundsZ = boundsZ;
++    retainCache.halfX = halfX;
++    retainCache.halfZ = halfZ;
++    retainCache.originX = origin.x;
++    retainCache.originZ = origin.z;
++    retainCache.playerId = playerId;
++    retainCache.candidateCount = result.candidateCount;
+ 
+     diagnostics.queries++;
+     diagnostics.candidates = result.candidateCount;
+@@ -218,6 +298,7 @@ export function createPresentationQueries(world) {
+   }
+ 
+   function reset() {
++    retainCache.primed = false;
+     for (let index = 0; index < visibleSlots.length; index++) {
+       world.setVisibility(visibleSlots[index], visibleGenerations[index], false);
+     }
+diff --git a/test/presentation-query-zero-dirty-retain.test.mjs b/test/presentation-query-zero-dirty-retain.test.mjs
+new file mode 100644
+index 000000000..d0039b480
+--- /dev/null
++++ b/test/presentation-query-zero-dirty-retain.test.mjs
+@@ -0,0 +1,106 @@
++import assert from 'node:assert/strict';
++import test from 'node:test';
++
++import {
++  createPresentationQueries,
++  setPresentationQueryZeroDirtyRetainForBench,
++  getPresentationQueryZeroDirtyRetainForBench,
++} from '../src/render/presentationQueries.js';
++import { createPresentationWorld } from '../src/render/presentationWorld.js';
++
++function entity(id, { x = 0, z = 0, radius = 4, flags = {} } = {}) {
++  return {
++    id,
++    type: 'ship',
++    alive: true,
++    pos: { x, y: 0, z },
++    prevPos: { x, y: 0, z },
++    rot: 0,
++    prevRot: 0,
++    bank: 0,
++    prevBank: 0,
++    pitch: 0,
++    prevPitch: 0,
++    radius,
++    flags,
++    presentationVisualRevision: 0,
++  };
++}
++
++function bind(world, value) {
++  const handle = world.handleForEntityId(value.id);
++  const mesh = { userData: {}, position: { x: value.pos.x, y: 0, z: value.pos.z } };
++  assert.equal(world.bindMesh(handle, mesh, value, value.radius), true);
++}
++
++function clearAllDirty(world) {
++  const active = world.getDiagnostics().active;
++  for (let a = 0; a < active; a++) world.clearDirty(world.activeSlots[a]);
++}
++
++test('zero-dirty identical cull rect retains visible set without transitions', () => {
++  assert.equal(getPresentationQueryZeroDirtyRetainForBench(), true);
++  const world = createPresentationWorld({ capacity: 16, cellSize: 64 });
++  for (const value of [entity(1, { x: -8 }), entity(2, { x: 8 }), entity(3, { x: 200 })]) {
++    world.allocateEntity(value, 1);
++    bind(world, value);
++  }
++  const queries = createPresentationQueries(world);
++  const options = {
++    bounds: { x: 0, z: 0, halfX: 40, halfZ: 40 },
++    origin: { x: 0, z: 0 },
++    playerId: null,
++  };
++  clearAllDirty(world);
++  const first = queries.query(options);
++  assert.deepEqual(first.visibleSlots.map((s) => world.entityIds[s]), [1, 2]);
++  assert.equal(first.newlyVisibleCount, 2);
++
++  clearAllDirty(world);
++  const retained = queries.query(options);
++  assert.deepEqual(retained.visibleSlots.map((s) => world.entityIds[s]), [1, 2]);
++  assert.equal(retained.newlyVisibleCount, 0);
++  assert.equal(retained.hiddenCount, 0);
++  assert.equal(retained.candidateCount, first.candidateCount);
++
++  // Pose churn must miss retain and emit a hide.
++  const mover = world.entityRefs[world.getSlotForEntityId(2)];
++  mover.prevPos.x = mover.pos.x;
++  mover.pos.x = 400;
++  world.refreshVisibleEntity(world.getSlotForEntityId(2), mover);
++  assert.ok((world.dirtyCount | 0) > 0);
++  const moved = queries.query(options);
++  assert.deepEqual(moved.visibleSlots.map((s) => world.entityIds[s]), [1]);
++  assert.deepEqual(moved.hiddenSlots.map((s) => world.entityIds[s]), [2]);
++});
++
++test('bench toggle restores always-walk (transitions still correct)', () => {
++  setPresentationQueryZeroDirtyRetainForBench(false);
++  try {
++    const world = createPresentationWorld({ capacity: 8, cellSize: 64 });
++    const ship = entity(9, { x: 0 });
++    world.allocateEntity(ship, 1);
++    bind(world, ship);
++    const queries = createPresentationQueries(world);
++    const options = {
++      bounds: { x: 0, z: 0, halfX: 40, halfZ: 40 },
++      origin: { x: 0, z: 0 },
++      playerId: null,
++    };
++    clearAllDirty(world);
++    const a = queries.query(options);
++    const aVisible = a.visibleSlots.map((s) => world.entityIds[s]);
++    const aNew = a.newlyVisibleCount;
++    clearAllDirty(world);
++    const b = queries.query(options);
++    assert.deepEqual(aVisible, [9]);
++    assert.deepEqual(b.visibleSlots.map((s) => world.entityIds[s]), [9]);
++    assert.equal(aNew, 1);
++    // Always-walk still reports newlyVisible=0 on the second identical frame
++    // (previousMarks seeded from visibleSlots). query() returns a retained result bag.
++    assert.equal(b.newlyVisibleCount, 0);
++    assert.equal(b.hiddenCount, 0);
++  } finally {
++    setPresentationQueryZeroDirtyRetainForBench(true);
++  }
++});
+-- 
+2.47.3
+

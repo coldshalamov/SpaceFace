@@ -1,0 +1,38 @@
+{
+  "schema": "spaceface.validation-run-result.v1",
+  "recordedAt": "2026-09-07T13:54:42.922Z",
+  "status": "pass",
+  "exitCode": 0,
+  "signal": null,
+  "timedOut": false,
+  "durationMs": 155901,
+  "pidRecord": {
+    "pid": 14564,
+    "command": "C:\\Program Files\\nodejs\\node.exe",
+    "args": [
+      "scripts/probe-pq022-corridor-asset-leaves.mjs",
+      "--only=refinery",
+      "--runtime=electron"
+    ],
+    "startedAt": "2026-09-07T13:52:07.020Z",
+    "platform": "win32",
+    "finishedAt": "2026-09-07T13:54:42.921Z",
+    "exitCode": 0,
+    "signal": null,
+    "timedOut": false,
+    "killResult": null
+  },
+  "ownership": {
+    "probeId": "pq022-refinery-reauthor-electron",
+    "runtimeKind": "electron",
+    "browserOwned": false,
+    "serverOwned": true,
+    "pid": 14564
+  },
+  "fixedSeed": 47,
+  "failureFingerprint": null,
+  "family": null,
+  "routeDigest": "ece56db5956ab881c6f837f56a47258b7d5cd669b7d752f2facb5ce2f03ae963",
+  "regressionDigest": "ed92eb048128133aeaaa0e2b183c75e7999ea2f4c936538f6fb0032af40e0826",
+  "candidateDigest": "ac75dbbecfb3bcf9fcb809d72bdd4ed734d5a28df0e39f94027cc63d57a4070d"
+}

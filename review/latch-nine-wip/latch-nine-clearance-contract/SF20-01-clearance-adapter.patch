@@ -1,0 +1,786 @@
+diff --git a/src/core/dockAccess.js b/src/core/dockAccess.js
+new file mode 100644
+index 0000000..5c1cb36
+--- /dev/null
++++ b/src/core/dockAccess.js
+@@ -0,0 +1,66 @@
++// The shared pure refusal selector used by UI docking commands, the denial banner and
++// harbor service readouts. This extraction keeps the shipped station/faction rules unchanged.
++import { dockDenyReason } from '../data/dockDeny.js';
++import { FACTION_META } from '../data/factions.js';
++
++/** Human label for a station (entity data name, else de-prefixed id). */
++function stationLabel(station, stationId) {
++  const name = (station && (station.name || (station.data && station.data.name))) || null;
++  if (name) return name;
++  return String(stationId || 'station').replace(/^station_/, '').replace(/_/g, ' ');
++}
++
++/** Find the live station entity's data by stationId (defensive; null if absent). */
++function findStationData(state, stationId) {
++  if (!state || !stationId) return null;
++  const byStationId = state.entityIndex && state.entityIndex.byStationId;
++  const indexed = byStationId && typeof byStationId.get === 'function' && byStationId.get(stationId);
++  if (indexed && indexed.alive !== false && indexed.type === 'station') {
++    const data = indexed.data || {};
++    return { ...data, factionId: data.factionId || indexed.factionId || null };
++  }
++  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
++  for (const e of list) {
++    if (!e || e.alive === false || e.type !== 'station') continue;
++    const data = e.data || {};
++    if (data.stationId === stationId) return { ...data, factionId: data.factionId || e.factionId || null };
++  }
++  return null;
++}
++
++/**
++ * resolveDockDeny(state, stationRef) -> { stationId, label, reason, text, factionId } | null
++ *
++ * stationRef: a stationId string (resolved against live entities) or a station-like object.
++ * PURE over its inputs: calls the SHIPPED dockDenyReason with a full factionMeta (meta + live
++ * rep from state.factions) so the flavored line always wins for a factioned station.
++ * null = dockable (surface nothing).
++ */
++export function resolveDockDeny(state, stationRef) {
++  const stationId = typeof stationRef === 'string'
++    ? stationRef
++    : (stationRef && (stationRef.stationId || stationRef.id || (stationRef.data && stationRef.data.stationId))) || null;
++  const station = typeof stationRef === 'object' && stationRef !== null
++    ? (stationRef.data ? { ...stationRef.data, factionId: stationRef.data.factionId || stationRef.factionId || null } : stationRef)
++    : findStationData(state, stationId);
++  if (!station) return null;
++
++  const factionId = station.factionId || null;
++  const meta = FACTION_META.find((f) => f && f.id === factionId) || null;
++  const rep = state && state.factions && factionId && state.factions[factionId]
++    ? state.factions[factionId].rep : undefined;
++  // ALWAYS pass factionMeta (flavored voice wins); carry live rep for the minRep gate.
++  const factionMeta = meta
++    ? (Number.isFinite(rep) ? { ...meta, rep } : meta)
++    : (factionId || undefined);
++
++  const deny = dockDenyReason(station, factionMeta);
++  if (!deny) return null;
++  return {
++    stationId: stationId || null,
++    label: stationLabel(station, stationId),
++    reason: deny.reason,
++    text: deny.text,
++    factionId,
++  };
++}
+diff --git a/src/core/dockRange.js b/src/core/dockRange.js
+new file mode 100644
+index 0000000..5fdd84c
+--- /dev/null
++++ b/src/core/dockRange.js
+@@ -0,0 +1,66 @@
++// Shared range query owned by core/physics.updateDockRange. This is geometry/range only;
++// station access refusals and the flight UI command fence remain separate gates.
++// Keep the nearest-station and gate selection identical for every consumer.
++import { resolveCollisionProxyManifest, resolveDockAnchor } from '../data/collisionProxyManifests.js';
++
++export function resolveDockRange(state, out = {}) {
++  const player = state.entities.get(state.playerId);
++  let nextStationId = null;
++  let nextStation = null;
++  let nextDist = Infinity;
++  let nextGate = null;
++  let nextGateDist = Infinity;
++
++  if (player && player.alive) {
++    const stations = (state.entityIndex && state.entityIndex.stations) || state.entityList;
++    const playerSpeed = Math.hypot(
++      player.vel && Number.isFinite(player.vel.x) ? player.vel.x : 0,
++      player.vel && Number.isFinite(player.vel.z) ? player.vel.z : 0,
++    );
++    for (const st of stations) {
++      if (!st.alive || st.type !== 'station') continue;
++      const data = st.data || {};
++      if (data.isGate) {
++        const range = ((data.dockRadius || st.radius || 80) + (player.radius || 0)) * 1.5;
++        const d = Math.hypot(st.pos.x - player.pos.x, st.pos.z - player.pos.z);
++        if (d <= range + 28 && d < nextGateDist) {
++          nextGateDist = d;
++          nextGate = st;
++        }
++        continue;
++      }
++      if (!data.stationId) continue;
++      // PQ-008 truthful exterior docking: stations declaring a collisionProxyManifest dock at
++      // their berth, not at a forgiving center radius. The berth gate requires proximity AND a
++      // slow approach; everything else about the dock:range seam is unchanged.
++      // SF-130: the anchor is the berth for hulls whose planar envelope clears the pocket,
++      // or the corridor-axis mooring standoff for hulls too deep for it — the same prompt
++      // and gates, resolved from the station's real collision geometry each tick.
++      const manifest = resolveCollisionProxyManifest(st);
++      if (manifest && manifest.docking) {
++        const anchor = resolveDockAnchor(st, manifest, player);
++        if (!anchor) continue;
++        const dAnchor = Math.hypot(anchor.x - player.pos.x, anchor.z - player.pos.z);
++        if (dAnchor <= anchor.dockRadius && playerSpeed <= anchor.speedGate && dAnchor < nextDist) {
++          nextDist = dAnchor;
++          nextStationId = data.stationId;
++          nextStation = st;
++        }
++        continue;
++      }
++      const range = ((data.dockRadius || st.radius || 80) + (player.radius || 0)) * 1.5;
++      const d = Math.hypot(st.pos.x - player.pos.x, st.pos.z - player.pos.z);
++      if (d <= range && d < nextDist) {
++        nextDist = d;
++        nextStationId = data.stationId;
++        nextStation = st;
++      }
++    }
++  }
++
++  out.player = player;
++  out.station = nextStation;
++  out.stationId = nextStationId;
++  out.gate = nextGate;
++  return out;
++}
+diff --git a/src/core/physics.js b/src/core/physics.js
+index 987134d..00730b0 100644
+--- a/src/core/physics.js
++++ b/src/core/physics.js
+@@ -1,3 +1,4 @@
++import { resolveDockRange } from './dockRange.js';
+ import { sweepCollisionProxyInto } from './collisionProxySweep.js';
+ import { reconcileMachineryBeforePhysics } from './machineryPresentation.js';
+ // Physics system: integrate positions, rebuild the spatial hash, broad-phase + circle/circle
+@@ -28,7 +29,6 @@ import {
+ import {
+   proxyScaleFor,
+   resolveCollisionProxyManifest,
+-  resolveDockAnchor,
+ } from '../data/collisionProxyManifests.js';
+ import { queuePhysicsImpulse, resolvePhysicsBodySpec, physicsBodyNativeReady } from './physicsAuthority.js';
+ // FB-095: tickMs is diagnostics-only, so it reads the classified instrumentation clock in
+@@ -1206,56 +1206,8 @@ export const physics = {
+   },
+ 
+   updateDockRange(state) {
+-    const player = state.entities.get(state.playerId);
+-    let nextStationId = null;
+-    let nextDist = Infinity;
+-    let nextGate = null;
+-    let nextGateDist = Infinity;
+-
+-    if (player && player.alive) {
+-      const stations = (state.entityIndex && state.entityIndex.stations) || state.entityList;
+-      const playerSpeed = Math.hypot(
+-        player.vel && Number.isFinite(player.vel.x) ? player.vel.x : 0,
+-        player.vel && Number.isFinite(player.vel.z) ? player.vel.z : 0,
+-      );
+-      for (const st of stations) {
+-        if (!st.alive || st.type !== 'station') continue;
+-        const data = st.data || {};
+-        if (data.isGate) {
+-          const range = ((data.dockRadius || st.radius || 80) + (player.radius || 0)) * 1.5;
+-          const d = Math.hypot(st.pos.x - player.pos.x, st.pos.z - player.pos.z);
+-          if (d <= range + 28 && d < nextGateDist) {
+-            nextGateDist = d;
+-            nextGate = st;
+-          }
+-          continue;
+-        }
+-        if (!data.stationId) continue;
+-        // PQ-008 truthful exterior docking: stations declaring a collisionProxyManifest dock at
+-        // their berth, not at a forgiving center radius. The berth gate requires proximity AND a
+-        // slow approach; everything else about the dock:range seam is unchanged.
+-        // SF-130: the anchor is the berth for hulls whose planar envelope clears the pocket,
+-        // or the corridor-axis mooring standoff for hulls too deep for it — the same prompt
+-        // and gates, resolved from the station's real collision geometry each tick.
+-        const manifest = resolveCollisionProxyManifest(st);
+-        if (manifest && manifest.docking) {
+-          const anchor = resolveDockAnchor(st, manifest, player);
+-          if (!anchor) continue;
+-          const dAnchor = Math.hypot(anchor.x - player.pos.x, anchor.z - player.pos.z);
+-          if (dAnchor <= anchor.dockRadius && playerSpeed <= anchor.speedGate && dAnchor < nextDist) {
+-            nextDist = dAnchor;
+-            nextStationId = data.stationId;
+-          }
+-          continue;
+-        }
+-        const range = ((data.dockRadius || st.radius || 80) + (player.radius || 0)) * 1.5;
+-        const d = Math.hypot(st.pos.x - player.pos.x, st.pos.z - player.pos.z);
+-        if (d <= range && d < nextDist) {
+-          nextDist = d;
+-          nextStationId = data.stationId;
+-        }
+-      }
+-    }
++    const { stationId: nextStationId, gate: nextGate } = resolveDockRange(state,
++      this._dockRangeScratch || (this._dockRangeScratch = {}));
+ 
+     if (nextStationId !== this._dockStationId) {
+       if (this._dockStationId) {
+diff --git a/src/systems/latchNineService.js b/src/systems/latchNineService.js
+new file mode 100644
+index 0000000..518d4c4
+--- /dev/null
++++ b/src/systems/latchNineService.js
+@@ -0,0 +1,171 @@
++// SF20-01 behavior packet. Imported service adapter, NOT a registered/spawned character.
++// Range is shared with physics.updateDockRange; refusal is shared with ui/input.doDock.
++// Neither a dock:attempt nor dockingCorridor.phase is permission. No renderer, voice,
++// player input, physics, economy or law writes live here.
++import { resolveDockRange } from '../core/dockRange.js';
++import { resolveDockDeny } from '../core/dockAccess.js';
++import { resolveAutopilotTarget } from './flightV3.js';
++
++export const LATCH_NINE_STATION_ID = 'station_tethys';
++export const LATCH_NINE_SECTOR_ID = 'sector_tethys_junction';
++export const LATCH_NINE_GUIDANCE_RANGE = 600;
++export const LATCH_NINE_HAIL_RANGE = 360;
++export const LATCH_NINE_SAMPLE_S = 0.1;
++export const LATCH_NINE_ACK_S = 0.8;
++
++export function normalizeLatchNineSave(data) {
++  return {
++    met: data?.met === true,
++    cleanArrivals: Math.min(100000, Math.max(0, Math.floor(Number.isFinite(data?.cleanArrivals) ? data.cleanArrivals : 0))),
++    incidentIds: [...new Set((Array.isArray(data?.incidentIds) ? data.incidentIds : [])
++      .filter(id => typeof id === 'string' && id.length > 0).map(id => id.slice(0, 160)))].slice(-16),
++    destroyed: data?.destroyed === true,
++  };
++}
++
++function liveStation(state) {
++  const list = state.entityIndex?.stations || state.entityList || [];
++  return list.find(e => e?.alive && e.type === 'station'
++    && e.data?.stationId === LATCH_NINE_STATION_ID
++    && state.entities.get(e.id) === e) || null;
++}
++
++function dockedAtLatch(state) {
++  return state.ui?.docked === true && state.ui.dockedStationId === LATCH_NINE_STATION_ID;
++}
++
++// Mirrors the non-geometric doDock command fences. This does not authorize or emit docking.
++function flightFence(state, player) {
++  if (!player?.alive || state.mode !== 'flight' || state.ui?.docked || player.flags?.docked) return 'not_in_flight';
++  if (state.ui?.fulfillmentBlackoutActive) return 'transition';
++  if (state.jump?.state === 'CHARGING' || state.jump?.state === 'JUMPING') return 'jump';
++  return null;
++}
++
++/**
++ * One instance per staffed station, owned by its future normal-route integration.
++ * update runs every sim tick AFTER physics. Readout publication is capped at
++ * 10 Hz; range/access safety is checked every call, so a revocation never waits for a pose.
++ * recovering comes from the traffic/physics service-path owner, never an animation result.
++ * The adapter does not turn a dynamic tender kinematic, set its transform, or return it itself.
++ */
++export function createLatchNineService(saved = null) {
++  let memory = normalizeLatchNineSave(saved);
++  const rangeScratch = {};
++  let binding = null;
++  let arrivalArmed = false;
++  let wasDocked = true; // the first observation/Continue can never be a new arrival
++  let ackUntil = -Infinity;
++  let nextSampleAt = -Infinity;
++  let dismissed = false;
++  let revoked = false;
++  let revision = 0;
++  let readout = Object.freeze({ phase: 'OFF_DUTY', clearance: 'NOT_READY', dockReady: false, guidance: null, reason: 'unbound', revision });
++
++  function resetTransient() {
++    binding = null;
++    arrivalArmed = false;
++    wasDocked = true;
++    ackUntil = -Infinity;
++    nextSampleAt = -Infinity;
++    revoked = false;
++    readout = Object.freeze({ phase: 'OFF_DUTY', clearance: 'NOT_READY', dockReady: false, guidance: null, reason: 'unbound', revision: ++revision });
++  }
++
++  return {
++    // Copy only the dossier's bounded semantic fields. No clearance, entity ID, pending event,
++    // model/animation handle or acknowledgement survives a Save/Continue boundary.
++    serialize: () => normalizeLatchNineSave(memory),
++    deserialize(data) { memory = normalizeLatchNineSave(data); resetTransient(); },
++    resetSession() { dismissed = false; resetTransient(); },
++    dismiss() { dismissed = true; arrivalArmed = false; ackUntil = -Infinity; },
++    // Wire only to dock:denied for this station. The next update re-queries the authoritative
++    // selector; an event never grants permission. Explicit revocation also cancels an ACK.
++    revoke(stationId) {
++      if (stationId !== LATCH_NINE_STATION_ID) return;
++      revoked = true;
++      arrivalArmed = false;
++      ackUntil = -Infinity;
++    },
++    get readout() { return readout; },
++
++    update(state, { enabled = true, recovering = false } = {}) {
++      const now = Number.isFinite(state?.simTime) ? state.simTime : 0;
++      const player = state?.entities?.get(state.playerId);
++      const station = state?.entities && liveStation(state);
++      const sectorId = state?.world?.currentSectorId || null;
++      const inSector = sectorId === LATCH_NINE_SECTOR_ID;
++      const identityChanged = !binding || binding.player !== player || binding.station !== station || binding.sectorId !== sectorId;
++      const docked = dockedAtLatch(state || {});
++      if (identityChanged) {
++        binding = { player, station, sectorId };
++        arrivalArmed = false;
++        wasDocked = docked;
++        ackUntil = -Infinity;
++        nextSampleAt = -Infinity;
++      }
++      const distance = player?.pos && station?.pos
++        ? Math.hypot(player.pos.x - station.pos.x, player.pos.z - station.pos.z) : Infinity;
++      const active = enabled && !dismissed && !memory.destroyed && inSector
++        && player?.alive === true && station?.alive === true
++        && station.data?.dockless !== true && distance <= LATCH_NINE_GUIDANCE_RANGE;
++      const denial = active ? resolveDockDeny(state, station) : null;
++      const range = active && !docked && !denial ? resolveDockRange(state, rangeScratch) : null;
++      const fence = flightFence(state || {}, player);
++      const clear = active && !denial && !fence && range?.station === station;
++      const revokedThisTick = revoked;
++      revoked = false;
++      if (!active || denial || revokedThisTick) {
++        arrivalArmed = false;
++        ackUntil = -Infinity;
++      }
++      // uiRoot's actual docked-state edge confirms arrival. A bare/replayed dock:docked
++      // receipt, dock:attempt or an already-docked save cannot produce an acknowledgement.
++      if (active && !denial && !revokedThisTick && docked && !wasDocked && arrivalArmed) {
++        ackUntil = now + LATCH_NINE_ACK_S;
++        arrivalArmed = false;
++      } else if (!docked) {
++        arrivalArmed = !!clear && !revokedThisTick;
++        ackUntil = -Infinity;
++      }
++      wasDocked = docked;
++      const ack = active && !denial && docked && now < ackUntil;
++      const phase = !active ? 'OFF_DUTY'
++        : denial || revokedThisTick ? 'HOLD'
++          : recovering ? 'RECOVER'
++            : ack ? 'ACKNOWLEDGE' : clear ? 'GUIDE' : fence ? 'HOLD' : 'APPROACH';
++      const reason = !active ? 'off_duty' : denial?.reason || (revokedThisTick ? 'revoked'
++        : recovering ? 'recovering' : ack ? 'arrival' : clear ? 'dock_ready' : fence || 'approach');
++      // Recovery is a body state. Ordinary docking remains the core/UI owner's decision.
++      const clearance = ack ? 'DOCKED' : clear && !revokedThisTick ? 'CLEAR'
++        : denial || fence || revokedThisTick ? 'HOLD' : 'NOT_READY';
++      const changed = phase !== readout.phase || clearance !== readout.clearance || reason !== readout.reason;
++      if (identityChanged || changed || (active && now >= nextSampleAt)) {
++        // Read the default flight owner's pure staged target query. This does not turn on
++        // autopilot: it supplies direction/alignment while the pilot retains every input.
++        // APPROACH is deliberately separate from permission; HOLD must not trap a pilot
++        // outside the berth that they must approach before the range gate can become true.
++        const target = active && !denial && !fence && !revokedThisTick
++          ? resolveAutopilotTarget(state, { targetEntityId: station.id }) : null;
++        const speed = Math.hypot(player?.vel?.x || 0, player?.vel?.z || 0);
++        const guidance = target ? Object.freeze({
++          stage: target.dockingStage || 'station',
++          anchorKind: target.dockAnchorKind || 'legacy-radius',
++          target: Object.freeze({ x: target.x, z: target.z }),
++          hint: clear ? 'dock_ready' : Number.isFinite(target.dockSpeedGate) && speed > target.dockSpeedGate
++            ? 'slow_and_align' : 'align',
++        }) : null;
++        readout = Object.freeze({
++          phase, clearance, dockReady: clear && !revokedThisTick, guidance, reason, stationId: active ? LATCH_NINE_STATION_ID : null,
++          shipId: active ? state.playerId : null, hailAvailable: active && distance <= LATCH_NINE_HAIL_RANGE,
++          revision: ++revision,
++        });
++        nextSampleAt = now + LATCH_NINE_SAMPLE_S;
++      }
++      if (active && !fence) memory.met = true;
++      // cleanArrivals/incidentIds stay unchanged until the incident owner supplies verified
++      // facts in the integration packet. No claim of a clean approach from silence alone.
++      return readout;
++    },
++  };
++}
+diff --git a/src/ui/dockDenyBanner.js b/src/ui/dockDenyBanner.js
+index 5c11c1d..09853d5 100644
+--- a/src/ui/dockDenyBanner.js
++++ b/src/ui/dockDenyBanner.js
+@@ -23,8 +23,8 @@
+ //   * Debounce: the same station within DEBOUNCE_S of simTime is ONE attempt (guards against the
+ //     attempt+docked double-signal), timed on state.simTime — deterministic, no wall clock.
+ 
+-import { dockDenyReason } from '../data/dockDeny.js';
+-import { FACTION_META } from '../data/factions.js';
++import { resolveDockDeny } from '../core/dockAccess.js';
++export { resolveDockDeny } from '../core/dockAccess.js';
+ import { mountDataState, settleDataState } from './uiPrimitives.js';
+ import { MAP_FOCUS, openGalaxyMap } from './mapAuthority.js';
+ 
+@@ -39,68 +39,6 @@ const DENY_CODES = Object.freeze({
+   hostile_rep: 'DOCKING_CLEARANCE_REVOKED',
+ });
+ 
+-/** Human label for a station (entity data name, else de-prefixed id). */
+-function stationLabel(station, stationId) {
+-  const name = (station && (station.name || (station.data && station.data.name))) || null;
+-  if (name) return name;
+-  return String(stationId || 'station').replace(/^station_/, '').replace(/_/g, ' ');
+-}
+-
+-/** Find the live station entity's data by stationId (defensive; null if absent). */
+-function findStationData(state, stationId) {
+-  if (!state || !stationId) return null;
+-  const byStationId = state.entityIndex && state.entityIndex.byStationId;
+-  const indexed = byStationId && typeof byStationId.get === 'function' && byStationId.get(stationId);
+-  if (indexed && indexed.alive !== false && indexed.type === 'station') {
+-    const data = indexed.data || {};
+-    return { ...data, factionId: data.factionId || indexed.factionId || null };
+-  }
+-  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
+-  for (const e of list) {
+-    if (!e || e.alive === false || e.type !== 'station') continue;
+-    const data = e.data || {};
+-    if (data.stationId === stationId) return { ...data, factionId: data.factionId || e.factionId || null };
+-  }
+-  return null;
+-}
+-
+-/**
+- * resolveDockDeny(state, stationRef) -> { stationId, label, reason, text, factionId } | null
+- *
+- * stationRef: a stationId string (resolved against live entities) or a station-like object.
+- * PURE over its inputs: calls the SHIPPED dockDenyReason with a full factionMeta (meta + live
+- * rep from state.factions) so the flavored line always wins for a factioned station.
+- * null = dockable (surface nothing).
+- */
+-export function resolveDockDeny(state, stationRef) {
+-  const stationId = typeof stationRef === 'string'
+-    ? stationRef
+-    : (stationRef && (stationRef.stationId || stationRef.id || (stationRef.data && stationRef.data.stationId))) || null;
+-  const station = typeof stationRef === 'object' && stationRef !== null
+-    ? (stationRef.data ? { ...stationRef.data, factionId: stationRef.data.factionId || stationRef.factionId || null } : stationRef)
+-    : findStationData(state, stationId);
+-  if (!station) return null;
+-
+-  const factionId = station.factionId || null;
+-  const meta = FACTION_META.find((f) => f && f.id === factionId) || null;
+-  const rep = state && state.factions && factionId && state.factions[factionId]
+-    ? state.factions[factionId].rep : undefined;
+-  // ALWAYS pass factionMeta (flavored voice wins); carry live rep for the minRep gate.
+-  const factionMeta = meta
+-    ? (Number.isFinite(rep) ? { ...meta, rep } : meta)
+-    : (factionId || undefined);
+-
+-  const deny = dockDenyReason(station, factionMeta);
+-  if (!deny) return null;
+-  return {
+-    stationId: stationId || null,
+-    label: stationLabel(station, stationId),
+-    reason: deny.reason,
+-    text: deny.text,
+-    factionId,
+-  };
+-}
+-
+ // ── registry SYSTEMS-only entry (no update; event-driven) ──────────────────────────────────────
+ 
+ export const dockDenyBanner = {
+diff --git a/test/latch-nine-service.test.mjs b/test/latch-nine-service.test.mjs
+new file mode 100644
+index 0000000..a926eed
+--- /dev/null
++++ b/test/latch-nine-service.test.mjs
+@@ -0,0 +1,299 @@
++import assert from 'node:assert/strict';
++import { test } from 'node:test';
++import { createBus } from '../src/core/eventBus.js';
++import { physics } from '../src/core/physics.js';
++import { resolveDockRange } from '../src/core/dockRange.js';
++import { resolveDockDeny } from '../src/core/dockAccess.js';
++import { resolveDockDeny as bannerDeny } from '../src/ui/dockDenyBanner.js';
++import { resolveCollisionProxyManifest, resolveDockAnchor } from '../src/data/collisionProxyManifests.js';
++import { createLatchNineService, normalizeLatchNineSave } from '../src/systems/latchNineService.js';
++
++function fixture({ manifest = false } = {}) {
++  const player = { id: 1, alive: true, type: 'ship', radius: 10, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } };
++  const station = { id: 2, alive: true, type: 'station', radius: 90, pos: { x: 0, z: 0 },
++    data: { stationId: 'station_tethys', dockRadius: 90, factionId: 'faction_scn',
++      ...(manifest ? { collisionProxy: 'helios_trade_hub' } : {}) } };
++  const state = { playerId: 1, entities: new Map([[1, player], [2, station]]), entityList: [player, station],
++    entityIndex: { stations: [station] }, world: { currentSectorId: 'sector_tethys_junction' },
++    mode: 'flight', simTime: 0, ui: { docked: false }, factions: { faction_scn: { rep: 0 } } };
++  if (manifest) {
++    const anchor = resolveDockAnchor(station, resolveCollisionProxyManifest(station), player);
++    player.pos = { x: anchor.x, z: anchor.z };
++  }
++  const service = createLatchNineService();
++  return { state, player, station, service, step: (opts) => { state.simTime += 1 / 60; return service.update(state, opts); } };
++}
++
++function dockingOwner(state) {
++  const bus = createBus(), events = [];
++  bus.on('dock:range', p => events.push(['dock', { ...p }]));
++  bus.on('gate:range', p => events.push(['gate', { ...p }]));
++  return { owner: { ...physics, bus, _dockStationId: null, _gateEntityId: null }, events };
++}
++
++test('range extraction drives the real physics owner with unchanged enter/leave events', () => {
++  const { state, player, station } = fixture();
++  const { owner, events } = dockingOwner(state);
++  owner.updateDockRange(state);
++  assert.deepEqual(events, [['dock', { stationId: 'station_tethys', shipId: 1, inRange: true }]]);
++  owner.updateDockRange(state);
++  assert.equal(events.length, 1);
++  player.pos.x = 1000;
++  owner.updateDockRange(state);
++  assert.deepEqual(events[1], ['dock', { stationId: 'station_tethys', shipId: 1, inRange: false }]);
++  assert.equal(resolveDockRange(state).station, null);
++  player.pos.x = station.pos.x;
++  assert.equal(resolveDockRange(state).station, station);
++});
++
++test('manifest berth and large-hull standoff keep the actual range/speed gate', () => {
++  const f = fixture({ manifest: true });
++  const { owner, events } = dockingOwner(f.state);
++  owner.updateDockRange(f.state);
++  assert.equal(events.at(-1)[1].inRange, true);
++  assert.equal(f.step().phase, 'GUIDE');
++  f.player.vel.x = 100;
++  owner.updateDockRange(f.state);
++  assert.equal(events.at(-1)[1].inRange, false);
++  assert.equal(f.step().phase, 'APPROACH');
++  assert.equal(f.service.readout.guidance.hint, 'slow_and_align');
++  f.player.vel.x = 0;
++  f.player.radius = 100;
++  const anchor = resolveDockAnchor(f.station, resolveCollisionProxyManifest(f.station), f.player);
++  f.player.pos = { x: anchor.x, z: anchor.z };
++  assert.equal(resolveDockRange(f.state).station, f.station);
++});
++
++test('nearest station and jump gate selection are preserved', () => {
++  const f = fixture();
++  const other = { ...f.station, id: 3, pos: { x: 10, z: 0 }, data: { stationId: 'station_other', dockRadius: 90 } };
++  const gate = { ...f.station, id: 4, data: { isGate: true, gateTo: 'elsewhere', name: 'Gate' } };
++  f.state.entities.set(3, other); f.state.entities.set(4, gate);
++  f.state.entityIndex.stations.push(other, gate);
++  f.player.pos.x = 10;
++  assert.equal(resolveDockRange(f.state).station, other);
++  assert.equal(resolveDockRange(f.state).gate, gate);
++  assert.equal(f.step().phase, 'APPROACH');
++});
++
++test('denial banner and command route keep the exact same pure refusal selector', () => {
++  assert.equal(bannerDeny, resolveDockDeny);
++  const f = fixture();
++  for (const reason of ['abandoned', 'private', 'military_only', 'under_construction', 'quarantine', 'hostile_rep']) {
++    f.station.data.dockDeny = reason;
++    assert.equal(resolveDockDeny(f.state, 'station_tethys').reason, reason);
++    assert.equal(f.step().phase, 'HOLD');
++    assert.equal(f.step().reason, reason);
++  }
++  delete f.station.data.dockDeny;
++  f.station.data.minRep = 10;
++  assert.equal(f.step().reason, 'hostile_rep');
++  f.state.factions.faction_scn.rep = 10;
++  assert.equal(f.step().phase, 'GUIDE');
++});
++
++test('requests, UI prompt repaints and corridor geometry never manufacture GUIDE', () => {
++  const f = fixture();
++  f.player.pos.x = 400;
++  f.state.dockingCorridor = { stationId: 'station_tethys', phase: 'berthed', berthed: true };
++  f.state.ui.dockInRange = true;
++  f.state.dockAttempt = { stationId: 'station_tethys' };
++  assert.equal(f.step().phase, 'APPROACH');
++  assert.equal(f.step().clearance, 'NOT_READY');
++  assert.equal(f.step().dockReady, false);
++  assert.equal(f.step().hailAvailable, false);
++});
++
++test('revocation interrupts GUIDE next tick, inside the 10 Hz readout interval', () => {
++  const f = fixture();
++  assert.equal(f.step().phase, 'GUIDE');
++  f.station.data.quarantine = true;
++  assert.equal(f.step().phase, 'HOLD');
++  delete f.station.data.quarantine;
++  assert.equal(f.step().phase, 'GUIDE');
++  f.service.revoke('station_other');
++  assert.equal(f.step().phase, 'GUIDE');
++  f.service.revoke('station_tethys');
++  assert.equal(f.step().reason, 'revoked');
++  assert.equal(f.step().phase, 'GUIDE');
++});
++
++test('fresh exact entity identity defeats stale station indexes and stale denial indexes', () => {
++  const f = fixture();
++  assert.equal(f.step().phase, 'GUIDE');
++  const replacement = { ...f.station, data: { ...f.station.data, quarantine: true } };
++  f.state.entities.set(2, replacement);
++  assert.equal(f.step().phase, 'OFF_DUTY');
++  f.state.entityIndex.stations = [replacement];
++  f.state.entityIndex.byStationId = new Map([['station_tethys', f.station]]);
++  assert.equal(f.step().reason, 'quarantine');
++  f.state.world.currentSectorId = 'sector_helios_prime';
++  assert.equal(f.step().phase, 'OFF_DUTY');
++});
++
++test('transition, jump, dead player and nonflight fences close guidance', () => {
++  const f = fixture();
++  assert.equal(f.step().phase, 'GUIDE');
++  f.state.jump = { state: 'CHARGING' }; assert.equal(f.step().phase, 'HOLD');
++  f.state.jump.state = 'JUMPING'; assert.equal(f.step().phase, 'HOLD');
++  f.state.jump.state = 'IDLE'; f.state.ui.fulfillmentBlackoutActive = true;
++  assert.equal(f.step().phase, 'HOLD');
++  f.state.ui.fulfillmentBlackoutActive = false; f.state.mode = 'menu';
++  assert.equal(f.step().phase, 'HOLD');
++  f.state.mode = 'flight'; f.player.alive = false;
++  assert.equal(f.step().phase, 'OFF_DUTY');
++});
++
++test('only a confirmed docked-state edge after an eligible approach acknowledges, once', () => {
++  const f = fixture();
++  assert.equal(f.step().phase, 'GUIDE');
++  // A request/receipt without the uiRoot-owned state transition is still only a request.
++  assert.equal(f.step().phase, 'GUIDE');
++  f.state.ui.docked = true; f.state.ui.dockedStationId = 'station_tethys';
++  assert.equal(f.step().phase, 'ACKNOWLEDGE');
++  f.state.simTime += 1;
++  assert.equal(f.step().phase, 'HOLD');
++  f.state.ui.docked = true; // duplicate accepted receipt has no new state edge
++  assert.equal(f.step().phase, 'HOLD');
++  assert.equal(f.service.serialize().cleanArrivals, 0, 'no unverified clean-arrival claim');
++});
++
++test('Save/Continue during GUIDE recomputes permission and after arrival never replays ACK', () => {
++  const f = fixture();
++  assert.equal(f.step().phase, 'GUIDE');
++  const guideSave = JSON.parse(JSON.stringify(f.service.serialize()));
++  assert.deepEqual(Object.keys(guideSave).sort(), ['cleanArrivals', 'destroyed', 'incidentIds', 'met']);
++  f.station.data.quarantine = true;
++  f.service.deserialize(guideSave);
++  assert.equal(f.step().phase, 'HOLD');
++  delete f.station.data.quarantine;
++  assert.equal(f.step().phase, 'GUIDE');
++  f.state.ui.docked = true; f.state.ui.dockedStationId = 'station_tethys';
++  assert.equal(f.step().phase, 'ACKNOWLEDGE');
++  const dockedSave = f.service.serialize();
++  f.service.deserialize(dockedSave);
++  assert.equal(f.step().phase, 'HOLD');
++  const cold = createLatchNineService(dockedSave);
++  assert.equal(cold.update(f.state).phase, 'HOLD');
++});
++
++test('save restore and replaced ship cannot inherit an armed arrival', () => {
++  const f = fixture();
++  assert.equal(f.step().phase, 'GUIDE');
++  const replacement = { ...f.player };
++  f.state.entities.set(1, replacement);
++  f.state.ui.docked = true; f.state.ui.dockedStationId = 'station_tethys';
++  assert.equal(f.step().phase, 'HOLD');
++});
++
++test('recovery reports the physical owner state without moving or freezing either vessel', () => {
++  const f = fixture();
++  const before = structuredClone({ player: f.player, station: f.station });
++  assert.equal(f.step({ recovering: true }).phase, 'RECOVER');
++  assert.equal(f.service.readout.clearance, 'CLEAR');
++  assert.deepEqual({ player: f.player, station: f.station }, before);
++  assert.equal(f.step({ recovering: false }).phase, 'GUIDE');
++  f.station.data.quarantine = true;
++  assert.equal(f.step({ recovering: true }).phase, 'HOLD', 'actual refusal takes precedence');
++});
++
++test('disabled, dismissed and destroyed character never changes ordinary docking', () => {
++  const f = fixture();
++  const { owner, events } = dockingOwner(f.state);
++  assert.equal(f.step({ enabled: false }).phase, 'OFF_DUTY');
++  owner.updateDockRange(f.state);
++  assert.equal(events.at(-1)[1].inRange, true);
++  assert.equal(resolveDockDeny(f.state, 'station_tethys'), null);
++  f.service.dismiss();
++  assert.equal(f.step().phase, 'OFF_DUTY');
++  f.service.deserialize(f.service.serialize());
++  assert.equal(f.step().phase, 'OFF_DUTY', 'Continue does not undo session dismissal');
++  f.service.resetSession(); assert.equal(f.step().phase, 'GUIDE');
++  f.service.deserialize({ destroyed: true });
++  assert.equal(f.step().phase, 'OFF_DUTY');
++  assert.equal(resolveDockRange(f.state).station, f.station);
++  assert.equal(resolveDockDeny(f.state, 'station_tethys'), null);
++});
++
++test('bounded save normalization rejects transient fields and returns independent data', () => {
++  const raw = { met: true, cleanArrivals: 100001.5, incidentIds: [null, '', ...Array.from({ length: 30 }, (_, i) => `i${i}`)],
++    destroyed: false, phase: 'ACKNOWLEDGE', stationId: 2, animation: {} };
++  const save = normalizeLatchNineSave(raw);
++  assert.equal(save.cleanArrivals, 100000); assert.equal(save.incidentIds.length, 16);
++  assert.equal(save.incidentIds[0], 'i14'); assert.equal('phase' in save, false);
++  const service = createLatchNineService(save);
++  service.serialize().incidentIds.push('foreign');
++  assert.equal(service.serialize().incidentIds.includes('foreign'), false);
++  assert.equal(normalizeLatchNineSave({ cleanArrivals: -5 }).cleanArrivals, 0);
++});
++
++
++test('manual approach gives mouth/alignment cues before permission, then READY only at the actual berth', () => {
++  const f = fixture({ manifest: true });
++  f.player.pos = { x: 350, z: -350 };
++  let out = f.step();
++  assert.equal(out.phase, 'APPROACH');
++  assert.equal(out.clearance, 'NOT_READY');
++  assert.equal(out.guidance.stage, 'corridor-mouth');
++  assert.equal(out.dockReady, false);
++  const mouth = out.guidance.target;
++  f.player.pos = { ...mouth };
++  f.state.simTime += 0.1;
++  out = f.step();
++  assert.equal(out.phase, 'APPROACH');
++  assert.equal(out.guidance.stage, 'berth');
++  assert.equal(out.clearance, 'NOT_READY');
++  const berth = out.guidance.target;
++  f.player.pos = { ...berth };
++  f.player.vel.x = 20;
++  f.state.simTime += 0.1;
++  out = f.step();
++  assert.equal(out.phase, 'APPROACH');
++  assert.equal(out.guidance.hint, 'slow_and_align');
++  assert.equal(out.dockReady, false);
++  f.player.vel.x = 0;
++  out = f.step();
++  assert.equal(out.phase, 'GUIDE');
++  assert.equal(out.clearance, 'CLEAR');
++  assert.equal(out.dockReady, true);
++  f.station.data.private = true;
++  out = f.step();
++  assert.equal(out.phase, 'HOLD');
++  assert.equal(out.guidance, null, 'refusal removes the stale approach cue immediately');
++  assert.equal(out.dockReady, false);
++});
++
++
++test('approach target reads do not engage autopilot or write player input, and revocation clears them', () => {
++  const f = fixture({ manifest: true });
++  f.player.pos = { x: 350, z: -350 };
++  f.state.input = { moveX: 0.7, moveZ: -0.4, turnIntent: 1, actions: { dock: false } };
++  f.state.player = { autopilot: { active: false, targetEntityId: null } };
++  const before = structuredClone({ player: f.player, input: f.state.input, pilot: f.state.player });
++  assert.equal(f.step().phase, 'APPROACH');
++  assert.deepEqual({ player: f.player, input: f.state.input, pilot: f.state.player }, before);
++  f.service.revoke('station_tethys');
++  const held = f.step();
++  assert.equal(held.phase, 'HOLD');
++  assert.equal(held.guidance, null);
++  assert.equal(held.dockReady, false);
++});
++
++test('off-duty service stays quiet instead of republishing every tick in another sector', () => {
++  const f = fixture();
++  f.state.world.currentSectorId = 'sector_elsewhere';
++  const first = f.step();
++  f.state.simTime += 1;
++  assert.equal(f.step(), first);
++});
++
++
++test('a menu or administrative transition cannot manufacture the first voluntary encounter', () => {
++  const f = fixture();
++  f.state.mode = 'menu';
++  f.step(); assert.equal(f.service.serialize().met, false);
++  f.state.mode = 'flight'; f.state.ui.fulfillmentBlackoutActive = true;
++  f.step(); assert.equal(f.service.serialize().met, false);
++  f.state.ui.fulfillmentBlackoutActive = false;
++  f.step(); assert.equal(f.service.serialize().met, true);
++});

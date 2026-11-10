@@ -1,0 +1,47 @@
+{
+  "ok": true,
+  "outPath": "/workspace/spaceface/design/program/vm-drop/save-size-quiet/samples.json",
+  "wallDurationMs": 73343,
+  "samples": [
+    {
+      "label": "start",
+      "simMinute": 0,
+      "playtimeS": 0,
+      "storedJsLength": 103598,
+      "storedUtf8Bytes": 103602,
+      "serializeUtf8Bytes": 103459,
+      "saveOk": true,
+      "error": null
+    },
+    {
+      "label": "30min",
+      "simMinute": 30,
+      "playtimeS": 1799.9999999986917,
+      "storedJsLength": 687320,
+      "storedUtf8Bytes": 687410,
+      "serializeUtf8Bytes": 687264,
+      "saveOk": true,
+      "error": null
+    },
+    {
+      "label": "60min",
+      "simMinute": 60,
+      "playtimeS": 3600.0000000182276,
+      "storedJsLength": 718069,
+      "storedUtf8Bytes": 718087,
+      "serializeUtf8Bytes": 717941,
+      "saveOk": true,
+      "error": null
+    },
+    {
+      "label": "120min",
+      "simMinute": 120,
+      "playtimeS": 7199.999999979374,
+      "storedJsLength": 736967,
+      "storedUtf8Bytes": 737061,
+      "serializeUtf8Bytes": 736915,
+      "saveOk": true,
+      "error": null
+    }
+  ]
+}

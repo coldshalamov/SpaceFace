@@ -1,0 +1,167 @@
+{
+  "schema": "spaceface.masslineExpressLiner.cycle.v1",
+  "assetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
+  "shipId": "massline_express_liner_v1",
+  "cycle": 32,
+  "blend": "blender/massline_express_liner_v1.blend",
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 29942,
+      "hullTriangles": 6396,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "bake": {
+        "baked": [
+          "LOD0_Armor",
+          "LOD0_Canopy",
+          "LOD0_Ceramic",
+          "LOD0_Hull",
+          "LOD0_Mechanical",
+          "LOD0_Radiator",
+          "LOD0_Thruster"
+        ],
+        "failed": []
+      },
+      "path": "source/wholeships/massline_express_liner_v1_lod0.glb",
+      "bytes": 8831676,
+      "sha256": "00F2DCAB9A2F24506E4A5576B48237D7EB74295CBFCCF0A1E4AB71F64EF35C60"
+    },
+    {
+      "lod": 1,
+      "triangles": 24962,
+      "hullTriangles": 6396,
+      "draws": 9,
+      "materials": [
+        "Material_Accent.001",
+        "Material_Armor.001",
+        "Material_Canopy.001",
+        "Material_Ceramic.001",
+        "Material_Hull.001",
+        "Material_Mechanical.001",
+        "Material_Radiator.001",
+        "Material_Thruster.001",
+        "Material_Warning.001"
+      ],
+      "bake": {
+        "baked": [],
+        "failed": []
+      },
+      "path": "source/wholeships/massline_express_liner_v1_lod1.glb",
+      "bytes": 7747268,
+      "sha256": "B32CBC8DBCC6CA40E9A95F25524B611A9303E8CD289F763BB46753DF926E1A37"
+    },
+    {
+      "lod": 2,
+      "triangles": 10596,
+      "hullTriangles": 1524,
+      "draws": 8,
+      "materials": [
+        "Material_Accent.002",
+        "Material_Armor.002",
+        "Material_Canopy.002",
+        "Material_Ceramic.002",
+        "Material_Hull.002",
+        "Material_Mechanical.002",
+        "Material_Radiator.002",
+        "Material_Thruster.002"
+      ],
+      "bake": {
+        "baked": [],
+        "failed": []
+      },
+      "path": "source/wholeships/massline_express_liner_v1_lod2.glb",
+      "bytes": 2604284,
+      "sha256": "2BA7F2DDE10CB8EDBBB730FD55DC8B5495AE612050EB001F6E13804C92B919A2"
+    }
+  ],
+  "stills": "evidence/massline_express_liner_v1/cycles/cycle_32",
+  "sourceSha256": "00F2DCAB9A2F24506E4A5576B48237D7EB74295CBFCCF0A1E4AB71F64EF35C60",
+  "boundsSizeM": [
+    40.67,
+    22.454,
+    10.9873
+  ],
+  "lengthToBeam": 1.8113,
+  "occupancy": {
+    "play_chase": {
+      "minX": 0.41418,
+      "maxX": 0.58863,
+      "minY": 0.4232,
+      "maxY": 0.58193,
+      "widthFrac": 0.17445,
+      "heightFrac": 0.15873,
+      "widthPx1600": 279.1,
+      "cropped": false,
+      "band": [
+        0.08,
+        0.22
+      ],
+      "inBand": true
+    },
+    "play_chase_abeam": {
+      "minX": 0.45098,
+      "maxX": 0.54853,
+      "minY": 0.35654,
+      "maxY": 0.62836,
+      "widthFrac": 0.09755,
+      "heightFrac": 0.27182,
+      "widthPx1600": 156.1,
+      "cropped": false,
+      "band": [
+        0.08,
+        0.22
+      ],
+      "inBand": true
+    },
+    "play_chase_close": {
+      "minX": 0.28448,
+      "maxX": 0.73414,
+      "minY": 0.29813,
+      "maxY": 0.69898,
+      "widthFrac": 0.44967,
+      "heightFrac": 0.40084,
+      "widthPx1600": 719.5,
+      "cropped": false,
+      "band": [
+        0.19862068965517243,
+        0.5462068965517242
+      ],
+      "inBand": true
+    }
+  },
+  "occupancyFailures": [],
+  "cameras": {
+    "play_chase": {
+      "distance": 144.0,
+      "heading": 0,
+      "fov": 50,
+      "tilt": 60
+    },
+    "play_chase_abeam": {
+      "distance": 144.0,
+      "heading": 90,
+      "fov": 50,
+      "tilt": 60
+    },
+    "play_chase_close": {
+      "distance": 58.0,
+      "heading": 0,
+      "fov": 50,
+      "tilt": 60
+    }
+  },
+  "notes": "Source candidate only. Not wired to traffic, manifests, or partsLibrary.",
+  "implementingAgentVerdict": "review_pending",
+  "evidenceState": "evidence_ready"
+}

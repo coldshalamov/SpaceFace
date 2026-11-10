@@ -1,0 +1,4393 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.massline-express-liner-v1.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.4000000059604645,
+        0.44999998807907104,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.4000000059604645,
+        0.44999998807907104,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.anchor.socket-cargo-ventral",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.3499999940395355,
+        -5.28000020980835,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.3499999940395355,
+        -5.28000020980835,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.anchor.socket-dock-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.4000000953674316,
+        0.41999998688697815,
+        9.350000381469727,
+        1
+      ],
+      "nodeName": "SOCKET_Dock_Port",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.4000000953674316,
+        0.41999998688697815,
+        9.350000381469727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.149999618530273,
+        0.3799999952316284,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.149999618530273,
+        0.3799999952316284,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.anchor.socket-mining-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        19.799999237060547,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        19.799999237060547,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.anchor.socket-rcs-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.800000190734863,
+        0.8500000238418579,
+        9.020000457763672,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.800000190734863,
+        0.8500000238418579,
+        9.020000457763672,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.anchor.socket-rcs-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.800000190734863,
+        0.8500000238418579,
+        -9.020000457763672,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.800000190734863,
+        0.8500000238418579,
+        -9.020000457763672,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.anchor.socket-service-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.7999999523162842,
+        0.41999998688697815,
+        -9.350000381469727,
+        1
+      ],
+      "nodeName": "SOCKET_Service_Starboard",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.7999999523162842,
+        0.41999998688697815,
+        -9.350000381469727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.anchor.socket-tether-keel",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.3499999940395355,
+        -5.28000020980835,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Keel",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.3499999940395355,
+        -5.28000020980835,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.779999732971191,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.779999732971191,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.anchor.socket-trail-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        4.550000190734863,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        4.550000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.anchor.socket-trail-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        -4.550000190734863,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        -4.550000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.anchor.socket-utility-dorsal",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.400000095367432,
+        5.550000190734863,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.400000095367432,
+        5.550000190734863,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        17.850000381469727,
+        0.550000011920929,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        17.850000381469727,
+        0.550000011920929,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.massline-express-liner-v1",
+  "collisions": [
+    {
+      "id": "sf.render.massline-express-liner-v1.collision",
+      "nodeId": "sf.render.massline-express-liner-v1.node.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "9d1066862901157146f3b5fd5cebce979cff25360f32f703e9053b9b9b3715e3",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-drive-core.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-drive-core"
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-nav-port.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-nav-port"
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-nav-starboard.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-nav-starboard"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          18.400609970092773,
+          7.331486015639685,
+          9.58283789835207
+        ],
+        "min": [
+          -21.21653938293457,
+          -5.4567029765466675,
+          -8.936278183081074
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "19fe37d50c47a25b13f3a165cce74d0f66ac20d3c02672001be7ce555ded32c6",
+      "id": "sf.render.massline-express-liner-v1.node.collision-hull.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.massline-express-liner-v1.node.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 873
+    },
+    {
+      "bounds": {
+        "max": [
+          18.390104293823242,
+          5.560153275023345,
+          8.610003719041115
+        ],
+        "min": [
+          -20.299999237060547,
+          -5.200151710997466,
+          -8.819257983872658
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "206a401d54ee3eff4337cd0684a5780915a55406460630d350f28731deea91ed",
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-armor-frame.primitive.0",
+      "indexCount": 37242,
+      "indexed": true,
+      "materialHash": "aaffe6ecd667f675fba9acd50861bbfe4acc50deac6eb3f559e4025176f77352",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Armor_frame",
+      "nodeId": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-armor-frame",
+      "primitiveIndex": 0,
+      "vertexCount": 11303
+    },
+    {
+      "bounds": {
+        "max": [
+          11.550000190734863,
+          5.6703564441756695,
+          8.52103635649018
+        ],
+        "min": [
+          -19.649999618530273,
+          -4.861678770835826,
+          -8.52103635649018
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2724db80efac5c30f737ff1f56ef981c0372469e1a99dd677177beb2e9661713",
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-armor.primitive.0",
+      "indexCount": 7362,
+      "indexed": true,
+      "materialHash": "8ce5be53596be9afaa2c31d7d1298bb1422398cbf70f06e47eac651ee5f1c967",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Armor",
+      "nodeId": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 2330
+    },
+    {
+      "bounds": {
+        "max": [
+          3.490000009536743,
+          5.6149501917956455,
+          8.990548267211102
+        ],
+        "min": [
+          -18.017000198364258,
+          1.7870494009854212,
+          -0.21754847392000976
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9a4e4012cda2117a00b9fcf6aa25fd81ec5d543edf5ed1c72114ed43672e5aee",
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-beacon-amber.primitive.0",
+      "indexCount": 504,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+      "nodeId": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 152
+    },
+    {
+      "bounds": {
+        "max": [
+          14.723433494567871,
+          5.6199403841523825,
+          5.232458122111213
+        ],
+        "min": [
+          -8.600000381469727,
+          0.4352151315183943,
+          -5.225966937876594
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4fd43b9dc6023f1b6ea97b0639721f5185bbf2eca12601352773f33ec01b309d",
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-canopy.primitive.0",
+      "indexCount": 2238,
+      "indexed": true,
+      "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD0_MOTION_HULL_CORE_CANOPY",
+      "nodeId": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 698
+    },
+    {
+      "bounds": {
+        "max": [
+          -20.614999771118164,
+          1.4341533678804446,
+          5.386999607086182
+        ],
+        "min": [
+          -20.614999771118164,
+          -0.6741534370218325,
+          -5.387000560760498
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2186d38af4cb3c029cffc7c032673ff96c2b631f597631fe99b5512b05027444",
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-drive-core.primitive.0",
+      "indexCount": 270,
+      "indexed": true,
+      "materialHash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -9.964848209002975,
+          7.324699224464028,
+          2.2350001335144043
+        ],
+        "min": [
+          -17.350152325054644,
+          0.794800816543968,
+          -8.34999942779541
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "07567922327a823818ee0d3d447301d5a41ac10e988ee14c766b881b503d9be4",
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-nav-port.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodeId": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -17.05000114440918,
+          1.005004744670591,
+          8.34999942779541
+        ],
+        "min": [
+          -17.350000381469727,
+          0.7949952076456932,
+          8.050000190734863
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1f8b3647f764e8c67031a22b22ec2e56f6cace87b5264a8575f89e3d2d248925",
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-nav-starboard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          18.399999618530273,
+          5.558375676626994,
+          8.600905388592764
+        ],
+        "min": [
+          -18.592304229736328,
+          -3.9936700663517257,
+          -8.600905388592764
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b37fd52ce15af3d00c781332330699459b2ccf1b986c4c3c7fb37370b9e99961",
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hull.primitive.0",
+      "indexCount": 21474,
+      "indexed": true,
+      "materialHash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Hull",
+      "nodeId": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 6044
+    },
+    {
+      "bounds": {
+        "max": [
+          -12.66083812713623,
+          6.124897957663077,
+          -2.5821290016174316
+        ],
+        "min": [
+          -12.768837928771973,
+          6.0492944709257905,
+          -2.690128803253174
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "262c6dcf28664931f09deb03e9d6c3e4806ea59a5f7c7fef57cd942108e4ab51",
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-lights-cyan.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
+      "nodeId": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          7.900000095367432,
+          5.645087122325986,
+          8.644209352495556
+        ],
+        "min": [
+          -16.71500015258789,
+          -0.8100872033883024,
+          -8.644209352495556
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "115f14e2c5edeb3e8e88bc5f84122fc50121d1e1cbd2ccdddfb03eac6913a89c",
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-lights-warm.primitive.0",
+      "indexCount": 4896,
+      "indexed": true,
+      "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+      "nodeId": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 3264
+    },
+    {
+      "bounds": {
+        "max": [
+          9.100000381469727,
+          7.30033057435306,
+          9.580435940099306
+        ],
+        "min": [
+          -21.219999313354492,
+          -5.451520855267367,
+          -8.920436092687197
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ae875979a76ef114c0ec7a8c8041551dc0735c84ee15e2f9cd1f9538cb6216a5",
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-mechanical.primitive.0",
+      "indexCount": 19338,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Mechanical",
+      "nodeId": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 8159
+    },
+    {
+      "bounds": {
+        "max": [
+          8.980000495910645,
+          5.957698762917077,
+          9.499801841898186
+        ],
+        "min": [
+          -21.219999313354492,
+          -4.199904859566247,
+          -7.25780173890136
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d9aeca427d4e88f49d03fadfc63d3799e10a6d69b3b02b4d173eb1f987510501",
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
+      "indexCount": 9096,
+      "indexed": true,
+      "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+      "nodeId": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 2896
+    },
+    {
+      "bounds": {
+        "max": [
+          16.67506635425896,
+          5.500370880447629,
+          9.535594940185547
+        ],
+        "min": [
+          2.109932539478832,
+          -4.90037097581506,
+          -8.59791088104248
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ff79b04c7d107f32708564895cfea7f7971bd9e0c67b547fd351fddb3bc35af1",
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-warning.primitive.0",
+      "indexCount": 2712,
+      "indexed": true,
+      "materialHash": "6586e905d02437795de206c03af8d908f48cbd31175bc95dcc7e6050d8a103b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Warning",
+      "nodeId": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 760
+    }
+  ],
+  "hlods": [],
+  "kind": "ship",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "id": "material:1ee807a3355d83d28693fa8c",
+      "name": "Material_Canopy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6586e905d02437795de206c03af8d908f48cbd31175bc95dcc7e6050d8a103b7",
+      "id": "material:6586e905d02437795de206c0",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "674f214b9b571ec60dc6b3efdfadea784fdec9ba52c8031b1484252ba6e6d9cf",
+      "id": "material:674f214b9b571ec60dc6b3ef",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "id": "material:7dbce0f058ce69aeee64664b",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
+      "id": "material:85add90c89b799ae69ad3e2f",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "8ce5be53596be9afaa2c31d7d1298bb1422398cbf70f06e47eac651ee5f1c967",
+      "id": "material:8ce5be53596be9afaa2c31d7",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "id": "material:935effa788e2e47cba8a2bfc",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "aaffe6ecd667f675fba9acd50861bbfe4acc50deac6eb3f559e4025176f77352",
+      "id": "material:aaffe6ecd667f675fba9acd5",
+      "name": "Material_Armor_frame",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
+      "id": "material:be05a75f6364bf5672ea6503",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f64dcbc7e999cc81995955b9945a85665edbb8518348303e66429350fe96c1b2",
+      "id": "material:f64dcbc7e999cc81995955b9",
+      "name": "Material_Thruster",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.massline-express-liner-v1.node.collision-hull",
+      "localTransform": [
+        19.808574676513672,
+        0,
+        0,
+        0,
+        0,
+        19.808574676513672,
+        0,
+        0,
+        0,
+        0,
+        19.808574676513672,
+        0,
+        -1.4079647064208984,
+        0.9373915195465088,
+        0.32327985763549805,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        19.808574676513672,
+        0,
+        0,
+        0,
+        0,
+        19.808574676513672,
+        0,
+        0,
+        0,
+        0,
+        19.808574676513672,
+        0,
+        -1.4079647064208984,
+        0.9373915195465088,
+        0.32327985763549805,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "LINER_LOD0_ROOT",
+      "nodeName": "LINER_LOD0_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-armor",
+      "localTransform": [
+        15.599999904632568,
+        0,
+        0,
+        0,
+        0,
+        15.599999904632568,
+        0,
+        0,
+        0,
+        0,
+        15.599999904632568,
+        0,
+        -4.049999713897705,
+        0.4043388366699219,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Armor",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Armor",
+      "nodePath": [
+        0,
+        1,
+        0
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        15.599999904632568,
+        0,
+        0,
+        0,
+        0,
+        15.599999904632568,
+        0,
+        0,
+        0,
+        0,
+        15.599999904632568,
+        0,
+        -4.049999713897705,
+        0.4043388366699219,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-armor-frame",
+      "localTransform": [
+        19.345051765441895,
+        0,
+        0,
+        0,
+        0,
+        19.345051765441895,
+        0,
+        0,
+        0,
+        0,
+        19.345051765441895,
+        0,
+        -0.9549474716186523,
+        0.18000078201293945,
+        -0.10462713241577148,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Armor_frame",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Armor_frame",
+      "nodePath": [
+        0,
+        1,
+        1
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        19.345051765441895,
+        0,
+        0,
+        0,
+        0,
+        19.345051765441895,
+        0,
+        0,
+        0,
+        0,
+        19.345051765441895,
+        0,
+        -0.9549474716186523,
+        0.18000078201293945,
+        -0.10462713241577148,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-beacon-amber",
+      "localTransform": [
+        10.7535001039505,
+        0,
+        0,
+        0,
+        0,
+        10.7535001039505,
+        0,
+        0,
+        0,
+        0,
+        10.7535001039505,
+        0,
+        -7.263500094413757,
+        3.7009997963905334,
+        4.386499896645546,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+      "nodePath": [
+        0,
+        1,
+        2
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        10.7535001039505,
+        0,
+        0,
+        0,
+        0,
+        10.7535001039505,
+        0,
+        0,
+        0,
+        0,
+        10.7535001039505,
+        0,
+        -7.263500094413757,
+        3.7009997963905334,
+        4.386499896645546,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-canopy",
+      "localTransform": [
+        11.661716938018799,
+        0,
+        0,
+        0,
+        0,
+        11.661716938018799,
+        0,
+        0,
+        0,
+        0,
+        11.661716938018799,
+        0,
+        3.0617165565490723,
+        3.027577757835388,
+        0.0032455921173095703,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_CANOPY",
+      "nodeName": "LOD0_MOTION_HULL_CORE_CANOPY",
+      "nodePath": [
+        0,
+        1,
+        3
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        11.661716938018799,
+        0,
+        0,
+        0,
+        0,
+        11.661716938018799,
+        0,
+        0,
+        0,
+        0,
+        11.661716938018799,
+        0,
+        3.0617165565490723,
+        3.027577757835388,
+        0.0032455921173095703,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-drive-core",
+      "localTransform": [
+        5.38700008392334,
+        0,
+        0,
+        0,
+        0,
+        5.38700008392334,
+        0,
+        0,
+        0,
+        0,
+        5.38700008392334,
+        0,
+        -20.614999771118164,
+        0.37999996542930603,
+        -4.76837158203125e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        1,
+        4
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        5.38700008392334,
+        0,
+        0,
+        0,
+        0,
+        5.38700008392334,
+        0,
+        0,
+        0,
+        0,
+        5.38700008392334,
+        0,
+        -20.614999771118164,
+        0.37999996542930603,
+        -4.76837158203125e-7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-nav-port",
+      "localTransform": [
+        5.292499780654907,
+        0,
+        0,
+        0,
+        0,
+        5.292499780654907,
+        0,
+        0,
+        0,
+        0,
+        5.292499780654907,
+        0,
+        -13.657500267028809,
+        4.059750020503998,
+        -3.057499647140503,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        1,
+        5
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        5.292499780654907,
+        0,
+        0,
+        0,
+        0,
+        5.292499780654907,
+        0,
+        0,
+        0,
+        0,
+        5.292499780654907,
+        0,
+        -13.657500267028809,
+        4.059750020503998,
+        -3.057499647140503,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-nav-starboard",
+      "localTransform": [
+        0.14999961853027344,
+        0,
+        0,
+        0,
+        0,
+        0.14999961853027344,
+        0,
+        0,
+        0,
+        0,
+        0.14999961853027344,
+        0,
+        -17.200000762939453,
+        0.8999999761581421,
+        8.199999809265137,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        1,
+        6
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.motion-hull-core",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        0.14999961853027344,
+        0,
+        0,
+        0,
+        0,
+        0.14999961853027344,
+        0,
+        0,
+        0,
+        0,
+        0.14999961853027344,
+        0,
+        -17.200000762939453,
+        0.8999999761581421,
+        8.199999809265137,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hull",
+      "localTransform": [
+        18.4961519241333,
+        0,
+        0,
+        0,
+        0,
+        18.4961519241333,
+        0,
+        0,
+        0,
+        0,
+        18.4961519241333,
+        0,
+        -0.09615230560302734,
+        0.7823528051376343,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Hull",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Hull",
+      "nodePath": [
+        0,
+        1,
+        7
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        18.4961519241333,
+        0,
+        0,
+        0,
+        0,
+        18.4961519241333,
+        0,
+        0,
+        0,
+        0,
+        18.4961519241333,
+        0,
+        -0.09615230560302734,
+        0.7823528051376343,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-lights-cyan",
+      "localTransform": [
+        0.053999900817871094,
+        0,
+        0,
+        0,
+        0,
+        0.053999900817871094,
+        0,
+        0,
+        0,
+        0,
+        0.053999900817871094,
+        0,
+        -12.714838027954102,
+        6.087096214294434,
+        -2.6361289024353027,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
+      "nodePath": [
+        0,
+        1,
+        8
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        0.053999900817871094,
+        0,
+        0,
+        0,
+        0,
+        0.053999900817871094,
+        0,
+        0,
+        0,
+        0,
+        0.053999900817871094,
+        0,
+        -12.714838027954102,
+        6.087096214294434,
+        -2.6361289024353027,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-lights-warm",
+      "localTransform": [
+        12.307500123977661,
+        0,
+        0,
+        0,
+        0,
+        12.307500123977661,
+        0,
+        0,
+        0,
+        0,
+        12.307500123977661,
+        0,
+        -4.4075000286102295,
+        2.4174999594688416,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+      "nodePath": [
+        0,
+        1,
+        9
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        12.307500123977661,
+        0,
+        0,
+        0,
+        0,
+        12.307500123977661,
+        0,
+        0,
+        0,
+        0,
+        12.307500123977661,
+        0,
+        -4.4075000286102295,
+        2.4174999594688416,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-mechanical",
+      "localTransform": [
+        15.15999984741211,
+        0,
+        0,
+        0,
+        0,
+        15.15999984741211,
+        0,
+        0,
+        0,
+        0,
+        15.15999984741211,
+        0,
+        -6.059999465942383,
+        0.9244048595428467,
+        0.3299999237060547,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Mechanical",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Mechanical",
+      "nodePath": [
+        0,
+        1,
+        10
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        15.15999984741211,
+        0,
+        0,
+        0,
+        0,
+        15.15999984741211,
+        0,
+        0,
+        0,
+        0,
+        15.15999984741211,
+        0,
+        -6.059999465942383,
+        0.9244048595428467,
+        0.3299999237060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-mechanicaldark",
+      "localTransform": [
+        15.099999904632568,
+        0,
+        0,
+        0,
+        0,
+        15.099999904632568,
+        0,
+        0,
+        0,
+        0,
+        15.099999904632568,
+        0,
+        -6.119999408721924,
+        0.878896951675415,
+        1.121000051498413,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+      "nodeName": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+      "nodePath": [
+        0,
+        1,
+        11
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        15.099999904632568,
+        0,
+        0,
+        0,
+        0,
+        15.099999904632568,
+        0,
+        0,
+        0,
+        0,
+        15.099999904632568,
+        0,
+        -6.119999408721924,
+        0.878896951675415,
+        1.121000051498413,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-warning",
+      "localTransform": [
+        9.066752910614014,
+        0,
+        0,
+        0,
+        0,
+        9.066752910614014,
+        0,
+        0,
+        0,
+        0,
+        9.066752910614014,
+        0,
+        9.392499446868896,
+        0.2999999523162842,
+        0.4688420295715332,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Warning",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Warning",
+      "nodePath": [
+        0,
+        1,
+        12
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.motion-hull-core",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        9.066752910614014,
+        0,
+        0,
+        0,
+        0,
+        9.066752910614014,
+        0,
+        0,
+        0,
+        0,
+        9.066752910614014,
+        0,
+        9.392499446868896,
+        0.2999999523162842,
+        0.4688420295715332,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.motion-hull-core",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_HULL_CORE",
+      "nodeName": "MOTION_HULL_CORE",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.4000000059604645,
+        0.44999998807907104,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.4000000059604645,
+        0.44999998807907104,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.socket-cargo-ventral",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.3499999940395355,
+        -5.28000020980835,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Cargo_Ventral",
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.3499999940395355,
+        -5.28000020980835,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.socket-dock-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.4000000953674316,
+        0.41999998688697815,
+        9.350000381469727,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Dock_Port",
+      "nodeName": "SOCKET_Dock_Port",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.4000000953674316,
+        0.41999998688697815,
+        9.350000381469727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.socket-engine-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.149999618530273,
+        0.3799999952316284,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Engine_Main",
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.149999618530273,
+        0.3799999952316284,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.socket-mining-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        19.799999237060547,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Mining_Front",
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        19.799999237060547,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.socket-rcs-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.800000190734863,
+        0.8500000238418579,
+        9.020000457763672,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Port",
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.800000190734863,
+        0.8500000238418579,
+        9.020000457763672,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.socket-rcs-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.800000190734863,
+        0.8500000238418579,
+        -9.020000457763672,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_RCS_Starboard",
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.800000190734863,
+        0.8500000238418579,
+        -9.020000457763672,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.socket-service-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.7999999523162842,
+        0.41999998688697815,
+        -9.350000381469727,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Service_Starboard",
+      "nodeName": "SOCKET_Service_Starboard",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.7999999523162842,
+        0.41999998688697815,
+        -9.350000381469727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.socket-tether-keel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.3499999940395355,
+        -5.28000020980835,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tether_Keel",
+      "nodeName": "SOCKET_Tether_Keel",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.3499999940395355,
+        -5.28000020980835,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.socket-tether-massline",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.779999732971191,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tether_Massline",
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.779999732971191,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.socket-trail-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Main",
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.socket-trail-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        4.550000190734863,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Port",
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        4.550000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.socket-trail-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        -4.550000190734863,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Starboard",
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -20.850000381469727,
+        0.3799999952316284,
+        -4.550000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.socket-utility-dorsal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.400000095367432,
+        5.550000190734863,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Utility_Dorsal",
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.400000095367432,
+        5.550000190734863,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.massline-express-liner-v1.node.socket-weapon-front",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        17.850000381469727,
+        0.550000011920929,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Weapon_Front",
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.massline-express-liner-v1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        17.850000381469727,
+        0.550000011920929,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "aa2b9c152f113cecd3a1f924eb40a36426e53db475adbc9251e89a87302b8e73"
+    },
+    "sourceGlb": {
+      "bytes": 825296,
+      "sha256": "0cb7b807693d6c993e543a582b9516059a58a7aaefaa885bddc0f3195ccf5ca5",
+      "uri": "massline_express_liner_v1.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 834788,
+    "sha256": "5660deeafb963212dd8bb5a9e31fed4161777742a3fff224d7bf008e4ae18fc9",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -1.4096946716308594,
+        0.9373915195465088,
+        0.32327985763549805
+      ],
+      "max": [
+        18.400609970092773,
+        7.331486015639685,
+        9.58283789835207
+      ],
+      "min": [
+        -21.219999313354492,
+        -5.4567029765466675,
+        -8.936278183081074
+      ],
+      "size": [
+        39.620609283447266,
+        12.788188992186353,
+        18.519116081433143
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "MOTION_HULL_CORE",
+        "planIndex": 3,
+        "tags": {
+          "motionGroup": true
+        },
+        "userData": {
+          "forge_motion_pivot": "hull_core",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_HULL_CORE",
+          "spaceface": {
+            "motionGroup": "hull_core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_HULL_CORE",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1.node.motion-hull-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          5.38700008392334,
+          0,
+          0,
+          0,
+          0,
+          5.38700008392334,
+          0,
+          0,
+          0,
+          0,
+          5.38700008392334,
+          0,
+          -20.614999771118164,
+          0.37999996542930603,
+          -4.76837158203125e-7,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "planIndex": 8,
+        "tags": {
+          "drive": "core",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+          "spaceface": {
+            "drive": "core"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-drive-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          5.292499780654907,
+          0,
+          0,
+          0,
+          0,
+          5.292499780654907,
+          0,
+          0,
+          0,
+          0,
+          5.292499780654907,
+          0,
+          -13.657500267028809,
+          4.059750020503998,
+          -3.057499647140503,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "planIndex": 10,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.14999961853027344,
+          0,
+          0,
+          0,
+          0,
+          0.14999961853027344,
+          0,
+          0,
+          0,
+          0,
+          0.14999961853027344,
+          0,
+          -17.200000762939453,
+          0.8999999761581421,
+          8.199999809265137,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "planIndex": 12,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.4000000059604645,
+          0.44999998807907104,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 20,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1.anchor.socket-camera-focus",
+              "sf.render.massline-express-liner-v1.node.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.3499999940395355,
+          -5.28000020980835,
+          0,
+          1
+        ],
+        "name": "SOCKET_Cargo_Ventral",
+        "planIndex": 21,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            -1,
+            0
+          ],
+          "socketRole": "cargo"
+        },
+        "userData": {
+          "name": "SOCKET_Cargo_Ventral",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              -1,
+              0
+            ],
+            "role": "cargo",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cargo_Ventral",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1.anchor.socket-cargo-ventral",
+              "sf.render.massline-express-liner-v1.node.socket-cargo-ventral"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.4000000953674316,
+          0.41999998688697815,
+          9.350000381469727,
+          1
+        ],
+        "name": "SOCKET_Dock_Port",
+        "planIndex": 22,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Dock_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Dock_Port",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1.anchor.socket-dock-port",
+              "sf.render.massline-express-liner-v1.node.socket-dock-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -20.149999618530273,
+          0.3799999952316284,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 23,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1.anchor.socket-engine-main",
+              "sf.render.massline-express-liner-v1.node.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          19.799999237060547,
+          0.10000000149011612,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front",
+        "planIndex": 24,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "mining",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1.anchor.socket-mining-front",
+              "sf.render.massline-express-liner-v1.node.socket-mining-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          8.800000190734863,
+          0.8500000238418579,
+          9.020000457763672,
+          1
+        ],
+        "name": "SOCKET_RCS_Port",
+        "planIndex": 25,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            -1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              -1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Port",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1.anchor.socket-rcs-port",
+              "sf.render.massline-express-liner-v1.node.socket-rcs-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          8.800000190734863,
+          0.8500000238418579,
+          -9.020000457763672,
+          1
+        ],
+        "name": "SOCKET_RCS_Starboard",
+        "planIndex": 26,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Starboard",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1.anchor.socket-rcs-starboard",
+              "sf.render.massline-express-liner-v1.node.socket-rcs-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.7999999523162842,
+          0.41999998688697815,
+          -9.350000381469727,
+          1
+        ],
+        "name": "SOCKET_Service_Starboard",
+        "planIndex": 27,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Service_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Service_Starboard",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1.anchor.socket-service-starboard",
+              "sf.render.massline-express-liner-v1.node.socket-service-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.3499999940395355,
+          -5.28000020980835,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Keel",
+        "planIndex": 28,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Keel",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Keel",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1.anchor.socket-tether-keel",
+              "sf.render.massline-express-liner-v1.node.socket-tether-keel"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -9.779999732971191,
+          0.10000000149011612,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 29,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1.anchor.socket-tether-massline",
+              "sf.render.massline-express-liner-v1.node.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -20.850000381469727,
+          0.3799999952316284,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 30,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1.anchor.socket-trail-main",
+              "sf.render.massline-express-liner-v1.node.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -20.850000381469727,
+          0.3799999952316284,
+          4.550000190734863,
+          1
+        ],
+        "name": "SOCKET_Trail_Port",
+        "planIndex": 31,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Port",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1.anchor.socket-trail-port",
+              "sf.render.massline-express-liner-v1.node.socket-trail-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -20.850000381469727,
+          0.3799999952316284,
+          -4.550000190734863,
+          1
+        ],
+        "name": "SOCKET_Trail_Starboard",
+        "planIndex": 32,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Starboard",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1.anchor.socket-trail-starboard",
+              "sf.render.massline-express-liner-v1.node.socket-trail-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.400000095367432,
+          5.550000190734863,
+          0,
+          1
+        ],
+        "name": "SOCKET_Utility_Dorsal",
+        "planIndex": 33,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "utility"
+        },
+        "userData": {
+          "name": "SOCKET_Utility_Dorsal",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "utility",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Utility_Dorsal",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1.anchor.socket-utility-dorsal",
+              "sf.render.massline-express-liner-v1.node.socket-utility-dorsal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          17.850000381469727,
+          0.550000011920929,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 34,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "weapon",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.massline-express-liner-v1.anchor.socket-weapon-front",
+              "sf.render.massline-express-liner-v1.node.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "drive": 1,
+      "glass": 1,
+      "hull": 4,
+      "mechanical": 2,
+      "signal": 5,
+      "warning": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "warning"
+      }
+    ],
+    "motionBank": {
+      "bytes": 7219,
+      "rigId": "hull",
+      "sha256": "17dbde017b3413f080a51fd70e58ebf0b44654f5b4cca7f092e9d4ccf44b1b4a",
+      "uri": "assets/ships/motions/massline-express-liner-v1.motion.json"
+    },
+    "nodeCount": 35,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          15.599999904632568,
+          0,
+          0,
+          0,
+          0,
+          15.599999904632568,
+          0,
+          0,
+          0,
+          0,
+          15.599999904632568,
+          0,
+          -4.049999713897705,
+          0.4043388366699219,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Armor",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          19.345051765441895,
+          0,
+          0,
+          0,
+          0,
+          19.345051765441895,
+          0,
+          0,
+          0,
+          0,
+          19.345051765441895,
+          0,
+          -0.9549474716186523,
+          0.18000078201293945,
+          -0.10462713241577148,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Armor_frame",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          10.7535001039505,
+          0,
+          0,
+          0,
+          0,
+          10.7535001039505,
+          0,
+          0,
+          0,
+          0,
+          10.7535001039505,
+          0,
+          -7.263500094413757,
+          3.7009997963905334,
+          4.386499896645546,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          11.661716938018799,
+          0,
+          0,
+          0,
+          0,
+          11.661716938018799,
+          0,
+          0,
+          0,
+          0,
+          11.661716938018799,
+          0,
+          3.0617165565490723,
+          3.027577757835388,
+          0.0032455921173095703,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_CANOPY",
+        "planIndex": 7,
+        "tags": {
+          "canopy": true,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.38700008392334,
+          0,
+          0,
+          0,
+          0,
+          5.38700008392334,
+          0,
+          0,
+          0,
+          0,
+          5.38700008392334,
+          0,
+          -20.614999771118164,
+          0.37999996542930603,
+          -4.76837158203125e-7,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE_1",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            5.38700008392334,
+            0,
+            0,
+            0,
+            0,
+            5.38700008392334,
+            0,
+            0,
+            0,
+            0,
+            5.38700008392334,
+            0,
+            -20.614999771118164,
+            0.37999996542930603,
+            -4.76837158203125e-7,
+            1
+          ],
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.292499780654907,
+          0,
+          0,
+          0,
+          0,
+          5.292499780654907,
+          0,
+          0,
+          0,
+          0,
+          5.292499780654907,
+          0,
+          -13.657500267028809,
+          4.059750020503998,
+          -3.057499647140503,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT_1",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.14999961853027344,
+          0,
+          0,
+          0,
+          0,
+          0.14999961853027344,
+          0,
+          0,
+          0,
+          0,
+          0.14999961853027344,
+          0,
+          -17.200000762939453,
+          0.8999999761581421,
+          8.199999809265137,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD_1",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          18.4961519241333,
+          0,
+          0,
+          0,
+          0,
+          18.4961519241333,
+          0,
+          0,
+          0,
+          0,
+          18.4961519241333,
+          0,
+          -0.09615230560302734,
+          0.7823528051376343,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Hull",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.053999900817871094,
+          0,
+          0,
+          0,
+          0,
+          0.053999900817871094,
+          0,
+          0,
+          0,
+          0,
+          0.053999900817871094,
+          0,
+          -12.714838027954102,
+          6.087096214294434,
+          -2.6361289024353027,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          12.307500123977661,
+          0,
+          0,
+          0,
+          0,
+          12.307500123977661,
+          0,
+          0,
+          0,
+          0,
+          12.307500123977661,
+          0,
+          -4.4075000286102295,
+          2.4174999594688416,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          15.15999984741211,
+          0,
+          0,
+          0,
+          0,
+          15.15999984741211,
+          0,
+          0,
+          0,
+          0,
+          15.15999984741211,
+          0,
+          -6.059999465942383,
+          0.9244048595428467,
+          0.3299999237060547,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Mechanical",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          15.099999904632568,
+          0,
+          0,
+          0,
+          0,
+          15.099999904632568,
+          0,
+          0,
+          0,
+          0,
+          15.099999904632568,
+          0,
+          -6.119999408721924,
+          0.878896951675415,
+          1.121000051498413,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          9.066752910614014,
+          0,
+          0,
+          0,
+          0,
+          9.066752910614014,
+          0,
+          0,
+          0,
+          0,
+          9.066752910614014,
+          0,
+          9.392499446868896,
+          0.2999999523162842,
+          0.4688420295715332,
+          1
+        ],
+        "name": "LOD0_MOTION_HULL_CORE_Warning",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb"
+  },
+  "runtimeHash": "765ec5223b9cc31ce0b0efa5299fe618d99dc6450cff88eca488f9be45a56356",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          18.400609970092773,
+          7.331486015639685,
+          9.58283789835207
+        ],
+        "min": [
+          -21.219999313354492,
+          -5.4567029765466675,
+          -8.936278183081074
+        ]
+      },
+      "id": "sf.render.massline-express-liner-v1.body",
+      "nodeIds": [
+        "sf.render.massline-express-liner-v1.node.collision-hull",
+        "sf.render.massline-express-liner-v1.node.liner-lod0-root",
+        "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-armor",
+        "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-armor-frame",
+        "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-beacon-amber",
+        "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-canopy",
+        "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-drive-core",
+        "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-nav-port",
+        "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-nav-starboard",
+        "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hull",
+        "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-lights-cyan",
+        "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-lights-warm",
+        "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-mechanical",
+        "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-mechanicaldark",
+        "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-warning",
+        "sf.render.massline-express-liner-v1.node.motion-hull-core",
+        "sf.render.massline-express-liner-v1.node.socket-camera-focus",
+        "sf.render.massline-express-liner-v1.node.socket-cargo-ventral",
+        "sf.render.massline-express-liner-v1.node.socket-dock-port",
+        "sf.render.massline-express-liner-v1.node.socket-engine-main",
+        "sf.render.massline-express-liner-v1.node.socket-mining-front",
+        "sf.render.massline-express-liner-v1.node.socket-rcs-port",
+        "sf.render.massline-express-liner-v1.node.socket-rcs-starboard",
+        "sf.render.massline-express-liner-v1.node.socket-service-starboard",
+        "sf.render.massline-express-liner-v1.node.socket-tether-keel",
+        "sf.render.massline-express-liner-v1.node.socket-tether-massline",
+        "sf.render.massline-express-liner-v1.node.socket-trail-main",
+        "sf.render.massline-express-liner-v1.node.socket-trail-port",
+        "sf.render.massline-express-liner-v1.node.socket-trail-starboard",
+        "sf.render.massline-express-liner-v1.node.socket-utility-dorsal",
+        "sf.render.massline-express-liner-v1.node.socket-weapon-front"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: wave-planned hull keys cover schedule enemies with silhouette-aware decode stubs
+ok 1 - wave-planned hull keys cover schedule enemies with silhouette-aware decode stubs
+  ---
+  duration_ms: 4.765584
+  ...
+# Subtest: noteWaveHullRunwayKeys stamps planned keys and holds swarm-spawn wasps mesh-expected
+ok 2 - noteWaveHullRunwayKeys stamps planned keys and holds swarm-spawn wasps mesh-expected
+  ---
+  duration_ms: 1.317888
+  ...
+# Subtest: collectWaveHullDecodeKeys ignores empty/failed plans and dedupes shared shipIds
+ok 3 - collectWaveHullDecodeKeys ignores empty/failed plans and dedupes shared shipIds
+  ---
+  duration_ms: 0.377414
+  ...
+# Subtest: renderer wires run:wavePlanned to wave-hull decode runway (source contract)
+ok 4 - renderer wires run:wavePlanned to wave-hull decode runway (source contract)
+  ---
+  duration_ms: 8.511994
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 542.836747

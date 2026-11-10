@@ -1,0 +1,4237 @@
+{
+ "schema": "spaceface.uiRenders.v1",
+ "purpose": "Produced hull renders for the interface (design/frontend/ONE_PHOTOGRAPH.md section 9, asset 1): new-game and load stage posters, shipworks elevation.",
+ "classification": "project-original",
+ "license": "Rendered from project-original SpaceFace ship GLBs; no third-party payload.",
+ "renderer": "Blender Cycles (CPU), the Look restated for Cycles (clear coat, warm key / cyan rim, lamp gain, game reflection env), AgX High Contrast, exposure 0.8, transparent film, 64 samples + denoise, saturation x1.2",
+ "lighting": "warm key upper-left front, cold rim behind right, low fill, top soft; the world background at 0.35",
+ "hidden": "COLLISION_HULL and any helper/proxy/collision mesh (the game never draws them)",
+ "script": "tools/art/render_hull_posters.mjs (render_hull.py, render_jig.py, jig_glyph.py, holo_glyph.py)",
+ "views": {
+  "hero": "perspective 70 mm, camera on the nose side swung 35 deg to port, 24 deg above, framed to the bounding sphere; 2400 x 1350",
+  "side": "orthographic starboard elevation, nose to the right, ortho scale 1.18 x the longest plan dimension; 2400 x 1100",
+  "top": "orthographic plan, camera straight down, ortho scale 1.18 x the longest plan dimension, rendered nose along +X and published rotated 90 deg counter-clockwise (nose up); marks are in the published image; 1024 x 1024"
+ },
+ "cssWidth": {
+  "hero": 1200,
+  "side": 1200,
+  "top": 512
+ },
+ "hulls": {
+  "ship_kestrel": {
+   "sourceGlb": "assets/ships/parts/wholeships/kestrel.glb",
+   "sourceGlbSha256": "E538F48B11BD5E7EEABB31E785F0D179112C102D478D7082AA3FB7C6085CDED5",
+   "hero": {
+    "file": "ship_kestrel.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 129162,
+    "hullSize": [
+     27.52,
+     13.261,
+     6.818
+    ],
+    "longAxis": 0,
+    "marks": {
+     "KESTREL_V4_LOD0_ROOT": [
+      0.4944,
+      0.5217,
+      71.429
+     ],
+     "MOTION_KESTREL_ARMOR_CAP": [
+      0.537,
+      0.5727,
+      67.711
+     ],
+     "MOTION_KESTREL_CANOPY": [
+      0.452,
+      0.4917,
+      68.824
+     ],
+     "MOTION_KESTREL_DISH": [
+      0.5085,
+      0.352,
+      72.387
+     ],
+     "MOTION_KESTREL_DISH_STEM": [
+      0.5085,
+      0.352,
+      72.387
+     ],
+     "MOTION_KESTREL_DISH_FEED": [
+      0.5141,
+      0.3144,
+      72.36
+     ],
+     "MOTION_KESTREL_IRIS_0": [
+      0.7126,
+      0.3063,
+      80.432
+     ],
+     "MOTION_KESTREL_IRIS_1": [
+      0.6819,
+      0.2586,
+      80.865
+     ],
+     "MOTION_KESTREL_IRIS_2": [
+      0.6503,
+      0.2805,
+      82.002
+     ],
+     "MOTION_KESTREL_IRIS_3": [
+      0.649,
+      0.3484,
+      82.705
+     ],
+     "MOTION_KESTREL_IRIS_4": [
+      0.6788,
+      0.3955,
+      82.272
+     ],
+     "MOTION_KESTREL_IRIS_5": [
+      0.7107,
+      0.3753,
+      81.135
+     ],
+     "MOTION_KESTREL_MINING": [
+      0.2787,
+      0.7994,
+      62.801
+     ],
+     "MOTION_KESTREL_POD_ARM_SHOULDER": [
+      0.6207,
+      0.4743,
+      69.791
+     ],
+     "MOTION_KESTREL_POD_ARM_ELBOW": [
+      0.6381,
+      0.455,
+      70.689
+     ],
+     "MOTION_KESTREL_POD_HATCH": [
+      0.618,
+      0.4606,
+      69.491
+     ],
+     "MOTION_KESTREL_STRUT_F": [
+      0.4195,
+      0.6868,
+      68.759
+     ],
+     "MOTION_KESTREL_STRUT_P": [
+      0.5887,
+      0.5674,
+      74.458
+     ],
+     "MOTION_KESTREL_STRUT_S": [
+      0.5198,
+      0.5321,
+      76.135
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4944,
+      0.5062,
+      71.286
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5067,
+      0.5996,
+      72.881
+     ],
+     "SOCKET_Engine_Main": [
+      0.6839,
+      0.3239,
+      81.793
+     ],
+     "SOCKET_Mining_Front": [
+      0.2755,
+      0.8043,
+      62.693
+     ],
+     "SOCKET_RCS_Port": [
+      0.625,
+      0.6095,
+      66.59
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.3272,
+      0.4544,
+      73.507
+     ],
+     "SOCKET_Trail_Main": [
+      0.6863,
+      0.3214,
+      81.943
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.6042,
+      0.4539,
+      69.729
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2642,
+      0.6884,
+      61.403
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_kestrel.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 68416,
+    "hullSize": [
+     27.52,
+     13.261,
+     6.818
+    ],
+    "longAxis": 0,
+    "marks": {
+     "KESTREL_V4_LOD0_ROOT": [
+      0.5111,
+      0.5241,
+      82.56
+     ],
+     "MOTION_KESTREL_ARMOR_CAP": [
+      0.5804,
+      0.4825,
+      85.96
+     ],
+     "MOTION_KESTREL_CANOPY": [
+      0.5912,
+      0.4153,
+      82.56
+     ],
+     "MOTION_KESTREL_DISH": [
+      0.4433,
+      0.3326,
+      81.66
+     ],
+     "MOTION_KESTREL_DISH_STEM": [
+      0.4433,
+      0.3326,
+      81.66
+     ],
+     "MOTION_KESTREL_DISH_FEED": [
+      0.4323,
+      0.2836,
+      81.66
+     ],
+     "MOTION_KESTREL_IRIS_0": [
+      0.0938,
+      0.466,
+      84.058
+     ],
+     "MOTION_KESTREL_IRIS_1": [
+      0.0938,
+      0.4079,
+      82.56
+     ],
+     "MOTION_KESTREL_IRIS_2": [
+      0.0938,
+      0.466,
+      81.062
+     ],
+     "MOTION_KESTREL_IRIS_3": [
+      0.0938,
+      0.5822,
+      81.062
+     ],
+     "MOTION_KESTREL_IRIS_4": [
+      0.0938,
+      0.6404,
+      82.56
+     ],
+     "MOTION_KESTREL_IRIS_5": [
+      0.0938,
+      0.5822,
+      84.058
+     ],
+     "MOTION_KESTREL_MINING": [
+      0.8837,
+      0.5947,
+      82.56
+     ],
+     "MOTION_KESTREL_POD_ARM_SHOULDER": [
+      0.4587,
+      0.42,
+      86.91
+     ],
+     "MOTION_KESTREL_POD_ARM_ELBOW": [
+      0.4218,
+      0.42,
+      86.91
+     ],
+     "MOTION_KESTREL_POD_HATCH": [
+      0.4649,
+      0.3951,
+      86.91
+     ],
+     "MOTION_KESTREL_STRUT_F": [
+      0.6527,
+      0.6518,
+      82.56
+     ],
+     "MOTION_KESTREL_STRUT_P": [
+      0.3879,
+      0.6686,
+      84.16
+     ],
+     "MOTION_KESTREL_STRUT_S": [
+      0.3879,
+      0.6686,
+      80.96
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5111,
+      0.5006,
+      82.56
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.4865,
+      0.6652,
+      82.56
+     ],
+     "SOCKET_Engine_Main": [
+      0.0846,
+      0.5241,
+      82.56
+     ],
+     "SOCKET_Mining_Front": [
+      0.8886,
+      0.5967,
+      82.56
+     ],
+     "SOCKET_RCS_Port": [
+      0.5604,
+      0.4939,
+      89.16
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5604,
+      0.4939,
+      75.96
+     ],
+     "SOCKET_Trail_Main": [
+      0.0784,
+      0.5241,
+      82.56
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.4664,
+      0.3931,
+      86.36
+     ],
+     "SOCKET_Weapon_Front": [
+      0.8997,
+      0.428,
+      82.56
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_kestrel.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 48012,
+    "hullSize": [
+     27.52,
+     13.261,
+     6.818
+    ],
+    "longAxis": 0,
+    "marks": {
+     "KESTREL_V4_LOD0_ROOT": [
+      0.5,
+      0.4889,
+      82.919
+     ],
+     "MOTION_KESTREL_ARMOR_CAP": [
+      0.3953,
+      0.4196,
+      82.299
+     ],
+     "MOTION_KESTREL_CANOPY": [
+      0.5,
+      0.4088,
+      81.299
+     ],
+     "MOTION_KESTREL_DISH": [
+      0.5277,
+      0.5567,
+      80.069
+     ],
+     "MOTION_KESTREL_DISH_STEM": [
+      0.5277,
+      0.5567,
+      80.069
+     ],
+     "MOTION_KESTREL_DISH_FEED": [
+      0.5277,
+      0.5677,
+      79.339
+     ],
+     "MOTION_KESTREL_IRIS_0": [
+      0.4539,
+      0.9062,
+      82.054
+     ],
+     "MOTION_KESTREL_IRIS_1": [
+      0.5,
+      0.9062,
+      81.189
+     ],
+     "MOTION_KESTREL_IRIS_2": [
+      0.5461,
+      0.9062,
+      82.054
+     ],
+     "MOTION_KESTREL_IRIS_3": [
+      0.5461,
+      0.9062,
+      83.784
+     ],
+     "MOTION_KESTREL_IRIS_4": [
+      0.5,
+      0.9062,
+      84.649
+     ],
+     "MOTION_KESTREL_IRIS_5": [
+      0.4539,
+      0.9062,
+      83.784
+     ],
+     "MOTION_KESTREL_MINING": [
+      0.5,
+      0.1163,
+      83.969
+     ],
+     "MOTION_KESTREL_POD_ARM_SHOULDER": [
+      0.366,
+      0.5413,
+      81.369
+     ],
+     "MOTION_KESTREL_POD_ARM_ELBOW": [
+      0.366,
+      0.5782,
+      81.369
+     ],
+     "MOTION_KESTREL_POD_HATCH": [
+      0.366,
+      0.5351,
+      80.999
+     ],
+     "MOTION_KESTREL_STRUT_F": [
+      0.5,
+      0.3473,
+      84.819
+     ],
+     "MOTION_KESTREL_STRUT_P": [
+      0.4507,
+      0.6121,
+      85.069
+     ],
+     "MOTION_KESTREL_STRUT_S": [
+      0.5493,
+      0.6121,
+      85.069
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.4889,
+      82.569
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5135,
+      85.019
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.9154,
+      82.919
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.1114,
+      83.999
+     ],
+     "SOCKET_RCS_Port": [
+      0.2968,
+      0.4396,
+      82.469
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.7032,
+      0.4396,
+      82.469
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.9216,
+      82.919
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.383,
+      0.5336,
+      80.969
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.1003,
+      81.489
+     ]
+    }
+   }
+  },
+  "ship_pelican": {
+   "sourceGlb": "assets/ships/parts/wholeships/pelican_production_v1.glb",
+   "sourceGlbSha256": "D824B6C2338B5D7709D77F50949F46B911E6A8F020DD6B507326156D1CF7A836",
+   "hero": {
+    "file": "ship_pelican.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 109392,
+    "hullSize": [
+     14.71,
+     6.26,
+     4.634
+    ],
+    "longAxis": 0,
+    "marks": {
+     "PELICAN_PRODUCTION_V1_LOD0_ROOT": [
+      0.501,
+      0.516,
+      38.356
+     ],
+     "MOTION_HULL_CORE": [
+      0.501,
+      0.516,
+      38.356
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4649,
+      0.5363,
+      37.365
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6828,
+      39.168
+     ],
+     "SOCKET_Engine_Main": [
+      0.6596,
+      0.3431,
+      42.881
+     ],
+     "SOCKET_Mining_Front": [
+      0.2696,
+      0.7522,
+      33.177
+     ],
+     "SOCKET_RCS_Port": [
+      0.5803,
+      0.5406,
+      37.262
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.4238,
+      0.4614,
+      39.23
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5897,
+      0.3246,
+      40.239
+     ],
+     "SOCKET_Trail_Main": [
+      0.6895,
+      0.312,
+      43.868
+     ],
+     "SOCKET_Trail_Port": [
+      0.72,
+      0.3247,
+      43.458
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6596,
+      0.2995,
+      44.278
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3082,
+      37.324
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2652,
+      0.7424,
+      33.041
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_pelican.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 59458,
+    "hullSize": [
+     14.71,
+     6.26,
+     4.634
+    ],
+    "longAxis": 0,
+    "marks": {
+     "PELICAN_PRODUCTION_V1_LOD0_ROOT": [
+      0.498,
+      0.5261,
+      44.13
+     ],
+     "MOTION_HULL_CORE": [
+      0.498,
+      0.5261,
+      44.13
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5678,
+      0.5,
+      44.13
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.785,
+      44.13
+     ],
+     "SOCKET_Engine_Main": [
+      0.1466,
+      0.5135,
+      44.13
+     ],
+     "SOCKET_Mining_Front": [
+      0.8949,
+      0.5189,
+      44.13
+     ],
+     "SOCKET_RCS_Port": [
+      0.5,
+      0.5,
+      46.008
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5,
+      0.5,
+      42.252
+     ],
+     "SOCKET_Tether_Massline": [
+      0.3136,
+      0.3674,
+      44.13
+     ],
+     "SOCKET_Trail_Main": [
+      0.0705,
+      0.5135,
+      44.13
+     ],
+     "SOCKET_Trail_Port": [
+      0.0705,
+      0.5135,
+      44.913
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.0705,
+      0.5135,
+      43.347
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.215,
+      44.13
+     ],
+     "SOCKET_Weapon_Front": [
+      0.9007,
+      0.5,
+      44.13
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_pelican.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 40058,
+    "hullSize": [
+     14.71,
+     6.26,
+     4.634
+    ],
+    "longAxis": 0,
+    "marks": {
+     "PELICAN_PRODUCTION_V1_LOD0_ROOT": [
+      0.5,
+      0.502,
+      44.337
+     ],
+     "MOTION_HULL_CORE": [
+      0.5,
+      0.502,
+      44.337
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.4322,
+      44.13
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5,
+      46.397
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.8534,
+      44.237
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.1051,
+      44.28
+     ],
+     "SOCKET_RCS_Port": [
+      0.3918,
+      0.5,
+      44.13
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.6082,
+      0.5,
+      44.13
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.6864,
+      43.075
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.9295,
+      44.237
+     ],
+     "SOCKET_Trail_Port": [
+      0.4549,
+      0.9295,
+      44.237
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.5451,
+      0.9295,
+      44.237
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.5,
+      41.863
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.0993,
+      44.13
+     ]
+    }
+   }
+  },
+  "ship_wasp": {
+   "sourceGlb": "assets/ships/parts/wholeships/wasp_production_v1.glb",
+   "sourceGlbSha256": "23F1F312B699A523158A26EB86C5E161BD80CAE58EE0F8C0A2384DC3ED16FD1A",
+   "hero": {
+    "file": "ship_wasp.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 118514,
+    "hullSize": [
+     21.62,
+     16.16,
+     2.65
+    ],
+    "longAxis": 0,
+    "marks": {
+     "WASP_PRODUCTION_V1_LOD0_ROOT": [
+      0.5018,
+      0.5219,
+      56.452
+     ],
+     "MOTION_WASP_GUNS": [
+      0.4356,
+      0.5592,
+      53.834
+     ],
+     "MOTION_WASP_WINGLET_P": [
+      0.7844,
+      0.4234,
+      59.738
+     ],
+     "MOTION_WASP_WINGLET_S": [
+      0.5163,
+      0.3055,
+      64.977
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4649,
+      0.5363,
+      54.918
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.571,
+      56.731
+     ],
+     "SOCKET_Engine_Main": [
+      0.6683,
+      0.3448,
+      63.541
+     ],
+     "SOCKET_Mining_Front": [
+      0.2632,
+      0.7543,
+      48.558
+     ],
+     "SOCKET_RCS_Port": [
+      0.6439,
+      0.5728,
+      53.672
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.3686,
+      0.4335,
+      58.752
+     ],
+     "SOCKET_Tether_Massline": [
+      0.589,
+      0.3842,
+      59.588
+     ],
+     "SOCKET_Trail_Main": [
+      0.6886,
+      0.3236,
+      64.529
+     ],
+     "SOCKET_Trail_Port": [
+      0.7424,
+      0.3464,
+      63.47
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6365,
+      0.3016,
+      65.587
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.4277,
+      55.693
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2602,
+      0.7476,
+      48.422
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_wasp.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 36150,
+    "hullSize": [
+     21.62,
+     16.16,
+     2.65
+    ],
+    "longAxis": 0,
+    "marks": {
+     "WASP_PRODUCTION_V1_LOD0_ROOT": [
+      0.4965,
+      0.5363,
+      64.86
+     ],
+     "MOTION_WASP_GUNS": [
+      0.6219,
+      0.4893,
+      64.86
+     ],
+     "MOTION_WASP_WINGLET_P": [
+      0.1829,
+      0.5192,
+      69.86
+     ],
+     "MOTION_WASP_WINGLET_S": [
+      0.1829,
+      0.5192,
+      59.86
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5678,
+      0.5,
+      64.86
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.609,
+      64.86
+     ],
+     "SOCKET_Engine_Main": [
+      0.1241,
+      0.5321,
+      64.86
+     ],
+     "SOCKET_Mining_Front": [
+      0.9041,
+      0.5128,
+      64.86
+     ],
+     "SOCKET_RCS_Port": [
+      0.5,
+      0.5,
+      69.708
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5,
+      0.5,
+      60.012
+     ],
+     "SOCKET_Tether_Massline": [
+      0.3136,
+      0.4615,
+      64.86
+     ],
+     "SOCKET_Trail_Main": [
+      0.0724,
+      0.5321,
+      64.86
+     ],
+     "SOCKET_Trail_Port": [
+      0.0724,
+      0.5321,
+      66.88
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.0724,
+      0.5321,
+      62.84
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.391,
+      64.86
+     ],
+     "SOCKET_Weapon_Front": [
+      0.908,
+      0.5,
+      64.86
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_wasp.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 51906,
+    "hullSize": [
+     21.62,
+     16.16,
+     2.65
+    ],
+    "longAxis": 0,
+    "marks": {
+     "WASP_PRODUCTION_V1_LOD0_ROOT": [
+      0.5,
+      0.5035,
+      65.285
+     ],
+     "MOTION_WASP_GUNS": [
+      0.5,
+      0.3781,
+      64.735
+     ],
+     "MOTION_WASP_WINGLET_P": [
+      0.304,
+      0.8171,
+      65.085
+     ],
+     "MOTION_WASP_WINGLET_S": [
+      0.696,
+      0.8171,
+      65.085
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.4322,
+      64.86
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5,
+      66.135
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.8759,
+      65.235
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.0959,
+      65.01
+     ],
+     "SOCKET_RCS_Port": [
+      0.31,
+      0.5,
+      64.86
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.69,
+      0.5,
+      64.86
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.6864,
+      64.41
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.9276,
+      65.235
+     ],
+     "SOCKET_Trail_Port": [
+      0.4208,
+      0.9276,
+      65.235
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.5792,
+      0.9276,
+      65.235
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.5,
+      63.585
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.092,
+      64.86
+     ]
+    }
+   }
+  },
+  "ship_hornet": {
+   "sourceGlb": "assets/ships/parts/wholeships/hornet_production_v1.glb",
+   "sourceGlbSha256": "602C73827C0D729C87D264F729C6F7F7642F53D0F8BCEE0898CFC9710D8C37EC",
+   "hero": {
+    "file": "ship_hornet.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 125878,
+    "hullSize": [
+     9.84,
+     8.8,
+     1.455
+    ],
+    "longAxis": 0,
+    "marks": {
+     "HORNET_LOD0_ROOT": [
+      0.4869,
+      0.5431,
+      25.456
+     ],
+     "MOTION_HORNET_CANARD_P": [
+      0.4387,
+      0.707,
+      23.152
+     ],
+     "MOTION_HORNET_CANARD_S": [
+      0.3098,
+      0.6314,
+      24.2
+     ],
+     "MOTION_HORNET_FLAP_P": [
+      0.7853,
+      0.4608,
+      27.079
+     ],
+     "MOTION_HORNET_FLAP_S": [
+      0.5027,
+      0.3334,
+      29.594
+     ],
+     "MOTION_HORNET_TIPPOD_P": [
+      0.8898,
+      0.5204,
+      25.826
+     ],
+     "MOTION_HORNET_TIPPOD_S": [
+      0.3955,
+      0.2956,
+      30.175
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4649,
+      0.5363,
+      24.995
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5828,
+      25.86
+     ],
+     "SOCKET_Engine_Main": [
+      0.6779,
+      0.3377,
+      29.144
+     ],
+     "SOCKET_Mining_Front": [
+      0.2793,
+      0.7491,
+      22.337
+     ],
+     "SOCKET_RCS_Port": [
+      0.6738,
+      0.588,
+      24.201
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.3441,
+      0.4211,
+      26.967
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5891,
+      0.3795,
+      27.104
+     ],
+     "SOCKET_Trail_Main": [
+      0.6903,
+      0.3247,
+      29.421
+     ],
+     "SOCKET_Trail_Port": [
+      0.7548,
+      0.352,
+      28.845
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6282,
+      0.2985,
+      29.997
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.4154,
+      25.308
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2729,
+      0.7345,
+      22.202
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_hornet.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 49506,
+    "hullSize": [
+     9.84,
+     8.8,
+     1.455
+    ],
+    "longAxis": 0,
+    "marks": {
+     "HORNET_LOD0_ROOT": [
+      0.5258,
+      0.5447,
+      29.52
+     ],
+     "MOTION_HORNET_CANARD_P": [
+      0.7325,
+      0.5522,
+      30.52
+     ],
+     "MOTION_HORNET_CANARD_S": [
+      0.7325,
+      0.5522,
+      28.52
+     ],
+     "MOTION_HORNET_FLAP_P": [
+      0.1986,
+      0.5616,
+      31.92
+     ],
+     "MOTION_HORNET_FLAP_S": [
+      0.1986,
+      0.5616,
+      27.12
+     ],
+     "MOTION_HORNET_TIPPOD_P": [
+      0.233,
+      0.5447,
+      33.67
+     ],
+     "MOTION_HORNET_TIPPOD_S": [
+      0.233,
+      0.5447,
+      25.37
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5678,
+      0.5,
+      29.52
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6273,
+      29.52
+     ],
+     "SOCKET_Engine_Main": [
+      0.0995,
+      0.5371,
+      29.52
+     ],
+     "SOCKET_Mining_Front": [
+      0.8807,
+      0.5282,
+      29.52
+     ],
+     "SOCKET_RCS_Port": [
+      0.5,
+      0.5,
+      32.16
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5,
+      0.5,
+      26.88
+     ],
+     "SOCKET_Tether_Massline": [
+      0.3136,
+      0.454,
+      29.52
+     ],
+     "SOCKET_Trail_Main": [
+      0.0677,
+      0.5371,
+      29.52
+     ],
+     "SOCKET_Trail_Port": [
+      0.0677,
+      0.5371,
+      30.62
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.0677,
+      0.5371,
+      28.42
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3727,
+      29.52
+     ],
+     "SOCKET_Weapon_Front": [
+      0.8893,
+      0.5,
+      29.52
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_hornet.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 67176,
+    "hullSize": [
+     9.84,
+     8.8,
+     1.455
+    ],
+    "longAxis": 0,
+    "marks": {
+     "HORNET_LOD0_ROOT": [
+      0.5,
+      0.4742,
+      29.758
+     ],
+     "MOTION_HORNET_CANARD_P": [
+      0.4139,
+      0.2675,
+      29.798
+     ],
+     "MOTION_HORNET_CANARD_S": [
+      0.5861,
+      0.2675,
+      29.798
+     ],
+     "MOTION_HORNET_FLAP_P": [
+      0.2933,
+      0.8014,
+      29.848
+     ],
+     "MOTION_HORNET_FLAP_S": [
+      0.7067,
+      0.8014,
+      29.848
+     ],
+     "MOTION_HORNET_TIPPOD_P": [
+      0.1426,
+      0.767,
+      29.758
+     ],
+     "MOTION_HORNET_TIPPOD_S": [
+      0.8574,
+      0.767,
+      29.758
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.4322,
+      29.52
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5,
+      30.198
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.9005,
+      29.718
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.1193,
+      29.67
+     ],
+     "SOCKET_RCS_Port": [
+      0.2726,
+      0.5,
+      29.52
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.7274,
+      0.5,
+      29.52
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.6864,
+      29.275
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.9323,
+      29.718
+     ],
+     "SOCKET_Trail_Port": [
+      0.4053,
+      0.9323,
+      29.718
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.5947,
+      0.9323,
+      29.718
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.5,
+      28.842
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.1107,
+      29.52
+     ]
+    }
+   }
+  },
+  "ship_mule": {
+   "sourceGlb": "assets/ships/parts/wholeships/mule_production_v1.glb",
+   "sourceGlbSha256": "1A9789F3DA83CD77D27D571101B265B32D4222BE4589A6FE911A9147089C45F2",
+   "hero": {
+    "file": "ship_mule.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 127650,
+    "hullSize": [
+     16.15,
+     6.925,
+     3.324
+    ],
+    "longAxis": 0,
+    "marks": {
+     "MULE_PRODUCTION_V1_LOD0_ROOT": [
+      0.4988,
+      0.547,
+      42.205
+     ],
+     "MOTION_HULL_CORE": [
+      0.4988,
+      0.547,
+      42.205
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4649,
+      0.5363,
+      41.023
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6194,
+      42.646
+     ],
+     "SOCKET_Engine_Main": [
+      0.6843,
+      0.3433,
+      48.151
+     ],
+     "SOCKET_Mining_Front": [
+      0.2678,
+      0.7528,
+      36.382
+     ],
+     "SOCKET_RCS_Port": [
+      0.5809,
+      0.541,
+      40.901
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.4232,
+      0.4611,
+      43.079
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5892,
+      0.3706,
+      44.435
+     ],
+     "SOCKET_Trail_Main": [
+      0.6887,
+      0.3386,
+      48.316
+     ],
+     "SOCKET_Trail_Port": [
+      0.7193,
+      0.3517,
+      47.862
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6587,
+      0.3258,
+      48.77
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3768,
+      41.334
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2638,
+      0.7439,
+      36.247
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_mule.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 52538,
+    "hullSize": [
+     16.15,
+     6.925,
+     3.324
+    ],
+    "longAxis": 0,
+    "marks": {
+     "MULE_PRODUCTION_V1_LOD0_ROOT": [
+      0.5024,
+      0.5701,
+      48.45
+     ],
+     "MOTION_HULL_CORE": [
+      0.5024,
+      0.5701,
+      48.45
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5678,
+      0.5,
+      48.45
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6846,
+      48.45
+     ],
+     "SOCKET_Engine_Main": [
+      0.0826,
+      0.5586,
+      48.45
+     ],
+     "SOCKET_Mining_Front": [
+      0.8975,
+      0.5172,
+      48.45
+     ],
+     "SOCKET_RCS_Port": [
+      0.5,
+      0.5,
+      50.528
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5,
+      0.5,
+      46.372
+     ],
+     "SOCKET_Tether_Massline": [
+      0.3136,
+      0.4399,
+      48.45
+     ],
+     "SOCKET_Trail_Main": [
+      0.071,
+      0.5586,
+      48.45
+     ],
+     "SOCKET_Trail_Port": [
+      0.071,
+      0.5586,
+      49.316
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.071,
+      0.5586,
+      47.584
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3154,
+      48.45
+     ],
+     "SOCKET_Weapon_Front": [
+      0.9027,
+      0.5,
+      48.45
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_mule.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 48384,
+    "hullSize": [
+     16.15,
+     6.925,
+     3.324
+    ],
+    "longAxis": 0,
+    "marks": {
+     "MULE_PRODUCTION_V1_LOD0_ROOT": [
+      0.5,
+      0.4976,
+      49.062
+     ],
+     "MOTION_HULL_CORE": [
+      0.5,
+      0.4976,
+      49.062
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.4322,
+      48.45
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5,
+      50.062
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.9174,
+      48.962
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.1025,
+      48.6
+     ],
+     "SOCKET_RCS_Port": [
+      0.391,
+      0.5,
+      48.45
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.609,
+      0.5,
+      48.45
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.6864,
+      47.925
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.929,
+      48.962
+     ],
+     "SOCKET_Trail_Port": [
+      0.4546,
+      0.929,
+      48.962
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.5454,
+      0.929,
+      48.962
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.5,
+      46.838
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.0973,
+      48.45
+     ]
+    }
+   }
+  },
+  "ship_drifter": {
+   "sourceGlb": "assets/ships/parts/wholeships/drifter_production_v1.glb",
+   "sourceGlbSha256": "1E088387BDA49503A58EA2A2621F4B1FDEAFD385D192EDC031FC22475BD79AB6",
+   "hero": {
+    "file": "ship_drifter.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 100630,
+    "hullSize": [
+     18.62,
+     7.11,
+     3.365
+    ],
+    "longAxis": 0,
+    "marks": {
+     "DRIFTER_LOD0_ROOT": [
+      0.5055,
+      0.5405,
+      48.949
+     ],
+     "MOTION_HULL_CORE": [
+      0.5055,
+      0.5405,
+      48.949
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4637,
+      0.5357,
+      47.316
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.4989,
+      0.6044,
+      49.094
+     ],
+     "SOCKET_Engine_Main": [
+      0.671,
+      0.3587,
+      55.045
+     ],
+     "SOCKET_Mining_Front": [
+      0.2642,
+      0.7528,
+      41.899
+     ],
+     "SOCKET_RCS_Port": [
+      0.5714,
+      0.5361,
+      47.302
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.4296,
+      0.4644,
+      49.559
+     ],
+     "SOCKET_Tether_Massline": [
+      0.588,
+      0.3786,
+      51.305
+     ],
+     "SOCKET_Trail_Main": [
+      0.6873,
+      0.3414,
+      55.733
+     ],
+     "SOCKET_Trail_Port": [
+      0.7148,
+      0.3532,
+      55.263
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6603,
+      0.3299,
+      56.204
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.4988,
+      0.3915,
+      47.766
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2607,
+      0.745,
+      41.763
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_drifter.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 56652,
+    "hullSize": [
+     18.62,
+     7.11,
+     3.365
+    ],
+    "longAxis": 0,
+    "marks": {
+     "DRIFTER_LOD0_ROOT": [
+      0.4868,
+      0.5737,
+      55.825
+     ],
+     "MOTION_HULL_CORE": [
+      0.4868,
+      0.5737,
+      55.825
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5678,
+      0.5,
+      55.825
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6621,
+      55.825
+     ],
+     "SOCKET_Engine_Main": [
+      0.1136,
+      0.5638,
+      55.825
+     ],
+     "SOCKET_Mining_Front": [
+      0.901,
+      0.5149,
+      55.825
+     ],
+     "SOCKET_RCS_Port": [
+      0.5,
+      0.5,
+      57.979
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5,
+      0.5,
+      53.671
+     ],
+     "SOCKET_Tether_Massline": [
+      0.3136,
+      0.4533,
+      55.825
+     ],
+     "SOCKET_Trail_Main": [
+      0.0717,
+      0.5638,
+      55.825
+     ],
+     "SOCKET_Trail_Port": [
+      0.0717,
+      0.5638,
+      56.722
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.0717,
+      0.5638,
+      54.928
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3379,
+      55.825
+     ],
+     "SOCKET_Weapon_Front": [
+      0.9055,
+      0.5,
+      55.825
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_drifter.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 40374,
+    "hullSize": [
+     18.62,
+     7.11,
+     3.365
+    ],
+    "longAxis": 0,
+    "marks": {
+     "DRIFTER_LOD0_ROOT": [
+      0.5016,
+      0.5132,
+      56.602
+     ],
+     "MOTION_HULL_CORE": [
+      0.5016,
+      0.5132,
+      56.602
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5016,
+      0.4322,
+      55.86
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5016,
+      0.5,
+      57.492
+     ],
+     "SOCKET_Engine_Main": [
+      0.5016,
+      0.8864,
+      56.502
+     ],
+     "SOCKET_Mining_Front": [
+      0.5016,
+      0.099,
+      56.01
+     ],
+     "SOCKET_RCS_Port": [
+      0.4036,
+      0.5,
+      55.86
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5996,
+      0.5,
+      55.86
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5016,
+      0.6864,
+      55.39
+     ],
+     "SOCKET_Trail_Main": [
+      0.5016,
+      0.9283,
+      56.502
+     ],
+     "SOCKET_Trail_Port": [
+      0.4607,
+      0.9283,
+      56.502
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.5424,
+      0.9283,
+      56.502
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5016,
+      0.5,
+      54.228
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5016,
+      0.0945,
+      55.86
+     ]
+    }
+   }
+  },
+  "ship_ironback": {
+   "sourceGlb": "assets/ships/parts/wholeships/ironback_production_v1.glb",
+   "sourceGlbSha256": "60F36486FED2CB896E319DB857F7D2B6EDC6CB88812D9433FF08B07FEA53749A",
+   "hero": {
+    "file": "ship_ironback.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 109566,
+    "hullSize": [
+     19.916,
+     6.78,
+     3.824
+    ],
+    "longAxis": 0,
+    "marks": {
+     "IRONBACK_LOD0_ROOT": [
+      0.4997,
+      0.5525,
+      52.124
+     ],
+     "MOTION_HULL_CORE": [
+      0.4997,
+      0.5525,
+      52.124
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4649,
+      0.5363,
+      50.59
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6119,
+      52.54
+     ],
+     "SOCKET_Engine_Main": [
+      0.6821,
+      0.3525,
+      59.342
+     ],
+     "SOCKET_Mining_Front": [
+      0.2644,
+      0.7539,
+      44.765
+     ],
+     "SOCKET_RCS_Port": [
+      0.5639,
+      0.5323,
+      50.716
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.4387,
+      0.469,
+      52.848
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5891,
+      0.3778,
+      54.847
+     ],
+     "SOCKET_Trail_Main": [
+      0.6882,
+      0.3461,
+      59.619
+     ],
+     "SOCKET_Trail_Port": [
+      0.7124,
+      0.3565,
+      59.175
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6643,
+      0.3358,
+      60.063
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3847,
+      51.025
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2611,
+      0.7467,
+      44.629
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_ironback.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 50294,
+    "hullSize": [
+     19.916,
+     6.78,
+     3.824
+    ],
+    "longAxis": 0,
+    "marks": {
+     "IRONBACK_LOD0_ROOT": [
+      0.5005,
+      0.5801,
+      59.749
+     ],
+     "MOTION_HULL_CORE": [
+      0.5005,
+      0.5801,
+      59.749
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5678,
+      0.5,
+      59.749
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6729,
+      59.749
+     ],
+     "SOCKET_Engine_Main": [
+      0.0878,
+      0.5708,
+      59.749
+     ],
+     "SOCKET_Mining_Front": [
+      0.9025,
+      0.5139,
+      59.749
+     ],
+     "SOCKET_RCS_Port": [
+      0.5,
+      0.5,
+      61.783
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5,
+      0.5,
+      57.715
+     ],
+     "SOCKET_Tether_Massline": [
+      0.3136,
+      0.4513,
+      59.749
+     ],
+     "SOCKET_Trail_Main": [
+      0.072,
+      0.5708,
+      59.749
+     ],
+     "SOCKET_Trail_Port": [
+      0.072,
+      0.5708,
+      60.596
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.072,
+      0.5708,
+      58.901
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3271,
+      59.749
+     ],
+     "SOCKET_Weapon_Front": [
+      0.9067,
+      0.5,
+      59.749
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_ironback.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 43884,
+    "hullSize": [
+     19.916,
+     6.78,
+     3.824
+    ],
+    "longAxis": 0,
+    "marks": {
+     "IRONBACK_LOD0_ROOT": [
+      0.5,
+      0.4995,
+      60.611
+     ],
+     "MOTION_HULL_CORE": [
+      0.5,
+      0.4995,
+      60.611
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.4322,
+      59.749
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5,
+      61.611
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.9122,
+      60.511
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.0975,
+      59.899
+     ],
+     "SOCKET_RCS_Port": [
+      0.4135,
+      0.5,
+      59.749
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5865,
+      0.5,
+      59.749
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.6864,
+      59.224
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.928,
+      60.511
+     ],
+     "SOCKET_Trail_Port": [
+      0.4639,
+      0.928,
+      60.511
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.5361,
+      0.928,
+      60.511
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.5,
+      57.886
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.0933,
+      59.749
+     ]
+    }
+   }
+  },
+  "ship_hawser": {
+   "sourceGlb": "assets/ships/parts/wholeships/yard_tug.glb",
+   "sourceGlbSha256": "4CEAC593D5489242577FDE8F0C1157C390C289BE179832CB28BB5D5D63C383FA",
+   "hero": {
+    "file": "ship_hawser.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 123998,
+    "hullSize": [
+     26.292,
+     7.82,
+     5.795
+    ],
+    "longAxis": 0,
+    "marks": {
+     "SF_NPCWORK_YARD_TUG_ROOT": [
+      0.5028,
+      0.5714,
+      69.153
+     ],
+     "MOTION_YARD_TUG_FAIRLEAD": [
+      0.6542,
+      0.3316,
+      76.146
+     ],
+     "MOTION_YARD_TUG_HOOK": [
+      0.6618,
+      0.3341,
+      76.697
+     ],
+     "MOTION_YARD_TUG_WINCH": [
+      0.6174,
+      0.3435,
+      73.844
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4649,
+      0.5363,
+      66.786
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6293,
+      69.518
+     ],
+     "SOCKET_Engine_Main": [
+      0.6826,
+      0.3768,
+      78.657
+     ],
+     "SOCKET_Mining_Front": [
+      0.2608,
+      0.755,
+      58.959
+     ],
+     "SOCKET_RCS_Port": [
+      0.5557,
+      0.5282,
+      67.131
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.4463,
+      0.4728,
+      69.59
+     ],
+     "SOCKET_Tether_Massline": [
+      0.6637,
+      0.332,
+      76.809
+     ],
+     "SOCKET_Trail_Main": [
+      0.6872,
+      0.3718,
+      78.934
+     ],
+     "SOCKET_Trail_Port": [
+      0.7082,
+      0.3811,
+      78.422
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6663,
+      0.3627,
+      79.446
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3662,
+      67.202
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2584,
+      0.7495,
+      58.823
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_hawser.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 72658,
+    "hullSize": [
+     26.292,
+     7.82,
+     5.795
+    ],
+    "longAxis": 0,
+    "marks": {
+     "SF_NPCWORK_YARD_TUG_ROOT": [
+      0.4943,
+      0.6144,
+      78.877
+     ],
+     "MOTION_YARD_TUG_FAIRLEAD": [
+      0.1607,
+      0.4843,
+      78.877
+     ],
+     "MOTION_YARD_TUG_HOOK": [
+      0.1414,
+      0.5019,
+      78.877
+     ],
+     "MOTION_YARD_TUG_WINCH": [
+      0.2494,
+      0.4421,
+      78.877
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5678,
+      0.5,
+      78.877
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.7002,
+      78.877
+     ],
+     "SOCKET_Engine_Main": [
+      0.085,
+      0.6144,
+      78.877
+     ],
+     "SOCKET_Mining_Front": [
+      0.9076,
+      0.5105,
+      78.877
+     ],
+     "SOCKET_RCS_Port": [
+      0.5,
+      0.5,
+      81.223
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5,
+      0.5,
+      76.531
+     ],
+     "SOCKET_Tether_Massline": [
+      0.1366,
+      0.5019,
+      78.877
+     ],
+     "SOCKET_Trail_Main": [
+      0.0731,
+      0.6144,
+      78.877
+     ],
+     "SOCKET_Trail_Port": [
+      0.0731,
+      0.6144,
+      79.854
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.0731,
+      0.6144,
+      77.899
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.2998,
+      78.877
+     ],
+     "SOCKET_Weapon_Front": [
+      0.9108,
+      0.5,
+      78.877
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_hawser.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 48572,
+    "hullSize": [
+     26.292,
+     7.82,
+     5.795
+    ],
+    "longAxis": 0,
+    "marks": {
+     "SF_NPCWORK_YARD_TUG_ROOT": [
+      0.5,
+      0.5057,
+      80.504
+     ],
+     "MOTION_YARD_TUG_FAIRLEAD": [
+      0.5,
+      0.8393,
+      78.654
+     ],
+     "MOTION_YARD_TUG_HOOK": [
+      0.5,
+      0.8586,
+      78.904
+     ],
+     "MOTION_YARD_TUG_WINCH": [
+      0.5,
+      0.7506,
+      78.054
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.4322,
+      78.877
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5,
+      81.724
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.915,
+      80.504
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.0924,
+      79.027
+     ],
+     "SOCKET_RCS_Port": [
+      0.4244,
+      0.5,
+      78.877
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5756,
+      0.5,
+      78.877
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.8634,
+      78.904
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.9269,
+      80.504
+     ],
+     "SOCKET_Trail_Port": [
+      0.4685,
+      0.9269,
+      80.504
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.5315,
+      0.9269,
+      80.504
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.5,
+      76.03
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.0892,
+      78.877
+     ]
+    }
+   }
+  },
+  "ship_bastion": {
+   "sourceGlb": "assets/ships/parts/wholeships/bastion_production_v1.glb",
+   "sourceGlbSha256": "F51AB92E03AFD678B21FB25CB1706A1AFF85C996119D9CC6927898101747F86D",
+   "hero": {
+    "file": "ship_bastion.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 108092,
+    "hullSize": [
+     21.104,
+     8.6,
+     5.079
+    ],
+    "longAxis": 0,
+    "marks": {
+     "BASTION_LOD0_ROOT": [
+      0.4926,
+      0.5901,
+      55.181
+     ],
+     "MOTION_HULL_CORE": [
+      0.4926,
+      0.5901,
+      55.181
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4649,
+      0.5363,
+      53.607
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6407,
+      55.883
+     ],
+     "SOCKET_Engine_Main": [
+      0.6807,
+      0.3904,
+      63.154
+     ],
+     "SOCKET_Mining_Front": [
+      0.2635,
+      0.7542,
+      47.409
+     ],
+     "SOCKET_RCS_Port": [
+      0.5768,
+      0.5389,
+      53.519
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.4269,
+      0.463,
+      56.223
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5891,
+      0.3781,
+      58.121
+     ],
+     "SOCKET_Trail_Main": [
+      0.6872,
+      0.3833,
+      63.468
+     ],
+     "SOCKET_Trail_Port": [
+      0.7161,
+      0.396,
+      62.905
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6588,
+      0.3708,
+      64.031
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.354,
+      53.858
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2605,
+      0.7473,
+      47.274
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_bastion.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 55192,
+    "hullSize": [
+     21.104,
+     8.6,
+     5.079
+    ],
+    "longAxis": 0,
+    "marks": {
+     "BASTION_LOD0_ROOT": [
+      0.5148,
+      0.6261,
+      63.312
+     ],
+     "MOTION_HULL_CORE": [
+      0.5148,
+      0.6261,
+      63.312
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5678,
+      0.5,
+      63.312
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.7181,
+      63.312
+     ],
+     "SOCKET_Engine_Main": [
+      0.0891,
+      0.6349,
+      63.312
+     ],
+     "SOCKET_Mining_Front": [
+      0.9037,
+      0.5131,
+      63.312
+     ],
+     "SOCKET_RCS_Port": [
+      0.5,
+      0.5,
+      65.892
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5,
+      0.5,
+      60.732
+     ],
+     "SOCKET_Tether_Massline": [
+      0.3136,
+      0.4518,
+      63.312
+     ],
+     "SOCKET_Trail_Main": [
+      0.0723,
+      0.6349,
+      63.312
+     ],
+     "SOCKET_Trail_Port": [
+      0.0723,
+      0.6349,
+      64.387
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.0723,
+      0.6349,
+      62.237
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.2819,
+      63.312
+     ],
+     "SOCKET_Weapon_Front": [
+      0.9077,
+      0.5,
+      63.312
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_bastion.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 42258,
+    "hullSize": [
+     21.104,
+     8.6,
+     5.079
+    ],
+    "longAxis": 0,
+    "marks": {
+     "BASTION_LOD0_ROOT": [
+      0.5,
+      0.4852,
+      64.752
+     ],
+     "MOTION_HULL_CORE": [
+      0.5,
+      0.4852,
+      64.752
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.4322,
+      63.312
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5,
+      65.802
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.9109,
+      64.852
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.0963,
+      63.462
+     ],
+     "SOCKET_RCS_Port": [
+      0.3964,
+      0.5,
+      63.312
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.6036,
+      0.5,
+      63.312
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.6864,
+      62.762
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.9277,
+      64.852
+     ],
+     "SOCKET_Trail_Port": [
+      0.4568,
+      0.9277,
+      64.852
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.5432,
+      0.9277,
+      64.852
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.5,
+      60.823
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.0923,
+      63.312
+     ]
+    }
+   }
+  },
+  "ship_atlas": {
+   "sourceGlb": "assets/ships/parts/wholeships/atlas_production_v1.glb",
+   "sourceGlbSha256": "2EDB848D43D5CE2901791089C0A49CF09017442BD8661F00ECFE1CA107448D9B",
+   "hero": {
+    "file": "ship_atlas.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 134726,
+    "hullSize": [
+     23.72,
+     7.58,
+     4.486
+    ],
+    "longAxis": 0,
+    "marks": {
+     "ATLAS_LOD0_ROOT": [
+      0.4971,
+      0.5409,
+      61.854
+     ],
+     "MOTION_HULL_CORE": [
+      0.4971,
+      0.5409,
+      61.854
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4649,
+      0.5363,
+      60.252
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6107,
+      62.564
+     ],
+     "SOCKET_Engine_Main": [
+      0.6824,
+      0.3404,
+      70.569
+     ],
+     "SOCKET_Mining_Front": [
+      0.262,
+      0.7547,
+      53.232
+     ],
+     "SOCKET_RCS_Port": [
+      0.5599,
+      0.5303,
+      60.48
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.4424,
+      0.4708,
+      62.864
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5892,
+      0.3716,
+      65.272
+     ],
+     "SOCKET_Trail_Main": [
+      0.6882,
+      0.3343,
+      70.884
+     ],
+     "SOCKET_Trail_Port": [
+      0.7109,
+      0.344,
+      70.387
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6657,
+      0.3248,
+      71.38
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3861,
+      60.78
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2593,
+      0.7486,
+      53.096
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_atlas.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 61210,
+    "hullSize": [
+     23.72,
+     7.58,
+     4.486
+    ],
+    "longAxis": 0,
+    "marks": {
+     "ATLAS_LOD0_ROOT": [
+      0.5057,
+      0.5579,
+      71.16
+     ],
+     "MOTION_HULL_CORE": [
+      0.5057,
+      0.5579,
+      71.16
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5678,
+      0.5,
+      71.16
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6709,
+      71.16
+     ],
+     "SOCKET_Engine_Main": [
+      0.0877,
+      0.5501,
+      71.16
+     ],
+     "SOCKET_Mining_Front": [
+      0.9059,
+      0.5117,
+      71.16
+     ],
+     "SOCKET_RCS_Port": [
+      0.5,
+      0.5,
+      73.434
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5,
+      0.5,
+      68.886
+     ],
+     "SOCKET_Tether_Massline": [
+      0.3136,
+      0.4415,
+      71.16
+     ],
+     "SOCKET_Trail_Main": [
+      0.0727,
+      0.5501,
+      71.16
+     ],
+     "SOCKET_Trail_Port": [
+      0.0727,
+      0.5501,
+      72.108
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.0727,
+      0.5501,
+      70.213
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3291,
+      71.16
+     ],
+     "SOCKET_Weapon_Front": [
+      0.9094,
+      0.5,
+      71.16
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_atlas.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 46554,
+    "hullSize": [
+     23.72,
+     7.58,
+     4.486
+    ],
+    "longAxis": 0,
+    "marks": {
+     "ATLAS_LOD0_ROOT": [
+      0.5,
+      0.4943,
+      71.903
+     ],
+     "MOTION_HULL_CORE": [
+      0.5,
+      0.4943,
+      71.903
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.4322,
+      71.16
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5,
+      73.353
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.9123,
+      71.803
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.0941,
+      71.31
+     ],
+     "SOCKET_RCS_Port": [
+      0.4188,
+      0.5,
+      71.16
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5812,
+      0.5,
+      71.16
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.6864,
+      70.41
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.9273,
+      71.803
+     ],
+     "SOCKET_Trail_Port": [
+      0.4661,
+      0.9273,
+      71.803
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.5339,
+      0.9273,
+      71.803
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.5,
+      68.967
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.0906,
+      71.16
+     ]
+    }
+   }
+  },
+  "ship_ranger": {
+   "sourceGlb": "assets/ships/parts/wholeships/ranger_production_v1.glb",
+   "sourceGlbSha256": "A931523A8B82A61BD3584187240EB982CF276DE2B5AC06B11C75BEF94A6552FE",
+   "hero": {
+    "file": "ship_ranger.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 78006,
+    "hullSize": [
+     17.73,
+     7.541,
+     3.393
+    ],
+    "longAxis": 0,
+    "marks": {
+     "RANGER_LOD0_ROOT": [
+      0.513,
+      0.557,
+      46.932
+     ],
+     "MOTION_HULL_CORE": [
+      0.513,
+      0.557,
+      46.932
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4649,
+      0.5363,
+      45.037
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6112,
+      46.768
+     ],
+     "SOCKET_Engine_Main": [
+      0.681,
+      0.3755,
+      52.956
+     ],
+     "SOCKET_Mining_Front": [
+      0.3768,
+      0.7187,
+      43.047
+     ],
+     "SOCKET_RCS_Port": [
+      0.5802,
+      0.5406,
+      44.913
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.4238,
+      0.4614,
+      47.283
+     ],
+     "SOCKET_Tether_Massline": [
+      0.589,
+      0.3871,
+      48.885
+     ],
+     "SOCKET_Trail_Main": [
+      0.6878,
+      0.3681,
+      53.232
+     ],
+     "SOCKET_Trail_Port": [
+      0.7181,
+      0.3813,
+      52.739
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6582,
+      0.3552,
+      53.726
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3855,
+      45.428
+     ],
+     "SOCKET_Weapon_Front": [
+      0.3738,
+      0.711,
+      42.911
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_ranger.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 49364,
+    "hullSize": [
+     17.73,
+     7.541,
+     3.393
+    ],
+    "longAxis": 0,
+    "marks": {
+     "RANGER_LOD0_ROOT": [
+      0.474,
+      0.6091,
+      53.19
+     ],
+     "MOTION_HULL_CORE": [
+      0.474,
+      0.6091,
+      53.19
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5678,
+      0.5,
+      53.19
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6717,
+      53.19
+     ],
+     "SOCKET_Engine_Main": [
+      0.0892,
+      0.6091,
+      53.19
+     ],
+     "SOCKET_Mining_Front": [
+      0.7273,
+      0.63,
+      53.19
+     ],
+     "SOCKET_RCS_Port": [
+      0.5,
+      0.5,
+      55.452
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5,
+      0.5,
+      50.928
+     ],
+     "SOCKET_Tether_Massline": [
+      0.3136,
+      0.4661,
+      53.19
+     ],
+     "SOCKET_Trail_Main": [
+      0.0715,
+      0.6091,
+      53.19
+     ],
+     "SOCKET_Trail_Port": [
+      0.0715,
+      0.6091,
+      54.133
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.0715,
+      0.6091,
+      52.247
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3283,
+      53.19
+     ],
+     "SOCKET_Weapon_Front": [
+      0.7321,
+      0.6144,
+      53.19
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_ranger.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 39028,
+    "hullSize": [
+     17.73,
+     7.541,
+     3.393
+    ],
+    "longAxis": 0,
+    "marks": {
+     "RANGER_LOD0_ROOT": [
+      0.5,
+      0.526,
+      54.237
+     ],
+     "MOTION_HULL_CORE": [
+      0.5,
+      0.526,
+      54.237
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.4322,
+      53.19
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5,
+      54.837
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.9108,
+      54.237
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.2727,
+      54.437
+     ],
+     "SOCKET_RCS_Port": [
+      0.3919,
+      0.5,
+      53.19
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.6081,
+      0.5,
+      53.19
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.6864,
+      52.865
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.9285,
+      54.237
+     ],
+     "SOCKET_Trail_Port": [
+      0.4549,
+      0.9285,
+      54.237
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.5451,
+      0.9285,
+      54.237
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.5,
+      51.543
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.2679,
+      54.287
+     ]
+    }
+   }
+  },
+  "ship_warden": {
+   "sourceGlb": "assets/ships/parts/wholeships/warden_production_v1.glb",
+   "sourceGlbSha256": "9700E1CEE5A14F05B833819CE14C8F215DDF8D6735F7D2C8278B1D6EE420C715",
+   "hero": {
+    "file": "ship_warden.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 123038,
+    "hullSize": [
+     42.126,
+     12.5,
+     11.049
+    ],
+    "longAxis": 0,
+    "marks": {
+     "WARDEN_LOD0_ROOT": [
+      0.4944,
+      0.6065,
+      110.546
+     ],
+     "MOTION_HULL_CORE": [
+      0.4944,
+      0.6065,
+      110.546
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4649,
+      0.5363,
+      107.007
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6547,
+      111.755
+     ],
+     "SOCKET_Engine_Main": [
+      0.6721,
+      0.4048,
+      125.336
+     ],
+     "SOCKET_Mining_Front": [
+      0.2565,
+      0.7564,
+      94.202
+     ],
+     "SOCKET_RCS_Port": [
+      0.5555,
+      0.5281,
+      107.564
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.4464,
+      0.4729,
+      111.494
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5891,
+      0.3808,
+      116.057
+     ],
+     "SOCKET_Trail_Main": [
+      0.6863,
+      0.3892,
+      126.698
+     ],
+     "SOCKET_Trail_Port": [
+      0.7073,
+      0.3985,
+      125.879
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6656,
+      0.3801,
+      127.517
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3389,
+      107.302
+     ],
+     "SOCKET_Weapon_Front": [
+      0.255,
+      0.753,
+      94.066
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_warden.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 82542,
+    "hullSize": [
+     42.126,
+     12.5,
+     11.049
+    ],
+    "longAxis": 0,
+    "marks": {
+     "WARDEN_LOD0_ROOT": [
+      0.5112,
+      0.6547,
+      126.379
+     ],
+     "MOTION_HULL_CORE": [
+      0.5112,
+      0.6547,
+      126.379
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5678,
+      0.5,
+      126.379
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.7403,
+      126.379
+     ],
+     "SOCKET_Engine_Main": [
+      0.1109,
+      0.6437,
+      126.379
+     ],
+     "SOCKET_Mining_Front": [
+      0.9137,
+      0.5066,
+      126.379
+     ],
+     "SOCKET_RCS_Port": [
+      0.5,
+      0.5,
+      130.129
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5,
+      0.5,
+      122.629
+     ],
+     "SOCKET_Tether_Massline": [
+      0.3136,
+      0.4561,
+      126.379
+     ],
+     "SOCKET_Trail_Main": [
+      0.0743,
+      0.6437,
+      126.379
+     ],
+     "SOCKET_Trail_Port": [
+      0.0743,
+      0.6437,
+      127.942
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.0743,
+      0.6437,
+      124.817
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.2597,
+      126.379
+     ],
+     "SOCKET_Weapon_Front": [
+      0.9157,
+      0.5,
+      126.379
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_warden.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 46966,
+    "hullSize": [
+     42.126,
+     12.5,
+     11.049
+    ],
+    "longAxis": 0,
+    "marks": {
+     "WARDEN_LOD0_ROOT": [
+      0.5,
+      0.4888,
+      129.904
+     ],
+     "MOTION_HULL_CORE": [
+      0.5,
+      0.4888,
+      129.904
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.4322,
+      126.379
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5,
+      131.854
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.8891,
+      129.654
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.0863,
+      126.529
+     ],
+     "SOCKET_RCS_Port": [
+      0.4246,
+      0.5,
+      126.379
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5754,
+      0.5,
+      126.379
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.6864,
+      125.379
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.9257,
+      129.654
+     ],
+     "SOCKET_Trail_Port": [
+      0.4686,
+      0.9257,
+      129.654
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.5314,
+      0.9257,
+      129.654
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.5,
+      120.905
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.0843,
+      126.379
+     ]
+    }
+   }
+  },
+  "ship_colossus": {
+   "sourceGlb": "assets/ships/parts/wholeships/colossus_production_v1.glb",
+   "sourceGlbSha256": "15A89FDB446B14356BC3DC1D9649788F5BDEE6776757688F7CD3A1CDB8D09F8F",
+   "hero": {
+    "file": "ship_colossus.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 141384,
+    "hullSize": [
+     53.5,
+     26.216,
+     12.066
+    ],
+    "longAxis": 0,
+    "marks": {
+     "COLOSSUS_LOD0_ROOT": [
+      0.4987,
+      0.585,
+      140.486
+     ],
+     "MOTION_HULL_CORE": [
+      0.4987,
+      0.585,
+      140.486
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4649,
+      0.5363,
+      135.897
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6335,
+      141.534
+     ],
+     "SOCKET_Engine_Main": [
+      0.6839,
+      0.3784,
+      160.29
+     ],
+     "SOCKET_Mining_Front": [
+      0.255,
+      0.7569,
+      119.517
+     ],
+     "SOCKET_RCS_Port": [
+      0.5928,
+      0.547,
+      134.979
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.4125,
+      0.4557,
+      143.221
+     ],
+     "SOCKET_Tether_Massline": [
+      0.589,
+      0.3833,
+      147.437
+     ],
+     "SOCKET_Trail_Main": [
+      0.6865,
+      0.3757,
+      160.604
+     ],
+     "SOCKET_Trail_Port": [
+      0.7213,
+      0.391,
+      158.887
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6523,
+      0.3607,
+      162.321
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3617,
+      136.666
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2538,
+      0.7542,
+      119.381
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_colossus.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 66648,
+    "hullSize": [
+     53.5,
+     26.216,
+     12.066
+    ],
+    "longAxis": 0,
+    "marks": {
+     "COLOSSUS_LOD0_ROOT": [
+      0.5027,
+      0.6285,
+      160.5
+     ],
+     "MOTION_HULL_CORE": [
+      0.5027,
+      0.6285,
+      160.5
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5678,
+      0.5,
+      160.5
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.7068,
+      160.5
+     ],
+     "SOCKET_Engine_Main": [
+      0.0813,
+      0.6199,
+      160.5
+     ],
+     "SOCKET_Mining_Front": [
+      0.9158,
+      0.5052,
+      160.5
+     ],
+     "SOCKET_RCS_Port": [
+      0.5,
+      0.5,
+      168.365
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5,
+      0.5,
+      152.635
+     ],
+     "SOCKET_Tether_Massline": [
+      0.3136,
+      0.46,
+      160.5
+     ],
+     "SOCKET_Trail_Main": [
+      0.0747,
+      0.6199,
+      160.5
+     ],
+     "SOCKET_Trail_Port": [
+      0.0747,
+      0.6199,
+      163.777
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.0747,
+      0.6199,
+      157.223
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.2932,
+      160.5
+     ],
+     "SOCKET_Weapon_Front": [
+      0.9174,
+      0.5,
+      160.5
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_colossus.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 55536,
+    "hullSize": [
+     53.5,
+     26.216,
+     12.066
+    ],
+    "longAxis": 0,
+    "marks": {
+     "COLOSSUS_LOD0_ROOT": [
+      0.5,
+      0.4973,
+      164.219
+     ],
+     "MOTION_HULL_CORE": [
+      0.5,
+      0.4973,
+      164.219
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.4322,
+      160.5
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5,
+      166.483
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.9187,
+      163.969
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.0842,
+      160.65
+     ],
+     "SOCKET_RCS_Port": [
+      0.3754,
+      0.5,
+      160.5
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.6246,
+      0.5,
+      160.5
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.6864,
+      159.343
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.9253,
+      163.969
+     ],
+     "SOCKET_Trail_Port": [
+      0.4481,
+      0.9253,
+      163.969
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.5519,
+      0.9253,
+      163.969
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.5,
+      154.517
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.0826,
+      160.5
+     ]
+    }
+   }
+  },
+  "ship_leviathan": {
+   "sourceGlb": "assets/ships/parts/wholeships/leviathan_production_v1.glb",
+   "sourceGlbSha256": "6018D1F95B9183567B12908713D3956D4FC69327CAA7A7593F247C15EE0ACD76",
+   "hero": {
+    "file": "ship_leviathan.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 140488,
+    "hullSize": [
+     61.1,
+     33.12,
+     17.406
+    ],
+    "longAxis": 0,
+    "marks": {
+     "LEVIATHAN_LOD0_ROOT": [
+      0.4976,
+      0.6164,
+      160.959
+     ],
+     "MOTION_HULL_CORE": [
+      0.4976,
+      0.6164,
+      160.959
+     ],
+     "SOCKET_Camera_Focus": [
+      0.4649,
+      0.5363,
+      155.203
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6683,
+      162.38
+     ],
+     "SOCKET_Engine_Main": [
+      0.6847,
+      0.4029,
+      183.865
+     ],
+     "SOCKET_Mining_Front": [
+      0.2544,
+      0.7571,
+      136.434
+     ],
+     "SOCKET_RCS_Port": [
+      0.603,
+      0.5521,
+      153.654
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.4035,
+      0.4512,
+      164.067
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5891,
+      0.3808,
+      168.33
+     ],
+     "SOCKET_Trail_Main": [
+      0.6858,
+      0.4017,
+      184.015
+     ],
+     "SOCKET_Trail_Port": [
+      0.7242,
+      0.4189,
+      181.846
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6482,
+      0.385,
+      186.184
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3241,
+      155.341
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2533,
+      0.7548,
+      136.298
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_leviathan.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 76310,
+    "hullSize": [
+     61.1,
+     33.12,
+     17.406
+    ],
+    "longAxis": 0,
+    "marks": {
+     "LEVIATHAN_LOD0_ROOT": [
+      0.5049,
+      0.6756,
+      183.301
+     ],
+     "MOTION_HULL_CORE": [
+      0.5049,
+      0.6756,
+      183.301
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5678,
+      0.5,
+      183.301
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.7619,
+      183.301
+     ],
+     "SOCKET_Engine_Main": [
+      0.0777,
+      0.665,
+      183.301
+     ],
+     "SOCKET_Mining_Front": [
+      0.9168,
+      0.5045,
+      183.301
+     ],
+     "SOCKET_RCS_Port": [
+      0.5,
+      0.5,
+      193.237
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.5,
+      0.5,
+      173.365
+     ],
+     "SOCKET_Tether_Massline": [
+      0.3136,
+      0.4561,
+      183.301
+     ],
+     "SOCKET_Trail_Main": [
+      0.0749,
+      0.665,
+      183.301
+     ],
+     "SOCKET_Trail_Port": [
+      0.0749,
+      0.665,
+      187.441
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.0749,
+      0.665,
+      179.161
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.2381,
+      183.301
+     ],
+     "SOCKET_Weapon_Front": [
+      0.9182,
+      0.5,
+      183.301
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_leviathan.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 60548,
+    "hullSize": [
+     61.1,
+     33.12,
+     17.406
+    ],
+    "longAxis": 0,
+    "marks": {
+     "LEVIATHAN_LOD0_ROOT": [
+      0.5,
+      0.4951,
+      189.104
+     ],
+     "MOTION_HULL_CORE": [
+      0.5,
+      0.4951,
+      189.104
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.4322,
+      183.301
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5,
+      191.954
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.9223,
+      188.754
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.0832,
+      183.451
+     ],
+     "SOCKET_RCS_Port": [
+      0.3622,
+      0.5,
+      183.301
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.6378,
+      0.5,
+      183.301
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.6864,
+      181.851
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.9251,
+      188.754
+     ],
+     "SOCKET_Trail_Port": [
+      0.4426,
+      0.9251,
+      188.754
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.5574,
+      0.9251,
+      188.754
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.5,
+      174.648
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.0818,
+      183.301
+     ]
+    }
+   }
+  },
+  "ship_saucer": {
+   "sourceGlb": "assets/ships/parts/wholeships/saucer_production_v1.glb",
+   "sourceGlbSha256": "658F17F4ACB8F815BB84ABB341FC03D8ABD99AE6CA3025ADBE82592A1C668A7D",
+   "hero": {
+    "file": "ship_saucer.hero.webp",
+    "width": 2400,
+    "height": 1350,
+    "bytes": 138650,
+    "hullSize": [
+     20.962,
+     22.06,
+     7.56
+    ],
+    "longAxis": 1,
+    "marks": {
+     "SAUCER_LOD0_ROOT": [
+      0.5205,
+      0.4984,
+      56.885
+     ],
+     "MOTION_HULL_CORE": [
+      0.5205,
+      0.4984,
+      56.885
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5205,
+      0.4705,
+      56.682
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5202,
+      0.6025,
+      57.658
+     ],
+     "SOCKET_Engine_Main": [
+      0.52,
+      0.6668,
+      58.146
+     ],
+     "SOCKET_Mining_Front": [
+      0.2462,
+      0.3791,
+      62.647
+     ],
+     "SOCKET_RCS_Port": [
+      0.4646,
+      0.7676,
+      48.619
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.7751,
+      0.3999,
+      61.041
+     ],
+     "SOCKET_Tether_Massline": [
+      0.4981,
+      0.5906,
+      58.077
+     ],
+     "SOCKET_Trail_Main": [
+      0.7863,
+      0.653,
+      52.469
+     ],
+     "SOCKET_Trail_Port": [
+      0.6526,
+      0.7406,
+      49.887
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.8117,
+      0.5289,
+      56.622
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5208,
+      0.3914,
+      56.112
+     ],
+     "SOCKET_Weapon_Front": [
+      0.2509,
+      0.372,
+      62.46
+     ],
+     "SOCKET_Weapon_Port": [
+      0.2846,
+      0.7212,
+      49.47
+     ],
+     "SOCKET_Weapon_Starboard": [
+      0.6838,
+      0.3092,
+      64.586
+     ]
+    }
+   },
+   "side": {
+    "file": "ship_saucer.side.webp",
+    "width": 2400,
+    "height": 1100,
+    "bytes": 76166,
+    "hullSize": [
+     20.962,
+     22.06,
+     7.56
+    ],
+    "longAxis": 1,
+    "marks": {
+     "SAUCER_LOD0_ROOT": [
+      0.5,
+      0.4819,
+      66.911
+     ],
+     "MOTION_HULL_CORE": [
+      0.5,
+      0.4819,
+      66.911
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.44,
+      66.911
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.6411,
+      66.911
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.7417,
+      66.911
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.5126,
+      56.199
+     ],
+     "SOCKET_RCS_Port": [
+      0.8189,
+      0.4903,
+      70.911
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.1811,
+      0.4903,
+      70.911
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.6411,
+      66.111
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.5112,
+      75.611
+     ],
+     "SOCKET_Trail_Port": [
+      0.6729,
+      0.5112,
+      74.111
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.3271,
+      0.5112,
+      74.111
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.3226,
+      66.911
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.497,
+      56.411
+     ],
+     "SOCKET_Weapon_Port": [
+      0.888,
+      0.4735,
+      66.561
+     ],
+     "SOCKET_Weapon_Starboard": [
+      0.112,
+      0.4735,
+      66.561
+     ]
+    }
+   },
+   "top": {
+    "file": "ship_saucer.top.webp",
+    "width": 1024,
+    "height": 1024,
+    "bytes": 63032,
+    "hullSize": [
+     20.962,
+     22.06,
+     7.56
+    ],
+    "longAxis": 1,
+    "marks": {
+     "SAUCER_LOD0_ROOT": [
+      0.5,
+      0.5281,
+      65.964
+     ],
+     "MOTION_HULL_CORE": [
+      0.5,
+      0.5281,
+      65.964
+     ],
+     "SOCKET_Camera_Focus": [
+      0.5,
+      0.5281,
+      65.464
+     ],
+     "SOCKET_Cargo_Ventral": [
+      0.5,
+      0.5281,
+      67.864
+     ],
+     "SOCKET_Engine_Main": [
+      0.5,
+      0.5281,
+      69.064
+     ],
+     "SOCKET_Mining_Front": [
+      0.5,
+      0.1166,
+      66.33
+     ],
+     "SOCKET_RCS_Port": [
+      0.1811,
+      0.6817,
+      66.064
+     ],
+     "SOCKET_RCS_Starboard": [
+      0.8189,
+      0.6817,
+      66.064
+     ],
+     "SOCKET_Tether_Massline": [
+      0.5,
+      0.4973,
+      67.864
+     ],
+     "SOCKET_Trail_Main": [
+      0.5,
+      0.8623,
+      66.314
+     ],
+     "SOCKET_Trail_Port": [
+      0.3271,
+      0.8047,
+      66.314
+     ],
+     "SOCKET_Trail_Starboard": [
+      0.6729,
+      0.8047,
+      66.314
+     ],
+     "SOCKET_Utility_Dorsal": [
+      0.5,
+      0.5281,
+      64.064
+     ],
+     "SOCKET_Weapon_Front": [
+      0.5,
+      0.1247,
+      66.144
+     ],
+     "SOCKET_Weapon_Port": [
+      0.112,
+      0.5146,
+      65.864
+     ],
+     "SOCKET_Weapon_Starboard": [
+      0.888,
+      0.5146,
+      65.864
+     ]
+    }
+   }
+  }
+ }
+}

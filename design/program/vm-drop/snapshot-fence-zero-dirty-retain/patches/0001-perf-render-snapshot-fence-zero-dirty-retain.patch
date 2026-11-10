@@ -1,0 +1,182 @@
+diff --git a/src/render/presentationWorld.js b/src/render/presentationWorld.js
+index 6d4d89cae..fbf4d9f28 100644
+--- a/src/render/presentationWorld.js
++++ b/src/render/presentationWorld.js
+@@ -138,6 +138,9 @@ export function createPresentationWorld(options = {}) {
+   let maxRadius = 0;
+   let asteroidDirty = true;
+   let disposed = false;
++  // O(1) count of slots with any PRESENTATION_DIRTY bit. Fence pack uses this to
++  // retain a sealed latest snapshot on quiet zero-dirty ticks without scanning.
++  let dirtyCount = 0;
+ 
+   const world = {
+     capacity: 0,
+@@ -482,7 +485,7 @@ export function createPresentationWorld(options = {}) {
+       }
+       changed = true;
+     }
+-    if (changed) world.dirtyMasks[slot] |= PRESENTATION_DIRTY.VISUAL;
++    if (changed) markDirtyBits(slot, PRESENTATION_DIRTY.VISUAL);
+     return changed;
+   }
+ 
+@@ -499,6 +502,25 @@ export function createPresentationWorld(options = {}) {
+     return slot;
+   }
+ 
++
++  function markDirtyBits(slot, bits) {
++    if (!bits) return;
++    const prev = world.dirtyMasks[slot];
++    const next = prev | bits;
++    if (prev === next) return;
++    if (prev === 0) dirtyCount++;
++    world.dirtyMasks[slot] = next;
++  }
++
++  function writeDirtyMask(slot, next) {
++    const prev = world.dirtyMasks[slot];
++    if (prev === next) return;
++    if (prev === 0 && next !== 0) dirtyCount++;
++    else if (prev !== 0 && next === 0) dirtyCount--;
++    world.dirtyMasks[slot] = next;
++  }
++
++
+   function allocateRecord(record, entity = null) {
+     ensureAlive();
+     const entityId = sourceEntityId(record);
+@@ -521,7 +543,7 @@ export function createPresentationWorld(options = {}) {
+     world.entityIds[slot] = entityId;
+     world.typeCodes[slot] = typeCode(record && record.entityType || entity && entity.type);
+     world.flags[slot] = PRESENTATION_FLAGS.NONE;
+-    world.dirtyMasks[slot] = PRESENTATION_DIRTY.ALL;
++    writeDirtyMask(slot, PRESENTATION_DIRTY.ALL);
+     world.radii[slot] = 0;
+     world.entityRefs[slot] = entity;
+     world.meshRefs[slot] = null;
+@@ -593,7 +615,7 @@ export function createPresentationWorld(options = {}) {
+     if (world.meshRefs[slot]) boundCount = Math.max(0, boundCount - 1);
+     world.alive[slot] = 0;
+     world.visible[slot] = 0;
+-    world.dirtyMasks[slot] = PRESENTATION_DIRTY.NONE;
++    writeDirtyMask(slot, PRESENTATION_DIRTY.NONE);
+     world.entityRefs[slot] = null;
+     world.meshRefs[slot] = null;
+     byId.delete(entityId);
+@@ -636,7 +658,7 @@ export function createPresentationWorld(options = {}) {
+       ? record.visualRevision >>> 0
+       : world.visualRevisions[slot];
+     if (changed) {
+-      world.dirtyMasks[slot] |= PRESENTATION_DIRTY.TRANSFORM;
++      markDirtyBits(slot, PRESENTATION_DIRTY.TRANSFORM);
+       if (typeNames[world.typeCodes[slot]] === 'asteroid') asteroidDirty = true;
+     }
+     return slot;
+@@ -647,7 +669,7 @@ export function createPresentationWorld(options = {}) {
+     world.visualRevisions[slot] = Number.isSafeInteger(record && record.visualRevision)
+       ? record.visualRevision >>> 0
+       : world.visualRevisions[slot];
+-    world.dirtyMasks[slot] |= PRESENTATION_DIRTY.VISUAL;
++    markDirtyBits(slot, PRESENTATION_DIRTY.VISUAL);
+     return slot;
+   }
+ 
+@@ -658,8 +680,7 @@ export function createPresentationWorld(options = {}) {
+     if (world.meshRefs[slot] !== mesh) {
+       if (!world.meshRefs[slot]) boundCount++;
+       world.meshRefs[slot] = mesh;
+-      world.dirtyMasks[slot] |= PRESENTATION_DIRTY.BINDING | PRESENTATION_DIRTY.TRANSFORM
+-        | PRESENTATION_DIRTY.VISIBILITY;
++      markDirtyBits(slot, PRESENTATION_DIRTY.BINDING | PRESENTATION_DIRTY.TRANSFORM | PRESENTATION_DIRTY.VISIBILITY);
+       diagnostics.bound = boundCount;
+     }
+     refreshMetadata(slot, entity, visualRadius);
+@@ -673,7 +694,7 @@ export function createPresentationWorld(options = {}) {
+       || mesh && world.meshRefs[slot] !== mesh) return false;
+     world.meshRefs[slot] = null;
+     world.visible[slot] = 0;
+-    world.dirtyMasks[slot] |= PRESENTATION_DIRTY.BINDING | PRESENTATION_DIRTY.VISIBILITY;
++    markDirtyBits(slot, PRESENTATION_DIRTY.BINDING | PRESENTATION_DIRTY.VISIBILITY);
+     boundCount = Math.max(0, boundCount - 1);
+     diagnostics.bound = boundCount;
+     return true;
+@@ -684,7 +705,7 @@ export function createPresentationWorld(options = {}) {
+     const changed = writeEntityPose(slot, entity);
+     refreshMetadata(slot, entity, visualRadius);
+     if (changed) {
+-      world.dirtyMasks[slot] |= PRESENTATION_DIRTY.TRANSFORM;
++      markDirtyBits(slot, PRESENTATION_DIRTY.TRANSFORM);
+       if (typeNames[world.typeCodes[slot]] === 'asteroid') asteroidDirty = true;
+     }
+     return changed;
+@@ -789,7 +810,7 @@ export function createPresentationWorld(options = {}) {
+     const next = value ? 1 : 0;
+     if (world.visible[slot] !== next) {
+       world.visible[slot] = next;
+-      world.dirtyMasks[slot] |= PRESENTATION_DIRTY.VISIBILITY;
++      markDirtyBits(slot, PRESENTATION_DIRTY.VISIBILITY);
+     }
+     return true;
+   }
+@@ -802,7 +823,7 @@ export function createPresentationWorld(options = {}) {
+ 
+   function clearDirty(slot, mask = PRESENTATION_DIRTY.ALL) {
+     if (slot < 0 || slot >= world.capacity || world.alive[slot] !== 1) return false;
+-    world.dirtyMasks[slot] &= ~mask;
++    writeDirtyMask(slot, world.dirtyMasks[slot] & ~mask);
+     return true;
+   }
+ 
+@@ -825,6 +846,12 @@ export function createPresentationWorld(options = {}) {
+ 
+   ensureCapacity(initialCapacity);
+ 
++  Object.defineProperty(world, 'dirtyCount', {
++    get() { return dirtyCount; },
++    enumerable: true,
++    configurable: true,
++  });
++
+   return Object.assign(world, {
+     allocateRecord,
+     allocateEntity,
+diff --git a/src/render/snapshotFence.js b/src/render/snapshotFence.js
+index f2d778755..7bc7d66b1 100644
+--- a/src/render/snapshotFence.js
++++ b/src/render/snapshotFence.js
+@@ -192,6 +192,9 @@ export function createSnapshotFence(options = {}) {
+     },
+     get sequence() { return sequence; },
+     get packCount() { return packCount; },
++    get latestLayoutVersion() {
++      return latest < 0 ? -1 : buffers[latest].layoutVersion;
++    },
+   };
+ }
+ 
+@@ -343,9 +346,22 @@ export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoc
+     && layoutVersion >= 0
+     && dirtyMasks
+     && typeof fence.beginIncrementalPack === 'function'
+-    && typeof fence.rewritePose === 'function';
++    && typeof fence.rewritePose === 'function'
++    && (fence.packCount | 0) > 0;
+ 
+   if (canIncremental) {
++    // Quiet tick retain: presentationWorld.dirtyCount is O(1). After #51 the residual on a
++    // zero-dirty layout-stable tick was still copyDenseFrom of every column into the write
++    // ring slot. Poses are unchanged, so keep the sealed latest snapshot (poseSpanAlpha
++    // already clamps to latest when the present clock runs past a stale stamp).
++    // Layout identity must still match — a retire/allocate with no pose dirty bits would
++    // otherwise return the stale sealed count.
++    if ((world.dirtyCount | 0) === 0
++      && typeof fence.latestLayoutVersion === 'number'
++      && fence.latestLayoutVersion === layoutVersion) {
++      return active;
++    }
++
+     const snapshot = fence.beginIncrementalPack(active, simTime, poseEpoch, layoutVersion);
+     if (snapshot && (snapshot.count | 0) === active) {
+       // activeSlots is dense (removeActive swaps compact). Row index == activeSlots index.

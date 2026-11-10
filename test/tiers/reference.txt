@@ -1,0 +1,24 @@
+# Tier: reference — determinism, versioned goldens, save compatibility, baseline report.
+# These commands answer "did the authoritative simulation or its persistence contract move?"
+# Re-recording is scripts/reference.mjs (append-only), never a hand edit of test/*.expected.json.
+npm run check:sim
+npm run check:sim:compare
+npm run check:sim:v3
+npm run check:47a:tactics
+npm run check:47a:live-branch
+npm run check:47a:live-cold-open
+npm run check:47a:counterplay
+npm run check:47a:death-retry
+npm run check:47a:visuals
+npm run check:47a:spindle
+npm run check:47a:scavenger-threat
+npm run check:47a:debris-sling
+npm run check:47a:recovery-contested
+npm run check:47a:civilian-priority
+npm run check:47a:physical-branches
+npm run check:replay
+npm run check:save-schema
+npm run check:save-fuzz
+npm run check:baseline
+npm run sf -- validate test/47a.inputs.json test/47a.telemetry.expected.json src/data/scenarios/47a.scenario.json
+node --test test/determinism-smoke-120-ticks.test.mjs

@@ -1,0 +1,1880 @@
+{
+  "builder": "tools/blender/build_wreck_aftermath_pack.py",
+  "builderSha256": "0355979276a22e78b0859052d7e67d089c782e7c64bcd501cbafe923ede5ae73",
+  "blender": "5.1.2",
+  "command": "blender --background --factory-startup --python tools/blender/build_wreck_aftermath_pack.py -- --render --distances --sheets --silhouettes --states --gaps --compositions",
+  "fiction": "design/fiction/THE_LONG_AFTERMATH.md",
+  "audit": "assets/incubator/wreck_aftermath_pack/evidence/EXISTING_COVERAGE.md",
+  "sourceOnly": true,
+  "rng": "none - every dimension, break, drift and state is authored",
+  "playerHullM": 28.0,
+  "minGapClearRadiusM": 20.0,
+  "assets": [
+    {
+      "id": "wreck_ore_freighter_bow",
+      "family": "ore_freighter",
+      "kind": "primary",
+      "state": "cooling",
+      "was": "Bulk ore freighter (Forge ore barge), forward hopper deck: bow, forecastle and the forward cargo bays.",
+      "reads": "Deep hopper wells and hazard coamings say freighter; the bay torn out between the lobes is spanned only by bare frame rings \u2014 the hull snapped between frames and the missing bay is now a fly-through wound.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_ore_freighter_bow.glb",
+      "sha256": "eb3e23987a6181d28d40c49a619664a3f57cee1f84fa27aa37af23d6a07e8d8b",
+      "bytes": 1043616,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 15998,
+      "sizeM": [
+        179.03,
+        70.12,
+        70.12
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        58.89,
+        0.0,
+        0.0
+      ],
+      "sockets": [
+        "INTERACTION_RibcageGap",
+        "SOCKET_BlackBox",
+        "SOCKET_Hazard_Break",
+        "SOCKET_Salvage_Bridge",
+        "SOCKET_Salvage_Hopper"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [
+        {
+          "name": "INTERACTION_RibcageGap",
+          "atM": [
+            -19.1,
+            0.0,
+            0.0
+          ],
+          "clearRadiusM": 24.22,
+          "nearest": "woundFore_t_tear5",
+          "clearSpanM": 48.45,
+          "playerHullM": 28.0,
+          "requiredRadiusM": 20.0,
+          "pass": true
+        }
+      ],
+      "collisionProxy": {
+        "kind": "compound-box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          179.03,
+          70.12,
+          70.12
+        ]
+      }
+    },
+    {
+      "id": "wreck_ore_freighter_stern",
+      "family": "ore_freighter",
+      "kind": "secondary",
+      "state": "cooling",
+      "was": "Bulk ore freighter (Forge ore barge), stern: drive block, command tower, radiators.",
+      "reads": "The business end survived whole \u2014 which is why the read is \"salvage target\", not debris: intact drives, dead lights, the tower windows dark.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_ore_freighter_stern.glb",
+      "sha256": "6d132c86bf3dc0b295104c48077240063bc441fc6f6e3e13351397c13f337800",
+      "bytes": 1185620,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 22360,
+      "sizeM": [
+        145.0,
+        64.88,
+        62.73
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -81.9,
+        0.23,
+        13.57
+      ],
+      "sockets": [
+        "SOCKET_Hazard_Reactor",
+        "SOCKET_Salvage_Drive",
+        "SOCKET_Salvage_Radiator"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          -34.0,
+          -19.0,
+          7.0
+        ],
+        "tumbleAxis": [
+          0.201,
+          -0.301,
+          0.932
+        ],
+        "tumbleDeg": 24.0,
+        "driftDistanceM": 39.57,
+        "note": "the drive end took the momentum; it backs away from the break"
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "compound-box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          145.0,
+          64.88,
+          62.73
+        ]
+      }
+    },
+    {
+      "id": "wreck_ore_freighter_hopper",
+      "family": "ore_freighter",
+      "kind": "secondary",
+      "state": "cooling",
+      "was": "One cargo hopper bay of the ore barge, ore still heaped in the well.",
+      "reads": "A whole hold section \u2014 the ore heap says the cargo left with the break, which is exactly the story the bow's empty gap tells from the other side.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_ore_freighter_hopper.glb",
+      "sha256": "237338e9b49c9b15707a82140ed7aa1c966c8195c673196f1a67c33f1f08426a",
+      "bytes": 565476,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 5744,
+      "sizeM": [
+        49.0,
+        47.13,
+        25.44
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        63.7,
+        0.06,
+        2.06
+      ],
+      "sockets": [
+        "SOCKET_Salvage_Ore"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "compound-box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          49.0,
+          47.13,
+          25.44
+        ]
+      }
+    },
+    {
+      "id": "deb_ore_freighter_ring_span",
+      "family": "ore_freighter",
+      "kind": "debris",
+      "state": "cooling",
+      "was": "One ring frame of the freighter trunk, snapped at the lower arc.",
+      "reads": "Bare frame with a coaming plate still on it \u2014 the piece that explains what the ribcage gap in the bow section used to hold.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/deb_ore_freighter_ring_span.glb",
+      "sha256": "3dee8a66034e874fb9accd811795bb2efe05e342c49c56496c00a159eb3dfa6d",
+      "bytes": 214124,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 304,
+      "sizeM": [
+        10.14,
+        53.0,
+        51.85
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        0.52,
+        0.01,
+        1.01
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          10.14,
+          53.0,
+          51.85
+        ]
+      }
+    },
+    {
+      "id": "deb_ore_freighter_hopper_lid",
+      "family": "ore_freighter",
+      "kind": "debris",
+      "state": "cooling",
+      "was": "The deck plate and coaming around one hopper mouth, peeled off the trunk.",
+      "reads": "Flat plate with the hopper rim in it \u2014 reads as the missing piece of the hopper wreck next to it in the field.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/deb_ore_freighter_hopper_lid.glb",
+      "sha256": "b23be11b613007b6ad75bfdfc3b23919e297325c41356ca294deb2d0dc626117",
+      "bytes": 459016,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 4250,
+      "sizeM": [
+        24.94,
+        32.22,
+        30.57
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        42.97,
+        0.16,
+        3.27
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          24.94,
+          32.22,
+          30.57
+        ]
+      }
+    },
+    {
+      "id": "deb_ore_freighter_drive_bell",
+      "family": "ore_freighter",
+      "kind": "debris",
+      "state": "stripped",
+      "was": "The stern drive face of the ore barge: four bells in a square block.",
+      "reads": "Four dark bells pointing one way \u2014 an engine room with the ship torn off it.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/deb_ore_freighter_drive_bell.glb",
+      "sha256": "a01bce1a49429a2b1ed75661f2fed2e39b446804cc888b4a5854b036fb623103",
+      "bytes": 377404,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 3581,
+      "sizeM": [
+        8.19,
+        15.98,
+        9.88
+      ],
+      "centredResidualM": [
+        -0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -34.04,
+        0.01,
+        -0.0
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          8.19,
+          15.98,
+          9.88
+        ]
+      }
+    },
+    {
+      "id": "wreck_corvette_forward",
+      "family": "corvette",
+      "kind": "primary",
+      "state": "cooling",
+      "was": "Concord-pattern patrol corvette (Forge bastion), forward hull: citadel, bridge, two main turrets.",
+      "reads": "Armoured casemate and gun houses say warship; the lit-window bridge is what turns it into a crew's ship that ended.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_corvette_forward.glb",
+      "sha256": "13eaad12945229e5430f716609c0b2bcaddd0daa83b8a124893b181a7555f765",
+      "bytes": 928528,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 17150,
+      "sizeM": [
+        88.9,
+        53.05,
+        30.91
+      ],
+      "centredResidualM": [
+        -0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        18.37,
+        0.0,
+        2.38
+      ],
+      "sockets": [
+        "SOCKET_BlackBox",
+        "SOCKET_Evidence_Registry",
+        "SOCKET_Hazard_Break",
+        "SOCKET_Salvage_Barbette"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          16.0,
+          22.0,
+          -4.0
+        ],
+        "tumbleAxis": [
+          0.902,
+          0.1,
+          0.421
+        ],
+        "tumbleDeg": 31.0,
+        "driftDistanceM": 27.5,
+        "note": "the bow spun away on the forward vector"
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "compound-box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          88.9,
+          53.05,
+          30.91
+        ]
+      }
+    },
+    {
+      "id": "wreck_corvette_engine",
+      "family": "corvette",
+      "kind": "secondary",
+      "state": "cooling",
+      "was": "Patrol corvette (Forge bastion), aft hull: drive block, belts, casemates.",
+      "reads": "Three dead torches in an armoured frame \u2014 the engine section that never fired again.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_corvette_engine.glb",
+      "sha256": "0b87a08671d6464cbc66bcb5b7888b68f14737cfc8555edca2fddb4cfa4f81d9",
+      "bytes": 798184,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 14164,
+      "sizeM": [
+        73.0,
+        49.05,
+        43.71
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -42.28,
+        0.0,
+        6.85
+      ],
+      "sockets": [
+        "SOCKET_Hazard_Reactor",
+        "SOCKET_Salvage_Drive"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          -26.0,
+          -11.0,
+          5.0
+        ],
+        "tumbleAxis": [
+          -0.301,
+          0.501,
+          0.812
+        ],
+        "tumbleDeg": 18.0,
+        "driftDistanceM": 28.67,
+        "note": "it fell off the break under the drive's dead momentum"
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "compound-box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          73.0,
+          49.05,
+          43.71
+        ]
+      }
+    },
+    {
+      "id": "wreck_corvette_turret",
+      "family": "corvette",
+      "kind": "secondary",
+      "state": "cooling",
+      "was": "A whole corvette turret, torn from the deck ring.",
+      "reads": "Gun house with both barrels still on it \u2014 firepower drifting loose is the detail that says the fight was violent, not slow.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_corvette_turret.glb",
+      "sha256": "fd4d03e849f3c33a6a9a4acb65c89ac99a8954cb2ee2f3506122e4d82fbe5ebc",
+      "bytes": 374008,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 4220,
+      "sizeM": [
+        16.0,
+        7.3,
+        6.55
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        20.97,
+        0.06,
+        2.92
+      ],
+      "sockets": [
+        "SOCKET_Salvage_Weapon"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          -6.0,
+          30.0,
+          9.0
+        ],
+        "tumbleAxis": [
+          0.398,
+          -0.697,
+          0.597
+        ],
+        "tumbleDeg": 67.0,
+        "driftDistanceM": 31.89,
+        "note": "it tumbles like the thing that threw it was still exploding"
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "compound-box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          16.0,
+          7.3,
+          6.55
+        ]
+      }
+    },
+    {
+      "id": "deb_corvette_armor_belt",
+      "family": "corvette",
+      "kind": "debris",
+      "state": "cooling",
+      "was": "The corvette's flank armour belt, peeled off in one run.",
+      "reads": "Layered slabs with the warning-stripe edge \u2014 warship skin without the warship.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/deb_corvette_armor_belt.glb",
+      "sha256": "384b9f3e7cc343f7792d3deee0bf2f7762f0d68a95c97763715603c02a6c5e5e",
+      "bytes": 453916,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 6804,
+      "sizeM": [
+        22.99,
+        12.93,
+        11.4
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -8.84,
+        0.0,
+        -0.86
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          22.99,
+          12.93,
+          11.4
+        ]
+      }
+    },
+    {
+      "id": "deb_corvette_barbette_ring",
+      "family": "corvette",
+      "kind": "debris",
+      "state": "stripped",
+      "was": "The barbette ring under turret B, cut out of the deck.",
+      "reads": "A gun mount with no gun \u2014 pairs with the loose turret drifting in the same field.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/deb_corvette_barbette_ring.glb",
+      "sha256": "72b3062b100257b750d6f8896868635cf1bb741f0fa4601abc454c50a49cf3d3",
+      "bytes": 255980,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 1422,
+      "sizeM": [
+        10.43,
+        11.0,
+        7.15
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "shipFrameOriginM": [
+        6.66,
+        -0.08,
+        6.45
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          10.43,
+          11.0,
+          7.15
+        ]
+      }
+    },
+    {
+      "id": "wreck_liner_drum",
+      "family": "liner",
+      "kind": "primary",
+      "state": "cooling",
+      "was": "Civilian passenger liner (Forge massline), mid habitation drum, split lengthwise.",
+      "reads": "Rows of dead cabin windows on two half-shells \u2014 the drum cracked along its keel and the gap between the halves is the way through.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_liner_drum.glb",
+      "sha256": "06bf57b33f8649ad7f7dee6eec98f3494f5928af11c1a73fb30091edbf50c464",
+      "bytes": 639644,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 8750,
+      "sizeM": [
+        87.0,
+        80.99,
+        50.0
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -50.81,
+        -0.04,
+        0.6
+      ],
+      "sockets": [
+        "INTERACTION_DrumBore",
+        "SOCKET_BlackBox",
+        "SOCKET_Hazard_Wound",
+        "SOCKET_Salvage_Hab"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [
+        {
+          "name": "INTERACTION_DrumBore",
+          "atM": [
+            -0.3,
+            0.0,
+            -0.6
+          ],
+          "clearRadiusM": 22.05,
+          "nearest": "Drum",
+          "clearSpanM": 44.11,
+          "playerHullM": 28.0,
+          "requiredRadiusM": 20.0,
+          "pass": true
+        }
+      ],
+      "collisionProxy": {
+        "kind": "compound-box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          87.0,
+          80.99,
+          50.0
+        ]
+      }
+    },
+    {
+      "id": "wreck_liner_bow",
+      "family": "liner",
+      "kind": "secondary",
+      "state": "cooling",
+      "was": "Passenger liner forward hull: wedge bow, glazed bridge, drum shoulder.",
+      "reads": "Almost undamaged \u2014 whatever happened, it happened behind this bulkhead.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_liner_bow.glb",
+      "sha256": "6bc1e424e40e3b09c88afa509e38a1d541b334ba589e1eeee8ecd6868688984d",
+      "bytes": 636164,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 10052,
+      "sizeM": [
+        69.0,
+        68.11,
+        39.69
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        34.17,
+        -1.79,
+        1.45
+      ],
+      "sockets": [
+        "SOCKET_BlackBox",
+        "SOCKET_Salvage_Bridge"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          30.0,
+          14.0,
+          -6.0
+        ],
+        "tumbleAxis": [
+          0.14,
+          0.361,
+          0.922
+        ],
+        "tumbleDeg": 21.0,
+        "driftDistanceM": 33.65,
+        "note": "barely tumbled: it parted cleanly and kept the ship attitude"
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "compound-box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          69.0,
+          68.11,
+          39.69
+        ]
+      }
+    },
+    {
+      "id": "wreck_liner_boatbay",
+      "family": "liner",
+      "kind": "secondary",
+      "state": "cooling",
+      "was": "Liner boarding sector: dock collar, service hatch, roof galleries.",
+      "reads": "The yellow dock ring says exactly what this bay was for \u2014 passengers used to walk through this.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_liner_boatbay.glb",
+      "sha256": "11c54775f1cc94e13cf4ed6571910c0bd0a5eb3842522a0c7729208aa0b004cc",
+      "bytes": 783604,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 12208,
+      "sizeM": [
+        52.67,
+        53.98,
+        32.62
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        9.33,
+        -0.93,
+        0.35
+      ],
+      "sockets": [
+        "SOCKET_Evidence_Manifest",
+        "SOCKET_Salvage_Bay"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "compound-box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          52.67,
+          53.98,
+          32.62
+        ]
+      }
+    },
+    {
+      "id": "deb_liner_hull_panel",
+      "family": "liner",
+      "kind": "debris",
+      "state": "cooling",
+      "was": "A curved drum plate with two decks of dead windows in it.",
+      "reads": "A panel of a home, torn off whole \u2014 the liner read survives in fragments.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/deb_liner_hull_panel.glb",
+      "sha256": "dad08e62d83367f9f03d15a7ebb9c8ea96d4be30e88293e2f1e5a92cbe5894fa",
+      "bytes": 347516,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 2912,
+      "sizeM": [
+        16.14,
+        27.12,
+        29.0
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -40.64,
+        15.95,
+        7.14
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          16.14,
+          27.12,
+          29.0
+        ]
+      }
+    },
+    {
+      "id": "deb_liner_drive_pod",
+      "family": "liner",
+      "kind": "debris",
+      "state": "stripped",
+      "was": "The liner's stern drive block with all three nozzles.",
+      "reads": "An engine face with no ship behind it \u2014 the pods read as machinery even without the hull.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/deb_liner_drive_pod.glb",
+      "sha256": "8cfa7ac6e8358017cea4f2fcc0a157a776a427a1a69b0afe809a829875d557f1",
+      "bytes": 318372,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 2132,
+      "sizeM": [
+        8.62,
+        18.0,
+        13.07
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -26.23,
+        -0.01,
+        0.31
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          8.62,
+          18.0,
+          13.07
+        ]
+      }
+    },
+    {
+      "id": "aft_engine_section",
+      "family": "aftermath",
+      "kind": "component",
+      "state": "cooling",
+      "was": "An ore barge drive block and radiator farm, cut off the hull.",
+      "reads": "Bells + fins \u2014 the silhouette of \"engine\" at debris scale.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/aft_engine_section.glb",
+      "sha256": "e4eae28d9a66d633b6f3b341eeb9995e9f7dff6916738c48f395ce484447260a",
+      "bytes": 638144,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 9838,
+      "sizeM": [
+        19.19,
+        25.0,
+        14.85
+      ],
+      "centredResidualM": [
+        -0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -50.33,
+        0.0,
+        -0.05
+      ],
+      "sockets": [
+        "SOCKET_Hazard_Core",
+        "SOCKET_Salvage_Drive"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          19.19,
+          25.0,
+          14.85
+        ]
+      }
+    },
+    {
+      "id": "aft_weapon_spar",
+      "family": "aftermath",
+      "kind": "component",
+      "state": "cooling",
+      "was": "A corvette turret still bolted to a snapped mounting spar.",
+      "reads": "A gun that came off with a piece of the ship \u2014 the break reads two ways at once.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/aft_weapon_spar.glb",
+      "sha256": "0d023332fca8b062bd041eee9fbc299948bf5b081a78d9849f93e6a15c198e74",
+      "bytes": 396228,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 4848,
+      "sizeM": [
+        28.0,
+        5.33,
+        7.0
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -0.15,
+        0.0,
+        3.13
+      ],
+      "sockets": [
+        "SOCKET_Salvage_Weapon"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          28.0,
+          5.33,
+          7.0
+        ]
+      }
+    },
+    {
+      "id": "aft_cargo_module",
+      "family": "aftermath",
+      "kind": "component",
+      "state": "cooling",
+      "was": "One hopper section of an ore barge, ore still in the well.",
+      "reads": "A hold with its cargo \u2014 salvage crews read this as \"worth boarding\".",
+      "file": "assets/incubator/wreck_aftermath_pack/source/aft_cargo_module.glb",
+      "sha256": "f672111a10eea73c0666f7a92072b3080db86534bb95c5f4c8881b8724e4e48e",
+      "bytes": 533416,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 5836,
+      "sizeM": [
+        11.08,
+        14.96,
+        14.77
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        7.3,
+        -0.02,
+        0.44
+      ],
+      "sockets": [
+        "SOCKET_Salvage_Cargo"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          11.08,
+          14.96,
+          14.77
+        ]
+      }
+    },
+    {
+      "id": "aft_cockpit_section",
+      "family": "aftermath",
+      "kind": "component",
+      "state": "cooling",
+      "was": "The command tower of an ore barge, torn off at its deck.",
+      "reads": "Bridge glazing and dead flood lamps on a broken footing \u2014 the room the crew watched it happen from.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/aft_cockpit_section.glb",
+      "sha256": "36e6110750df7c93940595c2a22139cecdc243014620db34e8abe739fec2d0cc",
+      "bytes": 402884,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 4956,
+      "sizeM": [
+        12.5,
+        15.63,
+        21.0
+      ],
+      "centredResidualM": [
+        -0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -41.83,
+        0.0,
+        8.36
+      ],
+      "sockets": [
+        "SOCKET_BlackBox",
+        "SOCKET_Evidence_Registry"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          12.5,
+          15.63,
+          21.0
+        ]
+      }
+    },
+    {
+      "id": "aft_radiator_panel",
+      "family": "aftermath",
+      "kind": "component",
+      "state": "cooling",
+      "was": "A radiator fin array off the ore barge stern.",
+      "reads": "A comb of dark fins \u2014 reads as cooling surface from any angle.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/aft_radiator_panel.glb",
+      "sha256": "47556fbc1367076942992cec6adb317b7e1fb0b04d5c55d5511bbb5a7dff6afb",
+      "bytes": 285212,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 2000,
+      "sizeM": [
+        24.0,
+        4.55,
+        0.9
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -1.95,
+        0.0,
+        1.26
+      ],
+      "sockets": [
+        "SOCKET_Salvage_Radiator"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          24.0,
+          4.55,
+          0.9
+        ]
+      }
+    },
+    {
+      "id": "aft_pressure_tank",
+      "family": "aftermath",
+      "kind": "component",
+      "state": "cooling",
+      "was": "A ship-stores pressure tank, blown at a weld seam.",
+      "reads": "The petals fold OUT \u2014 internal pressure did this, nobody shot it.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/aft_pressure_tank.glb",
+      "sha256": "376e5b98388ee847135bd08fe3d0462d8663167934e69dc15c70163a273e9580",
+      "bytes": 261576,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 1464,
+      "sizeM": [
+        17.0,
+        11.36,
+        12.8
+      ],
+      "centredResidualM": [
+        -0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -4.06,
+        0.01,
+        0.69
+      ],
+      "sockets": [
+        "SOCKET_Hazard_Volatile"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          17.0,
+          11.36,
+          12.8
+        ]
+      }
+    },
+    {
+      "id": "aft_armor_slab",
+      "family": "aftermath",
+      "kind": "component",
+      "state": "derelict",
+      "was": "A corvette armour slab, face-up in the field.",
+      "reads": "Layered chamfered plate with the stripe edge \u2014 warship armour as litter.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/aft_armor_slab.glb",
+      "sha256": "1bf99472dbdf2d4166ed8ce3cc43b71565c56e68d17fca222541a0b8b9b0675d",
+      "bytes": 177356,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 1164,
+      "sizeM": [
+        17.99,
+        10.89,
+        14.63
+      ],
+      "centredResidualM": [
+        -0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -16.96,
+        7.55,
+        -0.71
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          17.99,
+          10.89,
+          14.63
+        ]
+      }
+    },
+    {
+      "id": "aft_dock_collar",
+      "family": "aftermath",
+      "kind": "component",
+      "state": "stripped",
+      "was": "A docking collar with its hazard ring, pulled off the hull.",
+      "reads": "A door frame with no door \u2014 the smallest possible read of \"people used to board here\".",
+      "file": "assets/incubator/wreck_aftermath_pack/source/aft_dock_collar.glb",
+      "sha256": "fb8f43f4caabfec7ebe4100a538bffa752a3e1ccd44cd8ab7e4cc09b47ef65f1",
+      "bytes": 252376,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 1118,
+      "sizeM": [
+        6.92,
+        16.0,
+        2.5
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        0.89,
+        -0.32,
+        0.4
+      ],
+      "sockets": [
+        "SOCKET_Salvage_Collar"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": null,
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          6.92,
+          16.0,
+          2.5
+        ]
+      }
+    },
+    {
+      "id": "frag_plate_curl",
+      "family": "fragments",
+      "kind": "fragment",
+      "state": "cooling",
+      "was": "Skin plating, rolled open like paper.",
+      "reads": "Three curls off the same hull \u2014 the field's confetti.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/frag_plate_curl.glb",
+      "sha256": "c4c17973545e08ff1878286cae9d626dd15fad8040818eefb308f22c95980fc8",
+      "bytes": 196468,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 36,
+      "sizeM": [
+        6.0,
+        3.67,
+        2.99
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -0.53,
+        0.2,
+        0.44
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "tumbleAxis": [
+          0.722,
+          0.309,
+          0.619
+        ],
+        "tumbleDeg": 140.0,
+        "driftDistanceM": 0.0
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          6.0,
+          3.67,
+          2.99
+        ]
+      }
+    },
+    {
+      "id": "frag_rib_cluster",
+      "family": "fragments",
+      "kind": "fragment",
+      "state": "cooling",
+      "was": "A frame joint with its ribs still on it.",
+      "reads": "The skeleton's knuckle \u2014 the piece that makes the rest of the debris read as bones.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/frag_rib_cluster.glb",
+      "sha256": "27716b85ce1872292e7a149519989af79df1bdd1a47a927ae5aac902a54303ca",
+      "bytes": 77524,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 108,
+      "sizeM": [
+        4.82,
+        6.0,
+        5.51
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        1.55,
+        0.71,
+        0.56
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "tumbleAxis": [
+          0.398,
+          0.597,
+          0.697
+        ],
+        "tumbleDeg": 110.0,
+        "driftDistanceM": 0.0
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          4.82,
+          6.0,
+          5.51
+        ]
+      }
+    },
+    {
+      "id": "frag_cable_bundle",
+      "family": "fragments",
+      "kind": "fragment",
+      "state": "cooling",
+      "was": "Severed cable trunking off a ship's spine.",
+      "reads": "Bent ends, not cut \u2014 this came out with the wall.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/frag_cable_bundle.glb",
+      "sha256": "ddddca90ce813c2effa93951df64ee091160b8beb2a8fd7e1d75257f190742a8",
+      "bytes": 212452,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 172,
+      "sizeM": [
+        8.0,
+        4.46,
+        5.0
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -0.11,
+        0.11,
+        -0.62
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "tumbleAxis": [
+          0.722,
+          0.309,
+          0.619
+        ],
+        "tumbleDeg": 150.0,
+        "driftDistanceM": 0.0
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          8.0,
+          4.46,
+          5.0
+        ]
+      }
+    },
+    {
+      "id": "frag_grating_sheet",
+      "family": "fragments",
+      "kind": "fragment",
+      "state": "derelict",
+      "was": "One bay of deck grating.",
+      "reads": "There was a floor here, and therefore people.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/frag_grating_sheet.glb",
+      "sha256": "3203e560f21c55722fc9ade6060cccd5b029e80b011f1a37b8feb17fc9c32f1e",
+      "bytes": 73880,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 76,
+      "sizeM": [
+        8.0,
+        7.13,
+        7.57
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        0.27,
+        -0.37,
+        0.48
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "tumbleAxis": [
+          0.508,
+          0.609,
+          0.609
+        ],
+        "tumbleDeg": 61.0,
+        "driftDistanceM": 0.0
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          8.0,
+          7.13,
+          7.57
+        ]
+      }
+    },
+    {
+      "id": "frag_pipe_tangle",
+      "family": "fragments",
+      "kind": "fragment",
+      "state": "cooling",
+      "was": "Service pipework torn out of a run.",
+      "reads": "A tangle that still remembers the wall it came off.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/frag_pipe_tangle.glb",
+      "sha256": "1a1897a7cd35f691d0b92236e3bb2a46ac59e4b652f456046c90d7cbd45e8590",
+      "bytes": 209172,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 144,
+      "sizeM": [
+        5.0,
+        3.94,
+        3.9
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -0.08,
+        -0.01,
+        0.07
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "tumbleAxis": [
+          0.66,
+          0.5,
+          0.56
+        ],
+        "tumbleDeg": 97.0,
+        "driftDistanceM": 0.0
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          5.0,
+          3.94,
+          3.9
+        ]
+      }
+    },
+    {
+      "id": "frag_strut_shard",
+      "family": "fragments",
+      "kind": "fragment",
+      "state": "cooling",
+      "was": "A structural strut, snapped.",
+      "reads": "One end frayed, the other cleanly attached to nothing.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/frag_strut_shard.glb",
+      "sha256": "0cee3d55b3269844511728ba21fc99354520085f7b4932209648cb1ab6e458eb",
+      "bytes": 73972,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 84,
+      "sizeM": [
+        11.0,
+        5.17,
+        5.49
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        1.04,
+        0.35,
+        0.77
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "tumbleAxis": [
+          0.42,
+          0.68,
+          0.6
+        ],
+        "tumbleDeg": 133.0,
+        "driftDistanceM": 0.0
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          11.0,
+          5.17,
+          5.49
+        ]
+      }
+    },
+    {
+      "id": "wreck_ore_freighter_bow__fresh",
+      "family": "ore_freighter",
+      "kind": "state-variant",
+      "state": "fresh",
+      "was": "Bulk ore freighter (Forge ore barge), forward hopper deck: bow, forecastle and the forward cargo bays.",
+      "reads": "Deep hopper wells and hazard coamings say freighter; the bay torn out between the lobes is spanned only by bare frame rings \u2014 the hull snapped between frames and the missing bay is now a fly-through wound.",
+      "variantOf": "wreck_ore_freighter_bow",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_ore_freighter_bow__fresh.glb",
+      "sha256": "726f7fd26846c6636837a566c9740f212ef1b8e3b2ac634d54001c4072f7cd1b",
+      "bytes": 1049804,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 16038,
+      "sizeM": [
+        179.03,
+        70.12,
+        70.12
+      ],
+      "sockets": [
+        "INTERACTION_RibcageGap",
+        "SOCKET_BlackBox",
+        "SOCKET_Hazard_Break",
+        "SOCKET_Salvage_Bridge",
+        "SOCKET_Salvage_Hopper"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "gaps": [
+        {
+          "name": "INTERACTION_RibcageGap",
+          "atM": [
+            -19.1,
+            0.0,
+            0.0
+          ],
+          "clearRadiusM": 24.22,
+          "nearest": "woundFore_t_tear5",
+          "clearSpanM": 48.45,
+          "playerHullM": 28.0,
+          "requiredRadiusM": 20.0,
+          "pass": true
+        }
+      ],
+      "drift": null,
+      "shipFrameOriginM": [
+        58.89,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": "wreck_ore_freighter_bow__derelict",
+      "family": "ore_freighter",
+      "kind": "state-variant",
+      "state": "derelict",
+      "was": "Bulk ore freighter (Forge ore barge), forward hopper deck: bow, forecastle and the forward cargo bays.",
+      "reads": "Deep hopper wells and hazard coamings say freighter; the bay torn out between the lobes is spanned only by bare frame rings \u2014 the hull snapped between frames and the missing bay is now a fly-through wound.",
+      "variantOf": "wreck_ore_freighter_bow",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_ore_freighter_bow__derelict.glb",
+      "sha256": "895ff78a53d3e3c1526ee9ceeca84e7026727518f157c78eb17a2027d0b73ba0",
+      "bytes": 1043752,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 15998,
+      "sizeM": [
+        179.03,
+        70.12,
+        70.12
+      ],
+      "sockets": [
+        "INTERACTION_RibcageGap",
+        "SOCKET_BlackBox",
+        "SOCKET_Hazard_Break",
+        "SOCKET_Salvage_Bridge",
+        "SOCKET_Salvage_Hopper"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "gaps": [
+        {
+          "name": "INTERACTION_RibcageGap",
+          "atM": [
+            -19.1,
+            0.0,
+            0.0
+          ],
+          "clearRadiusM": 24.22,
+          "nearest": "woundFore_t_tear5",
+          "clearSpanM": 48.45,
+          "playerHullM": 28.0,
+          "requiredRadiusM": 20.0,
+          "pass": true
+        }
+      ],
+      "drift": null,
+      "shipFrameOriginM": [
+        58.89,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": "wreck_ore_freighter_bow__stripped",
+      "family": "ore_freighter",
+      "kind": "state-variant",
+      "state": "stripped",
+      "was": "Bulk ore freighter (Forge ore barge), forward hopper deck: bow, forecastle and the forward cargo bays.",
+      "reads": "Deep hopper wells and hazard coamings say freighter; the bay torn out between the lobes is spanned only by bare frame rings \u2014 the hull snapped between frames and the missing bay is now a fly-through wound.",
+      "variantOf": "wreck_ore_freighter_bow",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_ore_freighter_bow__stripped.glb",
+      "sha256": "a74464e508374b32761954d0ba77a77ead6cd2e07d49c699931ed8babbd68fd5",
+      "bytes": 982352,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 9888,
+      "sizeM": [
+        179.0,
+        69.87,
+        69.87
+      ],
+      "sockets": [
+        "INTERACTION_RibcageGap",
+        "SOCKET_BlackBox",
+        "SOCKET_Hazard_Break",
+        "SOCKET_Salvage_Bridge",
+        "SOCKET_Salvage_Hopper"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "gaps": [
+        {
+          "name": "INTERACTION_RibcageGap",
+          "atM": [
+            -18.8,
+            0.0,
+            0.0
+          ],
+          "clearRadiusM": 24.02,
+          "nearest": "woundFore_t_tear5_xrib49a",
+          "clearSpanM": 48.05,
+          "playerHullM": 28.0,
+          "requiredRadiusM": 20.0,
+          "pass": true
+        }
+      ],
+      "drift": null,
+      "shipFrameOriginM": [
+        58.38,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": "wreck_corvette_forward__fresh",
+      "family": "corvette",
+      "kind": "state-variant",
+      "state": "fresh",
+      "was": "Concord-pattern patrol corvette (Forge bastion), forward hull: citadel, bridge, two main turrets.",
+      "reads": "Armoured casemate and gun houses say warship; the lit-window bridge is what turns it into a crew's ship that ended.",
+      "variantOf": "wreck_corvette_forward",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_corvette_forward__fresh.glb",
+      "sha256": "324b4d8bb9684b513c3263a559b482e8d262d6b472501719341057fd44620b02",
+      "bytes": 936952,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 17254,
+      "sizeM": [
+        88.9,
+        53.05,
+        30.91
+      ],
+      "sockets": [
+        "SOCKET_BlackBox",
+        "SOCKET_Evidence_Registry",
+        "SOCKET_Hazard_Break",
+        "SOCKET_Salvage_Barbette"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "gaps": [],
+      "drift": {
+        "offsetM": [
+          16.0,
+          22.0,
+          -4.0
+        ],
+        "tumbleAxis": [
+          0.902,
+          0.1,
+          0.421
+        ],
+        "tumbleDeg": 31.0,
+        "driftDistanceM": 27.5,
+        "note": "the bow spun away on the forward vector"
+      },
+      "shipFrameOriginM": [
+        18.37,
+        0.0,
+        2.38
+      ]
+    },
+    {
+      "id": "wreck_corvette_forward__stripped_heavy",
+      "family": "corvette",
+      "kind": "state-variant",
+      "state": "stripped_heavy",
+      "was": "Concord-pattern patrol corvette (Forge bastion), forward hull: citadel, bridge, two main turrets.",
+      "reads": "Armoured casemate and gun houses say warship; the lit-window bridge is what turns it into a crew's ship that ended.",
+      "variantOf": "wreck_corvette_forward",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_corvette_forward__stripped_heavy.glb",
+      "sha256": "7c14b1f1d32716849369177e5343db3c3350a1f261906958673daed8b25fb52c",
+      "bytes": 697700,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 9300,
+      "sizeM": [
+        89.0,
+        52.96,
+        30.85
+      ],
+      "sockets": [
+        "SOCKET_BlackBox",
+        "SOCKET_Evidence_Registry",
+        "SOCKET_Hazard_Break",
+        "SOCKET_Salvage_Barbette"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "gaps": [],
+      "drift": {
+        "offsetM": [
+          16.0,
+          22.0,
+          -4.0
+        ],
+        "tumbleAxis": [
+          0.902,
+          0.1,
+          0.421
+        ],
+        "tumbleDeg": 31.0,
+        "driftDistanceM": 27.5,
+        "note": "the bow spun away on the forward vector"
+      },
+      "shipFrameOriginM": [
+        18.44,
+        0.0,
+        2.01
+      ]
+    },
+    {
+      "id": "wreck_liner_drum__fresh",
+      "family": "liner",
+      "kind": "state-variant",
+      "state": "fresh",
+      "was": "Civilian passenger liner (Forge massline), mid habitation drum, split lengthwise.",
+      "reads": "Rows of dead cabin windows on two half-shells \u2014 the drum cracked along its keel and the gap between the halves is the way through.",
+      "variantOf": "wreck_liner_drum",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_liner_drum__fresh.glb",
+      "sha256": "7def74f8a5395d246977635b40cc8079594928f62d74e098a95811bfe147d062",
+      "bytes": 645128,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 8790,
+      "sizeM": [
+        79.62,
+        74.12,
+        45.76
+      ],
+      "sockets": [
+        "INTERACTION_DrumBore",
+        "SOCKET_BlackBox",
+        "SOCKET_Hazard_Wound",
+        "SOCKET_Salvage_Hab"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "gaps": [
+        {
+          "name": "INTERACTION_DrumBore",
+          "atM": [
+            -0.3,
+            0.0,
+            -0.6
+          ],
+          "clearRadiusM": 20.19,
+          "nearest": "Drum",
+          "clearSpanM": 40.38,
+          "playerHullM": 28.0,
+          "requiredRadiusM": 20.0,
+          "pass": true
+        }
+      ],
+      "drift": null,
+      "shipFrameOriginM": [
+        -46.5,
+        -0.04,
+        0.55
+      ]
+    },
+    {
+      "id": "wreck_liner_drum__derelict",
+      "family": "liner",
+      "kind": "state-variant",
+      "state": "derelict",
+      "was": "Civilian passenger liner (Forge massline), mid habitation drum, split lengthwise.",
+      "reads": "Rows of dead cabin windows on two half-shells \u2014 the drum cracked along its keel and the gap between the halves is the way through.",
+      "variantOf": "wreck_liner_drum",
+      "file": "assets/incubator/wreck_aftermath_pack/source/wreck_liner_drum__derelict.glb",
+      "sha256": "aa54d1e278da0fcb8a126c8c5d7dde10a57ff5b0405baaaa8db4c630e852ab40",
+      "bytes": 639660,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 8750,
+      "sizeM": [
+        87.0,
+        80.99,
+        50.0
+      ],
+      "sockets": [
+        "INTERACTION_DrumBore",
+        "SOCKET_BlackBox",
+        "SOCKET_Hazard_Wound",
+        "SOCKET_Salvage_Hab"
+      ],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "gaps": [
+        {
+          "name": "INTERACTION_DrumBore",
+          "atM": [
+            -0.3,
+            0.0,
+            -0.6
+          ],
+          "clearRadiusM": 22.05,
+          "nearest": "Drum",
+          "clearSpanM": 44.11,
+          "playerHullM": 28.0,
+          "requiredRadiusM": 20.0,
+          "pass": true
+        }
+      ],
+      "drift": null,
+      "shipFrameOriginM": [
+        -50.81,
+        -0.04,
+        0.6
+      ]
+    }
+  ],
+  "socketFailures": [],
+  "gapFailures": [],
+  "floatingMarkFailures": [],
+  "renderFailures": [],
+  "assetCount": 37
+}

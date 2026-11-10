@@ -1,0 +1,8 @@
+{
+  "name": "trail-emit-idle-drive-walk",
+  "note": "rebench summary from package floor capture",
+  "medianSpeedup": 6.843,
+  "minSpeedup": 6.597,
+  "maxSpeedup": 7.647,
+  "runs": 11
+}

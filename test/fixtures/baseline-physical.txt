@@ -1,0 +1,230 @@
+  _spawnPhysicalTargetsFor(m, nextRng, px, pz) {
+    const helpers = this.helpers;
+    if (!helpers || !helpers.spawnEntity || !m) return;
+    if (m.params?.workingBattlefield) { spawnWorkingBattlefield(this, m); return; }
+    const b2RescueDefinition = isCampaign47aB2Rescue(m) ? authoredDefinitionOf(m) : null;
+    const b2Rescue = !!b2RescueDefinition;
+    const rescueEncounter = b2Rescue ? authoredEncounterOf(b2RescueDefinition) : null;
+    const rescuePodActor = rescueEncounter && rescueEncounter.actors
+      ? rescueEncounter.actors.find((actor) => actor.role === PHYSICAL_ROLE.POD) : null;
+    const rescueEscortActor = rescueEncounter && rescueEncounter.actors
+      ? rescueEncounter.actors.find((actor) => actor.role === PHYSICAL_ROLE.ESCORT) : null;
+    const rescueActorOutcomes = b2Rescue ? ensureB2RescueActorOutcomes(m) : null;
+    const have = this._countPhysicalRoles(m);
+    const wantCore = m.type === 'tow_recovery' ? 1 : 0;
+    const wantTower = m.type === 'demolition' ? 1 : 0;
+    const configuredPodCount = Math.max(1, Number(m.params && m.params.podCount) || 2);
+    // B2 actor outcomes are a per-cast durable ledger; the counters remain as compact HUD/save
+    // compatibility fields. Other rescue contracts retain their existing replenishment rule.
+    const b2PodsLost = b2Rescue ? Math.max(
+      Math.max(0, Math.floor(Number(m.params && m.params.podsLost) || 0)),
+      Object.values(rescueActorOutcomes).filter((outcome) => outcome === 'lost').length,
+    ) : 0;
+    const wantPods = m.type === 'rescue_under_fire'
+      ? (b2Rescue ? Math.max(0, configuredPodCount - b2PodsLost) : configuredPodCount) : 0;
+    // FB-067: escortCount is a VARIANT field now, not a rescue constant — a guarded tower rows
+    // its own picket screen (demolition) and a pocket pull packs heavier cover (rescue). The
+    // rescue default stays 2; every other type defaults to zero pickets unless the variant says so.
+    const configuredEscortCount = m.type === 'rescue_under_fire'
+      ? Math.max(0, (m.params && m.params.escortCount != null ? m.params.escortCount : 2))
+      : Math.max(0, (m.params && m.params.escortCount) || 0);
+    const b2EscortsDown = b2Rescue ? Math.max(
+      Math.max(0, Math.floor(Number(m.params && m.params.escortsDown) || 0)),
+      Object.values(rescueActorOutcomes).filter((outcome) => outcome === 'cleared').length,
+    ) : 0;
+    const wantEscorts = b2Rescue
+      ? Math.max(0, configuredEscortCount - b2EscortsDown) : configuredEscortCount;
+    const need = Math.max(0, wantCore - have.core)
+      + Math.max(0, wantTower - have.tower)
+      + Math.max(0, wantPods - have.pods)
+      + Math.max(0, wantEscorts - have.escorts);
+    if (need <= 0) return;
+    const occupied = new Set((m.targetEntityIds || []).map((id) => (
+      missionTargetSlotOf(this.state.entities.get(id), m.id)
+    )).filter((slot) => slot != null));
+    const nextSlot = () => {
+      let slot = 0;
+      while (occupied.has(slot)) slot += 1;
+      occupied.add(slot);
+      return slot;
+    };
+    const spawnAt = (durableSlot, spec) => {
+      const ent = helpers.spawnEntity(spec);
+      if (!ent) return null;
+      this._stampMissionTargetIdentity(ent, m, durableSlot);
+      m.targetEntityIds.push(ent.id);
+      return ent;
+    };
+    const authoredRescuePos = (actor, actorIndex, fallback) => {
+      if (!b2Rescue || !actor) return fallback;
+      const layout = Array.isArray(actor.stagingByIndex) ? actor.stagingByIndex[actorIndex] : null;
+      const forwardWu = Number(layout && layout.forwardWu);
+      const sideWu = Number(layout && layout.sideWu);
+      if (!Number.isFinite(forwardWu) || !Number.isFinite(sideWu)) return fallback;
+      const player = this.state.entities && this.state.entities.get(this.state.playerId);
+      const heading = player && Number.isFinite(Number(player.rot)) ? Number(player.rot) : 0;
+      const c = Math.cos(heading), s = Math.sin(heading);
+      const pos = {
+        x: px + c * forwardWu - s * sideWu,
+        z: pz + s * forwardWu + c * sideWu,
+      };
+      // Keep hostiles out of station/gate protection; if an authored flank is protected, retain
+      // the established hostile spawn rule for that escort.
+      if (actor.hostile && !outsideMissionPortSafety(this.state, pos)) return fallback;
+      return pos;
+    };
+    if (m.type === 'tow_recovery' && have.core < wantCore) {
+      const durableSlot = nextSlot();
+      const rng = nextRng(durableSlot);
+      const ang = rng() * Math.PI * 2;
+      const r = 220 + rng() * 80;
+      const bodyRadius = Math.max(8, Number(m.params && m.params.bodyRadius) || 16);
+      const cachePos = ashfallCacheApproachPos(m, -200);
+      spawnAt(durableSlot, {
+        type: 'asteroid',
+        team: 2,
+        pos: cachePos || { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r },
+        vel: { x: 0, z: 0 },
+        rot: rng() * Math.PI * 2,
+        radius: bodyRadius,
+        mass: Math.max(40, m.params && m.params.massU || 36),
+        hull: 220,
+        hullMax: 220,
+        collides: true,
+        physicsBody: { radius: asteroidColliderRadius(null, bodyRadius) },
+        data: {
+          missionTag: m.id,
+          physicalRole: PHYSICAL_ROLE.SLAG_CORE,
+          scanLabel: (m.params && m.params.scanLabel) || 'SLAG CORE',
+          tetherable: true,
+          ...(m.params && m.params.tetherPayload ? { tetherPayload: true } : {}),
+          // W-BOOKS-3-4: Feed the Maw — the "core" is a living Furnace maw; the stamp
+          // lets scanners/scars read it as fauna, not ore.
+          ...(m.params && m.params.furnaceMaw === true ? { furnaceMaw: true } : {}),
+        },
+      });
+    }
+    if (m.type === 'demolition' && have.tower < wantTower) {
+      const durableSlot = nextSlot();
+      const rng = nextRng(durableSlot);
+      const ang = rng() * Math.PI * 2;
+      const r = 260 + rng() * 90;
+      const cachePos = ashfallCacheApproachPos(m, 260);
+      spawnAt(durableSlot, {
+        type: 'wreck',
+        team: 2,
+        pos: cachePos || { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r },
+        vel: { x: 0, z: 0 },
+        rot: rng() * Math.PI * 2,
+        radius: 26,
+        mass: 180,
+        hull: 160,
+        hullMax: 160,
+        collides: true,
+        collisionMask: MISSION_WRECK_COLLISION_MASK,
+        // SFQ-B025: the named mass is the body's own mass, not a density re-derive.
+        physicsBody: { shape: 'capsule', mass: 180 },
+        data: {
+          missionTag: m.id,
+          physicalRole: PHYSICAL_ROLE.TOWER,
+          proportions: WRECK_COLLIDER_PROPORTIONS,
+          scanLabel: 'DEAD TOWER',
+          tetherable: true,
+        },
+      });
+    }
+    if (m.type === 'rescue_under_fire') {
+      // FB-067 pocket_pull: the variant's podSpreadWu is the pocket's own radius — a tight
+      // cluster of pods reads as one problem under heavy cover, not a scattered field.
+      const podSpread = Number.isFinite(m.params && m.params.podSpreadWu)
+        ? Math.max(40, m.params.podSpreadWu) : null;
+      const activeActorIds = b2Rescue ? new Set((m.targetEntityIds || []).map((id) => {
+        const entity = this.state.entities && this.state.entities.get(id);
+        return entity && entity.data && entity.data.missionActorId;
+      }).filter(Boolean)) : null;
+      const podIndices = b2Rescue
+        ? Array.from({ length: configuredPodCount }, (_, index) => index).filter((index) => {
+          const actorId = b2RescueActorIdentity(m, rescuePodActor, index);
+          return !rescueActorOutcomes[actorId] && !activeActorIds.has(actorId);
+        })
+        : Array.from({ length: Math.max(0, wantPods - have.pods) }, (_, offset) => have.pods + offset);
+      for (const i of podIndices) {
+        const durableSlot = b2Rescue ? i : nextSlot();
+        const rng = nextRng(durableSlot);
+        const ang = rng() * Math.PI * 2;
+        const r = podSpread != null
+          ? podSpread * (0.6 + rng() * 0.5)
+          : 180 + rng() * 70;
+        const podActor = rescuePodActor || {};
+        const defaultPos = { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r };
+        const pos = authoredRescuePos(podActor, i, defaultPos);
+        spawnAt(durableSlot, {
+          // rescuePriority selects the existing released place_47a_rescue_capsule.glb body.
+          type: b2Rescue ? 'payload' : 'wreck',
+          team: 2,
+          pos,
+          vel: { x: 0, z: 0 },
+          rot: rng() * Math.PI * 2,
+          radius: Number(podActor.radius) || 7,
+          mass: Number(podActor.mass) || 10,
+          hull: Number(podActor.hull) || 36,
+          hullMax: Number(podActor.hull) || 36,
+          collides: true,
+          ...(b2Rescue ? {} : { collisionMask: MISSION_WRECK_COLLISION_MASK }),
+          physicsBody: { shape: 'capsule', mass: Number(podActor.mass) || 10 },
+          ...(b2Rescue ? { flags: { persistent: true, durable: true, missionPinned: true } } : {}),
+          data: {
+            missionTag: m.id,
+            physicalRole: PHYSICAL_ROLE.POD,
+            ...(b2Rescue ? {
+              rescuePriority: true,
+              distressBeacon: true,
+              packagedPropFile: 'places/place_47a_rescue_capsule.glb',
+              packagedPropSlot: 'place',
+              missionActorId: b2RescueActorIdentity(m, podActor, i),
+            } : { proportions: WRECK_COLLIDER_PROPORTIONS }),
+            scanLabel: podActor.scanLabel || 'LIFE POD',
+            tetherable: true,
+          },
+        });
+      }
+    }
+    // FB-067: picket/escort bodies spawn for ANY type whose variant rows them in. A demolition
+    // picket screens the TOWER (anchored on the live body, falling back to the player ring);
+    // a rescue escort screens the pod pocket as before.
+    if (wantEscorts > have.escorts) {
+      const sector = SECTOR_BY_ID.get(m.destSectorId);
+      const [lvLo, lvHi] = sector ? (sector.enemyLevel || [2, 4]) : [2, 4];
+      const tower = m.type === 'demolition' ? this._physicalTargetOf(m, PHYSICAL_ROLE.TOWER) : null;
+      const anchor = tower && tower.pos ? { x: tower.pos.x, z: tower.pos.z } : { x: px, z: pz };
+      const activeActorIds = b2Rescue ? new Set((m.targetEntityIds || []).map((id) => {
+        const entity = this.state.entities && this.state.entities.get(id);
+        return entity && entity.data && entity.data.missionActorId;
+      }).filter(Boolean)) : null;
+      const escortIndices = b2Rescue
+        ? Array.from({ length: configuredEscortCount }, (_, index) => index).filter((index) => {
+          const actorId = b2RescueActorIdentity(m, rescueEscortActor, index);
+          return !rescueActorOutcomes[actorId] && !activeActorIds.has(actorId);
+        })
+        : Array.from({ length: Math.max(0, wantEscorts - have.escorts) }, (_, offset) => have.escorts + offset);
+      for (const i of escortIndices) {
+        const durableSlot = b2Rescue ? configuredPodCount + i : nextSlot();
+        const rng = nextRng(durableSlot);
+        const ang = rng() * Math.PI * 2;
+        const defaultPos = tower
+          ? { x: anchor.x + Math.cos(ang) * (120 + rng() * 60), z: anchor.z + Math.sin(ang) * (120 + rng() * 60) }
+          : (missionHostileSpawnPos(this.state, anchor, rng) || { x: px + 400, z: pz + 200 });
+        const escortActor = rescueEscortActor || {};
+        const pos = authoredRescuePos(escortActor, i, defaultPos);
+        const spec = makeEnemySpawnSpec(escortActor.archetype || 'wasp_swarmer', Math.round((lvLo + lvHi) / 2), pos, {
+          startedTick: deferredEnterTick(this.state),
+        });
+        spec.data = spec.data || {};
+        spec.data.missionTag = m.id;
+        spec.data.physicalRole = PHYSICAL_ROLE.ESCORT;
+        spec.data.scanLabel = m.type === 'demolition' ? 'TOWER PICKET' : (escortActor.scanLabel || 'RESCUE ESCORT');
+        if (b2Rescue) spec.data.missionActorId = b2RescueActorIdentity(m, escortActor, i);
+        spawnAt(durableSlot, spec);
+      }
+    }
+  },

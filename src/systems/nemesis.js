@@ -1,0 +1,568 @@
+// The sole writer of state.nemesis. Entity, damage, budget, UI and faction owners remain separate.
+import { NEMESIS_RIVAL as RIVAL, NEMESIS_KITS, NEMESIS_CHAPTERS, NEMESIS_LINES,
+  NEMESIS_STYLES } from '../data/nemesisRival.js';
+import { WEAPONS } from '../data/weapons.js';
+import { GYRE_EVENTS } from '../data/gyreSnare.js';
+import { LIMITS, clone, finite, integer, freshNemesis, freshEpisode, normalizeNemesis,
+  boundedPush, keyForId } from '../nemesis/model.js';
+import { admitEvidence, classifyPlayerKill, prepareNemesisPlan,
+  predictionWasWrong } from '../nemesis/learning.js';
+import { scarBandForProtectionShare, scarFacingFromDirection, shouldAdmitScar } from '../combat/hullScars.js';
+import {
+  LIVING_HULL_SCAR_MAX, livingHullScars, livingHullWithScar, normalizeHullScar,
+} from '../core/livingHull.js';
+
+const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
+// Homing and deployed hardpoint loads are ordnance; every other fire profile is gunnery.
+const ORDNANCE_TRACKING = new Set(['homing', 'deploy']);
+
+const TERMINAL = new Set(['spared', 'destroyed', 'lost']);
+// A destroyed or lost captain does not return — that rule stays. rival_escaped is the defeat
+// the same captain comes back from, and the scar set has to survive on a record, not on the
+// hull that is about to leave the sector.
+const DEFEAT_OUTCOMES = new Set(['rival_escaped', 'destroyed', 'lost']);
+
+function hitDirection(payload, boss) {
+  const pos = payload && payload.pos;
+  const origin = boss && boss.pos;
+  if (pos && origin) {
+    const dx = finite(pos.x) - finite(origin.x);
+    const dz = finite(pos.z) - finite(origin.z);
+    if (Math.hypot(dx, dz) > 1e-9) return [dx, dz];
+  }
+  const normal = payload && payload.normal;
+  if (normal) return [finite(normal.x), finite(normal.z)];
+  return [0, 0];
+}
+
+function defeatRecordFromSave(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const scars = [];
+  if (Array.isArray(raw.scars)) {
+    for (const row of raw.scars) {
+      const scar = normalizeHullScar(row);
+      if (!scar) continue;
+      scars.push(scar);
+      if (scars.length >= LIVING_HULL_SCAR_MAX) break;
+    }
+  }
+  const encounterId = typeof raw.encounterId === 'string' ? raw.encounterId.slice(0, 120) : '';
+  if (!encounterId && !scars.length) return null;
+  return {
+    encounterId,
+    at: Math.max(0, finite(raw.at)),
+    outcome: typeof raw.outcome === 'string' ? raw.outcome.slice(0, 40) : '',
+    scars,
+  };
+}
+const entity = (state, id) => state && state.entities && state.entities.get(id);
+const alive = (ship) => !!ship && Number.isFinite(ship.hull) && ship.hull > 0 && ship.alive !== false && ship.dead !== true;
+const sector = (state) => state.world && state.world.currentSectorId || '';
+const nowOf = (state) => Math.max(0, finite(state.simTime));
+const localTag = (ship, encounterId) => ship && ship.data && ship.data.nemesis
+  && ship.data.nemesis.encounterId === encounterId;
+
+export function createNemesisSystem() {
+  // No closure-owned runtime fields: createSimulation's Object.create system forks stay isolated.
+  return {
+    name: 'nemesis',
+    init(ctx) {
+      this.destroy();
+      this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers || {};
+      this._offs = [];
+      this.state.nemesis = normalizeNemesis(this.state.nemesis, nowOf(this.state));
+      const on = (event, fn) => this._offs.push(this.bus.on(event, fn));
+      on('entity:killed', (p) => this._killed(p));
+      on('combat:damage', (p) => this._noteBossScar(p));
+      on('combat:kill', (p) => this._killed(p));
+      on('massline:tumbled', (p) => this._tumbled(p));
+      on('nemesis:observation', (p) => this._observation(p));
+      // The observation channel's production emitter. Orra reads what the player DOES during a
+      // live encounter, not only what they kill: each tool use classifies to a style and enters
+      // through the designed bus event, so _observation still owns every trust gate (witnessing,
+      // the 5s per-style window, the per-episode budget). The bridge claims no sight of its own.
+      this._techWindows = { encounterId: null, keys: new Set() };
+      on('combat:fire', (p) => this._observeTool(this._fireStyle(p), p && p.ownerId));
+      on('tether:attached', (p) => this._observeTool('tether', p && p.actorId));
+      on('bombs:dropped', (p) => this._observeTool('ordnance', p && p.ownerId));
+      on('mines:placed', (p) => this._observeTool('ordnance', p && p.ownerId));
+      on('detonator:detonated', (p) => this._observeTool('ordnance', p && p.killerId));
+      on('fields:deployed', (p) => this._observeTool('field', this._fieldActorId(p)));
+      on(GYRE_EVENTS.thrown, () => this._observeTool('tether', this.state && this.state.playerId));
+      on('nemesis:encounterStarted', (p) => this._started(p));
+      on('nemesis:encounterRejected', (p) => this._rejected(p));
+      on('nemesis:escaped', (p) => this._escaped(p));
+      on('nemesis:spare', (p) => this._spare(p));
+      on('sector:enter', () => this._sectorChanged());
+      on('save:loaded', () => this._reconcile());
+      // New Game must clear the arc (integration notes §4). The canonical FRESH_RUN_SYSTEMS reset
+      // list lives in another lane's file; game:newGame fires inside the same new-game transition
+      // (after resetFreshRunSystems), so clearing here keeps the contract without editing it.
+      on('game:newGame', () => this.newGame());
+    },
+    destroy() {
+      // Guard hasOwn: an uninitialized prototype fork must not detach its parent's listeners.
+      if (Object.hasOwn(this, '_offs')) for (const off of this._offs || []) if (typeof off === 'function') off();
+      this._offs = [];
+      this._techWindows = { encounterId: null, keys: new Set() };
+      this._bossScarAdmit = { encounterId: null, last: null };
+    },
+    newGame() {
+      this.state.nemesis = freshNemesis(nowOf(this.state));
+      this._techWindows = { encounterId: null, keys: new Set() };
+      this._bossScarAdmit = { encounterId: null, last: null };
+    },
+    serialize() { return clone(this.state.nemesis); },
+    deserialize(data) {
+      this.state.nemesis = normalizeNemesis(data, nowOf(this.state));
+      // The scar set is not part of the arc schema. Put it back after normalize drops unknown
+      // fields, or a saved defeat comes back on a clean hull.
+      const kept = defeatRecordFromSave(data && data.defeatRecord);
+      if (kept) this.state.nemesis.defeatRecord = kept;
+      // Private tool windows belong to the loaded episode, not the future session being
+      // replaced. Durable seen keys still prevent replay of observations the save contains.
+      this._techWindows = { encounterId: null, keys: new Set() };
+      this._bossScarAdmit = { encounterId: null, last: null };
+    },
+    inspect() { return this.serialize(); },
+    _emit(event, payload) { this.bus.emit(event, clone(payload)); },
+    _log(kind, detail, encounterId = '') {
+      boundedPush(this.state.nemesis.log, { kind, detail, encounterId, at: nowOf(this.state) }, LIMITS.log);
+    },
+    _voice(situation, text, evidence = null, encounterId = null) {
+      const m = this.state.nemesis;
+      this._emit('nemesis:voice', { aceId: RIVAL.id, aceName: RIVAL.name, shipName: RIVAL.shipName,
+        encounterId: encounterId ?? (m.active && m.active.id || m.pending && m.pending.id || ''),
+        situation, text, evidence, t: nowOf(this.state) });
+    },
+    _flight() { return this.state.mode === 'flight' && alive(entity(this.state, this.state.playerId)); },
+    _pacingAllows() {
+      const approve = this.helpers && this.helpers.canStartNemesisEncounter;
+      // Missing pacing stays the host's fail-closed refusal, which carries its own receipt.
+      if (typeof approve !== 'function') return true;
+      try {
+        return approve({ requestId: null, sectorId: sector(this.state), aceId: RIVAL.id, preflight: true },
+          this.state) === true;
+      } catch (_) { return false; }
+    },
+    _sensorFrame() {
+      const a = this.state.nemesis.active;
+      const sensors = this.helpers.aiSensors;
+      return a && sensors && typeof sensors.frameFor === 'function'
+        ? sensors.frameFor(a.bossId, this.state.tick) : null;
+    },
+    _witnessed(payload, targetId) {
+      const a = this.state.nemesis.active;
+      if (!a || !this._flight()) return false;
+      const boss = entity(this.state, a.bossId);
+      if (!alive(boss) || !localTag(boss, a.id)) return false;
+      // Explicit, trusted emitter provenance. A generic witnessed:true is NOT Orra's omniscience.
+      if (Array.isArray(payload && payload.witnessIds)
+          && (payload.witnessIds.includes(a.bossId) || payload.witnessIds.includes(RIVAL.id))) return true;
+      const frame = this._sensorFrame();
+      const contact = frame && Array.isArray(frame.contacts) && frame.contacts.find((c) => c.id === targetId);
+      // A current explicit occlusion overrides a prior sighting. A kill can remove the entity
+      // before the receipt reaches this listener, so remember only 0.75s of confirmed sightings.
+      if (contact) return contact.visible === true && contact.valid !== false && finite(contact.confidence, 1) >= 0.55;
+      const now = nowOf(this.state);
+      return a.witnesses.some((row) => row.id === targetId && row.at <= now && now - row.at <= LIMITS.witnessMemoryS);
+    },
+    _admit({ style, key, source = 'direct' }) {
+      const a = this.state.nemesis.active;
+      if (!a || this.state.nemesis.ending) return false;
+      return admitEvidence(this.state.nemesis, a.episode, { style, key, source });
+    },
+    _tumbled(p) {
+      const m = this.state.nemesis;
+      if (!m.active || !p || keyForId(p.victimId) == null) return;
+      // Older tumble receipts lack an actor. Those may mark geometry but cannot prove player causality.
+      if (p.playerCaused !== true && p.ownerId !== this.state.playerId && p.sourceId !== this.state.playerId
+          && p.attackerId !== this.state.playerId) return;
+      const now = nowOf(this.state);
+      m.tumbles = m.tumbles.filter((row) => row.id !== p.victimId && now - row.at <= LIMITS.tumbleWindowS);
+      boundedPush(m.tumbles, { id: p.victimId, at: now }, LIMITS.recentTumbles);
+    },
+    _killed(p) {
+      const m = this.state.nemesis, a = m.active;
+      if (!p || m.ending) return;
+      if (!a) { this._killedLeaving(p); return; }
+      const id = p.id ?? p.victimId;
+      const currentBoss = entity(this.state, a.bossId);
+      if (id === a.bossId && currentBoss && !localTag(currentBoss, a.id)) return;
+      const kill = classifyPlayerKill(p, this.state.playerId, m.tumbles, nowOf(this.state));
+      // Orra directly experiences their own hull's final hit, even after the sensor drops it.
+      if (kill && (id === a.bossId || this._witnessed(p, id))) {
+        this._admit({ key: `kill:${keyForId(id)}`, style: kill.style });
+      }
+      if (id === a.bossId) {
+        const caused = p.presentation && typeof p.presentation.playerCaused === 'boolean'
+          ? p.presentation.playerCaused : p.killerId === this.state.playerId;
+        this._finish(caused ? 'destroyed' : 'lost');
+      } else if (id === this.state.playerId) this._finish('player_defeated');
+    },
+    // Hull wounds on the rival only. The player hull stays with ships.js. A shield hit files
+    // nothing; the same admission gap the player uses keeps a burst from becoming a log.
+    _noteBossScar(p) {
+      const m = this.state && this.state.nemesis;
+      const a = m && m.active;
+      if (!a || m.ending || !p || p.targetId !== a.bossId || a.bossId === this.state.playerId) return;
+      const hullDamage = Math.max(0, finite(p.hullDamage));
+      if (!(hullDamage > 0)) return;
+      const boss = entity(this.state, a.bossId);
+      if (!boss || !boss.data || !localTag(boss, a.id)) return;
+      const now = nowOf(this.state);
+      const before = p.before && typeof p.before === 'object' ? p.before : null;
+      const protection = Math.max(1, finite(before && before.hullMax, boss.hullMax) + finite(before && before.armorMax, 0));
+      const armorDamage = Math.max(0, finite(p.armorDamage));
+      const [dx, dz] = hitDirection(p, boss);
+      const facing = scarFacingFromDirection(boss.rot, dx, dz);
+      const tick = integer(this.state.tick);
+      const scar = {
+        id: `weapon:${tick}:${facing}`,
+        cause: 'weapon',
+        surface: 'weapon',
+        band: scarBandForProtectionShare((hullDamage + armorDamage) / protection),
+        facing,
+        tick,
+        atT: now,
+      };
+      if (!this._bossScarAdmit || this._bossScarAdmit.encounterId !== a.id) {
+        this._bossScarAdmit = { encounterId: a.id, last: null };
+      }
+      if (!shouldAdmitScar(this._bossScarAdmit.last, scar)) return;
+      boss.data.livingHull = livingHullWithScar(boss.data.livingHull, scar, now);
+      this._bossScarAdmit.last = scar;
+    },
+    _retainDefeat(outcome, bossId, encounterId, now) {
+      if (!DEFEAT_OUTCOMES.has(outcome)) return;
+      const boss = entity(this.state, bossId);
+      const scars = livingHullScars(boss && boss.data && boss.data.livingHull);
+      this.state.nemesis.defeatRecord = {
+        encounterId: typeof encounterId === 'string' ? encounterId : '',
+        at: now,
+        outcome,
+        scars: clone(scars),
+      };
+    },
+    // The catalogue hull is already spawned. This only copies the retained set onto it.
+    _wearDefeatScars(boss, now) {
+      const record = this.state.nemesis && this.state.nemesis.defeatRecord;
+      if (!record || !boss || !boss.data || boss.id === this.state.playerId) return;
+      const scars = Array.isArray(record.scars) ? record.scars : [];
+      if (!scars.length) return;
+      let hull = null;
+      for (const scar of scars) hull = livingHullWithScar(hull, scar, now);
+      boss.data.livingHull = hull;
+    },
+    // An escaped captain is still a real hull while the encounter host flies it out. Run it down
+    // before it clears the area and the arc ends here — the next return would resurrect Orra.
+    _killedLeaving(p) {
+      const rows = this.state.nemesisDeployment && this.state.nemesisDeployment.departures;
+      if (!Array.isArray(rows) || !rows.length) return;
+      const m = this.state.nemesis, id = p.id ?? p.victimId;
+      const row = rows.find((r) => r && r.id === id);
+      const ship = entity(this.state, id);
+      if (!row || (ship && !localTag(ship, row.requestId))) return;
+      const caused = p.presentation && typeof p.presentation.playerCaused === 'boolean'
+        ? p.presentation.playerCaused : p.killerId === this.state.playerId;
+      const outcome = caused ? 'destroyed' : 'lost', now = nowOf(this.state);
+      if (m.pending) this._cancelPending('rival destroyed after escape');
+      m.ending = outcome; m.phase = 'resolved';
+      this._retainDefeat(outcome, id, row.requestId, now);
+      this._log('outcome', `${outcome} while leaving after an escape`, row.requestId);
+      this._voice(outcome, NEMESIS_LINES[outcome], null, row.requestId);
+      const receipt = { encounterId: row.requestId, bossId: id, crewIds: [id], aceId: RIVAL.id,
+        outcome, afterEscape: true, t: now };
+      this._emit('namedAce:defeated', { aceId: RIVAL.id, entityId: id, t: now });
+      this._emit('nemesis:resolved', { ...receipt, ending: outcome });
+    },
+    _observation(p) {
+      const a = this.state.nemesis.active;
+      if (!a || !p || p.encounterId !== a.id || !NEMESIS_STYLES.includes(p.style)) return;
+      if (p.actorId !== this.state.playerId || !this._flight()) return;
+      if (p.source === 'crew_report') {
+        // A live, present crew member can report, not arbitrary NPCs or a destroyed wing.
+        const witness = entity(this.state, p.witnessId);
+        if (!a.crewIds.includes(p.witnessId) || !alive(witness) || !localTag(witness, a.id)) return;
+      } else if (!this._witnessed(p, this.state.playerId)) return;
+      // At most one observation/style/5 seconds, regardless of weapon or event rate.
+      const window = Math.floor(nowOf(this.state) / LIMITS.evidenceWindowS);
+      this._admit({ key: `sample:${a.id}:${p.style}:${window}`, style: p.style,
+        source: p.source === 'crew_report' ? 'report' : 'direct' });
+    },
+    _fireStyle(p) {
+      if (!p || p.ownerId !== this.state.playerId) return null;
+      if (p.deploy === true || p.detonation === true) return 'ordnance';
+      const def = WEAPON_BY_ID.get(p.weaponId);
+      return def && ORDNANCE_TRACKING.has(def.tracking) ? 'ordnance' : 'gunnery';
+    },
+    _fieldActorId(p) {
+      if (!p || p.npc === true) return null;
+      // Player powers carry the emitter entity's id as sourceId; planted fields declare an
+      // owner. Environmental/NPC sources resolve to their own ids and filter out below.
+      const src = entity(this.state, p.sourceId);
+      if (!src) return null;
+      if (src.data && src.data.fieldEmitter === true) return src.data.ownerId ?? null;
+      return src.ownerId ?? (src.data && src.data.ownerId) ?? null;
+    },
+    _observeTool(style, actorId) {
+      const m = this.state && this.state.nemesis, a = m && m.active;
+      if (!a || m.ending || !this._flight()) return;
+      if (actorId !== this.state.playerId || !NEMESIS_STYLES.includes(style)) return;
+      if (!this._techWindows || this._techWindows.encounterId !== a.id) {
+        this._techWindows = { encounterId: a.id, keys: new Set() };
+      }
+      const window = Math.floor(nowOf(this.state) / LIMITS.evidenceWindowS);
+      const key = `${style}:${window}`;
+      if (this._techWindows.keys.has(key)) return;
+      // Direct first: Orra's own sighting weighs two units and wins the window outright. If the
+      // boss cannot see the act, a valid crew report can still land.
+      if (this._witnessed({}, actorId)) {
+        this._techWindows.keys.add(key);
+        this._emit('nemesis:observation', { encounterId: a.id, actorId, style });
+        return;
+      }
+      const sensors = this.helpers.aiSensors;
+      if (sensors && typeof sensors.frameFor === 'function') {
+        for (const id of a.crewIds) {
+          if (id === a.bossId) continue;
+          const witness = entity(this.state, id);
+          if (!alive(witness) || !localTag(witness, a.id)) continue;
+          const frame = sensors.frameFor(id, this.state.tick);
+          const contact = frame && Array.isArray(frame.contacts)
+            && frame.contacts.find((c) => c.id === actorId);
+          if (contact && contact.visible === true && contact.valid !== false
+              && finite(contact.confidence, 1) >= 0.55) {
+            this._techWindows.keys.add(key);
+            this._emit('nemesis:observation', { encounterId: a.id, actorId, style,
+              source: 'crew_report', witnessId: id });
+            break;
+          }
+        }
+      }
+      // Hidden tool use leaves the window available for a later actual sighting.
+    },
+    update(dt, state) {
+      this.state = state;
+      const m = state.nemesis, now = nowOf(state);
+      if (!m || m.ending || state.mode !== 'flight' || !(Number.isFinite(dt) && dt > 0)) return;
+      if (now < m.nextCheckAt) return;
+      m.nextCheckAt = now + LIMITS.checkS;
+      if (m.active) { this._updateActive(now); return; }
+      if (!this._flight() || !sector(state)) return;
+      if (m.pending) {
+        if (m.pending.sectorId !== sector(state)) { this._cancelPending('sector changed'); return; }
+        if (m.pending.dispatched) {
+          if (now - m.pending.requestedAt > LIMITS.retryS) this._cancelPending('deployment acknowledgement timed out');
+          return;
+        }
+        if (now < m.pending.notBefore) return;
+        // Mark in-flight before dispatch; the bus and host acknowledgement are synchronous.
+        m.pending.dispatched = true; m.pending.requestedAt = now;
+        this._emit('nemesis:encounterRequested', { requestId: m.pending.id,
+          sectorId: m.pending.sectorId, plan: m.pending.plan, aceId: RIVAL.id });
+        return;
+      }
+      if (now < m.nextContactAt) return;
+      // Warn only for an arrival the host's pacing would admit now. A refused deployment retries in
+      // 15 s, so announcing first turned every refusal (onboarding, a run, docking, low hull) into a
+      // COUNTEREXAMPLE INBOUND warning every ~21 s with nobody arriving.
+      if (!this._pacingAllows()) { m.nextContactAt = now + LIMITS.retryS; return; }
+      // No RNG consumed. Alternating handedness is deliberate choreography, not random sampling.
+      const plan = prepareNemesisPlan(m, m.completed % 2 ? -1 : 1);
+      m.requestSerial += 1;
+      const id = `nemesis:${RIVAL.id}:${m.requestSerial}`;
+      m.pending = { id, sectorId: sector(state), plan, requestedAt: now,
+        warningAt: now, notBefore: now + LIMITS.warningS, dispatched: false };
+      m.phase = 'announced';
+      this._log('announced', plan.reason, id);
+      this._emit('nemesis:announced', { requestId: id, aceId: RIVAL.id, sectorId: sector(state),
+        notBefore: m.pending.notBefore, chapter: plan.chapter, kit: plan.primary,
+        tell: NEMESIS_KITS[plan.primary].tell, opening: NEMESIS_KITS[plan.primary].opening,
+        // INF-075: the wing refit rides along undisclosed no more — consumers derive its
+        // tell/opening from the kit table exactly like the primary.
+        secondary: plan.secondary || null });
+    },
+    _started(p) {
+      const m = this.state.nemesis, pending = m.pending;
+      if (!pending || !pending.dispatched || !p || p.requestId !== pending.id) return;
+      const boss = entity(this.state, p.bossId), now = nowOf(this.state);
+      if (!alive(boss) || !localTag(boss, pending.id) || sector(this.state) !== pending.sectorId) {
+        this._cancelPending('invalid deployment acknowledgement'); return;
+      }
+      const crew = Array.isArray(p.crewIds) ? p.crewIds.filter((id) => id !== p.bossId
+        && alive(entity(this.state, id)) && localTag(entity(this.state, id), pending.id)).slice(0, 2) : [];
+      m.active = { id: pending.id, sectorId: pending.sectorId, bossId: p.bossId,
+        crewIds: [p.bossId, ...new Set(crew)], startedAt: now, plan: clone(pending.plan),
+        episode: freshEpisode(pending.id, now), retreatAt: null, surrenderedAt: null,
+        act: 0, actChangedAt: now, geometryAt: now, geometrySamples: 0, farSamples: 0, witnesses: [] };
+      m.lastPrimary = pending.plan.primary; m.pending = null; m.phase = 'encounter';
+      this._wearDefeatScars(boss, now);
+      const a = m.active, kit = NEMESIS_KITS[a.plan.primary];
+      this._emit('namedAce:appeared', { aceId: RIVAL.id, entityId: a.bossId,
+        signatureSpoken: true, sectorId: a.sectorId, t: now });
+      this._voice('arrival', NEMESIS_CHAPTERS[a.plan.chapter].arrival);
+      if (a.plan.primary !== 'open') this._voice('prediction', `ORRA: ${kit.response}`, {
+        primary: a.plan.primary, units: a.plan.evidenceUnits, episodes: a.plan.evidenceEpisodes,
+        confidence: a.plan.confidence, tell: kit.tell, opening: kit.opening,
+      });
+      // INF-075: the wing states its own reason. Same evidence units the planner counted —
+      // never a confidence the plan does not store, never knowledge the memory lacks.
+      if (a.plan.secondary) {
+        const wing = NEMESIS_KITS[a.plan.secondary];
+        if (wing) this._voice('prediction', `ORRA (wing): ${wing.response}`, {
+          secondary: a.plan.secondary, units: a.plan.evidenceUnits, episodes: a.plan.evidenceEpisodes,
+          tell: wing.tell, opening: wing.opening,
+        });
+      }
+      this._emit('nemesis:engaged', { encounterId: a.id, aceId: RIVAL.id, bossId: a.bossId,
+        plan: a.plan, crewIds: a.crewIds, t: now });
+    },
+    _rejected(p) {
+      if (p && this.state.nemesis.pending && p.requestId === this.state.nemesis.pending.id) {
+        this._cancelPending(typeof p.reason === 'string' ? p.reason.slice(0, 120) : 'host rejected');
+      }
+    },
+    _cancelPending(reason) {
+      const m = this.state.nemesis, id = m.pending && m.pending.id;
+      m.pending = null; m.phase = 'waiting'; m.nextContactAt = nowOf(this.state) + LIMITS.retryS;
+      if (id) this._emit('nemesis:requestCancelled', { requestId: id, reason });
+    },
+    _updateActive(now) {
+      const m = this.state.nemesis, a = m.active, boss = entity(this.state, a.bossId);
+      if (a.sectorId !== sector(this.state)) { this._finish('player_escaped'); return; }
+      if (!boss || !localTag(boss, a.id)) { this._finish('interrupted'); return; }
+      if (!alive(boss)) { this._finish('lost'); return; } // A missing kill receipt is never invented player credit.
+      if (!alive(entity(this.state, this.state.playerId))) { this._finish('player_defeated'); return; }
+      const hull = boss.hull / Math.max(1, finite(boss.hullMax, boss.hull));
+      if (a.plan.chapter === 3) {
+        const act = hull <= 0.35 ? 2 : hull <= 0.65 ? 1 : 0;
+        if (act > a.act) {
+          a.act = act; a.actChangedAt = now;
+          this._voice('act', act === 1 ? NEMESIS_LINES.act2 : NEMESIS_LINES.act3);
+          this._emit('nemesis:actChanged', { encounterId: a.id, act,
+            tactic: a.plan.acts[act], telegraphS: 2, t: now });
+        }
+        if (hull <= LIMITS.surrenderHull && a.surrenderedAt == null) {
+          a.surrenderedAt = now;
+          this._voice('surrender', NEMESIS_LINES.surrendered);
+          this._emit('nemesis:surrenderOffered', { encounterId: a.id, bossId: a.bossId, aceId: RIVAL.id });
+        }
+      } else if (a.retreatAt == null && now - a.startedAt >= LIMITS.minEncounterS
+          && (hull <= LIMITS.retreatHull || now - a.startedAt >= LIMITS.maxEncounterS)) {
+        a.retreatAt = now;
+        this._voice('retreat', NEMESIS_LINES.retreat);
+        this._emit('nemesis:retreatRequested', { encounterId: a.id, bossId: a.bossId, t: now });
+      }
+      // Cache a small, short-lived visible contact set. Production death processing can remove
+      // a victim from sensors before entity:killed; the receipt alone never proves visibility.
+      const frame = this._sensorFrame();
+      a.witnesses = a.witnesses.filter((row) => now >= row.at && now - row.at <= LIMITS.witnessMemoryS);
+      if (frame && Array.isArray(frame.contacts)) {
+        for (const c of frame.contacts) {
+          if (keyForId(c.id) == null) continue;
+          const previous = a.witnesses.findIndex((row) => row.id === c.id);
+          if (previous >= 0) a.witnesses.splice(previous, 1);
+          if (c.visible === true && c.valid !== false && c.alive !== false && finite(c.confidence, 1) >= 0.55) {
+            boundedPush(a.witnesses, { id: c.id, at: now }, LIMITS.witnesses);
+          }
+        }
+      }
+      // Optional real sensor geometry, sampled once per 5 simulation seconds, not each frame.
+      if (now - a.geometryAt >= LIMITS.evidenceWindowS) {
+        a.geometryAt = now;
+        const contact = frame && Array.isArray(frame.contacts) && frame.contacts.find((c) => c.id === this.state.playerId
+          && c.visible === true && c.valid !== false && finite(c.confidence, 1) >= 0.55);
+        if (contact && contact.pos && boss.pos) {
+          a.geometrySamples = Math.min(1000, a.geometrySamples + 1);
+          const dx = contact.pos.x - boss.pos.x, dz = contact.pos.z - boss.pos.z;
+          const distance = Math.hypot(dx, dz);
+          const velocity = contact.vel || {};
+          const outward = (finite(velocity.x) * dx + finite(velocity.z) * dz) / Math.max(1, distance);
+          // Orra's own ranged doctrine is NOT evidence that the player is kiting. The visible
+          // pilot must repeatedly move outward under their own power, not merely be far away.
+          const far = distance >= 850 && outward > 40
+            && Math.hypot(finite(velocity.x), finite(velocity.z)) > 60
+            && a.retreatAt == null && a.surrenderedAt == null;
+          a.farSamples = far ? Math.min(3, a.farSamples + 1) : 0;
+          if (a.farSamples >= 3) this._admit({ key: `kite:${a.id}:${Math.floor(now / 5)}`, style: 'kite' });
+        } else a.farSamples = 0;
+      }
+    },
+    _escaped(p) {
+      const a = this.state.nemesis.active;
+      if (!a || !p || p.encounterId !== a.id || p.bossId !== a.bossId || a.retreatAt == null) return;
+      // Trusted lifecycle receipt is also checked against geometry; an early callback cannot teleport the rival away.
+      const boss = entity(this.state, a.bossId), player = entity(this.state, this.state.playerId);
+      if (!alive(boss) || !localTag(boss, a.id) || !player || !boss.pos || !player.pos || nowOf(this.state) - a.retreatAt < 6) return;
+      if (Math.hypot(boss.pos.x - player.pos.x, boss.pos.z - player.pos.z) < 1800) return;
+      this._finish('rival_escaped');
+    },
+    _spare(p) {
+      const a = this.state.nemesis.active;
+      if (!a || !p || p.encounterId !== a.id || a.surrenderedAt == null || !this._flight()) return;
+      const boss = entity(this.state, a.bossId);
+      if (!alive(boss) || !localTag(boss, a.id)) return; // No resurrection or replacement hull through a late UI choice.
+      this._finish('spared');
+    },
+    _sectorChanged() {
+      const m = this.state.nemesis;
+      if (m.active && m.active.sectorId !== sector(this.state)) this._finish('player_escaped');
+      if (m.pending && m.pending.sectorId !== sector(this.state)) this._cancelPending('sector changed');
+    },
+    _reconcile() {
+      const m = this.state.nemesis;
+      if (m.pending) {
+        // A saved emitted request may have lost its deferred host callback. Invalidate its token.
+        this._cancelPending('save load invalidated in-flight deployment');
+      }
+      if (m.active) {
+        const boss = entity(this.state, m.active.bossId);
+        if (!alive(boss) || !localTag(boss, m.active.id) || sector(this.state) !== m.active.sectorId) {
+          this._finish('interrupted');
+        }
+      }
+    },
+    _finish(outcome) {
+      const m = this.state.nemesis, a = m.active;
+      if (!a) return;
+      const now = nowOf(this.state), interrupted = outcome === 'interrupted';
+      a.episode.outcome = outcome;
+      a.episode.contradicted = predictionWasWrong(a.plan, a.episode);
+      const receipt = { encounterId: a.id, bossId: a.bossId, crewIds: a.crewIds.slice(),
+        aceId: RIVAL.id, outcome, chapter: a.plan.chapter, kit: a.plan.primary,
+        counts: clone(a.episode.counts), contradicted: a.episode.contradicted, t: now };
+      if (!interrupted) {
+        boundedPush(m.episodes, clone(a.episode), LIMITS.episodes);
+        m.completed = integer(m.completed + 1);
+        // Do not march a struggling player toward a stronger finale for repeatedly losing.
+        // A meaningful challenge advances the arc; empty sector-hopping does not.
+        if (outcome === 'rival_escaped' || (outcome === 'player_escaped' && a.episode.total >= 6)) {
+          m.progress = Math.min(3, m.progress + 1);
+        }
+        if (outcome === 'rival_escaped') { m.grudge = Math.min(LIMITS.grudge, m.grudge + 2); m.respect = Math.min(LIMITS.grudge, m.respect + 1); }
+        if (outcome === 'player_escaped') m.grudge = Math.min(LIMITS.grudge, m.grudge + 1);
+      }
+      // Commit terminal state before emitting: reentrant/delayed kill and choice events are idempotent.
+      m.active = null; m.pending = null; m.tumbles = [];
+      m.ending = TERMINAL.has(outcome) ? outcome : null;
+      m.phase = m.ending ? 'resolved' : 'waiting';
+      m.nextContactAt = now + (interrupted ? LIMITS.retryS
+        : Math.max(LIMITS.returnMinS, LIMITS.returnMaxS - m.grudge * 20));
+      if (outcome === 'player_defeated') m.nextContactAt = now + LIMITS.returnMaxS;
+      this._log('outcome', `${outcome}; ${a.plan.primary}; prediction contradicted=${receipt.contradicted}`, a.id);
+      if (receipt.contradicted) this._voice('contradicted', NEMESIS_LINES.contradicted, receipt.counts, a.id);
+      const lineKey = { rival_escaped: 'escaped', player_escaped: 'playerEscaped',
+        player_defeated: 'victory', spared: 'spared', destroyed: 'destroyed', lost: 'lost' }[outcome];
+      if (lineKey) this._voice(outcome, NEMESIS_LINES[lineKey], null, a.id);
+      this._retainDefeat(outcome, a.bossId, a.id, now);
+      this._emit('nemesis:encounterEnded', receipt);
+      if (outcome === 'rival_escaped') this._emit('namedAce:fled', { aceId: RIVAL.id, entityId: a.bossId, t: now });
+      if (outcome === 'destroyed' || outcome === 'lost') this._emit('namedAce:defeated', { aceId: RIVAL.id, entityId: a.bossId, t: now });
+      if (m.ending) this._emit('nemesis:resolved', { ...receipt, ending: m.ending });
+    },
+  };
+}
+
+export const nemesis = createNemesisSystem();
+export default nemesis;

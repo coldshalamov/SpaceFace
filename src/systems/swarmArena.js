@@ -1,0 +1,2386 @@
+// Swarm debris field (PQ-135) — the arena's other half.
+//
+// WHY THIS EXISTS
+// ---------------
+// The Crucible's whole weapon grammar is PHYSICAL: Throw picks a hull up and puts it into
+// something, Tag makes every gravity field in the room pull harder on it, Bind takes its steering
+// away. The reciprocal-damage and tumble-contact rules that make "flung him into an asteroid" a
+// real kill are already shipped and already on in production (masslineImpactDamage.js).
+//
+// What was missing was something to fling things INTO. The arena's only geometry came through
+// `encounter:telegraph`, and terrainAnchors caps that at THREE rocks in a 600wu bubble and refuses
+// to add any if two are already present (terrainAnchors.js:20-21, :78). Three rocks is a landmark,
+// not a hazard: you can play a whole wave without a wall ever being within throwing distance.
+//
+// So a swarm run gets a real debris field — a dozen-plus monoliths in a band around the fight —
+// maintained around the player as the fight drifts.
+//
+// FIVE RULES
+// ----------
+//   * It only spawns ASTEROIDS, through helpers.spawnEntity, with the exact entity shape
+//     terrainAnchors already uses (terrainAnchors.js:83-108). Ordinary asteroids are dynamic bowling bodies in
+//     the live physics backend and already carry the tether-socket combat profile, so the massline
+//     can latch them the moment they exist and collision asymmetry (§3.5) means they can bounce
+//     the player but never hurt him.
+//   * It never touches spawnBudget. That ledger counts SHIP slots; a rock is not a ship, and
+//     spending hostile slots on scenery would thin the swarm to pay for the walls.
+//   * It maintains a COUNT, not a layout. Rocks the player has left far behind are released
+//     through the engine's ordinary `despawnAt` sweep, and the field tops back up near wherever
+//     the fight has drifted to. The arena follows the player, exactly as the gates do.
+//   * It never spawns on top of the player or inside another rock. A monolith materializing on
+//     your hull is a death you did not cause.
+//   * Deterministic: a seeded mulberry32 stream mixed off (run.seed, wave, index). No Math.random,
+//     no wall clock.
+//
+// A cheap two-second drift check refreshes cover during flight; wave events seed each new round.
+// The pressure-reservoir telegraph is also event-driven: census on destroy / wave start, and
+// callbacks from swarmReinforceCount (which survivalWave already calls on the sim tick).
+
+import { ENVIRONMENT_FAMILIES, environmentSurfaceData, environmentMaterialOf } from '../data/environmentMaterials.js';
+import { ROCK_PLACE_SUBSTANCES, applyRockSubstance } from '../data/rockSubstances.js';
+import { swarmArenaTierForRun, swarmArenaDebrisLayout, planOpeningThrowables } from '../data/swarmArenaLadder.js';
+import { swarmOpeningTerrainStage, planSwarmOpeningTerrain } from '../data/swarmOpeningTerrain.js';
+import { mulberry32 } from '../core/rng.js';
+import { swarmPlacementIsClear, sweptDiscsOverlap } from './swarmSafety.js';
+import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { articulatedColliderRadius } from '../core/articulatedColliderBounds.js';
+import { hullEnvelopeWu, proxyOuterRadiusWu, proxyScaleFor, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
+import { OPTIC_LATTICE_SPACING } from '../combat/opticField.js';
+import { withBankStone } from '../core/surfaceContact.js';
+import { asteroidColliderRadius } from '../data/asteroidColliders.js';
+import { validateRunState } from '../core/runState.js';
+import { createBroodEngine } from './swarmBrood.js';
+import { BANK_STONE_MIN_DISTANCE, BANK_STONE_MAX_DISTANCE } from './swarmBank.js';
+import { OPENING_LESSON_RELEASE_TICKS } from './survivalWave.js';
+import { BROOD_EXPLOSION_EVENTS, BROOD_QUEEN_LOOT_ID, TENDRIL_HEAD_LOOT_ID } from '../data/swarmBrood.js';
+import {
+  SWARM_BREATH_SECONDS,
+  SWARM_BREATH_TICKS,
+  SWARM_SPAWN_CAP,
+  bindSwarmPressureContext,
+  noteSwarmPressureKills,
+  resetSwarmPressureState,
+} from '../data/swarmMode.js';
+import {
+  CRUCIBLE_REEF_LAYOUT_ID,
+  CRUCIBLE_SLALOM_WELL_COUNT,
+} from '../data/survivalMutators.js';
+import { isSwarmRuleset } from './survivalSwarm.js';
+import { readRecentImpulseProvenance } from '../combat/impulseKernel.js';
+import { gateBearing } from './waveMaterialization.js';
+import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { SURVIVAL_COHORT_TAG } from './waveMaterialization.js';
+import { compileSwarmOptic } from '../data/swarmOpticArenas.js';
+import { CINDER_ARENA_ID, stepCinderMachinery } from './cinderSluiceArena.js';
+import { CRYO_ARENA_ID } from './cryoDriftArena.js';
+import { LAGRANGE_ARENA_ID } from './lagrangeCrucible.js';
+import { STORM_ARENA_ID } from './stormLatticeArena.js';
+import { crusherPhase, shutterPhase } from '../data/arenaModuleLibrary.js';
+import {
+  MILL_ARENA_ID,
+  MILL_ORE_CREDITS,
+  MILL_ORE_DOUBLE_CHANCE,
+  MILL_ORE_KIND,
+  MILL_ORE_TTL_S,
+} from './asteroidMillArena.js';
+import {
+  HIVE_ARENA_ID,
+  HIVE_POOL_PERIOD_S,
+  HIVE_SAC_BIRTH_N,
+  HIVE_SAC_COUNT,
+  HIVE_SAC_HULL,
+  HIVE_SAC_MASS_K,
+  HIVE_SAC_PERIOD_S,
+  HIVE_SAC_SIZE,
+  HIVE_SAC_TAG,
+  HIVE_WALL_GROW_S,
+  HIVE_WALL_HULL,
+  HIVE_WALL_RINGS,
+  HIVE_WALL_TAG,
+  hiveSacBerths,
+  hiveStreamSeed,
+  hiveWallRing,
+} from './theHiveArena.js';
+
+/** Marker on every rock this system creates, so teardown and census never touch sector terrain. */
+export const SWARM_DEBRIS_TAG = 'swarmArenaDebris';
+/** Optic lattices are a rigid stamp, not debris. Census must not release them as leftover cover. */
+export const SWARM_OPTIC_TAG = 'swarmArenaOptic';
+
+// ── The pilot's throw survives the buzzer ───────────────────────────────────
+// _settleRoom rests the room between rounds; a body the PILOT threw is the bounded exception
+// (see _settleRoom). These three numbers keep that exception rare, aimed and deterministic.
+
+/** Impulse tags whose motion the pilot aimed — the throw family, or their own hull pushing. */
+const THROW_CARRY_TAGS = new Set([
+  'massline_throw', 'massline', 'rope_throw', 'massline_whip',
+  'direct_contact', 'ram_plate', 'tow_flail',
+]);
+
+/** Provenance older than this reads stale at the boundary: 45 s of unclaimed flight. */
+const THROW_CARRY_PROVENANCE_TICKS = 2700;
+
+/** The carry stays rare: at most this many thrown bodies keep their speed into the next round. */
+export const SWARM_CARRY_MAX_BODIES = 3;
+
+const WELL_SOLID_TYPES = new Set(['asteroid', 'wreck', 'station']);
+
+// ── Arena-law voice ─────────────────────────────────────────────────────────
+// The room's law flips twice a player can feel: per wave, when the phase machine installs a
+// new arenaPhase, and mid-wave, when the installed law's own machinery cycles (the sluice's
+// warning/surge/calm, shutter slides, crusher jaws). survivalArena owns the install and emits
+// the `survivalArena:installed` receipt — phase, authored note, installedAtSim, toySpecs — which
+// is the one public seam this voice needs. The mid-wave flips reach no bus at all, so they are
+// read back off the SAME pure clocks the room owner drives, keyed to the receipt's simTime.
+// One `alert` line per change, on the same one-voice floor the pressure telegraph uses.
+
+/** survivalArena's private machinery gate, mirrored: the sluice cycle only runs on these phases. */
+const LAW_MACHINERY_CINDER_PHASES = new Set(['idle', 'shutter_slow', 'furnace_active', 'shutter_alternating']);
+
+/** The install receipt's inert marker — a lawless room says nothing. */
+const LAW_NOTE_INERT = 'inert room';
+
+/** One world-terms line per machinery state. Warn on the bite, quiet on the rest. */
+const LAW_PHASE_VOICE = Object.freeze({
+  sluice: Object.freeze({
+    warning: 'The sluice is winding up — the current is about to run',
+    surge: 'THE SLUICE FIRES — downstream carries, upstream costs',
+    calm: 'The sluice rests — the lane runs quiet',
+  }),
+  shutter: Object.freeze({
+    warning: 'A shutter shudders — the lane is about to cut',
+    surge: 'A SHUTTER SLIDES — the lane is cut',
+    calm: 'The shutter eases back — the lane opens',
+  }),
+  crusher: Object.freeze({
+    warning: 'The crusher arms — clear the jaws',
+    surge: 'THE CRUSHER BITES — nothing between the jaws survives',
+    calm: 'The crusher rests — the jaws hang open',
+  }),
+});
+
+/** The law's internal phase at `elapsedS` — the same pure clock the room owner ticks. */
+function lawPhaseOf(source, elapsedS) {
+  const clock = source.kind === 'sluice' ? stepCinderMachinery(elapsedS)
+    : source.kind === 'shutter' ? shutterPhase(source.toy, elapsedS)
+      : source.kind === 'crusher' ? crusherPhase(source.toy, elapsedS)
+        : null;
+  return clock && typeof clock.phase === 'string' ? clock.phase : null;
+}
+
+/**
+ * The teaching well is planted where it pulls nothing at rest. A well dropped over the optic
+ * lattice or the debris field drags that furniture into motion before the player has touched a
+ * key — the rocks fly, plow the room and the round "plays itself". Keep the authored distance,
+ * walk the bearing round the pilot, and take the first disc with no solid crossing it.
+ * No clear disc means no teaching well; never choose a least-bad occupied location.
+ */
+export function quietWellCenter(state, anchor, offset, radius) {
+  const list = state?.entities?.values?.() || state?.entityList || [];
+  const solids = Array.from(list).filter(e => e && WELL_SOLID_TYPES.has(e.type));
+  const dist = Math.hypot(offset.x, offset.z);
+  const base = Math.atan2(offset.z, offset.x);
+  for (let k = 0; k < 16; k++) {
+    const turn = (k % 2 === 0 ? 1 : -1) * Math.ceil(k / 2) * Math.PI / 8;
+    const pos = { x: anchor.x + Math.cos(base + turn) * dist,
+      z: anchor.z + Math.sin(base + turn) * dist };
+    if (!solids.some(e => sweptDiscsOverlap(pos, radius, e, { clearance: 8 }))) return pos;
+  }
+  return null; // no quiet position is preferable to a free-running debris blender
+}
+/** Restamp only after the fight has left the lattice. Closer than this, the same rocks stay. */
+const SWARM_OPTIC_RESTAMP = 520;
+// Released bodies inside this radius of the pilot (the normal camera's view plus a margin) wait.
+export const SWARM_VIEW_KEEP_RADIUS = 760;
+const SWARM_RELEASE_HOLD_EVERY_S = 0.5;
+
+/**
+ * How many monoliths the fight should be able to see. Tuned against the chase bubble: the visible
+ * depth is roughly 93-125wu, so a dozen rocks spread over a 130-480wu band puts two or three in
+ * frame at any heading — close enough that a Throw always has a wall, sparse enough that the room
+ * still reads as open space rather than a cave.
+ */
+export const SWARM_DEBRIS_TARGET = 14;
+/**
+ * A ceiling on the field AROUND THE FIGHT, so a long run drifting across the sector can never
+ * accumulate a rock garden.
+ *
+ * It counts in-fight rocks only. Ones the fight has left behind are already released and on a
+ * twenty-second clock, so counting them here would starve the new field of exactly the rocks it is
+ * being built to replace. The live total can therefore sit briefly above this during a drift, and
+ * that is bounded by the release clock rather than by luck.
+ */
+export const SWARM_DEBRIS_MAX = 20;
+
+/**
+ * The band the monoliths sit in.
+ *
+ * Sized to the camera, and re-sized when the camera changed. The original 130-480 band was drawn
+ * for the shipped chase distance; once the swarm camera stood further off to make the fight
+ * visible, a screenshot showed the opposite problem — the rocks were now spread so wide that only
+ * one or two were in frame at a time, and a wall you cannot see is a wall you will not use.
+ *
+ * A tighter band puts the same fourteen monoliths where the fight is: inside the framing, dense
+ * enough that a Throw always has a target, still clear of the player by SAFE_RADIUS.
+ */
+export const SWARM_DEBRIS_INNER = 115;
+export const SWARM_DEBRIS_OUTER = 340;
+export const SWARM_DEBRIS_SIZE_MIN = 16;
+export const SWARM_DEBRIS_SIZE_MAX = 44;
+
+/** Rocks further than this from the player are released to the engine's ordinary despawn sweep. */
+export const SWARM_DEBRIS_KEEP_RADIUS = 900;
+
+// A fresh rigid stamp must clear the bodies the native solver actually holds. A tiny gameplay
+// radius can describe a long offset wreck or compound hull; it is not their contact footprint.
+function opticPlacementFootprints(state, native, excluded = null) {
+  const footprints = [];
+  for (const entity of state.entities?.values?.() || state.entityList || []) {
+    if (!entity || entity === excluded || entity.alive === false || entity.collides === false || entity.physicsBody === false
+      || !entity.pos || !WELL_SOLID_TYPES.has(entity.type) && entity.type !== 'ship' && entity.type !== 'drone') continue;
+    const spec = resolvePhysicsBodySpec(entity);
+    if (!spec || spec.material === 'sensor' || spec.material === 'massline_sensor') continue;
+    const rec = native?.records.get(entity.id);
+    if (rec?.entity === entity && rec.body.isEnabled() !== false) {
+      if (rec.colliders.every(collider => collider.isSensor() || !collider.isEnabled())) continue;
+      const pos = rec.body.translation(), vel = rec.body.linvel();
+      let radius = articulatedColliderRadius(rec);
+      if (excluded) {
+        // Fracture is a new admission. Read current SDK geometry/offsets, not
+        // a collector's historical shape/radius cache, and include contact skin.
+        const colliders = rec.colliders.filter(c => c.isEnabled() && !c.isSensor());
+        radius = articulatedColliderRadius({ colliders: colliders.map(c => ({
+          shape: native.RAPIER.Shape.fromRaw(native.world.colliders.raw, c.handle),
+          translationWrtParent: () => c.translationWrtParent(),
+        })) }) + Math.max(0, ...colliders.map(c => c.contactSkin?.() || 0));
+      }
+      footprints.push({ alive: true, radius,
+        pos: { x: pos.x + native._frameOrigin.x, z: pos.z + native._frameOrigin.z },
+        vel: { x: vel.x, z: vel.z } });
+    } else {
+      const proxy = resolveCollisionProxyManifest(entity);
+      // Conservative cold bounds include the same resolved compound as the next native sync.
+      const radius = excluded ? fractureBodyRadius(entity) : Math.max(spec.radius, hullEnvelopeWu(entity), proxy ? proxyOuterRadiusWu(proxy, entity) : 0,
+        spec.shape === 'capsule' ? spec.radius * 2 : spec.shape === 'cuboid' ? spec.radius * Math.SQRT2 : 0);
+      footprints.push({ alive: true, radius, pos: entity.pos, vel: entity.vel });
+    }
+  }
+  return footprints;
+}
+
+function fractureBodyRadius(entity) {
+  const spec = resolvePhysicsBodySpec(entity);
+  if (!spec) return Infinity;
+  const proxy = resolveCollisionProxyManifest(entity);
+  let radius = Math.max(spec.radius, hullEnvelopeWu(entity), proxy ? proxyOuterRadiusWu(proxy, entity) : 0,
+    spec.shape === 'capsule' ? spec.radius * 2 : spec.shape === 'cuboid' ? spec.radius * Math.SQRT2 : 0);
+  if (proxy) {
+    const scale = proxyScaleFor(entity, proxy);
+    for (const points of [proxy.compactHull, proxy.planarPolygon, ...(proxy.convexParts || []).map(p => p.points)]) {
+      for (const p of points || []) radius = Math.max(radius, Math.hypot(p.x, p.z) * scale);
+    }
+  }
+  return radius;
+}
+
+function fractureBirthPositions(state, native, parent, children) {
+  const gap = 0.25, reaches = children.map(fractureBodyRadius);
+  if (reaches.some(r => !Number.isFinite(r))) return null;
+  const peers = opticPlacementFootprints(state, native, parent);
+  const clear = positions => Math.hypot(positions[0].x - positions[1].x, positions[0].z - positions[1].z)
+    >= reaches[0] + reaches[1] + gap
+    && positions.every((pos, i) => !peers.some(peer => sweptDiscsOverlap(pos, reaches[i], peer, { clearance: gap })));
+  const original = children.map(child => child.pos);
+  if (clear(original)) return original;
+  // Preserve already-clear authored births. For a blocked pair, rotate an
+  // opposed pair locally; sample bounds are fixed and no existing body moves.
+  const angle = Math.atan2(original[0].z - parent.pos.z, original[0].x - parent.pos.x);
+  const distances = original.map(pos => Math.hypot(pos.x - parent.pos.x, pos.z - parent.pos.z));
+  for (let ring = 0; ring < 3; ring++) for (let turn = 0; turn < 16; turn++) {
+    const bearing = angle + turn * Math.PI / 8;
+    const positions = distances.map((distance, i) => {
+      const r = distance + ring * Math.max(...reaches) * 0.5, a = bearing + i * Math.PI;
+      return { x: parent.pos.x + Math.cos(a) * r, z: parent.pos.z + Math.sin(a) * r };
+    });
+    if (clear(positions)) return positions;
+  }
+  return null;
+}
+
+// Some optic recipes put large stone cells on the shared lattice. Their native circles can be
+// wider than one lattice step, so a recipe that is visually a neat grid can launch with cells
+// interpenetrating. Expand only the translated layout: the authored cell/material topology stays
+// intact, and the same expanded bodies are used for both native admission and spawning.
+function separateOpticLatticeBodies(bodies) {
+  const list = Array.isArray(bodies) ? bodies : [];
+  let scale = 1;
+  for (let i = 0; i < list.length; i++) {
+    const a = list[i];
+    for (let j = i + 1; j < list.length; j++) {
+      const b = list[j];
+      const distance = Math.hypot(a.x - b.x, a.z - b.z);
+      if (!(distance > 1e-6)) return null;
+      const required = Math.max(0, Number(a.radius) || 0)
+        + Math.max(0, Number(b.radius) || 0) + 8;
+      if (distance < required) scale = Math.max(scale, required / distance);
+    }
+  }
+  if (scale <= 1) return list;
+  return list.map(body => ({ ...body, x: body.x * scale, z: body.z * scale }));
+}
+
+function opticLatticeOrigin(state, layout, anchor, native) {
+  const footprints = opticPlacementFootprints(state, native);
+  const offsets = [{ x: 0, z: 0 }];
+  // Whole-lattice translations retain every emitter, mirror and fuse relationship on the same
+  // 64-unit grid. Search stays in the existing fight bubble, without moving earned debris.
+  for (let ring = 1; ring <= 4; ring++) {
+    const d = ring * OPTIC_LATTICE_SPACING;
+    offsets.push({ x: d, z: 0 }, { x: -d, z: 0 }, { x: 0, z: d }, { x: 0, z: -d },
+      { x: d, z: d }, { x: -d, z: d }, { x: d, z: -d }, { x: -d, z: -d });
+  }
+  for (const offset of offsets) {
+    const origin = { x: anchor.x + layout.origin.x + offset.x, z: anchor.z + layout.origin.z + offset.z };
+    // A displaced origin must not itself immediately trip the existing restamp boundary.
+    if (Math.hypot(origin.x - anchor.x, origin.z - anchor.z) >= SWARM_OPTIC_RESTAMP) continue;
+    if (layout.bodies.every(body => {
+      const pos = { x: origin.x + body.x, z: origin.z + body.z };
+      return Math.hypot(pos.x - anchor.x, pos.z - anchor.z) + body.radius <= SWARM_DEBRIS_KEEP_RADIUS
+        && !footprints.some(other => sweptDiscsOverlap(pos, body.radius, other, { clearance: 8 }));
+    })) return origin;
+  }
+  return null;
+}
+
+/**
+ * SF-067 — cover that stays useful. A monolith is not an invulnerable wall: a hard impact
+ * (thrown hull, heavy ram) wears its hull, and the wear is VISIBLE through `miningWear`, the
+ * progressive shrink/darken hint the renderer already reads. At zero the rock does not vanish —
+ * it fractures into two smaller remnant rocks that still collide, still anchor, and carry
+ * `tetherPayload` so the massline can pick one up and throw it. A remnant that breaks again just
+ * dies: one generation of leftovers, then the lane is clear.
+ */
+const SWARM_DEBRIS_WEAR_SPEED = 26;
+const SWARM_DEBRIS_WEAR_DIV = 110;
+const SWARM_DEBRIS_WEAR_TICK_GAP = 10;
+const SWARM_DEBRIS_REMNANTS = 2;
+const SWARM_DEBRIS_REMNANT_RATIO = 0.42;
+const SWARM_DEBRIS_REMNANT_MASS_K = 5;
+
+/**
+ * The radius the FIELD IS COUNTED IN, which is deliberately much tighter than the radius rocks are
+ * kept in.
+ *
+ * These used to be the same number, and a live walk found the consequence: by wave five the fight
+ * had drifted and there were eleven monoliths within 500 units instead of fourteen — the missing
+ * ones were sitting 600-900 away, still "kept", still counted, and completely useless. Counting in
+ * the band the fight actually happens in means the field stays dense where the player is, while
+ * the wider keep radius stops rocks being churned every time they fall a little behind.
+ */
+export const SWARM_DEBRIS_FIGHT_RADIUS = SWARM_DEBRIS_OUTER + 60;
+/**
+ * Minimum gap between two rock SURFACES, so the field never fuses into one wall.
+ *
+ * Tightened with the band. It is a SURFACE gap, so 34 units is still a clear lane between two
+ * monoliths — comfortably wider than the hull that has to fly through it — while letting the same
+ * fourteen rocks fit the smaller area the new camera framing wants them in.
+ */
+export const SWARM_DEBRIS_SEPARATION = 34;
+// Row 495 — the rolled environment family picks the matching rock substance, so the stamped
+// body carries its Row 509 physics truth (restitution, break speed, density) and its authored
+// skin at once. Slag rides the everyday-rock slot; a wreck-material slot stays a dead hull.
+export const DEBRIS_SUBSTANCE_BY_MATERIAL = Object.freeze({
+  rock: Object.freeze(['silicate', 'slag']),
+  metal: Object.freeze(['metallic_ore', 'reef_metal']),
+  crystal: Object.freeze(['crystal']),
+  volatile: Object.freeze(['cooked_rock']),
+  cryo: Object.freeze(['ice']),
+});
+export function pickDebrisSubstance(material, rng) {
+  const table = DEBRIS_SUBSTANCE_BY_MATERIAL[material] || DEBRIS_SUBSTANCE_BY_MATERIAL.rock;
+  const pick = table[Math.floor((rng ? rng() : 0) * table.length) % table.length];
+  // Gate on the family-BUILT substance set, not ROCK_SUBSTANCES membership: a valid substance
+  // without a place GLB (vethari_bone, bloom_husk, or a future env-material row) must fall back
+  // to silicate rather than minting a placeId the census has never heard of.
+  return ROCK_PLACE_SUBSTANCES.includes(pick) ? pick : 'silicate';
+}
+/** ROCK_SIZE_CLASSES band for a spawn radius: <14 wu pebble, <24 wu boulder, else monolith. */
+export function rockSizeClassForRadius(radius) {
+  const r = Number(radius) || 0;
+  return r < 14 ? 'pebble' : r < 24 ? 'boulder' : 'monolith';
+}
+
+/** Nothing spawns closer than this to the player, whatever the roll says. */
+export const SWARM_DEBRIS_SAFE_RADIUS = 120;
+
+/** Foundry (Helios) default: dense banks to shove into. Other arenas retune the band, not HP. */
+export const FOUNDRY_ARENA_ID = 'helios_core';
+
+export function debrisLayoutForArena(arenaId) {
+  if (arenaId === LAGRANGE_ARENA_ID) {
+    return Object.freeze({
+      id: 'wells',
+      inner: 170,
+      outer: 400,
+      target: 8,
+      safeRadius: 140,
+      separation: 48,
+    });
+  }
+  if (arenaId === CINDER_ARENA_ID) {
+    return Object.freeze({
+      id: 'current',
+      inner: 90,
+      outer: 260,
+      target: 6,
+      safeRadius: 110,
+      separation: 40,
+      laneBias: true,
+    });
+  }
+  if (arenaId === CRYO_ARENA_ID) {
+    return Object.freeze({
+      id: 'thermal',
+      inner: 80,
+      outer: 240,
+      target: 9,
+      safeRadius: 110,
+      separation: 36,
+    });
+  }
+  if (arenaId === STORM_ARENA_ID) {
+    return Object.freeze({
+      id: 'lattice',
+      inner: 100,
+      outer: 210,
+      target: 6,
+      safeRadius: 120,
+      separation: 42,
+    });
+  }
+  // B4 — the Mill's ore seam: the densest band in the catalog. More, closer rocks —
+  // the room the grind turns is made of the bodies it grinds.
+  if (arenaId === MILL_ARENA_ID) {
+    return Object.freeze({
+      id: 'seam',
+      inner: 70,
+      outer: 320,
+      target: 18,
+      safeRadius: 90,
+      separation: 24,
+    });
+  }
+  // B4 — the Hive's rim: almost no ambient field. The room's geometry is its own living
+  // walls; a sparse distant ring keeps the edge reading as flesh, not open space.
+  if (arenaId === HIVE_ARENA_ID) {
+    return Object.freeze({
+      id: 'rim',
+      inner: 260,
+      outer: 430,
+      target: 5,
+      safeRadius: 150,
+      separation: 70,
+    });
+  }
+  return Object.freeze({
+    id: 'banks',
+    inner: SWARM_DEBRIS_INNER,
+    outer: SWARM_DEBRIS_OUTER,
+    target: SWARM_DEBRIS_TARGET,
+    safeRadius: SWARM_DEBRIS_SAFE_RADIUS,
+    separation: SWARM_DEBRIS_SEPARATION,
+  });
+}
+
+/**
+ * Reef is a tighter inner obstacle recipe — the INNER edge is the part that keeps it packed
+ * against the fight, twice as close in as the default annulus lets anything spawn. The first
+ * band (58-168) was too narrow to hold the authored sixteen: under the reef's surface-gap law,
+ * sixteen 16-44 wu bodies need roughly a kilometre of rim the 168 edge could not give, so
+ * placement honestly saturated near nine. Widening the OUTER edge to the default field's own
+ * rim — still well inside the 400 wu fight census — lets the ring carry its ask even where an
+ * optic lattice already holds part of the band: fifteen to sixteen placed across seeds.
+ */
+export const REEF_DEBRIS_INNER = 58;
+export const REEF_DEBRIS_OUTER = 340;
+export const REEF_DEBRIS_TARGET = 16;
+/**
+ * The reef packs at 0.7x the field separation, floored at the live spawn clearance —
+ * swarmPlacementIsClear asks 24 wu of open water around every fresh rock — so a spot the plan
+ * accepts is always a spot the field accepts. The bare 0.7x figure used to sit a hair under
+ * that recheck and silently dropped an authored rock on some seeds.
+ */
+export const REEF_DEBRIS_SEPARATION = Math.max(24, SWARM_DEBRIS_SEPARATION * 0.7);
+export const REEF_LAYOUT_ID = CRUCIBLE_REEF_LAYOUT_ID;
+
+export const SLALOM_WELL_COUNT = CRUCIBLE_SLALOM_WELL_COUNT;
+export const SLALOM_WELL_IDS = Object.freeze([
+  'crucible_slalom_well_0',
+  'crucible_slalom_well_1',
+  'crucible_slalom_well_2',
+]);
+export const SLALOM_WELL_RADIUS = 240;
+export const SLALOM_WELL_STRENGTH = 110;
+export const SLALOM_WELL_FALLOFF = 1.2;
+export const SLALOM_WELL_DISTANCE = 205;
+
+/**
+ * WRECK HOUSEKEEPING.
+ *
+ * Every kill leaves a salvage wreck, and a swarm run kills a lot: a walk to wave 13 finished with
+ * 414 wrecks and 798 live entities, climbing about 35 a wave with nothing ever removing them. Frame
+ * time was still flat at that point, but the curve has no top — by wave 40 it is well over a
+ * thousand bodies, and this engine's known worst hitch is garbage collection on a bloated heap.
+ *
+ * Nobody salvages in a swarm run either. There is no beam time in a room holding thirty hostiles,
+ * so a wreck is scenery that costs memory. The arena keeps a recent-battlefield's worth and lets
+ * the rest go through the engine's ordinary despawn sweep — the FURTHEST ones first, so what is
+ * released is always off-camera and the wreckage around the player's actual fight is what stays.
+ */
+export const SWARM_WRECK_KEEP = 40;
+const SWARM_WRECK_RELEASE_S = 6;
+// A foundry rock whose center sits inside this of the pilot is welded, not in contact.
+// Player-truth seed 4242 held one asteroid at distance 0 from sim 60 through the round-3
+// thrust probe (Δv 2.6 u/s). The same run on 4b3b never came closer than 11 u.
+const SWARM_EMBEDDED_DEBRIS_WU = 4;
+
+const SWARM_DEBRIS_TTL_S = 900;
+const SWARM_DEBRIS_RELEASE_S = 20;
+// Attempts per rock before giving up on a spot. Raised with the tighter band: at twelve, a crowded
+// annulus left the field one or two monoliths short of its target on some seeds, which is a
+// silently thinner arena rather than an error anybody would notice.
+const PLACEMENT_TRIES = 40;
+const TYPE_ID = 'ast_common_rock';
+const SOLID_TYPES = new Set(['asteroid', 'station', 'wreck']);
+
+function debrisStreamSeed(seed, wave) {
+  const label = `swarm-debris-v1|w${wave}`;
+  let h = (seed >>> 0) ^ 0xc2b2ae35;
+  for (let i = 0; i < label.length; i++) {
+    h = Math.imul(h ^ label.charCodeAt(i), 0x01000193);
+  }
+  return (h >>> 0) || 1;
+}
+
+function liveCohortCount(state) {
+  if (!state) return 0;
+  const playerId = state.playerId;
+  let n = 0;
+  for (const entity of indexedShipLikeScan(state)) {
+    if (!entity || entity.alive === false) continue;
+    if (entity.id === playerId) continue;
+    if (entity.type && entity.type !== 'ship' && entity.type !== 'drone') continue;
+    if (!(entity.data && entity.data.runCohort === SURVIVAL_COHORT_TAG)) continue;
+    n += 1;
+  }
+  return n;
+}
+
+function liveSwarmRun(state) {
+  if (!state) return null;
+  const run = state.run;
+  if (!run || typeof run !== 'object' || Array.isArray(run)) return null;
+  if (run.kind !== 'survival') return null;
+  if (run.phase === 'inactive') return null;
+  if (!isSwarmRuleset(run.ruleset)) return null;
+  if (!validateRunState(run).ok) return null;
+  return run;
+}
+
+function playerAnchor(state) {
+  const player = state && state.entities && state.playerId != null
+    && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const x = player && player.pos && Number.isFinite(player.pos.x) ? player.pos.x : 0;
+  const z = player && player.pos && Number.isFinite(player.pos.z) ? player.pos.z : 0;
+  return { x, z };
+}
+
+/**
+ * PURE placement. Given an anchor, the solids already nearby and a seeded stream, decide where the
+ * missing rocks go. Exported so the layout can be tested without a game.
+ *
+ * `existing` is [{ x, z, radius }] — every solid body that could be collided with, not only ours,
+ * so the field never grows into a station or a sector asteroid either.
+ */
+export function planSwarmDebris({ anchor, existing = [], want = 0, rng, layout = null } = {}) {
+  const at = {
+    x: anchor && Number.isFinite(anchor.x) ? anchor.x : 0,
+    z: anchor && Number.isFinite(anchor.z) ? anchor.z : 0,
+  };
+  const roll = typeof rng === 'function' ? rng : () => 0.5;
+  const inner = Number.isFinite(layout && layout.inner) ? layout.inner : SWARM_DEBRIS_INNER;
+  const outer = Number.isFinite(layout && layout.outer) ? layout.outer : SWARM_DEBRIS_OUTER;
+  const safe = Number.isFinite(layout && layout.safeRadius) ? layout.safeRadius : SWARM_DEBRIS_SAFE_RADIUS;
+  const gap = Number.isFinite(layout && layout.separation) ? layout.separation : SWARM_DEBRIS_SEPARATION;
+  const axis = layout && layout.axis && Number.isFinite(layout.axis.x) && Number.isFinite(layout.axis.z)
+    ? layout.axis
+    : null;
+  const laneBias = !!(layout && layout.laneBias);
+  const placed = existing.map((e) => ({ x: e.x, z: e.z, radius: e.radius || 0 }));
+  const out = [];
+  const n = Math.max(0, Math.trunc(want));
+
+  for (let i = 0; i < n; i++) {
+    // §33 row 485 — a layout may carry its own size band (the arena-ladder tiers do: the room
+    // grows with the line rating); the fixed monolith band stays the default.
+    const sizeMin = Number.isFinite(layout && layout.sizeMinWu) ? layout.sizeMinWu : SWARM_DEBRIS_SIZE_MIN;
+    const sizeMax = Number.isFinite(layout && layout.sizeMaxWu) ? layout.sizeMaxWu : SWARM_DEBRIS_SIZE_MAX;
+    const size = sizeMin + roll() * Math.max(0, sizeMax - sizeMin);
+    let chosen = null;
+    for (let attempt = 0; attempt < PLACEMENT_TRIES; attempt++) {
+      // Golden-angle stride off the roll so successive rocks spread around the ring instead of
+      // clustering wherever the stream happens to be warm. A current-law arena biases the same
+      // stride onto the lane so riding feeds walls instead of painting a second ring.
+      let angle = (roll() * Math.PI * 2) + i * 2.399963;
+      if (laneBias && axis) {
+        const axisAng = Math.atan2(axis.z, axis.x);
+        angle = axisAng + (i % 2 === 0 ? 0 : Math.PI) + (roll() - 0.5) * 0.85;
+      }
+      const span = Math.max(8, outer - inner);
+      // sqrt keeps the density even across the annulus rather than piling up at the inner edge.
+      const dist = inner + Math.sqrt(roll()) * span;
+      if (dist < safe + size) continue;
+      const x = at.x + Math.cos(angle) * dist;
+      const z = at.z + Math.sin(angle) * dist;
+      let clear = true;
+      for (const other of placed) {
+        const dx = x - other.x;
+        const dz = z - other.z;
+        const min = size + (other.radius || 0) + gap;
+        if (dx * dx + dz * dz < min * min) { clear = false; break; }
+      }
+      if (!clear) continue;
+      chosen = { x, z, radius: size, layoutId: layout && layout.id ? layout.id : 'banks' };
+      break;
+    }
+    if (!chosen) continue;
+    placed.push(chosen);
+    out.push(chosen);
+  }
+  return out;
+}
+
+function runHasMutator(run, id) {
+  return !!(run && Array.isArray(run.arenaMutators) && run.arenaMutators.includes(id));
+}
+
+/** PURE three-well triangle around the fight. Telemetry wellCount is 3; these are the bodies. */
+export function planGravitySlalomWells({ anchor } = {}) {
+  const at = {
+    x: anchor && Number.isFinite(anchor.x) ? anchor.x : 0,
+    z: anchor && Number.isFinite(anchor.z) ? anchor.z : 0,
+  };
+  const wells = [];
+  for (let i = 0; i < SLALOM_WELL_COUNT; i++) {
+    const angle = -Math.PI / 2 + (i * Math.PI * 2) / SLALOM_WELL_COUNT;
+    wells.push({
+      id: SLALOM_WELL_IDS[i],
+      kind: 'well',
+      center: {
+        x: at.x + Math.cos(angle) * SLALOM_WELL_DISTANCE,
+        z: at.z + Math.sin(angle) * SLALOM_WELL_DISTANCE,
+      },
+      radius: SLALOM_WELL_RADIUS,
+      strength: SLALOM_WELL_STRENGTH,
+      falloff: SLALOM_WELL_FALLOFF,
+    });
+  }
+  return wells;
+}
+
+/** PURE reef obstacle recipe. Tighter inner ring than the default swarm debris field. */
+export function planReefLayout({ anchor, existing = [], want = 0, rng } = {}) {
+  const at = {
+    x: anchor && Number.isFinite(anchor.x) ? anchor.x : 0,
+    z: anchor && Number.isFinite(anchor.z) ? anchor.z : 0,
+  };
+  const roll = typeof rng === 'function' ? rng : () => 0.5;
+  const placed = existing.map((e) => ({ x: e.x, z: e.z, radius: e.radius || 0 }));
+  const out = [];
+  const n = Math.max(0, Math.trunc(want));
+  for (let i = 0; i < n; i++) {
+    const size = SWARM_DEBRIS_SIZE_MIN + roll() * (SWARM_DEBRIS_SIZE_MAX - SWARM_DEBRIS_SIZE_MIN);
+    let chosen = null;
+    for (let attempt = 0; attempt < PLACEMENT_TRIES; attempt++) {
+      const angle = (roll() * Math.PI * 2) + i * 2.399963;
+      const span = REEF_DEBRIS_OUTER - REEF_DEBRIS_INNER;
+      const dist = REEF_DEBRIS_INNER + Math.sqrt(roll()) * span;
+      if (dist < SWARM_DEBRIS_SAFE_RADIUS * 0.55 + size) continue;
+      const x = at.x + Math.cos(angle) * dist;
+      const z = at.z + Math.sin(angle) * dist;
+      let clear = true;
+      for (const other of placed) {
+        const dx = x - other.x;
+        const dz = z - other.z;
+        const min = size + (other.radius || 0) + REEF_DEBRIS_SEPARATION;
+        if (dx * dx + dz * dz < min * min) { clear = false; break; }
+      }
+      if (!clear) continue;
+      chosen = { x, z, radius: size, layoutId: REEF_LAYOUT_ID };
+      break;
+    }
+    if (!chosen) continue;
+    placed.push(chosen);
+    out.push(chosen);
+  }
+  return out;
+}
+
+export const swarmArena = {
+  name: 'swarmArena',
+  id: 'swarmArena',
+
+  init(ctx) {
+    this.destroy();
+    this.state = ctx.state;
+    this.bus = ctx.bus || null;
+    this.helpers = ctx.helpers || null;
+    this.registry = ctx.registry || null;
+    this._unsubs = [];
+    this._ids = [];
+    this._opticIds = [];
+    this._opticAnchor = null;
+    this._wellIds = [];
+    this._lessonWellStrength = null;
+    this._pressureAlive = null;
+    this._pressureWave = 0;
+    this._lastTerrainAnchor = null;
+    this._nextTerrainCheck = 0;
+    this._terrainRetry = false;
+    this._lessonRockId = null;
+    this._wallWave = 0;
+    // B4 — the Mill's ore ledger (pickupId → credits it pays) and the Hive's living
+    // geometry ({ ring, nextGrowAt, sacs } while the wave's room is alive).
+    this._millOres = new Map();
+    this._hive = null;
+    // The live law-room receipt and the last room signature this voice already named.
+    this._law = null;
+    this._lawAnnounced = null;
+    resetSwarmPressureState();
+    // SWARM-07 B1 — the room's second population. The arena hosts the Brood engine: it reads the
+    // live field kernel through the fields owner's read seam, and its kill/wave receipts leave
+    // through the same bus every other swarm consumer listens on.
+    this._brood = createBroodEngine({
+      bus: this.bus,
+      getState: () => this.state,
+      fieldList: () => {
+        const fields = this.registry && this.registry.get ? this.registry.get('fields') : null;
+        return fields && typeof fields.kernelList === 'function' ? fields.kernelList() : null;
+      },
+      // Brood hazards damage the hull through the SAME routed damage owner mines use.
+      routeDamage: (request) => {
+        const helpers = this.helpers;
+        if (helpers && typeof helpers.routeCombatDamage === 'function') {
+          return helpers.routeCombatDamage(request);
+        }
+        const combat = this.registry && this.registry.get ? this.registry.get('combat') : null;
+        if (combat && typeof combat.ensureKernel === 'function') {
+          return combat.ensureKernel().routeDamage(request);
+        }
+        return null;
+      },
+    });
+    bindSwarmPressureContext({
+      getAlive: () => liveCohortCount(this.state),
+      onHoldStart: (p) => this._onPressureHoldStart(p),
+      onSpend: (p) => this._onPressureSpend(p),
+    });
+    if (!this.bus || typeof this.bus.on !== 'function') return;
+    this._priorCap = null;
+    this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
+    this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
+    this._unsubs.push(this.bus.on('entity:destroyed', () => this._onPressureDestroyed()));
+    this._unsubs.push(this.bus.on('physics:impact', (p) => this._onDebrisImpact(p)));
+    this._unsubs.push(this.bus.on('run:openingLessonReleased', () => this._onOpeningLessonReleased()));
+    this._unsubs.push(this.bus.on('run:ended', () => {
+      this._broodHeldUntil = null;
+      this._lessonHoldS = null;
+      this._law = null;
+      this._lawAnnounced = null;
+      if (this._brood) this._brood.clear('run_ended');
+      this._hiveRelease('run_ended');
+      this._millOres.clear();
+      this._release('run_ended');
+    }));
+    // The room owner's install/release pair is the law-phase seam: the receipt carries the
+    // wave's arenaPhase, its authored note, the install simTime and the live toy specs.
+    this._unsubs.push(this.bus.on('survivalArena:installed', (p) => this._onLawInstalled(p)));
+    this._unsubs.push(this.bus.on('survivalArena:released', () => { this._law = null; }));
+    // B4 — the Mill's ore settles into the run wallet through the same collect seam the
+    // supply pod uses: whoever scoops it claims it, but only the pilot's scoop pays.
+    this._unsubs.push(this.bus.on('pickup:collected', (p) => this._onPickupCollected(p)));
+    for (const name of BROOD_EXPLOSION_EVENTS) {
+      this._unsubs.push(this.bus.on(name, (p) => this._brood && this._brood.onExplosion(p)));
+    }
+    // B-BLOOM aggression — the relay/hit seam: a hit on the brood's relay node (the Queen
+    // champion, or the Tendril's head) forwards to the engine, and the authored aggression
+    // cascade turns the linked brood on the hitter. The engine owns the law (which ids are
+    // relays, the reach, the window); this listener is only the arena's forwarding hand.
+    this._unsubs.push(this.bus.on('combat:damage', (p) => this._onBroodRelayHit(p)));
+  },
+
+  destroy() {
+    for (const off of this._unsubs || []) if (typeof off === 'function') off();
+    this._unsubs = [];
+    this._law = null;
+    this._lawAnnounced = null;
+    bindSwarmPressureContext(null);
+    resetSwarmPressureState();
+    this._pressureAlive = null;
+    if (this._brood) this._brood.clear('destroyed');
+    this._hiveRelease('destroyed');
+    if (this._millOres) this._millOres.clear();
+    this._hive = null;
+  },
+
+  newGame() {
+    this._ids = [];
+    this._opticIds = [];
+    this._opticAnchor = null;
+    this._lastTerrainAnchor = null;
+    this._nextTerrainCheck = 0;
+    this._terrainRetry = false;
+    this._lessonRockId = null;
+    this._wallWave = 0;
+    this._broodHeldUntil = null;
+    this._lessonHoldS = null;
+    this._law = null;
+    this._lawAnnounced = null;
+    if (this._brood) this._brood.clear('new_game');
+    this._hiveRelease('new_game');
+    if (this._millOres) this._millOres.clear();
+    this._releaseWells();
+    this._restoreCapacity();
+    this._pressureAlive = null;
+    this._pressureWave = 0;
+    resetSwarmPressureState();
+  },
+
+  queryBroodProjectileHit(request, out) {
+    return this._brood?.queryProjectileHit?.(request, out) || null;
+  },
+
+  queryBroodTarget(request, out) {
+    return this._brood?.queryNearestDirectTarget?.(request, out) || null;
+  },
+
+  commitBroodProjectileHit(candidate, request) {
+    return this._brood?.commitProjectileHit?.(candidate, request) || { ok: false, reason: 'brood_unavailable' };
+  },
+
+  damageBroodSegment(request) {
+    return this._brood?.damageSegment?.(request) || { hits: 0, reason: 'brood_unavailable' };
+  },
+
+  /** Refresh only after a meaningful drift, at most once per two simulation seconds. */
+  update() {
+    const state = this.state;
+    // SWARM-07 B1 — the Brood step runs on the same fixed tick as the room's own housekeeping.
+    // The engine re-gates on the live swarm run, the active phase and flight mode itself.
+    const run = liveSwarmRun(state);
+    if (this._broodHeldUntil != null && run && run.phase === 'active' && state.mode === 'flight'
+      && (state.simTime || 0) >= this._broodHeldUntil) {
+      this._broodHeldUntil = null;
+      this._wakeLessonWell();
+      if (this._brood) this._brood.spawnWave(state);
+    }
+    if (this._brood) this._brood.step(state);
+    // Core's lifetime clock keeps moving through the short, still-visible inter-wave phases.
+    // Preserve drawn debris there too; terminal runs keep their ordinary release deadlines.
+    if (run && state.mode === 'flight' && run.phase !== 'ended' && run.phase !== 'victory') {
+      this._holdInViewReleases(state);
+    }
+    if (!run || run.phase !== 'active' || state.mode !== 'flight') return;
+    // B4 — the Hive breathes on the same fixed tick: walls grow, sacs pulse, acid drips.
+    if (run.arenaId === HIVE_ARENA_ID) this._hiveTick(state, run);
+    // The law's own machinery flips mid-wave off the same pure clocks — name each new state once.
+    this._lawPhaseTick(state);
+    if ((state.simTime || 0) < (this._nextTerrainCheck || 0)) return;
+    this._nextTerrainCheck = (state.simTime || 0) + 2;
+    const anchor = playerAnchor(state);
+    if (!this._terrainRetry && this._lastTerrainAnchor && Math.hypot(anchor.x - this._lastTerrainAnchor.x,
+      anchor.z - this._lastTerrainAnchor.z) < 260) return;
+    this._topUp(run, run.wave);
+  },
+
+  /**
+   * A released rock, wreck or structure leaves the room off camera. The despawn sweep removes a body
+   * the tick its deadline passes; inside the pilot's view that read as terrain blinking out of
+   * existence (player-truth m1-active: 16 rocks and 4 structures removed on screen). While a body
+   * whose deadline is close still sits within the view radius, its deadline steps forward; once the
+   * fight has moved on it goes through the ordinary sweep. Hive geometry keeps its own lifecycle.
+   */
+  _holdInViewReleases(state) {
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    if (now < (this._nextReleaseHold || 0)) return;
+    this._nextReleaseHold = now + SWARM_RELEASE_HOLD_EVERY_S;
+    if (!state.entities || typeof state.entities.values !== 'function') return;
+    const anchor = playerAnchor(state);
+    const r2 = SWARM_VIEW_KEEP_RADIUS * SWARM_VIEW_KEEP_RADIUS;
+    const horizon = now + SWARM_RELEASE_HOLD_EVERY_S * 2;
+    for (const e of state.entities.values()) {
+      if (!e || e.alive === false || !e.pos || !e.data || !SOLID_TYPES.has(e.type)) continue;
+      const due = e.data.despawnAt;
+      if (!Number.isFinite(due) || due > horizon || e.data.swarmHiveReleased) continue;
+      const dx = e.pos.x - anchor.x;
+      const dz = e.pos.z - anchor.z;
+      if (dx * dx + dz * dz < r2) e.data.despawnAt = horizon;
+    }
+  },
+
+  /** Live rocks this system owns, for tests and the lab overlay. */
+  debrisCount() {
+    const state = this.state;
+    if (!state || !state.entities || typeof state.entities.get !== 'function') return 0;
+    let n = 0;
+    for (const id of this._ids || []) {
+      const entity = state.entities.get(id);
+      if (entity && entity.alive !== false) n++;
+    }
+    return n;
+  },
+
+  /**
+   * Row-270 legendary seam: the Domino director asks the Brood owner to shove its own cells,
+   * because only the engine may write its typed buffers. The request is the same geometry the
+   * ship path uses ({ x, z, radiusWu, maxDvWuS }); the engine applies the identical radial
+   * falloff inside its own storage and reports how many cells moved. Dead engine → 0.
+   */
+  applyLegendaryShove(request) {
+    const brood = this._brood;
+    if (!brood || typeof brood.applyLegendaryShove !== 'function') return 0;
+    return brood.applyLegendaryShove(request) || 0;
+  },
+
+  _onWavePlanned(payload) {
+    const run = liveSwarmRun(this.state);
+    if (!run) return;
+    const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
+    // SWARM-07 B1 — plan the wave's Brood cohort (spawn happens when the wave goes live).
+    if (this._brood) this._brood.prepareWave(run, wave);
+    // B4 — the old wave's living geometry dies before the new room is even planned.
+    this._hiveRelease('wave_planned');
+    this._pressureWave = wave;
+    // Consecutive waves of the same run carry remaining hold time and stored pressure.
+    // Reset only on a new run's opener; teardown / newGame / run:ended already reset.
+    if (wave <= 1) resetSwarmPressureState();
+    this._pressureAlive = liveCohortCount(this.state);
+    this._raiseCapacity();
+    this._cullWrecks();
+    // Wave 1 stays in motion. Seed 4242 idle: settling the opener, then again
+    // every 0.4s until the pilot acted, parked foundry rocks under 6 u/s (max
+    // 5.8). The lesson wasp rammed that field at sim 31.167. Master settles
+    // only wave > 1, left those rocks up to 44 u/s, and the same wasp lived
+    // the 45s hold. Later rounds still settle so leftover 12–16 u/s rocks do
+    // not enter the next breath.
+    if (wave > 1) this._settleRoom();
+    this._topUp(run, wave);
+    this._installSlalomWells(run);
+    const lesson = payload && payload.plan && payload.plan.openingLesson;
+    this._lessonHoldS = lesson && wave <= 1 && Number.isFinite(lesson.holdTicks) && lesson.holdTicks > 0
+      ? lesson.holdTicks / 60
+      : null;
+    if (lesson && wave <= 1) this._installOpeningLesson(lesson);
+    // §33 row 485 — wave 1's authored opening pocket: at least three pebble-class throwables
+    // inside a short fly of the pilot, so a stranger's first throw is nearly unavoidable.
+    if (wave <= 1) this._installOpeningPocket(run);
+    const massGap = payload && payload.plan && payload.plan.swarm && payload.plan.swarm.massGap;
+    if (massGap) this._installMassGapWall(massGap, wave);
+  },
+
+  _onWaveStarted() {
+    const run = liveSwarmRun(this.state);
+    if (!run) return;
+    // SWARM-07 B1 — the fight goes live; the planned cohort arrives around the pilot. The
+    // opening lesson holds the brood with the rest of the pack: one hull on the field means one.
+    const now = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    if (this._lessonHoldS != null) {
+      this._broodHeldUntil = now + this._lessonHoldS;
+      this._lessonHoldS = null;
+    } else if (this._brood) {
+      this._prepareBankStone(run, now);
+      this._brood.spawnWave(this.state);
+    }
+    // The planning settle runs before the draft; the last round's fields and ricochets keep working
+    // through it, so rocks were still sliding 12–16 u/s when the next pack arrived and killed four
+    // hulls in its first second (player-truth m4-active, round 2). The opener is the exception:
+    // parking it is what the lesson hull rammed. Settle again only as a later round opens.
+    if (Number.isInteger(run.wave) && run.wave > 1) this._settleRoom();
+    // B4 — the Hive's room lands with the wave: first wall ring standing, sacs pulsing.
+    if (run.arenaId === HIVE_ARENA_ID) this._hiveInstall(run);
+    this._pressureAlive = liveCohortCount(this.state);
+  },
+
+  // If this wave can run the Bank but its existing rocks cannot make the first pass,
+  // put one ordinary, capped arena pebble in a clear pocket before Brood admission.
+  // A blocked or full room gets the unchanged ordinary wave instead.
+  _prepareBankStone(run, now) {
+    const state = this.state, brood = this._brood;
+    if (!state?.entities || !brood?.canPrepareBank(state) || brood.planBank(state)
+      || typeof this.helpers?.spawnEntity !== 'function') return null;
+    const player = state.entities.get(state.playerId);
+    if (!player?.pos || !Number.isFinite(player.pos.x) || !Number.isFinite(player.pos.z)) return null;
+    let existing = 0;
+    for (const entity of state.entities.values()) {
+      if (entity?.alive !== false && entity?.data?.[SWARM_DEBRIS_TAG]) existing++;
+    }
+    if (existing >= SWARM_DEBRIS_MAX) return null;
+    const radius = 6, nativeRadius = asteroidColliderRadius(TYPE_ID, radius);
+    const distance = (BANK_STONE_MIN_DISTANCE + BANK_STONE_MAX_DISTANCE) / 2;
+    const heading = Number.isFinite(player.rot) ? player.rot : 0;
+    for (let i = 0; i < 16; i++) {
+      const angle = heading + i * Math.PI / 8;
+      const pos = { x: player.pos.x + Math.cos(angle) * distance, z: player.pos.z + Math.sin(angle) * distance };
+      if (!swarmPlacementIsClear(state, pos, nativeRadius, { clearance: 24 })) continue;
+      const candidate = { id: 'bank-preview', type: 'asteroid', alive: true, collides: true, pos, radius,
+        mass: radius * radius * 40, physicsBody: { radius: nativeRadius, dynamic: true },
+        data: { [SWARM_DEBRIS_TAG]: true } };
+      if (brood.planBank(state, candidate)?.rockId !== candidate.id) continue;
+      const rng = mulberry32(debrisStreamSeed(Number.isInteger(run.seed) ? run.seed : 1, run.wave) ^ 0x3fa1287d);
+      const id = this._spawnDebrisRock(pos.x, pos.z, radius, rng, now, { material: 'rock', bankOpportunity: true });
+      if (id == null) return null;
+      this._ids.push(id);
+      this._emit('swarmArena:debris', { wave: run.wave, added: 1, total: this._ids.length, layoutId: 'bank_opportunity' });
+      return id;
+    }
+    return null;
+  },
+
+  _installOpeningPocket(run) {
+    const state = this.state;
+    const helpers = this.helpers;
+    if (!state || !helpers || typeof helpers.spawnEntity !== 'function') return;
+    const anchor = playerAnchor(state);
+    const player = state && state.entities && state.playerId != null
+      && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    const headingRad = player && Number.isFinite(player.rot) ? player.rot : 0;
+    const tier = swarmArenaTierForRun({
+      wave: 1,
+      ratingT: Number(state.rockCore && state.rockCore.ratingT) || 0,
+    });
+    const existing = (state.entityList || [])
+      .filter((e) => e && e.alive !== false && e.pos && SOLID_TYPES.has(e.type))
+      .map((e) => ({ x: e.pos.x, z: e.pos.z, radius: e.radius || 0 }));
+    const spots = planOpeningThrowables({ anchor, headingRad, tier, existing });
+    if (!spots.length) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const rng = mulberry32(debrisStreamSeed(
+      Number.isInteger(run.seed) ? run.seed : 1,
+      1,
+    ));
+    const footprints = opticPlacementFootprints(state, this.registry?.get?.('physics')?._sg02);
+    const reserved = [];
+    for (const spot of spots) {
+      const radius = asteroidColliderRadius(TYPE_ID, spot.radiusWu);
+      // Same authored proposals, but the actual collider must clear both the live map and
+      // native compounds (including their offsets and motion), not just display radii.
+      // An unknown native bound refuses admission rather than becoming a zero-radius body.
+      if (footprints.some(body => !Number.isFinite(body.radius)
+        || sweptDiscsOverlap(spot, radius, body, { clearance: 8 }))
+        || !swarmPlacementIsClear(state, spot, radius, { clearance: 8, reserved })) continue;
+      const id = this._spawnDebrisRock(spot.x, spot.z, spot.radiusWu, rng, now, { openingPocket: true });
+      if (id == null || id === false) continue;
+      // The helper may publish the map after this batch; reserve accepted geometry now.
+      reserved.push({ alive: true, pos: { x: spot.x, z: spot.z }, radius, vel: { x: 0, z: 0 } });
+      // Run end must own these bodies before the next terrain census, too.
+      this._ids.push(id);
+    }
+  },
+
+  _onOpeningLessonReleased() {
+    this._wakeLessonWell();
+    if (this._broodHeldUntil == null) return;
+    const now = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    this._broodHeldUntil = Math.min(this._broodHeldUntil, now + OPENING_LESSON_RELEASE_TICKS / 60);
+  },
+
+  _onPressureDestroyed() {
+    if (!liveSwarmRun(this.state)) return;
+    const alive = liveCohortCount(this.state);
+    const prev = this._pressureAlive;
+    this._pressureAlive = alive;
+    if (Number.isInteger(prev) && alive < prev) {
+      noteSwarmPressureKills(prev - alive);
+    }
+  },
+
+  // B-BLOOM aggression's forwarding hand: one hit receipt on a relay entity reaches the
+  // brood engine's relayHit seam. Cheap by construction — one Map lookup and one string
+  // read for every combat hit, and the engine re-validates the live run before arming.
+  _onBroodRelayHit(payload) {
+    const brood = this._brood;
+    if (!brood || typeof brood.relayHit !== 'function') return;
+    const targetId = payload && payload.targetId;
+    if (targetId == null) return;
+    const entity = this.state && this.state.entities
+      && typeof this.state.entities.get === 'function' ? this.state.entities.get(targetId) : null;
+    if (!entity || entity.alive === false || !entity.data) return;
+    const relayLootId = entity.data.lootTableId;
+    if (relayLootId !== BROOD_QUEEN_LOOT_ID && relayLootId !== TENDRIL_HEAD_LOOT_ID) return;
+    brood.relayHit({
+      relayLootId,
+      x: entity.pos && Number.isFinite(entity.pos.x) ? entity.pos.x : null,
+      z: entity.pos && Number.isFinite(entity.pos.z) ? entity.pos.z : null,
+    });
+  },
+
+  _onPressureHoldStart(payload) {
+    const run = liveSwarmRun(this.state);
+    const wave = this._pressureWave
+      || (run && Number.isInteger(run.wave) ? run.wave : 0);
+    const stored = payload && Number.isInteger(payload.stored) ? payload.stored : 0;
+    const tick = this.state && Number.isFinite(this.state.tick) ? this.state.tick : null;
+    this._emit('swarm:pressureTelegraph', {
+      wave,
+      etaTicks: SWARM_BREATH_TICKS,
+      etaSeconds: SWARM_BREATH_SECONDS,
+      stored,
+      tick,
+    });
+    // One-voice floor: `alert` with a finite ttl is already routed through the arbiter.
+    this._emit('alert', {
+      key: 'swarm-pressure-inbound',
+      sev: 'warn',
+      text: 'INBOUND — a group is on a bearing',
+      ttl: 4,
+    });
+  },
+
+  _onPressureSpend(payload) {
+    const run = liveSwarmRun(this.state);
+    const wave = this._pressureWave
+      || (run && Number.isInteger(run.wave) ? run.wave : 0);
+    const count = payload && Number.isInteger(payload.count) ? payload.count : 0;
+    const tick = this.state && Number.isFinite(this.state.tick) ? this.state.tick : null;
+    this._emit('swarm:pressureSpend', { wave, count, tick });
+  },
+
+  /**
+   * Let go of the battlefield the fight has moved on from. Never deletes an entity by hand — it
+   * sets the same `despawnAt` deadline the engine's own sweep reads (coreSystem.js), so a wreck
+   * somebody is mid-salvage on in some other mode is never yanked out from under them.
+   */
+  // Between rounds the room comes to rest. A rock or wreck thrown in the last fight would otherwise still
+  // be flying through the next round's opening breath, before the pilot has touched anything.
+  // The stop is a counter-impulse through the physics port, so Rapier stays the authority.
+  //
+  // THE EXCEPTION IS THE PILOT'S OWN THROW. The settle exists because ANONYMOUS leftover drift
+  // killed four hulls in a next round's first second (player-truth m4-active, round 2) — drift
+  // nobody aimed is unfair. A body the pilot personally threw is aimed: they spent the round
+  // winding it up through the well, they know where it is, and the buzzer erasing it throws
+  // away the one thing they earned. The newest impulse provenance on the body (the kernel's
+  // own record — read-only here) names the thrower; a bounded few of those keep their speed
+  // into the next round and become its terrain. Everything else still settles.
+  //
+  // A latched foundry rock whose center has collapsed onto the pilot is not furniture to park.
+  // Seed 4242 head gate: from sim 60 the same asteroid shared the player's position through
+  // the round-3 probe, and 1.2 s of thrust from rest made 2.6 u/s. Centers inside
+  // SWARM_EMBEDDED_DEBRIS_WU are that weld. A graze stays (4b3b's closest rock was 11 u).
+  _settleRoom() {
+    const physics = this.helpers && this.helpers.combatPhysics;
+    const entities = this.state && this.state.entities;
+    if (!physics || (typeof physics.settlePassiveBody !== 'function' && typeof physics.applyImpulse !== 'function')) return;
+    if (!entities || typeof entities.values !== 'function') return;
+    this._releaseEmbeddedDebris(entities);
+    const SETTLE_SPEED = 6;
+    const tick = Number.isInteger(this.state.tick) ? this.state.tick : 0;
+    const carriedIds = this._pickCarriedThrows(entities, tick, SETTLE_SPEED);
+    for (const e of entities.values()) {
+      if (!e || (e.type !== 'asteroid' && e.type !== 'wreck') || e.alive === false || !e.vel) continue;
+      if (carriedIds.has(e.id)) continue;
+      if (typeof physics.settlePassiveBody === 'function') {
+        // Field response can change solver mass without changing the authored spec. The native
+        // owner samples that mass and velocity, then publishes its post-impulse mirror now:
+        // run:waveStarted happens after physics in the production update order.
+        physics.settlePassiveBody({ entityId: e.id, occupantGeneration: e.occupantGeneration,
+          entity: e, entities,
+          minSpeed: SETTLE_SPEED, reason: 'swarm_round_settle', tick,
+          provenance: { actorId: null, tag: 'swarm_round_settle' } });
+        continue;
+      }
+      const vx = Number.isFinite(e.vel.x) ? e.vel.x : 0;
+      const vz = Number.isFinite(e.vel.z) ? e.vel.z : 0;
+      if (vx * vx + vz * vz < SETTLE_SPEED * SETTLE_SPEED) continue;
+      // The stop is sized on the body the solver actually holds, not the entity's display mass.
+      const spec = resolvePhysicsBodySpec(e);
+      const mass = spec && spec.mass > 0 ? spec.mass : (Number.isFinite(e.mass) && e.mass > 0 ? e.mass : 0);
+      if (mass <= 0) continue;
+      physics.applyImpulse({
+        entityId: e.id,
+        impulse: { x: -vx * mass, z: -vz * mass },
+        point: null,
+        reason: 'swarm_round_settle',
+        tick,
+        provenance: { actorId: null, tag: 'swarm_round_settle' },
+      });
+    }
+    if (carriedIds.size > 0) {
+      const run = liveSwarmRun(this.state);
+      const wave = this._pressureWave
+        || (run && Number.isInteger(run.wave) ? run.wave : 0);
+      this._emit('swarmArena:debrisCarried', {
+        count: carriedIds.size,
+        ids: [...carriedIds],
+        wave,
+        tick,
+      });
+      // One-voice floor, same arbiter as the pressure telegraph: the round opens with the
+      // room telling the pilot their throw is still live — the moment is named, not silent.
+      this._emit('alert', {
+        key: 'swarm-throw-carried',
+        sev: 'info',
+        text: 'YOUR THROW IS STILL IN HERE — it kept its speed',
+        ttl: 4,
+      });
+    }
+  },
+
+  /**
+   * Which thrown bodies keep their momentum across the round boundary.
+   *
+   * A body carries when its newest impulse provenance names the pilot with a throw-class tag
+   * (the massline throw family, or the pilot's own hull pushing it) and it is still moving
+   * faster than the settle floor. Bounded and deterministic: the fastest few wins, ties break
+   * on id — never insertion order, never a roll. Provenance older than one long round's worth
+   * of ticks reads stale: the room tidies what the pilot has not claimed in 45 s.
+   */
+  _pickCarriedThrows(entities, tick, settleSpeed) {
+    const playerId = this.state && this.state.playerId != null ? this.state.playerId : null;
+    const carried = new Set();
+    if (playerId == null) return carried;
+    const candidates = [];
+    for (const e of entities.values()) {
+      if (!e || (e.type !== 'asteroid' && e.type !== 'wreck') || e.alive === false || !e.vel) continue;
+      const vx = Number.isFinite(e.vel.x) ? e.vel.x : 0;
+      const vz = Number.isFinite(e.vel.z) ? e.vel.z : 0;
+      const speedSq = vx * vx + vz * vz;
+      if (speedSq < settleSpeed * settleSpeed) continue;
+      const record = readRecentImpulseProvenance(e, tick, THROW_CARRY_PROVENANCE_TICKS);
+      if (!record || record.actorId !== playerId) continue;
+      if (!THROW_CARRY_TAGS.has(record.tag)) continue;
+      candidates.push({ id: e.id, speedSq });
+    }
+    candidates.sort((a, b) => (b.speedSq - a.speedSq) || ((a.id < b.id) ? -1 : (a.id > b.id) ? 1 : 0));
+    for (let i = 0; i < candidates.length && carried.size < SWARM_CARRY_MAX_BODIES; i++) {
+      carried.add(candidates[i].id);
+    }
+    return carried;
+  },
+
+  // Centers this close are one body, not two hulls in contact. See _settleRoom.
+  _releaseEmbeddedDebris(entities) {
+    const helpers = this.helpers;
+    const state = this.state;
+    if (!helpers || typeof helpers.removeEntity !== 'function' || !state) return;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    if (!player || player.alive === false || !player.pos) return;
+    const px = player.pos.x;
+    const pz = player.pos.z;
+    if (!Number.isFinite(px) || !Number.isFinite(pz)) return;
+    const limit2 = SWARM_EMBEDDED_DEBRIS_WU * SWARM_EMBEDDED_DEBRIS_WU;
+    const doomed = [];
+    for (const e of entities.values()) {
+      if (!e || e === player || e.alive === false || !e.pos) continue;
+      if (e.type !== 'asteroid' && e.type !== 'wreck') continue;
+      const dx = e.pos.x - px;
+      const dz = e.pos.z - pz;
+      if (dx * dx + dz * dz >= limit2) continue;
+      doomed.push(e.id);
+    }
+    for (const id of doomed) helpers.removeEntity(id, { reason: 'swarm_embedded_debris' });
+  },
+
+  _cullWrecks() {
+    const state = this.state;
+    if (!state || !Array.isArray(state.entityList)) return;
+    const anchor = playerAnchor(state);
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const deadline = now + SWARM_WRECK_RELEASE_S;
+    // Anything already on a release clock is ON ITS WAY OUT and must not be counted as part of the
+    // battlefield being kept. Counting them was a real under-cull: the excess was computed over
+    // everything, the loop then skipped the already-marked ones, and each pass released far fewer
+    // than it meant to — a walk to wave 13 held at ~145 wrecks instead of the intended forty.
+    const standing = [];
+    for (const entity of indexedTypeScan(state, 'wrecks')) {
+      if (!entity || entity.alive === false || entity.type !== 'wreck' || !entity.pos) continue;
+      if (entity.data?.[SWARM_DEBRIS_TAG]) continue; // Authored conductive cover uses the terrain lifetime.
+      const already = entity.data && Number.isFinite(entity.data.despawnAt)
+        && entity.data.despawnAt <= deadline;
+      if (already) continue;
+      const dx = entity.pos.x - anchor.x;
+      const dz = entity.pos.z - anchor.z;
+      standing.push({ entity, distSq: dx * dx + dz * dz });
+    }
+    if (standing.length <= SWARM_WRECK_KEEP) return;
+    // Furthest first: what is released is always the wreckage nobody can see.
+    standing.sort((a, b) => b.distSq - a.distSq);
+    const excess = standing.length - SWARM_WRECK_KEEP;
+    let released = 0;
+    for (let i = 0; i < excess; i++) {
+      const entity = standing[i].entity;
+      if (!entity.data) entity.data = {};
+      entity.data.despawnAt = deadline;
+      released++;
+    }
+    if (released > 0) {
+      this._emit('swarmArena:wrecksReleased', {
+        released, kept: SWARM_WRECK_KEEP, standing: standing.length,
+      });
+    }
+  },
+
+  /**
+   * THE ROOM'S CAPACITY.
+   *
+   * How many hulls the arena holds is a property of the arena, so this owner sets it — through the
+   * shipped `setMax` seam, which exists for exactly this and clamps itself to spawnBudget's own
+   * HARD_MAX. Nothing here moves that wall.
+   *
+   * The default cap of 24 is sized for a sector carrying ambient freight, patrols and mission
+   * spawns alongside a fight. A Crucible run has none of those — freight is sealed out — so the
+   * same budget can hold a genuine swarm instead of a squad. The previous ceiling is remembered
+   * and restored when the run ends, so the campaign gets its own number back untouched.
+   */
+  _raiseCapacity() {
+    const budget = this.helpers && this.helpers.spawnBudget;
+    if (!budget || typeof budget.setMax !== 'function' || typeof budget.max !== 'function') return;
+    const current = budget.max();
+    if (current >= SWARM_SPAWN_CAP) return;
+    if (this._priorCap == null) this._priorCap = current;
+    budget.setMax(SWARM_SPAWN_CAP);
+    this._emit('swarmArena:capacity', { max: budget.max(), restoreTo: this._priorCap });
+  },
+
+  _restoreCapacity() {
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const prior = this._priorCap;
+    this._priorCap = null;
+    if (prior == null || !budget || typeof budget.setMax !== 'function') return;
+    budget.setMax(prior);
+  },
+
+  _topUp(run, wave) {
+    const state = this.state;
+    const helpers = this.helpers;
+    if (!state || !helpers || typeof helpers.spawnEntity !== 'function') return;
+    this._syncOpticLattice(run);
+    const anchor = playerAnchor(state);
+    this._lastTerrainAnchor = anchor;
+    const keepSq = SWARM_DEBRIS_KEEP_RADIUS * SWARM_DEBRIS_KEEP_RADIUS;
+    const reef = runHasMutator(run, 'reef');
+    // §33 row 485 — the ladder tier (deepest rung the wave band or line rating unlocks) owns the
+    // debris room's band and size; authored arena layouts stay the fallback and the reef override.
+    const ladderTier = swarmArenaTierForRun({
+      wave: Number.isInteger(wave) ? wave : 1,
+      ratingT: Number(state && state.rockCore && state.rockCore.ratingT) || 0,
+    });
+    const layout = (reef ? null : swarmArenaDebrisLayout(ladderTier)) || debrisLayoutForArena(run && run.arenaId);
+    // The fight band follows the room this tier actually builds. The fixed census radius (400)
+    // sat inside the wider ladder rooms (outer 391 / 459 / 544): rocks the top-up placed past it
+    // were never counted, so the field kept spawning toward the cap. Same 60 WU margin as before.
+    const fightRadius = Math.max(
+      SWARM_DEBRIS_FIGHT_RADIUS,
+      (Number(layout && layout.outer) || 0) + (SWARM_DEBRIS_FIGHT_RADIUS - SWARM_DEBRIS_OUTER),
+    );
+    const fightSq = fightRadius * fightRadius;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+
+    // Census: every solid the field must not grow into, and how many of OUR rocks are still in
+    // reach. Rocks the fight has left behind are released rather than counted — otherwise a run
+    // that drifts across the sector would stop topping up while flying through empty space.
+    const nearbySolids = [];
+    const occupiedOpeningSlots = [];
+    let mine = 0;
+    let openingPocketCount = 0;
+    const surviving = [];
+    const index = state.entityIndex;
+    const indexed = !!(index && index.__spacefaceEntityIndexV1 && index.ready === true);
+    const solidLists = indexed
+      ? [index.asteroids, index.stations, index.wrecks]
+      : [state.entityList || []];
+    for (const list of solidLists) {
+      if (!list) continue;
+      for (const entity of list) {
+      if (!entity || entity.alive === false || !entity.pos) continue;
+      if (!SOLID_TYPES.has(entity.type)) continue;
+      const dx = entity.pos.x - anchor.x;
+      const dz = entity.pos.z - anchor.z;
+      const distSq = dx * dx + dz * dz;
+      const inReach = distSq <= keepSq;
+      const inFight = distSq <= fightSq;
+      const ours = !!(entity.data && entity.data[SWARM_DEBRIS_TAG]);
+      if (inReach) {
+        nearbySolids.push({ x: entity.pos.x, z: entity.pos.z, radius: entity.radius || 0 });
+        // Counted only if it is close enough to be part of the fight — see SWARM_DEBRIS_FIGHT_RADIUS.
+        if (ours && inFight) {
+          mine++;
+          if (entity.data.openingPocket || entity.data.openingLesson) openingPocketCount++;
+        }
+      }
+      if (ours) {
+        // Departing bodies can return before lifetime removal. Reserve their authored
+        // identities independently of local fight counts and placement clearance.
+        if (Number.isInteger(entity.data.openingTerrainSlot)) {
+          occupiedOpeningSlots.push(entity.data.openingTerrainSlot);
+        }
+        surviving.push(entity.id);
+        if (!entity.data) continue;
+        // The Hive's living geometry keeps its own clock: install stamps it, growth
+        // spends it, release ends it. The field's keep-alive refresh must not undo a
+        // wave-planned release — a re-stamped wall would outlive its room by minutes.
+        if (entity.data[HIVE_WALL_TAG] || entity.data[HIVE_SAC_TAG]) continue;
+        if (inFight) {
+          // Back in the fight after a wobble: cancel the release rather than letting a rock the
+          // player has returned to vanish under them.
+          entity.data.despawnAt = now + SWARM_DEBRIS_TTL_S;
+        } else {
+          entity.data.despawnAt = Math.min(
+            Number.isFinite(entity.data.despawnAt) ? entity.data.despawnAt : Infinity,
+            now + SWARM_DEBRIS_RELEASE_S,
+          );
+        }
+      }
+    }
+    }
+    this._ids = surviving;
+
+    // Row 481 — Wreck Ballast: the debris field comes in as dead hulls, not rock. Same plan,
+    // same counts, same physics verbs; only the material the room hands you changes.
+    const ballast = runHasMutator(run, 'wreck_ballast');
+    const openingStage = swarmOpeningTerrainStage({
+      arenaId: run.arenaId, wave, lineTier: ladderTier.ratingTierMin,
+      altered: reef || ballast || (Array.isArray(run.arenaMutators) && run.arenaMutators.length > 0),
+    });
+    const target = reef ? REEF_DEBRIS_TARGET
+      : Math.min(layout.target, openingStage ? openingStage.count : layout.target)
+        + (openingStage ? openingPocketCount : 0);
+    const want = Math.min(target - mine, SWARM_DEBRIS_MAX - mine,
+      SWARM_DEBRIS_MAX * 2 - surviving.length);
+    this._terrainRetry = mine < target && want <= 0;
+    if (want <= 0) return;
+
+    const rng = mulberry32(debrisStreamSeed(
+      Number.isInteger(run.seed) ? run.seed : 1,
+      Number.isInteger(wave) ? wave : 1,
+    ));
+    // First rooms are authored courts, not a random ring. Later waves and all
+    // variant arenas retain the existing seeded planner. No random fallback may
+    // close the court's flight lane when a native body blocks an authored slot.
+    const spots = openingStage
+      ? planSwarmOpeningTerrain({ stage: openingStage, anchor, existing: nearbySolids,
+        occupiedSlots: occupiedOpeningSlots, want, layout })
+      : reef
+      ? planReefLayout({ anchor, existing: nearbySolids, want, rng })
+      : planSwarmDebris({
+        anchor,
+        existing: nearbySolids,
+        want,
+        rng,
+        layout: { ...layout, axis: { x: 1, z: 0 } },
+      });
+    if (openingStage && spots.length < want) this._terrainRetry = true;
+    const spawnedIds = [];
+    const presentMaterials = new Set((state.entityList || []).filter(e => e.alive !== false && e.data?.[SWARM_DEBRIS_TAG]
+      && Math.hypot(e.pos.x - anchor.x, e.pos.z - anchor.z) <= fightRadius).map(environmentMaterialOf));
+    const missingMaterials = ENVIRONMENT_FAMILIES.filter(m => !presentMaterials.has(m));
+    if (!openingStage && spots.length < Math.min(want, missingMaterials.length)) {
+      // Tight arena lanes can exhaust their placement search. Their missing toys sit on
+      // a safe outer shoulder rather than silently disappearing from this arena's grammar.
+      spots.push(...planSwarmDebris({ anchor, existing: nearbySolids.concat(spots),
+        want: Math.min(want, missingMaterials.length) - spots.length, rng,
+        layout: { inner: 265, outer: 390, safeRadius: 120, separation: 32 } }));
+    }
+    let materialIndex = 0;
+    for (const spot of spots.slice(0, want)) {
+      const material = ballast
+        ? 'debris'
+        : spot.material || missingMaterials[materialIndex] || ENVIRONMENT_FAMILIES[materialIndex % ENVIRONMENT_FAMILIES.length];
+      const typeId = material === 'metal' ? 'ast_metallic' : material === 'crystal' ? 'ast_crystalline' : TYPE_ID;
+      const colliderRadius = asteroidColliderRadius(typeId, spot.radius);
+      // The old terrain-only census missed hulls crossing the replenishment site.
+      // Recheck against the LIVE map (including this batch's accepted rocks) and their native
+      // physics footprints. Display radius can be smaller than the calibrated rock collider.
+      if (!swarmPlacementIsClear(state, spot, colliderRadius, { clearance: 24 })) {
+        this._terrainRetry = true;
+        continue;
+      }
+      materialIndex++;
+      const id = this._spawnDebrisRock(spot.x, spot.z, spot.radius, rng, now,
+        { ...(reef ? { reefLayoutId: REEF_LAYOUT_ID } : {}), material,
+          ...(openingStage ? { openingTerrainSlot: spot.openingTerrainSlot } : {}) });
+      if (id != null) spawnedIds.push(id);
+    }
+    if (spawnedIds.length === 0) return;
+    this._ids = this._ids.concat(spawnedIds);
+    this._emit('swarmArena:debris', {
+      wave,
+      added: spawnedIds.length,
+      total: this._ids.length,
+      layoutId: openingStage ? openingStage.id : reef ? REEF_LAYOUT_ID : layout.id,
+    });
+  },
+
+  /**
+   * SF-067 — the fight deforms the cover it hides behind. Only a tagged debris rock takes wear,
+   * only a real hit chips it (a brush under the speed floor is a nudge, not damage), and only
+   * once per few ticks so a hull grinding along the face chips rather than dissolves. Wear is
+   * mirrored into `miningWear` so the rock visibly darkens/shrinks before it lets go.
+   */
+  _onDebrisImpact(payload) {
+    const state = this.state;
+    // Cheap gates first: the crowd's impact fanout is mostly sub-wear-speed grazes, and
+    // liveSwarmRun pays a full validateRunState per emit. All of these are pure reads,
+    // so testing the receipt numbers before the run admits/rejects the identical set.
+    const speed = Number(payload && payload.preSolveClosingSpeed);
+    const dp = Number(payload && payload.dp);
+    if (!(speed >= SWARM_DEBRIS_WEAR_SPEED) || !(dp > 0)) return;
+    const run = state && liveSwarmRun(state);
+    // Only a live fight wears cover — paused phases (draft/refit/cleanup/ended) leave it alone.
+    if (!run || run.phase !== 'active') return;
+    const ents = state.entities;
+    if (!ents || typeof ents.get !== 'function') return;
+    const tick = Number.isFinite(payload.tick)
+      ? Math.max(0, Math.trunc(payload.tick))
+      : (Number.isFinite(state.tick) ? Math.max(0, Math.trunc(state.tick)) : 0);
+    const a = ents.get(payload.aId);
+    const b = ents.get(payload.bId);
+    for (const rock of [a, b]) {
+      if (!rock || rock.type !== 'asteroid' || rock.alive === false) continue;
+      const d = rock.data;
+      if (!d || d[SWARM_DEBRIS_TAG] !== true) continue;
+      if (['crystal', 'volatile', 'debris'].includes(environmentMaterialOf(rock))) continue;
+      // A rock in its tick-gap skips, but the impact's OTHER rock still earns its check.
+      if (Number.isFinite(d._debrisWornTick) && tick - d._debrisWornTick < SWARM_DEBRIS_WEAR_TICK_GAP) {
+        continue;
+      }
+      d._debrisWornTick = tick;
+      const hullBefore = Math.max(0, Number(rock.hull) || 0);
+      const hullMax = Math.max(1, Number(rock.hullMax) || hullBefore || 1);
+      const hullAfter = hullBefore - dp / SWARM_DEBRIS_WEAR_DIV;
+      const oreBefore = d.oreHP, wearBefore = d.miningWear;
+      rock.hull = Math.max(0, hullAfter);
+      // oreHP is the field the renderer's fracture-progress reads — keep it paired with hull.
+      d.oreHP = Math.max(0, Math.round(hullAfter));
+      d.miningWear = Math.min(1, Math.max(0, 1 - hullAfter / hullMax));
+      if (hullAfter <= 0 && this._fractureDebris(rock) === false) {
+        rock.hull = hullBefore;
+        if (oreBefore === undefined) delete d.oreHP; else d.oreHP = oreBefore;
+        if (wearBefore === undefined) delete d.miningWear; else d.miningWear = wearBefore;
+      }
+      return;
+    }
+  },
+
+  /**
+   * A worn-through monolith leaves two smaller rocks where it stood — still solid, still tagged
+   * so census and teardown own them exactly like the parent, and `tetherPayload`-legal so the
+   * rope can pick one up. A remnant (isChunk) that breaks again just dies; leftovers do not
+   * recurse.
+   */
+  _fractureDebris(rock) {
+    const state = this.state;
+    const d = (rock && rock.data) || {};
+    const rng = state && typeof state.rng === 'function' ? state.rng : null;
+    const helpers = this.helpers;
+    const ids = [];
+    if (!d.isChunk && rng && helpers && typeof helpers.spawnEntity === 'function'
+      && rock.pos && Number.isFinite(rock.pos.x) && Number.isFinite(rock.pos.z)) {
+      const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+      const parentRadius = Math.max(1, Number(rock.radius) || Number(d.size) || 8);
+      const children = [];
+      for (let i = 0; i < SWARM_DEBRIS_REMNANTS; i++) {
+        const ang = rng() * Math.PI * 2;
+        const radius = Math.max(6, parentRadius * (SWARM_DEBRIS_REMNANT_RATIO + rng() * 0.08));
+        const dist = parentRadius * 0.55 + radius;
+        const oreHP = Math.max(40, Math.round(parentRadius * 10));
+        children.push({
+          type: 'asteroid',
+          pos: {
+            x: rock.pos.x + Math.cos(ang) * dist,
+            z: rock.pos.z + Math.sin(ang) * dist,
+          },
+          vel: { x: 0, z: 0 },
+          radius,
+          physicsBody: { radius: asteroidColliderRadius(TYPE_ID, radius) },
+          // Remnant mass is written for the rope, not the wall: heavy enough to read as rock,
+          // light enough that the massline can actually pick it up.
+          mass: Math.round(radius * radius * SWARM_DEBRIS_REMNANT_MASS_K),
+          angVel: (rng() - 0.5) * 0.3,
+          hull: oreHP,
+          hullMax: oreHP,
+          collides: true,
+          data: withBankStone({
+            typeId: TYPE_ID,
+            tier: 0,
+            tierCap: 0,
+            oreHP,
+            oreHPMax: oreHP,
+            yieldU: 2,
+            size: radius,
+            [SWARM_DEBRIS_TAG]: true,
+            terrainAnchor: true,
+            terrainAnchorEncounterIds: [],
+            // Inherit the parent's clock — a drift-released rock must not leave orphans behind.
+            despawnAt: Math.min(
+              now + SWARM_DEBRIS_TTL_S,
+              Number.isFinite(d.despawnAt) ? d.despawnAt : Infinity,
+            ),
+            isChunk: true,
+            tetherPayload: true,
+          }),
+        });
+      }
+      const positions = fractureBirthPositions(state, this.registry?.get?.('physics')?._sg02, rock, children);
+      if (!positions) return false;
+      for (let i = 0; i < children.length; i++) {
+        const spawned = helpers.spawnEntity({ ...children[i], pos: positions[i] });
+        const id = spawned && typeof spawned === 'object' ? spawned.id : spawned;
+        if (id != null) {
+          ids.push(id);
+          this._ids.push(id);
+          this._emit('asteroid:chunked', {
+            parentId: rock.id,
+            chunkId: id,
+            minerId: null,
+            massU: 0,
+            bulkCore: false,
+            commodityId: null,
+            count: SWARM_DEBRIS_REMNANTS,
+            pos: { x: Number(rock.pos?.x) || 0, z: Number(rock.pos?.z) || 0 },
+          });
+        }
+      }
+    }
+    d.miningWear = 1;
+    rock.alive = false;
+    this._emit('swarmArena:debrisFractured', {
+      id: rock.id,
+      remnantIds: ids,
+      tick: Number.isFinite(state && state.tick) ? state.tick : null,
+    });
+    this._emit('asteroid:destroyed', {
+      id: rock.id,
+      typeId: TYPE_ID,
+      pos: rock.pos ? { x: rock.pos.x, z: rock.pos.z } : null,
+    });
+    // B4 — inside the Mill, every break shakes ore loose. The pickup is the room's own
+    // economy: the wave pays the player for breaking the seam, through the same collect
+    // seam the supply pod uses.
+    this._millShake(rock);
+    return true;
+  },
+
+  /**
+   * SWARM-07 B4 — the Asteroid Mill's shaken ore. One or two pickup chunks at the
+   * fracture point, stamped for the room's own ledger so collect pays the run wallet
+   * and only the run wallet. Runs only inside the Mill — every other arena's fracture
+   * is just a fracture.
+   */
+  _millShake(rock) {
+    const state = this.state;
+    const run = state && liveSwarmRun(state);
+    if (!run || run.arenaId !== MILL_ARENA_ID) return;
+    const helpers = this.helpers;
+    if (!helpers || typeof helpers.spawnEntity !== 'function') return;
+    if (!rock || !rock.pos || !Number.isFinite(rock.pos.x) || !Number.isFinite(rock.pos.z)) return;
+    const rng = state && typeof state.rng === 'function' ? state.rng : null;
+    if (!rng) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const count = 1 + (rng() < MILL_ORE_DOUBLE_CHANCE ? 1 : 0);
+    const spawned = [];
+    for (let i = 0; i < count; i++) {
+      const angle = rng() * Math.PI * 2;
+      const dist = 6 + rng() * 10;
+      const body = helpers.spawnEntity({
+        type: 'pickup',
+        pos: {
+          x: rock.pos.x + Math.cos(angle) * dist,
+          z: rock.pos.z + Math.sin(angle) * dist,
+        },
+        vel: { x: 0, z: 0 },
+        radius: 5,
+        mass: 0.1,
+        collides: true,
+        data: {
+          kind: MILL_ORE_KIND,
+          amount: MILL_ORE_CREDITS,
+          swarmMillOre: true,
+          despawnAt: now + MILL_ORE_TTL_S,
+        },
+      });
+      const id = body && typeof body === 'object' ? body.id : body;
+      if (id != null) {
+        spawned.push(id);
+        this._millOres.set(id, MILL_ORE_CREDITS);
+      }
+    }
+    if (spawned.length > 0) {
+      this._emit('swarmArena:millOre', {
+        wave: run.wave,
+        fractureId: rock.id,
+        oreIds: spawned,
+        credits: spawned.length * MILL_ORE_CREDITS,
+      });
+    }
+  },
+
+  /**
+   * The ore ledger: collection is physics-contact truth (`pickup:collected`), the pay
+   * rides the run's own award seam. Same collector gate as the supply pod — a drone or
+   * NPC scoop consumes the chunk but never pays the pilot's wallet.
+   */
+  _onPickupCollected(payload) {
+    const id = payload && payload.pickupId;
+    if (id == null || !this._millOres || !this._millOres.has(id)) return;
+    const credits = this._millOres.get(id);
+    this._millOres.delete(id);
+    if (payload.collectorId != null && this.state && payload.collectorId !== this.state.playerId) return;
+    this._emit('run:awardRequested', { credits, reason: 'swarm:millOre' });
+  },
+
+  /**
+   * One debris monolith: same spec everywhere the system makes cover — the ambient field top-up,
+   * the mass-gap wall, and (by tag, not by shape) SF-067 wear and fracture. Returns the id.
+   */
+  _spawnDebrisRock(x, z, size, rng, now, extraData) {
+    const helpers = this.helpers;
+    if (!helpers || typeof helpers.spawnEntity !== 'function') return null;
+    const oreHP = Math.round(360 + size * 14);
+    const material = extraData?.material || 'rock';
+    const typeId = material === 'metal' ? 'ast_metallic' : material === 'crystal' ? 'ast_crystalline' : TYPE_ID;
+    // Row 495: the debris field wears the hand-made rock family. The rolled env material
+    // picks the matching substance (slag rides the everyday-rock slot; wreck-material slots
+    // stay dead hulls) and the stamped substance answers density, restitution and break
+    // behaviour while the place skin makes the body itself authored, not displaced noise.
+    const substance = material === 'debris' ? null : pickDebrisSubstance(material, rng);
+    const placeId = substance
+      ? `place_rock_${substance}_${rockSizeClassForRadius(size)}`
+      : null;
+    const data = environmentSurfaceData(material, {
+      typeId,
+      tier: 0,
+      tierCap: 0,
+      oreHP,
+      oreHPMax: oreHP,
+      yieldU: Math.round(6 + size * 0.4),
+      size,
+      // Both marks on purpose: ours for census and teardown, terrainAnchor so the massline's
+      // existing anchor logic treats these exactly like the rocks it already knows.
+      [SWARM_DEBRIS_TAG]: true,
+      terrainAnchor: true,
+      terrainAnchorEncounterIds: [],
+      despawnAt: now + SWARM_DEBRIS_TTL_S,
+      ...(placeId ? { authoredGeologySkin: true, placeId, placeTargetRadius: size } : {}),
+      ...(extraData || {}),
+    });
+    // applyRockSubstance owns the substance stamp — restitution, break speed, impact VFX and
+    // the density that scales the thrown mass come through it, exactly like field rocks.
+    const densityMult = substance ? applyRockSubstance(data, substance) : 1;
+    const spawned = helpers.spawnEntity({
+      type: material === 'debris' ? 'wreck' : 'asteroid',
+      pos: { x, z },
+      vel: { x: 0, z: 0 },
+      radius: size,
+      physicsBody: { radius: asteroidColliderRadius(typeId, size) },
+      // Same 2D-area density scaling terrainAnchors uses, so these read (and sling) as monoliths.
+      mass: Math.round(size * size * 40 * densityMult),
+      angVel: (rng() - 0.5) * 0.12,
+      hull: oreHP,
+      hullMax: oreHP,
+      collides: true,
+      data: withBankStone(data),
+    });
+    return spawned && typeof spawned === 'object' ? spawned.id : spawned;
+  },
+
+  /**
+   * SF-062 — the mass-gap wall. A chord of monoliths stands on one bearing from the fight's
+   * anchor with exactly the plan's two slots left open, so the room has a corridor and two
+   * navigable paths around it. The rocks are ordinary debris: they wear, fracture, and sling
+   * exactly like the field the top-up owns. Installs once per planned wave.
+   */
+  _installMassGapWall(massGap, wave) {
+    if (!massGap || this._wallWave === wave) return;
+    const state = this.state;
+    if (!state || !Number.isFinite(massGap.distance) || !Number.isInteger(massGap.rocks)) return;
+    const anchor = playerAnchor(state);
+    const bearing = gateBearing(massGap.gate);
+    // The chord runs perpendicular to its gate bearing, centered on the wall line.
+    const perp = { x: -bearing.z, z: bearing.x };
+    const size = Number.isFinite(massGap.rockRadius) ? massGap.rockRadius : 26;
+    const spacing = size * 2.4;
+    const slotX = (i) => anchor.x + bearing.x * massGap.distance + perp.x * ((i - (massGap.rocks - 1) / 2) * spacing);
+    const slotZ = (i) => anchor.z + bearing.z * massGap.distance + perp.z * ((i - (massGap.rocks - 1) / 2) * spacing);
+    // A slot reads blocked when an ambient rock already fills its corridor — the field debris
+    // skips this machinery, so the wall has to check the room it is landing in. Snapshot the
+    // blockers once: a wall rock must never read its own chordmates as ambient geometry.
+    const blockers = [];
+    const blockersDomain = indexedTypeScan(state, 'asteroids');
+    for (const e of blockersDomain) {
+      if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos) continue;
+      blockers.push({ x: e.pos.x, z: e.pos.z, r: Number.isFinite(e.radius) ? e.radius : 0 });
+    }
+    const occupied = (i) => {
+      const sx = slotX(i), sz = slotZ(i);
+      for (const b of blockers) {
+        // The rock's disc overlapping this slot's own footprint is what makes it blocked —
+        // one slot over is the corridor's neighbor, not the corridor.
+        const r = b.r + size;
+        const dx = b.x - sx, dz = b.z - sz;
+        if (dx * dx + dz * dz < r * r) return true;
+      }
+      return false;
+    };
+    // A planned gap must be genuinely navigable: when ambient geometry already fills it, the
+    // gap shifts to the nearest open slot on the same side of the chord rather than promising
+    // a corridor that is not there.
+    const planned = Array.isArray(massGap.gapSlots) ? massGap.gapSlots : [];
+    const gaps = new Set();
+    for (const g of planned) {
+      if (!Number.isInteger(g) || !occupied(g)) {
+        if (Number.isInteger(g)) gaps.add(g);
+        continue;
+      }
+      const lo = g < 4 ? 1 : 5, hi = g < 4 ? 3 : 7;
+      let best = null;
+      for (let d = 1; d <= hi - lo; d++) {
+        for (const i of [g - d, g + d]) {
+          if (i < lo || i > hi || gaps.has(i) || planned.includes(i) || occupied(i)) continue;
+          best = i;
+          break;
+        }
+        if (best != null) break;
+      }
+      gaps.add(best == null ? g : best);
+    }
+    const rng = mulberry32(debrisStreamSeed(
+      Number.isInteger(state.run && state.run.seed) ? state.run.seed : 1,
+      Number.isInteger(wave) ? wave : 1,
+    ) ^ 0x5f062);
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const ids = [];
+    for (let i = 0; i < massGap.rocks; i++) {
+      if (gaps.has(i)) continue;
+      // An ambient rock sharing a wall slot is fine — it merges into the chord and the solver
+      // separates any overlap. Only the two gap slots carry the navigability contract.
+      const id = this._spawnDebrisRock(slotX(i), slotZ(i), size, rng, now);
+      if (id != null) ids.push(id);
+    }
+    if (ids.length === 0) return;
+    this._wallWave = wave;
+    this._ids = this._ids.concat(ids);
+    // The banner announced the shape at wave start; the drop itself gets its own beat so the
+    // room changing underfoot is a felt event, not a silent edit.
+    this._emit('toast', { text: 'The wall is closing — mind the gaps.', kind: 'warn', ttl: 3.5 });
+    this._emit('swarmArena:massGapWall', {
+      wave,
+      gate: massGap.gate,
+      rocks: ids.length,
+      gaps: [...gaps],
+      ids: ids.slice(),
+    });
+  },
+
+  _fieldsSystem() {
+    return this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('fields')
+      : null;
+  },
+
+  _installOpeningLesson(lesson) {
+    if (!lesson) return;
+    const anchor = playerAnchor(this.state);
+    const rock = lesson.rock || {};
+    const radius = Number.isFinite(rock.radius) ? rock.radius : 6;
+    const helpers = this.helpers;
+    const existingRock = this._lessonRockId != null && this.state && this.state.entities
+      && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(this._lessonRockId)
+      : null;
+    const rockLive = !!(existingRock && existingRock.alive !== false);
+    if (!rockLive && helpers && typeof helpers.spawnEntity === 'function') {
+      const size = radius;
+      const oreHP = Math.round(360 + size * 14);
+      const spawned = helpers.spawnEntity({
+        type: 'asteroid',
+        pos: {
+          x: anchor.x + (Number.isFinite(rock.x) ? rock.x : 78),
+          z: anchor.z + (Number.isFinite(rock.z) ? rock.z : 16),
+        },
+        vel: { x: 0, z: 0 },
+        radius: size,
+        physicsBody: { radius: asteroidColliderRadius(TYPE_ID, size) },
+        // Light enough to be the body that moves. Debris mass would make an immovable wall.
+        mass: 220,
+        angVel: 0,
+        hull: oreHP,
+        hullMax: oreHP,
+        collides: true,
+        data: withBankStone({
+          typeId: TYPE_ID,
+          tier: 0,
+          tierCap: 0,
+          oreHP,
+          oreHPMax: oreHP,
+          yieldU: Math.round(6 + size * 0.4),
+          size,
+          [SWARM_DEBRIS_TAG]: true,
+          terrainAnchor: true,
+          terrainAnchorEncounterIds: [],
+          openingLesson: true,
+          // defaultDynamic only promotes asteroids that carry this flag, so the rope can throw it.
+          tetherPayload: true,
+        }),
+      });
+      const id = spawned && typeof spawned === 'object' ? spawned.id : spawned;
+      if (id != null) {
+        this._lessonRockId = id;
+        this._ids = this._ids.concat(id);
+      }
+    }
+    const well = lesson.well || {};
+    const system = this._fieldsSystem();
+    if (system && typeof system.registerEnvironmental === 'function'
+      && !(this._wellIds || []).includes('swarm-opening-lesson-well')) {
+      const id = 'swarm-opening-lesson-well';
+      const createdAt = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+      const wellRadius = Number.isFinite(well.radius) ? well.radius : 96;
+      const offset = { x: Number.isFinite(well.x) ? well.x : -24,
+        z: Number.isFinite(well.z) ? well.z : 108 };
+      const center = quietWellCenter(this.state, anchor, offset, wellRadius);
+      if (!center) return;
+      const record = system.registerEnvironmental({
+        id,
+        kind: 'well',
+        center,
+        radius: wellRadius,
+        // Planted asleep: an awake well drags whatever furniture lands near it into motion before
+        // the pilot has touched a key. It wakes with the pack, at the lesson release.
+        strength: 0,
+        falloff: Number.isFinite(well.falloff) ? well.falloff : 1.35,
+        createdAt,
+      });
+      if (record != null) {
+        this._wellIds = this._wellIds.concat(id);
+        this._lessonWellStrength = Number.isFinite(well.strength) ? well.strength : 90;
+        this._lessonWellPlacement = { center, radius: wellRadius };
+      }
+    }
+  },
+
+  _wakeLessonWell() {
+    const strength = this._lessonWellStrength;
+    this._lessonWellStrength = null;
+    if (!Number.isFinite(strength)) return;
+    const system = this._fieldsSystem();
+    const placement = this._lessonWellPlacement;
+    this._lessonWellPlacement = null;
+    if (!placement) return;
+    // Revalidate on activation: the furniture can have moved since the sleeping well was planted.
+    const bodies = this.state?.entities?.values?.() || this.state?.entityList || [];
+    for (const entity of bodies) {
+      if (entity && WELL_SOLID_TYPES.has(entity.type)
+        && sweptDiscsOverlap(placement.center, placement.radius, entity, { clearance: 8 })) return;
+    }
+    if (system && typeof system.updateExternal === 'function') {
+      system.updateExternal('swarm-opening-lesson-well', { strength });
+    }
+  },
+
+  _installSlalomWells(run) {
+    this._releaseWells();
+    if (!runHasMutator(run, 'gravity_slalom')) return;
+    const system = this._fieldsSystem();
+    if (!system || typeof system.registerEnvironmental !== 'function') return;
+    const createdAt = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const wells = planGravitySlalomWells({ anchor: playerAnchor(this.state) });
+    const ids = [];
+    for (const spec of wells) {
+      const record = system.registerEnvironmental({ ...spec, createdAt });
+      if (record === null || record === undefined) continue;
+      ids.push(spec.id);
+    }
+    this._wellIds = ids;
+    if (ids.length > 0) {
+      this._emit('swarmArena:slalom', { wellCount: ids.length, wellIds: ids.slice() });
+    }
+  },
+
+  _releaseWells() {
+    this._lessonWellPlacement = null;
+    this._lessonWellStrength = null;
+    const ids = this._wellIds || [];
+    this._wellIds = [];
+    if (ids.length === 0) return;
+    const system = this._fieldsSystem();
+    if (!system || typeof system.unregisterExternal !== 'function') return;
+    for (const id of ids) system.unregisterExternal(id);
+  },
+
+  /** Hand the field back to the engine's ordinary despawn sweep. Never deletes entities directly. */
+  /**
+   * One lattice per fight, player-relative. It stays put while the player is still in it.
+   * After the fight drifts past SWARM_OPTIC_RESTAMP, the old stamp is released and a new
+   * one is built on the same recipe so the room follows without stretching the grid.
+   */
+  _syncOpticLattice(run) {
+    const state = this.state;
+    const helpers = this.helpers;
+    if (!state || !helpers || typeof helpers.spawnEntity !== 'function') return;
+    const anchor = playerAnchor(state);
+    const ids = this._opticIds || [];
+    if (ids.length && this._opticAnchor) {
+      const drifted = Math.hypot(anchor.x - this._opticAnchor.x, anchor.z - this._opticAnchor.z);
+      if (drifted < SWARM_OPTIC_RESTAMP) return;
+    } else if (ids.length) {
+      return;
+    }
+    const authored = compileSwarmOptic(run && run.arenaId);
+    if (!authored || !authored.bodies || !authored.bodies.length) return;
+    const bodies = separateOpticLatticeBodies(authored.bodies);
+    if (!bodies) return;
+    // Keep the compiler's authored recipe immutable. One cloned, safely spaced geometry drives
+    // both origin admission and body placement below.
+    const layout = bodies === authored.bodies ? authored : { ...authored, bodies };
+    const origin = opticLatticeOrigin(state, layout, anchor, this.registry?.get?.('physics')?._sg02);
+    if (!origin) return; // Keep the prior coherent stamp and retry when the fight leaves room.
+    const spawned = [];
+    for (let i = 0; i < layout.bodies.length; i++) {
+      const body = layout.bodies[i];
+      const ent = helpers.spawnEntity({
+        type: 'asteroid',
+        pos: {
+          x: origin.x + body.x,
+          z: origin.z + body.z,
+        },
+        vel: { x: 0, z: 0 },
+        radius: body.radius,
+        physicsBody: { radius: body.radius },
+        mass: 200 + body.radius * 40,
+        angVel: 0,
+        hull: 1e6,
+        hullMax: 1e6,
+        collides: true,
+        data: {
+          typeId: body.typeId,
+          tint: body.tint,
+          opticMaterial: body.material,
+          opticStructureId: layout.id,
+          opticCell: `${body.ix},${body.iz}`,
+          surfaceMaterial: body.surfaceMaterial,
+          size: body.radius,
+          [SWARM_OPTIC_TAG]: true,
+        },
+      });
+      if (ent && ent.id != null) spawned.push(ent.id);
+    }
+    if (spawned.length !== layout.bodies.length) {
+      // A refused birth cannot publish half a fuse or retire the still-coherent old stamp.
+      for (const id of spawned) {
+        const entity = state.entities?.get?.(id);
+        if (entity?.data?.[SWARM_OPTIC_TAG] && entity.data.opticStructureId === layout.id) entity.alive = false;
+      }
+      return;
+    }
+    this._releaseOpticIds();
+    this._opticIds = spawned;
+    this._opticAnchor = origin;
+    if (spawned.length) {
+      this._emit('swarmArena:optic', { arenaId: run.arenaId, id: layout.id, count: spawned.length, origin: { ...origin } });
+    }
+  },
+
+  _releaseOpticIds() {
+    const state = this.state;
+    const ids = this._opticIds || [];
+    this._opticIds = [];
+    this._opticAnchor = null;
+    if (!state || !state.entities || typeof state.entities.get !== 'function') return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    for (let i = 0; i < ids.length; i++) {
+      const entity = state.entities.get(ids[i]);
+      if (!entity || !entity.data) continue;
+      entity.data.despawnAt = Math.min(
+        Number.isFinite(entity.data.despawnAt) ? entity.data.despawnAt : Infinity,
+        now + SWARM_DEBRIS_RELEASE_S,
+      );
+    }
+  },
+
+  // ---- B4: THE HIVE'S LIVING GEOMETRY ----------------------------------------------
+  //
+  // Walls and sacs are tagged debris bodies: they join this._ids, wear and fracture
+  // through SF-067 like every other rock (isChunk keeps a break from spawning remnants),
+  // and release through the same despawnAt deadline — never a hand-delete. What makes
+  // them the Hive is the lifecycle: walls grow shut on a telegraphed cadence, sacs pulse
+  // the wave's own brood reserve and drip acid.
+
+  /**
+   * One living-wall nub or sac body: the debris spec, tagged for the hive's census, and
+   * `isChunk` so a break is a clean death — a broken wall leaves rubble-free space, and
+   * a dead sac does not bud into more sacs.
+   */
+  _spawnHiveRock(x, z, size, rng, now, extraData) {
+    const rockData = { isChunk: true, ...(extraData || {}) };
+    const hull = Number.isFinite(rockData.hiveHull) ? rockData.hiveHull : HIVE_WALL_HULL;
+    delete rockData.hiveHull; // a build parameter, not a data stamp
+    const id = this._spawnDebrisRock(x, z, size, rng, now, rockData);
+    if (id == null) return null;
+    const state = this.state;
+    const entity = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(id) : null;
+    if (entity && entity.data) {
+      // Living walls are thinner than monoliths — breakable cover, not terrain.
+      entity.hull = hull;
+      entity.hullMax = hull;
+      entity.data.oreHP = hull;
+      entity.data.oreHPMax = hull;
+      if (entity.data[HIVE_SAC_TAG]) {
+        // A sac is light enough for the massline to pick up — slinging one back into
+        // the brood it was feeding is the counter the room teaches.
+        entity.mass = Math.round(size * size * HIVE_SAC_MASS_K);
+      }
+    }
+    return id;
+  },
+
+  /**
+   * The wave's room lands with the wave: the first wall ring stands (one open lane),
+   * the sacs berth inside it, and the growth clock starts. Seeded on (seed, wave) —
+   * the same room, every replay.
+   */
+  _hiveInstall(run) {
+    const state = this.state;
+    const helpers = this.helpers;
+    if (!state || !helpers || typeof helpers.spawnEntity !== 'function') return;
+    const wave = Number.isInteger(run.wave) ? run.wave : 1;
+    const seed = Number.isInteger(run.seed) ? run.seed : 1;
+    const rng = mulberry32(hiveStreamSeed(seed, wave));
+    const anchor = playerAnchor(state);
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const walls = [];
+    for (const spot of hiveWallRing({ anchor, ring: 0, rng })) {
+      const id = this._spawnHiveRock(spot.x, spot.z, spot.radius, rng, now,
+        { [HIVE_WALL_TAG]: true, hiveRing: 0 });
+      if (id != null) { walls.push(id); this._ids.push(id); }
+    }
+    const sacs = new Map();
+    for (const berth of hiveSacBerths({ anchor, count: HIVE_SAC_COUNT, rng })) {
+      const id = this._spawnHiveRock(berth.x, berth.z, HIVE_SAC_SIZE, rng, now,
+        { [HIVE_SAC_TAG]: true, hiveHull: HIVE_SAC_HULL, tetherPayload: true });
+      if (id != null) {
+        this._ids.push(id);
+        sacs.set(id, {
+          x: berth.x,
+          z: berth.z,
+          nextBirthAt: now + HIVE_SAC_PERIOD_S,
+          nextPoolAt: now + 2,
+          spent: false,
+        });
+      }
+    }
+    this._hive = { wave, ring: 1, nextGrowAt: now + HIVE_WALL_GROW_S, walls, sacs };
+    this._emit('swarm:hiveRoom', { wave, walls: walls.length, sacs: sacs.size });
+  },
+
+  /**
+   * One breath of the hive. Walls grow shut on the cadence (each ring closer in, its gap
+   * turned — a corridor that never lines up with the last); sacs pulse births out of the
+   * wave's own reserve and drip acid; a dead sac bursts into one last pool.
+   */
+  _hiveTick(state, run) {
+    const hive = this._hive;
+    if (!hive) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    if (hive.ring < HIVE_WALL_RINGS && now >= hive.nextGrowAt) {
+      const rng = mulberry32((hiveStreamSeed(run && run.seed || 1, hive.wave) ^ (hive.ring * 0x9e3779b9)) >>> 0);
+      const anchor = playerAnchor(state);
+      let added = 0;
+      for (const spot of hiveWallRing({ anchor, ring: hive.ring, rng })) {
+        const id = this._spawnHiveRock(spot.x, spot.z, spot.radius, rng, now,
+          { [HIVE_WALL_TAG]: true, hiveRing: hive.ring });
+        if (id != null) { hive.walls.push(id); this._ids.push(id); added++; }
+      }
+      hive.nextGrowAt = now + HIVE_WALL_GROW_S;
+      this._emit('swarm:hiveGrowth', { wave: hive.wave, ring: hive.ring, added });
+      this._emit('alert', {
+        key: 'swarm-hive-growth',
+        sev: 'warn',
+        text: 'THE WALLS ARE GROWING SHUT — mind the open lane',
+        ttl: 4,
+      });
+      hive.ring += 1;
+    }
+    const brood = this._brood;
+    for (const [id, sac] of hive.sacs) {
+      const entity = state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(id) : null;
+      if (!entity || entity.alive === false) {
+        // The burst: a sac does not die quietly — its pool stays where it fell, and the
+        // brood it was feeding answer the Hive node's death through the authored grief
+        // loop (BROOD_CASCADE_EVENTS names this receipt a cascade seam).
+        if (brood) {
+          brood.hivePool(sac.x, sac.z, 6);
+          brood.hiveSacFell(sac.x, sac.z);
+        }
+        this._emit('swarm:hiveSacKilled', { wave: hive.wave, sacId: id });
+        hive.sacs.delete(id);
+        continue;
+      }
+      // The sac rides its live body — it may have been slung since the berth stamped it.
+      if (entity.pos && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) {
+        sac.x = entity.pos.x;
+        sac.z = entity.pos.z;
+      }
+      if (!sac.spent && brood && now >= sac.nextBirthAt) {
+        const born = brood.sacRelease(sac.x, sac.z, HIVE_SAC_BIRTH_N);
+        if (born > 0) {
+          sac.nextBirthAt = now + HIVE_SAC_PERIOD_S;
+          this._emit('swarm:hiveBirth', { wave: hive.wave, sacId: id, count: born });
+        } else {
+          // The reserve is dry — the sac quiets into ordinary wall meat.
+          sac.spent = true;
+        }
+      }
+      if (brood && now >= sac.nextPoolAt) {
+        brood.hivePool(sac.x, sac.z);
+        sac.nextPoolAt = now + HIVE_POOL_PERIOD_S;
+      }
+    }
+  },
+
+  /** Living geometry dies the room's way: a despawn deadline on every id it grew. */
+  _hiveRelease(reason) {
+    const hive = this._hive;
+    this._hive = null;
+    if (!hive) return;
+    const state = this.state;
+    const ids = (hive.walls || []).concat(hive.sacs ? [...hive.sacs.keys()] : []);
+    if (state && state.entities && typeof state.entities.get === 'function') {
+      const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+      for (const id of ids) {
+        const entity = state.entities.get(id);
+        if (!entity || !entity.data) continue;
+        entity.data.swarmHiveReleased = true;
+        entity.data.despawnAt = Math.min(
+          Number.isFinite(entity.data.despawnAt) ? entity.data.despawnAt : Infinity,
+          now + 6,
+        );
+      }
+    }
+    void reason;
+  },
+
+  /**
+   * The room-law receipt doubles as this voice's seam. The wave opener names the bodies and the
+   * objective; it never names the space — so a new phase installs its authored `note` verbatim,
+   * once per distinct room. A re-plan of the same phase is not a change and stays quiet, and an
+   * inert room has nothing to say at all. Mid-wave machinery is read back in update() off the
+   * receipt's own installedAtSim + toySpecs.
+   */
+  _onLawInstalled(payload) {
+    const run = liveSwarmRun(this.state);
+    if (!run || !payload || typeof payload !== 'object') return;
+    const phase = typeof payload.arenaPhase === 'string' ? payload.arenaPhase : '';
+    const note = typeof payload.note === 'string' ? payload.note : '';
+    const wave = Number.isInteger(payload.wave) ? payload.wave
+      : (Number.isInteger(run.wave) ? run.wave : 0);
+    const at = Number.isFinite(payload.installedAtSim) ? payload.installedAtSim
+      : (Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0);
+    const sources = [];
+    if (payload.arenaId === CINDER_ARENA_ID && LAW_MACHINERY_CINDER_PHASES.has(phase)) {
+      sources.push({ key: 'sluice', kind: 'sluice', toy: null });
+    }
+    const toys = Array.isArray(payload.toySpecs) ? payload.toySpecs : [];
+    for (const toy of toys) {
+      if (!toy || (toy.kind !== 'shutter' && toy.kind !== 'crusher')) continue;
+      sources.push({ key: `${toy.kind}:${toy.id != null ? toy.id : sources.length}`, kind: toy.kind, toy });
+    }
+    const law = { wave, arenaId: payload.arenaId || null, phase, note, at, sources, last: new Map(), told: new Set() };
+    this._law = law;
+    // The baseline is the phase each source holds at install: the install line already named
+    // the room, so the first tick never re-announces the state the room opened in.
+    for (const src of sources) law.last.set(src.key, lawPhaseOf(src, 0));
+    // survivalAnnounce already speaks the cryo note verbatim when it names north/south — that
+    // compass line IS this announce there; emitting again would be two voices on one fact.
+    const compassSpoken = payload.arenaId === CRYO_ARENA_ID && /\b(north|south)\b/.test(note);
+    const signature = `${law.arenaId}:${phase}:${note}`;
+    if (note && note !== LAW_NOTE_INERT && !compassSpoken && this._lawAnnounced !== signature) {
+      this._lawAnnounced = signature;
+      this._emit('swarmArena:lawPhase', { verb: 'install', wave, arenaId: law.arenaId, phase, note });
+      this._emit('alert', { key: `swarm-law-room-w${wave}`, sev: 'info', text: note, ttl: 5 });
+    }
+  },
+
+  /**
+   * Mid-wave law flips. The room owner drives its machinery on pure clocks keyed to the
+   * install's simTime — recompute the same clocks and name each state ONCE per wave, so the
+   * room's surge is a named event the first time it happens, not a metronome line forever.
+   */
+  _lawPhaseTick(state) {
+    const law = this._law;
+    if (!law || law.sources.length === 0) return;
+    if (Number.isInteger(state && state.run && state.run.wave) && state.run.wave !== law.wave) {
+      this._law = null;
+      return;
+    }
+    const now = Number.isFinite(state && state.simTime) ? state.simTime : 0;
+    const elapsed = now - law.at;
+    if (!Number.isFinite(elapsed) || elapsed < 0) return;
+    for (const src of law.sources) {
+      const phase = lawPhaseOf(src, elapsed);
+      if (!phase || law.last.get(src.key) === phase) continue;
+      law.last.set(src.key, phase);
+      const toldKey = `${src.kind}:${phase}`;
+      if (law.told.has(toldKey)) continue;
+      law.told.add(toldKey);
+      const line = LAW_PHASE_VOICE[src.kind] && LAW_PHASE_VOICE[src.kind][phase];
+      if (!line) continue;
+      this._emit('swarmArena:lawPhase', {
+        verb: 'phase', wave: law.wave, arenaId: law.arenaId, phase, source: src.kind,
+      });
+      this._emit('alert', {
+        key: `swarm-law-w${law.wave}-${toldKey}`,
+        sev: phase === 'calm' ? 'info' : 'warn',
+        text: line,
+        ttl: 4,
+      });
+    }
+  },
+
+  _release(reason) {
+    this._lessonRockId = null;
+    this._wallWave = 0;
+    this._restoreCapacity();
+    this._releaseWells();
+    this._releaseOpticIds();
+    const state = this.state;
+    const ids = this._ids || [];
+    this._ids = [];
+    if (!state || !state.entities || typeof state.entities.get !== 'function' || ids.length === 0) {
+      return;
+    }
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    let released = 0;
+    for (const id of ids) {
+      const entity = state.entities.get(id);
+      if (!entity || !entity.data) continue;
+      entity.data.despawnAt = Math.min(
+        Number.isFinite(entity.data.despawnAt) ? entity.data.despawnAt : Infinity,
+        now + SWARM_DEBRIS_RELEASE_S,
+      );
+      released++;
+    }
+    if (released > 0) this._emit('swarmArena:released', { reason, released });
+  },
+
+  _emit(event, payload) {
+    if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(event, payload);
+  },
+};

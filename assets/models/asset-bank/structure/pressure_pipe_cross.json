@@ -1,0 +1,206 @@
+{
+  "assetId": "pressure_pipe_cross",
+  "category": "fluid",
+  "description": "pressure pipe cross",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_structure.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_FLOW_0",
+      "position": [
+        -2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_FLOW_1",
+      "position": [
+        2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_FLOW_2",
+      "position": [
+        0.0,
+        0.0,
+        -2.0
+      ],
+      "forward": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "up": [
+        0.0,
+        0.9999999403953552,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_FLOW_3",
+      "position": [
+        0.0,
+        0.0,
+        2.0
+      ],
+      "forward": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "up": [
+        0.0,
+        0.9999999403953552,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          4.0,
+          0.74,
+          0.74
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0,
+          1.0
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "size": [
+          2.0,
+          0.74,
+          0.74
+        ],
+        "rotation": [
+          0.0,
+          0.7071067690849304,
+          -0.0,
+          0.7071067690849304
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "size": [
+          2.0,
+          0.74,
+          0.74
+        ],
+        "rotation": [
+          -0.0,
+          -0.7071067690849304,
+          -0.0,
+          0.7071067690849304
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "modular",
+    "reusable",
+    "Forge",
+    "attachment-metadata",
+    "library-only"
+  ],
+  "bounds": {
+    "min": [
+      -2.099721670150757,
+      -0.5572904944419861,
+      -2.094956874847412
+    ],
+    "max": [
+      2.09761905670166,
+      0.5550000071525574,
+      2.094956874847412
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "pressure_pipe_cross_lod0.glb",
+      "triangles": 3316,
+      "draws": 3,
+      "bytes": 363032,
+      "method": "source",
+      "sha256": "7fa5d767dcbe5a45893192b97e64895991de4c3010078c62671ba1682ecd8e28"
+    },
+    {
+      "level": 1,
+      "file": "pressure_pipe_cross_lod1.glb",
+      "triangles": 1326,
+      "draws": 3,
+      "bytes": 259416,
+      "method": "Forge-decimation",
+      "sha256": "0dc4b0ce5691940521ebfdcc89ad3808413f8fa9ff2d0c3315511a90eb174b70"
+    },
+    {
+      "level": 2,
+      "file": "pressure_pipe_cross_lod2.glb",
+      "triangles": 480,
+      "draws": 3,
+      "bytes": 202828,
+      "method": "Forge-decimation",
+      "sha256": "c3d9ae4ab43159f29808b37a76fc661e9e8ddeccbdfb50ee39b56e109e6fa066"
+    }
+  ]
+}

@@ -1,0 +1,400 @@
+// Shader link failures, reported without three's per-program log reads.
+//
+// With renderer.debug.checkShaderErrors on (three's default), the first use of every program reads
+// getProgramInfoLog and both shaders' getShaderInfoLog. Each read is a synchronous round trip to the
+// GPU process. On the owner's Intel/ANGLE laptop those reads were ~1.3 s of main thread between Launch
+// and the first seconds of flight (2026-09-13 launch profile), and they run again for every program
+// first drawn in flight. The ship preview context already turns the check off (shipPreviewMount.js).
+//
+// The failure report is worth keeping, so this keeps it: just before a program's first use it reads
+// LINK_STATUS, which Chromium answers from the same program info that first use fetches anyway, and
+// only a program that failed to link pays for the logs. renderer.js skips this under ?shaderChecks=1
+// so shader work still gets three's full report with the failing source lines.
+
+const guardedPrograms = new WeakSet();
+
+export function installShaderLinkReporter(renderer, options = {}) {
+  const gl = renderer && typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+  if (!gl || !renderer.debug || !renderer.info) return false;
+  const report = typeof options.report === 'function' ? options.report : reportLinkFailure;
+  renderer.debug.checkShaderErrors = false;
+  // KHR_parallel_shader_compile lets a program reach first use while its driver link is still in
+  // flight. Querying LINK_STATUS there blocks the main thread until that link finishes — measured
+  // ~8 s of serialized waits across the opening programs on Intel/ANGLE (PQ-033.02 boot profile).
+  // COMPLETION_STATUS_KHR answers "has the link finished" without the wait: while it reports false
+  // we keep the guard installed and let three's own first-use introspection do the blocking the
+  // draw needs anyway. Once it reports true the link has settled — LINK_STATUS is then a cached
+  // read, so the failure report still runs exactly once per program without paying the link's
+  // wall time inside a redundant query.
+  const context = {
+    gl,
+    report,
+    parallelCompile: typeof gl.getExtension === 'function'
+      ? gl.getExtension('KHR_parallel_shader_compile')
+      : null,
+    generation: 0,
+    programGenerations: new WeakMap(),
+    // While a program reports still-linking its draw path pays ZERO further GPU-process queries:
+    // the first 'false' arms one shared settle poll (a timer off the draw path), and binds answer
+    // 'unsettled' from the armed set alone. Previously every drawable binding a pending program
+    // re-issued a COMPLETION_STATUS round trip — ~1.7 s of serialized IPC inside a single
+    // presented frame on the 2026-10-02 frame-solid profile.
+    settleArmed: new Set(),
+    settleArmedAt: new WeakMap(),
+    settlePollTimer: null,
+    ledger: createLinkBlockLedger(),
+    // Programs three has created but never used (no first-use introspection yet). A program
+    // acquired behind the loading veil but first drawn in flight pays its whole driver link
+    // inside a measured frame (oc1v6: a 278 ms Forge_ore_barge_paint link at +9.45 s on a
+    // wreck admitted 0.5 s after the first picture). drainUnused() lets the
+    // veil force those first uses while it still owns the picture.
+    unused: new Set(),
+    programs: renderer.info.programs,
+  };
+  // Where the main thread waited on a driver link inside a draw. Read by the launch probes
+  // (renderer.userData.spacefaceLinkBlocks) so a stall is named by program, time and stack.
+  if (!renderer.userData || typeof renderer.userData !== 'object') renderer.userData = {};
+  renderer.userData.spacefaceLinkBlocks = context.ledger;
+  renderer.userData.spacefaceUnusedPrograms = {
+    get size() { return pruneUnused(context); },
+    drain: (max = 1) => drainUnused(context, max),
+    // First-use the listed programs now (still-unused, settled ones only); returns how many linked.
+    linkNow: (programs) => linkUnusedNow(context, programs),
+  };
+  guardProgramList(renderer, context);
+  const canvas = renderer.domElement;
+  if (canvas && typeof canvas.addEventListener === 'function') {
+    canvas.addEventListener('webglcontextlost', () => {
+      context.generation += 1;
+      context.unused.clear();
+      // Handles die with the context: stop the poll instead of querying dead programs.
+      context.settleArmed.clear();
+      if (context.settlePollTimer != null) {
+        clearTimeout(context.settlePollTimer);
+        context.settlePollTimer = null;
+      }
+    }, false);
+    // three rebuilds its program list when the context is restored; its own listener runs first.
+    canvas.addEventListener('webglcontextrestored', () => guardProgramList(renderer, context), false);
+  }
+  return true;
+}
+
+// renderer.info.programs is three's program cache list (WebGLPrograms pushes every new program).
+function guardProgramList(renderer, context) {
+  const programs = renderer.info && renderer.info.programs;
+  // Context restoration replaces three's cache array; pruning must follow the current owner.
+  context.programs = programs;
+  if (!Array.isArray(programs) || Object.prototype.hasOwnProperty.call(programs, 'push')) return;
+  for (const program of programs) guardFirstUse(program, context);
+  const push = Array.prototype.push;
+  Object.defineProperty(programs, 'push', {
+    configurable: true,
+    enumerable: false,
+    writable: true,
+    value(...items) {
+      for (const item of items) guardFirstUse(item, context);
+      return push.apply(this, items);
+    },
+  });
+}
+
+// three's WebGLProgram runs its first-use step (uniform and attribute discovery) from whichever of
+// getUniforms / getAttributes is called first. Once the driver link has settled we check the result
+// exactly once, then hand three its own accessors back so later draws pay nothing.
+function guardFirstUse(program, context) {
+  if (!program || guardedPrograms.has(program)) return;
+  if (typeof program.getUniforms !== 'function' || typeof program.getAttributes !== 'function') return;
+  guardedPrograms.add(program);
+  context.programGenerations.set(program, context.generation);
+  context.unused.add(program);
+  const getUniforms = program.getUniforms;
+  const getAttributes = program.getAttributes;
+  const beforeFirstUse = (self) => {
+    context.unused.delete(self);
+    if (!programSettled(self, context)) return false;
+    self.getUniforms = getUniforms;
+    self.getAttributes = getAttributes;
+    checkLinkStatus(self, context);
+    return true;
+  };
+  program.getUniforms = function getUniformsAfterLinkCheck() {
+    if (beforeFirstUse(this)) return getUniforms.call(this);
+    return timedBlockingFirstUse(context.ledger, this, getUniforms);
+  };
+  program.getAttributes = function getAttributesAfterLinkCheck() {
+    if (beforeFirstUse(this)) return getAttributes.call(this);
+    return timedBlockingFirstUse(context.ledger, this, getAttributes);
+  };
+}
+
+// Drop programs three released (spliced out of info.programs) or that died with a context.
+function pruneUnused(context) {
+  const list = Array.isArray(context.programs) ? context.programs : null;
+  for (const program of context.unused) {
+    if (!program.program || context.programGenerations.get(program) !== context.generation
+        || (list && !list.includes(program))) {
+      context.unused.delete(program);
+    }
+  }
+  return context.unused.size;
+}
+
+// Admit up to `max` unused programs to first use. KHR links must settle before uniform discovery:
+// a first-use query on an incomplete link blocks the loading presenter until the driver finishes.
+// Incomplete programs stay pending under the veil's existing deadline and rotate behind siblings.
+function drainUnused(context, max) {
+  if (pruneUnused(context) === 0) return 0;
+  // Bound probes as well as admissions. Iterating this Set avoids a per-frame snapshot allocation;
+  // limiting attempts to its starting size also prevents revisiting a rotated pending program.
+  let left = Math.min(context.unused.size, Math.max(0, Math.floor(Number(max) || 0)));
+  try {
+    if (typeof context.gl.isContextLost === 'function' && context.gl.isContextLost()) {
+      context.unused.clear();
+      return 0;
+    }
+  } catch (_) { return 0; }
+  for (const program of context.unused) {
+    if (left <= 0) break;
+    left -= 1;
+    if (!programSettled(program, context)) {
+      context.unused.delete(program);
+      context.unused.add(program);
+      continue;
+    }
+    context.unused.delete(program);
+    try { program.getUniforms(); } catch (_) { /* a failed discovery reports through the draw path */ }
+  }
+  return context.unused.size;
+}
+
+function linkUnusedNow(context, programs) {
+  if (!programs || pruneUnused(context) === 0) return 0;
+  let linked = 0;
+  for (const program of programs) {
+    if (!program || !context.unused.has(program) || !programSettled(program, context)) continue;
+    context.unused.delete(program);
+    try { program.getUniforms(); linked += 1; } catch (_) { /* reported through the draw path */ }
+  }
+  return linked;
+}
+
+// Wreck/packaged-body admission (oc1v28 smoke29): on the serial-link route (no
+// KHR_parallel_shader_compile) compile() only creates the program; the driver link is paid at the
+// first uniform query, i.e. inside the first draw. A wreck admitted while the veil held but left
+// for the veil's one-per-frame drain could miss the drain and link on glass after lift (2057 ms
+// Forge_bastion_gunmetal at +2.05 s). While the picture is still hidden (loading or veil held),
+// link every compiled variant of the detached subtree's materials (pooled/instanced AND plain)
+// before it is published, so the body only mounts once its programs are linked.
+export function linkObjectProgramsWhileHidden(renderer, root) {
+  const data = renderer && renderer.userData;
+  const pool = data && data.spacefaceUnusedPrograms;
+  const hidden = data && data.spacefaceHiddenLinkWindow;
+  if (!pool || typeof pool.linkNow !== 'function' || typeof hidden !== 'function') return 0;
+  let open = false;
+  try { open = hidden() === true; } catch (_) { open = false; }
+  if (!open || !root || typeof root.traverse !== 'function') return 0;
+  const props = renderer.properties;
+  if (!props || typeof props.get !== 'function') return 0;
+  const programs = new Set();
+  root.traverse((node) => {
+    const mats = Array.isArray(node.material) ? node.material : (node.material ? [node.material] : []);
+    for (const material of mats) {
+      let rec = null;
+      try { rec = props.get(material); } catch (_) { rec = null; }
+      if (!rec) continue;
+      if (rec.currentProgram) programs.add(rec.currentProgram);
+      if (rec.programs && typeof rec.programs.values === 'function') {
+        for (const program of rec.programs.values()) programs.add(program);
+      }
+    }
+  });
+  return pool.linkNow(programs);
+}
+
+// COMPLETION_STATUS_KHR is the non-blocking readiness read: false while the link is in flight,
+// true once it has finished whether it succeeded or not. Without the extension the link is already
+// synchronous, so the program is always treated as settled and the check behaves exactly as before.
+// The read is non-blocking for the driver but still a GPU-process IPC, so the first 'false' arms
+// a shared settle poll and later binds answer unsettled for free until the poll sees the link
+// finish — draw calls never re-query a pending program.
+function programSettled(program, context) {
+  const { gl, parallelCompile } = context;
+  if (!parallelCompile || !program.program) return true;
+  if (context.settleArmed.has(program)) return false;
+  let settled = true;
+  try {
+    settled = gl.getProgramParameter(program.program, parallelCompile.COMPLETION_STATUS_KHR) !== false;
+  } catch (_) {
+    // A failed query answers as settled, as before — the program then pays one LINK_STATUS read.
+  }
+  if (!settled) armSettlePoll(program, context);
+  return settled;
+}
+
+// One timer walks every armed program once per interval — the whole pending set costs one
+// query per program per ~16 ms spread across wall time, instead of one per draw per frame.
+const SETTLE_POLL_MS = 16;
+// A driver wedge could leave a link pending forever; stop polling (the next bind pays one
+// query and re-arms) rather than hold a timer for the session. 20 s matches the readiness
+// deadline the pipeline waits already use.
+const SETTLE_POLL_MAX_MS = 20_000;
+
+function armSettlePoll(program, context) {
+  if (!context.settleArmed.has(program)) {
+    context.settleArmed.add(program);
+    context.settleArmedAt.set(program, Date.now());
+  }
+  if (context.settlePollTimer != null) return;
+  const tick = () => {
+    context.settlePollTimer = null;
+    const gl = context.gl;
+    const parallelCompile = context.parallelCompile;
+    for (const pending of [...context.settleArmed]) {
+      if (!pending.program
+        || context.programGenerations.get(pending) !== context.generation
+        || Date.now() - (context.settleArmedAt.get(pending) || 0) > SETTLE_POLL_MAX_MS) {
+        context.settleArmed.delete(pending);
+        continue;
+      }
+      let settled = true;
+      try {
+        settled = gl.getProgramParameter(pending.program, parallelCompile.COMPLETION_STATUS_KHR) !== false;
+      } catch (_) { /* keep polling next interval */ settled = false; }
+      if (settled) context.settleArmed.delete(pending);
+    }
+    if (context.settleArmed.size > 0) {
+      context.settlePollTimer = setTimeout(tick, SETTLE_POLL_MS);
+      if (context.settlePollTimer && typeof context.settlePollTimer.unref === 'function') {
+        context.settlePollTimer.unref();
+      }
+    }
+  };
+  context.settlePollTimer = setTimeout(tick, SETTLE_POLL_MS);
+  if (context.settlePollTimer && typeof context.settlePollTimer.unref === 'function') {
+    context.settlePollTimer.unref();
+  }
+}
+
+// ── The link-block ledger ────────────────────────────────────────────────────────────────────────
+// A draw whose program is still linking falls through to three's own first-use introspection, which
+// waits for the driver: the main thread blocks inside the draw. The 2026-10-13 launch profile put 19 s
+// of a 61 s launch there (getProgramParameter under WebGLUniforms), and a CPU profile can only say
+// "somewhere in render". This records each such wait — milliseconds, program name, a short stack for
+// the long ones — so the next change is judged by the stall it removes, on any host load.
+const LINK_BLOCK_STACK_MS = 8;
+const LINK_BLOCK_WORST = 24;
+
+export function createLinkBlockLedger() {
+  return {
+    // Every draw-path first-use call on a still-unsettled program (most cost nothing: three caches
+    // the discovery after the first). `waits` counts the ones that really blocked (>= 1 ms) and
+    // `programs` the distinct programs that did.
+    count: 0,
+    waits: 0,
+    programs: 0,
+    seen: new WeakSet(),
+    totalMs: 0,
+    maxMs: 0,
+    // The N longest waits, longest first: { ms, name, atMs, stack }.
+    worst: [],
+    // name -> { count, totalMs }: which shader families pay.
+    byName: Object.create(null),
+    reset() {
+      this.count = 0; this.waits = 0; this.programs = 0; this.seen = new WeakSet();
+      this.totalMs = 0; this.maxMs = 0; this.worst.length = 0;
+      for (const key of Object.keys(this.byName)) delete this.byName[key];
+    },
+  };
+}
+
+function nowMs() {
+  return typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+}
+
+function recordLinkBlock(ledger, program, ms) {
+  if (!ledger) return;
+  ledger.count += 1;
+  ledger.totalMs += ms;
+  if (ms > ledger.maxMs) ledger.maxMs = ms;
+  const name = String(program.name || program.type || 'program');
+  const family = ledger.byName[name] || (ledger.byName[name] = { count: 0, waits: 0, totalMs: 0 });
+  family.count += 1;
+  family.totalMs += ms;
+  if (ms >= 1) {
+    ledger.waits += 1;
+    family.waits += 1;
+    if (!ledger.seen.has(program)) {
+      ledger.seen.add(program);
+      ledger.programs += 1;
+    }
+  }
+  const worst = ledger.worst;
+  if (worst.length >= LINK_BLOCK_WORST && ms <= worst[worst.length - 1].ms) return;
+  let stack = null;
+  if (ms >= LINK_BLOCK_STACK_MS) {
+    try {
+      stack = String(new Error().stack || '').split(/\r?\n/).slice(2, 14).map((line) => line.trim()).join(' | ');
+    } catch (_) { stack = null; }
+  }
+  worst.push({ ms, name, atMs: nowMs(), stack,
+    programId: ms >= LINK_BLOCK_STACK_MS && Number.isFinite(program.id) ? program.id : null,
+    cacheKey: ms >= LINK_BLOCK_STACK_MS && typeof program.cacheKey === 'string' ? program.cacheKey.slice(0, 1536) : null,
+  });
+  worst.sort((a, b) => b.ms - a.ms);
+  if (worst.length > LINK_BLOCK_WORST) worst.length = LINK_BLOCK_WORST;
+}
+
+function timedBlockingFirstUse(ledger, program, firstUse) {
+  const started = nowMs();
+  try {
+    return firstUse.call(program);
+  } finally {
+    recordLinkBlock(ledger, program, nowMs() - started);
+  }
+}
+
+function checkLinkStatus(program, context) {
+  const { gl, report } = context;
+  if (!program.program) return;
+  let linked = true;
+  try {
+    if (typeof gl.isContextLost === 'function' && gl.isContextLost()) return;
+    // A handle orphaned by context loss (the new context recreates it lazily on the
+    // next acquire) reads as GL_INVALID_VALUE on ANGLE when queried. isProgram()
+    // answers false for that dead handle without raising — same check bloom.js's
+    // readiness wait uses for handles released under it. The call is a synchronous
+    // round trip to the GPU process, so it only runs for a wrapper that could carry
+    // a stale handle — one guarded before the last context loss.
+    if (context.programGenerations.get(program) !== context.generation
+        && typeof gl.isProgram === 'function' && gl.isProgram(program.program) === false) return;
+    linked = gl.getProgramParameter(program.program, gl.LINK_STATUS) !== false;
+  } catch (_) {
+    return;
+  }
+  if (!linked) report(program, gl);
+}
+
+export function reportLinkFailure(program, gl) {
+  const read = (readLog) => {
+    try { return String(readLog() || '').trim(); } catch (_) { return ''; }
+  };
+  const programLog = read(() => gl.getProgramInfoLog(program.program));
+  const vertexLog = read(() => gl.getShaderInfoLog(program.vertexShader));
+  const fragmentLog = read(() => gl.getShaderInfoLog(program.fragmentShader));
+  program.diagnostics = {
+    runnable: false,
+    programLog,
+    vertexShader: { log: vertexLog, prefix: '' },
+    fragmentShader: { log: fragmentLog, prefix: '' },
+  };
+  console.error(
+    'THREE.WebGLProgram: Shader Error - program failed to link\n\n'
+      + `Material Name: ${program.name || ''}\n`
+      + `Material Type: ${program.type || ''}\n\n`
+      + `Program Info Log: ${programLog}\n`
+      + `Vertex Shader Log: ${vertexLog}\n`
+      + `Fragment Shader Log: ${fragmentLog}\n\n`
+      + 'Reload with ?shaderChecks=1 for three\'s full report with the failing source lines.',
+  );
+}

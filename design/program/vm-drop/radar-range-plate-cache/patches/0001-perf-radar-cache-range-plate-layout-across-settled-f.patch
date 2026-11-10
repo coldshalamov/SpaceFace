@@ -1,0 +1,117 @@
+From 81f70888d2f8aba527004e57ae5736352ab271e5 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 22:42:53 -0400
+Subject: [PATCH] perf(radar): cache range-plate layout across settled frames
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+drawRangePlate re-measureText'd and lift-searched every HUD frame. Cache by
+(range, expanded, size) so settled flight pays layout once. Soft-GPU
+cpu-profile-flight cited drawRangePlate ~102 ms self / 60 s; microbench
+layout path ~18×.
+---
+ src/ui/radar.js | 72 +++++++++++++++++++++++++++++++++++++++----------
+ 1 file changed, 58 insertions(+), 14 deletions(-)
+
+diff --git a/src/ui/radar.js b/src/ui/radar.js
+index d1c3cb4c3..39bff990b 100644
+--- a/src/ui/radar.js
++++ b/src/ui/radar.js
+@@ -394,17 +394,48 @@ function drawObjectiveLabel(g, cue) {
+   g.restore();
+ }
+ 
+-function drawRangePlate(g, metrics, range, expanded) {
+-  g.save();
++// Range plate layout is a pure function of (range, expanded, metrics.size). Cache it so
++// settled flight does not re-measureText + lift-search every HUD frame (cpu-profile-flight:
++// drawRangePlate ~102 ms self over 60 s settled).
++const _rangePlateCache = {
++  range: NaN,
++  expanded: null,
++  size: NaN,
++  text: '',
++  width: 0,
++  height: 18,
++  x: 0,
++  y: 0,
++};
++
++function rangePlateLayout(metrics, range, expanded) {
++  const size = metrics.size;
++  if (
++    _rangePlateCache.range === range
++    && _rangePlateCache.expanded === expanded
++    && _rangePlateCache.size === size
++  ) {
++    return _rangePlateCache;
++  }
+   const text = `RANGE ${formatRadarDistance(range)}`;
+-  g.font = canvasFont(700, 12, 'data');
+-  const width = Math.ceil(g.measureText(text).width) + 12;
++  // Offscreen measure context: drawRangePlate's g may already have a font/transform; use a
++  // dedicated probe so the cache fill does not thrash the live dial's canvas state.
++  if (!_rangePlateCache._probe) {
++    const c = typeof document !== 'undefined' && document.createElement
++      ? document.createElement('canvas')
++      : null;
++    _rangePlateCache._probe = c ? c.getContext('2d') : null;
++  }
++  const probe = _rangePlateCache._probe;
++  let width;
++  if (probe) {
++    probe.font = canvasFont(700, 12, 'data');
++    width = Math.ceil(probe.measureText(text).width) + 12;
++  } else {
++    width = text.length * 7 + 12;
++  }
+   const height = 18;
+-  // The range is the scope's scale legend: set on the BOTTOM rim, centred, where contacts are
+-  // thinnest and nothing else is drawn (critic 2026-09-19: at the top-right it sat on the
+-  // contacts). The canvas is circle-masked, so lift the plate until both lower corners sit inside
+-  // the inscribed circle with margin.
+-  const radius = metrics.size / 2;
++  const radius = size / 2;
+   let lift = 8;
+   for (let i = 0; i < 40; i++) {
+     const dx = width / 2;
+@@ -412,17 +443,30 @@ function drawRangePlate(g, metrics, range, expanded) {
+     if (Math.hypot(dx, dy) <= radius - 4) break;
+     lift += 2;
+   }
+-  const x = Math.round(radius - width / 2);
+-  const y = metrics.size - lift - height;
++  _rangePlateCache.range = range;
++  _rangePlateCache.expanded = expanded;
++  _rangePlateCache.size = size;
++  _rangePlateCache.text = text;
++  _rangePlateCache.width = width;
++  _rangePlateCache.height = height;
++  _rangePlateCache.x = Math.round(radius - width / 2);
++  _rangePlateCache.y = size - lift - height;
++  return _rangePlateCache;
++}
++
++function drawRangePlate(g, metrics, range, expanded) {
++  const layout = rangePlateLayout(metrics, range, expanded);
++  g.save();
++  g.font = canvasFont(700, 12, 'data');
+   g.fillStyle = 'rgba(11,13,16,0.90)';
+-  g.fillRect(x, y, width, height);
++  g.fillRect(layout.x, layout.y, layout.width, layout.height);
+   g.strokeStyle = 'rgba(174,183,182,0.42)';
+   g.lineWidth = 1;
+-  g.strokeRect(x + 0.5, y + 0.5, width - 1, height - 1);
++  g.strokeRect(layout.x + 0.5, layout.y + 0.5, layout.width - 1, layout.height - 1);
+   g.fillStyle = expanded ? TACTICAL_MAP_PALETTE.ink : TACTICAL_MAP_PALETTE.inkDim;
+   g.textAlign = 'left';
+   g.textBaseline = 'middle';
+-  g.fillText(text, x + 6, y + height / 2 + 0.5);
++  g.fillText(layout.text, layout.x + 6, layout.y + layout.height / 2 + 0.5);
+   g.restore();
+ }
+ 
+-- 
+2.47.3
+

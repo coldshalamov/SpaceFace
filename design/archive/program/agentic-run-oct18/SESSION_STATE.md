@@ -1,0 +1,182 @@
+# SESSION STATE — agentic run oct18 (controller checkpoint, updated live)
+
+Goal: ~50-60 units, ~2:1 build:inference, all reviewed, commit+push per unit, ≥5 agents, end on 3 successive zero-material-finding review waves.
+
+## Landed units (7)
+- d2460fd537e plan+bookkeeping · 754b7e3a2f0 REV-A fix (R-cc46e17,R-48e411f closed) · e82fb7a490a SWP-TXN mission:expired settle · 28f33a2cb4c SWP-BASE pq020 repin + review row R-e82fb7a · 4c0814398f5 INF-01 The Second Bite (recorded inference-memory.json)
+
+## Pending landing queue (worker done, diff uncommitted)
+- D228: test/ceres-five-minute-acceptance.test.mjs — commit + DELETE D228 row in DEMO_READINESS §6 (~line 245). Ledger note + review claim in worker report.
+- D222: scripts/lib/uiBudgets.mjs, scripts/check-ui-budgets.mjs, scripts/capture-ui-matrix.mjs, test/ui-budgets.test.mjs, test/ui-frame-references/source-manifest.json — mechanism landed; UPDATE D222 row (don't delete): "mechanism landed, needs headed re-mint `node scripts/capture-ui-matrix.mjs --headed --mode=default --viewport=1920x1080 --budgets-out=test/ui-frame-references/budgets.json`".
+
+## In-flight internal subagents
+- 2e61731d REV-B (asteroid reviews + D229 read-only diagnosis; GPU token)
+- c01cef68 D213 fodderCohort · e78d7bfe D224 allowances · 7d4c06c2 SWP-SG02 contact-budget restore · a34e670b INF-02 npc-life · 57551a34 C5 L-EAR · 73baee6f done · caf26ed2 done · c31fe211 done · 73e074ae done · 85642453 done · 555da4f9 done
+
+## In-flight external CLIs (background exec shells)
+- 203307 agy AUDIT-START (gemini-3.8-flash-high, mode plan) → out/audit-start.log
+- b41aa5 opencode deepseek-v4.1-flash-free AUDIT-CONTROLS → out/audit-controls.log
+- c4f337 opencode glm-5.3-flash-free AUDIT-HITCH → out/audit-hitch.log
+- 63449e claude opus-5 plan AUDIT-LOAD → out/audit-load.log
+- Dead: opencode-go/* (api_key_expired), cursor-agent (not installed). Working pool: opencode/*-free, agy, claude, kimi, grok(native grok-4.6), devin(swe-2-max).
+
+## Baseline reds (pre-existing)
+pq020-ceres-topology (FIXED 28f33a2cb4c), opening-mesh-defer (flaky/contention — passes standalone). Foreign-caused red inside ceres-five-minute: "Massline relatch…Reaver" — foreign orbitAssist/flightV3 work, owner = devin-parallel-c1.
+
+## Next dispatch priorities
+- Land D228+D222 commits → then INF-03..05, lane slices C1 L-MACHINE/C3 FIGHTWORLD/C4 LONGGAME, D191 leg, menus+audio audits (packets ready in packets/), remaining §1.8 workflows.
+- INFERENCE rotation: INF-02 (npc-life, in-flight). Next domains: combat readability, exploration/discovery, economy, aftermath, law, onboarding, world-memory, fauna, precursor, audio, death/recovery, racing/swarm, hauling, social, sector identity, ship identity.
+- Keep LANDED_REVIEW open rows ≤6 (currently 3: R-183df8f, R-0df2ec6, R-e82fb7a).
+- GPU/probe token: single holder at a time (REV-B has it).
+- Workers never commit; controller pathspec-commits after diff audit. Never touch dirty foreign files (src/render/**, mining/npcJobsRuntime/wingmen, flightFootage/footageVideoCodec, render-packages/**, flightV3.js, orbitAssist.js).
+
+## DELTA 2 (post ~commit 7adb385957a)
+- Landed: 4c0814398f5 INF-01 · 813eb23539c D228+D222mech · 4170217818b C3 pirate-yield · 7adb385957a D224+reviews
+- Open reviews: R-e82fb7a, R-4170217 (2). Deleted: R-183df8f, R-0df2ec6 (REV-B confirmed).
+- D229: diagnosis in DEMO_READINESS row — fix parked (bloom.js/renderer.js foreign).
+- In-flight internal: c01cef68 D213 · 7d4c06c2 SG02 · a34e670b INF-02 · 57551a34 L-EAR · 247f5d0e INF-03 explore · 922458a0 C1 L-MACHINE · b19a49bd D191 · 81166f65 INF-04 econ · e8818701 SWP-PERSIST
+- External: 203307 agy start · b41aa5 opencode controls · c4f337 opencode hitch · 63449e claude load · fd95bc kimi menus · 8b45ab grok audio
+
+## DELTA 3 (post 970bd998a01)
+- Landed: 463d4ecc477 INF-02 vesta · 875f919508c C5 audio · 911cbfaf845 C1 capdrain · 31061613786 SWP-SG02 · INF-03 chart-filing + matrix reconciliation 970bd998a01
+- Open reviews (5): R-e82fb7a R-4170217 R-911cbfa R-875f9195 R-31061613 — dispatch a review-clearing worker soon.
+- In-flight: c01cef68 D213 · b19a49bd D191 · 81166f65 INF-04 · e8818701 SWP-PERSIST · 5219de40 D225 · 7ac59a5d C4 · a1f05dea INF-05
+- Defects parked on foreign/GPU lanes: D130 hitch(quiet-host) D188 iPhone D198 startupGpuResidency D199 contrast-probe D226 GLB-LOD D229 bloom/renderer D227 sibling. Open-for-worker: D213(in-flight) D225(in-flight) D222/D224 narrowed-awaiting-rerun.
+- Remaining queues: C2 L-HAND, SWP-NAV/SWP-MENUS etc §1.8, INF-06+ (world-memory/fauna/precursor/death/racing/hauling/social/sector-id/ship-id), review-clearing, Group E final waves.
+
+## DELTA 4 (post 6e73db4f229)
+- Landed: 831285fc745 INF-04 fire-sale · INF-05 first-plate-bite · D191 bench+spec · 57f5eb9ce83 D225 release layer (row narrowed, package leg→lane) · SWP-PERSIST save races (+review row) · matrix reconciliation
+- Units landed ~24 across ~21 commits. Open reviews (6): R-e82fb7a R-4170217 R-911cbfa R-875f9195 R-31061613 R-SWP-PERSIST — REV-C clearing oldest two.
+- In-flight internal: c01cef68 D213 · 7ac59a5d C4 · af9f713b REV-C · 6aa47d87 SWP-NAV · 337a78bd INF-06 · d5ed13d8 SWP-START(confirm/gameOver softlocks) · b494045c SWP-AUDIO(F-AV-04 deliberate flag) · 23900a8f SWP-CONTROLS(keybind reserved set)
+- Externals: controls+hitch still streaming (deepseek+glm free); claude load DONE → 5 findings parked as D231→packets/SWP-LOAD-FINDINGS.md (render lane); agy start DONE → F-START-03/04 softlocks being fixed; grok audio DONE → F-AV-04 being fixed; kimi DEAD (oauth login required).
+- Next refills: INF-07 (world-memory in-flight=INF-06; next: fauna/precursor/death/racing/hauling/social/sector-id/ship-id/combat-readability/law/aftermath), SWP-ECON/WORLDGEN §1.8, C2 L-HAND, review-clearing continuing, Group E final waves when queue thins.
+
+## DELTA 5 (post dda6d9a80a2)
+- Landed: C4 rank-contracts 41c77d31307 · INF-06 wire-remembers c5994f4439a · SWP-CONTROLS 7e0672aabc4 · REV-C closed 2 rows + mutation test · D213 worker self-landed 75faa86dd35 + sibling D130 leg b398d9d036c
+- ~31 units / ~28 commits. Open reviews (7): R-911cbfa R-875f9195 R-31061613 persist-row R-75faa86 R-41c77d3 R-7e0672a → REV-D clearing.
+- In-flight: 6aa47d87 NAV · d5ed13d8 START · b494045c AUDIO · 1a5e45d5 C2 · dc57b282 INF-07 · ba2ed9c1 REV-D · 0f288754 INF-08 death · ext hitch2(9e2118 deepseek) menus(9d4575 glm)
+- Dead CLIs: kimi(oauth) cursor-agent(missing) opencode-go/*. Controls audit done (2 findings, both fixed). Foreign mid-session dirtied: uiRoot.js confirm.js gameOver.js mainMenu.js ui/input.js(settings owned by controls worker—landed).
+- Remaining queue: INF-09+ (fauna/precursor/racing/hauling/social/sector-id/ship-id/combat-readability/aftermath), SWP-ECON/SWP-WORLDGEN §1.8, C2 in-flight, D130 done?, Group E final 3-wave consensus.
+
+## DELTA 6 (post c62c0cf3b05)
+- Landed: SWP-START 3 softlocks 4f81681dfd1 · SWP-AUDIO 5 fixes 177bc67fe41 · C2 reelDelta tape c4075918a6a
+- ~35 units / ~33 commits pushed. Reviews ~9 open (clearing ongoing).
+- In-flight: 6aa47d87 NAV · dc57b282 INF-07 · ba2ed9c1 REV-D · 0f288754 INF-08 · 55bba5a5 INF-09 · ext hitch2/menus
+- Found-flagged: crucible-lab debug:refillPlayer heat.init stale test (pre-existing).
+
+## DELTA 7 (post da0b5533721)
+- Landed: INF-07 witnessed-price · INF-08 killers-mark 75dab5a5896 · REV-D double-drain fix +2 rows closed · SWP-NAV fuel-exploit+stale-route da0b5533721 · REV-E closed R-31061613/R-75faa86 · D232 filed (contact-give HEAD regression → worker 2240242d)
+- ~41 units / ~39 commits. Reviews ~7 open.
+- In-flight: 55bba5a5 INF-09 · 7cc254b1 SWP-ECON · 4f350757 INF-10 · c37c04b6 INF-11 · 51c9b2ab SWP-DOCK · 2240242d D232 · ext hitch2/menus
+- NEXT: keep cycling; remaining domains for INF-12+: fauna, precursor, racing/swarm, hauling, social, ship-id; SWP remaining workflows (missions, world-gen/spawn, economy done in-flight, nav done); Group E final consensus waves when defects thin.
+
+## DELTA 8 (post 42e03c388dc)
+- Landed: INF-09+11 pair 03d240d026a · SWP-ECON 4c50a4f · D233 filed · INF-10 dart telegraph 1b9cc22ed25 · D232 resolved (repin, D234 filed for compound-wall semantic)
+- ~47 units. In-flight: 5c6d1129 INF-12 hauling · 44ead87d SWP-SPAWN · c945b9b4 REV-F · d1aab84c INF-13 social · 0b1d0683 SWP-COMM · ext hitch2/menus
+- Ledger rows open: D130? D175 D188 D191 D198 D199 D222 D224 D225(narrowed) D226 D227 D229 D231 D233 D234. Reviews ~8.
+
+## DELTA 9 (post 24863c91a29)
+- REV-F confirmed R-41c77d3+R-7e0672a (deleted). SWP-COMM landed 8764f824186 +review row R-8764f824.
+- ~48 units. In-flight: 5c6d1129 INF-12 · 44ead87d SWP-SPAWN · d1aab84c INF-13 · 9dba5abd REV-G(R-4f81681,R-177bc67) · 540799b8 INF-14 · ext hitch2/menus
+- Open reviews: R-2583cb15 R-4f81681d R-177bc67 R-c4075918 R-6935dcc7 R-558e3355 R-5420e6d2 R-8764f824
+
+## DELTA 10 (post 1c554d9145a)
+- Landed: INF-14 swarm-star-asks 2c3b9f33aac (+record 1c554d9145a) · SWP-SPAWN 40652524541 · SWP-COMM 8764f824186 · REV-F deletions a99445a1fe7
+- ~50 units landed. In-flight: 5c6d1129 INF-12 · d1aab84c INF-13 · 9dba5abd REV-G(R-4f81681d,R-177bc67) · 88397cfb REV-H(R-2583cb15,R-c4075918) · ext hitch2/menus
+- Open reviews: R-4f81681d R-177bc67 R-c4075918 R-6935dcc7 R-558e3355 R-5420e6d2 R-8764f824 R-2c3b9f3 R-4065252 (R-2583cb15 under REV-H)
+
+## DELTA 11 (post 211ac1b6a29)
+- Landed: INF-13 blank-page be594dcd08df (+record+R row 211ac1b6a29) · REV-G/H clears 7125926c839 · D235 filed (tether out-of-update double-voice)
+- ~52 units. In-flight: 5c6d1129 INF-12 · b2bcaaea D235-fix · 588240cf INF-15 industry · ext hitch2/menus
+- Open reviews: R-6935dcc7 R-558e3355 R-5420e6d2 R-8764f824 R-2c3b9f3 R-4065252 R-be594dc
+
+## DELTA 12 (post b2a69961869)
+- Landed D235 deferred tether echo (commit + ledger+row). ~53 units.
+- In-flight: 5c6d1129 INF-12(long) · 588240cf INF-15 industry · 794a4d12 REV-I(R-6935dcc7,R-558e3355) · fdcd4813 SWP-CLAIM · ext hitch2/menus
+- Open reviews: R-6935dcc7 R-558e3355 R-5420e6d2 R-8764f824 R-2c3b9f3 R-4065252 R-be594dc R-9d2f1e4(D235 sha short)
+
+## DELTA 13 (post fa84b9ca62e)
+- Landed: INF-12 deadweight-tow 271dcf6571a · INF-15 fabrication scrap-run (sha in LANDED_REVIEW) · REV-I confirmed R-6935dcc7+R-558e3355 deleted · inference records
+- ~55 units. In-flight: fdcd4813 SWP-CLAIM · 820ea7d1 FIX-HITCH(reads audit-hitch2.log) · 9d6b7099 FIX-MENUS(reads audit-menus.log) · 58eba5ea INF-16 crew
+- Externals all done: controls/load/start/audio/hitch consumed; hitch2+menus reports on disk→fixers dispatched
+- Open reviews: R-5420e6d2 R-8764f824 R-2c3b9f3 R-4065252 R-be594dc R-a5bbb0c(D235) R-271dcf6 R-INF15
+
+## DELTA 14 (post 4c8d436cbf0)
+- Landed SWP-MENUS (galaxy Tab trap+3) 782b2a5e6ee-era · SWP-HITCH alloc batch (10 sys files). ~57 units.
+- In-flight: fdcd4813 SWP-CLAIM · 58eba5ea INF-16 crew · fab71150 REV-J(2 oldest)
+- Open reviews ~9. Remaining work: keep cycles until 3-successive-consensus; D222 re-mint, D224 shard, D225 pkg, D229, D234 parked.
+
+## DELTA 15 (post eafa5422537)
+- Landed SWP-DOCKQUEUE berth-latch-load (economy deserialize clears latches). ~60 units — target range met.
+- In-flight: 487b8caa INF-17 law/piracy · 760e6919 REV-K · 20598792 REV-L
+- Reviews ~11 open, clearing. Remaining: review-drain + 3-successive-consensus waves; parked D222/D224/D225/D229/D234.
+
+## DELTA 16 (post eec616933f9)
+- ~61 units landed. Review ledger DRAINED TO ZERO (REV-O confirmed last 5).
+- Consensus gate: W1 clean · W2 found 1 material (_deferredLineEcho boundary leak) → FIXED eec616933f9 · W3 clean (correction: the 90934e7a dispatch returned clean before this delta was written; "in-flight" here was stale)
+- Counter currently 0-of-3 successive (W2 reset it). Need 3 clean waves to close.
+
+## DELTA 17 (post fe82e52a981)
+- Landed leftover uncommitted fixes: m2-map-cutover script-scan regex (3da572b710e, bookkeeping) + siege-ark bind sector re-key (fe82e52a981 + R-fe82e52). Caught + fixed a missing syncEntitySectorMembership import the prior session's static-only verification missed.
+- Consensus gate: W1 clean · W2 defect->fixed · W3 clean (row R-8521e56 = its second-look, OPEN). Counter 1-of-3. W4 needs dispatch (prior dispatch 9a4adac7 lost with session).
+- Open reviews: R-8521e56 + R-fe82e52. Foreign lanes untouched: render/*, massline/orbitAssist/flightV3 cluster, towline glbs, mining/npcJobs/wingmen dirty sets.
+
+## DELTA 18 (post c8eec27a272)
+- Landed D226 (c8eec27a272): wreck-cathedral .blend re-author — collapse-decimated every uncovered LOD0 material island into its LOD1 twin in mesh-local space (surface-bounded; fly-through channel preserved). Parts GLB re-exported with asset/scene/root-node spacefaceAsset contracts; promoted via place release builder (18.71→5.10 MiB, ktx2 26/26, meshopt 97); wreck-cathedral render package rebuilt; pins/census/binding re-frozen to recomputed bytes. R-c8eec27 OPEN.
+- Root cause note: Blender 5.1 does not evaluate matrix_world for hide_viewport objects and exports identity node transforms for them — LOD work must use matrix_basis/mesh-local space and unhide for the export duration.
+- Consensus gate: W4 returned clean → counter 2-of-3. W4 nit (non-blocking): Quiet desk replies drop frontierRumorOffer card on Tethys — fix queued. W5 targets must include foreign orbit-assist commit 54c8669c4b8.
+- Open reviews: R-8521e56 + R-fe82e52 + R-c8eec27.
+
+## DELTA 19 (post ec52f355aac)
+- Landed W4 nit fix (38190040a08): Quiet desk Rumors replies now carry frontierRumorOffer(state, stationId) || null on both branches so a live rumor card is not cleared at Tethys; PQ-048 pins post-contact card persistence on both paths. 24/24 frontier-rumor tests green.
+- Re-pinned PQ-020 structural-cost digest (3f79c17dc8d): only the embedded worldSite.releaseSha256 moved (new release GLB); entity census/colliders/cathedral census unchanged — honest re-pin per the file's comment chain.
+- Closed D226 ledger row + board count to 8 open (ec52f355aac). Remaining ledger rows are all blocked/parked/foreign: D188 (handset), D191/D198/D130 (quiet-host attribution), D199/D225/D231 (graphics lane), D227 (foreign mining lane).
+- check:baseline now 17/17 green at HEAD.
+- Consensus gate: W5 dispatched (independent reviewer, scoped to fe82e52a981..HEAD + orbit-assist 54c8669c4b8 + open review rows). Counter stands at 2-of-3.
+
+## DELTA 20 (post 257eecf21)
+- W5 verdict: DEFECTS-FOUND. F1 (pre-existing since 2026-10-03, not caused by the reviewed range): test/pq018-wreck-cathedral.test.mjs counted all sector world_site_collision entities — Ceres second-measure's 5 shipbreak proxies broke the exact-7 assertion. Fixed 257eecf21 by scoping the census to worldSiteId === SITE_ID (9/9 green).
+- F2 (nit): R-c8eec27's claim wording overstated coverage — the re-author restored the ~69 shells decimation dropped outright; ~255 micro-islands ≤100 verts remain uncovered as in the shipped baseline (additive-only, no regression, near-invisible at LOD1 ranges). Close text records the honest scope.
+- W5 verified clean: c8eec27a272 (all pins recomputed; fly-through clearance proven by ray scan — zero LOD1-only blockers), 38190040a08 (Quiet card; no double-offer bug), 3f79c17dc8d (honest re-pin), 54c8669c4b8 (orbit assist deterministic + save-safe), R-8521e56 + R-fe82e52 claims.
+- Review ledger drained to ZERO again: R-8521e56, R-fe82e52, R-c8eec27 all CLOSED by W5.
+- Remote moved mid-review: f12a40d72 graphics overhaul (antigravity lane adopted + landed), 5f94495ca Sedna survey fix, 29a29a8e1 NOW close, cb1175057 gold-game plan — all integrated, 0/0 sync.
+- Consensus gate: counter RESET to 0-of-3 (W5 not clean). W6 must cover the new tail f12a40d72..HEAD + the F1 fix.
+
+## DELTA 21 (post 281154c4d)
+- W6 verdict: CLEAN — counter 1-of-3. f12a40d72 graphics overhaul verified (headlamps fallback attaches at radius*0.62, spill band reuses boundary slot, no ambient randomness, no undefined uniforms; GPU capture unavailable so verdict rests on source+non-GL suites). 5f94495ca Sedna survey fix verified (deterministic hash mark, exact charge, dedup gates). F1 fix 257eecf21 verified (farActorTable siteId field naming consistent, not a mismatch).
+- W6 nit fixed (281154c4d): surveyFix record is runtime-only while its bearing survives as the nav waypoint — post-reload a dock click re-charged 240 cr for the identical mark. soldBearingOpen dedups quote + charge on the live survey-fix waypoint holding the planned mark; 8/8 survey-fix tests green.
+- R-f12a40d CLOSED by W6 — review ledger at ZERO again.
+- Remaining parked: D188 handset · D191/D198/D130 quiet-host attribution · D199/D225/D231 graphics lane · D227 foreign mining lane. Baseline check on contended box was still running at review time; all wave-6-relevant links verified green individually.
+
+## DELTA 22 (post caf9423cc)
+- W7 verdict: DEFECTS-FOUND — counter RESET to 0-of-3. F1: a sold survey bearing lived only in the single-slot nav waypoint while its open record blocked re-buy — (a) a cross-sector purchase overwrote the first bearing with no recovery, (b) identifying cache A nulled sector B charted bearing.
+- Fixed (a09f45fdc): held records whose mark fell off the chart re-pin free via a Re-pin bearing quote + handler path; the identify clear now only nulls the waypoint holding the spent record own mark. 10/10 survey-fix tests + adjacents green. R-a09f45f OPEN.
+- Landing incident: a09f45fdc swept a foreign fuel-cell-crack handler from world.js (module still untracked) — repaired by landing fuelCrack.js as written (caf9423cc), sweep named per policy; lane HUD emit + test remain theirs.
+- player-truth adventure gate: ENVIRONMENT on the shared box (foreign dirty render packages), so the verdict was taken in a sanctioned .worktrees/pt-survey checkout at caf9423cc, removed same-turn: INCOMPLETE — every runnable check PASS (route, spawn, control, tumble, lod_churn, popping, vfx, backdrop, sim_stalled, HUD); readability/frame_time/offscreen_marker UNKNOWN on SwiftShader software GL (no real GPU on this box — same class of limit W6 recorded). Verdict + json copied to scratch/player-truth/adventure-head/.
+- Foreign fuel-crack lane completed around the repair (4d6d2a4ae + 51918e656): their commit acknowledges the sweep, added the HUD Crack control + 619-line proof; node_modules had dropped @floating-ui/dom mid-session, restored by npm install — all suites green again.
+
+## DELTA 23 (post 130cdbe09)
+- Landed AL-SHOW-6 rumor-chart seam (b7f1bd7ba): three+ rumored cards naming the same reach draw inflow arrows on the chart — stems from each member ring's center converging on an open cross at the precision-weighted patch. frontierRumorCorroborations (src/ui/frontierRumorMapLayer.js) groups rumored records by sectorId+targetId on a strict whitelist (member rumor ids, centers, radii, converge — never targetId/targetName/exactPos); resolved cards dissolve the group; <2 live cards draws nothing. System model maps drawConverge/drawCenter into the sector-local warped frame; local model uses raw global (same convention as the bearing rings it annotates).
+- Visual truth on the real bench: ui-bench chart-local shot seeds three corroborating cards (tools/ui-bench-chart.js); PNG shows three stems + chevrons converging on the open cross. First pass rendered invisible ~9px stubs because rim-clamped stems collapsed inside overlapping rings — fixed by anchoring stems at member centers (the card's guess), documented in the painter comment.
+- test/frontier-rumor-corroboration.test.mjs (5/5): grouping, lone-card silence, resolution dissolve, strict Object.keys whitelist + banned-string scan, truth-coordinate distance check, normalize survival + malformed fail-close. Adjacent suites 11/11 green.
+- Seam marked done on the board; R-b7f1bd7 filed OPEN.
+- Wave-8 re-dispatched (first dispatch lost with session transition): ee465abc — scoped to 4d6d2a4ae, 51918e656, b7f1bd7ba, 130cdbe09 + open rows R-a09f45f, R-b7f1bd7. Counter stands at 0-of-3.
+
+## DELTA 24 (post wave-8 close)
+- W8 verdict: CLEAN — counter 1-of-3. Two independent reviewers covered the tail (4d6d2a4ae fuel-crack, 51918e656 bookkeeping, b7f1bd7ba rumor-chart, 130cdbe09/9e51242398 bookkeeping) plus both open rows. R-a09f45f CLOSED (re-pin free + scoped clear verified end-to-end, 25/25 + 39/39 suites green, baseline 17/17). R-b7f1bd7 CLOSED (whitelist holds through every model/draw layer, painter null-safe, arrows confirmed on the real bench PNG).
+- W8 nit fixed: non-finite radius rejected in both frontierRumorMapLayer gates — radius:Infinity previously produced wsum=0 → NaN converge → a finite-but-wrong cross position on the warped system chart.
+- W8 finding filed: D238 (pre-existing) — signal:investigated/_onLandmarkArtifactRecovered/boss-defeat set rec.identified without clearSurveyFix; orphaned record can gate dock purchases if authored content ever pairs those paths with a contents-bearing cache POI.
+- Open reviews: ZERO again. W9 must cover the new tail (b7f1bd7ba..HEAD + this commit) — dispatch next.
+
+## DELTA 25 (post wave-9 close)
+- W9 verdict: CLEAN — counter 2-of-3. Independent verifier confirmed b7f1bd7ba whitelist end-to-end (no other consumer touches rumorCorroborations; drawConverge/drawCenter are the honest sector-local warp frame), the isFinite nit fix, D238's three identify-clear sites, fuel-crack skim, and zero open review rows at the time.
+- D238 landed + pushed (d9060928d): the three non-dock identify paths (signal:investigated, landmark-artifact return, boss-defeat) now spend a sold record via clearSurveyFix + bearingCharted-scoped waypoint clear, same pair the dock path uses. Regression pins the signal-investigate spend (survey-fix 11/11, adjacent discovery 29/29). R-d906092 filed OPEN. Ledger row consumed by the fix landing in the same tail.
+- W9 nits fixed: subnormal radius could mirror the Infinity path (1/r=Inf → wsum Inf → NaN converge) — weight loop now guards isFinite(w) and wsum>0; frontierRumorMapTarget radius no longer passes Infinity through; board row 411 marked DONE (seam/row consistency); whitelist test tightened honestly — the reach id may appear only inside card-id strings, asserted by stripping them rather than a vacuous decoy scan.
+- player-truth adventure re-run in .worktrees/pt-d238 at d9060928d (same sanctioned clean-checkout shape; foreign render-package dirt still blocks the shared tree).
+- W10 must cover the new tail (4496c7a60..HEAD incl. D238 fix + this package).
+
+## DELTA 26 (campaign close — three clean waves)
+- W10 verdict: CLEAN — **3-of-3 successive clean consensus waves** (W8, W9, W10). Independent verifier confirmed every D238 call-site invariant (post-stamp clear, poiId-scoped record spend, mark-scoped waypoint null, foreign bearing survival — proven live by the planted-RHEA test), all four `identified`-stamp paths now spend a sold fix (no missed path), the wave-9 guards fail closed only on degenerate input, and the tightened whitelist test still proves the projection schema. R-d906092 verified clean in-wave; no defects.
+- player-truth adventure @ d9060928d: **INCOMPLETE** (exit 2), same SwiftShader-limited shape as the caf9423cc run — every runnable check PASS (route, spawn_motion, player_control, tumble, player_ship, lod_churn, popping, vfx_coverage, backdrop_coverage, sim_stalled, play_interrupted, offscreen_marker); UNKNOWNs are readability (0 on-screen samples/class under software GL) and frame_time (no --baseline to grade). Not a gameplay FAIL; the box cannot produce GPU evidence. Verdict preserved at scratch/player-truth-d238/ (gitignored); .worktrees/pt-d238 removed same-turn.
+- W10 nits parked (non-blocking): parametrized foreign-bearing test for signal/artifact/boss; orphaned-record self-heal only via the three unconditional paths (unreachable via current writers); converge overflow needs ~1e300 coords; isFinite-skipped member still draws ~0-radius ring (degenerate input only).
+- Campaign state: dispatch surfaces drained except blocked/parked rows (D188 needs a physical handset; graphics-lane rows are foreign). Clean-wave counter: 3/3 — campaign requirement met.

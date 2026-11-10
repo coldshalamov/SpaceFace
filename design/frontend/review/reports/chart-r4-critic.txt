@@ -1,0 +1,128 @@
+CHART (M map: LOCAL / SYSTEM / GALAXY) - critic round 4
+Builder commits 07d6a3d05 + two follow-ups. Stills: ch-r52-* at 1280/1366/1920/2560, with ch-r53-drag-system at 1920 and 2560.
+All px are in the still named. Amber counted by the hue pass over every r52/r53 still, then checked by eye.
+
+1. VERDICT: PASSED, overall 8.1 (previous 7.8).
+   - No axis is below 8.0. Owner (a): PASS. Owner (b): PASS.
+   - Both round-3 blockers are closed:
+     - The SYSTEM knot opened under the sqrt radial scale, and no leader ends on another mark at any size.
+     - The drag reading's dock at SYSTEM now reaches its target, has no rectangle, and leaves the gate
+       ring visible.
+   Coverage:
+   - Opened and judged:
+     - SYSTEM: chart-1920/1280/1366/2560.
+     - Drag system: 1280 and 1366 (r52), 1920 (r53).
+     - drag-galaxy-1366.
+     - lock-1920.
+     - allsectors-1920 and allsectors-1280.
+   - Amber pass only: the other galaxy, drag and lock sizes, and allsectors-1366/2560.
+
+2. AXES
+   Composition          8.2 (prev 7.9)  The sqrt scale uses the whole dial. At 1920 the ship is at the
+                                        centre (920,583), the goal ~100 px out (1010,545), the Fe field at
+                                        795,670, and Coalition HQ at 805,718. The inner ring is labelled
+                                        "718 WU" (773,582). Drag readings dock in open corners on leaders.
+   Hierarchy            8.2 (prev 8.0)  One Hand. The lock now lights the key, and the ship rides the line.
+                                        The title, the dial and the reading numerals have clear scale
+                                        contrast.
+   Legibility           8.0 (prev 7.6)  Every SYSTEM label sits against its mark or on a leader that ends
+                                        on that mark:
+                                        - "Silicate field · Si" is below the field at 1920 (982-1096,611)
+                                          and above it on a vertical leader at 1280.
+                                        - "GOAL" has a vertical leader at 1920 and an elbow at 1280.
+                                        - "Helios Station" has a vertical leader at 1920.
+                                        Zone names are the same at every size. Residuals are in fixes 1-3.
+   ORRERY fidelity      8.0 (prev 7.8)  The one-Hand law holds. The dial labels its own non-linear scale
+                                        ("RADIAL SCALE √ · NOT LINEAR", 1107-1289,414). The reading's
+                                        glass is feathered. Orbital tracks and the Lens are still absent.
+   Craft / detail       8.1 (prev 7.6)  GALAXY well rings now have body (see 7a). Pools are clipped to the
+                                        gate ring. The lock line stops at the rings. The gate ring stays lit
+                                        under the reading.
+   Interaction clarity  8.3 (prev 7.9)  The lock is complete (lock-1920):
+                                        - The ship rides the beam (arrow at 1103,665 near Io).
+                                        - The Engage key lights hot (1520-1750,660-704).
+                                        - "No route plotted" is hidden.
+                                        - DESTINATION reads "Io Reach · Course set".
+                                        - NEXT LEG reads "Helios Prime -> Tethys Junction · leg 1/2".
+                                        - An ice pulse runs the foot tape (1420-1815,912).
+
+3. ROUND-3 LIST, item by item
+   1. SYSTEM knot (BLOCKER) .......... DONE.
+      - The sqrt scale spreads the centre.
+      - 1280: the Si leader runs vertically to the field's top edge (655,305->345). GOAL's elbow leaves
+        the goal ring's lower right. Helios Station has a horizontal leader (705,352).
+      - Nothing crosses at 1280, 1366, 1920 or 2560.
+      - The goal ring still overlaps the Si field at every size. They are that close in the data, and each
+        name is now unambiguous.
+   2. SYSTEM drag reading dock (BLOCKER) ... DONE.
+      - 1366: the reading is at 285-555,605-690, and its leader drops from Coalition HQ (522,535) to the
+        reading's top edge.
+      - 1920 (r53): an elbow leader runs to the reading at 428-695,775-855.
+      - No hard-edged rectangle.
+      - The gate ring stays visible across the reading's corner.
+   3. Ghosted Pallas label under the GALAXY 1366 reading ... DONE. Pallas's name moved to 394-472,489.
+   4. GALAXY well rings ............... DONE. Band 85-97 lum at 6 px >=2:1 (see 7a).
+   5. Label set by viewport ........... DONE.
+      - Concord Core and Memorial Array are named at every size.
+      - Gates shorten to "-> Tethys Junction" when tight (1280: 737-865,514).
+   6. All-sectors ambiguity ........... HALF.
+      - "Vesta Forge" now hangs on a ~100 px vertical leader (906,480 -> 861-901,559-575) that crosses the
+        Pallas-Io lane.
+      - "Haumea Rift" wraps above its token.
+      - The 1280 stress case has its own knot (fix 3).
+   7. Lock evidence ................... DONE (lock-1920 is inside the window; see Interaction).
+   8. Unknown glints inside the map ... DONE. The ringed stars are at 410,403 and 1370,583, inside the
+      field.
+   9. Orbital tracks / Lens ........... NOT (the builder lists them as open).
+
+4. RANKED FIXES (none block)
+   1. The 1280 scale caption is clipped: "RADIAL SCALE √ · NOT LINEAR" reads "NOT LINEAF" at 816-886,273,
+      cut by the field edge. Fix: right-align it inside the field, or set it on two lines at <1366.
+   2. 1280: GOAL's leader endpoint dot sits on the label ("GOAL ··BEACON", 683-700,392). Fix: stop the
+      leader 4 px short of the label's left edge.
+   3. The all-sectors 1280 stress case (ch-r52-allsectors-1280):
+      - A vertical leader from the cyan Veil token (713,400) ends at ~712,470, between "Eunomia Gulf"
+        (730-826,474) and "Veil Nebula" (668-718,480-494). Eunomia's token is at 777,512.
+      - Fix: give each leader its own label's side, and keep a leader's end within 4 px of its own label.
+   4. All-sectors 1920: "Vesta Forge" rides a ~100 px leader across the Pallas-Io lane. Fix: prefer a short
+      leader to the free space at Vesta's lower right (930-990,470-500).
+   5. "Accept a contract or double-click a sector to set one" (976,976) still teaches only double-click.
+      Add "or drag from your ship".
+   6. Orbital tracks with slow drift, and the Lens under the cursor. These are what would move this from a
+      very good node map to the orrery the plan promised, and from 8 to 9.
+
+5. MEMORABLE: it now has its moment. The ship rides the laid line in the lock. Next: sectors drifting on
+   tracks, so the line bends as they move.
+
+6. AMBER COUNT (law: one Hand + one Lamp Key)
+   Still                               Amber                                                     Hands  Key  Verdict
+   SYSTEM 1280/1366/1920/2560          course beam + goal head (split by the goal ring at 1280/1366)  1  -    OK
+   GALAXY 1280/1366/1920/2560          none (the one cluster is Io's gold render)                  0      -    OK
+   DRAG system 1280/1366, r53 1920/2560 preview beam                                               1      -    OK
+   DRAG galaxy all sizes               preview beam (2 segments) + Io render                       1      -    OK
+   LOCK all sizes                      swollen beam + ship on it + lit (hot) Engage key            1      1    OK
+   ALL-SECTORS all sizes               none (Io render)                                            0      -    OK
+   The zoom needle and the tab cursor are bone. The goal badge is amber only as the course's head.
+
+7. OWNER CRITERIA
+   (a) No super-thin wireframe / generic elements: PASS.
+       The GALAXY well rings, which I corrected in round 3 (band 51-57 lum), now measure a band of 85-97
+       with a core of 148-176:
+       - Ceres left (590-620,522): 89 97 176 133 87, 6 px >=2:1.
+       - Io bottom (1130,735-765): 87 88 157 152 88 88.
+       - Pallas bottom (530,735-765): 86 87 162 148 88 85.
+       The lanes are unchanged (band 75, core 171). All other bands were at or above 2:1 in round 3 and
+       show no visible change. No generic web components remain.
+   (b) Signature interaction: PASS (memorability 8.5/10). Lay the line:
+       - Drag from YOU.
+       - The planner's route previews as the one amber line.
+       - A thin-numeral reading docks clear of the map on a leader.
+       - On release the line swells to the rings, the ship rides it, the Engage key lights, DESTINATION
+         and NEXT LEG set, and an ice pulse runs the tape.
+       - The chart hands over.
+       It is taught on screen, and it works for keyboard and pad.
+
+8. THE ONE STRUCTURAL CHANGE TO LAND NEXT (not required for the pass)
+   Orbital tracks. Put GALAXY sectors on slow concentric tracks round the hub (the ORRERY Chart paragraph's
+   "ring can drift"), so the laid line is a trajectory rather than a subway edge. It is the last big piece
+   of the plan the Chart has not built.

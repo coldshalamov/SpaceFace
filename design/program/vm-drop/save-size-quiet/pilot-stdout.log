@@ -1,0 +1,7 @@
+[release-soak:browser:probe] 2026-09-22T03:46:51.599Z worktree start beddb1691718-f6776c0e66f6b0f9
+[release-soak:browser:probe] 2026-09-22T03:47:01.234Z browser canonical root http://127.0.0.1:43711
+[release-soak:browser] FAIL: locator.waitFor: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator('#cinematic-splash') to be hidden
+    5 × locator resolved to visible <div tabindex="-1" role="dialog" aria-modal="true" class="is-closing" id="cinematic-splash" aria-labelledby="cinematic-title" aria-describedby="cinematic-summary">…</div>
+

@@ -1,0 +1,1361 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.traffic-signal.anchor.socket-signal-face",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3,
+        6,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Signal_Face",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentNodeId": "sf.render.traffic-signal.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3,
+        6,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.traffic-signal",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "aa766cd3a70a884ef6dd0aa68bc9167ee0a7d3503dbf76cb0b76394395adcae8",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          2.825101530249585,
+          8.100000381469727,
+          1.1001496156381725
+        ],
+        "min": [
+          2.5748985651178464,
+          3.9000000953674316,
+          -1.1001496156381725
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aa9445351137696479ce98ba3a697dee639a9cffd4be2723f03bd0c018fc4997",
+      "id": "sf.render.traffic-signal.mesh.backboard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "e76428a023b51c64a1243fbd3f92ab31c3075a17d4f9f6ffd436fb1213f5609e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.traffic-signal.mesh.backboard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.2000000476837158,
+          1.1749549126777497,
+          1.2000000476837158
+        ],
+        "min": [
+          -1.2000000476837158,
+          0.9250449323501739,
+          -1.2000000476837158
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a00160b5137dfe89c4e4598013f0be7c12c19629a5a089961967dd6f4fc8e937",
+      "id": "sf.render.traffic-signal.mesh.base-hz.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "5305fc668e4d72b1033337139ca107da7ea825b4e3f7570330e1052d54f1585a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.traffic-signal.mesh.base-hz",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0724723276978618,
+          0.9999634025785109,
+          1.100000023841858
+        ],
+        "min": [
+          -1.0724723276978618,
+          0.00003662532842452215,
+          -1.100000023841858
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a1fe885165fa2b23d91f7f870e062bc3f7abcc202d8be55a3aebc7a0cba8e299",
+      "id": "sf.render.traffic-signal.mesh.base.primitive.0",
+      "indexCount": 156,
+      "indexed": true,
+      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.traffic-signal.mesh.base",
+      "primitiveIndex": 0,
+      "vertexCount": 56
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.40000003576278687,
+          2.3500320533737367,
+          0.4500320176109497
+        ],
+        "min": [
+          -1.7999999523162842,
+          1.449968018151837,
+          -0.4500320176109497
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "89cabb2a3939af10341a2634098cfc68045b8e67e8def8a30cae085258c64f0f",
+      "id": "sf.render.traffic-signal.mesh.counter.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6c55db37a0352026e716da349ee59bc3b7c312b1c5ba232279b67042c4d0ef86",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.traffic-signal.mesh.counter",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.949972440140886,
+          7.89998026917305,
+          0.550000011920929
+        ],
+        "min": [
+          2.7500273691242505,
+          6.900019921561813,
+          -0.550000011920929
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5600e3ed2a4593f7a39cd009610561a93d545686792835af9719e81d70156372",
+      "id": "sf.render.traffic-signal.mesh.lens-go.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.traffic-signal.mesh.lens-go",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.949972440140886,
+          6.499980173805619,
+          0.550000011920929
+        ],
+        "min": [
+          2.7500273691242505,
+          5.500019826194381,
+          -0.550000011920929
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5600e3ed2a4593f7a39cd009610561a93d545686792835af9719e81d70156372",
+      "id": "sf.render.traffic-signal.mesh.lens-hold.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "34f564162e21bc0296927f4f484f55f128310b56bf176f29079c2ac33b4a2504",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.traffic-signal.mesh.lens-hold",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.949972440140886,
+          5.099980078438187,
+          0.550000011920929
+        ],
+        "min": [
+          2.7500273691242505,
+          4.10001973082695,
+          -0.550000011920929
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5600e3ed2a4593f7a39cd009610561a93d545686792835af9719e81d70156372",
+      "id": "sf.render.traffic-signal.mesh.lens-stop.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "87b3341f40761483253aaeb3ed7f2c4c1dde36ff03a002399b162aea94c228d6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.traffic-signal.mesh.lens-stop",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.6067325935592205,
+          7.675148963928223,
+          0.19035233414292818
+        ],
+        "min": [
+          -0.206732587598756,
+          0.9248514175415039,
+          -0.19035233414292818
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "686a9255c0d15a75721adc4726bfa6ce56196be49806533de7de190264c3476b",
+      "id": "sf.render.traffic-signal.mesh.mast.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "e76428a023b51c64a1243fbd3f92ab31c3075a17d4f9f6ffd436fb1213f5609e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.003",
+      "nodeId": "sf.render.traffic-signal.mesh.mast",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9872036128185723,
+          3.826999820700846,
+          0.5
+        ],
+        "min": [
+          0.21279643486514355,
+          2.973000370034017,
+          -0.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a8caa9cacd006e2f53362ccad54b8fe01bd6c09d02287c3a327869c3de22a91c",
+      "id": "sf.render.traffic-signal.mesh.panel.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.traffic-signal.mesh.panel",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.552167821694298,
+          8.159999996423721,
+          0.1599999964237213
+        ],
+        "min": [
+          2.2478323690405655,
+          7.840000003576279,
+          -0.1599999964237213
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5706608098bb0096612e6e0a27f98db185c237053050fdac4838403a41c8393c",
+      "id": "sf.render.traffic-signal.mesh.top.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "34f564162e21bc0296927f4f484f55f128310b56bf176f29079c2ac33b4a2504",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.001",
+      "nodeId": "sf.render.traffic-signal.mesh.top",
+      "primitiveIndex": 0,
+      "vertexCount": 142
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
+      "id": "material:321a5c429af61691d4cf07a3",
+      "name": "esk_solar_cell",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "34f564162e21bc0296927f4f484f55f128310b56bf176f29079c2ac33b4a2504",
+      "id": "material:34f564162e21bc0296927f4f",
+      "name": "esk_light_signal_amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "5305fc668e4d72b1033337139ca107da7ea825b4e3f7570330e1052d54f1585a",
+      "id": "material:5305fc668e4d72b103333713",
+      "name": "esk_hazard_stripe",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6c55db37a0352026e716da349ee59bc3b7c312b1c5ba232279b67042c4d0ef86",
+      "id": "material:6c55db37a0352026e716da34",
+      "name": "esk_armor_plate",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "87b3341f40761483253aaeb3ed7f2c4c1dde36ff03a002399b162aea94c228d6",
+      "id": "material:87b3341f40761483253aaeb3",
+      "name": "esk_light_nav_red",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
+      "id": "material:da4ab03ee34c8a536220eec2",
+      "name": "esk_light_nav_green",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "e76428a023b51c64a1243fbd3f92ab31c3075a17d4f9f6ffd436fb1213f5609e",
+      "id": "material:e76428a023b51c64a1243fbd",
+      "name": "esk_paint_authority_navy",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
+      "id": "material:ef83aaa905288b1ffc8a4f70",
+      "name": "esk_struct_alloy",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.traffic-signal.mesh.backboard",
+      "localTransform": [
+        2.1000001430511475,
+        0,
+        0,
+        0,
+        0,
+        2.1000001430511475,
+        0,
+        0,
+        0,
+        0,
+        2.1000001430511475,
+        0,
+        2.700000047683716,
+        6.000000238418579,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "backboard",
+      "nodeName": "backboard",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.traffic-signal.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.traffic-signal.body",
+      "worldTransform": [
+        2.1000001430511475,
+        0,
+        0,
+        0,
+        0,
+        2.1000001430511475,
+        0,
+        0,
+        0,
+        0,
+        2.1000001430511475,
+        0,
+        2.700000047683716,
+        6.000000238418579,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.traffic-signal.mesh.base",
+      "localTransform": [
+        1.100000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.100000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.100000023841858,
+        0,
+        0,
+        0.5000000139534677,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "base",
+      "nodeName": "base",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.traffic-signal.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.traffic-signal.body",
+      "worldTransform": [
+        1.100000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.100000023841858,
+        0,
+        0,
+        0,
+        0,
+        1.100000023841858,
+        0,
+        0,
+        0.5000000139534677,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.traffic-signal.mesh.base-hz",
+      "localTransform": [
+        1.2000000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.2000000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.2000000476837158,
+        0,
+        0,
+        1.0499999225139618,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "base_hz",
+      "nodeName": "base_hz",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.traffic-signal.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.traffic-signal.body",
+      "worldTransform": [
+        1.2000000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.2000000476837158,
+        0,
+        0,
+        0,
+        0,
+        1.2000000476837158,
+        0,
+        0,
+        1.0499999225139618,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.traffic-signal.mesh.counter",
+      "localTransform": [
+        0.6999999582767487,
+        0,
+        0,
+        0,
+        0,
+        0.6999999582767487,
+        0,
+        0,
+        0,
+        0,
+        0.6999999582767487,
+        0,
+        -1.0999999940395355,
+        1.9000000357627869,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "counter",
+      "nodeName": "counter",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.traffic-signal.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.traffic-signal.body",
+      "worldTransform": [
+        0.6999999582767487,
+        0,
+        0,
+        0,
+        0,
+        0.6999999582767487,
+        0,
+        0,
+        0,
+        0,
+        0.6999999582767487,
+        0,
+        -1.0999999940395355,
+        1.9000000357627869,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.traffic-signal.mesh.lens-go",
+      "localTransform": [
+        0.550000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.550000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.550000011920929,
+        0,
+        2.8499999046325684,
+        7.400000095367432,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "lens_go",
+      "nodeName": "lens_go",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.traffic-signal.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.traffic-signal.body",
+      "worldTransform": [
+        0.550000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.550000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.550000011920929,
+        0,
+        2.8499999046325684,
+        7.400000095367432,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.traffic-signal.mesh.lens-hold",
+      "localTransform": [
+        0.550000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.550000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.550000011920929,
+        0,
+        2.8499999046325684,
+        6,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "lens_hold",
+      "nodeName": "lens_hold",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.traffic-signal.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.traffic-signal.body",
+      "worldTransform": [
+        0.550000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.550000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.550000011920929,
+        0,
+        2.8499999046325684,
+        6,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.traffic-signal.mesh.lens-stop",
+      "localTransform": [
+        0.550000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.550000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.550000011920929,
+        0,
+        2.8499999046325684,
+        4.599999904632568,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "lens_stop",
+      "nodeName": "lens_stop",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.traffic-signal.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.traffic-signal.body",
+      "worldTransform": [
+        0.550000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.550000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.550000011920929,
+        0,
+        2.8499999046325684,
+        4.599999904632568,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.traffic-signal.mesh.mast",
+      "localTransform": [
+        3.3751487731933594,
+        0,
+        0,
+        0,
+        0,
+        3.3751487731933594,
+        0,
+        0,
+        0,
+        0,
+        3.3751487731933594,
+        0,
+        1.2000000029802322,
+        4.300000190734863,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "mast",
+      "nodeName": "mast",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.traffic-signal.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.traffic-signal.body",
+      "worldTransform": [
+        3.3751487731933594,
+        0,
+        0,
+        0,
+        0,
+        3.3751487731933594,
+        0,
+        0,
+        0,
+        0,
+        3.3751487731933594,
+        0,
+        1.2000000029802322,
+        4.300000190734863,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.traffic-signal.mesh.panel",
+      "localTransform": [
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        0.6000000238418579,
+        3.4000000953674316,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "panel",
+      "nodeName": "panel",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.traffic-signal.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.traffic-signal.body",
+      "worldTransform": [
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        0.6000000238418579,
+        3.4000000953674316,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.traffic-signal.mesh.top",
+      "localTransform": [
+        0.1599999964237213,
+        0,
+        0,
+        0,
+        0,
+        0.1599999964237213,
+        0,
+        0,
+        0,
+        0,
+        0.1599999964237213,
+        0,
+        2.4000000953674316,
+        8,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "top",
+      "nodeName": "top",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.traffic-signal.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.traffic-signal.body",
+      "worldTransform": [
+        0.1599999964237213,
+        0,
+        0,
+        0,
+        0,
+        0.1599999964237213,
+        0,
+        0,
+        0,
+        0,
+        0.1599999964237213,
+        0,
+        2.4000000953674316,
+        8,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.traffic-signal.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "traffic_signal",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.traffic-signal.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "b904ddf091f94fea9142ba3d2d65c92c8270215ba3b804fc7974d01ced666712"
+    },
+    "sourceGlb": {
+      "bytes": 17928,
+      "sha256": "49a1df4387bc516691de6b38587ac8bb7dbbd558a37da1069a0b83bd2156c151",
+      "uri": "place_traffic_signal.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 19268,
+    "sha256": "3c154e47ec2ce14486f9eade89ae52483ee1a2c93e125510d33e41a40aa5d98d",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.574986243912301,
+        4.080018310876073,
+        0
+      ],
+      "max": [
+        2.949972440140886,
+        8.159999996423721,
+        1.2000000476837158
+      ],
+      "min": [
+        -1.7999999523162842,
+        0.00003662532842452215,
+        -1.2000000476837158
+      ],
+      "size": [
+        4.74997239245717,
+        8.159963371095296,
+        2.4000000953674316
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3,
+          6,
+          0,
+          1
+        ],
+        "name": "SOCKET_Signal_Face",
+        "planIndex": 12,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Signal_Face",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Signal_Face",
+            "recordIds": [
+              "sf.render.traffic-signal.anchor.socket-signal-face"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 5,
+      "signal": 4,
+      "warning": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "signal"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "signal"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "signal"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "signal"
+      }
+    ],
+    "nodeCount": 14,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          2.1000001430511475,
+          0,
+          0,
+          0,
+          0,
+          2.1000001430511475,
+          0,
+          0,
+          0,
+          0,
+          2.1000001430511475,
+          0,
+          2.700000047683716,
+          6.000000238418579,
+          0,
+          1
+        ],
+        "name": "backboard",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.100000023841858,
+          0,
+          0,
+          0,
+          0,
+          1.100000023841858,
+          0,
+          0,
+          0,
+          0,
+          1.100000023841858,
+          0,
+          0,
+          0.5000000139534677,
+          0,
+          1
+        ],
+        "name": "base",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.2000000476837158,
+          0,
+          0,
+          0,
+          0,
+          1.2000000476837158,
+          0,
+          0,
+          0,
+          0,
+          1.2000000476837158,
+          0,
+          0,
+          1.0499999225139618,
+          0,
+          1
+        ],
+        "name": "base_hz",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.6999999582767487,
+          0,
+          0,
+          0,
+          0,
+          0.6999999582767487,
+          0,
+          0,
+          0,
+          0,
+          0.6999999582767487,
+          0,
+          -1.0999999940395355,
+          1.9000000357627869,
+          0,
+          1
+        ],
+        "name": "counter",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.550000011920929,
+          0,
+          0,
+          0,
+          0,
+          0.550000011920929,
+          0,
+          0,
+          0,
+          0,
+          0.550000011920929,
+          0,
+          2.8499999046325684,
+          7.400000095367432,
+          0,
+          1
+        ],
+        "name": "lens_go",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.550000011920929,
+          0,
+          0,
+          0,
+          0,
+          0.550000011920929,
+          0,
+          0,
+          0,
+          0,
+          0.550000011920929,
+          0,
+          2.8499999046325684,
+          6,
+          0,
+          1
+        ],
+        "name": "lens_hold",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.550000011920929,
+          0,
+          0,
+          0,
+          0,
+          0.550000011920929,
+          0,
+          0,
+          0,
+          0,
+          0.550000011920929,
+          0,
+          2.8499999046325684,
+          4.599999904632568,
+          0,
+          1
+        ],
+        "name": "lens_stop",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.3751487731933594,
+          0,
+          0,
+          0,
+          0,
+          3.3751487731933594,
+          0,
+          0,
+          0,
+          0,
+          3.3751487731933594,
+          0,
+          1.2000000029802322,
+          4.300000190734863,
+          0,
+          1
+        ],
+        "name": "mast",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.5,
+          0,
+          0,
+          0,
+          0,
+          0.5,
+          0,
+          0,
+          0,
+          0,
+          0.5,
+          0,
+          0.6000000238418579,
+          3.4000000953674316,
+          0,
+          1
+        ],
+        "name": "panel",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.1599999964237213,
+          0,
+          0,
+          0,
+          0,
+          0.1599999964237213,
+          0,
+          0,
+          0,
+          0,
+          0.1599999964237213,
+          0,
+          2.4000000953674316,
+          8,
+          0,
+          1
+        ],
+        "name": "top",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_traffic_signal.glb"
+  },
+  "runtimeHash": "44c811ab0b0a24ed54fe474bcfb4d07b8344a43f7cd695f0b77abd7ac8a16b43",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          2.949972440140886,
+          8.159999996423721,
+          1.2000000476837158
+        ],
+        "min": [
+          -1.7999999523162842,
+          0.00003662532842452215,
+          -1.2000000476837158
+        ]
+      },
+      "id": "sf.render.traffic-signal.body",
+      "nodeIds": [
+        "sf.render.traffic-signal.mesh.backboard",
+        "sf.render.traffic-signal.mesh.base",
+        "sf.render.traffic-signal.mesh.base-hz",
+        "sf.render.traffic-signal.mesh.counter",
+        "sf.render.traffic-signal.mesh.lens-go",
+        "sf.render.traffic-signal.mesh.lens-hold",
+        "sf.render.traffic-signal.mesh.lens-stop",
+        "sf.render.traffic-signal.mesh.mast",
+        "sf.render.traffic-signal.mesh.panel",
+        "sf.render.traffic-signal.mesh.top",
+        "sf.render.traffic-signal.root"
+      ]
+    }
+  ]
+}

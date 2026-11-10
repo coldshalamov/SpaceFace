@@ -1,0 +1,2386 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.rock-silicate-boulder.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.4688398241996765,
+        0.08765006065368652,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentNodeId": "sf.render.rock-silicate-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.4688398241996765,
+        0.08765006065368652,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-silicate-boulder.anchor.socket-cargo-ventral",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.3617269992828369,
+        -5.355293273925781,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentNodeId": "sf.render.rock-silicate-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.3617269992828369,
+        -5.355293273925781,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-silicate-boulder.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.35276985168457,
+        0.08765006065368652,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentNodeId": "sf.render.rock-silicate-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.35276985168457,
+        0.08765006065368652,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-silicate-boulder.anchor.socket-mining-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.329315662384033,
+        -0.06234993785619736,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentNodeId": "sf.render.rock-silicate-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.329315662384033,
+        -0.06234993785619736,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-silicate-boulder.anchor.socket-rcs-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.3617269992828369,
+        0.08765006065368652,
+        -2.829888105392456,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentNodeId": "sf.render.rock-silicate-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.3617269992828369,
+        0.08765006065368652,
+        -2.829888105392456,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-silicate-boulder.anchor.socket-rcs-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.3617269992828369,
+        0.08765006065368652,
+        2.829888105392456,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentNodeId": "sf.render.rock-silicate-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.3617269992828369,
+        0.08765006065368652,
+        2.829888105392456,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-silicate-boulder.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.6457858085632324,
+        2.790296792984009,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.rock-silicate-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.6457858085632324,
+        2.790296792984009,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-silicate-boulder.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.652769565582275,
+        0.08765006065368652,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.rock-silicate-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.652769565582275,
+        0.08765006065368652,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-silicate-boulder.anchor.socket-trail-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.652769565582275,
+        0.08765006065368652,
+        -1.1791200637817383,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentNodeId": "sf.render.rock-silicate-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.652769565582275,
+        0.08765006065368652,
+        -1.1791200637817383,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-silicate-boulder.anchor.socket-trail-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.652769565582275,
+        0.08765006065368652,
+        1.1791200637817383,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentNodeId": "sf.render.rock-silicate-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.652769565582275,
+        0.08765006065368652,
+        1.1791200637817383,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-silicate-boulder.anchor.socket-utility-dorsal",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.3617269992828369,
+        5.530593395233154,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentNodeId": "sf.render.rock-silicate-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.3617269992828369,
+        5.530593395233154,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-silicate-boulder.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.429315567016602,
+        0.08765006065368652,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentNodeId": "sf.render.rock-silicate-boulder.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4.429315567016602,
+        0.08765006065368652,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.rock-silicate-boulder",
+  "collisions": [
+    {
+      "id": "sf.render.rock-silicate-boulder.collision",
+      "nodeId": "sf.render.rock-silicate-boulder.mesh.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "420c314725e36817b9ca11edfd3cd008e89a78b20028229f41d34478cbfdddef",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          4.829470917780333,
+          5.580593585968018,
+          4.629087358754079
+        ],
+        "min": [
+          -5.552924916346007,
+          -5.4052934646606445,
+          -4.716644674580495
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "72c51456d921a744bec03be9d5f4ff00dacc461ac67d9fdfb362107405a0cb8d",
+      "id": "sf.render.rock-silicate-boulder.mesh.collision-hull.primitive.0",
+      "indexCount": 846,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.rock-silicate-boulder.mesh.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 809
+    },
+    {
+      "bounds": {
+        "max": [
+          1.9367371637703976,
+          5.580593585968018,
+          2.3253196935961906
+        ],
+        "min": [
+          -5.552967174756725,
+          -2.8963205814361572,
+          -2.070040629417724
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c9d38fac355898d5ac74ac6f392c5a8130117e023887832a92329c644d7dde95",
+      "id": "sf.render.rock-silicate-boulder.mesh.lod0-stone-deep.primitive.0",
+      "indexCount": 7680,
+      "indexed": true,
+      "materialHash": "de4a915b5933a7ec9d511fc2a16b76958a471731173d0933c6396167b5dd4d73",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone_deep",
+      "nodeId": "sf.render.rock-silicate-boulder.mesh.lod0-stone-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 5399
+    },
+    {
+      "bounds": {
+        "max": [
+          4.428304453875783,
+          4.0960343594364375,
+          4.628922939300537
+        ],
+        "min": [
+          -4.770478507067922,
+          -3.037306618194983,
+          -4.621806621551514
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f4f659f2c5e39dc7ef34a0655634e6a79147a447337a0801694a96aed1afb1ff",
+      "id": "sf.render.rock-silicate-boulder.mesh.lod0-stone-strata.primitive.0",
+      "indexCount": 1593,
+      "indexed": true,
+      "materialHash": "5e7d488972204c23a25d6aa7b4e969a93ac59796ef8036ee29f8b68d14108b0a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone_strata",
+      "nodeId": "sf.render.rock-silicate-boulder.mesh.lod0-stone-strata",
+      "primitiveIndex": 0,
+      "vertexCount": 972
+    },
+    {
+      "bounds": {
+        "max": [
+          4.829315662384033,
+          4.191998225083251,
+          4.61406084641832
+        ],
+        "min": [
+          -5.114131927490234,
+          -5.405505877365965,
+          -4.716399160474716
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "08efedb4147aa6f780539bc38982c6ad58525d42939293b524e5180c5a05a9d6",
+      "id": "sf.render.rock-silicate-boulder.mesh.lod0-stone.primitive.0",
+      "indexCount": 4401,
+      "indexed": true,
+      "materialHash": "b314fe9e367c26173a421470e706a56d5923c6bb01abe5efea8be32519bd69b5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone",
+      "nodeId": "sf.render.rock-silicate-boulder.mesh.lod0-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 2905
+    },
+    {
+      "bounds": {
+        "max": [
+          1.924910881805126,
+          5.574899196624756,
+          2.3119541040712397
+        ],
+        "min": [
+          -5.550974347877208,
+          -2.8887131214141846,
+          -2.070309960013012
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5f0283159d9f0ba0307d2d9e1c4934e37473fb3f8380eb63b6acc83b1246c5d4",
+      "id": "sf.render.rock-silicate-boulder.mesh.lod1-stone-deep.primitive.0",
+      "indexCount": 2604,
+      "indexed": true,
+      "materialHash": "de4a915b5933a7ec9d511fc2a16b76958a471731173d0933c6396167b5dd4d73",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone_deep",
+      "nodeId": "sf.render.rock-silicate-boulder.mesh.lod1-stone-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 1879
+    },
+    {
+      "bounds": {
+        "max": [
+          4.3482985496521,
+          4.056225820213022,
+          4.615181667314959
+        ],
+        "min": [
+          -4.889982223510742,
+          -3.3223882156903173,
+          -4.621971351610613
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "83346cb9dcfed278a97be6f23dde515c30bd8de7091fbbac6b80fd90f24165ec",
+      "id": "sf.render.rock-silicate-boulder.mesh.lod1-stone-strata.primitive.0",
+      "indexCount": 378,
+      "indexed": true,
+      "materialHash": "5e7d488972204c23a25d6aa7b4e969a93ac59796ef8036ee29f8b68d14108b0a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone_strata",
+      "nodeId": "sf.render.rock-silicate-boulder.mesh.lod1-stone-strata",
+      "primitiveIndex": 0,
+      "vertexCount": 280
+    },
+    {
+      "bounds": {
+        "max": [
+          4.829315662384033,
+          4.1919752149799905,
+          4.6152130853566975
+        ],
+        "min": [
+          -5.167184829711914,
+          -5.405482867262705,
+          -4.769910503569588
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "990a7cda9d7eb2bd9ee8ce74b933f1d81960c20274b6bff6d102978ba2938399",
+      "id": "sf.render.rock-silicate-boulder.mesh.lod1-stone.primitive.0",
+      "indexCount": 2484,
+      "indexed": true,
+      "materialHash": "b314fe9e367c26173a421470e706a56d5923c6bb01abe5efea8be32519bd69b5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone",
+      "nodeId": "sf.render.rock-silicate-boulder.mesh.lod1-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 1731
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8913866403767408,
+          5.571743965148926,
+          2.311704282390699
+        ],
+        "min": [
+          -5.535044205493623,
+          -2.8034706115722656,
+          -2.1096483512993904
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b2f3d70db1353af5b67a700e6aab844014f5409412c6e8ceb085d850e6b82bfb",
+      "id": "sf.render.rock-silicate-boulder.mesh.lod2-stone-deep.primitive.0",
+      "indexCount": 1086,
+      "indexed": true,
+      "materialHash": "de4a915b5933a7ec9d511fc2a16b76958a471731173d0933c6396167b5dd4d73",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Stone_deep",
+      "nodeId": "sf.render.rock-silicate-boulder.mesh.lod2-stone-deep",
+      "primitiveIndex": 0,
+      "vertexCount": 788
+    },
+    {
+      "bounds": {
+        "max": [
+          4.321331568944769,
+          4.055579552714628,
+          4.615016937255859
+        ],
+        "min": [
+          -4.889920302617865,
+          -3.487397561137479,
+          -4.606366157531738
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "03f8413129232019a65068b7f0a1eae77695fed0f6700a99ecd594290a2d99c0",
+      "id": "sf.render.rock-silicate-boulder.mesh.lod2-stone-strata.primitive.0",
+      "indexCount": 168,
+      "indexed": true,
+      "materialHash": "5e7d488972204c23a25d6aa7b4e969a93ac59796ef8036ee29f8b68d14108b0a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Stone_strata",
+      "nodeId": "sf.render.rock-silicate-boulder.mesh.lod2-stone-strata",
+      "primitiveIndex": 0,
+      "vertexCount": 140
+    },
+    {
+      "bounds": {
+        "max": [
+          4.68521785736084,
+          4.2465150498978605,
+          4.614887154112876
+        ],
+        "min": [
+          -5.113111972808838,
+          -5.362827553712558,
+          -4.769584572325766
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "96062d005a11e5b839f151f5ace36de4d88c44c1a11ced383d52bb4762beafc1",
+      "id": "sf.render.rock-silicate-boulder.mesh.lod2-stone.primitive.0",
+      "indexCount": 1206,
+      "indexed": true,
+      "materialHash": "b314fe9e367c26173a421470e706a56d5923c6bb01abe5efea8be32519bd69b5",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Stone",
+      "nodeId": "sf.render.rock-silicate-boulder.mesh.lod2-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 858
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "5e7d488972204c23a25d6aa7b4e969a93ac59796ef8036ee29f8b68d14108b0a",
+      "id": "material:5e7d488972204c23a25d6aa7",
+      "name": "Material_Stone_strata",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "b314fe9e367c26173a421470e706a56d5923c6bb01abe5efea8be32519bd69b5",
+      "id": "material:b314fe9e367c26173a421470",
+      "name": "Material_Stone",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "de4a915b5933a7ec9d511fc2a16b76958a471731173d0933c6396167b5dd4d73",
+      "id": "material:de4a915b5933a7ec9d511fc2",
+      "name": "Material_Stone_deep",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.rock-silicate-boulder.mesh.collision-hull",
+      "localTransform": [
+        5.492943525314331,
+        0,
+        0,
+        0,
+        0,
+        5.492943525314331,
+        0,
+        0,
+        0,
+        0,
+        5.492943525314331,
+        0,
+        -0.3617269992828369,
+        0.08765006065368652,
+        -0.04377865791320801,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.rock-silicate-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-silicate-boulder.body",
+      "worldTransform": [
+        5.492943525314331,
+        0,
+        0,
+        0,
+        0,
+        5.492943525314331,
+        0,
+        0,
+        0,
+        0,
+        5.492943525314331,
+        0,
+        -0.3617269992828369,
+        0.08765006065368652,
+        -0.04377865791320801,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-silicate-boulder.mesh.lod0-stone",
+      "localTransform": [
+        4.971723794937134,
+        0,
+        0,
+        0,
+        0,
+        4.971723794937134,
+        0,
+        0,
+        0,
+        0,
+        4.971723794937134,
+        0,
+        -0.14240813255310059,
+        -0.6067538261413574,
+        -0.05116915702819824,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Stone",
+      "nodeName": "LOD0_Stone",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.rock-silicate-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-silicate-boulder.body",
+      "worldTransform": [
+        4.971723794937134,
+        0,
+        0,
+        0,
+        0,
+        4.971723794937134,
+        0,
+        0,
+        0,
+        0,
+        4.971723794937134,
+        0,
+        -0.14240813255310059,
+        -0.6067538261413574,
+        -0.05116915702819824,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-silicate-boulder.mesh.lod0-stone-deep",
+      "localTransform": [
+        4.238457083702087,
+        0,
+        0,
+        0,
+        0,
+        4.238457083702087,
+        0,
+        0,
+        0,
+        0,
+        4.238457083702087,
+        0,
+        -1.808115005493164,
+        1.3421365022659302,
+        0.1276395320892334,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Stone_deep",
+      "nodeName": "LOD0_Stone_deep",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.rock-silicate-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-silicate-boulder.body",
+      "worldTransform": [
+        4.238457083702087,
+        0,
+        0,
+        0,
+        0,
+        4.238457083702087,
+        0,
+        0,
+        0,
+        0,
+        4.238457083702087,
+        0,
+        -1.808115005493164,
+        1.3421365022659302,
+        0.1276395320892334,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-silicate-boulder.mesh.lod0-stone-strata",
+      "localTransform": [
+        4.625364780426025,
+        0,
+        0,
+        0,
+        0,
+        4.625364780426025,
+        0,
+        0,
+        0,
+        0,
+        4.625364780426025,
+        0,
+        -0.17108702659606934,
+        0.5293638706207275,
+        0.0035581588745117188,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Stone_strata",
+      "nodeName": "LOD0_Stone_strata",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.rock-silicate-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-silicate-boulder.body",
+      "worldTransform": [
+        4.625364780426025,
+        0,
+        0,
+        0,
+        0,
+        4.625364780426025,
+        0,
+        0,
+        0,
+        0,
+        4.625364780426025,
+        0,
+        -0.17108702659606934,
+        0.5293638706207275,
+        0.0035581588745117188,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-silicate-boulder.mesh.lod1-stone",
+      "localTransform": [
+        4.998250246047974,
+        0,
+        0,
+        0,
+        0,
+        4.998250246047974,
+        0,
+        0,
+        0,
+        0,
+        4.998250246047974,
+        0,
+        -0.16893458366394043,
+        -0.6067538261413574,
+        -0.07734870910644531,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone",
+      "nodeName": "LOD1_Stone",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.rock-silicate-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-silicate-boulder.body",
+      "worldTransform": [
+        4.998250246047974,
+        0,
+        0,
+        0,
+        0,
+        4.998250246047974,
+        0,
+        0,
+        0,
+        0,
+        4.998250246047974,
+        0,
+        -0.16893458366394043,
+        -0.6067538261413574,
+        -0.07734870910644531,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-silicate-boulder.mesh.lod1-stone-deep",
+      "localTransform": [
+        4.23180615901947,
+        0,
+        0,
+        0,
+        0,
+        4.23180615901947,
+        0,
+        0,
+        0,
+        0,
+        4.23180615901947,
+        0,
+        -1.8130317330360413,
+        1.3430930376052856,
+        0.12082207202911377,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone_deep",
+      "nodeName": "LOD1_Stone_deep",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.rock-silicate-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-silicate-boulder.body",
+      "worldTransform": [
+        4.23180615901947,
+        0,
+        0,
+        0,
+        0,
+        4.23180615901947,
+        0,
+        0,
+        0,
+        0,
+        4.23180615901947,
+        0,
+        -1.8130317330360413,
+        1.3430930376052856,
+        0.12082207202911377,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-silicate-boulder.mesh.lod1-stone-strata",
+      "localTransform": [
+        4.619140386581421,
+        0,
+        0,
+        0,
+        0,
+        4.619140386581421,
+        0,
+        0,
+        0,
+        0,
+        4.619140386581421,
+        0,
+        -0.2708418369293213,
+        0.36691880226135254,
+        -0.0033948421478271484,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone_strata",
+      "nodeName": "LOD1_Stone_strata",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.rock-silicate-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-silicate-boulder.body",
+      "worldTransform": [
+        4.619140386581421,
+        0,
+        0,
+        0,
+        0,
+        4.619140386581421,
+        0,
+        0,
+        0,
+        0,
+        4.619140386581421,
+        0,
+        -0.2708418369293213,
+        0.36691880226135254,
+        -0.0033948421478271484,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-silicate-boulder.mesh.lod2-stone",
+      "localTransform": [
+        4.899164915084839,
+        0,
+        0,
+        0,
+        0,
+        4.899164915084839,
+        0,
+        0,
+        0,
+        0,
+        4.899164915084839,
+        0,
+        -0.21394705772399902,
+        -0.5581562519073486,
+        -0.07734870910644531,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone",
+      "nodeName": "LOD2_Stone",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.rock-silicate-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-silicate-boulder.body",
+      "worldTransform": [
+        4.899164915084839,
+        0,
+        0,
+        0,
+        0,
+        4.899164915084839,
+        0,
+        0,
+        0,
+        0,
+        4.899164915084839,
+        0,
+        -0.21394705772399902,
+        -0.5581562519073486,
+        -0.07734870910644531,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-silicate-boulder.mesh.lod2-stone-deep",
+      "localTransform": [
+        4.187607288360596,
+        0,
+        0,
+        0,
+        0,
+        4.187607288360596,
+        0,
+        0,
+        0,
+        0,
+        4.187607288360596,
+        0,
+        -1.8218287825584412,
+        1.38413667678833,
+        0.1010279655456543,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone_deep",
+      "nodeName": "LOD2_Stone_deep",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.rock-silicate-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-silicate-boulder.body",
+      "worldTransform": [
+        4.187607288360596,
+        0,
+        0,
+        0,
+        0,
+        4.187607288360596,
+        0,
+        0,
+        0,
+        0,
+        4.187607288360596,
+        0,
+        -1.8218287825584412,
+        1.38413667678833,
+        0.1010279655456543,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-silicate-boulder.mesh.lod2-stone-strata",
+      "localTransform": [
+        4.610691547393799,
+        0,
+        0,
+        0,
+        0,
+        4.610691547393799,
+        0,
+        0,
+        0,
+        0,
+        4.610691547393799,
+        0,
+        -0.28429436683654785,
+        0.2840909957885742,
+        0.004325389862060547,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone_strata",
+      "nodeName": "LOD2_Stone_strata",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.rock-silicate-boulder.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-silicate-boulder.body",
+      "worldTransform": [
+        4.610691547393799,
+        0,
+        0,
+        0,
+        0,
+        4.610691547393799,
+        0,
+        0,
+        0,
+        0,
+        4.610691547393799,
+        0,
+        -0.28429436683654785,
+        0.2840909957885742,
+        0.004325389862060547,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-silicate-boulder.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_PLACE_ROCK_SILICATE_BOULDER_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-silicate-boulder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "6a6d17a6d0faaca30521e82d9ac4cb839e7b945ae7a007279323a52c116716bc"
+    },
+    "sourceGlb": {
+      "bytes": 276992,
+      "sha256": "d75b5d5535090cd37ef666d7b2a38d9cafeb5fcf625059b3ea1985a94f2f3745",
+      "uri": "place_rock_silicate_boulder.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 280768,
+    "sha256": "6ac52fa21eaa700ee7c31f6230425567d3db46635563876ae08496a14365c1ad",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.36174812848819604,
+        0.08754385430102607,
+        -0.07041157240775453
+      ],
+      "max": [
+        4.829470917780333,
+        5.580593585968018,
+        4.629087358754079
+      ],
+      "min": [
+        -5.552967174756725,
+        -5.405505877365965,
+        -4.769910503569588
+      ],
+      "size": [
+        10.382438092537058,
+        10.986099463333982,
+        9.398997862323668
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.4688398241996765,
+          0.08765006065368652,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 12,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.rock-silicate-boulder.anchor.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.3617269992828369,
+          -5.355293273925781,
+          0,
+          1
+        ],
+        "name": "SOCKET_Cargo_Ventral",
+        "planIndex": 13,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            -1,
+            0
+          ],
+          "socketRole": "cargo"
+        },
+        "userData": {
+          "name": "SOCKET_Cargo_Ventral",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              -1,
+              0
+            ],
+            "role": "cargo",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cargo_Ventral",
+            "recordIds": [
+              "sf.render.rock-silicate-boulder.anchor.socket-cargo-ventral"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.35276985168457,
+          0.08765006065368652,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 14,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.rock-silicate-boulder.anchor.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.329315662384033,
+          -0.06234993785619736,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front",
+        "planIndex": 15,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "mining",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front",
+            "recordIds": [
+              "sf.render.rock-silicate-boulder.anchor.socket-mining-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.3617269992828369,
+          0.08765006065368652,
+          -2.829888105392456,
+          1
+        ],
+        "name": "SOCKET_RCS_Port",
+        "planIndex": 16,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            -1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              -1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Port",
+            "recordIds": [
+              "sf.render.rock-silicate-boulder.anchor.socket-rcs-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.3617269992828369,
+          0.08765006065368652,
+          2.829888105392456,
+          1
+        ],
+        "name": "SOCKET_RCS_Starboard",
+        "planIndex": 17,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Starboard",
+            "recordIds": [
+              "sf.render.rock-silicate-boulder.anchor.socket-rcs-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.6457858085632324,
+          2.790296792984009,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 18,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.rock-silicate-boulder.anchor.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.652769565582275,
+          0.08765006065368652,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 19,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.rock-silicate-boulder.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.652769565582275,
+          0.08765006065368652,
+          -1.1791200637817383,
+          1
+        ],
+        "name": "SOCKET_Trail_Port",
+        "planIndex": 20,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Port",
+            "recordIds": [
+              "sf.render.rock-silicate-boulder.anchor.socket-trail-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.652769565582275,
+          0.08765006065368652,
+          1.1791200637817383,
+          1
+        ],
+        "name": "SOCKET_Trail_Starboard",
+        "planIndex": 21,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Starboard",
+            "recordIds": [
+              "sf.render.rock-silicate-boulder.anchor.socket-trail-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.3617269992828369,
+          5.530593395233154,
+          0,
+          1
+        ],
+        "name": "SOCKET_Utility_Dorsal",
+        "planIndex": 22,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "utility"
+        },
+        "userData": {
+          "name": "SOCKET_Utility_Dorsal",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "utility",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Utility_Dorsal",
+            "recordIds": [
+              "sf.render.rock-silicate-boulder.anchor.socket-utility-dorsal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          4.429315567016602,
+          0.08765006065368652,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 23,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "weapon",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.rock-silicate-boulder.anchor.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "geology": 10
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "geology"
+      }
+    ],
+    "nodeCount": 24,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          4.971723794937134,
+          0,
+          0,
+          0,
+          0,
+          4.971723794937134,
+          0,
+          0,
+          0,
+          0,
+          4.971723794937134,
+          0,
+          -0.14240813255310059,
+          -0.6067538261413574,
+          -0.05116915702819824,
+          1
+        ],
+        "name": "LOD0_Stone",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.238457083702087,
+          0,
+          0,
+          0,
+          0,
+          4.238457083702087,
+          0,
+          0,
+          0,
+          0,
+          4.238457083702087,
+          0,
+          -1.808115005493164,
+          1.3421365022659302,
+          0.1276395320892334,
+          1
+        ],
+        "name": "LOD0_Stone_deep",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.625364780426025,
+          0,
+          0,
+          0,
+          0,
+          4.625364780426025,
+          0,
+          0,
+          0,
+          0,
+          4.625364780426025,
+          0,
+          -0.17108702659606934,
+          0.5293638706207275,
+          0.0035581588745117188,
+          1
+        ],
+        "name": "LOD0_Stone_strata",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.998250246047974,
+          0,
+          0,
+          0,
+          0,
+          4.998250246047974,
+          0,
+          0,
+          0,
+          0,
+          4.998250246047974,
+          0,
+          -0.16893458366394043,
+          -0.6067538261413574,
+          -0.07734870910644531,
+          1
+        ],
+        "name": "LOD1_Stone",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.23180615901947,
+          0,
+          0,
+          0,
+          0,
+          4.23180615901947,
+          0,
+          0,
+          0,
+          0,
+          4.23180615901947,
+          0,
+          -1.8130317330360413,
+          1.3430930376052856,
+          0.12082207202911377,
+          1
+        ],
+        "name": "LOD1_Stone_deep",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.619140386581421,
+          0,
+          0,
+          0,
+          0,
+          4.619140386581421,
+          0,
+          0,
+          0,
+          0,
+          4.619140386581421,
+          0,
+          -0.2708418369293213,
+          0.36691880226135254,
+          -0.0033948421478271484,
+          1
+        ],
+        "name": "LOD1_Stone_strata",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.899164915084839,
+          0,
+          0,
+          0,
+          0,
+          4.899164915084839,
+          0,
+          0,
+          0,
+          0,
+          4.899164915084839,
+          0,
+          -0.21394705772399902,
+          -0.5581562519073486,
+          -0.07734870910644531,
+          1
+        ],
+        "name": "LOD2_Stone",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.187607288360596,
+          0,
+          0,
+          0,
+          0,
+          4.187607288360596,
+          0,
+          0,
+          0,
+          0,
+          4.187607288360596,
+          0,
+          -1.8218287825584412,
+          1.38413667678833,
+          0.1010279655456543,
+          1
+        ],
+        "name": "LOD2_Stone_deep",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.610691547393799,
+          0,
+          0,
+          0,
+          0,
+          4.610691547393799,
+          0,
+          0,
+          0,
+          0,
+          4.610691547393799,
+          0,
+          -0.28429436683654785,
+          0.2840909957885742,
+          0.004325389862060547,
+          1
+        ],
+        "name": "LOD2_Stone_strata",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_rock_silicate_boulder.glb"
+  },
+  "runtimeHash": "3c3106903a4194b9d6a5c98a91f97bc390c0c1821c392e9c09704c2f6318a906",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          4.829470917780333,
+          5.580593585968018,
+          4.629087358754079
+        ],
+        "min": [
+          -5.552967174756725,
+          -5.405505877365965,
+          -4.769910503569588
+        ]
+      },
+      "id": "sf.render.rock-silicate-boulder.body",
+      "nodeIds": [
+        "sf.render.rock-silicate-boulder.mesh.collision-hull",
+        "sf.render.rock-silicate-boulder.mesh.lod0-stone",
+        "sf.render.rock-silicate-boulder.mesh.lod0-stone-deep",
+        "sf.render.rock-silicate-boulder.mesh.lod0-stone-strata",
+        "sf.render.rock-silicate-boulder.mesh.lod1-stone",
+        "sf.render.rock-silicate-boulder.mesh.lod1-stone-deep",
+        "sf.render.rock-silicate-boulder.mesh.lod1-stone-strata",
+        "sf.render.rock-silicate-boulder.mesh.lod2-stone",
+        "sf.render.rock-silicate-boulder.mesh.lod2-stone-deep",
+        "sf.render.rock-silicate-boulder.mesh.lod2-stone-strata",
+        "sf.render.rock-silicate-boulder.root"
+      ]
+    }
+  ]
+}

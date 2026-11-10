@@ -1,0 +1,5 @@
+
+> spaceface@0.1.0 check:asset-reachability
+> node scripts/check-asset-reachability.mjs
+
+asset reachability OK ΓÇö 222 referenced runtime assets exist and are retail-routable (137 physically bundled, 85 render-package-routed); 10 authoring-only reference sheets held out of the runtime.

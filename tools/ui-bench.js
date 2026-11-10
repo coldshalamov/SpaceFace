@@ -1,0 +1,2173 @@
+import { seedFortifyBench } from './ui-bench-fortify.js';
+// ui-bench.js — the 2D UI workbench: mount a real screen over a frozen still, click everything,
+// read what each control asked for. No boot, no simulation, no renderer startup.
+//
+// Looking is `node scripts/ui-bench.mjs --shot=<id>` (docs/UI_VISUAL_ITERATION.md). The page
+// mounts the same screen module the game mounts, with a real GameState, over one of the
+// committed backdrops. `--walk` tries every control. Live behaviour for a screen this page
+// cannot mount stays with `ui-look`.
+
+import { createGameState } from '../src/core/gameState.js';
+import { loadModelTruthCensus } from '../src/data/modelTruth.js';
+import { ensureLocalizationReady } from '../src/localization/gameLocalization.js';
+import { createScreenMemory } from '../src/ui/screenMemory.js';
+import { isMapScreenId, openGalaxyMap, focusFromLegacyScreenId } from '../src/ui/mapAuthority.js';
+import { BENCH_HELIOS_BOARD } from './ui-bench-board.js';
+import { missions } from '../src/systems/missions.js';
+import { buildDefeatReceipt } from '../src/combat/playerDefeat.js';
+import { createRunState } from '../src/core/runState.js';
+import { runSession } from '../src/systems/runSession.js';
+import { TRAVEL_FLAGS, applyFeatureConfigToMaps, PRODUCTION_FEATURES } from '../src/data/featureFlags.js';
+import { COMBAT_LAB_STARTER_PACKAGES } from '../src/data/combatLabSetups.js';
+import { survivalDraft } from '../src/systems/survivalDraft.js';
+import { ships as shipsSystem } from '../src/systems/ships.js';
+import { economy as economySystem } from '../src/systems/economy.js';
+import {
+  buildCodeFor, buildNameFor, counterplayFor, deathCauseText, deathSentence, storyMomentsFor,
+} from '../src/systems/survivalResults.js';
+import { crucibleSetupFor, requestCrucibleRun } from '../src/ui/crucibleLaunch.js';
+import { ghostHash, loadCrucibleMeta, saveCrucibleMeta } from '../src/systems/survivalRecords.js';
+import { createComboState } from '../src/systems/stuntCombo.js';
+import { injectHudCss } from '../src/ui/views/hudStyles.js';
+import { ensureStylesheet as ensureStationStylesheet } from '../src/ui/station/stationStyles.js';
+import { BACKDROPS, resolveShot, UI_BENCH_SHOTS } from '../scripts/lib/uiBenchCatalog.mjs';
+import { createBenchSaveSystem } from './ui-bench-saves.js';
+import {
+  measureControlReachability, resolveBenchControl, snapshotBenchControls,
+} from './ui-bench-controls.js';
+import { benchWorldFor, loadBenchWorld, seedChartShot, unseedChartShot } from './ui-bench-chart.js';
+import { seedFootprintShot, unseedFootprintShot } from './ui-bench-footprint.js';
+import { seedRecordShot, unseedRecordShot } from './ui-bench-record.js';
+import { seedReceiptsShot, unseedReceiptsShot } from './ui-bench-receipts.js';
+import { seedImpoundShot } from './ui-bench-impound.js';
+import { MOBILE_CSS_PATH } from '../src/systems/mobile/styles.js';
+import { loadCssSidecar } from '../src/ui/orrery/cssSidecar.js';
+
+window.__BENCH_READY = false;
+// This tool bypasses main.boot(), so it owns the same data-ready boundary before fixture mounts.
+await Promise.all([loadModelTruthCensus(), ensureLocalizationReady()]);
+window.__BENCH_OVERLAY = '';
+// The element the bench deliberately opened over the screen, if any. Type it covers is covered on
+// purpose -- a radial menu is supposed to sit on the deck while it is open.
+window.__BENCH_OVERLAY_EL = null;
+window.__BENCH_LAST_DISABLED = false;
+
+/** Screens this bench can mount. A screen that needs a live run (docking, a Crucible run) is
+ *  listed as unavailable on purpose: better an honest hole than a fake that looks finished. */
+const SCREENS = Object.freeze({
+  mainMenu: () => import('../src/ui/screens/mainMenu.js').then((m) => m.mainMenuScreen),
+  motionAsk: () => import('../src/ui/screens/motionAsk.js').then((m) => m.motionAskScreen),
+  newGame: () => import('../src/ui/screens/newGame.js').then((m) => m.newGameScreen),
+  pause: () => import('../src/ui/screens/pause.js').then((m) => m.pauseScreen),
+  settings: () => import('../src/ui/screens/settings.js').then((m) => m.settingsScreen),
+  saveLoad: () => import('../src/ui/screens/saveLoad.js').then((m) => m.saveLoadScreen),
+  help: () => import('../src/ui/screens/help.js').then((m) => m.helpScreen),
+  codex: () => import('../src/ui/screens/codex.js').then((m) => m.codexScreen),
+  missionLog: () => import('../src/ui/screens/missionLog.js').then((m) => m.missionLogScreen),
+  credits: () => import('../src/ui/screens/credits.js').then((m) => m.creditsScreen),
+  achievements: () => import('../src/ui/screens/achievements.js').then((m) => m.achievementsScreen),
+  statistics: () => import('../src/ui/screens/statistics.js').then((m) => m.statisticsScreen),
+  gameOver: () => import('../src/ui/screens/gameOver.js').then((m) => m.gameOverScreen),
+  techTree: () => import('../src/ui/screens/techTree.js').then((m) => m.techTreeScreen),
+  range: () => import('../src/ui/screens/range.js').then((m) => m.rangeScreen),
+  footprint: () => import('../src/ui/screens/footprint.js').then((m) => m.footprintScreen),
+  automation: () => import('../src/ui/screens/automationPanel.js').then((m) => m.automationScreen),
+  base: () => import('../src/ui/screens/base.js').then((m) => m.baseScreen),
+  crucible: () => import('../src/ui/screens/crucible.js').then((m) => m.crucibleScreen),
+  crucibleDraft: () => import('../src/ui/screens/crucibleDraft.js').then((m) => m.crucibleDraftScreen),
+  crucibleRefit: () => import('../src/ui/screens/crucibleDraft.js').then((m) => m.crucibleRefitScreen),
+  crucibleFortify: () => import('../src/ui/swarmFortifyPanel.js').then((m) => m.crucibleFortifyScreen),
+  crucibleResults: () => import('../src/ui/screens/crucible.js').then((m) => m.crucibleResultsScreen),
+  demoEnd: () => import('../src/ui/screens/demoEnd.js').then((m) => m.demoEndScreen),
+  replay: () => import('../src/ui/screens/replay.js').then((m) => m.replayScreen),
+  clips: () => import('../src/ui/screens/clips.js').then((m) => m.clipsScreen),
+  sandbox: () => import('../src/ui/screens/sandbox.js').then((m) => m.sandboxScreen),
+  physicsVenues: () => import('../src/ui/screens/physicsVenues.js').then((m) => m.physicsVenuesScreen),
+  raceBoard: () => import('../src/ui/screens/raceBoard.js').then((m) => m.raceBoardScreen),
+  station: () => import('../src/ui/station/stationScreen.js').then((m) => m.stationScreen),
+  ship: () => import('../src/ui/ship/shipScreen.js').then((m) => m.shipScreen),
+  galaxyMap: () => import('../src/ui/galaxyMap.js').then((m) => m.galaxyMapScreen),
+  drill: () => import('../src/ui/asteroid/asteroidScreen.js').then((m) => m.asteroidScreen),
+  localmap: () => import('../src/ui/screens/localmap.js').then((m) => m.localmapScreen),
+  starmap: () => import('../src/ui/screens/starmap.js').then((m) => m.starmapScreen),
+  // ORRERY (design/frontend/ORRERY.md): the Phase 0a direction proof, the flight HUD composed from the library.
+  orreryFlight: () => import('../src/ui/orrery/flightPreview.js').then((m) => m.orreryFlightScreen),
+  // The loading shot's screen name; dispatch special-cases it (mountLoadingShot) and never calls this loader.
+  bootOverlay: () => Promise.resolve(null),
+});
+
+/** The flight HUD is not a .mount() screen; it is the always-mounted overlay createHud() builds
+ *  into #hud. The bench mounts it through the same module the game does, over the frozen still,
+ *  with a real GameState and the real kit/deckplate sheets — so --shot=flight frames the true
+ *  instrument, not a mock. */
+
+const screensEl = document.getElementById('screens');
+const hudEl = document.getElementById('hud');
+const picker = document.getElementById('bench-picker');
+const intentEl = document.getElementById('bench-intent');
+const stillInput = document.getElementById('bench-still');
+const bgEl = document.getElementById('bench-bg');
+
+const params = new URLSearchParams(location.search);
+// ?phone=1 (ui-bench --phone): the page is a touch phone — the deck's own CSS and root flag, exactly as
+// the mobile layer stamps them in the game, so menus are judged against the cascade a phone gets.
+const PHONE = params.get('phone') === '1';
+if (PHONE) {
+  document.documentElement.dataset.sfMobile = '1';
+  await loadCssSidecar(document, { id: 'sf-mobile-style', path: MOBILE_CSS_PATH,
+    fallback: async () => (await import('../src/systems/mobile/mobileCssSource.js')).MOBILE_CSS });
+}
+const log = [];
+const stack = [];
+
+function note(line) {
+  log.push(line);
+  if (log.length > 200) log.shift();
+  intentEl.textContent = log.slice(-14).join('\n');
+}
+
+/** The state the screens read. A real GameState from the game's own factory, then seeded with the
+ *  situation the screens have to draw (a tracked contract, a waypoint, a save, some cargo). */
+/** `story: 'ledger'` holds an unsold Lost Ledger; `story: 'treaty'` sets the Cassandra Treaty flag.
+ *  Any other shot clears both, so a story fixture never leaks into the next still. */
+function seedStoryRewardShot(state, kind) {
+  const player = state.player || (state.player = {});
+  const flags = player.flags || (player.flags = {});
+  let own = player.uniqueWrecks;
+  if (own && own.storyRewards) {
+    delete own.storyRewards.unique_lost_ledger;
+    delete own.storyRewards.unique_cassandra_treaty;
+  }
+  delete flags['crossRep.choirVaelTreaty'];
+  if (!kind) return;
+  if (!own || typeof own !== 'object') own = player.uniqueWrecks = {};
+  if (!own.storyRewards || typeof own.storyRewards !== 'object') own.storyRewards = {};
+  if (kind === 'ledger') {
+    own.storyRewards.unique_lost_ledger = {
+      wreckId: 'wreck_mts_silver_draft', kind: 'story_commodity', flagKey: 'uniqueWreck.lostLedger',
+      grantedAtS: 0, choices: ['sell_meridian', 'file_concord', 'publish_independent'],
+    };
+  } else if (kind === 'treaty') {
+    own.storyRewards.unique_cassandra_treaty = {
+      wreckId: 'wreck_choir_cassandra', kind: 'story_data', flagKey: 'uniqueWreck.cassandraTreaty',
+      grantedAtS: 0, unlockFlag: 'crossRep.choirVaelTreaty',
+    };
+    flags['crossRep.choirVaelTreaty'] = true;
+  }
+}
+
+function seededState() {
+  const state = createGameState(4242);
+  state.mode = 'flight';
+  state.meta.seed = 4242;
+  state.meta.lastSavedAt = '2026-09-15T20:57:46.000Z';
+  state.save.currentSlot = 'quick';
+  // RC-48 / R479 — the tracked row is the real opening contract, installed by the game's own
+  // cold-start path rather than a hand-shaped stand-in: `_installContract47aColdStart` builds the
+  // instance through `_instanceFromOffer` (authored title/terms, pending payment, the mass note,
+  // authorization and code) and sets `ui.trackedMissionId` itself. The real page `bus` does not
+  // exist yet at this point in the module, so the owner init runs over an inert stub — the
+  // installer only emits, which the stub swallows. Never append a second 47-A entry.
+  const missionOwner = Object.create(missions);
+  missionOwner.init({
+    state,
+    bus: { on: () => () => {}, once: () => () => {}, off() {}, emit() {} },
+    helpers: {},
+    registry: { get: () => null },
+  });
+  missionOwner._installContract47aColdStart();
+  // The board the docked station posts: the game's own offers, so the contracts tab is reviewed full.
+  state.missions.boards = { station_helios: structuredClone(BENCH_HELIOS_BOARD) };
+  state.nav.waypoint = {
+    label: 'Beacon 419 u', pos: { x: 420, z: -180 }, sectorId: 'sector_helios_prime', stationId: 'station_helios',
+  };
+  // the real sector the bench's station stands in (a made-up id read as "Helios" beside saves filed in "Helios Prime")
+  state.world.currentSectorId = 'sector_helios_prime';
+  state.ui.docked = false;
+  state.ui.dockedStationId = null;
+  state.player.credits = 18400;
+  state.player.ownedShips = [{ defId: 'ship_kestrel' }];
+  state.player.activeShipIndex = 0;
+  // A hull the instruments can read. Empty GameState has playerId 0 and no entity, so the
+  // cluster paints "NO DATA" and the power rail stays an empty div until the first frame.
+  const hull = {
+    id: 0, type: 'ship', alive: true, team: 1, radius: 12,
+    pos: { x: 0, y: 0, z: 0 }, vel: { x: 46, y: 0, z: 18 }, angVel: 0,
+    hull: 86, hullMax: 100, shield: 64, shieldMax: 100, armorHp: 20, armorMax: 30,
+    cap: 80, capMax: 100, energy: 80, energyMax: 100, maxSpeed: 180, fuel: 62, fuelMax: 100,
+    boost: { energy: 70, max: 100, dashCost: 28, dashImpulse: 0, dashCdT: 0 },
+    data: {
+      defId: 'ship_kestrel', callsign: 'KESTREL',
+      weapons: [{ id: 'bench-cannon', _heat: 22, heatMax: 100 }],
+    },
+  };
+  state.playerId = 0;
+  state.entities.set(0, hull);
+  state.entityList = [hull];
+  return state;
+}
+
+const state = seededState();
+const screenMemory = createScreenMemory(state);
+// Probes drive live changes on a mounted screen (a repair, a sale) through the same state the screen reads.
+window.__BENCH_STATE = state;
+
+/** Move the seeded player hull to entity id `id` (0 is the seed; 1 reads as a live run). */
+function rekeyPlayer(id) {
+  if (state.playerId === id) return;
+  const hull = state.entities.get(state.playerId);
+  if (!hull) return;
+  state.entities.delete(state.playerId);
+  hull.id = id;
+  state.entities.set(id, hull);
+  state.playerId = id;
+}
+
+/** What a Crucible fixture overwrites, kept so every other shot mounts over the seeded state. */
+const BASELINE = structuredClone({
+  run: state.run,
+  ownedShips: state.player.ownedShips,
+  moduleInventory: state.player.moduleInventory,
+});
+function restoreBaseline() {
+  const copy = structuredClone(BASELINE);
+  state.run = copy.run;
+  state.player.ownedShips = copy.ownedShips;
+  state.player.moduleInventory = copy.moduleInventory;
+  for (const off of benchOwnerUnsubs.splice(0)) off();
+  benchDraftOwner = null;
+  benchOwnerLive = false;
+}
+
+/** The survivalDraft owner a Crucible surface reads, when the shot is one. */
+let benchDraftOwner = null;
+const benchOwnerUnsubs = [];
+/** Set once the Crucible screen is mounted, so a draft resolved while seeding closes nothing. */
+let benchOwnerLive = false;
+
+/**
+ * The owner's own bus. Opening a draft emits ui:pushScreen, which on the bench bus would mount the
+ * screen a second time, so the owner talks to this instead: every event is dropped except the
+ * wallet charge, answered the way runSession answers it (spent when the run wallet covers it,
+ * rejected when it does not), so a purchase or a re-roll on the bench lands or is refused honestly.
+ * A resolved draft closes the draft screen, which is what survivalRun's next phase does in a run.
+ */
+function benchOwnerBus(gameState) {
+  return {
+    on: () => () => {},
+    emit(event, payload) {
+      const owner = benchDraftOwner;
+      if (event === 'run:draftResolved' && benchOwnerLive) {
+        bus.emit('ui:closeScreen', { id: 'crucibleDraft' });
+        return;
+      }
+      if (event !== 'run:spendRequested' || !owner || !gameState.run) return;
+      const run = gameState.run;
+      const credits = Number(payload && payload.credits) || 0;
+      if (Number.isInteger(run.credits) && run.credits >= credits) {
+        run.credits -= credits;
+        owner._onSpent({ credits, reason: payload.reason, totalCredits: run.credits });
+      } else {
+        owner._onSpendRejected({ credits, reason: payload.reason, available: run.credits || 0 });
+      }
+    },
+  };
+}
+
+/**
+ * A Crucible run the in-run surfaces can read: the door's default starter (Ricochet Runner on the
+ * Hornet), a run envelope that passes validateRunState, and the REAL survivalDraft owner. The
+ * owner draws the offers, prices the re-roll and lists the hardpoints exactly as it does in a run,
+ * so the rearm, the armory and the refit are the screens a player sees. It fits through the real
+ * ships owner and charges a bench wallet (benchOwnerBus), and it hears the screen's intents on the
+ * bench bus, so --walk strips, fits, buys and re-rolls the way a run does.
+ *
+ * Shots: crucible-draft is the Swarm armory after round 3; crucible-rearm is the Gauntlet's
+ * three-card rearm after wave 3; crucible-refit is the Gauntlet's wave-30 refit (Continue and the
+ * win both live); crucible-refit-swarm is the Swarm refit after round 10 (Extract live).
+ * `?ruleset=` on the page URL still overrides the shot's ruleset.
+ */
+function seedCrucibleRun(gameState, { ruleset, phase, wave, credits, score, fittings = null, spares = [] }) {
+  const starter = COMBAT_LAB_STARTER_PACKAGES.find((entry) => entry.id === 'ricochet_runner');
+  const fitted = [];
+  for (const slot of starter.loadout) fitted[slot.slotIndex] = slot.defId;
+  for (const [slotIndex, defId] of Object.entries(fittings || {})) fitted[Number(slotIndex)] = defId;
+  for (let i = 0; i < fitted.length; i++) if (!fitted[i]) fitted[i] = null;
+  gameState.player.ownedShips = [{ defId: starter.hullId, fittings: fitted }];
+  gameState.player.activeShipIndex = 0;
+  gameState.player.moduleInventory = spares.map((defId, index) => ({ instanceId: 9100 + index, defId }));
+  // Mint the same process-local lifetime the live run owner gives every armory action.
+  // A bare schema record intentionally cannot authorize a preparation receipt.
+  gameState.run = createRunState();
+  const runOwner = Object.create(runSession);
+  Object.assign(runOwner, { state: gameState, bus: { emit() {} } });
+  runOwner.begin({ kind: 'survival', ruleset, seed: 4242, arenaId: 'helios_core' });
+  const run = gameState.run;
+  Object.assign(run, { arenaId: 'helios_core', phase, wave, credits, score, xp: wave * 110 });
+  gameState.run = run;
+  const ownerBus = benchOwnerBus(gameState);
+  const shipsOwner = Object.create(shipsSystem);
+  Object.assign(shipsOwner, { state: gameState, bus: ownerBus, helpers: null, registry: null });
+  const owner = Object.create(survivalDraft);
+  Object.assign(owner, {
+    state: gameState, bus: ownerBus, helpers: null, _unsubs: [],
+    registry: { get: (name) => (name === 'ships' ? shipsOwner : null) },
+  });
+  owner._reset();
+  benchDraftOwner = owner;
+  if (phase === 'draft') owner._openDraft();
+  else if (phase === 'refit') owner._openRefit();
+  benchOwnerUnsubs.push(
+    bus.on('run:draftPickRequested', (p) => owner.resolvePick(p)),
+    bus.on('run:draftRerollRequested', () => owner.requestReroll()),
+    bus.on('run:refitFitRequested', (p) => owner.refitFit(p)),
+    bus.on('run:refitStripRequested', (p) => owner.refitStrip(p)),
+  );
+}
+
+function seedCrucibleShot(screenId, shot) {
+  if (screenId === 'crucibleFortify') {
+    benchOwnerUnsubs.push(seedFortifyBench(state, bus));
+    return;
+  }
+  // The demo end card reads the same transient the undock trigger writes (state.ui.demoEnd) and
+  // the per-save earnings counter; seed both so the shot is the card a player sees, not a stub.
+  if (screenId === 'demoEnd') {
+    state.ui.demoEnd = { moduleDefId: 'mod_engine_fusion_m' };
+    state.player.stats = state.player.stats || {};
+    state.player.stats.creditsEarned = 1840;
+    // The card reaches back to the Crucible record for its first fact — a player arrives here
+    // through a finished run, so the meta carries a best line like the live route writes it.
+    try {
+      const meta = loadCrucibleMeta();
+      saveCrucibleMeta({
+        ...meta,
+        bestLines: [{
+          id: 'line:bench-demo-end', version: 1, points: 960, multiplier: 1, raw: null,
+          bankId: null, tick: 4180, seed: BENCH_CRUCIBLE_RESULT.seed,
+          recordRules: { mode: 'swarm', arenaId: 'helios_core', mutators: [], complete: true },
+          // normalizeBestLine keeps only acts with an episode, a trick and evidence — a bare name
+          // is dropped on load and the card loses its first fact.
+          acts: [
+            { episodeId: 'ep-1', trickId: 'stunt_shove', name: 'Shove', family: 'contact',
+              tick: 1200, rootTick: 1180, points: 320, evidence: [{ kind: 'contact' }] },
+            { episodeId: 'ep-2', trickId: 'stunt_slam', name: 'Slam', family: 'contact',
+              tick: 2400, rootTick: 2360, points: 300, evidence: [{ kind: 'contact' }] },
+            { episodeId: 'ep-3', trickId: 'stunt_field_pop', name: 'Field pop', family: 'field',
+              tick: 4180, rootTick: 4100, points: 340, evidence: [{ kind: 'field' }] },
+          ],
+          videoAvailable: false, replayKind: 'causal_account',
+        }],
+      });
+    } catch { /* a bench host without storage shows two facts, like a fresh profile does */ }
+    return;
+  }
+  if (screenId === 'crucibleResults') {
+    // The share band only exists for a remembered launch plus a recorded ghost, and the combo
+    // band must disagree with the swarm kill chain the way the live plate did — a best chain of
+    // 24 over a meter that saw only flat gun kills and no chained tricks.
+    try {
+      const setup = crucibleSetupFor({ seed: BENCH_CRUCIBLE_RESULT.seed });
+      if (setup.ok && setup.value) requestCrucibleRun(bus, setup.value, BENCH_CRUCIBLE_RESULT.ruleset);
+    } catch { /* the share band is dressing; the plate still mounts without it */ }
+    try {
+      const tape = {
+        seed: BENCH_CRUCIBLE_RESULT.seed, hullId: 'ship_kestrel',
+        frames: [
+          { t: 0, x: 0, z: 0, r: 0 },
+          { t: 90, x: 14, z: 8, r: 0.7 },
+          { t: 180, x: 26, z: 3, r: 1.3 },
+          { t: 270, x: 31, z: -6, r: 1.9 },
+          { t: 360, x: 22, z: -14, r: 2.6 },
+        ],
+      };
+      const hash = ghostHash(tape);
+      const meta = loadCrucibleMeta();
+      saveCrucibleMeta({
+        ...meta,
+        ghosts: {
+          byHash: {
+            [String(hash)]: {
+              hash, seed: tape.seed, hullId: tape.hullId, frameCount: tape.frames.length,
+              frames: tape.frames, recordedAt: '2026-09-24T21:05:00.000Z',
+            },
+          },
+          lastHash: hash,
+        },
+      });
+    } catch { /* a bench host without storage skips the ghost item */ }
+    const combo = createComboState();
+    combo.gunKills = BENCH_CRUCIBLE_RESULT.kills;
+    state.stunts = { ...(state.stunts || {}), schemaVersion: 2, combo };
+    return;
+  }
+  const ruleset = params.get('ruleset') || shot.ruleset || null;
+  if (screenId === 'crucibleDraft') {
+    seedCrucibleRun(state, ruleset === 'scored'
+      ? { ruleset: 'scored', phase: 'draft', wave: 3, credits: 64, score: 1180 }
+      : { ruleset: 'swarm', phase: 'draft', wave: 3, credits: 64, score: 1180 });
+    return;
+  }
+  if (screenId === 'crucibleRefit') {
+    // A refit is where swapped-out picks wait: two spare guns for the open weapon hardpoint (so
+    // the picker and its fire/shove comparison show) and a drive for the empty engine slot.
+    const loadout = {
+      fittings: { 3: 'mod_shield_booster_s' },
+      spares: ['wpn_railgun_m', 'wpn_autocannon_s', 'mod_engine_fusion_m'],
+    };
+    seedCrucibleRun(state, ruleset === 'swarm'
+      ? { ruleset: 'swarm', phase: 'refit', wave: 10, credits: 212, score: 3040, ...loadout }
+      : { ruleset: 'scored', phase: 'refit', wave: 30, credits: 240, score: 4820, ...loadout });
+  }
+}
+
+/**
+ * A gameOver shot (catalog `defeat: 'populated' | 'empty'`). The populated plate is told from a
+ * REAL defeat receipt — `buildDefeatReceipt` over the bench state, a Reach raider entity, and a
+ * lethal hull breach — so the attacker, faction, weapon, direction, recovery berth, cost and
+ * cargo-loss lines all resolve through the game's own catalogs instead of a hand-shaped copy.
+ * The sortie tape and "this hull lasted" read the same session telemetry ring the live route
+ * feeds (`window.__SF_TELEMETRY__`), so the shot mounts a real ring: a deathLog entry and the
+ * events that sortie actually logged.
+ *
+ * `defeat: 'empty'` mounts the same screen over a state with nothing recorded — the honest
+ * empty plate, not a receipt with its fields blanked.
+ */
+const BENCH_KILLER_ID = 9;
+let gameOverRestore = null;
+
+function unseedGameOverShot(gameState) {
+  if (!gameOverRestore) return;
+  const restore = gameOverRestore;
+  gameOverRestore = null;
+  if (restore.killer) gameState.entities.set(BENCH_KILLER_ID, restore.killer);
+  else gameState.entities.delete(BENCH_KILLER_ID);
+  gameState.player.cargo = restore.cargo;
+  gameState.player.stats = restore.stats;
+  gameState.meta.playtimeS = restore.playtimeS;
+  if (restore.saveSlots === undefined) delete gameState.save.slots;
+  else gameState.save.slots = restore.saveSlots;
+  if (gameState.combat) gameState.combat.lastPlayerDefeat = restore.defeat;
+  window.__SF_TELEMETRY__ = restore.telemetry;
+}
+
+function seedGameOverShot(gameState, shot) {
+  unseedGameOverShot(gameState);
+  gameState.combat = gameState.combat || { beams: [] };
+  gameOverRestore = {
+    killer: gameState.entities.get(BENCH_KILLER_ID) || null,
+    cargo: structuredClone(gameState.player.cargo),
+    stats: structuredClone(gameState.player.stats),
+    playtimeS: gameState.meta && gameState.meta.playtimeS,
+    saveSlots: gameState.save ? gameState.save.slots : undefined,
+    defeat: gameState.combat.lastPlayerDefeat || null,
+    telemetry: window.__SF_TELEMETRY__ || null,
+  };
+  if (shot.defeat === 'empty') {
+    gameState.combat.lastPlayerDefeat = null;
+    window.__SF_TELEMETRY__ = null;
+    return;
+  }
+  // A career a couple of hours old, ended on this hull's eighth minute — the ring, the career
+  // record and the "Load latest" verb all have something true to say.
+  gameState.meta.playtimeS = 9420;
+  Object.assign(gameState.player.stats, {
+    missionsDone: 3, kills: 12, tradesCount: 9, lifetimeProfit: 18400, biggestSingleProfit: 2200,
+  });
+  gameState.save = gameState.save || {};
+  gameState.save.slots = {
+    auto: { savedAt: '2026-09-15T20:41:02.000Z', playtimeS: 8600, sectorName: 'Helios Prime' },
+  };
+  // The manifest the recovery plan halves: 6u iron ore + 3u consumer goods is 4u lost.
+  gameState.player.cargo = {
+    items: { cmdty_ore_iron: 6, cmdty_consumer_goods: 3 },
+    usedVolume: 9, usedMass: 6.3, capVolume: 40, capMass: 60,
+  };
+  // A real Reach raider astern of the player hull, so impactDirection reads AFT through the
+  // same math the live hit ran — never a direction string authored into the fixture.
+  const killer = {
+    id: BENCH_KILLER_ID, type: 'ship', alive: true, team: 2, radius: 14, rot: 0.4,
+    pos: { x: -58, y: 0, z: 12 }, vel: { x: 30, y: 0, z: 6 }, angVel: 0,
+    factionId: 'faction_reach',
+    data: { enemyTypeId: 'corsair_raider', defId: 'ship_hornet', callsign: 'REACH KITE' },
+  };
+  gameState.entities.set(BENCH_KILLER_ID, killer);
+  const player = gameState.entities.get(gameState.playerId);
+  const receipt = buildDefeatReceipt(gameState, player, BENCH_KILLER_ID, {
+    weaponId: 'wpn_autocannon_m',
+    dominantLayer: 'hull',
+    context: 'combat',
+    result: { after: { shield: 0, shieldMax: 100, armor: 0, armorMax: 30, hull: 0, hullMax: 100 } },
+    packet: { hit: { pos: { x: -30, z: 6 } } },
+  });
+  gameState.combat.lastPlayerDefeat = receipt;
+  // The black-box ring the tape scrubs: launch-to-loss with the events a real sortie logs.
+  const lossAt = 9_000_000;
+  window.__SF_TELEMETRY__ = {
+    getSessionStats: () => ({
+      deathLog: [{
+        cause: 'ship:corsair_raider', killerName: 'Corsair Raider', killerType: 'corsair_raider',
+        killerFaction: 'faction_reach', lifespanMs: 504_000, atMs: lossAt,
+        telegraphed: true, telegraphLeadTicks: 25,
+      }],
+    }),
+    getRecentEvents: () => [
+      { atMs: 8_505_000, type: 'dock:docked', data: { stationId: 'station_helios' } },
+      { atMs: 8_520_000, type: 'mission:accepted', data: {} },
+      { atMs: 8_640_000, type: 'jump:arrive', data: { sectorId: 'sector_io_reach' } },
+      { atMs: 8_800_000, type: 'entity:killed', data: { victimClass: 'pirate' } },
+      { atMs: 8_900_000, type: 'economy:tradeCompleted', data: { side: 'sell' } },
+      { atMs: 8_960_000, type: 'entity:killed', data: { victimClass: 'pirate' } },
+    ],
+  };
+}
+
+/**
+ * Populated drill shots (catalog `drill: 'claimed' | 'build'`). The drill screen reads the drill
+ * and asteroid-site owners through the registry; the bench wired neither, so every drill shot was
+ * the "No claim" shell. These owners are the game's own systems over the bench state and bus
+ * (Object.create, the way the Crucible and economy owners are built), and the seed below works a
+ * claim through their own intents: a session, a staked site with a committed survey, Core + 2
+ * machines joined by one lane, staged gauges, a half-full hold, and one ledger event.
+ */
+let benchDrillOwner = null;
+let benchSitesOwner = null;
+let drillBaseline = null;
+/** Bench rock id: nowhere near the seeded hull (0/1), the contacts, or the chart's traffic. */
+const BENCH_DRILL_ASTEROID_ID = 5001;
+/** The build row, just under the rover spawn (col 14, row 0): Core, lane, extractor, lane, refinery. */
+const BENCH_DRILL_ROW = Object.freeze([[14, 1], [15, 1], [16, 1], [17, 1], [18, 1]]);
+// A service tunnel keeps every installation physically reachable after the Core occupies the
+// entrance to the machine row. Machines are solid, so a one-cell factory cannot be its own aisle.
+const BENCH_DRILL_BYPASS = Object.freeze([[15, 0], [16, 0], [17, 0], [18, 0]]);
+
+async function ensureDrillOwners() {
+  if (benchDrillOwner && benchSitesOwner) return;
+  const [{ drill }, { asteroidSites }] = await Promise.all([
+    import('../src/systems/drill.js'),
+    import('../src/systems/asteroidSites.js'),
+  ]);
+  benchDrillOwner = Object.create(drill);
+  benchDrillOwner.init({ state, bus, registry });
+  benchSitesOwner = Object.create(asteroidSites);
+  benchSitesOwner.init({ state, bus, registry });
+}
+
+function unseedDrillShot(gameState) {
+  if (!drillBaseline) return;
+  const base = drillBaseline;
+  drillBaseline = null;
+  gameState.drill = base.drill;
+  gameState.sites = base.sites;
+  gameState.player.cargo = base.cargo;
+  gameState.player.credits = base.credits;
+  gameState.player.researchedNodes = base.researched;
+  gameState.ui.pendingDrillAsteroidId = base.pendingDrill;
+  gameState.entities.delete(BENCH_DRILL_ASTEROID_ID);
+  gameState.entityList = gameState.entityList.filter((e) => e && e.id !== BENCH_DRILL_ASTEROID_ID);
+  // The owners cache per-site runtimes by site id; a re-seed mints the same ids, so drop them.
+  try { benchSitesOwner?._rt?.clear?.(); } catch { /* a bench without the owner has no cache */ }
+  try { benchSitesOwner?._surveyByAsteroid?.clear?.(); } catch { /* same */ }
+}
+
+async function seedDrillShot(gameState, kind = 'claimed') {
+  await ensureDrillOwners();
+  // Idempotent: a walk re-mounts the same shot, and installs are not re-runnable (the Core is
+  // unique, the first install needs the rover beside it, materials are consumed) — restore the
+  // baseline, then seed fresh.
+  unseedDrillShot(gameState);
+  drillBaseline = {
+    drill: gameState.drill,
+    sites: structuredClone(gameState.sites),
+    cargo: structuredClone(gameState.player.cargo),
+    credits: gameState.player.credits,
+    researched: (gameState.player.researchedNodes || []).slice(),
+    pendingDrill: gameState.ui.pendingDrillAsteroidId || null,
+  };
+  const { tileIndex } = await import('../src/systems/drill.js');
+  const asteroidId = BENCH_DRILL_ASTEROID_ID;
+  const ent = {
+    id: asteroidId, type: 'asteroid', alive: true, team: 0, radius: 26,
+    pos: { x: 1200, y: 0, z: -600 }, vel: { x: 0, y: 0, z: 0 },
+    data: { typeId: 'ast_common_rock', yieldU: 240 },
+  };
+  gameState.entities.set(asteroidId, ent);
+  gameState.entityList.push(ent);
+  // Fund the Core + extractor + refinery out of the hold, the way a prepared launch would.
+  const items = gameState.player.cargo.items;
+  items.cmdty_regocrete = (items.cmdty_regocrete || 0) + 40;
+  items.cmdty_control_unit = (items.cmdty_control_unit || 0) + 10;
+  items.cmdty_refined_metals = (items.cmdty_refined_metals || 0) + 20;
+  // (a) open a drill session via the drill sys (tethered rover, approach complete).
+  if (!benchDrillOwner.begin(asteroidId)) throw new Error('seedDrillShot: drill.begin refused the bench rock');
+  // Hollow the build row — the bore the session's first minutes cut — and record it the way
+  // drill.js does, so the durable runtime field agrees with the live one.
+  const d = gameState.drill;
+  const cleared = new Set(ent.data.drillCleared || []);
+  for (const [col, row] of [...BENCH_DRILL_ROW, ...BENCH_DRILL_BYPASS]) {
+    if (d.field[col] && d.field[col][row]) {
+      d.field[col][row] = { type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0 };
+    }
+    cleared.add(tileIndex(col, row));
+  }
+  ent.data.drillCleared = [...cleared].sort((a, b) => a - b);
+  // (b)+(c) stake the claim — the first install anchors the site and commits the survey with its
+  // formation cells — and raise Core + 2 machines, joined by one lane.
+  const core = benchSitesOwner.installMachine({ asteroidId, defId: 'sm_massline_core', col: 14, row: 1 });
+  if (!core.ok) throw new Error('seedDrillShot: Core refused (' + core.reason + ')');
+  const ext = benchSitesOwner.installMachine({ asteroidId, defId: 'sm_extractor', col: 16, row: 1 });
+  if (!ext.ok) throw new Error('seedDrillShot: extractor refused (' + ext.reason + ')');
+  const ref = benchSitesOwner.installMachine({ asteroidId, defId: 'sm_refinery', col: 18, row: 1 });
+  if (!ref.ok) throw new Error('seedDrillShot: refinery refused (' + ref.reason + ')');
+  const site = benchSitesOwner.getSite(core.siteId);
+  benchSitesOwner.setOverlay(site.id, 'lane', 15, 1, true);
+  benchSitesOwner.setOverlay(site.id, 'lane', 17, 1, true);
+  // (d) heat ~40%, charge ~65%, half-full hold, one ledger event. The build-row bore paid
+  // ore — the crest yield reads it, and the ore sits in the half-full hold below.
+  d.drillTemp = 40;
+  d.drillEnergy = 65;
+  d.yieldLog = { cmdty_ore_iron: 12 };
+  items.cmdty_ore_iron = (items.cmdty_ore_iron || 0) + 24;
+  gameState.player.cargo.usedVolume = Math.round((gameState.player.cargo.capVolume || 40) / 2);
+  site.ledger = [{
+    t: Math.round((gameState.simTime || 0) * 10) / 10,
+    kind: 'good',
+    text: 'Massline Core online — this asteroid is now a permanent site.',
+  }];
+  gameState.ui.pendingDrillAsteroidId = asteroidId;
+  return kind;
+}
+
+/** After mount: the screen's own begin() re-opened the session, resetting gauges and yield —
+ *  re-assert them, open the build palette for the -build variant, and refresh so the still is
+ *  the state. */
+function settleDrillShot(gameState, shot, screen, ctx) {
+  if (gameState.drill) {
+    gameState.drill.drillTemp = 40;
+    gameState.drill.drillEnergy = 65;
+    gameState.drill.yieldLog = { cmdty_ore_iron: 12 };
+  }
+  if (shot.drill === 'build') {
+    // The console's own build toggle (asteroidController: KeyB), the way a player opens it.
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyB', key: 'b', bubbles: true, cancelable: true }));
+  }
+  screen.refresh?.(ctx);
+}
+
+/**
+ * Populated base shots (catalog `base: 'claimed'`). The base screen reads the claims owner for
+ * the body named by state.ui.pendingClaimBodyId; the bench wired neither, so every base shot was
+ * the "No body selected" card. This stakes an authored L-class site through the owner's own
+ * intents, builds 2 of 5 module slots, commissions a relay identity, stocks the store through
+ * the hold, and puts a convoy mid-leg in the exact shape a dispatch writes.
+ */
+let benchClaimsOwner = null;
+let baseBaseline = null;
+
+async function ensureClaimsOwner() {
+  if (benchClaimsOwner) return benchClaimsOwner;
+  const { claims } = await import('../src/systems/claims.js');
+  benchClaimsOwner = Object.create(claims);
+  benchClaimsOwner.init({ state, bus, registry });
+  return benchClaimsOwner;
+}
+
+function unseedBaseShot(gameState) {
+  if (!baseBaseline) return;
+  const base = baseBaseline;
+  baseBaseline = null;
+  gameState.claims = base.claims;
+  gameState.player.credits = base.credits;
+  gameState.player.cargo = base.cargo;
+  gameState.player.researchedNodes = base.researched;
+  gameState.ui.pendingClaimBodyId = base.pendingClaim;
+  gameState.simTime = base.simTime;
+}
+
+async function seedBaseShot(gameState, kind = 'claimed') {
+  const owner = await ensureClaimsOwner();
+  // Idempotent (see seedDrillShot): claim() refuses an already-claimed POI.
+  unseedBaseShot(gameState);
+  baseBaseline = {
+    claims: structuredClone(gameState.claims),
+    credits: gameState.player.credits,
+    cargo: structuredClone(gameState.player.cargo),
+    researched: (gameState.player.researchedNodes || []).slice(),
+    pendingClaim: gameState.ui.pendingClaimBodyId || null,
+    simTime: gameState.simTime,
+  };
+  const { CLAIMABLE_BODY_SITES } = await import('../src/data/claimableBodies.js');
+  const { stableRecordId, RECORD_KIND } = await import('../src/world/worldRecords.js');
+  // The run is 72 minutes in (footprint precedent): receipts read minutes old, the convoy mid-leg.
+  gameState.simTime = 4320;
+  gameState.player.credits = 200000;
+  const researched = new Set(gameState.player.researchedNodes || []);
+  researched.add('tech_outpost_charter');
+  gameState.player.researchedNodes = [...researched];
+  const poi = CLAIMABLE_BODY_SITES.find((s) => s.id === 'poi_claim_lacuna');
+  if (!poi || !owner.claim(poi)) throw new Error('seedBaseShot: claim refused');
+  const body = gameState.claims.bodies[gameState.claims.bodies.length - 1];
+  body.slots = 5;
+  if (!owner.buildModule(body.id, 'mod_depot')) throw new Error('seedBaseShot: depot refused');
+  if (!owner.buildModule(body.id, 'mod_defense')) throw new Error('seedBaseShot: defense refused');
+  if (!owner.specialize(body.id, 'spec_relay')) throw new Error('seedBaseShot: specialize refused');
+  // Stored goods travel the owner path (hold → site store).
+  gameState.player.cargo.items.cmdty_ore_iron = (gameState.player.cargo.items.cmdty_ore_iron || 0) + 200;
+  owner.deliverToClaim(body.id, 'cmdty_ore_iron', 150);
+  // One convoy in flight, in the exact shape a relay dispatch writes (claims.js).
+  const t = gameState.simTime || 0;
+  const qty = 60;
+  const dest = 'station_helios';
+  body.spec.store.input.cmdty_ore_iron = Math.max(0, (body.spec.store.input.cmdty_ore_iron || 0) - qty);
+  if (body.spec.store.input.cmdty_ore_iron <= 0) delete body.spec.store.input.cmdty_ore_iron;
+  body.spec.convoySeq = 1;
+  body.spec.convoy = {
+    goodId: 'cmdty_ore_iron', qty, destStationId: dest, departedAt: t - 30, arriveAt: t + 60,
+    convoyId: body.id + ':cv1',
+    bodyId: body.id,
+    worldRecordId: stableRecordId(
+      (gameState.meta && gameState.meta.seed) || 1,
+      body.sectorId || gameState.world.currentSectorId || 'sector',
+      RECORD_KIND.CONVOY,
+      'claim-convoy:' + body.id + ':1',
+    ),
+    manifested: false,
+    entityId: null,
+  };
+  owner._receipt(body, 'convoy_dispatched', 'Convoy away — ' + qty + 'u to ' + (owner._stationName(dest) || dest),
+    { goodId: 'cmdty_ore_iron', qty, destStationId: dest });
+  gameState.ui.pendingClaimBodyId = body.id;
+  return kind;
+}
+
+/**
+ * The loading shot (catalog id 'loading'). Not a screen: it stages #boot-overlay — the game's own
+ * markup, styled by the same intro.css — with createLoadingPresenter on the bench bus, fires the
+ * scripted stage sequence so the ring carries 4 ticks + a 62% arc, and waits for the smoothed
+ * value to settle before capture. The tableaux run on the main-thread 2D engine: no worker in
+ * the bench (the canvas guard hands the presenter this same instance).
+ */
+const BENCH_LOADING_STAGES = Object.freeze([
+  Object.freeze({ id: 'restoring-save', progress: 0.08, label: 'Restoring flight state', detail: 'Rebuilding the saved sector' }),
+  Object.freeze({ id: 'authored-library', progress: 0.25, label: 'Loading the ships', detail: 'Bringing the saved sector back with its ships intact' }),
+  Object.freeze({ id: 'authored-visuals', progress: 0.5, label: 'Building the opening scene', detail: 'Placing ships and stations before you arrive' }),
+  Object.freeze({ id: 'restoring-flight', progress: 0.62, label: 'Restoring flight state', detail: 'Rebuilding the current sector' }),
+]);
+
+let benchLoadingPresenter = null;
+
+function ensureBenchLoadingDom() {
+  let overlay = document.getElementById('boot-overlay');
+  if (overlay) return overlay;
+  overlay = document.createElement('div');
+  overlay.id = 'boot-overlay';
+  overlay.setAttribute('role', 'status');
+  overlay.setAttribute('aria-live', 'polite');
+  overlay.setAttribute('aria-busy', 'true');
+  // index.html's overlay minus the intro video (a bench still never plays it).
+  overlay.innerHTML = `
+      <canvas id="boot-terminal-canvas" class="boot-canvas"></canvas>
+      <div class="boot-scrim" aria-hidden="true"></div>
+      <header class="boot-meta" aria-hidden="true">
+        <span class="boot-meta__registry">SPACEFACE · FLIGHT SYSTEMS</span>
+        <span class="boot-meta__clock" data-loading-clock>00:00</span>
+      </header>
+      <div class="boot-lockup">
+        <span class="boot-wordmark">SPACEFACE</span>
+        <span class="boot-label" data-loading-label>Initializing systems…</span>
+        <span class="boot-detail" data-loading-detail>Preparing your next departure</span>
+        <div class="boot-progress-row" aria-hidden="true">
+          <span class="boot-progress"><span data-loading-progress></span></span>
+          <span class="boot-progress-pct" data-loading-pct>0%</span>
+        </div>
+      </div>`;
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function hideBenchLoading() {
+  try { benchLoadingPresenter?.destroy(); } catch { /* overlay teardown is best-effort */ }
+  benchLoadingPresenter = null;
+  const overlay = document.getElementById('boot-overlay');
+  if (overlay) {
+    overlay.classList.add('hidden');
+    overlay.style.display = 'none';
+  }
+}
+
+async function mountLoadingShot() {
+  const overlay = ensureBenchLoadingDom();
+  overlay.classList.remove('hidden');
+  overlay.style.display = 'flex';
+  const [{ createLoadingPresenter }, { createTerminalArtwork, ensureBootTerminalCanvas }] = await Promise.all([
+    import('../src/ui/loadingPresenter.js'),
+    import('../src/ui/loadingTerminalArt.js'),
+  ]);
+  const canvas = ensureBootTerminalCanvas(document);
+  if (canvas && !canvas.__sfTerminalArt) {
+    // Hide the worker while the artwork is acquired so the factory takes the main-thread path,
+    // and ask for the 2D engine outright. Restored before anything else runs.
+    const RealWorker = globalThis.Worker;
+    try {
+      globalThis.Worker = undefined;
+      const art = createTerminalArtwork({ canvas, waveformCanvas: null, overlay, force2D: true, document });
+      art.start();
+    } catch (error) {
+      note(`loading art: ${error && error.message ? error.message : String(error)}`);
+    } finally {
+      globalThis.Worker = RealWorker;
+    }
+  }
+  try { benchLoadingPresenter?.destroy(); } catch { /* a re-mounted shot replaces the presenter */ }
+  benchLoadingPresenter = createLoadingPresenter({ document, bus, state });
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  for (const stage of BENCH_LOADING_STAGES) {
+    bus.emit('game:loadingProgress', { ...stage });
+    await sleep(100);
+  }
+  // The bar chases each stage through the presenter's easing; hold the shot until it has settled.
+  await sleep(1500);
+  note('— loading mounted (4 stages, ring at 62%)');
+}
+
+function closeTopScreen(next) {
+  screensEl.innerHTML = '';
+  currentScreen = null;
+  current = next;
+  if (stack.length && stack[stack.length - 1] === 'crucibleRefit') stack.pop();
+}
+
+/** Bus + manager stubs: every intent a control emits is logged, and the ones the bench can honour
+ *  (push/pop/replace a screen) actually navigate here, so the bench walks like the game does. */
+const listeners = new Map();
+const bus = {
+  on(key, fn) {
+    if (!listeners.has(key)) listeners.set(key, new Set());
+    listeners.get(key).add(fn);
+    return () => listeners.get(key)?.delete(fn);
+  },
+  emit(key, payload = {}) {
+    if (key === 'ui:pushScreen' && payload && payload.id) {
+      if (isMapScreenId(payload.id)) {
+        openGalaxyMap({ state, bus, screenManager: manager }, {
+          ...payload, screenId: payload.id, source: payload.source || 'ui:pushScreen',
+        });
+      } else void goto(payload.id);
+      return;
+    }
+    if (key === 'ui:popScreen') { void back(); return; }
+    if (key === 'ui:replaceScreen' && payload && payload.id) { stack.length = 0; void goto(payload.id); return; }
+    if (key === 'ui:closeScreen' && payload && payload.id && manager.top() === payload.id) {
+      note('ui:closeScreen(' + payload.id + ')');
+      closeTopScreen('closed');
+      return;
+    }
+    if (key === 'run:refitCloseRequested' && current === 'crucibleRefit') {
+      note('run:refitCloseRequested()');
+      closeTopScreen('closed');
+      return;
+    }
+    if (key === 'run:extractionRequested' && current === 'crucibleRefit') {
+      note('run:extractionRequested()');
+      if (state.run && state.run.kind === 'survival') state.run.phase = 'ended';
+      closeTopScreen('ended');
+      return;
+    }
+    const shape = payload && typeof payload === 'object' ? Object.keys(payload).slice(0, 4).join(', ') : '';
+    note(`${key}(${shape})`);
+    for (const fn of listeners.get(key) || []) fn(payload);
+  },
+};
+window.__BENCH_BUS = bus;
+/** Reseed a mounted Footprint with another record ('wanted' | 'marked' | 'clean' | 'empty' | 'loading') and refresh it. */
+window.__benchFootprint = (kind) => {
+  seedFootprintShot(state, kind);
+  if (current === 'footprint' && currentScreen) currentScreen.refresh?.({ state, bus, screenManager: manager, registry, screenMemory });
+  return kind;
+};
+/** Refresh the mounted screen once, the way uiRoot's cadence does in the game (a probe that moves state
+ *  the screen reads — the heat system's escape clock, say — calls this to see the screen follow it). */
+window.__benchRefresh = () => { currentScreen?.refresh?.({ state, bus, screenManager: manager, registry, screenMemory }); return current; };
+const manager = {
+  pushScreen(id) { void goto(id); },
+  popScreen() { void back(); },
+  replaceScreen(id) { stack.length = 0; void goto(id); },
+  closeAll() { stack.length = 0; screensEl.innerHTML = ''; },
+  hasScreen() { return stack.length > 0; },
+  isOpen(id) { return stack.includes(id); },
+  top() { return stack[stack.length - 1] || null; },
+  getActiveScreenDef() { return currentScreen; },
+};
+/** The defeat receipt the fixture's death is told from. The sentences below come from the same
+ *  survivalResults builders a live run uses, so the plate cannot drift from what a player reads. */
+const BENCH_DEFEAT_RECEIPT = Object.freeze({
+  attacker: 'Reaver Corsair', faction: 'Crimson Reach', weapon: 'Heavy Autocannon M',
+  direction: 'AFT', dominantLayer: 'hull', closingHullsPerS: 1.4,
+});
+
+const BENCH_PICKS = Object.freeze([
+  Object.freeze({ verb: 'Volume', defId: 'wpn_autocannon_m', wave: 2 }),
+  Object.freeze({ verb: 'Pierce', defId: 'wpn_railgun_m', wave: 4 }),
+  Object.freeze({ verb: 'Screen', defId: 'wpn_flak_turret_s', wave: 6 }),
+]);
+
+/** A filled flight record so --shot=crucibleResults is the plate a player sees, not the empty. */
+const BENCH_CRUCIBLE_RESULT = Object.freeze({
+  outcome: 'defeat', seed: 4242, arenaId: 'helios_core', ruleset: 'swarm',
+  wave: 6, deepestWave: 6, wavesCleared: 5, kills: 31, score: 1240, credits: 88, xp: 640, level: 4,
+  bestChain: 24, bestChainPoints: 960, lastRoundCleared: 5, remainingEnemies: 6,
+  roundThreatResolved: 18, roundThreatBudget: 24,
+  picks: BENCH_PICKS,
+  headline: deathSentence(BENCH_DEFEAT_RECEIPT, { wave: 6 }),
+  buildName: buildNameFor(BENCH_PICKS),
+  buildCode: buildCodeFor(BENCH_PICKS),
+  death: {
+    causeText: deathCauseText(BENCH_DEFEAT_RECEIPT),
+    // A witnessed tell: telegraphWord() names it in sentence case.
+    telegraphName: 'Weapon charge', telegraphLeadMs: 420, telegraphSource: 'witnessed',
+    counterplay: counterplayFor(BENCH_DEFEAT_RECEIPT),
+  },
+  moments: storyMomentsFor({
+    bestChain: 24, chainWave: 4,
+    waveStats: [{ wave: 4, kills: 7 }, { wave: 6, kills: 11 }],
+    heaviestHit: { amount: 18.4, weapon: 'Heavy Autocannon M' },
+  }),
+  defeat: {
+    attacker: 'Reaver Corsair', faction: 'Crimson Reach', weapon: 'Heavy Autocannon M',
+    direction: 'AFT', dominantLayer: 'hull', cause: 'Reaver Corsair · Crimson Reach · hull breach',
+    fatalSummary: 'Final hit from Reaver Corsair · aft hull breach.',
+    vitalsPct: { shield: 0, armor: 0, hull: 0 },
+  },
+  damageTrail: [
+    { attackerId: 9, weaponId: 'wpn_autocannon_m', amount: 18.4, type: 'kinetic' },
+    { attackerId: 11, weaponId: 'wpn_pulse_laser_m', amount: 12.2, type: 'energy' },
+    { attackerId: 9, weaponId: 'wpn_autocannon_m', amount: 18.4, type: 'kinetic' },
+    { attackerId: null, weaponId: null, amount: 7.1, type: 'collision' },
+    { attackerId: 9, weaponId: 'wpn_autocannon_m', amount: 17.9, type: 'kinetic' },
+  ],
+});
+
+/** The Market quotes through the game's own economy owner, over the bench state and bus (built on first
+ *  ask, once per page): the docked station's exchange is real, so a commodity is buyable at rest and a
+ *  confirmed trade settles through the same ui:buy / ui:sell intents the game handles. */
+let benchEconomy = null;
+function benchEconomyOwner() {
+  if (!benchEconomy) {
+    benchEconomy = Object.create(economySystem);
+    benchEconomy.init({ state, bus, helpers: null, registry });
+  }
+  if (state.ui.dockedStationId) benchEconomy.ensureMarket(state.ui.dockedStationId);
+  return benchEconomy;
+}
+const registry = {
+  get(name) {
+    if (name === 'economy') return benchEconomyOwner();
+    if (name === 'ui') return { screenManager: manager, manager, hud: window.__benchHud || null };
+    if (name === 'survivalResults') return { lastResult: () => BENCH_CRUCIBLE_RESULT };
+    if (name === 'survivalDraft') return benchDraftOwner;
+    // Populated drill/base shots mount over real owners (seedDrillShot / seedBaseShot below).
+    if (name === 'drill') return benchDrillOwner;
+    if (name === 'asteroidSites') return benchSitesOwner;
+    if (name === 'claims') return benchClaimsOwner;
+    // A shot marked `saves: 'filed'` loads with two lives on file (tools/ui-bench-saves.js).
+    if (name === 'save') return benchSaves;
+    // A chart shot plans with the game's own route planner (tools/ui-bench-chart.js).
+    if (name === 'world') return benchWorldFor(currentShot);
+    return null;
+  },
+};
+
+let current = null;
+/** The shot being mounted (the chart reads its planner through the registry). */
+let currentShot = null;
+let currentScreen = null;
+let currentAlias = null;
+/** The save system the load screen reads: null (no saves) unless the shot files some. */
+let benchSaves = null;
+
+function applyBackdrop(shot) {
+  const fromQuery = params.get('bg');
+  if (fromQuery) {
+    bgEl.src = fromQuery;
+    stillInput.value = fromQuery;
+    return;
+  }
+  bgEl.src = BACKDROPS[shot.backdrop] || BACKDROPS.title;
+}
+
+function clearOverlayHost() {
+  const host = document.getElementById('ui-root');
+  // Screens and HUD now live inside this host, as they do in the game. Preserve
+  // their connected nodes; only transient overlay children belong to this cleanup.
+  if (host) for (const child of [...host.children]) {
+    if (child !== screensEl && child !== hudEl) child.remove();
+  }
+}
+
+async function finishShot(shot) {
+  try {
+    if (!document.getElementById('bench-broken')) {
+      if (shot.tab) {
+        // A player's click moves focus to the tab it pressed; a synthetic .click() does not, so the
+        // shot kept the focus bracket on the Market tile while another tab was current.
+        const tabEl = document.querySelector(`#screens [data-nav="${shot.tab}"]`);
+        // Mark it quiet (as the station marks its arrival focus): a real click's focus is not
+        // :focus-visible, but this scripted one is, and would raise the wide-rail caption plate.
+        tabEl?.click();
+        if (tabEl) {
+          tabEl.setAttribute('data-sx-quiet-focus', '');
+          const clear = () => { tabEl.removeAttribute('data-sx-quiet-focus'); tabEl.removeEventListener('keydown', clear); tabEl.removeEventListener('blur', clear); };
+          tabEl.addEventListener('keydown', clear);
+          tabEl.addEventListener('blur', clear);
+        }
+        tabEl?.focus({ preventScroll: true });
+      }
+      if (shot.focus) {
+        const want = String(shot.focus).toUpperCase();
+        const button = [...screensEl.querySelectorAll('button')].find((el) => (el.textContent || '').toUpperCase().includes(want));
+        button?.click();
+      }
+      if (shot.overlay) {
+        await openOverlay(shot.overlay);
+        // The live loop keeps ticking the HUD under an open radial (the travel tape yields to it).
+        for (let i = 0; i < 24; i += 1) { try { window.__benchHud?.frame?.(1 / 30); } catch { /* still only */ } }
+      }
+    }
+  } catch (error) {
+    showBroken(shot.screen || shot.id, `mount threw: ${error && error.message ? error.message : String(error)}`);
+  }
+  try { await document.fonts.ready; } catch { /* fonts are best-effort */ }
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  window.__BENCH_READY = true;
+}
+
+async function goto(rawId) {
+  const requestedShot = resolveShot(rawId);
+  if (requestedShot?.mapAlias) {
+    // Mount the real chart fixture, then send the same legacy event uiRoot handles.
+    // The canonical owner supplies the focus intent; never mount the obsolete panel.
+    await goto('galaxyMap');
+    window.__BENCH_READY = false;
+    bus.emit('ui:pushScreen', { id: requestedShot.mapAlias });
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    currentAlias = { legacyId: requestedShot.mapAlias, destination: current,
+      focus: focusFromLegacyScreenId(requestedShot.mapAlias) };
+    window.__BENCH_READY = true;
+    return;
+  }
+  currentAlias = null;
+  window.__BENCH_READY = false;
+  // The drill module owns a live session and its own frame loop. Retire that instance before
+  // replacing its DOM or reseeding the next shot; otherwise its singleton still says _active
+  // and onShow skips the new board, leaving the walk on the empty claim screen.
+  if (current === 'drill' && currentScreen) {
+    currentScreen.onHide?.();
+    currentScreen._cleanup?.();
+    currentScreen = null;
+  }
+  window.__BENCH_OVERLAY = '';
+  window.__BENCH_OVERLAY_EL = null;
+  if (window.__benchMobile) { try { window.__benchMobile.destroy(); } catch { /* already gone */ } window.__benchMobile = null; }
+  const shot = resolveShot(rawId) || { id: rawId, screen: rawId, backdrop: 'title' };
+  const id = shot.screen;
+  applyBackdrop(shot);
+  benchSaves = shot.saves === 'filed' ? createBenchSaveSystem() : null;
+  currentShot = shot;
+  // A chart shot (`chart: 'seeded'`) mounts over a real sector with traffic; every other shot over the baseline.
+  if (shot.chart) { await loadBenchWorld(state); seedChartShot(state, shot); } else unseedChartShot(state);
+  // A shot marked `live` is a run in progress, so the load screen offers Save here: the screen's
+  // canSave() needs a non-zero player id, and the seeded hull sits at id 0.
+  rekeyPlayer(shot.live ? 1 : 0);
+  state.meta.playtimeS = shot.live ? 5260 : 0;
+  // A shot can ask for its own run seed (`seed:` in the catalog) so populated and empty plates of
+  // the same screen are provably different fixtures, not one shared seed re-dressed.
+  state.meta.seed = Number.isFinite(shot.seed) ? shot.seed : 4242;
+  // A shot with `research` mounts that career's researched nodes and a research-point balance.
+  state.player.researchedNodes = Array.isArray(shot.research) ? shot.research.slice() : [];
+  state.player.researchPoints = Array.isArray(shot.research) ? 30 : 0;
+  clearOverlayHost();
+  if (id !== 'bootOverlay') hideBenchLoading();
+  try {
+    if (id === 'bootOverlay') {
+      restoreBaseline();
+      unseedFootprintShot(state);
+      unseedDrillShot(state);
+      unseedBaseShot(state);
+      hudEl.innerHTML = ''; document.getElementById('alerts')?.remove();
+      screensEl.innerHTML = '';
+      document.body.classList.add('k-screen-top');
+      document.body.dataset.kScreen = id;
+      await mountLoadingShot();
+      current = id;
+      currentScreen = null;
+    } else if (id === 'flight' || id === 'crucibleHud' || id === 'mobileFlight') {
+      restoreBaseline();
+      unseedDrillShot(state);
+      unseedBaseShot(state);
+      screensEl.innerHTML = '';
+      // #alerts lives beside #hud (as in index.html), so a HUD wipe no longer takes it along.
+      document.getElementById('alerts')?.remove();
+      state.ui.docked = false;
+      state.ui.dockedStationId = null;
+      document.body.classList.add('k-screen-top');
+      document.body.dataset.kScreen = id;
+      if (id === 'crucibleHud') await mountCrucibleHud();
+      else await mountFlightHud({ lineTarget: rawId === 'flight-line-target' || rawId === 'flight-line-blocked', blockedLine: rawId === 'flight-line-blocked', contactMarks: rawId === 'flight-contacts' });
+      if (id === 'mobileFlight') await mountMobileDeck(shot);
+      current = id;
+      currentScreen = null;
+    } else {
+      const loader = SCREENS[id];
+      if (!loader) {
+        showBroken(id, 'no bench loader for this surface');
+        await finishShot(shot);
+        return;
+      }
+      hudEl.innerHTML = ''; document.getElementById('alerts')?.remove();
+      screensEl.innerHTML = '';
+      document.body.classList.add('k-screen-top');
+      document.body.dataset.kScreen = id;
+      const root = document.createElement('div');
+      // The game's shell contract (screenManager.build): `.screen` + `data-screen` is what the
+      // drill screen's `height:100vh` selector and the range's scrim rule key on. Mounting bare
+      // divs left `.ast-screen` with nothing to size against — a 40px screen and a 0px stage.
+      root.className = 'screen sf-screen--visible';
+      root.dataset.screen = shot.screen || id;
+      root.setAttribute('role', 'dialog');
+      root.setAttribute('aria-modal', 'true');
+      if (shot.screen === 'station') {
+        state.ui.docked = true;
+        state.ui.dockedStationId = shot.dock || 'station_helios';
+      } else {
+        state.ui.docked = false;
+        state.ui.dockedStationId = null;
+      }
+      // Fixture: ?soldout=<cmdtyId> leaves the docked exchange with zero stock so the market
+      // row and hero print the authored SOLD OUT state (economy.marketStockStatus sells out
+      // under 2 units). Must run after the dock id is set: the table materializes on
+      // benchEconomyOwner()'s ensureMarket, and the screen later reuses the same owner.
+      if (params.get('soldout') && state.ui.dockedStationId) {
+        benchEconomyOwner();
+        const mkt = state.economy && state.economy.markets && state.economy.markets[state.ui.dockedStationId];
+        const entry = mkt && mkt[params.get('soldout')];
+        if (entry) entry.stock = 0;
+      }
+      screensEl.appendChild(root);
+      // The armory's "Rearrange loadout" opens the refit over the SAME open draft; keep that run.
+      const sameRun = id === 'crucibleRefit' && current === 'crucibleDraft' && !!benchDraftOwner
+        && state.run?.phase === 'draft';
+      if (!sameRun) {
+        restoreBaseline();
+        seedCrucibleShot(id, shot);
+      }
+      // Restore a previous gameOver fixture before the seeds below snapshot state it dirtied
+      // (cargo, career stats, save slots, the killer entity, telemetry, the receipt itself).
+      unseedGameOverShot(state);
+      // A footprint shot mounts over a lived-in record (tools/ui-bench-footprint.js); every other shot over none.
+      if (id === 'footprint') seedFootprintShot(state, shot.footprint || 'wanted'); else unseedFootprintShot(state);
+      // Story-reward readers: a claimed Lost Ledger (bar buyer) or the Cassandra Treaty (faction link).
+      seedStoryRewardShot(state, shot.story || null);
+      // `impound: 'lot' | 'ransom'` opens Shipworks over the impound lot's attendant desk (tools/ui-bench-impound.js).
+      seedImpoundShot(state, bus, screenMemory, shot.impound || null);
+      // X-03 visual fixture: ?fitOfferDefId=<id> stamps the named-module hint so the yard row
+      // wears its chip in the shot. Plain shots leave player.hints untouched.
+      if (params.get('fitOfferDefId')) {
+        state.player = state.player || {};
+        state.player.hints = { ...(state.player.hints || {}), fitOfferDefId: params.get('fitOfferDefId') };
+      }
+      // A drill shot with `drill:` mounts over a worked claim, a base shot with `base:` over a
+      // managed body; every other shot over the seeded state.
+      if (id === 'drill' && shot.drill) await seedDrillShot(state, shot.drill);
+      else unseedDrillShot(state);
+      if (id === 'base' && shot.base) await seedBaseShot(state, shot.base);
+      else unseedBaseShot(state);
+      // A codex shot with `record` opens the Figures tab over a lived-in Record (tools/ui-bench-record.js).
+      if (shot.record) {
+        seedRecordShot(state);
+        (await import('../src/ui/screens/codex.js')).requestCodexTab('Figures');
+      } else unseedRecordShot(state);
+      // A mission log shot with `receipts` mounts over settled contracts (tools/ui-bench-receipts.js).
+      if (shot.receipts) seedReceiptsShot(state); else unseedReceiptsShot(state);
+      // A gameOver shot mounts over a real buildDefeatReceipt fixture (populated, the default)
+      // or a clean slate (`defeat: 'empty'`); every other screen mounted over the baseline above.
+      if (id === 'gameOver') seedGameOverShot(state, shot);
+      const screen = await loader();
+      const ctx = { state, bus, screenManager: manager, registry, screenMemory, writeStorePage() {}, publishStoreStill() {} };
+      screen.mount(root, ctx);
+      screen.onShow?.(ctx);
+      if (shot.record) screen._focus?.('record:deeds');
+      // ...and opens the receipt list the way a player does, through its own Show toggle.
+      if (shot.receipts) root.querySelector('[aria-controls="sf-mlog-completed-list"]')?.click();
+      // An ORRERY screen arrives with choreography (rings draw, springs settle); shoot it at rest.
+      if (typeof screen.settled === 'function') await screen.settled();
+      // Fixture: ?cmdk=1 opens the station command palette the way a player does — the real
+      // Ctrl+K keystroke through stationCommands' window listener.
+      if (params.get('cmdk') === '1') {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', ctrlKey: true, bubbles: true, cancelable: true }));
+      }
+      // A populated drill shot re-asserts its staged gauges (mount re-opened the session) and,
+      // for -build, opens the palette the way a player does.
+      if (id === 'drill' && shot.drill) settleDrillShot(state, shot, screen, ctx);
+      benchOwnerLive = !!benchDraftOwner;
+      currentScreen = screen;
+      current = id;
+      note(`— ${id} mounted`);
+    }
+    stack.push(id);
+    if (stack.length > 6) stack.shift();
+    if ([...picker.options].some((option) => option.value === rawId)) picker.value = rawId;
+  } catch (error) {
+    showBroken(id, `mount threw: ${error && error.message ? error.message : String(error)}`);
+  }
+  await finishShot(shot);
+}
+
+async function openOverlay(kind) {
+  const ctx = { state, bus, screenManager: manager, registry, screenMemory, writeStorePage() {}, publishStoreStill() {} };
+  if (kind === 'comms') {
+    const contact = {
+      id: 7, type: 'ship', alive: true, team: 2, radius: 14,
+      pos: { x: 80, y: 0, z: 40 }, vel: { x: 0, y: 0, z: 0 },
+      data: {
+        callsign: 'HAULER 12',
+        trafficRole: 'hauler',
+        jobId: 'job_hauler_12',
+        cargoManifest: { lines: [{ commodityId: 'cmdty_fuel_cells', qty: 20 }], totalQty: 20 },
+        ai: { passive: true, archetype: 'fleeing_trader' },
+      },
+    };
+    state.player.targetId = 7;
+    const activeShip = state.player.ownedShips?.[state.player.activeShipIndex || 0];
+    if (activeShip) {
+      activeShip.fittings = ['wpn_autocannon_s', null, null, null, null, 'mod_cargo_scanner_s', 'mod_thruster_stock_s'];
+    }
+    state.entities.set(7, contact);
+    if (!state.entityList.some((entity) => entity.id === 7)) state.entityList.push(contact);
+    const { createCommsRadial } = await import('../src/ui/commsRadial.js');
+    createCommsRadial(ctx);
+    // The fan's key listeners register synchronously in create (verified in commsRadial.js), but
+    // the hail plate staged on the same tick won the race in the w3a stills — let one frame paint
+    // between create and the hold-Alt that opens the fan.
+    await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt', bubbles: true, cancelable: true }));
+    const fan = document.getElementById('sf-commsfan');
+    window.__BENCH_OVERLAY = fan && !fan.hidden ? 'comms open' : 'comms did not open (no hail on this still)';
+    if (fan && !fan.hidden) window.__BENCH_OVERLAY_EL = fan;
+    return;
+  }
+  if (kind === 'wingman') {
+    state.automation = { fleet: [{ id: 2, name: 'WING 2' }, { id: 3, name: 'WING 3' }] };
+    const { createWingmanRadial } = await import('../src/ui/wingmanRadial.js');
+    const radial = createWingmanRadial(ctx);
+    radial.open?.(2);
+    const node = document.getElementById('sf-wingman-radial');
+    window.__BENCH_OVERLAY = node && !node.hidden ? 'wingman open' : 'wingman did not open';
+    if (node && !node.hidden) window.__BENCH_OVERLAY_EL = node;
+    return;
+  }
+  if (kind === 'confirm' || kind === 'confirm-danger') {
+    const { confirm } = await import('../src/ui/confirm.js');
+    const danger = kind === 'confirm-danger';
+    confirm(danger
+      ? { title: 'Sell ship?', body: 'The Kestrel leaves your fleet for good.\nRefund: 12,500 CR (50% of hull value).', note: 'Fitted modules are sold with the hull. This cannot be undone.', confirmLabel: 'Sell ship', danger: true }
+      : { title: 'Leave the dock?', body: 'Undocking launches you into the sector. Unsold cargo stays in your hold.', confirmLabel: 'Undock' });
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    window.__BENCH_OVERLAY = document.querySelector('.sf-confirm') ? `${kind} open` : `${kind} did not open`;
+    return;
+  }
+  if (kind === 'find') {
+    const { createGlobalFind } = await import('../src/ui/globalFind.js');
+    const find = createGlobalFind(ctx);
+    find.open();
+    const input = document.querySelector('.sf-find__input');
+    if (input) { input.value = 'kes'; input.dispatchEvent(new Event('input', { bubbles: true })); }
+    window.__BENCH_OVERLAY = document.querySelector('.sf-find') ? 'find open' : 'find did not open';
+    return;
+  }
+  if (kind === 'tooltip') {
+    const { showWhyTip } = await import('../src/ui/whyReveal.js');
+    const anchor = [...document.querySelectorAll('#screens button')].find((b) => b.getBoundingClientRect().width > 40) || document.body;
+    const r = anchor.getBoundingClientRect();
+    showWhyTip('Prices here run 8% over the sector average: the Ledger Compact is short on fuel cells and the last convoy was turned back at the border.', r.left + 24, r.bottom - 8, 'data-why');
+    window.__BENCH_OVERLAY = document.getElementById('sf-why-tip') ? 'tooltip open' : 'tooltip did not open';
+    return;
+  }
+  if (kind === 'dossier') {
+    const { createEntityLinks } = await import('../src/ui/entityLinks.js');
+    const links = createEntityLinks(ctx);
+    const { searchEntities } = await import('../src/ui/entityResolver.js');
+    const refs = searchEntities(state, 'a', { limit: 40 }).map((row) => row.ref);
+    const pick = refs.find((ref) => ref.startsWith('station:')) || refs[0];
+    const opened = !!pick && links.open(pick);
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    window.__BENCH_OVERLAY = opened ? 'dossier open' : 'dossier did not open';
+  }
+}
+
+/** The phone deck over the flight HUD: the real mobile view with the real gesture model, its contacts
+ *  driven through the view's own pointer handlers (synthetic touch PointerEvents on the HUD root and the
+ *  powers handle), so the picture is what a thumb produces. shot.mobile picks the pose:
+ *  idle | stick | boost | brake | wheel | wheel-pinned. ?layout=lefty mirrors the deck. */
+async function mountMobileDeck(shot) {
+  const [{ MobileGestures, stickRadius }, { mountMobileView }] = await Promise.all([
+    import('../src/systems/mobile/model.js'),
+    import('../src/systems/mobile/view.js'),
+  ]);
+  const model = new MobileGestures();
+  const cfg = { layout: params.get('layout') || 'standard', scale: Number(params.get('scale')) || 1 };
+  const view = mountMobileView({ state, model, activate() {}, reset() {}, config: () => cfg, saveConfig() {}, doc: document, win: window });
+  window.__benchMobile = view;
+  window.__benchModel = model;
+  const w = window.innerWidth, h = window.innerHeight, radius = stickRadius(w, h, cfg.scale);
+  const touch = (type, target, x, y, id) => target.dispatchEvent(new PointerEvent(type, {
+    pointerId: id, pointerType: 'touch', isPrimary: true, clientX: x, clientY: y, bubbles: true, cancelable: true, composed: true,
+  }));
+  const field = document.getElementById('hud');
+  const pose = shot.mobile || 'idle';
+  const toward = Number(params.get('deg') || 38) * Math.PI / 180;   // 0 = up, clockwise
+  const ox = w * 0.3, oy = h * 0.64;
+  const reach = (k) => [ox + Math.sin(toward) * radius * k, oy - Math.cos(toward) * radius * k];
+  if (pose === 'stick' || pose === 'boost' || pose === 'brake') {
+    touch('pointerdown', field, ox, oy, 11);
+    if (pose !== 'brake') {
+      const [x, y] = reach(pose === 'boost' ? 1.62 : Number(params.get('push') || 0.72));
+      touch('pointermove', field, x, y, 11);
+    }
+    // the fixed-step sampler is what latches boost dwell and brake dwell: run it the way the sim would
+    for (let i = 0; i < 30; i += 1) model.sample(1 / 60);
+    view.render({ flight: { brake: pose === 'brake' }, actions: {} });
+  } else if (pose === 'wheel' || pose === 'wheel-pinned') {
+    const edge = document.querySelector('.mf-edge');
+    const r = edge.getBoundingClientRect();
+    const ex = r.left + r.width / 2, ey = r.top + r.height / 2;
+    touch('pointerdown', edge, ex, ey, 12);
+    if (pose === 'wheel') {
+      const g = document.querySelector('.mf-wheel-art').getBoundingClientRect();
+      const cx = g.left + g.width / 2, cy = g.top + g.height / 2, rad = g.width / 2.7;
+      const a = (Number(params.get('slot') || 2) + 0.5) * Math.PI / 6;
+      const side = (cfg.layout === 'lefty') ? 1 : -1;
+      touch('pointermove', edge, cx + side * Math.sin(a) * rad * 0.76, cy - Math.cos(a) * rad * 0.76, 12);
+    } else {
+      touch('pointerup', edge, ex, ey, 12);
+    }
+    view.render({ flight: { brake: false }, actions: {} });
+  } else {
+    view.render({ flight: { brake: false }, actions: {} });
+  }
+  note('— phone deck mounted (' + pose + ', ' + cfg.layout + ')');
+}
+
+/** Mount the always-on flight HUD into #hud (the bench page carries the node) over the held
+ *  still. Runs the real createHud + createAlerts, ticks one frame, and proves the alert/annunc
+ *  lane by raising one persistent status and one warn floor through the same events the sim uses. */
+async function mountFlightHud(opts = {}) {
+  const hudRoot = document.getElementById('hud');
+  const [{ createHud }, { createAlerts }, { createMarketNews }] = await Promise.all([
+    import('../src/ui/hud.js'),
+    import('../src/ui/alerts.js'),
+    import('../src/ui/marketNews.js'),
+  ]);
+  const ctx = {
+    state, bus, screenMemory,
+    screenManager: manager, registry,
+    // Top-down camera stand-in: the player sits just below screen centre, so a world offset
+    // projects to a real screen position and a tell/hostile low in the field lands over the
+    // bottom instruments — the overlap the live route showed — instead of always dead centre.
+    helpers: {
+      worldToScreen: (world) => ({
+        x: window.innerWidth / 2 + ((world && world.x) || 0) * 0.4,
+        y: window.innerHeight * 0.62 + ((world && world.z) || 0) * 0.4,
+        onScreen: true,
+      }),
+    },
+    writeStorePage() {}, publishStoreStill() {},
+  };
+  // The labels the live route was seen to break, held in the still so the shot proves them:
+  // a cooling travel drive carrying its break reason, a live FLYBY doctrine tell low over the
+  // command deck, a long news headline, and long contact names on a pinned roster.
+  TRAVEL_FLAGS.travelBurn = true;
+  state.input.travelDrive = { state: 'cooldown', breakReason: 'disrupted', cap: 0, ceiling: 320 };
+  const benchContacts = [
+    { id: 11, callsign: 'Relief-Freighter Choir-Tender', team: 1, x: 60, z: -140 },
+    { id: 12, callsign: 'FIELD COIL CRADLE', team: 2, x: 0, z: 450 },
+    // One live threat on the roster, or the drawn tier segments only ever photograph unlit
+    // (craft critic 2026-10-26 r2 finding R3). huntPlayer + armed + mass ≥1200 → HOSTILE, tier 2,
+    // red lit pips — the state the pilot actually needs to read under fire.
+    { id: 13, callsign: 'RAIDER VEE-TWO', team: 5, x: -220, z: 90, hostile: true, mass: 1500 },
+  ];
+  for (const bc of benchContacts) {
+    if (state.entities.has(bc.id)) continue;
+    const e = {
+      id: bc.id, type: 'ship', alive: true, team: bc.team, radius: 14,
+      pos: { x: bc.x, y: 0, z: bc.z }, vel: { x: 0, y: 0, z: 0 },
+      data: {
+        defId: 'ship_kestrel', callsign: bc.callsign,
+        ...(bc.mass ? { mass: bc.mass } : {}),
+        ...(bc.hostile ? { ai: { huntPlayer: true }, weapons: ['wpn_pulse_s'], trafficRole: 'raider' } : {}),
+      },
+    };
+    state.entities.set(bc.id, e);
+    state.entityList.push(e);
+  }
+  state.player.targetId = 11;
+  if (opts.contactMarks) {
+    // Packet 02: living contacts too small on screen to read by silhouette get one mark in the
+    // radar's IFF shapes; debris (the wreck) and the selected hull get none. Team 1 is the player's.
+    const pid = state.playerId;
+    const living = [
+      { id: 21, team: 3, x: -120, z: -230, data: { ai: { huntPlayer: true }, callsign: 'RAIDER 21' } },
+      { id: 22, team: 3, x: 210, z: -170, data: { combat: { targetId: pid }, intent: { fire: true }, callsign: 'RAIDER 22' } },
+      { id: 23, team: 1, x: -260, z: 40, data: { callsign: 'WINGMAN 23', ownerId: pid } },
+      { id: 24, team: 2, x: 150, z: 130, data: { trafficRole: 'miner', ai: { archetype: 'miner', passive: true }, callsign: 'MINER 24' } },
+      { id: 25, team: 3, x: 330, z: 30, data: { ai: { huntPlayer: true }, callsign: 'RAIDER 25 (drive out)' } },
+    ];
+    for (const lc of living) {
+      if (state.entities.has(lc.id)) continue;
+      const e = { id: lc.id, type: 'ship', alive: true, team: lc.team, radius: 14, pos: { x: lc.x, y: 0, z: lc.z },
+        vel: { x: 0, y: 0, z: 0 }, rot: 0, mass: 60, data: { defId: 'ship_kestrel', ...lc.data } };
+      state.entities.set(lc.id, e); state.entityList.push(e);
+    }
+    if (!state.entities.has(26)) {
+      const wreck = { id: 26, type: 'wreck', alive: true, team: 0, radius: 12, pos: { x: -40, y: 0, z: 170 }, vel: { x: 0, y: 0, z: 0 }, data: { callsign: 'DERELICT' } };
+      state.entities.set(26, wreck); state.entityList.push(wreck);
+    }
+    state.combat = state.combat || {};
+    state.combat.entities = { ...(state.combat.entities || {}), 25: { capabilities: { drive: false }, statuses: {} } };
+    state.player.targetId = null;
+  }
+  if (opts.lineTarget) {
+    // Packet 02 (target truth): a hostile is SELECTED (11, the hexagram bracket) while a second
+    // hostile (13) hangs on the player's Massline. The line owns the guns, so the lead pip and the
+    // LINE TARGET tag belong on 13 — a confident mark on the selected hull would lie.
+    applyFeatureConfigToMaps(PRODUCTION_FEATURES);
+    const selected = state.entities.get(11);
+    // The player flies team 1; a hull is hostile only on another non-neutral team, so both are team 3.
+    if (selected) { selected.team = 3; selected.data = { ...selected.data, ai: { huntPlayer: true } }; selected.vel = { x: 0, y: 0, z: 0 }; }
+    const held = {
+      id: 13, type: 'ship', alive: true, team: 3, radius: 14,
+      pos: { x: -230, y: 0, z: -70 }, vel: { x: 0, y: 0, z: -70 },
+      data: { defId: 'ship_kestrel', callsign: 'RAIDER 13', ai: { huntPlayer: true } },
+    };
+    if (!state.entities.has(13)) { state.entities.set(13, held); state.entityList.push(held); }
+    state.player.tether = { active: true, targetId: 13, phase: 'slack', restLength: 0, strain: 0, attachmentId: null };
+    // A ballistic gun, or the lead pip (which only exists for projectile weapons) has nothing to draw.
+    const shooter = state.entities.get(state.playerId);
+    const mount = shooter && shooter.data && shooter.data.weapons && shooter.data.weapons[0];
+    if (mount) mount.projSpeed = 320;
+  } else {
+    if (state.player.tether && state.player.tether.active) {
+      state.player.tether = { active: false, targetId: null, phase: 'slack', restLength: 0 };
+    }
+    const shooter = state.entities.get(state.playerId);
+    const mount = shooter && shooter.data && shooter.data.weapons && shooter.data.weapons[0];
+    if (mount && mount.projSpeed === 320) delete mount.projSpeed;
+  }
+  const hud = createHud(ctx, null);
+  // index.html mounts #alerts as a #ui-root child beside #hud, where `#ui-root > div` makes it
+  // absolute and the HUD sheet's `top` places the lane. Nested inside #hud it stayed static, every
+  // `top` was inert, and the lane printed over the top-left waypoint card (D261). A fresh host per
+  // mount keeps earlier createAlerts instances writing to their detached node, as the old wipe did.
+  document.getElementById('alerts')?.remove();
+  const alertsRoot = document.createElement('div');
+  alertsRoot.id = 'alerts';
+  (hudRoot.parentElement || hudRoot).appendChild(alertsRoot);
+  const alerts = createAlerts(ctx);
+  hudRoot.dataset.threat = hudRoot.dataset.threat || 'contact';
+  document.body.classList.remove('sf-swarm-flight');
+  // One persistent affordance + one warning through the live event path, so the annunciator is
+  // lit in the frame rather than judged empty. In-run swarm is never in a berth — skip the dock cue.
+  if (opts.dockCue !== false) bus.emit('dock:range', { inRange: true });
+  // Mirror alerts.js' real announce path for combat:damage: TAKING FIRE surfaces as a DANGER
+  // voice (kind 'danger', priority 110 — the amber warn dot the fixture used to emit made the
+  // threat line read as an advisory, craft critic 2026-10-26 finding R1).
+  bus.emit('voice:surface', { id: 'alert:incoming', channel: 'alert', priority: 110, kind: 'danger', text: 'TAKING FIRE', ttl: 30 });
+  // One marketNews instance per page (a --walk remount would otherwise stack subscriptions and
+  // double-commit each headline). In a live Survival run its gate keeps the ticker silent —
+  // the crucibleHud shot proves that suppression too.
+  if (!window.__benchMarketNews) window.__benchMarketNews = createMarketNews(ctx);
+  bus.emit('news:publish', {
+    text: 'TRAGEDY AT HELIOS: RELIEF FREIGHTER LOST WITH ALL HANDS — CONVOY LANES CLOSED',
+    kind: 'news', sourceRef: 'bench:helios-relief', stationId: 'station_helios',
+  });
+  // A live FLYBY telegraph aimed at the player, from the hostile projected over the command deck.
+  bus.emit('ai:telegraph', {
+    kind: 'engine_flare', entityId: 12, targetId: state.playerId, durationTicks: 600,
+  });
+  try {
+    if (typeof hud.forceRefresh === 'function') hud.forceRefresh();
+    if (typeof hud.frame === 'function') {
+      for (let i = 0; i < 8; i++) hud.frame(1 / 60);
+    }
+    if (alerts && typeof alerts.tick === 'function') alerts.tick();
+  } catch (error) {
+    note(`HUD frame: ${error && error.message ? error.message : String(error)}`);
+  }
+  window.__benchHud = hud;
+  if (opts.blockedLine) {
+    // Composition proof for the BLOCKED denial. The live query (line-of-sight witness / shield
+    // intercept) needs native physics bodies a still does not have, so this writes the same two
+    // attributes the HUD writes when gunLineDenial answers (tested in test/gun-line-denial.test.mjs).
+    const pip = hudRoot.querySelector('.sf-leadpip');
+    if (pip) pip.setAttribute('data-denial', 'blocked');
+    const tagText = hudRoot.querySelector('.sf-aimtag__text');
+    if (tagText) tagText.textContent = 'LINE TARGET · BLOCKED';
+  }
+    // A single frame renders the "now"; the instruments' reactive writes (lamina fill, bar
+    // segments, gauge fraction) settle on the driven frames the live route runs. A bench still
+    // proves composition, type, material and light; ui-look proves the reactions on the live route.
+    note('— flight HUD mounted (createHud) + dock status + warn floor lit');
+}
+
+/** Flight HUD plus the Crucible run readout, in the swarm state the demo plays. */
+async function mountCrucibleHud() {
+  await mountFlightHud({ dockCue: false });
+  document.body.classList.add('sf-swarm-flight');
+  const run = state.run || (state.run = {});
+  run.kind = 'survival';
+  run.phase = 'active';
+  run.ruleset = 'swarm';
+  run.arenaId = 'helios_core';
+  run.wave = 4;
+  run.score = 1860;
+  run.credits = 240;
+  run.xp = 920;
+  run.level = 3;
+  run.threatBudget = 12;
+  run.spawnedThreat = 12;
+  run.resolvedThreat = 7;
+  const { survivalHud } = await import('../src/ui/survivalHud.js');
+  survivalHud.init({ state, bus });
+  survivalHud._waveProgress = { wave: 4, remainingTicks: 32 * 60, durationTicks: 60 * 60 };
+  survivalHud._chain = 18;
+  survivalHud._chainBest = 24;
+  survivalHud._objective = 'ELITE';
+  survivalHud.update(1 / 60, state);
+  const hudRoot = document.getElementById('hud');
+  if (hudRoot) hudRoot.dataset.threat = 'near';
+  try { window.__benchHud?.frame?.(1 / 60); } catch { /* composition still; live route owns reactions */ }
+  const crun = document.querySelector('.sf-crun');
+  note('— crucible HUD mounted (flight cluster + survival readout, swarm)'
+    + ` · crun ${crun ? (crun.hidden ? 'hidden' : 'live') : 'missing'}`
+    + ` · run ${run.kind}/${run.phase}`);
+}
+
+async function back() {
+  stack.pop();
+  const previous = stack[stack.length - 1];
+  if (previous && previous !== current) { stack.pop(); await goto(previous); }
+  else if (current) await goto(current);
+}
+
+function showBroken(id, why) {
+  screensEl.innerHTML = '';
+  hudEl.innerHTML = ''; document.getElementById('alerts')?.remove();
+  const panel = document.createElement('div');
+  panel.id = 'bench-broken';
+  panel.innerHTML = `<strong>${id} is not mountable in the bench</strong>${why}. `
+    + 'Live route: <code>node scripts/ui-look.mjs --only=' + id + '</code>.';
+  screensEl.appendChild(panel);
+  note(`— ${id}: NOT MOUNTABLE (${why})`);
+}
+
+for (const shot of UI_BENCH_SHOTS) {
+  const option = document.createElement('option');
+  option.value = shot.id;
+  option.textContent = shot.id === shot.screen ? shot.id : `${shot.id} — ${shot.screen}`;
+  picker.appendChild(option);
+}
+picker.addEventListener('change', () => { stack.length = 0; void goto(picker.value); });
+
+stillInput.addEventListener('change', () => {
+  const value = stillInput.value.trim();
+  bgEl.src = value || BACKDROPS.title;
+});
+
+// Click intents: the bench listens at the capture phase, so every control on the screen reports
+// what it asked for even if the screen navigates immediately afterwards.
+document.addEventListener('click', (event) => {
+  const control = event.target.closest?.('button, [data-action], .k-row, .k-tile');
+  const host = document.getElementById('ui-root');
+  if (!control || !(screensEl.contains(control) || hudEl.contains(control) || host?.contains(control))) return;
+  const label = (control.getAttribute('aria-label') || control.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 40);
+  const action = control.dataset.action || '';
+  note(`${current || 'screen'} · click "${label}"${action ? ` [${action}]` : ''}`);
+}, true);
+
+// HUD stylesheet, so the bench can show HUD chrome over the still when a screen expects it.
+injectHudCss();
+// Game boot loads the station sheet set up front (main.js, ledger D15) — the bench does the same
+// so a screen is judged against the cascade the player actually has from first paint.
+ensureStationStylesheet();
+
+void goto(params.get('screen') || 'pause');
+
+function labelOf(el) {
+  return (el.getAttribute('aria-label') || el.innerText || el.dataset.action || '')
+    .trim().replace(/\s+/g, ' ').slice(0, 48);
+}
+
+function shownRect(el) {
+  const rect = el.getBoundingClientRect();
+  if (rect.width < 8 || rect.height < 8) return null;
+  const style = styleOf(el);
+  if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return null;
+  return rect;
+}
+
+function benchRoots() {
+  return [screensEl, hudEl, document.getElementById('ui-root')].filter(Boolean);
+}
+
+function visibleControls() {
+  const seen = new Set();
+  const found = [];
+  for (const root of benchRoots()) {
+    // `[data-why]` rides along: a tier-2 hover/focus reveal is a picture change a reviewer must be
+    // able to see (whyReveal.js carriers are readouts with a keyboard seat, not always buttons).
+    for (const el of root.querySelectorAll('button, a, [role="tab"], [role="button"], input, select, summary, [data-action], [data-why]')) {
+      if (seen.has(el) || el.closest('#bench-bar, #bench-broken, #bench-intent')) continue;
+      if (!shownRect(el)) continue;
+      seen.add(el);
+      found.push(el);
+    }
+  }
+  return found;
+}
+
+function popupCount() {
+  let count = 0;
+  for (const el of document.querySelectorAll('[role="tooltip"], [role="dialog"], [role="menu"], [data-tooltip]')) {
+    if (el.closest('#bench-bar, #bench-intent')) continue;
+    if (el.hidden) continue;
+    if (shownRect(el)) count += 1;
+  }
+  return count;
+}
+
+function scrollHold(el) {
+  const rect = el.getBoundingClientRect();
+  for (let node = el.parentElement; node && node !== document.body; node = node.parentElement) {
+    const style = styleOf(node);
+    if (style.display === 'contents') continue;
+    const scrolls = /auto|scroll/.test(`${style.overflowY} ${style.overflowX}`);
+    const clips = /hidden|clip/.test(`${style.overflowY} ${style.overflowX} ${style.overflow}`);
+    if (!scrolls && !clips) continue;
+    const host = node.getBoundingClientRect();
+    const outside = rect.bottom > host.bottom + 4 || rect.top < host.top - 4
+      || rect.right > host.right + 4 || rect.left < host.left - 4;
+    if (!outside) continue;
+    if (scrolls && (node.scrollHeight > node.clientHeight + 8 || node.scrollWidth > node.clientWidth + 8)) return { kind: 'scrolled', host: node };
+    if (clips) return { kind: 'clipped', host: node };
+  }
+  return null;
+}
+
+/* ---------------------------------------------------------------------------
+   The picture audit (2026-09-22). The control-only audit below reported "no
+   overlapping controls" on station-market while "14 / YOU PAY / PER UNIT" sat
+   on top of the body paragraph, and on chart while three panels of text were
+   stacked illegibly in the bottom-left corner. It could not see either, because
+   it only ever measured `visibleControls()` — buttons and inputs. Most of what
+   a player reads is not a control.
+
+   These four passes measure GLYPHS. A Range over each text node returns one
+   rect per line box, tight to the type, so a wrapped paragraph is six small
+   boxes rather than one tall one: a panel that only lands on its last line is
+   caught, and a column standing beside it is not falsely accused.
+   --------------------------------------------------------------------------- */
+
+let styleCache = new WeakMap();
+function styleOf(el) {
+  let style = styleCache.get(el);
+  if (!style) { style = getComputedStyle(el); styleCache.set(el, style); }
+  return style;
+}
+
+function nameOf(el) {
+  const id = el.id ? "#" + el.id : "";
+  const cls = typeof el.className === "string" && el.className.trim()
+    ? "." + el.className.trim().split(/[ \t]+/)[0] : "";
+  return el.tagName.toLowerCase() + id + cls;
+}
+
+const AUDIT_CAP = 6;
+
+function alphaOf(color) {
+  const parts = String(color).match(/[\d.]+/g);
+  if (!parts) return 0;
+  if (parts.length < 4) return /transparent/i.test(color) ? 0 : 1;
+  return Number(parts[3]);
+}
+
+// Text that is present for a screen reader and drawn for nobody. It still has a client rect, so
+// without this an accessible name listing every tile on the Crucible door reads as five collisions.
+function screenReaderOnly(style) {
+  if (/inset\(\s*50%/.test(style.clipPath || '')) return true;
+  if (/rect\(0(px)?[,\s]/.test(style.clip || '')) return true;
+  return false;
+}
+
+function fadedOut(el) {
+  for (let node = el; node && node !== document.body; node = node.parentElement) {
+    const style = styleOf(node);
+    if (style.display === 'none' || style.visibility === 'hidden') return true;
+    if (Number(style.opacity) < 0.06) return true;
+    if (screenReaderOnly(style)) return true;
+    // A closed <details> still gives its content client rects in Chromium, so a collapsed "Quote
+    // breakdown" read as six rows of type cut off by the panel below it. The reader sees a summary.
+    if (node.parentElement && node.parentElement.tagName === 'DETAILS'
+      && !node.parentElement.open && node.tagName !== 'SUMMARY') return true;
+  }
+  return false;
+}
+
+function unionRect(rects) {
+  let left = Infinity; let top = Infinity; let right = -Infinity; let bottom = -Infinity;
+  for (const r of rects) {
+    left = Math.min(left, r.left); top = Math.min(top, r.top);
+    right = Math.max(right, r.right); bottom = Math.max(bottom, r.bottom);
+  }
+  return { left, top, right, bottom, width: right - left, height: bottom - top };
+}
+
+// Every run of rendered type in the interface, with its per-line boxes.
+function textRuns() {
+  const runs = [];
+  for (const root of benchRoots()) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const text = (node.nodeValue || '').replace(/\s+/g, ' ').trim();
+      if (text.length < 2) continue;
+      const host = node.parentElement;
+      if (!host || host.closest('#bench-bar, #bench-broken, #bench-intent')) continue;
+      // SVG paint-server subtrees (defs/mask/clipPath/pattern/marker/symbol) never print type on
+      // the page — the orrery's wordcut mask carries a copy of each label to punch a hole for it,
+      // and a Range still hands that copy real boxes, so it must be skipped before it can accuse
+      // the visible label it exists to protect.
+      if (host.closest('defs, mask, clipPath, pattern, marker, symbol')) continue;
+      if (fadedOut(host)) continue;
+      const style = styleOf(host);
+      if (alphaOf(style.color) < 0.06) continue;           // spacing tricks and sr-only labels
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const rects = [];
+      for (const rect of range.getClientRects()) {
+        if (rect.width >= 4 && rect.height >= 4) rects.push(rect);
+      }
+      if (!rects.length) continue;
+      const box = unionRect(rects);
+      // A run scrolled out of the panel that holds it is not on screen, so it cannot collide with
+      // anything that is. Its rect still exists, which is how an adventure prompt 250px below the
+      // market's scroll viewport read as five collisions with the trade console drawn over it.
+      // severedType still sees these -- being unreachable is its own finding.
+      // A run straddling the edge of the panel that scrolls it is drawn only where the panel shows
+      // it, so the collision test reads the visible part (`seen`): the clipped-away half of a help
+      // row under the list's fade is not printed on top of the note set just below the list.
+      const seen = clipToScrollers(host, rects);
+      runs.push({ host, text, rects, box, seen, seenBox: seen.length ? unionRect(seen) : null, offstage: scrolledOutOfView(host, box) });
+    }
+  }
+  return runs;
+}
+
+// Each line box cut to the visible rect of every ancestor that scrolls or clips; lines cut to a
+// sliver are dropped. Only the collision test reads this; the other audits keep the full boxes.
+function clipToScrollers(host, rects) {
+  let out = rects.map((r) => ({ left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height }));
+  for (let node = host.parentElement; node && node !== document.body && out.length; node = node.parentElement) {
+    const style = styleOf(node);
+    if (!/auto|scroll|hidden|clip/.test(`${style.overflow} ${style.overflowX} ${style.overflowY}`)) continue;
+    const view = node.getBoundingClientRect();
+    out = out.map((r) => {
+      const left = Math.max(r.left, view.left); const right = Math.min(r.right, view.right);
+      const top = Math.max(r.top, view.top); const bottom = Math.min(r.bottom, view.bottom);
+      return { left, top, right, bottom, width: right - left, height: bottom - top };
+    }).filter((r) => r.width >= 4 && r.height >= 4);
+  }
+  return out;
+}
+
+// True when the run sits outside the visible rect of the nearest ancestor that scrolls or clips.
+function scrolledOutOfView(host, box) {
+  for (let node = host.parentElement; node && node !== document.body; node = node.parentElement) {
+    const style = styleOf(node);
+    if (!/auto|scroll|hidden|clip/.test(`${style.overflow} ${style.overflowX} ${style.overflowY}`)) continue;
+    const view = node.getBoundingClientRect();
+    if (box.top >= view.bottom - 2 || box.bottom <= view.top + 2) return true;
+    if (box.left >= view.right - 2 || box.right <= view.left + 2) return true;
+  }
+  return false;
+}
+
+function intersectArea(a, b) {
+  const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+  const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+  return (w > 2 && h > 2) ? w * h : 0;
+}
+
+// A line box is taller than its ink: half the leading sits above the caps and half below the
+// baseline. A 56px number stacked over its 10px legend therefore "overlaps" it by a few pixels of
+// empty space, which accused every hero-and-label pair on shipworks. Shrink each box toward its
+// ink before asking whether two runs collide.
+function inkBox(rect) {
+  // Proportional, with no ceiling. A 6px cap is right for body copy and useless for a 120px screen
+  // title, whose leading alone is 20px -- the Crucible door's name "collided" with the blurb under
+  // it on nothing but empty space.
+  const trim = rect.height * 0.18;
+  return {
+    left: rect.left, right: rect.right,
+    top: rect.top + trim, bottom: rect.bottom - trim,
+    width: rect.width, height: Math.max(1, rect.height - trim * 2),
+  };
+}
+
+function commonAncestor(a, b) {
+  for (let node = a; node; node = node.parentElement) if (node.contains(b)) return node;
+  return document.body;
+}
+
+// An opaque plate between two runs means the top one is a panel sitting over the other, not two
+// lines of type fighting for the same pixels. A modal over a screen must not read as a defect.
+function plateBetween(host, stopAt) {
+  for (let node = host; node && node !== stopAt; node = node.parentElement) {
+    const style = styleOf(node);
+    // A rendered plate (a nine-slice PNG) hides what is behind it. A GRADIENT does not: almost
+    // every panel in this tree paints a gradient, so treating background-image as a shield excused
+    // every collision on the chart, where three semi-transparent panels sit on each other in the
+    // bottom-left corner and the type smears together.
+    if (/url\(/.test(style.backgroundImage)) return true;
+    // 0.97, not 0.85: panels in this tree sit around 0.9, and type underneath a 0.9 plate still
+    // shows through as a smear. That smear is the defect, not the exception to it.
+    if (alphaOf(style.backgroundColor) >= 0.97) return true;
+    if (style.backdropFilter && style.backdropFilter !== 'none') return true;
+    if (node.matches('[role="dialog"], [aria-modal="true"]')) return true;
+  }
+  return false;
+}
+
+function shortText(text) {
+  return text.length > 34 ? text.slice(0, 33) + '…' : text;
+}
+
+// 1. Type landing on type. Always a defect: nobody can read either one.
+function tangledType(runs) {
+  const found = [];
+  // A 96px grid. A market with 47 commodities is ~400 runs, and comparing all of them pairwise
+  // walked the DOM 80,000 times and timed the page out; only type sharing a cell can collide.
+  const grid = new Map();
+  const CELL = 96;
+  runs.forEach((run, index) => {
+    for (let cx = Math.floor(run.box.left / CELL); cx <= Math.floor(run.box.right / CELL); cx += 1) {
+      for (let cy = Math.floor(run.box.top / CELL); cy <= Math.floor(run.box.bottom / CELL); cy += 1) {
+        const key = cx + ":" + cy;
+        const bucket = grid.get(key) || [];
+        bucket.push(index);
+        grid.set(key, bucket);
+      }
+    }
+  });
+  const tried = new Set();
+  const pairs = [];
+  for (const bucket of grid.values()) {
+    for (let bi = 0; bi < bucket.length; bi += 1) {
+      for (let bj = bi + 1; bj < bucket.length; bj += 1) {
+        const key = bucket[bi] + ":" + bucket[bj];
+        if (tried.has(key)) continue;
+        tried.add(key);
+        pairs.push([bucket[bi], bucket[bj]]);
+      }
+    }
+  }
+  for (const [i, j] of pairs) {
+    if (found.length >= AUDIT_CAP) break;
+    {
+      const a = runs[i];
+      const b = runs[j];
+      if (a.offstage || b.offstage || !a.seenBox || !b.seenBox) continue;
+      if (a.host === b.host || a.host.contains(b.host) || b.host.contains(a.host)) continue;
+      // The same string twice in the same place is a drawing technique -- a stroke copy behind the
+      // face for legibility over a bright scene, which is how alerts.js prints TAKING FIRE. You can
+      // still read it, so it is not a collision.
+      if (a.text === b.text) continue;
+      if (!intersectArea(a.seenBox, b.seenBox)) continue;
+      const shared = commonAncestor(a.host, b.host);
+      if (plateBetween(a.host, shared) || plateBetween(b.host, shared)) continue;
+      let worst = 0;
+      let smallest = Infinity;
+      for (const raw of a.seen) {
+        const ra = inkBox(raw);
+        for (const rawB of b.seen) {
+          const rb = inkBox(rawB);
+          const area = intersectArea(ra, rb);
+          if (area <= worst) continue;
+          worst = area;
+          smallest = Math.min(ra.width * ra.height, rb.width * rb.height);
+        }
+      }
+      if (!worst || worst < smallest * 0.22) continue;
+      found.push('"' + shortText(a.text) + '" is printed on top of "' + shortText(b.text) + '"');
+    }
+  }
+  return found;
+}
+
+// 2. Type nobody can see at all, because something opaque is drawn over it. elementsFromPoint
+//    returns the whole stack, deepest first, so only what sits ABOVE the type can accuse it —
+//    asking elementFromPoint for the single topmost element blamed the page wrapper for every
+//    line in the HUD.
+function buriedType(runs) {
+  const found = [];
+  for (const run of runs) {
+    if (found.length >= AUDIT_CAP) break;
+    if (run.offstage) continue;
+    let samples = 0;
+    let buried = 0;
+    let culprit = null;
+    const probe = run.rects.length > 2 ? [run.rects[0], run.rects[run.rects.length - 1]] : run.rects;
+    for (const rect of probe) {
+      for (const fx of [0.3, 0.7]) {
+        const x = rect.left + rect.width * fx;
+        const y = rect.top + rect.height * 0.5;
+        if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) continue;
+        samples += 1;
+        const stack = document.elementsFromPoint(x, y);
+        const mine = stack.findIndex((el) => el === run.host || run.host.contains(el));
+        if (mine < 0) continue;
+        let cover = null;
+        const frame = window.innerWidth * window.innerHeight;
+        const opened = window.__BENCH_OVERLAY_EL;
+        for (let k = 0; k < mine && !cover; k += 1) {
+          const el = stack[k];
+          if (el.contains(run.host)) continue;
+          // A layer the size of the whole frame is atmosphere — a vignette, a scrim, a grade pass.
+          // sf-gloc-vignette accused every line on the flight deck of being invisible.
+          const box = el.getBoundingClientRect();
+          if (box.width * box.height >= frame * 0.9) continue;
+          // An overlay the bench opened on purpose is meant to sit over the deck while it is open.
+          if (opened && (el === opened || opened.contains(el))) continue;
+          const style = styleOf(el);
+          if (style.backgroundImage !== "none" || alphaOf(style.backgroundColor) >= 0.85) cover = el;
+        }
+        if (!cover) continue;
+        buried += 1;
+        culprit = culprit || cover;
+      }
+    }
+    if (samples < 2 || buried < samples * 0.8) continue;
+    const name = labelOf(culprit) || nameOf(culprit);
+    found.push(String.fromCharCode(34) + shortText(run.text) + String.fromCharCode(34) + " is buried under " + name);
+  }
+  return found;
+}
+
+// 3. Type running past the edge of the box that holds it, with no way to scroll to it. scrollHold
+//    already separates a genuinely scrollable list from a panel that simply cuts its contents off;
+//    a row below the fold of a scroller is reachable and is not a defect.
+function severedType(runs) {
+  const found = [];
+  for (const run of runs) {
+    if (found.length >= AUDIT_CAP) break;
+    // Text truncated with an ellipsis is deliberately shortened and SAYS so; the reader can see
+    // there is more. That is a content decision, not a panel eating its own copy.
+    if (/ellipsis/.test(styleOf(run.host).textOverflow || '')) continue;
+    // An animated continuous marquee ticker (e.g. .orr-mkt-tape) deliberately flows outside its bounds
+    if (run.host.closest && run.host.closest('.orr-mkt-tape, [data-marquee], .marquee')) continue;
+    const held = scrollHold(run.host);
+    if (!held || held.kind !== "clipped") continue;
+    found.push(String.fromCharCode(34) + shortText(run.text) + String.fromCharCode(34) + " is cut off by its own panel");
+  }
+  return found;
+}
+
+// 4. A painted box with nothing in it. The title screen's left rail, the flight deck's right bar
+//    and the market's price chart were all holes of this shape — a plate that draws and says
+//    nothing. Leaves only: a gauge track holds a fill, and that fill is content.
+function deadBoxes() {
+  const found = [];
+  for (const root of benchRoots()) {
+    for (const el of root.querySelectorAll('div, section, aside, figure, span, li')) {
+      if (found.length >= AUDIT_CAP) break;
+      if (el.closest('#bench-bar, #bench-broken, #bench-intent')) continue;
+      const rect = shownRect(el);
+      if (!rect || rect.width < 56 || rect.height < 28) continue;
+      if (rect.width * rect.height < 5000) continue;
+      if ((el.innerText || '').trim().length) continue;
+      if (el.querySelector('img, svg, canvas, video, picture, input, button')) continue;
+      if (el.childElementCount) continue;                  // a track with a fill is a drawn shape
+      // A painted leaf beside drawn media in the same parent is that assembly's coat — the medal
+      // face under a dial's svg — not a hole in the layout.
+      const parent = el.parentElement;
+      if (parent) {
+        let siblingMedia = false;
+        for (const sib of parent.children) {
+          if (sib === el) continue;
+          if ((sib.matches && sib.matches('img, svg, canvas, video, picture'))
+            || (sib.querySelector && sib.querySelector('img, svg, canvas, video, picture'))) { siblingMedia = true; break; }
+        }
+        if (siblingMedia) continue;
+      }
+      const style = styleOf(el);
+      if (style.backgroundImage !== 'none') continue;      // a plate with art on it is content
+      const painted = alphaOf(style.backgroundColor) >= 0.2
+        || (parseFloat(style.borderTopWidth) > 0 && alphaOf(style.borderTopColor) >= 0.2);
+      if (!painted) continue;
+      found.push(nameOf(el) + ' — a ' + Math.round(rect.width) + '×' + Math.round(rect.height)
+        + 'px box at ' + Math.round(rect.left) + ',' + Math.round(rect.top) + ' is painted and empty');
+    }
+  }
+  return found;
+}
+
+// Hit-testing has to follow paint order, and `#ui-root` is `pointer-events:none` by design
+// (ARCHITECTURE §1.2), so without this shim every sample would fall straight through the
+// interface to the canvas and every line of type would read as buried.
+function pictureAudit() {
+  styleCache = new WeakMap();
+  const shim = document.createElement('style');
+  shim.textContent = '#ui-root, #ui-root *, #screens, #screens *, #hud, #hud * { pointer-events: auto !important; }';
+  document.head.appendChild(shim);
+  try {
+    const runs = textRuns();
+    return {
+      tangled: tangledType(runs),
+      buried: buriedType(runs),
+      severed: severedType(runs),
+      dead: deadBoxes(),
+    };
+  } finally {
+    shim.remove();
+  }
+}
+
+function layoutAudit() {
+  const controls = [];
+  for (const el of visibleControls()) {
+    controls.push({ el, rect: el.getBoundingClientRect(), label: labelOf(el) || el.tagName });
+  }
+  const overlaps = [];
+  for (let i = 0; i < controls.length && overlaps.length < 6; i += 1) {
+    for (let j = i + 1; j < controls.length && overlaps.length < 6; j += 1) {
+      const a = controls[i];
+      const b = controls[j];
+      if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
+      // A control scrolled out of its own scroll column is not buried under whatever sits past
+      // that column's edge; the column clips it, and a scroll brings it back.
+      if (scrollHold(a.el)?.kind === 'scrolled' || scrollHold(b.el)?.kind === 'scrolled') continue;
+      const menuA = a.el.closest('[role="menu"], #sf-commsfan, #sf-wingman-radial');
+      if (menuA && menuA.contains(b.el)) continue;
+      const width = Math.min(a.rect.right, b.rect.right) - Math.max(a.rect.left, b.rect.left);
+      const height = Math.min(a.rect.bottom, b.rect.bottom) - Math.max(a.rect.top, b.rect.top);
+      if (width <= 8 || height <= 8) continue;
+      const smaller = (a.rect.width * a.rect.height) <= (b.rect.width * b.rect.height) ? a : b;
+      const larger = smaller === a ? b : a;
+      const cx = smaller.rect.left + smaller.rect.width / 2;
+      const cy = smaller.rect.top + smaller.rect.height / 2;
+      const centerInside = cx >= larger.rect.left && cx <= larger.rect.right && cy >= larger.rect.top && cy <= larger.rect.bottom;
+      if (!centerInside) continue;
+      if (width * height < smaller.rect.width * smaller.rect.height * 0.5) continue;
+      const top = document.elementFromPoint(cx, cy);
+      const topIsSmaller = top && (smaller.el === top || smaller.el.contains(top));
+      if (topIsSmaller) continue;
+      const topIsLarger = top && (larger.el === top || larger.el.contains(top));
+      if (!topIsLarger) continue;
+      overlaps.push(`"${a.label}" overlaps "${b.label}" (${Math.round(width)}×${Math.round(height)}px)`);
+    }
+  }
+  const clipped = [];
+  for (const root of benchRoots()) {
+    for (const el of root.querySelectorAll('button, a, h1, h2, h3, label')) {
+      if (clipped.length >= 6 || el.closest('#bench-bar, #bench-broken')) continue;
+      const text = (el.innerText || '').trim().replace(/\s+/g, ' ');
+      if (text.length < 2) continue;
+      const style = styleOf(el);
+      if (style.display === 'none' || style.visibility === 'hidden') continue;
+      if (!/hidden|clip/.test(`${style.overflow} ${style.overflowX} ${style.overflowY}`)) continue;
+      if (el.scrollWidth > el.clientWidth + 16 || el.scrollHeight > el.clientHeight + 16) clipped.push(`"${text.slice(0, 42)}" is cut off`);
+    }
+  }
+  const offscreen = [];
+  const scrolledGroups = new Map();
+  for (const row of controls) {
+    const held = scrollHold(row.el);
+    const rect = row.rect;
+    const outside = rect.top > window.innerHeight - 4 || rect.bottom < 4
+      || rect.left > window.innerWidth - 4 || rect.right < 4;
+    if (!outside && !(held && held.kind === 'clipped')) continue;
+    if (held && held.kind === 'scrolled') {
+      const bucket = scrolledGroups.get(held.host) || [];
+      bucket.push(row.label);
+      scrolledGroups.set(held.host, bucket);
+      continue;
+    }
+    if (offscreen.length < 6) offscreen.push(`"${row.label}" is outside the frame`);
+  }
+  // A control below the fold of a list that genuinely scrolls is reachable, so it is not offscreen.
+  // This used to report any scrolled group of four or fewer, which accused the factions dossier's
+  // relations rail of losing its rows when they were one flick away. Text that is clipped with no
+  // way to reach it is a different finding, and severedType makes it.
+  scrolledGroups.clear();
+  return { overlaps, clipped, offscreen, controlReachability: measureControlReachability(document, current), ...pictureAudit() };
+}
+
+function controlAction(reference, kind) {
+  const row = resolveBenchControl(visibleControls(), reference);
+  if (!row) return { found: false, identity: reference, label: '' };
+  const el = row.element;
+  window.__BENCH_LAST_DISABLED = !!(el.disabled || el.getAttribute('aria-disabled') === 'true');
+  if (window.__BENCH_LAST_DISABLED) return { found: true, identity: row.identity, label: labelOf(el) };
+  if (kind === 'hover') {
+    // Seat the synthetic pointer at the control's centre: hover reveals position themselves at the
+    // pointer (whyReveal.js), and a bare 0,0 event made every tip screenshot land in the corner.
+    const r = el.getBoundingClientRect();
+    const at = { bubbles: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
+    el.dispatchEvent(new PointerEvent('pointerover', at));
+    el.dispatchEvent(new MouseEvent('mouseover', at));
+    el.dispatchEvent(new MouseEvent('mouseenter', at));
+  } else {
+    el.focus();
+    el.click();
+  }
+  return { found: true, identity: row.identity, label: labelOf(el) };
+}
+
+// Probes and `scripts/ui-bench.mjs` read this. `report` is the layout pass; `controls` is the walk.
+window.BENCH = {
+  goto,
+  state,
+  get bus() { return bus; },
+  get registry() { return registry; },
+  get log() { return log.slice(); },
+  get screen() { return current; },
+  screens: Object.keys(SCREENS),
+  controls() {
+    return snapshotBenchControls(visibleControls()).map(({ index, label, identity }) => ({ index, label, identity }));
+  },
+  hover(reference) { return controlAction(reference, 'hover'); },
+  click(reference) { return controlAction(reference, 'click'); },
+  signature() {
+    // The shared tier-2 tip (#sf-why-tip) is mounted on document.body, outside both roots — fold
+    // its visible words into the signature or a hover reveal reads as "no visible change" and the
+    // walk refuses to write the PNG that proves it.
+    const tip = document.getElementById('sf-why-tip');
+    const tipText = tip && tip.style.display !== 'none' ? `TIP:${tip.textContent}` : '';
+    const text = `${screensEl.innerText || ''}\n${hudEl.innerText || ''}\n${tipText}`.replace(/\s+/g, ' ').slice(0, 5000);
+    return {
+      screen: current,
+      text,
+      popup: popupCount(),
+      log: log.slice(-4).join(' | '),
+      disabled: window.__BENCH_LAST_DISABLED === true,
+    };
+  },
+  reachability() { return measureControlReachability(document, current); },
+  report() {
+    const broken = document.getElementById('bench-broken');
+    return {
+      broken: broken ? broken.innerText.replace(/\s+/g, ' ').trim().slice(0, 240) : '',
+      overlay: window.__BENCH_OVERLAY || '',
+      alias: currentAlias && { ...currentAlias,
+        selectedFocus: screensEl.querySelector('.gm-scale-btn[aria-pressed="true"]')?.dataset.focus || null },
+      ...layoutAudit(),
+    };
+  },
+};

@@ -1,0 +1,16 @@
+{
+  "label": "syncEntityViews-submit-scratch",
+  "entities": 500,
+  "frames": 300,
+  "hiddenFraction": 0.35,
+  "before": {
+    "submits": 97800,
+    "ms": 0.641
+  },
+  "after": {
+    "submits": 97800,
+    "ms": 0.819
+  },
+  "speedup": 0.783,
+  "allocsAvoidedPerFrame": 500
+}

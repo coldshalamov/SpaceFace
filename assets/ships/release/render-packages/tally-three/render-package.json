@@ -1,0 +1,5780 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.tally-three.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.30000001192092896,
+        0.800000011920929,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentNodeId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.30000001192092896,
+        0.800000011920929,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.anchor.socket-claim-cradle",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        9.600000381469727,
+        0.3100000023841858,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_CLAIM_CRADLE",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentNodeId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        9.600000381469727,
+        0.3100000023841858,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -11.149999618530273,
+        -0.18000000715255737,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentNodeId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -11.149999618530273,
+        -0.18000000715255737,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.anchor.socket-tally-scan",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.875999927520752,
+        0.5400000214576721,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_TALLY_SCAN",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentNodeId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.875999927520752,
+        0.5400000214576721,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.anchor.socket-tally-stamp",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.070000171661377,
+        2.5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_TALLY_STAMP",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentNodeId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.070000171661377,
+        2.5,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.tally-three",
+  "collisions": [
+    {
+      "id": "sf.render.tally-three.collision",
+      "nodeId": "sf.render.tally-three.node.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "12444b1864313b1593a385088b98bae7eee6493b10fdbec05aeb65fe356238e8",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.tally-three.node.lod0-motion-tally-arm-left-mechanical.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.tally-three.node.lod0-motion-tally-arm-left-mechanical"
+    },
+    {
+      "id": "sf.render.tally-three.node.lod0-motion-tally-arm-right-mechanical.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.tally-three.node.lod0-motion-tally-arm-right-mechanical"
+    },
+    {
+      "id": "sf.render.tally-three.node.lod0-motion-tally-scan-lights-cyan.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.tally-three.node.lod0-motion-tally-scan-lights-cyan"
+    },
+    {
+      "id": "sf.render.tally-three.node.lod0-motion-tally-stamp-livery.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.tally-three.node.lod0-motion-tally-stamp-livery"
+    },
+    {
+      "id": "sf.render.tally-three.node.lod1-motion-tally-arm-left-mechanical.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.tally-three.node.lod1-motion-tally-arm-left-mechanical"
+    },
+    {
+      "id": "sf.render.tally-three.node.lod1-motion-tally-arm-right-mechanical.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.tally-three.node.lod1-motion-tally-arm-right-mechanical"
+    },
+    {
+      "id": "sf.render.tally-three.node.lod1-motion-tally-scan-lights-cyan.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.tally-three.node.lod1-motion-tally-scan-lights-cyan"
+    },
+    {
+      "id": "sf.render.tally-three.node.lod1-motion-tally-stamp-livery.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.tally-three.node.lod1-motion-tally-stamp-livery"
+    },
+    {
+      "id": "sf.render.tally-three.node.lod2-motion-tally-arm-left-mechanical.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.tally-three.node.lod2-motion-tally-arm-left-mechanical"
+    },
+    {
+      "id": "sf.render.tally-three.node.lod2-motion-tally-arm-right-mechanical.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.tally-three.node.lod2-motion-tally-arm-right-mechanical"
+    },
+    {
+      "id": "sf.render.tally-three.node.lod2-motion-tally-scan-lights-cyan.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.tally-three.node.lod2-motion-tally-scan-lights-cyan"
+    },
+    {
+      "id": "sf.render.tally-three.node.lod2-motion-tally-stamp-livery.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.tally-three.node.lod2-motion-tally-stamp-livery"
+    },
+    {
+      "id": "sf.render.tally-three.node.motion-tally-arm-left.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.tally-three.node.motion-tally-arm-left"
+    },
+    {
+      "id": "sf.render.tally-three.node.motion-tally-arm-right.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.tally-three.node.motion-tally-arm-right"
+    },
+    {
+      "id": "sf.render.tally-three.node.motion-tally-scan.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.tally-three.node.motion-tally-scan"
+    },
+    {
+      "id": "sf.render.tally-three.node.motion-tally-stamp.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.tally-three.node.motion-tally-stamp"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          8.098881721496582,
+          0.8896035350247284,
+          2.300345331922487
+        ],
+        "min": [
+          -10.54916763305664,
+          -1.409603575555887,
+          -2.300345331922487
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b7571cd4e281def736bae2596ff343f1acfb1ed8f8bfc7665b894561720ae992",
+      "id": "sf.render.tally-three.node.collision-hull.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.tally-three.node.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 824
+    },
+    {
+      "bounds": {
+        "max": [
+          -10.210965156555176,
+          0.18627403986952606,
+          1.2648019790649414
+        ],
+        "min": [
+          -10.210965156555176,
+          -0.5462740392734796,
+          -1.264801025390625
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e3125d2d1e606b6877f59c4d8d3b8310dab8bcea38d4b48321d30fff484bde19",
+      "id": "sf.render.tally-three.node.lod0-hook-drive-core.primitive.0",
+      "indexCount": 66,
+      "indexed": true,
+      "materialHash": "322ee7efa33261f49a84cdd688030f97b4b1a8f6933c97ee39ccd9038da8054a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.tally-three.node.lod0-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 26
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.2049999237060547,
+          1.181501540232684,
+          -2.4049999713897705
+        ],
+        "min": [
+          -0.2950000762939453,
+          1.1184984120836001,
+          -2.495000123977661
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "27d9e4cd22be9f14539616b3848ddf37d614792a72828e2f565e4c29ee70fa77",
+      "id": "sf.render.tally-three.node.lod0-hook-nav-port.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_NAV_PORT",
+      "nodeId": "sf.render.tally-three.node.lod0-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.2049999237060547,
+          1.181501540232684,
+          2.495000123977661
+        ],
+        "min": [
+          -0.2950000762939453,
+          1.1184984120836001,
+          2.4049999713897705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "abf24531590b2c7d1fc7be0aa2d306d1c8a0fbb04bc4a57f114b405aad1e1cc6",
+      "id": "sf.render.tally-three.node.lod0-hook-nav-starboard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.tally-three.node.lod0-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          7.491936206817627,
+          1.120004198573243,
+          2.116688621711021
+        ],
+        "min": [
+          -9.490241050720215,
+          0.2721132719296104,
+          -2.1165467626564554
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "34a1358aadaa1e41f3af45b5265cc8ae5493685bab3a4e911709abda411dcc65",
+      "id": "sf.render.tally-three.node.lod0-hull.primitive.0",
+      "indexCount": 2820,
+      "indexed": true,
+      "materialHash": "e633837da7498089b065991d0ebb768dda3bd63fd9b2580b125cbfef97a86477",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull",
+      "nodeId": "sf.render.tally-three.node.lod0-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 1123
+    },
+    {
+      "bounds": {
+        "max": [
+          11.175683975219727,
+          1.1394935780794233,
+          2.894630174526679
+        ],
+        "min": [
+          -5.352904319763184,
+          0.0701064756482036,
+          -2.894688587078559
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9430b2947ae10c538dd88d9b374607789205bcf682e18363bd9e912a26618de9",
+      "id": "sf.render.tally-three.node.lod0-livery.primitive.0",
+      "indexCount": 1476,
+      "indexed": true,
+      "materialHash": "6a897933975c7052638aa16f4fb338cf93635bfcb6fbab15d9d588cf9c1eb6b6",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Livery",
+      "nodeId": "sf.render.tally-three.node.lod0-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 484
+    },
+    {
+      "bounds": {
+        "max": [
+          11.175683975219727,
+          4.2118872863971255,
+          3.1383335171290985
+        ],
+        "min": [
+          -10.60049819946289,
+          -0.9186442358218692,
+          -3.138592678124582
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "083e74cfe23b82addb0e48d5cc7df69db70fd9b8c6e4c6ef09a0a17f3c156a0c",
+      "id": "sf.render.tally-three.node.lod0-mechanical.primitive.0",
+      "indexCount": 17013,
+      "indexed": true,
+      "materialHash": "ede2dfb2158b270018816d994de9e5b535e142ce69bd50c61a6b7b1687e66de0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.tally-three.node.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 5696
+    },
+    {
+      "bounds": {
+        "max": [
+          10.256450653076172,
+          1.174368267051395,
+          2.600723392857832
+        ],
+        "min": [
+          -10.681609153747559,
+          -1.4097411680142247,
+          -2.600723392857832
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "161bbaba5bff29752c80163283efe60e5bf51bbcb0305b5943f50830d5998cb2",
+      "id": "sf.render.tally-three.node.lod0-mechanicaldark.primitive.0",
+      "indexCount": 13809,
+      "indexed": true,
+      "materialHash": "b78b8388a0e5104a325d714d2c568f26488be33af394cb234c72cb3aa5c30b12",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.tally-three.node.lod0-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 5137
+    },
+    {
+      "bounds": {
+        "max": [
+          7.31376314163208,
+          1.0601027151360252,
+          -1.9928463429315346
+        ],
+        "min": [
+          -0.4483187794685364,
+          -0.020102783085320097,
+          -5.629775074114058
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7d565468d9d58609c54fb5044f391efc7256624920940f0966a8c2fd6daaa95d",
+      "id": "sf.render.tally-three.node.lod0-motion-tally-arm-left-mechanical.primitive.0",
+      "indexCount": 4392,
+      "indexed": true,
+      "materialHash": "ede2dfb2158b270018816d994de9e5b535e142ce69bd50c61a6b7b1687e66de0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_TALLY_ARM_LEFT_Mechanical",
+      "nodeId": "sf.render.tally-three.node.lod0-motion-tally-arm-left-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 1696
+    },
+    {
+      "bounds": {
+        "max": [
+          5.904044151306152,
+          1.0601206860992294,
+          5.117142771704646
+        ],
+        "min": [
+          -0.4484812021255493,
+          -0.020120754048524314,
+          1.9925463447733205
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "187f9ee1a2134853c2e0426de0d818f87238e9a7a9f5f940f9c78163337af3ce",
+      "id": "sf.render.tally-three.node.lod0-motion-tally-arm-right-mechanical.primitive.0",
+      "indexCount": 4248,
+      "indexed": true,
+      "materialHash": "ede2dfb2158b270018816d994de9e5b535e142ce69bd50c61a6b7b1687e66de0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_TALLY_ARM_RIGHT_Mechanical",
+      "nodeId": "sf.render.tally-three.node.lod0-motion-tally-arm-right-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 1616
+    },
+    {
+      "bounds": {
+        "max": [
+          7.87267663364106,
+          0.5828141113533711,
+          0.40036752820014954
+        ],
+        "min": [
+          7.839246488764946,
+          0.49718602096894027,
+          -0.40036752820014954
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6ba82323b2277a32824eb038c6251ac4b1e66e7def069a1382497fa24fa29997",
+      "id": "sf.render.tally-three.node.lod0-motion-tally-scan-lights-cyan.primitive.0",
+      "indexCount": 276,
+      "indexed": true,
+      "materialHash": "af59487537fbd61c39722b251eac24701328cfbd1dce30d59029e5522d4764a2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_TALLY_SCAN_Lights_Cyan",
+      "nodeId": "sf.render.tally-three.node.lod0-motion-tally-scan-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 87
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.503127098083496,
+          3.559639928018359,
+          2.566953182220459
+        ],
+        "min": [
+          -9.637033462524414,
+          2.5299444225675787,
+          -2.566953182220459
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4b263329c67e40c85ff4bc772db04eec311f9f45f75def3e9e8614a989bfc76c",
+      "id": "sf.render.tally-three.node.lod0-motion-tally-stamp-livery.primitive.0",
+      "indexCount": 4554,
+      "indexed": true,
+      "materialHash": "6a897933975c7052638aa16f4fb338cf93635bfcb6fbab15d9d588cf9c1eb6b6",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_TALLY_STAMP_Livery",
+      "nodeId": "sf.render.tally-three.node.lod0-motion-tally-stamp-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 1467
+    },
+    {
+      "bounds": {
+        "max": [
+          -10.210965156555176,
+          0.18627403986952606,
+          1.2648019790649414
+        ],
+        "min": [
+          -10.210965156555176,
+          -0.5462740392734796,
+          -1.264801025390625
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e3125d2d1e606b6877f59c4d8d3b8310dab8bcea38d4b48321d30fff484bde19",
+      "id": "sf.render.tally-three.node.lod1-hook-drive-core.primitive.0",
+      "indexCount": 66,
+      "indexed": true,
+      "materialHash": "322ee7efa33261f49a84cdd688030f97b4b1a8f6933c97ee39ccd9038da8054a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.tally-three.node.lod1-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 26
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.2049999237060547,
+          1.181501540232684,
+          -2.4049999713897705
+        ],
+        "min": [
+          -0.2950000762939453,
+          1.1184984120836001,
+          -2.495000123977661
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "142eee5abb41859e96ef9e693c6ceb20c9d6a695a43920eaca82def401c14f99",
+      "id": "sf.render.tally-three.node.lod1-hook-nav-port.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_NAV_PORT",
+      "nodeId": "sf.render.tally-three.node.lod1-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.2049999237060547,
+          1.181501540232684,
+          2.495000123977661
+        ],
+        "min": [
+          -0.2950000762939453,
+          1.1184984120836001,
+          2.4049999713897705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0b6575e83d6d7f8cdb4376c42f8e2a7a7c847c772b03c1907c542d6fe673ae7a",
+      "id": "sf.render.tally-three.node.lod1-hook-nav-starboard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.tally-three.node.lod1-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          7.491936206817627,
+          1.118213524231269,
+          2.116688621711021
+        ],
+        "min": [
+          -9.490241050720215,
+          0.27239568053786545,
+          -2.1165467626564554
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7ed3ce1fdfb6648ceb6c50d7113410c59e5a89f7a35fbdcb024641147a43da81",
+      "id": "sf.render.tally-three.node.lod1-hull.primitive.0",
+      "indexCount": 1446,
+      "indexed": true,
+      "materialHash": "e633837da7498089b065991d0ebb768dda3bd63fd9b2580b125cbfef97a86477",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull",
+      "nodeId": "sf.render.tally-three.node.lod1-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 579
+    },
+    {
+      "bounds": {
+        "max": [
+          11.175683975219727,
+          1.1379828541757184,
+          2.894182651328237
+        ],
+        "min": [
+          -5.350348949432373,
+          0.07279588140234172,
+          -2.894241063880117
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "839b891c4071f56a26d0aa6bf99caa69b7a4d7a94f535dd84a83ebb1ad576359",
+      "id": "sf.render.tally-three.node.lod1-livery.primitive.0",
+      "indexCount": 675,
+      "indexed": true,
+      "materialHash": "6a897933975c7052638aa16f4fb338cf93635bfcb6fbab15d9d588cf9c1eb6b6",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Livery",
+      "nodeId": "sf.render.tally-three.node.lod1-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 273
+    },
+    {
+      "bounds": {
+        "max": [
+          11.175683975219727,
+          4.2118872863971255,
+          3.1357107350091877
+        ],
+        "min": [
+          -10.60049819946289,
+          -0.9186442358218692,
+          -3.135898847268099
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "53a152bad11619fa8f33a764231e73fec2912054958a824d07f1b812b5137d57",
+      "id": "sf.render.tally-three.node.lod1-mechanical.primitive.0",
+      "indexCount": 7419,
+      "indexed": true,
+      "materialHash": "ede2dfb2158b270018816d994de9e5b535e142ce69bd50c61a6b7b1687e66de0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Mechanical",
+      "nodeId": "sf.render.tally-three.node.lod1-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 2974
+    },
+    {
+      "bounds": {
+        "max": [
+          10.255582809448242,
+          1.172067956108124,
+          2.6006155977113226
+        ],
+        "min": [
+          -10.681609153747559,
+          -1.409378484863312,
+          -2.6006155977113226
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "428f0edf058ea1edf3217dbcf9403ade3eb6a0536055164550e4e4407734259d",
+      "id": "sf.render.tally-three.node.lod1-mechanicaldark.primitive.0",
+      "indexCount": 4422,
+      "indexed": true,
+      "materialHash": "b78b8388a0e5104a325d714d2c568f26488be33af394cb234c72cb3aa5c30b12",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.tally-three.node.lod1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 1925
+    },
+    {
+      "bounds": {
+        "max": [
+          7.318265438079834,
+          1.0597825032259054,
+          -1.9926701352333578
+        ],
+        "min": [
+          -0.4460253417491913,
+          -0.019782571175200436,
+          -5.6353729203010055
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9070243d0b85ffacbd8fc4f07331782dc87698bb9d5c4e7ce069c1ab705c8f68",
+      "id": "sf.render.tally-three.node.lod1-motion-tally-arm-left-mechanical.primitive.0",
+      "indexCount": 1752,
+      "indexed": true,
+      "materialHash": "ede2dfb2158b270018816d994de9e5b535e142ce69bd50c61a6b7b1687e66de0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_TALLY_ARM_LEFT_Mechanical",
+      "nodeId": "sf.render.tally-three.node.lod1-motion-tally-arm-left-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 972
+    },
+    {
+      "bounds": {
+        "max": [
+          5.907763481140137,
+          1.0598796877579035,
+          5.113319041229318
+        ],
+        "min": [
+          -0.44648897647857666,
+          -0.019879755707198465,
+          1.9925272445906892
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "eb3c058004618a5cc9ad14b3b627626eea1e611bff748bdede2b360066637b8a",
+      "id": "sf.render.tally-three.node.lod1-motion-tally-arm-right-mechanical.primitive.0",
+      "indexCount": 1698,
+      "indexed": true,
+      "materialHash": "ede2dfb2158b270018816d994de9e5b535e142ce69bd50c61a6b7b1687e66de0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_TALLY_ARM_RIGHT_Mechanical",
+      "nodeId": "sf.render.tally-three.node.lod1-motion-tally-arm-right-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 906
+    },
+    {
+      "bounds": {
+        "max": [
+          7.8723157702845095,
+          0.581874754137398,
+          0.39969417452812195
+        ],
+        "min": [
+          7.83962499509635,
+          0.49795216708719614,
+          -0.3996928632259369
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a94cada829d059b8c87da23745b9cfa2cde9243368046ee277e8dc2aa0e77506",
+      "id": "sf.render.tally-three.node.lod1-motion-tally-scan-lights-cyan.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "af59487537fbd61c39722b251eac24701328cfbd1dce30d59029e5522d4764a2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_TALLY_SCAN_Lights_Cyan",
+      "nodeId": "sf.render.tally-three.node.lod1-motion-tally-scan-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 49
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.506843540110914,
+          3.558212849543544,
+          2.566772699356079
+        ],
+        "min": [
+          -9.629018810352953,
+          2.5306154757280623,
+          -2.5629169940948486
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2a7ed03e911878ce28618a9989d8bf141593c7076beadb48a394e0432a48f782",
+      "id": "sf.render.tally-three.node.lod1-motion-tally-stamp-livery.primitive.0",
+      "indexCount": 1818,
+      "indexed": true,
+      "materialHash": "6a897933975c7052638aa16f4fb338cf93635bfcb6fbab15d9d588cf9c1eb6b6",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_TALLY_STAMP_Livery",
+      "nodeId": "sf.render.tally-three.node.lod1-motion-tally-stamp-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 667
+    },
+    {
+      "bounds": {
+        "max": [
+          -10.208798671527644,
+          0.20776814999386328,
+          1.2788375616073608
+        ],
+        "min": [
+          -10.210964893535833,
+          -0.5538909811000492,
+          -1.2561837434768677
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "272834a4a0d4800f2822da14905d65b3502a5b845d5d41bf06da42b5f4a3699c",
+      "id": "sf.render.tally-three.node.lod2-hook-drive-core.primitive.0",
+      "indexCount": 21,
+      "indexed": true,
+      "materialHash": "322ee7efa33261f49a84cdd688030f97b4b1a8f6933c97ee39ccd9038da8054a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.tally-three.node.lod2-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 11
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.20499993115663528,
+          1.1604977508458132,
+          -2.4050002098083496
+        ],
+        "min": [
+          -0.2950000837445259,
+          1.139502201470471,
+          -2.4950003623962402
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "67fac50b83d05d56ef24c74aa0aba3aeba4fb0d7ae0ca10c0d6483509c801685",
+      "id": "sf.render.tally-three.node.lod2-hook-nav-port.primitive.0",
+      "indexCount": 3,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_NAV_PORT",
+      "nodeId": "sf.render.tally-three.node.lod2-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 3
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.20499993115663528,
+          1.1604977508458132,
+          2.4950003623962402
+        ],
+        "min": [
+          -0.2950000837445259,
+          1.139502201470471,
+          2.4050002098083496
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0987865ca834fa3819fa0977e0f836ce1e6749d913025d058799b4d088f77b9d",
+      "id": "sf.render.tally-three.node.lod2-hook-nav-starboard.primitive.0",
+      "indexCount": 3,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.tally-three.node.lod2-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 3
+    },
+    {
+      "bounds": {
+        "max": [
+          7.496331214904785,
+          1.1116539470979436,
+          2.112564068432566
+        ],
+        "min": [
+          -9.486474990844727,
+          0.28031689597876225,
+          -2.112535458203074
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "24613bf86874a9b4ce98c93628d70353f3dce1e9dbbbc56be24a2ad39e2dfc28",
+      "id": "sf.render.tally-three.node.lod2-hull.primitive.0",
+      "indexCount": 516,
+      "indexed": true,
+      "materialHash": "e633837da7498089b065991d0ebb768dda3bd63fd9b2580b125cbfef97a86477",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull",
+      "nodeId": "sf.render.tally-three.node.lod2-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 300
+    },
+    {
+      "bounds": {
+        "max": [
+          11.17846393585205,
+          1.1375762485658947,
+          2.890905846033665
+        ],
+        "min": [
+          -5.3362507820129395,
+          0.08118286349417547,
+          -2.9056496509653056
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "094634cbdfb2df88dd08950023ce539805ecd5dfaf1284d56ddcfc0b489b3e9d",
+      "id": "sf.render.tally-three.node.lod2-livery.primitive.0",
+      "indexCount": 174,
+      "indexed": true,
+      "materialHash": "6a897933975c7052638aa16f4fb338cf93635bfcb6fbab15d9d588cf9c1eb6b6",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Livery",
+      "nodeId": "sf.render.tally-three.node.lod2-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 106
+    },
+    {
+      "bounds": {
+        "max": [
+          11.17846393585205,
+          4.1765274864942885,
+          3.135886369620447
+        ],
+        "min": [
+          -10.596264839172363,
+          -0.9244221908361774,
+          -3.1299883708106324
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "31bc60d8bcf69f1ac49de8582ca4bf5f43a7c0eac651e87c6c14aeb514b8f232",
+      "id": "sf.render.tally-three.node.lod2-mechanical.primitive.0",
+      "indexCount": 2154,
+      "indexed": true,
+      "materialHash": "ede2dfb2158b270018816d994de9e5b535e142ce69bd50c61a6b7b1687e66de0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Mechanical",
+      "nodeId": "sf.render.tally-three.node.lod2-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 1097
+    },
+    {
+      "bounds": {
+        "max": [
+          10.251708030700684,
+          0.9685227173346533,
+          2.5984514847292757
+        ],
+        "min": [
+          -10.63937759399414,
+          -1.393017281867887,
+          -2.5989767208590364
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9364d123de811fa3fb7840ce0b16a6fe63428ab61c509359be968006dee48673",
+      "id": "sf.render.tally-three.node.lod2-mechanicaldark.primitive.0",
+      "indexCount": 1179,
+      "indexed": true,
+      "materialHash": "b78b8388a0e5104a325d714d2c568f26488be33af394cb234c72cb3aa5c30b12",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MechanicalDark",
+      "nodeId": "sf.render.tally-three.node.lod2-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 560
+    },
+    {
+      "bounds": {
+        "max": [
+          7.318265438079834,
+          1.0598169380535913,
+          -2.048875769159779
+        ],
+        "min": [
+          -0.46017903089523315,
+          -0.019817006002886384,
+          -5.63554886958839
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "772a661e0718569f5c60e04729d03f6ee5e52cfa22f46a7ac78d31a9c46d6993",
+      "id": "sf.render.tally-three.node.lod2-motion-tally-arm-left-mechanical.primitive.0",
+      "indexCount": 756,
+      "indexed": true,
+      "materialHash": "ede2dfb2158b270018816d994de9e5b535e142ce69bd50c61a6b7b1687e66de0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_TALLY_ARM_LEFT_Mechanical",
+      "nodeId": "sf.render.tally-three.node.lod2-motion-tally-arm-left-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 444
+    },
+    {
+      "bounds": {
+        "max": [
+          5.909292221069336,
+          1.0599817477868576,
+          5.121164732462854
+        ],
+        "min": [
+          -0.437043160200119,
+          -0.019981815736152653,
+          1.9926404423647217
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "29cea0aec9d5652395745339d0f556dd89e244c2cf36a580e40c878f2a9d67e6",
+      "id": "sf.render.tally-three.node.lod2-motion-tally-arm-right-mechanical.primitive.0",
+      "indexCount": 729,
+      "indexed": true,
+      "materialHash": "ede2dfb2158b270018816d994de9e5b535e142ce69bd50c61a6b7b1687e66de0",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_TALLY_ARM_RIGHT_Mechanical",
+      "nodeId": "sf.render.tally-three.node.lod2-motion-tally-arm-right-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 421
+    },
+    {
+      "bounds": {
+        "max": [
+          7.870870977773852,
+          0.5797096009286035,
+          0.3969193696975708
+        ],
+        "min": [
+          7.841600030526929,
+          0.5013295893637549,
+          -0.3996928632259369
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "45f188df779db1e3727a7de51c7f966d8379ffea2aa3421fa92f0fa93989cf13",
+      "id": "sf.render.tally-three.node.lod2-motion-tally-scan-lights-cyan.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "af59487537fbd61c39722b251eac24701328cfbd1dce30d59029e5522d4764a2",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_TALLY_SCAN_Lights_Cyan",
+      "nodeId": "sf.render.tally-three.node.lod2-motion-tally-scan-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 28
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.510692095586996,
+          3.5578456868271724,
+          2.5591423511505127
+        ],
+        "min": [
+          -9.616729760339517,
+          2.5304864893813237,
+          -2.5568878650665283
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "80089cb81b4f4cbf9938258c06a1bb070c3eda16a061d6fb089c068b816472a5",
+      "id": "sf.render.tally-three.node.lod2-motion-tally-stamp-livery.primitive.0",
+      "indexCount": 816,
+      "indexed": true,
+      "materialHash": "6a897933975c7052638aa16f4fb338cf93635bfcb6fbab15d9d588cf9c1eb6b6",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_TALLY_STAMP_Livery",
+      "nodeId": "sf.render.tally-three.node.lod2-motion-tally-stamp-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 383
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "322ee7efa33261f49a84cdd688030f97b4b1a8f6933c97ee39ccd9038da8054a",
+      "id": "material:322ee7efa33261f49a84cdd6",
+      "name": "Material_Thruster",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6a897933975c7052638aa16f4fb338cf93635bfcb6fbab15d9d588cf9c1eb6b6",
+      "id": "material:6a897933975c7052638aa16f",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "af59487537fbd61c39722b251eac24701328cfbd1dce30d59029e5522d4764a2",
+      "id": "material:af59487537fbd61c39722b25",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "b78b8388a0e5104a325d714d2c568f26488be33af394cb234c72cb3aa5c30b12",
+      "id": "material:b78b8388a0e5104a325d714d",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "e633837da7498089b065991d0ebb768dda3bd63fd9b2580b125cbfef97a86477",
+      "id": "material:e633837da7498089b065991d",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ede2dfb2158b270018816d994de9e5b535e142ce69bd50c61a6b7b1687e66de0",
+      "id": "material:ede2dfb2158b270018816d99",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.tally-three.node.collision-hull",
+      "localTransform": [
+        9.324024677276611,
+        0,
+        0,
+        0,
+        0,
+        9.324024677276611,
+        0,
+        0,
+        0,
+        0,
+        9.324024677276611,
+        0,
+        -1.2251429557800293,
+        -0.2600000202655792,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        9.324024677276611,
+        0,
+        0,
+        0,
+        0,
+        9.324024677276611,
+        0,
+        0,
+        0,
+        0,
+        9.324024677276611,
+        0,
+        -1.2251429557800293,
+        -0.2600000202655792,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod0-hook-drive-core",
+      "localTransform": [
+        1.2648015022277832,
+        0,
+        0,
+        0,
+        0,
+        1.2648015022277832,
+        0,
+        0,
+        0,
+        0,
+        1.2648015022277832,
+        0,
+        -10.210965156555176,
+        -0.17999999970197678,
+        4.76837158203125e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_DRIVE_CORE",
+      "nodeName": "LOD0_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        1.2648015022277832,
+        0,
+        0,
+        0,
+        0,
+        1.2648015022277832,
+        0,
+        0,
+        0,
+        0,
+        1.2648015022277832,
+        0,
+        -10.210965156555176,
+        -0.17999999970197678,
+        4.76837158203125e-7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod0-hook-nav-port",
+      "localTransform": [
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        -0.25,
+        1.149999976158142,
+        -2.450000047683716,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_NAV_PORT",
+      "nodeName": "LOD0_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        -0.25,
+        1.149999976158142,
+        -2.450000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod0-hook-nav-starboard",
+      "localTransform": [
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        -0.25,
+        1.149999976158142,
+        2.450000047683716,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD0_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        -0.25,
+        1.149999976158142,
+        2.450000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod0-hull",
+      "localTransform": [
+        8.491088628768921,
+        0,
+        0,
+        0,
+        0,
+        8.491088628768921,
+        0,
+        0,
+        0,
+        0,
+        8.491088628768921,
+        0,
+        -0.999152421951294,
+        0.6960587352514267,
+        0.00007092952728271484,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull",
+      "nodeName": "LOD0_Hull",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        8.491088628768921,
+        0,
+        0,
+        0,
+        0,
+        8.491088628768921,
+        0,
+        0,
+        0,
+        0,
+        8.491088628768921,
+        0,
+        -0.999152421951294,
+        0.6960587352514267,
+        0.00007092952728271484,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod0-livery",
+      "localTransform": [
+        8.264294147491455,
+        0,
+        0,
+        0,
+        0,
+        8.264294147491455,
+        0,
+        0,
+        0,
+        0,
+        8.264294147491455,
+        0,
+        2.9113898277282715,
+        0.6048000268638134,
+        -0.000029206275939941406,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Livery",
+      "nodeName": "LOD0_Livery",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        8.264294147491455,
+        0,
+        0,
+        0,
+        0,
+        8.264294147491455,
+        0,
+        0,
+        0,
+        0,
+        8.264294147491455,
+        0,
+        2.9113898277282715,
+        0.6048000268638134,
+        -0.000029206275939941406,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod0-mechanical",
+      "localTransform": [
+        10.888091087341309,
+        0,
+        0,
+        0,
+        0,
+        10.888091087341309,
+        0,
+        0,
+        0,
+        0,
+        10.888091087341309,
+        0,
+        0.28759288787841797,
+        1.6466215252876282,
+        -0.00012958049774169922,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        10.888091087341309,
+        0,
+        0,
+        0,
+        0,
+        10.888091087341309,
+        0,
+        0,
+        0,
+        0,
+        10.888091087341309,
+        0,
+        0.28759288787841797,
+        1.6466215252876282,
+        -0.00012958049774169922,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod0-mechanicaldark",
+      "localTransform": [
+        10.469029903411865,
+        0,
+        0,
+        0,
+        0,
+        10.469029903411865,
+        0,
+        0,
+        0,
+        0,
+        10.469029903411865,
+        0,
+        -0.21257925033569336,
+        -0.1176864504814148,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        10.469029903411865,
+        0,
+        0,
+        0,
+        0,
+        10.469029903411865,
+        0,
+        0,
+        0,
+        0,
+        10.469029903411865,
+        0,
+        -0.21257925033569336,
+        -0.1176864504814148,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod0-motion-tally-arm-left-mechanical",
+      "localTransform": [
+        3.8810409605503082,
+        0,
+        0,
+        0,
+        0,
+        3.8810409605503082,
+        0,
+        0,
+        0,
+        0,
+        3.8810409605503082,
+        0,
+        3.432722181081772,
+        -1.4901161193847656e-8,
+        -1.3113107085227966,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_TALLY_ARM_LEFT_Mechanical",
+      "nodeName": "LOD0_MOTION_TALLY_ARM_LEFT_Mechanical",
+      "nodePath": [
+        0,
+        23,
+        0
+      ],
+      "parentId": "sf.render.tally-three.node.motion-tally-arm-left",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        3.8810409605503082,
+        0,
+        0,
+        0,
+        0,
+        3.8810409605503082,
+        0,
+        0,
+        0,
+        0,
+        3.8810409605503082,
+        0,
+        3.432722181081772,
+        0.5199999660253525,
+        -3.8113107085227966,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod0-motion-tally-arm-right-mechanical",
+      "localTransform": [
+        3.176262676715851,
+        0,
+        0,
+        0,
+        0,
+        3.176262676715851,
+        0,
+        0,
+        0,
+        0,
+        3.176262676715851,
+        0,
+        2.7277814745903015,
+        -1.4901161193847656e-8,
+        1.0548445582389832,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_TALLY_ARM_RIGHT_Mechanical",
+      "nodeName": "LOD0_MOTION_TALLY_ARM_RIGHT_Mechanical",
+      "nodePath": [
+        0,
+        24,
+        0
+      ],
+      "parentId": "sf.render.tally-three.node.motion-tally-arm-right",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        3.176262676715851,
+        0,
+        0,
+        0,
+        0,
+        3.176262676715851,
+        0,
+        0,
+        0,
+        0,
+        3.176262676715851,
+        0,
+        2.7277814745903015,
+        0.5199999660253525,
+        3.554844558238983,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod0-motion-tally-scan-lights-cyan",
+      "localTransform": [
+        0.40036752820014954,
+        0,
+        0,
+        0,
+        0,
+        0.40036752820014954,
+        0,
+        0,
+        0,
+        0,
+        0.40036752820014954,
+        0,
+        0.2059614658355713,
+        0.030000075697898865,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_TALLY_SCAN_Lights_Cyan",
+      "nodeName": "LOD0_MOTION_TALLY_SCAN_Lights_Cyan",
+      "nodePath": [
+        0,
+        25,
+        0
+      ],
+      "parentId": "sf.render.tally-three.node.motion-tally-scan",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        0.40036752820014954,
+        0,
+        0,
+        0,
+        0,
+        0.40036752820014954,
+        0,
+        0,
+        0,
+        0,
+        0.40036752820014954,
+        0,
+        7.855961561203003,
+        0.5400000661611557,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod0-motion-tally-stamp-livery",
+      "localTransform": [
+        2.566953182220459,
+        0,
+        0,
+        0,
+        0,
+        2.566953182220459,
+        0,
+        0,
+        0,
+        0,
+        2.566953182220459,
+        0,
+        -0.000080108642578125,
+        0.5447921752929688,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MOTION_TALLY_STAMP_Livery",
+      "nodeName": "LOD0_MOTION_TALLY_STAMP_Livery",
+      "nodePath": [
+        0,
+        26,
+        0
+      ],
+      "parentId": "sf.render.tally-three.node.motion-tally-stamp",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        2.566953182220459,
+        0,
+        0,
+        0,
+        0,
+        2.566953182220459,
+        0,
+        0,
+        0,
+        0,
+        2.566953182220459,
+        0,
+        -7.070080280303955,
+        3.0447921752929688,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod1-hook-drive-core",
+      "localTransform": [
+        1.2648015022277832,
+        0,
+        0,
+        0,
+        0,
+        1.2648015022277832,
+        0,
+        0,
+        0,
+        0,
+        1.2648015022277832,
+        0,
+        -10.210965156555176,
+        -0.17999999970197678,
+        4.76837158203125e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_DRIVE_CORE",
+      "nodeName": "LOD1_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        1.2648015022277832,
+        0,
+        0,
+        0,
+        0,
+        1.2648015022277832,
+        0,
+        0,
+        0,
+        0,
+        1.2648015022277832,
+        0,
+        -10.210965156555176,
+        -0.17999999970197678,
+        4.76837158203125e-7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod1-hook-nav-port",
+      "localTransform": [
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        -0.25,
+        1.149999976158142,
+        -2.450000047683716,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_NAV_PORT",
+      "nodeName": "LOD1_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        -0.25,
+        1.149999976158142,
+        -2.450000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod1-hook-nav-starboard",
+      "localTransform": [
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        -0.25,
+        1.149999976158142,
+        2.450000047683716,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD1_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        -0.25,
+        1.149999976158142,
+        2.450000047683716,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod1-hull",
+      "localTransform": [
+        8.491088628768921,
+        0,
+        0,
+        0,
+        0,
+        8.491088628768921,
+        0,
+        0,
+        0,
+        0,
+        8.491088628768921,
+        0,
+        -0.999152421951294,
+        0.6953046023845673,
+        0.00007092952728271484,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull",
+      "nodeName": "LOD1_Hull",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        8.491088628768921,
+        0,
+        0,
+        0,
+        0,
+        8.491088628768921,
+        0,
+        0,
+        0,
+        0,
+        8.491088628768921,
+        0,
+        -0.999152421951294,
+        0.6953046023845673,
+        0.00007092952728271484,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod1-livery",
+      "localTransform": [
+        8.26301646232605,
+        0,
+        0,
+        0,
+        0,
+        8.26301646232605,
+        0,
+        0,
+        0,
+        0,
+        8.26301646232605,
+        0,
+        2.9126675128936768,
+        0.6053893677890301,
+        -0.000029206275939941406,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Livery",
+      "nodeName": "LOD1_Livery",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        8.26301646232605,
+        0,
+        0,
+        0,
+        0,
+        8.26301646232605,
+        0,
+        0,
+        0,
+        0,
+        8.26301646232605,
+        0,
+        2.9126675128936768,
+        0.6053893677890301,
+        -0.000029206275939941406,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod1-mechanical",
+      "localTransform": [
+        10.888091087341309,
+        0,
+        0,
+        0,
+        0,
+        10.888091087341309,
+        0,
+        0,
+        0,
+        0,
+        10.888091087341309,
+        0,
+        0.28759288787841797,
+        1.6466215252876282,
+        -0.0000940561294555664,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Mechanical",
+      "nodeName": "LOD1_Mechanical",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        10.888091087341309,
+        0,
+        0,
+        0,
+        0,
+        10.888091087341309,
+        0,
+        0,
+        0,
+        0,
+        10.888091087341309,
+        0,
+        0.28759288787841797,
+        1.6466215252876282,
+        -0.0000940561294555664,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod1-mechanicaldark",
+      "localTransform": [
+        10.4685959815979,
+        0,
+        0,
+        0,
+        0,
+        10.4685959815979,
+        0,
+        0,
+        0,
+        0,
+        10.4685959815979,
+        0,
+        -0.2130131721496582,
+        -0.118655264377594,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        10.4685959815979,
+        0,
+        0,
+        0,
+        0,
+        10.4685959815979,
+        0,
+        0,
+        0,
+        0,
+        10.4685959815979,
+        0,
+        -0.2130131721496582,
+        -0.118655264377594,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod1-motion-tally-arm-left-mechanical",
+      "localTransform": [
+        3.8821453899145126,
+        0,
+        0,
+        0,
+        0,
+        3.8821453899145126,
+        0,
+        0,
+        0,
+        0,
+        3.8821453899145126,
+        0,
+        3.4361200481653214,
+        -1.4901161193847656e-8,
+        -1.3140215277671814,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_TALLY_ARM_LEFT_Mechanical",
+      "nodeName": "LOD1_MOTION_TALLY_ARM_LEFT_Mechanical",
+      "nodePath": [
+        0,
+        23,
+        1
+      ],
+      "parentId": "sf.render.tally-three.node.motion-tally-arm-left",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        3.8821453899145126,
+        0,
+        0,
+        0,
+        0,
+        3.8821453899145126,
+        0,
+        0,
+        0,
+        0,
+        3.8821453899145126,
+        0,
+        3.4361200481653214,
+        0.5199999660253525,
+        -3.8140215277671814,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod1-motion-tally-arm-right-mechanical",
+      "localTransform": [
+        3.1771262288093567,
+        0,
+        0,
+        0,
+        0,
+        3.1771262288093567,
+        0,
+        0,
+        0,
+        0,
+        3.1771262288093567,
+        0,
+        2.73063725233078,
+        -1.4901161193847656e-8,
+        1.0529231429100037,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_TALLY_ARM_RIGHT_Mechanical",
+      "nodeName": "LOD1_MOTION_TALLY_ARM_RIGHT_Mechanical",
+      "nodePath": [
+        0,
+        24,
+        1
+      ],
+      "parentId": "sf.render.tally-three.node.motion-tally-arm-right",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        3.1771262288093567,
+        0,
+        0,
+        0,
+        0,
+        3.1771262288093567,
+        0,
+        0,
+        0,
+        0,
+        3.1771262288093567,
+        0,
+        2.73063725233078,
+        0.5199999660253525,
+        3.5529231429100037,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod1-motion-tally-scan-lights-cyan",
+      "localTransform": [
+        0.3996935188770294,
+        0,
+        0,
+        0,
+        0,
+        0.3996935188770294,
+        0,
+        0,
+        0,
+        0,
+        0.3996935188770294,
+        0,
+        0.20597028732299805,
+        0.029913470149040222,
+        6.556510925292969e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_TALLY_SCAN_Lights_Cyan",
+      "nodeName": "LOD1_MOTION_TALLY_SCAN_Lights_Cyan",
+      "nodePath": [
+        0,
+        25,
+        1
+      ],
+      "parentId": "sf.render.tally-three.node.motion-tally-scan",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        0.3996935188770294,
+        0,
+        0,
+        0,
+        0,
+        0.3996935188770294,
+        0,
+        0,
+        0,
+        0,
+        0.3996935188770294,
+        0,
+        7.85597038269043,
+        0.5399134606122971,
+        6.556510925292969e-7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod1-motion-tally-stamp-livery",
+      "localTransform": [
+        2.564844846725464,
+        0,
+        0,
+        0,
+        0,
+        2.564844846725464,
+        0,
+        0,
+        0,
+        0,
+        2.564844846725464,
+        0,
+        0.0020689964294433594,
+        0.5444141626358032,
+        0.0019278526306152344,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_TALLY_STAMP_Livery",
+      "nodeName": "LOD1_MOTION_TALLY_STAMP_Livery",
+      "nodePath": [
+        0,
+        26,
+        1
+      ],
+      "parentId": "sf.render.tally-three.node.motion-tally-stamp",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        2.564844846725464,
+        0,
+        0,
+        0,
+        0,
+        2.564844846725464,
+        0,
+        0,
+        0,
+        0,
+        2.564844846725464,
+        0,
+        -7.067931175231934,
+        3.0444141626358032,
+        0.0019278526306152344,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod2-hook-drive-core",
+      "localTransform": [
+        1.2675106525421143,
+        0,
+        0,
+        0,
+        0,
+        1.2675106525421143,
+        0,
+        0,
+        0,
+        0,
+        1.2675106525421143,
+        0,
+        -10.209881782531738,
+        -0.17306141555309296,
+        0.011326909065246582,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_DRIVE_CORE",
+      "nodeName": "LOD2_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        1.2675106525421143,
+        0,
+        0,
+        0,
+        0,
+        1.2675106525421143,
+        0,
+        0,
+        0,
+        0,
+        1.2675106525421143,
+        0,
+        -10.209881782531738,
+        -0.17306141555309296,
+        0.011326909065246582,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod2-hook-nav-port",
+      "localTransform": [
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        -0.2500000074505806,
+        1.149999976158142,
+        -2.450000286102295,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_NAV_PORT",
+      "nodeName": "LOD2_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        -0.2500000074505806,
+        1.149999976158142,
+        -2.450000286102295,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod2-hook-nav-starboard",
+      "localTransform": [
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        -0.2500000074505806,
+        1.149999976158142,
+        2.450000286102295,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD2_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        0,
+        0,
+        0,
+        0.04500007629394531,
+        0,
+        -0.2500000074505806,
+        1.149999976158142,
+        2.450000286102295,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod2-hull",
+      "localTransform": [
+        8.491403102874756,
+        0,
+        0,
+        0,
+        0,
+        8.491403102874756,
+        0,
+        0,
+        0,
+        0,
+        8.491403102874756,
+        0,
+        -0.9950718879699707,
+        0.695985421538353,
+        0.00001430511474609375,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull",
+      "nodeName": "LOD2_Hull",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        8.491403102874756,
+        0,
+        0,
+        0,
+        0,
+        8.491403102874756,
+        0,
+        0,
+        0,
+        0,
+        8.491403102874756,
+        0,
+        -0.9950718879699707,
+        0.695985421538353,
+        0.00001430511474609375,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod2-livery",
+      "localTransform": [
+        8.257357358932495,
+        0,
+        0,
+        0,
+        0,
+        8.257357358932495,
+        0,
+        0,
+        0,
+        0,
+        8.257357358932495,
+        0,
+        2.9211065769195557,
+        0.609379556030035,
+        -0.0073719024658203125,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Livery",
+      "nodeName": "LOD2_Livery",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        8.257357358932495,
+        0,
+        0,
+        0,
+        0,
+        8.257357358932495,
+        0,
+        0,
+        0,
+        0,
+        8.257357358932495,
+        0,
+        2.9211065769195557,
+        0.609379556030035,
+        -0.0073719024658203125,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod2-mechanical",
+      "localTransform": [
+        10.887364387512207,
+        0,
+        0,
+        0,
+        0,
+        10.887364387512207,
+        0,
+        0,
+        0,
+        0,
+        10.887364387512207,
+        0,
+        0.29109954833984375,
+        1.6260526478290558,
+        0.0029489994049072266,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Mechanical",
+      "nodeName": "LOD2_Mechanical",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        10.887364387512207,
+        0,
+        0,
+        0,
+        0,
+        10.887364387512207,
+        0,
+        0,
+        0,
+        0,
+        10.887364387512207,
+        0,
+        0.29109954833984375,
+        1.6260526478290558,
+        0.0029489994049072266,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod2-mechanicaldark",
+      "localTransform": [
+        10.445542812347412,
+        0,
+        0,
+        0,
+        0,
+        10.445542812347412,
+        0,
+        0,
+        0,
+        0,
+        10.445542812347412,
+        0,
+        -0.19383478164672852,
+        -0.21224728226661682,
+        -0.0002626180648803711,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MechanicalDark",
+      "nodeName": "LOD2_MechanicalDark",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        10.445542812347412,
+        0,
+        0,
+        0,
+        0,
+        10.445542812347412,
+        0,
+        0,
+        0,
+        0,
+        10.445542812347412,
+        0,
+        -0.19383478164672852,
+        -0.21224728226661682,
+        -0.0002626180648803711,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod2-motion-tally-arm-left-mechanical",
+      "localTransform": [
+        3.8892222344875336,
+        0,
+        0,
+        0,
+        0,
+        3.8892222344875336,
+        0,
+        0,
+        0,
+        0,
+        3.8892222344875336,
+        0,
+        3.4290432035923004,
+        -1.4901161193847656e-8,
+        -1.3422123193740845,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_TALLY_ARM_LEFT_Mechanical",
+      "nodeName": "LOD2_MOTION_TALLY_ARM_LEFT_Mechanical",
+      "nodePath": [
+        0,
+        23,
+        2
+      ],
+      "parentId": "sf.render.tally-three.node.motion-tally-arm-left",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        3.8892222344875336,
+        0,
+        0,
+        0,
+        0,
+        3.8892222344875336,
+        0,
+        0,
+        0,
+        0,
+        3.8892222344875336,
+        0,
+        3.4290432035923004,
+        0.5199999660253525,
+        -3.8422123193740845,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod2-motion-tally-arm-right-mechanical",
+      "localTransform": [
+        3.1731676906347275,
+        0,
+        0,
+        0,
+        0,
+        3.1731676906347275,
+        0,
+        0,
+        0,
+        0,
+        3.1731676906347275,
+        0,
+        2.7361245304346085,
+        -1.4901161193847656e-8,
+        1.0569025874137878,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_TALLY_ARM_RIGHT_Mechanical",
+      "nodeName": "LOD2_MOTION_TALLY_ARM_RIGHT_Mechanical",
+      "nodePath": [
+        0,
+        24,
+        2
+      ],
+      "parentId": "sf.render.tally-three.node.motion-tally-arm-right",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        3.1731676906347275,
+        0,
+        0,
+        0,
+        0,
+        3.1731676906347275,
+        0,
+        0,
+        0,
+        0,
+        3.1731676906347275,
+        0,
+        2.7361245304346085,
+        0.5199999660253525,
+        3.556902587413788,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod2-motion-tally-scan-lights-cyan",
+      "localTransform": [
+        0.39830611646175385,
+        0,
+        0,
+        0,
+        0,
+        0.39830611646175385,
+        0,
+        0,
+        0,
+        0,
+        0.39830611646175385,
+        0,
+        0.20623540878295898,
+        0.030519604682922363,
+        -0.0013867467641830444,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_TALLY_SCAN_Lights_Cyan",
+      "nodeName": "LOD2_MOTION_TALLY_SCAN_Lights_Cyan",
+      "nodePath": [
+        0,
+        25,
+        2
+      ],
+      "parentId": "sf.render.tally-three.node.motion-tally-scan",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        0.39830611646175385,
+        0,
+        0,
+        0,
+        0,
+        0.39830611646175385,
+        0,
+        0,
+        0,
+        0,
+        0.39830611646175385,
+        0,
+        7.856235504150391,
+        0.5405195951461792,
+        -0.0013867467641830444,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.lod2-motion-tally-stamp-livery",
+      "localTransform": [
+        2.5580151081085205,
+        0,
+        0,
+        0,
+        0,
+        2.5580151081085205,
+        0,
+        0,
+        0,
+        0,
+        2.5580151081085205,
+        0,
+        0.006289243698120117,
+        0.544166088104248,
+        0.0011272430419921875,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_TALLY_STAMP_Livery",
+      "nodeName": "LOD2_MOTION_TALLY_STAMP_Livery",
+      "nodePath": [
+        0,
+        26,
+        2
+      ],
+      "parentId": "sf.render.tally-three.node.motion-tally-stamp",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        2.5580151081085205,
+        0,
+        0,
+        0,
+        0,
+        2.5580151081085205,
+        0,
+        0,
+        0,
+        0,
+        2.5580151081085205,
+        0,
+        -7.063710927963257,
+        3.044166088104248,
+        0.0011272430419921875,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.motion-tally-arm-left",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.5199999809265137,
+        -2.5,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_TALLY_ARM_LEFT",
+      "nodeName": "MOTION_TALLY_ARM_LEFT",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.5199999809265137,
+        -2.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.motion-tally-arm-right",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.5199999809265137,
+        2.5,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_TALLY_ARM_RIGHT",
+      "nodeName": "MOTION_TALLY_ARM_RIGHT",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.5199999809265137,
+        2.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.motion-tally-scan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.650000095367432,
+        0.5099999904632568,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_TALLY_SCAN",
+      "nodeName": "MOTION_TALLY_SCAN",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.650000095367432,
+        0.5099999904632568,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.motion-tally-stamp",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.070000171661377,
+        2.5,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_TALLY_STAMP",
+      "nodeName": "MOTION_TALLY_STAMP",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.070000171661377,
+        2.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_PLACE_TALLY_3_ROOT",
+      "nodeName": "SF_PLACE_TALLY_3_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.30000001192092896,
+        0.800000011920929,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.30000001192092896,
+        0.800000011920929,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.socket-claim-cradle",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        9.600000381469727,
+        0.3100000023841858,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_CLAIM_CRADLE",
+      "nodeName": "SOCKET_CLAIM_CRADLE",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        9.600000381469727,
+        0.3100000023841858,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.socket-engine-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -11.149999618530273,
+        -0.18000000715255737,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Engine_Main",
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -11.149999618530273,
+        -0.18000000715255737,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.socket-tally-scan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.875999927520752,
+        0.5400000214576721,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_TALLY_SCAN",
+      "nodeName": "SOCKET_TALLY_SCAN",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.875999927520752,
+        0.5400000214576721,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-three.node.socket-tally-stamp",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.070000171661377,
+        2.5,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_TALLY_STAMP",
+      "nodeName": "SOCKET_TALLY_STAMP",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.tally-three.node.sf-place-tally-3-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-three.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.070000171661377,
+        2.5,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "735de6f3b894a1148ef41c2fe0f69197269c0a878fb9fe7d96840fefa8eba80a"
+    },
+    "sourceGlb": {
+      "bytes": 631644,
+      "sha256": "84572b9c39b347cc2c373837e881c3340a15219bc2972f7d368172e266c8e943",
+      "uri": "place_tally_three.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 639268,
+    "sha256": "a13751f405017be38f1bd094fd297b8d54f8e9afaa7467764d47a8079cdc55e5",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.2484273910522461,
+        1.4010730591914504,
+        -0.2571920685627678
+      ],
+      "max": [
+        11.17846393585205,
+        4.2118872863971255,
+        5.121164732462854
+      ],
+      "min": [
+        -10.681609153747559,
+        -1.4097411680142247,
+        -5.63554886958839
+      ],
+      "size": [
+        21.86007308959961,
+        5.621628454411351,
+        10.756713602051244
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          7.875999927520752,
+          0.5400000214576721,
+          0,
+          1
+        ],
+        "name": "SOCKET_TALLY_SCAN",
+        "planIndex": 3,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "authorSemantic": "HOOK_SCAN",
+          "name": "SOCKET_TALLY_SCAN",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_TALLY_SCAN",
+            "recordIds": [
+              "sf.render.tally-three.anchor.socket-tally-scan",
+              "sf.render.tally-three.node.socket-tally-scan"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0.5199999809265137,
+          -2.5,
+          1
+        ],
+        "name": "MOTION_TALLY_ARM_LEFT",
+        "planIndex": 25,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "tally_arm_left",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              2.5
+            ],
+            [
+              0,
+              0,
+              1,
+              0.5199999809265137
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_TALLY_ARM_LEFT",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "tally_arm_left"
+          },
+          "spacefaceInstance": false,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_TALLY_ARM_LEFT",
+            "recordIds": [
+              "sf.render.tally-three.node.motion-tally-arm-left"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          3.8810409605503082,
+          0,
+          0,
+          0,
+          0,
+          3.8810409605503082,
+          0,
+          0,
+          0,
+          0,
+          3.8810409605503082,
+          0,
+          3.432722181081772,
+          0.5199999660253525,
+          -3.8113107085227966,
+          1
+        ],
+        "name": "LOD0_MOTION_TALLY_ARM_LEFT_Mechanical",
+        "planIndex": 26,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_TALLY_ARM_LEFT_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_TALLY_ARM_LEFT_Mechanical",
+            "recordIds": [
+              "sf.render.tally-three.node.lod0-motion-tally-arm-left-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          3.8821453899145126,
+          0,
+          0,
+          0,
+          0,
+          3.8821453899145126,
+          0,
+          0,
+          0,
+          0,
+          3.8821453899145126,
+          0,
+          3.4361200481653214,
+          0.5199999660253525,
+          -3.8140215277671814,
+          1
+        ],
+        "name": "LOD1_MOTION_TALLY_ARM_LEFT_Mechanical",
+        "planIndex": 28,
+        "tags": {
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_TALLY_ARM_LEFT_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_TALLY_ARM_LEFT_Mechanical",
+            "recordIds": [
+              "sf.render.tally-three.node.lod1-motion-tally-arm-left-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          3.8892222344875336,
+          0,
+          0,
+          0,
+          0,
+          3.8892222344875336,
+          0,
+          0,
+          0,
+          0,
+          3.8892222344875336,
+          0,
+          3.4290432035923004,
+          0.5199999660253525,
+          -3.8422123193740845,
+          1
+        ],
+        "name": "LOD2_MOTION_TALLY_ARM_LEFT_Mechanical",
+        "planIndex": 30,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_TALLY_ARM_LEFT_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_TALLY_ARM_LEFT_Mechanical",
+            "recordIds": [
+              "sf.render.tally-three.node.lod2-motion-tally-arm-left-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0.5199999809265137,
+          2.5,
+          1
+        ],
+        "name": "MOTION_TALLY_ARM_RIGHT",
+        "planIndex": 32,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "tally_arm_right",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              -2.5
+            ],
+            [
+              0,
+              0,
+              1,
+              0.5199999809265137
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_TALLY_ARM_RIGHT",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "tally_arm_right"
+          },
+          "spacefaceInstance": false,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_TALLY_ARM_RIGHT",
+            "recordIds": [
+              "sf.render.tally-three.node.motion-tally-arm-right"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          3.176262676715851,
+          0,
+          0,
+          0,
+          0,
+          3.176262676715851,
+          0,
+          0,
+          0,
+          0,
+          3.176262676715851,
+          0,
+          2.7277814745903015,
+          0.5199999660253525,
+          3.554844558238983,
+          1
+        ],
+        "name": "LOD0_MOTION_TALLY_ARM_RIGHT_Mechanical",
+        "planIndex": 33,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_TALLY_ARM_RIGHT_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_TALLY_ARM_RIGHT_Mechanical",
+            "recordIds": [
+              "sf.render.tally-three.node.lod0-motion-tally-arm-right-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          3.1771262288093567,
+          0,
+          0,
+          0,
+          0,
+          3.1771262288093567,
+          0,
+          0,
+          0,
+          0,
+          3.1771262288093567,
+          0,
+          2.73063725233078,
+          0.5199999660253525,
+          3.5529231429100037,
+          1
+        ],
+        "name": "LOD1_MOTION_TALLY_ARM_RIGHT_Mechanical",
+        "planIndex": 35,
+        "tags": {
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_TALLY_ARM_RIGHT_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_TALLY_ARM_RIGHT_Mechanical",
+            "recordIds": [
+              "sf.render.tally-three.node.lod1-motion-tally-arm-right-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          3.1731676906347275,
+          0,
+          0,
+          0,
+          0,
+          3.1731676906347275,
+          0,
+          0,
+          0,
+          0,
+          3.1731676906347275,
+          0,
+          2.7361245304346085,
+          0.5199999660253525,
+          3.556902587413788,
+          1
+        ],
+        "name": "LOD2_MOTION_TALLY_ARM_RIGHT_Mechanical",
+        "planIndex": 37,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_TALLY_ARM_RIGHT_Mechanical",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_TALLY_ARM_RIGHT_Mechanical",
+            "recordIds": [
+              "sf.render.tally-three.node.lod2-motion-tally-arm-right-mechanical"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          7.650000095367432,
+          0.5099999904632568,
+          0,
+          1
+        ],
+        "name": "MOTION_TALLY_SCAN",
+        "planIndex": 39,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "tally_scan",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              7.650000095367432
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0.5099999904632568
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_TALLY_SCAN",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "tally_scan"
+          },
+          "spacefaceInstance": false,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_TALLY_SCAN",
+            "recordIds": [
+              "sf.render.tally-three.node.motion-tally-scan"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          0.40036752820014954,
+          0,
+          0,
+          0,
+          0,
+          0.40036752820014954,
+          0,
+          0,
+          0,
+          0,
+          0.40036752820014954,
+          0,
+          7.855961561203003,
+          0.5400000661611557,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_TALLY_SCAN_Lights_Cyan",
+        "planIndex": 40,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_TALLY_SCAN_Lights_Cyan",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_TALLY_SCAN_Lights_Cyan",
+            "recordIds": [
+              "sf.render.tally-three.node.lod0-motion-tally-scan-lights-cyan"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.3996935188770294,
+          0,
+          0,
+          0,
+          0,
+          0.3996935188770294,
+          0,
+          0,
+          0,
+          0,
+          0.3996935188770294,
+          0,
+          7.85597038269043,
+          0.5399134606122971,
+          6.556510925292969e-7,
+          1
+        ],
+        "name": "LOD1_MOTION_TALLY_SCAN_Lights_Cyan",
+        "planIndex": 42,
+        "tags": {
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_TALLY_SCAN_Lights_Cyan",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_TALLY_SCAN_Lights_Cyan",
+            "recordIds": [
+              "sf.render.tally-three.node.lod1-motion-tally-scan-lights-cyan"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          0.39830611646175385,
+          0,
+          0,
+          0,
+          0,
+          0.39830611646175385,
+          0,
+          0,
+          0,
+          0,
+          0.39830611646175385,
+          0,
+          7.856235504150391,
+          0.5405195951461792,
+          -0.0013867467641830444,
+          1
+        ],
+        "name": "LOD2_MOTION_TALLY_SCAN_Lights_Cyan",
+        "planIndex": 44,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_TALLY_SCAN_Lights_Cyan",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_TALLY_SCAN_Lights_Cyan",
+            "recordIds": [
+              "sf.render.tally-three.node.lod2-motion-tally-scan-lights-cyan"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7.070000171661377,
+          2.5,
+          0,
+          1
+        ],
+        "name": "MOTION_TALLY_STAMP",
+        "planIndex": 46,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "tally_stamp",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -7.070000171661377
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              2.5
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_TALLY_STAMP",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "tally_stamp"
+          },
+          "spacefaceInstance": false,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_TALLY_STAMP",
+            "recordIds": [
+              "sf.render.tally-three.node.motion-tally-stamp"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          2.566953182220459,
+          0,
+          0,
+          0,
+          0,
+          2.566953182220459,
+          0,
+          0,
+          0,
+          0,
+          2.566953182220459,
+          0,
+          -7.070080280303955,
+          3.0447921752929688,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_TALLY_STAMP_Livery",
+        "planIndex": 47,
+        "tags": {
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD0_MOTION_TALLY_STAMP_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_MOTION_TALLY_STAMP_Livery",
+            "recordIds": [
+              "sf.render.tally-three.node.lod0-motion-tally-stamp-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.564844846725464,
+          0,
+          0,
+          0,
+          0,
+          2.564844846725464,
+          0,
+          0,
+          0,
+          0,
+          2.564844846725464,
+          0,
+          -7.067931175231934,
+          3.0444141626358032,
+          0.0019278526306152344,
+          1
+        ],
+        "name": "LOD1_MOTION_TALLY_STAMP_Livery",
+        "planIndex": 49,
+        "tags": {
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD1_MOTION_TALLY_STAMP_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_MOTION_TALLY_STAMP_Livery",
+            "recordIds": [
+              "sf.render.tally-three.node.lod1-motion-tally-stamp-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.5580151081085205,
+          0,
+          0,
+          0,
+          0,
+          2.5580151081085205,
+          0,
+          0,
+          0,
+          0,
+          2.5580151081085205,
+          0,
+          -7.063710927963257,
+          3.044166088104248,
+          0.0011272430419921875,
+          1
+        ],
+        "name": "LOD2_MOTION_TALLY_STAMP_Livery",
+        "planIndex": 51,
+        "tags": {
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "LOD2_MOTION_TALLY_STAMP_Livery",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_MOTION_TALLY_STAMP_Livery",
+            "recordIds": [
+              "sf.render.tally-three.node.lod2-motion-tally-stamp-livery"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.30000001192092896,
+          0.800000011920929,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 53,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.tally-three.anchor.socket-camera-focus",
+              "sf.render.tally-three.node.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          9.600000381469727,
+          0.3100000023841858,
+          0,
+          1
+        ],
+        "name": "SOCKET_CLAIM_CRADLE",
+        "planIndex": 54,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_CLAIM_CRADLE",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_CLAIM_CRADLE",
+            "recordIds": [
+              "sf.render.tally-three.anchor.socket-claim-cradle",
+              "sf.render.tally-three.node.socket-claim-cradle"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -11.149999618530273,
+          -0.18000000715255737,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 55,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.tally-three.anchor.socket-engine-main",
+              "sf.render.tally-three.node.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7.070000171661377,
+          2.5,
+          0,
+          1
+        ],
+        "name": "SOCKET_TALLY_STAMP",
+        "planIndex": 56,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_TALLY_STAMP",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_TALLY_STAMP",
+            "recordIds": [
+              "sf.render.tally-three.anchor.socket-tally-stamp",
+              "sf.render.tally-three.node.socket-tally-stamp"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 6,
+      "drive": 3,
+      "hull": 4,
+      "mechanical": 12,
+      "signal": 9
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 50,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "accent"
+      }
+    ],
+    "motionBank": {
+      "bytes": 3685,
+      "rigId": "tally_three_instruments",
+      "sha256": "9512676779b6318f12d6aca839360c7fcaf086cac899fe3f5cbd0e51eefbd0c5",
+      "uri": "assets/ships/motions/tally-three.motion.json"
+    },
+    "nodeCount": 57,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1.2648015022277832,
+          0,
+          0,
+          0,
+          0,
+          1.2648015022277832,
+          0,
+          0,
+          0,
+          0,
+          1.2648015022277832,
+          0,
+          -10.210965156555176,
+          -0.17999999970197678,
+          4.76837158203125e-7,
+          1
+        ],
+        "name": "LOD0_HOOK_DRIVE_CORE",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            1.2648015022277832,
+            0,
+            0,
+            0,
+            0,
+            1.2648015022277832,
+            0,
+            0,
+            0,
+            0,
+            1.2648015022277832,
+            0,
+            -10.210965156555176,
+            -0.17999999970197678,
+            4.76837158203125e-7,
+            1
+          ],
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.04500007629394531,
+          0,
+          0,
+          0,
+          0,
+          0.04500007629394531,
+          0,
+          0,
+          0,
+          0,
+          0.04500007629394531,
+          0,
+          -0.25,
+          1.149999976158142,
+          -2.450000047683716,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_PORT",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.04500007629394531,
+          0,
+          0,
+          0,
+          0,
+          0.04500007629394531,
+          0,
+          0,
+          0,
+          0,
+          0.04500007629394531,
+          0,
+          -0.25,
+          1.149999976158142,
+          2.450000047683716,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_STARBOARD",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.491088628768921,
+          0,
+          0,
+          0,
+          0,
+          8.491088628768921,
+          0,
+          0,
+          0,
+          0,
+          8.491088628768921,
+          0,
+          -0.999152421951294,
+          0.6960587352514267,
+          0.00007092952728271484,
+          1
+        ],
+        "name": "LOD0_Hull",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.264294147491455,
+          0,
+          0,
+          0,
+          0,
+          8.264294147491455,
+          0,
+          0,
+          0,
+          0,
+          8.264294147491455,
+          0,
+          2.9113898277282715,
+          0.6048000268638134,
+          -0.000029206275939941406,
+          1
+        ],
+        "name": "LOD0_Livery",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          10.888091087341309,
+          0,
+          0,
+          0,
+          0,
+          10.888091087341309,
+          0,
+          0,
+          0,
+          0,
+          10.888091087341309,
+          0,
+          0.28759288787841797,
+          1.6466215252876282,
+          -0.00012958049774169922,
+          1
+        ],
+        "name": "LOD0_Mechanical",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          10.469029903411865,
+          0,
+          0,
+          0,
+          0,
+          10.469029903411865,
+          0,
+          0,
+          0,
+          0,
+          10.469029903411865,
+          0,
+          -0.21257925033569336,
+          -0.1176864504814148,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.2648015022277832,
+          0,
+          0,
+          0,
+          0,
+          1.2648015022277832,
+          0,
+          0,
+          0,
+          0,
+          1.2648015022277832,
+          0,
+          -10.210965156555176,
+          -0.17999999970197678,
+          4.76837158203125e-7,
+          1
+        ],
+        "name": "LOD1_HOOK_DRIVE_CORE",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            1.2648015022277832,
+            0,
+            0,
+            0,
+            0,
+            1.2648015022277832,
+            0,
+            0,
+            0,
+            0,
+            1.2648015022277832,
+            0,
+            -10.210965156555176,
+            -0.17999999970197678,
+            4.76837158203125e-7,
+            1
+          ],
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.04500007629394531,
+          0,
+          0,
+          0,
+          0,
+          0.04500007629394531,
+          0,
+          0,
+          0,
+          0,
+          0.04500007629394531,
+          0,
+          -0.25,
+          1.149999976158142,
+          -2.450000047683716,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_PORT",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.04500007629394531,
+          0,
+          0,
+          0,
+          0,
+          0.04500007629394531,
+          0,
+          0,
+          0,
+          0,
+          0.04500007629394531,
+          0,
+          -0.25,
+          1.149999976158142,
+          2.450000047683716,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_STARBOARD",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.491088628768921,
+          0,
+          0,
+          0,
+          0,
+          8.491088628768921,
+          0,
+          0,
+          0,
+          0,
+          8.491088628768921,
+          0,
+          -0.999152421951294,
+          0.6953046023845673,
+          0.00007092952728271484,
+          1
+        ],
+        "name": "LOD1_Hull",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.26301646232605,
+          0,
+          0,
+          0,
+          0,
+          8.26301646232605,
+          0,
+          0,
+          0,
+          0,
+          8.26301646232605,
+          0,
+          2.9126675128936768,
+          0.6053893677890301,
+          -0.000029206275939941406,
+          1
+        ],
+        "name": "LOD1_Livery",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          10.888091087341309,
+          0,
+          0,
+          0,
+          0,
+          10.888091087341309,
+          0,
+          0,
+          0,
+          0,
+          10.888091087341309,
+          0,
+          0.28759288787841797,
+          1.6466215252876282,
+          -0.0000940561294555664,
+          1
+        ],
+        "name": "LOD1_Mechanical",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          10.4685959815979,
+          0,
+          0,
+          0,
+          0,
+          10.4685959815979,
+          0,
+          0,
+          0,
+          0,
+          10.4685959815979,
+          0,
+          -0.2130131721496582,
+          -0.118655264377594,
+          0,
+          1
+        ],
+        "name": "LOD1_MechanicalDark",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.2675106525421143,
+          0,
+          0,
+          0,
+          0,
+          1.2675106525421143,
+          0,
+          0,
+          0,
+          0,
+          1.2675106525421143,
+          0,
+          -10.209881782531738,
+          -0.17306141555309296,
+          0.011326909065246582,
+          1
+        ],
+        "name": "LOD2_HOOK_DRIVE_CORE",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            1.2675106525421143,
+            0,
+            0,
+            0,
+            0,
+            1.2675106525421143,
+            0,
+            0,
+            0,
+            0,
+            1.2675106525421143,
+            0,
+            -10.209881782531738,
+            -0.17306141555309296,
+            0.011326909065246582,
+            1
+          ],
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.04500007629394531,
+          0,
+          0,
+          0,
+          0,
+          0.04500007629394531,
+          0,
+          0,
+          0,
+          0,
+          0.04500007629394531,
+          0,
+          -0.2500000074505806,
+          1.149999976158142,
+          -2.450000286102295,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_PORT",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.04500007629394531,
+          0,
+          0,
+          0,
+          0,
+          0.04500007629394531,
+          0,
+          0,
+          0,
+          0,
+          0.04500007629394531,
+          0,
+          -0.2500000074505806,
+          1.149999976158142,
+          2.450000286102295,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_STARBOARD",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.491403102874756,
+          0,
+          0,
+          0,
+          0,
+          8.491403102874756,
+          0,
+          0,
+          0,
+          0,
+          8.491403102874756,
+          0,
+          -0.9950718879699707,
+          0.695985421538353,
+          0.00001430511474609375,
+          1
+        ],
+        "name": "LOD2_Hull",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.257357358932495,
+          0,
+          0,
+          0,
+          0,
+          8.257357358932495,
+          0,
+          0,
+          0,
+          0,
+          8.257357358932495,
+          0,
+          2.9211065769195557,
+          0.609379556030035,
+          -0.0073719024658203125,
+          1
+        ],
+        "name": "LOD2_Livery",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          10.887364387512207,
+          0,
+          0,
+          0,
+          0,
+          10.887364387512207,
+          0,
+          0,
+          0,
+          0,
+          10.887364387512207,
+          0,
+          0.29109954833984375,
+          1.6260526478290558,
+          0.0029489994049072266,
+          1
+        ],
+        "name": "LOD2_Mechanical",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          10.445542812347412,
+          0,
+          0,
+          0,
+          0,
+          10.445542812347412,
+          0,
+          0,
+          0,
+          0,
+          10.445542812347412,
+          0,
+          -0.19383478164672852,
+          -0.21224728226661682,
+          -0.0002626180648803711,
+          1
+        ],
+        "name": "LOD2_MechanicalDark",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.8810409605503082,
+          0,
+          0,
+          0,
+          0,
+          3.8810409605503082,
+          0,
+          0,
+          0,
+          0,
+          3.8810409605503082,
+          0,
+          3.432722181081772,
+          0.5199999660253525,
+          -3.8113107085227966,
+          1
+        ],
+        "name": "LOD0_MOTION_TALLY_ARM_LEFT_Mechanical_1",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.8821453899145126,
+          0,
+          0,
+          0,
+          0,
+          3.8821453899145126,
+          0,
+          0,
+          0,
+          0,
+          3.8821453899145126,
+          0,
+          3.4361200481653214,
+          0.5199999660253525,
+          -3.8140215277671814,
+          1
+        ],
+        "name": "LOD1_MOTION_TALLY_ARM_LEFT_Mechanical_1",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.8892222344875336,
+          0,
+          0,
+          0,
+          0,
+          3.8892222344875336,
+          0,
+          0,
+          0,
+          0,
+          3.8892222344875336,
+          0,
+          3.4290432035923004,
+          0.5199999660253525,
+          -3.8422123193740845,
+          1
+        ],
+        "name": "LOD2_MOTION_TALLY_ARM_LEFT_Mechanical_1",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.176262676715851,
+          0,
+          0,
+          0,
+          0,
+          3.176262676715851,
+          0,
+          0,
+          0,
+          0,
+          3.176262676715851,
+          0,
+          2.7277814745903015,
+          0.5199999660253525,
+          3.554844558238983,
+          1
+        ],
+        "name": "LOD0_MOTION_TALLY_ARM_RIGHT_Mechanical_1",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.1771262288093567,
+          0,
+          0,
+          0,
+          0,
+          3.1771262288093567,
+          0,
+          0,
+          0,
+          0,
+          3.1771262288093567,
+          0,
+          2.73063725233078,
+          0.5199999660253525,
+          3.5529231429100037,
+          1
+        ],
+        "name": "LOD1_MOTION_TALLY_ARM_RIGHT_Mechanical_1",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.1731676906347275,
+          0,
+          0,
+          0,
+          0,
+          3.1731676906347275,
+          0,
+          0,
+          0,
+          0,
+          3.1731676906347275,
+          0,
+          2.7361245304346085,
+          0.5199999660253525,
+          3.556902587413788,
+          1
+        ],
+        "name": "LOD2_MOTION_TALLY_ARM_RIGHT_Mechanical_1",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.40036752820014954,
+          0,
+          0,
+          0,
+          0,
+          0.40036752820014954,
+          0,
+          0,
+          0,
+          0,
+          0.40036752820014954,
+          0,
+          7.855961561203003,
+          0.5400000661611557,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_TALLY_SCAN_Lights_Cyan_1",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3996935188770294,
+          0,
+          0,
+          0,
+          0,
+          0.3996935188770294,
+          0,
+          0,
+          0,
+          0,
+          0.3996935188770294,
+          0,
+          7.85597038269043,
+          0.5399134606122971,
+          6.556510925292969e-7,
+          1
+        ],
+        "name": "LOD1_MOTION_TALLY_SCAN_Lights_Cyan_1",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.39830611646175385,
+          0,
+          0,
+          0,
+          0,
+          0.39830611646175385,
+          0,
+          0,
+          0,
+          0,
+          0.39830611646175385,
+          0,
+          7.856235504150391,
+          0.5405195951461792,
+          -0.0013867467641830444,
+          1
+        ],
+        "name": "LOD2_MOTION_TALLY_SCAN_Lights_Cyan_1",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.566953182220459,
+          0,
+          0,
+          0,
+          0,
+          2.566953182220459,
+          0,
+          0,
+          0,
+          0,
+          2.566953182220459,
+          0,
+          -7.070080280303955,
+          3.0447921752929688,
+          0,
+          1
+        ],
+        "name": "LOD0_MOTION_TALLY_STAMP_Livery_1",
+        "planIndex": 48,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.564844846725464,
+          0,
+          0,
+          0,
+          0,
+          2.564844846725464,
+          0,
+          0,
+          0,
+          0,
+          2.564844846725464,
+          0,
+          -7.067931175231934,
+          3.0444141626358032,
+          0.0019278526306152344,
+          1
+        ],
+        "name": "LOD1_MOTION_TALLY_STAMP_Livery_1",
+        "planIndex": 50,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.5580151081085205,
+          0,
+          0,
+          0,
+          0,
+          2.5580151081085205,
+          0,
+          0,
+          0,
+          0,
+          2.5580151081085205,
+          0,
+          -7.063710927963257,
+          3.044166088104248,
+          0.0011272430419921875,
+          1
+        ],
+        "name": "LOD2_MOTION_TALLY_STAMP_Livery_1",
+        "planIndex": 52,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_tally_three.glb"
+  },
+  "runtimeHash": "4b94fe2e4249d2906136255ff4af4b1ab620adcff39681e4d8d46731ca43a67c",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          11.17846393585205,
+          4.2118872863971255,
+          5.121164732462854
+        ],
+        "min": [
+          -10.681609153747559,
+          -1.4097411680142247,
+          -5.63554886958839
+        ]
+      },
+      "id": "sf.render.tally-three.body",
+      "nodeIds": [
+        "sf.render.tally-three.node.collision-hull",
+        "sf.render.tally-three.node.lod0-hook-drive-core",
+        "sf.render.tally-three.node.lod0-hook-nav-port",
+        "sf.render.tally-three.node.lod0-hook-nav-starboard",
+        "sf.render.tally-three.node.lod0-hull",
+        "sf.render.tally-three.node.lod0-livery",
+        "sf.render.tally-three.node.lod0-mechanical",
+        "sf.render.tally-three.node.lod0-mechanicaldark",
+        "sf.render.tally-three.node.lod0-motion-tally-arm-left-mechanical",
+        "sf.render.tally-three.node.lod0-motion-tally-arm-right-mechanical",
+        "sf.render.tally-three.node.lod0-motion-tally-scan-lights-cyan",
+        "sf.render.tally-three.node.lod0-motion-tally-stamp-livery",
+        "sf.render.tally-three.node.lod1-hook-drive-core",
+        "sf.render.tally-three.node.lod1-hook-nav-port",
+        "sf.render.tally-three.node.lod1-hook-nav-starboard",
+        "sf.render.tally-three.node.lod1-hull",
+        "sf.render.tally-three.node.lod1-livery",
+        "sf.render.tally-three.node.lod1-mechanical",
+        "sf.render.tally-three.node.lod1-mechanicaldark",
+        "sf.render.tally-three.node.lod1-motion-tally-arm-left-mechanical",
+        "sf.render.tally-three.node.lod1-motion-tally-arm-right-mechanical",
+        "sf.render.tally-three.node.lod1-motion-tally-scan-lights-cyan",
+        "sf.render.tally-three.node.lod1-motion-tally-stamp-livery",
+        "sf.render.tally-three.node.lod2-hook-drive-core",
+        "sf.render.tally-three.node.lod2-hook-nav-port",
+        "sf.render.tally-three.node.lod2-hook-nav-starboard",
+        "sf.render.tally-three.node.lod2-hull",
+        "sf.render.tally-three.node.lod2-livery",
+        "sf.render.tally-three.node.lod2-mechanical",
+        "sf.render.tally-three.node.lod2-mechanicaldark",
+        "sf.render.tally-three.node.lod2-motion-tally-arm-left-mechanical",
+        "sf.render.tally-three.node.lod2-motion-tally-arm-right-mechanical",
+        "sf.render.tally-three.node.lod2-motion-tally-scan-lights-cyan",
+        "sf.render.tally-three.node.lod2-motion-tally-stamp-livery",
+        "sf.render.tally-three.node.motion-tally-arm-left",
+        "sf.render.tally-three.node.motion-tally-arm-right",
+        "sf.render.tally-three.node.motion-tally-scan",
+        "sf.render.tally-three.node.motion-tally-stamp",
+        "sf.render.tally-three.node.sf-place-tally-3-root",
+        "sf.render.tally-three.node.socket-camera-focus",
+        "sf.render.tally-three.node.socket-claim-cradle",
+        "sf.render.tally-three.node.socket-engine-main",
+        "sf.render.tally-three.node.socket-tally-scan",
+        "sf.render.tally-three.node.socket-tally-stamp"
+      ]
+    }
+  ]
+}

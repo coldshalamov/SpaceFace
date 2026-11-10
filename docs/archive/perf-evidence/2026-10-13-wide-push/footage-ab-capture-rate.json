@@ -1,0 +1,234 @@
+{
+ "summary": {
+  "off": {
+   "frames": 1225,
+   "fps": 43.57,
+   "p50": 16.7,
+   "p95": 33.4,
+   "p99": 50,
+   "max": 66.7,
+   "over50": 14
+  },
+  "worker": {
+   "frames": 1110,
+   "fps": 39.67,
+   "p50": 16.7,
+   "p95": 50,
+   "p99": 83.4,
+   "max": 116.8,
+   "over50": 57
+  },
+  "worker12": {
+   "frames": 1077,
+   "fps": 38.28,
+   "p50": 16.7,
+   "p95": 50,
+   "p99": 100,
+   "max": 116.8,
+   "over50": 58
+  },
+  "worker30": {
+   "frames": 1127,
+   "fps": 40.18,
+   "p50": 16.7,
+   "p95": 50,
+   "p99": 83.3,
+   "max": 133.1,
+   "over50": 48
+  }
+ },
+ "blocks": [
+  {
+   "mode": "off",
+   "captured": 0,
+   "seconds": 7,
+   "frames": 363,
+   "fps": 51.73,
+   "p50": 16.7,
+   "p95": 33.4,
+   "p99": 33.5,
+   "max": 34.4,
+   "over50": 0
+  },
+  {
+   "mode": "worker",
+   "captured": 45,
+   "seconds": 7,
+   "frames": 315,
+   "fps": 45,
+   "p50": 16.7,
+   "p95": 66.6,
+   "p99": 83.4,
+   "max": 100.1,
+   "over50": 19
+  },
+  {
+   "mode": "worker12",
+   "captured": 25,
+   "seconds": 7,
+   "frames": 305,
+   "fps": 43.57,
+   "p50": 16.7,
+   "p95": 50,
+   "p99": 100,
+   "max": 116.8,
+   "over50": 16
+  },
+  {
+   "mode": "worker30",
+   "captured": 12,
+   "seconds": 7,
+   "frames": 340,
+   "fps": 48.57,
+   "p50": 16.7,
+   "p95": 33.4,
+   "p99": 83.2,
+   "max": 100.1,
+   "over50": 8
+  },
+  {
+   "mode": "worker30",
+   "captured": 12,
+   "seconds": 7,
+   "frames": 295,
+   "fps": 42.14,
+   "p50": 16.7,
+   "p95": 33.9,
+   "p99": 83.3,
+   "max": 100.1,
+   "over50": 10
+  },
+  {
+   "mode": "worker12",
+   "captured": 24,
+   "seconds": 7,
+   "frames": 244,
+   "fps": 34.61,
+   "p50": 33.3,
+   "p95": 50.1,
+   "p99": 83.4,
+   "max": 116.6,
+   "over50": 15
+  },
+  {
+   "mode": "off",
+   "captured": 0,
+   "seconds": 7,
+   "frames": 289,
+   "fps": 41.09,
+   "p50": 16.7,
+   "p95": 33.4,
+   "p99": 50,
+   "max": 66.5,
+   "over50": 2
+  },
+  {
+   "mode": "worker",
+   "captured": 45,
+   "seconds": 7,
+   "frames": 272,
+   "fps": 38.76,
+   "p50": 16.7,
+   "p95": 50,
+   "p99": 83.4,
+   "max": 100.1,
+   "over50": 12
+  },
+  {
+   "mode": "worker",
+   "captured": 41,
+   "seconds": 7,
+   "frames": 258,
+   "fps": 36.77,
+   "p50": 16.8,
+   "p95": 50.8,
+   "p99": 83.4,
+   "max": 100,
+   "over50": 16
+  },
+  {
+   "mode": "off",
+   "captured": 0,
+   "seconds": 7,
+   "frames": 263,
+   "fps": 37.3,
+   "p50": 33.2,
+   "p95": 50,
+   "p99": 50.6,
+   "max": 66.7,
+   "over50": 12
+  },
+  {
+   "mode": "worker30",
+   "captured": 12,
+   "seconds": 7,
+   "frames": 207,
+   "fps": 29.5,
+   "p50": 33.3,
+   "p95": 50,
+   "p99": 66.7,
+   "max": 133.1,
+   "over50": 22
+  },
+  {
+   "mode": "worker12",
+   "captured": 25,
+   "seconds": 7,
+   "frames": 264,
+   "fps": 37.45,
+   "p50": 16.7,
+   "p95": 50.1,
+   "p99": 116.6,
+   "max": 116.8,
+   "over50": 14
+  },
+  {
+   "mode": "worker12",
+   "captured": 27,
+   "seconds": 7,
+   "frames": 264,
+   "fps": 37.53,
+   "p50": 16.8,
+   "p95": 50,
+   "p99": 83.5,
+   "max": 100,
+   "over50": 13
+  },
+  {
+   "mode": "worker30",
+   "captured": 12,
+   "seconds": 7,
+   "frames": 285,
+   "fps": 40.52,
+   "p50": 16.7,
+   "p95": 33.4,
+   "p99": 83.5,
+   "max": 100,
+   "over50": 8
+  },
+  {
+   "mode": "worker",
+   "captured": 44,
+   "seconds": 7,
+   "frames": 265,
+   "fps": 38.13,
+   "p50": 16.7,
+   "p95": 33.7,
+   "p99": 116.5,
+   "max": 116.8,
+   "over50": 10
+  },
+  {
+   "mode": "off",
+   "captured": 0,
+   "seconds": 7,
+   "frames": 310,
+   "fps": 44.18,
+   "p50": 16.7,
+   "p95": 33.4,
+   "p99": 33.4,
+   "max": 50,
+   "over50": 0
+  }
+ ]
+}

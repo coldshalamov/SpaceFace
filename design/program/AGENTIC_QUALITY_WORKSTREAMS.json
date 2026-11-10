@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "name": "spaceface.agenticQualityWorkstreams",
+  "rankingFormula": "exposure * severity * recurrence * confidence * leverage / estimatedCost",
+  "hardOrder": ["integrity", "controls", "smoothness", "quality-parity", "feedback", "breadth"],
+  "workstreams": [
+    {"id":"CP","title":"Control-plane coherence","weight":1.15,"keywords":["queue","packet","plan","dispatch","ownership","duplicate","stale"],"scenarios":["boot-liveness"],"evidence":["queue-state","diff-scope","receipt"]},
+    {"id":"OB","title":"Observability and replay","weight":1.30,"keywords":["observe","telemetry","replay","trace","witness","diagnostic","instrument"],"scenarios":["boot-liveness","duel-1v1"],"evidence":["telemetry","replay","observer-health"]},
+    {"id":"RP","title":"Reproducible playtests","weight":1.25,"keywords":["scenario","playtest","reproduce","lab","input tape","seed"],"scenarios":["boot-liveness","flight-slalom","duel-1v1"],"evidence":["scenario-result","checkpoint-hash"]},
+    {"id":"FC","title":"Flight and camera feel","weight":1.55,"keywords":["flight","handling","camera","steering","turn","brake","slalom","movement","path"],"scenarios":["flight-accel-brake","flight-slalom","flight-reversal","collision-recovery"],"evidence":["motion-metrics","normal-speed-capture"]},
+    {"id":"CB","title":"Combat and enemy motion","weight":1.50,"keywords":["combat","enemy","ai","tactic","formation","swarm","weapon","target","fight"],"scenarios":["stationary-target","duel-1v1","mixed-wing","swarm-12"],"evidence":["combat-lineage","ai-transitions","capture"]},
+    {"id":"PF","title":"Performance and lifecycle","weight":1.60,"keywords":["performance","hitch","frame","gpu","render","memory","admission","compile","upload","stall"],"scenarios":["boot-liveness","first-new-asset","mixed-wing","vfx-saturation","soak-20m"],"evidence":["frame-distribution","hitch-owners","resource-slope"]},
+    {"id":"VX","title":"Visual language and VFX coherence","weight":1.35,"keywords":["graphics","visual","vfx","asset","ship","material","trail","effect","lighting","background"],"scenarios":["asset-gallery","vfx-gallery","duel-1v1","vfx-saturation"],"evidence":["shipping-camera-capture","asset-state","vfx-budget"]},
+    {"id":"CF","title":"Content factory and breadth","weight":1.00,"keywords":["content","enemy roster","variant","encounter","weapon family","faction","breadth","mission"],"scenarios":["mixed-wing","swarm-12","content-coverage"],"evidence":["coverage-matrix","distinctness","perf-cost"]},
+    {"id":"UI","title":"Strategic surfaces and HUD","weight":1.20,"keywords":["ui","hud","menu","map","screen","frontend","radar","reticle"],"scenarios":["ui-gallery","map-overlay","duel-1v1"],"evidence":["capture-matrix","state-memory","accessibility"]},
+    {"id":"CV","title":"Cross-system quality convergence","weight":1.45,"keywords":["polish","coherence","quality","professional","wonky","parity","integration"],"scenarios":["quality-tour"],"evidence":["parity-scorecard","ranked-debt"]}
+  ]
+}

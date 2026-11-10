@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SpaceFace Drill Screen Fixture</title>
+  <link rel="stylesheet" href="/styles/ui.css">
+  <style>
+    html, body { width: 100%; min-height: 100%; margin: 0; background: #02050b; overflow: hidden; }
+    #ui-root, #screens, #drill-fixture { position: fixed; inset: 0; }
+    #drill-fixture { display: flex; align-items: center; justify-content: center; overflow: auto; }
+  </style>
+</head>
+<body>
+  <div id="ui-root">
+    <div id="screens">
+      <main id="drill-fixture" class="screen" data-screen="drill" aria-label="Deep drill test fixture"></main>
+    </div>
+    <div id="sf-dock-overlay" hidden aria-hidden="true"></div>
+  </div>
+  <script type="module">
+    import { createGameState } from '/src/core/gameState.js';
+    import { createBus } from '/src/core/eventBus.js';
+    import { cargo } from '/src/systems/cargo.js';
+    import { drill } from '/src/systems/drill.js';
+    import { drillScreen } from '/src/ui/screens/drill.js';
+
+    const state = createGameState(47);
+    const bus = createBus();
+    state.playerId = 'fixture_player';
+    state.entities.set(state.playerId, {
+      id: state.playerId,
+      hull: 100,
+      hullMax: 100,
+      data: { miningBeam: { tierId: 'beam_mk3', dps: 30 } },
+    });
+    state.player.miningBeam = { tierId: 'beam_mk3', dps: 30 };
+    state.player.cargo.capVolume = 100;
+    state.player.cargo.usedVolume = 21;
+    state.player.cargo.items = { cmdty_silicate: 8, cmdty_ore_iron: 5, cmdty_ore_copper: 3 };
+    state.settings.video.motionReduce = new URLSearchParams(location.search).get('motion') === 'reduce';
+    state.ui.pendingDrillAsteroidId = 424242;
+
+    const ctx = {
+      state,
+      bus,
+      helpers: {},
+      registry: { get(name) { return name === 'drill' ? drill : null; } },
+      screenManager: { popScreen() {} },
+    };
+    cargo.init(ctx);
+    drill.init(ctx);
+    drillScreen.mount(document.getElementById('drill-fixture'), ctx);
+    drillScreen.onShow();
+
+    const d = state.drill;
+    const depth = Math.max(4, Math.min(34, Number(new URLSearchParams(location.search).get('depth')) || 14));
+    const startCol = d.avatar.col;
+    for (let row = 0; row <= depth; row++) {
+      d.field[startCol][row] = { type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1 };
+    }
+    for (let col = startCol - 3; col <= startCol + 2; col++) {
+      d.field[col][depth] = { type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1 };
+    }
+    d.avatar.col = startCol + 2;
+    d.avatar.row = depth;
+    d.avatar.fromCol = d.avatar.col;
+    d.avatar.fromRow = d.avatar.row;
+    d.avatar.faceDir = 'right';
+    d.cableTrail = [];
+    for (let row = 0; row <= depth; row++) d.cableTrail.push({ col: startCol, row });
+    for (let col = startCol + 1; col <= d.avatar.col; col++) d.cableTrail.push({ col, row: depth });
+    d.yieldLog = { cmdty_silicate: 8, cmdty_ore_iron: 5, cmdty_ore_copper: 3 };
+    if (new URLSearchParams(location.search).get('scan') !== '0') drill.pulseScan();
+    drillScreen.refresh();
+
+    window.__DRILL_FIXTURE__ = { state, bus, drill, drillScreen };
+  </script>
+</body>
+</html>

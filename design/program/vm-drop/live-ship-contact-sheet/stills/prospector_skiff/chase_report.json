@@ -1,0 +1,89 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/assets/ships/parts/wholeships/prospector_skiff.glb",
+  "out": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/prospector_skiff",
+  "focus": [
+    0.77,
+    0.1749,
+    -0.1047
+  ],
+  "boundsMin": [
+    -7.9,
+    -2.32,
+    -1.9494
+  ],
+  "boundsMax": [
+    9.44,
+    2.6697,
+    1.74
+  ],
+  "size": [
+    17.34,
+    4.9897,
+    3.6894
+  ],
+  "lightScale": 1.6056,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_HOOK_DRIVE_CORE",
+      "triangles": 60,
+      "materials": [
+        "Material_Cyan"
+      ]
+    },
+    {
+      "name": "LOD0_HOOK_DRIVE_FAN",
+      "triangles": 120,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Cyan",
+      "triangles": 88,
+      "materials": [
+        "Material_Cyan"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Glass",
+      "triangles": 256,
+      "materials": [
+        "Material_Glass"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Hull",
+      "triangles": 2396,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Mechanical",
+      "triangles": 2968,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Warm",
+      "triangles": 560,
+      "materials": [
+        "Material_Warm"
+      ]
+    }
+  ],
+  "triangles": 6448,
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/prospector_skiff/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/prospector_skiff/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/prospector_skiff/play_chase_close.png"
+  },
+  "clay": null,
+  "clayClose": null
+}

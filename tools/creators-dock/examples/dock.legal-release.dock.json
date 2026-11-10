@@ -1,0 +1,188 @@
+{
+  "camera": {
+    "x": 0,
+    "z": 0,
+    "zoom": 3.2
+  },
+  "composition": "legal-cargo-release",
+  "description": "Fly the pod to the release gate without firing. Credits stay at the authored stake. The pack includes a utility module the loader can accept.",
+  "encounter": {
+    "context": "encounter",
+    "cooldownS": 480,
+    "deck": "civilian",
+    "factionId": "faction_mts",
+    "id": "dock_legal_release",
+    "noCombat": true,
+    "order": 1004,
+    "pressureCost": 12,
+    "proximity": true,
+    "script": "traderRun",
+    "shape": {
+      "actor": "mule_trader",
+      "place": [
+        "trade_lane"
+      ],
+      "situation": "trade",
+      "twist": "none"
+    },
+    "squad": {
+      "archetypes": [
+        "mule_trader"
+      ]
+    },
+    "tier": "ambient",
+    "title": "Legal release",
+    "weight": 1,
+    "zoneTypes": [
+      "trade_lane"
+    ]
+  },
+  "evidenceClass": "focused-fixture",
+  "fixtureExceptions": [
+    "focused-fixture authored in Creator's Dock; not production-manifest evidence"
+  ],
+  "frames": [
+    {
+      "input": {
+        "boost": false,
+        "fire": false,
+        "moveX": 0,
+        "moveZ": 1,
+        "turnIntent": 0
+      },
+      "tick": 0
+    }
+  ],
+  "grid": {
+    "size": 10,
+    "snap": true
+  },
+  "id": "dock.legal-release",
+  "inputEvents": [],
+  "module": {
+    "id": "mod_dock_lane_note",
+    "mass": 1,
+    "name": "Lane Note",
+    "price": 0,
+    "purchasable": false,
+    "sentence": "Marks a legal release lane. It does not change thrust, hull, or heat.",
+    "size": "S",
+    "slotType": "utility",
+    "tier": 1
+  },
+  "notes": {
+    "composition": "legal-cargo-release",
+    "creatorsDock": "1",
+    "expectedObservation": "credits stay 5000, the gun is not commanded, and playerZ advances toward the gate."
+  },
+  "objects": [
+    {
+      "angularVelocity": 0,
+      "factionId": "faction_free",
+      "heading": 1.570796,
+      "id": "player",
+      "isPlayer": true,
+      "kind": "actor",
+      "label": "Hitch on a legal run",
+      "persistent": true,
+      "profile": "ship.starter",
+      "role": "player",
+      "team": 0,
+      "velX": 0,
+      "velZ": 0,
+      "x": 0,
+      "z": 0
+    },
+    {
+      "angularVelocity": 0,
+      "heading": 0,
+      "id": "pod",
+      "kind": "actor",
+      "label": "released pod",
+      "overrides": {
+        "mass": 40,
+        "radius": 4
+      },
+      "persistent": true,
+      "profile": "asteroid.light",
+      "role": "pod",
+      "team": 2,
+      "velX": 0,
+      "velZ": 2,
+      "x": 0,
+      "z": 50
+    },
+    {
+      "assertion": {
+        "byTick": 179,
+        "kind": "eventByTick",
+        "op": ">",
+        "signal": "playerZ",
+        "value": 0.5
+      },
+      "id": "gate",
+      "kind": "trigger",
+      "labOnly": true,
+      "label": "release gate",
+      "radius": 18,
+      "shape": "circle",
+      "x": 0,
+      "z": 40
+    },
+    {
+      "id": "credits",
+      "kind": "objective",
+      "labOnly": true,
+      "label": "credits unchanged",
+      "metric": "trace.final",
+      "op": "==",
+      "signal": "credits",
+      "value": 5000,
+      "x": -90,
+      "z": 20
+    },
+    {
+      "assertion": {
+        "holdsTicks": 60,
+        "kind": "holds",
+        "signal": "playerAlive"
+      },
+      "id": "alive_release",
+      "kind": "trigger",
+      "labOnly": true,
+      "label": "player stays alive",
+      "radius": 12,
+      "shape": "circle",
+      "x": -90,
+      "z": -10
+    },
+    {
+      "from": "player",
+      "gameplay": false,
+      "id": "to_gate",
+      "kind": "route",
+      "label": "legal release",
+      "to": "pod"
+    }
+  ],
+  "observer": {
+    "enabled": false
+  },
+  "runtimeProfile": "focused-lab",
+  "schema": "spaceface.creatorsDock.v1",
+  "seed": 11004,
+  "standardInvariants": true,
+  "ticks": 180,
+  "title": "Legal cargo release",
+  "traceSignals": [],
+  "version": 1,
+  "world": {
+    "aiBackend": "legacy",
+    "credits": 5000,
+    "fixtureProfile": "empty-flight",
+    "flightBackend": "v3",
+    "mode": "flight",
+    "physicsBackend": "rapier-dynamic",
+    "sectorId": "sector_helios_prime"
+  }
+}

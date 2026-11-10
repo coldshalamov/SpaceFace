@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "spaceface://production/asset-classification.schema.json",
+  "title": "SpaceFace Asset Classification Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "assetId",
+    "classification",
+    "reasonCode",
+    "candidateHash",
+    "evidencePaths",
+    "campaignStatePath",
+    "openCriticalMajorCount",
+    "authorityRole",
+    "classifiedBy",
+    "classifiedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "assetId": { "type": "string", "minLength": 1 },
+    "classification": {
+      "enum": [
+        "unassessed",
+        "missing_evidence",
+        "candidate",
+        "rejected",
+        "blocked_external",
+        "accepted",
+        "superseded"
+      ]
+    },
+    "reasonCode": {
+      "enum": [
+        "not_reviewed",
+        "evidence_incomplete",
+        "review_ready",
+        "critical_or_major_defect",
+        "external_dependency",
+        "all_gates_passed",
+        "replaced_by_newer_candidate"
+      ]
+    },
+    "candidateHash": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      ]
+    },
+    "evidencePaths": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "campaignStatePath": { "type": ["string", "null"] },
+    "openCriticalMajorCount": { "type": "integer", "minimum": 0 },
+    "authorityRole": { "const": "orchestrator" },
+    "classifiedBy": { "type": "string", "minLength": 1 },
+    "classifiedAt": { "type": "string", "format": "date-time" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "classification": { "const": "accepted" } } },
+      "then": {
+        "properties": {
+          "reasonCode": { "const": "all_gates_passed" },
+          "candidateHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "evidencePaths": { "minItems": 1 },
+          "campaignStatePath": { "type": "string", "minLength": 1 },
+          "openCriticalMajorCount": { "const": 0 }
+        }
+      }
+    }
+  ]
+}

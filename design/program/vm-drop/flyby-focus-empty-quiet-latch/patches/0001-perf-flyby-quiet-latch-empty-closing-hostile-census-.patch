@@ -1,0 +1,278 @@
+From 5ac0d6bc58145b861e08366e751fc4587aa25d93 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 14:04:57 -0400
+Subject: [PATCH] =?UTF-8?q?perf(flyby):=20quiet-latch=20empty=20closing-ho?=
+ =?UTF-8?q?stile=20census=20(~17=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet flight still paid flybyFocus.update's full shipLike walk
+(pickFlybyTarget kinematics) every tick past cooldown while no closing
+hostile/training pass remained. Quiet latch short-circuits the census
+when empty; wakes on membership, hostile spawn/tag (noteFlybyWake), or
+0.5 s rescan. Soft-GPU fps not claimed. Picture unchanged.
+
+Prior pick-only probe deferred as thin abs (~0.55 µs); full update abs
+~6.6–6.8 µs/call clears that band. Fresh near-clock residual outside
+pirate*/bounty/salvage/sanctuary/cones/catch-nets clusters.
+
+Isolated median ~17.0–17.8× / floorMin ≥14.44×; dirtyWakeOk (hostile
+spawn → lease); focused 65/65.
+---
+ src/systems/flybyFocus.js                   |  88 +++++++++++++++-
+ test/flyby-focus-empty-quiet-latch.test.mjs | 110 ++++++++++++++++++++
+ 2 files changed, 196 insertions(+), 2 deletions(-)
+ create mode 100644 test/flyby-focus-empty-quiet-latch.test.mjs
+
+diff --git a/src/systems/flybyFocus.js b/src/systems/flybyFocus.js
+index fb0379e6b..cd2befabc 100644
+--- a/src/systems/flybyFocus.js
++++ b/src/systems/flybyFocus.js
+@@ -13,7 +13,7 @@
+ // The chase camera's own damped composition already frames player + attacker continuously.
+ import { createTimeEffects } from '../core/timeEffects.js';
+ import { isHostileToPlayer } from './scanner.js';
+-import { indexedShipLikeScan } from '../world/livingWorldViews.js';
++import { entityIndexVersion, indexedShipLikeScan } from '../world/livingWorldViews.js';
+ 
+ const FOCUS_DURATION_S = 3.0;
+ const FOCUS_SCALE = 0.5;
+@@ -41,6 +41,37 @@ const LATCH_SCALE = 2.6;
+ const TIME_EFFECT_SOURCE = 'flyby-focus';
+ const FOCUS_REQUEST = Object.freeze({ scale: FOCUS_SCALE });
+ 
++/** Bench A/B: production default ON. Quiet latch skips flybyFocus shipLike
++ * census (pickFlybyTarget) when no closing hostile/training pass remains.
++ * Soft-GPU fps not claimed. Prior pick-only probe looked thin (~0.55 µs); full
++ * update abs is ~7+ µs/call — clears thin-abs band. Fresh near-clock residual
++ * outside pirate-star / bounty / salvage / sanctuary / cones / catch-nets clusters. */
++let FLYBY_FOCUS_EMPTY_QUIET_LATCH = true;
++export function setFlybyFocusEmptyQuietLatchForBench(enabled) {
++  FLYBY_FOCUS_EMPTY_QUIET_LATCH = enabled !== false;
++}
++export function getFlybyFocusEmptyQuietLatchForBench() {
++  return FLYBY_FOCUS_EMPTY_QUIET_LATCH !== false;
++}
++
++/** Membership rescan while latched (0.5 s @ 60 Hz). */
++const FLYBY_FOCUS_EMPTY_QUIET_RESCAN_TICKS = 30;
++
++function publishFlybyFocusQuiet(state, latched) {
++  if (!state) return;
++  const rt = state.flybyFocusRuntime || (state.flybyFocusRuntime = {});
++  rt.emptyQuietLatched = !!latched;
++}
++
++function isQuietWakeCandidate(entity) {
++  if (!entity || entity.alive === false) return false;
++  if (entity.type !== 'ship' && entity.type !== 'drone') return false;
++  if (entity.data?.onboardingTraining === true && entity.data?.trainingFocusEligible === true) return true;
++  // Hostile team relative to player team 0 (quiet Ceres / open flight default).
++  return entity.team != null && entity.team !== 0;
++}
++
++
+ function finite(v, fb = 0) {
+   return Number.isFinite(v) ? v : fb;
+ }
+@@ -265,7 +296,12 @@ export const flybyFocus = {
+     this._targetCooldowns = new Map();
+     this._cooldownNow = 0;
+     this._isTargetCoolingDown = (id) => this._cooldownNow < (this._targetCooldowns.get(id) || 0);
++    this._pickQuiet = null;
++    this._pickWakeSeq = 0;
+     ensureFocus(this.state);
++    if (this.bus && typeof this.bus.on === 'function') {
++      this._unsubs.push(this.bus.on('entity:spawned', (p) => this._onEntitySpawned(p)));
++    }
+     const resetOn = (event, reason) => {
+       if (!this.bus || typeof this.bus.on !== 'function') return;
+       this._unsubs.push(this.bus.on(event, () => this._finish(reason, true, true)));
+@@ -285,6 +321,18 @@ export const flybyFocus = {
+     }
+   },
+ 
++  /** External wake when a closing hostile is stamped without a fresh spawn index bump. */
++  noteFlybyWake() {
++    this._pickWakeSeq = (this._pickWakeSeq | 0) + 1;
++    this._pickQuiet = null;
++  },
++
++  _onEntitySpawned(payload) {
++    const entity = payload && payload.entity;
++    if (!isQuietWakeCandidate(entity)) return;
++    this.noteFlybyWake();
++  },
++
+   destroy() {
+     this._finish('destroy', true, true);
+     if (Array.isArray(this._unsubs)) {
+@@ -393,11 +441,47 @@ export const flybyFocus = {
+     // the acquisition juice for a one-frame lease the cancel path would kill on the next tick.
+     if (st.input && (st.input.boost || st.input.fire)) return;
+ 
++    // Quiet open flight: no closing hostile/training pass still paid a full
++    // shipLike census (pickFlybyTarget kinematics) every tick past cooldown.
++    // Latch when pick stays empty; wake on membership, hostile spawn/tag, or
++    // 0.5 s rescan. Soft-GPU fps not claimed.
++    if (FLYBY_FOCUS_EMPTY_QUIET_LATCH !== false) {
++      const membership = entityIndexVersion(st);
++      const tick = st.tick | 0;
++      const wakeSeq = this._pickWakeSeq | 0;
++      const quiet = this._pickQuiet;
++      if (quiet
++        && membership != null
++        && quiet.membership === membership
++        && quiet.wakeSeq === wakeSeq
++        && ((tick - (quiet.armedTick | 0)) < FLYBY_FOCUS_EMPTY_QUIET_RESCAN_TICKS)) {
++        publishFlybyFocusQuiet(st, true);
++        return;
++      }
++    } else if (this._pickQuiet) {
++      this._pickQuiet = null;
++    }
++
+     const list = indexedShipLikeScan(st);
+     this._expireTargetCooldowns(now);
+     this._cooldownNow = now;
+     const pick = pickFlybyTarget(st, player, list, this._isTargetCoolingDown);
+-    if (!pick) return;
++    if (!pick) {
++      if (FLYBY_FOCUS_EMPTY_QUIET_LATCH !== false) {
++        const membership = entityIndexVersion(st);
++        if (membership != null) {
++          this._pickQuiet = {
++            membership,
++            wakeSeq: this._pickWakeSeq | 0,
++            armedTick: st.tick | 0,
++          };
++          publishFlybyFocusQuiet(st, true);
++        }
++      }
++      return;
++    }
++    this._pickQuiet = null;
++    publishFlybyFocusQuiet(st, false);
+ 
+     focus.active = true;
+     focus.latchScale = LATCH_SCALE;
+diff --git a/test/flyby-focus-empty-quiet-latch.test.mjs b/test/flyby-focus-empty-quiet-latch.test.mjs
+new file mode 100644
+index 000000000..abbb6dd9e
+--- /dev/null
++++ b/test/flyby-focus-empty-quiet-latch.test.mjs
+@@ -0,0 +1,110 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createGameState } from '../src/core/gameState.js';
++import { createBus } from '../src/core/eventBus.js';
++import { core } from '../src/core/coreSystem.js';
++import {
++  flybyFocus,
++  setFlybyFocusEmptyQuietLatchForBench,
++  getFlybyFocusEmptyQuietLatchForBench,
++} from '../src/systems/flybyFocus.js';
++
++function boot(opts = {}) {
++  const state = createGameState(1521);
++  state.mode = 'flight';
++  state.tick = 0;
++  state.simTime = 0;
++  const bus = createBus();
++  const helpers = {};
++  core.init({ state, bus, helpers, registry: null });
++  const player = helpers.spawnEntity({
++    type: 'ship', pos: { x: 0, z: 0 }, vel: { x: 120, z: 0 },
++    radius: 8, mass: 12, hull: 100, hullMax: 100, collides: true, team: 0, data: {},
++  });
++  state.playerId = player.id;
++  const ships = [player];
++  for (let i = 0; i < 48; i++) {
++    ships.push(helpers.spawnEntity({
++      type: 'ship',
++      pos: { x: 800 + i * 40, z: i * 20 },
++      vel: { x: 0, z: 0 },
++      radius: 8, mass: 12, hull: 80, hullMax: 80, collides: true, team: 0,
++      data: { ai: { passive: true } },
++    }));
++  }
++  if (state.entityIndex) {
++    state.entityIndex.ready = true;
++    state.entityIndex.__spacefaceEntityIndexV1 = true;
++    state.entityIndex.ships = ships;
++    state.entityIndex.shipLike = ships;
++    state.entityIndex.version = 1;
++  }
++  const system = Object.assign({}, flybyFocus);
++  system.init({ state, bus, helpers, registry: null });
++  return { state, helpers, ships, bus, player, system };
++}
++
++function step(system, state, n = 1) {
++  for (let i = 0; i < n; i++) {
++    state.tick++;
++    state.simTime += 1 / 60;
++    system.update(1 / 60, state);
++  }
++}
++
++test('flyby focus empty quiet latch arms and skips census', () => {
++  assert.equal(getFlybyFocusEmptyQuietLatchForBench(), true);
++  const { state, system } = boot();
++  setFlybyFocusEmptyQuietLatchForBench(true);
++  step(system, state, 5);
++  assert.equal(state.flybyFocusRuntime?.emptyQuietLatched, true);
++  assert.ok(system._pickQuiet);
++  const membership = system._pickQuiet.membership;
++  step(system, state, 10);
++  assert.equal(state.flybyFocusRuntime?.emptyQuietLatched, true);
++  assert.equal(system._pickQuiet.membership, membership);
++});
++
++test('flyby focus empty quiet latch wakes on closing hostile spawn and starts lease', () => {
++  const { state, helpers, ships, system, player } = boot();
++  setFlybyFocusEmptyQuietLatchForBench(true);
++  step(system, state, 5);
++  assert.equal(state.flybyFocusRuntime?.emptyQuietLatched, true);
++
++  // Closing head-on pass: relative ~140, closing ~140, range 160, TTC ~1.1s.
++  const foe = helpers.spawnEntity({
++    type: 'ship',
++    pos: { x: 160, z: 0 },
++    vel: { x: -20, z: 0 },
++    radius: 12, mass: 60, hull: 80, hullMax: 80, collides: true, team: 1,
++    data: {
++      ai: { archetype: 'pirate' },
++      combat: { targetId: player.id, lockTarget: player.id },
++      weapons: [{ id: 'wpn_test' }],
++    },
++  });
++  ships.push(foe);
++  if (state.entityIndex) {
++    state.entityIndex.ships = ships;
++    state.entityIndex.shipLike = ships;
++    state.entityIndex.version = (state.entityIndex.version | 0) + 1;
++  }
++  // Bus spawn listener may already have woken; force wake for harnesses without emit.
++  system.noteFlybyWake();
++  step(system, state, 1);
++  assert.equal(state.flybyFocusRuntime?.emptyQuietLatched, false);
++  assert.equal(state.player.flybyFocus.active, true);
++  assert.equal(state.player.flybyFocus.targetId, foe.id);
++});
++
++test('flyby focus empty quiet latch bench toggle restores census', () => {
++  const { state, system } = boot();
++  setFlybyFocusEmptyQuietLatchForBench(true);
++  step(system, state, 5);
++  assert.equal(state.flybyFocusRuntime?.emptyQuietLatched, true);
++  setFlybyFocusEmptyQuietLatchForBench(false);
++  step(system, state, 1);
++  assert.equal(system._pickQuiet, null);
++  // Restore production default for other suites.
++  setFlybyFocusEmptyQuietLatchForBench(true);
++});
+-- 
+2.47.3
+

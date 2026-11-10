@@ -1,0 +1,9 @@
+{
+  "name": "get_blendfile_summary_usage_guess",
+  "description": "\nGuess the primary use-cases of the current blend file (scored 0-100 with certainty).\n",
+  "inputSchema": {
+    "properties": {},
+    "title": "get_blendfile_summary_usage_guessArguments",
+    "type": "object"
+  }
+}

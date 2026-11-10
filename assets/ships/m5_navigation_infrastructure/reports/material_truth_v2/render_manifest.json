@@ -1,0 +1,1027 @@
+{
+  "schema": "spaceface.navigationInfrastructureExactSourceRenderManifest.v1",
+  "packet": "PQ-022",
+  "dispatchUnit": "PQ-022.billboard-buoy-reauthor",
+  "candidateSetId": "pq022-navigation-infrastructure-material-truth-v2",
+  "epoch": "2026-09-10T13:58:23Z",
+  "renderer": "BLENDER_EEVEE",
+  "blenderVersion": "5.1.2",
+  "oneBoundedBuildEpoch": true,
+  "exactSourceReimport": true,
+  "resolution": [
+    1600,
+    900
+  ],
+  "assets": [
+    {
+      "assetId": "place_station_billboard",
+      "partId": "place_station_billboard",
+      "spacefaceAssetId": "SF_PLACE_HELIOS_SUPPORT_DOCK_ARM",
+      "candidateId": "pq022-station-billboard-material-truth-v2",
+      "source": {
+        "path": "assets/ships/m5_navigation_infrastructure/source_candidates/material_truth_v2/places/place_station_billboard.glb",
+        "sha256": "27434d61289bca71c82f8d4f863dcdb0399441b51c057d9a3b14052ab744dd22",
+        "bytes": 444156
+      },
+      "sourceSha256": "27434d61289bca71c82f8d4f863dcdb0399441b51c057d9a3b14052ab744dd22",
+      "exactSourceReimport": true,
+      "renderer": "BLENDER_EEVEE",
+      "blenderVersion": "5.1.2",
+      "resolution": [
+        1600,
+        900
+      ],
+      "viewTransform": "AgX",
+      "look": "AgX - Medium High Contrast",
+      "exposure": 1.149999976158142,
+      "images": [
+        {
+          "name": "front_three_quarter",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/front_three_quarter.png",
+          "sha256": "549292a13a928e9613f5526dba166996821fa840acf1f03216cca43be93e7fe2",
+          "bytes": 1313374,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod0",
+          "purpose": "dominant information face and load frame",
+          "cameraPosition": [
+            18.13926,
+            -22.2532,
+            7.89109
+          ],
+          "cameraTarget": [
+            5.9,
+            0.0,
+            0.325
+          ],
+          "cameraDistanceM": 26.5,
+          "lensMm": 50.0
+        },
+        {
+          "name": "rear_three_quarter",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/rear_three_quarter.png",
+          "sha256": "7d6fe1e130a919d61f53afc4d923c711679942366c87b1f798f881c45c849a98",
+          "bytes": 1288498,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod0",
+          "purpose": "rear service trunks, backplate, and load path",
+          "cameraPosition": [
+            -4.94844,
+            22.60092,
+            8.91335
+          ],
+          "cameraTarget": [
+            5.9,
+            0.0,
+            0.325
+          ],
+          "cameraDistanceM": 26.5,
+          "lensMm": 50.0
+        },
+        {
+          "name": "front_three_quarter_emissive_off",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/front_three_quarter_emissive_off.png",
+          "sha256": "85a0f501935a16bf19802bcd46eab28971e3b33d5d3984712f452c03aa49b936",
+          "bytes": 1314416,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod0",
+          "purpose": "matched diagnostic with only authored emission strength disabled",
+          "cameraPosition": [
+            18.13926,
+            -22.2532,
+            7.89109
+          ],
+          "cameraTarget": [
+            5.9,
+            0.0,
+            0.325
+          ],
+          "cameraDistanceM": 26.5,
+          "lensMm": 50.0
+        },
+        {
+          "name": "material_id",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/material_id.png",
+          "sha256": "29639c1e9365b7f6db3b92998edd028a33672c70ec851d18865b2f464d41033a",
+          "bytes": 1303855,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod0",
+          "purpose": "diagnostic five-zone material assignment override",
+          "cameraPosition": [
+            18.13926,
+            -22.2532,
+            7.89109
+          ],
+          "cameraTarget": [
+            5.9,
+            0.0,
+            0.325
+          ],
+          "cameraDistanceM": 26.5,
+          "lensMm": 50.0
+        },
+        {
+          "name": "grazing_light",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/grazing_light.png",
+          "sha256": "ede1fae26601ab6821d3b6d32a6962af15b502c8ecf774ccd7cc7e09ecf2739a",
+          "bytes": 1155383,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod0",
+          "purpose": "single hard grazing-light surface and edge diagnostic",
+          "cameraPosition": [
+            18.13926,
+            -22.2532,
+            7.89109
+          ],
+          "cameraTarget": [
+            5.9,
+            0.0,
+            0.325
+          ],
+          "cameraDistanceM": 26.5,
+          "lensMm": 50.0
+        },
+        {
+          "name": "lod1_26_5m",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/lod1_26_5m.png",
+          "sha256": "9508a1dd40cb8a0775397d9e24b3a93388b9a031c965621e5fb561fe5a767eaa",
+          "bytes": 1307188,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod1",
+          "purpose": "LOD1 readability at exact 26.5 metre camera distance",
+          "cameraPosition": [
+            18.13926,
+            -22.2532,
+            7.89109
+          ],
+          "cameraTarget": [
+            5.9,
+            0.0,
+            0.325
+          ],
+          "cameraDistanceM": 26.5,
+          "lensMm": 50.0
+        },
+        {
+          "name": "lod2_far",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/lod2_far.png",
+          "sha256": "a213a262f5695a3069a361a043bb855cc6d1efda12b25e6912006c96e150b3c7",
+          "bytes": 1182465,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod2",
+          "purpose": "far-range LOD2 silhouette and anchor diagnostic",
+          "cameraPosition": [
+            28.06923,
+            -40.30768,
+            14.02961
+          ],
+          "cameraTarget": [
+            5.9,
+            0.0,
+            0.325
+          ],
+          "cameraDistanceM": 48.0,
+          "lensMm": 50.0
+        }
+      ],
+      "emissiveOff": {
+        "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_station_billboard/front_three_quarter_emissive_off.png",
+        "onlyEmissionStrengthChanged": true
+      },
+      "lod0ImportedBoundsBlender": {
+        "min": [
+          -1.5,
+          -1.5,
+          -1.2
+        ],
+        "max": [
+          13.3,
+          1.5,
+          1.85
+        ],
+        "size": [
+          14.8,
+          3.0,
+          3.05
+        ]
+      },
+      "materialIdOverrideIsDiagnosticOnly": true,
+      "grazingLightChangesLightingOnly": true,
+      "emissiveOffChangesEmissionStrengthOnly": true,
+      "contactSheet": null
+    },
+    {
+      "assetId": "place_memorial_array",
+      "partId": "place_memorial_array",
+      "spacefaceAssetId": "SF_PLACE_MEMORIAL_ARRAY",
+      "candidateId": "pq022-memorial-array-material-truth-v2",
+      "source": {
+        "path": "assets/ships/m5_navigation_infrastructure/source_candidates/material_truth_v2/places/place_memorial_array.glb",
+        "sha256": "3a4a6d1b96142fa0d9e2e456d0b2e25a5a3fb62c2e4e6a367f308c86ae379388",
+        "bytes": 526108
+      },
+      "sourceSha256": "3a4a6d1b96142fa0d9e2e456d0b2e25a5a3fb62c2e4e6a367f308c86ae379388",
+      "exactSourceReimport": true,
+      "renderer": "BLENDER_EEVEE",
+      "blenderVersion": "5.1.2",
+      "resolution": [
+        1600,
+        900
+      ],
+      "viewTransform": "AgX",
+      "look": "AgX - Medium High Contrast",
+      "exposure": 1.149999976158142,
+      "images": [
+        {
+          "name": "face_count",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/face_count.png",
+          "sha256": "76d4b503b89408b7f35a6974f17ec4e4a8e316bc96c0dbedbe96dc1617f3ceaa",
+          "bytes": 1251171,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod0",
+          "purpose": "direct count of twenty-four physical memorial lights",
+          "cameraPosition": [
+            5.9,
+            -24.98002,
+            1.3242
+          ],
+          "cameraTarget": [
+            5.9,
+            0.0,
+            0.325
+          ],
+          "cameraDistanceM": 25.0,
+          "lensMm": 50.0
+        },
+        {
+          "name": "front_three_quarter",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/front_three_quarter.png",
+          "sha256": "1ca0b4719c5eb31952c4640028f7fa4c4e14f81c6f83f1bd906d0f12fb5530f3",
+          "bytes": 1339653,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod0",
+          "purpose": "whole-asset memorial hierarchy",
+          "cameraPosition": [
+            16.96966,
+            -23.06179,
+            7.24354
+          ],
+          "cameraTarget": [
+            5.9,
+            0.0,
+            0.325
+          ],
+          "cameraDistanceM": 26.5,
+          "lensMm": 50.0
+        },
+        {
+          "name": "rear_service_three_quarter",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/rear_service_three_quarter.png",
+          "sha256": "934fd6eff07579dfede9385c1c9e7741638868f38484d364322c13407cf434f5",
+          "bytes": 1324344,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod0",
+          "purpose": "rear service access and plinth support",
+          "cameraPosition": [
+            -3.83921,
+            23.18859,
+            8.67289
+          ],
+          "cameraTarget": [
+            5.9,
+            0.0,
+            0.325
+          ],
+          "cameraDistanceM": 26.5,
+          "lensMm": 50.0
+        },
+        {
+          "name": "end_load_path",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/end_load_path.png",
+          "sha256": "ed7b86df16dc5c91c4cf45ae4d7622c6a1f8366c7ac9756100b51353c0604f29",
+          "bytes": 1460396,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod0",
+          "purpose": "recovered-hull end shoe and frame load path",
+          "cameraPosition": [
+            -9.23801,
+            -2.5764,
+            2.21112
+          ],
+          "cameraTarget": [
+            -0.65,
+            0.0,
+            0.15
+          ],
+          "cameraDistanceM": 9.2,
+          "lensMm": 50.0
+        },
+        {
+          "name": "top",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/top.png",
+          "sha256": "b1d7ae79e6ce2318f768a48dbe60f1fa51977377f6a47da1a01896c67cf91d9e",
+          "bytes": 1248855,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod0",
+          "purpose": "top silhouette and service depth",
+          "cameraPosition": [
+            5.9,
+            -2.48759,
+            25.20093
+          ],
+          "cameraTarget": [
+            5.9,
+            0.0,
+            0.325
+          ],
+          "cameraDistanceM": 25.0,
+          "lensMm": 50.0
+        },
+        {
+          "name": "front_three_quarter_emissive_off",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/front_three_quarter_emissive_off.png",
+          "sha256": "e373ad1ea61251f0ddf270b255e6de942228174e921a0254b23058e06a48527f",
+          "bytes": 1337327,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod0",
+          "purpose": "matched diagnostic with only authored emission strength disabled",
+          "cameraPosition": [
+            16.96966,
+            -23.06179,
+            7.24354
+          ],
+          "cameraTarget": [
+            5.9,
+            0.0,
+            0.325
+          ],
+          "cameraDistanceM": 26.5,
+          "lensMm": 50.0
+        },
+        {
+          "name": "material_id",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/material_id.png",
+          "sha256": "5f909a35eda17551249ad75f2dc89f2ce6f7b5d5f89d67581e9ef5d7d53b4637",
+          "bytes": 1312809,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod0",
+          "purpose": "diagnostic five-zone material assignment override",
+          "cameraPosition": [
+            16.96966,
+            -23.06179,
+            7.24354
+          ],
+          "cameraTarget": [
+            5.9,
+            0.0,
+            0.325
+          ],
+          "cameraDistanceM": 26.5,
+          "lensMm": 50.0
+        },
+        {
+          "name": "grazing_light",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/grazing_light.png",
+          "sha256": "789d788df2aa5451e66dcad584701aa868dc2f89c9a8ad0d31f31442b9eafc87",
+          "bytes": 1197130,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod0",
+          "purpose": "single hard grazing-light surface and edge diagnostic",
+          "cameraPosition": [
+            16.96966,
+            -23.06179,
+            7.24354
+          ],
+          "cameraTarget": [
+            5.9,
+            0.0,
+            0.325
+          ],
+          "cameraDistanceM": 26.5,
+          "lensMm": 50.0
+        },
+        {
+          "name": "lod1_26_5m",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/lod1_26_5m.png",
+          "sha256": "2f79ece281f7a41490ba6aa822007e28b8b58e4fcf65fb2987b889babfc46763",
+          "bytes": 1319068,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod1",
+          "purpose": "LOD1 readability at exact 26.5 metre camera distance",
+          "cameraPosition": [
+            16.96966,
+            -23.06179,
+            7.24354
+          ],
+          "cameraTarget": [
+            5.9,
+            0.0,
+            0.325
+          ],
+          "cameraDistanceM": 26.5,
+          "lensMm": 50.0
+        },
+        {
+          "name": "lod2_far",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/lod2_far.png",
+          "sha256": "2246f7b62b7002c5402176715246bb8ef44c0f1ecf91a2b1f8120c480f63e9c1",
+          "bytes": 1176470,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod2",
+          "purpose": "far-range LOD2 silhouette and anchor diagnostic",
+          "cameraPosition": [
+            25.95071,
+            -41.77231,
+            12.85669
+          ],
+          "cameraTarget": [
+            5.9,
+            0.0,
+            0.325
+          ],
+          "cameraDistanceM": 48.0,
+          "lensMm": 50.0
+        }
+      ],
+      "emissiveOff": {
+        "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/front_three_quarter_emissive_off.png",
+        "onlyEmissionStrengthChanged": true
+      },
+      "lod0ImportedBoundsBlender": {
+        "min": [
+          -1.5,
+          -1.5,
+          -1.2
+        ],
+        "max": [
+          13.3,
+          1.5,
+          1.85
+        ],
+        "size": [
+          14.8,
+          3.0,
+          3.05
+        ]
+      },
+      "materialIdOverrideIsDiagnosticOnly": true,
+      "grazingLightChangesLightingOnly": true,
+      "emissiveOffChangesEmissionStrengthOnly": true,
+      "contactSheet": null
+    },
+    {
+      "assetId": "place_nav_buoy",
+      "partId": "place_nav_buoy",
+      "spacefaceAssetId": "SF_PLACE_HELIOS_NAV_SPIRE",
+      "candidateId": "pq022-nav-buoy-material-truth-v2",
+      "source": {
+        "path": "assets/ships/m5_navigation_infrastructure/source_candidates/material_truth_v2/places/place_nav_buoy.glb",
+        "sha256": "cbaed85c003e24da2bb0088c41db005f484ba6b3541bf6c2e32cf1b2ef0a4ed7",
+        "bytes": 430060
+      },
+      "sourceSha256": "cbaed85c003e24da2bb0088c41db005f484ba6b3541bf6c2e32cf1b2ef0a4ed7",
+      "exactSourceReimport": true,
+      "renderer": "BLENDER_EEVEE",
+      "blenderVersion": "5.1.2",
+      "resolution": [
+        1600,
+        900
+      ],
+      "viewTransform": "AgX",
+      "look": "AgX - Medium High Contrast",
+      "exposure": 1.149999976158142,
+      "images": [
+        {
+          "name": "full_three_quarter",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/full_three_quarter.png",
+          "sha256": "2d599f4df91b85aebe9f5ed05275f9060c301505880a2d8fe3858416f351a68f",
+          "bytes": 1261746,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod0",
+          "purpose": "full stabilizer-spine-head hierarchy",
+          "cameraPosition": [
+            28.95524,
+            -33.56714,
+            10.70611
+          ],
+          "cameraTarget": [
+            0.0875,
+            0.0,
+            2.65
+          ],
+          "cameraDistanceM": 45.0,
+          "lensMm": 50.0
+        },
+        {
+          "name": "service_side",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/service_side.png",
+          "sha256": "6d6f5635787a40336e0118c4fb4dff9b23cd157f47288f606339355bfc70aeb7",
+          "bytes": 1255070,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod0",
+          "purpose": "offset service trunk, marking, and power path",
+          "cameraPosition": [
+            43.32476,
+            -10.37694,
+            9.56796
+          ],
+          "cameraTarget": [
+            0.0875,
+            0.0,
+            2.65
+          ],
+          "cameraDistanceM": 45.0,
+          "lensMm": 50.0
+        },
+        {
+          "name": "top_head",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/top_head.png",
+          "sha256": "b7b5f86b3dd60947bd015bc7253b216c4a976bc11cd5c9a19011c6c45f86675c",
+          "bytes": 1434524,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod0",
+          "purpose": "navigation head, apertures, mast, and vanes",
+          "cameraPosition": [
+            4.26082,
+            -5.28341,
+            13.64688
+          ],
+          "cameraTarget": [
+            0.0,
+            0.0,
+            7.0
+          ],
+          "cameraDistanceM": 9.5,
+          "lensMm": 50.0
+        },
+        {
+          "name": "head_azimuth_contact_sheet",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/head_azimuth_contact_sheet.png",
+          "sha256": "325735547218d71a0bb95625f93f5569d445a6db8ce48c49d6b3829d397bc820",
+          "bytes": 1552950,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod0",
+          "purpose": "four-azimuth navigation-head coverage from exact-source panels",
+          "panelOrder": [
+            "top-left:fore",
+            "top-right:aft",
+            "bottom-left:port",
+            "bottom-right:starboard"
+          ],
+          "panelCameras": [
+            {
+              "name": "head_fore",
+              "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/.azimuth_panels/fore.png",
+              "sha256": "43ad6337c791b481c5160dca971dd7877b050301c93bbb8024658daf7e6fb0f7",
+              "bytes": 396718,
+              "resolution": [
+                800,
+                450
+              ],
+              "lod": "lod0",
+              "purpose": "fore navigation-head azimuth",
+              "cameraPosition": [
+                6.18025,
+                0.0,
+                7.54442
+              ],
+              "cameraTarget": [
+                0.0,
+                0.0,
+                7.05
+              ],
+              "cameraDistanceM": 6.2,
+              "lensMm": 58.0
+            },
+            {
+              "name": "head_aft",
+              "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/.azimuth_panels/aft.png",
+              "sha256": "2267b70027aad46cc7d012416995e39cb5b7d52caf34238656f260c14de0f4de",
+              "bytes": 403278,
+              "resolution": [
+                800,
+                450
+              ],
+              "lod": "lod0",
+              "purpose": "aft navigation-head azimuth",
+              "cameraPosition": [
+                -6.18025,
+                0.0,
+                7.54442
+              ],
+              "cameraTarget": [
+                0.0,
+                0.0,
+                7.05
+              ],
+              "cameraDistanceM": 6.2,
+              "lensMm": 58.0
+            },
+            {
+              "name": "head_port",
+              "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/.azimuth_panels/port.png",
+              "sha256": "58a7bb3c0765626ce1699cbfb5d2521c9e6ed0c180db806531ad39bf43e20f5a",
+              "bytes": 397389,
+              "resolution": [
+                800,
+                450
+              ],
+              "lod": "lod0",
+              "purpose": "port navigation-head azimuth",
+              "cameraPosition": [
+                0.0,
+                -6.18025,
+                7.54442
+              ],
+              "cameraTarget": [
+                0.0,
+                0.0,
+                7.05
+              ],
+              "cameraDistanceM": 6.2,
+              "lensMm": 58.0
+            },
+            {
+              "name": "head_starboard",
+              "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/.azimuth_panels/starboard.png",
+              "sha256": "8afeca82284c72b9a06ef2a42194d13aaefdc9439f75d952c7dfc1083329072f",
+              "bytes": 394701,
+              "resolution": [
+                800,
+                450
+              ],
+              "lod": "lod0",
+              "purpose": "starboard navigation-head azimuth",
+              "cameraPosition": [
+                0.0,
+                6.18025,
+                7.54442
+              ],
+              "cameraTarget": [
+                0.0,
+                0.0,
+                7.05
+              ],
+              "cameraDistanceM": 6.2,
+              "lensMm": 58.0
+            }
+          ],
+          "diagnosticDividerOnly": true
+        },
+        {
+          "name": "stabilization_close",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/stabilization_close.png",
+          "sha256": "2e0c8944ad55c0b7687ef38bd84888a617d18cd1f4276a4f3e49f318f5d6293c",
+          "bytes": 1285790,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod0",
+          "purpose": "zero-g reaction wheels, gimbals, dampers, and clearance",
+          "cameraPosition": [
+            6.71751,
+            -6.71751,
+            -3.775
+          ],
+          "cameraTarget": [
+            0.0,
+            0.0,
+            -3.775
+          ],
+          "cameraDistanceM": 9.5,
+          "lensMm": 50.0
+        },
+        {
+          "name": "full_three_quarter_emissive_off",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/full_three_quarter_emissive_off.png",
+          "sha256": "f367c92f9aa3efa3997164b66a77bb43870e5937a544a359eb94fd1f2846dd8b",
+          "bytes": 1261770,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod0",
+          "purpose": "matched diagnostic with only authored emission strength disabled",
+          "cameraPosition": [
+            28.95524,
+            -33.56714,
+            10.70611
+          ],
+          "cameraTarget": [
+            0.0875,
+            0.0,
+            2.65
+          ],
+          "cameraDistanceM": 45.0,
+          "lensMm": 50.0
+        },
+        {
+          "name": "material_id",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/material_id.png",
+          "sha256": "759f57f36fabb5219ec23a84f72ffb32672e028d433be80fa9af2b5cab7216da",
+          "bytes": 1271452,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod0",
+          "purpose": "diagnostic five-zone material assignment override",
+          "cameraPosition": [
+            28.95524,
+            -33.56714,
+            10.70611
+          ],
+          "cameraTarget": [
+            0.0875,
+            0.0,
+            2.65
+          ],
+          "cameraDistanceM": 45.0,
+          "lensMm": 50.0
+        },
+        {
+          "name": "grazing_light",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/grazing_light.png",
+          "sha256": "5617c993c16e654ebee526b0d8d85a58e431899b792d6df79b1615b7a02fb103",
+          "bytes": 1234115,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod0",
+          "purpose": "single hard grazing-light surface and edge diagnostic",
+          "cameraPosition": [
+            28.95524,
+            -33.56714,
+            10.70611
+          ],
+          "cameraTarget": [
+            0.0875,
+            0.0,
+            2.65
+          ],
+          "cameraDistanceM": 45.0,
+          "lensMm": 50.0
+        },
+        {
+          "name": "lod1_27_2m",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/lod1_27_2m.png",
+          "sha256": "a3d60a769ae6e42175a1a0c1f8f42ed35f75a71f786a615a3328b3cd186d0120",
+          "bytes": 1244733,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod1",
+          "purpose": "LOD1 readability at exact 27.2 metre camera distance",
+          "cameraPosition": [
+            17.53644,
+            -20.28947,
+            7.51947
+          ],
+          "cameraTarget": [
+            0.0875,
+            0.0,
+            2.65
+          ],
+          "cameraDistanceM": 27.2,
+          "lensMm": 29.0
+        },
+        {
+          "name": "lod2_far",
+          "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/lod2_far.png",
+          "sha256": "8164eb3abfb6613a8abc964b59ee39700287aa6125355565431b3fc8e027b1b5",
+          "bytes": 1206596,
+          "resolution": [
+            1600,
+            900
+          ],
+          "lod": "lod2",
+          "purpose": "far-range LOD2 silhouette and anchor diagnostic",
+          "cameraPosition": [
+            33.44578,
+            -38.78869,
+            11.95929
+          ],
+          "cameraTarget": [
+            0.0875,
+            0.0,
+            2.65
+          ],
+          "cameraDistanceM": 52.0,
+          "lensMm": 50.0
+        }
+      ],
+      "emissiveOff": {
+        "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/full_three_quarter_emissive_off.png",
+        "onlyEmissionStrengthChanged": true
+      },
+      "lod0ImportedBoundsBlender": {
+        "min": [
+          -1.4,
+          -1.4,
+          -5.0
+        ],
+        "max": [
+          1.575,
+          1.4,
+          10.3
+        ],
+        "size": [
+          2.975,
+          2.8,
+          15.3
+        ]
+      },
+      "materialIdOverrideIsDiagnosticOnly": true,
+      "grazingLightChangesLightingOnly": true,
+      "emissiveOffChangesEmissionStrengthOnly": true,
+      "contactSheet": {
+        "name": "head_azimuth_contact_sheet",
+        "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/head_azimuth_contact_sheet.png",
+        "sha256": "325735547218d71a0bb95625f93f5569d445a6db8ce48c49d6b3829d397bc820",
+        "bytes": 1552950,
+        "resolution": [
+          1600,
+          900
+        ],
+        "lod": "lod0",
+        "purpose": "four-azimuth navigation-head coverage from exact-source panels",
+        "panelOrder": [
+          "top-left:fore",
+          "top-right:aft",
+          "bottom-left:port",
+          "bottom-right:starboard"
+        ],
+        "panelCameras": [
+          {
+            "name": "head_fore",
+            "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/.azimuth_panels/fore.png",
+            "sha256": "43ad6337c791b481c5160dca971dd7877b050301c93bbb8024658daf7e6fb0f7",
+            "bytes": 396718,
+            "resolution": [
+              800,
+              450
+            ],
+            "lod": "lod0",
+            "purpose": "fore navigation-head azimuth",
+            "cameraPosition": [
+              6.18025,
+              0.0,
+              7.54442
+            ],
+            "cameraTarget": [
+              0.0,
+              0.0,
+              7.05
+            ],
+            "cameraDistanceM": 6.2,
+            "lensMm": 58.0
+          },
+          {
+            "name": "head_aft",
+            "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/.azimuth_panels/aft.png",
+            "sha256": "2267b70027aad46cc7d012416995e39cb5b7d52caf34238656f260c14de0f4de",
+            "bytes": 403278,
+            "resolution": [
+              800,
+              450
+            ],
+            "lod": "lod0",
+            "purpose": "aft navigation-head azimuth",
+            "cameraPosition": [
+              -6.18025,
+              0.0,
+              7.54442
+            ],
+            "cameraTarget": [
+              0.0,
+              0.0,
+              7.05
+            ],
+            "cameraDistanceM": 6.2,
+            "lensMm": 58.0
+          },
+          {
+            "name": "head_port",
+            "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/.azimuth_panels/port.png",
+            "sha256": "58a7bb3c0765626ce1699cbfb5d2521c9e6ed0c180db806531ad39bf43e20f5a",
+            "bytes": 397389,
+            "resolution": [
+              800,
+              450
+            ],
+            "lod": "lod0",
+            "purpose": "port navigation-head azimuth",
+            "cameraPosition": [
+              0.0,
+              -6.18025,
+              7.54442
+            ],
+            "cameraTarget": [
+              0.0,
+              0.0,
+              7.05
+            ],
+            "cameraDistanceM": 6.2,
+            "lensMm": 58.0
+          },
+          {
+            "name": "head_starboard",
+            "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_nav_buoy/.azimuth_panels/starboard.png",
+            "sha256": "8afeca82284c72b9a06ef2a42194d13aaefdc9439f75d952c7dfc1083329072f",
+            "bytes": 394701,
+            "resolution": [
+              800,
+              450
+            ],
+            "lod": "lod0",
+            "purpose": "starboard navigation-head azimuth",
+            "cameraPosition": [
+              0.0,
+              6.18025,
+              7.54442
+            ],
+            "cameraTarget": [
+              0.0,
+              0.0,
+              7.05
+            ],
+            "cameraDistanceM": 6.2,
+            "lensMm": 58.0
+          }
+        ],
+        "diagnosticDividerOnly": true
+      }
+    }
+  ],
+  "claims": {
+    "candidateOnly": true,
+    "promoted": false,
+    "routeEvidence": false,
+    "performanceEvidence": false
+  }
+}

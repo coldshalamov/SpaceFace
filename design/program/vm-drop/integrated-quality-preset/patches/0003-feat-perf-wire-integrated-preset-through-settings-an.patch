@@ -1,0 +1,108 @@
+From 0db2770605978a3d92c8b518bf98d28de934f845 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 21:43:54 -0400
+Subject: [PATCH 3/4] feat(perf): wire integrated preset through settings and
+ renderer
+
+Persist bloomLevels/postFx/sharpen defaults (picture-neutral). Settings
+Frame cap uses FRAME_CAP_OPTIONS (includes 45). Renderer syncs the new
+post knobs and toasts an integrated-GPU preset suggestion once per boot.
+---
+ src/core/gameState.js      |  2 +-
+ src/render/renderer.js     | 24 +++++++++++++++++++++++-
+ src/ui/screens/settings.js |  3 ++-
+ 3 files changed, 26 insertions(+), 3 deletions(-)
+
+diff --git a/src/core/gameState.js b/src/core/gameState.js
+index 3dcd10c14..3a7edec92 100644
+--- a/src/core/gameState.js
++++ b/src/core/gameState.js
+@@ -31,7 +31,7 @@ function defaultSettings() {
+     // affords, sun shadow-maps read as crawling miscolored clumps, not depth. The pooled contact
+     // shadow carries grounding; the toggle/Quality preset still live-applies the opt-in pass.
+     // shadowsDefaultVersion stamps the migration policy (graphicsProfileBootstrap owns it).
+-    video: { renderScale: 1.0, bloom: true, bloomStrength: 0.52, bloomThreshold: 1.0, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: false, shadowsDefaultVersion: SHADOWS_DEFAULT_VERSION, energyMaterials: true, renderGraph: false, dynamicResolution: false, chaseClose: false, qualityPreset: 'medium', frameCap: 0 },
++    video: { renderScale: 1.0, bloom: true, bloomStrength: 0.52, bloomThreshold: 1.0, vsync: true, fov: 50, particleQuality: 'medium', engineTrails: true, pixelRatioCap: 2, motionReduce: false, shadows: false, shadowsDefaultVersion: SHADOWS_DEFAULT_VERSION, energyMaterials: true, renderGraph: false, dynamicResolution: false, chaseClose: false, qualityPreset: 'medium', frameCap: 0, bloomLevels: 2, postFx: true, sharpen: false },
+     gameplay: {
+       autosaveIntervalS: 120,
+       tutorialHints: true,
+diff --git a/src/render/renderer.js b/src/render/renderer.js
+index 8e77f4e49..c78125ad7 100644
+--- a/src/render/renderer.js
++++ b/src/render/renderer.js
+@@ -152,7 +152,12 @@ import {
+   ensureOpeningGeneratedScenarioPropPackage,
+   syncVisiblePointLightBudget,
+ } from './precompile.js';
+-import { detectGpu, createAdaptiveResolution } from './adaptiveQuality.js';
++import {
++  detectGpu,
++  createAdaptiveResolution,
++  shouldSuggestIntegratedPreset,
++  INTEGRATED_PRESET_SUGGESTION,
++} from './adaptiveQuality.js';
+ import { createGpuTimers } from './gpuTimers.js';
+ import { ensurePerfRuntime } from '../core/perfRuntime.js';
+ import { perfCountersRequested } from '../core/perfCounters.js';
+@@ -5231,6 +5236,18 @@ export const render = {
+       }, 1200);
+     }
+ 
++
++    // Opt-in integrated-GPU preset suggestion. Never auto-applies — PERF_WHAT_MATTERS forbids
++    // silent bloom/shadow cuts. One toast per boot when detectGpu reports integrated.
++    if (shouldSuggestIntegratedPreset(gpu, state.settings && state.settings.video) && !this._integratedPresetSuggested) {
++      this._integratedPresetSuggested = true;
++      scheduleTimeout(() => {
++        try {
++          bus.emit('toast', { ...INTEGRATED_PRESET_SUGGESTION });
++        } catch (_) { /* toast is best-effort */ }
++      }, 1600);
++    }
++
+     // ?perf — auto-enable the on-screen FPS/GPU/scale overlay for quick self-diagnosis.
+     try { if (query && query.get('perf') != null && this.diag) this.diag.setOverlay(true); } catch (_) {}
+ 
+@@ -10131,6 +10148,9 @@ export const render = {
+       typeof norm.vignette === 'number' ? norm.vignette.toFixed(4) : '',
+       typeof norm.toe === 'number' ? norm.toe.toFixed(4) : '',
+       typeof norm.grain === 'number' ? norm.grain.toFixed(4) : '',
++      norm.postFx === false ? 0 : 1,
++      norm.sharpen === true ? 1 : 0,
++      Number.isFinite(norm.bloomLevels) ? (norm.bloomLevels | 0) : 2,
+       video.ao === false ? 0 : 1,
+       Math.min(1, finiteInRange(video.renderScale, 0.5, 2, 1)).toFixed(4),
+     ].join('|');
+@@ -10301,6 +10321,8 @@ export const render = {
+       strength: norm.bloomStrength,
+       threshold: norm.bloomThreshold,
+       bloomThreshold: norm.bloomThreshold,
++      bloomLevels: norm.bloomLevels,
++      sharpen: norm.sharpen === true,
+       exposure: norm.exposure,
+       acesToneMapping: norm.acesToneMapping,
+       grade: norm.grade,
+diff --git a/src/ui/screens/settings.js b/src/ui/screens/settings.js
+index 06d2b9571..230d29c29 100644
+--- a/src/ui/screens/settings.js
++++ b/src/ui/screens/settings.js
+@@ -30,6 +30,7 @@ import {
+   createFrameCap,
+   frameCapLabel,
+   normalizeFrameCap,
++  FRAME_CAP_OPTIONS,
+ } from '../../render/adaptiveQuality.js';
+ import { BINDINGS } from '../bindings.js';
+ import { setGamepadCaptureHandler } from '../bindings.js';
+@@ -417,7 +418,7 @@ export const settingsScreen = {
+       rowToggle('VSync', () => vd.vsync, (v) => { this._set(ctx, 'video', 'vsync', v); publishFrameCap(ctx); });
+       // Frame cap 30 / 60 / 120 / off. The effective cap is the request clamped to the display
+       // refresh when VSync is on; off means the display refresh (VSync) or uncapped (VSync off).
+-      rowSelect('Frame cap', () => String(normalizeFrameCap(vd.frameCap)), [0, 30, 60, 120].map((cap) => [String(cap), frameCapLabel(cap)]),
++      rowSelect('Frame cap', () => String(normalizeFrameCap(vd.frameCap)), FRAME_CAP_OPTIONS.map((cap) => [String(cap), frameCapLabel(cap)]),
+         (value) => {
+           vd.frameCap = normalizeFrameCap(value);
+           this._set(ctx, 'video', 'frameCap', vd.frameCap);
+-- 
+2.47.3
+

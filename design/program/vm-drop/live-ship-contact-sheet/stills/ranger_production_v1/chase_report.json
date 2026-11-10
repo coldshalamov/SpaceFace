@@ -1,0 +1,142 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/assets/ships/parts/wholeships/ranger_production_v1.glb",
+  "out": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/ranger_production_v1",
+  "focus": [
+    -0.735,
+    0.0,
+    0.4543
+  ],
+  "boundsMin": [
+    -8.62,
+    -3.4532,
+    -0.9714
+  ],
+  "boundsMax": [
+    7.15,
+    3.4532,
+    1.88
+  ],
+  "size": [
+    15.77,
+    6.9063,
+    2.8514
+  ],
+  "lightScale": 1.4602,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_Beacon_Aft",
+      "triangles": 176,
+      "materials": [
+        "Material_Warning"
+      ]
+    },
+    {
+      "name": "LOD0_Beacon_Fore",
+      "triangles": 56,
+      "materials": [
+        "Material_Accent"
+      ]
+    },
+    {
+      "name": "LOD0_Bell_Bore_Port",
+      "triangles": 44,
+      "materials": [
+        "Material_Thruster"
+      ]
+    },
+    {
+      "name": "LOD0_Bell_Bore_Stbd",
+      "triangles": 44,
+      "materials": [
+        "Material_Thruster"
+      ]
+    },
+    {
+      "name": "LOD0_Bell_Nozzle_Port",
+      "triangles": 52,
+      "materials": [
+        "Material_Ceramic"
+      ]
+    },
+    {
+      "name": "LOD0_Bell_Nozzle_Stbd",
+      "triangles": 52,
+      "materials": [
+        "Material_Ceramic"
+      ]
+    },
+    {
+      "name": "LOD0_Bell_Port",
+      "triangles": 84,
+      "materials": [
+        "Material_Thruster"
+      ]
+    },
+    {
+      "name": "LOD0_Bell_Stbd",
+      "triangles": 84,
+      "materials": [
+        "Material_Thruster"
+      ]
+    },
+    {
+      "name": "LOD0_Collar_Port",
+      "triangles": 740,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_CoolFin_Port_0",
+      "triangles": 180,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_Dish_Fore",
+      "triangles": 444,
+      "materials": [
+        "Material_Ceramic"
+      ]
+    },
+    {
+      "name": "LOD0_Glass",
+      "triangles": 376,
+      "materials": [
+        "Material_Canopy"
+      ]
+    },
+    {
+      "name": "LOD0_GunAft_Port",
+      "triangles": 2756,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Hull",
+      "triangles": 19646,
+      "materials": [
+        "Material_Hull",
+        "Material_Armor",
+        "Material_Course",
+        "Material_Mark",
+        "Material_Dirt"
+      ]
+    }
+  ],
+  "triangles": 24734,
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/ranger_production_v1/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/ranger_production_v1/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/ranger_production_v1/play_chase_close.png"
+  },
+  "clay": null,
+  "clayClose": null
+}

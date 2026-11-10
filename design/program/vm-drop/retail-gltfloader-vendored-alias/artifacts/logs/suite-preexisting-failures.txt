@@ -1,0 +1,37 @@
+Kestrel V6 build is one hash-coherent isolated generation
+Kestrel V6 release receipt preserves structure without claiming headed acceptance
+Kestrel V6 source LODs preserve mapped vertex roles and noncollapsed UVs
+PQ-131.06 wires exactly twelve selected authored conduit variants without LOD2
+Span haulers carry DMC/MTS/Reach kits; unknown factions keep the live Span
+U5: clean generic-ship kill heat crosses WANTED threshold (headline crime)
+Wasp patrol and escort carry faction kits; pirate and player Wasp stay the accepted hull
+all 74 release bodies pass the identity, manifest, compression, and headless loader seam
+corsair raiders publish a distinct packaged body, not the pirate Rig
+deferred pool retirement remains discoverable and retryable after object cleanup refusal
+discarding a prepared hidden owner retires its detached pool without touching the live candidate
+headless real release-GLB traversal plateaus through live sector events and preview leases
+hidden sector preparation defers package-pool promotion until exact boundary publication
+live instance pools use stamped geometry identity, not clone uuid
+opening place remasters retain exact source/release identity and compression contracts
+opening publication settles the chase camera before classifying first-picture visibility
+package pool activation failure rolls back committed matrices and direct mesh identity
+package pool allocation failure leaves the accepted first surface direct and retryable
+packaged Electron includes only production shell entry points
+packaged Electron ships the relative require closure of main.cjs
+paired PERF-00 claims share only source identity, not runtime candidate identity
+portfolio composition: continuous freeflight situation exercises ≥5 units together
+preparing ship cleanup failure remains journaled for generation quarantine and retry
+production render-package instances bypass runtime geometry preparation on the place route
+profile and closure probes share scene metrics and bounded measurement gates
+refinery parts promotion uses measured texture size and preserves frozen identity
+refinery promotion changes all lifecycle copies without changing exact BIN bytes
+removing one owner during package pool admission restores the live direct candidate
+removing the current owner during hidden preparation leaves the incoming root direct
+removing the current owner from a READY hidden pool keeps later publication direct
+renderer entry points delegate route selection instead of branching on bloom controls
+renderer routes authored pipeline/GPU residency blocking slices into perf admission work
+repeated package-backed ship roots promote only eligible rigid surfaces into scene pools
+sandboxed preload remains a one-way lifecycle subscription
+the Asteroid Ops exterior route projects exactly one relay beside an anchored rock
+the first flight submit preserves the prepared opening graph instead of selecting a new LOD
+the manifest bounds row cannot affect runtime scale regardless of its axis order

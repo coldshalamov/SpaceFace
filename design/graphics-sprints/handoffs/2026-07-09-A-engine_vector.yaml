@@ -1,0 +1,32 @@
+handoff_version: 1
+thread: A
+sprint_id: 2026-07-09-top50-sliceA-engine-vector
+agent: top50-wonder-goal-session
+completed_at: 2026-07-09T22:11:00Z
+assets:
+  - id: engine_vector
+    source_glb: assets/ships/parts/engines/engine_vector.glb
+    blend_path: assets/ships/parts/blender/engine_vector_authored.blend
+    art_status: full_finish
+    iteration_count: 21
+    weighted_score: 4.74
+    evidence: assets/ships/parts/revamp-evidence/engine_vector/
+    lifecycle: SOURCE_GLB
+    manifest_row: exists
+    runtimeSlots: engine
+    blocked: false
+    notes: >
+      Full rebuild from primitive cube+floaters. Iter1-20 densify campaign then
+      iter21 JOINED connected thruster (no exploded debris). export_bar_ok true,
+      weighted 4.74, tris 5064. Fringe red heat DET band. HOOK_DRIVE_* empties
+      may need mesh proxies for thruster VFX (finalize advisory non-fatal).
+integrator_actions:
+  - finalize_part.mjs DONE
+  - npm run build:sg04:release-assets
+  - verify thruster VFX sockets if hooks missing in GLB
+thread_c_actions: []
+checks_required:
+  - check:asset-reachability
+screenshots_proven:
+  - assets/ships/parts/revamp-evidence/engine_vector/renders/2026-07-09_engine_vector_iter21_lit_34_full.png
+  - .devshots/slice-A/engine-vector.png

@@ -1,0 +1,2186 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.2762032747268677,
+        -0.044716715812683105,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentNodeId": "sf.render.rock-cooked-rock-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.2762032747268677,
+        -0.044716715812683105,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.anchor.socket-cargo-ventral",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.18953752517700195,
+        -3.026216983795166,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentNodeId": "sf.render.rock-cooked-rock-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.18953752517700195,
+        -3.026216983795166,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.9004175662994385,
+        -0.044716715812683105,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentNodeId": "sf.render.rock-cooked-rock-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.9004175662994385,
+        -0.044716715812683105,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.anchor.socket-mining-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.2213425636291504,
+        -0.19471672177314758,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentNodeId": "sf.render.rock-cooked-rock-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.2213425636291504,
+        -0.19471672177314758,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.anchor.socket-rcs-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.18953752517700195,
+        -0.044716715812683105,
+        -1.5612939596176147,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentNodeId": "sf.render.rock-cooked-rock-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.18953752517700195,
+        -0.044716715812683105,
+        -1.5612939596176147,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.anchor.socket-rcs-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.18953752517700195,
+        -0.044716715812683105,
+        1.5612939596176147,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentNodeId": "sf.render.rock-cooked-rock-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.18953752517700195,
+        -0.044716715812683105,
+        1.5612939596176147,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.4703247547149658,
+        1.493391752243042,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentNodeId": "sf.render.rock-cooked-rock-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.4703247547149658,
+        1.493391752243042,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.2004175186157227,
+        -0.044716715812683105,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentNodeId": "sf.render.rock-cooked-rock-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.2004175186157227,
+        -0.044716715812683105,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.anchor.socket-trail-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.2004175186157227,
+        -0.044716715812683105,
+        -0.6505391597747803,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentNodeId": "sf.render.rock-cooked-rock-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.2004175186157227,
+        -0.044716715812683105,
+        -0.6505391597747803,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.anchor.socket-trail-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.2004175186157227,
+        -0.044716715812683105,
+        0.6505391597747803,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.rock-cooked-rock-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.2004175186157227,
+        -0.044716715812683105,
+        0.6505391597747803,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.anchor.socket-utility-dorsal",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.18953752517700195,
+        2.9367835521698,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.rock-cooked-rock-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.18953752517700195,
+        2.9367835521698,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.3213424682617188,
+        -0.044716715812683105,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentNodeId": "sf.render.rock-cooked-rock-pebble.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.3213424682617188,
+        -0.044716715812683105,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.rock-cooked-rock-pebble",
+  "collisions": [
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.collision",
+      "nodeId": "sf.render.rock-cooked-rock-pebble.mesh.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "bd16d317c775cd583e28b10fdb0552ed56701b9c42a08ffa18ce91aad38b6358",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.mesh.lod0-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.rock-cooked-rock-pebble.mesh.lod0-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.mesh.lod1-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.rock-cooked-rock-pebble.mesh.lod1-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.mesh.lod2-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.rock-cooked-rock-pebble.mesh.lod2-hook-nav-starboard"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          2.7213425636291504,
+          2.3916739910840077,
+          2.677463417963909
+        ],
+        "min": [
+          -3.1004176139831543,
+          -3.0761646717785878,
+          -2.6020435151623955
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2774637c7ff486543ef410107c7442cc9ded5037b932775b270e6ae862de4bcc",
+      "id": "sf.render.rock-cooked-rock-pebble.mesh.collision-hull.primitive.0",
+      "indexCount": 858,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.rock-cooked-rock-pebble.mesh.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 838
+    },
+    {
+      "bounds": {
+        "max": [
+          1.6114326936665222,
+          2.163355057437154,
+          2.0805904865264893
+        ],
+        "min": [
+          -1.9854103547993347,
+          -1.2589934517929275,
+          -1.9802494049072266
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d6f8e874fa42a6dafa0a38161495b0b1afcd120c73017d1812eaafb40acc25ea",
+      "id": "sf.render.rock-cooked-rock-pebble.mesh.lod0-hook-nav-starboard.primitive.0",
+      "indexCount": 2328,
+      "indexed": true,
+      "materialHash": "0082a9c708791ea3f257e4ac5188f765a418d1f11ade761a635eefc97a1f35e4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.rock-cooked-rock-pebble.mesh.lod0-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 746
+    },
+    {
+      "bounds": {
+        "max": [
+          2.7213425636291504,
+          2.3916739910840077,
+          2.677463417963909
+        ],
+        "min": [
+          -3.1004176139831543,
+          -3.0761646717785878,
+          -2.6020435151623955
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "89eca86aa303426a4cbec02236b95f6d564285aa17fa68f677da57ab54da086e",
+      "id": "sf.render.rock-cooked-rock-pebble.mesh.lod0-stone.primitive.0",
+      "indexCount": 3840,
+      "indexed": true,
+      "materialHash": "40165dbe12eadb5b8cddfc0a836467e83d21fb9b0dd7d00bb8a4a796e154dc5f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone",
+      "nodeId": "sf.render.rock-cooked-rock-pebble.mesh.lod0-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 2631
+    },
+    {
+      "bounds": {
+        "max": [
+          1.6113056693852874,
+          2.163513658753749,
+          2.0805907249450684
+        ],
+        "min": [
+          -1.9858698402226898,
+          -1.2562010271466932,
+          -1.980064868927002
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5c5844baa116c8f9b6d6a786eae8b592a2366b41075248f62a3aabe3e23d4116",
+      "id": "sf.render.rock-cooked-rock-pebble.mesh.lod1-hook-nav-starboard.primitive.0",
+      "indexCount": 168,
+      "indexed": true,
+      "materialHash": "0082a9c708791ea3f257e4ac5188f765a418d1f11ade761a635eefc97a1f35e4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.rock-cooked-rock-pebble.mesh.lod1-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 112
+    },
+    {
+      "bounds": {
+        "max": [
+          2.7321834564208984,
+          2.3962196465119505,
+          2.6765127981295174
+        ],
+        "min": [
+          -3.08733868598938,
+          -3.0716482754334593,
+          -2.5753897035708015
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a20b5bf817b6b348e3aec558cd3d3a4e0e130d2cd8424934488e6156fc60f57b",
+      "id": "sf.render.rock-cooked-rock-pebble.mesh.lod1-stone.primitive.0",
+      "indexCount": 2298,
+      "indexed": true,
+      "materialHash": "40165dbe12eadb5b8cddfc0a836467e83d21fb9b0dd7d00bb8a4a796e154dc5f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone",
+      "nodeId": "sf.render.rock-cooked-rock-pebble.mesh.lod1-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 1611
+    },
+    {
+      "bounds": {
+        "max": [
+          1.611438609344295,
+          2.178709278125389,
+          2.0805907249450684
+        ],
+        "min": [
+          -1.9334387552564654,
+          -1.2784475183673936,
+          -1.9792113304138184
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "acb026e695c86acf894c40093497f0c549f85d757a88a75253524a157cd78d23",
+      "id": "sf.render.rock-cooked-rock-pebble.mesh.lod2-hook-nav-starboard.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "0082a9c708791ea3f257e4ac5188f765a418d1f11ade761a635eefc97a1f35e4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.rock-cooked-rock-pebble.mesh.lod2-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 44
+    },
+    {
+      "bounds": {
+        "max": [
+          2.7586910724639893,
+          2.3342565243945668,
+          2.6766985352905857
+        ],
+        "min": [
+          -3.0713562965393066,
+          -3.098663682292516,
+          -2.5370188649567234
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "929556d30d415b1b0a6987ec1e17d257e79c02bb7e7c74f7360d895152ef82f1",
+      "id": "sf.render.rock-cooked-rock-pebble.mesh.lod2-stone.primitive.0",
+      "indexCount": 1044,
+      "indexed": true,
+      "materialHash": "40165dbe12eadb5b8cddfc0a836467e83d21fb9b0dd7d00bb8a4a796e154dc5f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Stone",
+      "nodeId": "sf.render.rock-cooked-rock-pebble.mesh.lod2-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 723
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0082a9c708791ea3f257e4ac5188f765a418d1f11ade761a635eefc97a1f35e4",
+      "id": "material:0082a9c708791ea3f257e4ac",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "40165dbe12eadb5b8cddfc0a836467e83d21fb9b0dd7d00bb8a4a796e154dc5f",
+      "id": "material:40165dbe12eadb5b8cddfc0a",
+      "name": "Material_Stone",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.mesh.collision-hull",
+      "localTransform": [
+        2.9108800888061523,
+        0,
+        0,
+        0,
+        0,
+        2.9108800888061523,
+        0,
+        0,
+        0,
+        0,
+        2.9108800888061523,
+        0,
+        -0.18953752517700195,
+        -0.34224534034729004,
+        0.037709951400756836,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.rock-cooked-rock-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-cooked-rock-pebble.body",
+      "worldTransform": [
+        2.9108800888061523,
+        0,
+        0,
+        0,
+        0,
+        2.9108800888061523,
+        0,
+        0,
+        0,
+        0,
+        2.9108800888061523,
+        0,
+        -0.18953752517700195,
+        -0.34224534034729004,
+        0.037709951400756836,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.mesh.lod0-hook-nav-starboard",
+      "localTransform": [
+        2.030419945716858,
+        0,
+        0,
+        0,
+        0,
+        2.030419945716858,
+        0,
+        0,
+        0,
+        0,
+        2.030419945716858,
+        0,
+        -0.18698883056640625,
+        0.45218080282211304,
+        0.05017054080963135,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD0_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.rock-cooked-rock-pebble.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.rock-cooked-rock-pebble.body",
+      "worldTransform": [
+        2.030419945716858,
+        0,
+        0,
+        0,
+        0,
+        2.030419945716858,
+        0,
+        0,
+        0,
+        0,
+        2.030419945716858,
+        0,
+        -0.18698883056640625,
+        0.45218080282211304,
+        0.05017054080963135,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.mesh.lod0-stone",
+      "localTransform": [
+        2.9108800888061523,
+        0,
+        0,
+        0,
+        0,
+        2.9108800888061523,
+        0,
+        0,
+        0,
+        0,
+        2.9108800888061523,
+        0,
+        -0.18953752517700195,
+        -0.34224534034729004,
+        0.037709951400756836,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Stone",
+      "nodeName": "LOD0_Stone",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.rock-cooked-rock-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-cooked-rock-pebble.body",
+      "worldTransform": [
+        2.9108800888061523,
+        0,
+        0,
+        0,
+        0,
+        2.9108800888061523,
+        0,
+        0,
+        0,
+        0,
+        2.9108800888061523,
+        0,
+        -0.18953752517700195,
+        -0.34224534034729004,
+        0.037709951400756836,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.mesh.lod1-hook-nav-starboard",
+      "localTransform": [
+        2.030327796936035,
+        0,
+        0,
+        0,
+        0,
+        2.030327796936035,
+        0,
+        0,
+        0,
+        0,
+        2.030327796936035,
+        0,
+        -0.18728208541870117,
+        0.45365631580352783,
+        0.0502629280090332,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD1_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.rock-cooked-rock-pebble.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.rock-cooked-rock-pebble.body",
+      "worldTransform": [
+        2.030327796936035,
+        0,
+        0,
+        0,
+        0,
+        2.030327796936035,
+        0,
+        0,
+        0,
+        0,
+        2.030327796936035,
+        0,
+        -0.18728208541870117,
+        0.45365631580352783,
+        0.0502629280090332,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.mesh.lod1-stone",
+      "localTransform": [
+        2.909761071205139,
+        0,
+        0,
+        0,
+        0,
+        2.909761071205139,
+        0,
+        0,
+        0,
+        0,
+        2.909761071205139,
+        0,
+        -0.17757761478424072,
+        -0.3377143144607544,
+        0.05056154727935791,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone",
+      "nodeName": "LOD1_Stone",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.rock-cooked-rock-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-cooked-rock-pebble.body",
+      "worldTransform": [
+        2.909761071205139,
+        0,
+        0,
+        0,
+        0,
+        2.909761071205139,
+        0,
+        0,
+        0,
+        0,
+        2.909761071205139,
+        0,
+        -0.17757761478424072,
+        -0.3377143144607544,
+        0.05056154727935791,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.mesh.lod2-hook-nav-starboard",
+      "localTransform": [
+        2.0299010276794434,
+        0,
+        0,
+        0,
+        0,
+        2.0299010276794434,
+        0,
+        0,
+        0,
+        0,
+        2.0299010276794434,
+        0,
+        -0.1610000729560852,
+        0.4501308798789978,
+        0.050689697265625,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD2_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.rock-cooked-rock-pebble.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.rock-cooked-rock-pebble.body",
+      "worldTransform": [
+        2.0299010276794434,
+        0,
+        0,
+        0,
+        0,
+        2.0299010276794434,
+        0,
+        0,
+        0,
+        0,
+        2.0299010276794434,
+        0,
+        -0.1610000729560852,
+        0.4501308798789978,
+        0.050689697265625,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.mesh.lod2-stone",
+      "localTransform": [
+        2.915023684501648,
+        0,
+        0,
+        0,
+        0,
+        2.915023684501648,
+        0,
+        0,
+        0,
+        0,
+        2.915023684501648,
+        0,
+        -0.1563326120376587,
+        -0.3822035789489746,
+        0.06983983516693115,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone",
+      "nodeName": "LOD2_Stone",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.rock-cooked-rock-pebble.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-cooked-rock-pebble.body",
+      "worldTransform": [
+        2.915023684501648,
+        0,
+        0,
+        0,
+        0,
+        2.915023684501648,
+        0,
+        0,
+        0,
+        0,
+        2.915023684501648,
+        0,
+        -0.1563326120376587,
+        -0.3822035789489746,
+        0.06983983516693115,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.rock-cooked-rock-pebble.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_PLACE_ROCK_COOKED_ROCK_PEBBLE_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.rock-cooked-rock-pebble.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "18262e1f929a5cd1f56b3290c7236b79397f4fcaac27b0ef03d3819910d46f76"
+    },
+    "sourceGlb": {
+      "bytes": 123216,
+      "sha256": "065c5153e4d80e66d66b5ae61541ec72a81103deac7745efd4dc5c116032fb6b",
+      "uri": "place_rock_cooked_rock_pebble.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 126888,
+    "sha256": "270efe1dc298b4085c3368742407dfbad48662a70b45d82c01df2d0619316eac",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.17086327075958252,
+        -0.35122201789028273,
+        0.037709951400756836
+      ],
+      "max": [
+        2.7586910724639893,
+        2.3962196465119505,
+        2.677463417963909
+      ],
+      "min": [
+        -3.1004176139831543,
+        -3.098663682292516,
+        -2.6020435151623955
+      ],
+      "size": [
+        5.8591086864471436,
+        5.494883328804466,
+        5.279506933126305
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          2.030419945716858,
+          0,
+          0,
+          0,
+          0,
+          2.030419945716858,
+          0,
+          0,
+          0,
+          0,
+          2.030419945716858,
+          0,
+          -0.18698883056640625,
+          0.45218080282211304,
+          0.05017054080963135,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_STARBOARD",
+        "planIndex": 3,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.rock-cooked-rock-pebble.mesh.lod0-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.030327796936035,
+          0,
+          0,
+          0,
+          0,
+          2.030327796936035,
+          0,
+          0,
+          0,
+          0,
+          2.030327796936035,
+          0,
+          -0.18728208541870117,
+          0.45365631580352783,
+          0.0502629280090332,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_STARBOARD",
+        "planIndex": 6,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod1"
+        },
+        "userData": {
+          "name": "LOD1_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.rock-cooked-rock-pebble.mesh.lod1-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          2.0299010276794434,
+          0,
+          0,
+          0,
+          0,
+          2.0299010276794434,
+          0,
+          0,
+          0,
+          0,
+          2.0299010276794434,
+          0,
+          -0.1610000729560852,
+          0.4501308798789978,
+          0.050689697265625,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_STARBOARD",
+        "planIndex": 9,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2"
+        },
+        "userData": {
+          "name": "LOD2_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.rock-cooked-rock-pebble.mesh.lod2-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.2762032747268677,
+          -0.044716715812683105,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 12,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.rock-cooked-rock-pebble.anchor.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.18953752517700195,
+          -3.026216983795166,
+          0,
+          1
+        ],
+        "name": "SOCKET_Cargo_Ventral",
+        "planIndex": 13,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            -1,
+            0
+          ],
+          "socketRole": "cargo"
+        },
+        "userData": {
+          "name": "SOCKET_Cargo_Ventral",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              -1,
+              0
+            ],
+            "role": "cargo",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cargo_Ventral",
+            "recordIds": [
+              "sf.render.rock-cooked-rock-pebble.anchor.socket-cargo-ventral"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.9004175662994385,
+          -0.044716715812683105,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 14,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.rock-cooked-rock-pebble.anchor.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2.2213425636291504,
+          -0.19471672177314758,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front",
+        "planIndex": 15,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "mining",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front",
+            "recordIds": [
+              "sf.render.rock-cooked-rock-pebble.anchor.socket-mining-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.18953752517700195,
+          -0.044716715812683105,
+          -1.5612939596176147,
+          1
+        ],
+        "name": "SOCKET_RCS_Port",
+        "planIndex": 16,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            -1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              -1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Port",
+            "recordIds": [
+              "sf.render.rock-cooked-rock-pebble.anchor.socket-rcs-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.18953752517700195,
+          -0.044716715812683105,
+          1.5612939596176147,
+          1
+        ],
+        "name": "SOCKET_RCS_Starboard",
+        "planIndex": 17,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            1
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              1
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Starboard",
+            "recordIds": [
+              "sf.render.rock-cooked-rock-pebble.anchor.socket-rcs-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.4703247547149658,
+          1.493391752243042,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 18,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.rock-cooked-rock-pebble.anchor.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.2004175186157227,
+          -0.044716715812683105,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 19,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.rock-cooked-rock-pebble.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.2004175186157227,
+          -0.044716715812683105,
+          -0.6505391597747803,
+          1
+        ],
+        "name": "SOCKET_Trail_Port",
+        "planIndex": 20,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Port",
+            "recordIds": [
+              "sf.render.rock-cooked-rock-pebble.anchor.socket-trail-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.2004175186157227,
+          -0.044716715812683105,
+          0.6505391597747803,
+          1
+        ],
+        "name": "SOCKET_Trail_Starboard",
+        "planIndex": 21,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Starboard",
+            "recordIds": [
+              "sf.render.rock-cooked-rock-pebble.anchor.socket-trail-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.18953752517700195,
+          2.9367835521698,
+          0,
+          1
+        ],
+        "name": "SOCKET_Utility_Dorsal",
+        "planIndex": 22,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "utility"
+        },
+        "userData": {
+          "name": "SOCKET_Utility_Dorsal",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "utility",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Utility_Dorsal",
+            "recordIds": [
+              "sf.render.rock-cooked-rock-pebble.anchor.socket-utility-dorsal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2.3213424682617188,
+          -0.044716715812683105,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 23,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "weapon",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.rock-cooked-rock-pebble.anchor.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "geology": 4,
+      "signal": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "geology"
+      }
+    ],
+    "nodeCount": 24,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          2.030419945716858,
+          0,
+          0,
+          0,
+          0,
+          2.030419945716858,
+          0,
+          0,
+          0,
+          0,
+          2.030419945716858,
+          0,
+          -0.18698883056640625,
+          0.45218080282211304,
+          0.05017054080963135,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_STARBOARD_1",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.9108800888061523,
+          0,
+          0,
+          0,
+          0,
+          2.9108800888061523,
+          0,
+          0,
+          0,
+          0,
+          2.9108800888061523,
+          0,
+          -0.18953752517700195,
+          -0.34224534034729004,
+          0.037709951400756836,
+          1
+        ],
+        "name": "LOD0_Stone",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.030327796936035,
+          0,
+          0,
+          0,
+          0,
+          2.030327796936035,
+          0,
+          0,
+          0,
+          0,
+          2.030327796936035,
+          0,
+          -0.18728208541870117,
+          0.45365631580352783,
+          0.0502629280090332,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_STARBOARD_1",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.909761071205139,
+          0,
+          0,
+          0,
+          0,
+          2.909761071205139,
+          0,
+          0,
+          0,
+          0,
+          2.909761071205139,
+          0,
+          -0.17757761478424072,
+          -0.3377143144607544,
+          0.05056154727935791,
+          1
+        ],
+        "name": "LOD1_Stone",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.0299010276794434,
+          0,
+          0,
+          0,
+          0,
+          2.0299010276794434,
+          0,
+          0,
+          0,
+          0,
+          2.0299010276794434,
+          0,
+          -0.1610000729560852,
+          0.4501308798789978,
+          0.050689697265625,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_STARBOARD_1",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.915023684501648,
+          0,
+          0,
+          0,
+          0,
+          2.915023684501648,
+          0,
+          0,
+          0,
+          0,
+          2.915023684501648,
+          0,
+          -0.1563326120376587,
+          -0.3822035789489746,
+          0.06983983516693115,
+          1
+        ],
+        "name": "LOD2_Stone",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_rock_cooked_rock_pebble.glb"
+  },
+  "runtimeHash": "a83ca85ab72234bb4608dcb15191a4a4abaeb17a720183d5a33a2ec2cc56fa79",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          2.7586910724639893,
+          2.3962196465119505,
+          2.677463417963909
+        ],
+        "min": [
+          -3.1004176139831543,
+          -3.098663682292516,
+          -2.6020435151623955
+        ]
+      },
+      "id": "sf.render.rock-cooked-rock-pebble.body",
+      "nodeIds": [
+        "sf.render.rock-cooked-rock-pebble.mesh.collision-hull",
+        "sf.render.rock-cooked-rock-pebble.mesh.lod0-hook-nav-starboard",
+        "sf.render.rock-cooked-rock-pebble.mesh.lod0-stone",
+        "sf.render.rock-cooked-rock-pebble.mesh.lod1-hook-nav-starboard",
+        "sf.render.rock-cooked-rock-pebble.mesh.lod1-stone",
+        "sf.render.rock-cooked-rock-pebble.mesh.lod2-hook-nav-starboard",
+        "sf.render.rock-cooked-rock-pebble.mesh.lod2-stone",
+        "sf.render.rock-cooked-rock-pebble.root"
+      ]
+    }
+  ]
+}

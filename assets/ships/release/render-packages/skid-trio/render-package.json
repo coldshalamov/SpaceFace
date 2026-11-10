@@ -1,0 +1,514 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.skid-trio",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "138c7dc64dc78ef13a27114abc2b8a9a08d1a6ced61bb4b8f14b02edacc441d7",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.1500000953674316,
+          0.2599731373041618,
+          0.20998260444959868
+        ],
+        "min": [
+          2.1500000953674316,
+          -0.019973150119160427,
+          -0.20998260444959868
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a8f1744a9522033f342d14b9ee8c230cf9be4c53733fae40d7fa9b9eda39aae7",
+      "id": "sf.render.skid-trio.mesh.skid-replacement-foot.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "26ac8e79234691141b934c6ced6b37752f56635f18eac9b324d16107985edd6e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Skid_Replacement_Foot",
+      "nodeId": "sf.render.skid-trio.mesh.skid-replacement-foot",
+      "primitiveIndex": 0,
+      "vertexCount": 104
+    },
+    {
+      "bounds": {
+        "max": [
+          3.036181688308716,
+          1.2844427529232787,
+          1.3818462185520046
+        ],
+        "min": [
+          -0.036181673407554626,
+          0.16555753317901611,
+          -1.3818462185520046
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3ce59dbb964f523b0631c9424917e32b691dd3f3875400bcfae877fa5435c49b",
+      "id": "sf.render.skid-trio.mesh.skid-trio-material-hull-merged.primitive.0",
+      "indexCount": 3744,
+      "indexed": true,
+      "materialHash": "c1ee96606c87c237dac98ac547fa41f8714219a88fd32bf2d882106c5d7eff38",
+      "materialPipelineKey": "opaque",
+      "meshName": "skid_trio_Material_Hull_Merged",
+      "nodeId": "sf.render.skid-trio.mesh.skid-trio-material-hull-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 989
+    },
+    {
+      "bounds": {
+        "max": [
+          3.75,
+          0.27985808614451113,
+          1.399884022078574
+        ],
+        "min": [
+          -0.6499999761581421,
+          -0.019858090093318848,
+          -1.399884022078574
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a00419569e2b2c32d4064c6a92f45241b5fb19f1b0f764c6b9c036bae2d58bf1",
+      "id": "sf.render.skid-trio.mesh.skid-trio-material-mechanical-merged.primitive.0",
+      "indexCount": 5772,
+      "indexed": true,
+      "materialHash": "0d612528a03bab333df5b88aae8ccb024556b565a4c3510d36bb5c7577608cd2",
+      "materialPipelineKey": "opaque",
+      "meshName": "skid_trio_Material_Mechanical_Merged",
+      "nodeId": "sf.render.skid-trio.mesh.skid-trio-material-mechanical-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 1420
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0d612528a03bab333df5b88aae8ccb024556b565a4c3510d36bb5c7577608cd2",
+      "id": "material:0d612528a03bab333df5b88a",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "26ac8e79234691141b934c6ced6b37752f56635f18eac9b324d16107985edd6e",
+      "id": "material:26ac8e79234691141b934c6c",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "c1ee96606c87c237dac98ac547fa41f8714219a88fd32bf2d882106c5d7eff38",
+      "id": "material:c1ee96606c87c237dac98ac5",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.skid-trio.mesh.skid-replacement-foot",
+      "localTransform": [
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        2.6500000953674316,
+        0.11999999359250069,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Skid_Replacement_Foot",
+      "nodeName": "Skid_Replacement_Foot",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.skid-trio.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skid-trio.body",
+      "worldTransform": [
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        2.6500000953674316,
+        0.11999999359250069,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skid-trio.mesh.skid-trio-material-hull-merged",
+      "localTransform": [
+        1.5361816808581352,
+        0,
+        0,
+        0,
+        0,
+        1.5361816808581352,
+        0,
+        0,
+        0,
+        0,
+        1.5361816808581352,
+        0,
+        1.5000000074505806,
+        0.7250001430511475,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "skid_trio_Material_Hull_Merged",
+      "nodeName": "skid_trio_Material_Hull_Merged",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.skid-trio.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skid-trio.body",
+      "worldTransform": [
+        1.5361816808581352,
+        0,
+        0,
+        0,
+        0,
+        1.5361816808581352,
+        0,
+        0,
+        0,
+        0,
+        1.5361816808581352,
+        0,
+        1.5000000074505806,
+        0.7250001430511475,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skid-trio.mesh.skid-trio-material-mechanical-merged",
+      "localTransform": [
+        2.199999988079071,
+        0,
+        0,
+        0,
+        0,
+        2.199999988079071,
+        0,
+        0,
+        0,
+        0,
+        2.199999988079071,
+        0,
+        1.550000011920929,
+        0.12999999802559614,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "skid_trio_Material_Mechanical_Merged",
+      "nodeName": "skid_trio_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.skid-trio.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skid-trio.body",
+      "worldTransform": [
+        2.199999988079071,
+        0,
+        0,
+        0,
+        0,
+        2.199999988079071,
+        0,
+        0,
+        0,
+        0,
+        2.199999988079071,
+        0,
+        1.550000011920929,
+        0.12999999802559614,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.skid-trio.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "skid_trio",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.skid-trio.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "3a4fe4d7dbf00d3c8a7be66d0f614824c2267250ac9ad5228c2d551c083f7369"
+    },
+    "sourceGlb": {
+      "bytes": 241028,
+      "sha256": "1cdaca72f3e313b0331f6b0c6bced189be9317ac35b1e27643a0ca1c32ad9f2e",
+      "uri": "skid_trio.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 235288,
+    "sha256": "a5521390df794d57f796c0023c647e170427d687b1d024b32b2ff45acdf00978",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        1.550000011920929,
+        0.6322348014020591,
+        0
+      ],
+      "max": [
+        3.75,
+        1.2844427529232787,
+        1.399884022078574
+      ],
+      "min": [
+        -0.6499999761581421,
+        -0.019973150119160427,
+        -1.399884022078574
+      ],
+      "size": [
+        4.399999976158142,
+        1.3044159030424392,
+        2.799768044157148
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [],
+    "materialProfileRoles": {
+      "accent": 1,
+      "hull": 1,
+      "mechanical": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 18,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.5,
+          0,
+          0,
+          0,
+          0,
+          0.5,
+          0,
+          0,
+          0,
+          0,
+          0.5,
+          0,
+          2.6500000953674316,
+          0.11999999359250069,
+          0,
+          1
+        ],
+        "name": "Skid_Replacement_Foot",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.5361816808581352,
+          0,
+          0,
+          0,
+          0,
+          1.5361816808581352,
+          0,
+          0,
+          0,
+          0,
+          1.5361816808581352,
+          0,
+          1.5000000074505806,
+          0.7250001430511475,
+          0,
+          1
+        ],
+        "name": "skid_trio_Material_Hull_Merged",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.199999988079071,
+          0,
+          0,
+          0,
+          0,
+          2.199999988079071,
+          0,
+          0,
+          0,
+          0,
+          2.199999988079071,
+          0,
+          1.550000011920929,
+          0.12999999802559614,
+          0,
+          1
+        ],
+        "name": "skid_trio_Material_Mechanical_Merged",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "gear",
+    "url": "assets/ships/release/parts/gear/skid_trio.glb"
+  },
+  "runtimeHash": "54ca8c4c1d3b50842c907782f8f4e92f46800cb62e613e185eece62cc5f5d81f",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.75,
+          1.2844427529232787,
+          1.399884022078574
+        ],
+        "min": [
+          -0.6499999761581421,
+          -0.019973150119160427,
+          -1.399884022078574
+        ]
+      },
+      "id": "sf.render.skid-trio.body",
+      "nodeIds": [
+        "sf.render.skid-trio.mesh.skid-replacement-foot",
+        "sf.render.skid-trio.mesh.skid-trio-material-hull-merged",
+        "sf.render.skid-trio.mesh.skid-trio-material-mechanical-merged",
+        "sf.render.skid-trio.root"
+      ]
+    }
+  ]
+}

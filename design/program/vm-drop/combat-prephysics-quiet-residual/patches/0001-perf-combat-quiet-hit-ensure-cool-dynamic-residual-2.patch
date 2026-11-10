@@ -1,0 +1,102 @@
+From 265274b2fff3a0c2be74d8c0a844325211cc12cf Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 06:03:27 -0400
+Subject: [PATCH] =?UTF-8?q?perf(combat):=20quiet-hit=20ensure=20+=20cool/d?=
+ =?UTF-8?q?ynamic=20residual=20(~2.8=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+After #83+#84, quiet prePhysics still paid ensureCombatState +
+resolveCombatProfile + syncCombatantBounds every tick, walked
+isDynamicPhysicsBodyEntity twice, and cooled heat-0 runtimes.
+Skip warm ensure when profileId matches; gate dynamic/sink on
+scaled response or sink status; early-out cool when heat<=0.
+---
+ src/combat/kernel.js  | 19 +++++++++++++------
+ src/combat/runtime.js | 25 +++++++++++++++++++++++++
+ 2 files changed, 38 insertions(+), 6 deletions(-)
+
+diff --git a/src/combat/kernel.js b/src/combat/kernel.js
+index 6e307b3cc..0613273bd 100644
+--- a/src/combat/kernel.js
++++ b/src/combat/kernel.js
+@@ -4,6 +4,7 @@ import { createDamageRouter } from './damage.js';
+ import { createCombatCatalog, ensureCombatant, ensureCombatState, entityKey, removeCombatantRuntime, resolveCombatProfile, syncCombatantBounds } from './runtime.js';
+ import { createStatusService } from './statuses.js';
+ import { applyMomentumSink } from './momentumSink.js';
++import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
+ import { applyPendingSubsystemTransitions, recomputeCombatantModifiers, repairSubsystem } from './subsystems.js';
+ import { appendCombatTrace, canonicalize, readCombatTrace } from './trace.js';
+ import { assertValidCombatCatalog } from './validate.js';
+@@ -121,12 +122,16 @@ export function createCombatKernel(ctx, options = {}) {
+       const statusChanged = statuses.advance(entity, runtime, routeDamage);
+       if (statusChanged) recomputeCombatantModifiers(context, entity, runtime, attachments);
+       const response = runtime.physicsResponse;
+-      if (isDynamicPhysicsBodyEntity(entity) && response
+-        && (response.massScale !== 1 || response.inertiaScale !== 1)) {
+-        writePhysicsBodyResponse(entity, response);
+-      }
+-      if (isDynamicPhysicsBodyEntity(entity)) {
+-        applyMomentumSink(state, entity, runtime, dt, momentumSinkImpulse);
++      const scaledResponse = !!(response
++        && (response.massScale !== 1 || response.inertiaScale !== 1));
++      const sinkActive = !!(runtime.statuses && runtime.statuses[MOMENTUM_SINK_STATUS_ID]);
++      // Quiet fleets keep identity mass/inertia and no momentum-sink status — skip the
++      // isDynamicPhysicsBodyEntity walk (authoredPhysicsBody) and sink miss entirely.
++      if (scaledResponse || sinkActive) {
++        if (isDynamicPhysicsBodyEntity(entity)) {
++          if (scaledResponse) writePhysicsBodyResponse(entity, response);
++          if (sinkActive) applyMomentumSink(state, entity, runtime, dt, momentumSinkImpulse);
++        }
+       }
+       coolCombatHeat(entity, runtime, dt);
+       // ensureCombatant already clamped vitals/heat; cool only lowers heat (Math.max 0).
+@@ -231,6 +236,8 @@ export function createCombatKernel(ctx, options = {}) {
+   }
+ 
+   function coolCombatHeat(entity, runtime, dt) {
++    // Quiet combatants sit at heat 0 — skip dissipation arithmetic until heat is applied.
++    if (!(runtime.heat > 0)) return;
+     // Dissipation is stashed on the runtime at ensureCombatant (profile is tick-stable).
+     const basePerTick = Number.isFinite(runtime.heatDissipationPerTick)
+       ? runtime.heatDissipationPerTick
+diff --git a/src/combat/runtime.js b/src/combat/runtime.js
+index 225cc645e..0a975b59c 100644
+--- a/src/combat/runtime.js
++++ b/src/combat/runtime.js
+@@ -55,6 +55,31 @@ export function ensureCombatState(state) {
+ 
+ export function ensureCombatant(state, entity, catalog) {
+   if (!entity || entity.id == null) return null;
++  // Quiet hit: warm combat table + stable profile id skips ensureCombatState's
++  // property walk, resolveCombatProfile (Map get), and syncCombatantBounds.
++  // Status/subsystem changes still sync via the kernel's statusChanged gate (#83);
++  // damage/actions clamp at mutation sites. Cold/missing table falls through.
++  const warm = state.combat;
++  const warmEntities = warm && warm.entities;
++  if (warmEntities) {
++    const warmKey = entityKey(entity.id);
++    const warmRuntime = warmEntities[warmKey];
++    if (warmRuntime) {
++      const explicit = entity.data && entity.data.combatProfileId;
++      const expectedId = (typeof explicit === 'string' && explicit)
++        ? explicit
++        : (DEFAULT_COMBAT_PROFILE_BY_TYPE[entity.type] || null);
++      if (warmRuntime.profileId === expectedId) {
++        if (!Number.isFinite(warmRuntime.heatDissipationPerTick)) {
++          const profile = expectedId ? catalog.profiles.get(expectedId) : null;
++          warmRuntime.heatDissipationPerTick = profile && profile.heat
++            ? Number(profile.heat.dissipationPerTick) || 0
++            : 0;
++        }
++        return warmRuntime;
++      }
++    }
++  }
+   const combat = ensureCombatState(state);
+   const key = entityKey(entity.id);
+   let runtime = combat.entities[key];
+-- 
+2.47.3
+

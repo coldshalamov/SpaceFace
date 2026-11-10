@@ -1,0 +1,236 @@
+TAP version 13
+# Subtest: quiet latch engages when far table empty
+ok 1 - quiet latch engages when far table empty
+  ---
+  duration_ms: 6.186781
+  ...
+# Subtest: farActors.version bump wakes empty quiet latch
+ok 2 - farActors.version bump wakes empty quiet latch
+  ---
+  duration_ms: 0.953003
+  ...
+# Subtest: player move beyond wake radius re-probes
+ok 3 - player move beyond wake radius re-probes
+  ---
+  duration_ms: 0.861781
+  ...
+# Subtest: far rows present refuse empty latch and still query
+ok 4 - far rows present refuse empty latch and still query
+  ---
+  duration_ms: 3.509482
+  ...
+# Subtest: bench toggle off restores always-walk (no latch)
+ok 5 - bench toggle off restores always-walk (no latch)
+  ---
+  duration_ms: 0.725357
+  ...
+# Subtest: queryFarActors empty early-return matches empty grid result
+ok 6 - queryFarActors empty early-return matches empty grid result
+  ---
+  duration_ms: 0.58039
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: evict stays farther than admit so a lip oscillation does not thrash
+ok 7 - evict stays farther than admit so a lip oscillation does not thrash
+  ---
+  duration_ms: 1.353022
+  ...
+# Subtest: decode runway sees an inbound far hull and can request promote
+ok 8 - decode runway sees an inbound far hull and can request promote
+  ---
+  duration_ms: 4.931903
+  ...
+# Subtest: mesh collect surfaces a far hull on the decode runway before its build horizon
+ok 9 - mesh collect surfaces a far hull on the decode runway before its build horizon
+  ---
+  duration_ms: 1.510863
+  ...
+# Subtest: a mesh already on the lip is kept when the live body is shelved
+ok 10 - a mesh already on the lip is kept when the live body is shelved
+  ---
+  duration_ms: 0.417805
+  ...
+# Subtest: a promoted inbound hull stays render-relevant when the last activity frame omitted it
+ok 11 - a promoted inbound hull stays render-relevant when the last activity frame omitted it
+  ---
+  duration_ms: 0.622903
+  ...
+# Subtest: flight first-render does not compose an ordinary on-glass hull
+ok 12 - flight first-render does not compose an ordinary on-glass hull
+  ---
+  duration_ms: 0.358753
+  ...
+# Subtest: time-to-glass solves entry for movers and rejects non-approachers
+ok 13 - time-to-glass solves entry for movers and rejects non-approachers
+  ---
+  duration_ms: 0.295446
+  ...
+# Subtest: admission anchor follows the near focus and falls back after a relocate
+ok 14 - admission anchor follows the near focus and falls back after a relocate
+  ---
+  duration_ms: 1.197073
+  ...
+# Subtest: a fast inbound hull beyond the decode disc is render-relevant on approach time
+ok 15 - a fast inbound hull beyond the decode disc is render-relevant on approach time
+  ---
+  duration_ms: 0.849769
+  ...
+# Subtest: player motion leans the residency oval forward and lets the trailing edge sleep
+ok 16 - player motion leans the residency oval forward and lets the trailing edge sleep
+  ---
+  duration_ms: 0.424877
+  ...
+# Subtest: a fast inbound row gets its mesh from the ledger; it does not thrash the live set
+ok 17 - a fast inbound row gets its mesh from the ledger; it does not thrash the live set
+  ---
+  duration_ms: 4.455201
+  ...
+# Subtest: a fast inbound row shelved long ago still admits on its extrapolated position
+ok 18 - a fast inbound row shelved long ago still admits on its extrapolated position
+  ---
+  duration_ms: 0.771393
+  ...
+# Subtest: mesh collect leans forward on approach vectors only
+ok 19 - mesh collect leans forward on approach vectors only
+  ---
+  duration_ms: 0.631973
+  ...
+# Subtest: first-flight hold still owes a mesh to an inbound prefetch contact
+ok 20 - first-flight hold still owes a mesh to an inbound prefetch contact
+  ---
+  duration_ms: 0.638204
+  ...
+# Subtest: first-flight hold admits static ledger rocks on player-vel collect horizon
+ok 21 - first-flight hold admits static ledger rocks on player-vel collect horizon
+  ---
+  duration_ms: 0.337802
+  ...
+# Subtest: far-actor grid keys are packed numbers, not cx:cz strings
+ok 22 - far-actor grid keys are packed numbers, not cx:cz strings
+  ---
+  duration_ms: 2.241249
+  ...
+# Subtest: ensureFarActorTable rebuilds legacy string grid keys in-tab
+ok 23 - ensureFarActorTable rebuilds legacy string grid keys in-tab
+  ---
+  duration_ms: 0.309382
+  ...
+# Subtest: far dormant ships leave the combat list and rematerialize on approach
+ok 24 - far dormant ships leave the combat list and rematerialize on approach
+  ---
+  duration_ms: 8.649629
+  ...
+# Subtest: a shelved far actor keeps its id until it comes back
+ok 25 - a shelved far actor keeps its id until it comes back
+  ---
+  duration_ms: 2.25543
+  ...
+# Subtest: a live body forced onto a shelved id evicts the stale far row on approach
+ok 26 - a live body forced onto a shelved id evicts the stale far row on approach
+  ---
+  duration_ms: 1.333201
+  ...
+# Subtest: a far actor never comes back onto an id a dressing prop or field rock holds
+ok 27 - a far actor never comes back onto an id a dressing prop or field rock holds
+  ---
+  duration_ms: 1.438101
+  ...
+# Subtest: survival/swarm holds every live ship on the table
+ok 28 - survival/swarm holds every live ship on the table
+  ---
+  duration_ms: 0.60435
+  ...
+# Subtest: pinned and nearby wrecks stay; dormant far wrecks shelve
+ok 29 - pinned and nearby wrecks stay; dormant far wrecks shelve
+  ---
+  duration_ms: 1.527888
+  ...
+# Subtest: unnamed quiet world-site wrecks shelf; unique wrecks stay
+ok 30 - unnamed quiet world-site wrecks shelf; unique wrecks stay
+  ---
+  duration_ms: 1.103758
+  ...
+# Subtest: far snapshot stays lean and promote runs catch-up first
+ok 31 - far snapshot stays lean and promote runs catch-up first
+  ---
+  duration_ms: 1.397901
+  ...
+# Subtest: production leftover S3 still shelves after delayed far-actor exit
+ok 32 - production leftover S3 still shelves after delayed far-actor exit
+  ---
+  duration_ms: 2.15094
+  ...
+# Subtest: shelved far actors round-trip through the save payload
+ok 33 - shelved far actors round-trip through the save payload
+  ---
+  duration_ms: 2.567393
+  ...
+# Subtest: runtime presentation stamps on shelved rows never reach the save payload
+ok 34 - runtime presentation stamps on shelved rows never reach the save payload
+  ---
+  duration_ms: 0.948318
+  ...
+# Subtest: a missing or empty far-actor payload restores to no table
+ok 35 - a missing or empty far-actor payload restores to no table
+  ---
+  duration_ms: 0.290463
+  ...
+# Subtest: quiet latch engages when far empty and no virt candidates
+ok 36 - quiet latch engages when far empty and no virt candidates
+  ---
+  duration_ms: 7.747295
+  ...
+# Subtest: membership bump wakes empty quiet latch
+ok 37 - membership bump wakes empty quiet latch
+  ---
+  duration_ms: 1.028844
+  ...
+# Subtest: bench toggle off refuses latch
+ok 38 - bench toggle off refuses latch
+  ---
+  duration_ms: 0.701391
+  ...
+# Subtest: far rows present never skip restore path
+ok 39 - far rows present never skip restore path
+  ---
+  duration_ms: 2.508038
+  ...
+# Subtest: dormant far ship still shelves when latch off-window
+ok 40 - dormant far ship still shelves when latch off-window
+  ---
+  duration_ms: 0.946358
+  ...
+# Subtest: rescan clears latch after window
+ok 41 - rescan clears latch after window
+  ---
+  duration_ms: 0.775445
+  ...
+# Subtest: wide-disc far query matches grid walk (row-scan path)
+ok 42 - wide-disc far query matches grid walk (row-scan path)
+  ---
+  duration_ms: 2.753406
+  ...
+# Subtest: tight-disc far query still finds local rows (grid path)
+ok 43 - tight-disc far query still finds local rows (grid path)
+  ---
+  duration_ms: 0.386392
+  ...
+# Subtest: row-scan respects FAR_ROW_BUDGET ceiling fixture
+ok 44 - row-scan respects FAR_ROW_BUDGET ceiling fixture
+  ---
+  duration_ms: 0.134004
+  ...
+# Subtest: the far shelf gives the wreck cathedral and the cinder sluice back on approach
+ok 45 - the far shelf gives the wreck cathedral and the cinder sluice back on approach
+  ---
+  duration_ms: 112.79009
+  ...
+1..45
+# tests 45
+# suites 0
+# pass 45
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 582.355094

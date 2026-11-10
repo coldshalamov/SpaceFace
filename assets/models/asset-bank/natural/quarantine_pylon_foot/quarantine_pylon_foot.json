@@ -1,0 +1,221 @@
+{
+  "assetId": "quarantine_pylon_foot",
+  "category": "ancient",
+  "description": "quarantine pylon foot; reusable ancient assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_PYLON",
+      "position": [
+        0.0,
+        0.55,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_MOUNT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.9850000000000001,
+          0.14,
+          -0.0050000000000000044
+        ],
+        "size": [
+          1.016,
+          0.28,
+          0.488
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.4262148189435414,
+          0.14,
+          -0.7982671869193481
+        ],
+        "size": [
+          0.7070458029946658,
+          0.28,
+          0.9680222250181576
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.45949076715453363,
+          0.14,
+          0.7981583149854042
+        ],
+        "size": [
+          0.7601648382606427,
+          0.28,
+          0.9679563878274801
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.63,
+          0.48
+        ],
+        "size": [
+          1,
+          0.75,
+          0.16
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.63,
+          -0.48
+        ],
+        "size": [
+          1,
+          0.75,
+          0.16
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.32,
+          -0.0
+        ],
+        "size": [
+          0.85,
+          0.14,
+          0.92
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "ancient",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -0.931820809841156,
+      0.0,
+      -1.4007658958435059
+    ],
+    "max": [
+      1.614652156829834,
+      1.149999976158142,
+      1.399172067642212
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "quarantine_pylon_foot_lod0.glb",
+      "triangles": 2648,
+      "draws": 2,
+      "bytes": 127924,
+      "method": "source",
+      "sha256": "76605741a0433955fee9179c235aa4579fc368d6689f45cde9be7baa5dfaf768"
+    },
+    {
+      "level": 1,
+      "file": "quarantine_pylon_foot_lod1.glb",
+      "triangles": 2648,
+      "draws": 2,
+      "bytes": 127960,
+      "method": "authored-topology",
+      "sha256": "913538f23b82619ee47104032632e925b859ade13647fa3c4af68e3eb875655f"
+    },
+    {
+      "level": 2,
+      "file": "quarantine_pylon_foot_lod2.glb",
+      "triangles": 1604,
+      "draws": 2,
+      "bytes": 85392,
+      "method": "authored-topology",
+      "sha256": "ac6178d34faed4183512db5cbb243bfbd47024fb7e8346b927ceff2278f63947"
+    }
+  ]
+}

@@ -1,0 +1,668 @@
+// Velocity-vectoring assist (design/FEEL_CONTRACT.md §C "Velocity-vectoring assist";
+// docs/TUNING_JOBS.md job 1) — kernel-level contract.
+//
+// "Turn NOW when I twitch." / "If I swing well, slingshot well, fly well, I EARN speed and I KEEP
+// it." (design/VISION.md). The assist rotates the velocity vector toward the commanded direction
+// with a speed-preserving lateral force; the rate settles at its cap value and holds above the
+// cap — a pure rotation cannot spend overspeed, so overspeed is not a release.
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  PROPULSION_PROFILES,
+  resolvePropulsionProfile,
+} from '../src/core/flight/propulsionCatalog.js';
+import { applyFeelEnvelope } from '../src/data/flightFeelEnvelopes.js';
+import {
+  OVERCAP_ASSIST_BLEND_WU_S,
+  VELOCITY_VECTORING_DEFAULTS,
+  VECTORING_SLIP_LEAD_RAD,
+  createPropulsionRuntime,
+  stepPropulsion,
+} from '../src/core/flight/propulsionKernel.js';
+import { assertEarnedSpeed, measureEarnedSpeed } from '../scripts/lib/feelRegression.mjs';
+import { projectPilotFlightControls } from '../src/systems/input.js';
+
+const DT = 1 / 60;
+const TWITCH = 'Turn NOW when I twitch.';
+const EARNED = 'If I swing well, slingshot well, fly well, I EARN speed and I KEEP it.';
+
+/** The starter hull's live player profile: catalog drive + player translation feel + Hitch envelope. */
+function hitchPlayerProfile() {
+  const base = resolvePropulsionProfile({ isPlayer: true, driveId: 'drive_reaction_m' }, null);
+  return applyFeelEnvelope(base, 'ship_kestrel');
+}
+
+function body(overrides = {}) {
+  return {
+    pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 },
+    rot: 0,
+    angVel: 0,
+    mass: 18,
+    inertia: 90,
+    radius: 14,
+    ...overrides,
+  };
+}
+
+function step(profile, b, input, runtime = createPropulsionRuntime(profile)) {
+  return stepPropulsion({ dt: DT, body: b, input: {
+    assistMode: 'assisted', unvectoredCruiseSteering: true, ...input,
+  }, profile, runtime });
+}
+
+/**
+ * SF-2b (#3) contract: the default vectoring rate is the hull's max yaw times a speed-scheduled
+ * fraction (rest -> cruise at the combat cap -> boost at the boost cap, constant lateral accel above
+ * it), scaled by the drive's share of its nominal forward authority, and never below the pre-#3
+ * rate (legacyFloor: 1.6 -> 0.9 rad/s by speed / governed cap, bounded by forward authority).
+ */
+function expectedVectoringRate(profile, speed, { boost = false, forward = null, legacyFloor = true } = {}) {
+  const d = VELOCITY_VECTORING_DEFAULTS;
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const clamp01 = (x) => Math.max(0, Math.min(1, x));
+  const combat = profile.combatSpeed;
+  const boostCap = combat * Math.max(1, profile.boostSpeedMult);
+  const frac = speed <= combat ? lerp(d.restYawFrac, d.cruiseYawFrac, clamp01(speed / combat))
+    : speed <= boostCap ? lerp(d.cruiseYawFrac, d.boostYawFrac, clamp01((speed - combat) / (boostCap - combat)))
+      : d.boostYawFrac * boostCap / speed;
+  const nominal = profile.mainAccel * (boost ? profile.boostAccelMult : 1);
+  const f = forward == null ? nominal : forward;
+  const rate = profile.maxYawRate * frac * Math.min(1, f / nominal);
+  if (!legacyFloor) return rate;
+  const cap = combat * (boost ? profile.boostSpeedMult : 1);
+  const legacy = Math.min(lerp(1.6, 0.9, clamp01(speed / cap)), 2 * Math.asin(Math.min(1, f * DT / (2 * speed))) / DT);
+  return Math.max(rate, legacy);
+}
+
+function speedOf(b) { return Math.hypot(b.vel.x, b.vel.z); }
+function headingOf(b) { return Math.atan2(b.vel.z, b.vel.x); }
+function wrap(a) { let v = a % (Math.PI * 2); if (v <= -Math.PI) v += Math.PI * 2; if (v > Math.PI) v -= Math.PI * 2; return v; }
+
+/**
+ * Euler integration plus a port of the physics owner's thrust-only speed clamp
+ * (src/core/sg02DynamicBodyOwner.js `_clampSpeed`): given momentum survives, thrust may reach the
+ * cap but not exceed it. Kernel-level only — the real-path numbers live in
+ * test/velocity-vectoring.real-path.mjs.
+ */
+function advance(b, result) {
+  const ax = result.force.x / b.mass;
+  const az = result.force.z / b.mass;
+  const bx = b.vel.x;
+  const bz = b.vel.z;
+  let vx = bx + ax * DT;
+  let vz = bz + az * DT;
+  const cap = result.maxSpeed;
+  const speed = Math.hypot(vx, vz);
+  if (Number.isFinite(cap) && speed > cap && speed > 1e-12) {
+    const base = Math.hypot(bx, bz);
+    if (base >= cap && base > 1e-12) {
+      const ux = bx / base;
+      const uz = bz / base;
+      const along = ax * DT * ux + az * DT * uz;
+      if (along > 0) { vx -= along * ux; vz -= along * uz; }
+    } else {
+      const scale = cap / speed;
+      vx *= scale;
+      vz *= scale;
+    }
+  }
+  b.vel.x = vx;
+  b.vel.z = vz;
+  b.pos.x += vx * DT;
+  b.pos.z += vz * DT;
+  b.angVel += result.torque.y / b.inertia * DT;
+  b.rot += b.angVel * DT;
+}
+
+function simulate(profile, b, inputFn, ticks, stopFn = null) {
+  let runtime = createPropulsionRuntime(profile);
+  let last = null;
+  for (let i = 0; i < ticks; i++) {
+    const input = inputFn(i, b);
+    last = step(profile, b, input, runtime);
+    runtime = last.runtime;
+    advance(b, last);
+    if (stopFn && stopFn(i, b, last)) return { ticks: i + 1, result: last, stopped: true };
+  }
+  return { ticks, result: last, stopped: false };
+}
+
+test(`opt-out is byte-identical: no flag, no vectoring key, no change — "${EARNED}"`, () => {
+  const profile = PROPULSION_PROFILES.drive_reaction_m;
+  const input = { throttle: 0.7, strafe: -0.6, turn: 0.9 };
+  const b = () => body({ vel: { x: 60, z: -12 }, angVel: 0.4, rot: 0.6 });
+  const plain = step(profile, b(), input);
+  const explicitOff = step(profile, b(), { ...input, velocityVectoring: false });
+  assert.deepEqual(explicitOff, plain, 'velocityVectoring:false must be the same as no key');
+  assert.equal('vectoring' in plain.telemetry, false, 'no key means no telemetry key (frozen-fixture shape)');
+  assert.equal('vectoring' in explicitOff.telemetry, false);
+});
+
+test('the unvectored governor keeps forward steering authority at cruise without buying overspeed', () => {
+  const profile = hitchPlayerProfile();
+  const cruise = profile.combatSpeed;
+  for (const sign of [-1, 1]) {
+    const result = step(profile, body({ vel: { x: cruise, z: 0 }, rot: sign * Math.PI / 4 }), {
+      throttle: 1, strafe: sign, turn: sign, velocityVectoring: false,
+    });
+    assert.ok(result.telemetry.manualLocal.forward > 0,
+      'turning the nose off the path at cruise must leave real forward thrust available to steer');
+    assert.equal(result.maxSpeed, cruise, 'the physics owner still bounds the total thrust-made speed');
+    const earned = step(profile, body({ vel: { x: cruise * 2, z: 0 }, rot: sign * Math.PI / 4 }), {
+      throttle: 1, velocityVectoring: false,
+    });
+    assert.equal(earned.telemetry.manualLocal.forward, 0,
+      'a nose still in the forward hemisphere cannot replenish physics-earned overspeed');
+  }
+});
+
+test('manual cruise steering does not leak into NPC, rope or autopilot input packets', () => {
+  const profile = hitchPlayerProfile();
+  const b = () => body({ vel: { x: profile.combatSpeed, z: 0 }, rot: Math.PI / 4 });
+  const input = { throttle: 1, turn: 1, velocityVectoring: false };
+  const raw = step(profile, b(), { ...input, unvectoredCruiseSteering: false });
+  const manual = step(profile, b(), input);
+  assert.equal(raw.telemetry.manualLocal.forward, 0, 'an unmarked packet keeps its original cap servo');
+  assert.equal(raw.telemetry.targetYawRate, profile.maxYawRate, 'an unmarked packet keeps free yaw');
+  assert.ok(manual.telemetry.manualLocal.forward > 0);
+  assert.ok(manual.telemetry.targetYawRate < profile.maxYawRate);
+});
+
+test(`above the cap the weld holds: overspeed steers the arc and cannot spend the speed — "${EARNED}"`, () => {
+  const profile = hitchPlayerProfile();
+  const cruise = profile.combatSpeed;
+  // The assist and the slip bound used to release past the cap: a boost or dash crossing its own
+  // raised ceiling dropped path steering in one tick, the nose ran free at maxYawRate, and once it
+  // had spun past the velocity vector the governor's backward-motion branch burned the whole
+  // impulse as a retro-burn. The vectoring force is a pure rotation and the bound only limits a
+  // yaw command — neither can spend speed — so overspeed is not a release.
+  for (const speed of [cruise * 2, cruise + OVERCAP_ASSIST_BLEND_WU_S, cruise + OVERCAP_ASSIST_BLEND_WU_S + 0.001,
+    cruise + OVERCAP_ASSIST_BLEND_WU_S / 2]) {
+    const make = () => body({ vel: { x: speed, z: 0 }, rot: 0.4 });
+    const input = { throttle: 1, turn: 1 };
+    const off = step(profile, make(), input);
+    const on = step(profile, make(), { ...input, velocityVectoring: true });
+    assert.equal(on.telemetry.vectoring.active, true, `at ${speed.toFixed(1)} WU/s the assist stays live`);
+    const want = expectedVectoringRate(profile, speed);
+    assert.ok(want > 0 && Math.abs(on.telemetry.vectoring.rateRadS - want) < 1e-9,
+      `the rate follows its speed schedule above the cap — no release window (got ${on.telemetry.vectoring.rateRadS}, want ${want})`);
+    assert.equal(on.telemetry.vectoring.leadBounded, true,
+      `at ${speed.toFixed(1)} WU/s the slip bound still welds the nose to the path`);
+    assert.ok(Math.abs(on.telemetry.targetYawRate) < profile.maxYawRate,
+      'the yaw command stays bounded — not the free spin the release produced');
+    assert.notDeepEqual(on.force, off.force, 'the rotation is a real lateral force above the cap');
+    // Over a held-turn arc the vectoring rotation spends nothing: past the blend window (where the
+    // speed-spending assists are fully released) the speed is exactly kept; inside the window the
+    // half-scale spenders may still shave a little — the point is the impulse is never burned off.
+    const b = make();
+    simulate(profile, b, () => ({ throttle: 1, turn: 1, velocityVectoring: true }), 120);
+    const drift = speed >= cruise + OVERCAP_ASSIST_BLEND_WU_S ? 0.5 : 3;
+    assert.ok(speedOf(b) >= speed - drift && speedOf(b) <= speed + drift,
+      `${EARNED} — a held arc at ${speed.toFixed(0)} WU/s keeps the speed (ended ${speedOf(b).toFixed(1)})`);
+  }
+});
+
+test(`B1 with the assist on: earned speed kept hands-off and forward-held (2x cruise, 10 s) — "${EARNED}"`, () => {
+  // The contract's own B1 guard (scripts/lib/feelRegression.mjs), with the packet opted in.
+  const rows = measureEarnedSpeed((args) => stepPropulsion({
+    ...args,
+    input: { ...args.input, velocityVectoring: true },
+  }));
+  assertEarnedSpeed(rows);
+  for (const row of rows) assert.ok(row.keptFraction >= 0.999999, `${EARNED} — kept ${row.keptFraction}`);
+  console.log('B1 with vectoring on (kernel):', JSON.stringify(rows));
+  // Harder: the nose is swung off the velocity the whole time (full turn held, hands off) — the
+  // one case where a vectoring assist that leaked above the cap would bend or bleed speed. (Full
+  // turn WITH forward held is not a B1 arm: once the nose points backward, W is the flip-and-burn
+  // brake, on the unmodified kernel too.)
+  const swung = measureEarnedSpeed((args) => stepPropulsion({
+    ...args,
+    input: { ...args.input, throttle: 0, velocityVectoring: true, turn: 1 },
+  }));
+  for (const row of swung) assert.ok(row.keptFraction >= 0.999999, `${EARNED} — nose swung hands off, kept ${row.keptFraction}`);
+  // And whatever strafe thrust does above the cap with the nose swung and no main drive, it does
+  // identically with the assist on or off — the assist adds nothing there. (The forward-held
+  // rows are excluded on purpose: W with the nose swung past 90 deg is the flip-and-burn brake,
+  // the ship drops below the cap inside the 10 s, and from there the assist is legitimately live.)
+  for (const extra of [{ turn: 1 }, { turn: 1, strafe: 1 }]) {
+    const handsOff = (rows) => rows.filter((row) => row.throttle === 0);
+    const off = measureEarnedSpeed((args) => stepPropulsion({ ...args, input: { ...args.input, ...extra } }));
+    const on = measureEarnedSpeed((args) => stepPropulsion({ ...args, input: { ...args.input, ...extra, velocityVectoring: true } }));
+    assert.deepEqual(handsOff(on), handsOff(off), `above the cap, the assist changes nothing about a hands-off ship with ${JSON.stringify(extra)} held`);
+  }
+});
+
+test(`below the cap the velocity rotates toward the command at the band rate and keeps its speed — "${TWITCH}"`, () => {
+  const profile = hitchPlayerProfile();
+  const cruise = profile.combatSpeed;
+  const speed = cruise * 0.5;
+  const noseOffset = Math.PI / 3;
+  const b = body({ vel: { x: speed, z: 0 }, rot: noseOffset });
+  const result = step(profile, b, { throttle: 1, velocityVectoring: true });
+  const v = result.telemetry.vectoring;
+  assert.equal(v.active, true);
+  const expectedRate = expectedVectoringRate(profile, speed);
+  assert.ok(Math.abs(v.rateRadS - expectedRate) < 1e-9, `rate at half cap follows the yaw-fraction schedule (got ${v.rateRadS}, want ${expectedRate})`);
+  assert.ok(Math.abs(v.errorRad - noseOffset) < 1e-9, 'error is nose minus velocity heading');
+  assert.ok(Math.abs(v.deltaRad - expectedRate * DT) < 1e-12, 'one tick rotates by rate x dt');
+  assert.equal(v.saturated, false);
+  // The assist's own force is a pure rotation: apply only it and the speed does not move.
+  const rx = b.vel.x + v.ax * DT;
+  const rz = b.vel.z + v.az * DT;
+  assert.ok(Math.abs(Math.hypot(rx, rz) - speed) < 1e-9, `${EARNED} — a pure rotation keeps speed (${Math.hypot(rx, rz)} vs ${speed})`);
+  assert.ok(Math.abs(wrap(Math.atan2(rz, rx)) - expectedRate * DT) < 1e-9, 'the rotation lands on the requested angle');
+});
+
+test('the legacy absolute-rate variant never exceeds the drive\'s forward authority', () => {
+  const legacy = { rateLowRadS: 1.6, rateCapRadS: 0.9 };
+  const heavy = PROPULSION_PROFILES.drive_reaction_l;
+  const b = body({ vel: { x: heavy.combatSpeed, z: 0 }, rot: Math.PI / 3, mass: 90, inertia: 260 });
+  const result = step(heavy, b, { throttle: 1, velocityVectoring: legacy });
+  const v = result.telemetry.vectoring;
+  assert.equal(v.active, true);
+  assert.equal(v.saturated, true, 'a 60 WU/s^2 drive cannot vector 0.9 rad/s at 170 WU/s');
+  assert.ok(v.accel <= heavy.mainAccel + 1e-6, `bounded by mainAccel (${v.accel} vs ${heavy.mainAccel})`);
+  assert.ok(v.accel > heavy.mainAccel * 0.999, 'and it uses that authority in full');
+  const light = hitchPlayerProfile();
+  const lb = body({ vel: { x: light.combatSpeed, z: 0 }, rot: Math.PI / 3 });
+  const lr = step(light, lb, { throttle: 1, velocityVectoring: legacy });
+  assert.ok(lr.telemetry.vectoring.accel <= light.mainAccel + 1e-6, 'Hitch is bounded by its own main authority');
+});
+
+test('SF-2b #3 turn targets: W+turn at cruise is 0.57 of max yaw, at the boost cap 0.375, held; every hull scales', () => {
+  const d = VELOCITY_VECTORING_DEFAULTS;
+  assert.equal(d.cruiseYawFrac, 0.57);
+  assert.equal(d.boostYawFrac, 0.375);
+  assert.equal(d.legacyFloor, true);
+  const rateAt = (profile, speed, input = {}) => step(profile, body({ vel: { x: speed, z: 0 }, rot: Math.PI / 3 }),
+    { throttle: 1, velocityVectoring: true, ...input }).telemetry.vectoring;
+  for (const ship of ['ship_kestrel', 'ship_wasp']) {
+    const base = resolvePropulsionProfile({ isPlayer: true, driveId: 'drive_reaction_m' }, null);
+    const profile = applyFeelEnvelope(base, ship);
+    const cruise = rateAt(profile, profile.combatSpeed);
+    assert.ok(Math.abs(cruise.rateRadS - 0.57 * profile.maxYawRate) < 1e-9, `${ship}: cruise ${cruise.rateRadS}`);
+    assert.equal(cruise.saturated, false, 'the yaw-fraction rate is not clipped by forward authority');
+    const boostCap = profile.combatSpeed * profile.boostSpeedMult;
+    const boost = rateAt(profile, boostCap, { boost: true });
+    assert.ok(Math.abs(boost.rateRadS - 0.375 * profile.maxYawRate) < 1e-9, `${ship}: boost ${boost.rateRadS}`);
+    // Above the boost cap the fraction holds the lateral acceleration, so the radius widens with
+    // speed (strict), and the floor still never drops below the pre-#3 overspeed rate (default).
+    const fast = rateAt(profile, boostCap * 2, { boost: true, velocityVectoring: { legacyFloor: false } });
+    assert.ok(Math.abs(fast.rateRadS * boostCap * 2 - boost.rateRadS * boostCap) < 1e-6, 'constant lateral accel above the boost cap');
+    const fastFloored = rateAt(profile, boostCap * 2, { boost: true });
+    assert.ok(Math.abs(fastFloored.rateRadS - expectedVectoringRate(profile, boostCap * 2, { boost: true })) < 1e-9);
+  }
+  // Kestrel cruise: 1.51 rad/s, ~128 WU radius at 195 WU/s (the 9.4 target: ~1.5 rad/s, ~130 WU).
+  const kestrel = hitchPlayerProfile();
+  const k = rateAt(kestrel, kestrel.combatSpeed).rateRadS;
+  assert.ok(k > 1.45 && k < 1.55 && kestrel.combatSpeed / k > 120 && kestrel.combatSpeed / k < 140, `Kestrel cruise ${k}`);
+});
+
+test('SF-2b #3 floor: a slow-yaw hull never turns slower than the pre-#3 schedule; legacyFloor:false applies the fractions strictly', () => {
+  const profile = applyFeelEnvelope(resolvePropulsionProfile({ isPlayer: true, driveId: 'drive_torch_l' }, null), 'ship_hawser');
+  const runtime = { ...createPropulsionRuntime(profile), spool: 1 };
+  const at = (vv) => step(profile, body({ vel: { x: profile.combatSpeed, z: 0 }, rot: Math.PI / 3, mass: 120, inertia: 400 }),
+    { throttle: 1, velocityVectoring: vv }, runtime).telemetry.vectoring.rateRadS;
+  const floored = at(true);
+  const strict = at({ legacyFloor: false });
+  const legacy = at({ rateLowRadS: 1.6, rateCapRadS: 0.9 });
+  assert.ok(Math.abs(strict - 0.57 * profile.maxYawRate) < 1e-9, `strict fraction ${strict}`);
+  assert.ok(strict < legacy, 'the strict fraction would slow this hull down');
+  assert.ok(floored > strict && floored <= legacy + 1e-9,
+    `the floor keeps the pre-#3 rate, bounded by the drive's authority (${floored} vs strict ${strict}, legacy request ${legacy})`);
+  assert.ok(Math.abs(floored - expectedVectoringRate(profile, profile.combatSpeed)) < 1e-9);
+});
+
+test('SF-2b #3: W + Q/E strafe + yaw turns the nose the way the yaw key asks (no nose snap)', () => {
+  const profile = hitchPlayerProfile();
+  for (const [strafe, turn] of [[1, -1], [-1, 1], [1, 1]]) {
+    const b = cruiseBody(profile);
+    const rot0 = b.rot;
+    let wrong = 0;
+    simulate(profile, b, () => ({ throttle: 1, strafe, turn, velocityVectoring: true }), 3 * 60, (i, bb) => {
+      if (i > 6 && Math.sign(bb.angVel) === -Math.sign(turn) && Math.abs(bb.angVel) > 0.05) wrong++;
+      return false;
+    });
+    const net = b.rot - rot0;
+    assert.ok(Math.sign(net) === Math.sign(turn) && Math.abs(net) > 1,
+      `strafe ${strafe} turn ${turn}: the nose must turn with the yaw key (net ${net.toFixed(2)} rad)`);
+    assert.equal(wrong, 0, `strafe ${strafe} turn ${turn}: no ticks spinning against the yaw key`);
+  }
+});
+
+test('gates: brake, drift, newtonian, no throttle, dead speed and a flip all leave the assist idle', () => {
+  const profile = hitchPlayerProfile();
+  const half = profile.combatSpeed * 0.5;
+  const cases = [
+    ['brake', { throttle: 1, brake: true }, { vel: { x: half, z: 0 }, rot: 0.8 }],
+    ['mode', { throttle: 1, assistMode: 'drift' }, { vel: { x: half, z: 0 }, rot: 0.8 }],
+    ['mode', { throttle: 1, assistMode: 'newtonian' }, { vel: { x: half, z: 0 }, rot: 0.8 }],
+    ['no-throttle', { throttle: 0, turn: 1 }, { vel: { x: half, z: 0 }, rot: 0.8 }],
+    ['no-throttle', { throttle: 0, strafe: 1 }, { vel: { x: half, z: 0 }, rot: 0.8 }],
+    ['dead-speed', { throttle: 1 }, { vel: { x: 0.05, z: 0 }, rot: 0.8 }],
+    ['faded', { throttle: 1 }, { vel: { x: half, z: 0 }, rot: Math.PI }],
+  ];
+  for (const [reason, input, overrides] of cases) {
+    const result = step(profile, body(overrides), { ...input, velocityVectoring: true });
+    const v = result.telemetry.vectoring;
+    assert.equal(v.active, false, `${reason}: inactive`);
+    assert.equal(v.reason, reason);
+    assert.equal(v.ax, 0);
+    assert.equal(v.az, 0);
+  }
+  // The flip fade is smooth: at 135 deg the assist is at half strength, not a cliff.
+  const flip135 = step(profile, body({ vel: { x: half, z: 0 }, rot: Math.PI * 0.75 }), { throttle: 1, velocityVectoring: true });
+  const straight = step(profile, body({ vel: { x: half, z: 0 }, rot: Math.PI * 0.25 }), { throttle: 1, velocityVectoring: true });
+  assert.ok(Math.abs(flip135.telemetry.vectoring.rateRadS - straight.telemetry.vectoring.rateRadS * 0.5) < 1e-9,
+    'smoothstep(90deg, 180deg) is 0.5 at 135deg');
+});
+
+test('the command is the nose offset by the strafe: W+D bends toward the strafe side, nose-left bends left', () => {
+  const profile = hitchPlayerProfile();
+  const half = profile.combatSpeed * 0.5;
+  const strafeRight = step(profile, body({ vel: { x: half, z: 0 }, rot: 0 }), { throttle: 1, strafe: 1, velocityVectoring: true });
+  const v = strafeRight.telemetry.vectoring;
+  assert.equal(v.active, true);
+  assert.ok(Math.abs(v.errorRad - Math.PI / 4) < 1e-9, 'W+D commands 45 deg to the strafe side');
+  assert.ok(v.deltaRad > 0, 'positive strafe rotates the velocity toward positive heading (same side as a positive turn)');
+  const noseLeft = step(profile, body({ vel: { x: half, z: 0 }, rot: -0.5 }), { throttle: 1, velocityVectoring: true });
+  assert.ok(noseLeft.telemetry.vectoring.deltaRad < 0, 'nose to the left rotates the velocity left');
+  const aligned = step(profile, body({ vel: { x: half, z: 0 }, rot: 0 }), { throttle: 1, velocityVectoring: true });
+  assert.equal(aligned.telemetry.vectoring.active, true);
+  assert.equal(aligned.telemetry.vectoring.accel, 0, 'aligned: authority held, nothing to do');
+});
+
+test('rate overrides through the packet select a variant; determinism holds for the same input stream', () => {
+  const profile = hitchPlayerProfile();
+  const half = profile.combatSpeed * 0.5;
+  const make = () => body({ vel: { x: half, z: 0 }, rot: 0.8 });
+  const hot = step(profile, make(), { throttle: 1, velocityVectoring: { rateLowRadS: 2.0, rateCapRadS: 1.1 } });
+  assert.ok(Math.abs(hot.telemetry.vectoring.rateRadS - 1.55) < 1e-9, `override midpoint (got ${hot.telemetry.vectoring.rateRadS})`);
+  const a = step(profile, make(), { throttle: 1, strafe: 0.3, turn: 0.7, velocityVectoring: true });
+  const b = step(profile, make(), { throttle: 1, strafe: 0.3, turn: 0.7, velocityVectoring: true });
+  assert.deepEqual(a, b, 'fixed inputs, fixed result');
+});
+
+// ---------------------------------------------------------------------------------------------
+// Kernel-level redirect numbers (Euler + thrust-only clamp port). The real-path numbers are the
+// evidence; this prints the same quadruple in milliseconds and guards the direction of travel.
+// ---------------------------------------------------------------------------------------------
+const VARIANTS = Object.freeze([
+  { id: 'off', velocityVectoring: false },
+  { id: '1.2/0.7', velocityVectoring: { rateLowRadS: 1.2, rateCapRadS: 0.7 } },
+  { id: '1.6/0.9 (band, default)', velocityVectoring: true },
+  { id: '2.0/1.1', velocityVectoring: { rateLowRadS: 2.0, rateCapRadS: 1.1 } },
+]);
+
+function cruiseBody(profile) {
+  const b = body();
+  simulate(profile, b, () => ({ throttle: 1 }), 900);
+  return b;
+}
+
+function sweepTime(profile, flag, inputFn, targetRad = Math.PI / 2, maxTicks = 1800) {
+  const b = cruiseBody(profile);
+  const cruise = speedOf(b);
+  const rot0 = b.rot;
+  let prev = headingOf(b);
+  let swept = 0;
+  let minSpeed = Infinity;
+  let speedSum = 0;
+  const run = simulate(profile, b, (i, bb) => ({ ...inputFn(i, bb, rot0), velocityVectoring: flag }), maxTicks, (i, bb) => {
+    const h = headingOf(bb);
+    swept += wrap(h - prev);
+    prev = h;
+    const sp = speedOf(bb);
+    speedSum += sp;
+    if (sp < minSpeed) minSpeed = sp;
+    return Math.abs(swept) >= targetRad;
+  });
+  const timeS = run.stopped ? run.ticks * DT : null;
+  const meanSpeed = speedSum / run.ticks;
+  const rate = timeS ? Math.abs(swept) / timeS : 0;
+  return { cruise, timeS, meanSpeed, minSpeed, radiusWu: rate > 0 ? meanSpeed / rate : null };
+}
+
+function noseTo(offsetRad) {
+  return (i, b, rot0) => {
+    const err = wrap((rot0 + offsetRad) - b.rot);
+    return { throttle: 1, turn: Math.max(-1, Math.min(1, err / 0.32)) };
+  };
+}
+
+test('an unvectored assisted held turn from rest cannot cross 90 degrees into a retro-burn', () => {
+  // Tether/low-speed case: vectoring is off, the assisted cruise governor owns the turn. Before
+  // the bound held at 90 deg, a held W+A crossed the retro hemisphere and full thrust pointed
+  // backwards every ~2 s (kernel min speed 8.7 of a ~195 WU/s cruise).
+  const profile = hitchPlayerProfile();
+  const b = body();
+  let minSpeed = Infinity;
+  let maxSlip = 0;
+  simulate(profile, b, () => ({
+    throttle: 1, turn: 1, velocityVectoring: false, unvectoredCruiseSteering: true,
+  }), 900, (i, bb) => {
+    if (i > 120) {
+      const speed = speedOf(bb);
+      if (speed < minSpeed) minSpeed = speed;
+      const slip = Math.abs(wrap(bb.rot - headingOf(bb)));
+      if (slip > maxSlip) maxSlip = slip;
+    }
+    return false;
+  });
+  assert.ok(minSpeed >= profile.combatSpeed * 0.5,
+    `held W+A kept at least half combat speed (min ${minSpeed.toFixed(1)} of ${profile.combatSpeed.toFixed(1)})`);
+  assert.ok(maxSlip < Math.PI * 0.62,
+    `the nose stayed out of the full retro hemisphere (slip ${(maxSlip * 180 / Math.PI).toFixed(0)} deg)`);
+});
+
+test(`kernel redirect table: twitch, W+turn sweep and W+strafe+turn per variant — "${TWITCH}"`, () => {
+  const profile = hitchPlayerProfile();
+  const rows = [];
+  for (const variant of VARIANTS) {
+    const twitch = sweepTime(profile, variant.velocityVectoring, noseTo(Math.PI * 100 / 180));
+    const turn = sweepTime(profile, variant.velocityVectoring, () => ({ throttle: 1, turn: 1 }));
+    const redirect = sweepTime(profile, variant.velocityVectoring, () => ({ throttle: 1, strafe: 1, turn: 1 }));
+    rows.push({ variant: variant.id, twitch90: twitch, turn90: turn, redirect90: redirect });
+  }
+  const fmt = (m) => `${m.timeS == null ? 'never' : m.timeS.toFixed(3) + ' s'} (mean ${m.meanSpeed.toFixed(1)}, min ${m.minSpeed.toFixed(1)} WU/s, r ${m.radiusWu == null ? '-' : m.radiusWu.toFixed(1)} WU)`;
+  console.log(`kernel redirect table, Hitch player profile, cruise ${rows[0].twitch90.cruise.toFixed(1)} WU/s:`);
+  for (const row of rows) {
+    console.log(`  ${row.variant.padEnd(24)} twitch100->90deg ${fmt(row.twitch90)} | W+turn 90deg ${fmt(row.turn90)} | W+strafe+turn 90deg ${fmt(row.redirect90)}`);
+  }
+  // The cruise governor keeps raw main-drive steering available, and assisted yaw follows the
+  // attainable path before the nose crosses into a repeated retro-burn. The off arm must be a
+  // usable inertial turn too; the band buys a quicker, tighter arc without starving that arm.
+  const off = rows[0];
+  const band = rows.find((r) => r.variant.startsWith('1.6/0.9'));
+  assert.ok(off.turn90.timeS != null && off.redirect90.timeS != null,
+    'unvectored W+turn and W+strafe+turn must both complete a 90 degree sweep');
+  assert.ok(off.redirect90.minSpeed >= off.redirect90.cruise * 0.5,
+    'a commanded unvectored turn must not stall into a repeating retro-burn');
+  assert.ok(off.twitch90.timeS != null && band.twitch90.timeS != null, 'both arms must complete the 90 deg redirect');
+  assert.ok(band.twitch90.timeS < off.twitch90.timeS * 0.75,
+    `${TWITCH} — the band assist must redirect a held 100 deg twitch at least 25% sooner (${band.twitch90.timeS} vs ${off.twitch90.timeS} s)`);
+  assert.ok(band.twitch90.timeS <= 2.0,
+    `${TWITCH} — a held 100 deg twitch at cruise bends the path 90 deg within 2 s (got ${band.twitch90.timeS} s)`);
+  assert.ok(band.twitch90.minSpeed >= band.twitch90.cruise * 0.9,
+    `${EARNED} — the twitch keeps >= 90% of cruise while bending (min ${band.twitch90.minSpeed} of ${band.twitch90.cruise})`);
+  for (const row of rows.slice(1)) {
+    assert.ok(row.turn90.timeS != null && row.redirect90.timeS != null,
+      `${row.variant}: W+turn and W+strafe+turn must both complete a 90 deg sweep`);
+    assert.ok(row.turn90.minSpeed >= row.turn90.cruise * 0.75,
+      `${EARNED} — ${row.variant}: a held full turn keeps >= 75% of cruise (min ${row.turn90.minSpeed})`);
+  }
+});
+
+test(`a sustained turn welds the nose to the path: the hull never parks off its own trail — "${TWITCH}"`, () => {
+  // Regression: the yaw controller could spin the nose at maxYawRate (~2.6 rad/s) while the
+  // vectoring assist bent the path at ~0.9 rad/s, so a held turn ratcheted the nose-vs-velocity
+  // slip open to 40-80 deg and parked there — a clean circle in the exhaust trail with the hull
+  // visibly pointing out of it. The lead bound (VECTORING_SLIP_LEAD_RAD) caps the yaw command at
+  // the rate the drive can actually rotate the velocity once the allowance is spent.
+  const profile = hitchPlayerProfile();
+  const deg = (r) => r * 180 / Math.PI;
+  for (const turn of [0.5, -0.7, 1]) {
+    const b = cruiseBody(profile);
+    let prev = headingOf(b);
+    let swept = 0;
+    let maxSlip = 0;
+    simulate(profile, b, () => ({ throttle: 1, turn, velocityVectoring: true }), 14 * 60, (i, bb) => {
+      const h = headingOf(bb);
+      swept += Math.abs(wrap(h - prev));
+      prev = h;
+      if (i >= 6 * 60) maxSlip = Math.max(maxSlip, Math.abs(wrap(bb.rot - h)));
+      return false;
+    });
+    assert.ok(maxSlip <= VECTORING_SLIP_LEAD_RAD + 0.06,
+      `held turn ${turn}: steady nose-vs-path lead ${deg(maxSlip).toFixed(1)} deg must stay within the `
+      + `${deg(VECTORING_SLIP_LEAD_RAD).toFixed(0)} deg lead allowance (was parking at 40-80 deg)`);
+    assert.ok(swept > Math.PI * 2,
+      `held turn ${turn}: the welded carve still turns — swept ${deg(swept).toFixed(0)} deg in 14 s`);
+  }
+  // The bound is one-sided: a yaw command pushing FURTHER into an at-cap lead is clamped to the
+  // followable rate; whipping back toward the path keeps full authority.
+  const half = profile.combatSpeed * 0.5;
+  const deeper = step(profile, body({ vel: { x: half, z: 0 }, rot: 0.6 }),
+    { throttle: 1, turn: 1, velocityVectoring: true });
+  assert.equal(deeper.telemetry.vectoring.leadBounded, true, 'lead at 34 deg, demand deeper: bounded');
+  assert.ok(Math.abs(deeper.telemetry.vectoring.slipRad - 0.6) < 1e-9, 'telemetry reports the slip');
+  assert.ok(deeper.telemetry.targetYawRate < profile.maxYawRate,
+    `bounded yaw command ${deeper.telemetry.targetYawRate} < maxYawRate ${profile.maxYawRate}`);
+  const back = step(profile, body({ vel: { x: half, z: 0 }, rot: 0.6 }),
+    { throttle: 1, turn: -1, velocityVectoring: true });
+  assert.equal(back.telemetry.vectoring.leadBounded, false);
+  assert.ok(Math.abs(back.telemetry.targetYawRate + profile.maxYawRate) < 1e-9,
+    'turning back toward the path is never clamped');
+  // A flip is a flip: with the nose already ~126 deg off the path the bound releases and the yaw
+  // command is full authority — reversals still swing through.
+  const flip = step(profile, body({ vel: { x: half, z: 0 }, rot: Math.PI * 0.7 }),
+    { throttle: 1, turn: 1, velocityVectoring: true });
+  assert.equal(flip.telemetry.vectoring.leadBounded, false, 'inside the flip band the nose is free');
+  assert.ok(Math.abs(flip.telemetry.targetYawRate - profile.maxYawRate) < 1e-9,
+    'flip keeps the full yaw-rate command');
+  // Strafe offsets the force target. Telemetry still reports the hull against the trail,
+  // so a slide cannot read as aligned while the nose is cocked out of it.
+  const slid = step(profile, body({ vel: { x: half, z: 0 }, rot: 0.4 }),
+    { throttle: 1, strafe: 1, turn: 0, velocityVectoring: true });
+  assert.ok(Math.abs(slid.telemetry.vectoring.slipRad - 0.4) < 1e-9,
+    'slip is nose versus path, not the strafe-offset command');
+  assert.equal(slid.telemetry.vectoring.leadBounded, false, 'a zero turn is not given extra yaw');
+  assert.ok(Math.abs(slid.telemetry.targetYawRate) < 1e-9, 'helm-style strafe does not yaw the nose');
+});
+
+test(`boost press and release are one continuous arc — a cap crossing never switches the turn model — "${TWITCH}"`, () => {
+  // The reported bug: turning while boost lit "cut the accelerator" — the press-edge dash carried
+  // the hull over its own raised cap, the vectoring assist and the slip bound released in the same
+  // tick, the nose spun free at maxYawRate, and ~0.7 s later, once the nose had crossed the
+  // velocity vector, the governor's backward-motion branch burned the whole impulse as a
+  // retro-burn ("it snaps back to thrust"). Boost exhaustion re-armed the same discontinuity.
+  // Boost is a translational modifier: it may change the speed budget, never how the ship turns.
+  const profile = hitchPlayerProfile();
+  const deg = (r) => r * 180 / Math.PI;
+  const allowance = VECTORING_SLIP_LEAD_RAD + 0.08;
+  const b = cruiseBody(profile);
+  // Settle into the steady coordinated turn first.
+  simulate(profile, b, () => ({ throttle: 1, turn: 1, velocityVectoring: true }), 240);
+  const preBoostSpeed = speedOf(b);
+
+  const runPhase = (label, ticks, impulse = 0) => {
+    const probe = { worstSlip: 0, peakAngVel: 0, peakYawCmd: 0, minSpeed: Infinity };
+    simulate(profile, b, (i, bb) => {
+      // The press-edge dash impulse, queued by flightV3 through physics authority (starter hull
+      // dashImpulse 150) — applied to the body the same way the owner applies it.
+      if (i === 0 && impulse > 0) { bb.vel.x += Math.cos(bb.rot) * impulse; bb.vel.z += Math.sin(bb.rot) * impulse; }
+      const dashEarned = impulse > 0 && i * DT < 1.0; // the 1 s earned-momentum tag (dashMomentum)
+      return {
+        throttle: 1,
+        turn: 1,
+        boost: label === 'boost',
+        boostPressed: label === 'boost' && i === 0,
+        boostReleased: label === 'release' && i === 0,
+        physicsEarnedMomentum: dashEarned,
+        earnedMomentumAssistScale: dashEarned ? 0.24 : 1,
+        velocityVectoring: true,
+      };
+    }, ticks, (i, bb, last) => {
+      probe.worstSlip = Math.max(probe.worstSlip, Math.abs(wrap(bb.rot - headingOf(bb))));
+      probe.peakAngVel = Math.max(probe.peakAngVel, Math.abs(bb.angVel));
+      probe.peakYawCmd = Math.max(probe.peakYawCmd, Math.abs(last.telemetry.targetYawRate));
+      probe.minSpeed = Math.min(probe.minSpeed, speedOf(bb));
+      return false;
+    });
+    return probe;
+  };
+
+  const boost = runPhase('boost', 150, 150);
+  const release = runPhase('release', 150);
+  for (const [label, p] of [['boost', boost], ['release', release]]) {
+    assert.ok(p.worstSlip <= allowance,
+      `${label}: nose-vs-path lead ${deg(p.worstSlip).toFixed(1)} deg must stay welded through the transition`);
+    assert.ok(p.peakAngVel < profile.maxYawRate * 0.75,
+      `${label}: the nose must never free-spin at maxYawRate (peak ${p.peakAngVel.toFixed(2)} of ${profile.maxYawRate})`);
+    assert.ok(p.peakYawCmd < profile.maxYawRate * 0.75,
+      `${label}: the yaw command must stay welded to the path rate (peak ${p.peakYawCmd.toFixed(2)} of ${profile.maxYawRate})`);
+  }
+  // The dash is additive and kept — the backward-motion retro-burn never fires spuriously, so the
+  // boosted arc carries its speed instead of snapping back to thrust.
+  assert.ok(boost.minSpeed >= preBoostSpeed + 120,
+    `${EARNED} — the +150 WU/s dash survives the boosting arc (min ${boost.minSpeed.toFixed(0)} of ${preBoostSpeed.toFixed(0)} + 150)`);
+  assert.ok(release.minSpeed >= preBoostSpeed + 100,
+    `${EARNED} — releasing boost does not dump the earned speed (min ${release.minSpeed.toFixed(0)})`);
+});
+
+test('pilot W+A/D is a yaw turn: the nose does not park out of the trail, and reversing clears', () => {
+  const right = projectPilotFlightControls({ forward: true, yawRight: true });
+  const left = projectPilotFlightControls({ forward: true, yawLeft: true });
+  const explicit = projectPilotFlightControls({ forward: true, yawRight: true, strafeRight: true });
+  const coast = projectPilotFlightControls({ yawLeft: true });
+  assert.equal(right.moveZ, 1);
+  assert.equal(right.moveX, 0, 'W+D must not strafe');
+  assert.equal(right.turnIntent, 1, 'W+D is a full yaw');
+  assert.equal(left.moveX, 0);
+  assert.equal(left.turnIntent, -1);
+  assert.equal(explicit.moveX, 1, 'Q/E remains the strafe');
+  assert.equal(explicit.turnIntent, 1);
+  assert.equal(coast.moveX, 0);
+  assert.equal(coast.turnIntent, -1);
+
+  const profile = hitchPlayerProfile();
+  const deg = (r) => r * 180 / Math.PI;
+  const allowance = VECTORING_SLIP_LEAD_RAD + 0.08;
+  const b = cruiseBody(profile);
+  let held = 0;
+  simulate(profile, b, () => ({
+    throttle: right.moveZ,
+    strafe: right.moveX,
+    turn: right.turnIntent,
+    velocityVectoring: true,
+  }), 4 * 60, (i, bb) => {
+    if (i >= 90) held = wrap(bb.rot - headingOf(bb));
+    return false;
+  });
+  assert.ok(Math.abs(held) <= allowance,
+    `held W+D parks the nose ${deg(held).toFixed(1)} deg off the trail`);
+
+  let reversed = 0;
+  simulate(profile, b, () => ({
+    throttle: left.moveZ,
+    strafe: left.moveX,
+    turn: left.turnIntent,
+    velocityVectoring: true,
+  }), 4 * 60, (i, bb) => {
+    if (i >= 90) reversed = wrap(bb.rot - headingOf(bb));
+    return false;
+  });
+  assert.ok(Math.abs(reversed) <= allowance,
+    `after turning the other way the nose stays cocked at ${deg(reversed).toFixed(1)} deg`);
+  assert.ok(reversed * held < 0, 'the reverse settles on the other side of the trail, not the old cock');
+
+  let released = 0;
+  simulate(profile, b, () => ({ throttle: 1, strafe: 0, turn: 0, velocityVectoring: true }), 3 * 60, (i, bb) => {
+    if (i >= 60) released = wrap(bb.rot - headingOf(bb));
+    return false;
+  });
+  assert.ok(Math.abs(released) < 0.02,
+    `releasing the turn leaves the nose ${deg(released).toFixed(1)} deg off the trail`);
+});

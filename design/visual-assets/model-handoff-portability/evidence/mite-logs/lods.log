@@ -1,0 +1,111 @@
+Info: Saved "mite-M7-LOD0-editable.blend"
+ERROR Draco mesh compression is not available because library could not be found at /usr/bin/4.3/python/lib/python3.13/site-packages/libextern_draco.so
+19:54:54 | INFO: Starting glTF 2.0 export
+19:54:54 | INFO: Extracting primitive: LOD0_BODY_Carapace
+19:54:54 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD0_BODY_Chitin
+19:54:54 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD0_BODY_Membrane
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD0_MOTION_MITE_MEMBRANE_PORT_Carapace
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD0_MOTION_MITE_MEMBRANE_PORT_Chitin
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD0_MOTION_MITE_MEMBRANE_PORT_Membrane
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD0_MOTION_MITE_MEMBRANE_STARBOARD_Carapace
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD0_MOTION_MITE_MEMBRANE_STARBOARD_Chitin
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD0_MOTION_MITE_MEMBRANE_STARBOARD_Membrane
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Finished glTF 2.0 export in 0.0428006649017334 s
+
+Info: Saved "mite-M7-LOD1-editable.blend"
+19:54:54 | INFO: Starting glTF 2.0 export
+19:54:54 | INFO: Extracting primitive: LOD1_BODY_Carapace
+19:54:54 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD1_BODY_Chitin
+19:54:54 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD1_BODY_Membrane
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD1_MOTION_MITE_MEMBRANE_PORT_Carapace
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD1_MOTION_MITE_MEMBRANE_PORT_Chitin
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD1_MOTION_MITE_MEMBRANE_PORT_Membrane
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD1_MOTION_MITE_MEMBRANE_STARBOARD_Carapace
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD1_MOTION_MITE_MEMBRANE_STARBOARD_Chitin
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD1_MOTION_MITE_MEMBRANE_STARBOARD_Membrane
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Finished glTF 2.0 export in 0.034685373306274414 s
+
+Info: Saved "mite-M7-LOD2-editable.blend"
+19:54:54 | INFO: Starting glTF 2.0 export
+19:54:54 | INFO: Extracting primitive: LOD2_BODY_Carapace
+19:54:54 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD2_BODY_Chitin
+19:54:54 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD2_BODY_Membrane
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD2_MOTION_MITE_MEMBRANE_PORT_Carapace
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD2_MOTION_MITE_MEMBRANE_PORT_Chitin
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD2_MOTION_MITE_MEMBRANE_PORT_Membrane
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD2_MOTION_MITE_MEMBRANE_STARBOARD_Carapace
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD2_MOTION_MITE_MEMBRANE_STARBOARD_Chitin
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Extracting primitive: LOD2_MOTION_MITE_MEMBRANE_STARBOARD_Membrane
+19:54:54 | INFO: Primitives created: 1
+19:54:54 | INFO: Finished glTF 2.0 export in 0.03232693672180176 s
+
+[
+  {
+    "lod": 0,
+    "triangles": 3456,
+    "draws": 9,
+    "materials": 3,
+    "images": 2,
+    "bytes": 223512,
+    "sha256": "ccda4c0413c7341a78f59ac8dee792bc17a1d49c8d744a795a59f672e468d571",
+    "sourceSha256": "c5507e3d6eb5012a4bd9b496f3bdd38d71c01c41c5cc3d4e325e3e9e29c60d9a"
+  },
+  {
+    "lod": 1,
+    "triangles": 1482,
+    "draws": 9,
+    "materials": 3,
+    "images": 2,
+    "bytes": 139180,
+    "sha256": "45c2012e97e0704b8cd26a0a3dc4fde53eeb6ec5d11f0b75577e0a02cd119791",
+    "sourceSha256": "c5507e3d6eb5012a4bd9b496f3bdd38d71c01c41c5cc3d4e325e3e9e29c60d9a"
+  },
+  {
+    "lod": 2,
+    "triangles": 978,
+    "draws": 9,
+    "materials": 3,
+    "images": 2,
+    "bytes": 117176,
+    "sha256": "1fc001c9e1fd049e24b6831b057b97f7152a154cf7251fcd7e1396a3975cc09e",
+    "sourceSha256": "c5507e3d6eb5012a4bd9b496f3bdd38d71c01c41c5cc3d4e325e3e9e29c60d9a"
+  }
+]
+Blender 4.3.2
+Read blend: "/workspace/scratch/d2415e46e35b/model-handoff-portability-layout/design/visual-assets/brood-mite-unfinished/study-m6/mite-M6-source.blend"
+Read blend: "/workspace/scratch/d2415e46e35b/model-handoff-portability-layout/design/visual-assets/brood-mite-unfinished/study-m6/mite-M6-source.blend"
+Read blend: "/workspace/scratch/d2415e46e35b/model-handoff-portability-layout/design/visual-assets/brood-mite-unfinished/study-m6/mite-M6-source.blend"
+
+Blender quit

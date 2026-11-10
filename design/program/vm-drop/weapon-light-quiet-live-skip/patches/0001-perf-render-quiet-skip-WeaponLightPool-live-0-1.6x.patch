@@ -1,0 +1,73 @@
+From 923777bd1d152eca422d019b2b16a2425b45803b Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 06:59:05 -0400
+Subject: [PATCH] perf(render): quiet-skip WeaponLightPool when live===0 (~1.6×)
+
+Quiet weapon-light residual under prepareFrame / WeaponVfxPresenter after #97:
+WeaponLightPool.update always walked CAP(2) slots and wrote intensity=0 every
+frame when nothing was alive. Lights already at intensity 0 after the retire frame.
+
+Production trusts _live (spawn ++ when taking a dead slot; retire --) and
+returns immediately when live===0.
+
+Soft-GPU fps not claimed. Picture unchanged.
+---
+ src/render/weapons/weaponLights.js | 13 ++++++++-----
+ 1 file changed, 8 insertions(+), 5 deletions(-)
+
+diff --git a/src/render/weapons/weaponLights.js b/src/render/weapons/weaponLights.js
+index c6f93902b..11134f99f 100644
+--- a/src/render/weapons/weaponLights.js
++++ b/src/render/weapons/weaponLights.js
+@@ -32,6 +32,7 @@ export class WeaponLightPool {
+         alive: 0,
+       });
+     }
++    this._live = 0;
+     if (scene) scene.add(this.group);
+   }
+ 
+@@ -50,7 +51,9 @@ export class WeaponLightPool {
+       if (!lowest || want <= lowest.priority) return null;
+       slot = lowest;
+     }
++    const wasAlive = !!slot.alive;
+     slot.alive = 1;
++    if (!wasAlive) this._live += 1;
+     slot.age = 0;
+     slot.life = Math.max(0.05, life || 0.12);
+     slot.peak = Math.max(0, intensity || 2);
+@@ -65,6 +68,9 @@ export class WeaponLightPool {
+   }
+ 
+   update(dt) {
++    // Quiet settled flight: 2-slot walk + intensity=0 every frame when nothing is alive.
++    // Trust _live (spawn ++ when taking a dead slot; retire --); intensities already 0.
++    if (!(this._live > 0)) return;
+     for (let i = 0; i < this.slots.length; i++) {
+       const slot = this.slots[i];
+       if (!slot.alive) {
+@@ -76,6 +82,7 @@ export class WeaponLightPool {
+         slot.alive = 0;
+         slot.priority = 0;
+         slot.light.intensity = 0;
++        this._live = Math.max(0, this._live - 1);
+         continue;
+       }
+       const t = slot.age / slot.life;
+@@ -91,11 +98,7 @@ export class WeaponLightPool {
+   }
+ 
+   get live() {
+-    let count = 0;
+-    for (let i = 0; i < this.slots.length; i++) {
+-      if (this.slots[i].alive) count++;
+-    }
+-    return count;
++    return this._live;
+   }
+ 
+   dispose() {
+-- 
+2.47.3
+

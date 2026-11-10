@@ -1,0 +1,823 @@
+// Event-owned contact continuity and recent berth traffic. This system never writes economy,
+// faction, cargo, credits, heat, missions, or traffic; it records conversations and receipts.
+
+import { COMMODITIES } from '../data/commodities.js';
+import { MODULES } from '../data/modules.js';
+import { hash32 } from '../core/rng.js';
+import { createManifestTable } from './manifestGame.js';
+import {
+  CONTACT_COUNTER_DEFS,
+  createInitialStationContactCounters,
+  normalizeRescueMemory,
+  normalizeStationContactCounters,
+  normalizeStationContactRecord,
+} from '../data/stationContacts.js';
+import { SECTORS } from '../data/sectors.js';
+import { syncWitnessSeamVoice } from '../data/barks.js';
+import {
+  VONN_FREIGHT_CASE_VERSION,
+  VONN_FREIGHT_CONTACT_ID,
+  VONN_FREIGHT_SECTOR_ID,
+  VONN_FREIGHT_SHAPE_ID,
+  VONN_FREIGHT_STATION_ID,
+  VONN_FREIGHT_ZONE_ID,
+  normalizeVonnFreightCustody,
+  normalizeVonnFreightLoss,
+  vonnFreightLossFor,
+} from '../data/vonnFreightLoss.js';
+import {
+  DOSS_ARCHIVE_CONTACT_ID,
+  DOSS_ARCHIVE_COUNTER_ID,
+  DOSS_ARCHIVE_SOURCES,
+  DOSS_ARCHIVE_OPTIONAL_SOURCES,
+  dossArchiveEvidence,
+} from '../data/dossArchive.js';
+
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((def) => [def.id, def]));
+const MODULE_BY_ID = new Map(MODULES.map((def) => [def.id, def]));
+const MAX_TRAFFIC_RECEIPTS = 8;
+const MAX_PENDING_VONN_RECEIPTS = 8;
+// Station deed notices (U6): the pocket station keeps the latest notable lane event per
+// sector and its dock card speaks it while the news is fresh. One slot per sector, bounded.
+const DEED_MAX_SECTORS = 8;
+const DEED_NEWS_TTL_S = 1800;
+const DEED_OUTCOME_LINES = Object.freeze({
+  repaired: 'A lane casualty went home under its own power — the watch named its escort.',
+  tender_lost: 'A yard tug was lost on this lane answering a mayday.',
+  casualty_lost: 'A lane casualty broke up under watch; the spilled lot is still disputed.',
+  scene_lost: 'The salvage watch lost everything — casualty, tug, and the habit of answering.',
+  grandee_lost: 'The Grandee of Helion did not clear this pocket.',
+  transit_harried: 'The Grandee cleared the pocket after taking damage.',
+  defended: 'A hauler under attack was defended on the lane.',
+  robbed: 'A freighter was robbed on the lane; the thief left with the hold.',
+  hauler_destroyed: 'A freighter went down on the lane under watch.',
+});
+// The Ceres dock-face chain is the sector's loudest story, but it is not an encounter — the
+// dock card heard about far-off lanes and stayed silent about the drama on its own face.
+// Completed chain events speak through the same deed slot (traffic:ceresCausalChain,
+// kind event_complete), keyed by event id so each link keeps its own wording.
+const CERES_CHAIN_DEED_LINES = Object.freeze({
+  ev_surveyor_probe_line: 'A surveyor ran a probe line off the refinery — the seam maps went out fresh.',
+  ev_rich_seam_strike: 'A seam miner struck it rich under the refinery\u2019s nose; the face is still loud about the take.',
+  ev_miner_calls_hauler: 'A miner called a hauler to the face and the day\u2019s ore changed hands on the lane.',
+  ev_patrol_scans_suspect: 'The watch put a loaded hauler under the beam and read its hold bow to stern.',
+  ev_cargo_capsule_launch: 'The refinery fired a metals capsule down-lane; somebody out there holds the catch.',
+  ev_pod_breaks_clamp: 'A clamp let go on the refinery\u2019s cargo face and a loaded pod walked — the lane is still arguing who caught it.',
+  ev_disabled_hauler_recovery: 'A dead hauler went home under tow off the dock face.',
+  ev_tender_services_miner: 'A service tender put a worn seam miner back on the face inside the watch\u2019s clock.',
+  ev_patrol_escorts_hauler: 'The watch walked a recovered hauler out of the pocket under guns.',
+  ev_cutter_strips_wreck: 'A cutter picked a wreck clean off the refinery lane — nothing left worth a tow.',
+  ev_rock_calving: 'The worked seam calved loose rock on the lane; the survey buoys logged every shard.',
+});
+
+function ensureContactBag(state) {
+  const player = state.player || (state.player = {});
+  if (!player.stationContacts || typeof player.stationContacts !== 'object' || Array.isArray(player.stationContacts)) {
+    player.stationContacts = {};
+  }
+  return player.stationContacts;
+}
+
+function ensureCounterBag(state) {
+  const player = state.player || (state.player = {});
+  player.stationContactCounters = normalizeStationContactCounters(player.stationContactCounters);
+  return player.stationContactCounters;
+}
+
+function ensureLifeState(state) {
+  if (!state.stationLife || typeof state.stationLife !== 'object') state.stationLife = {};
+  if (!Array.isArray(state.stationLife.traffic)) state.stationLife.traffic = [];
+  // INF-074: unclaimed rescue gossip, keyed by sector. A rescue posts a notice; the first
+  // barkeep the pilot talks to in that sector claims it onto their own record. Notices are
+  // durable (a later meeting after Continue still hears it) and validate on load.
+  if (!state.stationLife.rescueNotices || typeof state.stationLife.rescueNotices !== 'object'
+    || Array.isArray(state.stationLife.rescueNotices)) {
+    state.stationLife.rescueNotices = {};
+  }
+  if (!state.stationLife.deeds || typeof state.stationLife.deeds !== 'object'
+    || Array.isArray(state.stationLife.deeds)) {
+    state.stationLife.deeds = {};
+  }
+  return state.stationLife;
+}
+
+function sectorOfStation(stationId) {
+  if (!stationId) return null;
+  for (const sec of SECTORS) {
+    if (Array.isArray(sec.stations) && sec.stations.some((st) => st && st.id === stationId)) return sec.id;
+  }
+  return null;
+}
+
+function commodityLabel(id) {
+  const def = id && COMMODITY_BY_ID.get(id);
+  return def && def.name ? def.name : String(id || 'cargo').replace(/^cmdty_/, '').replace(/_/g, ' ');
+}
+
+function freightCommodity(payload) {
+  if (!payload) return null;
+  if (payload.primaryCommodityId) return payload.primaryCommodityId;
+  const trade = Array.isArray(payload.trades) && payload.trades[0];
+  if (trade && trade.commodityId) return trade.commodityId;
+  const pressure = Array.isArray(payload.pressures) && payload.pressures[0];
+  return pressure && (pressure.commodityId || pressure.good) || null;
+}
+
+function sameFlags(a, b) {
+  const left = a || {};
+  const right = b || {};
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  return leftKeys.length === rightKeys.length
+    && leftKeys.every((key) => left[key] === true && right[key] === true);
+}
+
+function isDossDiscoveryPlate(payload) {
+  const sectorId = String(payload && payload.sectorId || '');
+  const poiId = String(payload && payload.poiId || '');
+  return (sectorId === 'sector_veil_nebula' && poiId === 'poi_anomaly')
+    || (sectorId === 'sector_charon_expanse' && poiId === 'poi_charon_tether_wreck');
+}
+
+function sameVonnCase(left, right) {
+  return JSON.stringify(left || null) === JSON.stringify(right || null);
+}
+
+function validVonnLossPayload(payload) {
+  return !!(payload && typeof payload === 'object'
+    && typeof payload.intentId === 'string' && payload.intentId
+    && typeof payload.encounterId === 'string' && payload.encounterId
+    && payload.stationId === VONN_FREIGHT_STATION_ID
+    && payload.sectorId === VONN_FREIGHT_SECTOR_ID
+    && typeof payload.manifestId === 'string' && payload.manifestId
+    && typeof payload.freighterKey === 'string' && payload.freighterKey
+    && typeof payload.primaryCommodityId === 'string' && payload.primaryCommodityId
+    && Number.isFinite(payload.totalQty) && payload.totalQty > 0);
+}
+
+function matchingVonnMarker(state, live, custody, payload) {
+  const markers = state && state.aftermathWrecks && state.aftermathWrecks.bySector
+    && state.aftermathWrecks.bySector[VONN_FREIGHT_SECTOR_ID];
+  if (!Array.isArray(markers)) return null;
+  const matches = markers.filter((marker) => {
+    const freight = marker && marker.freightIdentity;
+    const pos = marker && marker.pos;
+    return marker && freight && pos
+      && marker.sectorId === VONN_FREIGHT_SECTOR_ID
+      && marker.zoneId === VONN_FREIGHT_ZONE_ID
+      && marker.encounterId === live.id
+      && freight.manifestId === custody.manifestId
+      && freight.freighterKey === custody.freighterKey
+      && freight.role === 'hauler'
+      && Number.isFinite(pos.x) && Number.isFinite(pos.z)
+      && payload.manifestId === custody.manifestId
+      && payload.freighterKey === custody.freighterKey;
+  });
+  return matches.length === 1 ? matches[0] : null;
+}
+
+function qualifyingVonnLoss(state, payload) {
+  if (!validVonnLossPayload(payload)) return null;
+  const live = state && state.encounterDirector && state.encounterDirector.live
+    && state.encounterDirector.live[payload.encounterId];
+  const custody = live && live.data && live.data.freightCargoCustody;
+  if (!live || !custody
+    || live.shapeId !== VONN_FREIGHT_SHAPE_ID
+    || live.sectorId !== VONN_FREIGHT_SECTOR_ID
+    || live.zoneId !== VONN_FREIGHT_ZONE_ID
+    || live.data.destId !== VONN_FREIGHT_STATION_ID
+    || custody.encounterId !== live.id
+    || custody.manifestId !== payload.manifestId
+    || custody.freighterKey !== payload.freighterKey
+    || custody.commodityId !== payload.primaryCommodityId
+    || typeof custody.custodyId !== 'string' || !custody.custodyId
+    || typeof custody.carrierIdentityKey !== 'string' || !custody.carrierIdentityKey) return null;
+  const marker = matchingVonnMarker(state, live, custody, payload);
+  if (!marker || typeof marker.markerId !== 'string' || !marker.markerId) return null;
+  const caseFile = normalizeVonnFreightLoss({
+    schemaVersion: VONN_FREIGHT_CASE_VERSION,
+    lossIntentId: payload.intentId,
+    encounterId: live.id,
+    custodyId: custody.custodyId,
+    manifestId: custody.manifestId,
+    freighterKey: custody.freighterKey,
+    carrierIdentityKey: custody.carrierIdentityKey,
+    markerId: marker.markerId,
+    stationId: VONN_FREIGHT_STATION_ID,
+    sectorId: VONN_FREIGHT_SECTOR_ID,
+    zoneId: VONN_FREIGHT_ZONE_ID,
+    commodityId: custody.commodityId,
+    lossQty: Math.floor(payload.totalQty),
+    markerPos: { x: marker.pos.x, z: marker.pos.z },
+    wreckStatus: 'open',
+    followupHeard: false,
+    custody: null,
+  });
+  return caseFile;
+}
+
+export const stationContacts = {
+  name: 'stationContacts',
+  state: null,
+  bus: null,
+  _subs: null,
+  _vonnFreightReceipts: null,
+
+  init(ctx) {
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    this._subs = [];
+    this._vonnFreightReceipts = new Map();
+    ensureContactBag(this.state);
+    ensureCounterBag(this.state);
+    ensureLifeState(this.state);
+    this._manifestTable?.dispose();
+    this._manifestTable = createManifestTable(ctx);
+    const on = (event, handler) => {
+      this.bus.on(event, handler);
+      this._subs.push([event, handler]);
+    };
+    on('ui:talkContact', (payload = {}) => this._recordTalk(payload));
+    on('stationContact:counterDelta', (payload = {}) => this._recordCounterDelta(payload));
+    on('stationContact:manifestWon', (payload = {}) => {
+      const id = String(payload.contactId || '');
+      if (!id.startsWith('contact_') || !payload.matchId) return;
+      const bag = ensureContactBag(this.state), record = normalizeStationContactRecord(bag[id]);
+      record.flags.manifest_won = true;
+      bag[id] = record;
+      this.bus.emit('stationContact:changed', { contactId: id, record });
+    });
+    on('freight:arrival', (payload = {}) => {
+      this._recordFreight(payload, 'arrival');
+      this._noteYuneCleanArrival(payload);
+    });
+    on('freight:loss', (payload = {}) => {
+      this._recordFreight(payload, 'loss');
+      this._recordVonnFreightLoss(payload);
+    });
+    on('freight:custodyReceipt', (payload = {}) => this._recordVonnFreightCustody(payload));
+    on('aftermathWreck:completed', (payload = {}) => this._recordVonnWreckCompletion(payload));
+    on('aftermathWreck:completed', (payload = {}) => this._noteMarchReconciliation(payload));
+    on('recovery:completed', (payload = {}) => this._noteRescueNotice(payload));
+    on('encounter:resolved', (payload = {}) => this._noteDeed(payload));
+    on('traffic:ceresCausalChain', (payload = {}) => this._noteCeresChainDeed(payload));
+    on('survivorPod:promoted', (payload = {}) => this._notePodReceipt(payload, 'promoted'));
+    on('survivorPod:delivered', (payload = {}) => this._notePodReceipt(payload, 'delivered'));
+    on('survivorPod:rescued', (payload = {}) => this._notePodReceipt(payload, 'rescued'));
+    on('encounter:convoyEscorted', (payload = {}) => this._noteConvoyEscort(payload));
+    on('machine:appealAccepted', (payload = {}) => this._noteSuhlClause(payload));
+    on('uniqueWreck:resolved', (payload = {}) => this._noteSennaName(payload));
+    on('module:purchased', (payload = {}) => this._noteZellInstall(payload));
+    on('orrinWitness:submitted', p => this._rememberCastDeed('orrin.case', p?.sourceId, 1));
+    on('economy:tradeCompleted', p => {
+      if (p?.side !== 'sell' || !(p.qty > 0) || !p.receiptId) return;
+      if (p.commodityId === 'cmdty_scrap_metal') this._rememberCastDeed('latch.child', p.receiptId, 1);
+      const commodity = COMMODITIES.find(def => def.id === p.commodityId);
+      if (p.stationId === 'station_sker' && ['contraband', 'illegal'].includes(commodity?.legality)) {
+        this._rememberCastDeed('vane.favor', p.receiptId, 1);
+      }
+    });
+    on('captain:remembered', p => {
+      if (p?.captainId === 'captain:coldburn-rey' && ['robbed', 'rescued'].includes(p.outcome)) {
+        this._rememberCastDeed('coldburn.grudge', `${p.outcome}:${p.t}`, p.outcome === 'robbed' ? 1 : -1);
+      }
+    });
+    on('encounter:resolved', () => this._reconcileVolsBusiness());
+    on('save:restoring', () => this._clearVonnFreightReceipts());
+    on('vestaOreCache:resolved', (payload = {}) => {
+      if (payload.recordId === 'vesta-ore-cache:shift-end:v1') this._reconcileDossArchive('vesta-resolved');
+    });
+    on('discovery:plateUnlocked', (payload = {}) => {
+      if (isDossDiscoveryPlate(payload)) this._reconcileDossArchive('discovery-plate');
+    });
+    on('lastShift:archived', () => this._reconcileDossArchive('last-shift-filed'));
+    on('save:loaded', () => {
+      this._reconcileDossArchive('save-loaded');
+      this._normalizeVonnFreightLoss('save-loaded');
+      this._normalizeRescueNotices();
+      this._normalizeDeeds();
+      this._syncWitnessSeamVoice();
+      this._reconcileVolsBusiness();
+    });
+    this._reconcileDossArchive('init');
+    this._reconcileVolsBusiness();
+  },
+
+  newGame() {
+    this._manifestTable?.reset();
+    if (!this.state) return;
+    this.state.player.stationContacts = {};
+    this.state.player.stationContactCounters = createInitialStationContactCounters();
+    delete this.state.player.stationLife;
+    this.state.stationLife = { traffic: [], rescueNotices: {}, deeds: {} };
+    this._clearVonnFreightReceipts();
+    this._syncWitnessSeamVoice();
+  },
+
+  _recordCounterDelta(payload) {
+    if (!payload || typeof payload !== 'object') return;
+    this._applyCounterDelta(payload.trackerId, payload.delta, payload.reason);
+  },
+
+  // Receipts live with the contact record and survive reload. Replayed owner events
+  // must not make an original, a cargo sale, or a single answer count twice.
+  _rememberCastDeed(trackerId, receiptId, amount) {
+    const def = CONTACT_COUNTER_DEFS[trackerId];
+    if (!def || receiptId == null || receiptId === '') return false;
+    const bag = ensureContactBag(this.state);
+    const record = normalizeStationContactRecord(bag[def.contactId]);
+    const key = `cast_${hash32(trackerId, String(receiptId)).toString(36)}`;
+    if (record.flags[key]) return false;
+    if (!this._applyCounterDelta(trackerId, amount, String(receiptId))) return false;
+    record.flags[key] = true;
+    bag[def.contactId] = record;
+    return true;
+  },
+
+  _reconcileVolsBusiness() {
+    const flags = this.state?.story?.flags || {};
+    for (const key of ['volsEchoUnlocked', 'volsBlackBoxRecovered', 'volsLetterCarried']) {
+      if (flags[key]) this._rememberCastDeed('vols.business', key, 1);
+    }
+  },
+
+  /**
+   * The one counter writer: mission-owned `stationContact:counterDelta` intents and this
+   * system's own observed-event listeners both land here so every path gets the same def
+   * bounds, the same normalization, and the same `stationContact:counterChanged` receipt.
+   */
+  _applyCounterDelta(trackerId, delta, reason = null) {
+    const id = String(trackerId || '');
+    const def = CONTACT_COUNTER_DEFS[id];
+    const amount = Math.trunc(Number(delta) || 0);
+    if (!def || !amount) return false;
+    const previous = ensureCounterBag(this.state);
+    const next = normalizeStationContactCounters({
+      ...previous,
+      [id]: previous[id] + amount,
+    });
+    this.state.player.stationContactCounters = next;
+    // G2 witness seam: the bar voice for Dorin/Kell re-derives from the persisted counter bag.
+    this._syncWitnessSeamVoice();
+    this.bus.emit('stationContact:counterChanged', {
+      trackerId: id,
+      contactId: def.contactId,
+      previous: previous[id],
+      value: next[id],
+      reason: String(reason || '').slice(0, 96) || null,
+    });
+    return true;
+  },
+
+  /** G2: keep the witness-run seam voice a pure function of the persisted counters. */
+  _syncWitnessSeamVoice() {
+    if (!this.state || !this.state.player) return;
+    syncWitnessSeamVoice(this.state.player.stationContactCounters
+      || createInitialStationContactCounters());
+  },
+
+  _recordTalk(payload) {
+    const contactId = String(payload.contactId || '').slice(0, 96);
+    if (!contactId) return;
+    const bag = ensureContactBag(this.state);
+    const previous = normalizeStationContactRecord(bag[contactId]);
+    const choice = String(payload.choiceId || '').toLowerCase().replace(/[^a-z0-9_-]+/g, '_').slice(0, 48);
+    const choiceFlag = choice ? `choice_${choice}` : null;
+    const meaningful = choice && choice !== 'dismiss' && choice !== 'bye';
+    const firstMeaningfulChoice = meaningful && !previous.flags[choiceFlag];
+    const flags = { ...previous.flags };
+    if (choiceFlag) flags[choiceFlag] = true;
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const vonnFreightLoss = contactId === VONN_FREIGHT_CONTACT_ID && choice === 'wrecks'
+      && previous.vonnFreightLoss && !previous.vonnFreightLoss.followupHeard
+      ? { ...previous.vonnFreightLoss, followupHeard: true }
+      : previous.vonnFreightLoss;
+    // INF-074: bar gossip becomes personal. The first barkeep the pilot talks to in a
+    // rescue sector claims that sector's notice onto their own record — merchants, pilots,
+    // and every other role never see it. Claiming and acknowledging are separate passes
+    // (news travels on this visit, it is remembered on the next), so the line shows on a
+    // later meeting and never repeats.
+    let rescueMemory = normalizeRescueMemory(previous.rescueMemory);
+    if (String(payload.role || '').toLowerCase() === 'barkeep') {
+      const sectorId = sectorOfStation(payload.stationId || previous.stationId);
+      const life = ensureLifeState(this.state);
+      if (!rescueMemory && sectorId && life.rescueNotices[sectorId]) {
+        rescueMemory = normalizeRescueMemory({ ...life.rescueNotices[sectorId], acknowledged: false });
+        if (rescueMemory) delete life.rescueNotices[sectorId];
+      } else if (previous.rescueMemory && rescueMemory && !rescueMemory.acknowledged) {
+        rescueMemory = { ...rescueMemory, acknowledged: true };
+      }
+    }
+    const next = normalizeStationContactRecord({
+      ...previous,
+      met: true,
+      talkCount: previous.talkCount + 1,
+      standing: previous.standing + (firstMeaningfulChoice ? 1 : 0),
+      stationId: payload.stationId || previous.stationId,
+      canonicalKey: payload.canonicalKey || previous.canonicalKey,
+      name: payload.name || previous.name,
+      lastChoice: choice || previous.lastChoice,
+      lastTalkSimTime: now,
+      lastDockSimTime: now,
+      flags,
+      ...(vonnFreightLoss ? { vonnFreightLoss } : {}),
+      ...(rescueMemory ? { rescueMemory } : {}),
+    });
+    bag[contactId] = next;
+    if (contactId === 'contact_lira_vonn' && choice === 'interview' && firstMeaningfulChoice) {
+      this._rememberCastDeed('vonn.interviews', 'first-on-record-interview', 1);
+    }
+    if (contactId === 'contact_question') {
+      const item = { sample: 'cmdty_47a_assay_sample', ledger: 'cmdty_personal_ledger', navigation: 'cmdty_navigational_data' }[choice];
+      const cargo = this.state?.player?.cargo || {};
+      if (item && ((Number(cargo.items?.[item]) || 0) > 0 || cargo.persistent?.includes(item))) {
+        this._rememberCastDeed('question.answers', item, 1);
+      }
+    }
+    this.bus.emit('stationContact:changed', { contactId, record: { ...next, flags: { ...next.flags } } });
+  },
+
+  _recordFreight(payload, kind) {
+    const stationId = payload && payload.stationId ? String(payload.stationId) : null;
+    if (!stationId) return;
+    const commodityId = freightCommodity(payload);
+    const qty = Math.max(0, Math.round(Number(payload.totalQty) || 0));
+    const cargo = commodityLabel(commodityId);
+    const text = kind === 'arrival'
+      ? `${cargo} shipment cleared berth${qty ? ` · ${qty}u` : ''}.`
+      : `Inbound ${cargo} delayed after a freight loss.`;
+    const model = ensureLifeState(this.state);
+    const rec = {
+      kind,
+      stationId,
+      commodityId,
+      text,
+      simTime: Number.isFinite(this.state.simTime) ? this.state.simTime : 0,
+      intentId: payload.intentId || null,
+    };
+    if (rec.intentId && model.traffic.some((entry) => entry.intentId === rec.intentId)) return;
+    model.traffic.unshift(rec);
+    if (model.traffic.length > MAX_TRAFFIC_RECEIPTS) model.traffic.length = MAX_TRAFFIC_RECEIPTS;
+    this.bus.emit('stationLife:trafficChanged', { ...rec });
+  },
+
+  _writeVonnFreightLoss(caseFile, reason) {
+    const normalizedCase = normalizeVonnFreightLoss(caseFile);
+    if (!normalizedCase) return false;
+    const bag = ensureContactBag(this.state);
+    const previous = normalizeStationContactRecord(bag[VONN_FREIGHT_CONTACT_ID]);
+    if (sameVonnCase(previous.vonnFreightLoss, normalizedCase)) return false;
+    const next = normalizeStationContactRecord({ ...previous, vonnFreightLoss: normalizedCase });
+    if (!next.vonnFreightLoss) return false;
+    bag[VONN_FREIGHT_CONTACT_ID] = next;
+    this.bus.emit('stationContact:changed', {
+      contactId: VONN_FREIGHT_CONTACT_ID,
+      record: { ...next, flags: { ...next.flags }, vonnFreightLoss: { ...next.vonnFreightLoss } },
+      reason,
+    });
+    return true;
+  },
+
+  // This observes the one already-applied loss. It neither changes the manifest nor asks the
+  // economy/law/cargo owners to do anything; a missing or mismatched durable wreck simply fails.
+  _recordVonnFreightLoss(payload) {
+    if (vonnFreightLossFor(this.state)) return false;
+    const caseFile = qualifyingVonnLoss(this.state, payload);
+    if (!caseFile || !this._writeVonnFreightLoss(caseFile, 'freight-loss')) return false;
+    this._applyVonnFreightCustody(caseFile, this._vonnFreightReceipts && this._vonnFreightReceipts.get(caseFile.custodyId));
+    return true;
+  },
+
+  _recordVonnFreightCustody(payload) {
+    const receipt = normalizeVonnFreightCustody(payload);
+    if (!receipt) return false;
+    const pending = this._vonnFreightReceipts || (this._vonnFreightReceipts = new Map());
+    pending.set(receipt.custodyId, receipt);
+    while (pending.size > MAX_PENDING_VONN_RECEIPTS) pending.delete(pending.keys().next().value);
+    return this._applyVonnFreightCustody(vonnFreightLossFor(this.state), receipt);
+  },
+
+  _applyVonnFreightCustody(caseFile, receipt) {
+    if (!caseFile || !receipt) return false;
+    const custody = normalizeVonnFreightCustody(receipt, caseFile);
+    if (!custody || sameVonnCase(caseFile.custody, custody)) return false;
+    const wrote = this._writeVonnFreightLoss({ ...caseFile, custody }, 'freight-custody-receipt');
+    if (wrote && this._vonnFreightReceipts) this._vonnFreightReceipts.delete(custody.custodyId);
+    return wrote;
+  },
+
+  _clearVonnFreightReceipts() {
+    if (this._vonnFreightReceipts) this._vonnFreightReceipts.clear();
+  },
+
+  /**
+   * INF-074: a real rescue posts bar gossip. Only a rescue outcome with a recovery id and a
+   * sector writes a notice — black-boxes, strips, and failures never do, so the memory is
+   * evidence-backed by construction. No rep, no credits, no cargo: this system only records.
+   */
+  _noteRescueNotice(payload) {
+    if (!payload || payload.outcome !== 'rescue') return;
+    const recordId = String(payload.recoveryId || payload.recordId || '').trim();
+    const sectorId = String(payload.sectorId || '').trim();
+    if (!recordId || !sectorId) return;
+    const life = ensureLifeState(this.state);
+    life.rescueNotices[sectorId] = {
+      recordId: recordId.slice(0, 96),
+      sectorId: sectorId.slice(0, 96),
+      simTime: Number.isFinite(this.state.simTime) ? this.state.simTime : 0,
+    };
+  },
+
+  /**
+   * WORLD-23: the rescue verb ends at a medical berth the station then forgot. A pod coming
+   * up on the board, a rescue hull signing one in, and the pilot's own station delivery each
+   * land one line on the receiving station's traffic rail (the berth-arrival view already
+   * reads it). Handoff pickups (rescue_hull / player_handoff_rescue_hull) write nothing —
+   * the hull's later delivered receipt is the line that counts, so a pod is never logged
+   * twice. Record-only: no rep, credits, or cargo move on this path.
+   */
+  _notePodReceipt(payload, kind) {
+    const state = this.state;
+    if (!state || !payload) return false;
+    let stationId = null;
+    let intentId = null;
+    let text = null;
+    if (kind === 'promoted') {
+      stationId = payload.destStationId || null;
+      intentId = payload.salvagePointId ? `survivorPod:promoted:${payload.salvagePointId}` : null;
+      text = 'Rescue control logged a survivor pod inbound — medical berth standing by.';
+    } else if (kind === 'delivered') {
+      const station = payload.stationId != null && state.entities && state.entities.get
+        ? state.entities.get(payload.stationId) : null;
+      stationId = (station && station.data && station.data.stationId) || payload.stationId || null;
+      intentId = `survivorPod:delivered:${payload.rescueHullId}:${Math.round(payload.simTime || 0)}`;
+      text = 'A rescue hull signed a survivor pod into the medical berth.';
+    } else if (kind === 'rescued') {
+      if (payload.reason !== 'station_delivery') return false;
+      stationId = payload.stationId || null;
+      intentId = payload.id ? `survivorPod:rescued:${payload.id}` : null;
+      text = 'Your survivor pod was signed into the medical berth.';
+    }
+    if (!stationId) return false;
+    const model = ensureLifeState(state);
+    const rec = {
+      kind: 'survivor_pod',
+      stationId,
+      text,
+      simTime: Number.isFinite(state.simTime) ? state.simTime : 0,
+      intentId,
+    };
+    if (rec.intentId && model.traffic.some((entry) => entry.intentId === rec.intentId)) return false;
+    model.traffic.unshift(rec);
+    if (model.traffic.length > MAX_TRAFFIC_RECEIPTS) model.traffic.length = MAX_TRAFFIC_RECEIPTS;
+    this.bus.emit('stationLife:trafficChanged', { ...rec });
+    // RC-18: a pod signed into a medical berth is one more soul Mara's convoy keeps count of.
+    // 'promoted' is only the inbound board notice; the same dedupe that guards the receipt
+    // keeps a replayed delivery from counting twice, and losses never subtract here.
+    if (kind !== 'promoted') this._applyCounterDelta('mara.debt', 1, `survivor-pod:${kind}`);
+    return true;
+  },
+
+  /**
+   * U3: a convoy the pilot pledged to defend docks safe at its destination — the desk
+   * remembers the wingman. Only the defended-escorted resolve emits, and only with a real
+   * destination station id; robbed, passed and lost convoys tell no thank-you story. The
+   * line lands on the destination's traffic rail (the berth-arrival view already reads it).
+   * Record-only: no rep, credits, or cargo move on this path.
+   */
+  _noteConvoyEscort(payload) {
+    const state = this.state;
+    if (!state || !payload) return false;
+    const stationId = String(payload.stationId || '').trim();
+    if (!stationId) return false;
+    const model = ensureLifeState(state);
+    const rec = {
+      kind: 'convoy_escort',
+      stationId,
+      text: 'A convoy under your screen docked safe. The desk codes you a lane wingman.',
+      simTime: Number.isFinite(state.simTime) ? state.simTime : 0,
+      intentId: payload.encounterId != null ? `encounter:convoyEscorted:${payload.encounterId}` : null,
+    };
+    if (rec.intentId && model.traffic.some((entry) => entry.intentId === rec.intentId)) return false;
+    model.traffic.unshift(rec);
+    if (model.traffic.length > MAX_TRAFFIC_RECEIPTS) model.traffic.length = MAX_TRAFFIC_RECEIPTS;
+    this.bus.emit('stationLife:trafficChanged', { ...rec });
+    return true;
+  },
+
+  /**
+   * RC-17: Clerk Yune's sealed ledger is the Helios weigh-point. A clean arrival is one the
+   * tally post counted and the raid ledger never marked lost — traffic stamps 'delivered'
+   * only after this event runs, so a still-'counted' row is the intact one. Ambient hulls
+   * docking untallied and robbed holds limping in both stay off her books. Record-only: no
+   * credits, cargo, heat, or rep move on this path.
+   */
+  _noteYuneCleanArrival(payload) {
+    if (!payload || String(payload.stationId || '') !== 'station_helios') return false;
+    const manifestId = String(payload.manifestId || '');
+    if (!manifestId) return false;
+    const rows = this.state && this.state.traffic && this.state.traffic.heliosFreightTallies;
+    const tally = Array.isArray(rows)
+      ? rows.find((row) => row && row.manifestId === manifestId)
+      : null;
+    if (!tally || tally.disposition !== 'counted') return false;
+    return this._applyCounterDelta('yune.trust', 1, `helios-freight-clean:${manifestId}`);
+  },
+
+  /**
+   * RC-19: every accepted appeal is one more machine clause Dr. Suhl holds a transcript of.
+   * The machine's own 'accepted' status is terminal per incident, so the event is already
+   * once-per-incident. Record-only: nothing else moves on this path.
+   */
+  _noteSuhlClause(payload) {
+    if (!payload || payload.incidentId == null) return false;
+    return this._applyCounterDelta('suhl.clauses', 1, `machine-appeal:${payload.incidentId}`);
+  },
+
+  /**
+   * RC-19: every resolved unique wreck is one more name Senna writes back into the record —
+   * claimed or left whole, the dead get counted either way. Record-only.
+   */
+  _noteSennaName(payload) {
+    if (!payload || payload.wreckId == null) return false;
+    return this._applyCounterDelta('senna.names', 1, `unique-wreck:${payload.wreckId}`);
+  },
+
+  /**
+   * RC-20: Zell's book is illegal installs. A contraband-class module purchase is one line
+   * in it; a legal or merely restricted fit is not work she counts. ships.js stays the
+   * purchase writer — this only observes the event it already emits. Record-only.
+   */
+  _noteZellInstall(payload) {
+    const def = payload && MODULE_BY_ID.get(String(payload.defId || ''));
+    if (!def || (def.legality !== 'contraband' && def.legality !== 'illegal')) return false;
+    return this._applyCounterDelta('zell.work', 1, `module-purchased:${def.id}`);
+  },
+
+  /**
+   * U6: the pocket remembers the notable lane events that happened in it. Only outcomes on
+   * the deed table write — an evidence-backed notice by construction, exactly like the
+   * rescue-gossip seam. Record-only: no rep, credits, or cargo move on this path.
+   */
+  _noteDeed(payload) {
+    if (!payload || payload.outcome == null) return false;
+    const line = DEED_OUTCOME_LINES[payload.outcome];
+    const sectorId = String(payload.sectorId || '').trim();
+    if (!line || !sectorId) return false;
+    return this._commitDeed(sectorId, {
+      outcome: String(payload.outcome).slice(0, 48),
+      shapeId: String(payload.shape || '').slice(0, 64),
+      encounterId: String(payload.encounterId || '').slice(0, 96),
+      text: line,
+    });
+  },
+
+  /**
+   * The refinery's own face: a finished causal-chain event is dock gossip the station cannot
+   * ignore — it happened on its doorstep. Only event_complete receipts write (an interrupted
+   * link tells no finished story), and only authored event ids — evidence-backed by the same
+   * construction as encounter deeds. Record-only: nothing moves on this path.
+   */
+  _noteCeresChainDeed(payload) {
+    if (!payload || payload.kind !== 'event_complete') return false;
+    const line = CERES_CHAIN_DEED_LINES[payload.eventId];
+    const sectorId = String(payload.sectorId || '').trim();
+    if (!line || !sectorId) return false;
+    return this._commitDeed(sectorId, {
+      outcome: 'ceres_chain',
+      shapeId: String(payload.eventId || '').slice(0, 64),
+      encounterId: `ceres-chain:${String(payload.eventId || '')}:${payload.cycle | 0}`.slice(0, 96),
+      text: line,
+    });
+  },
+
+  _commitDeed(sectorId, fields) {
+    const life = ensureLifeState(this.state);
+    const keys = Object.keys(life.deeds);
+    if (!life.deeds[sectorId] && keys.length >= DEED_MAX_SECTORS) {
+      const oldest = keys.reduce((a, b) => ((life.deeds[a].simTime || 0) <= (life.deeds[b].simTime || 0) ? a : b));
+      delete life.deeds[oldest];
+    }
+    const rec = {
+      sectorId: sectorId.slice(0, 96),
+      outcome: '',
+      shapeId: '',
+      encounterId: '',
+      text: '',
+      ...fields,
+      simTime: Number.isFinite(this.state.simTime) ? this.state.simTime : 0,
+    };
+    life.deeds[sectorId] = rec;
+    this.bus.emit('stationLife:deedNoticed', { ...rec });
+    return true;
+  },
+
+  _normalizeDeeds() {
+    const life = ensureLifeState(this.state);
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    for (const [sectorId, deed] of Object.entries(life.deeds)) {
+      if (!deed || !deed.sectorId || !deed.text
+        || now - (Number(deed.simTime) || 0) > DEED_NEWS_TTL_S) {
+        delete life.deeds[sectorId];
+      }
+    }
+  },
+
+  _normalizeRescueNotices() {
+    const life = ensureLifeState(this.state);
+    for (const [sectorId, notice] of Object.entries(life.rescueNotices)) {
+      if (!notice || typeof notice !== 'object' || !notice.recordId || !notice.sectorId) {
+        delete life.rescueNotices[sectorId];
+      }
+    }
+  },
+
+  _recordVonnWreckCompletion(payload) {
+    const caseFile = vonnFreightLossFor(this.state);
+    if (!caseFile || caseFile.wreckStatus !== 'open'
+      || !payload || payload.markerId !== caseFile.markerId
+      || payload.sectorId !== caseFile.sectorId) return false;
+    return this._writeVonnFreightLoss({ ...caseFile, wreckStatus: 'completed' }, 'aftermath-wreck-completed');
+  },
+
+  /**
+   * G16 — Provost March, the yard reconciliation clerk: "Every hull you dragged home is filed
+   * here. I square the sums." Only a player recovery files the deed: `aftermathWreck:completed`
+   * also fires for a rival scavenger stripping a field wreck and for a site auto-reconcile, so
+   * the event's `byPlayer` receipt is required. The dedupe key prefers the durable `markerId`;
+   * a numeric `wreckId` alone can be recycled by a later hull.
+   */
+  _noteMarchReconciliation(payload = {}) {
+    if (payload.byPlayer !== true) return false;
+    const receiptId = payload.markerId != null ? String(payload.markerId)
+      : payload.wreckId != null ? String(payload.wreckId) : null;
+    if (!receiptId) return false;
+    return this._rememberCastDeed('march.reconciliation', receiptId, 1);
+  },
+
+  _normalizeVonnFreightLoss(reason) {
+    const bag = ensureContactBag(this.state);
+    if (!bag[VONN_FREIGHT_CONTACT_ID]) return false;
+    const previous = bag[VONN_FREIGHT_CONTACT_ID];
+    const next = normalizeStationContactRecord(previous);
+    if (sameVonnCase(previous.vonnFreightLoss, next.vonnFreightLoss)) return false;
+    bag[VONN_FREIGHT_CONTACT_ID] = next;
+    this.bus.emit('stationContact:changed', {
+      contactId: VONN_FREIGHT_CONTACT_ID,
+      record: { ...next, flags: { ...next.flags } },
+      reason,
+    });
+    return true;
+  },
+
+  // Doss's source count is a projection of independently owned physical receipts. Never send it
+  // through the generic delta path: duplicate/replayed events must leave exactly the same record.
+  _reconcileDossArchive(reason = 'reconcile') {
+    if (!this.state) return 0;
+    const evidence = dossArchiveEvidence(this.state);
+    const evidenceFlags = new Set(evidence.map((entry) => entry.flag));
+    const bag = ensureContactBag(this.state);
+    const hadRecord = !!bag[DOSS_ARCHIVE_CONTACT_ID];
+    const previous = normalizeStationContactRecord(bag[DOSS_ARCHIVE_CONTACT_ID]);
+    const flags = { ...previous.flags };
+    for (const source of [...DOSS_ARCHIVE_SOURCES, ...DOSS_ARCHIVE_OPTIONAL_SOURCES]) delete flags[source.flag];
+    for (const flag of evidenceFlags) flags[flag] = true;
+    const next = normalizeStationContactRecord({ ...previous, flags });
+    if (hadRecord || evidence.length) {
+      bag[DOSS_ARCHIVE_CONTACT_ID] = next;
+      if (!sameFlags(previous.flags, next.flags)) {
+        this.bus.emit('stationContact:changed', {
+          contactId: DOSS_ARCHIVE_CONTACT_ID,
+          record: { ...next, flags: { ...next.flags } },
+          reason,
+        });
+      }
+    }
+
+    const previousCounters = ensureCounterBag(this.state);
+    const previousCount = previousCounters[DOSS_ARCHIVE_COUNTER_ID];
+    const nextCounters = normalizeStationContactCounters({
+      ...previousCounters,
+      [DOSS_ARCHIVE_COUNTER_ID]: evidence.length,
+    });
+    this.state.player.stationContactCounters = nextCounters;
+    if (previousCount !== nextCounters[DOSS_ARCHIVE_COUNTER_ID]) {
+      const def = CONTACT_COUNTER_DEFS[DOSS_ARCHIVE_COUNTER_ID];
+      this.bus.emit('stationContact:counterChanged', {
+        trackerId: DOSS_ARCHIVE_COUNTER_ID,
+        contactId: def.contactId,
+        previous: previousCount,
+        value: nextCounters[DOSS_ARCHIVE_COUNTER_ID],
+        reason,
+      });
+    }
+    return evidence.length;
+  },
+
+  destroy() {
+    this._manifestTable?.dispose(); this._manifestTable = null;
+    for (const [event, handler] of (this._subs || [])) this.bus.off(event, handler);
+    this._subs = [];
+    this._clearVonnFreightReceipts();
+  },
+};

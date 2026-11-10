@@ -1,0 +1,51 @@
+{
+  "primary": {
+    "name": "quiet-180ents-parked-poseDirty-yaw+npcDrift",
+    "medianSpeedup": 5.486,
+    "minSpeedup": 4.429,
+    "maxSpeedup": 5.647,
+    "pairs": [
+      4.429,
+      4.913,
+      5.493,
+      5.47,
+      5.514,
+      4.874,
+      5.522,
+      5.522,
+      5.647,
+      5.486,
+      5.386
+    ]
+  },
+  "cruiseInformational": {
+    "name": "informational-cruise-poseDirty",
+    "medianSpeedup": 0.98,
+    "minSpeedup": 0.892,
+    "maxSpeedup": 1.215,
+    "pairs": [
+      1.071,
+      0.932,
+      0.961,
+      0.98,
+      1.029,
+      0.98,
+      0.892,
+      1.215,
+      1.047,
+      0.968,
+      0.991
+    ]
+  },
+  "dirtyWake": {
+    "ok": true,
+    "ids1": [
+      1,
+      100
+    ]
+  },
+  "poseDirtyRetainEnabled": true,
+  "iters": 12000,
+  "ents": 180,
+  "runs": 11
+}

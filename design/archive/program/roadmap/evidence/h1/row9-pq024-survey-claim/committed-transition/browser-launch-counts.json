@@ -1,0 +1,14 @@
+{
+  "schema": "spaceface.validation-launch-counts.v1",
+  "currentCandidateDigest": "965e0b46cee6bc1042cd663627d0664a7ae486f8d5ff1de219b496c1556a8f4c",
+  "byCandidate": {
+    "62847cb308f89d6c64ff9f503a3a1e268e2a4e4f7bf318b39795141f2b3f56f6": 1,
+    "7aec9491ed9e971eaff28cd80394a59c2a928f697c6bec78b2e70395a68ddc84": 1,
+    "dfecd8d577e1e4d01981ecc3a9837da64ccf02981fa28a6d12f747da558b4f38": 1,
+    "8b1f380c1079f9f37cea036f7a97453d8549a4918b5d4f65dded722792ab6f84": 1,
+    "8de6575e1491345e041a50755237da5d9baae6e1c691f45d349bdf8cd64b3e8a": 1,
+    "67a5815243b9d9775dead52fd53cf50d85cd2b5c7eb1618cc52fe716f15c86fe": 1,
+    "965e0b46cee6bc1042cd663627d0664a7ae486f8d5ff1de219b496c1556a8f4c": 1
+  },
+  "updatedAt": "2026-08-06T07:15:46.925Z"
+}

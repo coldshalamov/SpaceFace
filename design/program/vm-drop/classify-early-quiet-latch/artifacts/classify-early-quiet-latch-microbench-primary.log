@@ -1,0 +1,46 @@
+{
+  "primary": {
+    "medianSpeedup": 2.876,
+    "minSpeedup": 2.491,
+    "maxSpeedup": 3.368,
+    "pairs": [
+      2.643,
+      3.351,
+      2.876,
+      2.839,
+      2.917,
+      2.82,
+      2.917,
+      2.676,
+      2.893,
+      3.368,
+      2.491
+    ],
+    "lastModes": [
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch",
+      "early-quiet-latch"
+    ],
+    "earlyEnabled": true,
+    "iters": 20000,
+    "rocks": 48,
+    "runs": 11
+  },
+  "wake": {
+    "latchedMode": "early-quiet-latch",
+    "afterMoveMode": "incremental",
+    "beforeMem": "early-quiet-latch",
+    "afterMem": "incremental",
+    "beforeMine": "early-quiet-latch",
+    "afterMine": "incremental",
+    "dirtyWakeOk": true
+  }
+}

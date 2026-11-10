@@ -1,0 +1,2923 @@
+// S1 Phase-B stage 6 — lane-agnostic whole-sim host.
+//
+// The sim + channel machinery that stage 0..5 grew inside wholeSimWorker.mjs,
+// extracted so BOTH lanes execute the identical directive → step → reply code:
+// the worker_threads adapter posts real messages; SIM_LANE=main's in-process
+// client invokes the same dispatch table on this thread. One host, one reply
+// shape, one ordering guarantee — the digest canary then compares transport
+// frames field-for-field between lanes.
+//
+// Directive kinds: {kind:'init'} -> ready-reply fields, {kind:'tick'} ->
+// tick reply, {kind:'finalize'} -> diagnostics, {kind:'shutdown'} -> dispose.
+// Dispatch itself is the caller's job (the worker serializes via a promise
+// chain; the in-process client uses the same chain shape) — a reload await
+// inside tick N must finish before tick N+1 applies input.
+
+import { createSimulation, SIM_DT } from '../../src/core/sim.js';
+import { snapshotSimState } from '../../src/core/simSnapshot.js';
+import { createPresentationJournal, createPresentationJournalRecord, PRESENTATION_JOURNAL_KINDS } from '../../src/core/presentationJournal.js';
+import { scenarioRuntime } from '../../src/systems/scenarioRuntime.js';
+import { presentationOrchestrator } from '../../src/systems/presentationOrchestrator.js';
+import { presentationAdapters } from '../../src/systems/presentationAdapters.js';
+import { actions } from '../../src/systems/actions.js';
+import { flight } from '../../src/systems/flight.js';
+import { weapons } from '../../src/systems/weapons.js';
+import { physics } from '../../src/core/physics.js';
+import { readPhysicsTelemetry } from '../../src/core/physicsAuthority.js';
+import { combat } from '../../src/systems/combat.js';
+import { cargo } from '../../src/systems/cargo.js';
+import { economy } from '../../src/systems/economy.js';
+import { missions } from '../../src/systems/missions.js';
+import { story } from '../../src/systems/story.js';
+import { save } from '../../src/save/saveSystem.js';
+import { fittingsFromDefaultModules, makeShipEntitySpec } from '../../src/systems/ships.js';
+import { pinEvidence, unpinEvidence, linkEvidence, unlinkEvidence } from '../../src/systems/shipLedger.js';
+import { NEW_GAME } from '../../src/data/newGameDefaults.js';
+import { swarmSpecialistKind } from '../../src/data/swarmSpecialists.js';
+import { swarmSpecialistPresentationFrame } from '../../src/data/swarmSpecialistPresentation.js';
+import { isOrchardFrame, isOrchardPod } from '../../src/data/anvilOrchardIdentity.js';
+import { orchardPodBodySpec } from '../../src/data/anvilOrchardBody.js';
+import { ANVIL_ORCHARD } from '../../src/data/anvilOrchard.js';
+import { isIntactMawWorksiteBody } from '../../src/missions/mawWorksite.js';
+import { ceresWorkfleetRoleForEntity } from '../../src/data/ceresWorkfleetIdentity.js';
+import { readCeresCradlePublicLayout } from '../../src/core/ceresWorkfleetLayoutAdmission.js';
+import { readCeresWorkfleetPublicActuation } from '../../src/core/ceresWorkfleetActuation.js';
+import { COMBAT_FLAGS, applyFeatureConfigToMaps } from '../../src/data/featureFlags.js';
+import {
+  makeEvidenceSpindleSpec,
+  mark47aPlayerActor,
+  spawn47aScenarioCast,
+} from '../../src/data/scenarios/47aLiveScene.js';
+import { resolveRuntimeManifest } from '../../src/runtime/resolveRuntimeManifest.js';
+import { applyBudgetedLabPackage, applyPreparedCrucibleSetup, applySandboxSetup } from '../../src/ui/sandbox/sandboxSetup.js';
+import { getCombatKernel } from '../../src/combat/kernel.js';
+import { runNewGameSimBoot } from '../../src/core/newGameBoot.js';
+import { LEGACY47A_FEATURES } from '../../src/runtime/runtimeProfiles.js';
+import {
+  collectJournalPresentationEntities,
+  collectMeshPresentationEntities,
+  entityIsJournaled,
+  presentationCollectRadius,
+  presentationGlassCorner,
+  resolveWorldPresentationEntity,
+} from '../../src/world/presentationSources.js';
+import { projectileSkipsVisualFactoryMesh } from '../../src/render/weapons/recipes.js';
+import { farLedgerScanRadius, tableLookAtOrigin, tableWorldToScreen } from '../../src/render/tabletopPolicy.js';
+import { liveSectorFullExtrasStubs } from '../../src/render/saveEnvelopeSectorWarm.js';
+import { createInputCommandHistory } from '../../src/core/inputCommandSnapshot.js';
+import {
+  configureDomainMirroring,
+  createDomainDiffer,
+  digestIds,
+  DOMAIN_MIRROR_KEYS,
+  resolveDomainValue,
+} from './simReadModel.mjs';
+import {
+  finite,
+  hashSnapshot,
+  loadScenarioContract,
+  preparePhysicsBackend,
+  reloadThroughSave,
+  update47aScenarioActorIntents,
+} from './simScenarioDriver.mjs';
+import { drainSimCommandEnvelopes } from './simCommandChannel.mjs';
+import { reconcileLaneComponentSelection } from '../../src/core/simLaneCommands.js';
+import { projectBridgeEvent, resolveEventEntityRef } from './simEventBridge.mjs';
+import { createAuthoritativeRuntime } from '../../src/runtime/createAuthoritativeRuntime.js';
+import { createAuthoritativeStepper } from '../../src/core/authoritativeSimStep.js';
+import { getSimStepProfiler } from '../../src/core/simStepProfiler.js';
+import { shouldSkipFullTickSystems } from '../../src/core/presentationFreeze.js';
+import { partitionUpdateSystems } from '../../src/core/catchupPolicy.js';
+import { createBus } from '../../src/core/eventBus.js';
+import { createGameState } from '../../src/core/gameState.js';
+import {
+  createTimeEffects, readTimeEffectsRequests, readLocalTimeEffectsSnapshot,
+  applyRemoteTimeEffectsSnapshot, setTimeEffectsGeneration,
+} from '../../src/core/timeEffects.js';
+import { canonicalClone, deepAssignInPlace } from './simReadModel.mjs';
+import { LANTERN_WARD_VITAL_KEYS, lanternWardPresentationLife, lanternWardVitalValue } from './npcJobsMirror.mjs';
+import { setLaneViewport, setLaneModalActive } from '../../src/systems/input.js';
+import { nowNs, realmMemoryUsage, installLaneStorage, stageLaneStorage, settleLaneStorageCheck } from './simRealm.mjs';
+import { sabArenaTotalBytes } from './simSabEnvelope.mjs';
+import { insertAsteroidFieldRock, promoteAsteroidFieldRock } from '../../src/world/asteroidField.js';
+import { insertFarActor, promoteFarActor } from '../../src/world/farActorTable.js';
+import { dropDressingRow, insertDressingRow } from '../../src/world/dressingTable.js';
+import { armAuxJournal, markAuxRowDirty } from '../../src/world/auxRowJournal.js';
+import { createPlayerTruthImpulseObserver } from '../../src/testing/playerTruth/impulseObserver.js';
+
+// ---------------------------------------------------------------------------
+// Journal transport pack — the "byte-range" that crosses worker→main.
+// Layout mirrors createPresentationJournalRecord: 18 f64 scalars + kind code +
+// entityType string-table index. Structured clone of the three typed arrays is
+// the measured transport; SAB columns are the Phase-B upgrade path.
+// ---------------------------------------------------------------------------
+
+const JOURNAL_SCALAR_STRIDE = 18;
+const KIND_CODES = Object.freeze({
+  [PRESENTATION_JOURNAL_KINDS.SPAWN]: 1,
+  [PRESENTATION_JOURNAL_KINDS.DESTROY]: 2,
+  [PRESENTATION_JOURNAL_KINDS.TRANSFORM]: 3,
+  [PRESENTATION_JOURNAL_KINDS.VISUAL]: 4,
+});
+
+function packJournalRange(journal, start, end, scratch, arena = null) {
+  const count = Math.max(0, end - start);
+  const alloc = sabPackAlloc(arena, count);
+  const scalars = alloc ? alloc.scalars : new Float64Array(count * JOURNAL_SCALAR_STRIDE);
+  const kinds = alloc ? alloc.kinds : new Uint8Array(count);
+  const typeIndex = alloc ? alloc.typeIndex : new Uint16Array(count);
+  const typeTable = [];
+  const typeIds = new Map();
+  const spawnEntityIds = [];
+  let i = 0;
+  journal.visitRange(start, end, scratch, (record) => {
+    const o = i * JOURNAL_SCALAR_STRIDE;
+    scalars[o] = record.tick;
+    scalars[o + 1] = record.sequence;
+    scalars[o + 2] = record.entityId;
+    scalars[o + 3] = record.generation;
+    scalars[o + 4] = record.revision;
+    scalars[o + 5] = record.x;
+    scalars[o + 6] = record.y;
+    scalars[o + 7] = record.z;
+    scalars[o + 8] = record.prevX;
+    scalars[o + 9] = record.prevY;
+    scalars[o + 10] = record.prevZ;
+    scalars[o + 11] = record.rot;
+    scalars[o + 12] = record.bank;
+    scalars[o + 13] = record.pitch;
+    scalars[o + 14] = record.prevRot;
+    scalars[o + 15] = record.prevBank;
+    scalars[o + 16] = record.prevPitch;
+    scalars[o + 17] = record.visualRevision;
+    kinds[i] = KIND_CODES[record.kind] || 0;
+    const typeKey = typeof record.entityType === 'string' ? record.entityType : '';
+    let idx = typeIds.get(typeKey);
+    if (idx === undefined) {
+      idx = typeTable.length;
+      typeTable.push(typeKey);
+      typeIds.set(typeKey, idx);
+    }
+    typeIndex[i] = idx;
+    if (record.kind === PRESENTATION_JOURNAL_KINDS.SPAWN) spawnEntityIds.push(record.entityId);
+    i++;
+  });
+  return { count, scalars, kinds, typeIndex, typeTable, spawnEntityIds, start, end, sab: alloc != null, sabSlot: alloc ? alloc.slot : null };
+}
+
+// ---------------------------------------------------------------------------
+// SAB journal arena (stage-7 item C — opt-in via --sab / SIM_SAB=1).
+// The main lane allocates one shared arena; the worker writes pack columns into
+// claimed slots and the reply's typed-array views post as shared memory instead
+// of cloned bytes. A slot stays busy until the main lane evicts the pack from
+// its retained map (discardThrough / rebuild clear) — packs can outlive their
+// reply, so eviction (not reply consume) is the release point. Any claim
+// failure (arena full, oversized pack, SAB unavailable) falls back to fresh
+// arrays + the normal transfer list — the wire shape is unchanged either way.
+// ---------------------------------------------------------------------------
+
+export const SAB_JOURNAL_MAGIC = 0x53414a31; // 'SAJ1'
+export const SAB_SLOT_BUSY_BASE = 4;         // Int32 header slots [4..4+slotCount)
+const SAB_HEADER_BYTES = 64;
+// Per slot: scalars f64x18/record, kinds u8/record, typeIndex u16/record.
+const SAB_SLOT_BYTES_PER_RECORD = 18 * 8 + 1 + 2;
+// Layout v2: [header][journal slots][cmd envelope ring][reply envelope ring]
+// — see scripts/lib/simSabEnvelope.mjs for the tail region.
+const SAB_LAYOUT_VERSION = 2;
+
+// SAB needs crossOriginIsolated in browsers (COOP/COEP — the dev server does
+// not send them today, so a renderer flip detects 'unavailable' and stays on
+// cloned arrays). Node worker_threads has no such gate: SharedArrayBuffer +
+// Atomics existing is sufficient.
+export function sabFeatureAvailable() {
+  return typeof SharedArrayBuffer === 'function' && typeof Atomics === 'object'
+    && (typeof globalThis.crossOriginIsolated === 'undefined' || globalThis.crossOriginIsolated === true);
+}
+
+export function createSabJournalArena({ slotCount = 8, recordCap = 4096 } = {}) {
+  const slotBytes = recordCap * SAB_SLOT_BYTES_PER_RECORD;
+  const sab = new SharedArrayBuffer(sabArenaTotalBytes({ slotCount, recordCap }));
+  const header = new Int32Array(sab, 0, 16);
+  header[0] = SAB_JOURNAL_MAGIC;
+  header[1] = SAB_LAYOUT_VERSION;
+  header[2] = slotCount;
+  header[3] = recordCap;
+  return { sab, header, slotCount, recordCap, slotBytes };
+}
+
+// Re-wrap an arena descriptor received over postMessage into per-slot column
+// views. Returns null on any shape mismatch — caller falls back to fresh arrays.
+export function bindSabJournalArena(desc) {
+  if (!desc || !(typeof SharedArrayBuffer === 'function' && desc.sab instanceof SharedArrayBuffer)) return null;
+  const { sab, slotCount, recordCap } = desc;
+  if (!(slotCount > 0) || !(recordCap > 0)) return null;
+  const header = new Int32Array(sab, 0, 16);
+  if (header[0] !== SAB_JOURNAL_MAGIC || header[1] !== SAB_LAYOUT_VERSION
+      || header[2] !== slotCount || header[3] !== recordCap) return null;
+  const slotBytes = recordCap * SAB_SLOT_BYTES_PER_RECORD;
+  const slots = [];
+  for (let s = 0; s < slotCount; s++) {
+    const base = SAB_HEADER_BYTES + s * slotBytes;
+    slots.push({
+      scalars: new Float64Array(sab, base, recordCap * 18),
+      kinds: new Uint8Array(sab, base + recordCap * 18 * 8, recordCap),
+      typeIndex: new Uint16Array(sab, base + recordCap * (18 * 8 + 1), recordCap),
+    });
+  }
+  return { sab, header, slotCount, recordCap, slots };
+}
+
+// Re-view a pack's columns over a journal slot — the main realm calls this
+// when a tickDone reply arrives with a SAB descriptor instead of arrays.
+export function sabSlotViewsFor(arena, sabSlot, count) {
+  if (!arena || !Number.isSafeInteger(sabSlot) || sabSlot < 0 || sabSlot >= arena.slotCount
+      || !(count > 0) || count > arena.recordCap) return null;
+  const v = arena.slots[sabSlot];
+  return {
+    scalars: v.scalars.subarray(0, count * 18),
+    kinds: v.kinds.subarray(0, count),
+    typeIndex: v.typeIndex.subarray(0, count),
+  };
+}
+
+// Claim a free slot and return count-length column views over it, or null.
+function sabPackAlloc(arena, count) {
+  if (!arena || count <= 0 || count > arena.recordCap) return null;
+  for (let s = 0; s < arena.slotCount; s++) {
+    if (Atomics.compareExchange(arena.header, SAB_SLOT_BUSY_BASE + s, 0, 1) === 0) {
+      const v = arena.slots[s];
+      return {
+        slot: s,
+        scalars: v.scalars.subarray(0, count * 18),
+        kinds: v.kinds.subarray(0, count),
+        typeIndex: v.typeIndex.subarray(0, count),
+      };
+    }
+  }
+  return null;
+}
+
+// Main-lane release: called when a SAB-backed pack is evicted from the retained
+// map. Safe on any pack shape — no-ops for array-backed packs.
+export function sabFreePackSlot(header, pack) {
+  if (header && pack && pack.sab === true && Number.isSafeInteger(pack.sabSlot)) {
+    Atomics.store(header, SAB_SLOT_BUSY_BASE + pack.sabSlot, 0);
+  }
+}
+
+// Versioned entity-info projection — the read-model payload a main-side resolver
+// consumes after applying a SPAWN. Flat scalars + strings only; versioned so the
+// field set can grow without a protocol break. v=2 (stage 8) adds pose/vitals/
+// the canonical-cloned data block so the main-side facade answers the same
+// questions the live entity would.
+const VITAL_FIELDS = [
+  'hull', 'hullMax', 'shield', 'shieldMax', 'cap', 'capMax', 'fuel', 'fuelMax', 'heat', 'heatMax',
+  'rot', 'bank', 'pitch', 'angVel', 'radius', 'mass', 'team', 'collides', 'alive', 'ttl',
+  'isPlayer', 'physicsSleeping',
+];
+const VITAL_ROT_INDEX = VITAL_FIELDS.indexOf('rot');
+const SWARM_SHADOW_INDEX = VITAL_FIELDS.length + 7;
+const RIDER_SHADOW_INDEX = SWARM_SHADOW_INDEX + 1;
+const AUTHORED_MOTION_FRAME_FIELDS = Object.freeze(['palletJackMotionFrame', 'kilnbackMotionFrame']);
+
+// Native effects are replaced on deployment; their wire identity must survive clones.
+const countermeasureEffectIds = new WeakMap();
+let nextCountermeasureEffectId = 0;
+function countermeasureEffectId(effect) {
+  if (!countermeasureEffectIds.has(effect)) countermeasureEffectIds.set(effect, ++nextCountermeasureEffectId);
+  return countermeasureEffectIds.get(effect);
+}
+
+// Hull history records are immutable event reductions; encode each replacement once.
+const livingHullWireRecords = new WeakMap();
+function livingHullWireRecord(record) {
+  if (!record) return null;
+  if (!livingHullWireRecords.has(record)) livingHullWireRecords.set(record, JSON.stringify(record));
+  return livingHullWireRecords.get(record);
+}
+
+// Only the authored seam miner has this two-scalar work light. Durable identity is checked
+// again by the target-panel consumer; no native body/source/owner crosses the wire.
+function hasPallasSeamWorkLight(e) {
+  const d = e.data;
+  return e.type === 'ship' && d?.activityActorSlotId === 'pallas_seam_miner'
+    && d.authoredActivityCast === true && d.identityKey === 'pallas:activity:pallas_seam_miner'
+    && d.homeSectorId === 'sector_pallas_drift' && d.defId === 'ship_pelican';
+}
+function pallasSeamStandbyTick(e) {
+  return Number.isSafeInteger(e.data?.pallasSeamStandbyTick) ? e.data.pallasSeamStandbyTick : null;
+}
+
+function mawPresentationRadius(e) {
+  if (!isIntactMawWorksiteBody(e)) return VITAL_SHADOW_MISSING;
+  const radius = e.physicsBody?.radius;
+  return Number.isFinite(radius) && radius > 0 ? radius : null;
+}
+
+export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING, state = null) {
+  const fields = {};
+  for (const k of VITAL_FIELDS) {
+    if (e[k] !== undefined) fields[k] = e[k];
+  }
+  if (e.vel && typeof e.vel === 'object') {
+    fields.vx = finite(e.vel.x);
+    fields.vz = finite(e.vel.z);
+  }
+  if (e.boost && typeof e.boost === 'object') {
+    if (e.boost.energy !== undefined) fields.boostEnergy = e.boost.energy;
+    if (e.boost.max !== undefined) fields.boostMax = e.boost.max;
+  }
+  const machine = e.data && e.data.machine;
+  if (machine) {
+    fields.machineRepairing = Boolean(machine.repairing);
+    fields.machineWorking = Boolean(machine.working);
+  }
+  if (e.type === 'mine') fields.mineArmed = e.data?.armed === true;
+  if (e.type === 'projectile' && e.data?.kind === 'missile') {
+    fields.seekerSourceGeneration = e.occupantGeneration ?? null;
+    fields.seekerTargetId = e.data.targetId ?? null;
+    fields.seekerTargetGeneration = e.data.targetGeneration ?? null;
+    fields.seekerTurnRate = Number.isFinite(e.data.turnRate) ? e.data.turnRate : 0;
+    fields.seekerDiverted = e.data.diverted === true;
+    fields.seekerGuidanceBroken = e.data.guidanceBroken === true;
+  }
+  const specialistFrame = swarmSpecialistFrameValue(e);
+  if (specialistFrame !== VITAL_SHADOW_MISSING) fields.swarmSpecialistFrame = specialistFrame;
+  const riderTell = riderTellValue(e, state);
+  if (riderTell !== VITAL_SHADOW_MISSING) fields.swarmRideTell = riderTell;
+  if (typeof e.data?.scanLabel === 'string') fields.dataScanLabel = e.data.scanLabel;
+  // Wreck concealment reads data.scanned — it flips after spawn, so it rides vitals like scanLabel.
+  if (e.data && e.data.scanned !== undefined) fields.dataScanned = e.data.scanned === true;
+  if (e.type === 'beacon' && e.data?.storyPropKind === 'claim_beacon' && Number.isFinite(e.data.expireAt)) {
+    fields.dataBeaconExpireAt = e.data.expireAt;
+  }
+  const ecology = e.data && e.data.ecology;
+  if (ecology) {
+    fields.ecologyName = e.data.name ?? null;
+    fields.ecologyScanLabel = e.data.scanLabel ?? null;
+    fields.ecologySignalKind = e.data.scannerSignalKind ?? null;
+    fields.ecologyDisguised = ecology.disguised === true;
+  }
+  if (e.data?.nemesis) fields.nemesisLivingHullJson = livingHullWireRecord(e.data.livingHull);
+  const cm = e.data && e.data.cm;
+  if (cm) {
+    fields.cmEffectId = cm.effect ? countermeasureEffectId(cm.effect) : null;
+    fields.cmEffectKind = cm.effect?.cfg?.kind ?? null;
+    fields.cmEffectX = cm.effect?.originX ?? null;
+    fields.cmEffectZ = cm.effect?.originZ ?? null;
+    fields.cmEffectT = cm.effectT || 0;
+  }
+  const ai = e.data && e.data.ai;
+  if (ai && typeof ai === 'object') {
+    fields.aiFsm = typeof ai.fsm === 'string' && ai.fsm
+      ? ai.fsm
+      : (typeof ai.state === 'string' && ai.state ? ai.state : null);
+  }
+  if (hasPallasSeamWorkLight(e)) {
+    fields.pallasSeamCutting = e.data.minerShiftActive === true;
+    fields.pallasSeamStandbyTick = pallasSeamStandbyTick(e);
+  }
+  const wardLife = lanternWardPresentationLife(e);
+  if (wardLife != null) {
+    for (const key of LANTERN_WARD_VITAL_KEYS) fields[key] = lanternWardVitalValue(e, key, wardLife);
+  }
+  for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
+    const value = authoredMotionFrameValue(e, key);
+    if (value !== VITAL_SHADOW_MISSING) fields[key] = value;
+  }
+  const mawRadius = mawPresentationRadius(e);
+  if (mawRadius !== VITAL_SHADOW_MISSING) fields.mawPresentationRadius = mawRadius;
+  const orchardPod = orchardPodPublicValue(e);
+  if (orchardPod !== VITAL_SHADOW_MISSING) fields.orchardPodPublic = orchardPod;
+  if (krakenFrame !== VITAL_SHADOW_MISSING) fields.ironKrakenMotionFrame = krakenFrame;
+  return fields;
+}
+
+// `collectEntityVitals` ships the complete scalar row only when one of these
+// values changed. Keep the comparison state in a compact scalar tuple so a
+// steady entity does not allocate a fields object and JSON string every tick.
+// The transport fields are deliberately scalar by contract; non-finite numbers
+// share JSON.stringify's null comparison semantics while the original value is
+// still retained in the emitted row on the first/change path.
+const VITAL_SHADOW_MISSING = Symbol('vital-shadow-missing');
+const VITAL_SHADOW_JSON_NULL = Symbol('vital-shadow-json-null');
+
+// Bounded presentation facts for a canonical pod. Native custody and Rapier handles stay
+// in the worker; a new occupant of the same id cannot inherit this old life's update.
+function orchardPodPublicValue(e) {
+  if (e?.data?.orchardKind !== 'pod' || !isOrchardPod(e)
+    || !Number.isSafeInteger(e.occupantGeneration) || e.occupantGeneration < 1
+    || !Number.isSafeInteger(e.data.amount) || e.data.amount < 1 || e.data.amount > ANVIL_ORCHARD.unitsPerPod
+    || typeof e.data.masslineTetherable !== 'boolean') return VITAL_SHADOW_MISSING;
+  return JSON.stringify([e.occupantGeneration, e.data.worldRecordId, e.physicsBody.dynamic,
+    e.physicsBody.revision, e.data.masslineTetherable, e.data.amount]);
+}
+
+function swarmSpecialistFrameValue(e) {
+  const data = e?.data;
+  if (!data?.swarmSpecialist && !swarmSpecialistKind(data?.lootTableId || data?.enemyTypeId)) {
+    return VITAL_SHADOW_MISSING;
+  }
+  return swarmSpecialistPresentationFrame(data?.swarmSpecialist);
+}
+
+// Signed occupant generation is one bounded scalar: positive while riding, negative while
+// idle. It identifies the life whose mark may consume the update across the worker boundary.
+function riderTellValue(e, state) {
+  const data = e?.data;
+  const life = e?.occupantGeneration;
+  if ((data?.swarmAffix !== 'rider' && data?.swarmAffix2 !== 'rider')
+    || !Number.isSafeInteger(life) || life < 1) return VITAL_SHADOW_MISSING;
+  const ride = data.swarmRide;
+  const run = state?.run;
+  return e.alive !== false && state?.entities?.get(e.id) === e && e.id !== state.playerId
+    && ride?.life === life && state.tick < ride.until
+    && run?.kind === 'survival' && run.ruleset === 'swarm'
+    && (run.phase === 'active' || run.phase === 'cleanup') ? life : -life;
+}
+
+function vitalShadowValue(value) {
+  if (value === undefined) return VITAL_SHADOW_MISSING;
+  if (value === null || (typeof value === 'number' && !Number.isFinite(value))) {
+    return VITAL_SHADOW_JSON_NULL;
+  }
+  return value;
+}
+
+function authoredMotionFrameValue(e, key) {
+  if (!e || !Object.prototype.hasOwnProperty.call(e, key)) return VITAL_SHADOW_MISSING;
+  const value = e[key];
+  // These are purpose-built renderer read frames, not general entity data.
+  // Keep their wire size bounded even if a producer accidentally expands them.
+  return typeof value === 'string' && value.length <= 4096 ? value : null;
+}
+
+function krakenMotionFrame(state, e) {
+  const marker = e?.data?.ironKraken;
+  if (!marker) return VITAL_SHADOW_MISSING;
+  const fight = marker.fightId && state?.capitalBossEncounters?.fights?.[marker.fightId];
+  if (!fight || fight.bossId !== e.id) return null;
+  return JSON.stringify({ actorId: e.id, ownerLife: e.occupantGeneration ?? null,
+    fightId: marker.fightId, encounterId: fight.encounterId, clock: fight.clock,
+    phase: fight.phase, nextAt: fight.nextAt, suspended: !!fight.suspended, terminal: !!fight.terminal,
+    cast: fight.cast ? { id: fight.cast.id, beatId: fight.cast.beatId, startedAt: fight.cast.startedAt,
+      heading: fight.cast.heading, fired: fight.cast.fired === true, shapes: fight.cast.shapes } : null,
+    recovery: fight.recovery ? { beatId: fight.recovery.beatId, startedAt: fight.recovery.startedAt,
+      durationTicks: fight.recovery.durationTicks, heading: fight.recovery.heading,
+      cancelled: fight.recovery.cancelled === true } : null,
+    plates: Array.isArray(fight.plates) ? fight.plates.filter(p => p.id === 'mantle_port' || p.id === 'mantle_starboard')
+      .map(p => ({ id: p.id, attached: p.attached !== false })) : [] });
+}
+
+function vitalShadowMatches(e, shadow, krakenFrame, state) {
+  if (!Array.isArray(shadow)) return false;
+  if (e.type === 'projectile' && e.data?.kind === 'missile') {
+    const data = e.data;
+    if (shadow.seekerSourceGeneration !== (e.occupantGeneration ?? null)
+      || shadow.seekerTargetId !== (data.targetId ?? null)
+      || shadow.seekerTargetGeneration !== (data.targetGeneration ?? null)
+      || shadow.seekerTurnRate !== (Number.isFinite(data.turnRate) ? data.turnRate : 0)
+      || shadow.seekerDiverted !== (data.diverted === true)
+      || shadow.seekerGuidanceBroken !== (data.guidanceBroken === true)) return false;
+  } else if (Object.hasOwn(shadow, 'seekerSourceGeneration')) return false;
+  // Moving actors commonly change velocity or heading each publish. Check those same
+  // canonical scalar tokens first; unchanged actors still compare every field below.
+  const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;
+  if ((vel ? finite(vel.x) : VITAL_SHADOW_MISSING) !== shadow[VITAL_FIELDS.length]
+      || (vel ? finite(vel.z) : VITAL_SHADOW_MISSING) !== shadow[VITAL_FIELDS.length + 1]
+      || vitalShadowValue(e.rot) !== shadow[VITAL_ROT_INDEX]) return false;
+  let i = 0;
+  for (const key of VITAL_FIELDS) {
+    if (vitalShadowValue(e[key]) !== shadow[i++]) return false;
+  }
+  if ((vel ? finite(vel.x) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((vel ? finite(vel.z) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  const boost = e.boost && typeof e.boost === 'object' ? e.boost : null;
+  if (vitalShadowValue(boost ? boost.energy : undefined) !== shadow[i++]) return false;
+  if (vitalShadowValue(boost ? boost.max : undefined) !== shadow[i++]) return false;
+  const machine = e.data && e.data.machine;
+  if ((machine ? Boolean(machine.repairing) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if (swarmSpecialistFrameValue(e) !== shadow[i++]) return false;
+  if (riderTellValue(e, state) !== shadow[i++]) return false;
+  if ((typeof e.data?.scanLabel === 'string' ? e.data.scanLabel : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((e.data && e.data.scanned !== undefined ? e.data.scanned === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((e.type === 'beacon' && e.data?.storyPropKind === 'claim_beacon' && Number.isFinite(e.data.expireAt)
+    ? e.data.expireAt : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  const ecology = e.data && e.data.ecology;
+  if ((ecology ? e.data.name ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((ecology ? e.data.scanLabel ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((ecology ? e.data.scannerSignalKind ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((ecology ? ecology.disguised === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((e.data?.nemesis ? livingHullWireRecord(e.data.livingHull) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  const cm = e.data && e.data.cm;
+  if ((cm ? cm.effect || null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((cm ? cm.effect?.cfg?.kind ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((cm ? cm.effect?.originX ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((cm ? cm.effect?.originZ ?? null : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((cm ? cm.effectT || 0 : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  const ai = e.data && e.data.ai;
+  const aiFsm = (ai && typeof ai === 'object')
+    ? (typeof ai.fsm === 'string' && ai.fsm
+      ? ai.fsm
+      : (typeof ai.state === 'string' && ai.state ? ai.state : null))
+    : VITAL_SHADOW_MISSING;
+  if (aiFsm !== shadow[i++]) return false;
+  const seam = hasPallasSeamWorkLight(e);
+  if ((seam ? e.data.minerShiftActive === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  const wardLife = lanternWardPresentationLife(e);
+  const wardShadow = shadow[i++];
+  if (wardLife == null) {
+    if (wardShadow !== VITAL_SHADOW_MISSING) return false;
+  } else {
+    if (!Array.isArray(wardShadow)) return false;
+    for (let j = 0; j < LANTERN_WARD_VITAL_KEYS.length; j++) {
+      if (lanternWardVitalValue(e, LANTERN_WARD_VITAL_KEYS[j], wardLife) !== wardShadow[j]) return false;
+    }
+  }
+  for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
+    if (authoredMotionFrameValue(e, key) !== shadow[i++]) return false;
+  }
+  if (mawPresentationRadius(e) !== shadow[i++]) return false;
+  if (orchardPodPublicValue(e) !== shadow[i++]) return false;
+  if (krakenFrame !== shadow[i++]) return false;
+  return true;
+}
+
+function writeVitalShadow(e, shadow, krakenFrame, state) {
+  // Named runtime-only slots preserve every existing positional/tail vital index.
+  if (e.type === 'projectile' && e.data?.kind === 'missile') {
+    shadow.seekerSourceGeneration = e.occupantGeneration ?? null;
+    shadow.seekerTargetId = e.data.targetId ?? null;
+    shadow.seekerTargetGeneration = e.data.targetGeneration ?? null;
+    shadow.seekerTurnRate = Number.isFinite(e.data.turnRate) ? e.data.turnRate : 0;
+    shadow.seekerDiverted = e.data.diverted === true;
+    shadow.seekerGuidanceBroken = e.data.guidanceBroken === true;
+  } else if (Object.hasOwn(shadow, 'seekerSourceGeneration')) {
+    delete shadow.seekerSourceGeneration; delete shadow.seekerTargetId;
+    delete shadow.seekerTargetGeneration; delete shadow.seekerTurnRate;
+    delete shadow.seekerDiverted; delete shadow.seekerGuidanceBroken;
+  }
+  let i = 0;
+  for (const key of VITAL_FIELDS) shadow[i++] = vitalShadowValue(e[key]);
+  const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;
+  shadow[i++] = vel ? finite(vel.x) : VITAL_SHADOW_MISSING;
+  shadow[i++] = vel ? finite(vel.z) : VITAL_SHADOW_MISSING;
+  const boost = e.boost && typeof e.boost === 'object' ? e.boost : null;
+  shadow[i++] = vitalShadowValue(boost ? boost.energy : undefined);
+  shadow[i++] = vitalShadowValue(boost ? boost.max : undefined);
+  const machine = e.data && e.data.machine;
+  shadow[i++] = machine ? Boolean(machine.repairing) : VITAL_SHADOW_MISSING;
+  shadow[i++] = machine ? Boolean(machine.working) : VITAL_SHADOW_MISSING;
+  shadow[i++] = e.type === 'mine' ? e.data?.armed === true : VITAL_SHADOW_MISSING;
+  shadow[i++] = swarmSpecialistFrameValue(e);
+  shadow[i++] = riderTellValue(e, state);
+  shadow[i++] = typeof e.data?.scanLabel === 'string' ? e.data.scanLabel : VITAL_SHADOW_MISSING;
+  shadow[i++] = e.data && e.data.scanned !== undefined ? e.data.scanned === true : VITAL_SHADOW_MISSING;
+  shadow[i++] = e.type === 'beacon' && e.data?.storyPropKind === 'claim_beacon' && Number.isFinite(e.data.expireAt)
+    ? e.data.expireAt : VITAL_SHADOW_MISSING;
+  const ecology = e.data && e.data.ecology;
+  shadow[i++] = ecology ? e.data.name ?? null : VITAL_SHADOW_MISSING;
+  shadow[i++] = ecology ? e.data.scanLabel ?? null : VITAL_SHADOW_MISSING;
+  shadow[i++] = ecology ? e.data.scannerSignalKind ?? null : VITAL_SHADOW_MISSING;
+  shadow[i++] = ecology ? ecology.disguised === true : VITAL_SHADOW_MISSING;
+  shadow[i++] = e.data?.nemesis ? livingHullWireRecord(e.data.livingHull) : VITAL_SHADOW_MISSING;
+  const cm = e.data && e.data.cm;
+  shadow[i++] = cm ? cm.effect || null : VITAL_SHADOW_MISSING;
+  shadow[i++] = cm ? cm.effect?.cfg?.kind ?? null : VITAL_SHADOW_MISSING;
+  shadow[i++] = cm ? cm.effect?.originX ?? null : VITAL_SHADOW_MISSING;
+  shadow[i++] = cm ? cm.effect?.originZ ?? null : VITAL_SHADOW_MISSING;
+  shadow[i++] = cm ? cm.effectT || 0 : VITAL_SHADOW_MISSING;
+  const ai = e.data && e.data.ai;
+  shadow[i++] = (ai && typeof ai === 'object')
+    ? (typeof ai.fsm === 'string' && ai.fsm
+      ? ai.fsm
+      : (typeof ai.state === 'string' && ai.state ? ai.state : null))
+    : VITAL_SHADOW_MISSING;
+  const seam = hasPallasSeamWorkLight(e);
+  shadow[i++] = seam ? e.data.minerShiftActive === true : VITAL_SHADOW_MISSING;
+  shadow[i++] = seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING;
+  const wardLife = lanternWardPresentationLife(e);
+  // One empty slot for all other entities; only the nine Ward occupants retain this tuple.
+  if (wardLife == null) shadow[i++] = VITAL_SHADOW_MISSING;
+  else {
+    const wardShadow = Array.isArray(shadow[i]) ? shadow[i] : [];
+    for (let j = 0; j < LANTERN_WARD_VITAL_KEYS.length; j++) {
+      wardShadow[j] = lanternWardVitalValue(e, LANTERN_WARD_VITAL_KEYS[j], wardLife);
+    }
+    shadow[i++] = wardShadow;
+  }
+  for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
+    shadow[i++] = authoredMotionFrameValue(e, key);
+  }
+  shadow[i++] = mawPresentationRadius(e);
+  shadow[i++] = orchardPodPublicValue(e);
+  shadow[i++] = krakenFrame;
+  shadow.length = i;
+  return shadow;
+}
+
+function entityInfoBlock(state, entityId, host) {
+  const e = resolveWorldPresentationEntity(state, entityId);
+  if (!e) return null;
+  const data = e.data && typeof e.data === 'object' ? e.data : {};
+  const flags = e.flags && typeof e.flags === 'object' ? e.flags : {};
+  const flatFlags = {};
+  for (const key of Object.keys(flags).sort()) {
+    const value = flags[key];
+    if (value == null || typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string') {
+      flatFlags[key] = value;
+    }
+  }
+  const activity = e.activity && typeof e.activity === 'object' ? e.activity : {};
+  return {
+    v: 2,
+    entityId,
+    // Native occupants carry a non-enumerable token; explicit transport keeps
+    // recycled numeric ids distinct without adding the token to saved entities.
+    occupantGeneration: Number.isSafeInteger(e.occupantGeneration) ? e.occupantGeneration : null,
+    type: typeof e.type === 'string' ? e.type : null,
+    alive: e.alive !== false,
+    team: Number.isFinite(e.team) ? e.team : 0,
+    factionId: typeof e.factionId === 'string' ? e.factionId : (typeof data.factionId === 'string' ? data.factionId : null),
+    x: finite(e.pos && e.pos.x),
+    y: finite(e.pos && e.pos.y),
+    z: finite(e.pos && e.pos.z),
+    vx: finite(e.vel && e.vel.x),
+    vz: finite(e.vel && e.vel.z),
+    rot: finite(e.rot),
+    radius: finite(e.radius),
+    callsign: typeof data.callsign === 'string' ? data.callsign : null,
+    name: typeof data.name === 'string' ? data.name : null,
+    trafficRole: typeof data.trafficRole === 'string' ? data.trafficRole : null,
+    role: typeof data.role === 'string' ? data.role : (data.ai && typeof data.ai.role === 'string' ? data.ai.role : null),
+    presentationTier: Number.isFinite(activity.presentationTier) ? activity.presentationTier : 0,
+    sectorId: typeof e.sectorId === 'string' ? e.sectorId : (state.world && state.world.currentSectorId) || null,
+    isPlayer: e.isPlayer === true,
+    farResident: e.farResident === true,
+    fieldResident: e.fieldResident === true,
+    noMesh: e._noMesh === true,
+    flags: flatFlags,
+    ...(isOrchardFrame(e) ? { physicsBody: canonicalClone(e.physicsBody) }
+      : isOrchardPod(e) ? { physicsBody: orchardPodBodySpec({
+        dynamic: e.physicsBody.dynamic, revision: e.physicsBody.revision,
+      }) } : {}),
+    ...(ceresWorkfleetRoleForEntity(e) === 'cradle' ? {
+      ceresCradleReceipt: readCeresCradlePublicLayout(e, state, host.registry?.get('physics')?._sg02, host.lifecycleGeneration),
+    } : {}),
+    vitals: entityVitalsOf(e, krakenMotionFrame(state, e), state),
+    data: canonicalClone(data),
+  };
+}
+
+// Energy-card shots are intentionally absent from the mesh journal, but the
+// main-thread weapon VFX presenter still needs their moving poses. Ship this
+// small side channel separately so they never enter the world-mesh collect.
+function collectWeaponVfxProjectiles(state) {
+  const out = [];
+  for (const e of state.entityList || []) {
+    if (!e || !Number.isSafeInteger(e.id) || e.alive === false || e.type !== 'projectile'
+      || !projectileSkipsVisualFactoryMesh(e)) continue;
+    const pos = e.pos || {};
+    const prev = e.prevPos || pos;
+    out.push({
+      entityId: e.id,
+      type: 'projectile',
+      alive: true,
+      team: Number.isFinite(e.team) ? e.team : 0,
+      ownerId: Number.isSafeInteger(e.ownerId) ? e.ownerId : null,
+      x: finite(pos.x),
+      y: finite(pos.y),
+      z: finite(pos.z),
+      prevX: finite(prev.x, finite(pos.x)),
+      prevY: finite(prev.y, finite(pos.y)),
+      prevZ: finite(prev.z, finite(pos.z)),
+      vx: finite(e.vel && e.vel.x),
+      vy: finite(e.vel && e.vel.y),
+      vz: finite(e.vel && e.vel.z),
+      rot: finite(e.rot),
+      radius: finite(e.radius),
+      weaponId: typeof (e.data && e.data.weaponId) === 'string' ? e.data.weaponId : null,
+    });
+  }
+  return out;
+}
+
+// Per-tick vitals diff (production lane): scalar entity fields the renderer/UI
+// reads that are neither journal pose nor spawn-time data. A scalar shadow per
+// entity per drain keeps the wire to changed rows only without rebuilding a
+// JSON signature for unchanged entities.
+export function collectEntityVitals(state, vitalShadow, seenScratch = null) {
+  const out = [];
+  const seen = seenScratch || new Set();
+  seen.clear();
+  for (const e of state.entityList || []) {
+    if (!e || !Number.isSafeInteger(e.id)) continue;
+    seen.add(e.id);
+    const previous = vitalShadow.get(e.id);
+    const krakenFrame = krakenMotionFrame(state, e);
+    if (!vitalShadowMatches(e, previous, krakenFrame, state)) {
+      const retiredKrakenFrame = krakenFrame === VITAL_SHADOW_MISSING
+        && Array.isArray(previous) && previous[previous.length - 1] !== VITAL_SHADOW_MISSING;
+      const retiredSpecialistFrame = swarmSpecialistFrameValue(e) === VITAL_SHADOW_MISSING
+        && Array.isArray(previous) && previous[SWARM_SHADOW_INDEX] !== VITAL_SHADOW_MISSING;
+      const retiredRiderTell = riderTellValue(e, state) === VITAL_SHADOW_MISSING
+        && Array.isArray(previous) && previous[RIDER_SHADOW_INDEX] !== VITAL_SHADOW_MISSING;
+      const retiredMawRadius = mawPresentationRadius(e) === VITAL_SHADOW_MISSING
+        && Array.isArray(previous) && previous[previous.length - 2] !== VITAL_SHADOW_MISSING;
+      const shadow = Array.isArray(previous) ? previous : [];
+      writeVitalShadow(e, shadow, krakenFrame, state);
+      vitalShadow.set(e.id, shadow);
+      const fields = entityVitalsOf(e, retiredKrakenFrame ? null : krakenFrame, state);
+      if (retiredSpecialistFrame) fields.swarmSpecialistFrame = null;
+      if (retiredRiderTell && Number.isSafeInteger(e.occupantGeneration) && e.occupantGeneration > 0) {
+        fields.swarmRideTell = -e.occupantGeneration;
+      }
+      if (retiredMawRadius) fields.mawPresentationRadius = null;
+      out.push([e.id, fields]);
+    }
+  }
+  if (vitalShadow.size > seen.size) {
+    for (const id of vitalShadow.keys()) {
+      if (!seen.has(id)) vitalShadow.delete(id);
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Stage 3 — aux-row channel, now journal-fed (stage 6 item D-F2).
+//
+// Producers mark every shipped-field mutation in the table's _auxJournal (see
+// src/world/auxRowJournal.js). Armed tables only re-sign rows the journal names
+// — plus any row absent from the shipped map (presence is the coverage floor a
+// mark can never opt out of). Removals keep the shipped∩!seen formula: a
+// departed row exits the mirror whether or not its producer journaled the
+// removal. An unarmed table (fresh create, post-restore swap) pays one full
+// diff, then arms.
+//
+// Under --probe aux the host additionally runs verifyAuxJournal every tick: it
+// re-signs EVERY row and asserts shipped === live post-diff — the byte-
+// identical-output proof for the journal path (breaches are counted and
+// sampled; a missed field write shows up as a breach AND a stale facade row).
+// ---------------------------------------------------------------------------
+
+const AUX_FAMILIES = [
+  { kind: 'rock', table: (w) => w.asteroidField, rows: (t) => t.rocks },
+  { kind: 'far', table: (w) => w.farActors, rows: (t) => t.rows },
+  { kind: 'dressing', table: (w) => w.dressing, rows: (t) => t.rows },
+];
+
+function auxRowBlock(kind, row) {
+  const data = row && row.data && typeof row.data === 'object' ? row.data : {};
+  const pose = kind === 'dressing' && data.warmFreighterHostMarkerId && data.warmFreighterVisualPose;
+  return {
+    v: 1,
+    kind,
+    id: row.id,
+    type: typeof row.type === 'string' ? row.type : null,
+    alive: row.alive !== false,
+    x: finite(row.pos && row.pos.x),
+    z: finite(row.pos && row.pos.z),
+    vx: finite(row.vel && row.vel.x),
+    vz: finite(row.vel && row.vel.z),
+    rot: finite(row.rot),
+    radius: finite(row.radius),
+    lastExactT: Number.isFinite(row.lastExactT) ? row.lastExactT : null,
+    liveEntityId: Number.isSafeInteger(row.liveEntityId) ? row.liveEntityId : null,
+    noMesh: row._noMesh === true,
+    sectorId: typeof row.sectorId === 'string' ? row.sectorId
+      : (typeof row.homeSectorId === 'string' ? row.homeSectorId
+        : (typeof data.sectorId === 'string' ? data.sectorId : null)),
+    ...(pose && [pose.height, pose.bank, pose.pitch, pose.localYaw].every(Number.isFinite)
+      ? { warmFreighterPose: { height: pose.height, bank: pose.bank, pitch: pose.pitch, localYaw: pose.localYaw } } : {}),
+  };
+}
+
+function auxSignature(b) {
+  return `${b.type}|${b.alive ? 1 : 0}|${b.x}|${b.z}|${b.vx}|${b.vz}|${b.rot}|${b.radius}`
+    + `|${b.lastExactT}|${b.liveEntityId}|${b.noMesh ? 1 : 0}|${b.sectorId}`
+    + (b.warmFreighterPose ? `|${b.warmFreighterPose.height}|${b.warmFreighterPose.bank}|${b.warmFreighterPose.pitch}|${b.warmFreighterPose.localYaw}` : '');
+}
+
+const _collectOrigin = { x: 0, z: 0 };
+
+// The live present-lane collect, run inside the host: resolved inputs ship as
+// collectProbe so the read-model twin answers the identical question.
+function collectProbeBlock(state) {
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const live = collectMeshPresentationEntities(state);
+  const liveIds = [];
+  for (let i = 0; i < live.length; i++) {
+    if (live[i] && live[i].id != null) liveIds.push(live[i].id);
+  }
+  const probe = {
+    digest: digestIds(liveIds),
+    count: liveIds.length,
+    ids: liveIds.length <= 256 ? liveIds : null,
+    hasPlayer: !!(player && player.pos),
+  };
+  if (player && player.pos) {
+    const origin = tableLookAtOrigin(state, player.pos, _collectOrigin);
+    probe.originX = origin.x;
+    probe.originZ = origin.z;
+    probe.collectRadius = presentationCollectRadius(state);
+    probe.scanRadius = farLedgerScanRadius(state);
+    probe.glassCorner = presentationGlassCorner(state);
+    probe.simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
+    probe.pvx = finite(player.vel && player.vel.x);
+    probe.pvz = finite(player.vel && player.vel.z);
+  }
+  return probe;
+}
+
+const BRIDGE_EVENTS = [
+  'entity:spawned', 'entity:killed', 'combat:fire', 'combat:damage', 'projectile:hit',
+  'economy:tick', 'tether:attached', 'tether:reel', 'tether:broken',
+  'presentation:cue', 'ship:thrust', 'ship:boostStart', 'ship:boostStop',
+  'scenario:loaded', 'scenario:beatEntered', 'scenario:factsInitialized',
+  'scenario:factChanged', 'scenario:branchResolved', 'game:started',
+  'presentation:vfxCue', 'presentation:audioCue', 'presentation:uiCue',
+  'presentation:cameraCue', 'presentation:caption', 'audio:cue', 'alert',
+  'camera:shake', 'presentation:cueApplied', 'sector:enter', 'cargo:changed',
+  'survivalArena:stormWarning', 'survivalArena:stormResolve', 'survivalArena:stormCancel',
+  'automation:fleetChanged', 'combat:chainKill', 'comms:log', 'run:resultsReady',
+  'breakwaterSpur:offer', 'breakwaterSpur:close', 'breakwaterSpur:receipt', 'breakwaterSpur:cue',
+  'cinderglassJob:offer', 'cinderglassJob:view', 'cinderglassJob:servicePrompt', 'cinderglassJob:fact', 'cinderglassJob:refused', 'cinderglassJob:serviceEnd', 'cinderglassJob:close',
+];
+
+export function createSimHost({ onAsyncSaveReady } = {}) {
+  // The save system's synchronous localStorage contract runs against a staged
+  // snapshot in worker realms (browser worker, node worker_threads): main
+  // stages its sf.* keyspace on load/save forwards via stageLaneStorage, and
+  // worker-side writes relay back through the tick reply's storageOps so
+  // durable persistence stays main-owned.
+  const pendingStorageOps = [];
+  installLaneStorage(globalThis, { onWrite: (op, key, value) => {
+    pendingStorageOps.push({ op, key, value });
+    if (op === 'check') onAsyncSaveReady?.();
+  } });
+  // Reply attachment for ANY reply kind — writes must not wait for the next
+  // tickDone (init-ready/finalize/done/bye replies carry them too).
+  const drainStorageOps = () => (pendingStorageOps.length ? pendingStorageOps.splice(0) : undefined);
+  const host = {
+    ready: false,
+    sim: null,
+    state: null,
+    bus: null,
+    registry: null,
+    journal: null,
+    reloadAt: null,
+    crashAt: null,
+    committedJournalSequence: 0,
+    completedSequence: 0,
+    tickCount: 0,
+    // per-tick event drain (stage 2 deep-flat bridge)
+    pendingEvents: [],
+    droppedEventCount: 0,
+    droppedEventTypes: {},
+    unintentionalDrops: 0,
+    unintentionalDropTypes: {},
+    dropSamples: [],
+    emittedEventCounts: {},
+    unbridgeable: { depth: 0, typed: 0 },
+    scratch: null,
+    journalRebuildCount: 0,
+    rebuildReasons: {},
+    // stage-3 aux channel (journal-fed since stage 6)
+    auxShipped: new Map(),
+    auxSeen: new Set(),
+    auxUpsertsTotal: 0,
+    auxRemovalsTotal: 0,
+    auxVerify: false,           // --probe aux → full re-sign check per tick
+    auxJournalBreaches: 0,
+    auxJournalBreachSamples: [],
+    auxJournalArmed: 0,         // table-journals armed across all diff passes
+    auxJournalDirtyAdds: 0,     // journal rows drained (dirty+removed) across passes
+    auxJournalSkippedRows: 0,   // live rows skipped via journal coverage across passes
+    // stage-4 domain-mirror channel
+    domainDiffer: null,         // created at init (probe flag arrives there)
+    domainDiffSeq: 0,           // monotone diff-pass counter (cold cadence)
+    domainProbeEnabled: false,
+    domainUpdatesTotal: 0,
+    domainShipBytesTotal: 0,    // canonical-signature bytes shipped (per-tick sum)
+    domainSignedBytesTotal: 0,  // canonical bytes walked per pass (diff cost)
+    domainShipBytesMax: 0,
+    domainDiffNsTotal: 0n,
+    domainDiffMsMax: 0,
+    domainShipPerPath: new Map(), // leaf path -> {ships, bytes} (report)
+    domainOversize: [],         // keys whose canonical value crossed the ship cap
+    // stage-6 worker-side FULL-extras stubs (item E-F1): the warm helper runs
+    // on the sim lane, its decoded stubs cross on the tick reply.
+    warmStubs: [],
+    warmStubCount: 0,
+    // stage-1 command channel: per-directive attribution + input tape recording
+    lastInputSeq: 0,
+    lastInputWallMs: 0,
+    inputHistory: createInputCommandHistory(),
+    commandDropped: 0,
+    // timing
+    totalWorkNs: 0n,
+    totalPackNs: 0n,
+    // stage-8 production lane
+    profile: null,            // 'legacy47a' (default) | 'production'
+    runtime: null,            // createAuthoritativeRuntime instance (production)
+    stepper: null,            // createAuthoritativeStepper (production)
+    tickBoundary: null,       // wire-side input boundary (production)
+    inputPublishes: [],       // per-step publish records drained onto the reply
+    vitalShadow: new Map(),   // entityId -> scalar tuple (production diff channel)
+    vitalSeen: new Set(),     // reused membership scratch for vitalShadow cleanup
+    ceresCradleIds: new Set(),
+    ceresActuationIds: new Set(),
+    // replayed main→worker emits must not echo back — scoped to the replayed
+    // TYPE so a cascaded emit (save:loaded riding a forwarded game:load)
+    // still bridges: main's presenters need it to unstack screens.
+    suppressEventCapture: 0,
+    suppressedEmitTypes: new Map(),
+    modalActive: false,       // uiFold modal latch (production)
+    screenStackLen: 0,        // uiFold screen-stack depth (production)
+    laneViewport: null,       // {width,height} — transported main-lane pixel size (production)
+    restorePoint: null,       // save.restore envelope staged on the bus (load parity)
+    // Stage-9 remediation: the game:started receipt is generated worker-side,
+    // not forwarded — the newGameBoot rpc stages its payload here and the first
+    // post-boot 'flight' mode apply emits it once on the worker bus (the bridge
+    // then replays it to main-side subscribers exactly once). A main-side emit
+    // replayed into a restore window was the stage-9 double-seed crash class.
+    pendingGameStarted: null,
+    gameStartedEmits: 0,
+    playerTruthImpulseObserver: null,
+    missionBoardMirrorUnsubscribe: null,
+    runShopMirrorUnsubscribe: null,
+  };
+
+  function drainEvents() {
+    const events = host.pendingEvents;
+    host.pendingEvents = [];
+    return events;
+  }
+
+  // The lane's pixel size is a transported truth (init directive + viewport
+  // commands), so the host keeps it alongside the input system's lane override:
+  // helpers.worldToScreen below projects the chase frustum in those pixels.
+  function applyLaneViewport(w, h) {
+    setLaneViewport(w, h);
+    const width = Number(w);
+    const height = Number(h);
+    host.laneViewport = Number.isFinite(width) && Number.isFinite(height)
+      ? { width, height }
+      : null;
+  }
+
+  function rebuildJournalIfNeeded() {
+    const journal = host.journal;
+    if (!journal || !journal.needsRebuild()) return null;
+    const reason = journal.getDiagnostics ? journal.getDiagnostics().rebuildReason : null;
+    host.rebuildReasons[reason || 'unknown'] = (host.rebuildReasons[reason || 'unknown'] || 0) + 1;
+    const entities = collectJournalPresentationEntities(host.state);
+    const tick = Number.isSafeInteger(host.state.tick) && host.state.tick >= 0 ? host.state.tick : 0;
+    if (journal.rebuildFrom(entities, tick) !== true) return { failed: true };
+    const start = journal.getLastRebuildStart() || 0;
+    const end = journal.getLastRebuildEnd() || start;
+    host.committedJournalSequence = end;
+    host.journalRebuildCount++;
+    return { start, end, generation: journal.getRebuildGeneration() };
+  }
+
+  function makeCompletedTick(journalStart, journalEnd) {
+    host.completedSequence++;
+    const state = host.state;
+    return {
+      sequence: host.completedSequence,
+      tick: Number.isSafeInteger(state.tick) ? state.tick : 0,
+      simTime: Number.isFinite(state.simTime) ? state.simTime : 0,
+      stateDigestMarker: Number.isSafeInteger(state.tick) ? state.tick : 0,
+      inputSequence: host.completedSequence,
+      inputCommandSeq: host.lastInputSeq,
+      inputWallMs: host.lastInputWallMs,
+      lifecycleGeneration: Number.isSafeInteger(host.lifecycleGeneration) ? host.lifecycleGeneration : 0,
+      journalStart,
+      journalEnd,
+    };
+  }
+
+  function diffAuxTables(state) {
+    const world = state && state.world;
+    const shipped = host.auxShipped;
+    const upserts = [];
+    const removals = [];
+    const seen = host.auxSeen;
+    seen.clear();
+    for (const fam of AUX_FAMILIES) {
+      const table = world ? fam.table(world) : null;
+      const rows = table ? fam.rows(table) : null;
+      if (!Array.isArray(rows)) continue;
+      const journal = armAuxJournal(table);
+      const journaled = !!(journal && journal.armed);
+      if (journaled) host.auxJournalArmed++;
+      if (journal) host.auxJournalDirtyAdds += journal.dirty.size + journal.removed.size;
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || !Number.isSafeInteger(row.id)) continue;
+        seen.add(row.id);
+        // Armed tables re-sign only journal-named rows; a row missing from the
+        // shipped map always signs (insert coverage cannot be journaled away).
+        if (journaled && shipped.has(row.id) && !journal.dirty.has(row.id)) {
+          host.auxJournalSkippedRows++;
+          continue;
+        }
+        const block = auxRowBlock(fam.kind, row);
+        const sig = `${fam.kind}|${auxSignature(block)}`;
+        if (shipped.get(row.id) !== sig) {
+          shipped.set(row.id, sig);
+          upserts.push(block);
+        }
+      }
+      if (journal) {
+        journal.dirty.clear();
+        journal.removed.clear();
+        journal.armed = true;
+      }
+    }
+    for (const id of shipped.keys()) {
+      if (!seen.has(id)) {
+        shipped.delete(id);
+        removals.push(id);
+      }
+    }
+    return { upserts, removals };
+  }
+
+  // Journal-mode proof (--probe aux): after the diff, every live row's
+  // signature must equal the shipped map's — any divergence is a producer
+  // that mutated a shipped field without a journal mark.
+  function verifyAuxJournal(state) {
+    const world = state && state.world;
+    let breaches = 0;
+    for (const fam of AUX_FAMILIES) {
+      const table = world ? fam.table(world) : null;
+      const rows = table ? fam.rows(table) : null;
+      if (!Array.isArray(rows)) continue;
+      for (const row of rows) {
+        if (!row || !Number.isSafeInteger(row.id)) continue;
+        const sig = `${fam.kind}|${auxSignature(auxRowBlock(fam.kind, row))}`;
+        if (host.auxShipped.get(row.id) !== sig) {
+          breaches++;
+          if (host.auxJournalBreachSamples.length < 16) {
+            host.auxJournalBreachSamples.push({ kind: fam.kind, id: row.id, tick: state.tick });
+          }
+        }
+      }
+    }
+    host.auxJournalBreaches += breaches;
+    return breaches;
+  }
+
+  function refreshDraftReadView(state) {
+    const owner = host.registry?.get('survivalDraft');
+    const run = state.run;
+    if (!owner || run?.kind !== 'survival' || !['draft', 'refit'].includes(run.phase)) {
+      state.survivalDraftPublic = null;
+      host.draftReadKey = null;
+      host.draftReadRun = null;
+      return;
+    }
+    if (host.draftReadBus !== host.bus) {
+      host.draftReadUnsubscribe?.();
+      host.draftReadBus = host.bus;
+      host.draftReadUnsubscribe = host.bus.on('run:draftLockChanged', () => { host.draftReadDirty = true; });
+      host.draftReadDirty = true;
+    }
+    const owned = state.player.ownedShips?.[state.player.activeShipIndex];
+    const preparation = owner.preparationReceipt();
+    const notice = owner.lastNotice();
+    // Recompute stock only on native settlement/custody changes, not every
+    // paused presentation frame. No native RNG or owner references cross over.
+    const key = JSON.stringify([run.phase, run.wave, run.credits, owner.preparationGeneration(),
+      owner.rerollCount(), notice, preparation, owned?.defId, owned?.fittings,
+      (state.player.moduleInventory || []).map(row => [row.instanceId, row.defId])]);
+    if (host.draftReadRun === run && host.draftReadKey === key && !host.draftReadDirty) return;
+    state.survivalDraftPublic = structuredClone({
+      offers: owner.currentOffers(), wave: owner.currentWave(), notice,
+      reroll: owner.rerollState(), recommended: owner.recommendedOffers(),
+      preparation, generation: owner.preparationGeneration(), refitRows: owner.refitRows(),
+    });
+    host.draftReadRun = run;
+    host.draftReadKey = key;
+    host.draftReadDirty = false;
+  }
+
+  function refreshResultsReadView(state) {
+    const owner = host.registry?.get('survivalResults');
+    if (!owner || typeof owner.lastResult !== 'function' || typeof owner.resultRevision !== 'function') {
+      state.survivalResultsPublic = null;
+      host.resultsReadOwner = null;
+      return;
+    }
+    const revision = owner.resultRevision();
+    const generation = host.lifecycleGeneration || 0;
+    if (host.resultsReadOwner === owner && host.resultsReadRevision === revision
+        && host.resultsReadGeneration === generation) return;
+    // lastResult() detaches the native owner's private receipt. This immutable worker-owned
+    // read snapshot travels before run:resultsReady; UI code never writes the authority slot.
+    state.survivalResultsPublic = { result: owner.lastResult(), revision, generation };
+    host.resultsReadOwner = owner;
+    host.resultsReadRevision = revision;
+    host.resultsReadGeneration = generation;
+  }
+
+  function diffDomains(state, seq) {
+    refreshDraftReadView(state);
+    refreshResultsReadView(state);
+    const r = host.domainDiffer.diff(state, seq);
+    host.domainDiffNsTotal += BigInt(Math.round(r.diffMs * 1e6));
+    if (r.diffMs > host.domainDiffMsMax) host.domainDiffMsMax = r.diffMs;
+    host.domainUpdatesTotal += r.updates.length;
+    host.domainShipBytesTotal += r.shipBytes;
+    host.domainSignedBytesTotal += r.signedBytes;
+    if (r.shipBytes > host.domainShipBytesMax) host.domainShipBytesMax = r.shipBytes;
+    for (const o of r.oversize) {
+      if (host.domainOversize.length < 32) host.domainOversize.push(o);
+    }
+    let marketShipBytes = 0;
+    for (const u of r.updates) {
+      const p = u.segs.join('.');
+      const rec = host.domainShipPerPath.get(p) || { ships: 0, bytes: 0 };
+      rec.ships++;
+      rec.bytes += u.del ? 0 : (u.bytes || 0);
+      host.domainShipPerPath.set(p, rec);
+      if (u.segs[0] === 'economy' && u.segs[1] === 'markets') marketShipBytes += u.del ? 0 : (u.bytes || 0);
+    }
+    r.marketShipBytes = marketShipBytes;
+    return r;
+  }
+
+  // Domain-mirror probe (stage-4 gate exercise): scripted mid-run mutations of
+  // mirrored domains — new-key creation, nested add, delete, scalar flip —
+  // driven by --probe domains. Mutates sim state so gate-A hash parity is not
+  // expected; the signature diff is what it exists to exercise.
+  function runDomainProbeMutations(state, msgTick) {
+    if (msgTick === 60) {
+      state.cursor = { col: 3, row: 5, active: true };
+      if (state.missions && typeof state.missions === 'object') {
+        state.missions.spikeDomainProbe = { marker: 'domain-probe', tick: 60 };
+      }
+    } else if (msgTick === 120) {
+      const world = state.world || (state.world = {});
+      const pings = world.scanPings || (world.scanPings = {});
+      const list = pings.sector_probe || (pings.sector_probe = []);
+      list.push({ id: 'domain_probe_ping', x: 7, z: -3, t: 120 });
+    } else if (msgTick === 180) {
+      host.domainProbeSavedMode = state.mode;
+      state.mode = 'paused';
+    } else if (msgTick === 181 && host.domainProbeSavedMode != null) {
+      state.mode = host.domainProbeSavedMode;
+      host.domainProbeSavedMode = null;
+    } else if (msgTick === 300) {
+      if (state.missions && typeof state.missions === 'object') {
+        delete state.missions.spikeDomainProbe;
+      }
+      if (state.meta && typeof state.meta === 'object') {
+        state.meta.domainProbeNote = 'mutated-at-300';
+      }
+    } else if (msgTick === 650) {
+      // Post save/reload (tick 600): fresh-loaded state must still ship updates.
+      if (state.meta && typeof state.meta === 'object') {
+        state.meta.domainProbePostReload = state.tick;
+      }
+      if (state.run && typeof state.run === 'object') {
+        state.run.domainProbeFlag = 'post-reload';
+      }
+    }
+  }
+
+  function registryRef() {
+    return host.registry;
+  }
+
+  // One bridge-event record, shared by the per-type install (legacy47a lane)
+  // and the capture-all emit wrap (production lane — the sim owns events main
+  // has never seen, so whitelisting there would silently drop real traffic).
+  function recordBridgeEvent(type, payload) {
+    let receipt = payload;
+    if ((type === 'entity:killed' || type === 'entity:destroyed' || type === 'asteroid:destroyed'
+      || type === 'environment:detonated' || type === 'entity:retired')
+      && payload && typeof payload === 'object') {
+      // Capture at emit/queue time, before core recycles the id and before a reply's journal
+      // removes the victim. Plain {id,pos,...} receipts retain their complete event meaning.
+      // Combat/fracture mark the actor dead before emitting, so the live presentation resolver
+      // deliberately omits it. The authoritative map still owns it until core's sweep.
+      const victim = payload.entity || host.state.entities?.get(payload.id)
+        || resolveWorldPresentationEntity(host.state, payload.id);
+      const killer = type === 'entity:killed'
+        ? resolveWorldPresentationEntity(host.state, payload.killerId) : null;
+      receipt = {
+        ...payload,
+        // Cook-off is an actual material-body death; its existing VFX cue also needs the
+        // dying body's type before the same slot can become a projectile or another rock.
+        ...(type === 'environment:detonated' && payload.type == null && victim
+          && (payload.occupantGeneration == null || payload.occupantGeneration === victim.occupantGeneration)
+          ? { type: victim.type } : {}),
+        occupantGeneration: Number.isSafeInteger(payload.occupantGeneration)
+          ? payload.occupantGeneration : (victim?.occupantGeneration ?? null),
+        simTime: host.state.simTime,
+        ...(killer ? { killerOccupantGeneration: killer.occupantGeneration ?? null } : {}),
+      };
+    }
+    const projected = projectBridgeEvent(type, receipt);
+    host.emittedEventCounts[type] = (host.emittedEventCounts[type] || 0) + 1;
+    if (projected.dropped) {
+      host.droppedEventCount++;
+      host.droppedEventTypes[type] = (host.droppedEventTypes[type] || 0) + 1;
+      if (host.dropSamples.length < 20) {
+        host.dropSamples.push({
+          t: type, reason: projected.reason,
+          path: projected.hits && projected.hits.path,
+          ctor: projected.hits && projected.hits.ctor,
+        });
+      }
+      if (projected.unintentional) {
+        host.unintentionalDrops++;
+        host.unintentionalDropTypes[type] = (host.unintentionalDropTypes[type] || 0) + 1;
+      }
+      if (projected.hits) {
+        host.unbridgeable.depth += projected.hits.depth;
+        host.unbridgeable.typed += projected.hits.typed;
+      }
+      return;
+    }
+    host.pendingEvents.push({
+      t: type,
+      p: projected.flat,
+      lane: projected.lane,
+      // Emit-time sim context: the facade replays whole batches after applying
+      // the reply's domain updates, so listeners that branch on state.mode or
+      // world.enterSerial would otherwise read the batch's END state for an
+      // event minted mid-batch (a boot sector:enter replayed under 'flight').
+      m: host.state ? host.state.mode : undefined,
+      es: host.state && host.state.world ? host.state.world.enterSerial : undefined,
+    });
+    // Paused saves finish on later task turns, after the command's tick reply. Their real
+    // bytes and terminal event need a transport wake even when no sim timer is running.
+    if (type === 'save:completed' || type === 'save:loaded' || type === 'save:error' || type === 'save:durabilitySettled') onAsyncSaveReady?.();
+  }
+
+  function installBridgeCapture(bus, captureAll) {
+    host.missionBoardMirrorUnsubscribe?.();
+    host.runShopMirrorUnsubscribe?.();
+    // Shop receipts are bounded owner events, not a wallet polling channel. A
+    // refit/draft event can be replayed during a frozen (steps:0) reply, so make
+    // the complete current run snapshot urgent before that reply's domain diff.
+    // Generic run awards are intentionally excluded: combat emits those often.
+    const runShopResultEvents = [
+      'run:draftOffered',       // opening shop / reroll stock snapshot
+      'run:refitOffered',       // opening refit screen
+      'run:shopPurchased',      // successful armory purchase
+      'run:draftRerolled',      // paid or Hangar/Gambler re-deal
+      'run:draftResolved',      // completed modifier choice
+      'run:partialBanked',      // successful extraction bank from the refit panel
+      'run:draftPickRejected',
+      'run:draftRerollRejected',
+      'run:refitChanged',       // fit, strip, or sell receipt (including refusal)
+      'swarm:fortifyBuildResolved', // paused construction/service receipt updates the same run purse
+    ];
+    const offRunShopResults = runShopResultEvents.map((event) => bus.on(event, () => {
+      if (host.state?.run?.kind === 'survival') host.domainDiffer?.invalidateSubtree('run');
+    }));
+    // The event bus also carries unrelated run-wallet traffic. Admit only the
+    // exact shop/refit rejection and refund receipts that can alter the visible
+    // purchase state; never subscribe to award requests or ordinary awards.
+    const offSpendRejected = bus.on('run:spendRejected', (payload) => {
+      if (host.state?.run?.kind === 'survival'
+          && (payload?.reason === 'crucible:purchase' || payload?.reason === 'crucible:draftReroll'
+            || payload?.reason === 'partial_bank')) {
+        host.domainDiffer?.invalidateSubtree('run');
+      }
+    });
+    const offShopRefund = bus.on('run:awarded', (payload) => {
+      if (host.state?.run?.kind === 'survival'
+          && (payload?.reason === 'crucible:purchaseRefund' || payload?.reason === 'swarm:sellBack'
+            || payload?.reason === 'partial_bank_refund')) {
+        host.domainDiffer?.invalidateSubtree('run');
+      }
+    });
+    host.runShopMirrorUnsubscribe = () => {
+      for (const off of offRunShopResults) off();
+      offSpendRejected();
+      offShopRefund();
+      host.runShopMirrorUnsubscribe = null;
+    };
+    // Posted/withdrawn board rows must accompany their event/RPC even while the worker is
+    // paused and has no future timer ticks. Progress and tracking use non-null mission ids;
+    // those retain their normal cold root cadence and existing hot active-mission mirror.
+    const offBoardUpdate = bus.on('mission:updated', (payload) => {
+      if (payload?.missionId == null) host.domainDiffer.invalidateLeaf('missions');
+      else if ((payload.objectiveProgress != null || payload.sourceFix === true) && (host.state?.missions?.active || []).some((m) =>
+        m.id === payload.missionId && m.storyTag === 'campaign47a:b0:recovery')) {
+        host.domainDiffer.invalidateLeaf('missions.active');
+      }
+    });
+    const offAccepted = bus.on('mission:accepted', () => host.domainDiffer.invalidateLeaf('missions'));
+    // Terminal settlement mutates the receipt/history root before its canonical event;
+    // a paused worker may have no later tick on which the cold root could publish.
+    const offTerminal = ['mission:completed', 'mission:failed', 'mission:expired']
+      .map((event) => bus.on(event, () => host.domainDiffer.invalidateLeaf('missions')));
+    // The factions owner emits only after it actually changes standing (including spillover).
+    const offRep = bus.on('faction:repChanged', () => host.domainDiffer.invalidateLeaf('factions'));
+    // A fabricated fitting is immediately usable at the berth, including while the
+    // worker clock is paused. Publish only the changed owned-inventory leaf in the
+    // same reply; large inventories otherwise wait for their ordinary cold slot.
+    const offCraftFitting = bus.on('craft:complete', (payload) => {
+      if (payload?.kind === 'module' || payload?.kind === 'weapon') {
+        host.domainDiffer.invalidateLeaf('player.moduleInventory');
+      }
+    });
+    const offFitFitting = bus.on('module:equipped', () => host.domainDiffer.invalidateLeaf('player.moduleInventory'));
+    const offUnfitFitting = bus.on('module:unequipped', () => host.domainDiffer.invalidateLeaf('player.moduleInventory'));
+    const offLedgerLoad = bus.on('save:loaded', () => {
+      host.domainDiffer.invalidateLeaf('shipLedger.board');
+      // Restore identity must accompany its receipt, including paused Import/Continue.
+      // Waiting for meta's cold mirror pass leaves the main Pause footer on the title seed.
+      host.domainDiffer.invalidateLeaf('meta.seed');
+    });
+    // Successful outpost changes must reach the open panel in this reply, even
+    // when the clock is paused or the list is on its ordinary cold cadence.
+    const offOutpostsChanged = bus.on('automation:outpostsChanged', () => {
+      host.domainDiffer.invalidateLeaf('automation.outposts');
+    });
+    const offFleetChanged = bus.on('automation:fleetChanged', (payload) => {
+      host.domainDiffer.invalidateLeaf('automation.fleet');
+      if (payload?.action === 'assigned' || payload?.action === 'released') {
+        host.domainDiffer.invalidateLeaf('player.ownedShips');
+        if (payload.vesselId) host.domainDiffer.invalidateLeaf('player.shipjack');
+      }
+    });
+    // The paid lot desk repaints only after its answer. Publish the book in that same reply,
+    // including an unsuccessful haggle or bid which may still have changed the book.
+    const offLotDeskAnswered = bus.on('impoundLot:deskAnswered', (payload) => {
+      host.domainDiffer.invalidateLeaf('lossLedger.impound');
+      if (payload?.verb === 'acceptRansom' || payload?.verb === 'declineRansom') {
+        host.domainDiffer.invalidateLeaf('player.ownedShips');
+      }
+    });
+    // Registry operations publish their existing authoritative record before the UI
+    // handles the receipt, even when the Registry is on its cold cadence at a berth.
+    const offRegistryChanges = ['shipjack:yardReceipt', 'shipjack:yardStarted',
+      'shipjack:fleetReceipt', 'shipjack:fleetStarted', 'shipjack:fleetArrived']
+      .map(type => bus.on(type, (payload) => {
+        host.domainDiffer.invalidateLeaf('player.shipjack');
+        if (type === 'shipjack:yardReceipt' && payload?.ok) {
+          if (['extract', 'repair_module', 'sell', 'return', 'repaint'].includes(payload.action)) {
+            host.domainDiffer.invalidateLeaf('player.ownedShips');
+          }
+          if (payload.action === 'forge_broadcast') host.domainDiffer.invalidateLeaf('player.moduleInventory');
+        }
+      }));
+    const offModuleSold = bus.on('module:sold', () => host.domainDiffer.invalidateLeaf('player.moduleInventory'));
+    host.missionBoardMirrorUnsubscribe = () => {
+      offBoardUpdate(); offAccepted();
+      for (const off of offTerminal) off();
+      offRep();
+      offCraftFitting(); offFitFitting();
+      offUnfitFitting();
+      offLedgerLoad();
+      offOutpostsChanged();
+      offFleetChanged();
+      offLotDeskAnswered();
+      for (const off of offRegistryChanges) off();
+      offModuleSold();
+    };
+    if (captureAll === true) {
+      const origEmit = bus.emit.bind(bus);
+      const origQueue = typeof bus.queue === 'function' ? bus.queue.bind(bus) : null;
+      const capturable = (type) =>
+        host.suppressEventCapture <= 0 && (host.suppressedEmitTypes.get(type) | 0) <= 0 && typeof type === 'string';
+      bus.emit = (type, payload) => {
+        if (capturable(type)) recordBridgeEvent(type, payload);
+        return origEmit(type, payload);
+      };
+      // Same bypass class as the main→worker forwarder: bus.queue() defers to
+      // the internal deferred[] pool and flushes via emitAll, never re-entering
+      // the wrapped bus.emit — a queued worker-side emit (entity:destroyed is
+      // the known one) would never bridge. Capture at queue time; the deferred
+      // slot still delivers to worker-local subscribers at flush.
+      if (origQueue) {
+        bus.queue = (type, payload) => {
+          if (capturable(type)) recordBridgeEvent(type, payload);
+          return origQueue(type, payload);
+        };
+      }
+      return;
+    }
+    for (const type of BRIDGE_EVENTS) {
+      bus.on(type, (payload) => {
+        if (type === 'comms:log') {
+          if (payload?.kind !== 'chainKill') return;
+          recordBridgeEvent(type, {kind:'chainKill', speaker:String(payload.speaker || '').slice(0,64), text:String(payload.text || '').slice(0,256)});
+        } else recordBridgeEvent(type, payload);
+      });
+    }
+  }
+
+  // The rpc handler surface is lane-neutral — same ops, same ctx shape. The
+  // simLike argument is { helpers, spawn } so the production runtime (which
+  // exposes helpers/spawn but not its sim object) serves identically.
+  function installRpcHandlers(state, simLike, registry) {
+    host.rpcHandlers = buildRpcHandlers(state, simLike, registry);
+  }
+
+  // Player-truth D202 diagnostic: this observer only records the already-delivered physics
+  // result. It never writes an entity or field and is armed through a read-only RPC before the
+  // public flight route starts. The bounded collector is deliberately host-local so the same
+  // implementation works in a worker and in SIM_LANE=main.
+  function playerTruthImpulseObserverRpc(args = {}) {
+    host.playerTruthImpulseObserver ||= createPlayerTruthImpulseObserver({
+      getState: () => host.state, getBus: () => host.bus,
+      getFields: () => host.registry?.get?.('fields') || null,
+    });
+    return host.playerTruthImpulseObserver.rpc(args);
+  }
+
+  function buildRpcHandlers(state, simLike, registry) {
+    const sim = simLike;
+    return new Map([
+      ['quote', (args) => {
+        const e = registry.get('economy');
+        if (!e || typeof e.quote !== 'function') throw new Error('economy system unavailable');
+        return e.quote(args.stationId, args.commodityId, args.side, args.qty);
+      }],
+      // Probe/diagnostic op: returns a compact signature of one listing entry +
+      // its cycle so the market-parity gate can compare eager vs lazy mints
+      // without shipping the whole market row.
+      ['inspectListing', (args) => {
+        const e = registry.get('economy');
+        const market = (state.economy.markets || {})[args.stationId] || null;
+        const pending = e && e._pendingMints ? e._pendingMints.get(args.stationId) : null;
+        const entry = (market && market[args.commodityId]) || (pending && pending.listings[args.commodityId]) || null;
+        const cycle = ((state.economy.cycles || {})[args.stationId] || {})[args.commodityId]
+          || (pending && pending.cycles[args.commodityId]) || null;
+        return {
+          entry: entry ? {
+            stock: entry.stock, equilibrium: entry.equilibrium, baseEq: entry.baseEq,
+            role: entry.role, lastMid: entry.lastMid, lastBuy: entry.lastBuy, lastSell: entry.lastSell,
+            demandMult: entry.demandMult,
+          } : null,
+          cycle: cycle ? { regime: cycle.regime, startedAt: cycle.startedAt, phase: cycle.phase } : null,
+          pending: pending ? { market: !!pending.market, listings: Object.keys(pending.listings), cycles: Object.keys(pending.cycles) } : null,
+        };
+      }],
+      // Station market history — the render lane's on-demand backfill for the
+      // 'history' field the commodity wire mode projects out of market leaves
+      // (stage-7 item B): iterate-all readers keep mid/buy/sell/stock on the
+      // wire, the 64-point rings come through here only when a UI asks.
+      ['marketHistory', (args) => {
+        const market = (state.economy.markets || {})[(args && args.stationId) || ''];
+        if (!market) return { stationId: args && args.stationId, histories: null };
+        if (args && args.commodityId) {
+          const entry = market[args.commodityId];
+          return { stationId: args.stationId, commodityId: args.commodityId, history: (entry && entry.history) || null };
+        }
+        const result = { stationId: args.stationId };
+        if (args.includeObservedComparisons !== true) {
+          const histories = {};
+          for (const cid of Object.keys(market)) histories[cid] = (market[cid] && market[cid].history) || null;
+          result.histories = histories;
+        }
+        if (args.includeObservedComparisons === true && state.ui?.docked
+          && state.ui.dockedStationId === args.stationId) {
+          const now = Number(state.simTime) || 0;
+          const comparisons = {};
+          for (const [cid, entry] of Object.entries(market)) {
+            if (!Number.isFinite(entry?.lastMid) || !Array.isArray(entry.history)) continue;
+            let reference = null;
+            for (const point of entry.history) {
+              if (point?.origin !== 'observed' || !Number.isFinite(point.t)
+                || !Number.isFinite(point.mid) || now - point.t < 120) continue;
+              if (!reference || point.t > reference.t) reference = point;
+            }
+            if (reference) comparisons[cid] = { reference: reference.mid,
+              observedAt: reference.t, current: entry.lastMid };
+          }
+          result.observedComparisons = { stationId: args.stationId, asOf: now, comparisons };
+        }
+        return result;
+      }],
+      ['physicsPrep', (args) => preparePhysicsBackend(registry, state, (args && args.backend) || 'rapier-dynamic')],
+      // Sandbox/lab ops converted off the direct-call surface. Each replays the
+      // same sequence the call site ran synchronously under SIM_LANE=main.
+      ['crucibleThrowStep', () => {
+        const system = registry.get('masslineThrow');
+        if (!system || typeof system.update !== 'function') return { released: false, reason: 'unavailable' };
+        state.input = state.input || {};
+        state.input.actions = state.input.actions || {};
+        const acts = state.input.actions;
+        acts.throwArm = false;
+        system.update(1 / 60, state);
+        if (!state.player || !state.player.tether || !state.player.tether.active) {
+          return { released: false, reason: 'no-tether' };
+        }
+        acts.throwArm = true;
+        system.update(1 / 60, state);
+        acts.throwArm = false;
+        const last = state.massline2 && state.massline2.throw && state.massline2.throw.lastThrow;
+        if (last && last.tick === state.tick) {
+          return { released: true, releaseId: last.releaseId, payloadId: last.payloadId };
+        }
+        if (system._pendingSnap) return { released: false, queued: true };
+        return { released: false, reason: 'late' };
+      }],
+      ['sandboxPreAttachTether', (args) => {
+        const kernel = (registry.get('actions') || {}).kernel
+          || (registry.get('combat') || {}).kernel
+          || getCombatKernel({ state, registry });
+        const attachments = kernel && kernel.attachments;
+        if (!attachments || typeof attachments.create !== 'function') {
+          return { ok: false, reason: 'no-attachment-service' };
+        }
+        return attachments.create(args);
+      }],
+      ['labBudgetPackage', (args) => applyBudgetedLabPackage(
+        { state, helpers: sim.helpers, registry, bus: host.bus },
+        (args && args.packageSpec) || {},
+      )],
+      // New-game boot: the whole sim-side mutation sequence (entity clear, run reset,
+      // system resets, starter pick, NG+, scene bootstrap) replays inside this directive
+      // window. The ack resolves after the kicked physics-prep promise settles, so the
+      // caller's physics gate still holds.
+      ['newGameBoot', async (args) => {
+        // A fresh boot supersedes any earlier pending receipt (aborted or
+        // never-consumed lifecycle) — stage only on a completed boot.
+        host.pendingGameStarted = null;
+        const sandboxSetup = args?.opts?.sandboxSetup;
+        let sandboxSetupApplied = false;
+        const result = await runNewGameSimBoot({
+          state,
+          helpers: sim.helpers,
+          bus: host.bus,
+          registry,
+          opts: (args && args.opts) || {},
+          newGamePlus: (args && args.newGamePlus) || null,
+          awaitPhysicsPrep: true,
+          beforeScenePrepared: sandboxSetup ? () => {
+            applySandboxSetup({ state, helpers: sim.helpers, registry, bus: host.bus }, sandboxSetup);
+            const active = state.player?.ownedShips?.[state.player.activeShipIndex];
+            if (sandboxSetup.shipId && active?.defId !== sandboxSetup.shipId) {
+              throw new Error(`sandbox-hull-setup-incomplete:${sandboxSetup.shipId}`);
+            }
+            sandboxSetupApplied = true;
+            return true;
+          } : null,
+        });
+        if (result && result.ok === true) {
+          // A completed boot must publish its seed before the loading acknowledgement,
+          // even when meta's ordinary cold cadence has not reached its next slot.
+          host.domainDiffer.invalidateLeaf('meta.seed');
+          if (args?.opts?.crucibleLaunch === true) {
+            const prepared = applyPreparedCrucibleSetup(
+              { state, helpers: sim.helpers, registry, bus: host.bus },
+              args.opts.crucibleSetup,
+            );
+            // A refused preparation rejects the existing boot RPC, so the main
+            // loading owner aborts rather than admitting an incomplete arena.
+            if (!prepared.ok) throw new Error(prepared.reason || 'crucible-setup-incomplete');
+            result.crucible = prepared;
+          }
+          host.pendingGameStarted = {
+            newGamePlus: (args && args.newGamePlus) || null,
+            ...(sandboxSetupApplied ? { sandboxSetupApplied: true } : {}),
+          };
+          // A Crucible/Swarm launch: the receipt says so, so onboarding stands down even if
+          // the main-side sandbox hook's run:beginRequested has not landed yet.
+          if (args && args.opts && args.opts.crucibleLaunch === true) {
+            host.pendingGameStarted.crucibleLaunch = true;
+          }
+        }
+        return result;
+      }],
+      // Presentation-side journal rebuild requests ride the rpc channel: the
+      // real journal rebuilds worker-side and the range ships on this reply.
+      ['journalRebuild', () => {
+        if (host.journal && typeof host.journal.requestRebuild === 'function') {
+          host.journal.requestRebuild('lane-request');
+          return { ok: true };
+        }
+        return { ok: false, reason: 'journal-unavailable' };
+      }],
+      // Save persistence ops — the worker realm has no localStorage, so these
+      // execute against in-memory state only (documented stage-8 gap: writes
+      // do not persist to disk this stage).
+      ['saveStorageAck', (args) => ({ ok: settleLaneStorageCheck(args?.token, args?.result) })],
+      ['saveWrite', (args) => {
+        const s = registry.get('save');
+        if (!s || typeof s.save !== 'function') return { ok: false, reason: 'save-system-unavailable' };
+        const accepted = s.save((args && args.slot) || undefined);
+        if (!accepted) return { ok: false, reason: 'save-not-accepted' };
+        Promise.resolve(s._lastSaveDurability).then((ok) => host.bus.emit('save:durabilitySettled', {
+          token: args?.token, ok: ok === true, localSaved: true,
+        }), (error) => host.bus.emit('save:durabilitySettled', {
+          token: args?.token, ok: false, localSaved: true, reason: String(error?.message || error),
+        }));
+        return { ok: true, pending: true };
+      }],
+      ['saveDrain', (args) => {
+        const s = registry.get('save');
+        if (!s?.drainSharedStoreWrites) return { ok: false, reason: 'save-system-unavailable' };
+        Promise.resolve(s.drainSharedStoreWrites()).then((result) => host.bus.emit('save:durabilitySettled', {
+          token: args?.token, ok: result?.ok === true,
+        }), (error) => host.bus.emit('save:durabilitySettled', {
+          token: args?.token, ok: false, reason: String(error?.message || error),
+        }));
+        return { ok: true, pending: true };
+      }],
+      ['savePrepareQuit', (args) => {
+        const s = registry.get('save');
+        if (!s?.prepareForQuit) return { ok: false, reason: 'save-system-unavailable' };
+        Promise.resolve(s.prepareForQuit()).then((result) => host.bus.emit('save:durabilitySettled', {
+          token: args?.token, ok: result?.ok === true, reason: result?.reason || null,
+        }), (error) => host.bus.emit('save:durabilitySettled', {
+          token: args?.token, ok: false, reason: String(error?.message || error),
+        }));
+        return { ok: true, pending: true };
+      }],
+      ['saveCancelPreparedQuit', () => {
+        const s = registry.get('save');
+        if (!s?.cancelPreparedQuit) return { ok: false, reason: 'save-system-unavailable' };
+        s.cancelPreparedQuit();
+        return { ok: true };
+      }],
+      ['savePeekCardData', async (args) => {
+        const s = registry.get('save');
+        if (!s || typeof s.peekSaveCardData !== 'function') {
+          return { ok: false, reason: 'save-system-unavailable' };
+        }
+        return { ok: true, cardData: await s.peekSaveCardData(args?.raw) };
+      }],
+      ['saveLoad', async (args) => {
+        const s = registry.get('save');
+        if (!s || typeof s.load !== 'function') return { ok: false, reason: 'save-system-unavailable' };
+        const result = await s.load((args && args.slot) || undefined);
+        return { ok: result === true, result };
+      }],
+      ['saveDelete', (args) => {
+        const s = registry.get('save');
+        if (!s || typeof s.deleteSlot !== 'function') return { ok: false, reason: 'save-system-unavailable' };
+        return { ok: true, result: s.deleteSlot((args && args.slot) || undefined) };
+      }],
+      // cargo:jettison is a main-side UI emit whose handler used to call
+      // registry.get('cargo').jettison synchronously — under the lane the cargo
+      // system lives here, so the facade routes it through this op.
+      ['cargoJettison', (args) => {
+        const c = registry.get('cargo');
+        if (!c || typeof c.jettison !== 'function') throw new Error('cargo-system-unavailable');
+        return c.jettison((args && args.commodityId) || null, (args && args.qty) || 1);
+      }],
+      // Market mint: the facade's read view signals a mint it cannot perform
+      // itself (unseeded listing / unvisited-station market — worker rng draws
+      // and authoritative writes). Routing through quote's own mint path keeps
+      // the gate (tier/legality) and the eager-deferral semantics identical to
+      // a local quote; the seeded row ships on the next mirror apply.
+      // Authoritative trade verdict — ui:buy/ui:sell forward as emits and apply fine,
+      // but a decision effect needs the sync ok/reason the emit chain can't return.
+      ['economyTrade', (args) => {
+        const e = registry.get('economy');
+        if (!e || typeof e.handleTrade !== 'function') return { ok: false, reason: 'economy-system-unavailable' };
+        const a = args || {};
+        const res = e.handleTrade(a.commodityId, a.side, a.qty, {
+          expectedTotal: a.expectedTotal, sourceStationId: a.sourceStationId,
+          requireFullQuantity: a.requireFullQuantity, intentId: a.intentId,
+        });
+        return { ok: true, result: res || { ok: false, reason: 'no_result' } };
+      }],
+      ['economyMintListing', (args) => {
+        const e = registry.get('economy');
+        if (!e || typeof e.quote !== 'function') return { ok: false, reason: 'economy-system-unavailable' };
+        const stationId = args && args.stationId;
+        const commodityId = args && args.commodityId;
+        if (!stationId || !commodityId) return { ok: false, reason: 'bad-args' };
+        const side = args && args.side === 'buy' ? 'buy' : 'sell';
+        e.quote(stationId, commodityId, side, 0);
+        return { ok: true };
+      }],
+      // Every mutating claims call the main-side screens make — the facade's
+      // read names stay mirrored; these run on the real system one rpc hop
+      // away. 'claim' also ships the new body row so claimOrOpenBase can open
+      // the Base screen without a mirror wait.
+      ['claimsCall', (args) => {
+        const c = registry.get('claims');
+        if (!c) return { ok: false, reason: 'claims-system-unavailable' };
+        const method = args && args.method;
+        const SIGNATURES = {
+          claim: ['poi'],
+          buildModule: ['bodyId', 'modId'],
+          specialize: ['bodyId', 'specId'],
+          deliverToClaim: ['bodyId', 'goodId', 'qty'],
+          collectFromClaim: ['bodyId'],
+          teleportFrom: ['bodyId'],
+        };
+        const signature = method && SIGNATURES[method];
+        if (!signature || typeof c[method] !== 'function') return { ok: false, reason: 'unknown-claims-method' };
+        const result = c[method](...signature.map((key) => args[key]));
+        if (method === 'claim' && result === true) {
+          const poi = args.poi || null;
+          const body = ((state.claims && state.claims.bodies) || []).find((b) => b && b.poiId === (poi && poi.id)) || null;
+          return { ok: true, result: true, body };
+        }
+        return { ok: result !== false, result };
+      }],
+      // Fabricate-button commit — crafting.build stays the single writer; the
+      // screen awaits the ack before the accept cue + hold-complete landing.
+      ['craftingBuild', (args) => {
+        const c = registry.get('crafting');
+        if (!c || typeof c.build !== 'function') return { ok: false, reason: 'crafting-system-unavailable' };
+        return { ok: c.build((args && args.bpId) || null, (args && args.stationId) || null) === true };
+      }],
+      // Scrap-run commit — crafting.cancel stays the single writer; the screen awaits the ack
+      // before re-reading the queue, the same envelope shape as craftingBuild.
+      ['craftingCancel', (args) => {
+        const c = registry.get('crafting');
+        if (!c || typeof c.cancel !== 'function') return { ok: false, reason: 'crafting-system-unavailable' };
+        return { ok: c.cancel((args && args.stationId) || null) === true };
+      }],
+      // The machinery UI reads detached projections on main; commits remain on the native
+      // site owner. Exact allowlisting prevents this RPC from exposing private system methods.
+      ['asteroidSitesCall', (args) => {
+        const owner = registry.get('asteroidSites');
+        if (!owner) return { ok: false, reason: 'asteroid-sites-system-unavailable' };
+        const arities = {
+          installMachine: 1, removeMachine: 3, setOverlay: 6, setMachineMode: 3,
+          setExportFlag: 3, setPodTarget: 2, setPodDestination: 2, transferGoods: 5,
+          tickWorkbench: 2,
+        };
+        const method = args?.method;
+        const values = args?.args;
+        if (!Object.hasOwn(arities, method) || typeof owner[method] !== 'function') {
+          return { ok: false, reason: 'unknown-asteroid-sites-method' };
+        }
+        if (!Array.isArray(values) || values.length > arities[method]) {
+          return { ok: false, reason: 'bad-asteroid-sites-args' };
+        }
+        return { ok: true, result: owner[method](...values) };
+      }],
+      // Generic method passthroughs for facade coverage — the main side's
+      // capability checks see the method names; the lane's folded ops (like
+      // racingArm) call the same methods inside one directive window.
+      ['shipLedgerBoard', (args) => {
+        const actions = { pin: pinEvidence, unpin: unpinEvidence, link: linkEvidence, unlink: unlinkEvidence };
+        const action = args?.action;
+        if (!Object.hasOwn(actions, action)) return { ok: false, reason: 'Unknown ledger action.' };
+        const result = actions[action](state, args?.a, args?.b);
+        if (result.ok) {
+          host.domainDiffer.invalidateLeaf('shipLedger.board');
+          if (action === 'link') {
+            const before = state.story?.verge?.valeGatesRevoked;
+            host.bus.emit('ledger:evidenceLinked', { a: args.a, b: args.b });
+            if (before !== state.story?.verge?.valeGatesRevoked) host.domainDiffer.invalidateLeaf('story.verge');
+          }
+        }
+        return result;
+      }],
+      ['missionsCall', (args) => {
+        const m = registry.get('missions');
+        if (!m) return { ok: false, reason: 'missions-system-unavailable' };
+        const method = args && args.method;
+        const SIGNATURES = { postAndAcceptAuthoredOffer: ['offer'], acceptMission: ['missionId'], postBoardOffer: ['offer'], listActive: [], boardSlots: ['stationId'] };
+        const signature = method && SIGNATURES[method];
+        if (!signature || typeof m[method] !== 'function') return { ok: false, reason: 'unknown-missions-method' };
+        return { ok: true, result: m[method](...signature.map((key) => args[key])) };
+      }],
+      ['worldCall', (args) => {
+        const w = registry.get('world');
+        if (!w) return { ok: false, reason: 'world-system-unavailable' };
+        const method = args && args.method;
+        const SIGNATURES = { enterSector: ['sectorId'], relocatePlayerInSector: ['pose', 'opts'] };
+        const signature = method && SIGNATURES[method];
+        if (!signature || typeof w[method] !== 'function') return { ok: false, reason: 'unknown-world-method' };
+        return { ok: true, result: w[method](...signature.map((key) => args[key])) };
+      }],
+      // Diagnostic wave jump for the stress probe — the main-lane equivalent is the probe
+      // writing run.wave + releasing hostiles + emitting run:waveCleared itself; on the
+      // worker lane the mirror is read-only so the same mutation must happen sim-side.
+      ['swarmCall', (args) => {
+        const method = args && args.method;
+        if (method !== 'jumpToWave') return { ok: false, reason: 'unknown-swarm-method' };
+        const wave = Number(args && args.wave);
+        const run = state && state.run;
+        if (!run || !Number.isInteger(wave) || wave < 1) return { ok: false, reason: 'bad-wave' };
+        run.wave = wave - 1;
+        for (const e of state.entities.values()) {
+          if (e && e.alive !== false && e.type === 'ship' && e.id !== state.playerId
+            && e.data && e.data.combat && e.data.combat.hostile !== false) e.alive = false;
+        }
+        host.bus.emit('run:waveCleared', { wave: wave - 1 });
+        return { ok: true, wave };
+      }],
+      // Circuit arm — post + accept + sector jump + grid relocation run as ONE
+      // sim-side operation so a failed arm can't split across ticks. A grid
+      // refusal rolls back via mission:abandon, same owner as the main path.
+      ['racingArm', (args) => {
+        const missions = registry.get('missions');
+        const world = registry.get('world');
+        if (!missions || typeof missions.postAndAcceptAuthoredOffer !== 'function') return { ok: false, reason: 'no_missions' };
+        if (!world || (args?.relocate !== false && typeof world.relocatePlayerInSector !== 'function')) return { ok: false, reason: 'no_relocation' };
+        if (args?.allowEnterSector === false && args.sectorId !== state.world?.currentSectorId) return { ok: false, reason: 'wrong_sector' };
+        const result = missions.postAndAcceptAuthoredOffer((args && args.offer) || null);
+        if (!result || result.ok !== true || result.reused) {
+          return { ok: result && result.ok === false ? false : !!(result && result.ok), reused: !!(result && result.reused), missionId: result && result.missionId, result: result || null };
+        }
+        const sectorId = args && args.sectorId;
+        const here = state.world && state.world.currentSectorId;
+        try {
+          if (sectorId && here !== sectorId && typeof world.enterSector === 'function') world.enterSector(sectorId);
+          const start = args && args.start;
+          if (args?.relocate !== false && (!start || world.relocatePlayerInSector(start, { reason: 'race_grid' }) === false)) {
+            throw new Error('grid relocation refused');
+          }
+        } catch (error) {
+          if (host.bus && typeof host.bus.emit === 'function') {
+            try { host.bus.emit('mission:abandon', { missionId: result.missionId }); } catch (_) {}
+          }
+          return { ok: false, reason: 'grid_failed', missionId: result.missionId };
+        }
+        return { ok: true, missionId: result.missionId, result };
+      }],
+      // Import an exported envelope JSON into a slot — the lane-twin of
+      // saveSystem.importString (main-side importFile reads the File, then
+      // routes the envelope here so the worker's save system loads it).
+      ['saveImport', async (args) => {
+        const s = registry.get('save');
+        if (!s || typeof s.importString !== 'function') return { ok: false, reason: 'save-system-unavailable' };
+        const json = args && typeof args.json === 'string' ? args.json : null;
+        if (!json) return { ok: false, reason: 'import-empty' };
+        // Compressed/large envelopes restore asynchronously. Settle in the existing RPC
+        // drain before publishing a verdict; a nested Promise cannot cross postMessage.
+        // An omitted destination belongs to the canonical owner's first-empty-slot policy.
+        const result = await s.importString(json, args && args.slot);
+        const ok = result === true || (result && result.ok === true);
+        return { ok, result: result && typeof result === 'object' ? result : null };
+      }],
+      // Stage-8 diagnostic: worker-side ground truth for read-model divergences.
+      // Returns the live player entity slice, input, and the freeze verdict so a
+      // probe can tell sim-side state from shipping-side state without shipping
+      // the whole state object.
+      ['probePerformance', () => ({
+        tickCount: host.tickCount,
+        avgWorkMs: host.tickCount ? Number(host.totalWorkNs) / 1e6 / host.tickCount : 0,
+        avgPackMs: host.tickCount ? Number(host.totalPackNs) / 1e6 / host.tickCount : 0,
+        avgDomainDiffMs: host.tickCount ? Number(host.domainDiffNsTotal) / 1e6 / host.tickCount : 0,
+        maxDomainDiffMs: host.domainDiffMsMax,
+        domainShipBytesTotal: host.domainShipBytesTotal,
+        domainSignedBytesTotal: host.domainSignedBytesTotal,
+        domainShipBytesMax: host.domainShipBytesMax,
+        domainShipPerPath: [...host.domainShipPerPath.entries()]
+          .sort((a, b) => b[1].bytes - a[1].bytes).slice(0, 12)
+          .map(([path, stats]) => ({ path, ships: stats.ships, bytes: stats.bytes })),
+      })],
+      ['playerTruthImpulseObserver', playerTruthImpulseObserverRpc],
+      ['probeState', (args) => {
+        const id = (args && Number.isSafeInteger(args.entityId)) ? args.entityId : state.playerId;
+        const e = state.entities && typeof state.entities.get === 'function' ? state.entities.get(id) : null;
+        const flight = registry.get('flight') || registry.get('flightSlot') || null;
+        const physics = registry.get('physics') || null;
+        const nativeRecord = e && physics?._sg02?.records?.get(e.id);
+        const nativeBody = nativeRecord && nativeRecord.entity === e ? nativeRecord.body : null;
+        const simPlayer = state.entities && typeof state.entities.get === 'function'
+          ? state.entities.get(state.playerId) : null;
+        const playerNativeRecord = simPlayer && physics?._sg02?.records?.get(simPlayer.id);
+        const playerNativeBody = playerNativeRecord && playerNativeRecord.entity === simPlayer
+          ? playerNativeRecord.body : null;
+        const telemetry = e ? readPhysicsTelemetry(e) : null;
+        const stepperSystems = host.stepper && host.stepper.debugSystemNames ? host.stepper.debugSystemNames() : null;
+        return {
+          tick: state.tick,
+          seed: state.meta?.seed ?? null,
+          runSeed: Number.isSafeInteger(state.run?.seed) ? state.run.seed : null,
+          run: state.run ? {
+            kind: state.run.kind ?? null,
+            ruleset: state.run.ruleset ?? null,
+            phase: state.run.phase ?? null,
+            wave: Number.isSafeInteger(state.run.wave) ? state.run.wave : null,
+            threatBudget: Number.isSafeInteger(state.run.threatBudget) ? state.run.threatBudget : null,
+            spawnedThreat: Number.isSafeInteger(state.run.spawnedThreat) ? state.run.spawnedThreat : null,
+            resolvedThreat: Number.isSafeInteger(state.run.resolvedThreat) ? state.run.resolvedThreat : null,
+          } : null,
+          simTime: state.simTime,
+          mode: state.mode,
+          timeScale: state.timeScale,
+          timeEffects: readTimeEffectsRequests(state),
+          bulletTime: state.massline2?.bulletTime ? {
+            active: state.massline2.bulletTime.active === true,
+            energy: state.massline2.bulletTime.energy,
+          } : null,
+          playerId: state.playerId,
+          skipFullTick: shouldSkipFullTickSystems(state),
+          input: state.input ? { moveX: state.input.moveX, moveZ: state.input.moveZ,
+            turnIntent: state.input.turnIntent, boost: state.input.boost, brake: state.input.brake,
+            actionBrake: state.input.actions?.brake, autoFire: state.input.autoFire,
+            blocked: state.input.blocked, lastInputSeq: host.lastInputSeq,
+            lastInputWallMs: host.lastInputWallMs } : null,
+          ui: state.ui ? {
+            docked: state.ui.docked,
+            screenStackLen: Array.isArray(state.ui.screenStack) ? state.ui.screenStack.length : -1,
+            modalActive: host.modalActive,
+          } : null,
+          gameplay: state.settings && state.settings.gameplay ? {
+            physicsBackend: state.settings.gameplay.physicsBackend,
+            flightBackend: state.settings.gameplay.flightBackend,
+            aiBackend: state.settings.gameplay.aiBackend,
+            difficulty: state.settings.gameplay.difficulty,
+            runtimeProfile: state.settings.gameplay.runtimeProfile,
+          } : null,
+          render: state.render ? { sectorShellAdmission: state.render.sectorShellAdmission === true } : null,
+          world: state.world ? {
+            currentSectorId: state.world.currentSectorId,
+            frameOrigin: state.world.frameOrigin
+              ? { x: state.world.frameOrigin.x, z: state.world.frameOrigin.z } : null,
+            frameOriginSeq: Number.isSafeInteger(state.world.frameOriginSeq) ? state.world.frameOriginSeq : null,
+            sectorKeys: state.world.sectors ? Object.keys(state.world.sectors).length : -1,
+            activeSector: state.world.activeSector ? { id: state.world.activeSector.id, entityCount: Array.isArray(state.world.activeSector.entities) ? state.world.activeSector.entities.length : -1 } : null,
+          } : null,
+          cameraFrame: state.camera ? {
+            focus: state.camera.focus ? { x: state.camera.focus.x, z: state.camera.focus.z } : null,
+            frameOriginX: Number.isFinite(state.camera.frameOriginX) ? state.camera.frameOriginX : null,
+            frameOriginZ: Number.isFinite(state.camera.frameOriginZ) ? state.camera.frameOriginZ : null,
+            eye: Number.isFinite(state.camera.eyeX) && Number.isFinite(state.camera.eyeY) && Number.isFinite(state.camera.eyeZ)
+              ? { x: state.camera.eyeX, y: state.camera.eyeY, z: state.camera.eyeZ } : null,
+            viewKind: typeof state.camera.viewKind === 'string' ? state.camera.viewKind : null,
+            viewMix: Number.isFinite(state.camera.viewMix) ? state.camera.viewMix : null,
+          } : null,
+          lastRpcAck: host.lastRpcAck || null,
+          lastBusEmit: host.lastBusEmit || null,
+          playerCredits: state.player ? state.player.credits : null,
+          playerCargo: state.player && state.player.cargo
+            ? { usedVolume: state.player.cargo.usedVolume, capVolume: state.player.cargo.capVolume }
+            : null,
+          missionsActive: state.missions && Array.isArray(state.missions.active)
+            ? state.missions.active.length : null,
+          missionsActiveIds: state.missions && Array.isArray(state.missions.active)
+            ? state.missions.active.map((m) => m && (m.id || m.missionId || null)) : null,
+          missionsDiag: (() => {
+            const sys = registry.get('missions');
+            const sysState = sys && sys.state;
+            const boards = sysState && sysState.missions && sysState.missions.boards;
+            return {
+              rootType: typeof state.missions,
+              stateEqSys: sysState === state,
+              sysActive: sysState && sysState.missions && Array.isArray(sysState.missions.active)
+                ? sysState.missions.active.length : null,
+              boardStations: boards ? Object.keys(boards) : null,
+            };
+          })(),
+          lastStorageStage: host.lastStorageStage || null,
+          gameStartedEmits: host.gameStartedEmits,
+          pendingGameStarted: host.pendingGameStarted !== null,
+          droppedEventTypes: host.droppedEventTypes,
+          dropSamples: host.dropSamples,
+          saveDiag: (() => {
+            const s = registry.get('save');
+            return s && s._diag ? { loads: s._diag.loads, errors: s._diag.errors } : null;
+          })(),
+          player: e ? {
+            id: e.id, type: e.type, alive: e.alive,
+            vx: e.vel?.x ?? e.vx, vz: e.vel?.z ?? e.vz,
+            pos: e.pos ? { x: e.pos.x, y: e.pos.y, z: e.pos.z } : null,
+            prevPos: e.prevPos ? { x: e.prevPos.x, z: e.prevPos.z } : null,
+            rot: e.rot, hull: e.hull, physicsSleeping: e.physicsSleeping === true,
+            occupantGeneration: e.occupantGeneration,
+            native: nativeBody ? { position: nativeBody.translation(), velocity: nativeBody.linvel(),
+              sleeping: nativeBody.isSleeping(), mass: nativeBody.mass(),
+              frameOrigin: physics._sg02.getFrameOrigin() } : null,
+            control: telemetry ? { tick: telemetry.tick, force: telemetry.force,
+              torque: telemetry.torque, authority: telemetry.authority, mode: telemetry.mode } : null,
+          } : null,
+          simulationPlayer: simPlayer ? {
+            id: simPlayer.id,
+            pos: simPlayer.pos ? { x: simPlayer.pos.x, y: simPlayer.pos.y, z: simPlayer.pos.z } : null,
+            prevPos: simPlayer.prevPos ? { x: simPlayer.prevPos.x, z: simPlayer.prevPos.z } : null,
+            rot: simPlayer.rot,
+            native: playerNativeBody ? {
+              position: playerNativeBody.translation(), velocity: playerNativeBody.linvel(),
+              frameOrigin: physics._sg02.getFrameOrigin(),
+            } : null,
+          } : null,
+          entityCount: state.entities && typeof state.entities.size === 'number' ? state.entities.size : null,
+          entityListLen: Array.isArray(state.entityList) ? state.entityList.length : null,
+          flight: flight ? { name: flight.name || null, hasUpdate: typeof flight.update === 'function', diag: flight._diag ? { ...flight._diag } : null } : null,
+          physics: physics ? { name: physics.name || null, hasUpdate: typeof physics.update === 'function', diag: physics._diag ? { sg02Ready: physics._diag.sg02Ready, sg02Bodies: physics._diag.sg02Bodies, sg02DynamicBodies: physics._diag.sg02DynamicBodies, sg02SyncMode: physics._diag.sg02SyncMode, backend: physics._diag.backend, sg02InitTimedOut: physics._diag.sg02InitTimedOut } : null } : null,
+          stepperSystems,
+        };
+      }],
+    ]);
+  }
+
+  // Stage-8 production lane: the whole authoritative sim (production manifest,
+  // nodeSafeOnly materialization) steps inside this realm off the shipped state
+  // snapshot. The runner-facing surfaces — journal, aux, domains, commands,
+  // replies — are identical to the legacy lane's.
+  async function handleInitProduction(msg) {
+    const seed = (Number(msg.seed) >>> 0) || 1;
+    host.reloadAt = null;
+    host.crashAt = Number.isSafeInteger(msg.crashAt) ? msg.crashAt : null;
+    configureDomainMirroring(msg.domainMirroring || {});
+    host.domainDiffer = createDomainDiffer({ probe: false });
+    host.sabArena = bindSabJournalArena(msg.sabArena);
+
+    const journalCapacity = Number.isSafeInteger(msg.journalCapacity) && msg.journalCapacity > 0
+      ? msg.journalCapacity
+      : undefined;
+    const journal = createPresentationJournal(journalCapacity, { isEntityJournaled: entityIsJournaled });
+    host.journal = journal;
+    host.scratch = createPresentationJournalRecord();
+    host.suppressedSpawns = [];
+    host.identityOffenders = [];
+
+    // Contract ships on the directive in the browser realm; node adapters may
+    // still read it off disk via the realm fs shim.
+    const contract = msg.scenarioContract != null
+      ? { document: msg.scenarioContract, path: msg.scenarioContractPath || null, sha256: msg.scenarioContractHash || null }
+      : loadScenarioContract(msg.scenarioContractPath || 'src/data/scenarios/47a.scenario.json');
+
+    // Lane input geometry/modal state ships before the runtime inits (input.init
+    // reads the viewport at construction for stick reset).
+    applyLaneViewport(Number(msg.viewport && msg.viewport.w), Number(msg.viewport && msg.viewport.h));
+    const bus = createBus();
+    const helpers = {
+      // The main presentation owner admits restored flight after its visual/physics gates.
+      deferFlightAdmission: true,
+      scenarioContract: contract.document || null,
+      scenarioContractPath: contract.path,
+      scenarioContractHash: contract.sha256,
+      // bulletTime's moment gate wants helpers.worldToScreen (renderer.js binds
+      // the Three project() only on the presenting lane). The lane projector is
+      // the sim realm's own honest visibility source: tableChaseFraming derives
+      // the chase rig's SETTLED envelope — focus, tilt, settings fov, and the
+      // effective distance (the speed-zoomed zoom, not the commanded camera.
+      // zoom) — and tableWorldToScreen projects it in the transported pixel
+      // viewport. Off-glass points still report onScreen:false; this is never
+      // an always-visible stub.
+      worldToScreen: (pos, out) => tableWorldToScreen(host.state, host.laneViewport, pos, out),
+      // The input system lives in this realm — its touch deck is DOM, so it
+      // gets the lane reducer: resolved mobile frames arrive as descriptors.
+      mobileSeams: { lane: 'worker' },
+      warmSectorFullExtras: (sectorId, bag) => {
+        const stubs = liveSectorFullExtrasStubs(host.state, String(sectorId), bag || null);
+        if (stubs && stubs.sectorId) {
+          host.warmStubs.push(stubs);
+          host.warmStubCount++;
+        }
+      },
+    };
+    // Boot state rebuild: createGameState(seed) already equals the presenting
+    // lane's boot state (menu) — persisted overrides ship as plain JSON
+    // (settings), and any live entity graphs stay on main until the sim spawns
+    // its own. Shipping the live state object is off the table: functions
+    // (rng) and Maps do not survive a transport clone, and menu-time state has
+    // no sim-authored data worth carrying anyway.
+    const state = createGameState(seed);
+    if (msg.timeEffectsSnapshot) {
+      createTimeEffects(state);
+      setTimeEffectsGeneration(state, msg.timeEffectsSnapshot.generation);
+      applyRemoteTimeEffectsSnapshot(state, 'presentation', msg.timeEffectsSnapshot);
+      host.timeEffectsAuthority = true;
+    }
+    if (msg.settings && typeof msg.settings === 'object') {
+      deepAssignInPlace(state.settings, canonicalClone(msg.settings));
+    }
+    const runtime = createAuthoritativeRuntime({
+      profileId: 'production',
+      nodeSafeOnly: true,
+      seed,
+      state,
+      bus,
+      helpers,
+      tacticalAI: msg.tacticalAI !== false,
+      presentationJournal: journal,
+    });
+    // The production profile's feature MAPS are process-global module state.
+    // The runtime's init wrapped withFeatureMaps (restore-on-exit); inside a
+    // dedicated sim realm nothing else reads those maps, so apply them
+    // permanently — one seeding, zero per-step restore traffic.
+    applyFeatureConfigToMaps(runtime.config.features);
+    host.runtime = runtime;
+    host.state = runtime.state;
+    host.bus = runtime.bus;
+    const registry = { get: (name) => runtime.getSystem(name) };
+    host.registry = registry;
+    // Sim-shaped facade for shared call sites (drain ctx, rpc handlers).
+    host.sim = { helpers, spawn: (spec) => runtime.spawn(spec) };
+
+    const updateOrder = runtime.manifest.authoritativeUpdateOrder;
+    // Step the sim's init'd forks, not the manifest's definition objects —
+    // createSimulation forkSystem()s each definition, so stepping the raw
+    // module objects runs update() on un-initialized singletons (this.bus unset).
+    const postInputPartitions = partitionUpdateSystems(
+      updateOrder.slice(1).map((def) => runtime.getSystem(def && def.name) || def),
+      {
+        state: host.state,
+        bus: host.bus,
+      },
+    );
+    host.stepper = createAuthoritativeStepper({
+      state: host.state,
+      input: runtime.getSystem('input'),
+      core: runtime.getSystem('core'),
+      postInputPartitions,
+      getSystem: (name) => runtime.getSystem(name),
+    });
+    // Wire-side input boundary: the worker captures the same fields the main
+    // lane's inputCommandSnapshots ring captures — shipped per stepped tick and
+    // replayed through the real ring main-side (see simLaneMain.js).
+    host.inputPublishes = [];
+    host.tickBoundary = {
+      publishInputCommand(input, actualTick, activityStamp) {
+        host.inputPublishes.push({
+          actualTick,
+          inputSeq: Number.isSafeInteger(input && input._activitySeq) ? input._activitySeq : 0,
+          inputWallMs: Number.isFinite(activityStamp && activityStamp.wallMs) ? activityStamp.wallMs : 0,
+          input: canonicalClone(input),
+        });
+      },
+    };
+
+    installRpcHandlers(host.state, host.sim, registry);
+    installBridgeCapture(host.bus, msg.bridgeAll === true);
+
+    const initRebuild = rebuildJournalIfNeeded();
+    if (initRebuild && !initRebuild.failed && initRebuild.end > initRebuild.start) {
+      initRebuild.pack = packJournalRange(journal, initRebuild.start, initRebuild.end, host.scratch, host.sabArena);
+      initRebuild.spawnInfos = [];
+      for (const entityId of initRebuild.pack.spawnEntityIds) {
+        const info = entityInfoBlock(host.state, entityId, host);
+        if (info) initRebuild.spawnInfos.push(info);
+      }
+    }
+    host.committedJournalSequence = journal.getWriteSequence();
+    journal.markTransferredThrough(host.committedJournalSequence);
+    const initAux = diffAuxTables(host.state);
+    const initDomains = diffDomains(host.state, host.domainDiffSeq++);
+    // Vitals shadow primes on init — spawnInfo vitals already carry the fields.
+    collectEntityVitals(host.state, host.vitalShadow, host.vitalSeen);
+    host.ready = true;
+    return {
+      lifecycleGeneration: host.lifecycleGeneration,
+      journalSequence: host.committedJournalSequence,
+      initRebuild,
+      weaponVfxProjectiles: collectWeaponVfxProjectiles(host.state),
+      auxUpserts: initAux.upserts,
+      auxRemovals: initAux.removals,
+      storageOps: drainStorageOps(),
+      collectProbe: null,
+      domainUpdates: initDomains.updates,
+      timeEffectsSnapshot: host.timeEffectsAuthority ? readLocalTimeEffectsSnapshot(state) : undefined,
+      domainProbe: null,
+      domainShipBytes: initDomains.shipBytes,
+      domainDiffMs: initDomains.diffMs,
+      domainAbsentKeys: DOMAIN_MIRROR_KEYS.filter((key) => resolveDomainValue(host.state, key) === undefined),
+      scenarioContractSha256: contract.sha256,
+      profile: 'production',
+    };
+  }
+
+  async function handleInit(msg) {
+    host.lifecycleGeneration = Number.isSafeInteger(msg.generation) && msg.generation >= 0
+      ? msg.generation : (Number.isSafeInteger(msg.timeEffectsSnapshot?.generation) ? msg.timeEffectsSnapshot.generation : 0);
+    host.profile = msg.profile === 'production' ? 'production' : 'legacy47a';
+    // E2: the realm profiler is off unless the host asked for it. Enabling it here (before
+    // init) keeps the cost out of every normal boot and gives a probe one switch.
+    host.systemProfileRequested = msg.systemProfile === true;
+    getSimStepProfiler().setEnabled(host.systemProfileRequested);
+    if (host.systemProfileRequested) getSimStepProfiler().reset();
+    if (host.profile === 'production') return handleInitProduction(msg);
+    applyFeatureConfigToMaps(LEGACY47A_FEATURES);
+    Object.assign(COMBAT_FLAGS, { weaponImpulseConsequences: false });
+
+    const seed = (Number(msg.seed) >>> 0) || 47;
+    host.reloadAt = Number.isSafeInteger(msg.reloadAt) ? msg.reloadAt : null;
+    host.crashAt = Number.isSafeInteger(msg.crashAt) ? msg.crashAt : null;
+    host.auxVerify = msg.auxVerify === true;
+    host.domainProbeEnabled = msg.domainProbe === true;
+    // Stage-7 item B: the market-wire profile travels on init so the worker
+    // realm's differ expands/projects identically to the main realm's facade
+    // probe (module-local state — realms stay in lockstep via the directive).
+    configureDomainMirroring(msg.domainMirroring || {});
+    host.domainDiffer = createDomainDiffer({ probe: host.domainProbeEnabled });
+    // Stage-7 item C: SAB journal arena shared by the main lane on init.
+    // null when the flag is off, SAB unavailable, or the descriptor mismatched.
+    host.sabArena = bindSabJournalArena(msg.sabArena);
+
+    const scenarioContract = loadScenarioContract(msg.scenarioContractPath || 'src/data/scenarios/47a.scenario.json');
+    const journalCapacity = Number.isSafeInteger(msg.journalCapacity) && msg.journalCapacity > 0
+      ? msg.journalCapacity
+      : undefined;
+    const journal = createPresentationJournal(journalCapacity, { isEntityJournaled: entityIsJournaled });
+    host.journal = journal;
+    host.scratch = createPresentationJournalRecord(); // visitRange copies each record into this
+
+    // Spike instrumentation: name entities whose records hit identity errors
+    // (spawn suppressed during a pending rebuild, transform without spawn
+    // metadata) — this tells us WHO creates the rebuild churn.
+    host.suppressedSpawns = [];
+    host.identityOffenders = [];
+    const origSpawn = journal.recordSpawn.bind(journal);
+    const origTransformIfChanged = journal.recordTransformIfChanged.bind(journal);
+    journal.recordSpawn = (tick, entity) => {
+      const seq = origSpawn(tick, entity);
+      if (seq === 0 && journal.needsRebuild() && host.suppressedSpawns.length < 40) {
+        host.suppressedSpawns.push({ tick, id: entity && entity.id, type: entity && entity.type });
+      }
+      return seq;
+    };
+    journal.recordTransformIfChanged = (tick, entity) => {
+      const before = journal.getDiagnostics().identityErrorCount;
+      const seq = origTransformIfChanged(tick, entity);
+      const diag = journal.getDiagnostics();
+      if (diag.identityErrorCount > before && host.identityOffenders.length < 40) {
+        const state = host.state;
+        const inList = !!(state && state.entityList && state.entityList.some((x) => x && x.id === (entity && entity.id)));
+        const inMap = !!(state && state.entities && state.entities.get(entity && entity.id));
+        host.identityOffenders.push({
+          tick, id: entity && entity.id, type: entity && entity.type,
+          reason: diag.rebuildReason, inList, inMap: !!inMap,
+          alive: entity && entity.alive,
+        });
+      }
+      return seq;
+    };
+
+    const systems = [
+      scenarioRuntime, presentationOrchestrator, presentationAdapters, actions,
+      flight, weapons, physics, combat, cargo, economy, missions, story, save,
+    ];
+    const runtimeManifest = resolveRuntimeManifest({
+      profileId: 'legacy47a',
+      explicitSystems: systems,
+      tacticalAI: false,
+      exclusions: [
+        'production-manifest-claim',
+        'full-production-system-set',
+        'massline-family',
+        'travel-family',
+      ],
+    });
+
+    const sim = createSimulation({
+      seed,
+      helpers: {
+        scenarioContract: scenarioContract.document,
+        scenarioContractPath: scenarioContract.path,
+        scenarioContractHash: scenarioContract.sha256,
+        // F1 (W31 boot hazard): the render lane's warmSectorFullExtras enumerate
+        // ran on live mirrors — post-flip those mirrors don't exist. The sim
+        // lane enumerates instead and ships the decoded stubs on the tick
+        // reply; the main side decodes via opts.stubs (no re-enumerate).
+        warmSectorFullExtras: (sectorId, bag) => {
+          const stubs = liveSectorFullExtrasStubs(host.state, String(sectorId), bag || null);
+          if (stubs && stubs.sectorId) {
+            host.warmStubs.push(stubs);
+            host.warmStubCount++;
+          }
+        },
+      },
+      systems,
+      runtimeManifest,
+      runtimeConfig: {
+        profileId: 'legacy47a',
+        features: runtimeManifest.features,
+        evidenceClass: runtimeManifest.evidenceClass,
+        exclusions: runtimeManifest.exclusions,
+      },
+      presentationJournal: journal,
+    });
+    host.sim = sim;
+    const { state, bus, registry } = sim;
+    host.state = state;
+    host.bus = bus;
+    host.registry = registry;
+
+    // Stage-5 rpc ops: the hard-sync seams promoted to correlated request/ack
+    // envelopes. quote/inspectListing are synchronous reads; physicsPrep and
+    // newGame run inside handleTick's directive window (awaited before stepping).
+    installRpcHandlers(state, sim, registry);
+    installBridgeCapture(bus, msg.bridgeAll === true);
+
+    state.settings.gameplay.physicsBackend = 'rapier-dynamic';
+    state.settings.gameplay.aiBackend = 'legacy';
+    state.settings.gameplay.flightBackend = 'legacy';
+    state.settings.gameplay.runtimeProfile = 'legacy47a';
+
+    state.mode = 'flight';
+    state.world.currentSectorId = 'sector_helios_prime';
+    state.player.credits = 5000;
+
+    const player = sim.spawn(makeShipEntitySpec(NEW_GAME.shipId, {
+      team: 0,
+      factionId: 'faction_free',
+      isPlayer: true,
+      player: state.player,
+      fittings: fittingsFromDefaultModules(NEW_GAME.shipId, NEW_GAME.fittedModules || []),
+      pos: { x: 0, z: 0 },
+      rot: 0,
+    }));
+    state.playerId = player.id;
+    mark47aPlayerActor(player);
+
+    const spindle = sim.spawn(makeEvidenceSpindleSpec({ pos: { x: 92, z: 0 }, rot: 0 }));
+    spindle.data = Object.assign({}, spindle.data, {
+      scenarioActorId: 'evidence_spindle_47a',
+      scenarioRole: 'tether_payload',
+      assetRef: 'asset.slice.47a_spindle',
+    });
+
+    const target = sim.spawn(makeShipEntitySpec('ship_wasp', {
+      team: 1,
+      factionId: 'faction_reavers',
+      pos: { x: 620, z: -18 },
+      rot: Math.PI,
+      ai: { role: 'target_dummy' },
+    }));
+    target.radius = Math.max(target.radius || 0, 44);
+    target.flags = Object.assign({}, target.flags, { persistent: true });
+
+    spawn47aScenarioCast(sim);
+
+    const econ = registry.get('economy');
+    // Stage-5 eager mint: quote-triggered market/listing mints record a pending spec
+    // (identical _rng draws, now) that materializes at the next update() boundary.
+    if (econ) econ.eagerMarketMint = msg.eagerMarketMint === true;
+    if (econ && typeof econ.newGame === 'function') econ.newGame();
+    bus.emit('game:started', { source: 'sf-sim', scenario: '47a' });
+    await preparePhysicsBackend(registry, state, 'rapier-dynamic');
+
+    const initRebuild = rebuildJournalIfNeeded();
+    if (initRebuild && !initRebuild.failed && initRebuild.end > initRebuild.start) {
+      initRebuild.pack = packJournalRange(journal, initRebuild.start, initRebuild.end, host.scratch, host.sabArena);
+      initRebuild.spawnInfos = [];
+      for (const entityId of initRebuild.pack.spawnEntityIds) {
+        const info = entityInfoBlock(state, entityId, host);
+        if (info) initRebuild.spawnInfos.push(info);
+      }
+    }
+    host.committedJournalSequence = journal.getWriteSequence();
+    journal.markTransferredThrough(host.committedJournalSequence);
+    const initAux = diffAuxTables(state);
+    // Instrumentation rides its probe flag (item D-F3): flag off = the probe
+    // walk never runs at init either.
+    const initCollectProbe = msg.aux === true ? collectProbeBlock(state) : null;
+    const initDomains = diffDomains(state, host.domainDiffSeq++);
+    host.ready = true;
+    return {
+      lifecycleGeneration: host.lifecycleGeneration,
+      journalSequence: host.committedJournalSequence,
+      initRebuild,
+      weaponVfxProjectiles: collectWeaponVfxProjectiles(state),
+      auxUpserts: initAux.upserts,
+      auxRemovals: initAux.removals,
+      collectProbe: initCollectProbe,
+      domainUpdates: initDomains.updates,
+      domainProbe: host.domainProbeEnabled ? initDomains.probe : null,
+      domainShipBytes: initDomains.shipBytes,
+      domainDiffMs: initDomains.diffMs,
+      storageOps: drainStorageOps(),
+      // Mirror keys that resolve absent at init (drill.*, sectorSim.field,
+      // save.slots, factionPresence.boarding) — the main lane's missing-keys
+      // gate exempts exactly these; they facade on first presence.
+      domainAbsentKeys: DOMAIN_MIRROR_KEYS.filter((key) => resolveDomainValue(state, key) === undefined),
+      scenarioContractSha256: scenarioContract.sha256,
+    };
+  }
+
+  async function handleTick(msg) {
+    const { state, sim, journal, scratch } = host;
+    const workStart = nowNs();
+    const arrivalNs = nowNs();
+
+    // Command drain + input application happen per directive even when steps === 0 —
+    // the runner-level gate (timeScale<=0 skips advanceFixedTimestep) must not strand
+    // unpause/load commands addressed to a non-ticking worker. Stage 1: every
+    // directive-side mutation arrives as a typed {input|bus|settings|rpc} envelope
+    // folded in wire order through the shared channel.
+    if (Number.isSafeInteger(msg.generation) && msg.generation >= 0) {
+      host.lifecycleGeneration = msg.generation;
+      setTimeEffectsGeneration(state, msg.generation);
+    }
+    applyPresentationTimeEffects(msg.timeEffectsSnapshot, host.lifecycleGeneration);
+    const drain = drainSimCommandEnvelopes(msg.commands || [], {
+      state,
+      helpers: sim.helpers,
+      bus: host.bus,
+      sim,
+      registry: host.registry,
+      rpcHandlers: host.rpcHandlers,
+      promote: { farActor: promoteFarActor, asteroidRock: promoteAsteroidFieldRock },
+      // Stage-8 realms: only the production lane sends these; the same hooks
+      // keep both lanes' drain call-site identical.
+      ingestDomEvent: (d) => {
+        const inp = host.registry && host.registry.get && host.registry.get('input');
+        if (inp && typeof inp.ingestLaneDomEvent === 'function') inp.ingestLaneDomEvent(d);
+      },
+      applyUiFold: (p) => {
+        if (!p || typeof p !== 'object') return;
+        host.modalActive = p.modalActive === true;
+        host.screenStackLen = Number.isSafeInteger(p.screenStackLen) ? Math.max(0, p.screenStackLen) : 0;
+        setLaneModalActive(host.modalActive);
+        // The sim reads ui.screenStack's DEPTH for neutralization; contents are
+        // presentation-owned and never cross the lane.
+        if (state.ui && Array.isArray(state.ui.screenStack)) {
+          state.ui.screenStack.length = host.screenStackLen;
+          for (let i = 0; i < host.screenStackLen; i++) {
+            if (state.ui.screenStack[i] === undefined) state.ui.screenStack[i] = true;
+          }
+        }
+      },
+      setViewport: (w, h) => applyLaneViewport(w, h),
+      keepalive: (wallDt) => {
+        // Mirror createRegistry.keepalive's frozen-window body against the
+        // worker's systems: input/save tick at dt 0, the yard runs on wall
+        // clock (the whole point of shipping wallDt across the lane).
+        const reg = host.registry;
+        if (!reg || !Number.isFinite(wallDt)) return;
+        const inputSys = reg.get && reg.get('input');
+        if (inputSys && typeof inputSys.update === 'function') inputSys.update(0, state);
+        const saveSys = reg.get && reg.get('save');
+        if (saveSys && typeof saveSys.update === 'function') saveSys.update(0, state);
+        const yard = reg.get && reg.get('stationServices');
+        if (yard && typeof yard.update === 'function' && wallDt > 0) yard.update(wallDt, state);
+      },
+      emitBusEvent: (type, payload) => {
+        if (!host.bus || typeof host.bus.emit !== 'function' || typeof type !== 'string') return;
+        // Load/save events carry main's sf.* keyspace; stage it onto the lane
+        // storage shim first so save.load/save.save run their own slot logic
+        // against real bytes. Writes the worker staged but has not yet relayed
+        // main-side must survive the restage — the snapshot predates them.
+        if ((type === 'game:load' || type === 'game:save') && payload && payload.__laneStorage) {
+          stageLaneStorage(payload.__laneStorage, pendingStorageOps);
+          host.lastStorageStage = { type, keys: Object.keys(payload.__laneStorage).length };
+        }
+        if (type === 'game:load') {
+          // A restore supersedes any still-staged new-game receipt — a pending
+          // game:started must not fire into a restored world.
+          host.pendingGameStarted = null;
+        }
+        // Mirror of remapEventPayload on the main side: forwarded { entityRef }
+        // tokens resolve back to live entities so sim listeners see the same
+        // shape a local emit would carry.
+        if (payload && typeof payload === 'object' && state.entities) {
+          const ref = (v) => v && typeof v === 'object' && Number.isFinite(v.entityRef);
+          for (const k of Object.keys(payload)) {
+            const v = payload[k];
+            if (ref(v)) payload[k] = resolveEventEntityRef(v, state.entities);
+            else if (Array.isArray(v)) {
+              for (let i = 0; i < v.length; i++) {
+                if (ref(v[i])) v[i] = resolveEventEntityRef(v[i], state.entities);
+              }
+            }
+          }
+        }
+        host.lastBusEmit = type;
+        host.suppressedEmitTypes.set(type, (host.suppressedEmitTypes.get(type) | 0) + 1);
+        try { host.bus.emit(type, payload); } finally { host.suppressedEmitTypes.set(type, host.suppressedEmitTypes.get(type) - 1); }
+      },
+      // Stage-9 remediation: consumes the staged new-game receipt at the
+      // first post-boot 'flight' transition and emits game:started once on the
+      // worker bus — mirroring enterFlight()'s ordering (mode:changed →
+      // game:started) with no forwarded main emit. The bridge ships the receipt
+      // back so main-side subscribers fire exactly once; sim-side subscribers
+      // fire here exactly once. Called from the MODE command apply.
+      emitPendingGameStarted: (mode) => {
+        if (mode !== 'flight' || !host.pendingGameStarted || !host.bus) return false;
+        const payload = host.pendingGameStarted;
+        host.pendingGameStarted = null;
+        // The main realm releases its own veil separately. Retire only the sim boot lease;
+        // any mirrored loading/pause hold continues to own the first-picture boundary.
+        createTimeEffects(state).clear('runtime:loading');
+        host.gameStartedEmits += 1;
+        try { host.bus.emit('game:started', payload); } catch (_) {}
+        return true;
+      },
+    });
+    // Async rpc ops (physicsPrep, newGame) resolve inside this directive window —
+    // still before the tick steps, preserving drain-before-step ordering.
+    for (const pending of drain.pendingRpcs) {
+      try {
+        const result = await pending.promise;
+        drain.rpcAcks.push({ id: pending.id, ok: true, result });
+        host.lastRpcAck = { op: pending.op, ok: true };
+      } catch (e) {
+        drain.rpcAcks.push({ id: pending.id, ok: false, reason: String((e && e.message) || e), op: pending.op });
+        host.lastRpcAck = { op: pending.op, ok: false, reason: String((e && e.message) || e) };
+      }
+    }
+    host.lastInputSeq = drain.inputSeq || 0;
+    host.lastInputWallMs = drain.inputWallMs || 0;
+    host.commandDropped += drain.dropped;
+    for (const env of msg.commands || []) {
+      if (env && env.t === 'input' && env.p && env.p.input) {
+        host.inputHistory.record(state.tick, env.p.input, { sequence: env.seq });
+      }
+    }
+    const steps = Number.isSafeInteger(msg.steps) ? Math.max(0, msg.steps) : 1;
+    const production = host.profile === 'production';
+    reconcileLaneComponentSelection(state);
+    // Phase split for the lane's freeze forensics: workMs alone cannot tell a
+    // contact-storm step batch from a command drain or a vitals/pack tail.
+    const drainNs = nowNs() - workStart;
+    const stepsStartNs = nowNs();
+
+    // Present-side ack: main consumed up to ackJournalEnd → free the ring slots.
+    if (Number.isSafeInteger(msg.ackJournalEnd) && msg.ackJournalEnd > 0) {
+      journal.discardThrough(msg.ackJournalEnd);
+    }
+
+    let completedTick = null;
+    let journalStart = host.committedJournalSequence;
+    if (production) host.inputPublishes.length = 0;
+    // Work budget: the local-clock catch-up path (workBudgetMs set by the
+    // worker pump) may stop early once the reply has consumed its share of the
+    // frame — un-executed steps behave like shed debt so the world slows down
+    // instead of compounding one heavy step into a multi-hundred-ms reply.
+    // Explicit-step directives carry no budget and always run exactly.
+    const workBudgetNs = Number.isFinite(msg.workBudgetMs) && msg.workBudgetMs > 0
+      ? msg.workBudgetMs * 1e6
+      : null;
+    let stepsExecuted = 0;
+    for (let s = 0; s < steps; s++) {
+      if (s > 0) reconcileLaneComponentSelection(state);
+      if (production) {
+        host.stepper.step(SIM_DT, host.tickBoundary);
+      } else {
+        update47aScenarioActorIntents(state);
+        sim.step(SIM_DT);
+      }
+      stepsExecuted++;
+      // Crash probe (--probe crash, init.crashAt): an unhandled step exception
+      // must surface to the main lane as a rejected directive — the same
+      // fail-closed shape a real worker throw produces.
+      if (host.crashAt != null && state.tick === host.crashAt) {
+        throw new Error(`worker step crash injected at tick ${state.tick} (probe)`);
+      }
+      if (host.reloadAt != null && state.tick === host.reloadAt) {
+        await reloadThroughSave(registryRef(), state, null, host.reloadAt, {
+          physicsBackend: 'rapier-dynamic',
+          flightBackend: 'legacy',
+        });
+      }
+      if (workBudgetNs != null && s + 1 < steps
+          && (nowNs() - workStart) >= workBudgetNs) break;
+    }
+    // Churn probe (gate-c overflow exercise): spawn/destroy journaled entities to
+    // drive non-coalescible append churn beyond ring capacity.
+    // Aux-row probe (stage 3 gate exercise): scripted live→shelve→promote
+    // lifecycle + rock mutation + dressing drop, driven by --probe aux. Mutates
+    // sim state so gate-A hash parity is not expected under this probe — the
+    // collect-set parity gate is what it exists to exercise.
+    if (msg.aux) {
+      const t = msg.tick;
+      if (t === 60 && !host.auxProbeShip) {
+        host.auxProbeShip = sim.spawn(makeShipEntitySpec('ship_wasp', {
+          team: 1,
+          factionId: 'faction_reavers',
+          pos: { x: 1500, z: 1500 },
+          rot: 0,
+        }));
+        host.auxProbeRock = insertAsteroidFieldRock(state, {
+          pos: { x: 120, z: 120 }, vel: { x: -0.5, z: -0.2 }, radius: 8,
+        });
+        host.auxProbeDressing = insertDressingRow(state, {
+          type: 'fx', pos: { x: 40, z: -40 }, radius: 10,
+        });
+      } else if (t === 120 && host.auxProbeShip) {
+        // Shelve: snapshot into the far ledger, then remove the live entity —
+        // the journal destroy and the aux upsert race to the same tick reply.
+        insertFarActor(state, host.auxProbeShip, state.simTime, sim.helpers);
+        sim.helpers.removeEntity(host.auxProbeShip.id, { immediate: true });
+        host.auxProbeFarId = host.auxProbeShip.id;
+        host.auxProbeShip = null;
+      } else if (t === 300 && host.auxProbeRock) {
+        // In-place durable-field write (no version bump guaranteed) — the
+        // journal mark is what lets the diff ship it without a full walk.
+        host.auxProbeRock.pos.x += 400;
+        host.auxProbeRock.pos.z += 150;
+        markAuxRowDirty(state.world && state.world.asteroidField, host.auxProbeRock.id);
+      } else if (t === 400 && host.auxProbeFarId != null) {
+        // Promote back: row gains liveEntityId (or leaves the table), the live
+        // entity re-enters through the journal.
+        promoteFarActor(state, host.auxProbeFarId, sim.helpers);
+        host.auxProbeFarId = null;
+      } else if (t === 500 && host.auxProbeDressing) {
+        dropDressingRow(state, host.auxProbeDressing.id);
+        host.auxProbeDressing = null;
+      }
+    }
+    if (msg.domains) {
+      runDomainProbeMutations(state, msg.tick);
+    }
+    // Stage-5 commands probe: prepare a far-actor row the lane PROMOTE envelope
+    // can exercise end-to-end (spawn live → shelve → lane promote → aux removal).
+    if (msg.commandsProbe && msg.tick === 300 && host.cmdProbeFarId == null) {
+      const ship = sim.spawn(makeShipEntitySpec('ship_wasp', {
+        team: 1, factionId: 'faction_reavers',
+        pos: { x: -9999, z: -9999 }, rot: 0,
+        ai: { role: 'target_dummy' },
+      }));
+      insertFarActor(state, ship, state.simTime, sim.helpers);
+      sim.helpers.removeEntity(ship.id, { immediate: true });
+      host.cmdProbeFarId = ship.id;
+    }
+    if (msg.churn && Number.isSafeInteger(msg.churn.spawn) && msg.churn.spawn > 0) {
+      if (!host.churnEntities) host.churnEntities = [];
+      for (const prev of host.churnEntities) {
+        if (prev && prev.alive !== false) sim.helpers.removeEntity(prev.id, { immediate: true });
+      }
+      host.churnEntities = [];
+      for (let i = 0; i < msg.churn.spawn; i++) {
+        host.churnEntities.push(sim.spawn(makeShipEntitySpec('ship_wasp', {
+          team: 1,
+          factionId: 'faction_reavers',
+          pos: { x: -2000 - i * 40, z: -2000 },
+          rot: 0,
+        })));
+      }
+    }
+    let journalEnd = journal.getWriteSequence();
+    let fullRebuild = null;
+    if (journal.needsRebuild()) {
+      const rebuild = rebuildJournalIfNeeded();
+      if (rebuild && !rebuild.failed) {
+        // Production parity: a mid-tick rebuild replaces the tick range with the
+        // rebuild's spawn set (presentationRunner.rebuildJournalIfNeeded).
+        fullRebuild = rebuild;
+        journalStart = rebuild.start;
+        journalEnd = rebuild.end;
+      }
+    }
+    // Input attribution: the production lane's boundary publishes ride the
+    // wire (one per step); the newest publish's activity seq/wallMs is the
+    // completedTick's attribution, mirroring pendingInputCommandSeq main-side.
+    if (production && host.inputPublishes.length > 0) {
+      const lastPublish = host.inputPublishes[host.inputPublishes.length - 1];
+      host.lastInputSeq = lastPublish.inputSeq;
+      host.lastInputWallMs = lastPublish.inputWallMs;
+    }
+    if (stepsExecuted > 0) {
+      completedTick = makeCompletedTick(journalStart, journalEnd);
+    }
+    const workNs = nowNs() - workStart;
+    const stepsNs = nowNs() - stepsStartNs;
+    host.totalWorkNs += workNs;
+    host.tickCount += stepsExecuted;
+
+    const packStart = nowNs();
+    let pack;
+    try {
+      pack = journalStart < journalEnd
+        ? packJournalRange(journal, journalStart, journalEnd, scratch, host.sabArena)
+        : { count: 0, scalars: new Float64Array(0), kinds: new Uint8Array(0), typeIndex: new Uint16Array(0), typeTable: [], spawnEntityIds: [], start: journalStart, end: journalEnd, sab: false, sabSlot: null };
+    } catch (error) {
+      const diag = journal.getDiagnostics ? journal.getDiagnostics() : {};
+      throw new Error(`journal pack failed for (${journalStart}, ${journalEnd}] tick=${msg.tick}: ${error.message} ` +
+        `| oldest=${diag.oldestSequence} pending=${diag.pending} writeSeq=${diag.writeSequence} ` +
+        `rebuilds=${diag.rebuildCount} lastRebuild=(${diag.lastRebuildStart},${diag.lastRebuildEnd}] ` +
+        `discards=${diag.discardCount} committed=${host.committedJournalSequence}`);
+    }
+    // The next directive can arrive before presentation ACKs this pack. Freeze
+    // its retained records now so later poses append beyond the transfer cursor.
+    journal.markTransferredThrough(journalEnd);
+    host.committedJournalSequence = journalEnd;
+    const spawnInfos = [];
+    for (const entityId of pack.spawnEntityIds) {
+      const info = entityInfoBlock(state, entityId, host);
+      if (info) spawnInfos.push(info);
+    }
+    const packNs = nowNs() - packStart;
+    host.totalPackNs += packNs;
+
+    // E2 per-system profile summary: bounded, one per simulated second, only while the
+    // host asked for profiling. This is the worker realm's own export.
+    let systemProfile;
+    if (host.systemProfileRequested) {
+      const profiler = getSimStepProfiler();
+      host.systemProfileReplyCountdown = (host.systemProfileReplyCountdown | 0) - stepsExecuted;
+      if (host.systemProfileReplyCountdown <= 0) {
+        const snapshot = profiler.snapshot();
+        systemProfile = {
+          ...snapshot,
+          systems: snapshot.systems.slice(0, 40),
+        };
+        host.systemProfileReplyCountdown = 60;
+      }
+    }
+
+    const events = drainEvents();
+    const entityVitals = production
+      ? collectEntityVitals(state, host.vitalShadow, host.vitalSeen)
+      : null;
+    // This single authored body may become ready or fail without a normal vital
+    // changing. Ship its complete vitals each existing packet so coalescing keeps
+    // the newest native receipt and the scalar layout it authenticates together.
+    if (production) {
+      const current = new Set();
+      const actuationCurrent = new Set();
+      for (const entity of state.entityList || []) {
+        const role = ceresWorkfleetRoleForEntity(entity);
+        if (role !== 'cradle' && role !== 'breaker' && role !== 'cutterHead') continue;
+        const fields = entityVitalsOf(entity, krakenMotionFrame(state, entity), state);
+        if (role === 'cradle') {
+          current.add(entity.id);
+          fields.ceresCradlePublic = {
+            receipt: readCeresCradlePublicLayout(entity, state, host.registry?.get('physics')?._sg02, host.lifecycleGeneration),
+            layout: entity.data?.ceresWorkfleetCradleLayout ?? null,
+            itineraryLayout: entity.data?.itinerary?.ceresWorkfleet?.cradleLayout ?? null,
+          };
+        } else {
+          actuationCurrent.add(entity.id);
+          fields.ceresWorkfleetPublic = {
+            receipt: readCeresWorkfleetPublicActuation(entity, state, host.lifecycleGeneration, host.registry?.get('physics')?._sg02),
+            playerOwned: entity.playerOwned === true, dataPlayerOwned: entity.data?.playerOwned === true,
+            controlled: !!entity.data?.controlLease, disabled: entity.data?.disabled === true,
+          };
+        }
+        const existing = entityVitals.findIndex(entry => entry[0] === entity.id);
+        if (existing >= 0) entityVitals[existing] = [entity.id, fields];
+        else entityVitals.push([entity.id, fields]);
+      }
+      for (const id of host.ceresCradleIds) if (!current.has(id) && state.entities.has(id)) {
+        const existing = entityVitals.findIndex(entry => entry[0] === id);
+        const fields = existing >= 0 ? entityVitals[existing][1]
+          : entityVitalsOf(state.entities.get(id), krakenMotionFrame(state, state.entities.get(id)), state);
+        fields.ceresCradlePublic = { receipt: null };
+        if (existing >= 0) entityVitals[existing] = [id, fields];
+        else entityVitals.push([id, fields]);
+      }
+      host.ceresCradleIds = current;
+      for (const id of host.ceresActuationIds) if (!actuationCurrent.has(id) && state.entities.has(id)) {
+        const existing = entityVitals.findIndex(entry => entry[0] === id);
+        const fields = existing >= 0 ? entityVitals[existing][1]
+          : entityVitalsOf(state.entities.get(id), krakenMotionFrame(state, state.entities.get(id)), state);
+        fields.ceresWorkfleetPublic = { receipt: null };
+        if (existing >= 0) entityVitals[existing] = [id, fields];
+        else entityVitals.push([id, fields]);
+      }
+      host.ceresActuationIds = actuationCurrent;
+    }
+    const aux = diffAuxTables(state);
+    host.auxUpsertsTotal += aux.upserts.length;
+    host.auxRemovalsTotal += aux.removals.length;
+    const auxJournalBreaches = host.auxVerify ? verifyAuxJournal(state) : 0;
+    const domains = diffDomains(state, host.domainDiffSeq++);
+    const warmStubs = host.warmStubs.length ? host.warmStubs.splice(0) : null;
+    const weaponVfxProjectiles = collectWeaponVfxProjectiles(state);
+    const boundaryMs = Number(nowNs() - workStart) / 1e6;
+    return {
+      tick: msg.tick,
+      lifecycleGeneration: host.lifecycleGeneration,
+      arrivalNs,
+      completedTick,
+      auxUpserts: aux.upserts,
+      auxRemovals: aux.removals,
+      auxJournalBreaches: host.auxVerify ? auxJournalBreaches : undefined,
+      // collectProbe/domainProbe ship ONLY under their probe flags (item D-F3):
+      // flag off = zero probe allocation on production ticks.
+      collectProbe: (completedTick && msg.aux === true) ? collectProbeBlock(state) : null,
+      domainUpdates: domains.updates,
+      timeEffectsSnapshot: host.timeEffectsAuthority ? readLocalTimeEffectsSnapshot(state) : undefined,
+      domainProbe: (completedTick && host.domainProbeEnabled) ? domains.probe : null,
+      domainShipBytes: domains.shipBytes,
+      domainMarketShipBytes: domains.marketShipBytes || 0,
+      domainDiffMs: domains.diffMs,
+      journalStart,
+      journalEnd,
+      journalFullRebuild: fullRebuild !== null,
+      journalRebuildGeneration: fullRebuild ? fullRebuild.generation : 0,
+      journalValid: !journal.needsRebuild(),
+      pack,
+      spawnInfos,
+      weaponVfxProjectiles,
+      events,
+      warmStubs,
+      commandsProbe: msg.commandsProbe ? { farId: host.cmdProbeFarId != null ? host.cmdProbeFarId : null } : undefined,
+      foldsApplied: drain.foldsApplied || 0,
+      rpcAcks: drain.rpcAcks,
+      settingsAcks: drain.settingsAcks,
+      spawnAcks: drain.spawnAcks,
+      commandAcks: drain.commandAcks,
+      // Applied-envelope list ships only when the directive asks for it — the
+      // commands probe's coverage evidence; zero per-tick wire cost otherwise.
+      commandProbe: msg.commandProbe ? drain.applied : undefined,
+      inputPublishes: production ? host.inputPublishes.splice(0) : undefined,
+      storageOps: drainStorageOps(),
+      entityVitals: production ? entityVitals : undefined,
+      workMs: Number(workNs) / 1e6,
+      drainMs: Number(drainNs) / 1e6,
+      stepsMs: Number(stepsNs) / 1e6,
+      tailMs: (Number(boundaryMs) * 1e6 - Number(drainNs) - Number(stepsNs) - Number(packNs)) / 1e6,
+      packMs: Number(packNs) / 1e6,
+      stepsRequested: steps,
+      stepsExecuted,
+      boundaryMs,
+      sendNs: 0, // stamped just before postMessage/dispatch resolve
+      stateTick: state.tick,
+      simTime: state.simTime,
+      systemProfile,
+    };
+  }
+
+  async function handleFinalize() {
+    const { state, journal } = host;
+    const snapshot = snapshotSimState(state);
+    const sha256 = hashSnapshot(snapshot);
+    const journalDiag = journal && typeof journal.getDiagnostics === 'function'
+      ? journal.getDiagnostics()
+      : null;
+    const mem = realmMemoryUsage();
+    return {
+      sha256,
+      storageOps: drainStorageOps(),
+      stateTick: state.tick,
+      entityCount: state.entityList.length,
+      journalDiag,
+      journalRebuildCount: host.journalRebuildCount,
+      rebuildReasons: host.rebuildReasons,
+      suppressedSpawns: host.suppressedSpawns,
+      identityOffenders: host.identityOffenders,
+      droppedEventCount: host.droppedEventCount,
+      droppedEventTypes: host.droppedEventTypes,
+      unintentionalDrops: host.unintentionalDrops,
+      unintentionalDropTypes: host.unintentionalDropTypes,
+      dropSamples: host.dropSamples,
+      emittedEventCounts: host.emittedEventCounts,
+      unbridgeable: host.unbridgeable,
+      commandDropped: host.commandDropped,
+      inputTape: host.inputHistory ? host.inputHistory.toTape() : null,
+      tickCount: host.tickCount,
+      auxRowsShipped: host.auxShipped.size,
+      auxUpsertsTotal: host.auxUpsertsTotal,
+      auxRemovalsTotal: host.auxRemovalsTotal,
+      auxJournalBreaches: host.auxJournalBreaches,
+      auxJournalBreachSamples: host.auxJournalBreachSamples,
+      auxJournalArmed: host.auxJournalArmed,
+      auxJournalDirtyAdds: host.auxJournalDirtyAdds,
+      auxJournalSkippedRows: host.auxJournalSkippedRows,
+      warmStubCount: host.warmStubs ? host.warmStubCount : 0,
+      domainLeafPaths: host.domainDiffer ? [...host.domainDiffer.paths.values()].filter((n) => n.leaf).length : 0,
+      domainUpdatesTotal: host.domainUpdatesTotal,
+      domainShipBytesTotal: host.domainShipBytesTotal,
+      domainSignedBytesTotal: host.domainSignedBytesTotal,
+      domainShipBytesMax: host.domainShipBytesMax,
+      domainOversize: host.domainOversize,
+      domainShipPerPath: [...host.domainShipPerPath.entries()]
+        .sort((a, b) => b[1].bytes - a[1].bytes).slice(0, 40)
+        .map(([path, s]) => ({ path, ships: s.ships, bytes: s.bytes })),
+      avgDomainDiffMs: host.tickCount > 0 ? Number(host.domainDiffNsTotal) / 1e6 / host.tickCount : 0,
+      maxDomainDiffMs: host.domainDiffMsMax,
+      avgWorkMs: host.tickCount > 0 ? Number(host.totalWorkNs) / 1e6 / host.tickCount : 0,
+      avgPackMs: host.tickCount > 0 ? Number(host.totalPackNs) / 1e6 / host.tickCount : 0,
+      workerRssBytes: mem.rss,
+      workerHeapUsedBytes: mem.heapUsed,
+    };
+  }
+
+  function handleShutdown() {
+    host.missionBoardMirrorUnsubscribe?.();
+    host.missionBoardMirrorUnsubscribe = null;
+    host.runShopMirrorUnsubscribe?.();
+    host.runShopMirrorUnsubscribe = null;
+    host.draftReadUnsubscribe?.();
+    host.draftReadUnsubscribe = null;
+    host.playerTruthImpulseObserver?.dispose?.();
+    host.playerTruthImpulseObserver = null;
+    try {
+      if (host.runtime && typeof host.runtime.dispose === 'function') host.runtime.dispose();
+      else if (host.sim && typeof host.sim.dispose === 'function') host.sim.dispose();
+    } catch (_) { /* spike teardown */ }
+  }
+
+  function applyPresentationTimeEffects(snapshot, generation) {
+    if (!host.state || !snapshot) return false;
+    host.timeEffectsAuthority = true;
+    createTimeEffects(host.state);
+    setTimeEffectsGeneration(host.state, generation);
+    return applyRemoteTimeEffectsSnapshot(host.state, 'presentation', snapshot);
+  }
+
+  // Dispatch table — the adapters (worker_threads or in-process) call this;
+  // reply objects are IDENTICAL in both lanes.
+  return {
+    host,
+    async init(msg) { return handleInit(msg); },
+    async tick(msg) { return handleTick(msg); },
+    async finalize() { return handleFinalize(); },
+    shutdown() { handleShutdown(); },
+    drainStorageOps,
+    hasPendingDurable() { return pendingStorageOps.length > 0 || host.pendingEvents.length > 0; },
+    applyPresentationTimeEffects,
+    /** E2: the realm's per-system step profile (also rides the tick reply while enabled). */
+    systemProfile() { return getSimStepProfiler().snapshot(); },
+    setSystemProfileEnabled(on) { return getSimStepProfiler().setEnabled(on); },
+    effectiveTimeScale() {
+      return host.timeEffectsAuthority && host.state
+        ? createTimeEffects(host.state).getEffectiveScale() : null;
+    },
+  };
+}

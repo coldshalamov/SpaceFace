@@ -1,0 +1,2228 @@
+import { shouldStartHeavyAdmission } from './admissionSliceBudget.js';
+import { forcedFrameSpend, FORCED_FRAME_BUDGET_MS, noteForcedFrameSpend } from './decodeTaskBudget.js';
+import { reportBootWork } from '../core/bootWork.js';
+import { shouldFreezeFlightSubmit } from '../core/presentationFreeze.js';
+import { armCallbackAfterPresent } from './compilePresentSlice.js';
+import { dedupWarn } from '../core/warnDedup.js';
+import { cookLiveSceneGpu } from './liveSceneCook.js';
+import { settleOpeningCompositionTail } from './precompile.js';
+import { openingGateBudgetMs } from './startupPacing.js';
+import { yieldToBrowser } from './startupGpuResidency.js';
+
+// Device-scaled default for the short fail-closed startup budgets (startupPacing.js): a
+// handset meets the same ceilings several times over, and the fixed 20 s wall refused every
+// phone launch back to the main menu (D188/D242).
+const DEFAULT_OPENING_BUDGET_MS = openingGateBudgetMs(20000);
+
+function gpuContextIsLost(state) {
+  const render = state && state.render;
+  if (!render) return false;
+  if (render.contextLost === true) return true;
+  if (render.contextRecovery && render.contextRecovery.pending === true) return true;
+  const renderer = render.renderer;
+  try {
+    const gl = renderer && typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+    return !!(gl && typeof gl.isContextLost === 'function' && gl.isContextLost());
+  } catch {
+    return true;
+  }
+}
+
+function timeout(ms, value = { ok: false, timeout: true }) {
+  let timer = null;
+  const promise = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      timer = null;
+      resolve(value);
+    }, ms);
+  });
+  return {
+    promise,
+    cancel() {
+      if (timer !== null) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    },
+  };
+}
+
+// A settled admission must release the losing timer, including rejection paths.
+// This only owns the deadline; it does not cancel the underlying GPU operation.
+function raceDeadline(promise, timeoutMs, timeoutValue) {
+  const limit = timeout(timeoutMs, timeoutValue);
+  return Promise.race([promise, limit.promise]).finally(() => limit.cancel());
+}
+
+async function settleWithin(promise, timeoutMs) {
+  const limit = timeout(timeoutMs);
+  try {
+    return await Promise.race([
+      Promise.resolve(promise).then(
+        (value) => ({ ok: true, value }),
+        (error) => ({ ok: false, error }),
+      ),
+      limit.promise,
+    ]);
+  } finally {
+    // The loser of the race must not keep a multi-minute timer alive after the gate moved on.
+    limit.cancel();
+  }
+}
+
+/** A launch snapshots entity references, never reusable ids or the world's growing work queue. */
+export function createOpeningLoadingAdmission({ entities = [], isRequired = () => false, isActive = () => true } = {}) {
+  const required = new Set([...entities].filter(isRequired));
+  const work = new Set();
+  let failure = null;
+  const assertActive = () => {
+    if (isActive()) return;
+    const error = new Error('opening loading admission was superseded');
+    error.name = 'AbortError';
+    throw error;
+  };
+  return {
+    owns(entity) { return isActive() && required.has(entity); },
+    entities() { return [...required]; },
+    track(promise, owner = null) {
+      assertActive();
+      const completion = Promise.resolve(promise);
+      const tracked = completion.then((value) => value, (error) => {
+        if (!isActive() || failure) throw error;
+        // A typed cancellation only stops blocking this launch when its captured entity no
+        // longer owns a required opening slot. A live required subject, and every real error,
+        // still fail closed. This matters when a queued pool upload retires with its old owner
+        // while the current world continues to own the loading cohort.
+        if (error?.name === 'AbortError'
+            && error?.code === 'GPU_RESIDENCY_OWNER_INACTIVE'
+            && typeof owner?.isStillRequired === 'function') {
+          let stillRequired = true;
+          try { stillRequired = owner.isStillRequired() === true; } catch { /* fail closed */ }
+          if (!stillRequired) return { skipped: true, reason: 'retired-opening-owner' };
+        }
+        failure = error;
+        throw error;
+      });
+      work.add(tracked);
+      tracked.then(() => work.delete(tracked), () => work.delete(tracked));
+      return completion;
+    },
+    async drain() {
+      assertActive();
+      while (work.size > 0) {
+        await Promise.all([...work]);
+        assertActive();
+      }
+      if (failure) throw failure;
+      return { requiredCount: required.size };
+    },
+  };
+}
+
+const openingFirstPictureRuns = new WeakMap();
+const openingPresentationHolds = new WeakMap();
+
+const OPENING_INACTIVE_LIFECYCLE_STATES = new Set([
+  'hidden-or-minimized',
+  'system-suspended',
+]);
+
+function openingClockNow(options = {}) {
+  if (typeof options.now === 'function') {
+    const value = Number(options.now());
+    if (Number.isFinite(value)) return value;
+  }
+  const performanceNow = globalThis.performance?.now;
+  if (typeof performanceNow === 'function') return performanceNow.call(globalThis.performance);
+  return Date.now();
+}
+
+function openingLifecyclePort(options = {}) {
+  if (Object.prototype.hasOwnProperty.call(options, 'lifecyclePort')) return options.lifecyclePort;
+  return globalThis.window?.spacefaceLifecycle || null;
+}
+
+function openingVisibilityTarget(options = {}) {
+  if (Object.prototype.hasOwnProperty.call(options, 'visibilityTarget')) return options.visibilityTarget;
+  return globalThis.document || null;
+}
+
+export function openingFirstPictureIsReady(state) {
+  const render = state?.render;
+  const owner = render?.openingFirstPictureOwner;
+  return render?.openingFirstPictureReady === true && !!owner
+    && owner.world === state.world && owner.generation === render.admissionRunGeneration
+    && owner.serial === state.world?.enterSerial && owner.sector === state.world?.currentSectorId
+    && owner.renderer === render.renderer && owner.context === state.contextRestoreSeq
+    && !gpuContextIsLost(state);
+}
+
+/** Decide how a loading-mode notification affects the currently live opening owner. */
+export function openingLoadingModeResetAction(state, admission, player) {
+  if (state?.mode !== 'loading') return 'ignore';
+  if (admission?.owns(player) === true) {
+    if (openingFirstPictureIsReady(state) || state.render?.openingFirstPictureReady !== true) return 'preserve';
+    return 'clear-receipt';
+  }
+  return 'retire-cohort';
+}
+
+/** The main time-effects owner holds the spawn state until an actual world submit has painted. */
+export function holdOpeningPresentationUntilPaint(state, timeEffects, onFailure, options = {}) {
+  const render = state.render;
+  openingPresentationHolds.get(state)?.cancel();
+  const generation = render.admissionRunGeneration;
+  const world = state.world;
+  const baseline = Number(render.worldSubmittedFrames) || 0;
+  const schedule = options.schedule || setTimeout;
+  const cancelTimer = options.cancel || clearTimeout;
+  const timeoutMs = Math.max(0, Number(options.timeoutMs ?? DEFAULT_OPENING_BUDGET_MS) || 0);
+  const inactivePollMs = Math.max(25, Number(options.inactivePollMs ?? 250) || 0);
+  const visibilityTarget = openingVisibilityTarget(options);
+  const lifecyclePort = openingLifecyclePort(options);
+  let lifecycleForeground = true;
+  let active = true;
+  let timer = null;
+  let timerArmed = false;
+  let timerSequence = 0;
+  let activeElapsedMs = 0;
+  let lastAccountingAt = null;
+  let wasCounting = false;
+  let wasInContextRecovery = false;
+  let wasSubmitFrozen = shouldFreezeFlightSubmit(state);
+  let initialized = false;
+  let observedContextGeneration = Number.isFinite(Number(render.contextRecovery?.generation))
+    ? Number(render.contextRecovery.generation) : null;
+
+  const contextRecoveryActive = () => render.contextRecovery?.terminal === true || gpuContextIsLost(state);
+  const foreground = () => {
+    if (typeof options.isForeground === 'function') {
+      try { return options.isForeground() !== false; } catch { return false; }
+    }
+    if (visibilityTarget?.visibilityState === 'hidden' || visibilityTarget?.hidden === true) return false;
+    return lifecycleForeground;
+  };
+  const current = () => active && openingPresentationHolds.get(state)?.release === release
+    && state.render === render && state.world === world
+    && render.admissionRunGeneration === generation && render.releaseOpeningPresentationHold === release;
+  const sample = (now) => {
+    const contextGeneration = Number.isFinite(Number(render.contextRecovery?.generation))
+      ? Number(render.contextRecovery.generation) : null;
+    if (contextGeneration !== observedContextGeneration) {
+      observedContextGeneration = contextGeneration;
+      activeElapsedMs = 0;
+      lastAccountingAt = null;
+      wasCounting = false;
+    }
+    const recoveryActive = contextRecoveryActive();
+    if (recoveryActive !== wasInContextRecovery) {
+      activeElapsedMs = 0;
+      lastAccountingAt = null;
+      wasCounting = false;
+    }
+    wasInContextRecovery = recoveryActive;
+    const submitFrozen = shouldFreezeFlightSubmit(state);
+    if (submitFrozen !== wasSubmitFrozen) {
+      // Armory, dock and pause intentionally withhold the world submit. A menu can open
+      // between timer deliveries; begin a fresh bounded paint window when it closes.
+      activeElapsedMs = 0;
+      lastAccountingAt = null;
+      wasCounting = false;
+    }
+    wasSubmitFrozen = submitFrozen;
+    const canCount = foreground() && !recoveryActive && !submitFrozen;
+    if (wasCounting && lastAccountingAt !== null) {
+      activeElapsedMs += Math.max(0, now - lastAccountingAt);
+    }
+    if (canCount) {
+      lastAccountingAt = now;
+      wasCounting = true;
+    } else {
+      lastAccountingAt = null;
+      wasCounting = false;
+    }
+    return canCount;
+  };
+  const cancel = () => {
+    active = false;
+    timerSequence += 1;
+    if (timerArmed) {
+      cancelTimer(timer);
+      timer = null;
+      timerArmed = false;
+    }
+    visibilityTarget?.removeEventListener?.('visibilitychange', onVisibilityChange);
+    if (typeof lifecycleUnsubscribe === 'function') lifecycleUnsubscribe();
+    lifecycleUnsubscribe = null;
+    if (render.releaseOpeningPresentationHold === release) {
+      render.releaseOpeningPresentationHold = null;
+      render.cancelOpeningPresentationHold = null;
+    }
+    // Explicit retirement owns the request by callback identity, even after its world/gen left.
+    // A replacement on another render-state object still owns the same public source name.
+    if (openingPresentationHolds.get(state)?.release === release) {
+      openingPresentationHolds.delete(state);
+      timeEffects.clear('runtime:first-picture');
+    }
+  };
+  let lifecycleUnsubscribe = null;
+  const reschedule = () => {
+    if (!active || !current()) return;
+    if (timerArmed) {
+      timerSequence += 1;
+      cancelTimer(timer);
+      timer = null;
+      timerArmed = false;
+    }
+    arm();
+  };
+  const onVisibilityChange = () => {
+    if (!active) return;
+    if (!current()) { cancel(); return; }
+    sample(openingClockNow(options));
+    if (initialized) reschedule();
+  };
+  const onLifecycle = (command) => {
+    const lifecycleState = command?.state;
+    if (OPENING_INACTIVE_LIFECYCLE_STATES.has(lifecycleState)) lifecycleForeground = false;
+    else if (lifecycleState === 'foreground-visible' || lifecycleState === 'foreground-occluded') lifecycleForeground = true;
+    if (!active) return;
+    if (!current()) { cancel(); return; }
+    sample(openingClockNow(options));
+    if (initialized) reschedule();
+  };
+  const onTimer = (sequence) => {
+    if (sequence !== timerSequence || !timerArmed) {
+      if (active && !current()) cancel();
+      return;
+    }
+    timer = null;
+    timerArmed = false;
+    if (!current()) { cancel(); return; }
+    const canCount = sample(openingClockNow(options));
+    if (!current()) { cancel(); return; }
+    if (canCount && activeElapsedMs >= timeoutMs) {
+      cancel();
+      onFailure?.(new Error('The first world picture could not be presented. Retry Launch.'));
+      return;
+    }
+    arm();
+  };
+  function arm() {
+    if (!active || !current()) return;
+    const canCount = foreground() && !contextRecoveryActive() && !shouldFreezeFlightSubmit(state);
+    const delay = canCount ? Math.max(0, timeoutMs - activeElapsedMs) : inactivePollMs;
+    const sequence = ++timerSequence;
+    timerArmed = true;
+    timer = schedule(() => onTimer(sequence), delay);
+  }
+  const release = () => {
+    if (!current()) { cancel(); return false; }
+    if (state.mode !== 'flight' || !(Number(render.worldSubmittedFrames) > baseline)) return false;
+    cancel();
+    return true;
+  };
+  render.releaseOpeningPresentationHold = release;
+  render.cancelOpeningPresentationHold = cancel;
+  openingPresentationHolds.set(state, { release, cancel });
+  timeEffects.set('runtime:first-picture', { scale: 0 });
+  sample(openingClockNow(options));
+  visibilityTarget?.addEventListener?.('visibilitychange', onVisibilityChange);
+  if (typeof lifecyclePort?.subscribe === 'function') lifecycleUnsubscribe = lifecyclePort.subscribe(onLifecycle);
+  initialized = true;
+  arm();
+  return cancel;
+}
+
+function openingPresentBudgetMs(state, timeoutMs, options = {}) {
+  return Number.isFinite(options.presentBudgetMs) && options.presentBudgetMs >= 0
+    ? options.presentBudgetMs
+    : state?.run?.kind === 'survival' ? Math.max(timeoutMs, 360000) : Math.max(timeoutMs, openingGateBudgetMs(120000));
+}
+
+/** Both launch routes join one exact-picture preparation owned by this renderer/run/context. */
+export function waitForOpeningFirstPicture(state, timeoutMs = DEFAULT_OPENING_BUDGET_MS, options = {}) {
+  const render = state?.render;
+  if (!render) return Promise.reject(new Error('opening renderer is unavailable'));
+  const world = state.world;
+  const generation = render.admissionRunGeneration;
+  const serial = world?.enterSerial;
+  const sector = world?.currentSectorId;
+  const nativeRenderer = render.renderer;
+  const context = state.contextRestoreSeq;
+  const prior = openingFirstPictureRuns.get(render);
+  if (prior && prior.world === world && prior.generation === generation && prior.serial === serial && prior.sector === sector
+      && prior.renderer === nativeRenderer && prior.context === context && !gpuContextIsLost(state)) return prior.promise;
+  let active = true;
+  const isActive = () => active && state.mode === 'loading' && state.render === render && state.world === world
+    && render.admissionRunGeneration === generation && world?.enterSerial === serial && world?.currentSectorId === sector
+    && render.renderer === nativeRenderer && state.contextRestoreSeq === context
+    && (typeof options.isActive !== 'function' || options.isActive());
+  // If a residency await rejects as superseded while the launch transition token still appears
+  // current, preserve the exact owner predicate that changed. This is read only on the rejected
+  // path by the renderer's failure receipt; it does not alter cancellation or admission behavior.
+  isActive.ownerSnapshot = () => {
+    let transitionActive = true;
+    if (typeof options.isActive === 'function') {
+      try { transitionActive = options.isActive() === true; } catch (_) { transitionActive = false; }
+    }
+    return {
+      localActive: active,
+      expectedMode: 'loading',
+      currentMode: state.mode,
+      renderMatches: state.render === render,
+      worldMatches: state.world === world,
+      expectedEnterSerial: serial ?? null,
+      currentEnterSerial: world?.enterSerial ?? null,
+      expectedSector: sector ?? null,
+      currentSector: world?.currentSectorId ?? null,
+      expectedAdmissionGeneration: generation ?? null,
+      currentAdmissionGeneration: render.admissionRunGeneration ?? null,
+      rendererMatches: render.renderer === nativeRenderer,
+      expectedContextRestoreSeq: context ?? null,
+      currentContextRestoreSeq: state.contextRestoreSeq ?? null,
+      transitionActive,
+    };
+  };
+  const assertActive = () => {
+    if (!isActive()) {
+      const error = new Error('opening first-picture admission was superseded');
+      error.name = 'AbortError';
+      throw error;
+    }
+    if (gpuContextIsLost(state)) throw new Error('WebGL context was lost while preparing the first picture');
+  };
+  let phase = null;
+  let phaseBudgetMs = timeoutMs;
+  let ownedSectorCook = null;
+  const finishPhase = (outcome) => {
+    if (!phase || phase.outcome !== 'pending' || !isActive() || render.openingFirstPicturePhase !== phase) return;
+    phase.outcome = outcome;
+    phase.ms = Math.round(ledgerNow() - phase.startedAt);
+    recordOpeningCookStep(render, `exact.${phase.stage}`, phase.startedAt, outcome, { budgetMs: phase.budgetMs });
+  };
+  const startPhase = (stage) => {
+    assertActive();
+    finishPhase('resolved');
+    phase = { stage, startedAt: ledgerNow(), budgetMs: phaseBudgetMs, outcome: 'pending' };
+    render.openingFirstPicturePhase = phase;
+  };
+  const bounded = async (work, budgetMs) => {
+    const deadlineRemaining = Number.isFinite(options.deadlineAt)
+      ? Math.max(0, Number(options.deadlineAt) - openingClockNow(options))
+      : budgetMs;
+    const effectiveBudgetMs = Math.min(budgetMs, deadlineRemaining);
+    const settled = await settleWithin(work, effectiveBudgetMs);
+    if (settled.ok) return settled.value;
+    if (settled.error) throw settled.error;
+    const error = new Error(`opening first-picture admission timed out at ${phase?.stage || 'unknown'} `
+      + `after ${Math.round(ledgerNow() - (phase?.startedAt ?? ledgerNow()))}ms (budget ${effectiveBudgetMs}ms)`);
+    error.stage = phase?.stage;
+    error.timeout = true;
+    finishPhase('timeout');
+    active = false;
+    throw error;
+  };
+  const work = (async () => {
+    startPhase('mesh-staging');
+    await bounded(Promise.resolve().then(() => {
+      // The launch may be replaced before this queued callback runs. Mesh staging releases the
+      // current graph/defer holds, so reject stale work before entering that mutating owner.
+      assertActive();
+      return render.beginOpeningLoadingAdmission?.();
+    }), timeoutMs);
+    assertActive();
+    // Main calls this gate after its library and visual prerequisites. Per-subject work
+    // starts earlier, but the broad cook must census/freeze their committed composition.
+    // Preserve that owner's existing ceiling; it must not spend the exact picture's 20s.
+    if (render.openingLiveSectorReady || typeof render.prepareLiveSectorBeforeFlight === 'function') {
+      phaseBudgetMs = openingPresentBudgetMs(state, timeoutMs, options);
+      startPhase('current-sector');
+      const sectorCook = render.openingLiveSectorReady || observePipelineAdmission(Promise.resolve()
+        .then(() => render.prepareLiveSectorBeforeFlight({ isActive })));
+      ownedSectorCook = sectorCook;
+      render.openingLiveSectorReady = sectorCook;
+      const cooked = await bounded(sectorCook, phaseBudgetMs);
+      assertActive();
+      if (cooked === false || cooked?.partial === true || cooked?.superseded === true
+          || cooked?.cancelled === true || cooked?.reason === 'sector-superseded'
+          || cooked?.cook?.reason === 'sector-superseded'
+          || cooked?.opening?.settled === false) {
+        const opening = cooked && cooked.opening;
+        const diagnostic = {
+          reason: cooked?.reason || cooked?.cook?.reason || opening?.reason || null,
+          pending: Number.isFinite(opening?.pending) ? opening.pending : null,
+          ids: Array.isArray(opening?.ids) ? opening.ids.slice(0, 6).map(String) : [],
+          statuses: Array.isArray(opening?.statuses) ? opening.statuses.slice(0, 6).map(String) : [],
+        };
+        render.openingCurrentSectorFailure = diagnostic;
+        const details = [
+          diagnostic.reason && `reason=${diagnostic.reason}`,
+          diagnostic.pending !== null && `pending=${diagnostic.pending}`,
+          diagnostic.ids.length && `ids=${diagnostic.ids.join('/')}`,
+          diagnostic.statuses.length && `statuses=${diagnostic.statuses.join('/')}`,
+        ].filter(Boolean).join(' ');
+        const error = new Error(`opening current-sector preparation did not complete${details ? ` (${details})` : ''}`);
+        error.diagnostic = diagnostic;
+        throw error;
+      }
+    } else if (state.run?.kind === 'survival') {
+      phaseBudgetMs = openingPresentBudgetMs(state, timeoutMs, options);
+      startPhase('current-sector');
+      const cooked = await bounded(waitForOpeningGpuResources(state, timeoutMs, { settleTail: true, throwOnError: true }), phaseBudgetMs);
+      assertActive();
+      if (cooked !== true) throw new Error(render.requiredPackageAdmission?.reason || 'arena GPU admission did not complete');
+    }
+    phaseBudgetMs = timeoutMs;
+    const exactWork = (async () => {
+      startPhase('seal');
+      if (await render.prepareOpeningFirstPicture(timeoutMs, { isActive }) === false) {
+        throw new Error('opening first-picture preparation failed');
+      }
+      assertActive();
+      startPhase('capture');
+      render.openingFirstPicturePlanFailure = null;
+      let plan;
+      if (typeof render.captureOpeningSubmissionPlanSteps === 'function') {
+        const steps = render.captureOpeningSubmissionPlanSteps();
+        try {
+          for (;;) {
+            assertActive();
+            const step = steps.next();
+            if (step.done) { plan = step.value; break; }
+            await yieldToBrowser();
+          }
+        } finally { steps.return?.(); }
+      } else plan = render.captureOpeningSubmissionPlan();
+      assertActive();
+      if (!plan || plan.complete !== true || plan.firstPlayablePipelineSet?.complete !== true) {
+        render.openingFirstPicturePlanFailure = render.openingPlanCaptureFailure || {
+          reason: plan ? 'incomplete-plan-no-capture-detail' : 'null-plan-no-capture-detail',
+        };
+        throw new Error('opening submission plan is incomplete');
+      }
+      startPhase('submission');
+      const submission = Promise.resolve(render.drainOpeningSubmissionPlan(plan, { strict: true, isActive }));
+      render.openingSubmissionReady = submission;
+      render.exactPipelineWarmupReady = submission;
+      const admitted = await submission;
+      assertActive();
+      if (admitted === false || admitted?.ok === false) throw new Error('opening submission admission failed');
+      startPhase('residency');
+      const residency = Promise.resolve(render.prepareOpeningGpuResources({ required: true, isActive }));
+      render.openingGpuResidencyReady = residency;
+      const resources = await residency;
+      assertActive();
+      if (resources?.partial === true || resources?.contextLost === true
+          || resources?.geometryResidency?.partial === true || resources?.geometryResidency?.contextLost === true
+          || (resources?.geometryResidency?.skipped === true
+            && resources.geometryResidency.reason !== 'no drawable geometry')) {
+        throw new Error('Required opening GPU residency did not complete');
+      }
+      const classification = classifyRequiredPackageAdmission({
+        capturedGeneration: generation, currentGeneration: render.admissionRunGeneration,
+        settled: { ok: true, value: resources },
+      });
+      if (!classification.ready) throw new Error(classification.reason || 'opening GPU resources are not ready');
+      rememberRequiredPackageAdmission(render, generation, classification);
+      render.openingFirstPictureOwner = { world, generation, serial, sector, renderer: nativeRenderer, context };
+      render.openingFirstPictureReady = true;
+      finishPhase('resolved');
+      return true;
+    })();
+    return bounded(exactWork, timeoutMs);
+  })();
+  // Cancellation stops future submissions; raw work retains its existing resource owners until it retires.
+  work.catch(() => {});
+  const promise = work.catch((error) => {
+    finishPhase(error?.timeout ? 'timeout' : 'error');
+    if (error?.code === 'GPU_RESIDENCY_OWNER_INACTIVE'
+        && ownedSectorCook && render.openingLiveSectorReady === ownedSectorCook) {
+      render.openingLiveSectorReady = null;
+    }
+    if (openingFirstPictureRuns.get(render)?.promise === promise) {
+      openingFirstPictureRuns.delete(render);
+    }
+    active = false;
+    throw error;
+  });
+  openingFirstPictureRuns.set(render, { world, generation, serial, sector, renderer: nativeRenderer, context, promise });
+  return promise;
+}
+
+/** Retry one superseded opening owner without restarting New Game or extending its total budget. */
+export async function waitForOpeningFirstPictureWithSingleOwnerRetry(state, timeoutMs, options = {}) {
+  const baseTimeoutMs = Math.max(1, Number(timeoutMs) || DEFAULT_OPENING_BUDGET_MS);
+  const startedAt = openingClockNow(options);
+  const totalBudgetMs = openingPresentBudgetMs(state, baseTimeoutMs, options) + baseTimeoutMs;
+  const deadlineAt = startedAt + totalBudgetMs;
+  let attempt = 0;
+  for (;;) {
+    const remainingMs = Math.max(0, deadlineAt - openingClockNow(options));
+    const attemptTimeoutMs = attempt === 0 ? baseTimeoutMs : Math.min(baseTimeoutMs, remainingMs);
+    const presentBudgetMs = attempt === 0
+      ? options.presentBudgetMs
+      : Math.min(openingPresentBudgetMs(state, baseTimeoutMs, options), remainingMs);
+    try {
+      return await waitForOpeningFirstPicture(state, attemptTimeoutMs, {
+        ...options,
+        deadlineAt,
+        ...(presentBudgetMs === undefined ? {} : { presentBudgetMs }),
+      });
+    } catch (error) {
+      const remainingAfterFailureMs = Math.max(0, deadlineAt - openingClockNow(options));
+      let transitionCurrent = false;
+      if (typeof options.isTransitionCurrent === 'function') {
+        try { transitionCurrent = options.isTransitionCurrent() === true; } catch (_) { transitionCurrent = false; }
+      }
+      const canRetry = attempt === 0
+        && error?.name === 'AbortError'
+        && error?.code === 'GPU_RESIDENCY_OWNER_INACTIVE'
+        && state?.mode === 'loading'
+        && transitionCurrent
+        && remainingAfterFailureMs > 0;
+      if (!canRetry) throw error;
+      attempt += 1;
+    }
+  }
+}
+
+/**
+ * Phone launch admits the exact playable picture once. Offscreen streaming and dormant effects
+ * keep their ordinary admission owners instead of becoming a second, whole-sector startup gate.
+ */
+export async function prepareMobileOpeningFirstPicture(render, options = {}) {
+  if (!render) throw new Error('mobile opening renderer is unavailable');
+  const timeoutMs = Math.max(1, Number(options.timeoutMs) || DEFAULT_OPENING_BUDGET_MS);
+  const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : yieldToBrowser;
+  let active = true;
+  let progressMark = 0;
+  const isActive = () => active
+    && (typeof options.isActive !== 'function' || options.isActive());
+  const assertActive = () => {
+    if (!isActive()) {
+      throw new Error('mobile opening admission superseded');
+    }
+  };
+  const startedAt = ledgerNow();
+  const work = (async () => {
+    assertActive();
+    if (await render.prepareOpeningFirstPicture(timeoutMs, { isActive }) === false) {
+      throw new Error('mobile opening first-picture preparation failed');
+    }
+    progressMark += 1;
+    assertActive();
+    let plan;
+    if (typeof render.captureOpeningSubmissionPlanSteps === 'function') {
+      const steps = render.captureOpeningSubmissionPlanSteps();
+      try {
+        for (;;) {
+          assertActive();
+          const step = steps.next();
+          if (step.done) { plan = step.value; break; }
+          progressMark += 1;
+          await yieldToMain();
+        }
+      } finally {
+        if (typeof steps.return === 'function') steps.return();
+      }
+    } else plan = render.captureOpeningSubmissionPlan();
+    assertActive();
+    if (!plan || plan.complete !== true || plan.firstPlayablePipelineSet?.complete !== true) {
+      throw new Error('mobile opening submission plan is incomplete');
+    }
+    progressMark += 1;
+    const submission = await render.drainOpeningSubmissionPlan(plan);
+    progressMark += 1;
+    assertActive();
+    assertMobileOpeningGraphicsHealthy(render);
+    if (submission === false || submission?.ok === false) {
+      throw new Error('mobile opening submission admission failed');
+    }
+    const resources = await render.prepareOpeningGpuResources({ required: true, isActive });
+    assertActive();
+    assertMobileOpeningGraphicsHealthy(render);
+    if (!resources || resources.skipped === true || resources.ok === false
+        || resources.partial === true || resources.contextLost === true
+        || resources.geometryResidency?.partial === true
+        || resources.geometryResidency?.contextLost === true
+        || (resources.geometryResidency?.skipped === true
+          && resources.geometryResidency.reason !== 'no drawable geometry')) {
+      throw new Error('mobile opening GPU resources were not admitted');
+    }
+    return { plan, submission, resources };
+  })();
+  const settled = await settleWhileProgressing(work, timeoutMs, {
+    startedAt,
+    progress: () => progressMark + linkedProgramCount(render),
+    windowMs: options.progressWindowMs,
+    extensionCapMs: options.slowGlExtensionCapMs,
+  });
+  active = false;
+  if (!settled.ok) {
+    throw settled.error || new Error(`mobile opening first-picture admission timed out after ${Math.round(settled.elapsedMs)}ms `
+      + `(budget ${timeoutMs}ms, slow-GL extension ${Math.round(settled.extendedMs)}ms)`);
+  }
+  return settled.value;
+}
+
+// Renderer-owned work counters: linked programs plus uploaded textures/geometries. Any change
+// between two checks is evidence the GL work is advancing rather than wedged.
+function linkedProgramCount(render) {
+  const info = render?.renderer?.info;
+  const programs = Array.isArray(info?.programs) ? info.programs.length : 0;
+  const memory = info?.memory || {};
+  return programs * 1e6 + (Number(memory.textures) || 0) * 1e3 + (Number(memory.geometries) || 0);
+}
+
+// Slow-GL tolerance for the exact first picture (shard-4 timeouts on the 1.5-1.7x slower CI image
+// ubuntu-24.04 20261025.353.1; software GL on slow handsets). The base budget is unchanged, so a
+// normal-speed host settles exactly as before. When the base expires while the admission is still
+// measurably advancing (a pipeline stage finished, a capture step yielded, or the renderer linked
+// another program within the last window), the deadline slides forward one window at a time, up to
+// a cap of one more base budget. A wedged admission makes no progress and still fails within one
+// window of its base deadline.
+export const FIRST_PICTURE_PROGRESS_WINDOW_MS = 5000;
+
+export async function settleWhileProgressing(promise, baseMs, options = {}) {
+  const now = typeof options.now === 'function' ? options.now : ledgerNow;
+  const progress = typeof options.progress === 'function' ? options.progress : () => 0;
+  const windowMs = Math.max(1, Number(options.windowMs) || FIRST_PICTURE_PROGRESS_WINDOW_MS);
+  const capMs = Math.max(0, Number(options.extensionCapMs ?? Math.max(baseMs, DEFAULT_OPENING_BUDGET_MS)) || 0);
+  const startedAt = Number.isFinite(options.startedAt) ? options.startedAt : now();
+  const baseDeadline = startedAt + baseMs;
+  const hardDeadline = baseDeadline + capMs;
+  let deadline = baseDeadline;
+  let extendedMs = 0;
+  let mark = progress();
+  const timeout = () => ({ ok: false, timeout: true, elapsedMs: now() - startedAt, extendedMs });
+  const outcome = Promise.resolve(promise).then(
+    (value) => ({ ok: true, value }),
+    (error) => ({ ok: false, error }),
+  );
+  for (;;) {
+    const settled = await raceDeadline(outcome, Math.max(0, deadline - now()), null);
+    const checkedAt = now();
+    // Preserve a typed admission failure even when its delivery was delayed. Successful work
+    // still has to fit the granted absolute deadline; a late timer cannot buy more wall time.
+    if (settled?.ok === false) return settled;
+    if (settled && checkedAt <= deadline && checkedAt <= hardDeadline) return settled;
+    if (checkedAt >= hardDeadline) return timeout();
+    const next = progress();
+    const advanced = next !== mark;
+    mark = next;
+    const nextDeadline = Math.min(hardDeadline, checkedAt + windowMs);
+    if (!advanced || nextDeadline <= deadline) return timeout();
+    deadline = nextDeadline;
+    extendedMs = deadline - baseDeadline;
+    if (settled) return settled;
+  }
+}
+
+// Sliding deadline for multi-step admissions that cannot be wrapped in one promise (the
+// first-flight actor admission checks its deadline between sub-steps and from a timer). Same
+// policy as settleWhileProgressing: the base deadline is unchanged, so normal-speed hosts behave
+// exactly as before; once it passes, each check that sees new progress (a linked program, an
+// uploaded texture/geometry, or a finished sub-step) slides the deadline one window forward, up
+// to one more base budget. No progress within a window still fails at the base deadline (or
+// within one window of it).
+export function createProgressDeadline(baseMs, options = {}) {
+  const now = typeof options.now === 'function' ? options.now : ledgerNow;
+  const progress = typeof options.progress === 'function' ? options.progress : () => 0;
+  const windowMs = Math.max(1, Number(options.windowMs) || FIRST_PICTURE_PROGRESS_WINDOW_MS);
+  const startedAt = Number.isFinite(options.startedAt) ? options.startedAt : now();
+  const base = Math.max(1, Number(baseMs) || 1);
+  const capMs = Math.max(0, Number(options.extensionCapMs ?? base) || 0);
+  const baseDeadline = startedAt + base;
+  const hardDeadline = baseDeadline + capMs;
+  let deadline = baseDeadline;
+  let mark = progress();
+  return {
+    get deadline() { return deadline; },
+    get extendedMs() { return deadline - baseDeadline; },
+    remainingMs() { return deadline - now(); },
+    /** True when the admission may continue; false once it has expired without progress. */
+    check() {
+      const t = now();
+      if (t < deadline) return true;
+      if (t >= hardDeadline) return false;
+      const next = progress();
+      const advanced = next !== mark;
+      mark = next;
+      const nextDeadline = Math.min(hardDeadline, t + windowMs);
+      if (!advanced || nextDeadline <= deadline) return false;
+      deadline = nextDeadline;
+      return true;
+    },
+  };
+}
+
+export function renderWorkProgressMark(render) {
+  return linkedProgramCount(render);
+}
+
+// The link reporter already records driver failures. Read that result rather than issuing
+// another synchronous shader query or replacing an incompatible shader with a loading timeout.
+export function assertMobileOpeningGraphicsHealthy(render) {
+  const renderer = render?.renderer;
+  let failure = null;
+  if (gpuContextIsLost({ render })) {
+    failure = new Error('The WebGL graphics context was lost while preparing the opening scene.');
+    failure.code = 'GPU_CONTEXT_LOST';
+  } else {
+    const program = renderer?.info?.programs?.find((entry) => entry?.diagnostics?.runnable === false);
+    if (program) {
+      const diagnostic = program.diagnostics;
+      const logs = [diagnostic.programLog, diagnostic.vertexShader?.log, diagnostic.fragmentShader?.log]
+        .filter(Boolean).join('\n');
+      failure = new Error(`Opening shader failed to link (${program.name || program.type || 'unnamed material'}): ${logs || 'driver reported LINK_STATUS=false'}`);
+      failure.code = 'GPU_SHADER_LINK_FAILED';
+    }
+  }
+  if (failure) { failure.stage = 'gpu-resources'; throw failure; }
+}
+
+function ledgerNow() {
+  return typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+}
+
+function settleOutcome(result) {
+  if (result && result.ok === true) return 'resolved';
+  return result && result.timeout === true ? 'timeout' : 'error';
+}
+
+/**
+ * Loading-shell cook ledger (state.render.openingCookLedger). Every awaited step of the opening and
+ * jump cooks pushes one row: its wall milliseconds and whether it resolved, timed out, or was skipped.
+ * The gpu-resources stage is bounded by waits, not work, so the only honest way to shorten it is to
+ * know which wait owns the time and why it ended. Diagnostic only; nothing reads the rows back.
+ */
+export function beginOpeningCookLedger(render, kind) {
+  if (!render || typeof render !== 'object') return null;
+  const ledger = [{
+    step: 'begin', ms: 0, outcome: 'resolved', t: 0, kind: String(kind || 'cook'),
+    wallMs: Date.now(), startedAt: ledgerNow(),
+  }];
+  render.openingCookLedger = ledger;
+  return ledger;
+}
+
+export function recordOpeningCookStep(render, step, startedMs, outcome, detail = null) {
+  if (!render || typeof render !== 'object') return null;
+  let ledger = render.openingCookLedger;
+  if (!Array.isArray(ledger) || ledger.length === 0) ledger = beginOpeningCookLedger(render, 'implicit');
+  const at = ledgerNow();
+  const origin = Number(ledger[0] && ledger[0].startedAt);
+  const row = {
+    step: String(step),
+    ms: Math.round(at - (Number.isFinite(startedMs) ? startedMs : at)),
+    outcome: String(outcome || 'resolved'),
+    t: Number.isFinite(origin) ? Math.round(at - origin) : 0,
+  };
+  if (detail && typeof detail === 'object') {
+    for (const [key, value] of Object.entries(detail)) {
+      if (value !== undefined && !(key in row)) row[key] = value;
+    }
+  }
+  ledger.push(row);
+  reportBootWork(render, { kind: 'cook-step', ...row });
+  return row;
+}
+
+/** One compact console line for a finished cook ledger. */
+export function formatOpeningCookLedger(ledger) {
+  const rows = Array.isArray(ledger) ? ledger.filter(Boolean) : [];
+  const head = rows[0] && rows[0].step === 'begin' ? rows[0] : null;
+  const total = rows.reduce((max, row) => Math.max(max, Number(row.t) || 0), 0);
+  // 1 Hz lane samples stay in the ledger array for probes; the console line keeps only their count.
+  const samples = rows.filter((row) => row.step === 'lane').length;
+  const parts = rows.filter((row) => row !== head && row.step !== 'lane').map((row) => {
+    const detail = Object.entries(row)
+      .filter(([key]) => key !== 'step' && key !== 'ms' && key !== 'outcome' && key !== 't')
+      .map(([key, value]) => `${key}=${value !== null && typeof value === 'object' ? JSON.stringify(value) : value}`)
+      .join(',');
+    return `${row.step} ${row.ms}ms ${row.outcome}${detail ? ` (${detail})` : ''}`;
+  });
+  if (samples > 0) parts.push(`lane samples ${samples}`);
+  return `[render] ${head ? head.kind : 'cook'} ledger ${total} ms: ${parts.join(' | ')}`;
+}
+
+function logOpeningCookLedger(ledger) {
+  if (!Array.isArray(ledger)) return;
+  try { console.info(formatOpeningCookLedger(ledger)); } catch { /* diagnostics must not throw */ }
+}
+
+/**
+ * A yield that only yields once `sliceMs` of work has run since the last real yield, so several small
+ * loading-shell items (touches, texture uploads, mesh builds) share one frame instead of each paying a
+ * whole frame. `await sliced(true)` always yields. `sliced.yields` counts real yields for the ledger.
+ */
+export function createSlicedYield(yieldFn, options = {}) {
+  if (typeof yieldFn !== 'function') throw new TypeError('createSlicedYield requires a yield function');
+  const sliceMs = Number.isFinite(Number(options.sliceMs)) ? Math.max(0, Number(options.sliceMs)) : 8;
+  const now = typeof options.now === 'function' ? options.now : ledgerNow;
+  const shouldYield = typeof options.shouldYield === 'function' ? options.shouldYield : null;
+  const debit = typeof options.debit === 'function' ? options.debit : null;
+  // `debitGate` is sampled where `sliceStarted` is minted so a gating term that
+  // flips mid-slice can't forfeit (or double-count) the slice's posted spend.
+  const debitGate = typeof options.debitGate === 'function' ? options.debitGate : null;
+  let debitArmed = debitGate ? !!debitGate() : true;
+  let sliceStarted = now();
+  const sliced = async (force = false) => {
+    const tick = now();
+    if (force !== true && tick - sliceStarted < sliceMs && !(shouldYield && shouldYield())) return false;
+    sliced.yields += 1;
+    if (debit && debitArmed) debit(tick - sliceStarted);
+    await yieldFn();
+    sliceStarted = now();
+    if (debitGate) debitArmed = !!debitGate();
+    return true;
+  };
+  sliced.yields = 0;
+  // A caller that just yielded through another path (a serial-route queue pace) restarts the
+  // slice so the next call does not spend a second frame on a slice that already ended.
+  sliced.restart = () => { sliceStarted = now(); };
+  return sliced;
+}
+
+/** 1 Hz `lane` rows while a cook runs, from the renderer's sampler when it has one. */
+function startOpeningCookLaneSampler(render) {
+  const sample = render && typeof render.sampleOpeningCookLane === 'function'
+    ? render.sampleOpeningCookLane
+    : null;
+  if (!sample || typeof setInterval !== 'function') return () => {};
+  const timer = setInterval(() => {
+    try { recordOpeningCookStep(render, 'lane', NaN, 'sample', sample()); } catch { /* diagnostics only */ }
+  }, 1000);
+  return () => clearInterval(timer);
+}
+
+/**
+ * Coalesce authored-material subjects into one driver admission pass and expose one aggregate gate.
+ * compileAsync() polls driver program status; invoking it once per ship multiplied those synchronous
+ * status checks even when ships shared the same shader variants. A short bounded collection window
+ * lets Three.js deduplicate programs across the complete subject set without delaying visible swaps.
+ */
+export function createPipelineAdmissionTracker(compileBatch, options = {}) {
+  if (typeof compileBatch !== 'function') throw new TypeError('pipeline tracker requires compileBatch()');
+  const quietMs = Math.max(0, Number(options.quietMs) || 40);
+  const maxWaitMs = Math.max(quietMs, Number(options.maxWaitMs) || 200);
+  const resumeBatchSize = Math.max(1, Math.floor(Number(options.resumeBatchSize) || 1));
+  const scheduleResume = typeof options.scheduleResume === 'function'
+    ? options.scheduleResume
+    : (callback) => {
+        // The bounded resume lane is ambient admission work — firing it inside the next rAF
+        // callback stacked the compile batch on that frame's pre-present budget. Arm it after
+        // the present at background priority with an idle bound: a saturated main thread
+        // starves best-effort tasks for whole seconds, and an unbounded wait showed up as
+        // held roots piling ~48 deep and contacts never admitting. armCallbackAfterPresent
+        // also carries the 48 ms unstick so a starved rAF (occluded or minimized headed
+        // window) cannot park the lane while the authored-readiness gate waits on it.
+        armCallbackAfterPresent(callback, { idleBoundMs: 48 });
+      };
+  const deferAutoFlush = typeof options.deferAutoFlush === 'function'
+    ? options.deferAutoFlush
+    : () => false;
+  const onBlockingSlice = typeof options.onBlockingSlice === 'function'
+    ? options.onBlockingSlice
+    : null;
+  const onRejected = typeof options.onRejected === 'function'
+    ? options.onRejected
+    : (error) => dedupWarn('pipeline.admission-rejected', '[render] pipeline admission failed', error);
+  const now = typeof options.now === 'function'
+    ? options.now
+    : () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now());
+  const pending = new Set();
+  const capturedPlans = new WeakMap();
+  let queued = [];
+  // Urgent (deadline-glass) compiles already serialized on the tail, keyed by
+  // subject so a re-request joins the outstanding link instead of compiling twice.
+  const urgentRuns = new Map();
+  let quietTimer = null;
+  let maxTimer = null;
+  // GL issue is serialized because target selection and temporary scene ownership are global.
+  // Opted-in owners release the issue slot after restoring both, while their bounded link waits
+  // remain independently outstanding. Urgent specs keep FIFO ahead of queued ambient work.
+  const linkSpecs = [];
+  let linkActive = false;
+  let settlingLinks = 0;
+  const maxSettlingLinks = Math.max(1, Math.min(4, Math.floor(Number(options.maxSettlingLinks) || 1)));
+  let tailSettle = Promise.resolve();
+  // Bound each caller's wait without treating its timeout as cancellation of the
+  // underlying owner. Only actual settlement or an explicit issue acknowledgement
+  // can release renderer state for the next spec.
+  const LINK_RUN_TAIL_TIMEOUT_MS = 50000;
+  const LINK_TAIL_TIMEOUT_RESULT = Object.freeze({ tailTimeout: true });
+  let nextAdmissionId = 0;
+  let settledAdmissions = 0;
+  let boundedResume = false;
+  let resumeScheduled = false;
+  let skippedResumeForLatePresent = false;
+
+  function clearTimers() {
+    if (quietTimer != null) clearTimeout(quietTimer);
+    if (maxTimer != null) clearTimeout(maxTimer);
+    quietTimer = null;
+    maxTimer = null;
+  }
+
+  function scheduleFlush() {
+    if (deferAutoFlush()) return;
+    if (boundedResume) {
+      scheduleResumedBatch();
+      return;
+    }
+    if (quietTimer != null) clearTimeout(quietTimer);
+    // The debounce timers keep their contract, but the flush itself dispatches
+    // post-present at background priority — the whole queued compile cohort used
+    // to fold into compileBatch inside a timer task, racing the compositor beat.
+    quietTimer = setTimeout(() => {
+      quietTimer = null;
+      armCallbackAfterPresent(() => { observePipelineAdmission(flushQueued()); }, { idleBoundMs: 48 });
+    }, quietMs);
+    if (maxTimer == null) maxTimer = setTimeout(() => {
+      maxTimer = null;
+      armCallbackAfterPresent(() => { observePipelineAdmission(flushQueued()); }, { idleBoundMs: 48 });
+    }, maxWaitMs);
+  }
+
+  /** Time only the synchronous compileBatch call (until it returns a value/promise). */
+  function invokeCompileBatch(subjects, path, compileOptions) {
+    // Optional observer is inert: no clock reads or metadata when nothing is listening.
+    if (!onBlockingSlice) return compileBatch(subjects, compileOptions);
+    const started = now();
+    try {
+      const result = compileBatch(subjects, compileOptions);
+      reportSlice(path, subjects.length, now() - started);
+      return result;
+    } catch (error) {
+      reportSlice(path, subjects.length, now() - started);
+      throw error;
+    }
+  }
+
+  function reportSlice(path, subjectCount, durationMs) {
+    if (!onBlockingSlice) return;
+    try {
+      onBlockingSlice({
+        kind: 'pipelineAdmissionSync',
+        durationMs,
+        path,
+        subjectCount,
+      });
+    } catch {
+      // Observer errors must not change admission semantics.
+    }
+  }
+
+  function inactiveOwnerError() {
+    const error = new Error('authored pipeline admission owner became inactive');
+    error.name = 'AbortError';
+    return error;
+  }
+
+  function entryInactive(entry) {
+    const guard = entry && entry.compileOptions && entry.compileOptions.isActive;
+    return typeof guard === 'function' && guard(entry.subject) !== true;
+  }
+
+  function batchCompileOptions(batch) {
+    const guardsBySubject = new Map();
+    for (const entry of batch) {
+      let guards = guardsBySubject.get(entry.subject);
+      if (!guards) {
+        guards = [];
+        guardsBySubject.set(entry.subject, guards);
+      }
+      const guard = entry && entry.compileOptions && entry.compileOptions.isActive;
+      guards.push(typeof guard === 'function' ? guard : null);
+    }
+    return {
+      isActive: (subject) => {
+        const guards = guardsBySubject.get(subject);
+        if (!guards || guards.length === 0) return true;
+        for (const guard of guards) {
+          if (guard === null || guard(subject) === true) return true;
+        }
+        return false;
+      },
+    };
+  }
+
+  /** The old compileTail role: resolves once every link started so far has settled. */
+  function laneSettled() {
+    return tailSettle;
+  }
+
+  function enqueueLink(subjects, path, compileOptions, { urgent = false } = {}) {
+    let resolveRun;
+    const run = new Promise((resolve) => { resolveRun = resolve; });
+    const spec = { subjects, path, compileOptions, urgent, resolveRun };
+    if (urgent) {
+      // Keep deadline arrivals FIFO ahead of every not-yet-started ambient link.
+      // The active link has already left linkSpecs and is never preempted.
+      let pos = 0;
+      while (pos < linkSpecs.length && linkSpecs[pos].urgent === true) pos += 1;
+      linkSpecs.splice(pos, 0, spec);
+    } else {
+      linkSpecs.push(spec);
+    }
+    pumpLinks();
+    return run;
+  }
+
+  function pumpLinks() {
+    if (linkActive || settlingLinks >= maxSettlingLinks) return;
+    const spec = linkSpecs.shift();
+    if (!spec) return;
+    linkActive = true;
+    settlingLinks += 1;
+    let issued = false;
+    const releaseIssue = () => {
+      if (issued) return;
+      issued = true;
+      linkActive = false;
+      pumpLinks();
+    };
+    const compileOptions = maxSettlingLinks > 1
+      ? { ...(spec.compileOptions || {}), onIssueComplete: releaseIssue }
+      : spec.compileOptions;
+    const run = Promise.resolve().then(() => invokeCompileBatch(
+      spec.subjects, spec.path, compileOptions,
+    ));
+    observePipelineAdmission(run, onRejected);
+    const bounded = raceDeadline(run, LINK_RUN_TAIL_TIMEOUT_MS, LINK_TAIL_TIMEOUT_RESULT);
+    spec.resolveRun(bounded);
+    tailSettle = tailSettle.then(() => bounded.catch(() => null));
+    const next = () => { settlingLinks -= 1; releaseIssue(); pumpLinks(); };
+    // A timeout settles the caller but does not retire an issuing/linked owner.
+    // Actual work alone releases its outstanding-settlement cap; the issue slot
+    // is also released by its explicit post-restoration acknowledgement.
+    run.then(next, next);
+  }
+
+  function flushQueuedThrough(
+    watermark = Number.POSITIVE_INFINITY,
+    path = 'queued',
+    batchLimit = Number.POSITIVE_INFINITY,
+    scheduleRemaining = true,
+  ) {
+    const batch = [];
+    const remaining = [];
+    for (const entry of queued) {
+      if (entry.id <= watermark && batch.length < batchLimit) {
+        if (entryInactive(entry)) {
+          entry.reject(inactiveOwnerError());
+          continue;
+        }
+        batch.push(entry);
+      } else remaining.push(entry);
+    }
+    if (batch.length === 0) {
+      queued = remaining;
+      if (scheduleRemaining && queued.length > 0) scheduleFlush();
+      return laneSettled();
+    }
+    clearTimers();
+    queued = remaining;
+    const subjects = batch.map((entry) => entry.subject);
+    const run = enqueueLink(subjects, path, batchCompileOptions(batch));
+    run.then(
+      (result) => {
+        for (const entry of batch) {
+          if (entryInactive(entry)) entry.reject(inactiveOwnerError());
+          else entry.resolve(result);
+        }
+      },
+      (error) => { for (const entry of batch) entry.reject(error); },
+    );
+    if (scheduleRemaining && queued.length > 0) scheduleFlush();
+    return run;
+  }
+
+  function flushQueued() {
+    return flushQueuedThrough(Number.POSITIVE_INFINITY, 'queued');
+  }
+
+  function scheduleResumedBatch() {
+    if (!boundedResume || resumeScheduled || queued.length === 0) return;
+    resumeScheduled = true;
+    // A scheduler that runs its callback synchronously (test fakes) must not recurse through the
+    // hold poll below; it keeps the pre-poll behaviour of stopping once while deferred.
+    let ranSynchronously = true;
+    scheduleResume(() => {
+      resumeScheduled = false;
+      if (deferAutoFlush()) {
+        // The auto-flush hold is a DELAY, not a cancellation. Bounded resume used to give up here
+        // (and in resumeAutoFlush) whenever it was armed inside the hold: timers were already
+        // cleared, nothing was scheduled, and the only thing that could ever wake the lane again
+        // was a NEW compile() call. On a sector arrival the queued compiles ARE what the next
+        // authored job waits for, so the lane deadlocked and every body in the arriving sector
+        // stayed at `presentationAdmission: 'pending'` for the rest of the session.
+        if (!ranSynchronously) scheduleResumedBatch();
+        return;
+      }
+      const lastPresentDtMs = typeof options.getLastPresentDtMs === 'function'
+        ? options.getLastPresentDtMs()
+        : NaN;
+      if (!shouldStartHeavyAdmission(lastPresentDtMs) && skippedResumeForLatePresent !== true) {
+        skippedResumeForLatePresent = true;
+        scheduleResumedBatch();
+        return;
+      }
+      // The skip-then-force resume is a forced start — consult the shared
+      // forced wallet like the sibling skip-cap lanes. Forced-but-broke parks
+      // again with the streak flag uncommitted, so the next schedule still
+      // counts as the earned resume instead of re-skipping.
+      if (forcedFrameSpend() >= FORCED_FRAME_BUDGET_MS && !ranSynchronously) {
+        // Async hosts park until a later frame. An inline scheduler has no
+        // later frame; falling through is the only way the queued compile runs.
+        scheduleResumedBatch();
+        return;
+      }
+      skippedResumeForLatePresent = false;
+      // The consult above makes this a forced lane — debit the dispatch head's
+      // measured spend on the shared forced wallet it just checked (the link
+      // work itself is serialized through pumpLinks and debits its own legs).
+      const resumeStartedAt = ledgerNow();
+      observePipelineAdmission(flushResumedBatch());
+      noteForcedFrameSpend(Math.min(ledgerNow() - resumeStartedAt, FORCED_FRAME_BUDGET_MS));
+    });
+    ranSynchronously = false;
+  }
+
+  function flushResumedBatch() {
+    if (deferAutoFlush() || queued.length === 0) return laneSettled();
+    const run = flushQueuedThrough(
+      Number.POSITIVE_INFINITY,
+      'resumed',
+      resumeBatchSize,
+      false,
+    );
+    Promise.resolve(run).then(scheduleResumedBatch, scheduleResumedBatch);
+    return run;
+  }
+
+  function capturePending() {
+    const watermark = nextAdmissionId;
+    const entries = [...pending].filter((entry) => entry.id <= watermark);
+    const plan = Object.freeze({
+      watermark,
+      pendingCount: entries.length,
+    });
+    capturedPlans.set(plan, entries);
+    return plan;
+  }
+
+  function subjectsForCaptured(plan) {
+    const entries = capturedPlans.get(plan);
+    if (!entries) throw new TypeError('pipeline tracker requires a captured admission plan');
+    return Object.freeze([...new Set(entries.map((entry) => entry.subject))]);
+  }
+
+  async function waitForCaptured(plan, options = {}) {
+    const entries = capturedPlans.get(plan);
+    if (!entries) throw new TypeError('pipeline tracker requires a captured admission plan');
+    const stale = typeof options.stale === 'function' ? options.stale : null;
+    const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(0, options.timeoutMs) : null;
+    const result = () => ({
+      watermark: plan.watermark,
+      capturedCount: entries.length,
+      remainingCount: pending.size,
+    });
+    if (stale && stale()) return { ...result(), superseded: true };
+    flushQueuedThrough(plan.watermark, 'captured');
+    const completions = Promise.all(entries.map((entry) => entry.completion));
+    if (timeoutMs == null) {
+      await completions;
+    } else {
+      const outcome = await raceDeadline(
+        completions.then(() => 'resolved', () => 'rejected'), timeoutMs, 'timeout',
+      );
+      if (outcome === 'timeout') return { ...result(), timedOut: true };
+      await completions;
+    }
+    if (stale && stale()) return { ...result(), superseded: true };
+    // Exact-root callers advance to residency/publication in their await continuations. Give those
+    // already-registered consumers deterministic turns without joining any admission after watermark.
+    await Promise.resolve();
+    await Promise.resolve();
+    return result();
+  }
+
+  // Test-only wait: each iteration pays a whole-queue flushQueued() — production
+  // waits go through waitForCaptured (watermark-scoped, batch-capped).
+  async function waitForPending(options = {}) {
+    const stale = typeof options.stale === 'function' ? options.stale : null;
+    const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(0, options.timeoutMs) : null;
+    const deadline = timeoutMs == null ? null : Date.now() + timeoutMs;
+    while (pending.size > 0) {
+      if (stale && stale()) return { skipped: false, pendingCount: pending.size, superseded: true };
+      if (deadline != null && Date.now() >= deadline) {
+        return { skipped: false, pendingCount: pending.size, timedOut: true };
+      }
+      flushQueued();
+      const completions = Promise.all([...pending].map((entry) => entry.completion));
+      if (deadline == null) {
+        await completions;
+      } else {
+        const outcome = await raceDeadline(
+          completions.then(() => 'resolved', () => 'rejected'),
+          Math.max(0, deadline - Date.now()), 'timeout',
+        );
+        if (outcome === 'timeout') return { skipped: false, pendingCount: pending.size, timedOut: true };
+        await completions;
+      }
+    }
+    // Admission consumers commit their already-built roots in promise continuations. Yield through
+    // those continuations before the startup guard is allowed to publish the first flight frame.
+    await Promise.resolve();
+    await Promise.resolve();
+    return { skipped: false, pendingCount: 0 };
+  }
+
+  return {
+    compile(subject, compileOptions = null) {
+      // Urgent entries are on-glass deadline work: the subject serializes on the
+      // shared compile tail as its own link — behind whatever is in flight,
+      // ahead of everything still queued in the ambient lane — instead of
+      // joining the FIFO behind runway/prefetch compiles. skipSharedBatch is
+      // forced so the program-readiness wait polls this subject's programs
+      // alone instead of pooling into a foreign batch's drain. A queued ambient
+      // admission for the same subject folds into this run so its latch settles
+      // with it; one already flushed or already urgent is joined, never
+      // duplicated. Urgent work does not honour deferAutoFlush or the bounded
+      // resume budget — the hold exists to coalesce background compiles, and a
+      // root the player can already see cannot pay that wait as a blank frame.
+      if (compileOptions && compileOptions.urgent === true) {
+        const existingUrgent = urgentRuns.get(subject);
+        if (existingUrgent) return existingUrgent;
+        let folded = null;
+        for (const entry of pending) {
+          if (entry.subject !== subject) continue;
+          if (!queued.includes(entry)) return entry.completion;
+          folded = entry;
+          break;
+        }
+        if (folded) queued.splice(queued.indexOf(folded), 1);
+        const run = enqueueLink(
+          [subject],
+          'urgent',
+          { ...compileOptions, skipSharedBatch: true },
+          { urgent: true },
+        );
+        urgentRuns.set(subject, run);
+        run.then(
+          (result) => {
+            if (!folded) return;
+            if (entryInactive(folded)) folded.reject(inactiveOwnerError());
+            else folded.resolve(result);
+          },
+          (error) => { if (folded) folded.reject(error); },
+        ).finally(() => urgentRuns.delete(subject));
+        return run;
+      }
+      let resolve;
+      let reject;
+      const compilation = new Promise((res, rej) => { resolve = res; reject = rej; });
+      const entry = {
+        id: ++nextAdmissionId,
+        subject,
+        compileOptions: compileOptions || null,
+        resolve,
+        reject,
+        completion: null,
+      };
+      entry.completion = compilation.finally(() => {
+        pending.delete(entry);
+        settledAdmissions += 1;
+      });
+      // A queued consumer may retire before its scheduled batch runs. Observe the cleanup child
+      // now without replacing it: an awaited owner must still receive the original rejection.
+      observePipelineAdmission(entry.completion);
+      pending.add(entry);
+      queued.push(entry);
+      scheduleFlush();
+      return entry.completion;
+    },
+    capturePending,
+    subjectsForCaptured,
+    waitForCaptured,
+    compileExplicit(subject, compileOptions = null) {
+      // Diagnostics may deliberately compile a complete installed scene after a render-target
+      // switch. Keep that opt-in pass serialized, but never attach the startup moving-fixpoint wait.
+      // The explicit caller is deadline work: fold the still-queued ambient set into this run
+      // instead of flushing it as a separate tail link the deadline then has to sit behind.
+      const ambient = [];
+      for (const entry of queued) {
+        if (entryInactive(entry)) entry.reject(inactiveOwnerError());
+        else ambient.push(entry);
+      }
+      queued = [];
+      clearTimers();
+      const explicitEntry = { subject, compileOptions: compileOptions || null };
+      const merged = [...new Set([subject, ...ambient.map((entry) => entry.subject)])];
+      const mergedOptions = {
+        ...(compileOptions || {}),
+        ...batchCompileOptions([explicitEntry, ...ambient]),
+      };
+      const run = enqueueLink(merged, 'explicit', mergedOptions, { urgent: true });
+      run.then(
+        (result) => {
+          for (const entry of ambient) {
+            if (entryInactive(entry)) entry.reject(inactiveOwnerError());
+            else entry.resolve(result);
+          }
+        },
+        (error) => { for (const entry of ambient) entry.reject(error); },
+      );
+      return observePipelineAdmission(run.then((result) => {
+        if (entryInactive(explicitEntry)) throw inactiveOwnerError();
+        return result;
+      }));
+    },
+
+    resumeAutoFlush() {
+      boundedResume = true;
+      clearTimers();
+      if (deferAutoFlush()) {
+        // Resuming inside the hold must leave the lane alive: clearTimers() just removed the only
+        // thing that would have re-entered it. Poll the hold instead of returning a dead queue.
+        scheduleResumedBatch();
+        return laneSettled();
+      }
+      return observePipelineAdmission(flushResumedBatch());
+    },
+    waitForPending,
+    flushOneAfterPresent() {
+      // The empty lane reuses its already-observed tail without allocating on every present.
+      if (queued.length === 0) return laneSettled();
+      return observePipelineAdmission(flushQueuedThrough(Number.POSITIVE_INFINITY, 'after-present', 1, true));
+    },
+    get pendingCount() { return pending.size; },
+    /** Admissions not yet handed to compileBatch (the rest of pendingCount is linking). */
+    get queuedCount() { return queued.length; },
+    get settledCount() { return settledAdmissions; },
+  };
+}
+
+export function observePipelineAdmission(promise, onRejected = null) {
+  Promise.resolve(promise).then(undefined, (error) => {
+    if (error && error.name === 'AbortError') return;
+    if (typeof onRejected !== 'function') return;
+    try {
+      onRejected(error);
+    } catch { }
+  });
+  return promise;
+}
+
+/** Track authored-root GPU uploads independently from shader compilation. The loading route flushes
+ * deferred shader batches before flight; texture uploads begin in the resolved compile continuations
+ * and can otherwise outlive that flush. Exposing one aggregate promise lets startup wait for the
+ * exact roots to finish residency and publish, without coupling the renderer to boundary internals. */
+export function createGpuResidencyAdmissionTracker(prepare) {
+  if (typeof prepare !== 'function') throw new TypeError('GPU residency tracker requires prepare()');
+  const pending = new Set();
+  const pendingBySubject = new Map();
+  const capturedPlans = new WeakMap();
+  let nextAdmissionId = 0;
+
+  function captureEntries(entries, pendingCount, extra = {}) {
+    const plan = Object.freeze({
+      watermark: nextAdmissionId,
+      pendingCount,
+      ...extra,
+    });
+    capturedPlans.set(plan, entries);
+    return plan;
+  }
+
+  function capturePending() {
+    const watermark = nextAdmissionId;
+    const entries = [...pending].filter((entry) => entry.id <= watermark);
+    return captureEntries(entries, entries.length);
+  }
+
+  function captureSubjects(subjects) {
+    const uniqueSubjects = [...new Set(Array.isArray(subjects) ? subjects : [])];
+    const entries = uniqueSubjects.flatMap((subject) => [...(pendingBySubject.get(subject) || [])]);
+    return captureEntries(entries, entries.length, {
+      boundSubjectCount: uniqueSubjects.length,
+    });
+  }
+
+  async function waitForCaptured(plan, options = {}) {
+    const entries = capturedPlans.get(plan);
+    if (!entries) throw new TypeError('GPU residency tracker requires a captured admission plan');
+    const stale = typeof options.stale === 'function' ? options.stale : null;
+    const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(0, options.timeoutMs) : null;
+    const result = () => ({
+      watermark: plan.watermark,
+      capturedCount: entries.length,
+      remainingCount: pending.size,
+    });
+    if (stale && stale()) return { ...result(), superseded: true };
+    const completions = Promise.all(entries.map((entry) => entry.completion));
+    if (timeoutMs == null) {
+      await completions;
+    } else {
+      const outcome = await raceDeadline(
+        completions.then(() => 'resolved', () => 'rejected'), timeoutMs, 'timeout',
+      );
+      if (outcome === 'timeout') return { ...result(), timedOut: true };
+      await completions;
+    }
+    if (stale && stale()) return { ...result(), superseded: true };
+    await Promise.resolve();
+    await Promise.resolve();
+    return result();
+  }
+
+  // Test-only wait: each iteration pays a whole-queue flushQueued() — production
+  // waits go through waitForCaptured (watermark-scoped, batch-capped).
+  async function waitForPending(options = {}) {
+    const stale = typeof options.stale === 'function' ? options.stale : null;
+    const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(0, options.timeoutMs) : null;
+    const deadline = timeoutMs == null ? null : Date.now() + timeoutMs;
+    while (pending.size > 0) {
+      if (stale && stale()) return { skipped: false, pendingCount: pending.size, superseded: true };
+      if (deadline != null && Date.now() >= deadline) {
+        return { skipped: false, pendingCount: pending.size, timedOut: true };
+      }
+      const completions = Promise.all([...pending].map((entry) => entry.completion));
+      if (deadline == null) {
+        await completions;
+      } else {
+        const outcome = await raceDeadline(
+          completions.then(() => 'resolved', () => 'rejected'),
+          Math.max(0, deadline - Date.now()), 'timeout',
+        );
+        if (outcome === 'timeout') return { skipped: false, pendingCount: pending.size, timedOut: true };
+        await completions;
+      }
+    }
+    // Boundary admission commits in the await continuation registered before this aggregate wait.
+    // Give that continuation a deterministic turn before startup checks committed visual readiness.
+    await Promise.resolve();
+    await Promise.resolve();
+    return { skipped: false, pendingCount: 0 };
+  }
+
+  return {
+    prepare(subject, options = {}) {
+      const preparation = Promise.resolve().then(() => prepare(subject, options));
+      const entry = {
+        id: ++nextAdmissionId,
+        subject,
+        ownerKey: options.ownerKey ?? options.isActive?.ownerKey ?? options.isActive ?? null,
+        isActive: typeof options.isActive === 'function' ? options.isActive : null,
+        completion: null,
+      };
+      entry.completion = preparation.finally(() => {
+        pending.delete(entry);
+        const entries = pendingBySubject.get(subject);
+        if (entries) {
+          entries.delete(entry);
+          if (entries.size === 0) pendingBySubject.delete(subject);
+        }
+      });
+      pending.add(entry);
+      let entries = pendingBySubject.get(subject);
+      if (!entries) {
+        entries = new Set();
+        pendingBySubject.set(subject, entries);
+      }
+      entries.add(entry);
+      return entry.completion;
+    },
+    capturePending,
+    captureSubjects,
+    waitForCaptured,
+    waitForPending,
+    // Outstanding upload for a subject, if one is queued or running. Callers that
+    // would queue a second walk for the same root join the existing entry instead.
+    pendingFor(subject, ownerKey = undefined) {
+      const entries = pendingBySubject.get(subject);
+      if (!entries || entries.size === 0) return null;
+      const compatible = [...entries].filter((entry) => {
+        if (ownerKey === undefined) return true;
+        // Ownerless residency is shared resource work. Owner-bound work can be joined only by
+        // the same captured owner; a replacement owner must submit its own live admission rather
+        // than inherit a queued promise that may be retired before its upload.
+        if (entry.ownerKey !== null && entry.ownerKey !== ownerKey) return false;
+        if (entry.isActive) {
+          try { if (entry.isActive() !== true) return false; } catch { return false; }
+        }
+        return true;
+      });
+      return compatible.length > 0
+        ? Promise.all(compatible.map((entry) => entry.completion))
+        : null;
+    },
+    get pendingCount() { return pending.size; },
+  };
+}
+
+/**
+ * Gate flight on both the procedural shader probes and the exact material graph currently installed
+ * in the scene. The second phase is intentionally invoked only after authored visual readiness:
+ * compiling before GLB composition exists merely warms a different set of program keys.
+ */
+export async function waitForCurrentRenderPipelines(state, timeoutMs = DEFAULT_OPENING_BUDGET_MS) {
+  const render = state && state.render;
+  if (!render) return true;
+
+  const procedural = render.pipelinePrecompileReady;
+  if (procedural && typeof procedural.then === 'function') {
+    const result = await settleWithin(procedural, timeoutMs);
+    if (!result.ok) return false;
+  }
+  if (gpuContextIsLost(state)) return false;
+  // Same-sector F9 recook: the opening receipt and GPU programs are already
+  // resident. Recapturing first-picture compiled 37 extra programs on the next
+  // present (~4s stall / TDR, headed skip-cook run65).
+  if (state.mode === 'loading'
+      && render.sessionLiveSectorCookedId
+      && render.sessionLiveSectorCookedId === (state.world && state.world.currentSectorId)) {
+    return true;
+  }
+
+  const capturePipelines = render.captureOpeningPipelinePlan;
+  const drainPipelines = render.drainOpeningPipelinePlan;
+  const captureResidency = render.captureOpeningGpuResidencyPlan;
+  const drainResidency = render.drainOpeningGpuResidencyPlan;
+  const captureSubmission = render.captureOpeningSubmissionPlan;
+  const drainSubmission = render.drainOpeningSubmissionPlan;
+  const prepareOpeningFirstPicture = render.prepareOpeningFirstPicture;
+  const loadingOwnsOpeningSubmission = state.mode === 'loading';
+  if (!loadingOwnsOpeningSubmission
+    && (typeof capturePipelines === 'function') !== (typeof drainPipelines === 'function')) return false;
+  if (!loadingOwnsOpeningSubmission
+    && (typeof captureResidency === 'function') !== (typeof drainResidency === 'function')) return false;
+  if ((typeof captureSubmission === 'function') !== (typeof drainSubmission === 'function')) return false;
+  let pipelinePlan = null;
+  if (!loadingOwnsOpeningSubmission) {
+    try {
+      // Non-loading callers retain the ordinary finite root watermark. Loading deliberately skips
+      // this broad queue: exact first-picture leaves are the only startup pipeline admission.
+      if (typeof capturePipelines === 'function') pipelinePlan = capturePipelines();
+    } catch {
+      return false;
+    }
+    const exact = Promise.resolve().then(() => drainPipelines(pipelinePlan));
+    render.exactPipelineWarmupReady = exact;
+    const result = await settleWithin(exact, timeoutMs);
+    if (!result.ok) return false;
+    if (gpuContextIsLost(state)) return false;
+  }
+
+  // The exact first-picture plan is captured only after authored boundary continuations have
+  // committed. It compiles the live flat draw leaves (background, parallax, player, and any
+  // currently instantiated first-frame VFX) against the production target without rendering a
+  // hidden scene-wide discovery frame.
+  if (typeof captureSubmission === 'function') {
+    if (loadingOwnsOpeningSubmission && typeof prepareOpeningFirstPicture === 'function') {
+      const prepared = await settleWithin(
+        Promise.resolve().then(async () => {
+          const result = await prepareOpeningFirstPicture(timeoutMs);
+          if (result === false) throw new Error('opening first-picture preparation failed');
+          return result;
+        }),
+        timeoutMs,
+      );
+      if (!prepared.ok || gpuContextIsLost(state)) return false;
+    }
+    let submissionPlan = null;
+    try {
+      const captureSteps = render.captureOpeningSubmissionPlanSteps;
+      if (typeof captureSteps === 'function') {
+        // The capture is a chain of whole-scene censuses; pace its stepped legs
+        // under the boot yield instead of donating one atomic window.
+        const steps = captureSteps();
+        // A world flip inside the drive must abandon the capture entirely —
+        // resuming it commits rows minted under the departed world's census.
+        const driveWorld = state.world;
+        const driveRender = state.render;
+        const driveSerial = driveWorld && driveWorld.enterSerial;
+        for (;;) {
+          const step = steps.next();
+          if (step.done) {
+            submissionPlan = step.value;
+            break;
+          }
+          if (state.world !== driveWorld || state.render !== driveRender
+              || !driveWorld || driveWorld.enterSerial !== driveSerial) {
+            submissionPlan = null;
+            break;
+          }
+          await yieldToBrowser();
+        }
+      } else {
+        submissionPlan = captureSubmission();
+      }
+      if (!submissionPlan || submissionPlan.complete !== true
+        || !submissionPlan.firstPlayablePipelineSet
+        || submissionPlan.firstPlayablePipelineSet.complete !== true) return false;
+    } catch {
+      return false;
+    }
+    const submission = Promise.resolve().then(() => drainSubmission(submissionPlan));
+    render.openingSubmissionReady = submission;
+    if (loadingOwnsOpeningSubmission) render.exactPipelineWarmupReady = submission;
+    const submissionResult = await settleWithin(submission, timeoutMs);
+    if (!submissionResult.ok) return false;
+    if (gpuContextIsLost(state)) return false;
+  }
+
+  // The exact first picture is compiled. Remaining sector/NPC programs used to skip this
+  // gate, then link inside the first flight bloomScene pass (~460 ms each on Intel/ANGLE
+  // without KHR_parallel_shader_compile). Drain them now, still behind the loading shell.
+  if (loadingOwnsOpeningSubmission && typeof render.preparePostOpeningPipelines === 'function') {
+    const remaining = Promise.resolve().then(() => render.preparePostOpeningPipelines());
+    render.postOpeningPipelinesReady = remaining;
+    const remainingResult = await settleWithin(remaining, timeoutMs);
+    if (!remainingResult.ok) return false;
+    if (gpuContextIsLost(state)) return false;
+  }
+
+  // The live-sector cook (programs + buffers) belongs in
+  // prepareLiveSectorBeforeFlight / prepareLiveSectorAfterJump. A second
+  // cookLiveSceneGpu here 1x1s the whole scene (skipBuffers defaults off).
+  // On F9 that re-uploaded the previous flight's VFX/hulls and TDR'd Intel
+  // during gpu-resources. Dummy catalog prewarm is not this step.
+  if (loadingOwnsOpeningSubmission
+      && typeof render.prepareLiveSectorBeforeFlight !== 'function') {
+    const liveCook = Promise.resolve().then(() => cookLiveSceneGpu(state));
+    render.liveSceneCookReady = liveCook;
+    const liveResult = await settleWithin(liveCook, timeoutMs);
+    if (!liveResult.ok) return false;
+    if (gpuContextIsLost(state)) return false;
+  }
+
+  if (typeof captureResidency === 'function' && !loadingOwnsOpeningSubmission) {
+    let residencyPlan = null;
+    try {
+      residencyPlan = captureResidency(pipelinePlan);
+    } catch {
+      return false;
+    }
+    const residency = Promise.resolve().then(() => drainResidency(residencyPlan));
+    render.authoredGpuAdmissionReady = residency;
+    const residencyResult = await settleWithin(residency, timeoutMs);
+    if (!residencyResult.ok) return false;
+  }
+  return gpuContextIsLost(state) !== true;
+}
+
+const WALL_CLOCK_SKIP_REASONS = new Set([
+  'loading-budget',
+  'loading-deadline',
+  'loading-deadline-partial',
+  'timeout',
+]);
+
+function admissionErrorText(error) {
+  if (!error) return '';
+  if (typeof error === 'string') return error;
+  if (typeof error.message === 'string' && error.message) return error.message;
+  return String(error);
+}
+
+function packageIdFromText(text) {
+  const named = String(text || '').match(/\b((?:ship|station|asset|pkg|package)_[A-Za-z0-9_]+)\b/);
+  return named ? named[1] : null;
+}
+
+function admissionPackageId(value) {
+  if (!value || typeof value !== 'object') return null;
+  if (typeof value.packageId === 'string' && value.packageId) return value.packageId;
+  if (typeof value.assetId === 'string' && value.assetId) return value.assetId;
+  const wrapped = value.package;
+  if (wrapped && typeof wrapped === 'object') {
+    if (typeof wrapped.assetId === 'string' && wrapped.assetId) return wrapped.assetId;
+    if (typeof wrapped.id === 'string' && wrapped.id) return wrapped.id;
+  }
+  return null;
+}
+
+function isProceduralStandIn(value) {
+  if (!value || typeof value !== 'object') return false;
+  return [value.reason, value.status, value.authoredAssetState, value.fallback, value.primitive]
+    .some((mark) => mark === 'procedural-settled' || mark === 'cube' || mark === 'empty' || mark === 'empty-success');
+}
+
+function isNullPackage(value) {
+  if (value == null) return true;
+  if (typeof value !== 'object') return true;
+  return value.packageId === null || value.package === null;
+}
+
+/** Resume an accepted record without inventing a null id, which reads as a missing package. */
+function acceptedResumeValue(record) {
+  const value = { skipped: false };
+  const packageId = admissionPackageId(record);
+  if (packageId) value.packageId = packageId;
+  return value;
+}
+
+function isOpeningPlanIncomplete(value) {
+  return !!(value && typeof value === 'object' && value.skipped === true && value.reason === 'opening-plan-incomplete');
+}
+
+function isWallClockSkip(value) {
+  return !!(value && typeof value === 'object' && value.skipped === true && WALL_CLOCK_SKIP_REASONS.has(value.reason));
+}
+
+/**
+ * One required opening package is only pending, rejected, superseded, or accepted.
+ * `ready` is true solely for accepted. A timeout is pending. A known failure stays
+ * rejected for that generation. A mismatched generation publishes nothing.
+ */
+export function classifyRequiredPackageAdmission(attempt = {}) {
+  const capturedGeneration = attempt.capturedGeneration;
+  const currentGeneration = attempt.currentGeneration;
+  const existing = attempt.existing || null;
+  const settled = attempt.settled || null;
+  const failedId = settled && settled.ok === false ? packageIdFromText(admissionErrorText(settled.error)) : null;
+  const valueId = admissionPackageId(settled && settled.value);
+
+  if (capturedGeneration !== currentGeneration) {
+    return {
+      status: 'superseded',
+      ready: false,
+      packageId: failedId || valueId || (existing && existing.packageId) || null,
+      reason: 'a newer run replaced this admission',
+      publish: false,
+      releaseOwn: true,
+    };
+  }
+
+  if (existing && existing.status === 'rejected' && existing.generation === capturedGeneration) {
+    return {
+      status: 'rejected',
+      ready: false,
+      packageId: existing.packageId || null,
+      reason: existing.reason || 'required package was rejected',
+      publish: false,
+      releaseOwn: false,
+    };
+  }
+
+  if (attempt.canceledStamp === true) {
+    return {
+      status: 'rejected',
+      ready: false,
+      packageId: null,
+      reason: 'this sector cook belongs to a canceled run',
+      publish: true,
+      releaseOwn: false,
+    };
+  }
+
+  if (!settled || settled.timeout === true) {
+    return {
+      status: 'pending',
+      ready: false,
+      packageId: (existing && existing.packageId) || null,
+      reason: 'opening package has not settled',
+      publish: true,
+      releaseOwn: false,
+      resumeAccepted: attempt.resumeAccepted === true,
+    };
+  }
+
+  if (settled.ok === false) {
+    const reason = admissionErrorText(settled.error) || 'required package failed';
+    return {
+      status: 'rejected',
+      ready: false,
+      packageId: packageIdFromText(reason),
+      reason,
+      publish: true,
+      releaseOwn: false,
+    };
+  }
+
+  const value = settled.value;
+  if (isOpeningPlanIncomplete(value) || isWallClockSkip(value)) {
+    return {
+      status: 'pending',
+      ready: false,
+      packageId: admissionPackageId(value),
+      reason: value && value.reason ? String(value.reason) : 'opening-plan-incomplete',
+      publish: true,
+      releaseOwn: false,
+    };
+  }
+
+  if (attempt.resumeAccepted === true && value && typeof value === 'object' && value.skipped !== true
+      && !isProceduralStandIn(value) && !isNullPackage(value)) {
+    return {
+      status: 'accepted',
+      ready: true,
+      packageId: admissionPackageId(value) || (existing && existing.packageId) || null,
+      reason: '',
+      publish: true,
+      releaseOwn: false,
+    };
+  }
+
+  if (isNullPackage(value) || isProceduralStandIn(value) || (value && value.ok === false) || (value && value.skipped === true)) {
+    const reason = (value && (value.reason || value.status))
+      || (value == null ? 'required package is missing' : 'required package was not accepted');
+    return {
+      status: 'rejected',
+      ready: false,
+      packageId: admissionPackageId(value) || packageIdFromText(reason),
+      reason: String(reason),
+      publish: true,
+      releaseOwn: false,
+    };
+  }
+
+  return {
+    status: 'accepted',
+    ready: true,
+    packageId: admissionPackageId(value),
+    reason: '',
+    publish: true,
+    releaseOwn: false,
+  };
+}
+
+function rememberRequiredPackageAdmission(render, capturedGeneration, classification) {
+  if (!render || !classification || classification.publish !== true) return false;
+  if (render.admissionRunGeneration !== capturedGeneration) return false;
+  const existing = render.requiredPackageAdmission;
+  if (existing && existing.status === 'rejected' && existing.generation === capturedGeneration
+      && classification.status !== 'rejected') {
+    return false;
+  }
+  const record = {
+    status: classification.status,
+    ready: classification.status === 'accepted' && classification.ready === true,
+    packageId: classification.packageId || (existing && existing.packageId) || null,
+    reason: classification.reason || '',
+    generation: capturedGeneration,
+  };
+  if (classification.resumeAccepted === true) record.resumeAccepted = true;
+  if (classification.continueOpening === true) record.continueOpening = true;
+  render.requiredPackageAdmission = record;
+  return true;
+}
+
+export function commitRequiredPackageAdmission(render, capturedGeneration, classification) {
+  return rememberRequiredPackageAdmission(render, capturedGeneration, classification);
+}
+
+/**
+ * After a pending opening wait, classify the promises already stored on the render state.
+ * No new timer: a cook that has not settled stays pending, and a late result whose
+ * generation changed writes nothing.
+ */
+// This path fires exactly when the bounded gates already judged the cook too slow — awaiting
+// the same cook's real completion would park embark for minutes on a contended host with no
+// rejection route. The settle borrows the gate's own contract: bounded, then classify.
+const REQUIRED_PACKAGE_SETTLE_TIMEOUT_MS = 45000;
+
+export async function settleRequiredPackageAdmission(state) {
+  const render = state && state.render;
+  if (!render) return null;
+  const generation = render.admissionRunGeneration;
+  const existing = render.requiredPackageAdmission || null;
+  const preparePromise = render.openingGpuResidencyReady;
+  const livePromise = render.liveScenePresentReady;
+  let prepareSettled = null;
+  if (preparePromise && typeof preparePromise.then === 'function') {
+    prepareSettled = await settleWithin(preparePromise, REQUIRED_PACKAGE_SETTLE_TIMEOUT_MS);
+  }
+  let liveSettled = null;
+  if (livePromise && typeof livePromise.then === 'function') {
+    liveSettled = await settleWithin(livePromise, REQUIRED_PACKAGE_SETTLE_TIMEOUT_MS);
+  }
+  if (render.admissionRunGeneration !== generation) {
+    return classifyRequiredPackageAdmission({
+      capturedGeneration: generation,
+      currentGeneration: render.admissionRunGeneration,
+      existing: render.requiredPackageAdmission,
+      settled: prepareSettled,
+    });
+  }
+  const resumeAccepted = !!(existing && (existing.status === 'accepted' || existing.resumeAccepted === true));
+  let classification;
+  if (prepareSettled && prepareSettled.ok === false) {
+    classification = classifyRequiredPackageAdmission({
+      capturedGeneration: generation,
+      currentGeneration: render.admissionRunGeneration,
+      existing,
+      settled: prepareSettled,
+    });
+  } else if (liveSettled && liveSettled.ok === false) {
+    classification = classifyRequiredPackageAdmission({
+      capturedGeneration: generation,
+      currentGeneration: render.admissionRunGeneration,
+      existing,
+      settled: liveSettled,
+    });
+  } else {
+    const settled = prepareSettled && prepareSettled.ok === true
+      ? prepareSettled
+      : (resumeAccepted
+        ? { ok: true, value: acceptedResumeValue(existing) }
+        : { timeout: true });
+    classification = classifyRequiredPackageAdmission({
+      capturedGeneration: generation,
+      currentGeneration: render.admissionRunGeneration,
+      existing,
+      settled,
+      resumeAccepted,
+    });
+  }
+  if (classification && classification.continueOpening === true && (!liveSettled || liveSettled.ok === true)) {
+    if (existing && existing.status === 'pending' && existing.generation === generation) {
+      render.requiredPackageAdmission = null;
+    }
+    return {
+      status: 'pending',
+      ready: false,
+      continueOpening: true,
+      packageId: classification.packageId || null,
+      reason: classification.reason || 'opening-plan-incomplete',
+    };
+  }
+  rememberRequiredPackageAdmission(render, generation, classification);
+  return render.requiredPackageAdmission || classification;
+}
+
+export async function waitForOpeningGpuResources(state, timeoutMs = DEFAULT_OPENING_BUDGET_MS, options = {}) {
+  const render = state && state.render;
+  const sectorId = state && state.world && state.world.currentSectorId;
+  const capturedGeneration = render ? render.admissionRunGeneration : undefined;
+  const generationNow = () => (render ? render.admissionRunGeneration : undefined);
+  const sameGeneration = () => generationNow() === capturedGeneration;
+  // The present leg belongs to the opening this call was started for. Capture whether the
+  // loading shell owned the picture at entry: on software GL the cook is fire-and-forget, so by
+  // the time prepare settles (~0.7 s) the mode is already 'flight' and a live read of state.mode
+  // skipped the present leg outright — liveScenePresentReady was never assigned.
+  const shellOwnedAtEntry = !!(state && state.mode === 'loading');
+  const resident = !!(render
+    && render.requiredPackageAdmission
+    && render.requiredPackageAdmission.status === 'accepted'
+    && render.requiredPackageAdmission.ready === true
+    && render.requiredPackageAdmission.generation === capturedGeneration
+    && render.sessionLiveSectorCookedId
+    && render.sessionLiveSectorCookedId === sectorId
+    && gpuContextIsLost(state) !== true);
+  const bareStamp = !!(render
+    && !resident
+    && render.sessionLiveSectorCookedId
+    && sectorId
+    && render.sessionLiveSectorCookedId === sectorId
+    && gpuContextIsLost(state) !== true);
+  const prepare = render && render.prepareOpeningGpuResources;
+  const ledger = beginOpeningCookLedger(render, resident ? 'opening-recook' : 'opening');
+  const stopLaneSampler = startOpeningCookLaneSampler(render);
+  let ledgerFinished = false;
+  const finishLedger = () => {
+    if (ledgerFinished) return;
+    ledgerFinished = true;
+    stopLaneSampler();
+    logOpeningCookLedger(ledger);
+  };
+  const publish = (classification) => rememberRequiredPackageAdmission(render, capturedGeneration, classification);
+  // Callers that await this gate opt in to the composition-tail settle so every
+  // path that holds the shell (New Game and Continue alike) finishes the serial
+  // lane's open composes/compiles/uploads behind it. Fire-and-forget callers omit
+  // it — a settle after the shell released would land the same work in flight the
+  // settle exists to keep out.
+  const settleTail = async () => {
+    if (options.settleTail !== true || !(state && state.mode === 'loading')) return;
+    const tailStarted = ledgerNow();
+    const tail = await settleOpeningCompositionTail(state, { budgetMs: DEFAULT_OPENING_BUDGET_MS });
+    if (render) render.openingCompositionTail = tail;
+    recordOpeningCookStep(render, 'opening.compositionTail', tailStarted,
+      tail && tail.skipped === true ? 'skipped' : 'resolved');
+  };
+  let prepareClassification = null;
+  let prepareValue = null;
+
+  if (bareStamp) {
+    const stamped = render.requiredPackageAdmission;
+    const ownedHere = !!(stamped && stamped.generation === capturedGeneration);
+    // A timeout or rejection already recorded for this run stays that status. A stamp
+    // from another run is not acceptance and not a refusal: this run still prepares.
+    if (ownedHere && (stamped.status === 'pending' || stamped.status === 'rejected')) {
+      recordOpeningCookStep(render, 'wait.prepareOpeningGpuResources', ledgerNow(), 'skipped', {
+        reason: stamped.status === 'pending' ? 'pending-run' : 'rejected-run',
+      });
+      finishLedger();
+      return false;
+    }
+  }
+
+  if (!resident && typeof prepare === 'function') {
+    const prepareStarted = ledgerNow();
+    const preparePromise = Promise.resolve().then(() => prepare());
+    if (sameGeneration()) render.openingGpuResidencyReady = preparePromise;
+    const result = await settleWithin(preparePromise, timeoutMs);
+    recordOpeningCookStep(render, 'wait.prepareOpeningGpuResources', prepareStarted, settleOutcome(result));
+    if (!sameGeneration()) {
+      if (render.openingGpuResidencyReady === preparePromise) render.openingGpuResidencyReady = null;
+      finishLedger();
+      return false;
+    }
+    if (gpuContextIsLost(state)) {
+      finishLedger();
+      if (options.throwOnError === true) assertMobileOpeningGraphicsHealthy(render);
+      return false;
+    }
+    if (options.throwOnError === true && result.error) {
+      finishLedger();
+      throw result.error;
+    }
+    prepareValue = result && result.ok === true ? result.value : null;
+    prepareClassification = classifyRequiredPackageAdmission({
+      capturedGeneration,
+      currentGeneration: generationNow(),
+      existing: render.requiredPackageAdmission,
+      settled: result,
+    });
+    if (prepareClassification.releaseOwn && render.openingGpuResidencyReady === preparePromise) {
+      render.openingGpuResidencyReady = null;
+    }
+    if (prepareClassification.publish === true && prepareClassification.status === 'rejected') {
+      publish(prepareClassification);
+    } else if (prepareClassification.publish === true
+        && prepareClassification.status === 'pending'
+        && prepareClassification.continueOpening !== true) {
+      publish(prepareClassification);
+    }
+    if (prepareClassification.status === 'superseded') {
+      finishLedger();
+      return false;
+    }
+  } else {
+    recordOpeningCookStep(render, 'wait.prepareOpeningGpuResources', ledgerNow(), 'skipped', {
+      reason: resident ? 'session-recook' : 'unavailable',
+    });
+  }
+  // Maps and geometries just landed. Publish the held next-sector upgrades,
+  // drain their compiles, and touch the live materials so first flight bloom
+  // is not the first ANGLE draw of those keys.
+  // Same-sector F9 recook skips the opening 1x1; programs/buffers are resident.
+  // That shortcut runs only after this generation already accepted the package.
+  // A stamp this generation did not accept is not a shortcut and not a refusal.
+  if (!shellOwnedAtEntry) {
+    finishLedger();
+    if (prepareClassification && prepareClassification.status === 'rejected') return false;
+    if (prepareClassification && prepareClassification.status === 'pending'
+        && prepareClassification.continueOpening !== true) return false;
+    return gpuContextIsLost(state) !== true;
+  }
+  if (!sameGeneration()) {
+    finishLedger();
+    return false;
+  }
+  const presentStarted = ledgerNow();
+  // settleTail === false is the software-GL route that does not await this cook (main.js):
+  // the shell will not hold for it, so the present leg only parks — it never starts the
+  // whole-sector cook that would otherwise race on into presented flight.
+  const parkOnly = options.settleTail === false;
+  const presentCook = Promise.resolve().then(() => (
+    typeof render.prepareLiveSectorBeforeFlight === 'function'
+      ? (parkOnly ? render.prepareLiveSectorBeforeFlight({ parkOnly: true }) : render.prepareLiveSectorBeforeFlight())
+      : (parkOnly ? { skipped: true, reason: 'park-only' } : cookLiveSceneGpu(state, { present: true, skipBuffers: true }))
+  ));
+  if (sameGeneration()) render.liveScenePresentReady = presentCook;
+  // PQ-210.00 — a survival arena cooks its whole bounded field (hulls, promoted rock
+  // variants, site props) behind this wait; the default 20 s window routinely truncates it
+  // on a busy host, and the overflow lands inside the fight at the deferred-hold release.
+  // The inner prepare budget is already the survival-aware one (60 s) but the settle, queue
+  // drain, post-opening sweep and pool census each carry their own cap on top of it — a
+  // contended host can spend ~2x that before the last pipeline lands. Give the gate room
+  // for the whole sequence so the shell is what pays, not the round. PQ-210.02 gives the
+  // open route the same margin: its prepare budget is 40 s and the tail steps sit on top
+  // of it, so a 20 s gate still releases mid-cook. 120 s is the bounded ceiling — a fast
+  // host finishes early, a wedged cook still fails open.
+  // options.presentBudgetMs overrides the ceiling for a caller (a test) that wants the timeout path in
+  // milliseconds instead of two minutes.
+  const presentBudgetMs = openingPresentBudgetMs(state, timeoutMs, options);
+  const presentResult = await settleWithin(presentCook, presentBudgetMs);
+  const presentOutcome = settleOutcome(presentResult);
+  recordOpeningCookStep(render, 'wait.prepareLiveSectorBeforeFlight', presentStarted, presentOutcome);
+  if (presentOutcome === 'timeout') {
+    // The gate stopped waiting but the cook keeps running into flight; log it when it really ends.
+    presentCook.then(finishLedger, finishLedger);
+  } else {
+    finishLedger();
+  }
+  if (!sameGeneration()) {
+    if (render.liveScenePresentReady === presentCook) render.liveScenePresentReady = null;
+    return false;
+  }
+  const lost = gpuContextIsLost(state) === true;
+  if (options.throwOnError === true && presentResult.error) throw presentResult.error;
+  if (options.throwOnError === true && lost) assertMobileOpeningGraphicsHealthy(render);
+  if (parkOnly) {
+    // The park-only leg cooked nothing, so it must not mint acceptance after flight: keep the
+    // pre-fix software-route verdict (refusals still refuse; otherwise only a lost context fails).
+    if (prepareClassification && prepareClassification.status === 'rejected') return false;
+    if (prepareClassification && prepareClassification.status === 'pending'
+        && prepareClassification.continueOpening !== true) return false;
+    return !lost;
+  }
+  if (prepareClassification && prepareClassification.status === 'rejected') return false;
+  if (prepareClassification && prepareClassification.status === 'pending'
+      && prepareClassification.continueOpening !== true) return false;
+  if (prepareClassification && prepareClassification.continueOpening === true) {
+    if (!presentResult.ok || lost) return false;
+    if (render.requiredPackageAdmission && render.requiredPackageAdmission.generation !== capturedGeneration) {
+      render.requiredPackageAdmission = null;
+    }
+    await settleTail();
+    return true;
+  }
+  if (!resident && !prepareClassification) {
+    if (!presentResult.ok || lost) return false;
+    await settleTail();
+    return true;
+  }
+  if (!presentResult.ok || lost) {
+    const existingAdmission = render.requiredPackageAdmission;
+    const acceptedHere = !!(existingAdmission
+      && existingAdmission.status === 'accepted'
+      && existingAdmission.generation === capturedGeneration);
+    // A live-sector timeout must not demote an acceptance this generation already recorded.
+    if (presentResult && presentResult.timeout === true && !acceptedHere) {
+      publish(classifyRequiredPackageAdmission({
+        capturedGeneration,
+        currentGeneration: generationNow(),
+        existing: existingAdmission,
+        settled: { timeout: true },
+        resumeAccepted: false,
+      }));
+    }
+    return false;
+  }
+  const accepted = classifyRequiredPackageAdmission({
+    capturedGeneration,
+    currentGeneration: generationNow(),
+    existing: render.requiredPackageAdmission,
+    settled: {
+      ok: true,
+      value: resident ? acceptedResumeValue(render.requiredPackageAdmission) : prepareValue,
+    },
+    resumeAccepted: resident,
+  });
+  if (accepted.status !== 'accepted' || !sameGeneration()) return false;
+  publish(accepted);
+  const record = render.requiredPackageAdmission;
+  const ready = !!(record && record.status === 'accepted' && record.ready === true && sameGeneration());
+  if (ready) await settleTail();
+  return ready;
+}

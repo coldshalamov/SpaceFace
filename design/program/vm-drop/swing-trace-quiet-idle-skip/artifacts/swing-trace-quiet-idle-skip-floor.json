@@ -1,0 +1,28 @@
+{
+  "name": "swing-trace-quiet-idle-skip-floor",
+  "runs": [
+    {
+      "label": "primary-first",
+      "medianSpeedup": 1.7649405792354873,
+      "minSpeedup": 1.5838327780141905
+    },
+    {
+      "label": "rebench1",
+      "medianSpeedup": 1.8681038654073394,
+      "minSpeedup": 1.7101728367641582
+    },
+    {
+      "label": "rebench2",
+      "medianSpeedup": 1.8535493421631117,
+      "minSpeedup": 1.7536421055574005
+    },
+    {
+      "label": "primary-refresh",
+      "medianSpeedup": 1.9225072628301985,
+      "minSpeedup": 1.6397901524274874
+    }
+  ],
+  "floorMinSpeedup": 1.5838327780141905,
+  "medianOfMedians": 1.8681038654073394,
+  "dirtyWakeOk": true
+}

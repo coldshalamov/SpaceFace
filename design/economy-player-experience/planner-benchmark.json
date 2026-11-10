@@ -1,0 +1,9 @@
+{
+  "benchmark": "warm Node read-only route computation; not a browser frame-time claim",
+  "seed": 4242,
+  "iterations": 200,
+  "quotesPerPlan": 52,
+  "p50Ms": 0.11721699999998236,
+  "p95Ms": 0.5310320000000956,
+  "maxMs": 1.362956999999824
+}

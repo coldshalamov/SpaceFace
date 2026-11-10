@@ -1,0 +1,36 @@
+{
+  "schema": "spaceface.validation-run-result.v1",
+  "recordedAt": "2026-08-01T08:26:01.504Z",
+  "status": "pass",
+  "exitCode": 0,
+  "signal": null,
+  "timedOut": false,
+  "durationMs": 55724,
+  "pidRecord": {
+    "pid": 23364,
+    "command": "C:\\Program Files\\nodejs\\node.exe",
+    "args": [
+      "scripts/probe-pq023-combat-readability.mjs"
+    ],
+    "startedAt": "2026-08-01T08:25:05.779Z",
+    "platform": "win32",
+    "finishedAt": "2026-08-01T08:26:01.503Z",
+    "exitCode": 0,
+    "signal": null,
+    "timedOut": false,
+    "killResult": null
+  },
+  "ownership": {
+    "probeId": "pq023-combat-readability",
+    "runtimeKind": "browser",
+    "browserOwned": true,
+    "serverOwned": true,
+    "pid": 23364
+  },
+  "fixedSeed": 47,
+  "failureFingerprint": null,
+  "family": null,
+  "routeDigest": "6b53733a3709abe36fd4ebf05d5adb802a85ada472279e5987083e625c3835a3",
+  "regressionDigest": "5f3619f94e798efdb3d59d27e29279fdc2662f8ee9635f9f0ba0d1d4516b0761",
+  "candidateDigest": "f50250e37d65128fd8f60d5620c630292123173d39faf6c3841d442812296a93"
+}

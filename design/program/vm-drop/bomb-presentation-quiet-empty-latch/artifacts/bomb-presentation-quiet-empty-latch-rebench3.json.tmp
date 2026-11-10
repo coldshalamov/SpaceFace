@@ -1,0 +1,15 @@
+{
+  "name": "bomb-presentation-quiet-empty-latch",
+  "medianSpeedup": 2.518,
+  "minSpeedup": 2.15,
+  "maxSpeedup": 4.016,
+  "dirtyWake": {
+    "ok": true,
+    "latched": true,
+    "woke": true,
+    "relatch": true,
+    "walks": 3,
+    "skips": 2,
+    "count": 0
+  }
+}

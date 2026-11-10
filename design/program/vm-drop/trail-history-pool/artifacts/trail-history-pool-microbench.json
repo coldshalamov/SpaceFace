@@ -1,0 +1,15 @@
+{
+  "name": "trail-history-pool",
+  "entities": 64,
+  "ticks": 20000,
+  "trailMax": 7,
+  "beforeMs": 100.114,
+  "afterMs": 45.951,
+  "speedup": 2.179,
+  "checksumBefore": -1751442198,
+  "checksumAfter": -1751442198,
+  "checksumMatch": true,
+  "sumA": 574870934,
+  "sumB": 574870934,
+  "poolFree": 0
+}

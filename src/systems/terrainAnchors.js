@@ -1,0 +1,455 @@
+// Terrain anchors (Wave M2 §4.4, design/revamp/MASSLINE_PHYSICS_IDENTITY.md).
+//
+// Throws, slingshots and tumble-kills need STUFF near the fight — but the composition rule is
+// few-and-large (2-3 big rocks per combat bubble read as a playground; small-and-many read as
+// gravel in your shoes). This system listens to the shipped `encounter:telegraph` seam (the only
+// encounter event that carries the zone anchor position), and if the bubble is bare it spawns a
+// handful of LARGE asteroids there. Asteroids are already immovable anchors in both physics
+// backends (invMass 0 / non-dynamic) and already carry the tether-socket combat profile, so the
+// massline can latch them the moment they exist. Collision asymmetry (§3.5) means clutter can
+// bounce the player but never hurt him.
+//
+// Anchors are encounter-owned: overlapping encounters may share the same few rocks, and each
+// resolution releases its ownership. The final owner schedules the engine's ordinary despawnAt
+// sweep after a short aftermath window. No spawnBudget interaction (that ledger counts SHIP slots).
+// A long TTL remains only as orphan/fizzle insurance. Deterministic: own seeded stream.
+// Flag-gated; not in the sim harness; encounterDirector itself is untouched.
+import { massline2Flag } from '../data/featureFlags.js';
+import { sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
+import { withBankStone } from '../core/surfaceContact.js';
+import { asteroidColliderRadius } from '../data/asteroidColliders.js';
+import { applyRockSubstance, rockSubstanceForSlot } from '../data/rockSubstances.js';
+import { Masks } from '../core/entity.js';
+import { bumpCollidesFlipEpoch, indexedTypeScan } from '../world/livingWorldViews.js';
+import {
+  PALLAS_REEF_MINES,
+  PALLAS_REEF_MINE_BODY,
+  pallasReefMineId,
+  pallasReefMinePos,
+} from '../data/environmentalMachinery.js';
+
+// --- Dials (design doc §12) -----------------------------------------------------------------
+const ANCHOR_MIN = 2;            // spawn up to ANCHOR_MAX when fewer than this exist in the bubble
+const ANCHOR_MAX = 3;
+const ANCHOR_RADIUS = 600;       // wu — the "combat bubble" scan radius around the telegraph pos
+const ANCHOR_SIZE_MIN = 26;     // big-and-few: these dwarf ordinary field rocks (6-14)
+const ANCHOR_SIZE_MAX = 40;
+const ANCHOR_TTL_S = 900;        // despawn long after the fight; sector regen owns the rest
+const ANCHOR_AFTERMATH_S = 45;    // match encounter straggler cleanup; leaves time for salvage
+const ANCHOR_TYPE_ID = 'ast_common_rock';
+
+const SOLID_TYPES = new Set(['asteroid', 'station', 'wreck']);
+const SOLID_INDEX_BUCKETS = Object.freeze(['asteroids', 'stations', 'wrecks']);
+
+// D207 — every anchor this system drops is sector-owned content: the residency teardown reads
+// homeSectorId, so an unstamped rock survived the sector exit live and unbound (the VERB-07
+// "sector teardown owns them on departure" contract could not see it). Anchors are staged from
+// authored or telegraph positions inside one sector, so position truth names the owner; outside
+// the corridor (arena modes) the stamp is simply absent and behavior is unchanged.
+function sectorOwnershipFor(pos) {
+  const sectorId = pos ? sectorMembershipAtGlobal(pos) : null;
+  return sectorId
+    ? { homeSectorId: sectorId, dataExtras: { homeSectorId: sectorId, sectorId } }
+    : { homeSectorId: undefined, dataExtras: {} };
+}
+
+// INF-017 — opening layout. Wave 1 of a swarm run gets one substantial anchor on a clear
+// sling corridor: close enough that inbound enemies stream past it (inside the 213 wu spawn
+// ring's inner edge), far enough that nothing spawns on top of it and the player never
+// starts inside it. The corridor is a capsule from the telegraph pos to the anchor; lane
+// rocks that would block it are skipped. Enemy composition is untouched — the gun-only
+// route stays exactly as authored.
+export const OPENING_ANCHOR_DIST = 150;
+export const OPENING_ANCHOR_SIZE = 44;
+export const OPENING_ANCHOR_BEARING_RAD = 0.7;
+export const OPENING_CORRIDOR_HALF = 100;
+
+/** Center distance from point (qx,qz) to segment P-A; pure geometry for tests and layout. */
+export function segmentDistance(px, pz, ax, az, qx, qz) {
+  const dx = ax - px, dz = az - pz;
+  const lenSq = dx * dx + dz * dz;
+  if (!(lenSq > 1e-9)) return Math.hypot(qx - px, qz - pz);
+  const t = Math.max(0, Math.min(1, ((qx - px) * dx + (qz - pz) * dz) / lenSq));
+  return Math.hypot(qx - (px + dx * t), qz - (pz + dz * t));
+}
+
+function visitSolidAnchorCandidates(state, fn) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready === true) {
+    for (let b = 0; b < SOLID_INDEX_BUCKETS.length; b++) {
+      const list = index[SOLID_INDEX_BUCKETS[b]];
+      if (!list) continue;
+      for (let i = 0; i < list.length; i++) fn(list[i]);
+    }
+    return;
+  }
+  const list = (state && state.entityList) || [];
+  for (let i = 0; i < list.length; i++) fn(list[i]);
+}
+
+export const terrainAnchors = {
+  id: 'terrainAnchors',
+  name: 'terrainAnchors',
+
+  init(ctx) {
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    this.helpers = ctx.helpers;
+    this._resetRunRandom();
+    this._unsubs = [];
+    if (this.bus && typeof this.bus.on === 'function') {
+      this._unsubs.push(this.bus.on('encounter:telegraph', (p) => this._onTelegraph(p || {})));
+      this._unsubs.push(this.bus.on('encounter:resolved', (p) => this._onResolved(p || {})));
+      this._unsubs.push(this.bus.on('environmentalMachinery:ensureAnvil',
+        (p) => this._ensureKillMachineAnvil(p || {})));
+      this._unsubs.push(this.bus.on('environmentalMachinery:ensureReef',
+        (p) => this._ensurePallasReef(p || {})));
+      this._unsubs.push(this.bus.on('environmentalMachinery:ensureAperturePlug',
+        (p) => this._ensureAperturePlug(p || {})));
+      this._unsubs.push(this.bus.on('environmentalMachinery:releaseAperturePlug',
+        (p) => this._releaseAperturePlug(p || {})));
+    }
+  },
+
+  destroy() {
+    for (const off of this._unsubs || []) { if (typeof off === 'function') off(); }
+    this._unsubs = [];
+  },
+
+  newGame() {
+    this._resetRunRandom();
+  },
+
+  // A retained system must start the new run's stream at the same point as a fresh
+  // instance. Continue and ordinary wave/sector transitions keep their current stream.
+  _resetRunRandom() {
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    this._rng = this.helpers.mulberry32(this.helpers.hash32(seed, 'terrainAnchors'));
+  },
+
+  update() {},
+
+  _onTelegraph(payload) {
+    if (!massline2Flag('terrainAnchors')) return;
+    const state = this.state;
+    const pos = payload.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return;
+    const arcade = payload.arcadeLayout === true && state.run?.ruleset === 'swarm';
+    const required = arcade ? 6 : ANCHOR_MIN;
+    const bubbleRadius = arcade ? 390 : ANCHOR_RADIUS;
+    // VERB-07 — rocks dropped for the opening hauler raid are neighbourhood furniture, not
+    // encounter props: the 45-second aftermath sweep must not take them while the player is
+    // still standing in the fight's wreck field. Sector teardown owns them on departure.
+    const openingFight = payload.kind === 'opening_hauler_raid';
+
+    // Count existing large solids in the bubble — stations and big rocks both count as anchors.
+    let present = 0;
+    visitSolidAnchorCandidates(state, (e) => {
+      if (present >= required) return;
+      if (!e || e.alive === false || !e.pos || !SOLID_TYPES.has(e.type)) return;
+      if (!(Number.isFinite(e.radius) && e.radius >= ANCHOR_SIZE_MIN * 0.6)) return;
+      const dx = e.pos.x - pos.x, dz = e.pos.z - pos.z;
+      if (dx * dx + dz * dz <= bubbleRadius * bubbleRadius) {
+        present++;
+        if (payload.encounterId && e.data && e.data.terrainAnchor) {
+          const owners = Array.isArray(e.data.terrainAnchorEncounterIds)
+            ? e.data.terrainAnchorEncounterIds
+            : (e.data.terrainAnchorEncounterIds = []);
+          if (!owners.includes(payload.encounterId)) owners.push(payload.encounterId);
+          // VERB-07 — a rock the raid adopts gets the same neighbourhood mark as the ones it
+          // drops: it must still be standing after a later, unrelated owner resolves.
+          if (openingFight) e.data.neighbourhoodAnchor = true;
+        }
+      }
+    });
+    if (present >= required) return;
+
+    const want = (arcade ? required : Math.min(ANCHOR_MAX, ANCHOR_MIN + 1)) - present;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    // Two staggered lanes leave a broad central escape and narrower bank-shot gaps. The
+    // whole layout rotates with the run seed; it stays readable from the opening camera.
+    const layout = [[-116, -160], [116, -115], [-142, 80], [148, 140], [-35, 292], [48, -302]];
+    const rotation = ((Number(payload.arenaSeed) >>> 0) % 360) * Math.PI / 180;
+    const survivalCover = payload.kind === 'survival_arena';
+    const ownership = sectorOwnershipFor(pos);
+    const spawnAnchor = (dx, dz, size, i = 0) => {
+      const oreHP = Math.round(360 + size * 14);
+      const data = {
+        typeId: ANCHOR_TYPE_ID,
+        tier: 0, tierCap: 0,
+        oreHP, oreHPMax: oreHP,
+        yieldU: Math.round(6 + size * 0.4),
+        size,
+        terrainAnchor: true,
+        terrainAnchorEncounterIds: payload.encounterId ? [payload.encounterId] : [],
+        neighbourhoodAnchor: openingFight === true ? true : undefined,
+        despawnAt: now + ANCHOR_TTL_S,
+        ...ownership.dataExtras,
+      };
+      // Row 509: cover rocks carry the substance layer — the throw reads how the rock answers.
+      const anchorDensity = applyRockSubstance(data,
+        rockSubstanceForSlot(payload.encounterId || 'anchor', 'cover', i));
+      this.helpers.spawnEntity({
+        type: 'asteroid',
+        homeSectorId: ownership.homeSectorId,
+        pos: { x: pos.x + dx, z: pos.z + dz },
+        vel: { x: 0, z: 0 },
+        radius: size,
+        physicsBody: { radius: asteroidColliderRadius(ANCHOR_TYPE_ID, size) },
+        // 2D-area-ish density scaling: these read (and sling, §4.1 anchor-mass bonus) as monoliths.
+        mass: Math.round(size * size * 40 * anchorDensity),
+        angVel: (this._rng() - 0.5) * 0.12,
+        hull: oreHP, hullMax: oreHP,
+        collides: true,
+        data: survivalCover ? withBankStone(data) : data,
+      });
+    };
+    // INF-017: the opening wave of a swarm run leads with one substantial anchor on a clear
+    // sling corridor. Inbound enemies converge player-ward through its neighborhood; the
+    // composition is untouched, so the gun-only route is exactly as authored.
+    let opening = null;
+    if (arcade && payload.encounterId === 'survival-arena-w1') {
+      const bearing = OPENING_ANCHOR_BEARING_RAD + rotation;
+      const dx = Math.cos(bearing) * OPENING_ANCHOR_DIST;
+      const dz = Math.sin(bearing) * OPENING_ANCHOR_DIST;
+      let occupied = false;
+      visitSolidAnchorCandidates(state, (e) => {
+        if (occupied || !e || e.alive === false || !e.pos || !SOLID_TYPES.has(e.type)) return;
+        if (!(Number.isFinite(e.radius) && e.radius >= OPENING_ANCHOR_SIZE * 0.9)) return;
+        const ex = e.pos.x - (pos.x + dx), ez = e.pos.z - (pos.z + dz);
+        if (ex * ex + ez * ez <= 130 * 130) occupied = true;
+      });
+      if (!occupied) opening = { dx, dz };
+    }
+    let placed = 0;
+    if (opening && placed < want) {
+      spawnAnchor(opening.dx, opening.dz, OPENING_ANCHOR_SIZE);
+      placed++;
+    }
+    for (let scan = 0; placed < want && scan < layout.length * 2; scan++) {
+      const i = placed;
+      const size = arcade ? 32 + ((i + present) % 3) * 7
+        : ANCHOR_SIZE_MIN + this._rng() * (ANCHOR_SIZE_MAX - ANCHOR_SIZE_MIN);
+      const ang = this._rng() * Math.PI * 2;
+      const dist = 140 + this._rng() * (ANCHOR_RADIUS * 0.55);
+      const point = layout[(scan + present) % layout.length];
+      const dx = arcade ? point[0] * Math.cos(rotation) - point[1] * Math.sin(rotation) : Math.cos(ang) * dist;
+      const dz = arcade ? point[0] * Math.sin(rotation) + point[1] * Math.cos(rotation) : Math.sin(ang) * dist;
+      if (opening && segmentDistance(0, 0, opening.dx, opening.dz, dx, dz) < OPENING_CORRIDOR_HALF) {
+        continue;
+      }
+      spawnAnchor(dx, dz, size, i);
+      placed++;
+    }
+    // NXI-076 — replenishment is explained only when a real replacement is admitted: adopting
+    // surviving in-bubble anchors is ownership bookkeeping, not new geometry, so the receipt
+    // fires on `spawned > 0` alone and carries how much was already standing.
+    if (placed > 0 && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('terrainAnchors:replenished', {
+        encounterId: payload.encounterId || null,
+        kind: payload.kind || null,
+        spawned: placed,
+        alreadyPresent: present,
+      });
+    }
+  },
+
+  _onResolved(payload) {
+    const encounterId = payload && payload.encounterId;
+    if (!encounterId) return;
+    const now = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
+    for (const entity of indexedTypeScan(this.state, 'asteroids')) {
+      const data = entity && entity.data;
+      if (!data || !data.terrainAnchor || !Array.isArray(data.terrainAnchorEncounterIds)) continue;
+      const index = data.terrainAnchorEncounterIds.indexOf(encounterId);
+      if (index < 0) continue;
+      data.terrainAnchorEncounterIds.splice(index, 1);
+      if (!data.terrainAnchorEncounterIds.length) {
+        // NXB-019 — a preparation interval releases ownership, not the body: the rock keeps its
+        // authored TTL and exactly the transform the player left it with. The next wave's
+        // telegraph re-adopts in-bubble survivors; destroyed cover refills through the same
+        // authored top-up, so a round's affordance is never silently restored or silently lost.
+        if (payload.retainAnchors === true) continue;
+        // VERB-07 — the opening fight's rocks survive until the player leaves the
+        // neighbourhood: no aftermath clamp, and any earlier clamp lifts. Ordinary
+        // encounter anchors still take the 45-second sweep.
+        if (data.neighbourhoodAnchor === true || payload.shape === 'opening_hauler_raid') {
+          data.neighbourhoodAnchor = true;
+          delete data.despawnAt;
+          continue;
+        }
+        data.despawnAt = Math.min(Number.isFinite(data.despawnAt) ? data.despawnAt : Infinity,
+          now + ANCHOR_AFTERMATH_S);
+      }
+    }
+  },
+
+  _ensureKillMachineAnvil(spec) {
+    const id = spec && spec.id;
+    const pos = spec && spec.pos;
+    if (!id || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+    const list = indexedTypeScan(this.state, 'asteroids');
+    for (const entity of list) {
+      if (entity && entity.alive !== false && entity.data && entity.data.killMachineAnvilId === id) {
+        return entity;
+      }
+    }
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
+    const radius = Number.isFinite(spec.radius) && spec.radius > 0 ? spec.radius : 22;
+    const mass = Number.isFinite(spec.mass) && spec.mass > 0 ? spec.mass : Math.round(radius * radius * 40);
+    const oreHP = Math.round(360 + radius * 14);
+    const ownership = sectorOwnershipFor(pos);
+    return this.helpers.spawnEntity({
+      type: 'asteroid',
+      homeSectorId: ownership.homeSectorId,
+      pos: { x: pos.x, z: pos.z },
+      vel: { x: 0, z: 0 },
+      radius,
+      mass,
+      angVel: 0,
+      hull: oreHP,
+      hullMax: oreHP,
+      collides: true,
+      physicsBody: {
+        schemaVersion: 1,
+        radius: asteroidColliderRadius(ANCHOR_TYPE_ID, radius),
+        mass,
+        inertiaY: Math.max(120, Math.round(mass * 0.08)),
+        dynamic: false,
+        ccd: false,
+        material: 'asteroid',
+        revision: 0,
+      },
+      data: {
+        typeId: ANCHOR_TYPE_ID,
+        tier: 0,
+        tierCap: 0,
+        oreHP,
+        oreHPMax: oreHP,
+        yieldU: Math.round(6 + radius * 0.4),
+        size: radius,
+        terrainAnchor: true,
+        killMachineAnvilId: id,
+        killMachineId: spec.machineId || null,
+        ...ownership.dataExtras,
+      },
+    });
+  },
+
+  _ensurePallasReef(_spec) {
+    const list = indexedTypeScan(this.state, 'wrecks');
+    const existing = new Set();
+    for (const entity of list) {
+      if (entity && entity.alive !== false && entity.data && entity.data.reefMine === true) {
+        existing.add(entity.data.reefMineSlot);
+      }
+    }
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
+    const radius = PALLAS_REEF_MINE_BODY.radius;
+    const mass = PALLAS_REEF_MINE_BODY.mass;
+    const hull = Math.round(80 + radius * 4);
+    let spawned = 0;
+    for (let i = 0; i < PALLAS_REEF_MINES.length; i++) {
+      if (existing.has(i)) continue;
+      const pos = pallasReefMinePos(PALLAS_REEF_MINES[i]);
+      const ownership = sectorOwnershipFor(pos);
+      this.helpers.spawnEntity({
+        type: 'wreck',
+        homeSectorId: ownership.homeSectorId,
+        pos: { x: pos.x, z: pos.z },
+        vel: { x: 0, z: 0 },
+        radius,
+        mass,
+        angVel: 0,
+        hull,
+        hullMax: hull,
+        collides: true,
+        collisionMask: Masks.SHIP | Masks.ASTEROID | Masks.WRECK | Masks.DRONE | Masks.PAYLOAD,
+        physicsBody: {
+          schemaVersion: 1,
+          radius,
+          mass,
+          inertiaY: Math.max(8, Math.round(mass * radius * radius * 0.4)),
+          dynamic: true,
+          ccd: false,
+          material: 'debris',
+          revision: 0,
+        },
+        data: {
+          majorDebris: true,
+          reefMine: true,
+          reefMineSlot: i,
+          reefMineId: pallasReefMineId(i),
+          ...ownership.dataExtras,
+        },
+      });
+      spawned += 1;
+    }
+    return spawned;
+  },
+
+  _ensureAperturePlug(spec) {
+    const id = spec && spec.id;
+    const pos = spec && spec.pos;
+    if (!id || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+    for (const entity of indexedTypeScan(this.state, 'asteroids')) {
+      if (entity && entity.alive !== false && entity.data && entity.data.aperturePlugId === id) {
+        return entity;
+      }
+    }
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
+    const radius = Number.isFinite(spec.radius) && spec.radius > 0 ? spec.radius : 30;
+    const mass = Number.isFinite(spec.mass) && spec.mass > 0 ? spec.mass : Math.round(radius * radius * 40);
+    const oreHP = Math.round(360 + radius * 14);
+    const ownership = sectorOwnershipFor(pos);
+    return this.helpers.spawnEntity({
+      type: 'asteroid',
+      homeSectorId: ownership.homeSectorId,
+      pos: { x: pos.x, z: pos.z },
+      vel: { x: 0, z: 0 },
+      radius,
+      mass,
+      angVel: 0,
+      hull: oreHP,
+      hullMax: oreHP,
+      collides: true,
+      physicsBody: {
+        schemaVersion: 1,
+        radius: asteroidColliderRadius(ANCHOR_TYPE_ID, radius),
+        mass,
+        inertiaY: Math.max(120, Math.round(mass * 0.08)),
+        dynamic: false,
+        ccd: false,
+        material: 'asteroid',
+        revision: 0,
+      },
+      data: {
+        typeId: ANCHOR_TYPE_ID,
+        tier: 0,
+        tierCap: 0,
+        oreHP,
+        oreHPMax: oreHP,
+        yieldU: Math.round(6 + radius * 0.4),
+        size: radius,
+        terrainAnchor: true,
+        aperturePlugId: id,
+        ...ownership.dataExtras,
+      },
+    });
+  },
+
+  _releaseAperturePlug(spec) {
+    const id = spec && spec.id;
+    if (!id) return false;
+    let released = false;
+    for (const entity of indexedTypeScan(this.state, 'asteroids')) {
+      if (!entity || !entity.data || entity.data.aperturePlugId !== id) continue;
+      entity.alive = false;
+      if (entity.collides !== false) bumpCollidesFlipEpoch();
+      entity.collides = false;
+      released = true;
+    }
+    return released;
+  },
+};

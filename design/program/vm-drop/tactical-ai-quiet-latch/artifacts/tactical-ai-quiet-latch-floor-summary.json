@@ -1,0 +1,22 @@
+{
+  "medians": [
+    6.126,
+    6.906,
+    6.584,
+    6.574,
+    6.541
+  ],
+  "mins": [
+    5.072,
+    4.643,
+    4.729,
+    4.951,
+    5.292
+  ],
+  "packageFloorMin": 4.643,
+  "packageMedianRange": [
+    6.126,
+    6.906
+  ],
+  "dirtyWakeOk": true
+}

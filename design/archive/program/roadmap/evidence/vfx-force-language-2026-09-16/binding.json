@@ -1,0 +1,9 @@
+{
+  "topic": "vfx-force-language",
+  "date": "2026-09-16",
+  "source": "fallback packet af374890b834f6ee9b7cefb4a12cf766a6d64fe6 (branch agent/vfx-force-language-upgrade, base a2c27ba4a2ec932de9eaa957368545e75bb2c0ee), integrated 2026-09-15",
+  "images": ["seed.png", "well.png", "repulsor.png", "cone.png", "sheet.png", "retro.png"],
+  "renderResults": "render-results.json",
+  "standard": "docs/visual-assets/VFX_FORCE_LANGUAGE_STANDARD_2026-09-16.md",
+  "check": "npm run check:vfx-force-language"
+}

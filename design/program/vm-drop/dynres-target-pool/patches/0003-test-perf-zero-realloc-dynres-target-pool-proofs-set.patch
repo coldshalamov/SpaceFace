@@ -1,0 +1,341 @@
+From 32456b70ba03591612f4b5b5fe3095f9ba672b30 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Tue, 22 Sep 2026 21:21:36 -0400
+Subject: [PATCH 3/3] test(perf): zero-realloc dynres target-pool proofs +
+ settings formula
+
+Focused check:dynres-target-pool asserts scale sweeps allocate nothing.
+Drawing-buffer formula tests stop treating dynResScale as a pixelRatio factor.
+---
+ package.json                                  |   1 +
+ test/bloom-pass-timing-scratch.test.mjs       |   6 +
+ test/dynres-target-pool.test.mjs              | 191 ++++++++++++++++++
+ .../expected-tables.mjs                       |  10 +-
+ test/renderer-settings-runtime-truth.test.mjs |  22 +-
+ 5 files changed, 219 insertions(+), 11 deletions(-)
+ create mode 100644 test/dynres-target-pool.test.mjs
+
+diff --git a/package.json b/package.json
+index fab99f568..c083bcfb2 100644
+--- a/package.json
++++ b/package.json
+@@ -590,6 +590,7 @@
+     "check:pq022:relay-collar": "node --test test/pq022-relay-collar-admission.test.mjs",
+     "check:pq022:corridor-assets": "node scripts/check-pq022-corridor-assets.mjs --expected-gaps=scripts/lib/pq022CorridorExpectedGaps.json",
+     "check:baseline": "node scripts/check-baseline.mjs",
++    "check:dynres-target-pool": "node --test test/dynres-target-pool.test.mjs",
+     "check:perf-packets": "node --test test/shadow-caster-policy.test.mjs test/perf-combat-count-gates.test.mjs test/flight-compose-gate.test.mjs test/perf-submit-lod-archetype.test.mjs test/ship-pitch-presentation.test.mjs test/vfx-field-geometry-sleep.test.mjs test/renderer-shadow-frame.test.mjs test/renderer-projection-camera-guard.test.mjs test/space-background-boot-tier-single-build.test.mjs test/hud-contact-roster-keyed-rows.test.mjs test/audio-parameter-churn.test.mjs",
+     "check:pq023:corridor-cues": "node --test test/pq023-corridor-cues.test.mjs && node scripts/check-pq023-corridor-cues.mjs",
+     "check:pq024:survey-claim": "node --test test/pq024-survey-claim.test.mjs",
+diff --git a/test/bloom-pass-timing-scratch.test.mjs b/test/bloom-pass-timing-scratch.test.mjs
+index 37fa103e3..1e688bbe9 100644
+--- a/test/bloom-pass-timing-scratch.test.mjs
++++ b/test/bloom-pass-timing-scratch.test.mjs
+@@ -20,6 +20,12 @@ function rendererHarness(options = {}) {
+       events.push(`target:${targetName(target)}`);
+     },
+     getRenderTarget() { return activeTarget; },
++    setViewport() {},
++    getViewport(out) { if (out) { out.x = 0; out.y = 0; out.z = 0; out.w = 0; return out; } return { x: 0, y: 0, z: 0, w: 0 }; },
++    setScissor() {},
++    getScissor(out) { if (out) { out.x = 0; out.y = 0; out.z = 0; out.w = 0; return out; } return { x: 0, y: 0, z: 0, w: 0 }; },
++    setScissorTest() {},
++    getScissorTest() { return false; },
+     clear() { events.push(`clear:${targetName(activeTarget)}`); },
+     render(scene) {
+       if (renderer.autoClear) renderer.clear();
+diff --git a/test/dynres-target-pool.test.mjs b/test/dynres-target-pool.test.mjs
+new file mode 100644
+index 000000000..7c63f268c
+--- /dev/null
++++ b/test/dynres-target-pool.test.mjs
+@@ -0,0 +1,191 @@
++// Dyn-res target pool (PERF backlog #89): bloom/post RTs pre-allocate at max size;
++// content-scale changes must cause ZERO render-target reallocations.
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++import { dirname, join } from 'node:path';
++import { fileURLToPath } from 'node:url';
++import test from 'node:test';
++
++import { createBloom } from '../src/render/bloom.js';
++import {
++  getPostRenderTargetTelemetry,
++  resetPostRenderTargetTotals,
++} from '../src/render/postTelemetry.js';
++
++const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
++const RENDERER_SRC = readFileSync(join(ROOT, 'src/render/renderer.js'), 'utf8');
++const BLOOM_SRC = readFileSync(join(ROOT, 'src/render/bloom.js'), 'utf8');
++
++function rendererHarness() {
++  const events = [];
++  let activeTarget = null;
++  let viewport = { x: 0, y: 0, w: 0, h: 0 };
++  let scissor = { x: 0, y: 0, w: 0, h: 0 };
++  let scissorTest = false;
++  const renderer = {
++    capabilities: { isWebGL2: false, maxSamples: 0 },
++    autoClear: true,
++    domElement: { width: 640, height: 360 },
++    setRenderTarget(target) {
++      activeTarget = target;
++      events.push(`target:${target ? `${target.width}x${target.height}` : 'screen'}`);
++    },
++    getRenderTarget() { return activeTarget; },
++    setViewport(x, y, w, h) {
++      if (x && typeof x === 'object') {
++        viewport = { x: x.x, y: x.y, w: x.z ?? x.width, h: x.w ?? x.height };
++      } else {
++        viewport = { x, y, w, h };
++      }
++      events.push(`viewport:${viewport.w}x${viewport.h}`);
++    },
++    getViewport(out) {
++      if (out) {
++        out.x = viewport.x; out.y = viewport.y; out.z = viewport.w; out.w = viewport.h;
++        return out;
++      }
++      return { x: viewport.x, y: viewport.y, z: viewport.w, w: viewport.h };
++    },
++    setScissor(x, y, w, h) {
++      if (x && typeof x === 'object') {
++        scissor = { x: x.x, y: x.y, w: x.z ?? x.width, h: x.w ?? x.height };
++      } else {
++        scissor = { x, y, w, h };
++      }
++      events.push(`scissor:${scissor.w}x${scissor.h}`);
++    },
++    getScissor(out) {
++      if (out) {
++        out.x = scissor.x; out.y = scissor.y; out.z = scissor.w; out.w = scissor.h;
++        return out;
++      }
++      return { x: scissor.x, y: scissor.y, z: scissor.w, w: scissor.h };
++    },
++    setScissorTest(v) { scissorTest = !!v; events.push(`scissorTest:${scissorTest}`); },
++    getScissorTest() { return scissorTest; },
++    clear() { events.push(`clear:${activeTarget ? `${activeTarget.width}x${activeTarget.height}` : 'screen'}`); },
++    render(scene) {
++      if (renderer.autoClear) renderer.clear();
++      events.push(`render:${scene && scene.kind || 'quad'}`);
++    },
++  };
++  return { renderer, events };
++}
++
++test('static: integrated tier may enable dynRes; bloom exposes setContentScale', () => {
++  assert.match(
++    RENDERER_SRC,
++    /_dynResAllowed\s*=\s*gpu\.tier\s*===\s*['"]software['"]\s*\|\|\s*gpu\.tier\s*===\s*['"]integrated['"]/,
++    'software + integrated must be allowed after the target-pool fix',
++  );
++  assert.match(BLOOM_SRC, /function setContentScale\s*\(/, 'bloom must expose setContentScale');
++  assert.match(BLOOM_SRC, /uUvScale/, 'downsample/composite must remap UV for content sub-rects');
++  assert.match(
++    RENDERER_SRC,
++    /setContentScale\s*\(\s*dyn\s*\)/,
++    '_applySize must forward dynResScale to bloom.setContentScale',
++  );
++  assert.doesNotMatch(
++    RENDERER_SRC,
++    /setPixelRatio\([\s\S]{0,80}base \* scale \* dyn/,
++    'drawing buffer must stay at max pool size (no dyn multiply)',
++  );
++});
++
++test('content scale changes cause zero bloom render-target reallocations', () => {
++  resetPostRenderTargetTotals();
++  const harness = rendererHarness();
++  const bloom = createBloom(harness.renderer, 640, 360);
++  try {
++    const afterInit = getPostRenderTargetTelemetry().renderTargetAllocationsTotal;
++    assert.ok(afterInit >= 2, `expected init allocations, got ${afterInit}`);
++
++    // Sweep through scales the adaptive controller actually uses.
++    for (const scale of [1, 0.75, 0.5, 0.34, 0.5, 0.85, 1]) {
++      bloom.setContentScale(scale);
++      bloom.render({ kind: 'scene' }, { kind: 'camera' });
++    }
++
++    const afterScales = getPostRenderTargetTelemetry().renderTargetAllocationsTotal;
++    assert.equal(
++      afterScales,
++      afterInit,
++      `scale changes must not reallocate (before=${afterInit} after=${afterScales}; last=${getPostRenderTargetTelemetry().lastAllocationReason})`,
++    );
++
++    const diag = bloom.diagnostics();
++    assert.equal(diag.targetPoolMaxWidth, 640);
++    assert.equal(diag.targetPoolMaxHeight, 360);
++    assert.equal(diag.contentScale, 1);
++    assert.equal(diag.contentWidth, 640);
++    assert.equal(diag.sceneTargetWidth, 640, 'allocated RT stays at max');
++
++    bloom.setContentScale(0.5);
++    const half = bloom.diagnostics();
++    assert.equal(half.contentWidth, 320);
++    assert.equal(half.contentHeight, 180);
++    assert.equal(half.sceneTargetWidth, 640, 'still max after scale-down');
++    assert.equal(
++      getPostRenderTargetTelemetry().renderTargetAllocationsTotal,
++      afterInit,
++      'setContentScale(0.5) must not allocate',
++    );
++
++    // Real window resize (max pool change) MAY allocate — that is not a dyn-res scale change.
++    bloom.setSize(800, 450);
++    const afterResize = getPostRenderTargetTelemetry().renderTargetAllocationsTotal;
++    assert.ok(
++      afterResize > afterInit,
++      'setSize to a new max must still resize/allocate the pool',
++    );
++    assert.equal(bloom.diagnostics().targetPoolMaxWidth, 800);
++    assert.equal(bloom.diagnostics().contentWidth, 400, 'content stays proportional after max resize');
++  } finally {
++    bloom.dispose();
++  }
++});
++
++test('scaled render uses content viewport sub-rects (soft-GPU / software label path)', () => {
++  resetPostRenderTargetTotals();
++  const harness = rendererHarness();
++  const bloom = createBloom(harness.renderer, 640, 360);
++  try {
++    bloom.setContentScale(0.5);
++    harness.events.length = 0;
++    bloom.render({ kind: 'scene' }, { kind: 'camera' });
++
++    assert.ok(
++      harness.events.includes('viewport:320x180'),
++      `scene pass must use half content viewport; events=${harness.events.filter((e) => e.startsWith('viewport:')).join(',')}`,
++    );
++    assert.ok(
++      harness.events.includes('scissor:320x180'),
++      'scene pass must scissor to the content sub-rect',
++    );
++    // Downsample level 0 writes half of half = 160x90 content into the half-res pyramid target.
++    assert.ok(
++      harness.events.includes('viewport:160x90'),
++      `downsample must write into content sub-rect of pyramid; got ${harness.events.filter((e) => e.startsWith('viewport:')).join(',')}`,
++    );
++
++    // Soft-GPU / software floor (0.34) shares this zero-realloc pool; integrated uses 0.5+.
++    const allocBeforeFloor = getPostRenderTargetTelemetry().renderTargetAllocationsTotal;
++    bloom.setContentScale(0.34);
++    bloom.render({ kind: 'scene' }, { kind: 'camera' });
++    assert.equal(
++      getPostRenderTargetTelemetry().renderTargetAllocationsTotal,
++      allocBeforeFloor,
++      'software-floor scale render must still be zero-realloc',
++    );
++  } finally {
++    bloom.dispose();
++  }
++});
++
++test('package script check:dynres-target-pool exists', () => {
++  const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
++  assert.equal(
++    pkg.scripts['check:dynres-target-pool'],
++    'node --test test/dynres-target-pool.test.mjs',
++  );
++});
+diff --git a/test/fixtures/settings-runtime-parity/expected-tables.mjs b/test/fixtures/settings-runtime-parity/expected-tables.mjs
+index c581b964f..8cbba14af 100644
+--- a/test/fixtures/settings-runtime-parity/expected-tables.mjs
++++ b/test/fixtures/settings-runtime-parity/expected-tables.mjs
+@@ -64,8 +64,10 @@ export const BUS_EVENTS_TO_COUNT = Object.freeze([
+ export const ELECTRON_FIXED_PORT = 41788;
+ 
+ /**
+- * Expected draw pixel ratio: min(dpr, cap) * renderScale * dynResScale.
+- * Mirrors renderer applyRendererSize (no WebGL).
++ * Expected draw pixel ratio: min(dpr, cap) * renderScale.
++ * Mirrors renderer applyRendererSize (no WebGL). dynResScale is a bloom content
++ * sub-rect (setContentScale), not a drawing-buffer multiplier — ignored here so
++ * the presentation buffer stays at the max target-pool size.
+  */
+ export function expectedPixelRatio(video, {
+   devicePixelRatio = 1,
+@@ -74,9 +76,9 @@ export function expectedPixelRatio(video, {
+   const vd = video || {};
+   const cap = finiteInRange(vd.pixelRatioCap, 0.25, 4, 2);
+   const scale = finiteInRange(vd.renderScale, 0.5, 2, 1);
+-  const dyn = finiteInRange(dynResScale, 0.2, 1, 1);
++  void finiteInRange(dynResScale, 0.2, 1, 1);
+   const base = Math.min(devicePixelRatio || 1, cap);
+-  return Math.max(0.2, base * scale * dyn);
++  return Math.max(0.2, base * scale);
+ }
+ 
+ export function expectedDrawBuffer(video, {
+diff --git a/test/renderer-settings-runtime-truth.test.mjs b/test/renderer-settings-runtime-truth.test.mjs
+index e0ae1dc6b..4ce5098ea 100644
+--- a/test/renderer-settings-runtime-truth.test.mjs
++++ b/test/renderer-settings-runtime-truth.test.mjs
+@@ -11,8 +11,9 @@
+ // Required renderer seam (when red): a single video-runtime reconcile path
+ // (e.g. `_reconcileVideoRuntime({ key })` / `_ensureKeyLightShadows()`) that
+ // settings:changed and boot both call, so:
+-//   • draw buffer = f(pixelRatioCap, renderScale, dynResScale) after every
+-//     renderScale / pixelRatioCap / section-wide change
++//   • draw buffer = f(pixelRatioCap, renderScale) after every
++//     renderScale / pixelRatioCap / section-wide change (dynResScale is a bloom
++//     content sub-rect via setContentScale, not a drawing-buffer multiplier)
+ //   • shadows ON always binds `_keyLight`, configures shadow map/frustum once,
+ //     and leaves cast/enabled gating to `_syncShadowMapEnabled`
+ //   • shadows OFF only disables cast/enabled (does not permanently null the
+@@ -40,7 +41,7 @@ function finiteInRange(value, min, max, fallback) {
+   return Math.max(min, Math.min(max, n));
+ }
+ 
+-/** Same product as renderer.js applyRendererSize → setPixelRatio. */
++/** Same product as renderer.js applyRendererSize → setPixelRatio. dynResScale is ignored (content sub-rect). */
+ function expectedPixelRatio(video, {
+   devicePixelRatio = 1,
+   dynResScale = 1,
+@@ -50,9 +51,9 @@ function expectedPixelRatio(video, {
+   const cap = finiteInRange(vd.pixelRatioCap, 0.25, 4, 2);
+   const graphOwnsScale = vd.renderGraph === true && renderGraphUnavailable !== true;
+   const scale = graphOwnsScale ? 1 : finiteInRange(vd.renderScale, 0.5, 2, 1);
+-  const dyn = finiteInRange(dynResScale, 0.2, 1, 1);
++  void finiteInRange(dynResScale, 0.2, 1, 1);
+   const base = Math.min(devicePixelRatio || 1, cap);
+-  return Math.max(0.2, base * scale * dyn);
++  return Math.max(0.2, base * scale);
+ }
+ 
+ function expectedDrawBuffer(video, {
+@@ -277,12 +278,12 @@ test('applyRendererSize formula: boot defaults vs max vs restore (devicePR=2)',
+   assert.deepEqual(restored, boot, 'current→max→current must restore boot draw buffer');
+ });
+ 
+-test('applyRendererSize formula: dynResScale multiplies without mutating settings.video', () => {
++test('applyRendererSize formula: dynResScale does not shrink the drawing buffer', () => {
+   const video = { ...SCALED_VIDEO };
+   const full = expectedPixelRatio(video, { devicePixelRatio: 2, dynResScale: 1 });
+   const half = expectedPixelRatio(video, { devicePixelRatio: 2, dynResScale: 0.5 });
+   assert.equal(full, 1.7);
+-  assert.equal(half, 0.85);
++  assert.equal(half, 1.7, 'dynResScale is a bloom content sub-rect, not a pixelRatio factor');
+   assert.equal(video.renderScale, 0.85, 'dyn res must not rewrite persisted renderScale');
+   assert.equal(video.pixelRatioCap, 2, 'dyn res must not rewrite pixelRatioCap');
+ });
+@@ -314,6 +315,13 @@ test('static: applyRendererSize uses one route-owned scale and is used at boot +
+   assert.match(body, /setPixelRatio/, 'applyRendererSize writes setPixelRatio');
+   assert.match(body, /setSize/, 'applyRendererSize writes setSize');
+   assert.match(body, /getDrawingBufferSize/, 'applyRendererSize returns drawing buffer size');
++  assert.doesNotMatch(body, /base \* scale \* dyn/,
++    'dynResScale must not multiply into the drawing-buffer pixel ratio');
++  assert.match(rendererSource, /setContentScale\s*\(\s*dyn\s*\)/,
++    '_applySize must forward dynResScale to bloom.setContentScale');
++  assert.match(rendererSource,
++    /_dynResAllowed\s*=\s*gpu\.tier\s*===\s*['"]software['"]\s*\|\|\s*gpu\.tier\s*===\s*['"]integrated['"]/,
++    'dynRes allowed for software + integrated after the target-pool fix');
+ 
+   assert.match(
+     rendererSource,
+-- 
+2.47.3
+

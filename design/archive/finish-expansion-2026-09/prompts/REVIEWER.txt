@@ -1,0 +1,5 @@
+Review the assigned SpaceFace change independently against the current native packet and supporting brief. Do not rely only on the implementation report. Inspect live owner selection and reproduce the ordinary acquisition/action route. Try the most likely awkward or failing case.
+
+For physics: verify capabilities, authority, frames and mass response. For transactions: cancel/repeat/reload. For missions: move/destroy the workpiece, act early or late and save halfway. For VFX: watch the complete lifecycle in a moving dense scene. For art: use production rendering at gameplay camera. For sound: listen in mix. For UI: use real inputs, focus and accessibility modes. For performance: compare the same scene under declared conditions.
+
+Return integrate, iterate with a concrete repro/fix, or cut with a causal design reason. State missing evidence honestly. A player-visible prototype seam is remaining work even if the unit tests are green. Do not require ceremonial reports or falsely claim a human playtest.

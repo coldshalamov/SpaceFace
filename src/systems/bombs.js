@@ -1,0 +1,1790 @@
+import { queryPhysicalBodies, deliverPhysicalImpulse, deliverPhysicalAcceleration, schedulePhysicalBlast } from '../combat/physicalEffects.js';
+import { environmentResponse, isEnvironmentalBody, isAnchoredPhysicalBody } from '../core/physicalResponse.js';
+import { addEnvironmentHeat } from './environmentMaterials.js';
+// Drift-bomb bay: lay a moving trap, commit its fuze, exploit the physical consequence.
+// Design and propagation acceptance: design/ORDNANCE_BOMBS_REFINEMENT.md.
+// Keep the original payload IDs, damage router, hitstun law and one-shot VFX receipts.
+// Bombs alone own bomb kinematics (physicsBody:false). Foreign motion goes through physics.
+// PQ-205.03: the bay is a fitted rack (state.bombs.rack/stock), not eight free consumables.
+// This system owns rack/stock/cooldown state and serializes it; credits stay inside the
+// economy owner's transaction seam (economy:chargeCredits / economy:grantCredits emits).
+import { BOMB_CHARGE_CHOICE, BOMB_DEFS, BOMB_DRIFT, BOMB_RACK, BOMB_STARTER_KIT, bombDef } from '../data/bombs.js';
+import { playerImpulseCharges } from './powerVerbs.js';
+import { shipworksStationAccess } from './ships.js';
+import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { publishHitstunImpulse, recordImpulseProvenance, signedHitSide } from '../combat/impulseKernel.js';
+import {
+  SHOCKWAVE_PASS_EVENT, SHOCKWAVE_SWEEP_LAW,
+  advanceSweepFront, createShockwaveSweep, resolveSweepPass, sweptMassOf,
+} from '../combat/shockwaveSweep.js';
+import { combatFlag } from '../data/featureFlags.js';
+import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
+import { Masks } from '../core/entity.js';
+import { FIELD_COUPLING } from '../data/fields.js';
+import {
+  integrateBombDrift, sweptBombContact, compareBombEntityIds, bombSurfaceFalloff,
+  bombRadialDirection, bombFieldEnvelope, fillBombViscosityImpulse, bombInteractionState,
+} from '../combat/bombDynamics.js';
+import { bumpCollidesFlipEpoch, entityIndexLaneVersion } from '../world/livingWorldViews.js';
+
+export const BOMB_TYPE = 'bomb';
+export const BOMB_SHOVE_CAP = 8;
+// Sweep disc the live projectile path tests. Larger than the visual capsule so a combat-zoom
+// shot can actually hit the thing; the mesh keeps BOMB_VISUAL_RADIUS via data.visualRadius.
+export const BOMB_PROXY_RADIUS = 4.2;
+export const BOMB_VISUAL_RADIUS = 1.4;
+const DAMAGE_TYPES = new Set(['ship', 'drone', 'station']);
+// SF-041 (PB-ORD-C): a placed mine rides the movable family — a blast SHOVES it (real impulse
+// through physicsAuthority) but never damages or triggers it: the mines owner keeps the arm,
+// trigger and shootable-hull law. Displacement preserves the mine's owner/arm/eligibility
+// because those ride the entity's own data.
+const LOOSE_TYPES = new Set(['asteroid', 'wreck', 'pickup', 'payload', 'mine']);
+// SFQ-B035 fauna eligibility, explicit on every axis a blast or bomb field touches (the target
+// predicates used to omit fauna entirely — silence, not a decision):
+//   damage  — YES, blast and field crush alike. Fauna are killable world actors (hull,
+//             entity:killed -> the ecology's rupture/panic/harvest listeners). A blast that
+//             kills a station kills a grazer; a well that crushes a ship crushes the fauna in it.
+//   statuses— NO, deliberately craft-only, blast riders and field re-application alike (goo
+//             wallow, ionized subsystems, pinned massScale, tumbling helm): every bomb status is
+//             a craft-control verb; scheduling one on a fauna runtime the ecology drive never
+//             reads would be the silent no-op the packet forbids. Organisms take the damage,
+//             never the rider.
+//   motion  — only with a real dynamic physics body (physics species: ram, glassback): the
+//             blast shove, the singularity pull and goo drag all ride blastShoveEligible, so a
+//             body that can be blasted can also be pulled into the well it stands in. Kinematic
+//             fauna are motion-owned by the ecology drive; physicsAuthority would refuse them
+//             anyway, so the predicate says so up front.
+//   hitstun — none. _publishHitstun's ship/drone type gate exempts EVERY fauna, dynamic body
+//             or not; the shove gate only decides who is moved. Entry spin stays craft law.
+//   fuze    — craft only (unchanged, _findTriggerVictim): a drifting grazer must not cook the
+//             player's own bay.
+const faunaBlastEligible = (e) => e?.type === 'fauna';
+
+/**
+ * SFQ-B032 — one verdict for every class the packet names. Machine is an explicit
+ * no: precursor machines are scripted, physicsBody false, and authored to ignore
+ * stray fire. Silence (not in the scan, not in a predicate) was the hole.
+ * Blast damage does not team-filter — the packet sets ignoreFriendlyFire — so an
+ * ally hull and the owner's own hull are damage-eligible. Proximity fuze is not:
+ * the owner and the bomb's team never cook the bay.
+ */
+export function ordnanceClassVerdict(entity) {
+  if (!entity || typeof entity !== 'object') {
+    return { class: 'none', damage: false, shove: false, status: false, trigger: false, reason: 'missing' };
+  }
+  if (entity.type === 'machine') {
+    return { class: 'machine', damage: false, shove: false, status: false, trigger: false, reason: 'scripted_kinematic' };
+  }
+  const cls = entity.type === 'ship' || entity.type === 'drone' ? 'craft'
+    : entity.type === 'station' ? 'station'
+    : entity.type === 'wreck' ? 'wreck'
+    : entity.type === 'pickup' ? 'pickup'
+    : entity.type === 'fauna' ? 'fauna'
+    : entity.type === 'asteroid' ? 'asteroid'
+    : entity.type || 'other';
+  return {
+    class: cls,
+    damage: DAMAGE_TYPES.has(entity.type) || faunaBlastEligible(entity),
+    shove: blastShoveEligible(entity),
+    status: DAMAGE_TYPES.has(entity.type),
+    trigger: craft(entity),
+    reason: null,
+  };
+}
+
+/**
+ * Where a drift bomb is released and how it starts moving: behind the hull along the flight
+ * heading (the nose when nearly still), at ship velocity. The drop and the held-key preview
+ * (row 493) both read it.
+ */
+export function bombDropPlan(owner) {
+  const vx = Number(owner.vel?.x) || 0, vz = Number(owner.vel?.z) || 0;
+  const heading = Math.hypot(vx, vz) > 12 ? Math.atan2(vz, vx) : owner.rot || 0;
+  const standoff = Math.max(0, owner.radius || 6) + BOMB_DRIFT.dropStandoffWu;
+  const pos = { x: owner.pos.x - Math.cos(heading) * standoff, z: owner.pos.z - Math.sin(heading) * standoff };
+  return { pos, vx, vz, heading };
+}
+
+/** Fuze law: craft only, never the dropper, never the bomb's own team. */
+export function proximityTriggerEligible(victim, bomb, ownerId) {
+  if (!victim || victim.alive === false || !craft(victim)) return false;
+  if (ownerId != null && victim.id === ownerId) return false;
+  if (bomb && bomb.team != null && victim.team != null && victim.team === bomb.team) return false;
+  return true;
+}
+// Same rule hullBurst applies to its tells: either accessibility flag drops the wave's
+// own cue to the reduced variant downstream.
+function flashReduced(state) {
+  const settings = state && state.settings;
+  const v = settings && settings.video;
+  const a = settings && settings.accessibility;
+  return !!((v && (v.motionReduce || v.flashReduce)) || (a && a.flashReduce));
+}
+// Same two-gate shape as movable(): an authored physicsBody:false fauna has no body at all
+// (substanceFor falls through falsy authored values to the dynamic default), so the authored
+// no-body contract is the first gate and the substance's dynamic flag the second.
+const faunaShoveEligible = (e) => faunaBlastEligible(e) && e?.physicsBody !== false && isDynamicPhysicsBodyEntity(e);
+const blastShoveEligible = (e) => e?.physicsBody !== false && (isDynamicPhysicsBodyEntity(e) || isAnchoredPhysicalBody(e));
+const EMPTY = Object.freeze([]);
+const simNow = state => Number.isFinite(state?.simTime) ? state.simTime : (state?.tick || 0) / 60;
+
+const craft = e => e?.type === 'ship' || e?.type === 'drone';
+const movable = e => e?.physicsBody !== false && (craft(e) || (LOOSE_TYPES.has(e?.type) && isDynamicPhysicsBodyEntity(e)));
+function massOf(e, fallback = 1) {
+  const mass = Number(e?.physicsBody?.mass ?? e?.mass);
+  return Number.isFinite(mass) && mass > 0 ? mass : fallback;
+}
+function effectiveMass(state, e) {
+  const scale = Number(state.combat?.entities?.[String(e.id)]?.physicsResponse?.massScale) || 1;
+  return massOf(e) * Math.max(0.25, Math.min(8, scale));
+}
+function liveBombList(state) {
+  const index = state?.entityIndex;
+  return index?.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index.bombs)
+    ? index.bombs : state?.entityList || EMPTY;
+}
+
+/** Bench A/B: production default ON. Quiet latch skips collect/tick when no live bombs. */
+let BOMBS_EMPTY_QUIET_LATCH = true;
+export function setBombsEmptyQuietLatchForBench(enabled) {
+  BOMBS_EMPTY_QUIET_LATCH = enabled !== false;
+}
+export function getBombsEmptyQuietLatchForBench() {
+  return BOMBS_EMPTY_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const BOMBS_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+function entityIndexVersion(state) {
+  const index = state && state.entityIndex;
+  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
+    ? index.version
+    : null;
+}
+
+/** Membership lanes for the empty-quiet latch — the bomb census reads the typed
+ * 'bombs' bucket only, so ship/pickup/asteroid churn can't wake it. */
+const BOMBS_QUIET_LANES = ['bombs'];
+
+function bombsMembershipVersion(state) {
+  const lane = entityIndexLaneVersion(state, BOMBS_QUIET_LANES);
+  return lane === -1 ? entityIndexVersion(state) : lane;
+}
+
+/** True when a ready typed bombs bucket exists (latch refuses entityList fallback). */
+function readyBombsBucket(state) {
+  const index = state && state.entityIndex;
+  return !!(index && index.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index.bombs));
+}
+
+function anyLiveBomb(state) {
+  if (!readyBombsBucket(state)) return true; // refuse latch — fall through to full path
+  const list = state.entityIndex.bombs;
+  for (let i = 0; i < list.length; i++) {
+    const e = list[i];
+    if (e && e.alive !== false && e.type === BOMB_TYPE && e.data) return true;
+  }
+  return false;
+}
+
+function publishBombsQuiet(state, latched) {
+  const rt = state.bombsRuntime || (state.bombsRuntime = {});
+  rt.quietLatched = !!latched;
+}
+// Typed buckets whose union is exactly the population the target predicate can accept:
+// DAMAGE_TYPES (ship/drone/station) plus LOOSE_TYPES (asteroid/wreck/pickup/payload/mine) for
+// the movable() branch, plus 'fauna' (SFQ-B035 — blast damage is explicitly fauna-eligible).
+// Craft is ship/drone, so no other entity type can ever pass — the union cannot omit a valid
+// target, including noncolliding movable cargo and wrecks. Buckets are disjoint by entity type
+// (one switch push per type in coreSystem.appendEntityIndex), so no candidate is visited twice.
+// The live predicate is still applied per candidate, so in-place deaths (alive flip with no
+// list change) filter exactly as the full scan did. Anything but a ready index with all nine
+// buckets falls back to the complete scan.
+const BOMB_TARGET_BUCKETS = Object.freeze(['ships', 'drones', 'stations', 'asteroids', 'wrecks', 'pickups', 'payloads', 'mines', 'fauna']);
+function bombTargetBuckets(index) {
+  if (!index?.__spacefaceEntityIndexV1 || index.ready !== true) return null;
+  const buckets = [];
+  for (const key of BOMB_TARGET_BUCKETS) {
+    const list = index[key];
+    if (!Array.isArray(list)) return null;
+    buckets.push(list);
+  }
+  return buckets;
+}
+function pushBombTarget(out, e) {
+  // Machine is a named refusal, not a type the scan forgot. See ordnanceClassVerdict.
+  if (e?.type === 'machine') return;
+  if (e?.alive && e.pos && (DAMAGE_TYPES.has(e.type) || movable(e) || faunaBlastEligible(e))) out.push(e);
+}
+// Shockwave-sweep eligibility: the loose DYNAMIC matter a wave can actually move (the
+// physics authority would refuse fixed landmark rocks, and a pass it cannot push must not
+// spend the tick's pass budget or flash a receipt) plus dynamic-body fauna, mirroring
+// blastShoveEligible minus craft.
+function pushSweepBody(out, e) {
+  if (e?.alive && e.pos && !craft(e) && (LOOSE_TYPES.has(e?.type) || faunaShoveEligible(e))
+    && isDynamicPhysicsBodyEntity(e)) out.push(e);
+}
+// ---- fitted rack (PQ-205.03) ----------------------------------------------------------
+// state.bombs is the player's one bomb-bay bag, additive over the pre-rack shape:
+//   selectedId    — payload id the bay verb drops next (always a LOADED cell, or null).
+//   cooldownUntil — shared release latch (unchanged contract).
+//   cooldowns     — per-payload cooldown clocks; survive cycle/dock trips/save-load.
+//   rack          — { sockets, cells[] } — one cell per socket; a cell is { id, count }
+//                   (payload type + loaded units, count 0 = fitted magazine run dry) or null.
+//   stock         — { payloadId: units } — hangar inventory; bought at stations, loaded
+//                   into sockets only while docked at an outfitting berth.
+// A rack cell keeps its payload id at count 0: the socket still knows its fit, so dock-side
+// restock refills the same magazines instead of re-deciding the loadout every visit.
+function starterCells() {
+  const cells = [];
+  for (const id of BOMB_STARTER_KIT) cells.push({ id, count: BOMB_DEFS[id].magazine });
+  while (cells.length < BOMB_RACK.socketsBase) cells.push(null);
+  return cells;
+}
+function applyStarterKit(rt) {
+  rt.rack = { sockets: BOMB_RACK.socketsBase, cells: starterCells() };
+  rt.stock = {};
+}
+function loadedCells(rt) {
+  return rt.rack.cells.filter((c) => c && c.count > 0);
+}
+// selectedId always names a loaded cell (or null on a dry rack) — the HUD socket and the
+// drop verb can never point at ordnance that is not actually on the rack.
+function normalizeSelection(rt) {
+  if (rt.selectedId != null && loadedCells(rt).some((c) => c.id === rt.selectedId)) return;
+  const first = rt.rack.cells.find((c) => c && c.count > 0);
+  rt.selectedId = first ? first.id : null;
+}
+function normalizeRack(rt) {
+  const rack = rt.rack;
+  let sockets = Number(rack.sockets);
+  if (!Number.isSafeInteger(sockets) || sockets < 1) sockets = BOMB_RACK.socketsBase;
+  rack.sockets = sockets;
+  const cells = Array.isArray(rack.cells) ? rack.cells : (rack.cells = []);
+  // Normalize in place: this runs on the 60 Hz ensureRuntime path, so a clean cell keeps its
+  // object identity (no per-tick allocation) and references never go stale mid-frame.
+  for (let i = 0; i < sockets; i++) {
+    const c = cells[i], def = c && BOMB_DEFS[c.id];
+    if (!def) { if (cells[i] !== null) cells[i] = null; continue; }
+    const raw = Number(c.count);
+    const count = Number.isSafeInteger(raw) && raw >= 0 ? Math.min(def.magazine, raw) : 0;
+    if (c.count !== count || c.id !== def.id) cells[i] = { id: def.id, count };
+  }
+  // Sockets trimmed by a smaller normalized count hand their units back to the hangar —
+  // shrinking a rack never destroys ordnance the player paid for.
+  for (let i = sockets; i < cells.length; i++) {
+    const c = cells[i];
+    if (c && BOMB_DEFS[c.id] && Number.isSafeInteger(c.count) && c.count > 0) {
+      rt.stock[c.id] = (rt.stock[c.id] || 0) + c.count;
+    }
+  }
+  cells.length = sockets;
+}
+function normalizeStock(rt) {
+  const stock = rt.stock && typeof rt.stock === 'object' && !Array.isArray(rt.stock) ? rt.stock : (rt.stock = {});
+  for (const id of Object.keys(stock)) {
+    const raw = Number(stock[id]);
+    if (BOMB_DEFS[id] && Number.isSafeInteger(raw) && raw > 0) stock[id] = raw; else delete stock[id];
+  }
+}
+function ensureRuntime(state) {
+  const rt = state.bombs ||= {};
+  if (!Number.isFinite(rt.cooldownUntil)) rt.cooldownUntil = 0;
+  rt.cooldowns ||= {};
+  // A missing rack is the legacy/pre-rack shape — the additive default is the starter kit,
+  // never an empty bay (old saves and first-boot fixtures both land here).
+  if (!rt.rack || typeof rt.rack !== 'object') applyStarterKit(rt);
+  normalizeStock(rt);
+  normalizeRack(rt);
+  normalizeSelection(rt);
+  normalizeChargeChoice(state, rt);
+  return rt;
+}
+// The five powers (owner 2026-10-22): the BOMB power throws the sticky impulse charge whenever one
+// is aboard, and the ordnance cycle turns to the loaded rack cells. Turning to a drift bomb is a
+// flag BESIDE selectedId (`bombChosen`), never a fake cell id, so "selectedId names a loaded cell"
+// stays true for every reader. The key exists only while a bomb is chosen over a charge and a cell
+// is selected (an untouched bay keeps the exact state shape every save and replay hash already has).
+function normalizeChargeChoice(state, rt) {
+  if (rt.bombChosen === true && rt.selectedId != null) return;
+  if ('bombChosen' in rt) delete rt.bombChosen;
+}
+function blocked(state, owner) {
+  return state.mode !== 'flight' || !owner?.alive || owner.flags?.docked || state.ui?.screenStack?.length > 0;
+}
+function considerShove(rows, id, dx, dz, mag) {
+  if (rows.length < BOMB_SHOVE_CAP) { rows.push(Object.freeze({ id, dx, dz, mag })); return; }
+  let weakest = 0;
+  for (let i = 1; i < rows.length; i++) if (rows[i].mag < rows[weakest].mag) weakest = i;
+  if (mag > rows[weakest].mag) rows[weakest] = Object.freeze({ id, dx, dz, mag });
+}
+
+// ---- atomic rack preparation (NXB-009) --------------------------------------
+// One preparation = re-fit + reload + optional socket extension under a single yard
+// charge. previewBombPreparation is PURE: it reads normalized copies and never mutates
+// state. The system freezes a plan into a quote pinned to a live-state fingerprint;
+// commit re-derives the plan from the registered options and pays through the exact
+// economy:chargeCredits seam, so money and rack move together or not at all.
+function prepCreditsOf(state) {
+  const n = Number(state && state.player && state.player.credits);
+  return Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
+}
+function prepDockIdentity(state) {
+  const ui = state && state.ui;
+  return ui && ui.docked === true && typeof ui.dockedStationId === 'string' ? ui.dockedStationId : null;
+}
+function prepHullIdentity(state) {
+  const p = state && state.player;
+  const idx = Number(p && p.activeShipIndex) || 0;
+  const ship = Array.isArray(p && p.ownedShips) ? p.ownedShips[idx] : null;
+  return `${idx}:${(ship && ship.defId) || ''}`;
+}
+// Normalized rack read without the in-place writes ensureRuntime performs — cells beyond
+// the socket count are reported as hangar overflow instead of being moved.
+function prepReadRack(rt) {
+  const rack = rt && rt.rack && typeof rt.rack === 'object' ? rt.rack : null;
+  let sockets = Math.floor(Number(rack && rack.sockets));
+  if (!Number.isSafeInteger(sockets) || sockets < 1) sockets = BOMB_RACK.socketsBase;
+  const cells = new Array(sockets).fill(null);
+  const overflow = {};
+  const src = rack && Array.isArray(rack.cells) ? rack.cells : [];
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i], def = c && BOMB_DEFS[c.id];
+    if (!def) continue;
+    const count = Math.max(0, Math.min(def.magazine, Math.floor(Number(c.count)) || 0));
+    if (i < sockets) cells[i] = { id: def.id, count };
+    else if (count > 0) overflow[def.id] = (overflow[def.id] || 0) + count;
+  }
+  return { sockets, cells, overflow };
+}
+function prepReadStock(rt) {
+  const stock = {};
+  const src = rt && rt.stock && typeof rt.stock === 'object' && !Array.isArray(rt.stock) ? rt.stock : {};
+  for (const [id, n] of Object.entries(src)) {
+    const raw = Number(n);
+    const count = Number.isFinite(raw) ? Math.floor(raw) : 0;
+    // Non-finite or beyond-safe-integer entries count as zero — an Infinity hangar row
+    // must never read as unlimited free units. Fractions floor (2.9 → 2).
+    if (BOMB_DEFS[id] && Number.isSafeInteger(count) && count > 0) stock[id] = count;
+  }
+  return stock;
+}
+
+/**
+ * Pure preparation plan. options: { socketCount = current, payloadIds = current cell ids,
+ * purchaseMissing = true }. Retained cells keep their rounds; changed/removed cells return
+ * every unit to the hangar BEFORE allocation; owned matching units load before any
+ * purchased unit is priced, in deterministic socket order. The plan reserves the authored
+ * socket weld and one authored restock fee when loading actually happens — nothing moved,
+ * no fee. Insufficient credits fill only affordable whole units, still in socket order.
+ */
+export function previewBombPreparation(state, options = {}) {
+  const rt = state && state.bombs;
+  const credits = prepCreditsOf(state);
+  const stationId = prepDockIdentity(state);
+  const read = prepReadRack(rt);
+  const curSockets = read.sockets;
+  const curCells = read.cells;
+  const stock = prepReadStock(rt);
+  for (const [id, n] of Object.entries(read.overflow)) stock[id] = (stock[id] || 0) + n;
+  const invalid = (reason) => ({ ok: false, reason, credits, stationId });
+  const opt = options && typeof options === 'object' ? options : {};
+  const desiredSockets = opt.socketCount == null ? curSockets : opt.socketCount;
+  if (!Number.isSafeInteger(desiredSockets) || desiredSockets < 1 || desiredSockets > BOMB_RACK.socketsMax) {
+    return invalid('invalid_socket_count');
+  }
+  // A bare shrink keeps the leading sockets' fit — the trimmed cells drain to the hangar
+  // through the normal re-fit pass below instead of invalidating the plan.
+  const idsOpt = opt.payloadIds == null
+    ? curCells.slice(0, desiredSockets).map((c) => (c ? c.id : null))
+    : opt.payloadIds;
+  if (!Array.isArray(idsOpt) || idsOpt.length > desiredSockets) return invalid('invalid_payload_ids');
+  const seen = new Set();
+  const desiredIds = new Array(desiredSockets).fill(null);
+  for (let i = 0; i < idsOpt.length; i++) {
+    const id = idsOpt[i];
+    if (id == null) continue;
+    if (!BOMB_DEFS[id]) return invalid('unknown_payload');
+    if (seen.has(id)) return invalid('duplicate_family');
+    seen.add(id);
+    desiredIds[i] = id;
+  }
+  const purchaseMissing = opt.purchaseMissing !== false;
+
+  const pool = { ...stock };
+  const desired = new Array(desiredSockets).fill(null);
+  for (let i = 0; i < curSockets; i++) {
+    const c = curCells[i];
+    const keepId = i < desiredSockets ? desiredIds[i] : null;
+    if (c && c.id === keepId) {
+      desired[i] = { id: c.id, count: c.count };
+    } else {
+      if (c && c.count > 0) pool[c.id] = (pool[c.id] || 0) + c.count;
+      if (i < desiredSockets) desired[i] = keepId ? { id: keepId, count: 0 } : null;
+    }
+  }
+  for (let i = curSockets; i < desiredSockets; i++) desired[i] = desiredIds[i] ? { id: desiredIds[i], count: 0 } : null;
+
+  // Socket growth is the authored yard weld, whole sockets only; shrinking is free.
+  let appliedSockets = desiredSockets, expansionCost = 0, limitingReason = null;
+  if (desiredSockets > curSockets) {
+    const added = Math.min(desiredSockets - curSockets, Math.floor(credits / BOMB_RACK.socketUpgradeCr));
+    appliedSockets = curSockets + added;
+    expansionCost = added * BOMB_RACK.socketUpgradeCr;
+    if (appliedSockets < desiredSockets) limitingReason = 'credits';
+  }
+  const postCells = desired.slice(0, appliedSockets);
+
+  const needs = postCells.map((c) => (c ? BOMB_DEFS[c.id].magazine - c.count : 0));
+  const purchasedUnits = {}, usedOwnedUnits = {}, loadedUnits = {};
+  let roundsLoaded = 0, restockFee = 0, purchaseCost = 0;
+  if (needs.some((n) => n > 0)) {
+    const serviceCredits = credits - expansionCost;
+    if (serviceCredits >= BOMB_RACK.restockFeeCr) {
+      let spendable = serviceCredits - BOMB_RACK.restockFeeCr;
+      for (let i = 0; i < postCells.length; i++) {
+        const c = postCells[i];
+        if (!c || needs[i] <= 0) continue;
+        const move = Math.min(needs[i], pool[c.id] || 0);
+        if (move <= 0) continue;
+        c.count += move; needs[i] -= move;
+        if ((pool[c.id] -= move) <= 0) delete pool[c.id];
+        usedOwnedUnits[c.id] = (usedOwnedUnits[c.id] || 0) + move;
+        loadedUnits[c.id] = (loadedUnits[c.id] || 0) + move;
+        roundsLoaded += move;
+      }
+      if (purchaseMissing) {
+        for (let i = 0; i < postCells.length; i++) {
+          const c = postCells[i];
+          if (!c || needs[i] <= 0) continue;
+          const def = BOMB_DEFS[c.id];
+          const n = Math.min(needs[i], Math.floor(spendable / def.price));
+          if (n <= 0) continue;
+          c.count += n; needs[i] -= n; spendable -= n * def.price;
+          purchaseCost += n * def.price;
+          purchasedUnits[c.id] = (purchasedUnits[c.id] || 0) + n;
+          loadedUnits[c.id] = (loadedUnits[c.id] || 0) + n;
+          roundsLoaded += n;
+        }
+      }
+      if (roundsLoaded > 0) restockFee = BOMB_RACK.restockFeeCr;
+      if (needs.some((n) => n > 0) && !limitingReason) limitingReason = purchaseMissing ? 'credits' : 'stock';
+    } else if (!limitingReason) {
+      limitingReason = 'credits'; // the yard fee itself is out of reach — no loading service
+    }
+  }
+
+  const totalCost = expansionCost + restockFee + purchaseCost;
+  let changed = appliedSockets !== curSockets;
+  for (let i = 0; i < appliedSockets && !changed; i++) {
+    const a = curCells[i], b = postCells[i];
+    if ((a ? a.id : null) !== (b ? b.id : null) || (a ? a.count : 0) !== (b ? b.count : 0)) changed = true;
+  }
+  const unmetNeed = needs.reduce((sum, n) => sum + Math.max(0, n), 0);
+  return {
+    ok: true,
+    rack: { sockets: curSockets, cells: curCells },
+    stock,
+    credits,
+    stationId,
+    desiredSockets,
+    desiredIds,
+    appliedSockets,
+    postCells,
+    postStock: pool,
+    totalCost,
+    roundsLoaded,
+    purchasedUnits,
+    usedOwnedUnits,
+    loadedUnits,
+    restockFee,
+    expansionCost,
+    limitingReason,
+    unmetNeed,
+    changed,
+  };
+}
+
+// Primitive snapshot pinning a quote: rack, stock, selection, credits, berth, hull.
+function prepFingerprint(state) {
+  const rt = state && state.bombs;
+  const read = prepReadRack(rt);
+  return JSON.stringify({
+    rack: [read.sockets, read.cells.map((c) => (c ? [c.id, c.count] : null))],
+    ovr: read.overflow, // beyond-socket loaded cells are live state too — they feed the plan
+    stock: prepReadStock(rt),
+    sel: rt && typeof rt.selectedId === 'string' ? rt.selectedId : null,
+    cr: prepCreditsOf(state),
+    dock: prepDockIdentity(state),
+    hull: prepHullIdentity(state),
+  });
+}
+function freezeDeep(value) {
+  if (value && typeof value === 'object') {
+    for (const k of Object.keys(value)) freezeDeep(value[k]);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+/**
+ * Authoritative pose adapter for the projectile-sweep proxy.
+ * The bomb stays the kinematic owner (`physicsBody:false`, analytic drift). This publishes the
+ * live pose into the existing physics.sweepProjectiles collidable (no second integrator, no
+ * Rapier body). Returns the sweep disc or null.
+ */
+export function adaptBombProjectileProxy(bomb) {
+  if (!bomb || bomb.type !== BOMB_TYPE || !bomb.pos) return null;
+  const d = bomb.data;
+  const live = bomb.alive !== false && d && d.phase !== 'spent';
+  bomb.physicsBody = false;
+  if (bomb.collides !== live) bumpCollidesFlipEpoch();
+  bomb.collides = live;
+  bomb.collisionMask = Masks.PROJECTILE;
+  bomb.radius = BOMB_PROXY_RADIUS;
+  if (d && d.visualRadius == null) d.visualRadius = BOMB_VISUAL_RADIUS;
+  return {
+    x: bomb.pos.x,
+    z: bomb.pos.z,
+    vx: Number(bomb.vel && bomb.vel.x) || 0,
+    vz: Number(bomb.vel && bomb.vel.z) || 0,
+    radius: BOMB_PROXY_RADIUS,
+    collides: bomb.collides,
+  };
+}
+
+/**
+ * Kinematic redirect. The bomb stays the motion owner: same body, fuse, arming, and source.
+ * A rejected shove consumes nothing. The contributor is recorded beside the original owner.
+ */
+export function redirectLiveBomb(bomb, impulse, contributorId, tick = 0) {
+  if (!bomb || bomb.type !== BOMB_TYPE || !bomb.data) {
+    return { ok: false, reason: 'not_bomb', consumed: false };
+  }
+  const data = bomb.data;
+  if (data.retired || data.phase === 'spent' || data.phase === 'field' || bomb.alive === false) {
+    return { ok: false, reason: 'not_redirectable', consumed: false };
+  }
+  const ix = Number(impulse && impulse.x) || 0;
+  const iz = Number(impulse && impulse.z) || 0;
+  if (!(Math.hypot(ix, iz) > 0)) return { ok: false, reason: 'no_impulse', consumed: false };
+  const armed = data.armed === true;
+  const armedAt = data.armedAt;
+  const detonateAt = data.detonateAt;
+  const ownerId = data.ownerId;
+  const phase = data.phase;
+  const mass = Math.max(0.25, Number(bomb.mass) || 2);
+  if (!bomb.vel) bomb.vel = { x: 0, z: 0 };
+  bomb.vel.x = (Number(bomb.vel.x) || 0) + ix / mass;
+  bomb.vel.z = (Number(bomb.vel.z) || 0) + iz / mass;
+  bomb.physicsBody = false;
+  data.armed = armed;
+  data.armedAt = armedAt;
+  data.detonateAt = detonateAt;
+  data.ownerId = ownerId;
+  data.phase = phase;
+  data.redirectContributor = {
+    id: contributorId == null ? null : contributorId,
+    tick: tick | 0,
+    impulse: { x: ix, z: iz },
+  };
+  recordImpulseProvenance(bomb, {
+    actorId: contributorId == null ? null : contributorId,
+    weaponId: 'bomb_redirect',
+    tag: 'bomb_redirect',
+    appliedTick: tick | 0,
+    magnitude: Math.hypot(ix, iz),
+    sourceOwnerId: ownerId == null ? null : ownerId,
+  });
+  return {
+    ok: true,
+    consumed: true,
+    bombId: bomb.id,
+    ownerId,
+    contributorId: contributorId == null ? null : contributorId,
+    armed,
+    detonateAt,
+    phase,
+  };
+}
+
+/**
+ * Target metadata for the live arming/expiry state. `available` is the interaction
+ * a panel may offer; a spent remnant is not that offer. Fuze and field clocks are
+ * not read or written here.
+ */
+export function syncBombTargetInteraction(bomb) {
+  if (!bomb || bomb.type !== BOMB_TYPE || !bomb.data) return null;
+  const described = bombInteractionState(bomb);
+  if (!described) {
+    bomb.data.interaction = null;
+    return null;
+  }
+  const available = described.interactable === true ? described.state : null;
+  bomb.data.lockable = described.lockable === true;
+  bomb.data.interaction = {
+    state: described.state,
+    available,
+    label: described.label,
+  };
+  return bomb.data.interaction;
+}
+
+/** A destroyed casing is not a lock or a selected target. Dissipating effects are left alone. */
+export function clearDestroyedBombLocks(state, bomb) {
+  if (!bomb) return;
+  const id = bomb.id;
+  if (bomb.data) {
+    bomb.data.lockable = false;
+    bomb.data.interaction = null;
+  }
+  if (!state) return;
+  const player = state.player;
+  if (player) {
+    if (player.targetId === id) player.targetId = null;
+    if (player.gunTargetId === id) player.gunTargetId = null;
+  }
+  const list = Array.isArray(state.entityList) ? state.entityList : [];
+  for (const entity of list) {
+    const combat = entity && entity.data && entity.data.combat;
+    if (!combat) continue;
+    if (combat.lockTarget === id) {
+      combat.lockTarget = null;
+      combat.lockProgress = 0;
+    }
+    if (combat.targetId === id) combat.targetId = null;
+  }
+}
+
+export const bombs = {
+  name: 'bombs',
+  saveSnapshotOwned: true,
+  init(ctx) {
+    this.destroy();
+    Object.assign(this, { state: ctx.state, bus: ctx.bus, helpers: ctx.helpers, registry: ctx.registry });
+    this._active = [];
+    this._sweeps = [];
+    this._targets = [];
+    this._gooCoverage = [];
+    this._motion = {};
+    this._viscosity = { x: 0, y: 0, z: 0 };
+    this._ownerCooldowns = new Map();
+    this._bombsQuiet = null;
+    this._prepQuotes = new WeakMap();
+    this._preparationInFlight = false;
+    ensureRuntime(ctx.state);
+    // Rack work is dock-side only: every ui: intent is gated by the same berth authority
+    // the Shipworks module verbs use. Direct method calls stay open to internal callers
+    // (sandbox, rewards, focused tests) — same contract as ships.fitModule.
+    const rackIntent = (fn) => (p) => {
+      const access = shipworksStationAccess(this.state);
+      if (!access.outfit) {
+        this.bus.emit('toast', { text: access.outfitReason || 'Dock at a shipyard to work the bomb rack', kind: 'info', ttl: 1.8 });
+        this.bus.emit('bombs:denied', { reason: 'not_docked' });
+        return;
+      }
+      fn(p || {});
+    };
+    this._unsubs = [
+      this.bus.on('sector:exit', () => this.releaseAll('sector_exit')),
+      this.bus.on('sector:enter', () => this.releaseAll('sector_enter')),
+      this.bus.on('game:new', () => this._resetRuntime('new_game')),
+      // Both new-game aliases exist on the live route (main.js emits game:newGame); the rack
+      // bag is persistent state now, so a missed reset would leak sockets/stock into a run.
+      this.bus.on('game:newGame', () => this._resetRuntime('new_game')),
+      // save:loaded is NOT a reset: deserialize() already restored rack/stock/cooldowns (or
+      // applied the starter kit to a pre-rack save). This sweep only releases live bomb
+      // entities; persistent bag state must survive the load boundary.
+      this.bus.on('save:loaded', () => this.releaseAll('save_loaded')),
+      this.bus.on('projectile:hit', (p) => this._onProjectileHit(p)),
+      this.bus.on('ui:buyPayload', rackIntent((p) => this.buyPayload(p))),
+      this.bus.on('ui:fitPayload', rackIntent((p) => this.fitPayload(p))),
+      this.bus.on('ui:unfitPayload', rackIntent((p) => this.unfitPayload(p))),
+      this.bus.on('ui:sellPayload', rackIntent((p) => this.sellPayload(p))),
+      this.bus.on('ui:restockBombRack', rackIntent(() => this.restockRack())),
+      this.bus.on('ui:upgradeBombRack', rackIntent(() => this.upgradeRack())),
+      // NXB-009 — the preview is a read-only quote handed back on the payload; the commit
+      // runs through the same berth gate as every other rack verb.
+      this.bus.on('ui:previewBombRackPreparation', (p) => {
+        if (p && typeof p === 'object') p.quote = this.previewPreparation(p.options || {});
+      }),
+      this.bus.on('ui:prepareBombRack', rackIntent((p) => {
+        if (p && typeof p === 'object') p.result = this.commitPreparation(p.quote) === true;
+      })),
+    ];
+  },
+  destroy() {
+    this.releaseAll('destroy');
+    this._sweeps = [];
+    for (const off of this._unsubs || EMPTY) if (typeof off === 'function') off();
+    this._unsubs = [];
+    this._ownerCooldowns?.clear();
+    this._prepQuotes = null;
+    this._preparationInFlight = false;
+    this.state = this.bus = this.helpers = this.registry = null;
+  },
+  newGame() { this._resetRuntime('new_game'); },
+  update(dt, state) {
+    if (state.mode !== 'flight' || !(dt > 0) || !Number.isFinite(dt)) return;
+    const actions = state.input && state.input.actions;
+    const dropEdge = !!(actions && actions.dropBomb);
+    const detonateEdge = !!(actions && actions.chargeDetonate);
+    const cycleEdge = !!(actions && actions.cycleBomb);
+    // Quiet settled flight: empty typed bombs bucket still paid ensureRuntime normalize +
+    // collect+sort+empty tick every frame. Latch when the ready bombs lane is empty and no
+    // bay edges fire; wake on drop/cycle/detonate, entity-index membership, or a 0.5 s rescan.
+    // Without a versioned bombs bucket the latch refuses so the entityList fallback stays live.
+    // ensureRuntime (rack normalize) stays AFTER the latch so quiet ticks skip it too.
+    if (BOMBS_EMPTY_QUIET_LATCH !== false && !dropEdge && !detonateEdge && !cycleEdge) {
+      const membership = bombsMembershipVersion(state);
+      if (membership != null && readyBombsBucket(state)) {
+        const tick = state.tick | 0;
+        const quiet = this._bombsQuiet;
+        if (quiet
+          && quiet.membership === membership
+          && ((tick - (quiet.armedTick | 0)) < BOMBS_EMPTY_QUIET_RESCAN_TICKS)) {
+          publishBombsQuiet(state, true);
+          return;
+        }
+        if (!anyLiveBomb(state) && !this._sweeps.length) {
+          this._bombsQuiet = { membership, armedTick: tick };
+          publishBombsQuiet(state, true);
+          return;
+        }
+        this._bombsQuiet = null;
+      } else if (this._bombsQuiet) {
+        this._bombsQuiet = null;
+      }
+    } else if (this._bombsQuiet) {
+      this._bombsQuiet = null;
+    }
+    const rt = ensureRuntime(state);
+    const player = state.entities.get(state.playerId);
+    // Rack cycle is dock/flight UI even with zero live bombs.
+    if (cycleEdge) {
+      actions.cycleBomb = false;
+      if (!blocked(state, player)) this.cycleSelection(state);
+    }
+    this._collect(state);
+    // SHOVE (2 / R) is the shared ordnance command: it detonates here, then the charge net
+    // detonates in impulseCharges from the same press. Read it BEFORE impulseCharges consumes it;
+    // never clear another owner's edge. Both consumers are pinned by a manifest-order test. The old
+    // "Nothing armed to detonate" answer is gone: the same press always drops a repulsor (or says
+    // it is recharging), so the key is never silent.
+    if (detonateEdge && !blocked(state, player)) {
+      this.commandDetonate(player.id, state);
+    }
+    this._tickBombs(dt, state);
+    this._tickSweeps(dt, state);
+    if (dropEdge) {
+      actions.dropBomb = false;
+      if (!blocked(state, player)) {
+        if (rt.selectedId) {
+          this.drop(player, rt.selectedId, state);
+          // A live bomb means the empty latch must not re-arm until the bay drains.
+          this._bombsQuiet = null;
+        } else {
+          this.bus.emit('toast', { text: 'Bomb rack empty — rearm at a station shipworks.', kind: 'info', ttl: 1.6 });
+        }
+      }
+    }
+    publishBombsQuiet(state, false);
+  },
+
+  // In-flight cycle walks only LOADED rack sockets — the catalogue order (BOMB_IDS) is the
+  // shop listing, never the cycle order. A dry rack answers once per press edge.
+  // The cycle walks the sticky impulse charge (while one is aboard — the BOMB power's default), then
+  // the loaded cells in rack order.
+  cycleSelection(state = this.state) {
+    const rt = ensureRuntime(state);
+    const loaded = loadedCells(rt);
+    const charges = playerImpulseCharges(state);
+    if (!loaded.length && charges <= 0) {
+      this.bus.emit('bombs:denied', { reason: 'empty_rack' });
+      this.bus.emit('toast', { text: 'Bomb rack empty — rearm at a station shipworks.', kind: 'info', ttl: 1.6 });
+      return null;
+    }
+    // The charge leads (it is the default ordnance while aboard), then the loaded cells in rack order.
+    const entries = loaded.map((c) => c.id);
+    if (charges > 0) entries.unshift(BOMB_CHARGE_CHOICE);
+    const onCharge = charges > 0 && !(rt.bombChosen === true && rt.selectedId != null);
+    const current = onCharge ? BOMB_CHARGE_CHOICE : rt.selectedId;
+    const index = entries.indexOf(current);
+    const nextId = entries[(index + 1) % entries.length];
+    if (nextId === BOMB_CHARGE_CHOICE) {
+      if ('bombChosen' in rt) delete rt.bombChosen;
+      this.bus.emit('bombs:cycle', { payloadId: BOMB_CHARGE_CHOICE, name: 'Impulse charge', index: -1, kind: 'charge' });
+      this.bus.emit('toast', { text: `Ordnance: impulse charge ×${charges}`, kind: 'info', ttl: 1.6, silent: true });
+      return BOMB_CHARGE_CHOICE;
+    }
+    const next = loaded.find((c) => c.id === nextId);
+    rt.selectedId = next.id;
+    // Turning away from an aboard charge is the explicit choice; with no charge aboard the rack is
+    // all there is, and a charge picked up later is the default again.
+    if (charges > 0) rt.bombChosen = true;
+    else if ('bombChosen' in rt) delete rt.bombChosen;
+    this.bus.emit('bombs:cycle', { payloadId: next.id, name: bombDef(next.id).name, index: rt.rack.cells.indexOf(next) });
+    this.bus.emit('toast', { text: `Bomb bay: ${bombDef(next.id).name}`, kind: 'info', ttl: 1.6, silent: true });
+    return next.id;
+  },
+
+  // ---- station rack verbs (direct methods are ungated; ui: intents carry the berth gate) --
+  // Every credit move goes through the economy owner's event seam; this system never writes
+  // state.player.credits itself.
+  buyPayload({ payloadId, units = 1 } = {}) {
+    if (this._preparationInFlight) return false;
+    const def = BOMB_DEFS[payloadId];
+    if (!def) return false;
+    const n = Number(units);
+    if (!Number.isSafeInteger(n) || n <= 0) return false;
+    const cost = def.price * n;
+    const credits = Number(this.state.player && this.state.player.credits) || 0;
+    if (credits < cost) {
+      this.bus.emit('bombs:denied', { reason: 'credits', payloadId, cost });
+      this.bus.emit('toast', { text: `Not enough credits — ${n}× ${def.name} is ${cost} cr (${def.price} each).`, kind: 'info', ttl: 1.8 });
+      return false;
+    }
+    this.bus.emit('economy:chargeCredits', { amount: cost, reason: `ordnance:${payloadId}` });
+    const rt = ensureRuntime(this.state);
+    rt.stock[payloadId] = (rt.stock[payloadId] || 0) + n;
+    this.bus.emit('bombs:stockChanged', { payloadId, stock: rt.stock[payloadId], delta: n });
+    this.bus.emit('toast', { text: `${n}× ${def.name} stowed — hangar holds ${rt.stock[payloadId]}.`, kind: 'info', ttl: 1.8 });
+    return true;
+  },
+
+  // Fit loads the socket's magazine from hangar stock. Fitting a payload already seated in
+  // another socket consolidates its load here (one payload lives in one socket); the socket's
+  // previous occupant returns its remaining units to stock.
+  fitPayload({ socketIndex, payloadId } = {}) {
+    if (this._preparationInFlight) return false;
+    const rt = ensureRuntime(this.state), def = BOMB_DEFS[payloadId];
+    const i = Number(socketIndex);
+    if (!def || !Number.isSafeInteger(i) || i < 0 || i >= rt.rack.sockets) return false;
+    const cell = rt.rack.cells[i];
+    if (cell && cell.id === payloadId) {
+      const move = Math.min(def.magazine - cell.count, rt.stock[payloadId] || 0);
+      if (move <= 0) {
+        this.bus.emit('toast', { text: `No ${def.name} in the hangar to load.`, kind: 'info', ttl: 1.8 });
+        return false;
+      }
+      cell.count += move;
+      rt.stock[payloadId] -= move;
+      this._rackChanged(`Topped up ${def.name} — socket ${i + 1} holds ${cell.count}.`);
+      return true;
+    }
+    // Units available = hangar stock + whatever the same payload already carries elsewhere.
+    const other = rt.rack.cells.findIndex((c, k) => k !== i && c && c.id === payloadId);
+    const carried = other >= 0 ? rt.rack.cells[other].count : 0;
+    const available = (rt.stock[payloadId] || 0) + carried;
+    if (available <= 0) {
+      this.bus.emit('bombs:denied', { reason: 'no_stock', payloadId });
+      this.bus.emit('toast', { text: `No ${def.name} in the hangar — buy ordnance first.`, kind: 'info', ttl: 1.8 });
+      return false;
+    }
+    const load = Math.min(def.magazine, available);
+    if (other >= 0) rt.rack.cells[other] = null;
+    rt.stock[payloadId] = available - load;
+    if (cell) rt.stock[cell.id] = (rt.stock[cell.id] || 0) + cell.count;
+    rt.rack.cells[i] = { id: payloadId, count: load };
+    this._rackChanged(`${def.name} loaded in socket ${i + 1} — ${load} ready.`);
+    return true;
+  },
+
+  unfitPayload({ socketIndex } = {}) {
+    if (this._preparationInFlight) return false;
+    const rt = ensureRuntime(this.state);
+    const i = Number(socketIndex);
+    if (!Number.isSafeInteger(i) || i < 0 || i >= rt.rack.sockets) return false;
+    const cell = rt.rack.cells[i];
+    if (!cell) return false;
+    rt.stock[cell.id] = (rt.stock[cell.id] || 0) + cell.count;
+    rt.rack.cells[i] = null;
+    this._rackChanged(`${bombDef(cell.id).name} back in the hangar.`);
+    return true;
+  },
+
+  // Dock-side resupply: refill every fitted magazine from hangar stock for one flat yard
+  // fee (economy data: BOMB_RACK.restockFeeCr). A dry socket keeps its fit, so this is the
+  // whole combat-rearm loop — buy stock, dock, restock.
+  restockRack() {
+    if (this._preparationInFlight) return false;
+    const rt = ensureRuntime(this.state);
+    const needy = rt.rack.cells.filter((c) => c && (rt.stock[c.id] || 0) > 0 && c.count < BOMB_DEFS[c.id].magazine);
+    if (!needy.length) {
+      this.bus.emit('toast', { text: 'Nothing to restock — rack is full or the hangar has no matching ordnance.', kind: 'info', ttl: 1.8 });
+      return false;
+    }
+    const credits = Number(this.state.player && this.state.player.credits) || 0;
+    if (credits < BOMB_RACK.restockFeeCr) {
+      this.bus.emit('bombs:denied', { reason: 'credits', cost: BOMB_RACK.restockFeeCr });
+      this.bus.emit('toast', { text: `Restock fee is ${BOMB_RACK.restockFeeCr} cr — not enough credits.`, kind: 'info', ttl: 1.8 });
+      return false;
+    }
+    let moved = 0;
+    for (const cell of needy) {
+      const move = Math.min(BOMB_DEFS[cell.id].magazine - cell.count, rt.stock[cell.id] || 0);
+      cell.count += move;
+      rt.stock[cell.id] -= move;
+      moved += move;
+    }
+    this.bus.emit('economy:chargeCredits', { amount: BOMB_RACK.restockFeeCr, reason: 'service:ordnance_restock' });
+    this._rackChanged(`Rack restocked — ${moved} unit${moved === 1 ? '' : 's'} loaded, ${BOMB_RACK.restockFeeCr} cr yard fee.`);
+    return true;
+  },
+
+  upgradeRack() {
+    if (this._preparationInFlight) return false;
+    const rt = ensureRuntime(this.state);
+    if (rt.rack.sockets >= BOMB_RACK.socketsMax) {
+      this.bus.emit('toast', { text: 'The rack is already at full extension.', kind: 'info', ttl: 1.8 });
+      return false;
+    }
+    const credits = Number(this.state.player && this.state.player.credits) || 0;
+    if (credits < BOMB_RACK.socketUpgradeCr) {
+      this.bus.emit('bombs:denied', { reason: 'credits', cost: BOMB_RACK.socketUpgradeCr });
+      this.bus.emit('toast', { text: `A third rack socket is ${BOMB_RACK.socketUpgradeCr} cr — not enough credits.`, kind: 'info', ttl: 1.8 });
+      return false;
+    }
+    this.bus.emit('economy:chargeCredits', { amount: BOMB_RACK.socketUpgradeCr, reason: 'service:bomb_rack_socket' });
+    rt.rack.sockets += 1;
+    rt.rack.cells.push(null);
+    this._rackChanged(`Rack extended — ${rt.rack.sockets} sockets fitted.`);
+    return true;
+  },
+
+  sellPayload({ payloadId, units = 1 } = {}) {
+    if (this._preparationInFlight) return false;
+    const def = BOMB_DEFS[payloadId];
+    if (!def) return false;
+    const n = Number(units);
+    if (!Number.isSafeInteger(n) || n <= 0) return false;
+    const rt = ensureRuntime(this.state);
+    const have = rt.stock[payloadId] || 0;
+    const toSell = Math.min(have, n);
+    if (toSell <= 0) return false;
+    const refund = Math.max(1, Math.floor(def.price * toSell * BOMB_RACK.sellbackFraction));
+    rt.stock[payloadId] = have - toSell;
+    this.bus.emit('economy:grantCredits', { amount: refund, reason: `ordnance:resell:${payloadId}` });
+    this.bus.emit('bombs:stockChanged', { payloadId, stock: rt.stock[payloadId], delta: -toSell });
+    this.bus.emit('toast', { text: `${toSell}× ${def.name} sold back — ${refund} cr.`, kind: 'info', ttl: 1.8 });
+    return true;
+  },
+
+  // NXB-009 — a quote is the frozen plan plus a WeakMap-side record of the options and the
+  // live-state fingerprint it was priced against. Only this owner can read it back; quotes
+  // die at save/load/new-game boundaries along with the map itself.
+  previewPreparation(options = {}) {
+    const safeOptions = options && typeof options === 'object' ? options : {};
+    const plan = previewBombPreparation(this.state, safeOptions);
+    const rec = {
+      options: JSON.parse(JSON.stringify(safeOptions)),
+      plan,
+      fingerprint: prepFingerprint(this.state),
+      credits: prepCreditsOf(this.state),
+      consumed: false,
+    };
+    const quote = freezeDeep({ plan });
+    (this._prepQuotes ||= new WeakMap()).set(quote, rec);
+    return quote;
+  },
+
+  // Atomic settlement: recompute from the registered options, refuse any snapshot or term
+  // drift instead of silently rebinding, then pay the exact quoted amount. The rack
+  // replacement runs INSIDE the economy owner's commit callback — before the charge
+  // notification — so a missing or rejecting credit writer leaves everything untouched.
+  commitPreparation(quote) {
+    const rec = this._prepQuotes && quote && typeof quote === 'object' ? this._prepQuotes.get(quote) : null;
+    if (!rec || rec.consumed || !this.state || !this.bus || this._preparationInFlight) return false;
+    if (prepFingerprint(this.state) !== rec.fingerprint) return false;
+    const plan = previewBombPreparation(this.state, rec.options);
+    // Whole-plan equality, not just headline terms — the planner is pure and deterministic,
+    // so any state drift that survives the fingerprint shows up here instead of settling
+    // silently rebound terms.
+    if (!plan.ok || JSON.stringify(plan) !== JSON.stringify(rec.plan)) return false;
+    this._preparationInFlight = true;
+    try {
+      const request = {
+        amount: plan.totalCost,
+        reason: 'service:bomb_rack_prepare',
+        requireFull: true,
+        expectedCredits: rec.credits,
+        result: false,
+        commit: () => this._applyPreparedRack(plan),
+      };
+      this.bus.emit('economy:chargeCredits', request);
+      if (request.result !== true) return false;
+      rec.consumed = true;
+      this._rackChanged(
+        plan.roundsLoaded > 0
+          ? `Rack prepared — ${plan.roundsLoaded} unit${plan.roundsLoaded === 1 ? '' : 's'} loaded, ${plan.totalCost} cr.`
+          : `Rack prepared — ${plan.totalCost > 0 ? `${plan.totalCost} cr.` : 'no charge.'}`,
+      );
+      return true;
+    } finally {
+      this._preparationInFlight = false;
+    }
+  },
+
+  // No-event, no-throw replacement — the plan was already validated and priced. The
+  // selection law is the existing one: keep the id while it still names a loaded cell.
+  _applyPreparedRack(plan) {
+    const rt = ensureRuntime(this.state);
+    rt.rack = {
+      sockets: plan.appliedSockets,
+      cells: plan.postCells.map((c) => (c ? { id: c.id, count: c.count } : null)),
+    };
+    rt.stock = { ...plan.postStock };
+    normalizeStock(rt);
+    normalizeRack(rt);
+    normalizeSelection(rt);
+    return true;
+  },
+
+  _rackChanged(text) {
+    normalizeStock(this.state.bombs);
+    normalizeSelection(this.state.bombs);
+    this.bus.emit('bombs:rackChanged', { rack: this.state.bombs.rack, stock: this.state.bombs.stock });
+    this.bus.emit('toast', { text, kind: 'info', ttl: 1.8, silent: true });
+  },
+
+  // One eligibility scan and one stable order per occupied tick, NOT eight payload-specific
+  // whole-world scans. The spatial hash excludes noncolliding loose bodies: using it alone
+  // would silently drop valid targets. The canonical typed index covers exactly the eligible
+  // types instead, so clutter the predicate can never accept (fx, projectiles, mines, gates,
+  // statics) is never visited; without a ready index this stays a complete scan bounded by
+  // live world population.
+  _collect(state) {
+    this._active.length = 0;
+    for (const e of liveBombList(state)) if (e?.alive && e.type === BOMB_TYPE && e.data) this._active.push(e);
+    this._active.sort(compareBombEntityIds);
+    this._targets.length = 0;
+    if (!this._active.length) return;
+    const buckets = bombTargetBuckets(state?.entityIndex);
+    if (buckets) {
+      for (const list of buckets) for (const e of list) pushBombTarget(this._targets, e);
+    } else {
+      for (const e of state.entityList || EMPTY) pushBombTarget(this._targets, e);
+    }
+    for (const bomb of this._active) {
+      const def = bombDef(bomb.data?.bombId);
+      if (!def) continue;
+      for (const body of queryPhysicalBodies(state, bomb.pos, def.radius, this.helpers, [])) if (!this._targets.includes(body)) this._targets.push(body);
+    }
+    this._targets.sort(compareBombEntityIds);
+  },
+
+  /** A press that did not drop. Other ships stay silent — their bay is not the player's. */
+  _notePlayerBombRefusal(owner, state, text) {
+    if (!owner || !state || owner.id !== state.playerId || !this.bus) return;
+    this.bus.emit('toast', { text, kind: 'info', ttl: 1.6 });
+  },
+
+  // Public common release path for player and NPC doctrine. NPCs call this plus commandDetonate
+  // (src/ai/npcBombMirror.js); they do not copy fuze/cooldown/effect code.
+  // Caller must hold a live entity; it cannot smuggle an unregistered owner into attribution.
+  // Rack law (PQ-205.03): the PLAYER may only drop a payload sitting loaded in a rack socket,
+  // and each drop consumes one unit of it. Non-player owners bypass the rack entirely — NPC
+  // drops (action_drop_bomb, combatDefs) have no hangar and never will.
+  drop(owner, payloadId, state = this.state) {
+    if (!state || blocked(state, owner) || state.entities.get(owner.id) !== owner || !BOMB_DEFS[payloadId]) return null;
+    const now = simNow(state), rt = ensureRuntime(state);
+    const isPlayer = owner.id === state.playerId;
+    let cell = null;
+    if (isPlayer) {
+      cell = rt.rack.cells.find((c) => c && c.id === payloadId && c.count > 0) || null;
+      if (!cell) {
+        this.bus.emit('bombs:denied', { ownerId: owner.id, reason: 'not_loaded', payloadId });
+        this._notePlayerBombRefusal(owner, state, 'That bomb is not loaded');
+        return null;
+      }
+    }
+    let bay = isPlayer ? rt : this._ownerCooldowns.get(owner.id);
+    if (!bay) this._ownerCooldowns.set(owner.id, bay = { cooldownUntil: 0, cooldowns: {} });
+    if (now < Math.max(bay.cooldownUntil || 0, bay.cooldowns[payloadId] || 0)) {
+      this._notePlayerBombRefusal(owner, state, 'Bomb bay cycling');
+      return null;
+    }
+    let owned = 0, total = 0;
+    for (const e of liveBombList(state)) {
+      if (!e?.alive || e.type !== BOMB_TYPE) continue;
+      total++;
+      if (e.data?.ownerId === owner.id) owned++;
+    }
+    if (owned >= BOMB_DRIFT.maxActive || total >= BOMB_DRIFT.maxWorldActive) {
+      const reason = owned >= BOMB_DRIFT.maxActive ? 'bay_full' : 'world_full';
+      this.bus.emit('bombs:denied', { ownerId: owner.id, reason });
+      this._notePlayerBombRefusal(owner, state, reason === 'world_full'
+        ? 'The field is full of armed ordnance — wait for one to finish'
+        : 'Bomb bay full — trigger armed ordnance or let its fuze finish.');
+      return null; // no cooldown, no eviction, no free explosion
+    }
+    const def = bombDef(payloadId);
+    const { pos, vx, vz, heading } = bombDropPlan(owner);
+    const bomb = this.helpers.spawnEntity({
+      type: BOMB_TYPE, pos, vel: { x: vx, z: vz }, rot: heading,
+      radius: BOMB_PROXY_RADIUS, mass: 2, collides: true, physicsBody: false,
+      collisionMask: Masks.PROJECTILE, team: owner.team, ownerId: owner.id,
+      data: {
+        kind: 'bomb', bombId: def.id, ownerId: owner.id, phase: 'drift', armed: false,
+        armedAt: now + BOMB_DRIFT.armS, detonateAt: now + def.fuzeS,
+        spawnedAt: now, fieldStartedAt: 0, fieldEndsAt: 0, nextFieldTick: 0,
+        triggered: false, spinRadS: 0, sectorId: state.world?.currentSectorId || null,
+        visualRadius: BOMB_VISUAL_RADIUS, retired: false,
+      },
+    });
+    if (!bomb) return null;
+    adaptBombProjectileProxy(bomb);
+    bomb.data.spinRadS = (Math.abs(Math.trunc(bomb.id)) % 2 ? 1 : -1) * BOMB_DRIFT.maxSpinRadS;
+    bay.cooldownUntil = now + BOMB_DRIFT.releaseIntervalS;
+    bay.cooldowns[payloadId] = now + def.cooldownS;
+    if (cell) {
+      // A dropped unit leaves the magazine. The cell keeps its payload id at 0 — the socket
+      // stays fitted, dock-side restock refills it. If the selection just ran dry the bay
+      // auto-advances to the next loaded socket so the verb never points at an empty cell.
+      cell.count = Math.max(0, cell.count - 1);
+      if (cell.count === 0 && rt.selectedId === payloadId) {
+        // Advance in socket order past the socket that just ran dry, wrapping once — not a
+        // jump back to the first loaded socket on a multi-socket rack.
+        const cells = rt.rack.cells;
+        const from = Math.max(0, cells.indexOf(cell));
+        let next = null;
+        for (let step = 1; step <= cells.length; step++) {
+          const candidate = cells[(from + step) % cells.length];
+          if (candidate && candidate.count > 0) { next = candidate; break; }
+        }
+        rt.selectedId = next ? next.id : null;
+        this.bus.emit('bombs:cycle', {
+          payloadId: rt.selectedId, name: next ? bombDef(next.id).name : null,
+          index: next ? cells.indexOf(next) : -1, reason: 'depleted',
+        });
+      }
+      this.bus.emit('bombs:stockChanged', { payloadId, loaded: cell.count, delta: -1 });
+    }
+    syncBombTargetInteraction(bomb);
+    this.bus.emit('bombs:dropped', { bombId: bomb.id, payloadId, ownerId: owner.id, pos, vel: { x: vx, z: vz }, radius: def.radius });
+    this.bus.emit('audio:cue', { id: 'massline.bombDrop', position: pos, gain: 0.5 });
+    return bomb;
+  },
+
+  commandDetonate(ownerId, state = this.state) {
+    if (!state || blocked(state, state.entities.get(ownerId))) return 0;
+    let count = 0;
+    for (const e of liveBombList(state)) {
+      if (e?.alive && e.type === BOMB_TYPE && e.data?.ownerId === ownerId && e.data.phase === 'drift'
+        && !e.data.retired && simNow(state) >= e.data.armedAt) {
+        this._prime(e, 'command', simNow(state)); count++;
+      }
+    }
+    if (count) this.bus.emit('bombs:commanded', { ownerId, count, tick: state.tick });
+    return count;
+  },
+
+  _prime(bomb, trigger, now, chainFrom = null) {
+    const d = bomb.data;
+    if (!d || d.retired || d.phase !== 'drift') return false;
+    d.phase = 'warning';
+    d.trigger = trigger;
+    if (chainFrom != null) d.chainFrom = chainFrom; // immediate cause; d.ownerId stays the original dropper
+    d.warningAt = now;
+    d.resolveAt = Math.min(d.detonateAt, now + BOMB_DRIFT.warningS);
+    this.bus.emit('bombs:primed', {
+      bombId: bomb.id, payloadId: d.bombId, ownerId: d.ownerId, trigger,
+      chainFrom: chainFrom == null ? null : chainFrom,
+      pos: { x: bomb.pos.x, z: bomb.pos.z }, resolveAt: d.resolveAt, radius: bombDef(d.bombId).radius,
+    });
+    return true;
+  },
+
+  _tickBombs(dt, state) {
+    const now = simNow(state), start = now - dt;
+    for (const bomb of this._active) {
+      if (!bomb.alive) continue;
+      const d = bomb.data;
+      if (d.retired) continue;
+      const x0 = bomb.pos.x, z0 = bomb.pos.z;
+      // Kinematic owner snapshots interpolation here so fixtures that skip core.preStep still
+      // interpolate; live ticks also snapshot in preStep because bombs are spatial-dynamic.
+      if (bomb.prevPos) { bomb.prevPos.x = x0; bomb.prevPos.z = z0; }
+      bomb.prevRot = bomb.rot;
+      integrateBombDrift(this._motion, x0, z0, bomb.vel.x, bomb.vel.z, dt, d.phase === 'field'
+        ? bombDef(d.bombId).field?.driftDragPerS ?? BOMB_DRIFT.dragPerS : BOMB_DRIFT.dragPerS);
+      // Explicit kinematic exception: these are bomb-owned entities, never foreign bodies.
+      bomb.pos.x = this._motion.x; bomb.pos.z = this._motion.z;
+      bomb.vel.x = this._motion.vx; bomb.vel.z = this._motion.vz;
+      bomb.rot += (d.spinRadS || 0) * dt;
+      adaptBombProjectileProxy(bomb);
+      if (d.phase === 'field') {
+        if (now >= d.fieldEndsAt) this._endField(bomb, state, 'expired');
+        syncBombTargetInteraction(bomb);
+        continue;
+      }
+      if (!d.armed && now >= d.armedAt) {
+        d.armed = true;
+        this.bus.emit('bombs:armed', { bombId: bomb.id, payloadId: d.bombId, pos: { x: bomb.pos.x, z: bomb.pos.z } });
+      }
+      if (d.phase === 'drift') {
+        if (d.armed && this._findTriggerVictim(state, bomb, d, x0, z0, dt, Math.max(0, (d.armedAt - start) / dt))) {
+          this._prime(bomb, 'proximity', now);
+        } else if (now >= d.detonateAt - BOMB_DRIFT.warningS) this._prime(bomb, 'fuze', now);
+      }
+      if (d.phase === 'warning' && now + 1e-9 >= d.resolveAt) this._detonate(bomb, d, state, d.trigger);
+      syncBombTargetInteraction(bomb);
+    }
+    // Resolve ALL lifecycle transitions before fields sample one another. New fields get no
+    // retroactive force for time before opening; expired ones contribute no final ghost impulse.
+    // Count overlaps ONCE: O(fields * targets), never an O(fields² * targets) inner brake scan.
+    this._gooCoverage.length = this._targets.length;
+    this._gooCoverage.fill(0);
+    for (const bomb of this._active) {
+      if (!bomb.alive || bomb.data.phase !== 'field' || bomb.data.fieldStartedAt >= now) continue;
+      const def = bombDef(bomb.data.bombId);
+      if (def.field?.kind !== 'goo') continue;
+      for (let i = 0; i < this._targets.length; i++) {
+        const ent = this._targets[i];
+        if (ent.alive && blastShoveEligible(ent) && bombSurfaceFalloff(Math.hypot(ent.pos.x - bomb.pos.x, ent.pos.z - bomb.pos.z), ent.radius, def.radius) > 0) this._gooCoverage[i]++;
+      }
+    }
+    for (const bomb of this._active) {
+      if (bomb.alive && bomb.data.phase === 'field') this._tickField(bomb, state, Math.min(dt, now - bomb.data.fieldStartedAt));
+    }
+  },
+
+  _findTriggerVictim(state, bomb, d, x0 = bomb.pos.x, z0 = bomb.pos.z, dt = 0, minT = 0) {
+    let best = null, bestT = Infinity;
+    const def = bombDef(d.bombId);
+    for (const e of this._targets) {
+      if (!proximityTriggerEligible(e, bomb, d.ownerId)) continue;
+      const t = sweptBombContact(e.pos.x - x0, e.pos.z - z0,
+        e.pos.x + (e.vel?.x || 0) * dt - bomb.pos.x,
+        e.pos.z + (e.vel?.z || 0) * dt - bomb.pos.z,
+        def.triggerRadius + Math.max(0, e.radius || 0), minT);
+      if (t < bestT) { best = e; bestT = t; } // stable sorted-ID tie break
+    }
+    return best;
+  },
+
+  _detonate(bomb, d, state, trigger) {
+    if (!bomb.alive || !d || d.retired || d.triggered || (d.phase !== 'drift' && d.phase !== 'warning')) return false;
+    const def = bombDef(d.bombId), pos = { x: bomb.pos.x, z: bomb.pos.z };
+    d.triggered = true; d.detonatedTick = state.tick;
+    const result = def.field?.kind === 'singularity' ? null
+      : this._blastVictims(state, { pos, def, ownerId: d.ownerId, originId: bomb.id, trigger });
+    this._spawnSweep(bomb, def, pos, state);
+    if (def.field) {
+      d.phase = 'field'; d.fieldStartedAt = simNow(state); d.fieldEndsAt = d.fieldStartedAt + def.field.durationS;
+      d.nextFieldTick = state.tick + def.field.tickEveryTicks;
+    } else { d.phase = 'spent'; d.retired = true; bomb.alive = false; }
+    this._emitDetonated(bomb, d, def, state, pos, trigger, result);
+    syncBombTargetInteraction(bomb);
+    return true;
+  },
+  _emitDetonated(bomb, d, def, state, pos, trigger, result) {
+    this.bus.emit('bombs:detonated', {
+      schemaVersion: 2, bombId: bomb.id, payloadId: def.id, ownerId: d.ownerId,
+      pos, vel: { x: bomb.vel.x, z: bomb.vel.z }, radius: def.radius, trigger,
+      chainFrom: d.chainFrom == null ? null : d.chainFrom,
+      hits: result?.hits || EMPTY, shoves: result?.shoves || EMPTY,
+    });
+    const cueId = trigger === 'collapse' && def.collapseAudioCue ? def.collapseAudioCue : def.audioCue;
+    this.bus.emit('audio:cue', {
+      id: cueId, position: pos, gain: 0.65,
+      bombId: bomb.id, payloadId: def.id, trigger, trackId: bomb.id,
+    });
+  },
+
+  // The traveling half of every blast (hull-burst overhaul family, `combat.tumbleFling`).
+  // The instant impulse shoves; this front re-pushes loose bodies as it overtakes them,
+  // nearest first, so a detonation reads as a wave sweeping the field instead of one
+  // simultaneous teleport. Ships and drones are excluded — their shove/hitstun economy is
+  // tuned end to end (SHOVE_BEAT_LAW, HITSTUN_LAW); the wave's added push is for the loose
+  // world, where the tumble threshold (SHOCKWAVE_SWEEP_LAW.tumbleDeltaV) decides whether an
+  // object visibly tumbles, shudders, or barely stirs. Gated like every slice-A rule: OFF
+  // in legacy47a keeps the frozen goldens byte-identical.
+  _spawnSweep(bomb, def, pos, state, impulseOverride = null) {
+    if (!combatFlag('tumbleFling')) return;
+    // The wave carries a fixed fraction of the payload's OWN impulse budget: a
+    // zero-impulse payload (the singularity's opening, goo) births no wave at all —
+    // "does not blast on arrival" must not grow a shove, evict a live front's slot,
+    // or play the ring. The collapse passes its authored collapseImpulse instead.
+    const impulseBudget = Math.max(0, Number(impulseOverride != null ? impulseOverride : def.impulse) || 0)
+      * SHOCKWAVE_SWEEP_LAW.passImpulseFrac;
+    if (!(impulseBudget > 0)) return;
+    // Replacement before eviction: a re-detonation reuses its own record in place and
+    // must never push the oldest unrelated front out of the cap.
+    const existing = this._sweeps.find((s) => s.bombId === bomb.id);
+    if (!existing && this._sweeps.length >= SHOCKWAVE_SWEEP_LAW.maxLiveSweeps) this._sweeps.shift();
+    const sweep = createShockwaveSweep({
+      bombId: bomb.id,
+      ownerId: bomb.data && bomb.data.ownerId,
+      weaponId: def.id,
+      passImpulseWu: impulseBudget,
+      x: pos.x, z: pos.z, blastRadius: def.radius,
+      existing,
+    });
+    if (sweep && !this._sweeps.includes(sweep)) this._sweeps.push(sweep);
+    this._bombsQuiet = null;
+    if (this.bus) {
+      // The wave's own tell: an outward-racing ring, distinct from the payload's material
+      // release (BombDetonationVfx) and the vector mine's punch-flash.
+      this.bus.emit('presentation:vfxCue', {
+        id: 'combat.shockwaveSweep', lane: 'combat', particles: 24, lights: 1,
+        magnitude: Math.max(0.6, def.radius / 150), position: { x: pos.x, z: pos.z },
+        material: 'impulse', sourceId: bomb.data && bomb.data.ownerId, targetId: null,
+        flashReduced: flashReduced(state),
+      });
+    }
+  },
+
+  _tickSweeps(dt, state) {
+    if (!this._sweeps.length || !(dt > 0)) return;
+    const physics = this.helpers && this.helpers.combatPhysics;
+    // The candidate field does not depend on the sweep: enumerate once per tick.
+    const candidates = this._sweepCandidates(state);
+    let passBudget = SHOCKWAVE_SWEEP_LAW.maxPassesPerTick;
+    for (let i = this._sweeps.length - 1; i >= 0; i--) {
+      if (passBudget <= 0) break;
+      const sweep = this._sweeps[i];
+      const front = advanceSweepFront(sweep, dt);
+      // Resolve the final annulus BEFORE retiring: the last tick's band plus body
+      // radii is a real pass the outermost bodies are owed. Distance order keeps the
+      // wave nearest-first within a tick AND makes budget deferral fall on the farthest
+      // bodies deterministically (bucket insertion order must never decide physics).
+      candidates.sort((x, y) => this._sweepDist2(x, sweep) - this._sweepDist2(y, sweep));
+      for (const ent of candidates) {
+        if (passBudget <= 0) break;
+        const pass = resolveSweepPass(sweep, ent, front.radius);
+        if (!pass) continue;
+        passBudget--;
+        if (physics && typeof physics.applyImpulse === 'function') {
+          // The applied impulse is the graded deltaV TIMES THE BODY'S REAL MASS: the
+          // floor belongs to the grade (threshold stability), never to the delivery —
+          // a floor-mass impulse divided by a real 0.1-mass pickup would deliver a
+          // 60 WU/s receipt as a 1200 WU/s launch. sweptMassOf is the same read the
+          // grade used, so the receipt is the physical truth.
+          const mag = pass.deltaV * sweptMassOf(ent);
+          const provenance = {
+            actorId: sweep.ownerId == null ? null : sweep.ownerId,
+            weaponId: sweep.weaponId,
+            tag: 'bomb_shockwave',
+            appliedTick: state.tick | 0,
+          };
+          const accepted = physics.applyImpulse({
+            entityId: ent.id, impulse: { x: pass.dirX * mag, z: pass.dirZ * mag }, point: null,
+            reason: 'shockwave_sweep', tick: state.tick, provenance,
+          });
+          if (accepted !== false) recordImpulseProvenance(ent, { ...provenance, magnitude: mag });
+        }
+        if (this.bus) this.bus.emit(SHOCKWAVE_PASS_EVENT, pass);
+      }
+      if (!front.alive) this._sweeps.splice(i, 1);
+    }
+  },
+
+  _sweepDist2(entity, sweep) {
+    const dx = (entity.pos && entity.pos.x) - sweep.x;
+    const dz = (entity.pos && entity.pos.z) - sweep.z;
+    return dx * dx + dz * dz;
+  },
+
+  // Loose matter the wave can touch: the movable family minus craft, plus dynamic-body
+  // fauna — the same eligibility the blast shove grants, read from the same typed index
+  // _collect uses (a spatial hash alone would silently drop noncolliding loose bodies).
+  _sweepCandidates(state) {
+    const out = this._sweepScratch || (this._sweepScratch = []);
+    out.length = 0;
+    const buckets = bombTargetBuckets(state && state.entityIndex);
+    if (buckets) {
+      for (const list of buckets) for (const e of list) pushSweepBody(out, e);
+    } else {
+      for (const e of (state && state.entityList) || EMPTY) pushSweepBody(out, e);
+    }
+    return out;
+  },
+
+  _blastVictims(state, { pos, def, ownerId, originId, trigger, impulseOverride = null, damageOverride = null }) {
+    const impulse = impulseOverride ?? def.impulse, damage = damageOverride ?? def.damage;
+    const hits = [], shoves = [], attackerMass = massOf(state.entities.get(ownerId));
+    const applyBody = ent => {
+      if (!ent.alive || ent.id === originId) return;
+      const dx = ent.pos.x - pos.x, dz = ent.pos.z - pos.z;
+      const radial = bombRadialDirection(dx, dz, this._radial || (this._radial = { x: 0, z: 0, dist: 0 }));
+      const dist = radial.dist > 0 ? radial.dist : Math.hypot(dx, dz);
+      const falloff = bombSurfaceFalloff(dist, ent.radius, def.radius);
+      if (!(falloff > 0)) return;
+      let dirX = radial.x, dirZ = radial.z;
+      // Havoc is a cross-current, not a recoloured radial concussion. Preserve total impulse.
+      // A zero radial (centers coincide) stays zero — there is no seeded axis to bend.
+      if (def.tangentRatio && (dirX !== 0 || dirZ !== 0)) {
+        const q = def.tangentRatio, norm = Math.hypot(1, q), x = dirX;
+        dirX = (dirX - dirZ * q) / norm; dirZ = (dirZ + x * q) / norm;
+      }
+      const magnitude = impulse * falloff;
+      // SFQ-B035 — the blast-facing surface contact: where the radial load actually lands on
+      // this hull (center minus the radial direction times the hull radius). The impulse and
+      // the supported torque cap read it as real surface data. For the SIGNED SIDE its job is
+      // replacing the fabricated +z offset the old route fed signedHitSide — that fake
+      // dominated the surface-point branch via sign(world x) whenever the shove had any x.
+      // On the blast axis the point's own cross is exactly zero (it lies on the impulse line),
+      // so the sign is decided by signedHitSide's hull-heading read, and a dead-nose hit takes
+      // the id-parity fallback as that function documents.
+      const surfaceR = Math.max(0, Number(ent.radius) || 0);
+      const hitPos = Object.freeze({ x: ent.pos.x - dirX * surfaceR, z: ent.pos.z - dirZ * surfaceR });
+      if (magnitude > 0 && (dirX !== 0 || dirZ !== 0) && blastShoveEligible(ent)
+        && this._applyImpulse(ent, dirX * magnitude, dirZ * magnitude, state, 'bomb_blast',
+          { point: hitPos, maxTorque: def.tumbleTorque })) {
+        considerShove(shoves, ent.id, dirX, dirZ, magnitude);
+        this._publishHitstun(state, ent, { dirX, dirZ, magnitude, ownerId, attackerMass, payloadId: def.id, trigger, hitPos });
+      }
+      if (isEnvironmentalBody(ent) && def.heat) addEnvironmentHeat(state, ent, def.heat * falloff, { actorId: ownerId });
+      if ((DAMAGE_TYPES.has(ent.type) || faunaBlastEligible(ent)) && (damage > 0 || def.statuses?.length)) {
+        const packet = scalarHitToDamagePacket({
+          damage: damage * falloff, damageType: def.damageType, pos,
+          penetration: def.penetration || 0, heat: def.heat || 0,
+          // Bomb statuses are craft-control verbs (see the fauna eligibility note above) —
+          // organisms take the blast damage, never the status rider.
+          statuses: DAMAGE_TYPES.has(ent.type) ? (def.statuses || EMPTY) : EMPTY,
+          subsystemShare: def.subsystemShare ?? null, shieldBypass: def.shieldBypass || 0,
+          source: { kind: 'bomb', payloadId: def.id, bombId: originId },
+        });
+        packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+        const result = this._routeDamage({ attackerId: ownerId, targetId: ent.id, packet, origin: { kind: 'bomb', id: originId, payloadId: def.id } });
+        // hits are routing receipts, not a claim of hull loss (shields/armour may absorb it).
+        if (result !== false && result?.ok !== false) hits.push(ent.id);
+      }
+    };
+    schedulePhysicalBlast(state, { center: pos, radius: def.radius, helpers: this.helpers, excludeId: originId,
+      payload: { kind: 'bomb_blast', sourceId: ownerId, weaponId: def.id, baseImpulse: impulse, damage, damageType: def.damageType, heat: def.heat || 0, tangentRatio: def.tangentRatio || 0 },
+      alsoEligible: faunaBlastEligible, onBody: applyBody });
+    shoves.sort((a, b) => b.mag - a.mag || compareBombEntityIds(a, b));
+    // SF-042: a blast reaches armed, still-drifting ordnance as a sympathetic primer — the
+    // dramatic delayed second consequence, deterministic and bounded. Primes resolve through
+    // the ordinary warning phase on a later tick (never same-tick recursion), each bomb can
+    // be primed exactly once (its phase leaves 'drift'), the walk follows the stable
+    // id-sorted _active order, and the world cap bounds the chain population. Unarmed
+    // capsules are NOT cooked off — the arming law matches retire('projectile').
+    for (const e of this._active) {
+      if (!e.alive || e.type !== BOMB_TYPE || e.id === originId) continue;
+      const ed = e.data;
+      if (!ed || ed.phase !== 'drift' || ed.retired || ed.triggered || !ed.armed) continue;
+      const dist = Math.hypot(e.pos.x - pos.x, e.pos.z - pos.z);
+      if (!(bombSurfaceFalloff(dist, BOMB_PROXY_RADIUS, def.radius) > 0)) continue;
+      this._prime(e, 'chain', simNow(state), originId);
+    }
+    return { hits: Object.freeze(hits), shoves: Object.freeze(shoves) };
+  },
+  _publishHitstun(state, victim, input) {
+    if (!victim || victim.alive === false) return;
+    if (victim.type !== 'ship' && victim.type !== 'drone') return;
+    if (victim.id === state.playerId) return; // B13: the player is never stunned
+    const victimMass = massOf(victim, 1);
+    const deltaV = input.magnitude / victimMass;
+    if (!(deltaV > 0)) return;
+    const hitSide = signedHitSide(victim, { x: input.dirX, z: input.dirZ }, {
+      pos: input.hitPos || {
+        x: Number(victim.pos && victim.pos.x) || 0,
+        z: Number(victim.pos && victim.pos.z) || 0,
+      },
+    }, victim.id);
+    const provenance = Object.freeze({
+      schemaVersion: 1,
+      kind: 'bomb',
+      source: input.trigger || 'fuze',
+      tag: 'bomb_blast',
+      payloadId: input.payloadId == null ? null : String(input.payloadId),
+    });
+    recordImpulseProvenance(victim, {
+      actorId: input.ownerId == null ? null : input.ownerId,
+      weaponId: input.payloadId == null ? null : input.payloadId,
+      tag: 'bomb_blast',
+      appliedTick: state.tick | 0,
+      magnitude: input.magnitude,
+    });
+    publishHitstunImpulse(this.bus, {
+      source: 'bomb',
+      victimId: victim.id,
+      attackerId: input.ownerId == null ? null : input.ownerId,
+      attackerMass: Math.max(0.1, Number(input.attackerMass) || 1),
+      victimMass,
+      deltaV,
+      dirX: input.dirX,
+      dirZ: input.dirZ,
+      hitSide,
+      provenance,
+      tick: state.tick,
+    });
+  },
+
+  _tickField(bomb, state, dt) {
+    if (!(dt > 0)) return;
+    const d = bomb.data, def = bombDef(d.bombId), f = def.field;
+    if (!f) return;
+    const envelope = bombFieldEnvelope(simNow(state), d.fieldStartedAt, f.durationS, f.endStrength ?? 1);
+    const applyStatusTick = state.tick >= d.nextFieldTick;
+    // No historical damage burst after a long step: update is a fixed 60 Hz contract. Advance
+    // the cadence arithmetically, so an irregular fixture cannot permanently phase-shift it.
+    if (applyStatusTick) d.nextFieldTick += (Math.floor((state.tick - d.nextFieldTick) / f.tickEveryTicks) + 1) * f.tickEveryTicks;
+    for (let targetIndex = 0; targetIndex < this._targets.length; targetIndex++) {
+      const ent = this._targets[targetIndex];
+      if (!ent.alive || ent.id === bomb.id) continue;
+      const dx = bomb.pos.x - ent.pos.x, dz = bomb.pos.z - ent.pos.z;
+      const radial = bombRadialDirection(dx, dz, this._radial || (this._radial = { x: 0, z: 0, dist: 0 }));
+      const dist = radial.dist > 0 ? radial.dist : Math.hypot(dx, dz);
+      const falloff = bombSurfaceFalloff(dist, ent.radius, def.radius);
+      if (!(falloff > 0)) continue;
+      // Field motion rides the same eligibility as the blast shove (SFQ-B035): a dynamic-body
+      // fauna is pulled into the well and slowed by tar exactly like the craft next to it;
+      // kinematic fauna stay motion-owned by the ecology drive.
+      if (f.kind === 'singularity' && blastShoveEligible(ent) && radial.dist > 0) {
+        const mass = massOf(ent), couple = isEnvironmentalBody(ent) ? environmentResponse(ent) : Math.max(FIELD_COUPLING.minShipCouple, FIELD_COUPLING.refMass / Math.max(mass, FIELD_COUPLING.refMass));
+        const j = f.strength * envelope * falloff * couple * mass * dt;
+        deliverPhysicalImpulse(state, ent, { x: radial.x * j, z: radial.z * j }, { tick: state.tick, kind: 'bomb_field' }, { scaleEnvironment: false, continuous: true, dt });
+      } else if (f.kind === 'goo' && blastShoveEligible(ent)) {
+        const coverage = this._gooCoverage[targetIndex] || 1;
+        if (fillBombViscosityImpulse(this._viscosity, ent.vel, bomb.vel, effectiveMass(state, ent), dt, f.dragPerS * falloff, 1 / Math.max(1, coverage))) {
+          deliverPhysicalImpulse(state, ent, this._viscosity, { tick: state.tick, kind: 'bomb_viscosity' }, { scaleEnvironment: false, continuous: true, dt });
+        }
+      }
+      if (!applyStatusTick) continue;
+      // Crush is damage — fauna-eligible like blast damage. The goo re-application is a craft
+      // status rider — fauna stay excluded, the same law as blast statuses.
+      const crush = f.kind === 'singularity' && Math.max(0, dist - (ent.radius || 0)) <= f.crushInnerRadius;
+      if (!craft(ent) && !(crush && faunaBlastEligible(ent))) continue;
+      if (f.kind !== 'goo' && !crush) continue;
+      const packet = scalarHitToDamagePacket({
+        damage: crush ? f.crushDamage : 0, damageType: crush ? 'plasma' : 'kinetic', pos: bomb.pos,
+        statuses: crush ? EMPTY : [{ id: 'status_goo', stacks: f.applyStacks }],
+        source: { kind: 'bomb', payloadId: def.id, bombId: bomb.id, phase: crush ? 'crush' : 'tar' },
+      });
+      packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+      this._routeDamage({ attackerId: d.ownerId, targetId: ent.id, packet, origin: { kind: 'bomb', id: bomb.id, payloadId: def.id } });
+    }
+  },
+
+  _endField(bomb, state, reason) {
+    if (!bomb.alive || bomb.data.phase !== 'field') return;
+    const d = bomb.data, def = bombDef(d.bombId), pos = { x: bomb.pos.x, z: bomb.pos.z };
+    bomb.alive = false; d.phase = 'spent'; d.retired = true;
+    if (def.field?.kind === 'goo') this._shedGooFieldStatus(bomb, state, def);
+    if (reason === 'expired' && def.field?.kind === 'singularity') {
+      const result = this._blastVictims(state, { pos, def, ownerId: d.ownerId, originId: bomb.id, trigger: 'collapse',
+        impulseOverride: def.field.collapseImpulse, damageOverride: def.field.collapseDamage });
+      this._spawnSweep(bomb, def, pos, state, def.field.collapseImpulse);
+      this._emitDetonated(bomb, d, def, state, pos, 'collapse', result);
+    }
+    this.bus?.emit('bombs:fieldEnded', {
+      schemaVersion: 2, bombId: bomb.id, payloadId: def.id, ownerId: d.ownerId, pos,
+      trigger: reason === 'expired' && def.field?.kind === 'singularity' ? 'collapse' : reason,
+    });
+    syncBombTargetInteraction(bomb);
+  },
+
+  // NXI-040 — a dying tar field sheds only its own status contribution. The status record is
+  // keyed by status id, never by source, so this scans the same coverage law the live tick
+  // uses: a target still inside another live goo field keeps the record that field is
+  // feeding, while a target this was the last live source for sheds it now rather than
+  // wearing the cloud for seconds after it is gone. Only 'status_goo' is ever cleared —
+  // never the whole status bag, and never a record another live field still covers.
+  _shedGooFieldStatus(bomb, state, def) {
+    const combat = this.registry?.get?.('combat');
+    const kernel = combat && typeof combat.ensureKernel === 'function' ? combat.ensureKernel() : null;
+    if (!kernel || !kernel.statuses || typeof kernel.statuses.clear !== 'function') return;
+    const combatEntities = state.combat && state.combat.entities;
+    if (!combatEntities) return;
+    const now = simNow(state), targets = this._targets || EMPTY;
+    for (const ent of targets) {
+      if (!ent || ent.alive === false || !craft(ent)) continue;
+      const dist = Math.hypot(ent.pos.x - bomb.pos.x, ent.pos.z - bomb.pos.z);
+      if (!(bombSurfaceFalloff(dist, ent.radius, def.radius) > 0)) continue;
+      let covered = false;
+      for (const other of this._active || EMPTY) {
+        if (other === bomb || !other.alive) continue;
+        const od = other.data;
+        if (!od || od.retired || od.phase !== 'field' || od.fieldStartedAt >= now) continue;
+        const odef = bombDef(od.bombId);
+        if (odef.field?.kind !== 'goo') continue;
+        const odist = Math.hypot(ent.pos.x - other.pos.x, ent.pos.z - other.pos.z);
+        if (bombSurfaceFalloff(odist, ent.radius, odef.radius) > 0) { covered = true; break; }
+      }
+      if (covered) continue;
+      const runtime = combatEntities[String(ent.id)];
+      if (runtime && kernel.statuses.clear(ent, runtime, 'status_goo')) {
+        // clear() does not emit. The callout and the tar loop both listen for expiry.
+        this.bus?.emit('combat:statusExpired', {
+          targetId: ent.id, statusId: 'status_goo', data: null, reason: 'field_shed',
+        });
+      }
+    }
+  },
+  // SFQ-B035: the blast hands the physics authority its surface contact point and the def's
+  // supported torque cap (`sg02DynamicBodyOwner.applyImpulse` applies the off-center arm /
+  // clamped yaw torque itself, and keeps its own player off-center exemption). A point on the
+  // impulse line — a radial blast's facing surface on a circular hull — correctly produces no
+  // direct torque; the signed spin still reads the surface hit through the hitstun law.
+  _applyImpulse(ent, x, z, state, reason, opts = {}) {
+    const physics = this.helpers?.combatPhysics;
+    if (!physics?.applyImpulse) return false;
+    return deliverPhysicalImpulse(state, ent, { x, z }, {
+      point: opts.point || null, maxTorque: opts.maxTorque, reason, tick: state.tick,
+    }, { port: physics });
+  },
+
+  _routeDamage(request) {
+    if (typeof this.helpers?.routeCombatDamage === 'function') return this.helpers.routeCombatDamage(request);
+    const combat = this.registry?.get?.('combat');
+    if (combat?.ensureKernel) return combat.ensureKernel().routeDamage(request);
+    this.bus.emit('combat:routeDamage', request);
+    return null;
+  },
+
+  redirect(bomb, impulse, contributorId, state = this.state) {
+    const result = redirectLiveBomb(bomb, impulse, contributorId, state && state.tick);
+    if (result.ok) this.bus?.emit('bombs:redirected', result);
+    return result;
+  },
+
+  _onProjectileHit(payload) {
+    if (!this.state || !payload) return false;
+    const target = this.state.entities.get(payload.targetId);
+    if (!target || target.type !== BOMB_TYPE) return false;
+    return this.retire(target, 'projectile', this.state, { shotBy: payload.ownerId });
+  },
+
+  // Inert destruction: shooting the capsule (or its field source) retires the bomb exactly once
+  // and never detonates it. Arming law is preserved — an unarmed shot cannot cook the payload.
+  // Warning-phase shots still defuse; a fuze that already resolved this tick in _tickBombs wins
+  // because physics sweeps after bombs in UPDATE_ORDER. `shotBy` (projectile hits) names the
+  // shooter so consumers can attribute the shoot-down; `ownerId` stays the dropper.
+  retire(bomb, reason = 'destroyed', state = this.state, { shotBy = null } = {}) {
+    if (!bomb || bomb.type !== BOMB_TYPE || !bomb.data) return false;
+    const d = bomb.data;
+    if (d.retired || d.phase === 'spent' || bomb.alive === false) return false;
+    d.retired = true;
+    const pos = { x: bomb.pos.x, z: bomb.pos.z };
+    const payloadId = d.bombId;
+    const ownerId = d.ownerId;
+    const bombId = bomb.id;
+    if (d.phase === 'field') {
+      this._endField(bomb, state, reason);
+    } else {
+      bomb.alive = false;
+      d.phase = 'spent';
+    }
+    adaptBombProjectileProxy(bomb);
+    clearDestroyedBombLocks(state, bomb);
+    syncBombTargetInteraction(bomb);
+    this.bus?.emit('bombs:destroyed', {
+      bombId, payloadId, ownerId, shotBy, pos, reason, trigger: reason,
+    });
+    this.bus?.emit('audio:cue', { id: 'massline.bombDrop', position: pos, gain: 0.35, bombId, payloadId });
+    return true;
+  },
+
+  releaseAll(reason = 'release') {
+    if (!this.state) return 0;
+    let count = 0;
+    for (const e of liveBombList(this.state)) {
+      if (!e?.alive || e.type !== BOMB_TYPE) continue;
+      if (e.data?.phase === 'field') this._endField(e, this.state, reason);
+      e.alive = false;
+      if (e.data) { e.data.phase = 'spent'; e.data.retired = true; }
+      syncBombTargetInteraction(e);
+      count++;
+    }
+    this._ownerCooldowns?.clear();
+    // A sector transition or a load must not leave a front expanding from stale
+    // detonation coordinates into the wrong world.
+    this._sweeps = [];
+    this._bombsQuiet = null;
+    if (this.state) publishBombsQuiet(this.state, false);
+    if (count) this.bus?.emit('bombs:released', { count, reason });
+    return count;
+  },
+  _resetRuntime(reason) {
+    this.releaseAll(reason);
+    this._sweeps = [];
+    this._prepQuotes = new WeakMap();
+    this._preparationInFlight = false;
+    if (!this.state) return;
+    const rt = ensureRuntime(this.state);
+    applyStarterKit(rt);
+    Object.assign(rt, { cooldownUntil: 0, cooldowns: {} });
+    normalizeSelection(rt);
+  },
+
+  // ---- save owner (PQ-205.03) -----------------------------------------------------------
+  // The whole bag persists: fitted cells (type + remaining units), socket count, hangar
+  // stock, per-payload cooldowns and the live selection. In-flight bomb entities are
+  // transient — non-persistent actors never serialize.
+  serialize() {
+    // A registered-but-uninitialized owner (headless fixtures, post-destroy) serializes
+    // nothing — _callSerialize treats undefined as absent-owner, and the rack's starter
+    // kit is additive on the deserialize side anyway.
+    if (!this.state) return undefined;
+    // Outstanding preparation quotes were priced against pre-save state — they die here.
+    this._prepQuotes = new WeakMap();
+    const rt = ensureRuntime(this.state);
+    return {
+      v: 1,
+      selectedId: rt.selectedId,
+      // Written only while a drift bomb is chosen over an aboard charge (absent = the charge leads).
+      ...(rt.bombChosen === true ? { bombChosen: true } : {}),
+      cooldownUntil: rt.cooldownUntil,
+      cooldowns: { ...rt.cooldowns },
+      rack: {
+        sockets: rt.rack.sockets,
+        cells: rt.rack.cells.map((c) => (c ? { id: c.id, count: c.count } : null)),
+      },
+      stock: { ...rt.stock },
+    };
+  },
+  deserialize(data) {
+    // No bound state means no live bag to restore into — the starter kit lands at init.
+    if (!this.state) return;
+    this._prepQuotes = new WeakMap();
+    this._preparationInFlight = false;
+    const rt = ensureRuntime(this.state);
+    // Pre-rack saves carry no `bombs` key at all (and a partial bag without a rack is treated
+    // the same): the additive default is the starter kit, not an error and not an empty bay.
+    if (!data || typeof data !== 'object' || !data.rack || typeof data.rack !== 'object') {
+      applyStarterKit(rt);
+      rt.cooldownUntil = 0;
+      rt.cooldowns = {};
+      normalizeSelection(rt);
+      return;
+    }
+    rt.cooldownUntil = Math.max(0, Number(data.cooldownUntil) || 0);
+    rt.cooldowns = {};
+    for (const [id, until] of Object.entries(data.cooldowns || {})) {
+      const t = Number(until);
+      if (BOMB_DEFS[id] && Number.isFinite(t) && t >= 0) rt.cooldowns[id] = t;
+    }
+    const sockets = Math.max(1, Math.min(BOMB_RACK.socketsMax, Math.floor(Number(data.rack.sockets)) || BOMB_RACK.socketsBase));
+    const savedCells = Array.isArray(data.rack.cells) ? data.rack.cells : [];
+    rt.rack = { sockets, cells: new Array(sockets).fill(null) };
+    rt.stock = {};
+    for (let i = 0; i < savedCells.length; i++) {
+      const c = savedCells[i], def = c && BOMB_DEFS[c.id];
+      const count = Math.floor(Number(c && c.count));
+      const normalized = def ? { id: def.id, count: Math.max(0, Math.min(def.magazine, Number.isFinite(count) ? count : 0)) } : null;
+      if (i < sockets) rt.rack.cells[i] = normalized;
+      // A save made before a socket reduction (or a crafted oversize rack) never destroys
+      // paid-for ordnance: overflow cell contents return to the hangar.
+      else if (normalized && normalized.count > 0) rt.stock[normalized.id] = (rt.stock[normalized.id] || 0) + normalized.count;
+    }
+    for (const [id, n] of Object.entries(data.stock || {})) {
+      const count = Math.floor(Number(n));
+      if (BOMB_DEFS[id] && count > 0) rt.stock[id] = (rt.stock[id] || 0) + count;
+    }
+    rt.selectedId = typeof data.selectedId === 'string' ? data.selectedId : null;
+    normalizeSelection(rt);
+    if (data.bombChosen === true) rt.bombChosen = true;
+    else if ('bombChosen' in rt) delete rt.bombChosen;
+    normalizeChargeChoice(this.state, rt);
+  },
+};
+
+/** Allocating convenience for tooling/HUD, never used inside the sim hot path. */
+export function listBombs(state) {
+  return [...liveBombList(state)].filter(e => e?.alive && e.type === BOMB_TYPE);
+}

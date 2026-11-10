@@ -1,0 +1,2434 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.pirate-sensor-mast.anchor.socket-listen",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.0528788566589355,
+        9.739418029785156,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Listen",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.pirate-sensor-mast.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.0528788566589355,
+        9.739418029785156,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.pirate-sensor-mast",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "7b7312addd98791b7505558023ffb3ad0f00264c2480e6ffab639a454b2f3e92",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          1.5756198835217576,
+          10.998859405517578,
+          0.4182022126280625
+        ],
+        "min": [
+          0.15369819881085334,
+          5.4102654457092285,
+          -0.4182022424303849
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d21c2d060f98828308bc0df10b631a96b559d1a3da761f9f83df664f9c5d24e2",
+      "id": "sf.render.pirate-sensor-mast.mesh.col-hi.primitive.0",
+      "indexCount": 840,
+      "indexed": true,
+      "materialHash": "11ee3508b0192ad7582dd7fadd407f6914f47afb6f41aba0f7a8499f975df37f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.035",
+      "nodeId": "sf.render.pirate-sensor-mast.mesh.col-hi",
+      "primitiveIndex": 0,
+      "vertexCount": 504
+    },
+    {
+      "bounds": {
+        "max": [
+          1.083446860835254,
+          5.544862747192383,
+          0.5018515257123851
+        ],
+        "min": [
+          -0.5070075993987917,
+          -0.07515464723110199,
+          -0.5018516449216747
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "09b03c41fd1b91222ea7bcc0bc2ce48c6fecae211a48ce289b55eeb5885fea16",
+      "id": "sf.render.pirate-sensor-mast.mesh.col-lo.primitive.0",
+      "indexCount": 840,
+      "indexed": true,
+      "materialHash": "de6cb84edd89ae45bd670d253be01ce6083632c25b7745be39b877836d91eb12",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.014",
+      "nodeId": "sf.render.pirate-sensor-mast.mesh.col-lo",
+      "primitiveIndex": 0,
+      "vertexCount": 504
+    },
+    {
+      "bounds": {
+        "max": [
+          1.6223030090332031,
+          9.401545104709758,
+          1.2999999523162842
+        ],
+        "min": [
+          0.2223030924797058,
+          8.101523819240438,
+          -0.09999996423721313
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "68e6bdbfae5fe155249a9877ad07a291cc401ce18949ed46282c3d987f71e810",
+      "id": "sf.render.pirate-sensor-mast.mesh.drum.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "01f412e3f0fdec2e47df35033460e28928da5997ea2424b9c0409193507c7d5a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.036",
+      "nodeId": "sf.render.pirate-sensor-mast.mesh.drum",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          1,
+          0.3999572845175464,
+          1
+        ],
+        "min": [
+          -1,
+          0.000042736344079225,
+          -1
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d56f12076ecbf53b8477800c54720cd24fe6e2153f61b5ae188928c752725300",
+      "id": "sf.render.pirate-sensor-mast.mesh.foot.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "de6cb84edd89ae45bd670d253be01ce6083632c25b7745be39b877836d91eb12",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.pirate-sensor-mast.mesh.foot",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0756785672242248,
+          9.862452507019043,
+          0.03655207431799434
+        ],
+        "min": [
+          -2.0380875866944397,
+          0.08302419632673264,
+          -3.436552184586587
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c51324649941aa5aa17e28061b465c7a703e0020229f12795b88d030b0f54708",
+      "id": "sf.render.pirate-sensor-mast.mesh.guy0.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "f6ac19da4caa1b500dda88b075a51b39f92241b30bb252f2dcf2a8ef20fa2a41",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.030",
+      "nodeId": "sf.render.pirate-sensor-mast.mesh.guy0",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0728139315835878,
+          9.8621244430542,
+          2.6389220914216436
+        ],
+        "min": [
+          -2.6352228556863713,
+          0.08335249871015549,
+          -0.03892210110739813
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ff60471b3609e3210195815571b0fb55efa7ec6c65f267b5733c7d8d53184036",
+      "id": "sf.render.pirate-sensor-mast.mesh.guy1.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "f6ac19da4caa1b500dda88b075a51b39f92241b30bb252f2dcf2a8ef20fa2a41",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.031",
+      "nodeId": "sf.render.pirate-sensor-mast.mesh.guy1",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          2.2387363636986097,
+          9.860515594482422,
+          3.83515219428416
+        ],
+        "min": [
+          0.9988546645148911,
+          0.08496130257844925,
+          -0.03515225314374715
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "428421d2a7627c074e684b931bd34352115b00a4195fc89d37dc05f94b98f941",
+      "id": "sf.render.pirate-sensor-mast.mesh.guy2.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "f6ac19da4caa1b500dda88b075a51b39f92241b30bb252f2dcf2a8ef20fa2a41",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.032",
+      "nodeId": "sf.render.pirate-sensor-mast.mesh.guy2",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.649999976158142,
+          0.14998931463782922,
+          -3.0500001311302185
+        ],
+        "min": [
+          -2.3499999046325684,
+          -0.04998930197184222,
+          -3.7500000596046448
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "201169e0ccafc117f7495b88c94ace0f70032bb5b8705d08a239385be9dd0eea",
+      "id": "sf.render.pirate-sensor-mast.mesh.guyplate0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.pirate-sensor-mast.mesh.guyplate0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.25,
+          0.14998929015916918,
+          2.9499998092651367
+        ],
+        "min": [
+          -2.9499998092651367,
+          -0.04998929239434334,
+          2.25
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "201169e0ccafc117f7495b88c94ace0f70032bb5b8705d08a239385be9dd0eea",
+      "id": "sf.render.pirate-sensor-mast.mesh.guyplate1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.pirate-sensor-mast.mesh.guyplate1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.549999952316284,
+          0.14998932980326354,
+          4.150000095367432
+        ],
+        "min": [
+          1.8499999046325684,
+          -0.04998932086256683,
+          3.450000047683716
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "201169e0ccafc117f7495b88c94ace0f70032bb5b8705d08a239385be9dd0eea",
+      "id": "sf.render.pirate-sensor-mast.mesh.guyplate2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.pirate-sensor-mast.mesh.guyplate2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.302878886461258,
+          11.369411508561782,
+          0.15000000596046448
+        ],
+        "min": [
+          1.002878874540329,
+          11.309424323952086,
+          -0.15000000596046448
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d56f12076ecbf53b8477800c54720cd24fe6e2153f61b5ae188928c752725300",
+      "id": "sf.render.pirate-sensor-mast.mesh.hood-lens.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f0d8b86f276ed9e28482a52e204a0077eb4375206b39f72df7703cded517ac73",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.pirate-sensor-mast.mesh.hood-lens",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.1961816407924977,
+          11.28941822052002,
+          0.04999471375069598
+        ],
+        "min": [
+          1.1095761202090892,
+          10.939417839050293,
+          -0.04999471375069598
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b391acbeb758d5d09ebd32124899337887687635a4832ffad717f763c28c867b",
+      "id": "sf.render.pirate-sensor-mast.mesh.hood-post.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.033",
+      "nodeId": "sf.render.pirate-sensor-mast.mesh.hood-post",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          1.427878886461258,
+          11.524410130435172,
+          0.2750000059604645
+        ],
+        "min": [
+          0.877878874540329,
+          11.394425692057666,
+          -0.2750000059604645
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c5fdd001e8f2059d923c5c694dd48f608002ca18d7624ed7376614bfb9509d87",
+      "id": "sf.render.pirate-sensor-mast.mesh.hood-shade.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "405b71ddc09f4d9a81f50904a6daf5d00fa5b9ef6e798ebe36b4422a42216719",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.pirate-sensor-mast.mesh.hood-shade",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.3828458786010742,
+          7.624684612821244,
+          -0.7373743573604783
+        ],
+        "min": [
+          -0.013892190530896187,
+          6.255738933016159,
+          -1.14765311084402
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "45889c964ca87a08a26f028fda491cf92ac426260568587077275e8eb9290a3d",
+      "id": "sf.render.pirate-sensor-mast.mesh.side-dish-dish.primitive.0",
+      "indexCount": 228,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cone.002",
+      "nodeId": "sf.render.pirate-sensor-mast.mesh.side-dish-dish",
+      "primitiveIndex": 0,
+      "vertexCount": 60
+    },
+    {
+      "bounds": {
+        "max": [
+          0.7869987391820159,
+          7.161440592105801,
+          -0.9874758720397949
+        ],
+        "min": [
+          0.6394953823694978,
+          6.904996175472324,
+          -1.6613802909851074
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "082a90564a1232c3ed332dca68911a3f5574c0c54bba7e5a7492fdc91ddb1f4a",
+      "id": "sf.render.pirate-sensor-mast.mesh.side-dish-feed.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.034",
+      "nodeId": "sf.render.pirate-sensor-mast.mesh.side-dish-feed",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          0.8747667074203491,
+          7.242785573005676,
+          -1.5088560581207275
+        ],
+        "min": [
+          0.5947667360305786,
+          6.962785601615906,
+          -1.788856029510498
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8b2516dd169f5695165cf329aa83bb4125973802e11647395f3c67094a5ae830",
+      "id": "sf.render.pirate-sensor-mast.mesh.side-dish-lnb.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.002",
+      "nodeId": "sf.render.pirate-sensor-mast.mesh.side-dish-lnb",
+      "primitiveIndex": 0,
+      "vertexCount": 146
+    },
+    {
+      "bounds": {
+        "max": [
+          1.2264394760131836,
+          5.969740968545363,
+          0.6500000059604645
+        ],
+        "min": [
+          -0.07356053590774536,
+          4.96967687050493,
+          -0.6500000059604645
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "be6910ce2957fa2fa8eaaf7ad638f7e6a0e2ec1aae65ae85fdc8c71428eaf223",
+      "id": "sf.render.pirate-sensor-mast.mesh.splice.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "405b71ddc09f4d9a81f50904a6daf5d00fa5b9ef6e798ebe36b4422a42216719",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.pirate-sensor-mast.mesh.splice",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8985162886944726,
+          11.00482554022734,
+          1.2999999523162842
+        ],
+        "min": [
+          1.2897574988040015,
+          8.42386918480928,
+          -1.2999999523162842
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "253f4fd219c3e6a3b66d8f6967a23c6397470cd818ecce46cc74ebc7339fbfee",
+      "id": "sf.render.pirate-sensor-mast.mesh.stolen-dish-dish.primitive.0",
+      "indexCount": 228,
+      "indexed": true,
+      "materialHash": "e76428a023b51c64a1243fbd3f92ab31c3075a17d4f9f6ffd436fb1213f5609e",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cone.001",
+      "nodeId": "sf.render.pirate-sensor-mast.mesh.stolen-dish-dish",
+      "primitiveIndex": 0,
+      "vertexCount": 60
+    },
+    {
+      "bounds": {
+        "max": [
+          2.8861098289489746,
+          9.947766658460653,
+          0.051939852139400236
+        ],
+        "min": [
+          1.6456483602523804,
+          9.679890278184855,
+          -0.051939852139400236
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "52f55852b5ba52091384a19f386e939fc0df35c3bdf4dc3b15530a8917520e51",
+      "id": "sf.render.pirate-sensor-mast.mesh.stolen-dish-feed.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.029",
+      "nodeId": "sf.render.pirate-sensor-mast.mesh.stolen-dish-feed",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          3.0188798904418945,
+          10.028239250183105,
+          0.1400003433227539
+        ],
+        "min": [
+          2.7388792037963867,
+          9.748238563537598,
+          -0.1400003433227539
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8b2516dd169f5695165cf329aa83bb4125973802e11647395f3c67094a5ae830",
+      "id": "sf.render.pirate-sensor-mast.mesh.stolen-dish-lnb.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.001",
+      "nodeId": "sf.render.pirate-sensor-mast.mesh.stolen-dish-lnb",
+      "primitiveIndex": 0,
+      "vertexCount": 146
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "01f412e3f0fdec2e47df35033460e28928da5997ea2424b9c0409193507c7d5a",
+      "id": "material:01f412e3f0fdec2e47df3503",
+      "name": "esk_scorch",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "11ee3508b0192ad7582dd7fadd407f6914f47afb6f41aba0f7a8499f975df37f",
+      "id": "material:11ee3508b0192ad7582dd7fa",
+      "name": "esk_truss_galv",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "id": "material:143624083cd581b0939afdce",
+      "name": "esk_bare_steel",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "405b71ddc09f4d9a81f50904a6daf5d00fa5b9ef6e798ebe36b4422a42216719",
+      "id": "material:405b71ddc09f4d9a81f50904",
+      "name": "esk_patch_plate",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "de6cb84edd89ae45bd670d253be01ce6083632c25b7745be39b877836d91eb12",
+      "id": "material:de6cb84edd89ae45bd670d25",
+      "name": "esk_paint_rust",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "e76428a023b51c64a1243fbd3f92ab31c3075a17d4f9f6ffd436fb1213f5609e",
+      "id": "material:e76428a023b51c64a1243fbd",
+      "name": "esk_paint_authority_navy",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f0d8b86f276ed9e28482a52e204a0077eb4375206b39f72df7703cded517ac73",
+      "id": "material:f0d8b86f276ed9e28482a52e",
+      "name": "esk_light_hooded_red",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f6ac19da4caa1b500dda88b075a51b39f92241b30bb252f2dcf2a8ef20fa2a41",
+      "id": "material:f6ac19da4caa1b500dda88b0",
+      "name": "esk_pipe_steel",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.pirate-sensor-mast.mesh.col-hi",
+      "localTransform": [
+        2.794296979904175,
+        0,
+        0,
+        0,
+        0,
+        2.794296979904175,
+        0,
+        0,
+        0,
+        0,
+        2.794296979904175,
+        0,
+        0.8646590411663055,
+        8.204562425613403,
+        -1.4901161193847656e-8,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "col_hi",
+      "nodeName": "col_hi",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.pirate-sensor-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pirate-sensor-mast.body",
+      "worldTransform": [
+        2.794296979904175,
+        0,
+        0,
+        0,
+        0,
+        2.794296979904175,
+        0,
+        0,
+        0,
+        0,
+        2.794296979904175,
+        0,
+        0.8646590411663055,
+        8.204562425613403,
+        -1.4901161193847656e-8,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pirate-sensor-mast.mesh.col-lo",
+      "localTransform": [
+        2.8100086972117424,
+        0,
+        0,
+        0,
+        0,
+        2.8100086972117424,
+        0,
+        0,
+        0,
+        0,
+        2.8100086972117424,
+        0,
+        0.2882196307182312,
+        2.7348540499806404,
+        -5.960464477539063e-8,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "col_lo",
+      "nodeName": "col_lo",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.pirate-sensor-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pirate-sensor-mast.body",
+      "worldTransform": [
+        2.8100086972117424,
+        0,
+        0,
+        0,
+        0,
+        2.8100086972117424,
+        0,
+        0,
+        0,
+        0,
+        2.8100086972117424,
+        0,
+        0.2882196307182312,
+        2.7348540499806404,
+        -5.960464477539063e-8,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pirate-sensor-mast.mesh.drum",
+      "localTransform": [
+        0.6999999582767487,
+        0,
+        0,
+        0,
+        0,
+        0.6999999582767487,
+        0,
+        0,
+        0,
+        0,
+        0.6999999582767487,
+        0,
+        0.9223030507564545,
+        8.751534461975098,
+        0.5999999940395355,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "drum",
+      "nodeName": "drum",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.pirate-sensor-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pirate-sensor-mast.body",
+      "worldTransform": [
+        0.6999999582767487,
+        0,
+        0,
+        0,
+        0,
+        0.6999999582767487,
+        0,
+        0,
+        0,
+        0,
+        0.6999999582767487,
+        0,
+        0.9223030507564545,
+        8.751534461975098,
+        0.5999999940395355,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pirate-sensor-mast.mesh.foot",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.20000001043081284,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "foot",
+      "nodeName": "foot",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.pirate-sensor-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pirate-sensor-mast.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0.20000001043081284,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pirate-sensor-mast.mesh.guy0",
+      "localTransform": [
+        4.889714155346155,
+        0,
+        0,
+        0,
+        0,
+        4.889714155346155,
+        0,
+        0,
+        0,
+        0,
+        4.889714155346155,
+        0,
+        -0.4812045097351074,
+        4.972738351672888,
+        -1.7000000551342964,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "guy0",
+      "nodeName": "guy0",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.pirate-sensor-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pirate-sensor-mast.body",
+      "worldTransform": [
+        4.889714155346155,
+        0,
+        0,
+        0,
+        0,
+        4.889714155346155,
+        0,
+        0,
+        0,
+        0,
+        4.889714155346155,
+        0,
+        -0.4812045097351074,
+        4.972738351672888,
+        -1.7000000551342964,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pirate-sensor-mast.mesh.guy1",
+      "localTransform": [
+        4.889385972172022,
+        0,
+        0,
+        0,
+        0,
+        4.889385972172022,
+        0,
+        0,
+        0,
+        0,
+        4.889385972172022,
+        0,
+        -0.7812044620513916,
+        4.972738470882177,
+        1.2999999951571226,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "guy1",
+      "nodeName": "guy1",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.pirate-sensor-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pirate-sensor-mast.body",
+      "worldTransform": [
+        4.889385972172022,
+        0,
+        0,
+        0,
+        0,
+        4.889385972172022,
+        0,
+        0,
+        0,
+        0,
+        4.889385972172022,
+        0,
+        -0.7812044620513916,
+        4.972738470882177,
+        1.2999999951571226,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pirate-sensor-mast.mesh.guy2",
+      "localTransform": [
+        4.887777145951986,
+        0,
+        0,
+        0,
+        0,
+        4.887777145951986,
+        0,
+        0,
+        0,
+        0,
+        4.887777145951986,
+        0,
+        1.6187955141067505,
+        4.972738448530436,
+        1.8999999705702066,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "guy2",
+      "nodeName": "guy2",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.pirate-sensor-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pirate-sensor-mast.body",
+      "worldTransform": [
+        4.887777145951986,
+        0,
+        0,
+        0,
+        0,
+        4.887777145951986,
+        0,
+        0,
+        0,
+        0,
+        4.887777145951986,
+        0,
+        1.6187955141067505,
+        4.972738448530436,
+        1.8999999705702066,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pirate-sensor-mast.mesh.guyplate0",
+      "localTransform": [
+        0.34999996423721313,
+        0,
+        0,
+        0,
+        0,
+        0.34999996423721313,
+        0,
+        0,
+        0,
+        0,
+        0.34999996423721313,
+        0,
+        -1.9999999403953552,
+        0.05000000633299351,
+        -3.4000000953674316,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "guyplate0",
+      "nodeName": "guyplate0",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.pirate-sensor-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pirate-sensor-mast.body",
+      "worldTransform": [
+        0.34999996423721313,
+        0,
+        0,
+        0,
+        0,
+        0.34999996423721313,
+        0,
+        0,
+        0,
+        0,
+        0.34999996423721313,
+        0,
+        -1.9999999403953552,
+        0.05000000633299351,
+        -3.4000000953674316,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pirate-sensor-mast.mesh.guyplate1",
+      "localTransform": [
+        0.34999990463256836,
+        0,
+        0,
+        0,
+        0,
+        0.34999990463256836,
+        0,
+        0,
+        0,
+        0,
+        0.34999990463256836,
+        0,
+        -2.5999999046325684,
+        0.04999999888241291,
+        2.5999999046325684,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "guyplate1",
+      "nodeName": "guyplate1",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.pirate-sensor-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pirate-sensor-mast.body",
+      "worldTransform": [
+        0.34999990463256836,
+        0,
+        0,
+        0,
+        0,
+        0.34999990463256836,
+        0,
+        0,
+        0,
+        0,
+        0.34999990463256836,
+        0,
+        -2.5999999046325684,
+        0.04999999888241291,
+        2.5999999046325684,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pirate-sensor-mast.mesh.guyplate2",
+      "localTransform": [
+        0.3500000238418579,
+        0,
+        0,
+        0,
+        0,
+        0.3500000238418579,
+        0,
+        0,
+        0,
+        0,
+        0.3500000238418579,
+        0,
+        2.1999999284744263,
+        0.05000000447034836,
+        3.8000000715255737,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "guyplate2",
+      "nodeName": "guyplate2",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.pirate-sensor-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pirate-sensor-mast.body",
+      "worldTransform": [
+        0.3500000238418579,
+        0,
+        0,
+        0,
+        0,
+        0.3500000238418579,
+        0,
+        0,
+        0,
+        0,
+        0.3500000238418579,
+        0,
+        2.1999999284744263,
+        0.05000000447034836,
+        3.8000000715255737,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pirate-sensor-mast.mesh.hood-lens",
+      "localTransform": [
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        -0.019999999087303877,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hood_lens",
+      "nodeName": "hood_lens",
+      "nodePath": [
+        0,
+        11,
+        0
+      ],
+      "parentId": "sf.render.pirate-sensor-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pirate-sensor-mast.body",
+      "worldTransform": [
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        0,
+        0,
+        0,
+        0.15000000596046448,
+        0,
+        1.1528788805007935,
+        11.339417916256934,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pirate-sensor-mast.mesh.hood-post",
+      "localTransform": [
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        1.1528788805007935,
+        11.114418029785156,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hood_post",
+      "nodeName": "hood_post",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.pirate-sensor-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pirate-sensor-mast.body",
+      "worldTransform": [
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        0,
+        0,
+        0,
+        0.17500019073486328,
+        0,
+        1.1528788805007935,
+        11.114418029785156,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pirate-sensor-mast.mesh.hood-shade",
+      "localTransform": [
+        0.2750000059604645,
+        0,
+        0,
+        0,
+        0,
+        0.2750000059604645,
+        0,
+        0,
+        0,
+        0,
+        0.2750000059604645,
+        0,
+        0,
+        0.09999999590218067,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hood_shade",
+      "nodeName": "hood_shade",
+      "nodePath": [
+        0,
+        11,
+        1
+      ],
+      "parentId": "sf.render.pirate-sensor-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pirate-sensor-mast.body",
+      "worldTransform": [
+        0.2750000059604645,
+        0,
+        0,
+        0,
+        0,
+        0.2750000059604645,
+        0,
+        0,
+        0,
+        0,
+        0.2750000059604645,
+        0,
+        1.1528788805007935,
+        11.459417911246419,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pirate-sensor-mast.mesh.side-dish-dish",
+      "localTransform": [
+        0.6983690345659852,
+        0,
+        0,
+        0,
+        0,
+        0.6983690345659852,
+        0,
+        0,
+        0,
+        0,
+        0.6983690345659852,
+        0,
+        0.684476844035089,
+        6.940211772918701,
+        -0.9425137341022491,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "side_dish_dish",
+      "nodeName": "side_dish_dish",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.pirate-sensor-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pirate-sensor-mast.body",
+      "worldTransform": [
+        0.6983690345659852,
+        0,
+        0,
+        0,
+        0,
+        0.6983690345659852,
+        0,
+        0,
+        0,
+        0,
+        0.6983690345659852,
+        0,
+        0.684476844035089,
+        6.940211772918701,
+        -0.9425137341022491,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pirate-sensor-mast.mesh.side-dish-feed",
+      "localTransform": [
+        0.33695220947265625,
+        0,
+        0,
+        0,
+        0,
+        0.33695220947265625,
+        0,
+        0,
+        0,
+        0,
+        0.33695220947265625,
+        0,
+        0.7132470607757568,
+        7.0332183837890625,
+        -1.3244280815124512,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "side_dish_feed",
+      "nodeName": "side_dish_feed",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.pirate-sensor-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pirate-sensor-mast.body",
+      "worldTransform": [
+        0.33695220947265625,
+        0,
+        0,
+        0,
+        0,
+        0.33695220947265625,
+        0,
+        0,
+        0,
+        0,
+        0.33695220947265625,
+        0,
+        0.7132470607757568,
+        7.0332183837890625,
+        -1.3244280815124512,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pirate-sensor-mast.mesh.side-dish-lnb",
+      "localTransform": [
+        0.13999998569488525,
+        0,
+        0,
+        0,
+        0,
+        0.13999998569488525,
+        0,
+        0,
+        0,
+        0,
+        0.13999998569488525,
+        0,
+        0.7347667217254639,
+        7.102785587310791,
+        -1.6488560438156128,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "side_dish_lnb",
+      "nodeName": "side_dish_lnb",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.pirate-sensor-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pirate-sensor-mast.body",
+      "worldTransform": [
+        0.13999998569488525,
+        0,
+        0,
+        0,
+        0,
+        0.13999998569488525,
+        0,
+        0,
+        0,
+        0,
+        0.13999998569488525,
+        0,
+        0.7347667217254639,
+        7.102785587310791,
+        -1.6488560438156128,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pirate-sensor-mast.mesh.splice",
+      "localTransform": [
+        0.6500000059604645,
+        0,
+        0,
+        0,
+        0,
+        0.6500000059604645,
+        0,
+        0,
+        0,
+        0,
+        0.6500000059604645,
+        0,
+        0.5764394700527191,
+        5.4697089195251465,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "splice",
+      "nodeName": "splice",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.pirate-sensor-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pirate-sensor-mast.body",
+      "worldTransform": [
+        0.6500000059604645,
+        0,
+        0,
+        0,
+        0,
+        0.6500000059604645,
+        0,
+        0,
+        0,
+        0,
+        0.6500000059604645,
+        0,
+        0.5764394700527191,
+        5.4697089195251465,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pirate-sensor-mast.mesh.stolen-dish-dish",
+      "localTransform": [
+        1.2999999523162842,
+        0,
+        0,
+        0,
+        0,
+        1.2999999523162842,
+        0,
+        0,
+        0,
+        0,
+        1.2999999523162842,
+        0,
+        1.594136893749237,
+        9.71434736251831,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "stolen_dish_dish",
+      "nodeName": "stolen_dish_dish",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.pirate-sensor-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pirate-sensor-mast.body",
+      "worldTransform": [
+        1.2999999523162842,
+        0,
+        0,
+        0,
+        0,
+        1.2999999523162842,
+        0,
+        0,
+        0,
+        0,
+        1.2999999523162842,
+        0,
+        1.594136893749237,
+        9.71434736251831,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pirate-sensor-mast.mesh.stolen-dish-feed",
+      "localTransform": [
+        0.6202307343482971,
+        0,
+        0,
+        0,
+        0,
+        0.6202307343482971,
+        0,
+        0,
+        0,
+        0,
+        0.6202307343482971,
+        0,
+        2.2658790946006775,
+        9.813828468322754,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "stolen_dish_feed",
+      "nodeName": "stolen_dish_feed",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.pirate-sensor-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pirate-sensor-mast.body",
+      "worldTransform": [
+        0.6202307343482971,
+        0,
+        0,
+        0,
+        0,
+        0.6202307343482971,
+        0,
+        0,
+        0,
+        0,
+        0.6202307343482971,
+        0,
+        2.2658790946006775,
+        9.813828468322754,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pirate-sensor-mast.mesh.stolen-dish-lnb",
+      "localTransform": [
+        0.1400003433227539,
+        0,
+        0,
+        0,
+        0,
+        0.1400003433227539,
+        0,
+        0,
+        0,
+        0,
+        0.1400003433227539,
+        0,
+        2.8788795471191406,
+        9.888238906860352,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "stolen_dish_lnb",
+      "nodeName": "stolen_dish_lnb",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.pirate-sensor-mast.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pirate-sensor-mast.body",
+      "worldTransform": [
+        0.1400003433227539,
+        0,
+        0,
+        0,
+        0,
+        0.1400003433227539,
+        0,
+        0,
+        0,
+        0,
+        0.1400003433227539,
+        0,
+        2.8788795471191406,
+        9.888238906860352,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.pirate-sensor-mast.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "pirate_sensor_mast",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.pirate-sensor-mast.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "dc774170fbd1a955619ff4360cd2afc1fe27fcad251fa92cf6e0d7faf83ffe57"
+    },
+    "sourceGlb": {
+      "bytes": 31988,
+      "sha256": "cc40948a556d1909216879cebb233491ce28d29dd33e6e0fae851a7dd3e57634",
+      "uri": "place_pirate_sensor_mast.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 38564,
+    "sha256": "99b942040f043d101e500495a2b535b094462c6a81e732e1cfe24c984e3fb911",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.034440040588378906,
+        5.724627741602035,
+        0.20000001788139343
+      ],
+      "max": [
+        3.0188798904418945,
+        11.524410130435172,
+        4.150000095367432
+      ],
+      "min": [
+        -2.9499998092651367,
+        -0.07515464723110199,
+        -3.7500000596046448
+      ],
+      "size": [
+        5.968879699707031,
+        11.599564777666274,
+        7.900000154972076
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2.0528788566589355,
+          9.739418029785156,
+          0,
+          1
+        ],
+        "name": "SOCKET_Listen",
+        "planIndex": 20,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Listen",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Listen",
+            "recordIds": [
+              "sf.render.pirate-sensor-mast.anchor.socket-listen"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 14,
+      "mechanical": 4,
+      "rubber": 1,
+      "signal": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "rubber"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 14,
+        "role": "signal"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 18,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 22,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 24,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 25,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          2.794296979904175,
+          0,
+          0,
+          0,
+          0,
+          2.794296979904175,
+          0,
+          0,
+          0,
+          0,
+          2.794296979904175,
+          0,
+          0.8646590411663055,
+          8.204562425613403,
+          -1.4901161193847656e-8,
+          1
+        ],
+        "name": "col_hi",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.8100086972117424,
+          0,
+          0,
+          0,
+          0,
+          2.8100086972117424,
+          0,
+          0,
+          0,
+          0,
+          2.8100086972117424,
+          0,
+          0.2882196307182312,
+          2.7348540499806404,
+          -5.960464477539063e-8,
+          1
+        ],
+        "name": "col_lo",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.6999999582767487,
+          0,
+          0,
+          0,
+          0,
+          0.6999999582767487,
+          0,
+          0,
+          0,
+          0,
+          0.6999999582767487,
+          0,
+          0.9223030507564545,
+          8.751534461975098,
+          0.5999999940395355,
+          1
+        ],
+        "name": "drum",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0.20000001043081284,
+          0,
+          1
+        ],
+        "name": "foot",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.889714155346155,
+          0,
+          0,
+          0,
+          0,
+          4.889714155346155,
+          0,
+          0,
+          0,
+          0,
+          4.889714155346155,
+          0,
+          -0.4812045097351074,
+          4.972738351672888,
+          -1.7000000551342964,
+          1
+        ],
+        "name": "guy0",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.889385972172022,
+          0,
+          0,
+          0,
+          0,
+          4.889385972172022,
+          0,
+          0,
+          0,
+          0,
+          4.889385972172022,
+          0,
+          -0.7812044620513916,
+          4.972738470882177,
+          1.2999999951571226,
+          1
+        ],
+        "name": "guy1",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.887777145951986,
+          0,
+          0,
+          0,
+          0,
+          4.887777145951986,
+          0,
+          0,
+          0,
+          0,
+          4.887777145951986,
+          0,
+          1.6187955141067505,
+          4.972738448530436,
+          1.8999999705702066,
+          1
+        ],
+        "name": "guy2",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.34999996423721313,
+          0,
+          0,
+          0,
+          0,
+          0.34999996423721313,
+          0,
+          0,
+          0,
+          0,
+          0.34999996423721313,
+          0,
+          -1.9999999403953552,
+          0.05000000633299351,
+          -3.4000000953674316,
+          1
+        ],
+        "name": "guyplate0",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.34999990463256836,
+          0,
+          0,
+          0,
+          0,
+          0.34999990463256836,
+          0,
+          0,
+          0,
+          0,
+          0.34999990463256836,
+          0,
+          -2.5999999046325684,
+          0.04999999888241291,
+          2.5999999046325684,
+          1
+        ],
+        "name": "guyplate1",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3500000238418579,
+          0,
+          0,
+          0,
+          0,
+          0.3500000238418579,
+          0,
+          0,
+          0,
+          0,
+          0.3500000238418579,
+          0,
+          2.1999999284744263,
+          0.05000000447034836,
+          3.8000000715255737,
+          1
+        ],
+        "name": "guyplate2",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.15000000596046448,
+          0,
+          0,
+          0,
+          0,
+          0.15000000596046448,
+          0,
+          0,
+          0,
+          0,
+          0.15000000596046448,
+          0,
+          1.1528788805007935,
+          11.339417916256934,
+          0,
+          1
+        ],
+        "name": "hood_lens",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.2750000059604645,
+          0,
+          0,
+          0,
+          0,
+          0.2750000059604645,
+          0,
+          0,
+          0,
+          0,
+          0.2750000059604645,
+          0,
+          1.1528788805007935,
+          11.459417911246419,
+          0,
+          1
+        ],
+        "name": "hood_shade",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.17500019073486328,
+          0,
+          0,
+          0,
+          0,
+          0.17500019073486328,
+          0,
+          0,
+          0,
+          0,
+          0.17500019073486328,
+          0,
+          1.1528788805007935,
+          11.114418029785156,
+          0,
+          1
+        ],
+        "name": "hood_post",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.6983690345659852,
+          0,
+          0,
+          0,
+          0,
+          0.6983690345659852,
+          0,
+          0,
+          0,
+          0,
+          0.6983690345659852,
+          0,
+          0.684476844035089,
+          6.940211772918701,
+          -0.9425137341022491,
+          1
+        ],
+        "name": "side_dish_dish",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.33695220947265625,
+          0,
+          0,
+          0,
+          0,
+          0.33695220947265625,
+          0,
+          0,
+          0,
+          0,
+          0.33695220947265625,
+          0,
+          0.7132470607757568,
+          7.0332183837890625,
+          -1.3244280815124512,
+          1
+        ],
+        "name": "side_dish_feed",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.13999998569488525,
+          0,
+          0,
+          0,
+          0,
+          0.13999998569488525,
+          0,
+          0,
+          0,
+          0,
+          0.13999998569488525,
+          0,
+          0.7347667217254639,
+          7.102785587310791,
+          -1.6488560438156128,
+          1
+        ],
+        "name": "side_dish_lnb",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.6500000059604645,
+          0,
+          0,
+          0,
+          0,
+          0.6500000059604645,
+          0,
+          0,
+          0,
+          0,
+          0.6500000059604645,
+          0,
+          0.5764394700527191,
+          5.4697089195251465,
+          0,
+          1
+        ],
+        "name": "splice",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.2999999523162842,
+          0,
+          0,
+          0,
+          0,
+          1.2999999523162842,
+          0,
+          0,
+          0,
+          0,
+          1.2999999523162842,
+          0,
+          1.594136893749237,
+          9.71434736251831,
+          0,
+          1
+        ],
+        "name": "stolen_dish_dish",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.6202307343482971,
+          0,
+          0,
+          0,
+          0,
+          0.6202307343482971,
+          0,
+          0,
+          0,
+          0,
+          0.6202307343482971,
+          0,
+          2.2658790946006775,
+          9.813828468322754,
+          0,
+          1
+        ],
+        "name": "stolen_dish_feed",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.1400003433227539,
+          0,
+          0,
+          0,
+          0,
+          0.1400003433227539,
+          0,
+          0,
+          0,
+          0,
+          0.1400003433227539,
+          0,
+          2.8788795471191406,
+          9.888238906860352,
+          0,
+          1
+        ],
+        "name": "stolen_dish_lnb",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_pirate_sensor_mast.glb"
+  },
+  "runtimeHash": "9d2945b135c3b39ac2a972f0f5dd6803c16f22283f2be7301d82c818703ffa82",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.0188798904418945,
+          11.524410130435172,
+          4.150000095367432
+        ],
+        "min": [
+          -2.9499998092651367,
+          -0.07515464723110199,
+          -3.7500000596046448
+        ]
+      },
+      "id": "sf.render.pirate-sensor-mast.body",
+      "nodeIds": [
+        "sf.render.pirate-sensor-mast.mesh.col-hi",
+        "sf.render.pirate-sensor-mast.mesh.col-lo",
+        "sf.render.pirate-sensor-mast.mesh.drum",
+        "sf.render.pirate-sensor-mast.mesh.foot",
+        "sf.render.pirate-sensor-mast.mesh.guy0",
+        "sf.render.pirate-sensor-mast.mesh.guy1",
+        "sf.render.pirate-sensor-mast.mesh.guy2",
+        "sf.render.pirate-sensor-mast.mesh.guyplate0",
+        "sf.render.pirate-sensor-mast.mesh.guyplate1",
+        "sf.render.pirate-sensor-mast.mesh.guyplate2",
+        "sf.render.pirate-sensor-mast.mesh.hood-lens",
+        "sf.render.pirate-sensor-mast.mesh.hood-post",
+        "sf.render.pirate-sensor-mast.mesh.hood-shade",
+        "sf.render.pirate-sensor-mast.mesh.side-dish-dish",
+        "sf.render.pirate-sensor-mast.mesh.side-dish-feed",
+        "sf.render.pirate-sensor-mast.mesh.side-dish-lnb",
+        "sf.render.pirate-sensor-mast.mesh.splice",
+        "sf.render.pirate-sensor-mast.mesh.stolen-dish-dish",
+        "sf.render.pirate-sensor-mast.mesh.stolen-dish-feed",
+        "sf.render.pirate-sensor-mast.mesh.stolen-dish-lnb",
+        "sf.render.pirate-sensor-mast.root"
+      ]
+    }
+  ]
+}

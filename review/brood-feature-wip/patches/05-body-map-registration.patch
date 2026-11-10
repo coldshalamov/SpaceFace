@@ -1,0 +1,17 @@
+diff --git a/src/data/broodBodies.js b/src/data/broodBodies.js
+index 7635623..9907207 100644
+--- a/src/data/broodBodies.js
++++ b/src/data/broodBodies.js
+@@ -1,3 +1,4 @@
++import { BROOD_SPLITTER_BODIES } from './broodSplitterBodies.js';
+ // P14 Brood: original animals, never Vethari hull-infection or recoloured ships.
+ // One pure X/Y-up/Z asset/physics contract. The concave nose is intentional;
+ // neither collision nor lower LODs may replace it with a convex envelope.
+@@ -27,6 +28,7 @@ const build = (id,values) => ({...shared, enemyId:id, id,
+   file:`wholeships/${id}_v01.glb`, ...values,
+ });
+ export const BROOD_BODY_CONTRACTS = freeze({
++  ...BROOD_SPLITTER_BODIES,
+   brood_mite:build('brood_mite',{
+     idea:'Three pearl lobes, split bite', mass:22, radius:7.1,
+     centerOfMass:[-.7,0,0], bounds:{min:[-6,-1,-5],max:[6,2.3,5]},

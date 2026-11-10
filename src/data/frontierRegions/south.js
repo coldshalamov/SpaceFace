@@ -1,0 +1,795 @@
+// M2b SOUTH/EAST frontier cluster — self-contained, canonical-compatible sector records.
+// Additive only: does not mutate the original 10 authored story sectors.
+// Gate positions use the same bearing rule as sectorAnchors.js (GATE_R=0.82 toward neighbor map cell).
+// Pure data. No imports, no Math.random, no runtime deps.
+
+/** Lattice spacing matching SECTOR_ORIGIN_LATTICE_WU / FRAME_ORIGIN_QUANTUM_WU. */
+export const LATTICE_WU = 4096;
+
+/** Original 10 authored story-region IDs — frozen reference for integration guards. */
+export const FROZEN_ORIGINAL_SECTOR_IDS = Object.freeze([
+  'sector_helios_prime',
+  'sector_ceres_belt',
+  'sector_tethys_junction',
+  'sector_vesta_forge',
+  'sector_pallas_drift',
+  'sector_io_reach',
+  'sector_charon_expanse',
+  'sector_sker_haven',
+  'sector_veil_nebula',
+  'sector_ashfall_reach',
+]);
+
+/** SOUTH/EAST M2b region IDs in stable integration order. */
+export const SOUTH_SECTOR_IDS = Object.freeze([
+  'sector_eunomia_gulf',
+  'sector_sedna_dark',
+  'sector_dione_lane',
+]);
+
+/** Map-graph origin cells (map.x, map.y) — global XZ = cell * LATTICE_WU. */
+export const SOUTH_ORIGIN_CELLS = Object.freeze({
+  sector_eunomia_gulf: Object.freeze({ x: 10, y: 14 }),
+  sector_sedna_dark: Object.freeze({ x: 5, y: 15 }),
+  sector_dione_lane: Object.freeze({ x: 8, y: -1 }),
+});
+
+/** Explicit 4096-lattice galactic-global origins. */
+export const SOUTH_ORIGINS = Object.freeze({
+  sector_eunomia_gulf: Object.freeze({
+    x: 10 * LATTICE_WU,
+    z: 14 * LATTICE_WU,
+  }),
+  sector_sedna_dark: Object.freeze({
+    x: 5 * LATTICE_WU,
+    z: 15 * LATTICE_WU,
+  }),
+  sector_dione_lane: Object.freeze({
+    x: 8 * LATTICE_WU,
+    z: -1 * LATTICE_WU,
+  }),
+});
+
+/** Palette blocks mirrored from SECTOR_PALETTE_CLASSES (no shared import). */
+const PALETTE_CORE = Object.freeze({
+  key: 0xffe2bd,
+  rim: 0x82baf0,
+  fill: 0xa3b4dd,
+  ambient: 0x45516f,
+  fog: 0x05070b,
+  fogDensity: 0,
+  nebulaTint: 0x2450a0,
+  dust: 0x8ec0e8,
+});
+
+const PALETTE_FRINGE = Object.freeze({
+  key: 0xffb07a,
+  rim: 0x9875ce,
+  fill: 0xbc91a6,
+  ambient: 0x51435d,
+  fog: 0x090504,
+  fogDensity: 0.00003,
+  nebulaTint: 0x8a1e1e,
+  dust: 0xc15032,
+});
+
+const PALETTE_ANOMALY = Object.freeze({
+  key: 0xc8b6ff,
+  rim: 0x54ffb0,
+  fill: 0x4ddc92,
+  ambient: 0x494760,
+  fog: 0x08050d,
+  fogDensity: 0.00012,
+  nebulaTint: 0x5a1e8a,
+  dust: 0x79ffc8,
+});
+
+/**
+ * Canonical-compatible sector cards for the SOUTH/EAST cluster.
+ * neighbors include intra-cluster edges + external story-sector stubs for later graph integration.
+ * Cross-cluster edges (triton/eris/nereid) are deferred to the graph-gate integration pass.
+ */
+export const SOUTH_SECTORS = Object.freeze([
+  Object.freeze({
+    id: 'sector_eunomia_gulf',
+    name: 'Eunomia Gulf',
+    threat: 'vael',
+    tier: 3,
+    security: 0.10,
+    charted: false,
+    factionId: 'faction_understory',
+    position: Object.freeze({ x: 10, y: 14 }),
+    worldRadius: 5200,
+    paletteClass: 'fringe',
+    palette: PALETTE_FRINGE,
+    trafficPerMin: 1,
+    enemyDensity: 0.70,
+    enemyLevel: Object.freeze([8, 12]),
+    neighbors: Object.freeze([
+      'sector_sedna_dark',
+    ]),
+    stations: Object.freeze([
+      Object.freeze({
+        id: 'station_eunomia',
+        name: 'Eunomia Fence',
+        type: 'blackmarket',
+        factionId: 'faction_understory',
+        size: 'S',
+        services: Object.freeze(['black_market', 'repair']),
+        chartNote: 'Vael-licensed salvage changes hands here; fuel and hospitality do not.',
+        repGated: true,
+      }),
+    ]),
+    fields: Object.freeze([
+      Object.freeze({ id: 'f_eunomia_1', type: 'ast_rare_exotic', countWeight: 1.0 }),
+      // 04 "Throw: licensed plate and wrecks" — stamped hull metal off the Gulf Hulk's ribs (row 540).
+      Object.freeze({ id: 'f_eunomia_2', type: 'ast_metallic', countWeight: 0.6 }),
+    ]),
+    hazards: Object.freeze([
+      Object.freeze({
+        type: 'debris',
+        center: Object.freeze({ x: 480, z: -360 }),
+        radius: 700,
+        intensity: 0.5,
+      }),
+      Object.freeze({
+        type: 'radiation',
+        center: Object.freeze({ x: -620, z: 540 }),
+        radius: 640,
+        intensity: 0.55,
+      }),
+    ]),
+    pois: Object.freeze([
+      Object.freeze({
+        id: 'poi_eunomia_hulk',
+        type: 'derelict',
+        name: 'Gulf Hulk',
+      }),
+      Object.freeze({
+        id: 'poi_eunomia_row_marker',
+        type: 'beacon',
+        name: "Gardener's Row Marker",
+        discoveryPlate: Object.freeze({
+          title: "Gardener's Row Marker",
+          body: "A compost post in the Understory's hand, newer than the wreck it faces: 'Row 7 — the hulk YARROW, planted whole. Pell Osta, S. Reck, and the ship's cat are returned to the garden.' The scoring on the hull predates the planting; the gardener only counts what falls.",
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_eunomia_ledger',
+        type: 'beacon',
+        name: 'Gulf Ledger Plate',
+        factionId: 'faction_vael',
+      }),
+      Object.freeze({
+        id: 'poi_eunomia_debris',
+        type: 'wreck',
+        name: 'Paint-Scar Debris',
+      }),
+      Object.freeze({
+        id: 'poi_eunomia_bed_marker',
+        type: 'beacon',
+        name: 'Painted-Bed Marker',
+        discoveryPlate: Object.freeze({
+          title: 'Painted-Bed Marker',
+          body: "A second compost post at the field's edge: 'Bed 12 — loose tonnage, three crews' worth of scrap. What names were left aboard are written on the stake's weather side.' Kill-marks point inward from every bearing; whatever died here was running.",
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_hush',
+        type: 'anomaly',
+        name: 'The Hush',
+        landmark: true,
+        visualRadius: 420,
+        scanRange: 1400,
+        flavorSourceId: 'planet_hush',
+        bandProximityRadius: 2400,
+        dressingExclusionRadius: 900,
+        discoveryPlate: Object.freeze({
+          title: 'The Hush',
+          body: 'A world-shaped gap in the band. Inside its shadow the receiver loses carrier and static together; gain climbs and the silence stays level. Signal only resumes past the edge of its orbital shadow, as if the planet had closed its mouth around everything that tried to speak.',
+        }),
+      }),
+      // ATTENTION S-14 (4/5) — the licensed yard's marks: the fence crews' gulf-stake on
+      // the exotic seam, and the lamp row strung along the licensed plate drift.
+      Object.freeze({
+        id: 'poi_eunomia_gulf_stake',
+        type: 'beacon',
+        name: 'Gulf Stake',
+        discoveryPlate: Object.freeze({
+          title: 'Gulf Stake',
+          body: 'A claim stake stamped LICENSE E-1140 in the Understory\u2019s plate script: the fence\u2019s cutting crews file what they pull under a yard license, not a name. The exotic seam\u2019s last three filings are stamped the same way — licensed, uninspected, unreturned.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_eunomia_lamp_row',
+        type: 'derelict',
+        name: 'Lamp Row',
+        discoveryPlate: Object.freeze({
+          title: 'Lamp Row',
+          body: 'A strung line of worklamps along the licensed plate drift, half dead and half burning on scavenged cells — the yard\u2019s shift line, strung so the cutting crews can find the drift after the fog lifts. The lit half marks where the last crew stopped.',
+        }),
+      }),
+    ]),
+  }),
+
+  Object.freeze({
+    id: 'sector_sedna_dark',
+    name: 'Sedna Dark',
+    threat: 'vael',
+    industries: { research: true },
+    tier: 4,
+    security: 0.06,
+    charted: false,
+    factionId: 'faction_helix',
+    position: Object.freeze({ x: 5, y: 15 }),
+    worldRadius: 5400,
+    paletteClass: 'anomaly',
+    palette: PALETTE_ANOMALY,
+    trafficPerMin: 0,
+    enemyDensity: 0.78,
+    enemyLevel: Object.freeze([10, 14]),
+    neighbors: Object.freeze([
+      'sector_eunomia_gulf',
+      'sector_ashfall_reach',
+    ]),
+    stations: Object.freeze([
+      Object.freeze({
+        id: 'station_sedna',
+        name: 'Sedna Survey Post',
+        type: 'research',
+        factionId: 'faction_helix',
+        size: 'S',
+        services: Object.freeze(['scan_tech', 'repair']),
+        // No 'missions' desk: the hub no longer advertises "contracts here", the board rolls
+        // no procedural work (missions.js desklessOutpost), and remote salvage reroutes can
+        // no longer point at a station that cannot fuel the trip. The Ringworld reading still
+        // files through the board — a filed record is not desk work.
+        chartNote: 'Sensors and hull patches at the dark rim; no fuel, no rescue, few questions.',
+      }),
+    ]),
+    fields: Object.freeze([
+      Object.freeze({ id: 'f_sedna_1', type: 'ast_rare_exotic', countWeight: 1.0 }),
+      // 04 "Throw: dead lane buoys" — dead hardware drift on the unlit lane (row 540).
+      Object.freeze({ id: 'f_sedna_2', type: 'ast_metallic', countWeight: 0.55 }),
+    ]),
+    hazards: Object.freeze([
+      Object.freeze({
+        type: 'radiation',
+        center: Object.freeze({ x: 120, z: -180 }),
+        radius: 900,
+        intensity: 0.72,
+      }),
+    ]),
+    pois: Object.freeze([
+      Object.freeze({
+        id: 'poi_sedna_vault',
+        type: 'cache',
+        name: 'Sedna Vault',
+        hidden: true,
+        contents: Object.freeze({ commodityId: 'cmdty_crystal_lumin', amount: 4 }),
+      }),
+      Object.freeze({
+        id: 'poi_sedna_cadence',
+        type: 'beacon',
+        name: 'Dark Cadence Beacon',
+        factionId: 'faction_vael',
+      }),
+      Object.freeze({
+        id: 'poi_sedna_ringworld',
+        type: 'anomaly',
+        name: 'The Ringworld Arc',
+        factionId: 'faction_vael',
+        scannerSignalKind: 'archive',
+        repeatableScannerSignal: true,
+        flavorTargetRef: 'landmark_c11_ringworld_arc',
+        discoveryPlate: Object.freeze({
+          title: 'The Ringworld Arc',
+          body: 'A colossal arc segment of an ancient orbital megastructure orbiting the frozen dark. Dry river basins and dormant metropolis grids curve across the interior circumference, powered by deep geothermal reserves that have outlived the system\'s dead primary.',
+        }),
+      }),
+      // ATTENTION S-14 (13/14) — the dark's bookkeeping: the buoy ledger on the
+      // dead lane's drift, and survey etch on rock nobody is coming to cut.
+      Object.freeze({
+        id: 'poi_sedna_buoy_ledger',
+        type: 'beacon',
+        name: 'Buoy Ledger',
+        discoveryPlate: Object.freeze({
+          title: 'Buoy Ledger',
+          body: 'A tally post on the dead-buoy drift\u2019s rim where the survey post logs the unlit lane\u2019s casualties: buoy numbers, dark dates, recovery notes that all read the same — left in place. The count grows at a rate the post files as seasonal.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_sedna_survey_etch',
+        type: 'beacon',
+        name: 'Survey Etch',
+        discoveryPlate: Object.freeze({
+          title: 'Survey Etch',
+          body: 'Survey etch-marks on the exotic seam\u2019s dark face — grid lines, sample flags, a scheduled return date three seasons old. The post keeps etching rock for a crew it has stopped expecting, because the alternative is admitting nobody is coming.',
+        }),
+      }),
+    ]),
+  }),
+
+  Object.freeze({
+    id: 'sector_dione_lane',
+    name: 'Dione Lane',
+    tier: 1,
+    security: 0.68,
+    charted: true,
+    factionId: 'faction_mts',
+    position: Object.freeze({ x: 8, y: -1 }),
+    worldRadius: 4300,
+    paletteClass: 'core',
+    palette: PALETTE_CORE,
+    trafficPerMin: 10,
+    enemyDensity: 0.30,
+    enemyLevel: Object.freeze([2, 5]),
+    neighbors: Object.freeze([
+      'sector_tethys_junction',
+    ]),
+    stations: Object.freeze([
+      Object.freeze({
+        id: 'station_dione',
+        name: 'Dione Exchange',
+        type: 'trade_hub',
+        factionId: 'faction_mts',
+        size: 'M',
+        services: Object.freeze(['trade', 'refuel', 'missions']),
+        chartNote: 'Lawful southern freight hub. Convoy contracts leave after customs clears the lane.',
+      }),
+      Object.freeze({
+        id: 'station_dione_customs',
+        name: 'Dione Customs',
+        type: 'military',
+        factionId: 'faction_scn',
+        size: 'S',
+        services: Object.freeze(['toll', 'scan', 'refuel']),
+        chartNote: 'Concord toll plate and scanner; core-bound cargo is read before the exchange.',
+      }),
+    ]),
+    fields: Object.freeze([
+      Object.freeze({ id: 'f_dione_1', type: 'ast_common_rock', countWeight: 1.0 }),
+    ]),
+    hazards: Object.freeze([]),
+    pois: Object.freeze([
+      Object.freeze({
+        id: 'poi_dione_relay',
+        type: 'beacon',
+        name: 'Lane Relay',
+      }),
+      Object.freeze({
+        // 2026-09-28 INFERENCE — the southern front's dead drop. The pack that watches the
+        // cleared run keeps a bolt-hole under the customs scan line, off the relay, inside
+        // the field's shadow; the Concord sweep has never matched its bearing.
+        id: 'poi_dione_deaddrop',
+        type: 'cache',
+        name: 'Toll-Lane Dead Drop',
+        hidden: true,
+        factionId: 'faction_vael',
+        requiresActiveScan: true,
+        discoveryPlate: Object.freeze({
+          title: 'Toll-Lane Dead Drop',
+          body: 'A sealed case rides the field\'s shadow off the relay — pack marks on the clasp, Meridian rate cards inside. The toll lane quotes two prices, and the lawful one is the discount.',
+        }),
+      }),
+      // ATTENTION S-14 (2/5) — the watched lane's own marks: the tally post the convoys
+      // wait out customs against, and the lawful lane's neater graffiti.
+      Object.freeze({
+        id: 'poi_dione_convoy_tally',
+        type: 'beacon',
+        name: 'Convoy Tally Post',
+        discoveryPlate: Object.freeze({
+          title: 'Convoy Tally Post',
+          body: 'A weigh-post on the seam where the hauler lines form up before the customs read: chalk manifests, berth numbers, the convoy count in Meridian hands. It is the only scale on the lane every flag agrees is honest.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_dione_way_tag',
+        type: 'beacon',
+        name: 'Wayline Tag',
+        discoveryPlate: Object.freeze({
+          title: 'Wayline Tag',
+          body: 'Paint on the field\u2019s quiet edge — neat block letters, a lane number, a date, filed to within an inch of regulation. Even the graffiti on the watched lane keeps to the margin. The customs desk logs it under morale, admissible.',
+        }),
+      }),
+    ]),
+  }),
+]);
+
+/**
+ * Local station/gate/field/POI anchors (sector-local XZ).
+ * Intra-cluster gates are reciprocal; external gates are stubs for later story-graph wiring.
+ */
+export const SOUTH_ANCHORS = Object.freeze({
+  sector_eunomia_gulf: Object.freeze({
+    stations: Object.freeze([
+      Object.freeze({
+        id: 'station_eunomia',
+        pos: Object.freeze({ x: 640, z: -420 }),
+        archetypeGlb: 'place_station_blackmarket',
+        landmark: true,
+      }),
+    ]),
+    gates: Object.freeze([
+      // internal → Sedna Dark (5,15)
+      Object.freeze({
+        to: 'sector_sedna_dark',
+        pos: Object.freeze({ x: -4181, z: 836 }),
+      }),
+    ]),
+    fields: Object.freeze([
+      Object.freeze({
+        id: 'f_eunomia_1',
+        center: Object.freeze({ x: 200, z: 380 }),
+        clusterRadius: 400,
+      }),
+      // Licensed plate drift beside the hulk the scavengers still pick.
+      Object.freeze({
+        id: 'f_eunomia_2',
+        center: Object.freeze({ x: 1000, z: 700 }),
+        clusterRadius: 400,
+      }),
+    ]),
+    pois: Object.freeze([
+      Object.freeze({
+        id: 'poi_eunomia_hulk',
+        pos: Object.freeze({ x: 1180, z: 720 }),
+        landmarkGlb: 'place_dead_hulk',
+        landmark: true,
+      }),
+      Object.freeze({
+        id: 'poi_eunomia_row_marker',
+        pos: Object.freeze({ x: 1040, z: 790 }),
+        landmarkGlb: 'place_nav_buoy',
+      }),
+      Object.freeze({
+        id: 'poi_eunomia_ledger',
+        pos: Object.freeze({ x: -920, z: 480 }),
+        landmarkGlb: 'place_nav_buoy',
+      }),
+      Object.freeze({
+        id: 'poi_eunomia_debris',
+        pos: Object.freeze({ x: 640, z: -880 }),
+        landmarkGlb: 'place_debris_chunk',
+      }),
+      Object.freeze({
+        id: 'poi_eunomia_bed_marker',
+        pos: Object.freeze({ x: 740, z: -790 }),
+        landmarkGlb: 'place_nav_buoy',
+      }),
+      Object.freeze({
+        id: 'poi_hush',
+        pos: Object.freeze({ x: 0, z: -1800 }),
+        landmarkGlb: 'place_hush_gap',
+        placeTargetRadius: 420,
+        landmark: true,
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_eunomia_1 rim (center 200,380, r400).
+        id: 'poi_eunomia_gulf_stake',
+        pos: Object.freeze({ x: 260, z: 330 }),
+        landmarkGlb: 'place_claim_mark',
+        visualRadius: 5,
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_eunomia_2's lane side (center 1000,700, r400).
+        id: 'poi_eunomia_lamp_row',
+        pos: Object.freeze({ x: 940, z: 760 }),
+        landmarkGlb: 'place_worklight_tower',
+        visualRadius: 12,
+      }),
+    ]),
+  }),
+
+  sector_sedna_dark: Object.freeze({
+    stations: Object.freeze([
+      Object.freeze({
+        id: 'station_sedna',
+        pos: Object.freeze({ x: -480, z: 620 }),
+        archetypeGlb: 'place_station_research',
+        landmark: true,
+      }),
+    ]),
+    gates: Object.freeze([
+      // internal → Eunomia Gulf (10,14)
+      Object.freeze({
+        to: 'sector_eunomia_gulf',
+        pos: Object.freeze({ x: 4342, z: -868 }),
+      }),
+      // external → Ashfall Reach (4,11)
+      Object.freeze({
+        to: 'sector_ashfall_reach',
+        pos: Object.freeze({ x: -1074, z: -4296 }),
+        external: true,
+      }),
+    ]),
+    fields: Object.freeze([
+      Object.freeze({
+        id: 'f_sedna_1',
+        center: Object.freeze({ x: 720, z: -280 }),
+        clusterRadius: 420,
+      }),
+      // Dead lane buoys strung along the unlit southern reach.
+      Object.freeze({
+        id: 'f_sedna_2',
+        center: Object.freeze({ x: -150, z: -1150 }),
+        clusterRadius: 450,
+      }),
+    ]),
+    pois: Object.freeze([
+      Object.freeze({
+        id: 'poi_sedna_vault',
+        pos: Object.freeze({ x: -1320, z: 280 }),
+        landmarkGlb: 'place_debris_chunk',
+      }),
+      Object.freeze({
+        id: 'poi_sedna_cadence',
+        pos: Object.freeze({ x: 860, z: -640 }),
+        landmarkGlb: 'place_nav_buoy',
+        landmark: true,
+      }),
+      Object.freeze({
+        id: 'poi_sedna_ringworld',
+        pos: Object.freeze({ x: 1600, z: 1100 }),
+        landmarkGlb: 'place_sedna_ringworld_arc',
+        placeTargetRadius: 420,
+        visualRadius: 420,
+        landmark: true,
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_sedna_2 rim (center -150,-1150, r450).
+        id: 'poi_sedna_buoy_ledger',
+        pos: Object.freeze({ x: -86, z: -1086 }),
+        landmarkGlb: 'place_tally_post',
+        visualRadius: 9,
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_sedna_1 rim (center 720,-280, r420).
+        id: 'poi_sedna_survey_etch',
+        pos: Object.freeze({ x: 656, z: -216 }),
+        landmarkGlb: 'place_asteroid_graffiti',
+        visualRadius: 16,
+      }),
+    ]),
+  }),
+
+  sector_dione_lane: Object.freeze({
+    stations: Object.freeze([
+      Object.freeze({
+        id: 'station_dione',
+        pos: Object.freeze({ x: 920, z: 280 }),
+        archetypeGlb: 'place_station_trade_hub',
+        landmark: true,
+      }),
+      Object.freeze({
+        id: 'station_dione_customs',
+        pos: Object.freeze({ x: -580, z: -980 }),
+        archetypeGlb: 'place_station_military',
+      }),
+    ]),
+    gates: Object.freeze([
+      // external → Tethys Junction (3,2)
+      Object.freeze({
+        to: 'sector_tethys_junction',
+        pos: Object.freeze({ x: -3024, z: 1814 }),
+        external: true,
+      }),
+    ]),
+    fields: Object.freeze([
+      Object.freeze({
+        id: 'f_dione_1',
+        center: Object.freeze({ x: -320, z: 540 }),
+        clusterRadius: 420,
+      }),
+    ]),
+    pois: Object.freeze([
+      Object.freeze({
+        id: 'poi_dione_relay',
+        pos: Object.freeze({ x: 320, z: -420 }),
+        landmarkGlb: 'place_customs_pylon',
+        landmark: true,
+      }),
+      Object.freeze({
+        // 2026-09-28 INFERENCE — the southern front's dead drop (identity lives on the card;
+        // this row is its placed body: a debris chunk off the relay, in the field's shadow).
+        id: 'poi_dione_deaddrop',
+        pos: Object.freeze({ x: -140, z: 860 }),
+        landmarkGlb: 'place_debris_chunk',
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — f_dione_1's lane side (center -320,540, r420).
+        id: 'poi_dione_convoy_tally',
+        pos: Object.freeze({ x: -400, z: 470 }),
+        landmarkGlb: 'place_tally_post',
+        visualRadius: 9,
+      }),
+      Object.freeze({
+        // ATTENTION S-14 — same seam's quiet edge.
+        id: 'poi_dione_way_tag',
+        pos: Object.freeze({ x: -260, z: 620 }),
+        landmarkGlb: 'place_asteroid_graffiti',
+        visualRadius: 16,
+      }),
+    ]),
+  }),
+});
+
+/**
+ * Named zones (>=1 per region). Types/vocab from sectorZones.js ZONE_TYPES.
+ * Centers align to local anchors above.
+ */
+export const SOUTH_ZONES = Object.freeze({
+  sector_eunomia_gulf: Object.freeze([
+    Object.freeze({
+      id: 'zone_eunomia_fence',
+      name: 'Eunomia Fence',
+      type: 'outlaw_zone',
+      factionId: 'faction_vael',
+      reason: 'A Vael-licensed black fence linking Sedna dark to the east wake run.',
+      center: Object.freeze({ x: 640, z: -420 }),
+      radius: 900,
+      threat: 3,
+      presence: Object.freeze({
+        role: 'vael',
+        archetypes: Object.freeze(['lancer_sniper', 'bruiser_brawler']),
+        size: Object.freeze([1, 3]),
+        doctrine: 'balanced',
+        formation: 'ring',
+        context: 'zone_hostile',
+        hostile: true,
+        factionId: 'faction_vael',
+      }),
+    }),
+    Object.freeze({
+      id: 'zone_eunomia_hulk',
+      name: 'Gulf Hulk Drift',
+      type: 'derelict_field',
+      factionId: 'faction_vael',
+      reason: 'A stripped freighter marks the gulf choke — scavengers still pick the ribs.',
+      center: Object.freeze({ x: 1180, z: 720 }),
+      radius: 520,
+      threat: 2,
+      presence: Object.freeze({
+        role: 'scavengers',
+        archetypes: Object.freeze(['wasp_swarmer', 'reaver_pirate']),
+        size: Object.freeze([1, 2]),
+        doctrine: 'scavenger',
+        formation: 'loose',
+        context: 'zone_hostile',
+        hostile: true,
+      }),
+    }),
+  ]),
+
+  sector_sedna_dark: Object.freeze([
+    Object.freeze({
+      id: 'zone_sedna_survey',
+      name: 'Sedna Survey',
+      type: 'civilian_core',
+      factionId: 'faction_vael',
+      reason: 'A thin research post on the dark rim — sensors first, hospitality never.',
+      center: Object.freeze({ x: -480, z: 620 }),
+      radius: 820,
+      threat: 2,
+    }),
+    Object.freeze({
+      id: 'zone_sedna_vault',
+      name: 'Sedna Vault',
+      type: 'anomaly_deep',
+      factionId: 'faction_vael',
+      reason: 'A sealed survey cache past Ashfall — the reason anyone flies this dark.',
+      center: Object.freeze({ x: -1320, z: 280 }),
+      radius: 480,
+      threat: 3,
+      presence: Object.freeze({
+        role: 'vael',
+        archetypes: Object.freeze(['lancer_sniper', 'bruiser_brawler']),
+        size: Object.freeze([1, 2]),
+        doctrine: 'balanced',
+        formation: 'ring',
+        context: 'zone_hostile',
+        hostile: true,
+        factionId: 'faction_vael',
+      }),
+    }),
+    Object.freeze({
+      id: 'zone_sedna_glow',
+      name: 'Dark Glow',
+      type: 'radiation_field',
+      factionId: 'faction_vael',
+      reason: 'Hard radiation blooms along the dark spine — shields thin fast.',
+      center: Object.freeze({ x: 120, z: -180 }),
+      radius: 720,
+      threat: 2,
+    }),
+  ]),
+
+  sector_dione_lane: Object.freeze([
+    Object.freeze({
+      id: 'zone_dione_exchange',
+      name: 'Dione Exchange',
+      type: 'trade_lane',
+      factionId: 'faction_mts',
+      reason: 'Meridian\'s lawful southern customs spur — tolls fund the patrols.',
+      center: Object.freeze({ x: 920, z: 280 }),
+      radius: 1100,
+      threat: 1,
+    }),
+    Object.freeze({
+      id: 'zone_dione_customs',
+      name: 'Lane Customs',
+      type: 'border_checkpoint',
+      factionId: 'faction_scn',
+      reason: 'Concord scans inbound cargo here before it reaches the core exchange.',
+      center: Object.freeze({ x: -580, z: -980 }),
+      radius: 720,
+      threat: 1,
+      presence: Object.freeze({
+        role: 'patrol',
+        archetypes: Object.freeze(['patrol_lawman']),
+        size: Object.freeze([2, 3]),
+        doctrine: 'official',
+        formation: 'wedge',
+        context: 'patrol',
+        hostile: false,
+        factionId: 'faction_scn',
+      }),
+    }),
+    Object.freeze({
+      id: 'zone_dione_relay',
+      name: 'Lane Relay',
+      type: 'patrol_corridor',
+      factionId: 'faction_mts',
+      reason: 'A lit beacon lane for southbound convoys that prefer paperwork to pirates.',
+      center: Object.freeze({ x: 320, z: -420 }),
+      radius: 560,
+      threat: 1,
+    }),
+  ]),
+});
+
+/**
+ * Reciprocal gate descriptor list for later canonical integration.
+ * Internal pairs must both exist; external pairs document the story-side stub required.
+ */
+export const SOUTH_GATE_DESCRIPTORS = Object.freeze([
+  Object.freeze({
+    from: 'sector_eunomia_gulf',
+    to: 'sector_sedna_dark',
+    internal: true,
+  }),
+  Object.freeze({
+    from: 'sector_sedna_dark',
+    to: 'sector_eunomia_gulf',
+    internal: true,
+  }),
+  Object.freeze({
+    from: 'sector_sedna_dark',
+    to: 'sector_ashfall_reach',
+    internal: false,
+    note: 'Story-side reciprocal gate pending integration',
+  }),
+  Object.freeze({
+    from: 'sector_dione_lane',
+    to: 'sector_tethys_junction',
+    internal: false,
+    note: 'Story-side reciprocal gate pending integration',
+  }),
+]);
+
+/** Self-contained cluster record for M2b SOUTH/EAST. */
+export const SOUTH_CLUSTER = Object.freeze({
+  id: 'frontier_cluster_south',
+  version: 1,
+  latticeWu: LATTICE_WU,
+  sectorIds: SOUTH_SECTOR_IDS,
+  frozenOriginalSectorIds: FROZEN_ORIGINAL_SECTOR_IDS,
+  originCells: SOUTH_ORIGIN_CELLS,
+  origins: SOUTH_ORIGINS,
+  sectors: SOUTH_SECTORS,
+  anchors: SOUTH_ANCHORS,
+  zones: SOUTH_ZONES,
+  gateDescriptors: SOUTH_GATE_DESCRIPTORS,
+});
+
+export default SOUTH_CLUSTER;

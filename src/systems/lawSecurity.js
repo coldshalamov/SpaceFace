@@ -1,0 +1,8745 @@
+import { massDiscrepancy } from './cargoCustody.js';
+// lawSecurity.js — jurisdiction, motive, and response authority for live space.
+//
+// This system closes the gap between the tactical AI's final fire gate and authored encounter
+// scripts. Ambient armed ships do not become anonymous murder-tops: valuable cargo can produce a
+// toll parley, an empty hold produces watchful neutrality, and the player's first shot produces a
+// named retaliation cause. Inside a lawful station's protection volume, actual hostile damage
+// dispatches a patrol response that can target criminals even though legacy NPC team numbers are
+// shared. Credits/cargo/rep/heat remain with their canonical owners.
+
+import { hash32 } from '../core/rng.js';
+import { shouldSkipFullTickSystems } from '../core/presentationFreeze.js';
+import { isRunSealed } from '../core/runSeal.js';
+import { occupantGenerationOf } from '../core/entity.js';
+import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
+import { primitiveBlocksSegment, segmentHitsProxy } from '../combat/lineOfSight.js';
+import { attachmentBindsOccupant } from '../combat/attachments.js';
+import { proxyWorldPrimitives, proxyScaleFor, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
+import { takeNearWorkSlice } from '../core/activityScheduler.js';
+import { COMMODITIES } from '../data/commodities.js';
+import {
+  CERES_ACTIVITY_POCKETS,
+  CERES_ACTIVITY_SECTOR_ID,
+} from '../data/sectorActivityPockets.js';
+import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
+import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
+import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
+import { MANEUVER_SPEED_CAPS } from '../ai/maneuver.js';
+import { deriveEnemyMotionScale, hullIdFromEntity } from '../data/flightFeelEnvelopes.js';
+import {
+  is47aScavengerCounterplayAuthorized,
+  protectedStationAt,
+} from '../ai/engagementAuthority.js';
+import { hotUntilActive } from '../economy/customsRisk.js';
+import {
+  customsWeirForSector,
+  customsWeirSegments,
+  pointInsideCustomsWeir,
+} from '../world/customsWeir.js';
+import {
+  IMPOUND_RESTITUTION_CR,
+  impoundBillFor,
+  isImpoundWorkComplete,
+  quoteImpoundBill,
+} from './custodyConsequences.js';
+import { heatLevelFor, isPlayerWanted, wantedTierFor, WANTED_TIER } from './heat.js';
+import { acceptHullPapers } from './impoundLot.js';
+import { createWarrantHunterWaves } from './warrantHunterWaves.js';
+import {
+  BOUNTY_HUNTER_PLAYER_CONTEXT,
+  makePlayerWarrantHunterSpec,
+} from '../data/bountyHunters.js';
+import {
+  CERES_AMBUSH_HAULER_SLOT,
+  isLawfulEntity as isLawful,
+  isLawProtectedBody,
+  isProtectedCivilian,
+} from '../law/protectedBodies.js';
+import {
+  commodityLegality,
+  isCivilianManifestPayload,
+  isJettisonedCargoPod,
+} from './lootShards.js';
+import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
+import { KillCause, compactKillCausality, impactLinkFromPresentation } from '../combat/killCausality.js';
+import { isHostileToPlayer } from './scanner.js';
+import { makeEnemySpawnSpec } from './combat.js';
+import { patrolCanInitiateScan } from './encounterScripts.js';
+import { effectiveRegionalSecurity } from './regionalEcology.js';
+import {
+  authorityResponsePolicy,
+  rankLawfulResponders,
+  reserveArrivalPoint,
+  RESERVE_STATION_LAUNCH_CLEARANCE_WU,
+  WITNESS_FRAME_HALF_WU,
+} from '../law/authorityResponse.js';
+import { scaleBySector } from '../data/sectorPhysical.js';
+import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
+import { requestActivityReclassify } from '../world/activityRuntime.js';
+import { SECTORS } from '../data/sectors.js';
+import { lawHeatChallengeCopy } from '../data/lawChallengeCopy.js';
+import { LAW_DOCK_FINE_BASE_CR, LAW_DOCK_FINE_PER_LEVEL_CR } from '../data/lawDeskTariff.js';
+export { LAW_DOCK_FINE_BASE_CR, LAW_DOCK_FINE_PER_LEVEL_CR } from '../data/lawDeskTariff.js';
+import {
+  collectLivingWorldActors,
+  findLivingWorldActor,
+  forEachExplicitWitnessMarker,
+  forEachFieldRock,
+  forEachJobInteractable,
+  forEachLivingWorldActor,
+  indexedShipLikeScan,
+  indexedTypeScan,
+  entityIndexVersion,
+  entityIndexLaneVersion,
+} from '../world/livingWorldViews.js';
+import { strideDt } from '../core/catchupPolicy.js';
+
+export const LAW_SECURITY_VERSION = 2;
+
+// AL-FIGHT-1 / AL-HF-01: a non-lawful NPC struck by another non-lawful NPC turns on the shooter
+// for this long after the last provocation, then restores whatever it was doing before.
+export const NPC_GRUDGE_S = 12;
+export const NPC_GRUDGE_REASON = 'npc_grudge:retaliation';
+
+/** Bench A/B: production default ON. Quiet latch skips sanctuary aiShips walk when no
+ * armed unlawful NPC holds a chase/fire signal. Soft-GPU fps not claimed. Fresh law
+ * residual after #145 cones / #146 catch-nets (wanted/ambient stay on their own cadence). */
+let SANCTUARY_EMPTY_QUIET_LATCH = true;
+export function setSanctuaryEmptyQuietLatchForBench(enabled) {
+  SANCTUARY_EMPTY_QUIET_LATCH = enabled !== false;
+}
+export function getSanctuaryEmptyQuietLatchForBench() {
+  return SANCTUARY_EMPTY_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const SANCTUARY_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+/** Membership lanes for the quiet latch — the armed-NPC census reads aiShips (⊆ shipLike). */
+const SANCTUARY_QUIET_LANES = ['shipLike'];
+
+function publishSanctuaryQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.lawSecurityRuntime || (state.lawSecurityRuntime = {});
+  rt.sanctuaryQuietLatched = !!latched;
+}
+
+/** Bench A/B: production default ON. Quiet latch skips job-interactable cone census
+ * when no customs scanners and no jettisoned cargo pods remain. Soft-GPU fps not claimed. */
+let CUSTOMS_CONES_EMPTY_QUIET_LATCH = true;
+export function setCustomsConesEmptyQuietLatchForBench(enabled) {
+  CUSTOMS_CONES_EMPTY_QUIET_LATCH = enabled !== false;
+}
+export function getCustomsConesEmptyQuietLatchForBench() {
+  return CUSTOMS_CONES_EMPTY_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const CUSTOMS_CONES_EMPTY_QUIET_RESCAN_TICKS = 30;
+
+function publishCustomsConesQuiet(state, latched) {
+  if (!state) return;
+  const rt = state.lawSecurityRuntime || (state.lawSecurityRuntime = {});
+  rt.customsConesQuietLatched = !!latched;
+}
+
+export const AMBIENT_TOLL_VALUE_FLOOR = 120;
+
+/** PQ-148.02 — physical customs scan cone over a flying pod (heading + half-angle + range). */
+export const CUSTOMS_SCAN_RANGE = 90;
+export const CUSTOMS_SCAN_HALF_ANGLE = 0.55;
+export const CUSTOMS_SCAN_DWELL_S = 0.70;
+
+// LAW-10 — mid-scan dump window. A hold scan opens the moment `player:scannedByPatrol`
+// carries hasContraband; the window is how long a later jettison still counts as
+// "mid-scan" (simTime, deterministic — patrol offers run ~10 s, so 15 s covers the
+// reaction without leaking into the next encounter). Expiry is silent: an evaded or
+// timed-out scan keeps whatever the engine already decided, never a second verdict.
+export const SCAN_DUMP_WATCH_WINDOW_S = 15;
+
+/** PQ-151.01 — nets-band tether-net roadblock on a lane. Reuses the customs cone + a span. */
+export const WANTED_NET_STANDOFF = 320;
+export const WANTED_NET_RADIUS = 22;
+export const WANTED_NET_BREAK_MASS = 80;
+export const WANTED_NET_BREAK_SPEED = 70;
+
+/** PQ-151.03 — impound yard ahead of the player; clerk flies from a reserve. */
+export const WANTED_IMPOUND_STANDOFF = 360;
+export const WANTED_IMPOUND_YARD_RADIUS = 36;
+export const WANTED_IMPOUND_PAD_RADIUS = 14;
+
+const RESPONSE_GRACE_S = 6;
+// How many 0.25 s dispatch retries a crowded arrival frame may defer a reserve before it launches anyway.
+const RESERVE_ARRIVAL_CROWDED_RETRIES = 8;
+const RESPONSE_CLEARANCE = 320;
+const RECEIPT_CAP = 24;
+const LAW_JOB_RESPONSE_HOLDER = 'lawSecurity';
+// Claim marker for a responder's pre-dispatch moraleImmune value: the response borrows the flag
+// while the incident is live and hands it back at stand-down, so an authored immune hull keeps it.
+const SECURITY_RESPONSE_MORALE_RESTORE = '_lawSecurityMoraleRestore';
+const AMBIENT_SCAN_INTERVAL_TICKS = 30;
+const DANGEROUS_CONTEXTS = new Set([
+  'zone_hostile', 'encounter', 'interdiction', 'bounty_hunter', 'named_hunter',
+  'mission_hostile', 'story_hostile', 'sg06_reinforcement',
+]);
+const COMMODITY_VALUE = new Map(COMMODITIES.map((row) => [row.id, Math.max(1, Number(row.basePrice) || 1)]));
+const CERES_ACTIVITY_ACTOR_SLOTS = Object.freeze(CERES_ACTIVITY_POCKETS.flatMap((pocket) => pocket.actorSlots));
+const CERES_LAW_JOB_SLOTS_BY_ID = new Map(CERES_ACTIVITY_ACTOR_SLOTS
+  .filter((slot) => slot.lawful === true && slot.jobKind === 'patrol')
+  .map((slot) => [slot.id, slot]));
+const CERES_ACTIVITY_SLOT_IDS = new Set(CERES_ACTIVITY_ACTOR_SLOTS.map((slot) => slot.id));
+const CERES_DISTRESS_STATION_ID = 'station_ceres';
+const CERES_POCKET_DISTRESS_RADIUS = 2200;
+const LAW_JOB_RESPONSE_CLAIM_CAP = CERES_LAW_JOB_SLOTS_BY_ID.size;
+const LAW_RESPONSE_AI_FIELDS = Object.freeze([
+  'lawful',
+  'passive',
+  'securityTargetId',
+  'motive',
+  'engagementTrigger',
+  'zoneId',
+  'approachTelegraph',
+  'noFireResponseWindowS',
+  'roe',
+  'activity',
+  'witnessRole',
+  'witnessIncidentId',
+  'moraleImmune',
+]);
+const LAW_RESPONSE_COMBAT_FIELDS = Object.freeze(['targetId', 'lockTarget']);
+const LAW_RESPONSE_INTENT_FIELDS = Object.freeze(['fire', 'fireGroup']);
+
+// PQ-048.06 is deliberately one concrete lawful route, not a generic encounter framework. The
+// starter sector guarantees an ambient patrol with a durable world record, so the case can survive
+// a save rematerialization without borrowing the numeric runtime id of that actor. These physical
+// thresholds intentionally match patrolScan in encounterScripts.js; that script is 1 Hz while this
+// registered system is 60 Hz, so this route measures the same two seconds from simTime instead.
+const LAWFUL_INSPECTION_SECTOR_ID = 'sector_helios_prime';
+const LAWFUL_INSPECTION_STATION_ID = 'station_helios';
+const LAWFUL_INSPECTION_FACTION_ID = 'faction_scn';
+const LAWFUL_INSPECTION_SCAN_RANGE = 700;
+const LAWFUL_INSPECTION_BREAK_S = 2;
+const LAWFUL_INSPECTION_OFFER_S = 10;
+const LAWFUL_INSPECTION_POLL_TICKS = 30;
+const LAWFUL_INSPECTION_REBIND_PASSES = 3;
+const LAWFUL_INSPECTION_SETTLED_PATROL_CAP = 12;
+
+// Discovered-crime loop (wreck provenance). An unwitnessed player-caused kill leaves a bounded
+// pending case; a later wreck scan/salvage with matching aftermath provenance reopens it through
+// the same stable reportId the witnessed path would have used.
+const UNREPORTED_KILL_CAP = 24;
+
+// RC-CHASE (row 462) — the physical chase. A kill seen ONLY by protected civilians is not yet a
+// conviction: the witnesses are couriers, and the testimony files when a surviving carrier
+// physically reaches a lawful berth. A bounty-tier search additionally posts two visible lawful
+// sweep ships; once the player has been seen by both, breaking their observation is the escape.
+const WITNESS_REPORT_BERTH_WU = 60;         // ordinary traffic's docking range (traffic.js `dist < 60`)
+const WITNESS_REPORT_CAP = 16;                  // mirror the reported-incident retention bound
+// Absence is not proof of death — but an eternally pending report is free laundry. A carrier
+// unresolved this many ticks while its report's sector is live is counted conclusively lost.
+const WITNESS_REPORT_REBIND_TICKS = 90;
+const WANTED_SWEEP_SHIPS = 2;
+const WANTED_SWEEP_LOST_CONTACT_S = 2;
+const WANTED_SWEEP_RETRY_TICKS = 30;
+
+// PB-CONS-A / SF-159 verdict escalation window. A kill's cause says HOW the victim died; the
+// recent-harm window says WHETHER the scene was an accident. An isolated contact — a bump, a
+// single thrown hull — stays an accident (the reckless tier). Sustained player-caused harm to
+// the same victim inside the window means the pilot kept at it, so a collision death inside a
+// continued attack is murder, not a traffic mishap. This only re-reads harm the charge path
+// already adjudicates: unprovoked-hit chips still never convict on their own.
+const SUSTAINED_HARM_WINDOW_S = 10;
+const SUSTAINED_HARM_MIN_EVENTS = 3;
+const SUSTAINED_HARM_VICTIM_CAP = 24;
+const SUSTAINED_HARM_EVENT_CAP = 16;
+
+// High-security lawful coverage: a WANTED player lingering in well-policed space eventually draws
+// a reserve patrol even below the bounty band. The exposure clock only runs while wanted AND in a
+// high-sec sector; the post threshold is seeded per (sector, epoch) so the arrival is deterministic
+// and rare rather than a per-tick roll.
+const HIGH_SEC_WARRANT_MIN_SECURITY = 0.6;
+const HIGH_SEC_WARRANT_EXPOSURE_S = 45;
+const HIGH_SEC_WARRANT_EXPOSURE_SPREAD_S = 60;
+const HIGH_SEC_WARRANT_MIN_DISTANCE = 900;
+
+export const lawSecurity = {
+  name: 'lawSecurity',
+  // serialize() already cloneLawPlain's every returned field — skip the second defensive clone.
+  saveSnapshotOwned: true,
+
+  init(ctx) {
+    this.state = ctx.state;
+    // RC-CHASE is an atomic extension: partial call-site landings must not stop the existing
+    // law tick or defer a conviction without a functioning courier owner to finish it.
+    this._rcChaseEnabled = typeof normalizeWitnessReports === 'function'
+      && ['_syncWantedSweep', '_updateWantedSweep', '_resetWantedSweep',
+        '_wantedSweepSectorExit', '_noteWitnessCarrierKilled', '_adoptWitnessReports',
+        '_updateWitnessReports', '_queueWitnessReport']
+        .every((method) => typeof this[method] === 'function');
+    this.bus = ctx.bus || null;
+    this.helpers = ctx.helpers || {};
+    this.registry = ctx.registry || null;
+    this._jobResponseClaims = new Map();
+    this._podConeDwell = new Map();
+    this._coneScratchPods = [];
+    this._coneScratchOccluders = [];
+    this._coneScratchScanners = [];
+    this._sanctuaryQuiet = null;
+    this._sanctuaryWakeSeq = 0;
+    this._customsConesQuiet = null;
+    this._nextInspectionTick = 0;
+    this._inspectionRebindPasses = 0;
+    this._grudgeVictims = new Set();
+    this._grudgeIndexDirty = true;
+    // RC-CHASE: live carrier bindings for queued civilian testimony. Session-only — the
+    // durable record carries stableId/worldRecordId; this map only proves which live body a
+    // stable id currently names (id + occupant generation, never durable by itself).
+    this._witnessCarrierBindings = new Map();
+    ensureState(this.state);
+    this._onDamage = (payload) => {
+      this._sanctuaryWakeSeq = (this._sanctuaryWakeSeq | 0) + 1;
+      this._sanctuaryQuiet = null;
+      this._handleDamage(payload);
+    };
+    this._onCollisionConsequence = (payload) => this._handleCollisionGrudge(payload);
+    this._onFire = (payload) => {
+      this._sanctuaryWakeSeq = (this._sanctuaryWakeSeq | 0) + 1;
+      this._sanctuaryQuiet = null;
+      this._handleFire(payload);
+    };
+    this._onSpawned = (payload) => {
+      const entity = payload && payload.entity;
+      this._stampAmbient(entity);
+      // A rematerialized hull carries its world record's AI, including an active grudge. The
+      // spawn listener is the only door between a promoted record and the session victim index.
+      this._registerCarriedGrudge(entity);
+    };
+    this._onResponderGone = (payload) => {
+      this._releaseJobResponsesForEntity(eventEntityId(payload), 'responder_gone');
+      this._observeInspectionPatrolGone(payload);
+      this._noteMemorialDestroyed(payload);
+    };
+    // A carrier's death receipt is the conclusive proof a testimony can never arrive — entity:killed
+    // ONLY (entity:destroyed also fires on culls/despawns/teardown, which are not death). The
+    // payload has no generation field; the generation stamped at queue time proves the id still
+    // named the same body in this synchronous dispatch.
+    this._onWitnessCarrierKilled = (payload) => {
+      if (this._rcChaseEnabled) this._noteWitnessCarrierKilled(payload);
+    };
+    this._onSectorExit = (payload) => {
+      this._releaseJobResponsesForSector(payload && payload.sectorId, 'sector_exit');
+      this._observeInspectionSectorExit(payload);
+      if (this._rcChaseEnabled) this._wantedSweepSectorExit(payload);
+      this._clearHarmWindows(); // victim ids recycle across sectors — history cannot cross the jump
+      this._resetScanDumpWatch();
+      this._sanctuaryQuiet = null;
+    };
+    this._onSaveRestoring = () => {
+      this._releaseAllJobResponses('save_restoring');
+      if (this._rcChaseEnabled) this._resetWantedSweep('save_restoring');
+      if (this._witnessCarrierBindings) this._witnessCarrierBindings.clear();
+      this._resetInspectionTransient();
+      this._resetWeirTransient();
+      this._clearHarmWindows();
+      this._resetScanDumpWatch();
+      this._sanctuaryQuiet = null;
+      this._sanctuaryWakeSeq = 0;
+    };
+    this._onSaveLoaded = () => {
+      this._clearRestoredHeatChallenges(this.state);
+      this._resetInspectionTransient();
+      this._resetWeirTransient();
+      normalizePersistedLawfulInspection(this.state);
+      this._lastCustomsSubmitTick = -1;
+      if (this._customsWaivedPatrols) this._customsWaivedPatrols.clear();
+      this._resetScanDumpWatch();
+      this._sanctuaryQuiet = null;
+      this._sanctuaryWakeSeq = 0;
+      this._noteOwnedHullPapers();
+    };
+    this._onInspectionChoice = (payload) => this._chooseInspection(payload);
+    this._onInspectionScanned = (payload) => this._observeInspectionScan(payload);
+    this._onPlayerDeath = () => this._interruptInspection('interrupted_player_death');
+    this._onAftermathWreckSpawned = (payload) => this._handleAftermathWreckSpawned(payload);
+    this._onSurvivorPodEjected = (payload) => this._handleSurvivorPodEjected(payload);
+    this._onStolenCargoPodCollect = (payload) => this._handleStolenCargoPodCollect(payload);
+    this._onStolenCargoPodLatch = (payload) => this._handleStolenCargoPodLatch(payload);
+    this._onKilledAdjudication = (payload) => this._handleKilledAdjudication(payload);
+    this._onWreckScanResolved = (payload) => {
+      this._handleWreckCrimeDiscovery(payload, 'wreck_scan');
+      this._findMemorialByScan(payload);
+    };
+    this._onSalvageCompleted = (payload) => {
+      this._handleWreckCrimeDiscovery(payload, 'wreck_salvage');
+      this._findMemorialByScan(payload);
+    };
+    this._onDockedLawfulClearance = (payload) => this._handleDockedLawfulClearance(payload);
+    this._onFineChoice = (payload) => this._chooseFine(payload || {});
+    this._onPlayerSurrender = (payload) => this._beginPlayerSurrender(payload || {});
+    this._onRecordAudit = (payload) => this.auditBuiltRecord(payload || {});
+    this._onHeatChanged = () => {
+      this._syncWantedWarrant(this.state);
+      this._syncHighSecWarrant(this.state, 0);
+      this._syncWantedCheckpoint(this.state);
+      this._syncWantedImpound(this.state);
+      if (this._rcChaseEnabled) this._syncWantedSweep(this.state);
+    };
+    this._onImpoundPay = (payload) => this._payWantedImpound(this.state, payload || {});
+    this._onSponsorPay = (payload) => this._payWantedSponsor(this.state, payload || {});
+    this._onSponsorDocked = (payload) => this._offerSponsorPay(payload || {});
+    this._onCustomsSubmit = (payload) => this._handleCustomsSubmit(payload);
+    this._onShipPurchased = (payload) => this._fileHullPapers(payload);
+    this._scanDumpWatch = null;
+    this._customsWaivedPatrols = new Map();
+    this._onScannedByPatrol = (payload) => {
+      this._rememberCustomsPass(payload);
+      this._openScanDumpWatch(payload);
+    };
+    this._onScanDumpJettison = (payload) => this._noteScanDumpJettison(payload);
+    this._onScanDumpResolved = (payload) => this._observeScanDumpResolution(payload);
+    this._lastCustomsSubmitTick = -1;
+    if (this.bus && typeof this.bus.on === 'function') {
+      this.bus.on('combat:damage', this._onDamage);
+      this.bus.on('combat:collisionConsequence', this._onCollisionConsequence);
+      this.bus.on('combat:fire', this._onFire);
+      this.bus.on('entity:spawned', this._onSpawned);
+      this.bus.on('entity:killed', this._onResponderGone);
+      this.bus.on('entity:destroyed', this._onResponderGone);
+      this.bus.on('aftermathWreck:spawned', this._onAftermathWreckSpawned);
+      this.bus.on('survivorPod:ejected', this._onSurvivorPodEjected);
+      this.bus.on('sector:exit', this._onSectorExit);
+      this.bus.on('save:restoring', this._onSaveRestoring);
+      this.bus.on('save:loaded', this._onSaveLoaded);
+      this.bus.on('lawfulInspection:choose', this._onInspectionChoice);
+      this.bus.on('contraband:scanned', this._onInspectionScanned);
+      this.bus.on('player:death', this._onPlayerDeath);
+      this.bus.on('pickup:collected', this._onStolenCargoPodCollect);
+      this.bus.on('tether:latched', this._onStolenCargoPodLatch);
+      this.bus.on('entity:killed', this._onKilledAdjudication);
+      this.bus.on('entity:killed', this._onWitnessCarrierKilled);
+      // The discovered-crime door: a targeted wreck resolve (scanner) or a finished salvage
+      // (mining) keys on stable wreck provenance — never the sector-wide scan summary.
+      this.bus.on('scan:wreckResolved', this._onWreckScanResolved);
+      this.bus.on('salvage:completed', this._onSalvageCompleted);
+      this.bus.on('dock:docked', this._onDockedLawfulClearance);
+      this.bus.on('heat:changed', this._onHeatChanged);
+      this.bus.on('law:impoundPay', this._onImpoundPay);
+      this.bus.on('law:sponsorPay', this._onSponsorPay);
+      this.bus.on('dock:docked', this._onSponsorDocked);
+      this.bus.on('customs:submit', this._onCustomsSubmit);
+      this.bus.on('ship:purchased', this._onShipPurchased);
+      this.bus.on('player:scannedByPatrol', this._onScannedByPatrol);
+      this.bus.on('cargo:jettisoned', this._onScanDumpJettison);
+      this.bus.on('contraband:scanned', this._onScanDumpResolved);
+      this.bus.on('law:fineChoice', this._onFineChoice);
+      this.bus.on('law:playerSurrender', this._onPlayerSurrender);
+      this.bus.on('law:audit', this._onRecordAudit);
+    }
+    // THE WORLD REMEMBERS: the WANTED hunter cast and its wave rhythm ride this system's bus,
+    // helpers and lazy save slice. Registered after the listeners above so its kill listener
+    // runs after this system's own kill adjudication.
+    if (this._warrantWaves) this._warrantWaves.destroy();
+    this._warrantWaves = createWarrantHunterWaves(this);
+  },
+
+  newGame() {
+    if (this._customsWaivedPatrols) this._customsWaivedPatrols.clear();
+    this._releaseAllJobResponses('new_game');
+    if (this._rcChaseEnabled) this._resetWantedSweep('new_game');
+    if (this._witnessCarrierBindings) this._witnessCarrierBindings.clear();
+    if (this.state) this.state.lawSecurity = freshState();
+    if (this._warrantWaves) this._warrantWaves.deserialize(null);
+    if (this.state && this.state.player) delete this.state.player.lawfulInspection;
+    this._resetInspectionTransient();
+    this._resetWeirTransient();
+    this._resetScanDumpWatch();
+    this._lastCustomsSubmitTick = -1;
+    this._sanctuaryQuiet = null;
+    this._sanctuaryWakeSeq = 0;
+    this._grudgeIndexDirty = true;
+    if (this._grudgeVictims) this._grudgeVictims.clear();
+    publishSanctuaryQuiet(this.state, false);
+  },
+
+  // Weir dwell/read latches are per-visit, per-session state. A save boundary or
+  // a new run must not let a half-finished read or a dead pod's dwell row leak
+  // into the next session — every entry into the gate is a fresh chance to be seen.
+  _resetWeirTransient() {
+    if (!this.state) return;
+    const own = ensureState(this.state);
+    if (own && own.customsWeir) own.customsWeir = null;
+    if (this._weirPodDwell) this._weirPodDwell.clear();
+    if (this._podConeDwell) this._podConeDwell.clear();
+  },
+
+  /**
+   * Save contract: only the discovered-crime bookkeeping is durable. `unreportedKills` is the
+   * pending-case docket — without it a save/load boundary silently launders an unwitnessed kill
+   * and the wreck can never convict. `reportedIncidents` is the reportId ledger that keeps the
+   * dedupe triple-latch (pending delete → reportId → receipt id) closed across the boundary, so
+   * a re-resolved hulk can never charge twice. Everything else on the bag — live incidents,
+   * warrants, response receipts — references session entity ids and stays session-scoped.
+   */
+  serialize() {
+    const own = ensureState(this.state);
+    const out = {
+      version: LAW_SECURITY_VERSION,
+      unreportedKills: cloneLawPlain(own.unreportedKills) || {},
+    };
+    // reportedIncidents stays lazy: a save that never priced an incident emits no key, matching
+    // the live state of a run that never stored a receipt (the sim:compare laziness contract).
+    if (own.reportedIncidents != null) {
+      out.reportedIncidents = cloneLawPlain(own.reportedIncidents) || {};
+    }
+    // Lazy, same as reportedIncidents: pending civilian testimony is durable (a save boundary
+    // must not launder a witnessed kill), but a run that never queued one emits no key.
+    if (own.witnessReports != null) {
+      out.witnessReports = cloneLawPlain(own.witnessReports) || {};
+    }
+    // Lazy, same as reportedIncidents: a run that never destroyed a memorial, opened a
+    // composed bill, or settled a fine emits no key.
+    if (own.memorialSites && Object.keys(own.memorialSites).length > 0) {
+      out.memorialSites = cloneLawPlain(own.memorialSites) || {};
+    }
+    if (own.composed && Object.keys(own.composed).length > 0) {
+      out.composed = cloneLawPlain(own.composed) || {};
+    }
+    if (own.fineSettled && Object.keys(own.fineSettled).length > 0) {
+      out.fineSettled = cloneLawPlain(own.fineSettled) || {};
+    }
+    if (own.customsTrust && Object.keys(own.customsTrust).length > 0) {
+      out.customsTrust = cloneLawPlain(own.customsTrust);
+    }
+    if (own.fineOffer && own.fineOffer.status && own.fineOffer.status !== 'paid') {
+      out.fineOffer = cloneLawPlain(own.fineOffer);
+    }
+    // Lazy: the cast's memory exists only after the first wave was rolled.
+    const hunters = this._warrantWaves ? this._warrantWaves.serialize() : null;
+    if (hunters) out.warrantHunters = hunters;
+    return out;
+  },
+
+  deserialize(data) {
+    for (const _ of this.deserializeChunked(data)) { /* sync lane: every batch inline */ }
+    return ensureState(this.state);
+  },
+
+  // Generator twin so the async restore lane can paint between ledger normalizes — the
+  // kill/incident ledgers are the heavy stretch here on a mature save. Yields sit only
+  // between the ledgers; adoption order is the sync lane's, so the run stays bit-identical.
+  *deserializeChunked(data) {
+    // The async restore lane drives this generator directly, so the grudge index must be
+    // invalidated HERE, not only in the synchronous wrapper. A loaded grudge (whose record
+    // rides entity data) is then re-indexed on the next flight tick and its stale clock
+    // clamped to the authored window.
+    this._grudgeIndexDirty = true;
+    if (this._grudgeVictims) this._grudgeVictims.clear();
+    const own = ensureState(this.state);
+    // Session-scoped weir latches never survive a load — the record/dwell rows
+    // reference live entity positions and visit state, not durable truth.
+    own.customsWeir = null;
+    if (this._weirPodDwell) this._weirPodDwell.clear();
+    if (this._podConeDwell) this._podConeDwell.clear();
+    const src = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+    own.unreportedKills = normalizeUnreportedKillLedger(src.unreportedKills);
+    yield 'law-unreported-kills';
+    if (src.reportedIncidents != null) {
+      own.reportedIncidents = normalizeReportedIncidentLedger(src.reportedIncidents);
+    } else if (own.reportedIncidents != null) {
+      delete own.reportedIncidents; // a different slot's priced ledger must not bleed into this load
+    }
+    if (src.memorialSites != null) own.memorialSites = normalizeMemorialSites(src.memorialSites);
+    else delete own.memorialSites;
+    if (src.composed != null) own.composed = normalizeComposedObligations(src.composed);
+    else delete own.composed;
+    if (src.fineSettled != null) own.fineSettled = normalizeFineSettled(src.fineSettled);
+    else delete own.fineSettled;
+    if (src.customsTrust != null) own.customsTrust = normalizeCustomsTrust(src.customsTrust);
+    else delete own.customsTrust;
+    if (src.witnessReports != null) {
+      // Without the extension, retain optional plain save facts inertly rather than inventing
+      // a normalizer, filing testimony, or dropping another version's pending case.
+      own.witnessReports = this._rcChaseEnabled ? normalizeWitnessReports(src.witnessReports)
+        : (typeof src.witnessReports === 'object' && !Array.isArray(src.witnessReports)
+          ? cloneLawPlain(src.witnessReports) || {} : {});
+    }
+    else delete own.witnessReports;
+    if (this._rcChaseEnabled) this._adoptWitnessReports(own);
+    if (this._customsWaivedPatrols) this._customsWaivedPatrols.clear();
+    if (src.fineOffer && typeof src.fineOffer === 'object' && !Array.isArray(src.fineOffer)) {
+      own.fineOffer = cloneLawPlain(src.fineOffer);
+    } else {
+      delete own.fineOffer;
+    }
+    // A surrender hold names live hulls. The owed bill, if accepted, is in `composed`.
+    delete own.playerSurrender;
+    delete own.surrenderRearm;
+    // Heat-challenge stamps name live hull ids too, and entity ids re-bind on load. A stamp
+    // left across the boundary would hold a recycled hull in a ring it never chose, so the
+    // watch re-derives from durable truth (the live heat tier) the same way a cold session does.
+    this._releaseAllHeatChallenges(this.state, 'restore');
+    delete own.heatChallenges;
+    delete own.heatChallengeEpisodeTier;
+    own.nextHeatChallengeTick = 0;
+    // Session-scoped response fixtures name live entity ids — and spawned law bodies are
+    // never serialized, so every id they hold is stale after a load. Clearing them lets
+    // each sync re-derive from durable truth (the impound bill, the heat tier) the same
+    // way a cold session does; a surviving record's postedAt latch would otherwise pin
+    // dead fixtures in place for the rest of the run.
+    delete own.wantedWarrant;
+    delete own.wantedCheckpoint;
+    delete own.wantedImpound;
+    delete own.highSecWarrant;
+    if (this._warrantWaves) this._warrantWaves.deserialize(src.warrantHunters);
+    else delete own.warrantHunters;
+    return own;
+  },
+
+  update(_dt, state) {
+    if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
+    if (shouldSkipFullTickSystems(state)) { this.keepalive(_dt); return; }
+    this._reconcileJobResponses();
+    this._updateFineWork(_dt, state);
+    this._pruneScanDumpWatch(state);
+    this._updatePlayerSurrender(_dt, state);
+    if (state.mode && state.mode !== 'flight') return;
+    this._expireNpcGrudges(state);
+    if (this._warrantWaves) this._warrantWaves.update(_dt, state);
+    this._syncWantedWarrant(state);
+    this._syncHighSecWarrant(state, _dt);
+    this._syncWantedCheckpoint(state);
+    this._syncWantedImpound(state);
+    if (this._rcChaseEnabled) {
+      this._syncWantedSweep(state);
+      this._updateWantedSweep(_dt, state);
+    }
+    // Witness couriers are ordinary traffic; their filing check runs on the flight tick, never
+    // inside the 15-tick incident poll — a carrier crossing the 60-WU berth chord inside a poll
+    // gap would silently miss its arrival.
+    if (this._rcChaseEnabled) this._updateWitnessReports(state);
+    this._updateWantedCheckpoint(_dt, state);
+    this._updateWantedImpound(_dt, state);
+    this._updateHeatChallengeWatch(state);
+    const own = ensureState(state);
+    if (strideDt(this, 'sanctuary', _dt, 2, state) > 0) this._enforceSanctuaryWithdrawals(state);
+    this._updateLawfulInspection(state);
+    // Cone dwell sums dt over seconds: 20 Hz with the accumulated step.
+    const coneDt = strideDt(this, 'cones', _dt, 3, state);
+    if (coneDt > 0) this._updateCustomsScanCones(coneDt, state);
+    this._updateCustomsWeir(_dt, state);
+    if ((state.tick | 0) >= (own.nextAmbientScanTick | 0)) {
+      own.nextAmbientScanTick = (state.tick | 0) + AMBIENT_SCAN_INTERVAL_TICKS;
+      const actors = collectLivingWorldActors(state, this._ambientActorScratch || (this._ambientActorScratch = []));
+      const slice = takeNearWorkSlice(state, 'lawSecurity', actors);
+      for (let i = 0; i < slice.length; i++) this._stampAmbient(slice[i]);
+    }
+    if ((state.tick | 0) < (own.nextIncidentTick | 0)) return;
+    own.nextIncidentTick = (state.tick | 0) + 15;
+    for (const key of Object.keys(own.incidents)) this._updateIncident(key, own.incidents[key]);
+  },
+
+  // ── PQ-048.06: one durable Helios cargo-inspection route ───────────────────────────────────
+
+  _resetInspectionTransient() {
+    this._nextInspectionTick = 0;
+    this._inspectionRebindPasses = 0;
+  },
+
+  _updateLawfulInspection(state) {
+    const active = activeLawfulInspection(state);
+    if (active) {
+      this._updateActiveLawfulInspection(state, active);
+      return;
+    }
+    if ((state.tick | 0) < (this._nextInspectionTick | 0)) return;
+    this._nextInspectionTick = (state.tick | 0) + LAWFUL_INSPECTION_POLL_TICKS;
+    if (!canOfferLawfulInspection(state) || hasLivePatrolScan(state)) return;
+
+    const suspicion = lawfulInspectionSuspicion(state, this._economy());
+    if (!suspicion) return;
+    const player = entityById(state, state.playerId);
+    const normalized = normalizedLawfulInspectionLedger(state);
+    // A malformed persisted history must never be treated as permission to mint a new case. Old
+    // saves have no field at all and normalize from `last`; malformed new-shape saves stop here.
+    if (!normalized.valid) return;
+    const patrol = selectHeliosInspectionPatrol(state, player, settledPatrolIds(normalized.ledger));
+    if (!patrol) return;
+    if (this._waiveCustomsScan({ stationId: LAWFUL_INSPECTION_STATION_ID, patrolId: patrol.id })) return;
+
+    const ledger = normalized.ledger || ensureLawfulInspectionLedger(state);
+    if (!ledger) return;
+    const sequence = ledger.sequence + 1;
+    ledger.sequence = sequence;
+    const patrolWorldRecordId = patrol.data.worldRecordId;
+    const now = inspectionNow(state);
+    const activeCase = {
+      id: `lawful-inspection:${patrolWorldRecordId}:${sequence}`,
+      patrolWorldRecordId,
+      stationId: LAWFUL_INSPECTION_STATION_ID,
+      sectorId: LAWFUL_INSPECTION_SECTOR_ID,
+      factionId: LAWFUL_INSPECTION_FACTION_ID,
+      suspicion,
+      phase: 'offered',
+      offeredAt: now,
+      deadlineAt: now + LAWFUL_INSPECTION_OFFER_S,
+    };
+    ledger.active = activeCase;
+    this._inspectionRebindPasses = 0;
+    this._emit('lawfulInspection:offered', publicLawfulInspection(activeCase));
+    this._say('bark', 'CONCORD PATROL: HOLD FOR CARGO INSPECTION.',
+      `lawful-inspection:offer:${activeCase.id}`, activeCase.factionId);
+  },
+
+  _updateActiveLawfulInspection(state, activeCase) {
+    if (hasLivePatrolScan(state)) {
+      this._interruptInspection('interrupted_encounter');
+      return;
+    }
+    const patrol = inspectionPatrolByWorldRecord(state, activeCase.patrolWorldRecordId);
+    if (!patrol) {
+      this._inspectionRebindPasses++;
+      if (this._inspectionRebindPasses >= LAWFUL_INSPECTION_REBIND_PASSES) {
+        this._interruptInspection('interrupted_patrol_unavailable');
+      }
+      return;
+    }
+    this._inspectionRebindPasses = 0;
+    const player = entityById(state, state.playerId);
+    if (!player || player.alive === false) {
+      this._interruptInspection('interrupted_player_death');
+      return;
+    }
+
+    // Escape is a physical Flight V3 outcome: this system neither changes movement input nor
+    // moves either hull. A continuous sector handoff therefore preserves the case long enough for
+    // the actual separation to settle as escape, while a hard exit ends it in the event handler.
+    const outsideRange = distance2(player.pos, patrol.pos)
+      > LAWFUL_INSPECTION_SCAN_RANGE * LAWFUL_INSPECTION_SCAN_RANGE;
+    if (outsideRange) {
+      if (!Number.isFinite(activeCase.breakRangeSince)) {
+        activeCase.breakRangeSince = inspectionNow(state);
+      } else if (inspectionNow(state) - activeCase.breakRangeSince >= LAWFUL_INSPECTION_BREAK_S) {
+        if (this._resolveLawfulInspection(activeCase, 'escaped')) {
+          this._emit('faction:repDelta', {
+            factionId: activeCase.factionId,
+            delta: -3,
+            reason: 'lawful_inspection_escape',
+          });
+        }
+        return;
+      }
+    } else if (Object.hasOwn(activeCase, 'breakRangeSince')) {
+      delete activeCase.breakRangeSince;
+    }
+
+    if (activeCase.phase === 'offered' && inspectionNow(state) >= activeCase.deadlineAt) {
+      this._beginLawfulInspectionScan(activeCase, 'deadline');
+    }
+  },
+
+  _chooseInspection(payload) {
+    const activeCase = activeLawfulInspection(this.state);
+    if (!activeCase || !payload || payload.caseId !== activeCase.id
+      || payload.choice !== 'comply' || activeCase.phase !== 'offered') return false;
+    return this._beginLawfulInspectionScan(activeCase, payload.source || 'ui');
+  },
+
+  _beginLawfulInspectionScan(activeCase, source) {
+    const state = this.state;
+    const player = entityById(state, state.playerId);
+    const patrol = inspectionPatrolByWorldRecord(state, activeCase.patrolWorldRecordId);
+    if (!player || !patrol) {
+      this._interruptInspection('interrupted_patrol_unavailable');
+      return false;
+    }
+    if (!isEligibleHeliosInspectionPatrol(state, patrol, player)) {
+      this._interruptInspection('interrupted_jurisdiction_lost');
+      return false;
+    }
+    if (!patrolCanInitiateScan(state, patrol, player)) {
+      this._resolveLawfulInspection(activeCase, 'cloak_evaded');
+      return false;
+    }
+
+    activeCase.phase = 'scanning';
+    delete activeCase.breakRangeSince;
+    this._emit('lawfulInspection:scanning', {
+      ...publicLawfulInspection(activeCase),
+      source: String(source || 'unknown'),
+    });
+    // Economy owns both the read and every confiscation/fine effect. The correlation id is only a
+    // stable return address for this player case; it is not a second customs result channel.
+    this._emit('patrol:proximity', {
+      patrolId: patrol.id,
+      stationId: activeCase.stationId,
+      factionId: activeCase.factionId,
+      security: 0.98,
+      lawfulInspectionCaseId: activeCase.id,
+    });
+    // economy.runScan emits contraband:scanned synchronously when it finds cargo. If no matching
+    // owner event arrived, the authoritative scan cleared the player (including a successful cloak
+    // evasion roll); do not invent a cargo or heat result here.
+    if (activeLawfulInspection(state) === activeCase && activeCase.phase === 'scanning') {
+      if (this._resolveLawfulInspection(activeCase, 'cleared')) {
+        this._emit('faction:repDelta', {
+          factionId: activeCase.factionId,
+          delta: 1,
+          reason: 'lawful_inspection_clear',
+        });
+      }
+    }
+    return true;
+  },
+
+  _observeInspectionScan(payload) {
+    const activeCase = activeLawfulInspection(this.state);
+    if (!activeCase || !payload || payload.lawfulInspectionCaseId !== activeCase.id
+      || activeCase.phase !== 'scanning' || payload.found !== true) return;
+    this._resolveLawfulInspection(activeCase, 'contraband_discovered');
+  },
+
+  _observeInspectionPatrolGone(payload) {
+    const state = this.state;
+    const activeCase = activeLawfulInspection(state);
+    if (!activeCase || !inspectionEventMatchesPatrol(state, payload, activeCase.patrolWorldRecordId)) return;
+    this._inspectionRebindPasses = 0;
+    if (payload && payload.killerId === state.playerId) {
+      this._resolveLawfulInspection(activeCase, 'collateral_patrol_destroyed');
+    } else {
+      this._interruptInspection('interrupted_patrol_unavailable');
+    }
+  },
+
+  _observeInspectionSectorExit(payload) {
+    // The residency/world owners deliberately mark free-flight handoffs. Preserve the durable case
+    // there; separation from the patrol is what makes the player an escaper. Intentional jumps and
+    // loads are hard exits and cannot keep an actor-local inspection open.
+    if (payload && (payload.continuous === true || payload.noTeleport === true)) return;
+    const activeCase = activeLawfulInspection(this.state);
+    if (activeCase && (!payload || payload.sectorId === activeCase.sectorId)) {
+      this._interruptInspection('interrupted_sector_exit');
+    }
+  },
+
+  _observeInspectionCollateral(payload, attacker, target) {
+    const state = this.state;
+    const activeCase = activeLawfulInspection(state);
+    if (!activeCase || !attacker || attacker.id !== state.playerId || !target
+      || target.data?.worldRecordId !== activeCase.patrolWorldRecordId) return;
+    // Existing combat → lawSecurity/heat listeners own the actual jurisdiction and heat result.
+    // This case only records why its prompt stopped; it deliberately does not report a second
+    // incident or write cargo, credits, faction standing, or heat.
+    this._resolveLawfulInspection(activeCase, 'collateral_assault');
+  },
+
+  _interruptInspection(outcome) {
+    const activeCase = activeLawfulInspection(this.state);
+    if (!activeCase) return false;
+    return this._resolveLawfulInspection(activeCase, outcome);
+  },
+
+  _resolveLawfulInspection(activeCase, outcome) {
+    const state = this.state;
+    const ledger = lawfulInspectionLedger(state);
+    if (!ledger || ledger.active !== activeCase) return false;
+    const resolvedAt = inspectionNow(state);
+    recordSettledPatrolId(ledger, activeCase.patrolWorldRecordId);
+    ledger.active = null;
+    ledger.last = {
+      id: activeCase.id,
+      patrolWorldRecordId: activeCase.patrolWorldRecordId,
+      stationId: activeCase.stationId,
+      sectorId: activeCase.sectorId,
+      factionId: activeCase.factionId,
+      outcome,
+      resolvedAt,
+    };
+    this._emit('lawfulInspection:resolved', { ...ledger.last });
+    return true;
+  },
+
+  _economy() {
+    return this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('economy')
+      : null;
+  },
+
+  _stampAmbient(entity) {
+    const state = this.state;
+    if (!state || !isArmedNpc(entity, state)) return false;
+    const data = entity.data || (entity.data = {});
+    const ai = data.ai || (data.ai = {});
+    if (ai.escalationPolicyVersion === LAW_SECURITY_VERSION) return false;
+    const context = String(ai.spawnContext || ai.context || '').toLowerCase();
+    if (context !== 'ambient' || ai.lawful || ai.encounterId || data.encounter || DANGEROUS_CONTEXTS.has(context)) return false;
+    if (!isPirateLike(entity)) return false;
+
+    ai.escalationPolicyVersion = LAW_SECURITY_VERSION;
+    ai.zoneId = String(ai.zoneId || `ambient:${currentSectorId(state)}`);
+    const cargoValue = playerCargoValue(state);
+    const security = Number.isFinite(ai.sectorSecurity) ? ai.sectorSecurity : sectorSecurity(state);
+    if (cargoValue >= AMBIENT_TOLL_VALUE_FLOOR && security <= 0.75) {
+      // pirateParley owns the actual demand/comply/refuse state machine. One shared squad id keeps
+      // an ambient group on one voice instead of every ship demanding separately.
+      ai.doctrine = 'toll';
+      ai.squadId = String(ai.squadId || `ambient_toll:${currentSectorId(state)}:${ai.zoneId}`);
+      ai.motive = 'cargo_extortion';
+      ai.engagementTrigger = 'demand_pending';
+      ai.approachTelegraph = String(ai.approachTelegraph || 'hail_and_scan');
+      ai.noFireResponseWindowS = Math.max(1, Number(ai.noFireResponseWindowS) || 0);
+      // One passage, one toll. A second hull in the same zone notes the same cause and
+      // does not multiply the bill.
+      this.noteComposedObligation({
+        kind: 'toll',
+        causeId: `passage:${currentSectorId(state)}:${ai.zoneId}`,
+        amountCr: AMBIENT_TOLL_VALUE_FLOOR,
+        label: 'passage toll',
+      });
+      return true;
+    }
+
+    // No value and no authored danger means no rational reason to attack. The ship remains a real
+    // contact and may defend itself after player aggression, but it neither targets nor fires now.
+    ai.passive = true;
+    ai.motive = cargoValue > 0 ? 'territorial_watch' : 'no_valuable_cargo';
+    ai.engagementTrigger = 'player_attack';
+    ai.approachTelegraph = String(ai.approachTelegraph || 'warning_pass');
+    ai.roe = RulesOfEngagement.HOLD_FIRE;
+    ai.activity = normalizeActivity({
+      kind: ActivityKind.LOITER,
+      reason: `ambient_watch:${ai.motive}`,
+      anchor: entity.pos,
+      leashRadius: 1800,
+      startedTick: state.tick | 0,
+    });
+    clearTarget(entity, state.playerId);
+    return true;
+  },
+
+  /**
+   * Station protection is a behavior contract, not only a projectile veto. If a raider crosses
+   * the jurisdiction boundary while chasing a protected target, it must visibly break contact:
+   * disarm, clear the lock, and fly away from the protected core. This catches stale attack state
+   * from encounters and sector promotion before the weapon system can consume it.
+  */
+  _enforceSanctuaryWithdrawals(state) {
+    // Quiet open flight: armed unlawful NPCs with no chase/fire signal still paid a full
+    // aiShips walk (isArmedNpc / isLawful / target bag) every tick. Latch when no
+    // aggressive candidate remains; wake on membership, combat fire/damage seq, tactical
+    // AI wake, or 0.5 s rescan. Soft-GPU fps not claimed. Fresh law residual after #145
+    // cones / #146 catch-nets.
+    if (SANCTUARY_EMPTY_QUIET_LATCH !== false) {
+      const laneVersion = entityIndexLaneVersion(state, SANCTUARY_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+      const tick = state.tick | 0;
+      const wakeSeq = this._sanctuaryWakeSeq | 0;
+      const quiet = this._sanctuaryQuiet;
+      const tacticalQuiet = !state.tacticalAiRuntime
+        || state.tacticalAiRuntime.quietLatched !== false;
+      if (quiet
+        && membership != null
+        && quiet.membership === membership
+        && quiet.wakeSeq === wakeSeq
+        && tacticalQuiet
+        && ((tick - (quiet.armedTick | 0)) < SANCTUARY_EMPTY_QUIET_RESCAN_TICKS)) {
+        publishSanctuaryQuiet(state, true);
+        return;
+      }
+    } else if (this._sanctuaryQuiet) {
+      this._sanctuaryQuiet = null;
+      publishSanctuaryQuiet(state, false);
+    }
+
+    const armed = indexedTypeScan(state, 'aiShips');
+    let aggressive = 0;
+    for (let i = 0; i < armed.length; i++) {
+      const entity = armed[i];
+      if (!isArmedNpc(entity, state) || isLawful(entity)) continue;
+      if (entity.data?.wantedWarrant === true) continue;
+      const data = entity.data || (entity.data = {});
+      const ai = data.ai || (data.ai = {});
+      const combat = data.combat || (data.combat = {});
+      const intent = data.intent || (data.intent = {});
+      const activity = ai.activity;
+      let targetId = combat.targetId != null ? combat.targetId : combat.lockTarget;
+      if (targetId == null && activity && activity.targetId != null) targetId = activity.targetId;
+      if (targetId == null && (ai.forcePlayerTarget || ai.huntPlayer || intent.fire)) {
+        targetId = state.playerId;
+      }
+      if (targetId == null) continue;
+      aggressive++;
+      const target = entityById(state, targetId);
+      if (!target) continue;
+      if (is47aScavengerCounterplayAuthorized(state, entity, target)) continue;
+      // X-02: the scripted Claim Jumper wing is outside the withdrawal regime while its beat
+      // is live — the same identity gate as the damage ward below and pirateDisengage's
+      // wingBeat. Its armed window opens only through the authorizeAIEngagement bridge; every
+      // exit (the onboarding script's own DISENGAGE, or an honest morale scatter on its crew's
+      // death) is already honest. Restamping it 'station_jurisdiction:*:withdraw' + passive
+      // falsifies the record and strands the scripted actor mid-lesson.
+      if (entity.data?.onboardingRaidWing === true
+        && state.onboarding?.raid?.active && !state.onboarding?.raid?.wingDone
+        && entity.id === state.onboarding?.raid?.ids?.wing) continue;
+      const jurisdiction = protectedStationAt(state, target) || protectedStationAt(state, entity);
+      if (!jurisdiction) continue;
+      this._withdrawFromSanctuary(entity, target, jurisdiction);
+    }
+
+    if (SANCTUARY_EMPTY_QUIET_LATCH !== false) {
+      const laneVersion = entityIndexLaneVersion(state, SANCTUARY_QUIET_LANES);
+      const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
+      const tacticalQuietArm = !state.tacticalAiRuntime
+        || state.tacticalAiRuntime.quietLatched !== false;
+      if (membership != null && aggressive === 0 && tacticalQuietArm) {
+        this._sanctuaryQuiet = {
+          membership,
+          armedTick: state.tick | 0,
+          wakeSeq: this._sanctuaryWakeSeq | 0,
+        };
+        publishSanctuaryQuiet(state, true);
+      } else {
+        this._sanctuaryQuiet = null;
+        publishSanctuaryQuiet(state, false);
+      }
+    }
+  },
+
+  _withdrawFromSanctuary(entity, target, jurisdiction) {
+    const state = this.state;
+    if (entity.data?.runCohort === 'survival') return;
+    const data = entity.data || (entity.data = {});
+    const ai = data.ai || (data.ai = {});
+    const firstWithdrawal = ai.sanctuaryWithdrawn !== true;
+    const away = sanctuaryWithdrawalVector(state, entity, target, jurisdiction);
+    const cause = aggressionCauseFor(state, entity, target);
+
+    ai.passive = true;
+    ai.forcePlayerTarget = false;
+    ai.huntPlayer = false;
+    ai.pirateDisengaged = true;
+    ai.sanctuaryWithdrawn = true;
+    ai.motiveSatisfied = true;
+    ai.engagementTrigger = 'jurisdiction_withdrawal';
+    ai.roe = RulesOfEngagement.HOLD_FIRE;
+    ai.activity = normalizeActivity({
+      kind: ActivityKind.DISENGAGE,
+      reason: `station_jurisdiction:${jurisdiction.stationId}:withdraw`,
+      anchor: protectionCenter(state, jurisdiction, target),
+      leashRadius: Math.max(1600, Number(jurisdiction.radius) || 0),
+      startedTick: state.tick | 0,
+      targetId: null,
+    });
+
+    clearTarget(entity, target.id);
+    const intent = data.intent || (data.intent = {});
+    intent.moveX = away.x;
+    intent.moveZ = away.z;
+    intent.boost = true;
+    intent.brake = false;
+
+    if (!firstWithdrawal) return;
+    this._say('bark', 'Station guns own this lane. Breaking contact.',
+      `law:sanctuary-withdrawal:${entity.id}`, entity.factionId);
+    this._recordReceipt({
+      cause,
+      outcome: 'sanctuary_withdrawal',
+      attackerId: entity.id,
+      targetId: target.id,
+      stationId: jurisdiction.stationId,
+      text: 'CONTACT BROKEN — raider withdrew from station jurisdiction.',
+    });
+    this._emit('law:sanctuaryWithdrawal', {
+      attackerId: entity.id,
+      targetId: target.id,
+      stationId: jurisdiction.stationId,
+      tick: state.tick | 0,
+    });
+  },
+
+  _handleDamage(payload) {
+    const state = this.state;
+    if (!state || !payload || !(Number(payload.applied) > 0)) return;
+    const attacker = entityById(state, payload.attackerId);
+    const target = entityById(state, payload.targetId);
+    if (!attacker || !target || attacker.id === target.id) return;
+    // Direct-contact physics can identify the rock itself as the impactor. A thrown rock
+    // carries its responsible actor's id instead; only that actor can be an aggressor.
+    if (payload.origin?.kind === 'collision' && attacker.type === 'asteroid') return;
+    const player = entityById(state, state.playerId);
+
+    this._observeInspectionCollateral(payload, attacker, target);
+
+    // Shooting a parley squad is an explicit refusal, not an unlabelled hostility transition.
+    if (attacker.id === state.playerId && target.data && target.data.ai && target.data.ai.parleySquadId) {
+      this._emit('pirateParley:choose', { squadId: target.data.ai.parleySquadId, choice: 'refuse', reason: 'player_attack' });
+    }
+
+    if (attacker.id === state.playerId && target.id !== state.playerId) {
+      // SF-159 verdict escalation window: remember the hit. A kill verdict later reads this
+      // bounded recent-harm history to tell an isolated contact (accident) from a continued
+      // attack (murder). Recording is not accusing — chips still never convict on their own.
+      this._noteHarmOnVictim(target.id);
+      // SF-159 holds for contact too: one collision chip is an accident (a pilot shoved into a
+      // hauler by a third hull), so only a sustained run of harm on that victim opens a case.
+      if (payload.origin && payload.origin.kind === 'collision'
+        && this._recentHarmCount(target.id, SUSTAINED_HARM_WINDOW_S) < SUSTAINED_HARM_MIN_EVENTS) {
+        return;
+      }
+      // Already hostile at first contact: the fight was lawful before it began. The combat
+      // receipt carries the FROZEN first-hit truth, so a victim who only turned hostile by
+      // retaliating to the player's own first shot still flows through as a crime scene —
+      // but shooting a declared hostile never opens an incident against the defender.
+      if (payload.targetHostileToPlayer !== true) {
+        const jurisdiction = protectedStationAt(state, target)
+          || (player && protectedStationAt(state, player))
+          || ceresDistressJurisdiction(state, target);
+        if (jurisdiction && (isLawful(target) || isProtectedCivilian(target))) {
+          this._openIncident(attacker, target, jurisdiction, isLawful(target) ? 'player_assault' : 'player_piracy');
+          return;
+        }
+        if (isLawful(target)) {
+          if (jurisdiction) this._openIncident(attacker, target, jurisdiction, 'player_assault');
+          else this._authorizeResponder(target, attacker, null, 'self_defense');
+        } else {
+          this._retaliate(target, attacker);
+        }
+      }
+      return;
+    }
+
+    // AL-FIGHT-1 / AL-HF-01: NPC-on-NPC applied damage is a grudge, not a law case. A reckless
+    // stray round or a RAM turns the victim on the shooter; lawful/civilian logic below still runs.
+    if (attacker.id !== state.playerId && target.id !== state.playerId) {
+      this._startNpcGrudge(target, attacker, payload.origin && payload.origin.kind === 'collision' ? 'collision' : 'damage');
+    }
+
+    const targetProtected = target.id === state.playerId || isLawful(target) || isProtectedCivilian(target);
+    if (!targetProtected || isLawful(attacker)) return;
+    // X-02 v4: the onboarding wing's lesson rounds on the player are not a law case while the
+    // raid beat is current — no hostile_fire incident, no dispatch. Normal law resumes after it.
+    if (attacker.data?.onboardingRaidWing === true && target.id === state.playerId
+      && state.onboarding?.raid?.active && !state.onboarding?.raid?.wingDone) return;
+    const jurisdiction = protectedStationAt(state, target) || ceresDistressJurisdiction(state, target);
+    if (jurisdiction) this._openIncident(attacker, target, jurisdiction,
+      target.id === state.playerId || isLawful(target) ? 'hostile_fire' : 'npc_piracy');
+    else if (isLawful(target) && target.type !== 'station') this._authorizeResponder(target, attacker, null, 'self_defense');
+  },
+
+  _handleFire(payload) {
+    const state = this.state;
+    if (!state || !payload) return;
+    const ownerId = payload.ownerId ?? payload.attackerId ?? payload.sourceId;
+    if (ownerId != null && state.playerId != null && String(ownerId) === String(state.playerId)) {
+      this._cancelPlayerSurrender('fired');
+    }
+    const attacker = entityById(state, ownerId);
+    if (!attacker || attacker.alive === false) return;
+    const player = entityById(state, state.playerId);
+    const targetId = payload.targetId
+      ?? (attacker.data && attacker.data.combat && attacker.data.combat.targetId)
+      ?? (attacker.data && attacker.data.ai && attacker.data.ai.activity && attacker.data.ai.activity.targetId);
+    const target = entityById(state, targetId);
+    if (!target || target.alive === false || attacker.id === target.id) return;
+    if (isLawful(attacker) || !isCivilianHauler(target)) return;
+    // Firing on a hauler that is already hostile to the player — and was not provoked into it
+    // by the player's own first shot — is lawful force, not a fresh incident.
+    if (attacker.id === state.playerId
+      && !(target.data && target.data.ai && target.data.ai.retaliationTargetId === state.playerId)
+      && isHostileToPlayer(target, player && player.team, state)) {
+      return;
+    }
+    const slotHauler = target.data && target.data.activityActorSlotId === CERES_AMBUSH_HAULER_SLOT;
+    const pocket = ceresDistressJurisdiction(state, target);
+    const jurisdiction = pocket
+      || (slotHauler && (protectedStationAt(state, target)
+        || (attacker.id === state.playerId && protectedStationAt(state, attacker))));
+    if (!jurisdiction) return;
+    this._openIncident(attacker, target, jurisdiction,
+      attacker.id === state.playerId
+        ? (isLawful(target) ? 'player_assault' : 'player_piracy')
+        : (isLawful(target) ? 'hostile_fire' : 'npc_piracy'));
+  },
+
+  /**
+   * SF-159 — bounded recent-harm history per victim (session-scoped, like `incidents`; a save
+   * boundary or sector hop drops it and the next contact starts a fresh window — the window
+   * degrades toward mercy, never toward a stranger's accusation). Not serialized.
+   */
+  _noteHarmOnVictim(victimId) {
+    const state = this.state;
+    if (!state || victimId == null) return;
+    const own = ensureState(state);
+    if (!own.harmWindows || typeof own.harmWindows !== 'object' || Array.isArray(own.harmWindows)) {
+      own.harmWindows = {};
+    }
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const key = String(victimId);
+    let row = own.harmWindows[key];
+    if (!row) {
+      row = { lastT: now, events: [] };
+      own.harmWindows[key] = row;
+    }
+    row.lastT = now;
+    row.events.push(now);
+    while (row.events.length > SUSTAINED_HARM_EVENT_CAP) row.events.shift();
+    const keys = Object.keys(own.harmWindows);
+    if (keys.length <= SUSTAINED_HARM_VICTIM_CAP) return;
+    // Bounded: evict the stalest victim window, never the row just written.
+    let oldestKey = null;
+    let oldestT = Infinity;
+    for (const k of keys) {
+      const t = own.harmWindows[k] && Number.isFinite(own.harmWindows[k].lastT)
+        ? own.harmWindows[k].lastT
+        : -Infinity;
+      if (t < oldestT) { oldestT = t; oldestKey = k; }
+    }
+    if (oldestKey != null && oldestKey !== key) delete own.harmWindows[oldestKey];
+  },
+
+  /** Player-caused harm events on this victim inside the rolling window; prunes as it reads. */
+  _recentHarmCount(victimId, windowS) {
+    const state = this.state;
+    const own = state && state.lawSecurity;
+    const row = own && own.harmWindows && own.harmWindows[String(victimId)];
+    if (!row || !Array.isArray(row.events)) return 0;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const cutoff = now - Math.max(0, Number(windowS) || 0);
+    let write = 0;
+    for (let i = 0; i < row.events.length; i++) {
+      if (row.events[i] >= cutoff) row.events[write++] = row.events[i];
+    }
+    row.events.length = write;
+    if (row.events.length === 0) {
+      delete own.harmWindows[String(victimId)];
+      return 0;
+    }
+    return row.events.length;
+  },
+
+  _clearHarmWindows() {
+    const own = this.state && this.state.lawSecurity;
+    if (own && own.harmWindows) own.harmWindows = {};
+  },
+
+  _retaliate(victim, attacker) {
+    if (!victim || !attacker || isLawful(victim)) return;
+    const state = this.state;
+    const protection = protectedStationAt(state, attacker);
+    const data = victim.data || (victim.data = {});
+    const ai = data.ai || (data.ai = {});
+    ai.motive = 'self_defense';
+    ai.engagementTrigger = 'player_attack';
+    ai.retaliationTargetId = attacker.id;
+    ai.approachTelegraph = 'return_fire_warning';
+    ai.noFireResponseWindowS = 1;
+    if (protection) {
+      ai.passive = true;
+      ai.roe = RulesOfEngagement.HOLD_FIRE;
+      ai.activity = normalizeActivity({
+        kind: ActivityKind.DISENGAGE,
+        reason: 'station_jurisdiction:withdraw',
+        anchor: victim.pos,
+        leashRadius: 1600,
+        startedTick: state.tick | 0,
+        targetId: null,
+      });
+      clearTarget(victim, attacker.id);
+      this._say('bark', 'Station guns own this lane. We are leaving.', `law:retreat:${victim.id}`, victim.factionId);
+      this._recordReceipt({
+        cause: 'player_attack', outcome: 'protected_withdrawal', attackerId: attacker.id,
+        targetId: victim.id, stationId: protection.stationId,
+        text: 'PLAYER FIRED FIRST — target withdrew under station protection.',
+      });
+      return;
+    }
+    ai.passive = false;
+    ai.roe = RulesOfEngagement.WEAPONS_FREE;
+    ai.activity = normalizeActivity({
+      kind: ActivityKind.ATTACK_RUN,
+      reason: 'retaliation:player_attack',
+      anchor: victim.pos,
+      leashRadius: 2200,
+      startedTick: state.tick | 0,
+      targetId: attacker.id,
+    });
+    const combat = data.combat || (data.combat = {});
+    combat.targetId = attacker.id;
+    this._say('bark', 'You fired first. Clear our range to disengage.', `law:retaliation:${victim.id}`, victim.factionId);
+    this._recordReceipt({
+      cause: 'player_attack', outcome: 'retaliation_authorized', attackerId: attacker.id,
+      targetId: victim.id, stationId: null,
+      text: 'PLAYER FIRED FIRST — self-defense authorized; break contact to disengage.',
+    });
+  },
+
+  /**
+   * AL-FIGHT-1 / AL-HF-01: only a live, non-lawful, non-civilian NPC raider that can actually
+   * choose a fight carries a grudge. The player, lawful patrols, civilian traffic, the Swarm
+   * cohort, parley squads and authored raiders all keep their existing behaviour.
+   */
+  _isGrudgeCapable(entity) {
+    if (!entity || entity.alive === false) return false;
+    if (entity.type !== 'ship') return false;
+    const state = this.state;
+    if (entity.id === state.playerId) return false;
+    if (entity.team === 0 || entity.team === 2) return false;
+    const data = entity.data || {};
+    const ai = data.ai;
+    if (!ai || ai.lawful === true) return false;
+    if (isProtectedCivilian(entity)) return false;
+    if (ai.passive === true) return false;
+    if (data.runCohort != null) return false;
+    if (ai.parleySquadId) return false;
+    if (data.predationRole === 'raider') return false;
+    return true;
+  },
+
+  /** Resolve the hull that owns a damage packet: the ship itself, or a deployable's layer. */
+  _grudgeAttackerShip(attacker) {
+    if (!attacker) return null;
+    if (attacker.type === 'ship') return attacker;
+    const ownerId = attacker.ownerId ?? (attacker.data && attacker.data.ownerId);
+    const owner = entityById(this.state, ownerId);
+    return owner && owner.type === 'ship' && owner.alive !== false ? owner : null;
+  },
+
+  /**
+   * Turn a non-lawful NPC victim on a non-lawful NPC shooter for NPC_GRUDGE_S from the last
+   * provocation. A second hit from the same shooter refreshes the clock without re-telegraphing.
+   */
+  _startNpcGrudge(victim, attacker, cause) {
+    if (!this._isGrudgeCapable(victim)) return;
+    const attackerShip = this._grudgeAttackerShip(attacker);
+    if (!attackerShip) return;
+    const state = this.state;
+    if (attackerShip.id === state.playerId || attackerShip.id === victim.id) return;
+    if (isLawful(attackerShip)) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const ai = victim.data.ai;
+    const current = ai.npcGrudge;
+    if (current && current.targetId === attackerShip.id) {
+      current.untilT = now + NPC_GRUDGE_S;
+      return;
+    }
+    // Switching grudges keeps the ORIGINAL prior state, never the previous grudge's override.
+    const prior = current ? current.prior : {
+      retaliationTargetId: ai.retaliationTargetId ?? null,
+      activity: ai.activity || null,
+      roe: ai.roe ?? null,
+      combatTargetId: victim.data.combat?.targetId ?? null,
+    };
+    ai.npcGrudge = {
+      targetId: attackerShip.id,
+      startedT: now,
+      untilT: now + NPC_GRUDGE_S,
+      cause,
+      prior,
+    };
+    ai.retaliationTargetId = attackerShip.id;
+    ai.roe = RulesOfEngagement.WEAPONS_FREE;
+    ai.activity = normalizeActivity({
+      kind: ActivityKind.ATTACK_RUN,
+      reason: NPC_GRUDGE_REASON,
+      anchor: victim.pos,
+      leashRadius: 2200,
+      startedTick: state.tick | 0,
+      targetId: attackerShip.id,
+    });
+    const combat = victim.data.combat || (victim.data.combat = {});
+    combat.targetId = attackerShip.id;
+    if (!this._grudgeVictims) this._grudgeVictims = new Set();
+    this._grudgeVictims.add(victim.id);
+    // AL-HF-14: the existing return-fire picture, drawn by the action VFX recipe. No doctrineId,
+    // so the doctrine-cycle presentation lane ignores it; no bark, receipt, or toast.
+    this._emit('ai:telegraph', {
+      entityId: victim.id,
+      targetId: attackerShip.id,
+      kind: 'return_fire_warning',
+      cause: 'npc_grudge',
+      durationTicks: 60,
+      tick: state.tick | 0,
+    });
+  },
+
+  /** Restore exactly the state the victim held before the first grudge in the chain. */
+  _endNpcGrudge(victim) {
+    const state = this.state;
+    const ai = victim && victim.data && victim.data.ai;
+    const g = ai && ai.npcGrudge;
+    if (!g) return;
+    // A bare weapons_free value cannot prove the grudge still owns the roe field — a foreign
+    // writer (player retaliation, a scripted escalation) can land the same value — so capture
+    // grudge ownership from the identity channels BEFORE any of the restores below run. The two
+    // authority channels are the ones _startNpcGrudge writes: combat.targetId is only a per-tick
+    // weapon lock and cannot prove ownership (a stale lock outlives the grudge's authority).
+    const grudgeOwnsPosture = g.targetId != null
+      && (ai.retaliationTargetId === g.targetId
+        || (ai.activity && ai.activity.reason === NPC_GRUDGE_REASON));
+    // Known limit: tacticalAI's egress posture stash can rewrite activity while leaving the
+    // grudge's retaliationTargetId in place, so a restrictive prior may still revert mid-egress;
+    // no channel-membership test separates that case from a live grudge fight.
+    if (ai.retaliationTargetId === g.targetId) {
+      const priorId = g.prior && g.prior.retaliationTargetId;
+      const priorEntity = entityById(state, priorId);
+      if (priorId != null && priorEntity && priorEntity.alive !== false) ai.retaliationTargetId = priorId;
+      else delete ai.retaliationTargetId;
+    }
+    const restoredActivity = g.prior && g.prior.activity
+      ? normalizeActivity(g.prior.activity)
+      : normalizeActivity({
+        kind: ActivityKind.ATTACK_RUN,
+        reason: 'npc_grudge_expired',
+        anchor: victim.pos,
+        leashRadius: 2200,
+        startedTick: state.tick | 0,
+        targetId: null,
+      });
+    if (ai.activity && ai.activity.reason === NPC_GRUDGE_REASON) {
+      ai.activity = restoredActivity;
+    }
+    // tacticalAI's egress stash may hold the grudge's activity while a posture activity owns the
+    // live channel — reconcile it too, or restoring roe below makes applyEngagementPosture
+    // early-return on `roe !== weapons_free` and the stash never gets handed back.
+    const stash = ai.postureBaseActivity;
+    if (stash && (stash.reason === NPC_GRUDGE_REASON || stash.targetId === g.targetId)) {
+      ai.postureBaseActivity = restoredActivity;
+    }
+    // Roe restore stands alone from the activity: another system may replace the activity while
+    // the grudge is live, and the weapons-free escalation must still hand the original posture
+    // back — but only while the grudge still owns the posture. An absent prior roe is restored
+    // by deleting the key, never by writing a null-valued one.
+    if (ai.roe === RulesOfEngagement.WEAPONS_FREE && g.prior && grudgeOwnsPosture) {
+      if (g.prior.roe == null) delete ai.roe;
+      else ai.roe = g.prior.roe;
+    }
+    const combat = victim.data.combat;
+    if (combat && combat.targetId === g.targetId) {
+      combat.targetId = g.prior && g.prior.combatTargetId === g.targetId
+        ? null
+        : (g.prior && g.prior.combatTargetId != null ? g.prior.combatTargetId : null);
+    }
+    delete ai.npcGrudge;
+    if (this._grudgeVictims) this._grudgeVictims.delete(victim.id);
+  },
+
+  /**
+   * AL-FIGHT-1 / AL-HF-01: a hull shelved into its world record and later rematerialized keeps the
+   * session grudge it was carrying, but the victim index is rebuilt only at a save boundary or New
+   * Game. The spawn listener re-registers the carried record so it still expires on the reset
+   * clock; a record whose window already closed ends here instead of lingering unindexed forever.
+   */
+  _registerCarriedGrudge(entity) {
+    if (!entity || entity.type !== 'ship') return;
+    const ai = entity.data && entity.data.ai;
+    const g = ai && ai.npcGrudge;
+    if (!g) return;
+    const state = this.state;
+    if (!state) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    if (Number.isFinite(g.untilT) && g.untilT > now + NPC_GRUDGE_S) g.untilT = now + NPC_GRUDGE_S;
+    if (Number.isFinite(g.untilT) && g.untilT <= now) {
+      this._endNpcGrudge(entity);
+      return;
+    }
+    if (!this._grudgeVictims) this._grudgeVictims = new Set();
+    this._grudgeVictims.add(entity.id);
+  },
+
+  /**
+   * Full-flight-tick grudge bookkeeping. The dirty rebuild is the one entity scan (save load,
+   * new game); quiet play costs nothing beyond the victim set. Iteration is sorted by String(id)
+   * so a save/load boundary cannot change the order in which expired grudges restore.
+   */
+  _expireNpcGrudges(state) {
+    if (!this._grudgeVictims) this._grudgeVictims = new Set();
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    if (this._grudgeIndexDirty) {
+      this._grudgeVictims.clear();
+      if (state.entities && typeof state.entities.values === 'function') {
+        for (const entity of state.entities.values()) {
+          const ai = entity && entity.data && entity.data.ai;
+          if (!ai) continue;
+          const g = ai.npcGrudge;
+          if (g) {
+            // A loaded save with a reset clock never extends a grudge past the authored window.
+            if (Number.isFinite(g.untilT) && g.untilT > now + NPC_GRUDGE_S) g.untilT = now + NPC_GRUDGE_S;
+            this._grudgeVictims.add(entity.id);
+            continue;
+          }
+          // The record can be dropped by a save (or another writer). End the orphaned order.
+          if (ai.activity && ai.activity.reason === NPC_GRUDGE_REASON) {
+            if (ai.retaliationTargetId === ai.activity.targetId) delete ai.retaliationTargetId;
+            ai.activity = normalizeActivity({
+              kind: ai.activity.kind,
+              reason: 'npc_grudge_expired',
+              anchor: ai.activity.anchor,
+              leashRadius: ai.activity.leashRadius,
+              startedTick: state.tick | 0,
+              targetId: null,
+            });
+          }
+        }
+      }
+      this._grudgeIndexDirty = false;
+    }
+    if (this._grudgeVictims.size === 0) return;
+    const ids = Array.from(this._grudgeVictims).sort((a, b) => {
+      const sa = String(a);
+      const sb = String(b);
+      return sa < sb ? -1 : sa > sb ? 1 : 0;
+    });
+    for (const id of ids) {
+      const victim = entityById(state, id);
+      if (!victim || victim.alive === false) {
+        this._grudgeVictims.delete(id);
+        continue;
+      }
+      const g = victim.data && victim.data.ai && victim.data.ai.npcGrudge;
+      if (!g) {
+        this._grudgeVictims.delete(id);
+        continue;
+      }
+      const target = entityById(state, g.targetId);
+      if (!target || target.alive === false || now >= g.untilT) this._endNpcGrudge(victim);
+    }
+  },
+
+  /**
+   * AL-HF-15: a hard hull-to-hull collision applies damage with no authoritative weapon attacker,
+   * so the pair forms mutual grudges off the existing consequence event. Each struck body emits
+   * its own consequence; a scrape (impactDamage 0) forms none.
+   */
+  _handleCollisionGrudge(p) {
+    if (!p || p.damageApplied !== true) return;
+    if (p.targetType !== 'ship' || p.otherType !== 'ship') return;
+    if (!(Number(p.impactDamage) > 0)) return;
+    const state = this.state;
+    if (!state) return;
+    const target = entityById(state, p.targetId);
+    const other = entityById(state, p.otherId);
+    if (!target || !other) return;
+    if (target.id === state.playerId || other.id === state.playerId) return;
+    this._startNpcGrudge(target, other, 'collision');
+  },
+
+  _openIncident(attacker, victim, jurisdiction, cause) {
+    const state = this.state;
+    const own = ensureState(state);
+    const key = `${jurisdiction.stationId}:${attacker.id}`;
+    const existing = own.incidents[key];
+    if (existing) {
+      existing.lastDamageAt = state.simTime || 0;
+      existing.victimId = victim.id;
+      existing.victimGeneration = occupantGenerationOf(victim);
+      return existing;
+    }
+    const stationEntity = entityById(state, jurisdiction.entityId)
+      || stationByPublicId(state, jurisdiction.stationId);
+    const ringAnchor = stationEntity && stationEntity.pos
+      ? stationEntity.pos
+      : (victim && victim.pos) || null;
+    const incident = {
+      id: `law:${hash32(state.meta && state.meta.seed || 1, jurisdiction.stationId, attacker.id, state.tick | 0).toString(16)}`,
+      stationId: jurisdiction.stationId,
+      stationEntityId: jurisdiction.entityId,
+      stationGeneration: occupantGenerationOf(entityById(state, jurisdiction.entityId)),
+      factionId: jurisdiction.factionId,
+      radius: jurisdiction.radius,
+      attackerId: attacker.id,
+      attackerGeneration: occupantGenerationOf(attacker),
+      victimId: victim.id,
+      victimGeneration: occupantGenerationOf(victim),
+      // The station entity's id can be freed and recycled onto a projectile or traffic ship while
+      // the incident is still open; the disengage ring must not follow the new occupant. Frozen at
+      // open, then updated only from generation-verified occupants (see _updateIncident).
+      ringPos: ringAnchor && Number.isFinite(ringAnchor.x) && Number.isFinite(ringAnchor.z)
+        ? { x: ringAnchor.x, z: ringAnchor.z }
+        : null,
+      cause,
+      startedAt: state.simTime || 0,
+      lastDamageAt: state.simTime || 0,
+      responderIds: [],
+      nextReserveOrdinal: 0,
+      status: 'distress',
+      victimAnchor: null,
+    };
+    const policy = authorityResponsePolicy(effectiveLawSecurity(state));
+    const patrolResponse = scaleBySector(currentSectorId(state), 'patrolResponse', 1);
+    incident.security = policy.security;
+    incident.dispatchDelayS = policy.dispatchDelayS * patrolResponse;
+    incident.dispatchAt = incident.startedAt + incident.dispatchDelayS;
+    incident.responderCap = policy.responderCap;
+    incident.reserveAllowed = jurisdiction.rankFromVictim === true ? false : policy.reserveAllowed;
+    incident.rankFromVictim = jurisdiction.rankFromVictim === true;
+    incident.challengeWindowS = policy.challengeWindowS * patrolResponse;
+    own.incidents[key] = incident;
+    if (attacker && attacker.id === state.playerId) {
+      for (const other of state.entityList || []) reopenLawFireForNewCause(other, incident.id);
+    }
+    // The citation quotes the reason and target this receipt stores. A generic
+    // distress line let two incidents read as the same event, and a numeric
+    // target id never survived into the provenance record.
+    const targetKey = victim && victim.id != null ? String(victim.id) : '';
+    const citation = incidentCitation(cause, incidentVictimLabel(state, victim), incident.dispatchDelayS)
+      || `CONTROL: distress logged. Patrol ETA ${incident.dispatchDelayS.toFixed(2)} seconds.`;
+    this._say('alert', citation, `law:distress:${incident.id}`, jurisdiction.factionId);
+    this._emit('law:distressRaised', publicIncident(incident));
+    this._emit('law:incidentOpened', publicIncident(incident));
+    this._lawResponse('incident_opened', {
+      incidentId: incident.id, stationId: incident.stationId, factionId: incident.factionId,
+      cause, attackerId: attacker.id, victimId: victim.id,
+      dispatchAt: incident.dispatchAt,
+    });
+    this._recordReceipt({
+      incidentId: incident.id, cause, reason: cause, outcome: 'distress_received',
+      attackerId: attacker.id, targetId: targetKey, stationId: jurisdiction.stationId,
+      text: citation,
+    });
+    return incident;
+  },
+
+  /**
+   * Return undefined for an ordinary responder, null for a job hull that is not safe to borrow,
+   * or the exact live Ceres job binding. Non-Ceres jobs retain the ordinary responder path; any
+   * Ceres-marked candidate fails closed unless it is one of the two authored patrol/escort leases.
+   */
+  _jobResponderBinding(responder, incident) {
+    const data = responder && responder.data;
+    const slotId = typeof data?.activityActorSlotId === 'string' ? data.activityActorSlotId : null;
+    const hasJobIdentity = !!data && (data.jobId != null || data.worldRecordId != null
+      || data.ceresActivityCast === true
+      || data.ceresActivityJobOwned === true
+      || slotId != null);
+    if (!hasJobIdentity) return undefined;
+    if (!hasCeresJobResponderMarker(this.state, responder, slotId)) return undefined;
+    const api = this.helpers && this.helpers.npcJobs;
+    const slot = slotId && CERES_LAW_JOB_SLOTS_BY_ID.get(slotId);
+    const worldRecordId = slot ? stableRecordId(
+      this.state?.meta?.seed,
+      CERES_ACTIVITY_SECTOR_ID,
+      RECORD_KIND.CONVOY,
+      slot.worldRecordSlotId,
+    ) : null;
+    const jobId = worldRecordId ? `job:${worldRecordId}` : null;
+    if (!jobId || !slot
+      || data.worldRecordId !== worldRecordId || data.jobId !== jobId
+      || currentSectorId(this.state) !== CERES_ACTIVITY_SECTOR_ID
+      || data.ceresActivityCast !== true || data.ceresActivityJobOwned !== true
+      || data.sectorId !== CERES_ACTIVITY_SECTOR_ID
+      || (data.homeSectorId != null && data.homeSectorId !== CERES_ACTIVITY_SECTOR_ID)
+      || (responder.homeSectorId != null && responder.homeSectorId !== CERES_ACTIVITY_SECTOR_ID)
+      || !api || typeof api.byEntity !== 'function' || typeof api.claimControl !== 'function'
+      || typeof api.releaseControl !== 'function' || typeof api.controlClaim !== 'function') {
+      return null;
+    }
+    const liveEntity = entityById(this.state, responder.id);
+    const entry = api.byEntity(responder.id);
+    if (liveEntity !== responder || responder.alive === false || !entry || entry.entityId !== responder.id
+      || entry.sectorId !== CERES_ACTIVITY_SECTOR_ID || entry.worldRecordId !== worldRecordId
+      || entry.job?.id !== jobId
+      || entry.job?.kind !== 'patrol' || entry.kind !== 'patrol') {
+      return null;
+    }
+    const claimId = lawJobResponseClaimId(incident, jobId);
+    if (!claimId) return null;
+    const liveClaim = api.controlClaim(jobId);
+    if (liveClaim) {
+      const retained = this._jobResponseClaims && this._jobResponseClaims.get(claimId);
+      if (!retained || retained.entity !== responder || retained.entry !== entry
+        || liveClaim.claimId !== claimId || liveClaim.holder !== LAW_JOB_RESPONSE_HOLDER
+        || liveClaim.claimedEntityId !== responder.id) {
+        return null;
+      }
+    }
+    return { api, jobId, slotId, entry, claimId };
+  },
+
+  _responseCandidateEligible(responder, incident) {
+    const binding = this._jobResponderBinding(responder, incident);
+    if (binding === undefined) return true;
+    if (!binding) return false;
+    return this._jobResponseClaims.has(binding.claimId)
+      || this._jobResponseClaims.size < LAW_JOB_RESPONSE_CLAIM_CAP;
+  },
+
+  _claimJobResponder(responder, incident) {
+    const binding = this._jobResponderBinding(responder, incident);
+    if (binding === undefined) return true;
+    if (!binding) return false;
+    const retained = this._jobResponseClaims.get(binding.claimId);
+    if (retained) return retained.entity === responder && retained.entry === binding.entry;
+    if (this._jobResponseClaims.size >= LAW_JOB_RESPONSE_CLAIM_CAP) return false;
+
+    const data = responder.data;
+    const topLevels = {
+      ai: snapshotOwnValue(data, 'ai'),
+      combat: snapshotOwnValue(data, 'combat'),
+      intent: snapshotOwnValue(data, 'intent'),
+    };
+    const snapshots = {
+      ai: snapshotOwnFields(topLevels.ai.value, LAW_RESPONSE_AI_FIELDS),
+      combat: snapshotOwnFields(topLevels.combat.value, LAW_RESPONSE_COMBAT_FIELDS),
+      intent: snapshotOwnFields(topLevels.intent.value, LAW_RESPONSE_INTENT_FIELDS),
+    };
+    const granted = binding.api.claimControl(binding.jobId, {
+      claimId: binding.claimId,
+      holder: LAW_JOB_RESPONSE_HOLDER,
+    });
+    const claim = granted && granted.claim;
+    if (!granted?.granted || !claim || claim.claimId !== binding.claimId
+      || claim.holder !== LAW_JOB_RESPONSE_HOLDER || claim.claimedEntityId !== responder.id) {
+      return false;
+    }
+    this._jobResponseClaims.set(binding.claimId, {
+      claimId: binding.claimId,
+      incidentId: incident.id,
+      targetId: incident.attackerId,
+      entityId: responder.id,
+      entity: responder,
+      data,
+      jobId: binding.jobId,
+      slotId: binding.slotId,
+      entry: binding.entry,
+      job: binding.entry.job,
+      topLevels,
+      snapshots,
+      successors: null,
+    });
+    return true;
+  },
+
+  _sealJobResponder(responder, incident) {
+    const binding = this._jobResponderBinding(responder, incident);
+    if (binding === undefined) return true;
+    if (!binding) return false;
+    const record = this._jobResponseClaims.get(binding.claimId);
+    const data = responder?.data;
+    if (!record || record.entity !== responder || record.entry !== binding.entry
+      || record.data !== data || !isObjectContainer(data?.ai)
+      || !isObjectContainer(data?.combat) || !isObjectContainer(data?.intent)) {
+      return false;
+    }
+    const successors = { ai: data.ai, combat: data.combat, intent: data.intent };
+    if (record.successors) return responseSuccessorsMatch(record, data);
+    record.successors = successors;
+    return true;
+  },
+
+  _releaseJobResponse(record, _reason) {
+    if (!record || !this._jobResponseClaims?.has(record.claimId)) return false;
+    const api = this.helpers && this.helpers.npcJobs;
+    if (!api || typeof api.controlClaim !== 'function') return false;
+    const current = entityById(this.state, record.entityId);
+    const entry = api && typeof api.byEntity === 'function' ? api.byEntity(record.entityId) : null;
+    const liveClaim = api.controlClaim(record.jobId);
+    const exactEntityAndJob = current === record.entity && current?.data === record.data
+      && entry === record.entry && entry?.job === record.job && entry?.job?.id === record.jobId
+      && entry?.entityId === record.entityId && current.data?.jobId === record.jobId;
+    const exactAi = exactEntityAndJob && responseSuccessorMatches(record, current.data, 'ai');
+    const exactCombat = exactEntityAndJob && responseSuccessorMatches(record, current.data, 'combat');
+    const exactIntent = exactEntityAndJob && responseSuccessorMatches(record, current.data, 'intent');
+    const fullCapturedBinding = exactEntityAndJob && exactAi && exactCombat && exactIntent;
+    const ownsLiveClaim = liveClaim?.claimId === record.claimId
+      && liveClaim.holder === LAW_JOB_RESPONSE_HOLDER
+      && liveClaim.claimedEntityId === record.entityId;
+
+    // Clear only through exact law-owned successors before returning movement ownership. A foreign
+    // replacement in one slot must not prevent the other exact slots from being restored, and must
+    // never be used as a target for law cleanup.
+    if (ownsLiveClaim && exactCombat) clearCombatTarget(current.data.combat, record.targetId);
+    if (ownsLiveClaim && exactIntent) clearFiringIntent(current.data.intent);
+    if (ownsLiveClaim
+      && api && typeof api.releaseControl === 'function') {
+      releaseControlWithoutForeignWrites(api, record, current, fullCapturedBinding);
+    }
+    const remainingClaim = api.controlClaim(record.jobId);
+    const releaseVerified = remainingClaim?.claimId !== record.claimId
+      || remainingClaim?.holder !== LAW_JOB_RESPONSE_HOLDER
+      || remainingClaim?.claimedEntityId !== record.entityId;
+    if (!releaseVerified) return false;
+    this._jobResponseClaims.delete(record.claimId);
+    const exactEntityAndDataAfter = ownsLiveClaim
+      && entityById(this.state, record.entityId) === current && current.data === record.data;
+    if (exactEntityAndDataAfter && exactAi && responseSuccessorMatches(record, current.data, 'ai')) {
+      restoreOwnFields(record.topLevels.ai.value, record.snapshots.ai);
+      restoreOwnValue(current.data, 'ai', record.topLevels.ai);
+      // The morale claim's own bookkeeping is not a snapped field; retire it with the response.
+      if (current.data.ai) delete current.data.ai[SECURITY_RESPONSE_MORALE_RESTORE];
+    }
+    if (exactEntityAndDataAfter && exactCombat && responseSuccessorMatches(record, current.data, 'combat')) {
+      restoreOwnFields(record.topLevels.combat.value, record.snapshots.combat);
+      restoreOwnValue(current.data, 'combat', record.topLevels.combat);
+    }
+    if (exactEntityAndDataAfter && exactIntent && responseSuccessorMatches(record, current.data, 'intent')) {
+      restoreOwnFields(record.topLevels.intent.value, record.snapshots.intent);
+      restoreOwnValue(current.data, 'intent', record.topLevels.intent);
+    }
+    return true;
+  },
+
+  _claimRecordForEntity(entityId) {
+    if (entityId == null) return null;
+    for (const record of this._jobResponseClaims?.values() || []) {
+      if (record.entityId === entityId) return record;
+    }
+    return null;
+  },
+
+  _releaseJobResponseFor(incidentId, entityId, reason) {
+    for (const record of this._jobResponseClaims?.values() || []) {
+      if (record.incidentId === incidentId && record.entityId === entityId) {
+        return this._releaseJobResponse(record, reason);
+      }
+    }
+    return false;
+  },
+
+  _releaseJobResponsesForEntity(entityId, reason) {
+    if (entityId == null) return;
+    for (const record of this._jobResponseClaims?.values() || []) {
+      if (record.entityId === entityId) this._releaseJobResponse(record, reason);
+    }
+  },
+
+  _releaseJobResponsesForSector(sectorId, reason) {
+    for (const record of this._jobResponseClaims?.values() || []) {
+      if (sectorId == null || record.entry?.sectorId === sectorId) this._releaseJobResponse(record, reason);
+    }
+  },
+
+  _releaseAllJobResponses(reason) {
+    for (const record of this._jobResponseClaims?.values() || []) this._releaseJobResponse(record, reason);
+  },
+
+  _reconcileJobResponses() {
+    for (const record of this._jobResponseClaims?.values() || []) {
+      const current = entityById(this.state, record.entityId);
+      const entry = this.helpers?.npcJobs?.byEntity?.(record.entityId);
+      const claim = this.helpers?.npcJobs?.controlClaim?.(record.jobId);
+      if (current !== record.entity || current?.alive === false || entry !== record.entry
+        || entry?.job !== record.job || claim?.claimId !== record.claimId
+        || claim?.holder !== LAW_JOB_RESPONSE_HOLDER
+        || current?.data !== record.data || !responseSuccessorsMatch(record, current?.data)
+        || !hasLiveIncident(this.state, record.incidentId)
+        || currentSectorId(this.state) !== CERES_ACTIVITY_SECTOR_ID) {
+        this._releaseJobResponse(record, 'live_identity_changed');
+      }
+    }
+  },
+
+  _respondersFor(incident, victim) {
+    const state = this.state;
+    const station = incidentOccupant(state, incident.stationEntityId, incident.stationGeneration)
+      || stationByPublicId(state, incident.stationId);
+    const anchor = incident.rankFromVictim && victim && victim.pos
+      ? victim.pos
+      : (station && station.pos || victim && victim.pos || incident.ringPos);
+    const actors = collectLivingWorldActors(state);
+    const unfilteredCandidates = isLawful(victim) && victim.type === 'ship'
+      ? [victim, ...actors]
+      : actors;
+    const candidates = unfilteredCandidates.filter((entity) => this._responseCandidateEligible(entity, incident));
+    const out = rankLawfulResponders(candidates, anchor, {
+      aggressorId: incident.attackerId,
+      cap: incident.responderCap,
+      radius: incident.radius + 1000,
+    });
+    const reserveCount = incident.reserveAllowed
+      ? Math.max(0, incident.responderCap - out.length)
+      : 0;
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const requester = `law:${incident.id}`;
+    const reserveGrant = reserveCount > 0 && budget && typeof budget.request === 'function'
+      ? budget.request(reserveCount, requester)
+      : reserveCount;
+    if (reserveGrant < reserveCount) {
+      const signature = `${reserveCount}:${reserveGrant}`;
+      if (incident.spawnBudgetDeferred !== signature) {
+        incident.spawnBudgetDeferred = signature;
+        this._emit('law:responseDeferred', {
+          incidentId: incident.id,
+          stationId: incident.stationId,
+          requested: reserveCount,
+          granted: reserveGrant,
+          reason: 'spawn_cap',
+        });
+      }
+    } else {
+      delete incident.spawnBudgetDeferred;
+    }
+    let spawnedCount = 0;
+    // Field rocks are not living-world actors, but a patrol that launches inside one starts inside its collision body.
+    // Only the rocks near the arrival frame matter, gathered once per dispatch (a rare event), not per candidate slot.
+    const arrivalSolids = reserveGrant > 0 ? this._arrivalSolidsNear(state, incident) : [];
+    for (let index = 0; index < reserveGrant && typeof this.helpers.spawnEntity === 'function'; index++) {
+      const reserveOrdinal = Math.max(0, incident.nextReserveOrdinal | 0);
+      const pos = reserveArrivalPoint({
+        anchor,
+        aggressorPos: incidentOccupant(state, incident.attackerId, incident.attackerGeneration)?.pos,
+        jurisdictionRadius: incident.radius,
+        seed: state.meta && state.meta.seed || 1,
+        incidentId: `${incident.id}:${reserveOrdinal}`,
+        // PQ-138.00: reserves launch from the jurisdiction's own station when it is in the world,
+        // so the pursuing half of the witness choice is on camera instead of 2000 WU out.
+        station: station && station.pos
+          ? {
+            pos: station.pos,
+            launchRadius: Math.max(
+              Number(station.data && station.data.dockRadius) || 0,
+              Number(station.radius) || 0,
+            ),
+          }
+          : null,
+        // A4: the answering patrol is inside the composed frame, not a ring ten screens out.
+        frameHalfWu: WITNESS_FRAME_HALF_WU,
+      });
+      const spec = makeEnemySpawnSpec('patrol_lawman', 3, pos, {
+        factionId: incident.factionId || 'faction_scn',
+        motive: 'jurisdiction_enforcement',
+        engagementTrigger: 'security_response',
+        zoneId: `jurisdiction:${incident.stationId}`,
+        approachTelegraph: 'patrol_challenge',
+        noFireResponseWindowS: incident.challengeWindowS,
+        startedTick: state.tick,
+      });
+      // Pulling every reserve onto the close ring can stack hulls and put allied ships in
+      // each other's firing lanes. Keep the visible arrival, but find a clear launch slot.
+      const clearPos = clearReserveArrivalPoint(pos,
+        incidentOccupant(state, incident.attackerId, incident.attackerGeneration)?.pos,
+        station, spec.radius, actors.concat(out, arrivalSolids));
+      if (!clearPos && (incident.arrivalCrowdedTries | 0) < RESERVE_ARRIVAL_CROWDED_RETRIES) {
+        incident.arrivalCrowdedTries = (incident.arrivalCrowdedTries | 0) + 1;
+        incident.spawnBudgetDeferred = 'arrival_crowded';
+        break;
+      }
+      // A frame that stays crowded through every retry (a parked fleet that never moves) launches at the
+      // authored slot: a late, stacked response beats none, and crime must never go unanswered.
+      spec.pos = clearPos || pos;
+      // D207: sector ownership rides the body — an unstamped reserve roams untagged past residency
+      // teardown, and the durable kill/capture chain (worldRecords ambient-ship lane) needs it too.
+      const homeSectorId = station?.data?.sectorId || station?.sectorId || currentSectorId(state);
+      if (homeSectorId) {
+        spec.homeSectorId = homeSectorId;
+        spec.data.homeSectorId = homeSectorId;
+        if (spec.data.sectorId == null) spec.data.sectorId = homeSectorId;
+      }
+      let spawned;
+      try {
+        spawned = this.helpers.spawnEntity(spec);
+      } catch (error) {
+        if (budget && typeof budget.releaseSome === 'function') {
+          budget.releaseSome(requester, reserveGrant - spawnedCount);
+        }
+        throw error;
+      }
+      if (spawned) {
+        if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(spawned.id, requester);
+        const ai = spawned.data && spawned.data.ai;
+        if (ai) ai.spawnContext = 'security_response';
+        out.push(spawned);
+        spawnedCount++;
+        incident.nextReserveOrdinal = reserveOrdinal + 1;
+      }
+    }
+    if (budget && typeof budget.releaseSome === 'function' && spawnedCount < reserveGrant) {
+      budget.releaseSome(requester, reserveGrant - spawnedCount);
+    }
+    return out;
+  },
+
+  /** Field rocks within reach of the witness frame around the offender: solid obstacles for a reserve's launch slot. */
+  _arrivalSolidsNear(state, incident) {
+    const aggressor = incidentOccupant(state, incident.attackerId, incident.attackerGeneration);
+    const origin = aggressor && aggressor.pos;
+    if (!origin) return [];
+    const reach = WITNESS_FRAME_HALF_WU + 120;
+    const near = [];
+    forEachFieldRock(state, (rock) => {
+      const at = rock.pos;
+      if (!at) return;
+      if (Math.hypot(at.x - origin.x, at.z - origin.z) <= reach + (Number(rock.radius) || 0)) near.push(rock);
+    });
+    // Tow payloads and pickups are collidable too (a Ceres tow payload can sit beside an offender).
+    forEachJobInteractable(state, (entity) => {
+      if (entity.type !== 'payload' && entity.type !== 'pickup') return;
+      const at = entity.pos;
+      if (!at) return;
+      if (Math.hypot(at.x - origin.x, at.z - origin.z) <= reach + (Number(entity.radius) || 0)) near.push(entity);
+    });
+    return near;
+  },
+
+  _dispatchIncident(incident, victim, attacker) {
+    const responders = this._respondersFor(incident, victim);
+    const dispatched = [];
+    incident.dispatchedAt = this.state.simTime || 0;
+    for (const responder of responders) {
+      if (incident.responderIds.includes(responder.id)) continue;
+      if (!this._claimJobResponder(responder, incident)) continue;
+      this._authorizeResponder(responder, attacker, incident, 'security_response');
+      if (!this._sealJobResponder(responder, incident)) {
+        this._releaseJobResponseFor(incident.id, responder.id, 'authorization_identity_changed');
+        continue;
+      }
+      incident.responderIds.push(responder.id);
+      dispatched.push(responder);
+    }
+    const hasLiveResponse = incident.responderIds.some((id) => {
+      const responder = entityById(this.state, id);
+      return responder && responder.alive !== false;
+    });
+    if (incident.spawnBudgetDeferred) {
+      // Critical station response is deferred, never discarded or allowed through the cap. The
+      // incident remains retryable (distress or a partial response) on the bounded cadence.
+      incident.dispatchAt = (this.state.simTime || 0) + 0.25;
+      if (!dispatched.length) {
+        incident.dispatchedAt = hasLiveResponse ? incident.dispatchedAt : null;
+        incident.status = hasLiveResponse ? 'responding' : 'distress';
+        if (hasLiveResponse) this._reconcileWitnessChoice(incident);
+        return;
+      }
+    } else if (!dispatched.length && hasLiveResponse) {
+      incident.status = 'responding';
+      this._reconcileWitnessChoice(incident);
+      return;
+    }
+    incident.status = dispatched.length ? 'responding' : 'monitoring';
+    const payload = publicIncident(incident);
+    this._emit('law:dispatchStarted', payload);
+    this._lawResponse(dispatched.length ? 'patrol_dispatched' : 'dispatch_unavailable', {
+      incidentId: incident.id, stationId: incident.stationId, factionId: incident.factionId,
+      cause: incident.cause, attackerId: incident.attackerId, victimId: incident.victimId,
+      responderIds: incident.responderIds.slice(),
+    });
+    if (hasLiveResponse) {
+      this._reconcileWitnessChoice(incident);
+    }
+    if (dispatched.length) {
+      this._say('alert', `CONTROL: ${dispatched.length} patrol unit${dispatched.length === 1 ? '' : 's'} intercepting the aggressor.`, `law:dispatch:${incident.id}`, incident.factionId);
+      this._recordReceipt({
+        incidentId: incident.id, cause: incident.cause, outcome: 'patrol_dispatched',
+        attackerId: incident.attackerId, targetId: incident.victimId, stationId: incident.stationId,
+        text: `PATROL DISPATCHED — ${dispatched.length} unit${dispatched.length === 1 ? '' : 's'} intercepting the aggressor.`,
+      });
+    } else {
+      this._say('alert', 'CONTROL: no patrol in range. Distress remains active.', `law:dispatch:none:${incident.id}`, incident.factionId);
+      this._recordReceipt({
+        incidentId: incident.id, cause: incident.cause, outcome: 'dispatch_unavailable',
+        attackerId: incident.attackerId, targetId: incident.victimId, stationId: incident.stationId,
+        text: 'NO PATROL IN RANGE — distress remains active.',
+      });
+    }
+  },
+
+  _authorizeResponder(responder, attacker, incident, motive) {
+    if (!responder || !attacker) return;
+    const state = this.state;
+    const data = responder.data || (responder.data = {});
+    const ai = data.ai || (data.ai = {});
+    ai.lawful = true;
+    ai.passive = false;
+    ai.securityTargetId = attacker.id;
+    // INF-029: the reported track starts from last-seen information, not a live feed. Snapshot
+    // the offender's position at dispatch; the perception seam keeps reporting this scene while
+    // live sightings refresh it, so breaking observation changes pursuit and reacquisition
+    // restores accuracy. Save-safe plain data next to the target id it describes.
+    if (attacker.pos) {
+      ai.securityTargetPos = { x: Number(attacker.pos.x) || 0, z: Number(attacker.pos.z) || 0 };
+    } else {
+      delete ai.securityTargetPos;
+    }
+    // A dispatched enforcement action does not withdraw on attrition: the incident's own
+    // stand-down decides when the response ends, not squad morale. Without this, responders
+    // catching stray fire from a suspect's sustained assault rout before the exchange resolves.
+    // The exemption is claimed, not assigned: snapshot any authored immunity so stand-down can
+    // return the hull to the morale contract it carried before the call went out (re-authorizing
+    // a chaser must not snapshot the claim's own true over the original).
+    if (!ai[SECURITY_RESPONSE_MORALE_RESTORE]) {
+      ai[SECURITY_RESPONSE_MORALE_RESTORE] = ownSnapshot(ai, 'moraleImmune');
+    }
+    ai.moraleImmune = true;
+    ai.witnessRole = 'chase';
+    if (incident) ai.witnessIncidentId = incident.id;
+    ai.motive = motive === 'self_defense' ? 'self_defense' : 'jurisdiction_enforcement';
+    ai.engagementTrigger = motive === 'self_defense' ? 'player_attack' : 'security_response';
+    ai.zoneId = incident ? `jurisdiction:${incident.stationId}` : String(ai.zoneId || 'patrol_route');
+    ai.approachTelegraph = 'patrol_challenge';
+    ai.noFireResponseWindowS = incident ? incident.challengeWindowS : 1;
+    // Execution authorization fail-closes on a missing combat doctrine, so a claimed
+    // responder spawned without one (ambient squad patrol) would orbit the offender forever
+    // without ever firing. Outfitting for response includes a doctrine: keep an authored
+    // one, else the faction profile's, else the patrol flyby. Activity/ROE still gate fire.
+    if (!normalizeCombatDoctrineId(ai.combatDoctrineId)) {
+      ai.combatDoctrineId = normalizeCombatDoctrineId(ai.factionPresenceDoctrine && ai.factionPresenceDoctrine.combatDoctrineId)
+        || CombatDoctrineId.INTERCEPTOR_FLYBY;
+    }
+    ai.roe = RulesOfEngagement.WEAPONS_FREE;
+    const stationPos = incident && (stationByPublicId(state, incident.stationId)?.pos);
+    const victimPos = incident
+      && incidentOccupant(state, incident.victimId, incident.victimGeneration)?.pos;
+    const anchor = incident
+      ? (incident.rankFromVictim
+        ? (victimPos || incident.ringPos || responder.pos)
+        : (stationPos || incident.ringPos || responder.pos))
+      : responder.pos;
+    ai.activity = normalizeActivity({
+      kind: ActivityKind.ATTACK_RUN,
+      reason: `security_response:${incident ? incident.id : 'self_defense'}`,
+      anchor,
+      leashRadius: incident ? incident.radius + 900 : 2200,
+      startedTick: state.tick | 0,
+      targetId: attacker.id,
+      encounterId: incident && incident.id,
+    });
+    const combat = data.combat || (data.combat = {});
+    combat.targetId = attacker.id;
+    const intent = data.intent || (data.intent = {});
+    intent.fire = false;
+    // An enlisted ambient patrol can sit outside the incremental activity-classify visit set as
+    // S4_AGGREGATE — shelved, never in the AI owner view, and physics-unmaterialized so it can
+    // never move. Its new security fields make it mission-critical, but only a re-stamp sees
+    // them; request one so the responder wakes instead of freezing where it was claimed.
+    requestActivityReclassify(state, responder);
+  },
+
+  _updateIncident(key, incident) {
+    if (!incident || !['distress', 'responding', 'monitoring'].includes(incident.status)) return;
+    const state = this.state;
+    // Generation-verified resolution: a recycled entity id must not stand in for the attacker,
+    // victim, or station it was recorded for (D118 — a station id recycled onto a live projectile
+    // dragged the disengage ring 2000 WU away and stood the response down mid-assault).
+    const attacker = incidentOccupant(state, incident.attackerId, incident.attackerGeneration);
+    const victim = incidentOccupant(state, incident.victimId, incident.victimGeneration);
+    const station = incidentOccupant(state, incident.stationEntityId, incident.stationGeneration)
+      || stationByPublicId(state, incident.stationId);
+    // The disengage ring anchors at the jurisdiction's last generation-verified position, so a
+    // removed station leaves the ring where the station stood instead of losing it entirely.
+    const liveAnchor = (incident.rankFromVictim && victim && victim.pos)
+      ? victim.pos
+      : (station && station.pos || (victim && victim.pos) || null);
+    if (liveAnchor && Number.isFinite(liveAnchor.x) && Number.isFinite(liveAnchor.z)) {
+      incident.ringPos = { x: liveAnchor.x, z: liveAnchor.z };
+    }
+    const ringOrigin = incidentRingOrigin(incident, victim, station);
+    const now = state.simTime || 0;
+    let outcome = null;
+    if (!attacker || attacker.alive === false) outcome = 'threat_cleared';
+    else if ((incident.status === 'distress'
+      || (incident.status === 'responding' && incident.spawnBudgetDeferred))
+      && now >= incident.dispatchAt) {
+      this._dispatchIncident(incident, victim || station, attacker);
+    }
+    else if (ringOrigin && distance2(attacker.pos, ringOrigin) > Math.pow(incident.radius + RESPONSE_CLEARANCE, 2)
+      && now - incident.lastDamageAt >= RESPONSE_GRACE_S
+      && !(attacker.id === state.playerId && isPlayerWanted(state))) {
+      outcome = 'disengaged';
+    }
+    if (!outcome) {
+      this._reconcileWitnessChoice(incident);
+      return;
+    }
+    incident.status = 'resolved';
+    incident.outcome = outcome;
+    incident.resolvedAt = now;
+    for (const id of incident.responderIds) {
+      this._clearResponder(entityById(state, id), incident.attackerId, incident.id, id);
+    }
+    delete ensureState(state).incidents[key];
+    this._say('info', 'CONTROL: threat clear. Station approach secure.', `law:clear:${incident.id}`, incident.factionId);
+    this._emit('law:incidentResolved', publicIncident(incident));
+    this._lawResponse('incident_resolved', {
+      incidentId: incident.id, stationId: incident.stationId, factionId: incident.factionId,
+      cause: incident.cause, attackerId: incident.attackerId, victimId: incident.victimId,
+      outcome,
+    });
+    this._emit('encounter:receipt', {
+      encounterId: incident.id,
+      shape: 'security_response',
+      outcome,
+      text: outcome === 'disengaged'
+        ? 'CONTACT BROKEN — patrol stood down after the station ring cleared.'
+        : 'THREAT CLEARED — station approach secure.',
+      t: now,
+    });
+  },
+
+  _clearResponder(responder, targetId, incidentId = null, responderId = responder?.id) {
+    if (incidentId != null && this._releaseJobResponseFor(incidentId, responderId, 'incident_resolved')) return;
+    if (!responder || !isLawful(responder)) return;
+    const state = this.state;
+    const data = responder.data || (responder.data = {});
+    const record = this._claimRecordForEntity(responderId);
+    const exactAi = !record || responseSuccessorMatches(record, data, 'ai');
+    const exactCombat = !record || responseSuccessorMatches(record, data, 'combat');
+    const exactIntent = !record || responseSuccessorMatches(record, data, 'intent');
+
+    if (exactAi) {
+      const ai = data.ai || (data.ai = {});
+      const matchesWitnessIncident = incidentId != null && ai.witnessIncidentId === incidentId;
+      if (matchesWitnessIncident || ai.securityTargetId === targetId) {
+        const isHolder = matchesWitnessIncident && ai.witnessRole === 'hold';
+        ai.securityTargetId = null;
+        ai.securityTargetPos = null;
+        releaseResponseMoraleClaim(ai);
+        ai.witnessRole = null;
+        ai.witnessIncidentId = null;
+        ai.passive = false;
+        ai.engagementTrigger = 'wanted_status';
+        ai.motive = 'law_enforcement';
+        ai.roe = RulesOfEngagement.LAWFUL_WANTED_ONLY;
+        let returnStation = null;
+        let stationPos = null;
+        if (incidentId) {
+          const inc = ensureState(state).incidents[incidentId]
+            || Object.values(ensureState(state).incidents || {}).find((i) => i && i.id === incidentId);
+          const station = inc && (incidentOccupant(state, inc.stationEntityId, inc.stationGeneration)
+            || stationByPublicId(state, inc.stationId));
+          if (station && station.type === 'station' && station.pos) {
+            returnStation = station;
+            stationPos = station.pos;
+          }
+          else if (inc && inc.ringPos) stationPos = inc.ringPos;
+        }
+        if (!stationPos && ai.zoneId && ai.zoneId.startsWith('jurisdiction:')) {
+          const st = stationByPublicId(state, ai.zoneId.slice('jurisdiction:'.length));
+          if (st && st.pos) {
+            returnStation = st;
+            stationPos = st.pos;
+          }
+        }
+        const returnAnchor = (isHolder && stationPos)
+          ? { x: stationPos.x, z: stationPos.z }
+          : (ai.activity && ai.activity.anchor || stationPos || responder.pos);
+        ai.activity = normalizeActivity({
+          kind: ActivityKind.RETURN_TO_ANCHOR,
+          reason: isHolder ? 'security_witness:return' : 'security_response:clear',
+          anchor: stationReturnAnchor(returnAnchor, returnStation, responder),
+          leashRadius: ai.activity && ai.activity.leashRadius || 2600,
+          startedTick: state.tick | 0,
+        });
+      }
+    }
+
+    if (exactCombat && data.combat) clearCombatTarget(data.combat, targetId);
+    if (exactIntent && data.intent) clearFiringIntent(data.intent);
+  },
+
+  _handleAftermathWreckSpawned(payload) {
+    const state = this.state;
+    if (!state) return;
+    const own = ensureState(state);
+    const incidents = Object.values(own.incidents || {});
+    if (!incidents.length) return;
+
+    const wreckEntity = entityById(state, payload && payload.entityId);
+    if (!wreckEntity || wreckEntity.alive === false) return;
+    if (wreckEntity.data && wreckEntity.data.runCohort === 'survival') return;
+
+    const data = wreckEntity.data || {};
+    const aftermath = data.aftermath || {};
+    const victimId = aftermath.victimId != null ? aftermath.victimId : data.victimId;
+    const killerId = aftermath.killerId != null ? aftermath.killerId : data.killerId;
+    const markerId = aftermath.markerId != null ? aftermath.markerId : (payload && payload.markerId) || data.markerId || null;
+    const salvagePool = aftermath.salvagePool || data.salvagePool || null;
+
+    if (victimId != null) {
+      const victim = entityById(state, victimId);
+      if (victim && victim.data && victim.data.runCohort === 'survival') return;
+    }
+
+    const pos = wreckEntity.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
+
+    const sectorId = (payload && payload.sectorId) || aftermath.sectorId || (state.world && state.world.currentSectorId);
+    const at = Number.isFinite(state.simTime) ? state.simTime : 0;
+
+    const incident = this._findMatchingIncident({ victimId, killerId, sectorId, at });
+    if (!incident) return;
+
+    let valuable = false;
+    if (salvagePool && typeof salvagePool === 'object') {
+      valuable = Object.values(salvagePool).some((q) => Number(q) > 0);
+    }
+    if (!valuable && Array.isArray(data.loot) && data.loot.length > 0) {
+      valuable = true;
+    }
+
+    const existingAnchor = incident.victimAnchor;
+    if (existingAnchor) {
+      existingAnchor.wreckEntityId = wreckEntity.id;
+      if (markerId != null) existingAnchor.markerId = String(markerId);
+      if (valuable) existingAnchor.valuable = true;
+      existingAnchor.x = Number(pos.x);
+      existingAnchor.z = Number(pos.z);
+    } else {
+      incident.victimAnchor = {
+        x: Number(pos.x),
+        z: Number(pos.z),
+        markerId: markerId != null ? String(markerId) : null,
+        wreckEntityId: wreckEntity.id,
+        podEntityId: null,
+        valuable: Boolean(valuable),
+        at,
+      };
+    }
+
+    this._reconcileWitnessChoice(incident);
+  },
+
+  _handleSurvivorPodEjected(payload) {
+    const state = this.state;
+    if (!state) return;
+    const own = ensureState(state);
+    const incidents = Object.values(own.incidents || {});
+    if (!incidents.length) return;
+
+    const podEntity = entityById(state, payload && (payload.entityId ?? payload.entity?.id)) || (payload && payload.entity);
+    if (!podEntity || podEntity.alive === false) return;
+    if (podEntity.data && podEntity.data.runCohort === 'survival') return;
+
+    const victimId = payload && payload.victimId != null ? payload.victimId : (podEntity.data && podEntity.data.sourceVictimId);
+    if (victimId != null) {
+      const victim = entityById(state, victimId);
+      if (victim && victim.data && victim.data.runCohort === 'survival') return;
+    }
+
+    const pos = podEntity.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
+
+    const sectorId = (payload && payload.sectorId) || (state.world && state.world.currentSectorId);
+    const at = Number.isFinite(state.simTime) ? state.simTime : 0;
+
+    const incident = this._findMatchingIncident({ victimId, killerId: null, sectorId, at });
+    if (!incident) return;
+
+    const existingAnchor = incident.victimAnchor;
+    if (existingAnchor) {
+      existingAnchor.podEntityId = podEntity.id;
+      existingAnchor.valuable = true;
+      existingAnchor.x = Number(pos.x);
+      existingAnchor.z = Number(pos.z);
+    } else {
+      incident.victimAnchor = {
+        x: Number(pos.x),
+        z: Number(pos.z),
+        markerId: null,
+        wreckEntityId: null,
+        podEntityId: podEntity.id,
+        valuable: true,
+        at,
+      };
+    }
+
+    this._reconcileWitnessChoice(incident);
+  },
+
+  _findMatchingIncident({ victimId, killerId, sectorId, at }) {
+    const state = this.state;
+    const own = ensureState(state);
+    const incidents = Object.values(own.incidents || {});
+    if (!incidents.length) return null;
+
+    if (victimId != null) {
+      const direct = incidents.find((inc) => inc && inc.victimId === victimId && inc.status !== 'resolved');
+      if (direct) return direct;
+    }
+
+    if (killerId != null) {
+      const candidates = incidents.filter((inc) => {
+        if (!inc || inc.status === 'resolved') return false;
+        if (inc.victimAnchor) return false;
+        if (inc.attackerId !== killerId) return false;
+        const station = incidentOccupant(state, inc.stationEntityId, inc.stationGeneration)
+          || stationByPublicId(state, inc.stationId);
+        const incSectorId = station?.data?.sectorId || station?.sectorId || (state.world && state.world.currentSectorId);
+        if (sectorId && incSectorId && incSectorId !== sectorId) return false;
+        const dt = Math.abs(((inc.lastDamageAt != null ? inc.lastDamageAt : inc.startedAt) || 0) - at);
+        return dt <= RESPONSE_GRACE_S;
+      });
+      if (candidates.length === 1) return candidates[0];
+      return null;
+    }
+
+    return null;
+  },
+
+  _reconcileWitnessChoice(incident) {
+    if (!incident || incident.status === 'resolved') return;
+    const state = this.state;
+    const attacker = incidentOccupant(state, incident.attackerId, incident.attackerGeneration);
+
+    const liveResponders = [];
+    for (const id of incident.responderIds) {
+      const responder = entityById(state, id);
+      if (!responder || responder.alive === false || !isLawful(responder)) continue;
+      // One responder, one incident: a unit bound to another live incident stays foreign-owned.
+      // Shared responderIds are how a busy jurisdiction retasks the same patrols; without the
+      // guard each incident's reconcile flips securityTargetId back to its own attacker and
+      // _authorizeResponder resets activity.startedTick, so the no-fire response window never
+      // elapses and the shared units orbit every offender without firing (live route 2026-09-19:
+      // two unresolved npc_piracy incidents plus the player_piracy incident all listed the same
+      // three responders; incoming hits froze for 15000+ ticks with every incident 'responding').
+      const boundTo = responder.data && responder.data.ai && responder.data.ai.witnessIncidentId;
+      if (boundTo != null && boundTo !== incident.id && hasLiveIncident(state, boundTo)) continue;
+      liveResponders.push(responder);
+    }
+
+    const anchor = incident.victimAnchor;
+    const hasValidAnchor = !!(anchor && Number.isFinite(anchor.x) && Number.isFinite(anchor.z));
+
+    if (liveResponders.length < 2 || !hasValidAnchor) {
+      incident._lastWitnessChoice = null;
+      for (const responder of liveResponders) {
+        const data = responder.data || (responder.data = {});
+        const ai = data.ai || (data.ai = {});
+        ai.witnessRole = 'chase';
+        ai.witnessIncidentId = incident.id;
+        if (ai.securityTargetId !== incident.attackerId && attacker && attacker.alive !== false) {
+          this._authorizeResponder(responder, attacker, incident, 'security_response');
+          ai.witnessRole = 'chase';
+          ai.witnessIncidentId = incident.id;
+        }
+      }
+      return;
+    }
+
+    let anchorPos = { x: anchor.x, z: anchor.z };
+    if (anchor.podEntityId != null) {
+      const livePod = entityById(state, anchor.podEntityId);
+      if (livePod && livePod.alive !== false && livePod.pos && Number.isFinite(livePod.pos.x) && Number.isFinite(livePod.pos.z)) {
+        anchorPos = { x: livePod.pos.x, z: livePod.pos.z };
+        anchor.x = livePod.pos.x;
+        anchor.z = livePod.pos.z;
+      }
+    } else if (anchor.wreckEntityId != null) {
+      const liveWreck = entityById(state, anchor.wreckEntityId);
+      if (liveWreck && liveWreck.alive !== false && liveWreck.pos && Number.isFinite(liveWreck.pos.x) && Number.isFinite(liveWreck.pos.z)) {
+        anchorPos = { x: liveWreck.pos.x, z: liveWreck.pos.z };
+        anchor.x = liveWreck.pos.x;
+        anchor.z = liveWreck.pos.z;
+      }
+    }
+
+    const holdTargetId = anchor.wreckEntityId != null ? anchor.wreckEntityId : anchor.podEntityId;
+    const holdTarget = holdTargetId != null ? entityById(state, holdTargetId) : null;
+    const holdTargetSpeed = holdTarget && holdTarget.vel
+      ? Math.hypot(Number(holdTarget.vel.x) || 0, Number(holdTarget.vel.z) || 0)
+      : 0;
+
+    const lastChoice = incident._lastWitnessChoice;
+    const prevHolderId = lastChoice?.decision === 'split' ? lastChoice.holderId : null;
+    const prevChaserIds = lastChoice?.decision === 'split' ? lastChoice.chaserIds : null;
+
+    let holder = null;
+    let chasers = null;
+
+    const prevCandidateIds = (prevHolderId != null && prevChaserIds != null)
+      ? new Set([prevHolderId, ...prevChaserIds])
+      : null;
+    const candidateSetUnchanged = prevCandidateIds != null
+      && prevCandidateIds.size === liveResponders.length
+      && liveResponders.every((r) => prevCandidateIds.has(r.id));
+    const existingHolderLive = candidateSetUnchanged && liveResponders.some((r) => r.id === prevHolderId);
+
+    if (existingHolderLive) {
+      holder = liveResponders.find((r) => r.id === prevHolderId);
+      chasers = prevChaserIds.map((id) => liveResponders.find((r) => r.id === id)).filter(Boolean);
+    } else {
+      const sorted = liveResponders.slice().sort((a, b) => {
+        const da = distance2(a.pos, anchorPos);
+        const db = distance2(b.pos, anchorPos);
+        if (Math.abs(da - db) > 1e-4) {
+          return da - db;
+        }
+        return a.id - b.id;
+      });
+      holder = sorted[0];
+      // The hold has to go to a unit that can still reach the body: a hulk keeps the victim's
+      // cruise momentum forever (boundedDriftVel is a cap, not drag), and a heavy patrol's
+      // intercept envelope can sit below that drift — nearest-first would pin the job on a unit
+      // that can never arrive (measured on the live route: a Bastion holder capped at ~41 WU/s
+      // falling 330 → 1180 WU behind a 42 WU/s wreck). When nobody can catch it, the nearest
+      // still peels off — the visible split is the point.
+      const canReachBody = (r) => responderReachSpeed(r) >= holdTargetSpeed + 4;
+      if (holdTarget && holdTarget.alive !== false && !canReachBody(holder)) {
+        const capable = sorted.find(canReachBody);
+        if (capable) holder = capable;
+      }
+      chasers = sorted.filter((r) => r !== holder);
+    }
+
+    const holderId = holder.id;
+    const chaserIds = chasers.map((c) => c.id);
+
+    const isMateriallyUnchanged = lastChoice
+      && lastChoice.decision === 'split'
+      && lastChoice.holderId === holderId
+      && lastChoice.chaserIds.length === chaserIds.length
+      && lastChoice.chaserIds.every((id, idx) => id === chaserIds[idx]);
+
+    const holderData = holder.data || (holder.data = {});
+    const holderAi = holderData.ai || (holderData.ai = {});
+
+    // PQ-138.00: the holder's job is to stand over the body, and LOITER is a HOLD maneuver — a
+    // holder chosen 300 WU away would hold position out there and never arrive (measured on the
+    // live route 2026-09-12: reserve holder launched at the dock ring, 344 WU from the wreck, still
+    // 450 WU away 22 s later). Until it is within the standoff it TRANSITs to the wreck itself (a
+    // concrete target, so the formation seek closes on the drifting body); once there it loiters.
+    const WITNESS_HOLD_STANDOFF_WU = 90;
+    const holderDistance = Math.hypot(holder.pos.x - anchorPos.x, holder.pos.z - anchorPos.z);
+    // HOLD tracks its anchor at ~12 WU/s, so a body still carrying the victim's cruise momentum
+    // outruns a parked loiter (measured on the live route: wreck receding 683 → 986 WU over 20 s
+    // while the holder circled a stale point). Keep intercepting until the body is both inside the
+    // standoff AND slow enough to actually hold station on.
+    const WITNESS_HOLD_TRACK_SPEED_WU_S = 14;
+    // The hold orbits the body at ~70 WU; an ordinary orbit's radial swing can carry it a little
+    // past the standoff without ever leaving the scene. Re-approach only when it is genuinely
+    // flung off (measured: orbit at 70 ranged 52-98 WU around an 8 WU/s wreck, so a single 90-WU
+    // edge flapped approach<->hold every few seconds).
+    const holderInHold = holderAi.activity && holderAi.activity.kind === ActivityKind.LOITER;
+    const reapproachDistance = holderInHold ? WITNESS_HOLD_STANDOFF_WU * 1.5 : WITNESS_HOLD_STANDOFF_WU;
+    const holderApproaches = !!holdTarget && holdTarget.alive !== false
+      && (holderDistance > reapproachDistance || holdTargetSpeed > WITNESS_HOLD_TRACK_SPEED_WU_S);
+    // SCAN_APPROACH is the lawful approach maneuver (an INTERCEPT that closes to preferredRange at
+    // speed); TRANSIT would be a formation crawl that a wreck still carrying its victim's momentum
+    // outruns (measured: holder at 7–47 WU/s while the wreck receded 683 → 986 WU over 20 s).
+    const holderActivityKind = holderApproaches ? ActivityKind.SCAN_APPROACH : ActivityKind.LOITER;
+    const holderActivityFor = (startedTick) => normalizeActivity(holderApproaches
+      ? {
+        kind: ActivityKind.SCAN_APPROACH,
+        reason: `security_witness:hold:approach:${incident.id}`,
+        anchor: { x: anchorPos.x, z: anchorPos.z },
+        leashRadius: 400,
+        startedTick,
+        targetId: holdTargetId,
+        preferredRange: 60,
+        encounterId: incident.id,
+      }
+      : {
+        kind: ActivityKind.LOITER,
+        reason: `security_witness:hold:${incident.id}`,
+        anchor: { x: anchorPos.x, z: anchorPos.z },
+        leashRadius: 400,
+        startedTick,
+        // The hold target is also the loiter target: LOITER-with-targetId maps to an ORBIT on
+        // the body (or its live-tracked anchor when the body is not a perception contact, e.g.
+        // a pod). HOLD alone cannot do this — it tracks the squad's formationSlot and drags the
+        // holder home (measured on the live route: loitering holder vetoed by
+        // formation_bound_exceeded, receding 519 -> 2085 WU from the scene).
+        targetId: holdTargetId,
+        // Circle inside the approach standoff so normal orbit error never flips the activity
+        // back to SCAN_APPROACH.
+        preferredRange: WITNESS_HOLD_STANDOFF_WU - 20,
+        encounterId: incident.id,
+      });
+
+    if (!isMateriallyUnchanged) {
+      const priorRole = holderAi.witnessRole;
+      const priorActivity = holderAi.activity;
+      const existingStartedTick = (priorRole === 'hold'
+        && (priorActivity?.kind === ActivityKind.LOITER || priorActivity?.kind === ActivityKind.SCAN_APPROACH)
+        && Number.isInteger(priorActivity.startedTick))
+        ? priorActivity.startedTick
+        : (state.tick | 0);
+
+      holderAi.lawful = true;
+      holderAi.passive = false;
+      holderAi.securityTargetId = null;
+      holderAi.securityTargetPos = null;
+      releaseResponseMoraleClaim(holderAi);
+      holderAi.witnessRole = 'hold';
+      holderAi.witnessIncidentId = incident.id;
+      holderAi.motive = 'jurisdiction_enforcement';
+      holderAi.roe = RulesOfEngagement.DEFENSIVE;
+      holderAi.activity = holderActivityFor(existingStartedTick);
+      clearTarget(holder, null);
+      // Same enlistment wake as _authorizeResponder: a holder picked from shelved ambient
+      // traffic must be re-stamped or it stands over the body only on paper.
+      requestActivityReclassify(state, holder);
+
+      for (const chaser of chasers) {
+        const chaserData = chaser.data || (chaser.data = {});
+        const chaserAi = chaserData.ai || (chaserData.ai = {});
+        const roleChanged = chaserAi.witnessRole !== 'chase' || chaserAi.witnessIncidentId !== incident.id;
+        if (roleChanged || (chaserAi.securityTargetId !== incident.attackerId && attacker && attacker.alive !== false)) {
+          this._authorizeResponder(chaser, attacker, incident, 'security_response');
+        }
+        chaserAi.witnessRole = 'chase';
+        chaserAi.witnessIncidentId = incident.id;
+      }
+
+      incident._lastWitnessChoice = {
+        decision: 'split',
+        holderId,
+        chaserIds: chaserIds.slice(),
+      };
+      const choicePayload = {
+        incidentId: incident.id,
+        decision: 'split',
+        holderId,
+        chaserIds,
+        anchor: { x: anchorPos.x, z: anchorPos.z },
+        reason: 'wreck_hold_and_pursuit',
+        simTime: state.simTime || 0,
+        t: state.simTime || 0,
+      };
+      this._emit('law:witnessChoice', choicePayload);
+    } else {
+      if (holderAi.securityTargetId != null) {
+        holderAi.securityTargetId = null;
+        holderAi.securityTargetPos = null;
+        releaseResponseMoraleClaim(holderAi);
+      }
+      if (holderData.combat && (holderData.combat.targetId === incident.attackerId || holderData.combat.lockTarget === incident.attackerId)) {
+        clearCombatTarget(holderData.combat, incident.attackerId);
+      }
+      if (holderData.intent && holderData.intent.fire && holderData.combat?.targetId == null) {
+        clearFiringIntent(holderData.intent);
+      }
+      if (holderAi.activity) {
+        const currentAnchor = holderAi.activity.anchor;
+        if (holderAi.activity.kind !== holderActivityKind) {
+          // Arrived at (or drifted off) the body: swap approach <-> hold, keeping the clock.
+          holderAi.activity = holderActivityFor(Number.isInteger(holderAi.activity.startedTick)
+            ? holderAi.activity.startedTick
+            : (state.tick | 0));
+        } else if (!currentAnchor || currentAnchor.x !== anchorPos.x || currentAnchor.z !== anchorPos.z) {
+          holderAi.activity = normalizeActivity({
+            ...holderAi.activity,
+            anchor: { x: anchorPos.x, z: anchorPos.z },
+          });
+        }
+      }
+      for (const chaser of chasers) {
+        const chaserData = chaser.data || (chaser.data = {});
+        const chaserAi = chaserData.ai || (chaserData.ai = {});
+        if (chaserAi.witnessRole !== 'chase') chaserAi.witnessRole = 'chase';
+        if (chaserAi.witnessIncidentId !== incident.id) chaserAi.witnessIncidentId = incident.id;
+        if (chaserAi.securityTargetId !== incident.attackerId && attacker && attacker.alive !== false) {
+          this._authorizeResponder(chaser, attacker, incident, 'security_response');
+          chaserAi.witnessRole = 'chase';
+          chaserAi.witnessIncidentId = incident.id;
+        }
+      }
+    }
+  },
+
+  _recordReceipt(receipt) {
+    const state = this.state;
+    const own = ensureState(state);
+    const row = { ...receipt, t: state.simTime || 0, tick: state.tick | 0 };
+    own.receipts.push(row);
+    while (own.receipts.length > RECEIPT_CAP) own.receipts.shift();
+    this._emit('law:incidentReceipt', row);
+  },
+
+  // ── PQ-019B: witness-validated incident intake ────────────────────────────────────────────────
+  //
+  // The `law:reportIncident`-class owner entry. A non-law owner (the heist mission) can report that
+  // a crime happened; only THIS system decides whether the law recognizes it.
+  //
+  // Deliberately a SEPARATE entry point from `_openIncident`, for two reasons that are properties of
+  // the live code rather than preferences:
+  //
+  //   1. `_openIncident` keys on a LIVE ENTITY ID (`${stationId}:${attacker.id}`). Entity ids are not
+  //      stable across save/load, so it cannot answer "is this the same incident I already logged?"
+  //      A reported incident is keyed by a caller-supplied stable `reportId` instead.
+  //   2. `_openIncident` leads to `_dispatchIncident` -> `_respondersFor`, which SPAWNS
+  //      `patrol_lawman` hulls when `reserveAllowed`. The packet forbids inventing a responder:
+  //      "No available patrol is a valid, visible outcome recorded by law; it is not permission to
+  //      spawn a fake job-origin responder." This path never calls `_respondersFor`, so that rule is
+  //      structural here, not a policy someone must remember.
+  //
+  // It only OBSERVES and RECORDS. It never steers, authorizes, or spawns anyone: enlisting a real
+  // patrol is the NPC-job control lease's job, using the responder ids reported here.
+  reportIncident(request = {}) {
+    const state = this.state;
+    const reportId = cleanLawId(request.reportId);
+    const kind = cleanLawId(request.kind);
+    const offenderStableId = cleanLawId(request.offenderStableId);
+    const payloadStableId = cleanLawId(request.payloadStableId);
+    const causalTick = Number.isInteger(request.causalTick) && request.causalTick >= 0
+      ? request.causalTick
+      : null;
+    const pos = finiteLawPoint(request.pos);
+    if (!state || !reportId || !kind || !offenderStableId || !payloadStableId
+      || causalTick === null || !pos) {
+      return this._denyIncidentReport('invalid_report', { reportId, kind, causalTick });
+    }
+
+    // Idempotency key. A duplicate report returns the SAME receipt without re-querying the world,
+    // so a retry after a dropped callback cannot double-log a crime. The lookup deliberately does
+    // NOT create the ledger: a denied report must leave no trace in owned state.
+    const existing = readReportedIncident(state, reportId);
+    if (existing) {
+      this._emit('law:reportIncidentReceipt', existing);
+      return existing;
+    }
+
+    if (kind === 'payload_theft' && offenderStableId === 'player'
+      && this.registry?.get('custodyConsequences')?.authorizesRecovery(payloadStableId)) {
+      return this._denyIncidentReport('recovery_authorized', { reportId, kind, causalTick });
+    }
+
+    // Jurisdiction: the live authority owner decides, from the incident position.
+    // Ceres/Ambush theft sits outside the station protection ring; reuse the same
+    // ceresDistressJurisdiction helper npc_piracy already uses for pirate→loaded hauler.
+    const victim = resolveIncidentVictim(state, request);
+    const jurisdiction = protectedStationAt(state, { pos })
+      || ceresDistressJurisdiction(state, victim)
+      || (kind === 'payload_theft'
+        ? ceresDistressJurisdiction(state, findCivilianHauler(state))
+        : null);
+    if (!jurisdiction) {
+      return this._denyIncidentReport('no_jurisdiction', { reportId, kind, causalTick });
+    }
+
+    // Witnesses: a crime nobody can see is not a crime the law will act on.
+    const witnesses = lawWitnessesNear(state, {
+      pos,
+      offenderEntityId: request.offenderEntityId,
+      radius: LAW_INCIDENT_WITNESS_RADIUS,
+      // The reporting victim's own body (e.g. a robbed station) never occludes its own scene.
+      ignoreEntityIds: [victim && victim.id, request.victimEntityId, request.victimId],
+    });
+    if (witnesses.length === 0) {
+      return this._denyIncidentReport('no_witness', { reportId, kind, causalTick });
+    }
+
+    // Responders are RANKED FROM WHAT ALREADY EXISTS. `rankLawfulResponders` is a pure filter over
+    // the live entity list; it cannot create a hull. An empty result is a first-class recorded
+    // outcome, not a reason to manufacture a patrol.
+    const policy = authorityResponsePolicy(effectiveLawSecurity(state));
+    const responders = rankLawfulResponders(collectLivingWorldActors(state), pos, {
+      aggressorId: request.offenderEntityId,
+      cap: policy.responderCap,
+      radius: jurisdiction.radius + LAW_INCIDENT_RESPONDER_MARGIN,
+    });
+
+    const receipt = Object.freeze({
+      accepted: true,
+      incidentReceiptId: `law:incident:${hash32(
+        reportId, kind, offenderStableId, payloadStableId, causalTick,
+      ).toString(36)}`,
+      reportId,
+      kind,
+      offenderStableId,
+      offenderEntityId: request.offenderEntityId == null ? null : request.offenderEntityId,
+      payloadStableId,
+      causalTick,
+      stationId: jurisdiction.stationId,
+      factionId: jurisdiction.factionId,
+      jurisdictionRadius: jurisdiction.radius,
+      witnessCount: witnesses.length,
+      witnessStableIds: Object.freeze(witnesses.map((w) => w.stableId)),
+      responderAvailability: responders.length > 0 ? 'available' : 'none_in_range',
+      responderEntityIds: Object.freeze(responders.map((r) => r.id)),
+      responderCap: policy.responderCap,
+      // The single fact the heat owner is allowed to act on. False can never be produced by an
+      // accepted receipt: an unwitnessed or unpoliced report is denied above, never downgraded.
+      validatedWitnessedTheft: true,
+      source: 'lawSecurity',
+    });
+
+    storeReportedIncident(state, receipt);
+
+    // Visible in the law owner's own receipt ledger, including the "nobody is coming" case — which
+    // the player must be able to observe as an outcome rather than as silence.
+    this._recordReceipt({
+      incidentId: receipt.incidentReceiptId,
+      cause: kind,
+      outcome: responders.length > 0 ? 'reported_incident_logged' : 'dispatch_unavailable',
+      attackerId: request.offenderEntityId == null ? null : request.offenderEntityId,
+      targetId: null,
+      stationId: jurisdiction.stationId,
+      text: responders.length > 0
+        ? `THEFT REPORTED — ${witnesses.length} witness${witnesses.length === 1 ? '' : 'es'}; ${responders.length} unit${responders.length === 1 ? '' : 's'} in range.`
+        : `THEFT REPORTED — ${witnesses.length} witness${witnesses.length === 1 ? '' : 'es'}; no patrol in range.`,
+    });
+    this._emit('law:reportIncidentReceipt', receipt);
+    this._lawResponse('crime_validated', {
+      kind: receipt.kind,
+      incidentReceiptId: receipt.incidentReceiptId,
+      stationId: receipt.stationId,
+      witnessCount: receipt.witnessCount,
+      responderAvailability: receipt.responderAvailability,
+    });
+    if (kind === 'payload_theft') this._noteCrimeRestitution(victim, reportId);
+    return receipt;
+  },
+
+  /**
+   * An explicit refusal. Denials are deliberately NOT cached: a denial describes the world at one
+   * tick, and caching "no patrol could see you" would freeze a momentary absence into a permanent
+   * licence. Only accepted receipts are idempotent.
+   */
+  _denyIncidentReport(reason, { reportId, kind, causalTick }) {
+    const denial = Object.freeze({
+      accepted: false,
+      reason,
+      reportId: reportId || null,
+      kind: kind || null,
+      causalTick: causalTick === undefined ? null : causalTick,
+      validatedWitnessedTheft: false,
+      source: 'lawSecurity',
+    });
+    this._emit('law:reportIncidentReceipt', denial);
+    this._lawResponse('report_denied', { reason, kind: denial.kind, reportId: denial.reportId });
+    return denial;
+  },
+
+  // ── PQ-WANTED-steal-pod: jettisoned payload whose owner is not the player ──────────────────
+  //
+  // EncounterDirector freight-custody theft already reports through reportIncident. This path is
+  // only jettisoned `payload` pods (`spawnJettisonedCargoPod`). Own-jettison never enters intake.
+
+  _handleStolenCargoPodCollect(payload) {
+    if (!payload) return null;
+    const state = this.state;
+    if (!state || state.playerId == null) return null;
+    if (!sameLawEntityId(payload.collectorId, state.playerId)) return null;
+    if (payload.acceptedAmount != null && !(Number(payload.acceptedAmount) > 0)) return null;
+    const entity = entityById(state, payload.pickupId ?? payload.entityId ?? payload.targetId);
+    return this._reportStolenCargoPod(entity) || this._reportTitledClaimChip(entity, payload);
+  },
+
+  // A cut chip titled to the claim miner is not free scrap. Scooping it is the same witnessed
+  // theft door as a jettisoned pod: no eye, no charge, and the receipt is the thing that lasts.
+  _reportTitledClaimChip(entity, payload) {
+    const state = this.state;
+    const data = entity && entity.data;
+    const source = data && data.npcMiningSource;
+    if (!entity || entity.type !== 'pickup' || !source || !source.minerWorldRecordId) return null;
+    const ownerId = data.ownerId;
+    if (ownerId == null || String(ownerId) !== String(source.minerWorldRecordId)) return null;
+    if (sameLawEntityId(ownerId, state.playerId)) return null;
+    const pos = finiteLawPoint(entity.pos) || finiteLawPoint(payload && payload.pos);
+    if (!pos) return null;
+    const chipId = cleanLawId(`chip:${entity.id}`);
+    const reportId = cleanLawId(`chip-theft:${chipId}:${source.minerWorldRecordId}`);
+    if (!chipId || !reportId) return null;
+    const causalTick = Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0;
+    return this.reportIncident({
+      reportId,
+      kind: 'payload_theft',
+      offenderStableId: 'player',
+      offenderEntityId: state.playerId,
+      payloadStableId: chipId,
+      causalTick,
+      pos,
+      victimEntityId: ownerId,
+    });
+  },
+
+  _handleStolenCargoPodLatch(payload) {
+    if (!payload) return null;
+    const state = this.state;
+    if (!state || state.playerId == null) return null;
+    return this._reportStolenCargoPod(entityById(state, payload.targetId));
+  },
+
+  _reportStolenCargoPod(entity) {
+    const state = this.state;
+    const isManifest = isCivilianManifestPayload(entity);
+    if ((!isJettisonedCargoPod(entity) && !isManifest)
+      || (entity.data && entity.data.freightCustodyPod)) return null;
+    const ownerId = cargoPodOwnerId(entity);
+    if (ownerId == null || sameLawEntityId(ownerId, state.playerId)) return null;
+    // A manifest pod is the dead victim's cargo. If the kill itself was already adjudicated a
+    // crime, the murder receipt already priced the scene — a second receipt would be double
+    // jeopardy. A lawful or unwitnessed kill leaves the pod an honest salvage claim instead.
+    // The ledger scan (not just the reportId probe) keeps the match alive when the victim
+    // entity has already been culled from state.entities.
+    if (isManifest && manifestKillAlreadyPriced(state, ownerId)) return null;
+    const pos = finiteLawPoint(entity.pos);
+    if (!pos) return null;
+    const payloadStableId = cleanLawId(`${isManifest ? 'manifest' : 'jettisoned'}-${entity.id}`);
+    const reportId = cleanLawId(`pod-theft:${payloadStableId}`);
+    if (!payloadStableId || !reportId) return null;
+    const causalTick = Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0;
+    return this.reportIncident({
+      reportId,
+      kind: 'payload_theft',
+      offenderStableId: 'player',
+      offenderEntityId: state.playerId,
+      payloadStableId,
+      causalTick,
+      pos,
+      victim: entity,
+      victimEntityId: ownerId,
+    });
+  },
+
+  // ── Kill adjudication: the witness gate on homicide ──────────────────────────────────────
+  //
+  // One lawful evaluation per player-caused kill. The combat receipt carries the FROZEN
+  // first-hit truth (`targetHostileToPlayer`): a ship that was already hostile when the player
+  // engaged is a lawful kill — self-defense or declared bounty work — wherever it happens, and
+  // the law clears it on the record when it could see the act. Everything else is a crime
+  // candidate, and a crime the law cannot see is a crime it cannot charge:
+  //
+  //   * seen by a lawful unit or marked witness (`lawWitnessesNear`), or
+  //   * seen by a protected civilian who watched it happen.
+  // A protection ring and a lawful-network victim name the place and the class. They are
+  // not eyes. An empty witness list stays empty: the player's id is never written in to fill it.
+  //
+  // A validated kill reports through the same receipt contract as a witnessed theft
+  // (`law:reportIncidentReceipt` + `validatedCrime`) so the HEAT OWNER — and only the heat
+  // owner — prices it. There is no direct heat write in this path.
+
+  _handleKilledAdjudication(payload) {
+    const state = this.state;
+    if (!state || !payload || state.playerId == null) return;
+    if (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive') return;
+    if (payload.killerId !== state.playerId || payload.id === state.playerId) return;
+    // Canonical kill causality (combat's frozen presentation receipt): HOW the victim died is as
+    // much a legal fact as WHO. A hull slammed into a rock is reckless endangerment, not murder —
+    // the charge, the heat price, and the rep answer all key off this same cause.
+    const causality = compactKillCausality(payload, state.playerId);
+    const impactLink = impactLinkFromPresentation(payload.presentation, {
+      impactTick: Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0,
+      playerId: state.playerId,
+    });
+    const collisionKill = causality.cause === KillCause.TERRAIN_COLLISION
+      || causality.cause === KillCause.SHIP_COLLISION;
+    // SF-159: a collision kill's verdict reads the recent-harm window. An isolated contact —
+    // a bump, one thrown hull — is an accident and stays at the reckless tier; sustained
+    // player-caused harm inside the window is a continued attack, so the collision death it
+    // ends is murder, not a mishap. Non-collision causes already charge as attacks.
+    const harmEvents = collisionKill ? this._recentHarmCount(payload.id, SUSTAINED_HARM_WINDOW_S) : 0;
+    const sustainedAssault = collisionKill && harmEvents >= SUSTAINED_HARM_MIN_EVENTS;
+    const victim = entityById(state, payload.id);
+    const victimType = payload.type || (victim && victim.type);
+    if (!LAW_KILL_ADJUDICATION_TYPES.has(victimType)) return;
+    // Contracted and run-scoped victims are legal work — their reward owner already priced them.
+    if (victim && (missionOwnsReward(victim) || runOwnsReward(victim))) return;
+
+    const player = entityById(state, state.playerId);
+    const pos = finiteLawPoint(payload.pos)
+      || finiteLawPoint(victim && victim.pos)
+      || finiteLawPoint(player && player.pos);
+    if (!pos) return;
+
+    // Legacy payloads without the frozen flag fall back to live hostility minus provoked
+    // retaliation: a victim who only turned hostile because the player shot first is NOT a
+    // clear hostile. When the victim entity itself is already gone, the faction ledger's
+    // declared aggro is the only hostility truth left (the old heat-owner rule).
+    const provoked = !!(victim && victim.data && victim.data.ai
+      && victim.data.ai.retaliationTargetId === state.playerId);
+    const factionLawful = payload.factionLawful === true
+      || !!(victim && victim.data && victim.data.ai && victim.data.ai.lawful === true);
+    const factionAggro = !!(victim == null && payload.factionId != null && state.factions
+      && state.factions[payload.factionId] && state.factions[payload.factionId].aggro);
+    const clearlyHostile = typeof payload.targetHostileToPlayer === 'boolean'
+      ? payload.targetHostileToPlayer
+      : factionAggro
+        || !!(victim && !provoked && isHostileToPlayer(victim, player && player.team, state));
+
+    const jurisdiction = (victim && protectedStationAt(state, victim))
+      || protectedStationAt(state, { pos })
+      || (player && protectedStationAt(state, player))
+      || null;
+    const witnesses = lawWitnessesNear(state, {
+      pos, offenderEntityId: state.playerId, radius: LAW_KILL_WITNESS_RADIUS,
+      // the victim's own hull is never its own cover, and the body it struck (a thrown rock)
+      // never occludes the kill it caused — a witness behind the impactor still saw it happen.
+      ignoreEntityIds: [payload.id, payload.impactorId],
+    }).filter((w) => w.entityId !== payload.id); // the dead cannot testify
+    const civilians = civilianKillWitnessesNear(state, pos, state.playerId, witnesses, payload.id, payload.impactorId);
+    const witnessStableIds = directWitnessIds(state, [witnesses, civilians]);
+    const eyes = witnessStableIds.length > 0;
+    const victimStableId = victimStableIdOf(victim, payload);
+    const victimFactionId = (victim && victim.factionId) || payload.factionId || null;
+    // Lawful-network victims still charge as lawful_kill when someone saw the act. Collision
+    // deaths of ordinary victims charge as reckless_kill — the witnessed outcome is materially
+    // lighter than murder — UNLESS the recent-harm window proves a continued attack, which
+    // prices the full unlawful kill. The heat owner prices the kind, not this file.
+    const chargeKind = factionLawful ? 'lawful_kill'
+      : sustainedAssault ? 'unlawful_kill'
+      : collisionKill ? 'reckless_kill' : 'unlawful_kill';
+
+    // THE ONE WITNESS TRUTH. factions.js consumes this receipt instead of running its own
+    // witness query. `witnessed` means a person on the list saw it. The ring and the victim's
+    // network do not. evidenceClass is stamped once; a later relay must not upgrade it.
+    const publishTruth = (outcome, reportId = null) => {
+      // The class answers "how is this act evidenced", not "did the file stick": a kill that
+      // eyes saw but could not be filed (no stable victim id) is still a DIRECT observation.
+      // Stamping it 'unwitnessed' would print a lie on the footprint.
+      const evidenceClass = eyes ? 'direct' : 'unwitnessed';
+      const witnessed = evidenceClass === 'direct';
+      // Only a live, named hull the pirate was actually targeting can be called saved.
+      const pirate = isPirateLike(victim);
+      const targetId = victim?.data?.combat?.targetId ?? victim?.data?.ai?.activity?.targetId;
+      const saved = outcome === 'lawful' && witnessed && pirate ? entityById(state, targetId) : null;
+      const savedName = saved && incidentVictimLabel(state, saved);
+      const savedHull = saved && saved.alive !== false && saved.type === 'ship'
+        && saved.id !== state.playerId && savedName
+        && !isHostileToPlayer(saved, player && player.team, state)
+        ? { entityId: saved.id, stableId: victimStableIdOf(saved, {}), name: savedName } : null;
+      this._emit('law:killedAdjudicated', {
+        outcome,
+        ...(savedHull ? { savedHull, pirate: true, sectorId: currentSectorId(state) } : {}),
+        victimEntityId: payload.id,
+        victimStableId,
+        victimClass: payload.victimClass || null,
+        factionId: victimFactionId,
+        witnessed,
+        witnessCount: witnessed ? witnessStableIds.length : 0,
+        witnessStableIds: witnessed ? witnessStableIds.slice() : [],
+        evidenceClass,
+        factionLawful,
+        clearlyHostile,
+        cause: causality.cause,
+        surface: causality.surface,
+        playerCaused: causality.playerCaused === true,
+        impactLink,
+        sustainedAssault: sustainedAssault === true,
+        harmEvents: collisionKill ? harmEvents : null,
+        kind: outcome === 'charged' ? chargeKind : null,
+        reportId,
+        stationId: jurisdiction ? jurisdiction.stationId : null,
+        pos: { x: pos.x, z: pos.z },
+        tick: state.tick | 0,
+      });
+    };
+
+    // A lawful-network victim never takes the cleared early-out, even mid-enforcement: a
+    // patrol engaging a WANTED player is hostile in the combat sense, but destroying it is
+    // still a lawful_kill when someone saw it. An unseen patrol death stays a pending case.
+    if (clearlyHostile && !factionLawful) {
+      // Lawful force: no crime, no heat. Where someone saw the kill, the law clears the
+      // shooter on the record. That clear does not rewrite a receipt already stored.
+      if (eyes) {
+        this._lawResponse('kill_adjudicated', {
+          outcome: 'lawful',
+          victimEntityId: payload.id,
+          victimStableId,
+          victimClass: payload.victimClass || null,
+          stationId: jurisdiction ? jurisdiction.stationId : null,
+          witnessCount: witnessStableIds.length,
+        });
+      }
+      publishTruth(eyes ? 'lawful' : 'unwitnessed');
+      return;
+    }
+
+    if (!eyes) {
+      // Nobody saw it — the law cannot act, including when the victim flies for the network
+      // or the body lies inside a protection ring. The wreck can still testify later. The
+      // hull stays destroyed; this only records the case.
+      const pendingPerson = restitutionPerson(victim && victim.data);
+      const pendingCr = pricedCargoCr(victim && victim.data);
+      this._recordUnreportedKill({
+        victimEntityId: payload.id,
+        victimStableId,
+        victimClass: payload.victimClass || null,
+        victimFactionId,
+        kind: chargeKind,
+        killCause: causality.cause,
+        surface: causality.surface,
+        sustainedAssault: sustainedAssault === true,
+        harmEvents: collisionKill ? harmEvents : null,
+        pos: { x: pos.x, z: pos.z },
+        causalTick: Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0,
+        reportId: victimStableId != null ? cleanLawId(`kill:${victimStableId}`) : null,
+        ...(pendingPerson && pendingCr > 0 ? {
+          forPerson: pendingPerson, restitutionCr: pendingCr,
+          recovery: restitutionRecovery(victim, state),
+        } : {}),
+      });
+      this._lawResponse('kill_unwitnessed', {
+        outcome: 'no_charge',
+        victimEntityId: payload.id,
+        victimStableId,
+        victimClass: payload.victimClass || null,
+        killCause: causality.cause,
+      });
+      publishTruth('unwitnessed');
+      return;
+    }
+
+    if (victimStableId == null) {
+      publishTruth(eyes ? 'charged_unstable' : 'unwitnessed');
+      return;
+    } // no stable identity — a colliding 'kill:null' key would re-emit a stranger's receipt
+    const reportId = cleanLawId(`kill:${victimStableId}`);
+    if (!reportId) {
+      publishTruth(eyes ? 'charged_unstable' : 'unwitnessed');
+      return;
+    }
+    const existing = readReportedIncident(state, reportId);
+    if (existing) {
+      // The stored receipt is the historical fact. Republish it; do not rebuild the witness list.
+      const discovered = existing.discovery === true
+        || existing.evidence === 'wreck_provenance'
+        || existing.evidenceClass === 'discovered';
+      const storedIds = Array.isArray(existing.witnessStableIds) ? existing.witnessStableIds : [];
+      this._emit('law:killedAdjudicated', {
+        outcome: discovered ? 'discovered' : 'charged',
+        victimEntityId: payload.id,
+        victimStableId: existing.victimStableId || victimStableId,
+        victimClass: existing.victimClass || payload.victimClass || null,
+        factionId: existing.factionId || victimFactionId,
+        witnessed: discovered ? false : storedIds.length > 0,
+        witnessCount: discovered ? 0 : storedIds.length,
+        witnessStableIds: discovered ? [] : storedIds.slice(),
+        evidenceClass: discovered ? 'discovered' : (existing.evidenceClass || 'direct'),
+        factionLawful,
+        clearlyHostile,
+        cause: existing.killCause || causality.cause,
+        surface: causality.surface,
+        playerCaused: causality.playerCaused === true,
+        impactLink,
+        kind: existing.kind || (discovered ? null : chargeKind),
+        reportId,
+        stationId: existing.stationId || (jurisdiction ? jurisdiction.stationId : null),
+        pos: { x: pos.x, z: pos.z },
+        tick: state.tick | 0,
+      });
+      this._emit('law:reportIncidentReceipt', existing);
+      return;
+    }
+
+    // RC-CHASE (row 462) — civilian couriers, not convictions. When the only eyes on the kill
+    // are protected civilian ships, nobody radios the law: their testimony is a physical run to
+    // a lawful berth. Lawful units, lawful stations, and marked witnesses keep the immediate
+    // path below; a sealed run keeps it too (the arena never grows a courier ledger).
+    if (this._rcChaseEnabled && !isRunSealed(state) && witnesses.length === 0 && civilians.length > 0) {
+      const queued = this._queueWitnessReport(state, {
+        reportId,
+        kind: chargeKind,
+        victim,
+        victimStableId,
+        victimFactionId,
+        jurisdiction,
+        civilians,
+        witnessStableIds,
+        causality,
+        impactLink,
+        collisionKill,
+        sustainedAssault,
+        harmEvents,
+        factionLawful,
+        clearlyHostile,
+        pos,
+        causalTick: Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0,
+        payloadVictimClass: payload.victimClass || null,
+        payloadVictimEntityId: payload.id,
+      });
+      if (queued === 'queued' || queued === 'duplicate') {
+        publishTruth('pending_delivery', reportId);
+      } else {
+        // Queue full (16 pending reports) or a same-reportId pending collision: the kill stays
+        // witnessed truth, but its conviction rides the wreck-evidence path — a courier ledger
+        // must never silently evict live testimony to make room.
+        const pendingPerson = restitutionPerson(victim && victim.data);
+        const pendingCr = pricedCargoCr(victim && victim.data);
+        this._recordUnreportedKill({
+          victimEntityId: payload.id,
+          victimStableId,
+          victimClass: payload.victimClass || null,
+          victimFactionId,
+          kind: chargeKind,
+          killCause: causality.cause,
+          surface: causality.surface,
+          sustainedAssault: sustainedAssault === true,
+          harmEvents: collisionKill ? harmEvents : null,
+          pos: { x: pos.x, z: pos.z },
+          causalTick: Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0,
+          reportId,
+          ...(pendingPerson && pendingCr > 0 ? {
+            forPerson: pendingPerson, restitutionCr: pendingCr,
+            recovery: restitutionRecovery(victim, state),
+          } : {}),
+        });
+        publishTruth('unwitnessed');
+      }
+      return;
+    }
+
+    const kind = chargeKind;
+    const causalTick = Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0;
+    const receipt = Object.freeze({
+      accepted: true,
+      incidentReceiptId: `law:kill:${hash32(reportId, kind, victimStableId, causalTick).toString(36)}`,
+      reportId,
+      kind,
+      offenderStableId: 'player',
+      offenderEntityId: state.playerId,
+      payloadStableId: victimStableId,
+      victimEntityId: payload.id,
+      victimStableId,
+      victimClass: payload.victimClass || null,
+      killCause: causality.cause,
+      sustainedAssault: sustainedAssault === true,
+      harmEvents: collisionKill ? harmEvents : null,
+      causalTick,
+      stationId: jurisdiction ? jurisdiction.stationId : null,
+      factionId: (jurisdiction && jurisdiction.factionId)
+        || (victim && victim.factionId)
+        || payload.factionId
+        || null,
+      witnessCount: witnessStableIds.length,
+      witnessStableIds: Object.freeze(witnessStableIds.slice()),
+      evidenceClass: 'direct',
+      // Kill receipts carry validatedCrime, not validatedWitnessedTheft — the heat owner
+      // prices either fact through the same single-writer door.
+      validatedWitnessedTheft: false,
+      validatedCrime: true,
+      source: 'lawSecurity',
+    });
+    storeReportedIncident(state, receipt);
+    this._recordReceipt({
+      incidentId: receipt.incidentReceiptId,
+      cause: kind,
+      outcome: 'kill_validated',
+      attackerId: state.playerId,
+      targetId: payload.id,
+      stationId: receipt.stationId,
+      text: `KILL ADJUDICATED — ${factionLawful ? 'lawful victim' : sustainedAssault ? 'sustained collision attack' : collisionKill ? 'reckless collision kill' : 'non-hostile victim'}; ${witnessStableIds.length} witness${witnessStableIds.length === 1 ? '' : 'es'} on record.`,
+    });
+    this._noteCrimeRestitution(victim, reportId);
+    this._emit('law:reportIncidentReceipt', receipt);
+    this._lawResponse('crime_validated', {
+      kind,
+      incidentReceiptId: receipt.incidentReceiptId,
+      victimEntityId: payload.id,
+      victimStableId,
+      victimClass: receipt.victimClass,
+      killCause: causality.cause,
+      stationId: receipt.stationId,
+      witnessCount: witnessStableIds.length,
+    });
+    publishTruth('charged', reportId);
+
+    // A witnessed murder inside a live protection ring is also a standing distress incident —
+    // the same patrol machinery that answers shots fired answers a corpse.
+    if (jurisdiction && victim && player) {
+      this._openIncident(player, victim, jurisdiction,
+        factionLawful ? 'player_assault' : 'player_piracy');
+    }
+  },
+
+  // ── Discovered crime: the wreck testifies later ────────────────────────────────────────────
+  //
+  // An unwitnessed kill leaves a bounded pending case (`unreportedKills`, keyed by the victim's
+  // STABLE id — the same basis reportId derives from, so a recycled runtime id can never collide
+  // a pending case with an unrelated wreck). When the wreck's aftermath provenance is later
+  // resolved — a targeted scan pulse reading the hull, or the salvage beam finishing — the black
+  // box names the killer and the pending case becomes a real charge through the SAME stable
+  // reportId the witnessed path uses.
+  // Only a kill the law could not see enters the pending ledger, including a lawful-network
+  // victim with no eye in range. A witnessed charge and a seen lawful clear never do, so this
+  // door reopens a case the law already evaluated and could not yet prove.
+
+  _recordUnreportedKill(entry) {
+    const own = ensureState(this.state);
+    if (!own.unreportedKills || typeof own.unreportedKills !== 'object'
+      || Array.isArray(own.unreportedKills)) {
+      own.unreportedKills = {};
+    }
+    if (!entry || entry.victimEntityId == null || entry.victimStableId == null || !entry.reportId) return;
+    const key = String(entry.victimStableId);
+    if (!own.unreportedKills[key]) own.unreportedKills[key] = entry;
+    const keys = Object.keys(own.unreportedKills);
+    while (keys.length > UNREPORTED_KILL_CAP) delete own.unreportedKills[keys.shift()];
+  },
+
+  _handleWreckCrimeDiscovery(payload, via) {
+    const state = this.state;
+    if (!state || !payload || state.playerId == null) return null;
+    if (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive') return null;
+    const own = ensureState(state);
+    const pendingMap = own.unreportedKills;
+    if (!pendingMap || typeof pendingMap !== 'object' || Array.isArray(pendingMap)) return null;
+
+    // Resolve which kill this wreck belongs to. The live hulk keeps the marker clone under
+    // data.aftermath; a dematerialized field resolves through the marker ledger by markerId —
+    // the durable identity, never the recycled numeric wreckId.
+    const wreck = entityById(state, payload.wreckId ?? payload.entityId ?? payload.targetId);
+    const wreckData = wreck && wreck.data;
+    let victimEntityId = wreckData && wreckData.aftermath && wreckData.aftermath.victimId != null
+      ? wreckData.aftermath.victimId
+      : null;
+    const markerId = payload.markerId
+      || (wreckData && (wreckData.markerId || (wreckData.provenance && wreckData.provenance.markerId)))
+      || null;
+    let marker = null;
+    if (markerId) marker = findAftermathMarker(state, markerId);
+    if (victimEntityId == null && marker && marker.victimId != null) victimEntityId = marker.victimId;
+    if (victimEntityId == null) return null;
+
+    // The pending docket is keyed by the victim's STABLE id, but a wreck only knows the kill-time
+    // runtime id — so resolve the case key the way the docket was written:
+    //   * record-less victims file under `entity:<id>` — the same fallback victimStableIdOf emits;
+    //   * a durable victim files under its worldRecordId, unreachable from a dead runtime id —
+    //     scan the bounded docket for the case whose entity id AND kill tick both match this
+    //     marker. The tick is the recycling disambiguator: entity ids reset/reuse, but a pending
+    //     case and its wreck share the exact tick the kill was adjudicated.
+    // A black box that cannot date the death binds nothing — fail closed.
+    const killTick = Number.isInteger(marker && marker.tick) ? marker.tick
+      : (wreckData && wreckData.aftermath && Number.isInteger(wreckData.aftermath.tick)
+        ? wreckData.aftermath.tick : null);
+    if (killTick == null) return null;
+    const directKey = victimStableIdOf(null, { id: victimEntityId });
+    let key = directKey;
+    let pending = directKey ? pendingMap[directKey] || null : null;
+    if (pending && pending.causalTick !== killTick) pending = null;
+    if (!pending) {
+      for (const k of Object.keys(pendingMap)) {
+        const candidate = pendingMap[k];
+        if (!candidate || !sameLawEntityId(candidate.victimEntityId, victimEntityId)) continue;
+        if (candidate.causalTick !== killTick) continue;
+        key = k;
+        pending = candidate;
+        break;
+      }
+    }
+    if (!pending) return null; // lawful clear, witnessed charge, another kill's hulk, or never a case
+    // If the marker's own black box names a different killer this is not the player's crime.
+    if (marker && marker.killerId != null && marker.killerId !== state.playerId) return null;
+
+    const reportId = cleanLawId(pending.reportId);
+    if (!reportId) { delete pendingMap[key]; return null; }
+    const existing = readReportedIncident(state, reportId);
+    if (existing) {
+      // Already priced — dedupe across scan+salvage and replayed events without a second charge.
+      delete pendingMap[key];
+      this._emit('law:reportIncidentReceipt', existing);
+      return existing;
+    }
+
+    const causalTick = Number.isInteger(pending.causalTick) && pending.causalTick >= 0
+      ? pending.causalTick
+      : (Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0);
+    const receipt = Object.freeze({
+      accepted: true,
+      incidentReceiptId: `law:kill:${hash32(reportId, pending.kind, pending.victimStableId, causalTick, 'discovered').toString(36)}`,
+      reportId,
+      kind: pending.kind,
+      offenderStableId: 'player',
+      offenderEntityId: state.playerId,
+      payloadStableId: pending.victimStableId,
+      victimEntityId: pending.victimEntityId,
+      victimStableId: pending.victimStableId,
+      victimClass: pending.victimClass || null,
+      killCause: pending.killCause || null,
+      sustainedAssault: pending.sustainedAssault === true,
+      harmEvents: Number.isInteger(pending.harmEvents) ? pending.harmEvents : null,
+      causalTick,
+      stationId: null,
+      factionId: pending.victimFactionId || null,
+      // The wreck is the witness: zero living witnesses, provenance is the evidence.
+      witnessCount: 0,
+      witnessStableIds: Object.freeze([]),
+      validatedWitnessedTheft: false,
+      validatedCrime: true,
+      discovery: true,
+      discoveryVia: via,
+      evidence: 'wreck_provenance',
+      evidenceClass: 'discovered',
+      markerId: markerId || null,
+      source: 'lawSecurity',
+    });
+    storeReportedIncident(state, receipt);
+    delete pendingMap[key];
+    this._recordReceipt({
+      incidentId: receipt.incidentReceiptId,
+      cause: pending.kind,
+      outcome: 'crime_discovered',
+      attackerId: state.playerId,
+      targetId: pending.victimEntityId,
+      stationId: null,
+      text: `CRIME DISCOVERED — wreck black box ties the kill to the suspect (${via === 'wreck_salvage' ? 'salvage' : 'scan'}).`,
+    });
+    this._noteStoredRestitution(pending, reportId);
+    this._emit('law:reportIncidentReceipt', receipt);
+    this._lawResponse('crime_discovered', {
+      kind: pending.kind,
+      incidentReceiptId: receipt.incidentReceiptId,
+      victimEntityId: pending.victimEntityId,
+      victimStableId: pending.victimStableId,
+      victimClass: pending.victimClass,
+      killCause: pending.killCause || null,
+      discoveryVia: via,
+      markerId: markerId || null,
+    });
+    return receipt;
+  },
+
+  // A licensed contractor's transponder reports its own loss (THE WORLD REMEMBERS): when the
+  // witness gate saw nothing, the pending case it just recorded converts to the SAME signed
+  // lawful_kill receipt a wreck scan would later mint — same reportId, so the later scan dedupes.
+  // Heat prices it; this only signs. Called by warrantHunterWaves for licensed hulls only.
+  _signContractorTransponderLoss(victimStableId) {
+    const state = this.state;
+    if (!state || victimStableId == null) return null;
+    const own = ensureState(state);
+    const pendingMap = own.unreportedKills;
+    const key = String(victimStableId);
+    const pending = pendingMap && typeof pendingMap === 'object' ? pendingMap[key] : null;
+    if (!pending) return null;
+    const reportId = cleanLawId(pending.reportId);
+    if (!reportId) return null;
+    delete pendingMap[key];
+    if (readReportedIncident(state, reportId)) return null;
+    const causalTick = Number.isInteger(pending.causalTick) && pending.causalTick >= 0
+      ? pending.causalTick : (state.tick | 0);
+    const receipt = Object.freeze({
+      accepted: true,
+      incidentReceiptId: `law:kill:${hash32(reportId, pending.kind, pending.victimStableId, causalTick, 'transponder').toString(36)}`,
+      reportId,
+      kind: pending.kind,
+      offenderStableId: 'player',
+      offenderEntityId: state.playerId,
+      payloadStableId: pending.victimStableId,
+      victimEntityId: pending.victimEntityId,
+      victimStableId: pending.victimStableId,
+      victimClass: pending.victimClass || null,
+      killCause: pending.killCause || null,
+      sustainedAssault: pending.sustainedAssault === true,
+      harmEvents: Number.isInteger(pending.harmEvents) ? pending.harmEvents : null,
+      causalTick,
+      stationId: null,
+      factionId: pending.victimFactionId || null,
+      witnessCount: 0,
+      witnessStableIds: Object.freeze([]),
+      validatedWitnessedTheft: false,
+      validatedCrime: true,
+      discovery: true,
+      discoveryVia: 'contractor_transponder',
+      evidence: 'contractor_transponder',
+      evidenceClass: 'discovered',
+      source: 'lawSecurity',
+    });
+    storeReportedIncident(state, receipt);
+    this._recordReceipt({
+      incidentId: receipt.incidentReceiptId,
+      cause: pending.kind,
+      outcome: 'crime_discovered',
+      attackerId: state.playerId,
+      targetId: pending.victimEntityId,
+      stationId: null,
+      text: 'CONTRACTOR LOSS — a licensed hunter\'s transponder names the suspect.',
+    });
+    this._noteStoredRestitution(pending, reportId);
+    this._emit('law:reportIncidentReceipt', receipt);
+    return receipt;
+  },
+
+  // ── Lawful clearance: pay the assessed fine at a lawful dock ─────────────────────────────
+  //
+  // The lawful channel for the two escapable tiers. SCAN and BOUNTY already clear by leaving
+  // the search zone; a lawful dock offers the honest door instead — pay the assessed fine
+  // through the economy owner and the heat owner clears the sheet. NETS and IMPOUND keep
+  // their physical escapes; nobody pays a fine to walk out of an impound lot.
+  //
+  // Escaping consequences is possible but never free: the fine is real credits, charged
+  // through `economy:chargeCredits`, and a pilot who cannot pay keeps the heat.
+
+  _fileHullPapers(payload) {
+    const papers = acceptHullPapers(payload && payload.rapSheet, payload && payload.rapSheetLine);
+    if (!papers || !papers.id) return;
+    const own = ensureState(this.state);
+    if (own.hullPapers && own.hullPapers.id === papers.id) return;
+    own.hullPapers = papers;
+    this._emit('law:hullPapers', { id: papers.id, line: papers.line });
+  },
+
+  // The owned hull is the durable copy. Law re-reads it on a sale and on Continue
+  // so the note does not need its own save key, and a clean hull files nothing.
+  _noteOwnedHullPapers() {
+    const player = this.state && this.state.player;
+    const ships = player && player.ownedShips;
+    if (!Array.isArray(ships)) return;
+    const active = ships[player.activeShipIndex];
+    const carrier = active && active.rapSheet ? active : ships.find((row) => row && row.rapSheet);
+    if (!carrier) return;
+    this._fileHullPapers({ rapSheet: carrier.rapSheet, rapSheetLine: carrier.rapSheetLine });
+  },
+
+  _handleDockedLawfulClearance(payload) {
+    const state = this.state;
+    if (!state || !payload || state.playerId == null) return;
+    this._noteOwnedHullPapers();
+    if (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive') return;
+    // AL-STORY-1 — a clean-hold pilot who physically weighed a manifest files the slip on
+    // docking itself: this must run ahead of the clean-sheet early return below or the
+    // whole honest route is unreachable for exactly the pilot it was built for.
+    this._fileMassSlipsAt(payload.stationId);
+    const player = state.player;
+    const heatValue = player && Number(player.heat) || 0;
+    if (heatValue <= 0) {
+      // The sheet is clean, so the next warrant at this dock is a new fine.
+      if (state.lawSecurity && state.lawSecurity.fineSettled) state.lawSecurity.fineSettled = {};
+      return;
+    }
+    const tier = wantedTierFor(heatValue);
+    if (tier !== WANTED_TIER.SCAN && tier !== WANTED_TIER.BOUNTY) return;
+    const station = entityById(state, payload.stationId)
+      || stationByPublicId(state, payload.stationId)
+      || entityById(state, payload.entityId);
+    if (!station || !isLawful(station)) return;
+
+    const level = heatLevelFor(heatValue);
+    const fine = LAW_DOCK_FINE_BASE_CR + LAW_DOCK_FINE_PER_LEVEL_CR * level;
+    const credits = Math.max(0, Math.round(Number(player.credits) || 0));
+    const stationId = payload.stationId
+      || (station.data && station.data.stationId)
+      || station.stationId
+      || station.id;
+    const causeId = `wanted:${String(stationId)}:${tier}`;
+    const own = ensureState(state);
+    if (own.fineSettled && own.fineSettled[causeId]) {
+      this._emit('law:fineAssessed', {
+        stationId, amount: fine, paid: true, choice: own.fineSettled[causeId],
+        alreadySettled: true, heatLevel: level, wantedTier: tier,
+      });
+      return;
+    }
+    this.noteComposedObligation({
+      kind: 'warrant',
+      causeId,
+      amountCr: fine,
+      label: `fine at ${stationDisplayName(stationId)}`,
+    });
+    const choice = payload && typeof payload.fineChoice === 'string' ? payload.fineChoice : null;
+    // FB-039 — docking only assesses; the charge is the player's answer, not the berth's act.
+    // The live offer row survives a plain re-dock: 'working' keeps its accrued shift and a
+    // 'left' row re-opens as offered so the next berth can ask again. A different station or
+    // tier always writes a fresh row — the reply resolves the fine actually on the counter.
+    const priorOffer = own.fineOffer && own.fineOffer.causeId === causeId ? own.fineOffer : null;
+    if (!priorOffer || priorOffer.status === 'paid' || priorOffer.status === 'left') {
+      own.fineOffer = {
+        stationId, amount: fine, causeId, status: 'offered', choice: null,
+        heatLevel: level, wantedTier: tier,
+        ...(state.ui?.docked === true ? { productionDock: true } : {}),
+      };
+    }
+    if (state.ui?.docked === true) own.fineOffer.productionDock = true;
+
+    if (!choice) {
+      this._lawResponse('fine_assessed', {
+        stationId, fineCr: fine, heatLevel: level, wantedTier: tier,
+      });
+      this._emit('law:fineAssessed', {
+        stationId, amount: fine, paid: false, offer: true,
+        working: own.fineOffer.status === 'working' || undefined,
+        credits, heatLevel: level, wantedTier: tier,
+      });
+      return;
+    }
+    if (choice === 'leave') {
+      own.fineOffer.status = 'left';
+      own.fineOffer.choice = 'leave';
+      this._lawResponse('fine_left', { stationId, fineCr: fine, heatLevel: level, wantedTier: tier });
+      this._emit('law:fineAssessed', {
+        stationId, amount: fine, paid: false, choice: 'leave',
+        heatLevel: level, wantedTier: tier,
+      });
+      this._recordReceipt({
+        cause: 'wanted_fine', outcome: 'fine_left',
+        attackerId: state.playerId, targetId: null, stationId,
+        text: `FINE LEFT ${fine} cr — warrant stands at ${stationDisplayName(stationId)}.`,
+      });
+      return;
+    }
+    if (choice === 'work') {
+      if (own.fineOffer.status !== 'working') {
+        own.fineOffer.status = 'working';
+        own.fineOffer.choice = 'work';
+        own.fineOffer.workS = 0;
+        own.fineOffer.workNeedS = LAW_FINE_WORK_S;
+      }
+      this._lawResponse('fine_work', { stationId, fineCr: fine, heatLevel: level, wantedTier: tier });
+      this._emit('law:fineAssessed', {
+        stationId, amount: fine, paid: false, choice: 'work',
+        heatLevel: level, wantedTier: tier,
+      });
+      this._recordReceipt({
+        cause: 'wanted_fine', outcome: 'fine_work',
+        attackerId: state.playerId, targetId: null, stationId,
+        text: `FINE WORK ${fine} cr — warrant held until the shift is done at ${stationDisplayName(stationId)}.`,
+      });
+      return;
+    }
+    if (choice !== 'pay') return; // an answer the desk does not know leaves the offer standing
+
+    // PAY — the engine re-validates credits on the reply; a short account keeps the offer open
+    // so work or leave still answer it, and nothing is charged for the attempt.
+    if (credits < fine) {
+      own.fineOffer.status = 'offered';
+      this._lawResponse('fine_unpaid', {
+        stationId, fineCr: fine, shortfallCr: fine - credits, heatLevel: level, wantedTier: tier,
+      });
+      this._recordReceipt({
+        cause: 'wanted_fine', outcome: 'fine_unpaid',
+        attackerId: state.playerId, targetId: null, stationId,
+        text: `FINE ASSESSED ${fine} cr — insufficient funds. Warrant stands.`,
+      });
+      this._emit('law:fineAssessed', {
+        stationId, amount: fine, paid: false, choice: 'pay', shortfall: fine - credits,
+        heatLevel: level, wantedTier: tier,
+      });
+      return;
+    }
+
+    if (!own.fineSettled || typeof own.fineSettled !== 'object') own.fineSettled = {};
+    own.fineSettled[causeId] = 'pay';
+    own.fineOffer.status = 'paid';
+    this._markObligationSettled('warrant', causeId);
+    this._emit('economy:chargeCredits', {
+      amount: fine,
+      reason: 'fine:wanted_clearance',
+      sink: 'fine',
+      cause: 'wanted_clearance',
+    });
+    this._emit('heat:clear', { reason: 'station_fine' });
+    // The sheet is clean once the heat owner accepts the clear. The next warrant
+    // at this desk is a new fine. A warm sheet keeps the mark so the same
+    // warrant cannot be charged twice.
+    if (!(Number(player.heat) > 0)) own.fineSettled = {};
+    this._emit('law:fineAssessed', {
+      stationId, amount: fine, paid: true, choice: 'pay',
+      heatLevel: level, wantedTier: tier,
+    });
+    this._lawResponse('fine_paid', {
+      stationId, fineCr: fine, heatLevel: level, wantedTier: tier,
+    });
+    this._recordReceipt({
+      cause: 'wanted_fine', outcome: 'fine_paid',
+      attackerId: state.playerId, targetId: null, stationId,
+      text: `FINE PAID ${fine} cr — warrant cleared at ${stationDisplayName(stationId)}.`,
+    });
+  },
+
+  // LAW-01 — the submit verb's acknowledgment. `customs:submit` is emitted by the customs
+  // decision deck (ui/customsPrompt.js) and had no listener: the player clicked SUBMIT and the
+  // law said nothing. The scan itself still resolves through economy.runScan — this handler only
+  // answers and records; it never charges, re-scans, or moves standing.
+  _handleCustomsSubmit(payload) {
+    const state = this.state;
+    if (!state || state.playerId == null) return;
+    if (state.mode && state.mode !== 'flight') return;
+    if ((state.tick | 0) === this._lastCustomsSubmitTick) return; // one ack per tick
+    this._lastCustomsSubmitTick = state.tick | 0;
+    const factionId = (payload && payload.factionId) || 'faction_scn';
+    this._say('bark', 'PATROL: submission acknowledged — manifest read proceeds.',
+      `law:customsSubmit:${factionId}:${state.tick | 0}`, factionId);
+    const papers = ensureState(state).hullPapers;
+    if (papers && papers.line) {
+      this._say('bark', papers.line, `law:hullPapers:${state.tick | 0}`, factionId);
+    }
+    // No incidentId: the direct-receipt lane paints this row on the law card for RECEIPT_TTL_S.
+    this._recordReceipt({
+      cause: 'customs_scan', outcome: 'customs_complied',
+      attackerId: null, targetId: state.playerId,
+      patrolId: (payload && payload.patrolId) || null,
+      stationId: (payload && payload.stationId) || null,
+      text: 'Compliance recorded — the scan proceeds on your submission.',
+    });
+    // AL-STORY-1 — an ordinary submission at the issuing station can also file a physically
+    // earned weight slip (the bonus path; clean-hold docking files it earlier on dock:docked).
+    this._fileMassSlipsAt(payload && payload.stationId);
+  },
+
+  /**
+   * AL-STORY-1 (row 423) — file a physically earned weight slip. Slips live under
+   * state.economyContracts.massScale (the economy-contract owner revalidates and keeps
+   * them); the law only FILES: one receipt on the law card plus a customs:massSlipFiled
+   * acknowledgment the owner validates against its own records. Selection is the oldest
+   * unfiled slip with an authored outcome at this station — the sealed-recovery slip has
+   * no customs outcome and is never picked. Excess weight alone never proves a commodity
+   * or a crime: no cargo seizure, no charge, no waived scan, no cleared heat.
+   */
+  _fileMassSlipsAt(stationId) {
+    const state = this.state;
+    if (!state || !stationId || state.playerId == null || this._filingMassSlip) return;
+    if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
+    const ms = state.economyContracts?.massScale;
+    if (!ms?.slips || typeof ms.slips !== 'object' || Array.isArray(ms.slips)) return;
+    const outcomes = {
+      weight_audit: { outcome: 'mass_discrepancy_filed', statusText: 'WEIGHT SLIP FILED', stationId: 'station_helios' },
+      carrier_frame: { outcome: 'mass_frame_disputed', statusText: 'ISSUER DISPUTED', stationId: 'station_ceres' },
+    };
+    const slip = Object.keys(ms.slips).filter(key => {
+      const row = ms.slips[key], spec = row && outcomes[row.kind];
+      return spec && spec.stationId === stationId && row.issuingStationId === stationId
+        && row.slipId === key && typeof row.sourceOfferId === 'string' && row.sourceOfferId
+        && typeof row.missionId === 'string' && row.missionId
+        && Number.isSafeInteger(row.targetSlot) && row.targetSlot >= 0
+        && key === `mass-slip:${row.sourceOfferId}:${row.targetSlot}`
+        && typeof row.issuer === 'string' && row.issuer
+        && massDiscrepancy(row.declaredMassT, row.measuredMassT)?.discrepant
+        && !row.filedAtStations?.[stationId];
+    }).map(key => ms.slips[key]).sort((a, b) => {
+      const ta = Number.isFinite(Number(a.weighedTick)) ? Number(a.weighedTick) : Infinity;
+      const tb = Number.isFinite(Number(b.weighedTick)) ? Number(b.weighedTick) : Infinity;
+      return ta - tb || String(a.slipId).localeCompare(String(b.slipId));
+    })[0];
+    if (!slip) return;
+    const spec = outcomes[slip.kind];
+    const text = slip.kind === 'carrier_frame'
+      ? `WEIGHT SLIP — ${slip.issuer} declared ${slip.declaredMassT} t; the tether scale read ${slip.measuredMassT} t. The issuer's declaration is disputed, not the carrier's papers.`
+      : `WEIGHT SLIP — ${slip.issuer} declared ${slip.declaredMassT} t; the tether scale read ${slip.measuredMassT} t. Manifest discrepancy filed with customs.`;
+    this._filingMassSlip = true;
+    try {
+      // The evidence owner files first. A refused notification cannot become a law-card success.
+      this._emit('customs:massSlipFiled', { slipId: slip.slipId, stationId,
+        outcome: spec.outcome, text, statusText: spec.statusText });
+      const kept = state.economyContracts?.massScale?.slips?.[slip.slipId];
+      if (kept?.filedAtStations?.[stationId]?.outcome !== spec.outcome
+          || kept.missionId !== slip.missionId || kept.sourceOfferId !== slip.sourceOfferId
+          || kept.declaredMassT !== slip.declaredMassT || kept.measuredMassT !== slip.measuredMassT) return;
+      this._recordReceipt({ cause: 'mass_manifest', outcome: spec.outcome,
+        attackerId: null, targetId: state.playerId, stationId, slipId: slip.slipId,
+        statusText: spec.statusText, text });
+    } finally { this._filingMassSlip = false; }
+  },
+
+  // LAW-12: remember an actual clean read, never just a submit click or a missed contraband roll.
+  _rememberCustomsPass(payload) {
+    if (!payload || payload.hasContraband !== false
+      || !SECTORS.some((sector) => sector.stations?.some((row) => row.id === payload.stationId))) return;
+    const illicit = this._economy()?.illicitCargo?.(this.state);
+    if (!Array.isArray(illicit) || illicit.length > 0) return;
+    if (this._waiveCustomsScan(payload)) return;
+    const own = ensureState(this.state);
+    const marks = own.customsTrust || (own.customsTrust = {});
+    const day = Math.max(0, this.state.days | 0);
+    marks[payload.stationId] = { day };
+    this._emit('customs:trustMarked', {
+      stationId: payload.stationId, stationName: stationDisplayName(payload.stationId), day,
+    });
+  },
+
+  _waiveCustomsScan(payload) {
+    const day = Math.max(0, this.state.days | 0);
+    const mark = this.state.lawSecurity?.customsTrust?.[payload.stationId];
+    if (!mark || mark.day !== day || payload.hasContraband === true) return false;
+    // The engine's complete illicit read includes the salvage bay. Trust never shields new cargo.
+    const illicit = this._economy()?.illicitCargo?.(this.state);
+    if (!Array.isArray(illicit) || illicit.length > 0) return false;
+    const key = `${payload.stationId}:${payload.patrolId ?? 'station'}`;
+    const waived = this._customsWaivedPatrols || (this._customsWaivedPatrols = new Map());
+    if (waived.get(key) !== day) {
+      waived.set(key, day);
+      this._emit('customs:scanWaived', {
+        stationId: payload.stationId, stationName: stationDisplayName(payload.stationId), day,
+      });
+    }
+    return true;
+  },
+
+  // LAW-10 — a mid-scan dump downgrades the finding to suspicion. The engine owns the
+  // scan odds and every fine/confiscation/rep/heat effect; this watch only OBSERVES and
+  // NAMES. It opens on `player:scannedByPatrol` with contraband aboard (snapshotting the
+  // engine's own illicit read), notes `cargo:jettisoned` lots inside the window, and:
+  //   • full dump of the scanned lot(s) → resolves `aborted_dump`: one `customs:scanAborted`
+  //     seam event, one suspicion receipt, one bark. No fine, no standing move, no heat
+  //     write — the jettisoned pod stays contraband evidence, so the pod-cone/weir read
+  //     still prices heat through heat.js exactly as before (dumping is never heat-free).
+  //   • anything else (partial/no dump, scan completes) → `completed_full`: silent. The
+  //     engine's `contraband:scanned` stands verbatim as the full finding.
+  // The watch lives on the instance (session-scoped, never serialized): a save boundary,
+  // sector exit, or new run drops it like the weir dwell latches.
+  _resetScanDumpWatch() {
+    this._scanDumpWatch = null;
+  },
+
+  _scanDumpNow(state) {
+    return Number.isFinite(state && state.simTime) ? state.simTime : 0;
+  },
+
+  _pruneScanDumpWatch(state) {
+    const watch = this._scanDumpWatch;
+    if (!watch || watch.phase !== 'scanning') return;
+    if (this._scanDumpNow(state) - watch.startedSimTime > SCAN_DUMP_WATCH_WINDOW_S) {
+      watch.phase = 'expired';
+      watch.resolvedAt = this._scanDumpNow(state);
+    }
+  },
+
+  _scanDumpSnapshotLots(state) {
+    try {
+      const economy = this._economy();
+      if (economy && typeof economy.illicitCargo === 'function') {
+        const illicit = economy.illicitCargo(state) || [];
+        return illicit
+          .filter((s) => s && typeof s.commodityId === 'string'
+            && Math.max(0, Math.floor(Number(s.qty) || 0)) > 0)
+          .map((s) => ({ commodityId: s.commodityId, qty: Math.max(0, Math.floor(Number(s.qty) || 0)) }));
+      }
+    } catch (_) { /* snapshot unavailable — the watch still opens, lots unknown */ }
+    return [];
+  },
+
+  _openScanDumpWatch(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.hasContraband !== true) return;
+    if (state.mode && state.mode !== 'flight') return;
+    this._pruneScanDumpWatch(state);
+    const prior = this._scanDumpWatch;
+    if (prior && prior.phase === 'scanning') return; // one window at a time — the first scan owns it
+    this._scanDumpWatch = {
+      factionId: (payload && payload.factionId) || 'faction_scn',
+      patrolId: (payload && payload.patrolId) ?? null,
+      stationId: (payload && payload.stationId) ?? null,
+      source: (payload && payload.source) || null,
+      lawfulInspectionCaseId: (payload && payload.lawfulInspectionCaseId) || null,
+      startedTick: state.tick | 0,
+      startedSimTime: this._scanDumpNow(state),
+      lots: this._scanDumpSnapshotLots(state),
+      dumped: [],
+      dumpedMidScan: false,
+      phase: 'scanning',
+      resolvedAt: null,
+    };
+  },
+
+  // True once every scanned lot reads empty in the hold. Prefers the engine's own illicit
+  // read (bay-only contraband correctly refuses the abort — jettison cannot clear the bay).
+  // Without an economy read, falls back to snapshot-minus-dumps, or to the cargo payload's
+  // own holdRemaining for an unknown lot.
+  _scanDumpLotsCleared(state, watch, payload) {
+    const dumpedById = new Map();
+    for (const row of watch.dumped) {
+      dumpedById.set(row.commodityId, (dumpedById.get(row.commodityId) || 0) + row.amount);
+    }
+    try {
+      const economy = this._economy();
+      if (economy && typeof economy.illicitCargo === 'function') {
+        const left = new Map();
+        for (const s of economy.illicitCargo(state) || []) {
+          if (!s || typeof s.commodityId !== 'string') continue;
+          left.set(s.commodityId, Math.max(0, Math.floor(Number(s.qty) || 0)));
+        }
+        if (!watch.lots.length) {
+          for (const qty of left.values()) if (qty > 0) return false;
+          return true;
+        }
+        return watch.lots.every((lot) => (left.get(lot.commodityId) || 0) <= 0);
+      }
+    } catch (_) { /* fall through to the snapshot comparison */ }
+    if (!watch.lots.length) {
+      const holdRemaining = payload && Number(payload.holdRemaining);
+      return Number.isFinite(holdRemaining) && holdRemaining <= 0;
+    }
+    return watch.lots.every((lot) => (dumpedById.get(lot.commodityId) || 0) >= lot.qty);
+  },
+
+  _noteScanDumpJettison(payload) {
+    const state = this.state;
+    const watch = this._scanDumpWatch;
+    if (!state || !watch || watch.phase !== 'scanning') return;
+    this._pruneScanDumpWatch(state);
+    if (watch.phase !== 'scanning') return;
+    const commodityId = payload && typeof payload.commodityId === 'string' ? payload.commodityId : '';
+    if (!commodityId) return;
+    const matches = watch.lots.length > 0
+      ? watch.lots.some((lot) => lot.commodityId === commodityId)
+      : commodityLegality(commodityId) !== 'legal';
+    if (!matches) return; // legal goods (or another manifest) overboard — not the scanned lot
+    watch.dumped.push({
+      commodityId,
+      amount: Math.max(0, Math.floor(Number(payload && payload.amount) || 0)),
+      tick: state.tick | 0,
+    });
+    watch.dumpedMidScan = true;
+    if (this._scanDumpLotsCleared(state, watch, payload)) this._resolveScanDumpAborted();
+  },
+
+  // A hold-scan verdict is a hold verdict: pod reads (cone/weir) and other sources resolve
+  // through their own owners and must never close or convert this watch. A correlated lawful
+  // case id must match when either side carries one.
+  _observeScanDumpResolution(payload) {
+    const state = this.state;
+    const watch = this._scanDumpWatch;
+    if (!state || !watch || watch.phase !== 'scanning') return;
+    this._pruneScanDumpWatch(state);
+    if (watch.phase !== 'scanning') return;
+    if (!payload || payload.found !== true) return;
+    if (payload.podId != null) return;
+    if (payload.source === 'customs_weir' || payload.source === 'customs_scan_cone'
+      || payload.source === 'customs_weir_bolt' || payload.source === 'dock'
+      || payload.source === 'jump') return;
+    if ((payload.lawfulInspectionCaseId || watch.lawfulInspectionCaseId)
+      && payload.lawfulInspectionCaseId !== watch.lawfulInspectionCaseId) return;
+    // The full finding stands: the engine's fine/confiscation/rep/heat route verbatim.
+    // The law adds nothing — no second receipt, no downgrade, no re-scan.
+    watch.phase = 'completed_full';
+    watch.resolvedAt = this._scanDumpNow(state);
+  },
+
+  _resolveScanDumpAborted() {
+    const state = this.state;
+    const watch = this._scanDumpWatch;
+    if (!state || !watch || watch.phase !== 'scanning') return false;
+    watch.phase = 'aborted_dump';
+    watch.resolvedAt = this._scanDumpNow(state);
+    const dumpedText = watch.dumped.length
+      ? watch.dumped.map((row) => `${row.commodityId} x${row.amount}`).join(', ')
+      : 'cargo';
+    this._say('bark', 'PATROL: jettison logged — the gap in your manifest is suspicion now.',
+      `law:scan-dump:${watch.factionId}:${state.tick | 0}`, watch.factionId);
+    this._recordReceipt({
+      cause: 'customs_scan', outcome: 'scan_aborted_dump',
+      attackerId: null, targetId: state.playerId,
+      patrolId: watch.patrolId,
+      stationId: watch.stationId,
+      text: `SCAN ABORTED — ${dumpedText} jettisoned mid-scan; suspicion noted.`,
+    });
+    this._emit('customs:scanAborted', {
+      reason: 'dumped_mid_scan',
+      factionId: watch.factionId,
+      patrolId: watch.patrolId,
+      stationId: watch.stationId,
+      source: watch.source,
+      dumped: watch.dumped.map((row) => ({ ...row })),
+      suspicion: true,
+      tick: state.tick | 0,
+    });
+    return true;
+  },
+
+  // Canonical law-response event: one named row per action leg so instruments, barks, and HUD
+  // can follow the loop without reading system internals.
+  _lawResponse(action, fields) {
+    const state = this.state;
+    this._emit('law:response', {
+      action,
+      tick: state ? state.tick | 0 : 0,
+      t: state ? state.simTime || 0 : 0,
+      ...(fields || {}),
+    });
+  },
+
+  // Helios is a corridor. Tethys is a cone. Dione is a funnel. Standing in the old zone
+  // disc is not enough.
+  _updateCustomsWeir(dt, state) {
+    const step = Number(dt);
+    const own = ensureState(state);
+    const sectorId = state.world && state.world.currentSectorId;
+    const weir = customsWeirForSector(sectorId);
+    if (!weir) {
+      if (own.customsWeir && own.customsWeir.seen === true) {
+        this._emit('customs:weirPresence', { weirId: own.customsWeir.id, inside: false });
+        // Leaving the sector is still leaving the gate: a hull that jumped out mid-visit
+        // unread bolts exactly like one that crossed the corridor's edge.
+        const priorWeir = customsWeirForSector(own.customsWeir.sectorId);
+        if (priorWeir && priorWeir.id === own.customsWeir.id) {
+          this._weirCrossedUnread(priorWeir, own.customsWeir, state);
+        }
+      }
+      own.customsWeir = null;
+      if (this._weirPodDwell) this._weirPodDwell.clear();
+      return;
+    }
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    const inside = !!(player && player.pos && pointInsideCustomsWeir(weir, player.pos));
+    // A stale record from a DIFFERENT weir (e.g. jumped Helios→Tethys mid-visit) is still a
+    // hull that left that gate — flag the old gate's booth before this sector's takes over.
+    if (own.customsWeir && own.customsWeir.id !== weir.id && own.customsWeir.seen === true) {
+      this._emit('customs:weirPresence', { weirId: own.customsWeir.id, inside: false });
+      const priorWeir = customsWeirForSector(own.customsWeir.sectorId);
+      if (priorWeir && priorWeir.id === own.customsWeir.id) {
+        this._weirCrossedUnread(priorWeir, own.customsWeir, state);
+      }
+    }
+    const prior = own.customsWeir && own.customsWeir.id === weir.id ? own.customsWeir : null;
+    const wasSeen = !!(prior && prior.seen === true);
+    // The read survives across ticks only while this visit continues — leaving
+    // the weir resets it, so each entry is one new chance to be seen.
+    let readT = inside && prior ? Number(prior.readT) || 0 : 0;
+    let readDone = inside && prior ? prior.readDone === true : false;
+    own.customsWeir = {
+      active: true,
+      id: weir.id,
+      sectorId,
+      shape: weir.shape,
+      segments: customsWeirSegments(weir),
+      seen: inside,
+      readT,
+      readDone,
+    };
+    if (inside && !wasSeen) this._emit('customs:weirPresence', { weirId: weir.id, inside: true });
+    if (!inside && wasSeen) {
+      this._emit('customs:weirPresence', { weirId: weir.id, inside: false });
+      this._weirCrossedUnread(weir, prior, state);
+    }
+    if (!(step > 0)) return;
+    this._dwellWeirPlayer(step, state, weir, player, inside);
+    this._dwellWeirPods(step, state, weir);
+  },
+
+  // Transit through the gate ends one of two ways: the manifest read logs it, or the booth
+  // flags an unread hull. A fast run never feeds the beam but the booth still saw a hull break
+  // the gate; a mid-read bolt is worse — the deeper the beam got, the more it kept. Either way
+  // the faction's gates remember the runner (economy owns the hot-until record).
+  _weirCrossedUnread(weir, prior, state) {
+    if (!prior || prior.readDone === true) return;
+    const readT = Number(prior.readT) || 0;
+    const readDwellS = Number(weir.readDwellS) || 0;
+    const kind = readT > 0 ? 'read_bolt' : 'speed_run';
+    this._lawResponse('weir_bolt', {
+      weirId: weir.id,
+      stationId: weir.stationId || null,
+      factionId: 'faction_scn',
+      kind,
+    });
+    this._say('alert',
+      kind === 'read_bolt'
+        ? 'CUSTOMS GATE: read broken mid-scan — this hull is flagged.'
+        : 'CUSTOMS GATE: unread transit — scanners will remember this hull.',
+      `law:weir-bolt:${weir.id}`, 'faction_scn');
+    this._emit('customs:weirBolt', {
+      weirId: weir.id,
+      stationId: weir.stationId || null,
+      factionId: 'faction_scn',
+      kind,
+    });
+    // A beam mostly finished caught the manifest anyway — bolting does not erase a read that
+    // was nearly done. The gate resolves what it kept through the real scan path.
+    if (readDwellS > 0 && readT >= readDwellS * 0.5) {
+      const economySystem = this._economy();
+      if (economySystem && typeof economySystem.runScan === 'function') {
+        economySystem.runScan({
+          stationId: weir.stationId || null,
+          factionId: 'faction_scn',
+          source: 'customs_weir_bolt',
+        });
+      }
+    }
+  },
+
+  // The gate reads the reader. A hull inside the weir and slow enough for the
+  // beam to finish accumulates the read; running the weir fast beats it, and a
+  // live lawful-inspection case already owns the read so the weir does not
+  // double-scan mid-compliance. One read per visit — leaving resets the latch.
+  _dwellWeirPlayer(step, state, weir, player, inside) {
+    const live = ensureState(state).customsWeir;
+    if (!live || live.id !== weir.id) return;
+    if (!inside || live.readDone === true) return;
+    const readDwellS = Number.isFinite(weir.readDwellS) ? weir.readDwellS : 0;
+    const readSpeed = Number.isFinite(weir.readSpeed) ? weir.readSpeed : 0;
+    if (!(readDwellS > 0) || !(readSpeed > 0)) return;
+    // A live inspection case or a live patrol intercept already owns the read —
+    // the weir does not double-scan mid-compliance.
+    if (activeLawfulInspection(state) || hasLivePatrolScan(state)) return;
+    // A docked hull belongs to the berth's own customs post, not the field gate.
+    if (state.ui && state.ui.docked) return;
+    if (!player || player.alive === false || entitySpeed(player) > readSpeed) return;
+    live.readT = (Number(live.readT) || 0) + step;
+    if (live.readT < readDwellS) return;
+    live.readDone = true;
+    this._lawResponse('weir_read', {
+      weirId: weir.id,
+      stationId: weir.stationId || null,
+      factionId: 'faction_scn',
+    });
+    this._say('alert', weir.readText || 'CUSTOMS WEIR: manifest read — transit logged.',
+      `law:weir-read:${weir.id}`, 'faction_scn');
+    const economySystem = this._economy();
+    if (economySystem && typeof economySystem.runScan === 'function') {
+      economySystem.runScan({
+        stationId: weir.stationId || null,
+        factionId: 'faction_scn',
+        source: 'customs_weir',
+      });
+    }
+  },
+
+  _dwellWeirPods(step, state, weir) {
+    // A live inspection case or a live patrol intercept already owns the scan — same
+    // guard as _dwellWeirPlayer. Without it a dwelled pod's `customs_weir` emit can be
+    // adopted as the patrol's own result and resolve the case 'fined' at 0 credits (D179).
+    // The gate pauses accumulation, but housekeeping (exit-delete, non-contraband-clear,
+    // despawn prune) still runs underneath it — a pod that leaves mid-case must not keep
+    // stale dwell credit toward a scan on re-entry.
+    const gated = activeLawfulInspection(state) || hasLivePatrolScan(state);
+    const dwell = this._weirPodDwell || (this._weirPodDwell = new Map());
+    // Same payload-bucket proof as the cone census: no payloads → the walk sees no pods, `seen`
+    // stays empty, and the prune below would drop every dwell row anyway.
+    const index = state && state.entityIndex;
+    const indexed = index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && Array.isArray(index.payloads);
+    if (indexed && index.payloads.length === 0) {
+      dwell.clear();
+      return;
+    }
+    // Pods are only ever payload-type rows — the ready index's payloads bucket carries them
+    // in spawn order (same order entityList walks), so the seen/dedupe ordering is identical.
+    const list = indexed ? index.payloads : (state.entityList || []);
+    const seen = new Set();
+    for (let i = 0; i < list.length; i++) {
+      const pod = list[i];
+      if (!isJettisonedCargoPod(pod) || !pod.pos || !pod.data) continue;
+      const key = `${weir.id}:${pod.id}`;
+      seen.add(key);
+      if (!pointInsideCustomsWeir(weir, pod.pos)) {
+        dwell.delete(key);
+        continue;
+      }
+      if (pod.data.customsScanned) continue;
+      const legality = pod.data.legality || commodityLegality(pod.data.commodityId);
+      if (legality !== 'contraband') {
+        dwell.delete(key);
+        continue;
+      }
+      if (gated) continue;
+      const next = (Number(dwell.get(key)) || 0) + step;
+      dwell.set(key, next);
+      if (next < weir.dwellS) continue;
+      this._emitPodCustomsScan({ weirId: weir.id, factionId: 'faction_scn' }, pod, 'customs_weir');
+    }
+    for (const key of dwell.keys()) {
+      if (!seen.has(key) || !String(key).startsWith(`${weir.id}:`)) dwell.delete(key);
+    }
+  },
+
+  // ── PQ-148.02: physical customs cone over a field pod ─────────────────────────────────────
+
+  _updateCustomsScanCones(dt, state) {
+    const step = Number(dt);
+    if (!(step > 0) || !state) return;
+    // Quiet Ceres / open flight: no customs scanners and no jettisoned pods still paid a
+    // full forEachJobInteractable census (shipLike+stations+wrecks+payloads+pickups) calling
+    // customsScanConeOf every tick. Latch when both bags stay empty; wake on membership,
+    // a live scanner/pod, or 0.5 s rescan. Soft-GPU fps not claimed. Different angle from
+    // held env-machinery far / hazards far / sampleProjectileEvidence surface-cadence.
+    if (CUSTOMS_CONES_EMPTY_QUIET_LATCH !== false) {
+      const membership = entityIndexVersion(state);
+      const tick = state.tick | 0;
+      const quiet = this._customsConesQuiet;
+      if (quiet
+        && membership != null
+        && quiet.membership === membership
+        && ((tick - (quiet.armedTick | 0)) < CUSTOMS_CONES_EMPTY_QUIET_RESCAN_TICKS)) {
+        publishCustomsConesQuiet(state, true);
+        return;
+      }
+    } else if (this._customsConesQuiet) {
+      this._customsConesQuiet = null;
+    }
+    // Empty-payloads early-out: pods are only ever `type === 'payload'` entities, so a live
+    // index with an empty payloads bucket proves pods.length would end 0 and the join below
+    // returns without writes. Same gate as _catchPodsInNets; fixtures without the index keep
+    // the full job-interactable census.
+    const index = state.entityIndex;
+    const dwell = this._podConeDwell || (this._podConeDwell = new Map());
+    // No live payloads → no pod keys can still accrue; drop the dwell rows outright so a
+    // long session can't leak one entry per pod ever scanned (same proof _weirPodDwell uses).
+    if (index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && Array.isArray(index.payloads) && index.payloads.length === 0) {
+      dwell.clear();
+      // Empty payloads proves pods.length would end 0 — the quiet outcome then hangs on
+      // whether any shipLike carries a scan cone (same test the census applies). Arm or
+      // clear the latch here so the early-skip above keeps meaning over empty worlds.
+      if (CUSTOMS_CONES_EMPTY_QUIET_LATCH !== false) {
+        let scannerFound = false;
+        const ships = index.shipLike;
+        if (Array.isArray(ships)) {
+          for (let i = 0; i < ships.length; i += 1) {
+            if (customsScanConeOf(ships[i])) { scannerFound = true; break; }
+          }
+        }
+        if (!scannerFound) {
+          const membership = entityIndexVersion(state);
+          if (membership != null) {
+            this._customsConesQuiet = { membership, armedTick: state.tick | 0 };
+            publishCustomsConesQuiet(state, true);
+          } else {
+            this._customsConesQuiet = null;
+            publishCustomsConesQuiet(state, false);
+          }
+        } else {
+          this._customsConesQuiet = null;
+          publishCustomsConesQuiet(state, false);
+        }
+      }
+      dwell.clear();
+      return;
+    }
+    const pods = this._coneScratchPods || (this._coneScratchPods = []);
+    const occluders = this._coneScratchOccluders || (this._coneScratchOccluders = []);
+    const scanners = this._coneScratchScanners || (this._coneScratchScanners = []);
+    pods.length = 0;
+    occluders.length = 0;
+    scanners.length = 0;
+    // isJettisonedCargoPod requires type 'payload': visit only the payloads lane for pods so
+    // a pod-free tick never touches the other four lanes at all. Fixtures without a live
+    // index keep the full job-interactable census.
+    const indexLive = index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && Array.isArray(index.payloads);
+    if (indexLive) {
+      for (let i = 0; i < index.payloads.length; i++) {
+        const entity = index.payloads[i];
+        if (entity && entity.pos && isJettisonedCargoPod(entity)) pods.push(entity);
+      }
+    } else {
+      forEachJobInteractable(state, (entity) => {
+        if (entity.pos && isJettisonedCargoPod(entity)) pods.push(entity);
+      });
+    }
+    if (pods.length === 0) {
+      for (const key of dwell.keys()) dwell.delete(key);
+      return;
+    }
+    // Scanners/occluders are only worth the lane sweep once pods exist.
+    forEachJobInteractable(state, (entity) => {
+      if (!entity.pos) return;
+      if (customsScanConeOf(entity)) scanners.push(entity);
+      if (entity.type === 'ship' && entity.collides !== false) occluders.push(entity);
+    });
+    if (scanners.length === 0 || pods.length === 0) {
+      for (const key of dwell.keys()) dwell.delete(key);
+      if (CUSTOMS_CONES_EMPTY_QUIET_LATCH !== false) {
+        const membership = entityIndexVersion(state);
+        if (membership != null && scanners.length === 0 && pods.length === 0) {
+          this._customsConesQuiet = { membership, armedTick: state.tick | 0 };
+          publishCustomsConesQuiet(state, true);
+        } else {
+          this._customsConesQuiet = null;
+          publishCustomsConesQuiet(state, false);
+        }
+      }
+      return;
+    }
+    this._customsConesQuiet = null;
+    publishCustomsConesQuiet(state, false);
+
+    const shipViews = this._coneScratchShipViews || (this._coneScratchShipViews = []);
+    shipViews.length = 0;
+    for (let o = 0; o < occluders.length; o++) shipViews.push(lawWitnessOccluderView(occluders[o]));
+    const podIgnore = this._coneScratchPodIgnore || (this._coneScratchPodIgnore = new Set());
+    const seen = this._coneScratchSeen || (this._coneScratchSeen = new Set());
+    seen.clear();
+    for (let s = 0; s < scanners.length; s++) {
+      const scanner = scanners[s];
+      const cone = customsScanConeOf(scanner);
+      if (!cone) continue;
+      const coneObserver = { id: scanner.id, pos: cone.origin };
+      for (let p = 0; p < pods.length; p++) {
+        const pod = pods[p];
+        if (!pod.data) continue;
+        const key = `${scanner.id}:${pod.id}`;
+        seen.add(key);
+        const inside = pointInScanCone(cone.origin, cone.heading, cone.range, cone.halfAngle, pod.pos);
+        if (!inside) {
+          dwell.delete(key);
+          continue;
+        }
+        pod.data.customsConeEntered = true;
+        if (pod.data.customsScanned) continue;
+        // Legality is stamped once at spawn — an ineligible pod can never finish a scan, so it
+        // skips the occluder walk entirely (same gate order _dwellWeirPods uses).
+        const legality = pod.data.legality || commodityLegality(pod.data.commodityId);
+        if (legality !== 'contraband') {
+          dwell.delete(key);
+          continue;
+        }
+        podIgnore.clear();
+        podIgnore.add(pod.id);
+        const hidden = lawWitnessSightBlocked(state, coneObserver, pod.pos, podIgnore, shipViews);
+        if (hidden) {
+          dwell.delete(key);
+          continue;
+        }
+        const next = (Number(dwell.get(key)) || 0) + step;
+        dwell.set(key, next);
+        if (next < cone.dwellS) continue;
+        this._emitPodCustomsScan(scanner, pod);
+      }
+    }
+    // Pods destroyed or departed between ticks leave their dwell rows behind — prune any
+    // key whose scanner×pod pair wasn't iterated this tick.
+    for (const key of dwell.keys()) {
+      if (!seen.has(key)) dwell.delete(key);
+    }
+  },
+
+  _emitPodCustomsScan(scanner, pod, source = 'customs_scan_cone') {
+    if (!pod || !pod.data || pod.data.customsScanned) return;
+    const commodityId = pod.data.commodityId;
+    const units = Math.max(0, Number(pod.data.amount) || 0);
+    pod.data.customsScanned = true;
+    pod.data.customsScannedAt = inspectionNow(this.state);
+    // The gate seizes every contraband body it finishes reading. Who pays for it
+    // depends on whose line the body sat on: cut loose inside the weir it is
+    // surrendered cargo (the loss is the payment — no bust); on the player's
+    // line it is evidence in transit (a bust); on anyone else's line the gate
+    // takes the body but the bust belongs to that owner, not the player. A
+    // field cone is not a gate: a pod ditched under a patrol's scan is still
+    // evidence, and nothing there is impounded.
+    const attachment = livePodAttachment(this.state, pod.id);
+    const evidenceOwnerId = attachment ? attachment.ownerId : null;
+    const surrendered = source === 'customs_weir' && !attachment;
+    if (source === 'customs_weir') {
+      pod.data.customsImpounded = true;
+      pod.data.pickupEmbargoUntil = Number.MAX_SAFE_INTEGER;
+    }
+    this._emit('contraband:scanned', {
+      found: true,
+      source,
+      podId: pod.id,
+      commodityId,
+      units,
+      surrendered,
+      evidenceOwnerId,
+      factionId: scanner && scanner.factionId ? scanner.factionId : 'faction_scn',
+      patrolId: scanner && scanner.id || null,
+      weirId: scanner && scanner.weirId || null,
+      confiscated: commodityId ? [{ commodityId, qty: units }] : [],
+    });
+  },
+
+  _say(channel, text, id, factionId) {
+    // The sector-law presenter owns the single visible authority surface from the public lifecycle
+    // and receipt events emitted immediately after these calls. Keep the authored line available to
+    // telemetry/audio without duplicating it on the global voice floor.
+    this._emit('law:voice', { channel, text, id, factionId, kind: 'lawSecurity' });
+  },
+
+  _emit(event, payload) {
+    if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(event, payload);
+  },
+
+  // PQ-151.00 — bounty-band warrant. Posts one contract hunter at a reserve arrival
+  // point (never on the player). Scan-band crimes stay a search-zone slip. Nets post a
+  // lane checkpoint instead of a hunter (see _syncWantedCheckpoint). Impound posts a yard
+  // and a clerk from reserve (see _syncWantedImpound).
+  _syncWantedWarrant(state) {
+    if (!state || (state.mode && state.mode !== 'flight')) return;
+    const own = ensureState(state);
+    const tier = wantedTierFor(state.player && state.player.heat);
+    const warrant = own.wantedWarrant && typeof own.wantedWarrant === 'object'
+      ? own.wantedWarrant
+      : null;
+    const hunter = warrant ? entityById(state, warrant.hunterId) : null;
+    const liveHunter = !!(hunter && hunter.alive !== false);
+
+    if (tier !== WANTED_TIER.BOUNTY) {
+      if (warrant) this._releaseWantedWarrant(state, warrant, liveHunter ? hunter : null);
+      return;
+    }
+    if (warrant && (liveHunter || warrant.postedAt != null)) return;
+    if (Number.isInteger(own.wantedWarrantRetryTick) && (state.tick | 0) < own.wantedWarrantRetryTick) return;
+    this._postWantedWarrant(state);
+  },
+
+  _postWantedWarrant(state) {
+    const player = entityById(state, state.playerId);
+    if (!player || player.alive === false || !player.pos) return;
+    const own = ensureState(state);
+    const zone = state.player && state.player.heatZone;
+    const seed = state.meta && state.meta.seed || 1;
+    const contractId = `wanted-warrant:${seed}`;
+    const anchor = zone && zone.active && zone.center ? zone.center : player.pos;
+    const arrival = reserveArrivalPoint({
+      anchor,
+      aggressorPos: player.pos,
+      jurisdictionRadius: zone && Number.isFinite(zone.radius) ? zone.radius : 1700,
+      seed,
+      incidentId: contractId,
+    });
+    if (distance2(arrival, player.pos) < 900 * 900) return;
+
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const requester = `law:${contractId}`;
+    const grant = budget && typeof budget.request === 'function' ? budget.request(1, requester) : 1;
+    if (grant < 1) {
+      own.wantedWarrantRetryTick = (state.tick | 0) + 15;
+      this._emit('law:wantedWarrantDeferred', {
+        contractId, reason: 'spawn_cap', requested: 1, granted: grant,
+      });
+      return;
+    }
+
+    const huntSpec = makePlayerWarrantHunterSpec({
+      contractId,
+      playerId: state.playerId,
+      pos: arrival,
+      factionId: 'faction_scn',
+    });
+    const hull = makeEnemySpawnSpec('patrol_lawman', 3, arrival, {
+      factionId: 'faction_scn',
+      motive: 'wanted_warrant',
+      engagementTrigger: 'wanted_bounty',
+      zoneId: 'wanted_warrant',
+      approachTelegraph: 'hunter_inbound',
+      startedTick: state.tick,
+    });
+    hull.team = huntSpec.team;
+    hull.pos = { x: arrival.x, z: arrival.z };
+    hull.vel = { x: 0, z: 0 };
+    hull.rot = Math.atan2(player.pos.z - arrival.z, player.pos.x - arrival.x);
+    const baseAi = hull.data && hull.data.ai ? { ...hull.data.ai } : {};
+    hull.data = { ...(hull.data || {}), ...(huntSpec.data || {}) };
+    hull.data.ai = { ...baseAi, ...(huntSpec.data?.ai || {}) };
+    hull.data.missionTag = 'wanted_warrant';
+    hull.data.missionPinned = true;
+    const ai = hull.data.ai;
+    ai.motive = 'wanted_warrant';
+    ai.engagementTrigger = 'wanted_bounty';
+    ai.zoneId = 'wanted_warrant';
+    ai.approachTelegraph = 'hunter_inbound';
+    ai.combatDoctrineId = 'interceptor_flyby';
+    ai.noFireResponseWindowS = 1.5;
+    ai.spawnContext = BOUNTY_HUNTER_PLAYER_CONTEXT;
+    ai.forcePlayerTarget = true;
+    ai.hostileTeams = [0];
+    ai.lawful = false;
+    ai.roe = 'weapons_free';
+    ai.passive = false;
+    // Reserve arrival is ≥ 2000 wu; default sensors are 1600. The hunter has to see the
+    // contract target from the arrival point or it sits there instead of flying in.
+    ai.sensorRange = 8000;
+    hull.sensorRange = 8000;
+    ai.activity = normalizeActivity({
+      kind: ActivityKind.ATTACK_RUN,
+      reason: `wanted_warrant:${contractId}`,
+      anchor: { x: player.pos.x, z: player.pos.z },
+      leashRadius: 9000,
+      startedTick: state.tick | 0,
+      targetId: state.playerId,
+      encounterId: contractId,
+    });
+    const combat = hull.data.combat || (hull.data.combat = {});
+    combat.targetId = state.playerId;
+    const intent = hull.data.intent || (hull.data.intent = {});
+    intent.targetId = state.playerId;
+    intent.mode = 'bounty_player';
+
+    if (typeof this.helpers.spawnEntity !== 'function') {
+      own.wantedWarrantRetryTick = (state.tick | 0) + 15;
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      return;
+    }
+    let spawned;
+    try {
+      spawned = this.helpers.spawnEntity(hull);
+    } catch (error) {
+      own.wantedWarrantRetryTick = (state.tick | 0) + 15;
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      throw error;
+    }
+    if (!spawned) {
+      own.wantedWarrantRetryTick = (state.tick | 0) + 15;
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      return;
+    }
+    if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(spawned.id, requester);
+
+    delete own.wantedWarrantRetryTick;
+    // RC-CHASE Sponsor: every bounty warrant names the lawful station that backs it. Paying the
+    // sponsor at its own dock settles the warrant — the hunter cast stops with the tier.
+    const sponsor = nearestLawfulStation(state, player.pos);
+    own.wantedWarrant = {
+      contractId,
+      hunterId: spawned.id,
+      targetId: state.playerId,
+      tier: WANTED_TIER.BOUNTY,
+      postedAt: state.simTime || 0,
+      arrival: { x: arrival.x, z: arrival.z },
+      sponsor: sponsor ? {
+        stationId: sponsor.stationId,
+        name: sponsor.name,
+        feeCr: 3000 + 1500 * heatLevelFor(state.player && state.player.heat),
+      } : null,
+    };
+    this._emit('law:wantedWarrantPosted', publicWantedWarrant(own.wantedWarrant));
+    if (own.wantedWarrant.sponsor) {
+      this._emit('law:sponsorPosted', {
+        contractId,
+        stationId: own.wantedWarrant.sponsor.stationId,
+        name: own.wantedWarrant.sponsor.name,
+        feeCr: own.wantedWarrant.sponsor.feeCr,
+        targetId: state.playerId,
+      });
+    }
+    this._lawResponse('warrant_posted', {
+      contractId, hunterId: spawned.id, targetId: state.playerId, tier: WANTED_TIER.BOUNTY,
+    });
+  },
+
+  _releaseWantedWarrant(state, warrant, hunter) {
+    const own = ensureState(state);
+    if (hunter && hunter.alive !== false) {
+      if (hunter.data && hunter.data.bountyHunt) {
+        hunter.data.bountyHunt.pursuing = false;
+        hunter.data.bountyHunt.targetId = null;
+      }
+      if (hunter.data) {
+        hunter.data.wantedWarrant = false;
+        hunter.data.missionPinned = false;
+        hunter.data.contractTargetId = null;
+        if (hunter.data.missionTag === 'wanted_warrant') hunter.data.missionTag = null;
+      }
+      const ai = hunter.data && hunter.data.ai;
+      if (ai) {
+        ai.forcePlayerTarget = false;
+        ai.passive = true;
+      }
+    }
+    own.wantedWarrant = null;
+    this._emit('law:wantedWarrantReleased', {
+      contractId: warrant && warrant.contractId,
+      hunterId: warrant && warrant.hunterId,
+      targetId: warrant && warrant.targetId,
+    });
+    this._lawResponse('warrant_released', {
+      contractId: warrant && warrant.contractId,
+      hunterId: warrant && warrant.hunterId,
+      targetId: warrant && warrant.targetId,
+    });
+  },
+
+  // ── RC-CHASE (row 462) — the Witness Run, the Sweep, and the Sponsor ────────────────────────
+  //
+  // The Witness Run: a kill seen only by protected civilians is testimony, not a conviction.
+  // One surviving civilian carries it; the report files when that carrier crosses a lawful
+  // berth's docking chord. The durable record is keyed by stable ids — live entity ids are
+  // rebound through `_witnessCarrierBindings` (id + occupant generation, session-only).
+  //
+  // The Sweep: bounty-tier heat additionally posts WANTED_SWEEP_SHIPS lawful sweep ships on
+  // reserve arrivals. Each ship latches `observed` once it has real eyes on the player (sensor
+  // range plus the witness sight rule); once every posted ship has seen the player and none
+  // currently does for WANTED_SWEEP_LOST_CONTACT_S, the search is physically broken and heat's
+  // own listener drops the tier. The ordinary search-zone clock remains the fallback escape.
+  //
+  // The Sponsor: a bounty warrant names the lawful station that backs it. Docking there and
+  // paying the sponsor settles the warrant — the hunter is released and, because the bounty
+  // tier falls, the sweep and any repost stop with it.
+
+  _queueWitnessReport(state, spec) {
+    const own = ensureState(state);
+    if (!own.witnessReports || typeof own.witnessReports !== 'object' || Array.isArray(own.witnessReports)) {
+      own.witnessReports = {};
+    }
+    const reportId = typeof spec.reportId === 'string' ? spec.reportId : String(spec.reportId || '');
+    if (!reportId) return 'invalid';
+    if (own.witnessReports[reportId]) return 'duplicate';
+    if (Object.keys(own.witnessReports).length >= WITNESS_REPORT_CAP) return 'full';
+    const civilians = Array.isArray(spec.civilians) ? spec.civilians : [];
+    let carrierRow = null;
+    let carrier = null;
+    for (const row of civilians) {
+      const candidate = entityById(state, row && row.entityId);
+      if (candidate && candidate.alive !== false && candidate.pos) { carrierRow = row; carrier = candidate; break; }
+    }
+    if (!carrierRow || !carrier) return 'no_carrier';
+    const jurisdiction = spec.jurisdiction && typeof spec.jurisdiction === 'object' ? spec.jurisdiction : null;
+    const causality = spec.causality && typeof spec.causality === 'object' ? spec.causality : {};
+    const queuedTick = Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0;
+    const pendingPerson = spec.victim ? restitutionPerson(spec.victim.data) : null;
+    const pendingCr = spec.victim ? pricedCargoCr(spec.victim.data) : 0;
+    const report = {
+      reportId,
+      kind: spec.kind || null,
+      victimEntityId: spec.payloadVictimEntityId != null ? spec.payloadVictimEntityId : (spec.victim && spec.victim.id != null ? spec.victim.id : null),
+      victimStableId: spec.victimStableId || null,
+      victimClass: spec.payloadVictimClass || (spec.victim && spec.victim.data && spec.victim.data.victimClass) || null,
+      factionId: (jurisdiction && jurisdiction.factionId)
+        || spec.victimFactionId
+        || (spec.victim && spec.victim.factionId)
+        || null,
+      stationId: jurisdiction ? jurisdiction.stationId : null,
+      sectorId: currentSectorId(state),
+      killCause: causality.cause || null,
+      sustainedAssault: spec.sustainedAssault === true,
+      harmEvents: spec.collisionKill ? spec.harmEvents : null,
+      pos: spec.pos && Number.isFinite(spec.pos.x) && Number.isFinite(spec.pos.z)
+        ? { x: spec.pos.x, z: spec.pos.z }
+        : null,
+      causalTick: Number.isInteger(spec.causalTick) && spec.causalTick >= 0 ? spec.causalTick : queuedTick,
+      queuedTick,
+      carrierStableId: String(carrierRow.stableId),
+      carrierEntityId: carrier.id,
+      carrierGeneration: occupantGenerationOf(carrier),
+      rebindDeadlineTick: null,
+      witnessStableIds: Array.isArray(spec.witnessStableIds) && spec.witnessStableIds.length > 0
+        ? spec.witnessStableIds.slice()
+        : [String(carrierRow.stableId)],
+      ...(pendingPerson && pendingCr > 0 ? {
+        forPerson: pendingPerson,
+        restitutionCr: pendingCr,
+        recovery: restitutionRecovery(spec.victim, state),
+      } : {}),
+    };
+    own.witnessReports[reportId] = report;
+    this._witnessCarrierBindings.set(reportId, {
+      entityId: carrier.id,
+      generation: report.carrierGeneration,
+      stableId: report.carrierStableId,
+    });
+    this._emit('law:witnessReportQueued', {
+      reportId,
+      carrierStableId: report.carrierStableId,
+      carrierEntityId: carrier.id,
+      victimStableId: report.victimStableId,
+      kind: report.kind,
+      stationId: report.stationId,
+    });
+    return 'queued';
+  },
+
+  _resolveWitnessCarrier(state, report) {
+    const binding = this._witnessCarrierBindings.get(report.reportId);
+    if (binding) {
+      const bound = incidentOccupant(state, binding.entityId, binding.generation);
+      if (bound && bound.alive !== false) return bound;
+      this._witnessCarrierBindings.delete(report.reportId);
+    }
+    // Rebind by durable id — the live id is session-scoped, the world record is not.
+    let rebound = null;
+    forEachLivingWorldActor(state, (entity) => {
+      if (rebound || !entity || entity.alive === false || !entity.pos) return;
+      const stableId = entity.data && (entity.data.worldRecordId || entity.data.stationId);
+      if (stableId != null && String(stableId) === report.carrierStableId) rebound = entity;
+    });
+    if (rebound) {
+      this._witnessCarrierBindings.set(report.reportId, {
+        entityId: rebound.id,
+        generation: occupantGenerationOf(rebound),
+        stableId: report.carrierStableId,
+      });
+      report.rebindDeadlineTick = null;
+      return rebound;
+    }
+    // Absence is not proof of death — a despawned carrier may rematerialize. Bound the wait:
+    // an unresolved carrier past the rebind window is counted conclusively lost.
+    if (!Number.isInteger(report.rebindDeadlineTick)) {
+      report.rebindDeadlineTick = (state.tick | 0) + WITNESS_REPORT_REBIND_TICKS;
+      return null;
+    }
+    if ((state.tick | 0) > report.rebindDeadlineTick) return 'lost';
+    return null;
+  },
+
+  _updateWitnessReports(state) {
+    const own = ensureState(state);
+    const reports = own.witnessReports;
+    if (!reports || typeof reports !== 'object') return;
+    for (const reportId of Object.keys(reports)) {
+      const report = reports[reportId];
+      if (!report || typeof report !== 'object') { delete reports[reportId]; continue; }
+      const carrier = this._resolveWitnessCarrier(state, report);
+      if (carrier === 'lost') {
+        delete reports[reportId];
+        this._witnessCarrierBindings.delete(reportId);
+        this._emit('law:witnessReportLost', {
+          reportId,
+          victimStableId: report.victimStableId,
+          reason: 'carrier_unresolved',
+        });
+        continue;
+      }
+      if (!carrier || !carrier.pos) continue;
+      const berth = lawfulBerthNear(state, carrier.pos, WITNESS_REPORT_BERTH_WU);
+      if (berth) this._fileWitnessReport(state, report, carrier, berth);
+    }
+  },
+
+  _fileWitnessReport(state, report, carrier, berth) {
+    const own = ensureState(state);
+    const reportId = report.reportId;
+    const existing = readReportedIncident(state, reportId);
+    delete own.witnessReports[reportId];
+    this._witnessCarrierBindings.delete(reportId);
+    if (existing) {
+      // Same reportId already priced (the direct path won the race, or a replayed event):
+      // dedupe — emit the stored receipt, never charge twice.
+      this._emit('law:reportIncidentReceipt', existing);
+      return;
+    }
+    const causalTick = Number.isInteger(report.causalTick) && report.causalTick >= 0
+      ? report.causalTick
+      : (Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0);
+    const witnessStableIds = Array.isArray(report.witnessStableIds) ? report.witnessStableIds : [];
+    const receipt = Object.freeze({
+      accepted: true,
+      incidentReceiptId: `law:kill:${hash32(reportId, report.kind, report.victimStableId, causalTick, 'courier').toString(36)}`,
+      reportId,
+      kind: report.kind || null,
+      offenderStableId: 'player',
+      offenderEntityId: state.playerId,
+      payloadStableId: report.victimStableId,
+      victimEntityId: report.victimEntityId != null ? report.victimEntityId : null,
+      victimStableId: report.victimStableId,
+      victimClass: report.victimClass || null,
+      killCause: report.killCause || null,
+      sustainedAssault: report.sustainedAssault === true,
+      harmEvents: Number.isInteger(report.harmEvents) ? report.harmEvents : null,
+      causalTick,
+      stationId: (berth && berth.data && berth.data.stationId) || report.stationId || null,
+      factionId: report.factionId || (berth && berth.factionId) || null,
+      witnessCount: witnessStableIds.length,
+      witnessStableIds: Object.freeze(witnessStableIds.slice()),
+      validatedWitnessedTheft: false,
+      validatedCrime: true,
+      evidenceClass: 'courier',
+      carrierStableId: report.carrierStableId,
+      source: 'lawSecurity',
+    });
+    storeReportedIncident(state, receipt);
+    this._recordReceipt({
+      incidentId: receipt.incidentReceiptId,
+      cause: report.kind || 'lawful_kill',
+      outcome: 'kill_validated',
+      attackerId: state.playerId,
+      targetId: report.victimEntityId,
+      stationId: receipt.stationId,
+      text: `KILL ADJUDICATED — courier testimony filed at ${receipt.stationId || 'a lawful berth'}; ${witnessStableIds.length} witness${witnessStableIds.length === 1 ? '' : 'es'} on record.`,
+    });
+    this._noteStoredRestitution(report, reportId);
+    this._emit('law:reportIncidentReceipt', receipt);
+    this._lawResponse('crime_validated', {
+      kind: report.kind,
+      incidentReceiptId: receipt.incidentReceiptId,
+      victimEntityId: report.victimEntityId,
+      victimStableId: report.victimStableId,
+      victimClass: report.victimClass,
+      killCause: report.killCause,
+      stationId: receipt.stationId,
+      witnessCount: witnessStableIds.length,
+      evidenceClass: 'courier',
+    });
+    this._emit('law:killedAdjudicated', {
+      outcome: 'charged',
+      victimEntityId: report.victimEntityId,
+      victimStableId: report.victimStableId,
+      victimClass: report.victimClass || null,
+      factionId: receipt.factionId,
+      witnessed: true,
+      witnessCount: witnessStableIds.length,
+      witnessStableIds: witnessStableIds.slice(),
+      evidenceClass: 'courier',
+      cause: report.killCause || null,
+      playerCaused: true,
+      kind: report.kind || null,
+      reportId,
+      stationId: receipt.stationId,
+      pos: report.pos ? { x: report.pos.x, z: report.pos.z } : null,
+      tick: state.tick | 0,
+    });
+    this._emit('law:witnessReportFiled', {
+      reportId,
+      carrierStableId: report.carrierStableId,
+      carrierEntityId: carrier && carrier.id != null ? carrier.id : null,
+      victimStableId: report.victimStableId,
+      stationId: receipt.stationId,
+    });
+  },
+
+  _noteWitnessCarrierKilled(payload) {
+    const state = this.state;
+    const own = state && state.lawSecurity;
+    if (!own || !own.witnessReports || typeof own.witnessReports !== 'object') return;
+    const id = eventEntityId(payload);
+    if (id == null) return;
+    const victim = entityById(state, id);
+    for (const reportId of Object.keys(own.witnessReports)) {
+      const report = own.witnessReports[reportId];
+      const binding = this._witnessCarrierBindings.get(reportId);
+      const boundId = binding ? binding.entityId : (report && report.carrierEntityId);
+      if (boundId !== id) continue;
+      // The killed entity's generation must still match the stamp — entity ids recycle.
+      const generation = binding ? binding.generation : (report && report.carrierGeneration);
+      if (victim && generation != null && occupantGenerationOf(victim) !== generation) continue;
+      delete own.witnessReports[reportId];
+      this._witnessCarrierBindings.delete(reportId);
+      this._emit('law:witnessReportLost', {
+        reportId,
+        victimStableId: report && report.victimStableId,
+        carrierStableId: report && report.carrierStableId,
+        reason: 'carrier_killed',
+      });
+    }
+  },
+
+  _adoptWitnessReports(own) {
+    if (this._witnessCarrierBindings) this._witnessCarrierBindings.clear();
+    const reports = own && own.witnessReports;
+    if (!reports || typeof reports !== 'object') return;
+    for (const reportId of Object.keys(reports)) {
+      const report = reports[reportId];
+      if (!report || typeof report !== 'object') continue;
+      // Live ids are session hints only — the resolver re-verifies generation and falls back
+      // to a stable-id scan before ever declaring a carrier lost.
+      if (report.carrierEntityId != null) {
+        this._witnessCarrierBindings.set(reportId, {
+          entityId: report.carrierEntityId,
+          generation: report.carrierGeneration != null ? report.carrierGeneration : null,
+          stableId: report.carrierStableId || null,
+        });
+      }
+    }
+  },
+
+  _syncWantedSweep(state) {
+    if (!state || (state.mode && state.mode !== 'flight')) return;
+    const own = ensureState(state);
+    const tier = wantedTierFor(state.player && state.player.heat);
+    if (tier !== WANTED_TIER.BOUNTY || isRunSealed(state)) {
+      if (own.wantedSweep) this._releaseWantedSweep(state, tier !== WANTED_TIER.BOUNTY ? 'tier_changed' : 'run_sealed');
+      return;
+    }
+    let sweep = own.wantedSweep;
+    if (!sweep || typeof sweep !== 'object') {
+      const seed = state.meta && state.meta.seed || 1;
+      sweep = own.wantedSweep = {
+        sweepId: `wanted-sweep:${seed}:${state.tick | 0}`,
+        ships: [],
+        observed: {},
+        lostContactS: 0,
+        postedAt: state.simTime || 0,
+        retryTick: null,
+      };
+    }
+    sweep.ships = (Array.isArray(sweep.ships) ? sweep.ships : []).filter((id) => {
+      const ship = entityById(state, id);
+      return !!(ship && ship.alive !== false);
+    });
+    const live = sweep.ships.length;
+    if (live >= WANTED_SWEEP_SHIPS) return;
+    if (Number.isInteger(sweep.retryTick) && (state.tick | 0) < sweep.retryTick) return;
+    this._postWantedSweepShip(state, sweep, live);
+  },
+
+  _postWantedSweepShip(state, sweep, ordinal) {
+    const player = entityById(state, state.playerId);
+    if (!player || player.alive === false || !player.pos) return;
+    const own = ensureState(state);
+    const zone = state.player && state.player.heatZone;
+    const seed = state.meta && state.meta.seed || 1;
+    const anchor = zone && zone.active && zone.center ? zone.center : player.pos;
+    const arrival = reserveArrivalPoint({
+      anchor,
+      aggressorPos: player.pos,
+      jurisdictionRadius: zone && Number.isFinite(zone.radius) ? zone.radius : 1700,
+      seed,
+      incidentId: `${sweep.sweepId}:${ordinal}`,
+    });
+    if (distance2(arrival, player.pos) < 900 * 900) {
+      sweep.retryTick = (state.tick | 0) + WANTED_SWEEP_RETRY_TICKS;
+      return;
+    }
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const requester = `law:${sweep.sweepId}`;
+    const grant = budget && typeof budget.request === 'function' ? budget.request(1, requester) : 1;
+    if (grant < 1) {
+      sweep.retryTick = (state.tick | 0) + WANTED_SWEEP_RETRY_TICKS;
+      this._emit('law:wantedSweepDeferred', {
+        sweepId: sweep.sweepId, reason: 'spawn_cap', requested: 1, granted: grant,
+      });
+      return;
+    }
+    const hull = makeEnemySpawnSpec('patrol_lawman', 3, arrival, {
+      factionId: 'faction_scn',
+      motive: 'wanted_sweep',
+      engagementTrigger: 'wanted_bounty',
+      zoneId: 'wanted_sweep',
+      approachTelegraph: 'sweep_inbound',
+      startedTick: state.tick,
+    });
+    hull.team = 1;
+    hull.pos = { x: arrival.x, z: arrival.z };
+    hull.vel = { x: 0, z: 0 };
+    hull.rot = Math.atan2(player.pos.z - arrival.z, player.pos.x - arrival.x);
+    const data = hull.data || (hull.data = {});
+    data.missionTag = 'wanted_sweep';
+    data.missionPinned = true;
+    data.sweepId = sweep.sweepId;
+    // Lawful but committed: the sweep is the bounty search. Its own tag keeps the ordinary
+    // responder pool from retasking it into wreck holds and distress frames.
+    data.wantedSweepUnit = true;
+    const ai = data.ai || (data.ai = {});
+    ai.motive = 'wanted_sweep';
+    ai.engagementTrigger = 'wanted_bounty';
+    ai.zoneId = 'wanted_sweep';
+    ai.approachTelegraph = 'sweep_inbound';
+    ai.combatDoctrineId = 'interceptor_flyby';
+    ai.spawnContext = BOUNTY_HUNTER_PLAYER_CONTEXT;
+    ai.forcePlayerTarget = true;
+    ai.hostileTeams = [0];
+    ai.lawful = true;
+    ai.roe = 'weapons_free';
+    ai.passive = false;
+    // A sweeper's job is to find and hold eyes on the suspect — sensor reach well past the
+    // reserve-arrival band, matching the warrant hunter's solution to the same problem.
+    ai.sensorRange = 8000;
+    hull.sensorRange = 8000;
+    ai.activity = normalizeActivity({
+      kind: ActivityKind.ATTACK_RUN,
+      reason: `wanted_sweep:${sweep.sweepId}`,
+      anchor: { x: player.pos.x, z: player.pos.z },
+      leashRadius: 9000,
+      startedTick: state.tick | 0,
+      targetId: state.playerId,
+      encounterId: sweep.sweepId,
+    });
+    const combat = data.combat || (data.combat = {});
+    combat.targetId = state.playerId;
+    const intent = data.intent || (data.intent = {});
+    intent.targetId = state.playerId;
+    intent.mode = 'sweep_player';
+    if (typeof this.helpers.spawnEntity !== 'function') {
+      sweep.retryTick = (state.tick | 0) + WANTED_SWEEP_RETRY_TICKS;
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      return;
+    }
+    let spawned;
+    try {
+      spawned = this.helpers.spawnEntity(hull);
+    } catch (error) {
+      sweep.retryTick = (state.tick | 0) + WANTED_SWEEP_RETRY_TICKS;
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      throw error;
+    }
+    if (!spawned) {
+      sweep.retryTick = (state.tick | 0) + WANTED_SWEEP_RETRY_TICKS;
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      return;
+    }
+    if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(spawned.id, requester);
+    sweep.retryTick = null;
+    sweep.ships.push(spawned.id);
+    this._emit('law:wantedSweepPosted', {
+      sweepId: sweep.sweepId,
+      shipId: spawned.id,
+      shipCount: sweep.ships.length,
+      targetId: state.playerId,
+      arrival: { x: arrival.x, z: arrival.z },
+    });
+    if (sweep.ships.length >= WANTED_SWEEP_SHIPS) {
+      this._lawResponse('sweep_posted', {
+        sweepId: sweep.sweepId, ships: sweep.ships.slice(), targetId: state.playerId,
+      });
+    }
+  },
+
+  _updateWantedSweep(dt, state) {
+    const own = state && state.lawSecurity;
+    const sweep = own && own.wantedSweep;
+    if (!sweep || typeof sweep !== 'object') return;
+    const player = entityById(state, state.playerId);
+    if (!player || player.alive === false || !player.pos) return;
+    let anyEyes = false;
+    let allObserved = sweep.ships.length > 0;
+    let occluders = null;
+    for (const id of sweep.ships) {
+      const ship = entityById(state, id);
+      const live = !!(ship && ship.alive !== false && ship.pos);
+      if (!live) {
+        // A dead sweeper keeps its latch if it ever saw the suspect — killing the witness
+        // does not un-see the crime — but it can never newly observe, and it holds no eyes.
+        if (sweep.observed[id] !== true) allObserved = false;
+        continue;
+      }
+      const range = Number.isFinite(ship.sensorRange) ? ship.sensorRange : 1600;
+      const d2 = distance2(ship.pos, player.pos);
+      let eyes = d2 <= range * range;
+      if (eyes) {
+        if (!occluders) occluders = lawWitnessOccluderPlan(state);
+        const ignored = new Set([id, state.playerId]);
+        eyes = !lawWitnessSightBlocked(state, ship, player.pos, ignored, occluders);
+      }
+      if (eyes) {
+        sweep.observed[id] = true;
+        anyEyes = true;
+      }
+      if (sweep.observed[id] !== true) allObserved = false;
+    }
+    if (allObserved && !anyEyes) {
+      sweep.lostContactS = (Number.isFinite(sweep.lostContactS) ? sweep.lostContactS : 0) + Math.max(0, dt || 0);
+    } else {
+      sweep.lostContactS = 0;
+    }
+    if (allObserved && sweep.lostContactS >= WANTED_SWEEP_LOST_CONTACT_S) {
+      this._emit('law:wantedSweepEscaped', {
+        accepted: true,
+        source: 'lawSecurity',
+        method: 'sweep_break',
+        sweepId: sweep.sweepId,
+        ships: sweep.ships.slice(),
+        targetId: state.playerId,
+        t: state.simTime || 0,
+      });
+      this._releaseWantedSweep(state, 'escaped');
+    }
+  },
+
+  _releaseWantedSweep(state, reason) {
+    const own = ensureState(state);
+    const sweep = own.wantedSweep;
+    if (sweep && Array.isArray(sweep.ships)) {
+      for (const id of sweep.ships) {
+        const ship = entityById(state, id);
+        if (!ship || ship.alive === false || !ship.data) continue;
+        ship.data.missionPinned = false;
+        if (ship.data.missionTag === 'wanted_sweep') ship.data.missionTag = null;
+        const ai = ship.data.ai;
+        if (ai) {
+          ai.forcePlayerTarget = false;
+          ai.passive = true;
+        }
+      }
+    }
+    own.wantedSweep = null;
+    this._emit('law:wantedSweepReleased', {
+      sweepId: sweep && sweep.sweepId,
+      ships: sweep && Array.isArray(sweep.ships) ? sweep.ships.slice() : [],
+      reason,
+    });
+  },
+
+  // Session-scoped reset — save restore, new game, sector exit. The sweep record names live
+  // entity ids; crossing any of those boundaries dissolves the hunt (heat itself survives —
+  // the ordinary search-zone clock is the fallback escape).
+  _resetWantedSweep(reason) {
+    const own = this.state && this.state.lawSecurity;
+    if (!own || own.wantedSweep == null) return;
+    if (this.state) this._releaseWantedSweep(this.state, reason || 'reset');
+    else own.wantedSweep = null;
+  },
+
+  _wantedSweepSectorExit(payload) {
+    const own = this.state && this.state.lawSecurity;
+    const sweep = own && own.wantedSweep;
+    if (!sweep) return;
+    const observed = sweep.observed && typeof sweep.observed === 'object' ? sweep.observed : {};
+    const allObserved = Array.isArray(sweep.ships) && sweep.ships.length > 0
+      && sweep.ships.every((id) => observed[id] === true);
+    // Seen by both, then gone: a sector jump is physical contact broken for good.
+    if (allObserved) {
+      this._emit('law:wantedSweepEscaped', {
+        accepted: true,
+        source: 'lawSecurity',
+        method: 'sweep_break',
+        sweepId: sweep.sweepId,
+        ships: sweep.ships.slice(),
+        targetId: this.state.playerId,
+        via: 'sector_exit',
+        t: this.state.simTime || 0,
+      });
+    }
+    this._resetWantedSweep('sector_exit');
+  },
+
+  // The Sponsor: the lawful station backing the bounty warrant accepts payment to settle it.
+  _offerSponsorPay(payload) {
+    const state = this.state;
+    const own = state && state.lawSecurity;
+    const warrant = own && own.wantedWarrant;
+    const sponsor = warrant && warrant.sponsor;
+    if (!sponsor || !sponsor.stationId) return;
+    const dockedStationId = payload && (payload.stationId || payload.station)
+      || (state.ui && state.ui.dockedStationId);
+    if (state.ui && state.ui.docked !== true && !dockedStationId) return;
+    if (String(dockedStationId) !== String(sponsor.stationId)) return;
+    this._emit('law:sponsorOffer', {
+      contractId: warrant.contractId,
+      stationId: sponsor.stationId,
+      name: sponsor.name || null,
+      feeCr: sponsor.feeCr,
+      targetId: warrant.targetId,
+    });
+  },
+
+  _payWantedSponsor(state, _payload) {
+    const own = state && state.lawSecurity;
+    const warrant = own && own.wantedWarrant;
+    const sponsor = warrant && warrant.sponsor;
+    if (!sponsor || !sponsor.stationId) {
+      this._emit('law:sponsorPayRefused', { reason: 'no_sponsor' });
+      return;
+    }
+    if (!(state.ui && state.ui.docked === true)
+      || String(state.ui.dockedStationId) !== String(sponsor.stationId)) {
+      this._emit('law:sponsorPayRefused', {
+        reason: 'not_docked_at_sponsor',
+        contractId: warrant.contractId,
+        stationId: sponsor.stationId,
+      });
+      return;
+    }
+    const owed = Math.max(0, Math.round(Number(sponsor.feeCr) || 0));
+    const credits = Math.max(0, Math.round(Number(state.player && state.player.credits) || 0));
+    if (credits < owed) {
+      this._emit('law:sponsorPayRefused', {
+        reason: 'short',
+        contractId: warrant.contractId,
+        stationId: sponsor.stationId,
+        owedCr: owed,
+        credits,
+      });
+      return;
+    }
+    if (owed > 0) {
+      this._emit('economy:chargeCredits', { amount: owed, reason: 'sponsor:pay' });
+    }
+    this._emit('law:sponsorSettled', {
+      accepted: true,
+      source: 'lawSecurity',
+      method: 'sponsor_pay',
+      contractId: warrant.contractId,
+      stationId: sponsor.stationId,
+      feeCr: owed,
+      targetId: warrant.targetId,
+      t: state.simTime || 0,
+    });
+    const hunter = entityById(state, warrant.hunterId);
+    this._releaseWantedWarrant(state, warrant, hunter && hunter.alive !== false ? hunter : null);
+    // The bounty tier falls via heat's sponsorSettled listener; the sweep releases on the next
+    // sync — but release it now so the repost race can never catch the same tick.
+    if (own.wantedSweep) this._releaseWantedSweep(state, 'sponsor_settled');
+  },
+
+  // ── High-security lawful coverage ─────────────────────────────────────────────────────────
+  //
+  // The bounty-band warrant only answers tier-3 heat; a player who is merely WANTED (scan band
+  // and up) in well-policed space used to face no lawful answer at all. High-sec sectors run a
+  // slow, deterministic coverage clock instead: wanted time in high security accumulates, and
+  // crossing a seeded threshold posts ONE lawful patrol from a reserve arrival — never on the
+  // player, spawn-budgeted, and never more than one hunter per warrant epoch. A dead hunter
+  // closes the warrant and restarts the clock rarer (next epoch reseeds the threshold), so a
+  // wanted pilot who keeps killing responders is answering a slow drip of law, not a flood.
+
+  _syncHighSecWarrant(state, dt) {
+    if (!state || (state.mode && state.mode !== 'flight')) return;
+    const own = ensureState(state);
+    const warrant = own.highSecWarrant && typeof own.highSecWarrant === 'object'
+      ? own.highSecWarrant
+      : null;
+    const hunter = warrant ? entityById(state, warrant.hunterId) : null;
+    // Entity ids recycle across culls and save/load: a live body at the old id only counts as the
+    // warrant's hunter when it still carries the warrant's mission tag. Anything else is treated
+    // as a dead responder so the warrant closes instead of pinning a stranger's hull.
+    const liveHunter = !!(hunter && hunter.alive !== false
+      && hunter.data && hunter.data.missionTag === 'highsec_warrant');
+    const wanted = isPlayerWanted(state);
+
+    if (!wanted) {
+      if (warrant) this._releaseHighSecWarrant(state, warrant, liveHunter ? hunter : null);
+      own.highSecWantedS = 0;
+      return;
+    }
+
+    if (warrant) {
+      if (liveHunter) return; // the lawful response is already inbound
+      // Hunter destroyed or culled: the warrant closes on the record and a NEW epoch reseeds
+      // the exposure clock — never an instant repost.
+      this._releaseHighSecWarrant(state, warrant, null);
+      own.highSecWarrantEpoch = (own.highSecWarrantEpoch | 0) + 1;
+      own.highSecWantedS = 0;
+    }
+
+    // A bounty-band hunter already flying IS the lawful response; the coverage clock pauses
+    // rather than stacking a second pursuer on top of it.
+    const bountyWarrant = own.wantedWarrant && typeof own.wantedWarrant === 'object'
+      ? own.wantedWarrant
+      : null;
+    const bountyHunter = bountyWarrant ? entityById(state, bountyWarrant.hunterId) : null;
+    if (bountyHunter && bountyHunter.alive !== false) {
+      own.highSecWantedS = 0;
+      return;
+    }
+
+    if (effectiveLawSecurity(state) < HIGH_SEC_WARRANT_MIN_SECURITY) {
+      own.highSecWantedS = 0;
+      return;
+    }
+
+    own.highSecWantedS = (Number.isFinite(own.highSecWantedS) ? own.highSecWantedS : 0)
+      + Math.max(0, Number(dt) || 0);
+    const epoch = own.highSecWarrantEpoch | 0;
+    const seed = state.meta && state.meta.seed || 1;
+    const sectorId = currentSectorId(state);
+    const thresholdS = HIGH_SEC_WARRANT_EXPOSURE_S
+      + (hash32(seed, sectorId, epoch, 'highsec_warrant') % (HIGH_SEC_WARRANT_EXPOSURE_SPREAD_S * 1000)) / 1000;
+    if (own.highSecWantedS < thresholdS) return;
+    this._postHighSecWarrant(state);
+  },
+
+  _postHighSecWarrant(state) {
+    const player = entityById(state, state.playerId);
+    if (!player || player.alive === false || !player.pos) return;
+    const own = ensureState(state);
+    if (Number.isInteger(own.highSecWarrantRetryTick) && (state.tick | 0) < own.highSecWarrantRetryTick) return;
+    const zone = state.player && state.player.heatZone;
+    const seed = state.meta && state.meta.seed || 1;
+    const sectorId = currentSectorId(state);
+    const epoch = own.highSecWarrantEpoch | 0;
+    const contractId = `highsec-warrant:${seed}:${sectorId}:${epoch}`;
+    const anchor = zone && zone.active && zone.center ? zone.center : player.pos;
+    const arrival = reserveArrivalPoint({
+      anchor,
+      aggressorPos: player.pos,
+      jurisdictionRadius: zone && Number.isFinite(zone.radius) ? zone.radius : 1700,
+      seed,
+      incidentId: contractId,
+    });
+    if (distance2(arrival, player.pos) < HIGH_SEC_WARRANT_MIN_DISTANCE * HIGH_SEC_WARRANT_MIN_DISTANCE) {
+      // Reserve arrival landed too close to be a fair response — same rule as the bounty band:
+      // no retry storm, the exposure clock just starts over.
+      own.highSecWantedS = 0;
+      return;
+    }
+
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const requester = `law:${contractId}`;
+    const grant = budget && typeof budget.request === 'function' ? budget.request(1, requester) : 1;
+    if (grant < 1) {
+      own.highSecWarrantRetryTick = (state.tick | 0) + 15;
+      this._emit('law:highSecWarrantDeferred', {
+        contractId, reason: 'spawn_cap', requested: 1, granted: grant,
+      });
+      return;
+    }
+
+    const huntSpec = makePlayerWarrantHunterSpec({
+      contractId,
+      playerId: state.playerId,
+      pos: arrival,
+      factionId: 'faction_scn',
+    });
+    const hull = makeEnemySpawnSpec('patrol_lawman', 3, arrival, {
+      factionId: 'faction_scn',
+      motive: 'highsec_warrant',
+      engagementTrigger: 'wanted_coverage',
+      zoneId: 'highsec_warrant',
+      approachTelegraph: 'patrol_inbound',
+      startedTick: state.tick,
+    });
+    hull.team = huntSpec.team;
+    hull.pos = { x: arrival.x, z: arrival.z };
+    hull.vel = { x: 0, z: 0 };
+    hull.rot = Math.atan2(player.pos.z - arrival.z, player.pos.x - arrival.x);
+    const baseAi = hull.data && hull.data.ai ? { ...hull.data.ai } : {};
+    hull.data = { ...(hull.data || {}), ...(huntSpec.data || {}) };
+    hull.data.ai = { ...baseAi, ...(huntSpec.data?.ai || {}) };
+    hull.data.missionTag = 'highsec_warrant';
+    hull.data.missionPinned = true;
+    const ai = hull.data.ai;
+    ai.motive = 'highsec_warrant';
+    ai.engagementTrigger = 'wanted_coverage';
+    ai.zoneId = 'highsec_warrant';
+    ai.approachTelegraph = 'patrol_inbound';
+    ai.combatDoctrineId = 'interceptor_flyby';
+    ai.noFireResponseWindowS = 1.5;
+    ai.spawnContext = BOUNTY_HUNTER_PLAYER_CONTEXT;
+    ai.forcePlayerTarget = true;
+    ai.hostileTeams = [0];
+    // A lawful coverage patrol, not a freelance hunter: it fires through the canonical lawful
+    // gate (securityTargetId) so contacts and advisories read it as law, not bounty muscle.
+    ai.lawful = true;
+    ai.securityTargetId = state.playerId;
+    ai.roe = 'weapons_free';
+    ai.passive = false;
+    ai.sensorRange = 8000;
+    hull.sensorRange = 8000;
+    ai.activity = normalizeActivity({
+      kind: ActivityKind.ATTACK_RUN,
+      reason: `highsec_warrant:${contractId}`,
+      anchor: { x: player.pos.x, z: player.pos.z },
+      leashRadius: 9000,
+      startedTick: state.tick | 0,
+      targetId: state.playerId,
+      encounterId: contractId,
+    });
+    const combat = hull.data.combat || (hull.data.combat = {});
+    combat.targetId = state.playerId;
+    const intent = hull.data.intent || (hull.data.intent = {});
+    intent.targetId = state.playerId;
+    intent.mode = 'bounty_player';
+
+    if (typeof this.helpers.spawnEntity !== 'function') {
+      own.highSecWarrantRetryTick = (state.tick | 0) + 15;
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      return;
+    }
+    let spawned;
+    try {
+      spawned = this.helpers.spawnEntity(hull);
+    } catch (error) {
+      own.highSecWarrantRetryTick = (state.tick | 0) + 15;
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      throw error;
+    }
+    if (!spawned) {
+      own.highSecWarrantRetryTick = (state.tick | 0) + 15;
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      return;
+    }
+    if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(spawned.id, requester);
+
+    delete own.highSecWarrantRetryTick;
+    own.highSecWarrant = {
+      contractId,
+      hunterId: spawned.id,
+      targetId: state.playerId,
+      tier: wantedTierFor(state.player && state.player.heat),
+      postedAt: state.simTime || 0,
+      arrival: { x: arrival.x, z: arrival.z },
+      sectorId,
+      epoch,
+    };
+    this._emit('law:highSecWarrantPosted', {
+      contractId, hunterId: spawned.id, targetId: state.playerId,
+      sectorId, epoch, tier: own.highSecWarrant.tier,
+    });
+    this._lawResponse('warrant_posted', {
+      contractId, hunterId: spawned.id, targetId: state.playerId,
+      tier: own.highSecWarrant.tier, band: 'highsec', sectorId,
+    });
+  },
+
+  _releaseHighSecWarrant(state, warrant, hunter) {
+    const own = ensureState(state);
+    if (hunter && hunter.alive !== false) {
+      if (hunter.data && hunter.data.bountyHunt) {
+        hunter.data.bountyHunt.pursuing = false;
+        hunter.data.bountyHunt.targetId = null;
+      }
+      if (hunter.data) {
+        hunter.data.wantedWarrant = false;
+        hunter.data.missionPinned = false;
+        hunter.data.contractTargetId = null;
+        if (hunter.data.missionTag === 'highsec_warrant') hunter.data.missionTag = null;
+      }
+      const ai = hunter.data && hunter.data.ai;
+      if (ai) {
+        ai.forcePlayerTarget = false;
+        ai.securityTargetId = null;
+        ai.passive = true;
+      }
+    }
+    own.highSecWarrant = null;
+    this._emit('law:highSecWarrantReleased', {
+      contractId: warrant && warrant.contractId,
+      hunterId: warrant && warrant.hunterId,
+      targetId: warrant && warrant.targetId,
+    });
+    this._lawResponse('warrant_released', {
+      contractId: warrant && warrant.contractId,
+      hunterId: warrant && warrant.hunterId,
+      targetId: warrant && warrant.targetId,
+      band: 'highsec',
+    });
+  },
+
+  // ── inf-patrol-challenge — the standing-heat challenge ───────────────────────────────────
+  // Flight-tick watch. Acquires at most ONE new ambient lawful patrol per episode (the nearest
+  // that has not been challenged in this episode), refreshes/releases existing stamps, and
+  // never challenges a hull the incident or custody flow already owns. Deterministic: no RNG
+  // on the acquire path; the copy pick is a seed+id hash (same law as every registry mint).
+  _updateHeatChallengeWatch(state) {
+    const own = ensureState(state);
+    const player = state.player;
+    const tier = wantedTierFor(player && player.heat);
+    if (tier === WANTED_TIER.NONE) {
+      this._releaseAllHeatChallenges(state, 'sheet_clear');
+      return;
+    }
+    const playerEnt = entityById(state, state.playerId);
+    if (!playerEnt || playerEnt.alive === false || !playerEnt.pos) {
+      this._releaseAllHeatChallenges(state, 'no_hull');
+      return;
+    }
+    // A tier change is a new sheet: the episode advances, so the standing stamp re-names it.
+    if (own.heatChallengeEpisodeTier !== tier) {
+      own.heatChallengeEpisodeTier = tier;
+      own.heatChallengeEpisode = (own.heatChallengeEpisode | 0) + 1;
+    }
+    const episodeId = own.heatChallengeEpisode | 0;
+    const now = Number(state.simTime) || 0;
+    const release2 = LAW_HEAT_CHALLENGE_RELEASE_WU * LAW_HEAT_CHALLENGE_RELEASE_WU;
+    const map = own.heatChallenges && typeof own.heatChallenges === 'object' && !Array.isArray(own.heatChallenges)
+      ? own.heatChallenges : (own.heatChallenges = {});
+    // 1. Release dead, stale-episode, and long-out-of-range stamps.
+    for (const key of Object.keys(map)) {
+      const stamp = map[key];
+      const hull = incidentOccupant(state, stamp?.patrolId, stamp?.patrolGeneration);
+      let release = null;
+      if (!hull || hull.alive === false || !hull.data || hull.data.heatChallenge !== stamp) {
+        release = 'hull_gone';
+      } else if (hull.data.jobId || hull.data.claimDepotId || hull.data.itinerary?.kind === 'anvil_work'
+          || hull.data.ai?.securityTargetId != null) {
+        release = 'controller_changed';
+      } else if ((stamp.episodeId | 0) !== episodeId) {
+        release = 'episode_ended';
+      } else {
+        const dx = (hull.pos && hull.pos.x || 0) - playerEnt.pos.x;
+        const dz = (hull.pos && hull.pos.z || 0) - playerEnt.pos.z;
+        if (dx * dx + dz * dz > release2) {
+          if (!Number.isFinite(stamp.beyondSince)) stamp.beyondSince = now;
+          else if (now - stamp.beyondSince >= LAW_HEAT_CHALLENGE_RELEASE_S) release = 'out_of_range';
+        } else {
+          stamp.beyondSince = null;
+        }
+      }
+      if (release) {
+        if (hull && hull.data && hull.data.heatChallenge === stamp) delete hull.data.heatChallenge;
+        delete map[key];
+      }
+    }
+    // 2. Acquire at most one new patrol per watch tick.
+    if ((state.tick | 0) < (own.nextHeatChallengeTick | 0)) return;
+    own.nextHeatChallengeTick = (state.tick | 0) + LAW_HEAT_CHALLENGE_WATCH_TICKS;
+    // The custody cone owns the moment a surrender is open; an incident responder is the
+    // dispatch flow's hull, not the route patrol this challenge is about.
+    const surrender = own.playerSurrender;
+    if (surrender && (surrender.phase === 'holding' || surrender.phase === 'accepted')) return;
+    const acquire2 = LAW_HEAT_CHALLENGE_ACQUIRE_WU * LAW_HEAT_CHALLENGE_ACQUIRE_WU;
+    let best = null;
+    let bestD2 = acquire2;
+    forEachLivingWorldActor(state, (entity) => {
+      if (!entity || entity.id === state.playerId || entity.type === 'station') return;
+      if (entity.alive === false || !entity.pos || !entity.data) return;
+      if (entity.data.heatChallenge) return;
+      if (map[entity.id]) return;
+      const ai = entity.data.ai;
+      if (!ai || ai.lawful !== true) return;
+      if (ai.securityTargetId != null) return;
+      if (entity.data.jobId || entity.data.claimDepotId || entity.data.itinerary?.kind === 'anvil_work') return;
+      const dx = entity.pos.x - playerEnt.pos.x;
+      const dz = entity.pos.z - playerEnt.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 <= bestD2) { bestD2 = d2; best = entity; }
+    });
+    if (!best) return;
+    const copy = lawHeatChallengeCopy(tier);
+    // An unnamed tier renders nothing: the hull is never stamped with words nobody wrote.
+    if (!copy || !copy.hail) return;
+    const seed = (state.meta && state.meta.seed) || 1;
+    const stamp = {
+      patrolId: best.id,
+      patrolGeneration: occupantGenerationOf(best),
+      episodeId,
+      tier,
+      since: now,
+      standoffWu: LAW_HEAT_CHALLENGE_STANDOFF_WU,
+    };
+    best.data.heatChallenge = stamp;
+    map[best.id] = stamp;
+    this._emit('law:heatChallenge', {
+      patrolId: best.id,
+      tier,
+      line: copy.hail,
+      standoffWu: LAW_HEAT_CHALLENGE_STANDOFF_WU,
+      episodeId,
+      seedKey: hash32(seed >>> 0, 'law-heat-challenge', String(best.id)),
+    });
+    this._emit('comms:log', { from: 'PATROL', text: copy.hail, kind: 'law' });
+    this._emit('toast', { text: copy.text, kind: 'law', ttl: 4 });
+  },
+
+  _releaseAllHeatChallenges(state, reason) {
+    const own = state && state.lawSecurity;
+    const map = own && own.heatChallenges;
+    if (!map || typeof map !== 'object') return;
+    for (const key of Object.keys(map)) {
+      const stamp = map[key];
+      const hull = incidentOccupant(state, stamp?.patrolId, stamp?.patrolGeneration);
+      if (hull && hull.data && hull.data.heatChallenge === map[key]) delete hull.data.heatChallenge;
+    }
+    own.heatChallenges = {};
+    if (reason === 'sheet_clear') {
+      // The sheet fell: the next rise is a new episode, not a continuation.
+      own.heatChallengeEpisodeTier = null;
+      own.heatChallengeEpisode = (own.heatChallengeEpisode | 0) + 1;
+    }
+  },
+
+  _clearRestoredHeatChallenges(state) {
+    // Generic persistent-entity restore clones data after the session map was discarded.
+    // IDs/generations may rebind, so only the current owner's exact tracked stamp can survive.
+    const tracked = state?.lawSecurity?.heatChallenges;
+    if (!state?.entities || typeof state.entities.values !== 'function') return;
+    for (const hull of state.entities.values()) {
+      const stamp = hull?.data?.heatChallenge;
+      if (!stamp || !lawHeatChallengeCopy(stamp.tier) || !Number.isInteger(stamp.episodeId)
+          || !Number.isFinite(stamp.since) || !Number.isFinite(stamp.standoffWu)) continue;
+      if (tracked?.[hull.id] === stamp
+          && incidentOccupant(state, stamp.patrolId, stamp.patrolGeneration) === hull) continue;
+      this.registry?.get('traffic')?._restoreHeatChallengeBrake(hull, stamp);
+      delete hull.data.heatChallenge;
+      // Only traffic can return a matched saved borrow. An unrelated/new intent is unchanged.
+    }
+  },
+
+  _syncWantedCheckpoint(state) {
+    if (!state || (state.mode && state.mode !== 'flight')) return;
+    const own = ensureState(state);
+    const tier = wantedTierFor(state.player && state.player.heat);
+    const checkpoint = own.wantedCheckpoint && typeof own.wantedCheckpoint === 'object'
+      ? own.wantedCheckpoint
+      : null;
+    const net = checkpoint ? entityById(state, checkpoint.netId) : null;
+    const liveNet = !!(net && net.alive !== false);
+
+    if (tier !== WANTED_TIER.NETS) {
+      if (checkpoint) {
+        this._releaseWantedCheckpoint(state, checkpoint, liveNet ? net : null);
+      }
+      return;
+    }
+    if (checkpoint && (liveNet || checkpoint.postedAt != null)) return;
+    if (Number.isInteger(own.wantedCheckpointRetryTick)
+      && (state.tick | 0) < own.wantedCheckpointRetryTick) return;
+    this._postWantedCheckpoint(state);
+  },
+
+  _postWantedCheckpoint(state) {
+    const player = entityById(state, state.playerId);
+    if (!player || player.alive === false || !player.pos) return;
+    const own = ensureState(state);
+    const seed = state.meta && state.meta.seed || 1;
+    const checkpointId = `wanted-checkpoint:${seed}`;
+    const heading = Number.isFinite(player.rot) ? player.rot : 0;
+    const lane = {
+      x: player.pos.x + Math.cos(heading) * WANTED_NET_STANDOFF,
+      z: player.pos.z + Math.sin(heading) * WANTED_NET_STANDOFF,
+    };
+    if (distance2(lane, player.pos) < 200 * 200) return;
+
+    const zone = state.player && state.player.heatZone;
+    const arrival = reserveArrivalPoint({
+      anchor: zone && zone.active && zone.center ? zone.center : player.pos,
+      aggressorPos: player.pos,
+      jurisdictionRadius: zone && Number.isFinite(zone.radius) ? zone.radius : 2300,
+      seed,
+      incidentId: checkpointId,
+    });
+    if (distance2(arrival, player.pos) < 900 * 900) return;
+
+    if (typeof this.helpers.spawnEntity !== 'function') {
+      own.wantedCheckpointRetryTick = (state.tick | 0) + 15;
+      return;
+    }
+
+    const coneHeading = Math.atan2(player.pos.z - lane.z, player.pos.x - lane.x);
+    let net;
+    try {
+      net = this.helpers.spawnEntity({
+        type: 'ship',
+        team: 2,
+        pos: { x: lane.x, z: lane.z },
+        vel: { x: 0, z: 0 },
+        rot: coneHeading,
+        radius: WANTED_NET_RADIUS,
+        mass: 4000,
+        hull: 240,
+        hullMax: 240,
+        collides: true,
+        factionId: 'faction_scn',
+        data: {
+          wantedCheckpointNet: true,
+          customsScanner: true,
+          customsScanCone: {
+            heading: coneHeading,
+            halfAngle: CUSTOMS_SCAN_HALF_ANGLE,
+            range: CUSTOMS_SCAN_RANGE,
+            dwellS: CUSTOMS_SCAN_DWELL_S,
+          },
+          role: 'customs',
+          defId: 'wanted_tether_net',
+          missionTag: 'wanted_checkpoint',
+          missionPinned: true,
+        },
+      });
+    } catch (error) {
+      own.wantedCheckpointRetryTick = (state.tick | 0) + 15;
+      throw error;
+    }
+    if (!net) {
+      own.wantedCheckpointRetryTick = (state.tick | 0) + 15;
+      return;
+    }
+
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const requester = `law:${checkpointId}`;
+    const grant = budget && typeof budget.request === 'function' ? budget.request(1, requester) : 1;
+    let cutter = null;
+    if (grant >= 1) {
+      cutter = this._spawnCheckpointCutter(state, arrival, lane, checkpointId, requester, budget);
+    } else {
+      own.wantedCheckpointRetryTick = (state.tick | 0) + 15;
+    }
+
+    delete own.wantedCheckpointRetryTick;
+    own.wantedCheckpoint = {
+      checkpointId,
+      netId: net.id,
+      cutterId: cutter && cutter.id || null,
+      targetId: state.playerId,
+      tier: WANTED_TIER.NETS,
+      postedAt: state.simTime || 0,
+      lane: { x: lane.x, z: lane.z },
+      arrival: { x: arrival.x, z: arrival.z },
+      intact: true,
+      held: false,
+      brokenBy: null,
+    };
+    this._emit('law:wantedCheckpointPosted', publicWantedCheckpoint(own.wantedCheckpoint));
+    this._lawResponse('checkpoint_posted', {
+      checkpointId, netId: net.id, cutterId: cutter && cutter.id || null,
+      targetId: state.playerId, tier: WANTED_TIER.NETS,
+    });
+  },
+
+  _spawnCheckpointCutter(state, arrival, lane, checkpointId, requester, budget) {
+    const hull = makeEnemySpawnSpec('customs_cutter', 3, arrival, {
+      factionId: 'faction_scn',
+      motive: 'wanted_checkpoint',
+      engagementTrigger: 'wanted_checkpoint',
+      zoneId: 'wanted_checkpoint',
+      approachTelegraph: 'checkpoint_inbound',
+      startedTick: state.tick,
+    });
+    hull.team = 2;
+    hull.pos = { x: arrival.x, z: arrival.z };
+    hull.vel = { x: 0, z: 0 };
+    hull.rot = Math.atan2(lane.z - arrival.z, lane.x - arrival.x);
+    hull.data = { ...(hull.data || {}) };
+    hull.data.missionTag = 'wanted_checkpoint';
+    hull.data.missionPinned = true;
+    hull.data.wantedCheckpointCutter = true;
+    hull.data.customsScanner = true;
+    const ai = hull.data.ai || (hull.data.ai = {});
+    ai.spawnContext = 'wanted_checkpoint';
+    ai.forcePlayerTarget = false;
+    ai.lawful = true;
+    ai.passive = false;
+    ai.roe = RulesOfEngagement.HOLD_FIRE;
+    ai.sensorRange = 8000;
+    hull.sensorRange = 8000;
+    ai.activity = normalizeActivity({
+      kind: ActivityKind.TRANSIT,
+      reason: `wanted_checkpoint:${checkpointId}`,
+      anchor: { x: lane.x, z: lane.z },
+      leashRadius: 9000,
+      startedTick: state.tick | 0,
+      encounterId: checkpointId,
+    });
+    const combat = hull.data.combat || (hull.data.combat = {});
+    combat.targetId = null;
+    const intent = hull.data.intent || (hull.data.intent = {});
+    intent.fire = false;
+    intent.mode = 'wanted_checkpoint';
+
+    let spawned = null;
+    try {
+      spawned = this.helpers.spawnEntity(hull);
+    } catch (error) {
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      throw error;
+    }
+    if (!spawned) {
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      return null;
+    }
+    if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(spawned.id, requester);
+    return spawned;
+  },
+
+  _updateWantedCheckpoint(_dt, state) {
+    const own = state && state.lawSecurity;
+    const checkpoint = own && own.wantedCheckpoint;
+    if (!checkpoint || checkpoint.intact === false) return;
+    const net = entityById(state, checkpoint.netId);
+    if (!net || net.alive === false || !net.pos) return;
+    const player = entityById(state, state.playerId);
+    const decoy = findDecoyInCheckpointCone(state, net, player);
+    if (decoy) {
+      this._breakWantedCheckpoint(state, checkpoint, 'decoy', decoy);
+      return;
+    }
+    if (!player || player.alive === false || !player.pos) return;
+    if (!overlapsWantedNet(player, net)) {
+      checkpoint.held = false;
+      return;
+    }
+    const mass = Number(player.mass) || 0;
+    const speed = entitySpeed(player);
+    if (mass >= WANTED_NET_BREAK_MASS) {
+      this._breakWantedCheckpoint(state, checkpoint, 'mass', player);
+      return;
+    }
+    if (speed >= WANTED_NET_BREAK_SPEED) {
+      this._breakWantedCheckpoint(state, checkpoint, 'speed', player);
+      return;
+    }
+    checkpoint.held = true;
+  },
+
+  _breakWantedCheckpoint(state, checkpoint, method, byEntity) {
+    if (!checkpoint || checkpoint.intact === false) return;
+    checkpoint.intact = false;
+    checkpoint.held = false;
+    checkpoint.brokenBy = method;
+    checkpoint.brokenAt = state.simTime || 0;
+    const net = entityById(state, checkpoint.netId);
+    if (net && net.data) {
+      net.data.wantedNetBroken = true;
+      net.data.customsScanner = false;
+      net.data.role = 'broken_checkpoint';
+      delete net.data.customsScanCone;
+    }
+    this._emit('law:wantedCheckpointBroken', {
+      accepted: true,
+      source: 'lawSecurity',
+      checkpointId: checkpoint.checkpointId,
+      method,
+      netId: checkpoint.netId,
+      cutterId: checkpoint.cutterId,
+      targetId: checkpoint.targetId,
+      byId: byEntity && byEntity.id != null ? byEntity.id : null,
+    });
+    this._lawResponse('checkpoint_broken', {
+      checkpointId: checkpoint.checkpointId, method,
+      netId: checkpoint.netId, targetId: checkpoint.targetId,
+    });
+  },
+
+  _releaseWantedCheckpoint(state, checkpoint, net) {
+    const own = ensureState(state);
+    const liveNet = net && net.alive !== false ? net : entityById(state, checkpoint && checkpoint.netId);
+    if (liveNet && liveNet.data) {
+      liveNet.data.missionPinned = false;
+      liveNet.data.customsScanner = false;
+      if (liveNet.data.role === 'customs') liveNet.data.role = 'broken_checkpoint';
+      delete liveNet.data.customsScanCone;
+    }
+    const cutter = checkpoint ? entityById(state, checkpoint.cutterId) : null;
+    if (cutter && cutter.alive !== false && cutter.data) {
+      cutter.data.missionPinned = false;
+      cutter.data.wantedCheckpointCutter = false;
+      const ai = cutter.data.ai;
+      if (ai) {
+        ai.forcePlayerTarget = false;
+        ai.passive = true;
+      }
+    }
+    own.wantedCheckpoint = null;
+    this._emit('law:wantedCheckpointReleased', {
+      checkpointId: checkpoint && checkpoint.checkpointId,
+      netId: checkpoint && checkpoint.netId,
+      cutterId: checkpoint && checkpoint.cutterId,
+      targetId: checkpoint && checkpoint.targetId,
+      brokenBy: checkpoint && checkpoint.brokenBy,
+    });
+    this._lawResponse('checkpoint_released', {
+      checkpointId: checkpoint && checkpoint.checkpointId,
+      targetId: checkpoint && checkpoint.targetId,
+      brokenBy: checkpoint && checkpoint.brokenBy,
+    });
+  },
+
+  // PQ-151.03 — impound-band yard. A berth sits on the lane ahead of the player
+  // (never on their nose). A clerk staffs it from a reserve arrival. Pay at the
+  // clerk, work the shift in the yard, or cut the lock. No teleport police.
+  _syncWantedImpound(state) {
+    if (!state || (state.mode && state.mode !== 'flight')) return;
+    const own = ensureState(state);
+    const tier = wantedTierFor(state.player && state.player.heat);
+    const pound = own.wantedImpound && typeof own.wantedImpound === 'object'
+      ? own.wantedImpound
+      : null;
+    // Entity ids recycle: verify the pound's own marker flags, not only aliveness, so a
+    // culled yard's reused id is not mistaken for the yard still standing.
+    const yard = pound ? entityById(state, pound.yardId) : null;
+    const liveYard = !!(yard && yard.alive !== false
+      && yard.data && yard.data.wantedImpoundYard === true);
+    const lock = pound ? entityById(state, pound.lockId) : null;
+    const liveLock = !!(lock && lock.alive !== false
+      && lock.data && lock.data.wantedImpoundLock === true);
+    const bill = impoundBillFor(state);
+
+    if (tier !== WANTED_TIER.IMPOUND || (bill && bill.status && bill.status !== 'open')) {
+      if (pound) this._releaseWantedImpound(state, pound);
+      return;
+    }
+    if (pound && pound.open !== false && liveYard && liveLock) {
+      // The lot stands; a denied or dead desk keeps retrying on the post cadence —
+      // the pay verb must never silently vanish for the whole impound.
+      const clerk = entityById(state, pound.clerkId);
+      if (!clerk || clerk.alive === false
+        || !clerk.data || clerk.data.wantedImpoundClerk !== true) {
+        this._retryImpoundClerk(state, pound);
+      }
+      return;
+    }
+    if (pound) {
+      // The yard or lock is gone — a sector jump, a cull, or hostile fire — while the
+      // bill says the lot still stands. The IMPOUND band has no other escape, so a
+      // dead record must not sit here forever: release it and let the post below
+      // re-raise the pound from the durable bill (same path a cold load takes).
+      this._releaseWantedImpound(state, pound);
+    }
+    if (Number.isInteger(own.wantedImpoundRetryTick)
+      && (state.tick | 0) < own.wantedImpoundRetryTick) return;
+    this._postWantedImpound(state);
+  },
+
+  _postWantedImpound(state) {
+    const player = entityById(state, state.playerId);
+    if (!player || player.alive === false || !player.pos) return;
+    const own = ensureState(state);
+    const seed = state.meta && state.meta.seed || 1;
+    const poundId = `wanted-impound:${seed}`;
+    const billId = `impound:${seed}`;
+    const existing = impoundBillFor(state);
+    const heading = Number.isFinite(player.rot) ? player.rot : 0;
+    // Saved lot positions only describe THIS sector — entity positions are global-frame,
+    // so after a jump the bill's stale coords would plant the yard sectors away and the
+    // honest path stays unreachable. A cross-sector repost puts the lot ahead again.
+    const sameSector = !existing || existing.sectorId == null
+      || existing.sectorId === currentSectorId(state);
+    const savedYard = sameSector && existing && existing.status === 'open' && existing.yard;
+    const yardPos = savedYard && (savedYard.x || savedYard.z)
+      ? { x: savedYard.x, z: savedYard.z }
+      : {
+        x: player.pos.x + Math.cos(heading) * WANTED_IMPOUND_STANDOFF,
+        z: player.pos.z + Math.sin(heading) * WANTED_IMPOUND_STANDOFF,
+      };
+    if (distance2(yardPos, player.pos) < 200 * 200 && !(savedYard && (savedYard.x || savedYard.z))) return;
+
+    const sideX = -Math.sin(heading);
+    const sideZ = Math.cos(heading);
+    const savedLock = sameSector && existing && existing.status === 'open' && existing.lock;
+    const lockPos = savedLock && (savedLock.x || savedLock.z)
+      ? { x: savedLock.x, z: savedLock.z }
+      : {
+        x: yardPos.x + sideX * (WANTED_IMPOUND_YARD_RADIUS + WANTED_IMPOUND_PAD_RADIUS),
+        z: yardPos.z + sideZ * (WANTED_IMPOUND_YARD_RADIUS + WANTED_IMPOUND_PAD_RADIUS),
+      };
+    const workPos = sameSector && existing && existing.status === 'open' && existing.work
+      ? { x: existing.work.x, z: existing.work.z }
+      : { x: yardPos.x, z: yardPos.z };
+
+    const zone = state.player && state.player.heatZone;
+    const arrival = reserveArrivalPoint({
+      anchor: zone && zone.active && zone.center ? zone.center : player.pos,
+      aggressorPos: player.pos,
+      jurisdictionRadius: zone && Number.isFinite(zone.radius) ? zone.radius : 3700,
+      seed,
+      incidentId: poundId,
+    });
+    if (distance2(arrival, player.pos) < 900 * 900) return;
+
+    if (typeof this.helpers.spawnEntity !== 'function') {
+      own.wantedImpoundRetryTick = (state.tick | 0) + 15;
+      return;
+    }
+
+    let yard;
+    try {
+      yard = this.helpers.spawnEntity({
+        type: 'ship',
+        team: 2,
+        pos: { x: yardPos.x, z: yardPos.z },
+        vel: { x: 0, z: 0 },
+        rot: heading,
+        radius: WANTED_IMPOUND_YARD_RADIUS,
+        mass: 8000,
+        hull: 400,
+        hullMax: 400,
+        collides: true,
+        factionId: 'faction_scn',
+        data: {
+          wantedImpoundYard: true,
+          role: 'impound_yard',
+          defId: 'wanted_impound_yard',
+          missionTag: 'wanted_impound',
+          missionPinned: true,
+        },
+      });
+    } catch (error) {
+      own.wantedImpoundRetryTick = (state.tick | 0) + 15;
+      throw error;
+    }
+    if (!yard) {
+      own.wantedImpoundRetryTick = (state.tick | 0) + 15;
+      return;
+    }
+
+    let lock = null;
+    try {
+      lock = this.helpers.spawnEntity({
+        type: 'ship',
+        team: 2,
+        pos: { x: lockPos.x, z: lockPos.z },
+        vel: { x: 0, z: 0 },
+        rot: heading,
+        radius: WANTED_IMPOUND_PAD_RADIUS,
+        mass: 200,
+        hull: 80,
+        hullMax: 80,
+        collides: true,
+        factionId: 'faction_scn',
+        data: {
+          wantedImpoundLock: true,
+          role: 'impound_lock',
+          defId: 'wanted_impound_lock',
+          missionTag: 'wanted_impound',
+          missionPinned: true,
+        },
+      });
+    } catch (error) {
+      own.wantedImpoundRetryTick = (state.tick | 0) + 15;
+      throw error;
+    }
+    if (!lock) {
+      own.wantedImpoundRetryTick = (state.tick | 0) + 15;
+      return;
+    }
+
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const requester = `law:${poundId}`;
+    const grant = budget && typeof budget.request === 'function' ? budget.request(1, requester) : 1;
+    let clerk = null;
+    if (grant >= 1) {
+      clerk = this._spawnImpoundClerk(state, arrival, yardPos, poundId, requester, budget);
+    }
+    // A denied grant or a failed spawn keeps the retry tick armed — _syncWantedImpound
+    // re-staffs the desk while the pound stands. Posting without this would leave the
+    // pay verb unreachable for the life of the impound.
+    if (clerk) delete own.wantedImpoundRetryTick;
+    else own.wantedImpoundRetryTick = (state.tick | 0) + 15;
+    own.wantedImpound = {
+      poundId,
+      billId,
+      yardId: yard.id,
+      lockId: lock.id,
+      clerkId: clerk && clerk.id || null,
+      targetId: state.playerId,
+      tier: WANTED_TIER.IMPOUND,
+      postedAt: state.simTime || 0,
+      yard: { x: yardPos.x, z: yardPos.z },
+      lock: { x: lockPos.x, z: lockPos.z },
+      work: { x: workPos.x, z: workPos.z },
+      arrival: { x: arrival.x, z: arrival.z },
+      held: false,
+      open: true,
+    };
+    this._emit('law:impoundPosted', {
+      ...publicWantedImpound(own.wantedImpound),
+      billId,
+      owedCr: existing && existing.status === 'open' ? existing.owedCr : quoteImpoundBill(state.player),
+      sectorId: currentSectorId(state),
+    });
+    this._lawResponse('impound_posted', {
+      billId, targetId: state.playerId, tier: WANTED_TIER.IMPOUND,
+      sectorId: currentSectorId(state),
+    });
+  },
+
+  _spawnImpoundClerk(state, arrival, yard, poundId, requester, budget) {
+    const hull = makeEnemySpawnSpec('customs_cutter', 3, arrival, {
+      factionId: 'faction_scn',
+      motive: 'wanted_impound',
+      engagementTrigger: 'wanted_impound',
+      zoneId: 'wanted_impound',
+      approachTelegraph: 'impound_inbound',
+      startedTick: state.tick,
+    });
+    hull.team = 2;
+    hull.pos = { x: arrival.x, z: arrival.z };
+    hull.vel = { x: 0, z: 0 };
+    hull.rot = Math.atan2(yard.z - arrival.z, yard.x - arrival.x);
+    hull.data = { ...(hull.data || {}) };
+    hull.data.missionTag = 'wanted_impound';
+    hull.data.missionPinned = true;
+    hull.data.wantedImpoundClerk = true;
+    const ai = hull.data.ai || (hull.data.ai = {});
+    ai.spawnContext = 'wanted_impound';
+    ai.forcePlayerTarget = false;
+    ai.lawful = true;
+    ai.passive = false;
+    ai.roe = RulesOfEngagement.HOLD_FIRE;
+    ai.sensorRange = 8000;
+    hull.sensorRange = 8000;
+    ai.activity = normalizeActivity({
+      kind: ActivityKind.TRANSIT,
+      reason: `wanted_impound:${poundId}`,
+      anchor: { x: yard.x, z: yard.z },
+      leashRadius: 9000,
+      startedTick: state.tick | 0,
+      encounterId: poundId,
+    });
+    const combat = hull.data.combat || (hull.data.combat = {});
+    combat.targetId = null;
+    const intent = hull.data.intent || (hull.data.intent = {});
+    intent.fire = false;
+    intent.mode = 'wanted_impound';
+
+    let spawned = null;
+    try {
+      spawned = this.helpers.spawnEntity(hull);
+    } catch (error) {
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      throw error;
+    }
+    if (!spawned) {
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      return null;
+    }
+    if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(spawned.id, requester);
+    return spawned;
+  },
+
+  // The desk is a person, not a fixture: a denied budget grant at post time or a dead
+  // clerk re-staffs on the post cadence while the lot stands. The lock and yard are
+  // the physical bill — those repost the whole pound instead (see _syncWantedImpound).
+  _retryImpoundClerk(state, pound) {
+    const own = ensureState(state);
+    if (Number.isInteger(own.wantedImpoundRetryTick)
+      && (state.tick | 0) < own.wantedImpoundRetryTick) return null;
+    own.wantedImpoundRetryTick = (state.tick | 0) + 15;
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const requester = `law:${pound.poundId}`;
+    const grant = budget && typeof budget.request === 'function' ? budget.request(1, requester) : 1;
+    if (grant < 1 || typeof this.helpers.spawnEntity !== 'function') return null;
+    const arrival = pound && pound.arrival && Number.isFinite(pound.arrival.x)
+      ? pound.arrival : null;
+    const yardPos = pound && pound.yard && Number.isFinite(pound.yard.x)
+      ? pound.yard : null;
+    if (!arrival || !yardPos) return null;
+    const clerk = this._spawnImpoundClerk(state, arrival, yardPos, pound.poundId, requester, budget);
+    if (!clerk) return null;
+    pound.clerkId = clerk.id;
+    // Keep the durable bill's desk id in step — a later repost (or the UI's pay prompt)
+    // reads the bill, not just the session record.
+    const bill = impoundBillFor(state);
+    if (bill && bill.status === 'open') bill.clerkId = clerk.id;
+    delete own.wantedImpoundRetryTick;
+    return clerk;
+  },
+
+  _updateWantedImpound(dt, state) {
+    const own = state && state.lawSecurity;
+    const pound = own && own.wantedImpound;
+    if (!pound || pound.open === false) return;
+    const bill = impoundBillFor(state);
+    if (!bill || bill.status !== 'open') return;
+    const player = entityById(state, state.playerId);
+    if (!player || player.alive === false || !player.pos) {
+      pound.held = false;
+      return;
+    }
+    // Marker flags, not bare ids — a recycled id must not pass for the yard it once named.
+    const yard = entityById(state, pound.yardId);
+    const liveYard = yard && yard.alive !== false
+      && yard.data && yard.data.wantedImpoundYard === true ? yard : null;
+    const lock = entityById(state, pound.lockId);
+    const liveLock = lock && lock.alive !== false
+      && lock.data && lock.data.wantedImpoundLock === true ? lock : null;
+    pound.held = !!(liveYard && overlapsImpoundPad(player, liveYard));
+    // Pay is a choice, not an overlap: standing at the clerk OFFERS the bill; the deck verb emits
+    // law:impoundPay and _payWantedImpound re-validates reach + credits before charging.
+    const clerk = entityById(state, pound.clerkId);
+    const liveClerk = clerk && clerk.alive !== false
+      && clerk.data && clerk.data.wantedImpoundClerk === true ? clerk : null;
+    const clerkNear = !!(liveClerk && overlapsImpoundPad(player, liveClerk));
+    if (clerkNear !== !!this._impoundClerkNear) {
+      this._impoundClerkNear = clerkNear;
+      this._emit('law:impoundPayOffer', {
+        poundId: pound.poundId,
+        billId: bill.billId,
+        clerkId: liveClerk && liveClerk.id,
+        owedCr: Math.max(0, Math.round(Number(bill.remainingCr != null ? bill.remainingCr : bill.owedCr) || 0)),
+        clear: !clerkNear,
+      });
+    }
+    if (liveLock && overlapsImpoundPad(player, liveLock)) {
+      this._recoverWantedImpound(state, pound, 'steal', player);
+      return;
+    }
+    if (!pound.held || !(dt > 0)) return;
+    this._emit('law:impoundWorked', {
+      accepted: true,
+      source: 'lawSecurity',
+      poundId: pound.poundId,
+      billId: bill.billId,
+      dt,
+    });
+    if (isImpoundWorkComplete(impoundBillFor(state))) {
+      this._recoverWantedImpound(state, pound, 'work', player);
+    }
+  },
+
+  _payWantedImpound(state, _payload) {
+    const own = state && state.lawSecurity;
+    const pound = own && own.wantedImpound;
+    if (!pound || pound.open === false) return;
+    const bill = impoundBillFor(state);
+    if (!bill || bill.status !== 'open') return;
+    const player = entityById(state, state.playerId);
+    const clerk = entityById(state, pound.clerkId);
+    const liveClerk = clerk && clerk.alive !== false
+      && clerk.data && clerk.data.wantedImpoundClerk === true ? clerk : null;
+    if (!player || !liveClerk || !overlapsImpoundPad(player, liveClerk)) {
+      this._emit('law:impoundPayRefused', {
+        reason: 'not_at_clerk',
+        poundId: pound.poundId,
+        billId: bill.billId,
+      });
+      return;
+    }
+    const owed = Math.max(0, Math.round(Number(bill.remainingCr != null ? bill.remainingCr : bill.owedCr) || 0));
+    const credits = Math.max(0, Math.round(Number(state.player && state.player.credits) || 0));
+    if (credits < owed) {
+      this._emit('law:impoundPayRefused', {
+        reason: 'short',
+        poundId: pound.poundId,
+        billId: bill.billId,
+        owedCr: owed,
+        credits,
+      });
+      return;
+    }
+    if (owed > 0) {
+      this._emit('economy:chargeCredits', { amount: owed, reason: 'impound:pay' });
+    }
+    this._recoverWantedImpound(state, pound, 'pay', player);
+  },
+
+  _recoverWantedImpound(state, pound, method, byEntity) {
+    if (!pound || pound.open === false) return;
+    pound.open = false;
+    pound.held = false;
+    this._impoundClerkNear = false;
+    pound.recoveredBy = method;
+    pound.recoveredAt = state.simTime || 0;
+    this._emit('law:impoundRecovered', {
+      accepted: true,
+      source: 'lawSecurity',
+      poundId: pound.poundId,
+      billId: pound.billId,
+      method,
+      yardId: pound.yardId,
+      lockId: pound.lockId,
+      clerkId: pound.clerkId,
+      targetId: pound.targetId,
+      byId: byEntity && byEntity.id != null ? byEntity.id : null,
+      t: state.simTime || 0,
+    });
+    this._lawResponse('impound_resolved', {
+      poundId: pound.poundId, billId: pound.billId, method, targetId: pound.targetId,
+    });
+  },
+
+  _releaseWantedImpound(state, pound) {
+    const own = ensureState(state);
+    const unpin = (entity, flag) => {
+      if (!entity || entity.alive === false || !entity.data) return;
+      // Ids recycle: only unpin the body that still claims the pound's marker — never
+      // rewrite a stranger's data because an old id happened to resolve again.
+      if (entity.data[flag] !== true) return;
+      entity.data.missionPinned = false;
+      entity.data[flag] = false;
+      const ai = entity.data.ai;
+      if (ai) {
+        ai.forcePlayerTarget = false;
+        ai.passive = true;
+      }
+    };
+    unpin(pound ? entityById(state, pound.yardId) : null, 'wantedImpoundYard');
+    unpin(pound ? entityById(state, pound.lockId) : null, 'wantedImpoundLock');
+    unpin(pound ? entityById(state, pound.clerkId) : null, 'wantedImpoundClerk');
+    own.wantedImpound = null;
+    this._impoundClerkNear = false;
+    this._emit('law:impoundReleased', {
+      poundId: pound && pound.poundId,
+      billId: pound && pound.billId,
+      yardId: pound && pound.yardId,
+      lockId: pound && pound.lockId,
+      clerkId: pound && pound.clerkId,
+      targetId: pound && pound.targetId,
+      recoveredBy: pound && pound.recoveredBy,
+    });
+  },
+
+  // PB-CONS-C — a destroyed memorial stays findable by someone who was not there.
+  // Uncertain evidence stays uncertain: no witness means the record does not name a killer.
+  _noteMemorialDestroyed(payload) {
+    const state = this.state;
+    if (!state || !payload) return null;
+    const entity = payload.entity || entityById(state, payload.id ?? payload.entityId);
+    const siteId = memorialSiteId(entity, payload);
+    if (!siteId) return null;
+    const own = ensureState(state);
+    if (!own.memorialSites || typeof own.memorialSites !== 'object' || Array.isArray(own.memorialSites)) {
+      own.memorialSites = {};
+    }
+    const existing = own.memorialSites[siteId];
+    if (existing) return publicMemorial(existing, null);
+    if (Object.keys(own.memorialSites).length >= MEMORIAL_SITE_CAP) return null;
+    const data = entity && entity.data || {};
+    const pos = finiteLawPoint(payload.pos) || finiteLawPoint(entity && entity.pos);
+    const witnesses = pos ? lawWitnessesNear(state, {
+      pos,
+      offenderEntityId: payload.killerId ?? payload.attackerId ?? state.playerId,
+      radius: LAW_INCIDENT_WITNESS_RADIUS,
+      ignoreEntityIds: [entity && entity.id, payload.id, payload.entityId], // the memorial itself
+    }) : [];
+    const witnessed = witnesses.length > 0;
+    const killerId = payload.killerId ?? payload.attackerId ?? null;
+    const row = {
+      siteId,
+      name: memorialName(payload, data, siteId),
+      pos,
+      evidence: witnessed ? 'witnessed' : 'uncertain',
+      namedParty: witnessed && killerId != null ? killerId : null,
+      witnessEntityIds: witnesses.map((w) => w.entityId),
+      destroyedAt: state.simTime || 0,
+      foundBy: [],
+    };
+    own.memorialSites[siteId] = row;
+    this._emit('law:memorialDestroyed', publicMemorial(row, null));
+    return publicMemorial(row, null);
+  },
+
+  _findMemorialByScan(payload) {
+    if (!payload) return null;
+    const siteId = payload.siteId || payload.memorialSiteId || payload.placeId;
+    if (siteId == null) return null;
+    const finderId = payload.finderId ?? payload.scannerId ?? payload.actorId ?? this.state?.playerId;
+    return this.findDestroyedMemorial({ finderId, siteId });
+  },
+
+  findDestroyedMemorial({ finderId = null, siteId = null } = {}) {
+    const id = cleanLawId(siteId == null ? null : String(siteId));
+    const own = this.state && this.state.lawSecurity;
+    const row = id && own && own.memorialSites && own.memorialSites[id];
+    if (!row) return { found: false, siteId: id, evidence: null, finderWasThere: false };
+    const finder = finderId == null ? null : String(finderId);
+    if (finder && !(row.foundBy || []).some((found) => String(found) === finder)) {
+      if (!Array.isArray(row.foundBy)) row.foundBy = [];
+      if (row.foundBy.length < 8) row.foundBy.push(finder);
+    }
+    return publicMemorial(row, finder);
+  },
+
+  // A named, priced harm. Zero cargo or a blank name opens nothing, and a second
+  // note of the same cause does not stack.
+  _noteCrimeRestitution(entity, causeId) {
+    const forPerson = restitutionPerson(entity && entity.data);
+    const amountCr = pricedCargoCr(entity && entity.data);
+    if (!forPerson || !(amountCr > 0) || !causeId) return null;
+    return this.noteComposedObligation({
+      kind: 'restitution', causeId, forPerson, amountCr,
+      recovery: restitutionRecovery(entity, this.state),
+    });
+  },
+
+  _noteStoredRestitution(pending, causeId) {
+    const forPerson = pending && typeof pending.forPerson === 'string' ? pending.forPerson.trim() : '';
+    const amountCr = Math.round(Number(pending && pending.restitutionCr));
+    if (!forPerson || !(amountCr > 0) || !causeId) return null;
+    return this.noteComposedObligation({
+      kind: 'restitution',
+      causeId,
+      forPerson: forPerson.length > 80 ? forPerson.slice(0, 80) : forPerson,
+      amountCr,
+      recovery: pending.recovery,
+    });
+  },
+
+  // PB-CONS-D / NXB-044 — toll, warrant, and restitution stay separate bills.
+  // The same cause does not stack, and paying one does not clear the others.
+  noteComposedObligation(request = {}) {
+    const state = this.state;
+    if (!state) return { accepted: false, reason: 'no_state' };
+    const kind = request.kind;
+    const causeId = cleanLawId(request.causeId == null ? null : String(request.causeId));
+    if (!OBLIGATION_KINDS.has(kind) || !causeId) return { accepted: false, reason: 'invalid' };
+    const forPerson = typeof request.forPerson === 'string' ? request.forPerson.trim() : '';
+    if (kind === 'restitution' && !forPerson) return { accepted: false, reason: 'unnamed' };
+    const amount = Math.round(Number(request.amountCr));
+    if (!(amount > 0)) return { accepted: false, reason: 'no_amount' };
+    const own = ensureState(state);
+    if (!own.composed || typeof own.composed !== 'object' || Array.isArray(own.composed)) own.composed = {};
+    const key = `${kind}:${causeId}`;
+    const existing = own.composed[key];
+    if (existing) return { accepted: true, duplicate: true, obligation: publicObligation(existing) };
+    if (Object.keys(own.composed).length >= LAW_COMPOSED_CAP) return { accepted: false, reason: 'full' };
+    const row = {
+      key,
+      kind,
+      causeId,
+      forPerson: forPerson || null,
+      label: forPerson ? `${kind} for ${forPerson}` : (typeof request.label === 'string' && request.label.trim() ? request.label.trim() : kind),
+      amountCr: amount,
+      remainingCr: amount,
+      status: 'open',
+      advertisePay: true,
+      ...(kind === 'restitution' && request.recovery
+        ? { recovery: normalizeRestitutionRecovery(request.recovery) } : {}),
+    };
+    own.composed[key] = row;
+    const obligation = publicObligation(row);
+    this._emit('law:obligationNoted', obligation);
+    return { accepted: true, duplicate: false, obligation };
+  },
+
+  payComposedObligation(request = {}) {
+    const state = this.state;
+    if (!state) return { accepted: false, reason: 'no_state' };
+    const kind = request.kind;
+    const causeId = cleanLawId(request.causeId == null ? null : String(request.causeId));
+    if (!OBLIGATION_KINDS.has(kind) || !causeId) return { accepted: false, reason: 'invalid' };
+    const own = ensureState(state);
+    const row = own.composed && own.composed[`${kind}:${causeId}`];
+    if (!row) return { accepted: false, reason: 'missing' };
+    if (row.status === 'paid' || row.remainingCr <= 0) {
+      return { accepted: false, reason: 'already_paid', obligation: publicObligation(row) };
+    }
+    const requested = Number(request.amountCr);
+    const pay = Number.isFinite(requested) && requested > 0 ? Math.round(requested) : row.remainingCr;
+    if (!(pay > 0)) return { accepted: false, reason: 'no_amount', obligation: publicObligation(row) };
+    const applied = Math.min(pay, row.remainingCr);
+    const credits = state.player && state.player.credits;
+    if (credits != null && Number(credits) < applied) {
+      return {
+        accepted: false,
+        reason: 'short',
+        shortfall: applied - Number(credits),
+        obligation: publicObligation(row),
+      };
+    }
+    this._emit('economy:chargeCredits', {
+      amount: applied,
+      reason: `law:${row.kind}`,
+      cause: row.causeId,
+      forPerson: row.forPerson,
+      sink: row.kind,
+    });
+    row.remainingCr -= applied;
+    if (row.remainingCr <= 0) {
+      row.remainingCr = 0;
+      row.status = 'paid';
+      row.advertisePay = false;
+      this._stampTollSettlement(row);
+    } else {
+      row.status = 'open';
+      row.advertisePay = true;
+    }
+    const obligation = publicObligation(row);
+    this._emit('law:obligationPaid', obligation);
+    return { accepted: true, appliedCr: applied, obligation };
+  },
+
+  _markObligationSettled(kind, causeId) {
+    const own = this.state && this.state.lawSecurity;
+    const row = own && own.composed && own.composed[`${kind}:${causeId}`];
+    if (!row || row.status === 'paid') return row ? publicObligation(row) : null;
+    row.remainingCr = 0;
+    row.status = 'paid';
+    row.advertisePay = false;
+    this._stampTollSettlement(row);
+    const obligation = publicObligation(row);
+    this._emit('law:obligationPaid', obligation);
+    return obligation;
+  },
+
+  _stampTollSettlement(row) {
+    if (row.kind !== 'toll' || Number.isFinite(row.settledAt)) return;
+    row.settledAt = inspectionNow(this.state);
+    row.settledTick = this.state.tick | 0;
+  },
+
+  // Goods are credited by the bill's writer, at the same prices that opened the bill.
+  // A mission delivery is consumed once; a partial return never pardons another cause.
+  creditRestitutionDelivery({ causeId, commodityId, qty, deliveryId } = {}) {
+    const row = this.state?.lawSecurity?.composed?.[`restitution:${causeId}`];
+    const recovery = row && row.recovery;
+    const line = recovery?.lines.find((entry) => entry.commodityId === commodityId);
+    if (!line || row.status === 'paid' || !deliveryId || recovery.deliveries.includes(deliveryId)) return 0;
+    const units = Math.min(Math.max(0, Math.floor(Number(qty) || 0)), line.qty - line.returnedQty);
+    if (!(units > 0)) return 0;
+    recovery.deliveries.push(deliveryId);
+    line.returnedQty += units;
+    const applied = Math.min(row.remainingCr, pricedLineCr(commodityId, units));
+    row.remainingCr -= applied;
+    if (row.remainingCr === 0) { row.status = 'paid'; row.advertisePay = false; }
+    this._emit('law:obligationPaid', publicObligation(row));
+    return applied;
+  },
+
+  composedDisposition() {
+    const own = this.state && this.state.lawSecurity;
+    const rows = own && own.composed && typeof own.composed === 'object' ? Object.values(own.composed) : [];
+    return rows.map((row) => publicObligation(row));
+  },
+
+  restitutionFor(causeId) {
+    const id = cleanLawId(causeId == null ? null : String(causeId));
+    const own = this.state && this.state.lawSecurity;
+    const row = id && own && own.composed && own.composed[`restitution:${id}`];
+    if (!row || !row.forPerson) return null;
+    return {
+      causeId: row.causeId,
+      forPerson: row.forPerson,
+      remainingCr: row.remainingCr,
+      status: row.status,
+      resolves: row.key,
+      globalExoneration: false,
+      promise: `Restitution for ${row.forPerson} — ${row.causeId} only`,
+    };
+  },
+
+  // PB-CONS-E — charges that are not on the record the player built do not stick.
+  auditBuiltRecord(request = {}) {
+    const state = this.state;
+    const subjectId = request.subjectId;
+    const charges = Array.isArray(request.charges) ? request.charges : [];
+    const built = builtRecordEntries(state, subjectId);
+    const before = state && state.lawSecurity && Array.isArray(state.lawSecurity.receipts)
+      ? state.lawSecurity.receipts.length : 0;
+    const results = charges.map((charge) => {
+      const onRecord = chargeOnBuiltRecord(built, charge);
+      return {
+        incidentId: charge && charge.incidentId != null ? charge.incidentId : null,
+        cause: charge && charge.cause != null ? charge.cause : null,
+        onRecord,
+        verdict: onRecord ? 'confirmed' : 'not_on_record',
+      };
+    });
+    const after = state && state.lawSecurity && Array.isArray(state.lawSecurity.receipts)
+      ? state.lawSecurity.receipts.length : 0;
+    const audit = { subjectId: subjectId ?? null, results, invented: after !== before };
+    this._emit('law:recordAudit', audit);
+    return audit;
+  },
+
+  keepalive(dt) {
+    this._updateFineWork(dt, this.state);
+  },
+
+  _chooseFine(payload = {}) {
+    const state = this.state;
+    if (!state) return null;
+    if (payload.kind === 'restitution') {
+      if ((payload.choice || payload.fineChoice) !== 'pay') {
+        return { accepted: false, reason: 'not_pay' };
+      }
+      const paid = this.payComposedObligation({
+        kind: 'restitution',
+        causeId: payload.causeId,
+        amountCr: payload.amountCr,
+      });
+      if (paid && paid.reason === 'short') {
+        this._emit('law:fineRefused', {
+          reason: 'short',
+          kind: 'restitution',
+          causeId: payload.causeId || null,
+          shortfall: paid.shortfall,
+        });
+      }
+      return paid;
+    }
+    const choice = payload.choice || payload.fineChoice;
+    if (choice !== 'pay' && choice !== 'work' && choice !== 'leave') return null;
+    const own = ensureState(state);
+    const offer = own.fineOffer;
+    const stationId = payload.stationId || (offer && offer.stationId);
+    if (offer?.productionDock && (state.ui?.docked !== true
+      || String(state.ui.dockedStationId) !== String(stationId))) {
+      this._emit('law:fineRefused', { reason: 'not_at_berth', stationId: stationId || null });
+      return { accepted: false, reason: 'not_at_berth' };
+    }
+    // FB-039 — a reply only resolves the fine actually on the counter. A stale panel (already
+    // paid, a different berth, no open offer at all) is refused, never charged: the handler
+    // re-derives tier and price from current heat before it acts.
+    if (!offer || offer.status === 'paid' || String(offer.stationId) !== String(stationId)) {
+      this._emit('law:fineRefused', { reason: 'no_open_fine', stationId: stationId || null });
+      return { accepted: false, reason: 'no_open_fine' };
+    }
+    return this._handleDockedLawfulClearance({ ...payload, stationId, fineChoice: choice });
+  },
+
+  _updateFineWork(dt, state) {
+    const own = state && state.lawSecurity;
+    const offer = own && own.fineOffer;
+    if (!offer || offer.status !== 'working') return;
+    if (offer.productionDock && (state.ui?.docked !== true
+      || String(state.ui.dockedStationId) !== String(offer.stationId))) return;
+    if (own.fineSettled && own.fineSettled[offer.causeId]) {
+      offer.status = 'paid';
+      return;
+    }
+    const step = Number(dt);
+    if (!Number.isFinite(step) || !(step > 0)) return;
+    offer.workS = (Number(offer.workS) || 0) + step;
+    if (offer.workS + 1e-9 < (Number(offer.workNeedS) || LAW_FINE_WORK_S)) return;
+    if (!own.fineSettled || typeof own.fineSettled !== 'object') own.fineSettled = {};
+    own.fineSettled[offer.causeId] = 'work';
+    offer.status = 'paid';
+    this._markObligationSettled('warrant', offer.causeId);
+    this._emit('heat:clear', { reason: 'station_fine_work' });
+    if (!(Number(state.player && state.player.heat) > 0)) own.fineSettled = {};
+    this._emit('law:fineAssessed', {
+      stationId: offer.stationId,
+      amount: offer.amount,
+      paid: true,
+      choice: 'work',
+      heatLevel: offer.heatLevel,
+      wantedTier: offer.wantedTier,
+    });
+    this._lawResponse('fine_worked', {
+      stationId: offer.stationId, fineCr: offer.amount,
+      heatLevel: offer.heatLevel, wantedTier: offer.wantedTier,
+    });
+  },
+
+  // A surrender at nets/impound opens one priced bill. It does not clear heat.
+  _beginPlayerSurrender(_payload = {}) {
+    const state = this.state;
+    if (!state || state.playerId == null) return { started: false, reason: 'no_state' };
+    const own = ensureState(state);
+    const existing = own.playerSurrender;
+    if (existing && existing.phase === 'holding') {
+      return { started: true, phase: 'holding', priceCr: existing.priceCr, causeId: existing.causeId, already: true };
+    }
+    if (existing && existing.phase === 'accepted') {
+      return { started: true, phase: 'accepted', priceCr: existing.priceCr, causeId: existing.causeId, already: true };
+    }
+    const window = lawfulSurrenderWindow(state);
+    if (!window.ok) {
+      // The refusal voice: an explicit ask always says why. The auto-verb never reaches here —
+      // a physical hold either exists or it does not.
+      this._emit('law:surrenderRefused', { reason: window.reason, tier: window.tier });
+      this._emit('toast', {
+        text: surrenderRefusalLine(window.reason), kind: 'warn', ttl: 3,
+      });
+      return { started: false, reason: window.reason, tier: window.tier };
+    }
+    const tier = window.tier;
+    const responder = window.responder;
+    const priceCr = surrenderPriceCr(state.player);
+    const causeId = `player-surrender:${state.meta && state.meta.seed || 1}`;
+    own.playerSurrender = {
+      phase: 'holding',
+      responderId: responder.id,
+      priceCr,
+      causeId,
+      heldS: 0,
+      tier,
+    };
+    this._emit('law:surrenderHold', { priceCr, causeId, responderId: responder.id, holdS: LAW_SURRENDER_HOLD_S });
+    this._emit('toast', {
+      text: `HEAVE TO — engines cut. Custody accepts in ${LAW_SURRENDER_HOLD_S}s. Fire or move to break.`,
+      kind: 'warn', ttl: 3,
+    });
+    this._lawResponse('surrender_hold', { priceCr, causeId, responderId: responder.id });
+    return { started: true, phase: 'holding', priceCr, causeId, responderId: responder.id };
+  },
+
+  _cancelPlayerSurrender(reason) {
+    const own = this.state && this.state.lawSecurity;
+    const hold = own && own.playerSurrender;
+    if (!hold || hold.phase !== 'holding') return false;
+    hold.phase = 'cancelled';
+    hold.reason = reason;
+    // Suppress the auto-verb until the window actually breaks once — sitting still right after
+    // breaking the hold is the argument, not a new surrender.
+    own.surrenderRearm = true;
+    this._emit('law:surrenderRefused', { reason, priceCr: hold.priceCr, causeId: hold.causeId });
+    this._emit('toast', { text: surrenderRefusalLine(reason), kind: 'warn', ttl: 3 });
+    this._lawResponse('surrender_refused', { reason, priceCr: hold.priceCr });
+    return true;
+  },
+
+  _updatePlayerSurrender(dt, state) {
+    const own = state && state.lawSecurity;
+    let hold = own && own.playerSurrender;
+    // FB-119 — the surrender verb IS the act: engines cut inside a lawful responder's scan cone
+    // while wanted at a custody tier opens the hold. No deck prompt, no key — holding still for
+    // LAW_SURRENDER_HOLD_S under the cone is compliance. An explicit law:playerSurrender intent
+    // reaches the same door with refusal reasons voiced; the auto-verb speaks only in holds.
+    if (!hold || hold.phase === 'cancelled') {
+      if (!state || state.playerId == null) return;
+      if (state.mode && state.mode !== 'flight') return;
+      if (state.ui && state.ui.docked === true) return;
+      if (!lawfulSurrenderWindow(state).ok) {
+        // The window closed — the next deliberate hold is a fresh surrender, not a retry.
+        own.surrenderRearm = false;
+        return;
+      }
+      // A cancelled hold stays cancelled while the window never broke: firing and then simply
+      // sitting still is an argument, not compliance. Leave the cone or spool up once, then the
+      // next stillness counts. The explicit law:playerSurrender ask is always honored.
+      if (hold && own.surrenderRearm === true) return;
+      this._beginPlayerSurrender();
+      hold = own.playerSurrender;
+    }
+    if (!hold || hold.phase !== 'holding') return;
+    const player = entityById(state, state.playerId);
+    if (!player || player.alive === false) {
+      this._cancelPlayerSurrender('no_ship');
+      return;
+    }
+    if (entitySpeed(player) > LAW_SURRENDER_MAX_SPEED) {
+      this._cancelPlayerSurrender('moving');
+      return;
+    }
+    const responder = entityById(state, hold.responderId);
+    if (!responder || responder.alive === false || !playerInLawfulCone(responder, player)) {
+      this._cancelPlayerSurrender('no_responder');
+      return;
+    }
+    const step = Number(dt);
+    if (!(step > 0)) return;
+    hold.heldS = (Number(hold.heldS) || 0) + step;
+    if (hold.heldS + 1e-9 < LAW_SURRENDER_HOLD_S) return;
+    this._acceptPlayerSurrender(hold);
+  },
+
+  _acceptPlayerSurrender(hold) {
+    const state = this.state;
+    if (!hold || hold.phase !== 'holding') return null;
+    hold.phase = 'accepted';
+    const noted = this.noteComposedObligation({
+      kind: 'warrant',
+      causeId: hold.causeId,
+      amountCr: hold.priceCr,
+      label: 'surrender',
+    });
+    const responder = entityById(state, hold.responderId);
+    if (responder && responder.data) {
+      const ai = responder.data.ai || (responder.data.ai = {});
+      ai.roe = RulesOfEngagement.HOLD_FIRE;
+      ai.passive = true;
+      ai.forcePlayerTarget = false;
+      const intent = responder.data.intent || (responder.data.intent = {});
+      intent.fire = false;
+      const combat = responder.data.combat;
+      if (combat && combat.targetId === state.playerId) {
+        combat.targetId = null;
+        combat.lockTarget = null;
+      }
+    }
+    const priceCr = hold.priceCr;
+    for (const other of state.entityList || []) {
+      applyAcceptedSurrenderStandDown(other, { playerId: state.playerId, causeId: hold.causeId });
+    }
+    const obligation = noted && noted.obligation || null;
+    // NXI-055 — describe the stand-down by its accepted disposition. Custody with an open bill
+    // is a suspended stop, not a settled one, and it is never global exoneration: the heat
+    // owner still holds the sheet and new causes reopen engagement on their own record.
+    const disposition = obligation && obligation.status === 'paid' ? 'settled' : 'suspended';
+    this._emit('combat:surrendered', {
+      player: true,
+      accepted: true,
+      entityId: state.playerId,
+      priceCr,
+      causeId: hold.causeId,
+      t: state.simTime || 0,
+    });
+    this._emit('law:surrenderAccepted', {
+      priceCr,
+      causeId: hold.causeId,
+      responderId: hold.responderId,
+      obligation,
+      disposition,
+    });
+    this._emit('toast', {
+      text: disposition === 'settled'
+        ? 'CUSTODY ACCEPTED — the law holds the guns. This lot is already settled on the record.'
+        : obligation
+          ? `CUSTODY ACCEPTED — the law holds the guns. Bill posted: ${priceCr} cr.`
+          : 'CUSTODY ACCEPTED — the law holds the guns. Custody stands; no new bill could be posted.',
+      kind: 'good', ttl: 4,
+    });
+    this._lawResponse('surrender_accepted', {
+      priceCr, causeId: hold.causeId, disposition, globalExoneration: false,
+    });
+    return { accepted: true, priceCr, causeId: hold.causeId, obligation, disposition };
+  },
+
+  destroy() {
+    this._releaseAllJobResponses('destroy');
+    if (this._warrantWaves) { this._warrantWaves.destroy(); this._warrantWaves = null; }
+    if (this.bus && typeof this.bus.off === 'function') {
+      if (this._onDamage) this.bus.off('combat:damage', this._onDamage);
+      if (this._onCollisionConsequence) this.bus.off('combat:collisionConsequence', this._onCollisionConsequence);
+      if (this._onFire) this.bus.off('combat:fire', this._onFire);
+      if (this._onSpawned) this.bus.off('entity:spawned', this._onSpawned);
+      if (this._onResponderGone) {
+        this.bus.off('entity:killed', this._onResponderGone);
+        this.bus.off('entity:destroyed', this._onResponderGone);
+      }
+      if (this._onAftermathWreckSpawned) this.bus.off('aftermathWreck:spawned', this._onAftermathWreckSpawned);
+      if (this._onSurvivorPodEjected) this.bus.off('survivorPod:ejected', this._onSurvivorPodEjected);
+      if (this._onSectorExit) this.bus.off('sector:exit', this._onSectorExit);
+      if (this._onSaveRestoring) this.bus.off('save:restoring', this._onSaveRestoring);
+      if (this._onSaveLoaded) this.bus.off('save:loaded', this._onSaveLoaded);
+      if (this._onInspectionChoice) this.bus.off('lawfulInspection:choose', this._onInspectionChoice);
+      if (this._onInspectionScanned) this.bus.off('contraband:scanned', this._onInspectionScanned);
+      if (this._onPlayerDeath) this.bus.off('player:death', this._onPlayerDeath);
+      if (this._onStolenCargoPodCollect) this.bus.off('pickup:collected', this._onStolenCargoPodCollect);
+      if (this._onStolenCargoPodLatch) this.bus.off('tether:latched', this._onStolenCargoPodLatch);
+      if (this._onKilledAdjudication) this.bus.off('entity:killed', this._onKilledAdjudication);
+      if (this._onWitnessCarrierKilled) this.bus.off('entity:killed', this._onWitnessCarrierKilled);
+      if (this._onWreckScanResolved) this.bus.off('scan:wreckResolved', this._onWreckScanResolved);
+      if (this._onSalvageCompleted) this.bus.off('salvage:completed', this._onSalvageCompleted);
+      if (this._onDockedLawfulClearance) this.bus.off('dock:docked', this._onDockedLawfulClearance);
+      if (this._onHeatChanged) this.bus.off('heat:changed', this._onHeatChanged);
+      if (this._onImpoundPay) this.bus.off('law:impoundPay', this._onImpoundPay);
+      if (this._onCustomsSubmit) this.bus.off('customs:submit', this._onCustomsSubmit);
+      if (this._onShipPurchased) this.bus.off('ship:purchased', this._onShipPurchased);
+      if (this._onScannedByPatrol) this.bus.off('player:scannedByPatrol', this._onScannedByPatrol);
+      if (this._onScanDumpJettison) this.bus.off('cargo:jettisoned', this._onScanDumpJettison);
+      if (this._onScanDumpResolved) this.bus.off('contraband:scanned', this._onScanDumpResolved);
+      if (this._onFineChoice) this.bus.off('law:fineChoice', this._onFineChoice);
+      if (this._onPlayerSurrender) this.bus.off('law:playerSurrender', this._onPlayerSurrender);
+      if (this._onRecordAudit) this.bus.off('law:audit', this._onRecordAudit);
+    }
+    this._onDamage = null;
+    this._onFire = null;
+    this._onSpawned = null;
+    this._onResponderGone = null;
+    this._onAftermathWreckSpawned = null;
+    this._onSurvivorPodEjected = null;
+    this._onSectorExit = null;
+    this._onSaveRestoring = null;
+    this._onSaveLoaded = null;
+    this._onInspectionChoice = null;
+    this._onInspectionScanned = null;
+    this._onPlayerDeath = null;
+    this._onStolenCargoPodCollect = null;
+    this._onStolenCargoPodLatch = null;
+    this._onKilledAdjudication = null;
+    this._onWitnessCarrierKilled = null;
+    this._onWreckScanResolved = null;
+    this._onSalvageCompleted = null;
+    this._onDockedLawfulClearance = null;
+    this._onHeatChanged = null;
+    this._onImpoundPay = null;
+    this._onCustomsSubmit = null;
+    this._onShipPurchased = null;
+    this._onScannedByPatrol = null;
+    this._onScanDumpJettison = null;
+    this._onScanDumpResolved = null;
+    this._scanDumpWatch = null;
+    this._onFineChoice = null;
+    this._onPlayerSurrender = null;
+    this._onRecordAudit = null;
+    if (this._podConeDwell) this._podConeDwell.clear();
+  },
+};
+
+export function pointInScanCone(origin, heading, range, halfAngle, point) {
+  if (!origin || !point) return false;
+  const dx = point.x - origin.x;
+  const dz = point.z - origin.z;
+  const dist = Math.hypot(dx, dz);
+  if (!(dist > 1e-6) || dist > range) return false;
+  const hx = Math.cos(heading);
+  const hz = Math.sin(heading);
+  const ang = Math.acos(Math.max(-1, Math.min(1, (dx * hx + dz * hz) / dist)));
+  return ang <= halfAngle;
+}
+
+export function scanLineOccluded(origin, target, occluder) {
+  if (!origin || !target || !occluder || !occluder.pos) return false;
+  // A body with a real compound collider (a measured skin on a fixed solid, or a declared legacy
+  // manifest) occludes with that collider. Everything else — every dynamic hull, which never takes
+  // a skin — keeps the gameplay-radius disc below.
+  if ((occluder.data || occluder.type || occluder.physicsBody) && resolveCollisionProxyManifest(occluder)) {
+    return segmentHitsProxy(occluder, origin, target);
+  }
+  const r = Math.max(0, Number(occluder.radius) || 0);
+  if (!(r > 0)) return false;
+  const ax = origin.x;
+  const az = origin.z;
+  const bx = target.x;
+  const bz = target.z;
+  const cx = occluder.pos.x;
+  const cz = occluder.pos.z;
+  const abx = bx - ax;
+  const abz = bz - az;
+  const acx = cx - ax;
+  const acz = cz - az;
+  const abLen2 = abx * abx + abz * abz;
+  if (!(abLen2 > 1e-8)) return Math.hypot(acx, acz) <= r;
+  let t = (acx * abx + acz * abz) / abLen2;
+  if (t < 0) t = 0;
+  else if (t > 1) t = 1;
+  const dx = ax + abx * t - cx;
+  const dz = az + abz * t - cz;
+  return (dx * dx + dz * dz) <= r * r;
+}
+
+// Per-entity cone scratch via WeakMap (no enumerable _sf* on entities). Scanner identity is
+// recomputed every call so patrol nets that clear role/flag correctly return null after break.
+const CUSTOMS_CONE_SCRATCH = new WeakMap();
+
+export function customsScanConeOf(entity) {
+  if (!entity || entity.alive === false || !entity.pos) return null;
+  const data = entity.data || {};
+  const explicit = data.customsScanCone && typeof data.customsScanCone === 'object'
+    ? data.customsScanCone
+    : null;
+  const isScanner = data.customsScanner === true
+    || !!explicit
+    || data.defId === 'customs_cutter'
+    || data.enemyId === 'customs_cutter'
+    || data.role === 'customs';
+  if (!isScanner) return null;
+  let cone = CUSTOMS_CONE_SCRATCH.get(entity);
+  if (!cone) {
+    cone = {
+      origin: null,
+      heading: 0,
+      halfAngle: CUSTOMS_SCAN_HALF_ANGLE,
+      range: CUSTOMS_SCAN_RANGE,
+      dwellS: CUSTOMS_SCAN_DWELL_S,
+      scanner: null,
+    };
+    CUSTOMS_CONE_SCRATCH.set(entity, cone);
+  }
+  cone.origin = entity.pos;
+  cone.heading = Number.isFinite(explicit && explicit.heading)
+    ? explicit.heading
+    : (Number.isFinite(entity.rot) ? entity.rot : 0);
+  cone.halfAngle = Number.isFinite(explicit && explicit.halfAngle)
+    ? explicit.halfAngle
+    : CUSTOMS_SCAN_HALF_ANGLE;
+  cone.range = Number.isFinite(explicit && explicit.range)
+    ? explicit.range
+    : CUSTOMS_SCAN_RANGE;
+  cone.dwellS = Number.isFinite(explicit && explicit.dwellS)
+    ? explicit.dwellS
+    : CUSTOMS_SCAN_DWELL_S;
+  cone.scanner = entity;
+  return cone;
+}
+
+export function aggressionCauseFor(state, attacker, target) {
+  const ai = attacker && attacker.data && attacker.data.ai || {};
+  if (!attacker || !target) return 'unknown';
+  if (attacker.id === state.playerId) return isLawful(target) ? 'player_assault' : 'player_attack';
+  if (ai.securityTargetId === target.id) return 'security_response';
+  if (ai.retaliationTargetId === target.id) return 'self_defense';
+  if (ai.engagementTrigger === 'explicit_refusal' || ai.engagementTrigger === 'ignored_demand') return 'refused_demand';
+  if (ai.motive === 'cargo_extortion') return 'valuable_cargo';
+  if (ai.engagementTrigger === 'wanted_status') return 'wanted_status';
+  if (ai.encounterId || DANGEROUS_CONTEXTS.has(String(ai.spawnContext || ''))) return 'authored_danger';
+  return 'unmotivated';
+}
+
+function restitutionPerson(data) {
+  if (!data || typeof data !== 'object') return '';
+  const raw = data.ownerName || data.name || data.displayName || '';
+  const name = String(raw).trim();
+  if (!name) return '';
+  return name.length > 80 ? name.slice(0, 80) : name;
+}
+
+function restitutionRecovery(entity, state) {
+  const data = entity?.data || {};
+  const lines = data.commodityId
+    ? [{ commodityId: data.commodityId, qty: data.amount ?? data.qty }]
+    : data.cargoManifest?.lines || Object.entries(data.cargo || {}).map(([commodityId, qty]) => ({ commodityId, qty }));
+  return normalizeRestitutionRecovery({
+    lines, sectorId: state.world?.currentSectorId, pos: entity?.pos,
+    manifestId: data.cargoManifest?.manifestId || data.freightCargo?.manifestId || null,
+  });
+}
+
+function normalizeRestitutionRecovery(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const lines = [];
+  for (const item of Array.isArray(raw.lines) ? raw.lines : []) {
+    const commodityId = item?.commodityId || item?.id;
+    const qty = Math.floor(Number(item?.amount ?? item?.qty));
+    if (!(pricedLineCr(commodityId, qty) > 0)) continue;
+    const prior = lines.find((entry) => entry.commodityId === commodityId);
+    const returnedQty = Math.max(0, Math.min(qty, Math.floor(Number(item.returnedQty) || 0)));
+    if (prior) { prior.qty += qty; prior.returnedQty += returnedQty; }
+    else lines.push({ commodityId, qty, returnedQty });
+  }
+  return lines.length ? {
+    lines, sectorId: raw.sectorId || null,
+    pos: { x: Number(raw.pos?.x) || 0, z: Number(raw.pos?.z) || 0 },
+    manifestId: raw.manifestId || null,
+    deliveries: Array.isArray(raw.deliveries) ? raw.deliveries.filter((id) => typeof id === 'string') : [],
+  } : null;
+}
+
+function pricedLineCr(id, qty) {
+  if (typeof id !== 'string' || !id) return 0;
+  const units = Math.floor(Number(qty));
+  if (!(units > 0)) return 0;
+  const unit = COMMODITY_VALUE.get(id);
+  return unit > 0 ? units * unit : 0;
+}
+
+/** One price source. A pod's commodity line wins; a manifest or a cargo map is the fallback. */
+function pricedCargoCr(data) {
+  if (!data || typeof data !== 'object') return 0;
+  const directId = typeof data.commodityId === 'string' ? data.commodityId : '';
+  if (directId) return pricedLineCr(directId, data.amount != null ? data.amount : data.qty);
+  const lines = data.cargoManifest && Array.isArray(data.cargoManifest.lines)
+    ? data.cargoManifest.lines : null;
+  if (lines) {
+    let total = 0;
+    for (const line of lines) {
+      if (!line || typeof line !== 'object') continue;
+      total += pricedLineCr(line.commodityId || line.id, line.amount != null ? line.amount : line.qty);
+    }
+    return total;
+  }
+  const cargo = data.cargo;
+  if (!cargo || typeof cargo !== 'object' || Array.isArray(cargo)) return 0;
+  let total = 0;
+  for (const id of Object.keys(cargo)) total += pricedLineCr(id, cargo[id]);
+  return total;
+}
+
+export function playerCargoValue(state) {
+  const items = state && state.player && state.player.cargo && state.player.cargo.items || {};
+  let total = 0;
+  for (const id of Object.keys(items).sort()) {
+    total += Math.max(0, Math.floor(Number(items[id]) || 0)) * (COMMODITY_VALUE.get(id) || 1);
+  }
+  return total;
+}
+
+function lawJobResponseClaimId(incident, jobId) {
+  if (!incident || typeof incident.id !== 'string' || incident.id.length === 0
+    || typeof jobId !== 'string' || jobId.length === 0) return null;
+  const value = `${LAW_JOB_RESPONSE_HOLDER}:${incident.id}:${jobId}`;
+  return value.length <= 200 ? value : null;
+}
+
+function hasCeresJobResponderMarker(state, responder, slotId) {
+  const data = responder?.data;
+  if (!data) return false;
+  if (data.sectorId === CERES_ACTIVITY_SECTOR_ID
+    || data.homeSectorId === CERES_ACTIVITY_SECTOR_ID
+    || responder.homeSectorId === CERES_ACTIVITY_SECTOR_ID
+    || data.ceresActivityCast === true || data.ceresActivityJobOwned === true
+    || (slotId != null && (CERES_ACTIVITY_SLOT_IDS.has(slotId) || slotId.startsWith('ceres_')))) {
+    return true;
+  }
+  const seed = state?.meta?.seed;
+  for (const slot of CERES_ACTIVITY_ACTOR_SLOTS) {
+    const worldRecordId = stableRecordId(
+      seed,
+      CERES_ACTIVITY_SECTOR_ID,
+      RECORD_KIND.CONVOY,
+      slot.worldRecordSlotId,
+    );
+    if (data.worldRecordId === worldRecordId || data.jobId === `job:${worldRecordId}`) return true;
+  }
+  return false;
+}
+
+function isObjectContainer(value) {
+  return value != null && typeof value === 'object';
+}
+
+function snapshotOwnValue(owner, field) {
+  const own = Object.prototype.hasOwnProperty.call(owner, field);
+  return { own, value: own ? owner[field] : undefined };
+}
+
+function restoreOwnValue(owner, field, snapshot) {
+  if (snapshot.own) owner[field] = snapshot.value;
+  else delete owner[field];
+}
+
+function responseSuccessorsMatch(record, data) {
+  return responseSuccessorMatches(record, data, 'ai')
+    && responseSuccessorMatches(record, data, 'combat')
+    && responseSuccessorMatches(record, data, 'intent');
+}
+
+function responseSuccessorMatches(record, data, field) {
+  const successors = record?.successors;
+  return !!successors && data?.[field] === successors[field];
+}
+
+function hasLiveIncident(state, incidentId) {
+  const incidents = state?.lawSecurity?.incidents;
+  if (!incidents || typeof incidents !== 'object') return false;
+  for (const key in incidents) {
+    if (!Object.prototype.hasOwnProperty.call(incidents, key)) continue;
+    const incident = incidents[key];
+    const status = incident?.status;
+    if (incident?.id === incidentId
+      && (status === 'distress' || status === 'responding' || status === 'monitoring')) return true;
+  }
+  return false;
+}
+
+function releaseControlWithoutForeignWrites(api, record, current, fullCapturedBinding) {
+  let displacedData = null;
+  let scratchData = null;
+  if (current?.alive && !fullCapturedBinding) {
+    displacedData = snapshotOwnValue(current, 'data');
+    scratchData = { intent: {} };
+    current.data = scratchData;
+  }
+  try {
+    return api.releaseControl(record.jobId, record.claimId);
+  } finally {
+    if (displacedData && current.data === scratchData) restoreOwnValue(current, 'data', displacedData);
+  }
+}
+
+function snapshotOwnFields(value, fields) {
+  const source = value && typeof value === 'object' ? value : null;
+  return fields.map((field) => (source && Object.prototype.hasOwnProperty.call(source, field)
+    ? { field, own: true, value: source[field] }
+    : { field, own: false, value: undefined }));
+}
+
+function restoreOwnFields(value, snapshot) {
+  if (!value || typeof value !== 'object' || !Array.isArray(snapshot)) return;
+  for (const record of snapshot) {
+    if (record.own) value[record.field] = record.value;
+    else delete value[record.field];
+  }
+}
+
+function eventEntityId(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  return payload.entityId ?? payload.id ?? payload.entity?.id ?? null;
+}
+
+function inspectionNow(state) {
+  const value = Number(state && state.simTime);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function lawfulInspectionLedger(state) {
+  const ledger = state && state.player && state.player.lawfulInspection;
+  return ledger && typeof ledger === 'object' && !Array.isArray(ledger) ? ledger : null;
+}
+
+function normalizedLawfulInspectionLedger(state) {
+  const player = state && state.player;
+  if (!player || player.lawfulInspection == null) return { ledger: null, valid: true };
+  const ledger = lawfulInspectionLedger(state);
+  if (!ledger) return { ledger: null, valid: false };
+  if (Object.hasOwn(ledger, 'settledPatrolIds') && !Array.isArray(ledger.settledPatrolIds)) {
+    return { ledger, valid: false };
+  }
+  if (!Number.isSafeInteger(ledger.sequence) || ledger.sequence < 0) ledger.sequence = 0;
+  ledger.settledPatrolIds = normalizedSettledPatrolIds(ledger.settledPatrolIds, ledger.last);
+  return { ledger, valid: true };
+}
+
+function normalizePersistedLawfulInspection(state) {
+  const normalized = normalizedLawfulInspectionLedger(state);
+  if (!normalized.valid || !normalized.ledger) return normalized;
+  const active = normalized.ledger.active;
+  // A partial/forged active case is never resumed across Continue. Its valid `last` record still
+  // seeds the settled set, while an unreadable live case produces no scan or owner effects.
+  if (active && !validLawfulInspectionCase(active)) normalized.ledger.active = null;
+  return normalized;
+}
+
+function normalizedSettledPatrolIds(rawIds, last) {
+  const normalized = [];
+  const append = (value) => {
+    const id = durableInspectionWorldRecordId(value);
+    if (!id) return;
+    const prior = normalized.indexOf(id);
+    if (prior >= 0) normalized.splice(prior, 1);
+    normalized.push(id);
+  };
+  if (Array.isArray(rawIds)) {
+    for (const value of rawIds) append(value);
+  }
+  // PQ-048.06's first released save shape had only `last`. Treat that valid durable receipt as
+  // the first settled actor, so old saves cannot reopen the same patrol after Continue.
+  append(last && last.patrolWorldRecordId);
+  return normalized.slice(-LAWFUL_INSPECTION_SETTLED_PATROL_CAP);
+}
+
+function settledPatrolIds(ledger) {
+  return new Set(Array.isArray(ledger && ledger.settledPatrolIds)
+    ? ledger.settledPatrolIds.filter(durableInspectionWorldRecordId)
+    : []);
+}
+
+function recordSettledPatrolId(ledger, worldRecordId) {
+  const id = durableInspectionWorldRecordId(worldRecordId);
+  if (!ledger || !id || !Array.isArray(ledger.settledPatrolIds)) return false;
+  ledger.settledPatrolIds = normalizedSettledPatrolIds([...ledger.settledPatrolIds, id], null);
+  return true;
+}
+
+function durableInspectionWorldRecordId(value) {
+  return typeof value === 'string' && value.length > 0 && value.length <= 256 && value.trim() === value
+    ? value
+    : null;
+}
+
+function validLawfulInspectionCase(active) {
+  return !!(active && typeof active === 'object' && !Array.isArray(active)
+    && typeof active.id === 'string' && active.id
+    && durableInspectionWorldRecordId(active.patrolWorldRecordId)
+    && typeof active.stationId === 'string' && active.stationId
+    && typeof active.factionId === 'string' && active.factionId
+    && (active.phase === 'offered' || active.phase === 'scanning'));
+}
+
+function ensureLawfulInspectionLedger(state) {
+  if (!state || !state.player) return null;
+  const normalized = normalizedLawfulInspectionLedger(state);
+  if (normalized.ledger || !normalized.valid) return normalized.valid ? normalized.ledger : null;
+  const ledger = { sequence: 0, active: null, last: null, settledPatrolIds: [] };
+  state.player.lawfulInspection = ledger;
+  return ledger;
+}
+
+function activeLawfulInspection(state) {
+  const active = lawfulInspectionLedger(state)?.active;
+  return validLawfulInspectionCase(active) ? active : null;
+}
+
+function canOfferLawfulInspection(state) {
+  if (!state || state.mode !== 'flight' || state.ui?.docked) return false;
+  if (currentSectorId(state) !== LAWFUL_INSPECTION_SECTOR_ID) return false;
+  const player = entityById(state, state.playerId);
+  return !!(player && player.alive !== false && player.pos);
+}
+
+function lawfulInspectionSuspicion(state, economySystem) {
+  if (economySystem && typeof economySystem.illicitCargo === 'function') {
+    const illicit = economySystem.illicitCargo(state);
+    if (Array.isArray(illicit) && illicit.length > 0) return 'illicit_cargo';
+  }
+  if (hotUntilActive(state?.player?.customsHotUntil, inspectionNow(state), LAWFUL_INSPECTION_FACTION_ID)) {
+    return 'customs_hot';
+  }
+  return null;
+}
+
+function hasLivePatrolScan(state) {
+  const live = state?.encounterDirector?.live;
+  if (!live || typeof live !== 'object') return false;
+  return Object.values(live).some((entry) => entry
+    && (entry.script === 'patrolScan' || entry.shapeId === 'patrol_scan'));
+}
+
+function selectHeliosInspectionPatrol(state, player, alreadySettled = new Set()) {
+  if (!player || !player.pos) return null;
+  const candidates = [];
+  forEachLivingWorldActor(state, (entity) => {
+    const worldRecordId = entity && entity.data && entity.data.worldRecordId;
+    if (!alreadySettled.has(worldRecordId)
+      && isEligibleHeliosInspectionPatrol(state, entity, player)
+      && distance2(player.pos, entity.pos) <= LAWFUL_INSPECTION_SCAN_RANGE * LAWFUL_INSPECTION_SCAN_RANGE) {
+      candidates.push(entity);
+    }
+  });
+  candidates.sort((a, b) => {
+    const d = distance2(a.pos, player.pos) - distance2(b.pos, player.pos);
+    if (d) return d;
+    return String(a.data.worldRecordId).localeCompare(String(b.data.worldRecordId));
+  });
+  return candidates[0] || null;
+}
+
+function isEligibleHeliosInspectionPatrol(state, patrol, player) {
+  if (!patrol || patrol.alive === false || patrol.type !== 'ship' || !patrol.pos || !player || !player.pos) return false;
+  if (currentSectorId(state) !== LAWFUL_INSPECTION_SECTOR_ID || patrol.factionId !== LAWFUL_INSPECTION_FACTION_ID) return false;
+  const data = patrol.data || {};
+  const ai = data.ai || {};
+  if (data.trafficRole !== 'patrol' || ai.lawful !== true
+    || !durableInspectionWorldRecordId(data.worldRecordId)) return false;
+  const homeSectorId = patrol.homeSectorId || data.homeSectorId || data.sectorId || null;
+  if (homeSectorId && homeSectorId !== LAWFUL_INSPECTION_SECTOR_ID) return false;
+  const playerProtection = protectedStationAt(state, player);
+  const patrolProtection = protectedStationAt(state, patrol);
+  return playerProtection?.stationId === LAWFUL_INSPECTION_STATION_ID
+    && patrolProtection?.stationId === LAWFUL_INSPECTION_STATION_ID;
+}
+
+function inspectionPatrolByWorldRecord(state, worldRecordId) {
+  if (!durableInspectionWorldRecordId(worldRecordId)) return null;
+  let match = null;
+  for (const entity of indexedShipLikeScan(state)) {
+    if (!entity || entity.alive === false || entity.type !== 'ship'
+      || entity.data?.worldRecordId !== worldRecordId) continue;
+    // A duplicate stable record is a corrupted/ambiguous rebind, never permission to inspect an
+    // arbitrary numeric entity. Wait for the small restore pass and then terminate cleanly.
+    if (match) return null;
+    match = entity;
+  }
+  return match;
+}
+
+function inspectionEventMatchesPatrol(state, payload, worldRecordId) {
+  if (!payload || !durableInspectionWorldRecordId(worldRecordId)) return false;
+  const eventEntity = payload.entity || entityById(state, eventEntityId(payload));
+  return !!(eventEntity && eventEntity.data?.worldRecordId === worldRecordId);
+}
+
+function publicLawfulInspection(activeCase) {
+  return {
+    id: activeCase.id,
+    patrolWorldRecordId: activeCase.patrolWorldRecordId,
+    stationId: activeCase.stationId,
+    sectorId: activeCase.sectorId,
+    factionId: activeCase.factionId,
+    suspicion: activeCase.suspicion,
+    phase: activeCase.phase,
+    offeredAt: activeCase.offeredAt,
+    deadlineAt: activeCase.deadlineAt,
+  };
+}
+
+function freshState() {
+  return {
+    version: LAW_SECURITY_VERSION,
+    incidents: {},
+    receipts: [],
+    nextAmbientScanTick: 0,
+    nextIncidentTick: 0,
+    wantedWarrant: null,
+    wantedCheckpoint: null,
+    wantedImpound: null,
+    // Kills the law evaluated as crimes but could not see: the bounded discovered-crime ledger.
+    // Keyed by the victim's STABLE id (victimStableId — world-record id where one exists, else the
+    // entity:<id> fallback). Entity ids recycle through freeIds, so an id-keyed ledger would let a
+    // new hull inherit a dead stranger's warrant or let a real crime escape a recycled key.
+    unreportedKills: {},
+    highSecWarrant: null,
+    highSecWantedS: 0,
+    highSecWarrantEpoch: 0,
+    highSecWarrantRetryTick: null,
+  };
+}
+
+function ensureState(state) {
+  if (!state.lawSecurity || typeof state.lawSecurity !== 'object' || Array.isArray(state.lawSecurity)) state.lawSecurity = freshState();
+  const own = state.lawSecurity;
+  own.version = LAW_SECURITY_VERSION;
+  if (!own.incidents || typeof own.incidents !== 'object' || Array.isArray(own.incidents)) own.incidents = {};
+  if (!Array.isArray(own.receipts)) own.receipts = [];
+  if (!Number.isInteger(own.nextAmbientScanTick)) own.nextAmbientScanTick = 0;
+  if (!Number.isInteger(own.nextIncidentTick)) own.nextIncidentTick = 0;
+  if (own.wantedWarrant != null && (typeof own.wantedWarrant !== 'object' || Array.isArray(own.wantedWarrant))) {
+    own.wantedWarrant = null;
+  }
+  if (own.wantedCheckpoint != null && (typeof own.wantedCheckpoint !== 'object' || Array.isArray(own.wantedCheckpoint))) {
+    own.wantedCheckpoint = null;
+  }
+  if (own.wantedImpound != null && (typeof own.wantedImpound !== 'object' || Array.isArray(own.wantedImpound))) {
+    own.wantedImpound = null;
+  }
+  if (own.highSecWarrant != null && (typeof own.highSecWarrant !== 'object' || Array.isArray(own.highSecWarrant))) {
+    own.highSecWarrant = null;
+  }
+  if (!own.unreportedKills || typeof own.unreportedKills !== 'object' || Array.isArray(own.unreportedKills)) {
+    own.unreportedKills = {};
+  }
+  // RC-CHASE — lazy: the key exists only while testimony is pending (serialize mirrors the
+  // reportedIncidents laziness contract); malformed contents fail closed.
+  if (own.witnessReports != null && (typeof own.witnessReports !== 'object' || Array.isArray(own.witnessReports))) {
+    own.witnessReports = {};
+  }
+  // Session-scoped (live entity ids) — never serialized, but normalize a torn shape anyway.
+  if (own.wantedSweep != null && (typeof own.wantedSweep !== 'object' || Array.isArray(own.wantedSweep))) {
+    own.wantedSweep = null;
+  }
+  if (!Number.isFinite(own.highSecWantedS) || own.highSecWantedS < 0) own.highSecWantedS = 0;
+  if (!Number.isInteger(own.highSecWarrantEpoch) || own.highSecWarrantEpoch < 0) own.highSecWarrantEpoch = 0;
+  return own;
+}
+
+function isArmedNpc(entity, state) {
+  if (!entity || entity.alive === false || entity.id === state.playerId || entity.type !== 'ship') return false;
+  return !!(entity.data && entity.data.ai);
+}
+
+function isPirateLike(entity) {
+  if (!entity) return false;
+  const data = entity && entity.data || {};
+  const ai = data.ai || {};
+  const words = `${ai.archetype || ''} ${ai.doctrine || ''} ${ai.role || ''} ${data.role || ''} ${entity.factionId || ''}`.toLowerCase();
+  return words.includes('pirate') || words.includes('raider') || words.includes('scavenger')
+    || words.includes('corsair') || entity.factionId === 'faction_reach';
+}
+
+/** Clear an uncommitted lawful shot. Already-fired ordnance is left where it is. */
+export function applyAcceptedSurrenderStandDown(ship, { playerId = null, causeId = null } = {}) {
+  if (!ship || !ship.data || !ship.data.ai || ship.data.ai.lawful !== true) {
+    return { stoodDown: false, reason: 'not_lawful' };
+  }
+  const ai = ship.data.ai;
+  const combat = ship.data.combat;
+  const intent = ship.data.intent;
+  const engaging = !!(combat && (combat.targetId === playerId || combat.lockTarget === playerId))
+    || !!(intent && intent.fire === true);
+  if (!engaging) return { stoodDown: false, reason: 'not_engaging' };
+  if (ai.stoodDownCause && causeId && ai.stoodDownCause !== causeId) {
+    return { stoodDown: false, reason: 'newer_cause', causeId: ai.stoodDownCause };
+  }
+  ai.roe = 'hold_fire';
+  ai.passive = true;
+  ai.forcePlayerTarget = false;
+  ai.stoodDownCause = causeId || ai.stoodDownCause || null;
+  if (intent) intent.fire = false;
+  if (combat && combat.targetId === playerId) {
+    combat.targetId = null;
+    combat.lockTarget = null;
+  }
+  return { stoodDown: true, causeId: ai.stoodDownCause, projectilesUntouched: true };
+}
+
+/** A later crime uses its own cause. The settled surrender accusation is not reapplied. */
+export function reopenLawFireForNewCause(ship, newCauseId) {
+  const ai = ship && ship.data && ship.data.ai;
+  if (!ai || !ai.stoodDownCause) return { reopened: false, reason: 'not_stood_down' };
+  if (!newCauseId || newCauseId === ai.stoodDownCause) {
+    return { reopened: false, reason: 'same_accusation' };
+  }
+  ai.stoodDownCause = null;
+  ai.passive = false;
+  ai.roe = 'weapons_free';
+  return { reopened: true, causeId: newCauseId };
+}
+
+export function composedRemainingText(composed) {
+  const rows = composed && typeof composed === 'object' ? Object.values(composed) : [];
+  const open = rows.filter((row) => row && row.status !== 'paid' && row.remainingCr > 0);
+  if (!open.length) return 'No open obligations.';
+  return open.map((row) => {
+    const what = row.forPerson ? `${row.kind} for ${row.forPerson}` : `${row.label || row.kind} (${row.causeId})`;
+    return `${what} — ${row.remainingCr} cr`;
+  }).join('; ');
+}
+
+// The adjudication's own protected-body definition, shared read-only with advisory
+// presentation (INF-078): a lawful hull or a protected civilian. Advisory callers never
+// adjudicate — they only name what the law would recognize.
+export { isLawProtectedBody };
+
+function isCivilianHauler(entity) {
+  if (!entity || entity.type !== 'ship') return false;
+  const data = entity.data || {};
+  if (data.activityActorSlotId === CERES_AMBUSH_HAULER_SLOT) return true;
+  const ai = data.ai || {};
+  const role = String(data.trafficRole || data.role || data.presentationRole || ai.role || ai.archetype || '').toLowerCase();
+  return role.includes('hauler');
+}
+
+function ceresDistressJurisdiction(state, victim) {
+  if (!state || !victim || !isCeresDistressSubject(state, victim)) return null;
+  if (currentSectorId(state) !== CERES_ACTIVITY_SECTOR_ID) return null;
+  const station = stationByPublicId(state, CERES_DISTRESS_STATION_ID);
+  if (!station || station.alive === false) return null;
+  return {
+    stationId: CERES_DISTRESS_STATION_ID,
+    entityId: station.id == null ? null : station.id,
+    factionId: station.factionId || station.data && station.data.factionId || 'faction_dmc',
+    radius: CERES_POCKET_DISTRESS_RADIUS,
+    rankFromVictim: true,
+  };
+}
+
+function isCeresDistressSubject(state, victim) {
+  if (isCivilianHauler(victim)) return true;
+  if (isJettisonedCargoPod(victim)) return true;
+  return isCivilianHauler(entityById(state, cargoPodOwnerId(victim)));
+}
+
+function resolveIncidentVictim(state, request) {
+  if (!request) return null;
+  if (request.victim && typeof request.victim === 'object') return request.victim;
+  return entityById(state, request.victimEntityId ?? request.victimId ?? request.ownerId);
+}
+
+function findCivilianHauler(state) {
+  let fallback = null;
+  let preferred = null;
+  forEachLivingWorldActor(state, (entity) => {
+    if (preferred || !isCivilianHauler(entity)) return;
+    if (entity.data && entity.data.activityActorSlotId === CERES_AMBUSH_HAULER_SLOT) {
+      preferred = entity;
+      return;
+    }
+    if (!fallback) fallback = entity;
+  });
+  return preferred || fallback;
+}
+
+export function cargoPodOwnerId(entity) {
+  if (!entity) return null;
+  const data = entity.data || {};
+  const identity = data.cargoIdentity && typeof data.cargoIdentity === 'object' ? data.cargoIdentity : null;
+  const ownership = data.ownership && typeof data.ownership === 'object' ? data.ownership : null;
+  const ownerId = data.ownerId
+    ?? entity.ownerId
+    ?? (ownership && ownership.ownerId)
+    ?? (identity && identity.ownerId);
+  return ownerId == null || ownerId === '' ? null : ownerId;
+}
+
+// A manifest pod's victim already priced by an accepted crime receipt (the kill) is not a second
+// theft. Shared by the theft door and the advisory owner read so they cannot drift apart.
+function manifestKillAlreadyPriced(state, ownerId) {
+  const victim = entityById(state, ownerId);
+  const killReportId = cleanLawId(`kill:${victimStableIdOf(victim, { id: ownerId })}`);
+  const killReceipt = killReportId && readReportedIncident(state, killReportId);
+  const ledger = state.lawSecurity && state.lawSecurity.reportedIncidents;
+  return !!((killReceipt && killReceipt.accepted === true && killReceipt.validatedCrime === true)
+    || (ledger && typeof ledger === 'object' && Object.values(ledger).some((r) => r
+      && r.accepted === true && r.validatedCrime === true
+      && (sameLawEntityId(r.victimEntityId, ownerId) || r.victimStableId === `entity:${ownerId}`))));
+}
+
+// X-05 advisory read (onboarding's owner read): the owner a payload_theft charge would name if a
+// lawful eye saw the player lift this lot, else null. Mirrors `_reportStolenCargoPod` /
+// `_reportTitledClaimChip` plus reportIncident's jurisdiction gate, so "you're wanted" is never
+// spoken over free loot, a custody pod, the player's own lot, a manifest pod whose kill already
+// carries the crime receipt, or a lot outside every jurisdiction. The witness stays the line's
+// own "in sight" condition. Pure read: never adjudicates, never writes.
+export function chargeableLotOwnerId(state, entity) {
+  if (!state || !entity || entity.alive === false || !entity.pos || !entity.data) return null;
+  const data = entity.data;
+  const isManifest = isCivilianManifestPayload(entity);
+  const isPod = isManifest || isJettisonedCargoPod(entity);
+  let ownerId = null;
+  if (isPod) {
+    if (data.freightCustodyPod) return null;
+    ownerId = cargoPodOwnerId(entity);
+  } else if (entity.type === 'pickup' && data.ownerId != null && data.npcMiningSource
+    && data.npcMiningSource.minerWorldRecordId != null
+    && String(data.ownerId) === String(data.npcMiningSource.minerWorldRecordId)) {
+    ownerId = data.ownerId;
+  }
+  if (ownerId == null || sameLawEntityId(ownerId, state.playerId)) return null;
+  if (isManifest && manifestKillAlreadyPriced(state, ownerId)) return null;
+  const victim = isPod ? entity : entityById(state, ownerId);
+  const jurisdiction = protectedStationAt(state, { pos: entity.pos })
+    || ceresDistressJurisdiction(state, victim)
+    || ceresDistressJurisdiction(state, findCivilianHauler(state));
+  return jurisdiction ? ownerId : null;
+}
+
+function sameLawEntityId(a, b) {
+  return a != null && b != null && String(a) === String(b);
+}
+
+function clearReserveArrivalPoint(point, aggressor, station, bodyRadius, occupied) {
+  if (!aggressor) return point;
+  const radius = Math.max(0, Number(bodyRadius) || 0);
+  const stationClearance = station && station.pos
+    ? Math.max(60, Number(station.radius) || 0, Number(station.data?.dockRadius) || 0)
+      + RESERVE_STATION_LAUNCH_CLEARANCE_WU
+    : 0;
+  const clear = (candidate) => {
+    if (stationClearance > 0
+      && Math.hypot(candidate.x - station.pos.x, candidate.z - station.pos.z) < stationClearance) return false;
+    return occupied.every((entity) => !entity || entity.alive === false || !entity.pos
+      || Math.hypot(candidate.x - entity.pos.x, candidate.z - entity.pos.z)
+        >= radius + Math.max(0, Number(entity.radius) || 0) + 8);
+  };
+  if (clear(point)) return point;
+  const heading = Math.atan2(point.z - aggressor.z, point.x - aggressor.x);
+  const inner = Math.max(40, Math.hypot(point.x - aggressor.x, point.z - aggressor.z));
+  const outer = Math.max(inner, WITNESS_FRAME_HALF_WU - 1);
+  for (let ring = 0; ring <= 8; ring++) {
+    const distance = inner + (outer - inner) * ring / 8;
+    for (let step = 0; step < 32; step++) {
+      const turn = Math.ceil(step / 2) * Math.PI / 16;
+      const angle = heading + (step % 2 === 0 ? turn : -turn);
+      const candidate = {
+        x: aggressor.x + Math.cos(angle) * distance,
+        z: aggressor.z + Math.sin(angle) * distance,
+      };
+      if (clear(candidate)) return candidate;
+    }
+  }
+  return null;
+}
+
+function incidentRingOrigin(incident, victim, station) {
+  if (incident && incident.rankFromVictim && victim && victim.pos) return victim.pos;
+  return station && station.pos || victim && victim.pos || (incident && incident.ringPos) || null;
+}
+
+function entityById(state, id) {
+  return id == null || !state || !state.entities || typeof state.entities.get !== 'function' ? null : state.entities.get(id) || null;
+}
+
+// Entity ids recycle through state.freeIds (core/entity.js): an incident-held id can resolve to a
+// projectile or traffic ship one tick after its body was removed. The occupant generation stamped
+// at spawn proves the id still names the same body (same contract as combat/actions.js
+// occupantMismatch: a recorded generation that no longer matches means the original is gone; a null
+// recording — fixture-authored entities — never mismatches).
+function incidentOccupant(state, id, generation) {
+  const entity = entityById(state, id);
+  if (!entity) return null;
+  return generation != null && occupantGenerationOf(entity) !== generation ? null : entity;
+}
+
+// RETURN_TO_ANCHOR tracks a world point, not a docking request. A station-center
+// response anchor would keep a patrol pressed into the hull (and a visiting berth
+// occupied) forever. Only move unsafe anchors; authored clear anchors remain exact.
+function stationReturnAnchor(anchor, station, responder) {
+  if (!anchor || !station || station.type !== 'station' || station.alive === false || !station.pos) return anchor;
+  const radius = Math.max(0, Number(station.radius) || 0, Number(station.data?.dockRadius) || 0)
+    + Math.max(0, Number(responder.radius) || 0) + 120;
+  // The 120-WU margin covers the normal approach volume plus steering/arrival slack.
+  const ax = anchor.x - station.pos.x;
+  const az = anchor.z - station.pos.z;
+  if (Math.hypot(ax, az) >= radius) return anchor;
+  // Return on the current side rather than asking the pilot to cross a solid station.
+  const dx = (responder.pos?.x ?? station.pos.x) - station.pos.x;
+  const dz = (responder.pos?.z ?? station.pos.z) - station.pos.z;
+  const distance = Math.hypot(dx, dz);
+  const angle = (hash32(String(responder.id)) / 0x100000000) * Math.PI * 2;
+  return {
+    x: station.pos.x + (distance > 0.001 ? dx / distance : Math.cos(angle)) * radius,
+    z: station.pos.z + (distance > 0.001 ? dz / distance : Math.sin(angle)) * radius,
+  };
+}
+
+function stationByPublicId(state, stationId) {
+  const indexed = state && state.entityIndex && state.entityIndex.byStationId;
+  if (indexed && typeof indexed.get === 'function' && indexed.has(stationId)) {
+    return indexed.get(stationId);
+  }
+  return findLivingWorldActor(state, (entity) => {
+    if (entity.type !== 'station') return false;
+    const id = entity.data && entity.data.stationId || entity.stationId || entity.id;
+    return String(id) === String(stationId);
+  });
+}
+
+function clearTarget(entity, targetId) {
+  if (!entity) return;
+  const data = entity.data || (entity.data = {});
+  const combat = data.combat || (data.combat = {});
+  clearCombatTarget(combat, targetId);
+  const intent = data.intent || (data.intent = {});
+  clearFiringIntent(intent);
+}
+
+function clearCombatTarget(combat, targetId) {
+  if (targetId == null || combat.targetId === targetId) combat.targetId = null;
+  if (targetId == null || combat.lockTarget === targetId) combat.lockTarget = null;
+}
+
+function clearFiringIntent(intent) {
+  intent.fire = false;
+  intent.fireGroup = null;
+}
+
+function sanctuaryWithdrawalVector(state, entity, target, jurisdiction) {
+  const center = protectionCenter(state, jurisdiction, target);
+  let dx = Number(entity && entity.pos && entity.pos.x) - Number(center && center.x);
+  let dz = Number(entity && entity.pos && entity.pos.z) - Number(center && center.z);
+  let length = Math.hypot(dx, dz);
+  if (length < 1e-6) {
+    dx = Number(entity && entity.pos && entity.pos.x) - Number(target && target.pos && target.pos.x);
+    dz = Number(entity && entity.pos && entity.pos.z) - Number(target && target.pos && target.pos.z);
+    length = Math.hypot(dx, dz);
+  }
+  if (length < 1e-6) {
+    dx = (entity.id & 1) === 0 ? 1 : -1;
+    dz = 0;
+    length = 1;
+  }
+  return { x: dx / length, z: dz / length };
+}
+
+function protectionCenter(state, jurisdiction, fallback) {
+  const station = entityById(state, jurisdiction && jurisdiction.entityId)
+    || stationByPublicId(state, jurisdiction && jurisdiction.stationId);
+  if (station && station.pos) return { x: station.pos.x, z: station.pos.z };
+  if (jurisdiction && jurisdiction.stationId === 'station_helios') {
+    return sectorGlobalOrigin('sector_helios_prime');
+  }
+  if (fallback && fallback.pos) return { x: fallback.pos.x, z: fallback.pos.z };
+  return { x: 0, z: 0 };
+}
+
+function currentSectorId(state) {
+  return state && state.world && state.world.currentSectorId || 'unknown';
+}
+
+function sectorSecurity(state) {
+  return effectiveLawSecurity(state);
+}
+
+export function effectiveLawSecurity(state) {
+  const id = currentSectorId(state);
+  const sec = state && state.world && state.world.sectors && state.world.sectors[id];
+  const baseline = Number.isFinite(sec && sec.security) ? sec.security : 0.5;
+  return effectiveRegionalSecurity(state, id, baseline);
+}
+
+function distance2(a, b) {
+  const dx = Number(a && a.x) - Number(b && b.x);
+  const dz = Number(a && a.z) - Number(b && b.z);
+  return dx * dx + dz * dz;
+}
+
+// Same {had,value} claim idiom as encounterDirector's restore snapshot: record whether the key
+// existed so stand-down can hand back exactly the pre-dispatch contract — present value restored,
+// absent stays absent.
+function ownSnapshot(object, key) {
+  return Object.prototype.hasOwnProperty.call(object, key)
+    ? { had: true, value: object[key] }
+    : { had: false, value: undefined };
+}
+
+function restoreSnapshot(object, key, snapshot) {
+  if (snapshot && snapshot.had) object[key] = snapshot.value;
+  else delete object[key];
+}
+
+function releaseResponseMoraleClaim(ai) {
+  if (!ai) return;
+  restoreSnapshot(ai, 'moraleImmune', ai[SECURITY_RESPONSE_MORALE_RESTORE]);
+  delete ai[SECURITY_RESPONSE_MORALE_RESTORE];
+}
+
+export function wantedWarrantFor(state) {
+  const own = state && state.lawSecurity;
+  return own && own.wantedWarrant ? publicWantedWarrant(own.wantedWarrant) : null;
+}
+
+export function wantedCheckpointFor(state) {
+  const own = state && state.lawSecurity;
+  return own && own.wantedCheckpoint ? publicWantedCheckpoint(own.wantedCheckpoint) : null;
+}
+
+export function wantedImpoundFor(state) {
+  const own = state && state.lawSecurity;
+  return own && own.wantedImpound ? publicWantedImpound(own.wantedImpound) : null;
+}
+
+function publicWantedImpound(pound) {
+  if (!pound) return null;
+  return {
+    poundId: pound.poundId,
+    billId: pound.billId,
+    yardId: pound.yardId,
+    lockId: pound.lockId,
+    clerkId: pound.clerkId,
+    targetId: pound.targetId,
+    tier: pound.tier,
+    postedAt: pound.postedAt,
+    open: pound.open !== false,
+    held: !!pound.held,
+    recoveredBy: pound.recoveredBy || null,
+    yard: pound.yard ? { x: pound.yard.x, z: pound.yard.z } : null,
+    lock: pound.lock ? { x: pound.lock.x, z: pound.lock.z } : null,
+    arrival: pound.arrival ? { x: pound.arrival.x, z: pound.arrival.z } : null,
+  };
+}
+
+function overlapsImpoundPad(entity, pad) {
+  if (!entity || !entity.pos || !pad || !pad.pos) return false;
+  const reach = (Number(entity.radius) || 8) + (Number(pad.radius) || WANTED_IMPOUND_PAD_RADIUS);
+  return distance2(entity.pos, pad.pos) <= reach * reach;
+}
+
+function publicWantedCheckpoint(checkpoint) {
+  if (!checkpoint) return null;
+  return {
+    checkpointId: checkpoint.checkpointId,
+    netId: checkpoint.netId,
+    cutterId: checkpoint.cutterId,
+    targetId: checkpoint.targetId,
+    tier: checkpoint.tier,
+    postedAt: checkpoint.postedAt,
+    intact: checkpoint.intact !== false,
+    held: !!checkpoint.held,
+    brokenBy: checkpoint.brokenBy || null,
+    lane: checkpoint.lane ? { x: checkpoint.lane.x, z: checkpoint.lane.z } : null,
+    arrival: checkpoint.arrival ? { x: checkpoint.arrival.x, z: checkpoint.arrival.z } : null,
+  };
+}
+
+function isWantedNetDecoy(entity) {
+  if (!entity || entity.alive === false || !entity.pos) return false;
+  if (isJettisonedCargoPod(entity)) return true;
+  const data = entity.data;
+  return !!(data && (data.thrownDecoy === true || data.wantedDecoy === true));
+}
+
+function findDecoyInCheckpointCone(state, net, player) {
+  const cone = customsScanConeOf(net);
+  if (!cone) return null;
+  const playerId = player && player.id;
+  let found = null;
+  forEachJobInteractable(state, (entity) => {
+    if (found || !isWantedNetDecoy(entity) || entity.id === playerId || entity.id === net.id) return;
+    if (pointInScanCone(cone.origin, cone.heading, cone.range, cone.halfAngle, entity.pos)) {
+      found = entity;
+    }
+  });
+  return found;
+}
+
+function overlapsWantedNet(entity, net) {
+  if (!entity || !entity.pos || !net || !net.pos) return false;
+  const reach = (Number(entity.radius) || 8) + (Number(net.radius) || WANTED_NET_RADIUS);
+  return distance2(entity.pos, net.pos) <= reach * reach;
+}
+
+// The fastest intercept the responder's authored hull-motion envelope allows — the same scale the
+// maneuver planner applies, so "can it reach the body" is answered with the planner's own numbers.
+function responderReachSpeed(responder) {
+  const scale = deriveEnemyMotionScale(hullIdFromEntity(responder));
+  return MANEUVER_SPEED_CAPS.interceptSpeed * (scale && Number.isFinite(scale.speed) && scale.speed > 0 ? scale.speed : 1);
+}
+
+function entitySpeed(entity) {
+  const vel = entity && entity.vel;
+  return Math.hypot(Number(vel && vel.x) || 0, Number(vel && vel.z) || 0);
+}
+
+function livePodAttachment(state, podId) {
+  const byId = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+  if (!byId || typeof byId !== 'object') return null;
+  for (const key in byId) {
+    const attachment = byId[key];
+    if (attachment && attachment.targetId === podId && attachment.state === 'active') return attachment;
+  }
+  return null;
+}
+
+function publicWantedWarrant(warrant) {
+  if (!warrant) return null;
+  return {
+    contractId: warrant.contractId,
+    hunterId: warrant.hunterId,
+    targetId: warrant.targetId,
+    tier: warrant.tier,
+    postedAt: warrant.postedAt,
+    arrival: warrant.arrival ? { x: warrant.arrival.x, z: warrant.arrival.z } : null,
+    sponsor: warrant.sponsor && warrant.sponsor.stationId
+      ? { stationId: warrant.sponsor.stationId, name: warrant.sponsor.name || null, feeCr: warrant.sponsor.feeCr }
+      : null,
+  };
+}
+
+// What CONTROL calls each incident cause on the air. The machine cause stays on the receipt.
+const INCIDENT_CAUSE_PHRASE = Object.freeze({
+  player_assault: 'Assault',
+  player_piracy: 'Piracy',
+  hostile_fire: 'Hostile fire',
+  npc_piracy: 'Piracy',
+});
+
+function incidentVictimLabel(state, victim) {
+  if (!victim) return null;
+  if (state && victim.id === state.playerId) return 'your ship';
+  const data = victim.data || {};
+  for (const name of [data.callsign, data.scanLabel]) {
+    if (typeof name === 'string' && name.trim()) return name.trim();
+  }
+  return null;
+}
+
+function incidentCitation(cause, victimLabel, etaS) {
+  const why = INCIDENT_CAUSE_PHRASE[cause];
+  if (!why) return null;
+  const eta = Number.isFinite(Number(etaS)) ? ` Patrol ETA ${Number(etaS).toFixed(2)} seconds.` : '';
+  return victimLabel ? `CONTROL: ${why} against ${victimLabel}.${eta}` : `CONTROL: ${why} reported.${eta}`;
+}
+
+function publicIncident(incident) {
+  return {
+    id: incident.id,
+    stationId: incident.stationId,
+    factionId: incident.factionId,
+    attackerId: incident.attackerId,
+    victimId: incident.victimId,
+    victimAnchor: incident.victimAnchor ? { ...incident.victimAnchor } : null,
+    cause: incident.cause,
+    status: incident.status,
+    outcome: incident.outcome || null,
+    responderIds: incident.responderIds.slice(),
+    startedAt: incident.startedAt,
+    dispatchAt: incident.dispatchAt || null,
+    dispatchedAt: incident.dispatchedAt || null,
+    dispatchDelayS: incident.dispatchDelayS || null,
+    responderCap: incident.responderCap || 0,
+    security: incident.security,
+    resolvedAt: incident.resolvedAt || null,
+  };
+}
+
+// ── PQ-019B incident-intake support ───────────────────────────────────────────────────────────────
+
+/**
+ * Bounded witness query radius. Only ever evaluated at a reported theft transition, never per frame.
+ *
+ * DELIBERATELY SMALLER than `LAWFUL_STATION_PROTECTION_MIN` (600 WU, engagementAuthority.js). A
+ * lawful station is itself a lawful witness, so if this radius were the larger of the two then every
+ * position inside a jurisdiction would automatically be inside witness range and the witness gate
+ * could never fire — a guard that cannot deny is not a guard. Being inside a legal ring and being
+ * SEEN are separate facts, and the packet requires the second one to be checkable.
+ */
+export const LAW_INCIDENT_WITNESS_RADIUS = 450;
+/** How far past the jurisdiction ring an already-existing lawful unit still counts as in range. */
+export const LAW_INCIDENT_RESPONDER_MARGIN = 1000;
+/** Hard cap on witnesses carried in a receipt. The query is bounded work, not an all-pairs scan. */
+export const LAW_INCIDENT_WITNESS_CAP = 8;
+const REPORTED_INCIDENT_CAP = 16;
+
+/**
+ * Stable ids of people who saw the act. The player, the offender, and a blank name are
+ * dropped. An empty result is the record: nothing here invents a witness or copies the
+ * player id in because it happens to be known.
+ */
+function directWitnessIds(state, groups) {
+  const playerId = state && state.playerId;
+  const banned = new Set(['player']);
+  if (playerId != null) {
+    banned.add(String(playerId));
+    banned.add(`entity:${playerId}`);
+  }
+  const out = [];
+  const seenIds = new Set();
+  const lists = Array.isArray(groups) ? groups : [];
+  for (let g = 0; g < lists.length; g++) {
+    const group = lists[g];
+    if (!group) continue;
+    for (let i = 0; i < group.length; i++) {
+      const witness = group[i];
+      if (!witness) continue;
+      if (playerId != null && witness.entityId != null && witness.entityId === playerId) continue;
+      const id = witness.stableId != null ? String(witness.stableId) : '';
+      if (!id || banned.has(id) || seenIds.has(id)) continue;
+      seenIds.add(id);
+      out.push(id);
+      if (out.length >= LAW_INCIDENT_WITNESS_CAP) return out;
+    }
+  }
+  return out;
+}
+
+/** Entity kinds a player kill can be adjudicated over. Wrecks/pickups/rocks are not victims. */
+const LAW_KILL_ADJUDICATION_TYPES = new Set(['ship', 'fighter', 'drone', 'hauler', 'capital', 'station']);
+/** The kill gate reuses the theft-report eyes: same radius, same "who could see the act" rule. */
+const LAW_KILL_WITNESS_RADIUS = LAW_INCIDENT_WITNESS_RADIUS;
+/** Lawful dock clearance: assessed fine for the two escapable tiers, real credits, never free. */
+/** Same length as the impound shift: a chosen fine can be worked off instead of paid. */
+const LAW_FINE_WORK_S = 4;
+/** Engines cut, holding still, inside a lawful cone. Surrender is not instant and not free. */
+const LAW_SURRENDER_HOLD_S = 4;
+const LAW_SURRENDER_MAX_SPEED = 0.75;
+
+// ── inf-patrol-challenge — the standing-heat challenge ─────────────────────────────────────
+// A wanted pilot used to be invisible to the ambient cast: the patrols on their routes kept
+// orbiting as if the sheet were not there, and the first reaction came later, from a hunter
+// wing spawned off-screen. The law now reads its own record EARLY: the ambient lawful patrol
+// that acquires a wanted hull breaks its route, holds a standoff ring off the beam, and names
+// the sheet on the band — once per patrol per heat episode, well before any scan cone or
+// seeded hunter. The challenge is pressure, not a fight: stamped hulls stay passive/HOLD_FIRE
+// (the heat owner owns violence through its own seeded waves), and the stamp is a plain fact
+// traffic's stepper flies to (traffic.js reads data.heatChallenge, never writes it).
+export const LAW_HEAT_CHALLENGE_ACQUIRE_WU = LAW_INCIDENT_WITNESS_RADIUS;
+export const LAW_HEAT_CHALLENGE_STANDOFF_WU = 220;
+export const LAW_HEAT_CHALLENGE_RELEASE_WU = LAW_INCIDENT_WITNESS_RADIUS * 2;
+/** Continuous time outside the release ring before a challenged patrol falls back to its route. */
+export const LAW_HEAT_CHALLENGE_RELEASE_S = 6;
+/** Watch cadence (ticks at 60 Hz), same order as the ambient stamp watch. */
+const LAW_HEAT_CHALLENGE_WATCH_TICKS = 30;
+
+const LAW_COMPOSED_CAP = 24;
+const MEMORIAL_SITE_CAP = 16;
+const OBLIGATION_KINDS = new Set(['toll', 'warrant', 'restitution']);
+
+/**
+ * The reported-incident ledger, created ONLY on first actual use.
+ *
+ * Lazy on purpose. `check:sim:compare` replays the golden run through a save/restore boundary, and a
+ * key that materializes in `init`/`newGame`/`ensureState` would exist on one leg of that comparison
+ * and not the other. No heist is scheduled in the golden scenario, so this object is never built
+ * there and the seam is provably inert.
+ *
+ * Durable: `unreportedKills`/`reportedIncidents` ride the save owner's capture plan through this
+ * system's serialize()/deserialize(). Content-hashed `incidentReceiptId` plus the player's durable
+ * applied-incident ledger keep cross-reload idempotence honest even if a receipt is re-emitted.
+ */
+function readReportedIncident(state, reportId) {
+  const own = state && state.lawSecurity;
+  const ledger = own && own.reportedIncidents;
+  return ledger && typeof ledger === 'object' && !Array.isArray(ledger)
+    ? ledger[reportId] || null
+    : null;
+}
+
+function storeReportedIncident(state, receipt) {
+  const own = ensureState(state);
+  if (!own.reportedIncidents || typeof own.reportedIncidents !== 'object'
+    || Array.isArray(own.reportedIncidents)) {
+    own.reportedIncidents = {};
+  }
+  own.reportedIncidents[receipt.reportId] = receipt;
+  const keys = Object.keys(own.reportedIncidents);
+  while (keys.length > REPORTED_INCIDENT_CAP) delete own.reportedIncidents[keys.shift()];
+  return receipt;
+}
+
+function cleanLawId(value) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 && trimmed.length <= 200 && !trimmed.includes('|') ? trimmed : null;
+}
+
+function finiteLawPoint(pos) {
+  return pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)
+    ? { x: pos.x, z: pos.z }
+    : null;
+}
+
+// PB-CONS-A / SF-151 — what counts as cover at law ranges. The witness gate asks "could a
+// person there actually see the act": a station bulk, a rock, a hulk — bodies a crime can be
+// hidden behind — block the sightline through the same proxy-aware segment test the customs
+// cone uses (`scanLineOccluded`). Ordinary hulls are deliberately NOT cover here, unlike the
+// 90-WU customs pod cone where a ship hides a pod: at a 450-WU kill radius a passing ship is a
+// sliver, and letting incidental traffic blind every witness would make the charge depend on
+// formation noise rather than on the act itself. `data.sensorBlocking === true` opts a body in.
+const LAW_WITNESS_OCCLUDER_TYPES = new Set(['station', 'asteroid', 'planet', 'wreck', 'debris']);
+
+// One collection + proxy-resolution pass shared by every witness candidate in a query —
+// a witnessed kill evaluates tens of candidates against the same world, so the entity walk,
+// field-rock walk, manifest resolution, and primitive expansion happen once per query
+// instead of once per candidate. The candidate evaluator below mirrors scanLineOccluded
+// verdict-for-verdict on the prepared views.
+//
+// The plan is query-independent (it depends only on the entity set, their poses, and the
+// field rocks), so every witness query in one tick shares one build — a kill that asks both
+// the lawful and the civilian question pays the walk once, and callers that find zero
+// candidates never build it at all (lazy, below). Membership is keyed on tick + map size +
+// index version + rock count: alive/collides flips are re-checked per candidate at eval,
+// spawns and removals change the key, and a new tick rebuilds with fresh poses.
+const LAW_WITNESS_PLAN_MEMO = new WeakMap();
+// A same-tick continuous enter can swap `world.asteroidField` for a field whose rocks array is
+// exactly the same length — count alone would serve the previous sector's prepared rows. The
+// key folds the rocks array's identity (per-instance stamp), not just its length.
+const LAW_WITNESS_ROCKS_ARRAY_IDS = new WeakMap();
+let lawWitnessRocksArrayNextId = 0;
+
+function lawWitnessRocksArrayId(field) {
+  const rocks = field && field.rocks;
+  if (!Array.isArray(rocks)) return -1;
+  let id = LAW_WITNESS_ROCKS_ARRAY_IDS.get(rocks);
+  if (id === undefined) {
+    id = ++lawWitnessRocksArrayNextId;
+    LAW_WITNESS_ROCKS_ARRAY_IDS.set(rocks, id);
+  }
+  return id;
+}
+
+function lawWitnessOccluderPlan(state) {
+  const entities = state && state.entities;
+  const size = entities && typeof entities.size === 'number' ? entities.size : -1;
+  const field = state && state.world && state.world.asteroidField;
+  const rocks = field && Array.isArray(field.rocks) ? field.rocks.length : -1;
+  const key = `${(state && state.tick) | 0}|${size}|${entityIndexVersion(state) ?? 'nv'}|${rocks}:${lawWitnessRocksArrayId(field)}`;
+  const hit = LAW_WITNESS_PLAN_MEMO.get(state);
+  if (hit && hit.key === key) return hit.plan;
+  const plan = buildLawWitnessOccluderPlan(state);
+  LAW_WITNESS_PLAN_MEMO.set(state, { key, plan });
+  return plan;
+}
+
+// Plan rows partition at build, mirroring the lineOfSight twin: physics-fixed occluders
+// (stations, gates, landmarks and any body past the isFixedPhysicsEntity radius threshold)
+// cannot move inside a membership-stable memo, and parked field-resident rocks (vel ~0,
+// liveEntityId null — the only pose writer, the ballistic advance, needs a nonzero vel or an
+// itinerary) are still for the same span. Those bucket by pos±reach once; grid cells near
+// the segment are the only small-reach rows evaluated. Reach beyond the cell size and every
+// mobile row stays in the always-walked lane: a center that moved into the segment ball while
+// its bucket stayed outside is a miss direction nothing downstream re-verifies.
+const LAW_WITNESS_SPATIAL_CELL = 256;
+let lawWitnessPlanQueryStamp = 0;
+
+function lawWitnessPlanRowIsStill(occ) {
+  if (!occ || typeof occ !== 'object') return false;
+  if (occ.fieldResident === true) {
+    if (occ.liveEntityId != null) return false;
+    const vx = occ.vel ? Math.abs(Number(occ.vel.x) || 0) : 0;
+    const vz = occ.vel ? Math.abs(Number(occ.vel.z) || 0) : 0;
+    return vx <= 1e-6 && vz <= 1e-6 && !occ.intent;
+  }
+  return !isDynamicPhysicsBodyEntity(occ);
+}
+
+function lawWitnessPlanInsert(plan, rec) {
+  const occ = rec.occ;
+  const px = occ && occ.pos ? Number(occ.pos.x) : NaN;
+  const pz = occ && occ.pos ? Number(occ.pos.z) : NaN;
+  if (lawWitnessPlanRowIsStill(occ) && Number.isFinite(px) && Number.isFinite(pz)
+      && rec.reach <= LAW_WITNESS_SPATIAL_CELL) {
+    const x0 = Math.floor((px - rec.reach) / LAW_WITNESS_SPATIAL_CELL);
+    const x1 = Math.floor((px + rec.reach) / LAW_WITNESS_SPATIAL_CELL);
+    const z0 = Math.floor((pz - rec.reach) / LAW_WITNESS_SPATIAL_CELL);
+    const z1 = Math.floor((pz + rec.reach) / LAW_WITNESS_SPATIAL_CELL);
+    for (let cx = x0; cx <= x1; cx++) {
+      let row = plan.grid.get(cx);
+      if (!row) { row = new Map(); plan.grid.set(cx, row); }
+      for (let cz = z0; cz <= z1; cz++) {
+        let bucket = row.get(cz);
+        if (!bucket) { bucket = []; row.set(cz, bucket); }
+        bucket.push(rec);
+      }
+    }
+    return;
+  }
+  plan.dynamic.push(rec);
+}
+
+function buildLawWitnessOccluderPlan(state) {
+  const plan = { dynamic: [], grid: new Map() };
+  const entities = state && state.entities;
+  if (entities && typeof entities.values === 'function') {
+    for (const occ of entities.values()) {
+      if (!occ || occ.type === 'asteroid') continue; // every rock is walked by forEachFieldRock
+      if (!LAW_WITNESS_OCCLUDER_TYPES.has(occ.type)
+        && !(occ.data && occ.data.sensorBlocking === true)) continue;
+      lawWitnessPlanInsert(plan, lawWitnessOccluderView(occ));
+    }
+  }
+  forEachFieldRock(state, (rec) => { lawWitnessPlanInsert(plan, lawWitnessOccluderView(rec)); });
+  return plan;
+}
+
+// World-space view memoized per body on the function's exact input space — manifest identity,
+// scale inputs (dockRadius/radius), the raw corridorBearingDeg stamp (approach-framed
+// manifests read it unsnapped), and world pose. The plan's occluders are overwhelmingly
+// static bodies that would otherwise re-derive identical primitive arrays every step.
+const LAW_WITNESS_VIEW_MEMO = new WeakMap();
+
+function lawWitnessOccluderView(occ) {
+  const manifest = (occ && (occ.data || occ.type || occ.physicsBody))
+    ? resolveCollisionProxyManifest(occ)
+    : null;
+  const px = occ && occ.pos && Number.isFinite(occ.pos.x) ? occ.pos.x : 0;
+  const pz = occ && occ.pos && Number.isFinite(occ.pos.z) ? occ.pos.z : 0;
+  const rot = occ && Number.isFinite(occ.rot) ? occ.rot : 0;
+  const radius = Math.max(0, Number(occ && occ.radius) || 0);
+  const bearing = occ && occ.data && Number.isFinite(occ.data.corridorBearingDeg)
+    ? occ.data.corridorBearingDeg
+    : null;
+  const scale = manifest ? proxyScaleFor(occ, manifest) : 0;
+  const hit = LAW_WITNESS_VIEW_MEMO.get(occ);
+  if (hit && hit.manifest === manifest && hit.px === px && hit.pz === pz && hit.rot === rot
+    && hit.radius === radius && hit.bearing === bearing && hit.scale === scale) {
+    return hit.view;
+  }
+  const view = buildLawWitnessOccluderView(occ, manifest);
+  LAW_WITNESS_VIEW_MEMO.set(occ, { manifest, px, pz, rot, radius, bearing, scale, view });
+  return view;
+}
+
+function buildLawWitnessOccluderView(occ, manifest) {
+  if (!manifest) {
+    return { occ, primitives: null, reach: Math.max(0, Number(occ && occ.radius) || 0) };
+  }
+  const primitives = proxyWorldPrimitives(occ, manifest);
+  // Furthest primitive surface from the body's own origin, in the same finite() frame the
+  // primitives were placed — a provable over-cover of every occlusion shape.
+  const px = occ && occ.pos && Number.isFinite(occ.pos.x) ? occ.pos.x : 0;
+  const pz = occ && occ.pos && Number.isFinite(occ.pos.z) ? occ.pos.z : 0;
+  let reach = 0;
+  for (const primitive of primitives) {
+    let extent = 0;
+    if (primitive.kind === 'capsule') {
+      extent = Math.max(
+        Math.hypot(primitive.ax - px, primitive.az - pz),
+        Math.hypot(primitive.bx - px, primitive.bz - pz),
+      ) + Math.max(0, Number(primitive.r) || 0);
+    } else {
+      const body = primitive.kind === 'obb'
+        ? Math.hypot(Number(primitive.hx) || 0, Number(primitive.hz) || 0)
+        : Math.max(0, Number(primitive.r) || 0);
+      extent = Math.hypot(primitive.x - px, primitive.z - pz) + body;
+    }
+    if (extent > reach) reach = extent;
+  }
+  return { occ, primitives, reach };
+}
+
+// One row's full accept chain, verbatim from the flat walk — shared by the dynamic lane and
+// the grid lane so the two-tier eval keeps an identical verdict.
+function lawWitnessRowBlocked(rec, observer, targetPos, ignoredIds, ax, az, bx, bz, mx, mz, halfLen) {
+  const occ = rec.occ;
+  if (!occ || occ.alive === false || occ.collides === false || !occ.pos) return false;
+  if (occ === observer || occ.id === observer.id) return false;
+  if (ignoredIds && ignoredIds.has(occ.id)) return false;
+  // Every surface point of this occluder sits within `reach` of its origin; a center outside
+  // the segment's enclosing ball cannot intersect — identical verdict, no segment math.
+  const dxm = occ.pos.x - mx;
+  const dzm = occ.pos.z - mz;
+  const bound = halfLen + rec.reach;
+  if (dxm * dxm + dzm * dzm > bound * bound) return false;
+  if (rec.primitives) {
+    // segmentHitsProxy's finite guards, preserved verbatim.
+    if (!Number.isFinite(occ.pos.x) || !Number.isFinite(occ.pos.z)
+      || !Number.isFinite(ax) || !Number.isFinite(az)
+      || !Number.isFinite(bx) || !Number.isFinite(bz)) return false;
+    for (const primitive of rec.primitives) {
+      if (primitiveBlocksSegment(observer.pos, targetPos, primitive)) return true;
+    }
+    return false;
+  }
+  // Disc fallback identical to scanLineOccluded's radius path.
+  const r = rec.reach;
+  if (!(r > 0)) return false;
+  const abx = bx - ax;
+  const abz = bz - az;
+  const acx = occ.pos.x - ax;
+  const acz = occ.pos.z - az;
+  const abLen2 = abx * abx + abz * abz;
+  if (!(abLen2 > 1e-8)) {
+    if (Math.hypot(acx, acz) <= r) return true;
+    return false;
+  }
+  let t = (acx * abx + acz * abz) / abLen2;
+  if (t < 0) t = 0;
+  else if (t > 1) t = 1;
+  const dx = ax + abx * t - occ.pos.x;
+  const dz = az + abz * t - occ.pos.z;
+  if (dx * dx + dz * dz <= r * r) return true;
+  return false;
+}
+
+function lawWitnessSightBlocked(state, observer, targetPos, ignoredIds, occluders) {
+  if (!observer || !observer.pos || !targetPos || !occluders) return false;
+  const ax = observer.pos.x;
+  const az = observer.pos.z;
+  const bx = targetPos.x;
+  const bz = targetPos.z;
+  const mx = (ax + bx) * 0.5;
+  const mz = (az + bz) * 0.5;
+  const halfLen = Math.hypot(bx - ax, bz - az) * 0.5;
+  // Flat arrays still serve callers that hand-roll their own occluder list (customs cones).
+  const flat = Array.isArray(occluders) ? occluders : occluders.dynamic;
+  if (flat) {
+    for (const rec of flat) {
+      if (lawWitnessRowBlocked(rec, observer, targetPos, ignoredIds, ax, az, bx, bz, mx, mz, halfLen)) return true;
+    }
+  }
+  const grid = Array.isArray(occluders) ? null : occluders.grid;
+  if (!grid) return false;
+  // Cells overlapped by the segment ball dilated by the cell size — a grid row's bucket span
+  // covers pos±reach with reach <= cell, so any possible blocker's center sits inside this
+  // square and its own cell is visited. Superset of the bound test (lineOfSight twin).
+  const span = halfLen + LAW_WITNESS_SPATIAL_CELL;
+  const gx0 = Math.floor((mx - span) / LAW_WITNESS_SPATIAL_CELL);
+  const gx1 = Math.floor((mx + span) / LAW_WITNESS_SPATIAL_CELL);
+  const gz0 = Math.floor((mz - span) / LAW_WITNESS_SPATIAL_CELL);
+  const gz1 = Math.floor((mz + span) / LAW_WITNESS_SPATIAL_CELL);
+  const stamp = ++lawWitnessPlanQueryStamp;
+  for (let cx = gx0; cx <= gx1; cx++) {
+    const gridRow = grid.get(cx);
+    if (!gridRow) continue;
+    for (let cz = gz0; cz <= gz1; cz++) {
+      const bucket = gridRow.get(cz);
+      if (!bucket) continue;
+      for (const rec of bucket) {
+        if (rec._wq === stamp) continue;
+        rec._wq = stamp;
+        if (lawWitnessRowBlocked(rec, observer, targetPos, ignoredIds, ax, az, bx, bz, mx, mz, halfLen)) return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Who could see this. There is NO witness owner in the live codebase — jurisdiction
+ * (`protectedStationAt`) and responder ranking (`rankLawfulResponders`) exist, witnesses do not — so
+ * this predicate is introduced here rather than reused, and is kept deliberately narrow:
+ *
+ *   * a lawful unit (`isLawful`: `ai.lawful === true`, or a lawful-faction station), or
+ *   * an entity an owner has explicitly marked `data.lawWitness === true`.
+ *
+ * The marker exists so a facility or authored actor can be a witness without this file learning what
+ * a heist is. Sorted by distance then stable id, capped — deterministic and bounded.
+ *
+ * SF-151: "in range" is not "could see". A candidate fully occluded by real cover is blind and
+ * is dropped before it can sign an accusation; the observer's own hull and any caller-ignored
+ * ids (victim, offender) never occlude.
+ */
+export function lawWitnessesNear(state, { pos, offenderEntityId = null, radius = LAW_INCIDENT_WITNESS_RADIUS, ignoreEntityIds = null } = {}) {
+  const anchor = finiteLawPoint(pos);
+  if (!state || !anchor) return [];
+  const limitSq = Math.max(0, Number(radius) || 0) ** 2;
+  const ignoredOccluders = new Set();
+  if (offenderEntityId != null) ignoredOccluders.add(offenderEntityId);
+  if (state.playerId != null) ignoredOccluders.add(state.playerId);
+  if (ignoreEntityIds) {
+    for (const id of ignoreEntityIds) { if (id != null) ignoredOccluders.add(id); }
+  }
+  const out = [];
+  const seen = new Set();
+  let occluders = null;
+  const occluderPlan = () => occluders || (occluders = lawWitnessOccluderPlan(state));
+  const consider = (entity) => {
+    if (!entity || !entity.pos) return;
+    if (offenderEntityId != null && entity.id === offenderEntityId) return;
+    if (entity.id === state.playerId) return;
+    if (seen.has(entity.id)) return;
+    if (!isLawful(entity) && entity.data?.lawWitness !== true) return;
+    const d2 = distance2(entity.pos, anchor);
+    if (d2 > limitSq) return;
+    if (lawWitnessSightBlocked(state, entity, anchor, ignoredOccluders, occluderPlan())) return;
+    seen.add(entity.id);
+    out.push({
+      stableId: String(entity.data?.worldRecordId
+        || entity.data?.stationId
+        || entity.data?.heistFacilityId
+        || `entity:${entity.id}`),
+      entityId: entity.id,
+      distanceSq: d2,
+      lawful: isLawful(entity),
+    });
+  };
+  // Living-world actors never include dressing FX. Authored heist/facility markers opt in with
+  // `data.lawWitness` and live on that dressing type, so they have their own walk.
+  forEachLivingWorldActor(state, consider);
+  forEachExplicitWitnessMarker(state, consider);
+  return out
+    .sort((a, b) => a.distanceSq - b.distanceSq || a.stableId.localeCompare(b.stableId))
+    .slice(0, LAW_INCIDENT_WITNESS_CAP);
+}
+
+/**
+ * Civilian eyes on a kill. `lawWitnessesNear` is deliberately narrow (lawful units and marked
+ * witnesses) because a theft report needs a reporting party; a watched MURDER is different —
+ * the hauler who saw you vent a ship three hundred meters off her bow calls it in. Protected
+ * civilians (`isProtectedCivilian`) inside the same radius therefore count as kill witnesses.
+ * Entities already collected as lawful witnesses are skipped by id, so the combined list is
+ * still deterministic, sorted, and capped by the caller.
+ */
+function civilianKillWitnessesNear(state, pos, offenderEntityId, alreadyCollected, victimEntityId = null, impactorEntityId = null) {
+  const anchor = finiteLawPoint(pos);
+  if (!state || !anchor) return [];
+  const limitSq = LAW_KILL_WITNESS_RADIUS ** 2;
+  const taken = new Set((alreadyCollected || []).map((w) => w.entityId));
+  const ignoredOccluders = new Set();
+  if (offenderEntityId != null) ignoredOccluders.add(offenderEntityId);
+  if (state.playerId != null) ignoredOccluders.add(state.playerId);
+  if (victimEntityId != null) ignoredOccluders.add(victimEntityId);
+  // The body the victim struck never counts as an occluder of its own kill.
+  if (impactorEntityId != null) ignoredOccluders.add(impactorEntityId);
+  const out = [];
+  let occluders = null;
+  const occluderPlan = () => occluders || (occluders = lawWitnessOccluderPlan(state));
+  forEachLivingWorldActor(state, (entity) => {
+    if (!entity || !entity.pos || entity.alive === false) return;
+    if (entity.id === offenderEntityId || entity.id === state.playerId) return;
+    if (victimEntityId != null && entity.id === victimEntityId) return; // the dead cannot testify
+    if (taken.has(entity.id)) return;
+    if (!isProtectedCivilian(entity)) return;
+    const d2 = distance2(entity.pos, anchor);
+    if (d2 > limitSq) return;
+    // Civilian eyes obey the same sight rule — a hauler behind a station did not watch it.
+    if (lawWitnessSightBlocked(state, entity, anchor, ignoredOccluders, occluderPlan())) return;
+    out.push({
+      stableId: String(entity.data?.worldRecordId
+        || entity.data?.stationId
+        || `entity:${entity.id}`),
+      entityId: entity.id,
+      distanceSq: d2,
+      lawful: false,
+      civilian: true,
+    });
+  });
+  return out.sort((a, b) => a.distanceSq - b.distanceSq || a.stableId.localeCompare(b.stableId));
+}
+
+/** Locate a durable aftermath marker by markerId across sectors (event-driven, never per-tick). */
+function findAftermathMarker(state, markerId) {
+  const bySector = state && state.aftermathWrecks && state.aftermathWrecks.bySector;
+  if (!markerId || !bySector || typeof bySector !== 'object') return null;
+  for (const sectorId of Object.keys(bySector)) {
+    const markers = bySector[sectorId];
+    if (!Array.isArray(markers)) continue;
+    for (const marker of markers) {
+      if (marker && marker.markerId === markerId) return marker;
+    }
+  }
+  return null;
+}
+
+/** Stable identity for a kill victim, for the idempotent report key and the receipt. */
+function victimStableIdOf(victim, payload) {
+  const data = victim && victim.data || {};
+  const id = data.worldRecordId
+    || data.stationId
+    || (payload && payload.id != null ? `entity:${payload.id}` : null)
+    || (victim && victim.id != null ? `entity:${victim.id}` : null);
+  return id == null ? null : String(id);
+}
+
+/** Defensive deep copy for save-bound state (JSON-safe shapes only; unreadable → null). */
+function cloneLawPlain(value) {
+  if (value == null || typeof value !== 'object') return value;
+  try { return JSON.parse(JSON.stringify(value)); } catch (_) { return null; }
+}
+
+/**
+ * Pending-case entries a restored save is allowed to reopen. A case must be able to convict:
+ * stable victim id, the SAME reportId the witnessed path would mint, a chargeable kind, and the
+ * kill tick the wreck's black box is checked against. Anything less fails closed — a malformed
+ * entry is dropped, never trusted. Re-keyed by victimStableId so a crafted map key cannot smuggle
+ * an entry under a name that is not its own.
+ */
+function normalizeUnreportedKillLedger(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const key of Object.keys(raw).slice(0, UNREPORTED_KILL_CAP * 2)) {
+    const e = raw[key];
+    if (!e || typeof e !== 'object' || Array.isArray(e)) continue;
+    const victimStableId = typeof e.victimStableId === 'string' && e.victimStableId.trim()
+      ? e.victimStableId : null;
+    const reportId = cleanLawId(e.reportId);
+    const kind = typeof e.kind === 'string' && e.kind.trim() ? e.kind : null;
+    if (victimStableId == null || reportId == null || kind == null) continue;
+    if (e.victimEntityId == null) continue;
+    const forPerson = typeof e.forPerson === 'string' && e.forPerson.trim()
+      ? e.forPerson.trim().slice(0, 80) : '';
+    const restitutionCr = Math.round(Number(e.restitutionCr));
+    const row = {
+      victimEntityId: e.victimEntityId,
+      victimStableId,
+      victimClass: typeof e.victimClass === 'string' && e.victimClass ? e.victimClass : null,
+      victimFactionId: typeof e.victimFactionId === 'string' && e.victimFactionId ? e.victimFactionId : null,
+      kind,
+      killCause: typeof e.killCause === 'string' && e.killCause ? e.killCause : null,
+      surface: typeof e.surface === 'string' && e.surface ? e.surface : null,
+      pos: finiteLawPoint(e.pos),
+      causalTick: Number.isInteger(e.causalTick) && e.causalTick >= 0 ? e.causalTick : 0,
+      reportId,
+    };
+    if (forPerson && restitutionCr > 0) {
+      row.forPerson = forPerson;
+      row.restitutionCr = restitutionCr;
+      if (e.recovery) row.recovery = normalizeRestitutionRecovery(e.recovery);
+    }
+    out[victimStableId] = row;
+    if (Object.keys(out).length >= UNREPORTED_KILL_CAP) break;
+  }
+  return out;
+}
+
+/**
+ * Priced-incident receipts a restored save may re-emit for dedupe. Keep only receipts that still
+ * satisfy the contract the heat owner reads (accepted, law-signed, identified, kinded) and file
+ * each under its own reportId — a mismatched map key is evidence of a torn write, not authority.
+ */
+function normalizeReportedIncidentLedger(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const key of Object.keys(raw).slice(0, REPORTED_INCIDENT_CAP * 2)) {
+    const receipt = cloneLawPlain(raw[key]);
+    if (!receipt || typeof receipt !== 'object' || Array.isArray(receipt)) continue;
+    const reportId = cleanLawId(receipt.reportId);
+    if (reportId == null || reportId !== key) continue;
+    if (receipt.accepted !== true || receipt.source !== 'lawSecurity') continue;
+    if (typeof receipt.incidentReceiptId !== 'string' || !receipt.incidentReceiptId) continue;
+    if (typeof receipt.kind !== 'string' || !receipt.kind) continue;
+    out[reportId] = receipt;
+    if (Object.keys(out).length >= REPORTED_INCIDENT_CAP) break;
+  }
+  return out;
+}
+
+/**
+ * RC-CHASE — pending civilian testimony a restored save is allowed to reopen. A queued report
+ * must still be able to convict on delivery: the SAME reportId the witnessed path mints, the
+ * victim's stable id, a chargeable kind, the kill tick, and the carrier's stable id (the only
+ * identity that survives a save boundary). Live carrier ids/generations are kept as rebind
+ * hints only — `_resolveWitnessCarrier` re-verifies them before trusting them. Malformed rows
+ * fail closed; the map is re-keyed by its own reportId so a crafted key smuggles nothing.
+ */
+function normalizeWitnessReports(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const key of Object.keys(raw).slice(0, WITNESS_REPORT_CAP * 2)) {
+    const e = raw[key];
+    if (!e || typeof e !== 'object' || Array.isArray(e)) continue;
+    const reportId = cleanLawId(e.reportId);
+    if (reportId == null || reportId !== key) continue;
+    const victimStableId = typeof e.victimStableId === 'string' && e.victimStableId.trim()
+      ? e.victimStableId : null;
+    const carrierStableId = typeof e.carrierStableId === 'string' && e.carrierStableId.trim()
+      ? e.carrierStableId : null;
+    const kind = typeof e.kind === 'string' && e.kind.trim() ? e.kind : null;
+    if (victimStableId == null || carrierStableId == null || kind == null) continue;
+    if (!Number.isInteger(e.causalTick) || e.causalTick < 0) continue;
+    const row = {
+      reportId,
+      kind,
+      victimEntityId: e.victimEntityId != null ? e.victimEntityId : null,
+      victimStableId,
+      victimClass: typeof e.victimClass === 'string' && e.victimClass ? e.victimClass : null,
+      factionId: typeof e.factionId === 'string' && e.factionId ? e.factionId : null,
+      stationId: typeof e.stationId === 'string' && e.stationId ? e.stationId : null,
+      sectorId: typeof e.sectorId === 'string' && e.sectorId ? e.sectorId : null,
+      killCause: typeof e.killCause === 'string' && e.killCause ? e.killCause : null,
+      sustainedAssault: e.sustainedAssault === true,
+      harmEvents: Number.isInteger(e.harmEvents) ? e.harmEvents : null,
+      pos: finiteLawPoint(e.pos),
+      causalTick: e.causalTick,
+      queuedTick: Number.isInteger(e.queuedTick) && e.queuedTick >= 0 ? e.queuedTick : e.causalTick,
+      carrierStableId,
+      carrierEntityId: e.carrierEntityId != null ? e.carrierEntityId : null,
+      carrierGeneration: e.carrierGeneration != null ? e.carrierGeneration : null,
+      rebindDeadlineTick: Number.isInteger(e.rebindDeadlineTick) && e.rebindDeadlineTick >= 0
+        ? e.rebindDeadlineTick : null,
+      witnessStableIds: Array.isArray(e.witnessStableIds)
+        ? e.witnessStableIds.filter((id) => typeof id === 'string' && id).slice(0, 8)
+        : [carrierStableId],
+    };
+    const forPerson = typeof e.forPerson === 'string' && e.forPerson.trim()
+      ? e.forPerson.trim().slice(0, 80) : '';
+    const restitutionCr = Math.round(Number(e.restitutionCr));
+    if (forPerson && restitutionCr > 0) {
+      row.forPerson = forPerson;
+      row.restitutionCr = restitutionCr;
+      if (e.recovery) row.recovery = normalizeRestitutionRecovery(e.recovery);
+    }
+    out[reportId] = row;
+    if (Object.keys(out).length >= WITNESS_REPORT_CAP) break;
+  }
+  return out;
+}
+
+/**
+ * RC-CHASE — the berth a courier must physically reach to file testimony: a live lawful-faction
+ * station hull within `radius` WU of the carrier. Mirrors ordinary traffic's docking chord
+ * (traffic.js `dist < 60`); a dead or unlawful station accepts nothing.
+ */
+function lawfulBerthNear(state, pos, radius) {
+  const anchor = finiteLawPoint(pos);
+  if (!state || !anchor || !state.entities || typeof state.entities.values !== 'function') return null;
+  const limitSq = Math.max(0, Number(radius) || 0) ** 2;
+  let best = null;
+  let bestD2 = Infinity;
+  for (const entity of state.entities.values()) {
+    if (!entity || entity.alive === false || !entity.pos) continue;
+    if (entity.type !== 'station' || !isLawful(entity)) continue;
+    const d2 = distance2(entity.pos, anchor);
+    if (d2 <= limitSq && d2 < bestD2) { best = entity; bestD2 = d2; }
+  }
+  return best;
+}
+
+/**
+ * RC-CHASE Sponsor — the lawful station a bounty warrant names as its backer: the live lawful
+ * station nearest the suspect. Returns the PUBLIC station id (the id `state.ui.dockedStationId`
+ * carries), never the session entity id.
+ */
+function nearestLawfulStation(state, pos) {
+  const anchor = finiteLawPoint(pos);
+  if (!state || !anchor || !state.entities || typeof state.entities.values !== 'function') return null;
+  let best = null;
+  let bestD2 = Infinity;
+  for (const entity of state.entities.values()) {
+    if (!entity || entity.alive === false || !entity.pos) continue;
+    if (entity.type !== 'station' || !isLawful(entity)) continue;
+    const stationId = entity.data && (entity.data.stationId || entity.data.worldRecordId);
+    if (stationId == null) continue;
+    const d2 = distance2(entity.pos, anchor);
+    if (d2 < bestD2) {
+      best = {
+        stationId: String(stationId),
+        name: (entity.data && (entity.data.name || entity.data.label)) || entity.name || String(stationId),
+      };
+      bestD2 = d2;
+    }
+  }
+  return best;
+}
+
+function memorialSiteId(entity, payload) {
+  const data = entity && entity.data || {};
+  const role = `${data.role || ''} ${data.defId || ''} ${data.placeId || ''} ${payload && payload.role || ''}`;
+  const flagged = (payload && (payload.memorial === true || payload.memorialSite === true))
+    || data.memorial === true || data.memorialSite === true || data.memorialHull === true
+    || /memorial/i.test(role);
+  if (!flagged) return null;
+  const raw = (payload && (payload.siteId || payload.memorialSiteId))
+    || data.siteId || data.placeId || data.worldRecordId
+    || (entity && entity.id != null ? `memorial:${entity.id}` : null);
+  return cleanLawId(raw == null ? null : String(raw));
+}
+
+function memorialName(payload, data, siteId) {
+  const raw = (payload && payload.name) || (data && data.name) || siteId;
+  const name = String(raw || siteId).trim();
+  return name.length > 80 ? name.slice(0, 80) : name;
+}
+
+function publicMemorial(row, finderId) {
+  const witnesses = Array.isArray(row.witnessEntityIds) ? row.witnessEntityIds : [];
+  const uncertain = row.evidence !== 'witnessed';
+  const finderWasThere = finderId != null && witnesses.some((id) => String(id) === String(finderId));
+  const name = row.name || row.siteId;
+  return {
+    found: true,
+    siteId: row.siteId,
+    name,
+    evidence: uncertain ? 'uncertain' : 'witnessed',
+    namedParty: uncertain ? null : (row.namedParty ?? null),
+    statement: uncertain
+      ? `${name} was destroyed. Who did it was not seen.`
+      : `${name} was destroyed. ${witnesses.length} witness${witnesses.length === 1 ? '' : 'es'} on the record.`,
+    witnessEntityIds: witnesses.slice(),
+    finderWasThere,
+    foundBy: Array.isArray(row.foundBy) ? row.foundBy.slice() : [],
+  };
+}
+
+function publicObligation(row) {
+  const open = row.status !== 'paid' && row.remainingCr > 0;
+  return {
+    key: row.key,
+    kind: row.kind,
+    causeId: row.causeId,
+    forPerson: row.forPerson || null,
+    label: row.label,
+    amountCr: row.amountCr,
+    remainingCr: row.remainingCr,
+    status: row.status,
+    advertisePay: open,
+    ...(row.kind === 'toll' && Number.isFinite(row.settledAt)
+      ? { settledAt: row.settledAt, settledTick: row.settledTick } : {}),
+    ...(row.recovery ? { recovery: normalizeRestitutionRecovery(row.recovery) } : {}),
+    whatFor: row.forPerson
+      ? `${row.kind} for ${row.forPerson}`
+      : `${row.label || row.kind} (${row.causeId})`,
+  };
+}
+
+function surrenderPriceCr(player) {
+  const quoted = quoteImpoundBill(player);
+  return quoted > 0 ? quoted : IMPOUND_RESTITUTION_CR;
+}
+
+// FB-119 — the surrender window in one place. The explicit law:playerSurrender intent turns the
+// same checks into voiced refusals; the auto-verb in _updatePlayerSurrender reads `ok` silently
+// (a physical hold either exists or it does not, and nobody needs a toast for standing fast).
+function lawfulSurrenderWindow(state) {
+  const tier = wantedTierFor(state.player && state.player.heat);
+  if (tier !== WANTED_TIER.NETS && tier !== WANTED_TIER.IMPOUND) {
+    return { ok: false, reason: 'not_in_custody_tier', tier };
+  }
+  const player = entityById(state, state.playerId);
+  if (!player || player.alive === false || !player.pos) {
+    return { ok: false, reason: 'no_ship', tier };
+  }
+  if (entitySpeed(player) > LAW_SURRENDER_MAX_SPEED) {
+    return { ok: false, reason: 'moving', tier };
+  }
+  const responder = lawfulResponderInCone(state, player);
+  if (!responder) return { ok: false, reason: 'no_responder', tier };
+  return { ok: true, tier, player, responder };
+}
+
+function surrenderRefusalLine(reason) {
+  switch (reason) {
+    case 'not_in_custody_tier': return 'SURRENDER REFUSED — the sheet does not reach custody tier. A fine answers for it.';
+    case 'no_ship': return 'SURRENDER REFUSED — no live hull to take.';
+    case 'moving': return 'SURRENDER BROKEN — engines burning. Cut them to be taken.';
+    case 'no_responder': return 'SURRENDER REFUSED — no lawful cone holds you. Nobody to take the guns.';
+    case 'fired': return 'SURRENDER BROKEN — you fired through the hold.';
+    default: return `SURRENDER CLOSED — ${String(reason || 'window gone')}.`;
+  }
+}
+
+function playerInLawfulCone(responder, player) {
+  if (!responder || !player || !responder.pos || !player.pos) return false;
+  const heading = Number.isFinite(responder.rot) ? responder.rot : 0;
+  return pointInScanCone(responder.pos, heading, CUSTOMS_SCAN_RANGE, CUSTOMS_SCAN_HALF_ANGLE, player.pos);
+}
+
+function lawfulResponderInCone(state, player) {
+  let found = null;
+  forEachLivingWorldActor(state, (entity) => {
+    if (found || !entity || entity.id === state.playerId || entity.type === 'station') return;
+    if (!isLawful(entity)) return;
+    if (playerInLawfulCone(entity, player)) found = entity;
+  });
+  return found;
+}
+
+// TEACH-10 — the first-wanted lesson's patrol read. A lawful patrol "on glass" is a live
+// lawful hull inside the law's own witness radius of the player: the authored distance at
+// which the law says a hull can see the scene (LAW_INCIDENT_WITNESS_RADIUS). Stations are
+// never patrols and the player is never their own witness. Pure read — no heat, rep,
+// credit, cargo, or ship write; no RNG; no clock (positions only, first match wins, so the
+// result is deterministic for a given scene).
+export function lawfulPatrolOnGlass(state) {
+  const player = state && entityById(state, state.playerId);
+  if (!player || player.alive === false || !player.pos) return null;
+  const limit = LAW_INCIDENT_WITNESS_RADIUS * LAW_INCIDENT_WITNESS_RADIUS;
+  let found = null;
+  forEachLivingWorldActor(state, (entity) => {
+    if (found || !entity || entity.id === state.playerId || entity.type === 'station') return;
+    if (entity.alive === false || !entity.pos) return;
+    if (!isLawful(entity)) return;
+    if (distance2(player.pos, entity.pos) > limit) return;
+    found = entity;
+  });
+  return found;
+}
+
+function builtRecordEntries(state, subjectId) {
+  const own = state && state.lawSecurity || {};
+  const out = [];
+  const push = (subject, cause, incidentId) => {
+    if (!sameLawEntityId(subject, subjectId)) return;
+    out.push({
+      cause: cause == null ? null : String(cause),
+      incidentId: incidentId == null ? null : String(incidentId),
+    });
+  };
+  const receipts = Array.isArray(own.receipts) ? own.receipts : [];
+  for (let i = 0; i < receipts.length; i++) {
+    const row = receipts[i];
+    if (!row) continue;
+    push(row.attackerId, row.cause, row.incidentId);
+  }
+  const incidents = own.incidents && typeof own.incidents === 'object' ? Object.values(own.incidents) : [];
+  for (let i = 0; i < incidents.length; i++) {
+    const incident = incidents[i];
+    if (!incident) continue;
+    push(incident.attackerId, incident.cause, incident.id);
+  }
+  const reported = own.reportedIncidents && typeof own.reportedIncidents === 'object'
+    ? Object.values(own.reportedIncidents) : [];
+  for (let i = 0; i < reported.length; i++) {
+    const receipt = reported[i];
+    if (!receipt) continue;
+    const subject = receipt.offenderEntityId != null ? receipt.offenderEntityId : receipt.offenderStableId;
+    push(subject, receipt.kind, receipt.incidentReceiptId || receipt.reportId);
+  }
+  return out;
+}
+
+function chargeOnBuiltRecord(built, charge) {
+  if (!charge) return false;
+  const incidentId = charge.incidentId != null ? String(charge.incidentId) : '';
+  const cause = charge.cause != null ? String(charge.cause) : '';
+  if (!incidentId && !cause) return false;
+  for (let i = 0; i < built.length; i++) {
+    const entry = built[i];
+    if (incidentId) {
+      if (entry.incidentId && entry.incidentId === incidentId) return true;
+      continue;
+    }
+    if (cause && entry.cause === cause) return true;
+  }
+  return false;
+}
+
+function normalizeMemorialSites(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const key of Object.keys(raw)) {
+    if (Object.keys(out).length >= MEMORIAL_SITE_CAP) break;
+    const row = raw[key];
+    const siteId = cleanLawId(row && row.siteId);
+    if (!row || siteId == null || siteId !== key) continue;
+    const evidence = row.evidence === 'witnessed' ? 'witnessed' : 'uncertain';
+    out[siteId] = {
+      siteId,
+      name: memorialName(row, null, siteId),
+      pos: finiteLawPoint(row.pos),
+      evidence,
+      namedParty: evidence === 'witnessed' ? (row.namedParty ?? null) : null,
+      witnessEntityIds: Array.isArray(row.witnessEntityIds) ? row.witnessEntityIds.slice(0, LAW_INCIDENT_WITNESS_CAP) : [],
+      destroyedAt: Number(row.destroyedAt) || 0,
+      foundBy: Array.isArray(row.foundBy) ? row.foundBy.slice(0, 8).map((id) => String(id)) : [],
+    };
+  }
+  return out;
+}
+
+function normalizeComposedObligations(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const key of Object.keys(raw)) {
+    if (Object.keys(out).length >= LAW_COMPOSED_CAP) break;
+    const row = raw[key];
+    if (!row || typeof row !== 'object') continue;
+    const kind = OBLIGATION_KINDS.has(row.kind) ? row.kind : null;
+    const causeId = cleanLawId(row.causeId == null ? null : String(row.causeId));
+    if (!kind || !causeId || `${kind}:${causeId}` !== key) continue;
+    const forPerson = typeof row.forPerson === 'string' && row.forPerson.trim() ? row.forPerson.trim() : null;
+    if (kind === 'restitution' && !forPerson) continue;
+    const amountCr = Math.round(Number(row.amountCr));
+    if (!(amountCr > 0)) continue;
+    let remainingCr = Math.round(Number(row.remainingCr));
+    if (!Number.isFinite(remainingCr) || remainingCr < 0) remainingCr = amountCr;
+    if (remainingCr > amountCr) remainingCr = amountCr;
+    const paid = row.status === 'paid' || remainingCr === 0;
+    out[key] = {
+      key,
+      kind,
+      causeId,
+      forPerson,
+      label: typeof row.label === 'string' && row.label.trim() ? row.label.trim() : (forPerson ? `${kind} for ${forPerson}` : kind),
+      amountCr,
+      remainingCr: paid ? 0 : remainingCr,
+      status: paid ? 'paid' : 'open',
+      advertisePay: !paid && remainingCr > 0,
+      ...(kind === 'toll' && paid && Number.isFinite(row.settledAt)
+        ? { settledAt: Math.max(0, row.settledAt), settledTick: Math.max(0, row.settledTick | 0) } : {}),
+      ...(kind === 'restitution' && row.recovery
+        ? { recovery: normalizeRestitutionRecovery(row.recovery) } : {}),
+    };
+  }
+  return out;
+}
+
+function normalizeFineSettled(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const key of Object.keys(raw)) {
+    const choice = raw[key];
+    if (choice === 'pay' || choice === 'work') out[key] = choice;
+  }
+  return out;
+}
+
+function normalizeCustomsTrust(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const sector of SECTORS) for (const station of (sector.stations || [])) {
+    const day = raw[station.id]?.day;
+    if (Number.isInteger(day) && day >= 0) out[station.id] = { day };
+  }
+  return out;
+}
+
+export default lawSecurity;
+
+// Receipts name the berth, not its id. An id that does not resolve is printed as given.
+let stationNamesById = null;
+function stationDisplayName(stationId) {
+  if (!stationNamesById) {
+    stationNamesById = new Map();
+    for (const sector of SECTORS) for (const station of (sector.stations || [])) stationNamesById.set(station.id, station.name);
+  }
+  return stationNamesById.get(stationId) || String(stationId);
+}

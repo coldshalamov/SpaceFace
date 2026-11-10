@@ -1,0 +1,5041 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.conveyor-barge.anchor.socket-barge-bridge",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        44,
+        5.5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Barge_Bridge",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentNodeId": "sf.render.conveyor-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        44,
+        5.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.anchor.socket-container-aft",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        32,
+        5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Container_Aft",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentNodeId": "sf.render.conveyor-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        32,
+        5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.anchor.socket-container-fore",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12,
+        5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Container_Fore",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentNodeId": "sf.render.conveyor-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12,
+        5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.anchor.socket-container-mid",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        22,
+        5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Container_Mid",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentNodeId": "sf.render.conveyor-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        22,
+        5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.anchor.socket-drive-plume",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5,
+        2.2,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Drive_Plume",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentNodeId": "sf.render.conveyor-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5,
+        2.2,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.anchor.socket-emissive",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        26,
+        6.2,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Emissive",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentNodeId": "sf.render.conveyor-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        26,
+        6.2,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.anchor.socket-status-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        44,
+        0,
+        -7.5,
+        1
+      ],
+      "nodeName": "SOCKET_Status_Port",
+      "nodePath": [
+        0,
+        41
+      ],
+      "parentNodeId": "sf.render.conveyor-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        44,
+        0,
+        -7.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.anchor.socket-status-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        44,
+        0,
+        7.5,
+        1
+      ],
+      "nodeName": "SOCKET_Status_Starboard",
+      "nodePath": [
+        0,
+        42
+      ],
+      "parentNodeId": "sf.render.conveyor-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        44,
+        0,
+        7.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.anchor.socket-structure-core",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        33.8525,
+        3.0125,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Structure_Core",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentNodeId": "sf.render.conveyor-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        33.8525,
+        3.0125,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5,
+        2.200000047683716,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentNodeId": "sf.render.conveyor-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5,
+        2.200000047683716,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.conveyor-barge",
+  "collisions": [
+    {
+      "id": "sf.render.conveyor-barge.collision",
+      "nodeId": "sf.render.conveyor-barge.mesh.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "136e2291fffd69a4cf6221012e5b2bcc56391df802e1dafc7ebe675b54622b5b",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod0-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod0-hook-nav-port"
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod0-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod0-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod1-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod1-hook-nav-port"
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod1-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod1-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod2-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod2-hook-nav-port"
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod2-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod2-hook-nav-starboard"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          72.29331970214844,
+          11.097271141810467,
+          8.298538654590615
+        ],
+        "min": [
+          -1,
+          0.0027288973982146913,
+          -8.298538654590615
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6cef834cc4d2cad68a0844d8969bd36311320ae8fc28928c038f2ad69b1ee55a",
+      "id": "sf.render.conveyor-barge.mesh.collision-hull.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.conveyor-barge.mesh.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 718
+    },
+    {
+      "bounds": {
+        "max": [
+          70.39094543457031,
+          11.093690189754508,
+          8.301019382479717
+        ],
+        "min": [
+          -1,
+          -0.00048059648872467164,
+          -8.301019382479717
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "af10a7a1ba91055402b49dddd47fafcaf4b99b6d328a3f0122f189d808880bab",
+      "id": "sf.render.conveyor-barge.mesh.lod0-armor.primitive.0",
+      "indexCount": 10308,
+      "indexed": true,
+      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Armor",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod0-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 3556
+    },
+    {
+      "bounds": {
+        "max": [
+          71.7249984741211,
+          10.756001140926742,
+          5.600397505947773
+        ],
+        "min": [
+          1.7519989013671875,
+          5.861500117923356,
+          -4.2483977462737
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8f246833c3a944b3c41c5679e8585ed3264b6f259fbffee35a6df85acd147a62",
+      "id": "sf.render.conveyor-barge.mesh.lod0-beacon-amber.primitive.0",
+      "indexCount": 648,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Beacon_Amber",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod0-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 248
+    },
+    {
+      "bounds": {
+        "max": [
+          67.67499923706055,
+          4.523325389365883,
+          7.176766254731114
+        ],
+        "min": [
+          0.3250007629394531,
+          4.27667480136898,
+          6.823233745268886
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1c150478e8737a0964b33bcb5d8410f02e3351ee81606c5e6d7e3e871ae56c61",
+      "id": "sf.render.conveyor-barge.mesh.lod0-hook-nav-port.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_NAV_PORT",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod0-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          67.67499923706055,
+          4.523325389365883,
+          -6.823233745268886
+        ],
+        "min": [
+          0.3250007629394531,
+          4.27667480136898,
+          -7.176766254731114
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7b3b9b51ce772a2ff6831444b69b404b806b9cd9d9ff3989004bf8dedb414425",
+      "id": "sf.render.conveyor-barge.mesh.lod0-hook-nav-starboard.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod0-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          70.00000922619581,
+          3.0994139580533515,
+          8.100000381469727
+        ],
+        "min": [
+          66.99999077380419,
+          0.7005857558443536,
+          -8.100000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a6696eba24f693d51c1eb1a42c1ed73314ba0b997cbc65708015fff25f4a5b1c",
+      "id": "sf.render.conveyor-barge.mesh.lod0-hull-aged.primitive.0",
+      "indexCount": 1128,
+      "indexed": true,
+      "materialHash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull_aged",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod0-hull-aged",
+      "primitiveIndex": 0,
+      "vertexCount": 346
+    },
+    {
+      "bounds": {
+        "max": [
+          72.17097473144531,
+          11.098254127985872,
+          2.0700678752653
+        ],
+        "min": [
+          -0.48614501953125,
+          4.40174539517697,
+          -6.2850463317624925
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "19952c7a7cd13d7c3cf01ade023004890a334675adb75e53de5be17787205b7b",
+      "id": "sf.render.conveyor-barge.mesh.lod0-hull.primitive.0",
+      "indexCount": 1128,
+      "indexed": true,
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod0-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 336
+    },
+    {
+      "bounds": {
+        "max": [
+          3.8999996185302734,
+          7.64996484849081,
+          -1.5199804678970863
+        ],
+        "min": [
+          0.09999847412109375,
+          6.750034770039464,
+          -1.6800195797866295
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "98f8a6c99f0260d1aa2ca90f85ddc29515f087ec3bdb8bf7fa66ada0f141c4fe",
+      "id": "sf.render.conveyor-barge.mesh.lod0-lights-warm.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Warm",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod0-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          2.307967386883994,
+          8.839986429611175,
+          -3.6841259002685547
+        ],
+        "min": [
+          1.6920287984187403,
+          8.700013532241853,
+          -4.315874099731445
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0b442b7940650966a16ee8f9e979978b7b747b382dd98c01302cc150f92394dd",
+      "id": "sf.render.conveyor-barge.mesh.lod0-mechanical.primitive.0",
+      "indexCount": 660,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 224
+    },
+    {
+      "bounds": {
+        "max": [
+          72.30000305175781,
+          9.699778732243328,
+          7.000702227475672
+        ],
+        "min": [
+          1.5,
+          1.8002209101288043,
+          -7.000702227475672
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7b66cdfbde2b40c948f4f0d836e966e11417b8a0d5d626a7babf02afd87729e9",
+      "id": "sf.render.conveyor-barge.mesh.lod0-mechanicaldark.primitive.0",
+      "indexCount": 6528,
+      "indexed": true,
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod0-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 2132
+    },
+    {
+      "bounds": {
+        "max": [
+          56.5,
+          5.999031037324137,
+          4.999298074282052
+        ],
+        "min": [
+          5.5,
+          5.500968962675863,
+          -4.999298074282052
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d67beac1d033b75f036ffbe9a80a4e3d03a1002797db494829aac2a5099a3cbe",
+      "id": "sf.render.conveyor-barge.mesh.lod0-stone.primitive.0",
+      "indexCount": 2256,
+      "indexed": true,
+      "materialHash": "139067918fee2c91b39f7ea9d74cc6ea38b7bb83e885f77e86c7d04b446f2a69",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod0-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 680
+    },
+    {
+      "bounds": {
+        "max": [
+          68,
+          5.700371348276149,
+          7.201147495956298
+        ],
+        "min": [
+          0,
+          3.7496282225704087,
+          -7.201147495956298
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a8479ec29dc87051d4f9d00ce2efb36766ee4a67611eb72432bec095de7a7480",
+      "id": "sf.render.conveyor-barge.mesh.lod0-warning.primitive.0",
+      "indexCount": 360,
+      "indexed": true,
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Warning",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod0-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 240
+    },
+    {
+      "bounds": {
+        "max": [
+          70.39094543457031,
+          11.093690189754508,
+          8.301019382479717
+        ],
+        "min": [
+          -1,
+          -0.00048059648872467164,
+          -8.301019382479717
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a2c4b1804ea7df29ee87776ef1c56bfca30a95b39bbc2463b41c698d4377f7d9",
+      "id": "sf.render.conveyor-barge.mesh.lod1-armor.primitive.0",
+      "indexCount": 4794,
+      "indexed": true,
+      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Armor",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod1-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 1942
+    },
+    {
+      "bounds": {
+        "max": [
+          71.7249984741211,
+          10.756015740101013,
+          5.600278830533353
+        ],
+        "min": [
+          1.7515678405761719,
+          5.861484565074768,
+          -4.248577094083157
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "855271641400b0c487ab8b151338429cab9f48015b6e72c1bb1e3ec5cebfaf4c",
+      "id": "sf.render.conveyor-barge.mesh.lod1-beacon-amber.primitive.0",
+      "indexCount": 318,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Beacon_Amber",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod1-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 171
+    },
+    {
+      "bounds": {
+        "max": [
+          67.67499923706055,
+          4.523325389365883,
+          7.176766254731114
+        ],
+        "min": [
+          0.3250007629394531,
+          4.27667480136898,
+          6.823233745268886
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "38361ffd7e577d5abc4c48d738c4b8647578030d1408fe1da1e5bfe90be85339",
+      "id": "sf.render.conveyor-barge.mesh.lod1-hook-nav-port.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_NAV_PORT",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod1-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          67.67499923706055,
+          4.523325389365883,
+          -6.823233745268886
+        ],
+        "min": [
+          0.3250007629394531,
+          4.27667480136898,
+          -7.176766254731114
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "14953a913224715b98e9391d38ea6890329b1ec4284566e71a423da37f4feaea",
+      "id": "sf.render.conveyor-barge.mesh.lod1-hook-nav-starboard.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod1-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          69.99514586793008,
+          3.095718280341797,
+          8.094786643981934
+        ],
+        "min": [
+          67.00486176146445,
+          0.7042815527651975,
+          -8.095338821411133
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4df68c8a08da631344c64faebdea67bee5368da0766513c0273860cdabf97397",
+      "id": "sf.render.conveyor-barge.mesh.lod1-hull-aged.primitive.0",
+      "indexCount": 630,
+      "indexed": true,
+      "materialHash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull_aged",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod1-hull-aged",
+      "primitiveIndex": 0,
+      "vertexCount": 240
+    },
+    {
+      "bounds": {
+        "max": [
+          72.17097473144531,
+          11.098254127985872,
+          2.0700678752653
+        ],
+        "min": [
+          -0.48614501953125,
+          4.40174539517697,
+          -6.2850463317624925
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "69ab170516670c352e0f93da680a57615e4cac38050e697762b366f33191fda5",
+      "id": "sf.render.conveyor-barge.mesh.lod1-hull.primitive.0",
+      "indexCount": 1128,
+      "indexed": true,
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod1-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 336
+    },
+    {
+      "bounds": {
+        "max": [
+          3.8999996185302734,
+          7.64996484849081,
+          -1.5199804678970863
+        ],
+        "min": [
+          0.09999847412109375,
+          6.750034770039464,
+          -1.6800195797866295
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4d260d98120dc5d30a41ca18ef07d706f36632c9154e21258625ca907b9ed4df",
+      "id": "sf.render.conveyor-barge.mesh.lod1-lights-warm.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Lights_Warm",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod1-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          2.3081657841829384,
+          8.838047996993307,
+          -3.6841206550598145
+        ],
+        "min": [
+          1.6918284937711632,
+          8.702287658219095,
+          -4.315645217895508
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0d4b993216153b2d360b2464bd02d80ddb6f34af179897fed9e34d661a69d759",
+      "id": "sf.render.conveyor-barge.mesh.lod1-mechanical.primitive.0",
+      "indexCount": 156,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Mechanical",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod1-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 64
+    },
+    {
+      "bounds": {
+        "max": [
+          72.29485321044922,
+          9.695524974583773,
+          6.995871904520846
+        ],
+        "min": [
+          1.5,
+          1.8051839630611868,
+          -6.995871904520846
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a001c8cf6409ae3053568ca8082ac42fe1c7d27118d164097ef31c9b430ab29f",
+      "id": "sf.render.conveyor-barge.mesh.lod1-mechanicaldark.primitive.0",
+      "indexCount": 1140,
+      "indexed": true,
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 611
+    },
+    {
+      "bounds": {
+        "max": [
+          56.49488067626953,
+          5.995811788135079,
+          4.995185791047291
+        ],
+        "min": [
+          5.505121231079102,
+          5.504074247784111,
+          -4.99517816165276
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c97f53e57f9836cd0b20e53682aa49ae177b13b743b6b2298c4a0d00f58c67f6",
+      "id": "sf.render.conveyor-barge.mesh.lod1-stone.primitive.0",
+      "indexCount": 528,
+      "indexed": true,
+      "materialHash": "139067918fee2c91b39f7ea9d74cc6ea38b7bb83e885f77e86c7d04b446f2a69",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod1-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 205
+    },
+    {
+      "bounds": {
+        "max": [
+          68,
+          5.700371348276149,
+          7.201147495956298
+        ],
+        "min": [
+          0,
+          3.7496282225704087,
+          -7.201147495956298
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3aaea0e6b021f07e22ae44b3a52cd9470b497794272ec2eadd44ba787ec02561",
+      "id": "sf.render.conveyor-barge.mesh.lod1-warning.primitive.0",
+      "indexCount": 360,
+      "indexed": true,
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Warning",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod1-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 240
+    },
+    {
+      "bounds": {
+        "max": [
+          70.39094543457031,
+          11.092205359805781,
+          8.281222706991866
+        ],
+        "min": [
+          -0.9796028137207031,
+          0.01862928343896275,
+          -8.281222706991866
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b1dcdb34c2fdf53aa0608e61225483ced9f5e25e758d5abaacf361086ed0b099",
+      "id": "sf.render.conveyor-barge.mesh.lod2-armor.primitive.0",
+      "indexCount": 1668,
+      "indexed": true,
+      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Armor",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod2-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 994
+    },
+    {
+      "bounds": {
+        "max": [
+          71.7249984741211,
+          10.756082391289222,
+          5.5984422280208
+        ],
+        "min": [
+          1.7496757507324219,
+          5.861418867560874,
+          -4.25922218102373
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d765b6dd06f7ae89300a60781f65a71b3d64f2834cbcd3095da8d97a7b3f1930",
+      "id": "sf.render.conveyor-barge.mesh.lod2-beacon-amber.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Beacon_Amber",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod2-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 152
+    },
+    {
+      "bounds": {
+        "max": [
+          67.67499923706055,
+          4.523325389365883,
+          7.176766254731114
+        ],
+        "min": [
+          0.3250007629394531,
+          4.27667480136898,
+          6.823233745268886
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "38361ffd7e577d5abc4c48d738c4b8647578030d1408fe1da1e5bfe90be85339",
+      "id": "sf.render.conveyor-barge.mesh.lod2-hook-nav-port.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_NAV_PORT",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod2-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          67.67499923706055,
+          4.523325389365883,
+          -6.823233745268886
+        ],
+        "min": [
+          0.3250007629394531,
+          4.27667480136898,
+          -7.176766254731114
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "14953a913224715b98e9391d38ea6890329b1ec4284566e71a423da37f4feaea",
+      "id": "sf.render.conveyor-barge.mesh.lod2-hook-nav-starboard.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod2-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          69.97082339000501,
+          3.089865439872293,
+          8.07547664642334
+        ],
+        "min": [
+          67.02918423938952,
+          0.7101345720486358,
+          -8.075443267822266
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "095066db980e2fcbbdcbd9fe96f8c5adefdfa0d47d36cbc403cdc4cfa561dfc4",
+      "id": "sf.render.conveyor-barge.mesh.lod2-hull-aged.primitive.0",
+      "indexCount": 102,
+      "indexed": true,
+      "materialHash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull_aged",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod2-hull-aged",
+      "primitiveIndex": 0,
+      "vertexCount": 58
+    },
+    {
+      "bounds": {
+        "max": [
+          72.1607894897461,
+          11.080409633704754,
+          2.0589360006452138
+        ],
+        "min": [
+          -0.4728202819824219,
+          4.42153443138924,
+          -6.266874671757274
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cad5883750f4d1438a39632b1eb9ba85151d8d5ab9786ae9fc8fb3b2b62a0797",
+      "id": "sf.render.conveyor-barge.mesh.lod2-hull.primitive.0",
+      "indexCount": 264,
+      "indexed": true,
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod2-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 99
+    },
+    {
+      "bounds": {
+        "max": [
+          2.3219432830810547,
+          8.838019712925846,
+          -3.6861900545677826
+        ],
+        "min": [
+          1.6780052185058594,
+          8.702263490199154,
+          -4.315507008878262
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e34c3f146026e7fac5bd8d221928d6fbee29ccc11ce946317918060da2b8bd80",
+      "id": "sf.render.conveyor-barge.mesh.lod2-mechanical.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Mechanical",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod2-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 40
+    },
+    {
+      "bounds": {
+        "max": [
+          72.2841567993164,
+          9.684870829365238,
+          5.298325095108447
+        ],
+        "min": [
+          3.006336212158203,
+          4.9489377834582475,
+          -5.298325095108447
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "69be6225eff1e9cbd5d1ef96a155c60e9445652ffa39ddda9db9ef74ac465bb5",
+      "id": "sf.render.conveyor-barge.mesh.lod2-mechanicaldark.primitive.0",
+      "indexCount": 216,
+      "indexed": true,
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MechanicalDark",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod2-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          56.48415756225586,
+          5.983321551215453,
+          4.983748333962082
+        ],
+        "min": [
+          5.515842437744141,
+          5.516678448784547,
+          -4.983748333962082
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6f397b96b17f47701286a8a7c775cf5e642053c86646c6fd68d7595ba5d790c3",
+      "id": "sf.render.conveyor-barge.mesh.lod2-stone.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "139067918fee2c91b39f7ea9d74cc6ea38b7bb83e885f77e86c7d04b446f2a69",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Stone",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod2-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          68,
+          5.700371348276149,
+          7.201147495956298
+        ],
+        "min": [
+          0,
+          3.7496282225704087,
+          -7.201147495956298
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3aaea0e6b021f07e22ae44b3a52cd9470b497794272ec2eadd44ba787ec02561",
+      "id": "sf.render.conveyor-barge.mesh.lod2-warning.primitive.0",
+      "indexCount": 360,
+      "indexed": true,
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Warning",
+      "nodeId": "sf.render.conveyor-barge.mesh.lod2-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 240
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "139067918fee2c91b39f7ea9d74cc6ea38b7bb83e885f77e86c7d04b446f2a69",
+      "id": "material:139067918fee2c91b39f7ea9",
+      "name": "Material_Stone",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "id": "material:3fdf83f5cb4a7ed64bc4eb10",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
+      "id": "material:5ef013365e942f1ac873c307",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
+      "id": "material:935effa788e2e47cba8a2bfc",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "id": "material:98b096766a0680120cab6218",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "id": "material:ab17b13dc8559ae23c6f811c",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
+      "id": "material:eb6bbae95702790bb530b9a9",
+      "name": "Material_Hull_aged",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "id": "material:f543c846d70e4889bb87a4e1",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.conveyor-barge.mesh.collision-hull",
+      "localTransform": [
+        36.64665985107422,
+        0,
+        0,
+        0,
+        0,
+        36.64665985107422,
+        0,
+        0,
+        0,
+        0,
+        36.64665985107422,
+        0,
+        35.64665985107422,
+        5.55000001960434,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        36.64665985107422,
+        0,
+        0,
+        0,
+        0,
+        36.64665985107422,
+        0,
+        0,
+        0,
+        0,
+        36.64665985107422,
+        0,
+        35.64665985107422,
+        5.55000001960434,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod0-armor",
+      "localTransform": [
+        35.695472717285156,
+        0,
+        0,
+        0,
+        0,
+        35.695472717285156,
+        0,
+        0,
+        0,
+        0,
+        35.695472717285156,
+        0,
+        34.695472717285156,
+        5.5466047966328915,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Armor",
+      "nodeName": "LOD0_Armor",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        35.695472717285156,
+        0,
+        0,
+        0,
+        0,
+        35.695472717285156,
+        0,
+        0,
+        0,
+        0,
+        35.695472717285156,
+        0,
+        34.695472717285156,
+        5.5466047966328915,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod0-beacon-amber",
+      "localTransform": [
+        34.98649978637695,
+        0,
+        0,
+        0,
+        0,
+        34.98649978637695,
+        0,
+        0,
+        0,
+        0,
+        34.98649978637695,
+        0,
+        36.73849868774414,
+        8.308750629425049,
+        0.6759998798370361,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Beacon_Amber",
+      "nodeName": "LOD0_Beacon_Amber",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        34.98649978637695,
+        0,
+        0,
+        0,
+        0,
+        34.98649978637695,
+        0,
+        0,
+        0,
+        0,
+        34.98649978637695,
+        0,
+        36.73849868774414,
+        8.308750629425049,
+        0.6759998798370361,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod0-hook-nav-port",
+      "localTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_NAV_PORT",
+      "nodeName": "LOD0_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod0-hook-nav-starboard",
+      "localTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        -7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD0_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        -7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod0-hull",
+      "localTransform": [
+        36.32855987548828,
+        0,
+        0,
+        0,
+        0,
+        36.32855987548828,
+        0,
+        0,
+        0,
+        0,
+        36.32855987548828,
+        0,
+        35.84241485595703,
+        7.749999761581421,
+        -2.107489228248596,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull",
+      "nodeName": "LOD0_Hull",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        36.32855987548828,
+        0,
+        0,
+        0,
+        0,
+        36.32855987548828,
+        0,
+        0,
+        0,
+        0,
+        36.32855987548828,
+        0,
+        35.84241485595703,
+        7.749999761581421,
+        -2.107489228248596,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod0-hull-aged",
+      "localTransform": [
+        8.100000381469727,
+        0,
+        0,
+        0,
+        0,
+        8.100000381469727,
+        0,
+        0,
+        0,
+        0,
+        8.100000381469727,
+        0,
+        68.5,
+        1.8999998569488525,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull_aged",
+      "nodeName": "LOD0_Hull_aged",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        8.100000381469727,
+        0,
+        0,
+        0,
+        0,
+        8.100000381469727,
+        0,
+        0,
+        0,
+        0,
+        8.100000381469727,
+        0,
+        68.5,
+        1.8999998569488525,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod0-lights-warm",
+      "localTransform": [
+        1.9000005722045898,
+        0,
+        0,
+        0,
+        0,
+        1.9000005722045898,
+        0,
+        0,
+        0,
+        0,
+        1.9000005722045898,
+        0,
+        1.9999990463256836,
+        7.199999809265137,
+        -1.600000023841858,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lights_Warm",
+      "nodeName": "LOD0_Lights_Warm",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        1.9000005722045898,
+        0,
+        0,
+        0,
+        0,
+        1.9000005722045898,
+        0,
+        0,
+        0,
+        0,
+        1.9000005722045898,
+        0,
+        1.9999990463256836,
+        7.199999809265137,
+        -1.600000023841858,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod0-mechanical",
+      "localTransform": [
+        0.3158740997314453,
+        0,
+        0,
+        0,
+        0,
+        0.3158740997314453,
+        0,
+        0,
+        0,
+        0,
+        0.3158740997314453,
+        0,
+        1.9999980926513672,
+        8.769999980926514,
+        -4,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        0.3158740997314453,
+        0,
+        0,
+        0,
+        0,
+        0.3158740997314453,
+        0,
+        0,
+        0,
+        0,
+        0.3158740997314453,
+        0,
+        1.9999980926513672,
+        8.769999980926514,
+        -4,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod0-mechanicaldark",
+      "localTransform": [
+        35.400001525878906,
+        0,
+        0,
+        0,
+        0,
+        35.400001525878906,
+        0,
+        0,
+        0,
+        0,
+        35.400001525878906,
+        0,
+        36.900001525878906,
+        5.749999821186066,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        35.400001525878906,
+        0,
+        0,
+        0,
+        0,
+        35.400001525878906,
+        0,
+        0,
+        0,
+        0,
+        35.400001525878906,
+        0,
+        36.900001525878906,
+        5.749999821186066,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod0-stone",
+      "localTransform": [
+        25.5,
+        0,
+        0,
+        0,
+        0,
+        25.5,
+        0,
+        0,
+        0,
+        0,
+        25.5,
+        0,
+        31,
+        5.75,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Stone",
+      "nodeName": "LOD0_Stone",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        25.5,
+        0,
+        0,
+        0,
+        0,
+        25.5,
+        0,
+        0,
+        0,
+        0,
+        25.5,
+        0,
+        31,
+        5.75,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod0-warning",
+      "localTransform": [
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        34,
+        4.724999785423279,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Warning",
+      "nodeName": "LOD0_Warning",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        34,
+        4.724999785423279,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod1-armor",
+      "localTransform": [
+        35.695472717285156,
+        0,
+        0,
+        0,
+        0,
+        35.695472717285156,
+        0,
+        0,
+        0,
+        0,
+        35.695472717285156,
+        0,
+        34.695472717285156,
+        5.5466047966328915,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Armor",
+      "nodeName": "LOD1_Armor",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        35.695472717285156,
+        0,
+        0,
+        0,
+        0,
+        35.695472717285156,
+        0,
+        0,
+        0,
+        0,
+        35.695472717285156,
+        0,
+        34.695472717285156,
+        5.5466047966328915,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod1-beacon-amber",
+      "localTransform": [
+        34.98671531677246,
+        0,
+        0,
+        0,
+        0,
+        34.98671531677246,
+        0,
+        0,
+        0,
+        0,
+        34.98671531677246,
+        0,
+        36.73828315734863,
+        8.30875015258789,
+        0.6758508682250977,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Beacon_Amber",
+      "nodeName": "LOD1_Beacon_Amber",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        34.98671531677246,
+        0,
+        0,
+        0,
+        0,
+        34.98671531677246,
+        0,
+        0,
+        0,
+        0,
+        34.98671531677246,
+        0,
+        36.73828315734863,
+        8.30875015258789,
+        0.6758508682250977,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod1-hook-nav-port",
+      "localTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_NAV_PORT",
+      "nodeName": "LOD1_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod1-hook-nav-starboard",
+      "localTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        -7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD1_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        -7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod1-hull",
+      "localTransform": [
+        36.32855987548828,
+        0,
+        0,
+        0,
+        0,
+        36.32855987548828,
+        0,
+        0,
+        0,
+        0,
+        36.32855987548828,
+        0,
+        35.84241485595703,
+        7.749999761581421,
+        -2.107489228248596,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull",
+      "nodeName": "LOD1_Hull",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        36.32855987548828,
+        0,
+        0,
+        0,
+        0,
+        36.32855987548828,
+        0,
+        0,
+        0,
+        0,
+        36.32855987548828,
+        0,
+        35.84241485595703,
+        7.749999761581421,
+        -2.107489228248596,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod1-hull-aged",
+      "localTransform": [
+        8.095062732696533,
+        0,
+        0,
+        0,
+        0,
+        8.095062732696533,
+        0,
+        0,
+        0,
+        0,
+        8.095062732696533,
+        0,
+        68.50000381469727,
+        1.8999999165534973,
+        -0.0002760887145996094,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull_aged",
+      "nodeName": "LOD1_Hull_aged",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        8.095062732696533,
+        0,
+        0,
+        0,
+        0,
+        8.095062732696533,
+        0,
+        0,
+        0,
+        0,
+        8.095062732696533,
+        0,
+        68.50000381469727,
+        1.8999999165534973,
+        -0.0002760887145996094,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod1-lights-warm",
+      "localTransform": [
+        1.9000005722045898,
+        0,
+        0,
+        0,
+        0,
+        1.9000005722045898,
+        0,
+        0,
+        0,
+        0,
+        1.9000005722045898,
+        0,
+        1.9999990463256836,
+        7.199999809265137,
+        -1.600000023841858,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Lights_Warm",
+      "nodeName": "LOD1_Lights_Warm",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        1.9000005722045898,
+        0,
+        0,
+        0,
+        0,
+        1.9000005722045898,
+        0,
+        0,
+        0,
+        0,
+        1.9000005722045898,
+        0,
+        1.9999990463256836,
+        7.199999809265137,
+        -1.600000023841858,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod1-mechanical",
+      "localTransform": [
+        0.3157622814178467,
+        0,
+        0,
+        0,
+        0,
+        0.3157622814178467,
+        0,
+        0,
+        0,
+        0,
+        0.3157622814178467,
+        0,
+        1.9999971389770508,
+        8.770167827606201,
+        -3.999882936477661,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Mechanical",
+      "nodeName": "LOD1_Mechanical",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        0.3157622814178467,
+        0,
+        0,
+        0,
+        0,
+        0.3157622814178467,
+        0,
+        0,
+        0,
+        0,
+        0.3157622814178467,
+        0,
+        1.9999971389770508,
+        8.770167827606201,
+        -3.999882936477661,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod1-mechanicaldark",
+      "localTransform": [
+        35.39742660522461,
+        0,
+        0,
+        0,
+        0,
+        35.39742660522461,
+        0,
+        0,
+        0,
+        0,
+        35.39742660522461,
+        0,
+        36.89742660522461,
+        5.750354468822479,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        35.39742660522461,
+        0,
+        0,
+        0,
+        0,
+        35.39742660522461,
+        0,
+        0,
+        0,
+        0,
+        35.39742660522461,
+        0,
+        36.89742660522461,
+        5.750354468822479,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod1-stone",
+      "localTransform": [
+        25.494879722595215,
+        0,
+        0,
+        0,
+        0,
+        25.494879722595215,
+        0,
+        0,
+        0,
+        0,
+        25.494879722595215,
+        0,
+        31.000000953674316,
+        5.749943017959595,
+        0.000003814697265625,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone",
+      "nodeName": "LOD1_Stone",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        25.494879722595215,
+        0,
+        0,
+        0,
+        0,
+        25.494879722595215,
+        0,
+        0,
+        0,
+        0,
+        25.494879722595215,
+        0,
+        31.000000953674316,
+        5.749943017959595,
+        0.000003814697265625,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod1-warning",
+      "localTransform": [
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        34,
+        4.724999785423279,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Warning",
+      "nodeName": "LOD1_Warning",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        34,
+        4.724999785423279,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod2-armor",
+      "localTransform": [
+        35.68527412414551,
+        0,
+        0,
+        0,
+        0,
+        35.68527412414551,
+        0,
+        0,
+        0,
+        0,
+        35.68527412414551,
+        0,
+        34.705671310424805,
+        5.555417321622372,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Armor",
+      "nodeName": "LOD2_Armor",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        35.68527412414551,
+        0,
+        0,
+        0,
+        0,
+        35.68527412414551,
+        0,
+        0,
+        0,
+        0,
+        35.68527412414551,
+        0,
+        34.705671310424805,
+        5.555417321622372,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod2-beacon-amber",
+      "localTransform": [
+        34.987661361694336,
+        0,
+        0,
+        0,
+        0,
+        34.987661361694336,
+        0,
+        0,
+        0,
+        0,
+        34.987661361694336,
+        0,
+        36.73733711242676,
+        8.308750629425049,
+        0.6696100234985352,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Beacon_Amber",
+      "nodeName": "LOD2_Beacon_Amber",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        34.987661361694336,
+        0,
+        0,
+        0,
+        0,
+        34.987661361694336,
+        0,
+        0,
+        0,
+        0,
+        34.987661361694336,
+        0,
+        36.73733711242676,
+        8.308750629425049,
+        0.6696100234985352,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod2-hook-nav-port",
+      "localTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_NAV_PORT",
+      "nodeName": "LOD2_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod2-hook-nav-starboard",
+      "localTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        -7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD2_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        -7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod2-hull",
+      "localTransform": [
+        36.31680488586426,
+        0,
+        0,
+        0,
+        0,
+        36.31680488586426,
+        0,
+        0,
+        0,
+        0,
+        36.31680488586426,
+        0,
+        35.843984603881836,
+        7.750972032546997,
+        -2.1039693355560303,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull",
+      "nodeName": "LOD2_Hull",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        36.31680488586426,
+        0,
+        0,
+        0,
+        0,
+        36.31680488586426,
+        0,
+        0,
+        0,
+        0,
+        36.31680488586426,
+        0,
+        35.843984603881836,
+        7.750972032546997,
+        -2.1039693355560303,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod2-hull-aged",
+      "localTransform": [
+        8.075459957122803,
+        0,
+        0,
+        0,
+        0,
+        8.075459957122803,
+        0,
+        0,
+        0,
+        0,
+        8.075459957122803,
+        0,
+        68.50000381469727,
+        1.9000000059604645,
+        0.000016689300537109375,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull_aged",
+      "nodeName": "LOD2_Hull_aged",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        8.075459957122803,
+        0,
+        0,
+        0,
+        0,
+        8.075459957122803,
+        0,
+        0,
+        0,
+        0,
+        8.075459957122803,
+        0,
+        68.50000381469727,
+        1.9000000059604645,
+        0.000016689300537109375,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod2-mechanical",
+      "localTransform": [
+        0.32196903228759766,
+        0,
+        0,
+        0,
+        0,
+        0.32196903228759766,
+        0,
+        0,
+        0,
+        0,
+        0.32196903228759766,
+        0,
+        1.999974250793457,
+        8.7701416015625,
+        -4.0008485317230225,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Mechanical",
+      "nodeName": "LOD2_Mechanical",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        0.32196903228759766,
+        0,
+        0,
+        0,
+        0,
+        0.32196903228759766,
+        0,
+        0,
+        0,
+        0,
+        0.32196903228759766,
+        0,
+        1.999974250793457,
+        8.7701416015625,
+        -4.0008485317230225,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod2-mechanicaldark",
+      "localTransform": [
+        34.6389102935791,
+        0,
+        0,
+        0,
+        0,
+        34.6389102935791,
+        0,
+        0,
+        0,
+        0,
+        34.6389102935791,
+        0,
+        37.645246505737305,
+        7.316904306411743,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MechanicalDark",
+      "nodeName": "LOD2_MechanicalDark",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        34.6389102935791,
+        0,
+        0,
+        0,
+        0,
+        34.6389102935791,
+        0,
+        0,
+        0,
+        0,
+        34.6389102935791,
+        0,
+        37.645246505737305,
+        7.316904306411743,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod2-stone",
+      "localTransform": [
+        25.48415756225586,
+        0,
+        0,
+        0,
+        0,
+        25.48415756225586,
+        0,
+        0,
+        0,
+        0,
+        25.48415756225586,
+        0,
+        31,
+        5.75,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone",
+      "nodeName": "LOD2_Stone",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        25.48415756225586,
+        0,
+        0,
+        0,
+        0,
+        25.48415756225586,
+        0,
+        0,
+        0,
+        0,
+        25.48415756225586,
+        0,
+        31,
+        5.75,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.mesh.lod2-warning",
+      "localTransform": [
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        34,
+        4.724999785423279,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Warning",
+      "nodeName": "LOD2_Warning",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.conveyor-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        34,
+        4.724999785423279,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.conveyor-barge.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_PLACE_CONVEYOR_BARGE_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.conveyor-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "1b47b272f872da4cb30febced3414a3330eea466bad606c6a6bd2f2bde54286b"
+    },
+    "sourceGlb": {
+      "bytes": 385484,
+      "sha256": "25abc3fca5083d14871a3e399be2836a3c340e205640ec5918a40c9bca507ada",
+      "uri": "place_conveyor_barge.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 393300,
+    "sha256": "340b8656d6bf01159fbe8841fd6740be5c159dacb9acc349b95dfcc871bde66e",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        35.650001525878906,
+        5.548886765748573,
+        0
+      ],
+      "max": [
+        72.30000305175781,
+        11.098254127985872,
+        8.301019382479717
+      ],
+      "min": [
+        -1,
+        -0.00048059648872467164,
+        -8.301019382479717
+      ],
+      "size": [
+        73.30000305175781,
+        11.098734724474596,
+        16.602038764959435
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          34,
+          4.400000095367432,
+          7,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_PORT",
+        "planIndex": 5,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.conveyor-barge.mesh.lod0-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          34,
+          4.400000095367432,
+          -7,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_STARBOARD",
+        "planIndex": 7,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod0"
+        },
+        "userData": {
+          "name": "LOD0_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.conveyor-barge.mesh.lod0-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          34,
+          4.400000095367432,
+          7,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_PORT",
+        "planIndex": 18,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod1"
+        },
+        "userData": {
+          "name": "LOD1_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.conveyor-barge.mesh.lod1-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          34,
+          4.400000095367432,
+          -7,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_STARBOARD",
+        "planIndex": 20,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod1"
+        },
+        "userData": {
+          "name": "LOD1_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.conveyor-barge.mesh.lod1-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          34,
+          4.400000095367432,
+          7,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_PORT",
+        "planIndex": 31,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2"
+        },
+        "userData": {
+          "name": "LOD2_HOOK_NAV_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_NAV_PORT",
+            "recordIds": [
+              "sf.render.conveyor-barge.mesh.lod2-hook-nav-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          34,
+          4.400000095367432,
+          -7,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_STARBOARD",
+        "planIndex": 33,
+        "tags": {
+          "damageRole": "navLight",
+          "lod": "lod2"
+        },
+        "userData": {
+          "name": "LOD2_HOOK_NAV_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_HOOK_NAV_STARBOARD",
+            "recordIds": [
+              "sf.render.conveyor-barge.mesh.lod2-hook-nav-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.5,
+          2.200000047683716,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 41,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "forward": [
+            -1,
+            0,
+            0
+          ],
+          "name": "SOCKET_Trail_Main",
+          "role": "vfx",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.conveyor-barge.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          33.8525,
+          3.0125,
+          0,
+          1
+        ],
+        "name": "SOCKET_Structure_Core",
+        "planIndex": 42,
+        "tags": {
+          "socket": true,
+          "socketRole": "structure_core"
+        },
+        "userData": {
+          "name": "SOCKET_Structure_Core",
+          "role": "structure_core",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "structure_core"
+          },
+          "spaceface.semanticRole": "structure_core",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Structure_Core",
+            "recordIds": [
+              "sf.render.conveyor-barge.anchor.socket-structure-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          44,
+          5.5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Barge_Bridge",
+        "planIndex": 43,
+        "tags": {
+          "socket": true,
+          "socketRole": "bridge_zone"
+        },
+        "userData": {
+          "name": "SOCKET_Barge_Bridge",
+          "role": "bridge_zone",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "bridge_zone"
+          },
+          "spaceface.semanticRole": "bridge_zone",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Barge_Bridge",
+            "recordIds": [
+              "sf.render.conveyor-barge.anchor.socket-barge-bridge"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          12,
+          5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Container_Fore",
+        "planIndex": 44,
+        "tags": {
+          "socket": true,
+          "socketRole": "container_row"
+        },
+        "userData": {
+          "name": "SOCKET_Container_Fore",
+          "role": "container_row",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "container_row"
+          },
+          "spaceface.semanticRole": "container_row",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Container_Fore",
+            "recordIds": [
+              "sf.render.conveyor-barge.anchor.socket-container-fore"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          22,
+          5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Container_Mid",
+        "planIndex": 45,
+        "tags": {
+          "socket": true,
+          "socketRole": "container_row"
+        },
+        "userData": {
+          "name": "SOCKET_Container_Mid",
+          "role": "container_row",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "container_row"
+          },
+          "spaceface.semanticRole": "container_row",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Container_Mid",
+            "recordIds": [
+              "sf.render.conveyor-barge.anchor.socket-container-mid"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          32,
+          5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Container_Aft",
+        "planIndex": 46,
+        "tags": {
+          "socket": true,
+          "socketRole": "container_row"
+        },
+        "userData": {
+          "name": "SOCKET_Container_Aft",
+          "role": "container_row",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "container_row"
+          },
+          "spaceface.semanticRole": "container_row",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Container_Aft",
+            "recordIds": [
+              "sf.render.conveyor-barge.anchor.socket-container-aft"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          26,
+          6.2,
+          0,
+          1
+        ],
+        "name": "SOCKET_Emissive",
+        "planIndex": 47,
+        "tags": {
+          "socket": true,
+          "socketRole": "emissive"
+        },
+        "userData": {
+          "name": "SOCKET_Emissive",
+          "role": "emissive",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "emissive"
+          },
+          "spaceface.semanticRole": "emissive",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Emissive",
+            "recordIds": [
+              "sf.render.conveyor-barge.anchor.socket-emissive"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.5,
+          2.2,
+          0,
+          1
+        ],
+        "name": "SOCKET_Drive_Plume",
+        "planIndex": 48,
+        "tags": {
+          "socket": true,
+          "socketRole": "drive_plume"
+        },
+        "userData": {
+          "name": "SOCKET_Drive_Plume",
+          "role": "drive_plume",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "drive_plume"
+          },
+          "spaceface.semanticRole": "drive_plume",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Drive_Plume",
+            "recordIds": [
+              "sf.render.conveyor-barge.anchor.socket-drive-plume"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          44,
+          0,
+          -7.5,
+          1
+        ],
+        "name": "SOCKET_Status_Port",
+        "planIndex": 49,
+        "tags": {
+          "socket": true,
+          "socketRole": "status_light"
+        },
+        "userData": {
+          "name": "SOCKET_Status_Port",
+          "role": "status_light",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "status_light"
+          },
+          "spaceface.semanticRole": "status_light",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Status_Port",
+            "recordIds": [
+              "sf.render.conveyor-barge.anchor.socket-status-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          44,
+          0,
+          7.5,
+          1
+        ],
+        "name": "SOCKET_Status_Starboard",
+        "planIndex": 50,
+        "tags": {
+          "socket": true,
+          "socketRole": "status_light"
+        },
+        "userData": {
+          "name": "SOCKET_Status_Starboard",
+          "role": "status_light",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "status_light"
+          },
+          "spaceface.semanticRole": "status_light",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Status_Starboard",
+            "recordIds": [
+              "sf.render.conveyor-barge.anchor.socket-status-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "geology": 3,
+      "hull": 10,
+      "mechanical": 6,
+      "signal": 11,
+      "warning": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "warning"
+      }
+    ],
+    "nodeCount": 51,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          35.695472717285156,
+          0,
+          0,
+          0,
+          0,
+          35.695472717285156,
+          0,
+          0,
+          0,
+          0,
+          35.695472717285156,
+          0,
+          34.695472717285156,
+          5.5466047966328915,
+          0,
+          1
+        ],
+        "name": "LOD0_Armor",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          34.98649978637695,
+          0,
+          0,
+          0,
+          0,
+          34.98649978637695,
+          0,
+          0,
+          0,
+          0,
+          34.98649978637695,
+          0,
+          36.73849868774414,
+          8.308750629425049,
+          0.6759998798370361,
+          1
+        ],
+        "name": "LOD0_Beacon_Amber",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          34,
+          4.400000095367432,
+          7,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_PORT_1",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          34,
+          4.400000095367432,
+          -7,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_STARBOARD_1",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          36.32855987548828,
+          0,
+          0,
+          0,
+          0,
+          36.32855987548828,
+          0,
+          0,
+          0,
+          0,
+          36.32855987548828,
+          0,
+          35.84241485595703,
+          7.749999761581421,
+          -2.107489228248596,
+          1
+        ],
+        "name": "LOD0_Hull",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.100000381469727,
+          0,
+          0,
+          0,
+          0,
+          8.100000381469727,
+          0,
+          0,
+          0,
+          0,
+          8.100000381469727,
+          0,
+          68.5,
+          1.8999998569488525,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull_aged",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.9000005722045898,
+          0,
+          0,
+          0,
+          0,
+          1.9000005722045898,
+          0,
+          0,
+          0,
+          0,
+          1.9000005722045898,
+          0,
+          1.9999990463256836,
+          7.199999809265137,
+          -1.600000023841858,
+          1
+        ],
+        "name": "LOD0_Lights_Warm",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3158740997314453,
+          0,
+          0,
+          0,
+          0,
+          0.3158740997314453,
+          0,
+          0,
+          0,
+          0,
+          0.3158740997314453,
+          0,
+          1.9999980926513672,
+          8.769999980926514,
+          -4,
+          1
+        ],
+        "name": "LOD0_Mechanical",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          35.400001525878906,
+          0,
+          0,
+          0,
+          0,
+          35.400001525878906,
+          0,
+          0,
+          0,
+          0,
+          35.400001525878906,
+          0,
+          36.900001525878906,
+          5.749999821186066,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          25.5,
+          0,
+          0,
+          0,
+          0,
+          25.5,
+          0,
+          0,
+          0,
+          0,
+          25.5,
+          0,
+          31,
+          5.75,
+          0,
+          1
+        ],
+        "name": "LOD0_Stone",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          34,
+          0,
+          0,
+          0,
+          0,
+          34,
+          0,
+          0,
+          0,
+          0,
+          34,
+          0,
+          34,
+          4.724999785423279,
+          0,
+          1
+        ],
+        "name": "LOD0_Warning",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          35.695472717285156,
+          0,
+          0,
+          0,
+          0,
+          35.695472717285156,
+          0,
+          0,
+          0,
+          0,
+          35.695472717285156,
+          0,
+          34.695472717285156,
+          5.5466047966328915,
+          0,
+          1
+        ],
+        "name": "LOD1_Armor",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          34.98671531677246,
+          0,
+          0,
+          0,
+          0,
+          34.98671531677246,
+          0,
+          0,
+          0,
+          0,
+          34.98671531677246,
+          0,
+          36.73828315734863,
+          8.30875015258789,
+          0.6758508682250977,
+          1
+        ],
+        "name": "LOD1_Beacon_Amber",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          34,
+          4.400000095367432,
+          7,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_PORT_1",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          34,
+          4.400000095367432,
+          -7,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_STARBOARD_1",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          36.32855987548828,
+          0,
+          0,
+          0,
+          0,
+          36.32855987548828,
+          0,
+          0,
+          0,
+          0,
+          36.32855987548828,
+          0,
+          35.84241485595703,
+          7.749999761581421,
+          -2.107489228248596,
+          1
+        ],
+        "name": "LOD1_Hull",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.095062732696533,
+          0,
+          0,
+          0,
+          0,
+          8.095062732696533,
+          0,
+          0,
+          0,
+          0,
+          8.095062732696533,
+          0,
+          68.50000381469727,
+          1.8999999165534973,
+          -0.0002760887145996094,
+          1
+        ],
+        "name": "LOD1_Hull_aged",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.9000005722045898,
+          0,
+          0,
+          0,
+          0,
+          1.9000005722045898,
+          0,
+          0,
+          0,
+          0,
+          1.9000005722045898,
+          0,
+          1.9999990463256836,
+          7.199999809265137,
+          -1.600000023841858,
+          1
+        ],
+        "name": "LOD1_Lights_Warm",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.3157622814178467,
+          0,
+          0,
+          0,
+          0,
+          0.3157622814178467,
+          0,
+          0,
+          0,
+          0,
+          0.3157622814178467,
+          0,
+          1.9999971389770508,
+          8.770167827606201,
+          -3.999882936477661,
+          1
+        ],
+        "name": "LOD1_Mechanical",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          35.39742660522461,
+          0,
+          0,
+          0,
+          0,
+          35.39742660522461,
+          0,
+          0,
+          0,
+          0,
+          35.39742660522461,
+          0,
+          36.89742660522461,
+          5.750354468822479,
+          0,
+          1
+        ],
+        "name": "LOD1_MechanicalDark",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          25.494879722595215,
+          0,
+          0,
+          0,
+          0,
+          25.494879722595215,
+          0,
+          0,
+          0,
+          0,
+          25.494879722595215,
+          0,
+          31.000000953674316,
+          5.749943017959595,
+          0.000003814697265625,
+          1
+        ],
+        "name": "LOD1_Stone",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          34,
+          0,
+          0,
+          0,
+          0,
+          34,
+          0,
+          0,
+          0,
+          0,
+          34,
+          0,
+          34,
+          4.724999785423279,
+          0,
+          1
+        ],
+        "name": "LOD1_Warning",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          35.68527412414551,
+          0,
+          0,
+          0,
+          0,
+          35.68527412414551,
+          0,
+          0,
+          0,
+          0,
+          35.68527412414551,
+          0,
+          34.705671310424805,
+          5.555417321622372,
+          0,
+          1
+        ],
+        "name": "LOD2_Armor",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          34.987661361694336,
+          0,
+          0,
+          0,
+          0,
+          34.987661361694336,
+          0,
+          0,
+          0,
+          0,
+          34.987661361694336,
+          0,
+          36.73733711242676,
+          8.308750629425049,
+          0.6696100234985352,
+          1
+        ],
+        "name": "LOD2_Beacon_Amber",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          34,
+          4.400000095367432,
+          7,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_PORT_1",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          34,
+          4.400000095367432,
+          -7,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_STARBOARD_1",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          36.31680488586426,
+          0,
+          0,
+          0,
+          0,
+          36.31680488586426,
+          0,
+          0,
+          0,
+          0,
+          36.31680488586426,
+          0,
+          35.843984603881836,
+          7.750972032546997,
+          -2.1039693355560303,
+          1
+        ],
+        "name": "LOD2_Hull",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.075459957122803,
+          0,
+          0,
+          0,
+          0,
+          8.075459957122803,
+          0,
+          0,
+          0,
+          0,
+          8.075459957122803,
+          0,
+          68.50000381469727,
+          1.9000000059604645,
+          0.000016689300537109375,
+          1
+        ],
+        "name": "LOD2_Hull_aged",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.32196903228759766,
+          0,
+          0,
+          0,
+          0,
+          0.32196903228759766,
+          0,
+          0,
+          0,
+          0,
+          0.32196903228759766,
+          0,
+          1.999974250793457,
+          8.7701416015625,
+          -4.0008485317230225,
+          1
+        ],
+        "name": "LOD2_Mechanical",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          34.6389102935791,
+          0,
+          0,
+          0,
+          0,
+          34.6389102935791,
+          0,
+          0,
+          0,
+          0,
+          34.6389102935791,
+          0,
+          37.645246505737305,
+          7.316904306411743,
+          0,
+          1
+        ],
+        "name": "LOD2_MechanicalDark",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          25.48415756225586,
+          0,
+          0,
+          0,
+          0,
+          25.48415756225586,
+          0,
+          0,
+          0,
+          0,
+          25.48415756225586,
+          0,
+          31,
+          5.75,
+          0,
+          1
+        ],
+        "name": "LOD2_Stone",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          34,
+          0,
+          0,
+          0,
+          0,
+          34,
+          0,
+          0,
+          0,
+          0,
+          34,
+          0,
+          34,
+          4.724999785423279,
+          0,
+          1
+        ],
+        "name": "LOD2_Warning",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_conveyor_barge.glb"
+  },
+  "runtimeHash": "828fe05e1105398bab7f5fe7b0ad5d81aadb2d71fb638d4dea322d2cf58afd85",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          72.30000305175781,
+          11.098254127985872,
+          8.301019382479717
+        ],
+        "min": [
+          -1,
+          -0.00048059648872467164,
+          -8.301019382479717
+        ]
+      },
+      "id": "sf.render.conveyor-barge.body",
+      "nodeIds": [
+        "sf.render.conveyor-barge.mesh.collision-hull",
+        "sf.render.conveyor-barge.mesh.lod0-armor",
+        "sf.render.conveyor-barge.mesh.lod0-beacon-amber",
+        "sf.render.conveyor-barge.mesh.lod0-hook-nav-port",
+        "sf.render.conveyor-barge.mesh.lod0-hook-nav-starboard",
+        "sf.render.conveyor-barge.mesh.lod0-hull",
+        "sf.render.conveyor-barge.mesh.lod0-hull-aged",
+        "sf.render.conveyor-barge.mesh.lod0-lights-warm",
+        "sf.render.conveyor-barge.mesh.lod0-mechanical",
+        "sf.render.conveyor-barge.mesh.lod0-mechanicaldark",
+        "sf.render.conveyor-barge.mesh.lod0-stone",
+        "sf.render.conveyor-barge.mesh.lod0-warning",
+        "sf.render.conveyor-barge.mesh.lod1-armor",
+        "sf.render.conveyor-barge.mesh.lod1-beacon-amber",
+        "sf.render.conveyor-barge.mesh.lod1-hook-nav-port",
+        "sf.render.conveyor-barge.mesh.lod1-hook-nav-starboard",
+        "sf.render.conveyor-barge.mesh.lod1-hull",
+        "sf.render.conveyor-barge.mesh.lod1-hull-aged",
+        "sf.render.conveyor-barge.mesh.lod1-lights-warm",
+        "sf.render.conveyor-barge.mesh.lod1-mechanical",
+        "sf.render.conveyor-barge.mesh.lod1-mechanicaldark",
+        "sf.render.conveyor-barge.mesh.lod1-stone",
+        "sf.render.conveyor-barge.mesh.lod1-warning",
+        "sf.render.conveyor-barge.mesh.lod2-armor",
+        "sf.render.conveyor-barge.mesh.lod2-beacon-amber",
+        "sf.render.conveyor-barge.mesh.lod2-hook-nav-port",
+        "sf.render.conveyor-barge.mesh.lod2-hook-nav-starboard",
+        "sf.render.conveyor-barge.mesh.lod2-hull",
+        "sf.render.conveyor-barge.mesh.lod2-hull-aged",
+        "sf.render.conveyor-barge.mesh.lod2-mechanical",
+        "sf.render.conveyor-barge.mesh.lod2-mechanicaldark",
+        "sf.render.conveyor-barge.mesh.lod2-stone",
+        "sf.render.conveyor-barge.mesh.lod2-warning",
+        "sf.render.conveyor-barge.root"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,2082 @@
+
+> spaceface@0.1.0 check:thruster:propulsion-family
+> node --test test/vp220-p1-fleet-idle-segments.test.mjs test/vp220-p2-hotpath-brake-dynamics.test.mjs test/vp220-p3-acceptance-lifecycle.test.mjs test/vp220-propulsion-family.test.mjs
+
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: segmented geometry uses recipe/quality counts — not a 4-vertex card
+ok 1 - segmented geometry uses recipe/quality counts — not a 4-vertex card
+  ---
+  duration_ms: 7.534165
+  ...
+# Subtest: quality tier switch preserves full mesh for every layer batch
+ok 2 - quality tier switch preserves full mesh for every layer batch
+  ---
+  duration_ms: 11.357047
+  ...
+# Subtest: resolveEngineProfileId and getEngineProfileBase allocate nothing and stay referentially stable
+ok 3 - resolveEngineProfileId and getEngineProfileBase allocate nothing and stay referentially stable
+  ---
+  duration_ms: 0.379517
+  ...
+# Subtest: dense multi-frame profile id resolution stays allocation-stable
+ok 4 - dense multi-frame profile id resolution stays allocation-stable
+  ---
+  duration_ms: 89.730294
+  ...
+# Subtest: family fleet batches two distinct live families simultaneously then sleeps
+ok 5 - family fleet batches two distinct live families simultaneously then sleeps
+  ---
+  duration_ms: 16.16273
+  ...
+# Subtest: zero-socket player drive does not light a ghost plume at the world origin
+ok 6 - zero-socket player drive does not light a ghost plume at the world origin
+  ---
+  duration_ms: 7.769818
+  ...
+# Subtest: fleet grows past its initial allocation, then saturates at the sanity ceiling
+ok 7 - fleet grows past its initial allocation, then saturates at the sanity ceiling
+  ---
+  duration_ms: 5.761177
+  ...
+# Subtest: the eleventh ship in one family gets a real plume, not a silent drop
+ok 8 - the eleventh ship in one family gets a real plume, not a silent drop
+  ---
+  duration_ms: 7.929847
+  ...
+# Subtest: capacity-grown plume replacement is admitted through the pipeline latch at swap
+ok 9 - capacity-grown plume replacement is admitted through the pipeline latch at swap
+  ---
+  duration_ms: 12.763721
+  ...
+# Subtest: plume capacity migration without an admission hook still swaps cleanly
+ok 10 - plume capacity migration without an admission hook still swaps cleanly
+  ---
+  duration_ms: 6.168229
+  ...
+# Subtest: route-level idle sleeps production energy; thrust wakes it non-allocating
+ok 11 - route-level idle sleeps production energy; thrust wakes it non-allocating
+  ---
+  duration_ms: 86.76998
+  ...
+# Subtest: live route binds player + NPC different families at once via vfx system
+ok 12 - live route binds player + NPC different families at once via vfx system
+  ---
+  duration_ms: 34.041836
+  ...
+# Subtest: multi-entity pool write does not allocate and respects socket budget
+ok 13 - multi-entity pool write does not allocate and respects socket budget
+  ---
+  duration_ms: 0.467057
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: resolveDriveMode and sampleThrottleInto accept persistent scratch without object literals
+ok 14 - resolveDriveMode and sampleThrottleInto accept persistent scratch without object literals
+  ---
+  duration_ms: 1.625886
+  ...
+# Subtest: resolveEngineProfileId: authored engine slot outranks hull defIdFallback
+ok 15 - resolveEngineProfileId: authored engine slot outranks hull defIdFallback
+  ---
+  duration_ms: 0.386349
+  ...
+# Subtest: sampleThrottleInto does not mutate frozen caller flags
+ok 16 - sampleThrottleInto does not mutate frozen caller flags
+  ---
+  duration_ms: 0.384106
+  ...
+# Subtest: route-shaped brake uses commanded throttle not residual drive
+ok 17 - route-shaped brake uses commanded throttle not residual drive
+  ---
+  duration_ms: 161.726461
+  ...
+# Subtest: same-family idle and boost upload distinct instance dynamics without cross-contamination
+ok 18 - same-family idle and boost upload distinct instance dynamics without cross-contamination
+  ---
+  duration_ms: 12.104515
+  ...
+# Subtest: identity-stable slots preserve survivors; ownership change resets newcomers
+ok 19 - identity-stable slots preserve survivors; ownership change resets newcomers
+  ---
+  duration_ms: 9.215423
+  ...
+# Subtest: two-phase full-table: newcomer first cannot steal warmed survivors
+ok 20 - two-phase full-table: newcomer first cannot steal warmed survivors
+  ---
+  duration_ms: 29.466903
+  ...
+# Subtest: two-phase two-slot: newcomer first, later survivor keeps record; only departed reused
+ok 21 - two-phase two-slot: newcomer first, later survivor keeps record; only departed reused
+  ---
+  duration_ms: 10.254422
+  ...
+# Subtest: hadEntity snapshots priorEntityId for the frame; admit overwrite does not clear it
+ok 22 - hadEntity snapshots priorEntityId for the frame; admit overwrite does not clear it
+  ---
+  duration_ms: 6.66835
+  ...
+# Subtest: retain pass does not burn screen-check budget on newcomers; each candidate tier-resolved once
+ok 23 - retain pass does not burn screen-check budget on newcomers; each candidate tier-resolved once
+  ---
+  duration_ms: 35.692381
+  ...
+# Subtest: faction thruster hex parse uses charCode only (no slice/substring)
+ok 24 - faction thruster hex parse uses charCode only (no slice/substring)
+  ---
+  duration_ms: 3.722048
+  ...
+# Subtest: RCS quality tiers drive real segment counts and dispose cleanly
+ok 25 - RCS quality tiers drive real segment counts and dispose cleanly
+  ---
+  duration_ms: 1.044967
+  ...
+# Subtest: legacy overflow exhaust preserves faction tint with real palette delta
+ok 26 - legacy overflow exhaust preserves faction tint with real palette delta
+  ---
+  duration_ms: 21.600971
+  ...
+# Subtest: fleet path reuses trail context/screen-check scratch (no per-call object literals)
+ok 27 - fleet path reuses trail context/screen-check scratch (no per-call object literals)
+  ---
+  duration_ms: 27.308859
+  ...
+# Subtest: production fleet same-family ships get distinct faction instance RGB
+ok 28 - production fleet same-family ships get distinct faction instance RGB
+  ---
+  duration_ms: 25.399202
+  ...
+# Subtest: hide/dispose clears production ownership so fallback is not suppressed
+ok 29 - hide/dispose clears production ownership so fallback is not suppressed
+  ---
+  duration_ms: 22.966591
+  ...
+# Subtest: trail context and screen-check scratch exist before first live frame
+ok 30 - trail context and screen-check scratch exist before first live frame
+  ---
+  duration_ms: 14.575662
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: live VFX route with engineTrails=false activates core+inner GPU batches
+ok 31 - live VFX route with engineTrails=false activates core+inner GPU batches
+  ---
+  duration_ms: 156.189079
+  ...
+# Subtest: compact mode is not off: RCS remains fireable under engineTrails=false
+ok 32 - compact mode is not off: RCS remains fireable under engineTrails=false
+  ---
+  duration_ms: 40.510962
+  ...
+# Subtest: family switch resets old family RCS mesh counts and pool
+ok 33 - family switch resets old family RCS mesh counts and pool
+  ---
+  duration_ms: 5.145042
+  ...
+# Subtest: death, dock, sector reset, and dispose clear ownership and mesh counts
+ok 34 - death, dock, sector reset, and dispose clear ownership and mesh counts
+  ---
+  duration_ms: 43.968513
+  ...
+# Subtest: 600-frame dense multi-family sweep stays within caps and zero frame alloc
+ok 35 - 600-frame dense multi-family sweep stays within caps and zero frame alloc
+  ---
+  duration_ms: 132.477937
+  ...
+# Subtest: missing profile and over-cap candidates fall back without suppressing owned ships
+ok 36 - missing profile and over-cap candidates fall back without suppressing owned ships
+  ---
+  duration_ms: 4.868491
+  ...
+# Subtest: route-level overflow leaves player production path active and legacy fallback truthful
+ok 37 - route-level overflow leaves player production path active and legacy fallback truthful
+  ---
+  duration_ms: 32.125777
+  ...
+# Subtest: reduced-motion dense update preserves core+inner and zero alloc
+ok 38 - reduced-motion dense update preserves core+inner and zero alloc
+  ---
+  duration_ms: 21.584723
+  ...
+# Subtest: acceptance schema and scenario contract cover required profiles and scenarios
+ok 39 - acceptance schema and scenario contract cover required profiles and scenarios
+  ---
+  duration_ms: 1.47801
+  ...
+# Subtest: report validator accepts complete self-test good report
+ok 40 - report validator accepts complete self-test good report
+  ---
+  duration_ms: 7.656464
+  ...
+# Subtest: report validator rejects missing family, compact inner, lifecycle, GPU, hash identity
+ok 41 - report validator rejects missing family, compact inner, lifecycle, GPU, hash identity
+  ---
+  duration_ms: 13.835581
+  ...
+# Subtest: report validator rejects extended fail-closed defect mutants
+ok 42 - report validator rejects extended fail-closed defect mutants
+  ---
+  duration_ms: 12.945047
+  ...
+# Subtest: prepare-only blocked report never validates as complete evidence
+ok 43 - prepare-only blocked report never validates as complete evidence
+  ---
+  duration_ms: 2.862205
+  ...
+# Subtest: artifactRoot verifies real files and rejects missing/zero/hash/traversal mutants
+ok 44 - artifactRoot verifies real files and rejects missing/zero/hash/traversal mutants
+  ---
+  duration_ms: 19.981618
+  ...
+# Subtest: kestrel shipped URL and authored states are contract constants
+ok 45 - kestrel shipped URL and authored states are contract constants
+  ---
+  duration_ms: 0.200189
+  ...
+# Subtest: report validator self-test harness passes good and fails all bad mutants
+ok 46 - report validator self-test harness passes good and fails all bad mutants
+  ---
+  duration_ms: 9.760301
+  ...
+# Subtest: runtime hash helper covers every required thruster runtime file
+ok 47 - runtime hash helper covers every required thruster runtime file
+  ---
+  duration_ms: 1.491999
+  ...
+# Subtest: current-tree candidateHash changes when one runtime file digest changes; artifact mismatch fails
+ok 48 - current-tree candidateHash changes when one runtime file digest changes; artifact mismatch fails
+  ---
+  duration_ms: 3.521876
+  ...
+# Subtest: validateMeasuredProjection rejects world-only, fallback, and invented widths
+ok 49 - validateMeasuredProjection rejects world-only, fallback, and invented widths
+  ---
+  duration_ms: 0.512526
+  ...
+# Subtest: cleanup trigger requires public lifecycle event and rejects private helpers
+ok 50 - cleanup trigger requires public lifecycle event and rejects private helpers
+  ---
+  duration_ms: 2.531329
+  ...
+# Subtest: assertReadableCoreInner rejects sheath-only and faint compact claims
+ok 51 - assertReadableCoreInner rejects sheath-only and faint compact claims
+  ---
+  duration_ms: 0.346689
+  ...
+# Subtest: assertReadableCoreInner rejects zero intensity even with positive drawCount
+ok 52 - assertReadableCoreInner rejects zero intensity even with positive drawCount
+  ---
+  duration_ms: 0.248947
+  ...
+# Subtest: assertReadableCoreInner rejects zero opacity even with positive drawCount
+ok 53 - assertReadableCoreInner rejects zero opacity even with positive drawCount
+  ---
+  duration_ms: 0.190661
+  ...
+# Subtest: assertReadableCoreInner rejects NaN intensity even with positive drawCount
+ok 54 - assertReadableCoreInner rejects NaN intensity even with positive drawCount
+  ---
+  duration_ms: 0.158446
+  ...
+# Subtest: assertReadableCoreInner rejects NaN opacity even with positive drawCount
+ok 55 - assertReadableCoreInner rejects NaN opacity even with positive drawCount
+  ---
+  duration_ms: 0.19374
+  ...
+# Subtest: live ENGINE_PROFILES ids each resolve to a validated main+RCS pack
+ok 56 - live ENGINE_PROFILES ids each resolve to a validated main+RCS pack
+  ---
+  duration_ms: 5.400461
+  ...
+# Subtest: accepted Kestrel substrate remains the ion_small family identity
+ok 57 - accepted Kestrel substrate remains the ion_small family identity
+  ---
+  duration_ms: 0.159008
+  ...
+# Subtest: live families differ by structure and timing, not tint alone
+ok 58 - live families differ by structure and timing, not tint alone
+  ---
+  duration_ms: 0.844917
+  ...
+# Subtest: throttle continuum responds continuously for every family (length/width/flow)
+ok 59 - throttle continuum responds continuously for every family (length/width/flow)
+  ---
+  duration_ms: 0.420458
+  ...
+# Subtest: drive modes communicate idle/accel/cruise/boost/brake/reverse through structure
+ok 60 - drive modes communicate idle/accel/cruise/boost/brake/reverse through structure
+  ---
+  duration_ms: 0.346835
+  ...
+# Subtest: pool samples carry continuum mode without per-frame allocation
+ok 61 - pool samples carry continuum mode without per-frame allocation
+  ---
+  duration_ms: 1.939256
+  ...
+# Subtest: family pools produce distinct layer geometry at equal throttle
+ok 62 - family pools produce distinct layer geometry at equal throttle
+  ---
+  duration_ms: 1.551226
+  ...
+# Subtest: RCS impulse direction and lifecycle are truthful and bounded
+ok 63 - RCS impulse direction and lifecycle are truthful and bounded
+  ---
+  duration_ms: 16.191649
+  ...
+# Subtest: accessibility preserves family feedback for every pack
+ok 64 - accessibility preserves family feedback for every pack
+  ---
+  duration_ms: 15.469378
+  ...
+# Subtest: socket axis truth: exhaust follows socket forward (negated for shader convention)
+ok 65 - socket axis truth: exhaust follows socket forward (negated for shader convention)
+  ---
+  duration_ms: 0.565266
+  ...
+# Subtest: family GPU batches bind textures and dispose cleanly
+ok 66 - family GPU batches bind textures and dispose cleanly
+  ---
+  duration_ms: 7.546936
+  ...
+# Subtest: drive integration is continuous (no binary boost snap)
+ok 67 - drive integration is continuous (no binary boost snap)
+  ---
+  duration_ms: 0.377172
+  ...
+# Subtest: pairwise family distinction helper rejects tint-only clones
+ok 68 - pairwise family distinction helper rejects tint-only clones
+  ---
+  duration_ms: 0.473597
+  ...
+1..68
+# tests 68
+# suites 0
+# pass 68
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 922.68749
+
+> spaceface@0.1.0 check:thruster:plasma-unit
+> node --test test/plasma-stream-thruster.test.mjs test/contrail-corkscrew.test.mjs
+
+TAP version 13
+# Subtest: the helix offset is zero at rest and for every legal helm yaw, and saturates at a hard tumble
+ok 1 - the helix offset is zero at rest and for every legal helm yaw, and saturates at a hard tumble
+  ---
+  duration_ms: 2.327889
+  ...
+# Subtest: only tumble/drift presentation may forward owner.angVel into the helix
+ok 2 - only tumble/drift presentation may forward owner.angVel into the helix
+  ---
+  duration_ms: 0.351676
+  ...
+# Subtest: a spun hull records a corkscrew across its exhaust axis; an unspun hull records a straight line
+ok 3 - a spun hull records a corkscrew across its exhaust axis; an unspun hull records a straight line
+  ---
+  duration_ms: 21.50846
+  ...
+# Subtest: smoothstep is monotonic on unit interval
+ok 4 - smoothstep is monotonic on unit interval
+  ---
+  duration_ms: 1.254089
+  ...
+# Subtest: path sampler retains equal-spacing history
+ok 5 - path sampler retains equal-spacing history
+  ---
+  duration_ms: 0.735573
+  ...
+# Subtest: the exhaust is swept ribbon sheets, not points, sprites or a density field
+ok 6 - the exhaust is swept ribbon sheets, not points, sprites or a density field
+  ---
+  duration_ms: 24.7908
+  ...
+# Subtest: the live plume and immutable history are separate objects
+ok 7 - the live plume and immutable history are separate objects
+  ---
+  duration_ms: 8.772534
+  ...
+# Subtest: sheets are wide enough to carry a crease, not one-normal wire strips
+ok 8 - sheets are wide enough to carry a crease, not one-normal wire strips
+  ---
+  duration_ms: 1.171916
+  ...
+# Subtest: the jet is nozzle-local and about two hull lengths, never a dragged tail
+ok 9 - the jet is nozzle-local and about two hull lengths, never a dragged tail
+  ---
+  duration_ms: 2.722255
+  ...
+# Subtest: gas flows through the live jet: its form is not a still image
+ok 10 - gas flows through the live jet: its form is not a still image
+  ---
+  duration_ms: 0.665406
+  ...
+# Subtest: throttle moves live-jet length and never its opacity
+ok 11 - throttle moves live-jet length and never its opacity
+  ---
+  duration_ms: 0.277564
+  ...
+# Subtest: every contrail center sample is an exact position the emitting nozzle occupied
+ok 12 - every contrail center sample is an exact position the emitting nozzle occupied
+  ---
+  duration_ms: 5.038877
+  ...
+# Subtest: the contrail retains a volume of curved overlapping energy sheets
+ok 13 - the contrail retains a volume of curved overlapping energy sheets
+  ---
+  duration_ms: 1.410288
+  ...
+# Subtest: distance and speed cannot trim young history
+ok 14 - distance and speed cannot trim young history
+  ---
+  duration_ms: 2.572645
+  ...
+# Subtest: a parked ship thrusting lays down no spatial trail
+ok 15 - a parked ship thrusting lays down no spatial trail
+  ---
+  duration_ms: 1.599689
+  ...
+# Subtest: sub-step jitter never rewrites or densely resamples the newest fact
+ok 16 - sub-step jitter never rewrites or densely resamples the newest fact
+  ---
+  duration_ms: 2.769753
+  ...
+# Subtest: cutting thrust leaves every young sample fixed in space; age alone removes it
+ok 17 - cutting thrust leaves every young sample fixed in space; age alone removes it
+  ---
+  duration_ms: 1.64664
+  ...
+# Subtest: the history and forge have no pulse clock, travelling bands or live-nozzle override
+ok 18 - the history and forge have no pulse clock, travelling bands or live-nozzle override
+  ---
+  duration_ms: 1.506712
+  ...
+# Subtest: emission gaps and teleports start disconnected segments without deleting history
+ok 19 - emission gaps and teleports start disconnected segments without deleting history
+  ---
+  duration_ms: 0.918763
+  ...
+# Subtest: a full history buffer skips births instead of evicting young facts
+ok 20 - a full history buffer skips births instead of evicting young facts
+  ---
+  duration_ms: 1.775916
+  ...
+# Subtest: cutting thrust puts the live jet out while recorded light fades in place
+ok 21 - cutting thrust puts the live jet out while recorded light fades in place
+  ---
+  duration_ms: 6.590635
+  ...
+# Subtest: plasma stream reuses one fallback identity without sockets or owner
+ok 22 - plasma stream reuses one fallback identity without sockets or owner
+  ---
+  duration_ms: 3.256686
+  ...
+# Subtest: full throttle grows the plume inside 120 ms and zero throttle goes dark inside a quarter second
+ok 23 - full throttle grows the plume inside 120 ms and zero throttle goes dark inside a quarter second
+  ---
+  duration_ms: 0.330526
+  ...
+# Subtest: zero throttle is dark and speed contributes only while the throttle is open
+ok 24 - zero throttle is dark and speed contributes only while the throttle is open
+  ---
+  duration_ms: 0.222491
+  ...
+# Subtest: ordinary helm yaw keeps the live jet and its history on the yawing nozzle
+ok 25 - ordinary helm yaw keeps the live jet and its history on the yawing nozzle
+  ---
+  duration_ms: 12.997487
+  ...
+# Subtest: dash is a one-shot supernova with a long cooling tail
+ok 26 - dash is a one-shot supernova with a long cooling tail
+  ---
+  duration_ms: 0.36949
+  ...
+1..26
+# tests 26
+# suites 0
+# pass 26
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 282.361445
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: accepted Kestrel recipes construct the real batched runtime systems
+ok 1 - accepted Kestrel recipes construct the real batched runtime systems
+  ---
+  duration_ms: 11.041326
+  ...
+# Subtest: recipe validation owns role-specific readability and turbo-structure bounds
+ok 2 - recipe validation owns role-specific readability and turbo-structure bounds
+  ---
+  duration_ms: 0.772908
+  ...
+# Subtest: live Kestrel seam suppresses the legacy bead trail and generic boost burst
+ok 3 - live Kestrel seam suppresses the legacy bead trail and generic boost burst
+  ---
+  duration_ms: 2.520241
+  ...
+# Subtest: live Kestrel plume remains visible when the legacy HDR-energy toggle is off
+not ok 4 - live Kestrel plume remains visible when the legacy HDR-energy toggle is off
+  ---
+  duration_ms: 141.978375
+  location: '/workspace/spaceface-scratch/hillclimb-20260924h/test/kestrel-production-thruster-bind.test.mjs:87:1'
+  failureType: 'testCodeFailure'
+  error: 'normal forward thrust must publish a visible production plume'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///workspace/spaceface-scratch/hillclimb-20260924h/test/kestrel-production-thruster-bind.test.mjs:122:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: production thruster pose tracks the nozzle every display frame at high speed
+ok 5 - production thruster pose tracks the nozzle every display frame at high speed
+  ---
+  duration_ms: 34.044077
+  ...
+# Subtest: startup VFX precompile salvo contains the production plume shader family
+ok 6 - startup VFX precompile salvo contains the production plume shader family
+  ---
+  duration_ms: 242.766189
+  ...
+# Subtest: reduced flash preserves useful continuous plume radiance with one intensity scale
+ok 7 - reduced flash preserves useful continuous plume radiance with one intensity scale
+  ---
+  duration_ms: 0.474094
+  ...
+# Subtest: main and RCS reduced-motion flow scales are applied exactly once
+ok 8 - main and RCS reduced-motion flow scales are applied exactly once
+  ---
+  duration_ms: 2.533941
+  ...
+# Subtest: reduced settings preserve a shorter attached main core and directional inner jet
+ok 9 - reduced settings preserve a shorter attached main core and directional inner jet
+  ---
+  duration_ms: 1.679154
+  ...
+# Subtest: RCS accessibility keeps one geometric envelope and a minimum readable hot-root shape
+not ok 10 - RCS accessibility keeps one geometric envelope and a minimum readable hot-root shape
+  ---
+  duration_ms: 3.695208
+  location: '/workspace/spaceface-scratch/hillclimb-20260924h/test/kestrel-production-thruster-bind.test.mjs:282:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /float impulseRoot = uImpulseJet/. Input:
+    
+    '\n' +
+      '  precision highp float;\n' +
+      '\n' +
+      '  varying vec2 vUv;\n' +
+      '  varying float vAlong;\n' +
+      '  varying float vSide;\n' +
+      '  varying float vThrottle;\n' +
+      '  varying float vPhase;\n' +
+      '  varying vec3 vColor;\n' +
+      '  varying float vFlowSpeed;\n' +
+      '  varying float vTurbulence;\n' +
+      '  varying float vCoreSheath;\n' +
+      '  varying float vDissipation;\n' +
+      '  varying float vBoostBlend;\n' +
+      '  varying float vGrazing;\n' +
+      '\n' +
+      '  uniform float uTime;\n' +
+      '  uniform float uFlowSpeed;\n' +
+      '  uniform float uNoiseScale;\n' +
+      '  uniform float uSoftEdge;\n' +
+      '  uniform float uIntensity;\n' +
+      '  uniform float uOpacity;\n' +
+      '  uniform float uTurbulence;\n' +
+      '  uniform float uCoreSheath;\n' +
+      '  uniform float uDissipation;\n' +
+      '  uniform float uBoostBlend;\n' +
+      '  uniform float uSwirl;\n' +
+      '  uniform float uFork;\n' +
+      '  uniform float uFlipbookCols;\n' +
+      '  uniform float uFlipbookRows;\n' +
+      '  uniform float uFlipbookFps;\n' +
+      '  uniform float uUseFlipbook;\n' +
+      '  uniform float uReducedMotion;\n' +
+      '  uniform float uReducedFlash;\n' +
+      '  uniform float uCoreWhitenessCap;\n' +
+      '  uniform float uLayerRole;\n' +
+      '  uniform float uImpulseJet;\n' +
+      '  uniform sampler2D uMap;\n' +
+      '\n' +
+      '  // Family construction (familyConstruction.js). Bound once at material creation: one material\n' +
+      '  // per family x role already exists, so these cost nothing per frame and add no shader variant.\n' +
+      '  uniform float uFoldCount;\n' +
+      '  uniform float uCreaseDepth;\n' +
+      '  uniform float uCreaseSharp;\n' +
+      '  uniform float uCreaseBias;\n' +
+      '  uniform float uFoldTravel;\n' +
+      '  uniform float uFoldPitch;\n' +
+      '  uniform float uFoldBreak;\n' +
+      '  uniform float uFoldBeatHz;\n' +
+      '  uniform float uFoldAnnulus;\n' +
+      '  uniform float uThroatBite;\n' +
+      '  uniform float uMouthLobes;\n' +
+      '  uniform float uCompressionPitch;\n' +
+      '  uniform float uCompressionDepth;\n' +
+      '  uniform float uReachSpread;\n' +
+      '  // The INTEGRATED fold clock, advanced on the CPU at foldClockRate(drive, boost, reducedMotion).\n' +
+      '  // Throttle and boost must never multiply it here: see the note in plumeFoldField.js.\n' +
+      '  uniform float uFoldTime;\n' +
+      '  // Impulse construction (RCS only; zero on continuous drives).\n' +
+      '  uniform float uHeadLaunch;\n' +
+      '  uniform float uHeadTravel;\n' +
+      '  uniform float uHeadDepth;\n' +
+      '  uniform float uCollarLift;\n' +
+      '  uniform float uCollarHold;\n' +
+      '\n' +
+      '\n' +
+      '// Shared fold field (must match plumeFoldField.js)\n' +
+      '// uFoldTime is the INTEGRATED fold clock. Nothing in here may multiply it by drive or boost:\n' +
+      '// scaling an unbounded elapsed time is frequency modulation without phase integration, and it\n' +
+      '// scrubs hundreds of creases past the eye on every spool once a session has been running a while.\n' +
+      'float plumeRoleReachScale(float layerRole) {\n' +
+      '  return 0.3 + clamp(layerRole, 0.0, 3.0) / 3.0 * 0.7;\n' +
+      '}\n' +
+      '\n' +
+      'float plumeInstanceReach(float seed, float roleScale) {\n' +
+      '  float spread = clamp(uReachSpread * roleScale, 0.0, 0.5);\n' +
+      '  return 1.0 - spread * (0.5 + 0.5 * sin(seed * 12.9898 + 4.1));\n' +
+      '}\n' +
+      '\n' +
+      'float plumeThroatAttach(float along, float side) {\n' +
+      '  float mouthZone = 1.0 - smoothstep(0.0, 0.22, along);\n' +
+      '  float lobe = 0.5 + 0.5 * cos(side * uMouthLobes * 3.14159265);\n' +
+      '  float broken = mix(1.0, 0.42 + 0.72 * lobe, (1.0 - uThroatBite) * mouthZone);\n' +
+      '  float weld = 1.0 + uThroatBite * 0.55 * mouthZone;\n' +
+      '  return broken * weld;\n' +
+      '}\n' +
+      '\n' +
+      'float plumeCompression(float along) {\n' +
+      '  return 1.0 + uCompressionDepth * cos(along * uCompressionPitch) * exp(-along * 3.2);\n' +
+      '}\n' +
+      '\n' +
+      'float plumeFoldField(float along, float side, float axialNoise, float drive, float boost, float t) {\n' +
+      '  float beatOn = step(0.001, uFoldBeatHz);\n' +
+      '  float beat = sin(t * 6.28318531 * uFoldBeatHz);\n' +
+      '\n' +
+      '  float ringD = (abs(side) - uFoldAnnulus) * 2.6;\n' +
+      '  float ringBand = exp(-(ringD * ringD));\n' +
+      '  float ring = mix(1.0, 0.35 + 1.35 * ringBand, step(0.001, uFoldAnnulus));\n' +
+      '\n' +
+      '  float phase = side * uFoldCount * 3.14159265\n' +
+      '    + along * uFoldPitch * 6.28318531\n' +
+      '    - t * uFoldTravel * 6.28318531\n' +
+      '    + beat * 1.15 * beatOn;\n' +
+      '\n' +
+      '  float wave = 0.5 + 0.5 * cos(phase);\n' +
+      '  float sharp = max(1.0, uCreaseSharp * (0.72 + drive * 0.42) * (1.0 + boost * 0.18));\n' +
+      '  float crease = pow(max(wave, 0.0), sharp);\n' +
+      '  crease *= max(0.0, 1.0 + uCreaseBias * cos(phase * 0.5));\n' +
+      '  crease *= mix(1.0, 0.3 + 1.35 * axialNoise, uFoldBreak * smoothstep(0.22, 0.92, along));\n' +
+      '\n' +
+      '  float depth = clamp(uCreaseDepth * (1.0 + 0.45 * beat * beatOn), 0.0, 0.78);\n' +
+      '  return (1.0 - depth) + depth * min(crease * ring * 1.45, 1.9);\n' +
+      '}\n' +
+      '\n' +
+      '\n' +
+      '  float hash21(vec2 p) {\n' +
+      '    p = fract(p * vec2(123.34, 456.21));\n' +
+      '    p += dot(p, p + 45.32);\n' +
+      '    return fract(p.x * p.y);\n' +
+      '  }\n' +
+      '\n' +
+      '  float valueNoise(vec2 p) {\n' +
+      '    vec2 i = floor(p);\n' +
+      '    vec2 f = fract(p);\n' +
+      '    // Quintic fade (C2-continuous) instead of the cubic smoothstep. Continuous second\n' +
+      '    // derivatives remove the faint lattice creasing that made advected noise read as a\n' +
+      '    // shimmering grid rather than a body of moving liquid.\n' +
+      '    f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);\n' +
+      '    float a = hash21(i);\n' +
+      '    float b = hash21(i + vec2(1.0, 0.0));\n' +
+      '    float c = hash21(i + vec2(0.0, 1.0));\n' +
+      '    float d = hash21(i + vec2(1.0, 1.0));\n' +
+      '    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);\n' +
+      '  }\n' +
+      '\n' +
+      '  /** UV for one explicit flipbook cell -- lets the caller blend adjacent frames. */\n' +
+      '  vec2 flipbookCellUv(vec2 uv, float frame) {\n' +
+      '    float col = mod(frame, uFlipbookCols);\n' +
+      '    float row = floor(frame / uFlipbookCols);\n' +
+      '    vec2 cell = vec2(1.0 / uFlipbookCols, 1.0 / uFlipbookRows);\n' +
+      '    return vec2(uv.x * cell.x + col * cell.x, uv.y * cell.y + (uFlipbookRows - 1.0 - row) * cell.y);\n' +
+      '  }\n' +
+      '\n' +
+      '  vec2 flipbookUv(vec2 uv, float time) {\n' +
+      '    float frames = max(1.0, uFlipbookCols * uFlipbookRows);\n' +
+      '    float frame = floor(mod(time * uFlipbookFps + vPhase * frames, frames));\n' +
+      '    return flipbookCellUv(uv, frame);\n' +
+      '  }\n' +
+      '\n' +
+      '  void main() {\n' +
+      '    // Per-instance continuum dynamics (fleet multi-entity). CPU always writes instanceDynamics;\n' +
+      '    // uniforms remain family identity / precompile defaults only.\n' +
+      '    float dynFlow = vFlowSpeed;\n' +
+      '    float dynTurb = vTurbulence;\n' +
+      '    float dynCore = vCoreSheath;\n' +
+      '    float dynDiss = vDissipation;\n' +
+      "    // params.w carries two different things, and which one depends on the jet's kind. A continuous\n" +
+      '    // drive writes its boost blend there. An impulse jet has no boost, so it writes its PULSE\n' +
+      '    // CLOCK — 0 at ignition, 1 at the end of the burst — and the force-impulse read below is built\n' +
+      "    // on it. Split them here, once, so neither path can ever read the other's number.\n" +
+      '    float dynBoost = vBoostBlend * (1.0 - uImpulseJet);\n' +
+      '    float pulse = clamp(vBoostBlend, 0.0, 1.0) * uImpulseJet;\n' +
+      '    // Continuous-plume flow speed is already accessibility-scaled on the CPU. Do not square\n' +
+      '    // reduced-motion here into a frozen card.\n' +
+      '    float flowTime = uTime * dynFlow;\n' +
+      '\n' +
+      '    // B18 — per-instance extent. Every instance of a role used to end at exactly the same station,\n' +
+      "    // so a family's plumes had a flat chopped back edge and two ships of one family were pixel\n" +
+      '    // identical. Each instance now runs out at its own distance, seeded from its own phase (which\n' +
+      '    // is per-socket AND per-entity), and only ever SHORTER than the mesh: the material must always\n' +
+      '    // finish before the geometry does.\n' +
+      '    // One hash per instance, shared by every role of it; the role scale alone decides how much\n' +
+      '    // of the family spread each layer spends. That keeps the hot core inside its own cold sheath\n' +
+      '    // instead of letting a short core draw a stub inside a longer vapor sleeve.\n' +
+      '    float instReach = plumeInstanceReach(vPhase * 7.31, plumeRoleReachScale(uLayerRole));\n' +
+      '    float reachAlong = clamp(vAlong / max(instReach, 0.5), 0.0, 1.35);\n' +
+      '    float soft = max(uSoftEdge, 0.04);\n' +
+      '    float edgeX = smoothstep(0.0, soft, vUv.x) * (1.0 - smoothstep(1.0 - soft * 1.15, 1.0, vUv.x));\n' +
+      '    float edgeY = 1.0 - smoothstep(1.0 - soft, 1.0, abs(vSide));\n' +
+      '    float softMask = edgeX * edgeY;\n' +
+      '    softMask *= softMask;\n' +
+      '\n' +
+      '    // Roles differ in form, not tint: core stays compact, while sheath/vapor retain a broad,\n' +
+      '    // irregular cross-section and own the dissipating tail. This prevents additive layers from\n' +
+      '    // collapsing into one white laser needle at the gameplay camera.\n' +
+      '    float roleSpread = clamp(uLayerRole / 3.0, 0.0, 1.0);\n' +
+      '    float coreRole = 1.0 - step(0.5, uLayerRole);\n' +
+      '    float innerRole = 1.0 - smoothstep(0.25, 0.75, abs(uLayerRole - 1.0));\n' +
+      '    float sheathRole = 1.0 - smoothstep(0.25, 0.75, abs(uLayerRole - 2.0));\n' +
+      '    float vaporRole = 1.0 - smoothstep(0.25, 0.75, abs(uLayerRole - 3.0));\n' +
+      '\n' +
+      '    // -- Liquid advection ---------------------------------------------------------------------\n' +
+      '    // A large-scale, slow domain warp displaces the sampling domain before any detail is read.\n' +
+      '    // It is deliberately low-frequency and axially biased, so features stretch downstream and\n' +
+      '    // meander as a body instead of twinkling in place. Domain warping -- not more noise octaves --\n' +
+      '    // is what separates a flowing fluid from a scrolling noise card. The core warps least so the\n' +
+      '    // brightest, most gameplay-legible part of the exhaust stays coherent and readable.\n' +
+      '    vec2 warpP = vec2(vAlong * 1.75 - flowTime * 0.30, vSide * 1.05 + vPhase * 4.1);\n' +
+      '    float warpA = valueNoise(warpP) - 0.5;\n' +
+      '    float warpB = valueNoise(warpP * 1.93 + vec2(3.7, -2.4)) - 0.5;\n' +
+      '    float warpGain = mix(0.30, 1.0, roleSpread) * mix(1.0, 0.42, uReducedMotion)\n' +
+      '      * (0.6 + clamp(dynTurb, 0.0, 1.6) * 0.45);\n' +
+      '    vec2 warp = vec2(warpA * 0.34 + warpB * 0.14, warpB * 0.26 + warpA * 0.10) * warpGain;\n' +
+      '\n' +
+      '    float swirl = uSwirl * (0.35 + vThrottle * 0.9);\n' +
+      '    vec2 flowUv = vec2(\n' +
+      '      fract(vUv.x * (1.2 + uNoiseScale * 0.35) - flowTime * (0.55 + vThrottle * 0.7) + vPhase\n' +
+      '        + warp.x * 0.22),\n' +
+      '      vUv.y + sin(vUv.x * 5.5 + flowTime * 1.15) * swirl * 0.05 + warp.y * 0.10\n' +
+      '    );\n' +
+      '    // Anisotropic sampling: the field is stretched along the flow axis and compressed across it,\n' +
+      '    // so turbulence resolves into elongated liquid striations rather than isotropic granular\n' +
+      '    // speckle. The lowered frequencies are the coherence lever -- the previous rates dissolved\n' +
+      '    // into uniform haze at the gameplay camera instead of reading as moving structure.\n' +
+      '    float n1 = valueNoise(flowUv * vec2(1.45 + uNoiseScale * 0.55, 3.1 + uNoiseScale * 1.35) * uNoiseScale\n' +
+      '      + vec2(0.0, flowTime * 0.28));\n' +
+      '    float n2 = valueNoise(flowUv * vec2(2.2, 4.6) + vec2(flowTime * -0.28, vPhase));\n' +
+      '    // '... 15160 more characters
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: |-
+    
+      precision highp float;
+    
+      varying vec2 vUv;
+      varying float vAlong;
+      varying float vSide;
+      varying float vThrottle;
+      varying float vPhase;
+      varying vec3 vColor;
+      varying float vFlowSpeed;
+      varying float vTurbulence;
+      varying float vCoreSheath;
+      varying float vDissipation;
+      varying float vBoostBlend;
+      varying float vGrazing;
+    
+      uniform float uTime;
+      uniform float uFlowSpeed;
+      uniform float uNoiseScale;
+      uniform float uSoftEdge;
+      uniform float uIntensity;
+      uniform float uOpacity;
+      uniform float uTurbulence;
+      uniform float uCoreSheath;
+      uniform float uDissipation;
+      uniform float uBoostBlend;
+      uniform float uSwirl;
+      uniform float uFork;
+      uniform float uFlipbookCols;
+      uniform float uFlipbookRows;
+      uniform float uFlipbookFps;
+      uniform float uUseFlipbook;
+      uniform float uReducedMotion;
+      uniform float uReducedFlash;
+      uniform float uCoreWhitenessCap;
+      uniform float uLayerRole;
+      uniform float uImpulseJet;
+      uniform sampler2D uMap;
+    
+      // Family construction (familyConstruction.js). Bound once at material creation: one material
+      // per family x role already exists, so these cost nothing per frame and add no shader variant.
+      uniform float uFoldCount;
+      uniform float uCreaseDepth;
+      uniform float uCreaseSharp;
+      uniform float uCreaseBias;
+      uniform float uFoldTravel;
+      uniform float uFoldPitch;
+      uniform float uFoldBreak;
+      uniform float uFoldBeatHz;
+      uniform float uFoldAnnulus;
+      uniform float uThroatBite;
+      uniform float uMouthLobes;
+      uniform float uCompressionPitch;
+      uniform float uCompressionDepth;
+      uniform float uReachSpread;
+      // The INTEGRATED fold clock, advanced on the CPU at foldClockRate(drive, boost, reducedMotion).
+      // Throttle and boost must never multiply it here: see the note in plumeFoldField.js.
+      uniform float uFoldTime;
+      // Impulse construction (RCS only; zero on continuous drives).
+      uniform float uHeadLaunch;
+      uniform float uHeadTravel;
+      uniform float uHeadDepth;
+      uniform float uCollarLift;
+      uniform float uCollarHold;
+    
+    
+    // Shared fold field (must match plumeFoldField.js)
+    // uFoldTime is the INTEGRATED fold clock. Nothing in here may multiply it by drive or boost:
+    // scaling an unbounded elapsed time is frequency modulation without phase integration, and it
+    // scrubs hundreds of creases past the eye on every spool once a session has been running a while.
+    float plumeRoleReachScale(float layerRole) {
+      return 0.3 + clamp(layerRole, 0.0, 3.0) / 3.0 * 0.7;
+    }
+    
+    float plumeInstanceReach(float seed, float roleScale) {
+      float spread = clamp(uReachSpread * roleScale, 0.0, 0.5);
+      return 1.0 - spread * (0.5 + 0.5 * sin(seed * 12.9898 + 4.1));
+    }
+    
+    float plumeThroatAttach(float along, float side) {
+      float mouthZone = 1.0 - smoothstep(0.0, 0.22, along);
+      float lobe = 0.5 + 0.5 * cos(side * uMouthLobes * 3.14159265);
+      float broken = mix(1.0, 0.42 + 0.72 * lobe, (1.0 - uThroatBite) * mouthZone);
+      float weld = 1.0 + uThroatBite * 0.55 * mouthZone;
+      return broken * weld;
+    }
+    
+    float plumeCompression(float along) {
+      return 1.0 + uCompressionDepth * cos(along * uCompressionPitch) * exp(-along * 3.2);
+    }
+    
+    float plumeFoldField(float along, float side, float axialNoise, float drive, float boost, float t) {
+      float beatOn = step(0.001, uFoldBeatHz);
+      float beat = sin(t * 6.28318531 * uFoldBeatHz);
+    
+      float ringD = (abs(side) - uFoldAnnulus) * 2.6;
+      float ringBand = exp(-(ringD * ringD));
+      float ring = mix(1.0, 0.35 + 1.35 * ringBand, step(0.001, uFoldAnnulus));
+    
+      float phase = side * uFoldCount * 3.14159265
+        + along * uFoldPitch * 6.28318531
+        - t * uFoldTravel * 6.28318531
+        + beat * 1.15 * beatOn;
+    
+      float wave = 0.5 + 0.5 * cos(phase);
+      float sharp = max(1.0, uCreaseSharp * (0.72 + drive * 0.42) * (1.0 + boost * 0.18));
+      float crease = pow(max(wave, 0.0), sharp);
+      crease *= max(0.0, 1.0 + uCreaseBias * cos(phase * 0.5));
+      crease *= mix(1.0, 0.3 + 1.35 * axialNoise, uFoldBreak * smoothstep(0.22, 0.92, along));
+    
+      float depth = clamp(uCreaseDepth * (1.0 + 0.45 * beat * beatOn), 0.0, 0.78);
+      return (1.0 - depth) + depth * min(crease * ring * 1.45, 1.9);
+    }
+    
+    
+      float hash21(vec2 p) {
+        p = fract(p * vec2(123.34, 456.21));
+        p += dot(p, p + 45.32);
+        return fract(p.x * p.y);
+      }
+    
+      float valueNoise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        // Quintic fade (C2-continuous) instead of the cubic smoothstep. Continuous second
+        // derivatives remove the faint lattice creasing that made advected noise read as a
+        // shimmering grid rather than a body of moving liquid.
+        f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+        float a = hash21(i);
+        float b = hash21(i + vec2(1.0, 0.0));
+        float c = hash21(i + vec2(0.0, 1.0));
+        float d = hash21(i + vec2(1.0, 1.0));
+        return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+      }
+    
+      /** UV for one explicit flipbook cell -- lets the caller blend adjacent frames. */
+      vec2 flipbookCellUv(vec2 uv, float frame) {
+        float col = mod(frame, uFlipbookCols);
+        float row = floor(frame / uFlipbookCols);
+        vec2 cell = vec2(1.0 / uFlipbookCols, 1.0 / uFlipbookRows);
+        return vec2(uv.x * cell.x + col * cell.x, uv.y * cell.y + (uFlipbookRows - 1.0 - row) * cell.y);
+      }
+    
+      vec2 flipbookUv(vec2 uv, float time) {
+        float frames = max(1.0, uFlipbookCols * uFlipbookRows);
+        float frame = floor(mod(time * uFlipbookFps + vPhase * frames, frames));
+        return flipbookCellUv(uv, frame);
+      }
+    
+      void main() {
+        // Per-instance continuum dynamics (fleet multi-entity). CPU always writes instanceDynamics;
+        // uniforms remain family identity / precompile defaults only.
+        float dynFlow = vFlowSpeed;
+        float dynTurb = vTurbulence;
+        float dynCore = vCoreSheath;
+        float dynDiss = vDissipation;
+        // params.w carries two different things, and which one depends on the jet's kind. A continuous
+        // drive writes its boost blend there. An impulse jet has no boost, so it writes its PULSE
+        // CLOCK — 0 at ignition, 1 at the end of the burst — and the force-impulse read below is built
+        // on it. Split them here, once, so neither path can ever read the other's number.
+        float dynBoost = vBoostBlend * (1.0 - uImpulseJet);
+        float pulse = clamp(vBoostBlend, 0.0, 1.0) * uImpulseJet;
+        // Continuous-plume flow speed is already accessibility-scaled on the CPU. Do not square
+        // reduced-motion here into a frozen card.
+        float flowTime = uTime * dynFlow;
+    
+        // B18 — per-instance extent. Every instance of a role used to end at exactly the same station,
+        // so a family's plumes had a flat chopped back edge and two ships of one family were pixel
+        // identical. Each instance now runs out at its own distance, seeded from its own phase (which
+        // is per-socket AND per-entity), and only ever SHORTER than the mesh: the material must always
+        // finish before the geometry does.
+        // One hash per instance, shared by every role of it; the role scale alone decides how much
+        // of the family spread each layer spends. That keeps the hot core inside its own cold sheath
+        // instead of letting a short core draw a stub inside a longer vapor sleeve.
+        float instReach = plumeInstanceReach(vPhase * 7.31, plumeRoleReachScale(uLayerRole));
+        float reachAlong = clamp(vAlong / max(instReach, 0.5), 0.0, 1.35);
+        float soft = max(uSoftEdge, 0.04);
+        float edgeX = smoothstep(0.0, soft, vUv.x) * (1.0 - smoothstep(1.0 - soft * 1.15, 1.0, vUv.x));
+        float edgeY = 1.0 - smoothstep(1.0 - soft, 1.0, abs(vSide));
+        float softMask = edgeX * edgeY;
+        softMask *= softMask;
+    
+        // Roles differ in form, not tint: core stays compact, while sheath/vapor retain a broad,
+        // irregular cross-section and own the dissipating tail. This prevents additive layers from
+        // collapsing into one white laser needle at the gameplay camera.
+        float roleSpread = clamp(uLayerRole / 3.0, 0.0, 1.0);
+        float coreRole = 1.0 - step(0.5, uLayerRole);
+        float innerRole = 1.0 - smoothstep(0.25, 0.75, abs(uLayerRole - 1.0));
+        float sheathRole = 1.0 - smoothstep(0.25, 0.75, abs(uLayerRole - 2.0));
+        float vaporRole = 1.0 - smoothstep(0.25, 0.75, abs(uLayerRole - 3.0));
+    
+        // -- Liquid advection ---------------------------------------------------------------------
+        // A large-scale, slow domain warp displaces the sampling domain before any detail is read.
+        // It is deliberately low-frequency and axially biased, so features stretch downstream and
+        // meander as a body instead of twinkling in place. Domain warping -- not more noise octaves --
+        // is what separates a flowing fluid from a scrolling noise card. The core warps least so the
+        // brightest, most gameplay-legible part of the exhaust stays coherent and readable.
+        vec2 warpP = vec2(vAlong * 1.75 - flowTime * 0.30, vSide * 1.05 + vPhase * 4.1);
+        float warpA = valueNoise(warpP) - 0.5;
+        float warpB = valueNoise(warpP * 1.93 + vec2(3.7, -2.4)) - 0.5;
+        float warpGain = mix(0.30, 1.0, roleSpread) * mix(1.0, 0.42, uReducedMotion)
+          * (0.6 + clamp(dynTurb, 0.0, 1.6) * 0.45);
+        vec2 warp = vec2(warpA * 0.34 + warpB * 0.14, warpB * 0.26 + warpA * 0.10) * warpGain;
+    
+        float swirl = uSwirl * (0.35 + vThrottle * 0.9);
+        vec2 flowUv = vec2(
+          fract(vUv.x * (1.2 + uNoiseScale * 0.35) - flowTime * (0.55 + vThrottle * 0.7) + vPhase
+            + warp.x * 0.22),
+          vUv.y + sin(vUv.x * 5.5 + flowTime * 1.15) * swirl * 0.05 + warp.y * 0.10
+        );
+        // Anisotropic sampling: the field is stretched along the flow axis and compressed across it,
+        // so turbulence resolves into elongated liquid striations rather than isotropic granular
+        // speckle. The lowered frequencies are the coherence lever -- the previous rates dissolved
+        // into uniform haze at the gameplay camera instead of reading as moving structure.
+        float n1 = valueNoise(flowUv * vec2(1.45 + uNoiseScale * 0.55, 3.1 + uNoiseScale * 1.35) * uNoiseScale
+          + vec2(0.0, flowTime * 0.28));
+        float n2 = valueNoise(flowUv * vec2(2.2, 4.6) + vec2(flowTime * -0.28, vPhase));
+        // One axial field drives attached width changes and torn edges. It is continuous in time and
+        // throttle, and its non-zero floor prevents the segmented bead/disc vocabulary from returning.
+        float nAxial = valueNoise(vec2(
+          vAlong * (2.9 + uNoiseScale * 0.85 + dynBoost * 2.4)
+            - flowTime * (0.24 + vThrottle * 0.36 + dynBoost * 0.18)
+            + warp.x * 0.55,
+          vPhase * 13.1 + 2.7
+        ));
+    
+        // Slower axial falloff carries luminous material further downstream, so the exhaust reads as
+        // a long drawn-out stream rather than a bright root with haze behind it.
+        float axialPower = mix(0.42, 0.72, roleSpread);
+        float axial = pow(1.0 - clamp(vAlong, 0.0, 1.0), axialPower);
+        // Functional zoning: a compact pressure core at the nozzle, a directional inner stream,
+        // a turbulent middle sheath, then a localized dissipating vapor tail. The layers overlap
+        // enough to read as one exhaust while retaining distinct shapes at the gameplay camera.
+        float mainCoreWindow = 1.0 - smoothstep(0.62, 1.0, vAlong);
+        float mainInnerWindow = 1.0 - smoothstep(0.82, 1.0, vAlong);
+        float mainSheathWindow = smoothstep(0.015, 0.12, vAlong) * (1.0 - smoothstep(0.82, 1.0, vAlong));
+        float mainVaporWindow = smoothstep(0.08, 0.28, vAlong) * (1.0 - smoothstep(0.78, 1.0, vAlong));
+        // RCS has a compact hot root and a longer, dim asymmetric exhaust release. Its zones are not
+        // the main-engine windows scaled down, which keeps the one-shot impulse readable as a control jet.
+        float impulseCoreWindow = 1.0 - smoothstep(0.24, 0.56, vAlong);
+        float impulseInnerWindow = 1.0 - smoothstep(0.48, 0.76, vAlong);
+        float impulseSheathWindow = smoothstep(0.035, 0.14, vAlong) * (1.0 - smoothstep(0.62, 0.92, vAlong));
+        float impulseVaporWindow = smoothstep(0.16, 0.38, vAlong) * (1.0 - smoothstep(0.72, 1.0, vAlong));
+        float coreWindow = mix(mainCoreWindow, impulseCoreWindow, uImpulseJet);
+        float innerWindow = mix(mainInnerWindow, impulseInnerWindow, uImpulseJet);
+        float sheathWindow = mix(mainSheathWindow, impulseSheathWindow, uImpulseJet);
+        float vaporWindow = mix(mainVaporWindow, impulseVaporWindow, uImpulseJet);
+        float roleWindow = coreRole * coreWindow + innerRole * innerWindow
+          + sheathRole * sheathWindow + vaporRole * vaporWindow;
+        roleWindow += (1.0 - clamp(coreRole + innerRole + sheathRole + vaporRole, 0.0, 1.0));
+        axial *= roleWindow;
+        float breakupDrive = clamp(0.24 + vThrottle * 0.66 + dynBoost * 0.34, 0.0, 1.0);
+        float breakupMotion = mix(1.0, 0.38, uReducedMotion);
+        float broadRole = clamp(sheathRole + vaporRole, 0.0, 1.0);
+        float localWidth = 1.0 + broadRole * breakupDrive * breakupMotion * ((nAxial - 0.5) * 0.72);
+        float downstream = smoothstep(0.14, 0.88, vAlong);
+        float centerDrift = broadRole * (n2 - 0.5) * (0.13 + 0.12 * breakupDrive);
+        centerDrift += uImpulseJet * downstream * (nAxial - 0.5) * 0.42;
+        float shapedSide = (vSide - centerDrift) / max(localWidth, 0.62);
+        // Core keeps its tight, bright cross-section; broad roles get a creamier falloff so the
+        // layers blend into one continuous body instead of stacking as separate visible shells.
+        float sideSharpness = mix(5.8 + dynCore * 0.8, 1.15 + dynCore * 0.3, roleSpread);
+        sideSharpness = mix(sideSharpness, sideSharpness * 1.32, uImpulseJet * coreRole);
+        float sideFall = exp(-shapedSide * shapedSide * sideSharpness);
+        // The outer plasma sheath wraps the inner stream instead of filling the same centerline.
+        // That makes core / flow / containment / dissipation readable as material zones rather than
+        // four same-shaped cards with different colors.
+        float sideAbs = abs(shapedSide);
+        float sheathRim = exp(-pow((sideAbs - 0.44) * 2.75, 2.0)) * 0.64 + sideFall * 0.42;
+        float vaporWisp = sideFall * (0.78 + 0.22 * sin(vAlong * 7.5 + shapedSide * 2.4 + nAxial * 3.0));
+        float sheathWrap = mix(sideFall, sheathRim, mix(0.22, 0.46, breakupDrive));
+        float crossShape = mix(sideFall, sheathWrap, sheathRole * mix(0.72, 0.38, uImpulseJet));
+        crossShape = mix(crossShape, vaporWisp, vaporRole * mix(0.38, 0.68, uImpulseJet));
+        // M2 grazing response: the curved shell's radial normal changes with the real view, so the
+        // rim catches light as it turns edge-on. Reduced flash damps the hot lift, never the shape.
+        float graze = clamp(vGrazing - 1.0, 0.0, 1.1);
+        crossShape *= 1.0 + graze * (0.46 * (1.0 - uReducedFlash * 0.45));
+        float stream = axial * crossShape;
+    
+        // Deep, attached axial breakup: broad sheath lobes change with throttle, but a 0.38 floor
+        // keeps every lobe connected to the nozzle and rules out balls, gaps, and flipbook cards.
+        float attachedBreakup = 0.38 + 0.62 * smoothstep(0.12, 0.88, nAxial * 0.72 + n2 * 0.28);
+        float breakupAmount = sheathRole * mix(0.42, 0.94, breakupDrive)
+          + vaporRole * mix(0.32, 0.76, breakupDrive);
+        breakupAmount *= breakupMotion;
+        stream *= mix(1.0, attachedBreakup, clamp(breakupAmount, 0.0, 1.0));
+    
+        // -- The family's fold arrangement ----------------------------------------------------------
+        // This replaces a fixed five-filament sine that every drive in the game shared. Same job —
+        // give the shell internal flow direction — but the sheet count, crease sharpness, pairing,
+        // travel rate, standing beat, annulus and downstream shredding are now the family's own
+        // construction. A disciplined ion drive gets three long clean creases running fast and
+        // parallel; an industrial torch gets six soft ones that wander and tear; the resonator's
+        // barely convect at all and beat in place instead.
+        //
+        // Deliberately ONE field rather than a new layer over the old one: stacking a second
+        // arrangement on the first is what turns four cooperating roles into four separate plumes.
+        // The field is floored at (1 - creaseDepth), so a crease darkens the interior between sheets
+        // and can never open a gap — bright lines with holes between them is B19.
+        float foldDrive = clamp(vThrottle, 0.0, 1.4);
+        float fold = plumeFoldField(vAlong, shapedSide, nAxial, foldDrive, dynBoost, uFoldTime);
+        // Broad roles carry the arrangement at full depth. The core and inner stream take a fraction,
+        // so the brightest and most gameplay-legible part of the exhaust keeps one or two clean
+        // creases instead of either dissolving into stripes or staying a featureless tube.
+        float foldWeight = clamp(
+          broadRole + coreRole * 0.34 + innerRole * 0.58, 0.0, 1.0
+        ) * mix(1.0, 0.68, uReducedMotion);
+        stream *= mix(1.0, fold, foldWeight);
+    
+        // The mouth. A disciplined drive welds its column to the lip and sears there; a loaded one
+        // stands off and breaks into lobes before the column opens. This is the family tell that
+        // survives at any distance, because it is legible before the plume's interior resolves.
+        stream *= plumeThroatAttach(vAlong, shapedSide);
+    
+        // Per-instance runout (B18). Material thins to nothing before this instance's mesh ends, at
+        // a distance that is this instance's own, so a family's plumes stop at a ragged front rather
+        // than a shared plane and a formation of one hull type is not a row of identical copies.
+        stream *= 1.0 - smoothstep(0.72, 1.02, reachAlong);
+    
+        // Three unequal, nozzle-connected axial tongues replace the circular distal puff. Their
+        // staggered falloffs create 2-4 readable shear notches after minification while the rootBridge
+        // keeps the exhaust one attached silhouette. A nonzero analytic floor prevents bead gaps.
+        float tongueCenter = exp(-pow(shapedSide * 2.05, 2.0))
+          * (1.0 - smoothstep(0.74 + dynBoost * 0.08, 0.98, vAlong));
+        float tongueUpper = exp(-pow((shapedSide - 0.46) * 4.2, 2.0))
+          * (1.0 - smoothstep(0.52 + breakupDrive * 0.08, 0.78 + dynBoost * 0.08, vAlong));
+        float tongueLower = exp(-pow((shapedSide + 0.42) * 3.8, 2.0))
+          * (1.0 - smoothstep(0.6 + breakupDrive * 0.06, 0.86 + dynBoost * 0.1, vAlong));
+        float tongueMask = max(tongueCenter, max(tongueUpper * 0.9, tongueLower * 0.84));
+        float rootBridge = (1.0 - smoothstep(0.12, 0.38, vAlong)) * sideFall;
+        float attachedTongues = max(tongueMask, rootBridge);
+        float distalZone = broadRole * smoothstep(0.22, 0.58, vAlong)
+          * mix(0.58, 0.82, breakupDrive) * mix(1.0, 0.74, uReducedMotion);
+        stream *= mix(1.0, 0.18 + 0.82 * attachedTongues, distalZone);
+    
+        float turb = mix(0.62, 1.0, n1 * 0.65 + n2 * 0.35);
+        turb = mix(1.0, turb, clamp(dynTurb, 0.0, 1.6));
+        // Broad layers get coherent scalloping instead of inheriting the inner texture's narrow wisp.
+        float scallop = 0.90 + 0.10 * sin(vAlong * 10.5 + n1 * 3.2 + vSide * 2.2);
+        turb *= mix(1.0, scallop, clamp(sheathRole * 0.75 + vaporRole, 0.0, 1.0));
+        // Standing compression cells, imposed by the nozzle rather than carried by the gas. This is
+        // the family's own shock structure: pitch and depth come from the construction table, and it
+        // decays within a few units of the lip on purpose — a train that survives far downstream is
+        // the rung ladder that reads as a striped cone. The travel belongs to the fold field above;
+        // the machine's structure stands still relative to its bell, which is what E2 allows.
+        float pressureCells = plumeCompression(vAlong);
+        pressureCells = mix(pressureCells, 1.0, uReducedMotion * 0.4);
+        stream *= mix(1.0, pressureCells, clamp(innerRole * 0.78 + coreRole * 0.45, 0.0, 1.0));
+    
+        float tip = smoothstep(0.62, 1.0, vAlong);
+        stream *= 1.0 - tip * uFork * (0.30 + n2 * 0.55);
+    
+        // A later, gentler dissipation ramp keeps the tail alive further downstream so the exhaust
+        // trails off as flowing material rather than being cut short by a falloff wall. Read in the
+        // instance's own reach coordinate so a short instance cools early rather than being clipped.
+        float dissipate = 1.0 - smoothstep(0.52, 1.06, reachAlong / max(0.25, dynDiss));
+        stream *= mix(0.62, 1.0, dissipate);
+    
+        // Advanced texture advection. Both paths take two taps and cross-fade, which removes the two
+        // discontinuities that previously broke the illusion of continuous flow:
+        //  * Scrolled masks are sampled at u and u+0.5 and blended by |2u-1|. The source masks fade to
+        //    zero at u=0 and u=1, so the old single fract() tap swept a dark seam through the plume
+        //    once per cycle. The tap nearest a seam always carries zero weight, so the seam is gone and
+        //    the pattern stops visibly repeating.
+        //  * The flipbook blends adjacent cells instead of hard-cutting, removing the 18 fps cell
+        //    stutter that read as chatter rather than moving liquid.
+        vec4 tex;
+        if (uUseFlipbook > 0.5) {
+          float frames = max(1.0, uFlipbookCols * uFlipbookRows);
+          float fbPos = mix(uTime, uTime * 0.15, uReducedMotion) * uFlipbookFps + vPhase * frames;
+          float fbCell = floor(fbPos);
+          float fbMix = smoothstep(0.0, 1.0, fract(fbPos));
+          tex = mix(
+            texture2D(uMap, flipbookCellUv(vUv, mod(fbCell, frames))),
+            texture2D(uMap, flipbookCellUv(vUv, mod(fbCell + 1.0, frames))),
+            fbMix
+          );
+        } else {
+          tex = mix(
+            texture2D(uMap, flowUv),
+            texture2D(uMap, vec2(fract(flowUv.x + 0.5), flowUv.y)),
+            abs(flowUv.x * 2.0 - 1.0)
+          );
+        }
+        float texBody = max(tex.a, max(tex.r, max(tex.g, tex.b)));
+        // Textures add internal motion; they do not define the full silhouette. This static analytic
+        // floor keeps reduced-motion and minified gameplay views readable without card rectangles.
+        float textureWeight = mix(0.62, 0.28, roleSpread);
+        float body = mix(stream, stream * texBody, textureWeight);
+        float staticFloor = stream * mix(0.22, 0.34, roleSpread);
+        staticFloor *= mix(1.0, 1.32, uReducedMotion);
+        body = max(body, staticFloor);
+    
+        // -- RCS: a force impulse, not a tiny flight history ----------------------------------------
+        // A control jet is a valve opening and shutting, and what the player has to read is the
+        // SHOVE. Two things say it: a hard collar flash at the mouth while the valve is open, and a
+        // single overpressure head that leaves the throat and runs out along the jet. When the collar
+        // shuts, the root darkens behind the head, so what is left on screen is a packet of gas
+        // already on its way — the shape of a kick. A jet that simply shrank back into its nozzle
+        // read as a short trail of where the ship had been, which is the history's job and not this
+        // one's.
+        //
+        // pulse is THIS impulse's own clock, so a rapid double tap shows two heads at two distances
+        // rather than one smeared glow, and the first head keeps travelling through the second firing.
+        float collarOpen = 1.0 - smoothstep(uCollarHold, min(uCollarHold + 0.28, 1.0), pulse);
+        float collarZone = 1.0 - smoothstep(0.05, 0.26, vAlong);
+        float collar = uImpulseJet * uCollarLift * collarOpen * collarZone;
+        float headPos = uHeadTravel * smoothstep(uHeadLaunch, 1.0, pulse);
+        float headD = (vAlong - headPos) * 3.4;
+        float head = exp(-(headD * headD)) * (1.0 - smoothstep(0.72, 1.0, pulse));
+        body *= 1.0 + collar * (coreRole * 0.62 + innerRole * 0.30)
+          + uImpulseJet * uHeadDepth * head * (0.55 + coreRole * 0.60);
+        // Behind the head the valve has already shut, so the root goes out while the packet keeps
+        // going. This is the difference between a shove and a fade.
+        body *= 1.0 - uImpulseJet * 0.55 * collarZone * smoothstep(uCollarHold, 1.0, pulse);
+    
+        float coreW = coreRole;
+        float heat = clamp((1.0 - vAlong * 0.7) * (0.5 + vThrottle * 0.7) + coreW * 0.35, 0.0, 1.4);
+        vec3 hot = vec3(1.0, 0.985, 0.955);
+        float whitenCap = mix(0.52, uCoreWhitenessCap, uReducedFlash);
+        // Explicit temperature/value zones survive a bright planet as well as black space. The alpha
+        // vapor is deliberately cool and low-value; it is structural dissipation, not another glow.
+        vec3 coreTemp = mix(hot, vec3(0.67, 0.87, 1.0), smoothstep(0.08, 0.72, vAlong));
+        vec3 innerTemp = mix(vec3(0.30, 0.82, 1.0), vec3(0.08, 0.30, 0.86), smoothstep(0.18, 0.92, vAlong));
+        vec3 sheathTemp = mix(vColor, vec3(0.055, 0.09, 0.34), smoothstep(0.22, 0.96, vAlong));
+        vec3 vaporTemp = mix(vColor * 0.72, vec3(0.035, 0.07, 0.14), smoothstep(0.12, 0.94, vAlong));
+        vec3 col = coreRole * mix(coreTemp, hot, clamp(heat * 0.24, 0.0, whitenCap))
+          + innerRole * innerTemp + sheathRole * sheathTemp + vaporRole * vaporTemp;
+        col += (1.0 - clamp(coreRole + innerRole + sheathRole + vaporRole, 0.0, 1.0)) * vColor;
+    
+        // Intensity applied exactly once: uIntensity already includes base * accessibility scale.
+        // Reduced-flash still restrains the hot-core whiteness above; continuous engine feedback
+        // must not be dimmed a second time until it becomes invisible.
+        float intensity = uIntensity * (0.55 + vThrottle * 0.9);
+        float alpha = body * turb * softMask * uOpacity * (0.35 + min(intensity, 12.0) * 0.08);
+    
+        if (alpha < 0.004) discard;
+        gl_FragColor = vec4(col * intensity * body * turb, clamp(alpha, 0.0, 1.0));
+      }
+    
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (file:///workspace/spaceface-scratch/hillclimb-20260924h/test/kestrel-production-thruster-bind.test.mjs:308:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: turbo changes plume length, axial structure, and shear without using opacity as identity
+not ok 11 - turbo changes plume length, axial structure, and shear without using opacity as identity
+  ---
+  duration_ms: 1.387579
+  location: '/workspace/spaceface-scratch/hillclimb-20260924h/test/kestrel-production-thruster-bind.test.mjs:316:1'
+  failureType: 'testCodeFailure'
+  error: 'outer layers carry attached directional shear filaments'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: |-
+    
+      precision highp float;
+    
+      varying vec2 vUv;
+      varying float vAlong;
+      varying float vSide;
+      varying float vThrottle;
+      varying float vPhase;
+      varying vec3 vColor;
+      varying float vFlowSpeed;
+      varying float vTurbulence;
+      varying float vCoreSheath;
+      varying float vDissipation;
+      varying float vBoostBlend;
+      varying float vGrazing;
+    
+      uniform float uTime;
+      uniform float uFlowSpeed;
+      uniform float uNoiseScale;
+      uniform float uSoftEdge;
+      uniform float uIntensity;
+      uniform float uOpacity;
+      uniform float uTurbulence;
+      uniform float uCoreSheath;
+      uniform float uDissipation;
+      uniform float uBoostBlend;
+      uniform float uSwirl;
+      uniform float uFork;
+      uniform float uFlipbookCols;
+      uniform float uFlipbookRows;
+      uniform float uFlipbookFps;
+      uniform float uUseFlipbook;
+      uniform float uReducedMotion;
+      uniform float uReducedFlash;
+      uniform float uCoreWhitenessCap;
+      uniform float uLayerRole;
+      uniform float uImpulseJet;
+      uniform sampler2D uMap;
+    
+      // Family construction (familyConstruction.js). Bound once at material creation: one material
+      // per family x role already exists, so these cost nothing per frame and add no shader variant.
+      uniform float uFoldCount;
+      uniform float uCreaseDepth;
+      uniform float uCreaseSharp;
+      uniform float uCreaseBias;
+      uniform float uFoldTravel;
+      uniform float uFoldPitch;
+      uniform float uFoldBreak;
+      uniform float uFoldBeatHz;
+      uniform float uFoldAnnulus;
+      uniform float uThroatBite;
+      uniform float uMouthLobes;
+      uniform float uCompressionPitch;
+      uniform float uCompressionDepth;
+      uniform float uReachSpread;
+      // The INTEGRATED fold clock, advanced on the CPU at foldClockRate(drive, boost, reducedMotion).
+      // Throttle and boost must never multiply it here: see the note in plumeFoldField.js.
+      uniform float uFoldTime;
+      // Impulse construction (RCS only; zero on continuous drives).
+      uniform float uHeadLaunch;
+      uniform float uHeadTravel;
+      uniform float uHeadDepth;
+      uniform float uCollarLift;
+      uniform float uCollarHold;
+    
+    
+    // Shared fold field (must match plumeFoldField.js)
+    // uFoldTime is the INTEGRATED fold clock. Nothing in here may multiply it by drive or boost:
+    // scaling an unbounded elapsed time is frequency modulation without phase integration, and it
+    // scrubs hundreds of creases past the eye on every spool once a session has been running a while.
+    float plumeRoleReachScale(float layerRole) {
+      return 0.3 + clamp(layerRole, 0.0, 3.0) / 3.0 * 0.7;
+    }
+    
+    float plumeInstanceReach(float seed, float roleScale) {
+      float spread = clamp(uReachSpread * roleScale, 0.0, 0.5);
+      return 1.0 - spread * (0.5 + 0.5 * sin(seed * 12.9898 + 4.1));
+    }
+    
+    float plumeThroatAttach(float along, float side) {
+      float mouthZone = 1.0 - smoothstep(0.0, 0.22, along);
+      float lobe = 0.5 + 0.5 * cos(side * uMouthLobes * 3.14159265);
+      float broken = mix(1.0, 0.42 + 0.72 * lobe, (1.0 - uThroatBite) * mouthZone);
+      float weld = 1.0 + uThroatBite * 0.55 * mouthZone;
+      return broken * weld;
+    }
+    
+    float plumeCompression(float along) {
+      return 1.0 + uCompressionDepth * cos(along * uCompressionPitch) * exp(-along * 3.2);
+    }
+    
+    float plumeFoldField(float along, float side, float axialNoise, float drive, float boost, float t) {
+      float beatOn = step(0.001, uFoldBeatHz);
+      float beat = sin(t * 6.28318531 * uFoldBeatHz);
+    
+      float ringD = (abs(side) - uFoldAnnulus) * 2.6;
+      float ringBand = exp(-(ringD * ringD));
+      float ring = mix(1.0, 0.35 + 1.35 * ringBand, step(0.001, uFoldAnnulus));
+    
+      float phase = side * uFoldCount * 3.14159265
+        + along * uFoldPitch * 6.28318531
+        - t * uFoldTravel * 6.28318531
+        + beat * 1.15 * beatOn;
+    
+      float wave = 0.5 + 0.5 * cos(phase);
+      float sharp = max(1.0, uCreaseSharp * (0.72 + drive * 0.42) * (1.0 + boost * 0.18));
+      float crease = pow(max(wave, 0.0), sharp);
+      crease *= max(0.0, 1.0 + uCreaseBias * cos(phase * 0.5));
+      crease *= mix(1.0, 0.3 + 1.35 * axialNoise, uFoldBreak * smoothstep(0.22, 0.92, along));
+    
+      float depth = clamp(uCreaseDepth * (1.0 + 0.45 * beat * beatOn), 0.0, 0.78);
+      return (1.0 - depth) + depth * min(crease * ring * 1.45, 1.9);
+    }
+    
+    
+      float hash21(vec2 p) {
+        p = fract(p * vec2(123.34, 456.21));
+        p += dot(p, p + 45.32);
+        return fract(p.x * p.y);
+      }
+    
+      float valueNoise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        // Quintic fade (C2-continuous) instead of the cubic smoothstep. Continuous second
+        // derivatives remove the faint lattice creasing that made advected noise read as a
+        // shimmering grid rather than a body of moving liquid.
+        f = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+        float a = hash21(i);
+        float b = hash21(i + vec2(1.0, 0.0));
+        float c = hash21(i + vec2(0.0, 1.0));
+        float d = hash21(i + vec2(1.0, 1.0));
+        return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+      }
+    
+      /** UV for one explicit flipbook cell -- lets the caller blend adjacent frames. */
+      vec2 flipbookCellUv(vec2 uv, float frame) {
+        float col = mod(frame, uFlipbookCols);
+        float row = floor(frame / uFlipbookCols);
+        vec2 cell = vec2(1.0 / uFlipbookCols, 1.0 / uFlipbookRows);
+        return vec2(uv.x * cell.x + col * cell.x, uv.y * cell.y + (uFlipbookRows - 1.0 - row) * cell.y);
+      }
+    
+      vec2 flipbookUv(vec2 uv, float time) {
+        float frames = max(1.0, uFlipbookCols * uFlipbookRows);
+        float frame = floor(mod(time * uFlipbookFps + vPhase * frames, frames));
+        return flipbookCellUv(uv, frame);
+      }
+    
+      void main() {
+        // Per-instance continuum dynamics (fleet multi-entity). CPU always writes instanceDynamics;
+        // uniforms remain family identity / precompile defaults only.
+        float dynFlow = vFlowSpeed;
+        float dynTurb = vTurbulence;
+        float dynCore = vCoreSheath;
+        float dynDiss = vDissipation;
+        // params.w carries two different things, and which one depends on the jet's kind. A continuous
+        // drive writes its boost blend there. An impulse jet has no boost, so it writes its PULSE
+        // CLOCK — 0 at ignition, 1 at the end of the burst — and the force-impulse read below is built
+        // on it. Split them here, once, so neither path can ever read the other's number.
+        float dynBoost = vBoostBlend * (1.0 - uImpulseJet);
+        float pulse = clamp(vBoostBlend, 0.0, 1.0) * uImpulseJet;
+        // Continuous-plume flow speed is already accessibility-scaled on the CPU. Do not square
+        // reduced-motion here into a frozen card.
+        float flowTime = uTime * dynFlow;
+    
+        // B18 — per-instance extent. Every instance of a role used to end at exactly the same station,
+        // so a family's plumes had a flat chopped back edge and two ships of one family were pixel
+        // identical. Each instance now runs out at its own distance, seeded from its own phase (which
+        // is per-socket AND per-entity), and only ever SHORTER than the mesh: the material must always
+        // finish before the geometry does.
+        // One hash per instance, shared by every role of it; the role scale alone decides how much
+        // of the family spread each layer spends. That keeps the hot core inside its own cold sheath
+        // instead of letting a short core draw a stub inside a longer vapor sleeve.
+        float instReach = plumeInstanceReach(vPhase * 7.31, plumeRoleReachScale(uLayerRole));
+        float reachAlong = clamp(vAlong / max(instReach, 0.5), 0.0, 1.35);
+        float soft = max(uSoftEdge, 0.04);
+        float edgeX = smoothstep(0.0, soft, vUv.x) * (1.0 - smoothstep(1.0 - soft * 1.15, 1.0, vUv.x));
+        float edgeY = 1.0 - smoothstep(1.0 - soft, 1.0, abs(vSide));
+        float softMask = edgeX * edgeY;
+        softMask *= softMask;
+    
+        // Roles differ in form, not tint: core stays compact, while sheath/vapor retain a broad,
+        // irregular cross-section and own the dissipating tail. This prevents additive layers from
+        // collapsing into one white laser needle at the gameplay camera.
+        float roleSpread = clamp(uLayerRole / 3.0, 0.0, 1.0);
+        float coreRole = 1.0 - step(0.5, uLayerRole);
+        float innerRole = 1.0 - smoothstep(0.25, 0.75, abs(uLayerRole - 1.0));
+        float sheathRole = 1.0 - smoothstep(0.25, 0.75, abs(uLayerRole - 2.0));
+        float vaporRole = 1.0 - smoothstep(0.25, 0.75, abs(uLayerRole - 3.0));
+    
+        // -- Liquid advection ---------------------------------------------------------------------
+        // A large-scale, slow domain warp displaces the sampling domain before any detail is read.
+        // It is deliberately low-frequency and axially biased, so features stretch downstream and
+        // meander as a body instead of twinkling in place. Domain warping -- not more noise octaves --
+        // is what separates a flowing fluid from a scrolling noise card. The core warps least so the
+        // brightest, most gameplay-legible part of the exhaust stays coherent and readable.
+        vec2 warpP = vec2(vAlong * 1.75 - flowTime * 0.30, vSide * 1.05 + vPhase * 4.1);
+        float warpA = valueNoise(warpP) - 0.5;
+        float warpB = valueNoise(warpP * 1.93 + vec2(3.7, -2.4)) - 0.5;
+        float warpGain = mix(0.30, 1.0, roleSpread) * mix(1.0, 0.42, uReducedMotion)
+          * (0.6 + clamp(dynTurb, 0.0, 1.6) * 0.45);
+        vec2 warp = vec2(warpA * 0.34 + warpB * 0.14, warpB * 0.26 + warpA * 0.10) * warpGain;
+    
+        float swirl = uSwirl * (0.35 + vThrottle * 0.9);
+        vec2 flowUv = vec2(
+          fract(vUv.x * (1.2 + uNoiseScale * 0.35) - flowTime * (0.55 + vThrottle * 0.7) + vPhase
+            + warp.x * 0.22),
+          vUv.y + sin(vUv.x * 5.5 + flowTime * 1.15) * swirl * 0.05 + warp.y * 0.10
+        );
+        // Anisotropic sampling: the field is stretched along the flow axis and compressed across it,
+        // so turbulence resolves into elongated liquid striations rather than isotropic granular
+        // speckle. The lowered frequencies are the coherence lever -- the previous rates dissolved
+        // into uniform haze at the gameplay camera instead of reading as moving structure.
+        float n1 = valueNoise(flowUv * vec2(1.45 + uNoiseScale * 0.55, 3.1 + uNoiseScale * 1.35) * uNoiseScale
+          + vec2(0.0, flowTime * 0.28));
+        float n2 = valueNoise(flowUv * vec2(2.2, 4.6) + vec2(flowTime * -0.28, vPhase));
+        // One axial field drives attached width changes and torn edges. It is continuous in time and
+        // throttle, and its non-zero floor prevents the segmented bead/disc vocabulary from returning.
+        float nAxial = valueNoise(vec2(
+          vAlong * (2.9 + uNoiseScale * 0.85 + dynBoost * 2.4)
+            - flowTime * (0.24 + vThrottle * 0.36 + dynBoost * 0.18)
+            + warp.x * 0.55,
+          vPhase * 13.1 + 2.7
+        ));
+    
+        // Slower axial falloff carries luminous material further downstream, so the exhaust reads as
+        // a long drawn-out stream rather than a bright root with haze behind it.
+        float axialPower = mix(0.42, 0.72, roleSpread);
+        float axial = pow(1.0 - clamp(vAlong, 0.0, 1.0), axialPower);
+        // Functional zoning: a compact pressure core at the nozzle, a directional inner stream,
+        // a turbulent middle sheath, then a localized dissipating vapor tail. The layers overlap
+        // enough to read as one exhaust while retaining distinct shapes at the gameplay camera.
+        float mainCoreWindow = 1.0 - smoothstep(0.62, 1.0, vAlong);
+        float mainInnerWindow = 1.0 - smoothstep(0.82, 1.0, vAlong);
+        float mainSheathWindow = smoothstep(0.015, 0.12, vAlong) * (1.0 - smoothstep(0.82, 1.0, vAlong));
+        float mainVaporWindow = smoothstep(0.08, 0.28, vAlong) * (1.0 - smoothstep(0.78, 1.0, vAlong));
+        // RCS has a compact hot root and a longer, dim asymmetric exhaust release. Its zones are not
+        // the main-engine windows scaled down, which keeps the one-shot impulse readable as a control jet.
+        float impulseCoreWindow = 1.0 - smoothstep(0.24, 0.56, vAlong);
+        float impulseInnerWindow = 1.0 - smoothstep(0.48, 0.76, vAlong);
+        float impulseSheathWindow = smoothstep(0.035, 0.14, vAlong) * (1.0 - smoothstep(0.62, 0.92, vAlong));
+        float impulseVaporWindow = smoothstep(0.16, 0.38, vAlong) * (1.0 - smoothstep(0.72, 1.0, vAlong));
+        float coreWindow = mix(mainCoreWindow, impulseCoreWindow, uImpulseJet);
+        float innerWindow = mix(mainInnerWindow, impulseInnerWindow, uImpulseJet);
+        float sheathWindow = mix(mainSheathWindow, impulseSheathWindow, uImpulseJet);
+        float vaporWindow = mix(mainVaporWindow, impulseVaporWindow, uImpulseJet);
+        float roleWindow = coreRole * coreWindow + innerRole * innerWindow
+          + sheathRole * sheathWindow + vaporRole * vaporWindow;
+        roleWindow += (1.0 - clamp(coreRole + innerRole + sheathRole + vaporRole, 0.0, 1.0));
+        axial *= roleWindow;
+        float breakupDrive = clamp(0.24 + vThrottle * 0.66 + dynBoost * 0.34, 0.0, 1.0);
+        float breakupMotion = mix(1.0, 0.38, uReducedMotion);
+        float broadRole = clamp(sheathRole + vaporRole, 0.0, 1.0);
+        float localWidth = 1.0 + broadRole * breakupDrive * breakupMotion * ((nAxial - 0.5) * 0.72);
+        float downstream = smoothstep(0.14, 0.88, vAlong);
+        float centerDrift = broadRole * (n2 - 0.5) * (0.13 + 0.12 * breakupDrive);
+        centerDrift += uImpulseJet * downstream * (nAxial - 0.5) * 0.42;
+        float shapedSide = (vSide - centerDrift) / max(localWidth, 0.62);
+        // Core keeps its tight, bright cross-section; broad roles get a creamier falloff so the
+        // layers blend into one continuous body instead of stacking as separate visible shells.
+        float sideSharpness = mix(5.8 + dynCore * 0.8, 1.15 + dynCore * 0.3, roleSpread);
+        sideSharpness = mix(sideSharpness, sideSharpness * 1.32, uImpulseJet * coreRole);
+        float sideFall = exp(-shapedSide * shapedSide * sideSharpness);
+        // The outer plasma sheath wraps the inner stream instead of filling the same centerline.
+        // That makes core / flow / containment / dissipation readable as material zones rather than
+        // four same-shaped cards with different colors.
+        float sideAbs = abs(shapedSide);
+        float sheathRim = exp(-pow((sideAbs - 0.44) * 2.75, 2.0)) * 0.64 + sideFall * 0.42;
+        float vaporWisp = sideFall * (0.78 + 0.22 * sin(vAlong * 7.5 + shapedSide * 2.4 + nAxial * 3.0));
+        float sheathWrap = mix(sideFall, sheathRim, mix(0.22, 0.46, breakupDrive));
+        float crossShape = mix(sideFall, sheathWrap, sheathRole * mix(0.72, 0.38, uImpulseJet));
+        crossShape = mix(crossShape, vaporWisp, vaporRole * mix(0.38, 0.68, uImpulseJet));
+        // M2 grazing response: the curved shell's radial normal changes with the real view, so the
+        // rim catches light as it turns edge-on. Reduced flash damps the hot lift, never the shape.
+        float graze = clamp(vGrazing - 1.0, 0.0, 1.1);
+        crossShape *= 1.0 + graze * (0.46 * (1.0 - uReducedFlash * 0.45));
+        float stream = axial * crossShape;
+    
+        // Deep, attached axial breakup: broad sheath lobes change with throttle, but a 0.38 floor
+        // keeps every lobe connected to the nozzle and rules out balls, gaps, and flipbook cards.
+        float attachedBreakup = 0.38 + 0.62 * smoothstep(0.12, 0.88, nAxial * 0.72 + n2 * 0.28);
+        float breakupAmount = sheathRole * mix(0.42, 0.94, breakupDrive)
+          + vaporRole * mix(0.32, 0.76, breakupDrive);
+        breakupAmount *= breakupMotion;
+        stream *= mix(1.0, attachedBreakup, clamp(breakupAmount, 0.0, 1.0));
+    
+        // -- The family's fold arrangement ----------------------------------------------------------
+        // This replaces a fixed five-filament sine that every drive in the game shared. Same job —
+        // give the shell internal flow direction — but the sheet count, crease sharpness, pairing,
+        // travel rate, standing beat, annulus and downstream shredding are now the family's own
+        // construction. A disciplined ion drive gets three long clean creases running fast and
+        // parallel; an industrial torch gets six soft ones that wander and tear; the resonator's
+        // barely convect at all and beat in place instead.
+        //
+        // Deliberately ONE field rather than a new layer over the old one: stacking a second
+        // arrangement on the first is what turns four cooperating roles into four separate plumes.
+        // The field is floored at (1 - creaseDepth), so a crease darkens the interior between sheets
+        // and can never open a gap — bright lines with holes between them is B19.
+        float foldDrive = clamp(vThrottle, 0.0, 1.4);
+        float fold = plumeFoldField(vAlong, shapedSide, nAxial, foldDrive, dynBoost, uFoldTime);
+        // Broad roles carry the arrangement at full depth. The core and inner stream take a fraction,
+        // so the brightest and most gameplay-legible part of the exhaust keeps one or two clean
+        // creases instead of either dissolving into stripes or staying a featureless tube.
+        float foldWeight = clamp(
+          broadRole + coreRole * 0.34 + innerRole * 0.58, 0.0, 1.0
+        ) * mix(1.0, 0.68, uReducedMotion);
+        stream *= mix(1.0, fold, foldWeight);
+    
+        // The mouth. A disciplined drive welds its column to the lip and sears there; a loaded one
+        // stands off and breaks into lobes before the column opens. This is the family tell that
+        // survives at any distance, because it is legible before the plume's interior resolves.
+        stream *= plumeThroatAttach(vAlong, shapedSide);
+    
+        // Per-instance runout (B18). Material thins to nothing before this instance's mesh ends, at
+        // a distance that is this instance's own, so a family's plumes stop at a ragged front rather
+        // than a shared plane and a formation of one hull type is not a row of identical copies.
+        stream *= 1.0 - smoothstep(0.72, 1.02, reachAlong);
+    
+        // Three unequal, nozzle-connected axial tongues replace the circular distal puff. Their
+        // staggered falloffs create 2-4 readable shear notches after minification while the rootBridge
+        // keeps the exhaust one attached silhouette. A nonzero analytic floor prevents bead gaps.
+        float tongueCenter = exp(-pow(shapedSide * 2.05, 2.0))
+          * (1.0 - smoothstep(0.74 + dynBoost * 0.08, 0.98, vAlong));
+        float tongueUpper = exp(-pow((shapedSide - 0.46) * 4.2, 2.0))
+          * (1.0 - smoothstep(0.52 + breakupDrive * 0.08, 0.78 + dynBoost * 0.08, vAlong));
+        float tongueLower = exp(-pow((shapedSide + 0.42) * 3.8, 2.0))
+          * (1.0 - smoothstep(0.6 + breakupDrive * 0.06, 0.86 + dynBoost * 0.1, vAlong));
+        float tongueMask = max(tongueCenter, max(tongueUpper * 0.9, tongueLower * 0.84));
+        float rootBridge = (1.0 - smoothstep(0.12, 0.38, vAlong)) * sideFall;
+        float attachedTongues = max(tongueMask, rootBridge);
+        float distalZone = broadRole * smoothstep(0.22, 0.58, vAlong)
+          * mix(0.58, 0.82, breakupDrive) * mix(1.0, 0.74, uReducedMotion);
+        stream *= mix(1.0, 0.18 + 0.82 * attachedTongues, distalZone);
+    
+        float turb = mix(0.62, 1.0, n1 * 0.65 + n2 * 0.35);
+        turb = mix(1.0, turb, clamp(dynTurb, 0.0, 1.6));
+        // Broad layers get coherent scalloping instead of inheriting the inner texture's narrow wisp.
+        float scallop = 0.90 + 0.10 * sin(vAlong * 10.5 + n1 * 3.2 + vSide * 2.2);
+        turb *= mix(1.0, scallop, clamp(sheathRole * 0.75 + vaporRole, 0.0, 1.0));
+        // Standing compression cells, imposed by the nozzle rather than carried by the gas. This is
+        // the family's own shock structure: pitch and depth come from the construction table, and it
+        // decays within a few units of the lip on purpose — a train that survives far downstream is
+        // the rung ladder that reads as a striped cone. The travel belongs to the fold field above;
+        // the machine's structure stands still relative to its bell, which is what E2 allows.
+        float pressureCells = plumeCompression(vAlong);
+        pressureCells = mix(pressureCells, 1.0, uReducedMotion * 0.4);
+        stream *= mix(1.0, pressureCells, clamp(innerRole * 0.78 + coreRole * 0.45, 0.0, 1.0));
+    
+        float tip = smoothstep(0.62, 1.0, vAlong);
+        stream *= 1.0 - tip * uFork * (0.30 + n2 * 0.55);
+    
+        // A later, gentler dissipation ramp keeps the tail alive further downstream so the exhaust
+        // trails off as flowing material rather than being cut short by a falloff wall. Read in the
+        // instance's own reach coordinate so a short instance cools early rather than being clipped.
+        float dissipate = 1.0 - smoothstep(0.52, 1.06, reachAlong / max(0.25, dynDiss));
+        stream *= mix(0.62, 1.0, dissipate);
+    
+        // Advanced texture advection. Both paths take two taps and cross-fade, which removes the two
+        // discontinuities that previously broke the illusion of continuous flow:
+        //  * Scrolled masks are sampled at u and u+0.5 and blended by |2u-1|. The source masks fade to
+        //    zero at u=0 and u=1, so the old single fract() tap swept a dark seam through the plume
+        //    once per cycle. The tap nearest a seam always carries zero weight, so the seam is gone and
+        //    the pattern stops visibly repeating.
+        //  * The flipbook blends adjacent cells instead of hard-cutting, removing the 18 fps cell
+        //    stutter that read as chatter rather than moving liquid.
+        vec4 tex;
+        if (uUseFlipbook > 0.5) {
+          float frames = max(1.0, uFlipbookCols * uFlipbookRows);
+          float fbPos = mix(uTime, uTime * 0.15, uReducedMotion) * uFlipbookFps + vPhase * frames;
+          float fbCell = floor(fbPos);
+          float fbMix = smoothstep(0.0, 1.0, fract(fbPos));
+          tex = mix(
+            texture2D(uMap, flipbookCellUv(vUv, mod(fbCell, frames))),
+            texture2D(uMap, flipbookCellUv(vUv, mod(fbCell + 1.0, frames))),
+            fbMix
+          );
+        } else {
+          tex = mix(
+            texture2D(uMap, flowUv),
+            texture2D(uMap, vec2(fract(flowUv.x + 0.5), flowUv.y)),
+            abs(flowUv.x * 2.0 - 1.0)
+          );
+        }
+        float texBody = max(tex.a, max(tex.r, max(tex.g, tex.b)));
+        // Textures add internal motion; they do not define the full silhouette. This static analytic
+        // floor keeps reduced-motion and minified gameplay views readable without card rectangles.
+        float textureWeight = mix(0.62, 0.28, roleSpread);
+        float body = mix(stream, stream * texBody, textureWeight);
+        float staticFloor = stream * mix(0.22, 0.34, roleSpread);
+        staticFloor *= mix(1.0, 1.32, uReducedMotion);
+        body = max(body, staticFloor);
+    
+        // -- RCS: a force impulse, not a tiny flight history ----------------------------------------
+        // A control jet is a valve opening and shutting, and what the player has to read is the
+        // SHOVE. Two things say it: a hard collar flash at the mouth while the valve is open, and a
+        // single overpressure head that leaves the throat and runs out along the jet. When the collar
+        // shuts, the root darkens behind the head, so what is left on screen is a packet of gas
+        // already on its way — the shape of a kick. A jet that simply shrank back into its nozzle
+        // read as a short trail of where the ship had been, which is the history's job and not this
+        // one's.
+        //
+        // pulse is THIS impulse's own clock, so a rapid double tap shows two heads at two distances
+        // rather than one smeared glow, and the first head keeps travelling through the second firing.
+        float collarOpen = 1.0 - smoothstep(uCollarHold, min(uCollarHold + 0.28, 1.0), pulse);
+        float collarZone = 1.0 - smoothstep(0.05, 0.26, vAlong);
+        float collar = uImpulseJet * uCollarLift * collarOpen * collarZone;
+        float headPos = uHeadTravel * smoothstep(uHeadLaunch, 1.0, pulse);
+        float headD = (vAlong - headPos) * 3.4;
+        float head = exp(-(headD * headD)) * (1.0 - smoothstep(0.72, 1.0, pulse));
+        body *= 1.0 + collar * (coreRole * 0.62 + innerRole * 0.30)
+          + uImpulseJet * uHeadDepth * head * (0.55 + coreRole * 0.60);
+        // Behind the head the valve has already shut, so the root goes out while the packet keeps
+        // going. This is the difference between a shove and a fade.
+        body *= 1.0 - uImpulseJet * 0.55 * collarZone * smoothstep(uCollarHold, 1.0, pulse);
+    
+        float coreW = coreRole;
+        float heat = clamp((1.0 - vAlong * 0.7) * (0.5 + vThrottle * 0.7) + coreW * 0.35, 0.0, 1.4);
+        vec3 hot = vec3(1.0, 0.985, 0.955);
+        float whitenCap = mix(0.52, uCoreWhitenessCap, uReducedFlash);
+        // Explicit temperature/value zones survive a bright planet as well as black space. The alpha
+        // vapor is deliberately cool and low-value; it is structural dissipation, not another glow.
+        vec3 coreTemp = mix(hot, vec3(0.67, 0.87, 1.0), smoothstep(0.08, 0.72, vAlong));
+        vec3 innerTemp = mix(vec3(0.30, 0.82, 1.0), vec3(0.08, 0.30, 0.86), smoothstep(0.18, 0.92, vAlong));
+        vec3 sheathTemp = mix(vColor, vec3(0.055, 0.09, 0.34), smoothstep(0.22, 0.96, vAlong));
+        vec3 vaporTemp = mix(vColor * 0.72, vec3(0.035, 0.07, 0.14), smoothstep(0.12, 0.94, vAlong));
+        vec3 col = coreRole * mix(coreTemp, hot, clamp(heat * 0.24, 0.0, whitenCap))
+          + innerRole * innerTemp + sheathRole * sheathTemp + vaporRole * vaporTemp;
+        col += (1.0 - clamp(coreRole + innerRole + sheathRole + vaporRole, 0.0, 1.0)) * vColor;
+    
+        // Intensity applied exactly once: uIntensity already includes base * accessibility scale.
+        // Reduced-flash still restrains the hot-core whiteness above; continuous engine feedback
+        // must not be dimmed a second time until it becomes invisible.
+        float intensity = uIntensity * (0.55 + vThrottle * 0.9);
+        float alpha = body * turb * softMask * uOpacity * (0.35 + min(intensity, 12.0) * 0.08);
+    
+        if (alpha < 0.004) discard;
+        gl_FragColor = vec4(col * intensity * body * turb, clamp(alpha, 0.0, 1.0));
+      }
+    
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (file:///workspace/spaceface-scratch/hillclimb-20260924h/test/kestrel-production-thruster-bind.test.mjs:337:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: outer plume terminates as attached unequal shear tongues rather than soft bulbs
+ok 12 - outer plume terminates as attached unequal shear tongues rather than soft bulbs
+  ---
+  duration_ms: 0.233522
+  ...
+# Subtest: oblique core and RCS cards emerge toward the camera while retaining depth occlusion
+ok 13 - oblique core and RCS cards emerge toward the camera while retaining depth occlusion
+  ---
+  duration_ms: 0.834241
+  ...
+# Subtest: layered pressure zones remain structurally separated at the game-facing pool seam
+ok 14 - layered pressure zones remain structurally separated at the game-facing pool seam
+  ---
+  duration_ms: 0.434453
+  ...
+# Subtest: main sheath has attached throttle-responsive breakup and backdrop-safe temperature zones
+ok 15 - main sheath has attached throttle-responsive breakup and backdrop-safe temperature zones
+  ---
+  duration_ms: 0.349473
+  ...
+# Subtest: RCS is a root-biased impulse with asymmetric downstream dissipation
+ok 16 - RCS is a root-biased impulse with asymmetric downstream dissipation
+  ---
+  duration_ms: 0.265231
+  ...
+# Subtest: normal-route acceptance rejects draw-count-only and legacy-profile false positives
+ok 17 - normal-route acceptance rejects draw-count-only and legacy-profile false positives
+  ---
+  duration_ms: 0.340331
+  ...
+# Subtest: legacy NPC engine fallback cannot emit moving particle beads
+ok 18 - legacy NPC engine fallback cannot emit moving particle beads
+  ---
+  duration_ms: 0.530795
+  ...
+# Subtest: low-tier ContinuousPlumeSystem is readable core+inner GPU feedback
+ok 19 - low-tier ContinuousPlumeSystem is readable core+inner GPU feedback
+  ---
+  duration_ms: 1.06428
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: main EventLightPool preserves bounded ordinary-to-boost headroom
+ok 20 - main EventLightPool preserves bounded ordinary-to-boost headroom
+  ---
+  duration_ms: 2.822509
+  ...
+# Subtest: live bridge samples only the retained exact player after the fleet frame
+not ok 21 - live bridge samples only the retained exact player after the fleet frame
+  ---
+  duration_ms: 158.276215
+  location: '/workspace/spaceface-scratch/hillclimb-20260924h/test/player-plume-event-light.test.mjs:130:1'
+  failureType: 'testCodeFailure'
+  error: 'active exact-player plume claims one sustained PointLight'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: ~
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///workspace/spaceface-scratch/hillclimb-20260924h/test/player-plume-event-light.test.mjs:135:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: keyed plume resident shares the fixed six-light pool without transient eviction
+not ok 22 - keyed plume resident shares the fixed six-light pool without transient eviction
+  ---
+  duration_ms: 47.520893
+  location: '/workspace/spaceface-scratch/hillclimb-20260924h/test/player-plume-event-light.test.mjs:173:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The expression evaluated to a falsy value:
+    
+      assert.ok(plume)
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: ~
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file:///workspace/spaceface-scratch/hillclimb-20260924h/test/player-plume-event-light.test.mjs:177:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: accessibility and all presentation boundaries release or retain the steady cue truthfully
+not ok 23 - accessibility and all presentation boundaries release or retain the steady cue truthfully
+  ---
+  duration_ms: 33.33638
+  location: '/workspace/spaceface-scratch/hillclimb-20260924h/test/player-plume-event-light.test.mjs:213:1'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'intensity')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file:///workspace/spaceface-scratch/hillclimb-20260924h/test/player-plume-event-light.test.mjs:216:38)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: a yaw command lights the OPPOSITE-side jet, never both bow jets
+ok 24 - a yaw command lights the OPPOSITE-side jet, never both bow jets
+  ---
+  duration_ms: 7.457123
+  ...
+# Subtest: mirrored yaw commands produce mirrored jets of equal magnitude
+ok 25 - mirrored yaw commands produce mirrored jets of equal magnitude
+  ---
+  duration_ms: 1.640293
+  ...
+# Subtest: every firing obeys Newton's third law: exhaust is exactly opposite the push
+ok 26 - every firing obeys Newton's third law: exhaust is exactly opposite the push
+  ---
+  duration_ms: 11.599401
+  ...
+# Subtest: a laterally-pushing jet always sits on the hull OPPOSITE the push
+ok 27 - a laterally-pushing jet always sits on the hull OPPOSITE the push
+  ---
+  duration_ms: 3.341816
+  ...
+# Subtest: strafing lights the pair on one hull — a translation, with no yaw couple
+ok 28 - strafing lights the pair on one hull — a translation, with no yaw couple
+  ---
+  duration_ms: 2.650361
+  ...
+# Subtest: braking lights BOTH bow retros, exhausting along the nose
+ok 29 - braking lights BOTH bow retros, exhausting along the nose
+  ---
+  duration_ms: 1.031234
+  ...
+# Subtest: main-drive demand is reported from physics, and retro-only braking darkens the main nozzle
+ok 30 - main-drive demand is reported from physics, and retro-only braking darkens the main nozzle
+  ---
+  duration_ms: 1.225712
+  ...
+# Subtest: the resolver maps demand to intensity continuously, not as an on/off switch
+ok 31 - the resolver maps demand to intensity continuously, not as an on/off switch
+  ---
+  duration_ms: 0.533245
+  ...
+# Subtest: yaw intensity distinguishes entering a turn from arresting one
+ok 32 - yaw intensity distinguishes entering a turn from arresting one
+  ---
+  duration_ms: 0.922471
+  ...
+# Subtest: assist counter-thrust fires jets with NO pilot translation input at all
+ok 33 - assist counter-thrust fires jets with NO pilot translation input at all
+  ---
+  duration_ms: 0.698911
+  ...
+# Subtest: a blended strafe-and-yaw loads one end and unloads the other, instead of fighting itself
+ok 34 - a blended strafe-and-yaw loads one end and unloads the other, instead of fighting itself
+  ---
+  duration_ms: 0.42673
+  ...
+# Subtest: a null or empty actuator block resolves to no jets rather than throwing
+ok 35 - a null or empty actuator block resolves to no jets rather than throwing
+  ---
+  duration_ms: 0.212111
+  ...
+# Subtest: a supplied output reuses firing records and channel descriptors across active and idle frames
+ok 36 - a supplied output reuses firing records and channel descriptors across active and idle frames
+  ---
+  duration_ms: 0.281533
+  ...
+# Subtest: every drive family resolves a usable scale, including the ones with no authored accels
+ok 37 - every drive family resolves a usable scale, including the ones with no authored accels
+  ---
+  duration_ms: 0.263046
+  ...
+# Subtest: nozzle positions rotate with the hull instead of being baked in world axes
+ok 38 - nozzle positions rotate with the hull instead of being baked in world axes
+  ---
+  duration_ms: 0.228627
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: the paired mouths are physical hull parts, separated and mounted on every profile family
+ok 39 - the paired mouths are physical hull parts, separated and mounted on every profile family
+  ---
+  duration_ms: 19.755718
+  ...
+# Subtest: mounted retro exhaust follows presented yaw and world position, including a 90 degree turn
+ok 40 - mounted retro exhaust follows presented yaw and world position, including a 90 degree turn
+  ---
+  duration_ms: 1.736717
+  ...
+# Subtest: installed engine changes retro heat, axial flow and scale while staying two jets
+ok 41 - installed engine changes retro heat, axial flow and scale while staying two jets
+  ---
+  duration_ms: 3.223173
+  ...
+# Subtest: the high-speed brake has one subtle camera bite per engagement and respects reduced motion
+ok 42 - the high-speed brake has one subtle camera bite per engagement and respects reduced motion
+  ---
+  duration_ms: 3.007701
+  ...
+# Subtest: the live forge follows the current nozzle axis, never the recorded-history tangent
+ok 43 - the live forge follows the current nozzle axis, never the recorded-history tangent
+  ---
+  duration_ms: 3.097561
+  ...
+# Subtest: a legacy reel hint has zero authority over recorded world-space history
+ok 44 - a legacy reel hint has zero authority over recorded world-space history
+  ---
+  duration_ms: 13.990375
+  ...
+# Subtest: a stationary firing ship shows moving exhaust: the clock advances and reaches the shader
+ok 45 - a stationary firing ship shows moving exhaust: the clock advances and reaches the shader
+  ---
+  duration_ms: 28.125645
+  ...
+# Subtest: a stationary firing ship shows moving exhaust: the field itself changes, every family
+ok 46 - a stationary firing ship shows moving exhaust: the field itself changes, every family
+  ---
+  duration_ms: 5.825165
+  ...
+# Subtest: reduced motion calms the exhaust without freezing it
+ok 47 - reduced motion calms the exhaust without freezing it
+  ---
+  duration_ms: 2.886461
+  ...
+# Subtest: the hot core never ends short of the cold sheath wrapped around it
+ok 48 - the hot core never ends short of the cold sheath wrapped around it
+  ---
+  duration_ms: 1.078544
+  ...
+# Subtest: creases darken the interior but never open a hole between sheets (B19)
+ok 49 - creases darken the interior but never open a hole between sheets (B19)
+  ---
+  duration_ms: 3.517277
+  ...
+# Subtest: per-instance extent varies and can only ever shorten (B18, B9)
+ok 50 - per-instance extent varies and can only ever shorten (B18, B9)
+  ---
+  duration_ms: 0.654455
+  ...
+# Subtest: two ships of one family do not animate in lockstep
+ok 51 - two ships of one family do not animate in lockstep
+  ---
+  duration_ms: 1.951032
+  ...
+# Subtest: every live family pair differs on several construction axes
+ok 52 - every live family pair differs on several construction axes
+  ---
+  duration_ms: 0.550981
+  ...
+# Subtest: disciplined and loaded drives are opposites, not neighbours
+ok 53 - disciplined and loaded drives are opposites, not neighbours
+  ---
+  duration_ms: 0.736924
+  ...
+# Subtest: the unusual families do not read as reaction drives
+ok 54 - the unusual families do not read as reaction drives
+  ---
+  duration_ms: 0.584912
+  ...
+# Subtest: the three-silhouette prototype record is complete and one candidate is wired per group
+ok 55 - the three-silhouette prototype record is complete and one candidate is wired per group
+  ---
+  duration_ms: 0.521042
+  ...
+# Subtest: construction values are clamped to their stated limits
+ok 56 - construction values are clamped to their stated limits
+  ---
+  duration_ms: 0.67798
+  ...
+# Subtest: an RCS pulse throws a packet: the head leaves while the collar shuts
+ok 57 - an RCS pulse throws a packet: the head leaves while the collar shuts
+  ---
+  duration_ms: 0.413219
+  ...
+# Subtest: an RCS jet holds its reach and does not retract into its nozzle
+ok 58 - an RCS jet holds its reach and does not retract into its nozzle
+  ---
+  duration_ms: 8.322999
+  ...
+# Subtest: two RCS taps carry two independent clocks
+ok 59 - two RCS taps carry two independent clocks
+  ---
+  duration_ms: 0.823218
+  ...
+# Subtest: a shutting valve blows down rather than dimming at a constant rate
+ok 60 - a shutting valve blows down rather than dimming at a constant rate
+  ---
+  duration_ms: 0.34925
+  ...
+# Subtest: the brake bites on engagement and relaxes into the held jet
+ok 61 - the brake bites on engagement and relaxes into the held jet
+  ---
+  duration_ms: 0.439809
+  ...
+# Subtest: the bite is heat and collimation, never reach: the jet-likeness contract holds
+ok 62 - the bite is heat and collimation, never reach: the jet-likeness contract holds
+  ---
+  duration_ms: 0.583957
+  ...
+# Subtest: lighting a drive is an event, not the first part of a ramp
+ok 63 - lighting a drive is an event, not the first part of a ramp
+  ---
+  duration_ms: 0.420226
+  ...
+# Subtest: the ignition transient is spent on structure, so reduced flash still sees the engine commit
+ok 64 - the ignition transient is spent on structure, so reduced flash still sees the engine commit
+  ---
+  duration_ms: 0.969975
+  ...
+# Subtest: boost drives the arrangement harder rather than just brighter
+ok 65 - boost drives the arrangement harder rather than just brighter
+  ---
+  duration_ms: 3.305912
+  ...
+# Subtest: the fold clock is integrated, so a throttle change can never scrub the creases
+ok 66 - the fold clock is integrated, so a throttle change can never scrub the creases
+  ---
+  duration_ms: 57.14287
+  ...
+# Subtest: fleet drives follow their sockets through turns, stops and restarts
+ok 67 - fleet drives follow their sockets through turns, stops and restarts
+  ---
+  duration_ms: 4.271123
+  ...
+# Subtest: a crowd of ships all draw, all differ, and cost no per-frame allocation
+ok 68 - a crowd of ships all draw, all differ, and cost no per-frame allocation
+  ---
+  duration_ms: 1.745399
+  ...
+# Subtest: the GLSL mirror carries every term the JS law does
+ok 69 - the GLSL mirror carries every term the JS law does
+  ---
+  duration_ms: 0.263961
+  ...
+# Subtest: each family binds its own construction, and the distortion encoder stays flat
+ok 70 - each family binds its own construction, and the distortion encoder stays flat
+  ---
+  duration_ms: 2.414429
+  ...
+# Subtest: the shell arc never exceeds the span the vertex stage can place
+ok 71 - the shell arc never exceeds the span the vertex stage can place
+  ---
+  duration_ms: 0.410297
+  ...
+# Subtest: the fold profile bake is deterministic and tells the families apart
+ok 72 - the fold profile bake is deterministic and tells the families apart
+  ---
+  duration_ms: 5.200862
+  ...
+# Subtest: the nozzle shock train stays near the lip instead of laddering the jet
+ok 73 - the nozzle shock train stays near the lip instead of laddering the jet
+  ---
+  duration_ms: 0.317871
+  ...
+# Subtest: the jet/history boundary is allocation-free and tracks the live jet
+ok 74 - the jet/history boundary is allocation-free and tracks the live jet
+  ---
+  duration_ms: 0.614744
+  ...
+1..74
+# tests 74
+# suites 0
+# pass 68
+# fail 6
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 848.081018

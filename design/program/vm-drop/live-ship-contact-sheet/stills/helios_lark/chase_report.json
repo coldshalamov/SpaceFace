@@ -1,0 +1,117 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/assets/ships/parts/wholeships/helios_lark.glb",
+  "out": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/helios_lark",
+  "focus": [
+    0.8375,
+    0.0,
+    0.4475
+  ],
+  "boundsMin": [
+    -8.275,
+    -3.7,
+    -1.225
+  ],
+  "boundsMax": [
+    9.95,
+    3.7,
+    2.12
+  ],
+  "size": [
+    18.225,
+    7.4,
+    3.345
+  ],
+  "lightScale": 1.6875,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
+      "triangles": 2240,
+      "materials": [
+        "Material_BrushedMetal_RemasterNickel"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Mechanical_RemasterOxidized",
+      "triangles": 56,
+      "materials": [
+        "Material_Mechanical_RemasterOxidized"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Mechanical_RemasterHeatCopper",
+      "triangles": 120,
+      "materials": [
+        "Material_Mechanical_RemasterHeatCopper"
+      ]
+    },
+    {
+      "name": "LOD0_Gun_Assembly",
+      "triangles": 164,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_HOOK_DRIVE_CORE",
+      "triangles": 424,
+      "materials": [
+        "Material_Cyan"
+      ]
+    },
+    {
+      "name": "LOD0_HOOK_DRIVE_FAN",
+      "triangles": 152,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Cyan",
+      "triangles": 908,
+      "materials": [
+        "Material_Cyan"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Glass",
+      "triangles": 484,
+      "materials": [
+        "Material_Glass"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Hull",
+      "triangles": 6052,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Mechanical",
+      "triangles": 11428,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Warm",
+      "triangles": 2028,
+      "materials": [
+        "Material_Warm"
+      ]
+    }
+  ],
+  "triangles": 24056,
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/helios_lark/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/helios_lark/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/helios_lark/play_chase_close.png"
+  },
+  "clay": null,
+  "clayClose": null
+}

@@ -1,0 +1,294 @@
+{
+  "schema": "spaceface.waspProductionV1.finalize.v1",
+  "packet": "SF-WASP-PRODUCTION-V1-001",
+  "assetId": "SF_WASP_PRODUCTION_V1",
+  "status": "technical_candidate_no_promote",
+  "promoted": false,
+  "lods": [
+    {
+      "lod": 0,
+      "path": "assets/ships/wasp_production_v1/release_candidates/wholeships/wasp_production_v1_lod0.glb",
+      "bytes": 13822904,
+      "sha256": "22FCB6C6EC360FFC45F3C07B262E3337D18248C7E19D38F3C022F32F61584860",
+      "triangles": 19070,
+      "hullTriangles": 9272,
+      "renderDraws": 7,
+      "meshNodes": [
+        {
+          "name": "LOD0_Accent",
+          "mesh": "Nacelle_Strake_Port_Mesh",
+          "triangles": 916,
+          "roles": [
+            "accent"
+          ]
+        },
+        {
+          "name": "LOD0_Hull_Armor",
+          "mesh": "Dorsal_Hull_Armor_Spine_Mesh",
+          "triangles": 8620,
+          "roles": [
+            "armor"
+          ]
+        },
+        {
+          "name": "LOD0_Canopy",
+          "mesh": "Cockpit_Canopy_Mesh",
+          "triangles": 268,
+          "roles": [
+            "glass"
+          ]
+        },
+        {
+          "name": "LOD0_Hull",
+          "mesh": "Fuselage_Core_Mesh",
+          "triangles": 652,
+          "roles": [
+            "hull"
+          ]
+        },
+        {
+          "name": "LOD0_Mechanical",
+          "mesh": "Ventral_Keel_Mesh",
+          "triangles": 7616,
+          "roles": [
+            "mechanical"
+          ]
+        },
+        {
+          "name": "LOD0_Thruster",
+          "mesh": "Cylinder.001",
+          "triangles": 760,
+          "roles": [
+            "thruster"
+          ]
+        },
+        {
+          "name": "LOD0_Warning",
+          "mesh": "Wing_Warning_Port_Mesh",
+          "triangles": 216,
+          "roles": [
+            "warning"
+          ]
+        }
+      ],
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "missingMaterials": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "missingSockets": [],
+      "embeddedPlume": false
+    },
+    {
+      "lod": 1,
+      "path": "assets/ships/wasp_production_v1/release_candidates/wholeships/wasp_production_v1_lod1.glb",
+      "bytes": 12911444,
+      "sha256": "D81CE2F26E8B7239A4E2527B8E4DA3585C81F888E803FDE38D35EE7E3538C14E",
+      "triangles": 9870,
+      "hullTriangles": 2948,
+      "renderDraws": 7,
+      "meshNodes": [
+        {
+          "name": "LOD1_Accent",
+          "mesh": "Nacelle_Strake_Port_Mesh.001",
+          "triangles": 468,
+          "roles": [
+            "accent"
+          ]
+        },
+        {
+          "name": "LOD1_Hull_Armor",
+          "mesh": "Dorsal_Hull_Armor_Spine_Mesh.001",
+          "triangles": 2296,
+          "roles": [
+            "armor"
+          ]
+        },
+        {
+          "name": "LOD1_Canopy",
+          "mesh": "Cockpit_Canopy_Mesh.001",
+          "triangles": 268,
+          "roles": [
+            "glass"
+          ]
+        },
+        {
+          "name": "LOD1_Hull",
+          "mesh": "Fuselage_Core_Mesh.001",
+          "triangles": 652,
+          "roles": [
+            "hull"
+          ]
+        },
+        {
+          "name": "LOD1_Mechanical",
+          "mesh": "Ventral_Keel_Mesh.001",
+          "triangles": 5188,
+          "roles": [
+            "mechanical"
+          ]
+        },
+        {
+          "name": "LOD1_Thruster",
+          "mesh": "Cylinder.019",
+          "triangles": 760,
+          "roles": [
+            "thruster"
+          ]
+        },
+        {
+          "name": "LOD1_Warning",
+          "mesh": "Wing_Warning_Port_Mesh.001",
+          "triangles": 216,
+          "roles": [
+            "warning"
+          ]
+        }
+      ],
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "missingMaterials": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "missingSockets": [],
+      "embeddedPlume": false
+    },
+    {
+      "lod": 2,
+      "path": "assets/ships/wasp_production_v1/release_candidates/wholeships/wasp_production_v1_lod2.glb",
+      "bytes": 12505480,
+      "sha256": "21DDAFED52E8DA568F07B3DC72BEB8C95FC64058485B1C0AE9B16D7323C2660D",
+      "triangles": 5394,
+      "hullTriangles": 2392,
+      "renderDraws": 7,
+      "meshNodes": [
+        {
+          "name": "LOD2_Accent",
+          "mesh": "Nacelle_Strake_Port_Mesh.002",
+          "triangles": 252,
+          "roles": [
+            "accent"
+          ]
+        },
+        {
+          "name": "LOD2_Hull_Armor",
+          "mesh": "Dorsal_Hull_Armor_Spine_Mesh.002",
+          "triangles": 1740,
+          "roles": [
+            "armor"
+          ]
+        },
+        {
+          "name": "LOD2_Canopy",
+          "mesh": "Cockpit_Canopy_Mesh.002",
+          "triangles": 268,
+          "roles": [
+            "glass"
+          ]
+        },
+        {
+          "name": "LOD2_Hull",
+          "mesh": "Fuselage_Core_Mesh.002",
+          "triangles": 652,
+          "roles": [
+            "hull"
+          ]
+        },
+        {
+          "name": "LOD2_Mechanical",
+          "mesh": "Ventral_Keel_Mesh.002",
+          "triangles": 1484,
+          "roles": [
+            "mechanical"
+          ]
+        },
+        {
+          "name": "LOD2_Thruster",
+          "mesh": "Cylinder.035",
+          "triangles": 760,
+          "roles": [
+            "thruster"
+          ]
+        },
+        {
+          "name": "LOD2_Warning",
+          "mesh": "Wing_Warning_Port_Mesh.002",
+          "triangles": 216,
+          "roles": [
+            "warning"
+          ]
+        }
+      ],
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "missingMaterials": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "missingSockets": [],
+      "embeddedPlume": false
+    }
+  ],
+  "checks": {
+    "allUnder100MiB": true,
+    "allSocketsPresent": true,
+    "semanticMaterialsPresent": true,
+    "boundedDraws": true,
+    "authoredHullBody": true,
+    "noEmbeddedPlume": true
+  },
+  "ok": true
+}

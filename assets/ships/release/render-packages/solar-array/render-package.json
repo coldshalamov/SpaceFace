@@ -1,0 +1,2193 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.solar-array.anchor.socket-gimbal",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        3,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Gimbal",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentNodeId": "sf.render.solar-array.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        3,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.anchor.socket-power-out",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.200000047683716,
+        0.5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Power_Out",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentNodeId": "sf.render.solar-array.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.200000047683716,
+        0.5,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.solar-array",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "203a43c622458e653a8d568eb9397fbeaf03ac58c40225e876409cba43db58e2",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          1.2999999523162842,
+          0.7999542253312584,
+          1.2999999523162842
+        ],
+        "min": [
+          -1.2999999523162842,
+          0.00004581020015309578,
+          -1.2999999523162842
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "83f7d6209a90de56eda3f46fda29156009392a58964975f2060dd3492d3f56d9",
+      "id": "sf.render.solar-array.mesh.base.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.011",
+      "nodeId": "sf.render.solar-array.mesh.base",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6999971150413301,
+          3.69999711504133,
+          1.200000286102295
+        ],
+        "min": [
+          -0.6999971150413301,
+          2.30000288495867,
+          -1.200000286102295
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "20c9052de670c46a7847935372fc409f94ff12fcdfc1832267a8ae217f4a28f3",
+      "id": "sf.render.solar-array.mesh.hub.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.038",
+      "nodeId": "sf.render.solar-array.mesh.hub",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          2.0999999046325684,
+          1,
+          0.5
+        ],
+        "min": [
+          1.0999999046325684,
+          0,
+          -0.5
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4653d2db3349c50b3e27357ec5a33dd01bb412daf9c86dc24e4fd5b8d804d599",
+      "id": "sf.render.solar-array.mesh.junction.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.012",
+      "nodeId": "sf.render.solar-array.mesh.junction",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.299999952316284,
+          3.510084887894377,
+          -1.4001069308804335
+        ],
+        "min": [
+          -2.299999952316284,
+          3.3899152074730545,
+          -3.39989325985443
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "005a1c90ab440e22b6e98dc0b812fe59e1630d7fb4053ae74cdf8e4b664e92bf",
+      "id": "sf.render.solar-array.mesh.panel-p0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.009",
+      "nodeId": "sf.render.solar-array.mesh.panel-p0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.299999952316284,
+          3.510084887894377,
+          -3.60010674014557
+        ],
+        "min": [
+          -2.299999952316284,
+          3.3899152074730545,
+          -5.599893069119567
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "005a1c90ab440e22b6e98dc0b812fe59e1630d7fb4053ae74cdf8e4b664e92bf",
+      "id": "sf.render.solar-array.mesh.panel-p1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.solar-array.mesh.panel-p1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.299999952316284,
+          3.510084887894377,
+          -5.800107026247865
+        ],
+        "min": [
+          -2.299999952316284,
+          3.3899152074730545,
+          -7.799893355221862
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "005a1c90ab440e22b6e98dc0b812fe59e1630d7fb4053ae74cdf8e4b664e92bf",
+      "id": "sf.render.solar-array.mesh.panel-p2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.solar-array.mesh.panel-p2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.299999952316284,
+          3.510084887894377,
+          -8.000106835513002
+        ],
+        "min": [
+          -2.299999952316284,
+          3.3899152074730545,
+          -9.999893164486998
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "005a1c90ab440e22b6e98dc0b812fe59e1630d7fb4053ae74cdf8e4b664e92bf",
+      "id": "sf.render.solar-array.mesh.panel-p3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.solar-array.mesh.panel-p3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.299999952316284,
+          3.510084887894377,
+          3.39989325985443
+        ],
+        "min": [
+          -2.299999952316284,
+          3.3899152074730545,
+          1.4001069308804335
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "005a1c90ab440e22b6e98dc0b812fe59e1630d7fb4053ae74cdf8e4b664e92bf",
+      "id": "sf.render.solar-array.mesh.panel-s0.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.solar-array.mesh.panel-s0",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.299999952316284,
+          3.510084887894377,
+          5.599893069119567
+        ],
+        "min": [
+          -2.299999952316284,
+          3.3899152074730545,
+          3.60010674014557
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "005a1c90ab440e22b6e98dc0b812fe59e1630d7fb4053ae74cdf8e4b664e92bf",
+      "id": "sf.render.solar-array.mesh.panel-s1.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.solar-array.mesh.panel-s1",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.299999952316284,
+          3.510084887894377,
+          7.799893355221862
+        ],
+        "min": [
+          -2.299999952316284,
+          3.3899152074730545,
+          5.800107026247865
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "005a1c90ab440e22b6e98dc0b812fe59e1630d7fb4053ae74cdf8e4b664e92bf",
+      "id": "sf.render.solar-array.mesh.panel-s2.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.solar-array.mesh.panel-s2",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.299999952316284,
+          3.510084887894377,
+          9.999893164486998
+        ],
+        "min": [
+          -2.299999952316284,
+          3.3899152074730545,
+          8.000106835513002
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "005a1c90ab440e22b6e98dc0b812fe59e1630d7fb4053ae74cdf8e4b664e92bf",
+      "id": "sf.render.solar-array.mesh.panel-s3.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.solar-array.mesh.panel-s3",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.3931931327567654,
+          3.399892345289579,
+          -1.1785849332809448
+        ],
+        "min": [
+          -0.393193102954443,
+          2.600107654710421,
+          -9.621415138244629
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "77afac611070a3e83e4fba199912e7597b80aa8bb5719fc7ab944dac78417081",
+      "id": "sf.render.solar-array.mesh.spine-p.primitive.0",
+      "indexCount": 1080,
+      "indexed": true,
+      "materialHash": "11ee3508b0192ad7582dd7fadd407f6914f47afb6f41aba0f7a8499f975df37f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.solar-array.mesh.spine-p",
+      "primitiveIndex": 0,
+      "vertexCount": 648
+    },
+    {
+      "bounds": {
+        "max": [
+          0.3931929936739554,
+          3.399892249302217,
+          9.621414184570312
+        ],
+        "min": [
+          -0.39319305327860016,
+          2.600107750697783,
+          1.1785860061645508
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "01a10be8426f3bc83fbf297e11e542bfa9c04b893a6d822c09365f9daa7a218c",
+      "id": "sf.render.solar-array.mesh.spine-s.primitive.0",
+      "indexCount": 1080,
+      "indexed": true,
+      "materialHash": "11ee3508b0192ad7582dd7fadd407f6914f47afb6f41aba0f7a8499f975df37f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.solar-array.mesh.spine-s",
+      "primitiveIndex": 0,
+      "vertexCount": 648
+    },
+    {
+      "bounds": {
+        "max": [
+          2.1900032436382557,
+          0.7899990738648777,
+          0.20000000298023224
+        ],
+        "min": [
+          2.0499965274799083,
+          0.6100009022932644,
+          -0.20000000298023224
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "25545e5abedb74cbfe120f4c71b6067da7e7c9148253dcf19dd85939e5ed994d",
+      "id": "sf.render.solar-array.mesh.status.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "34f564162e21bc0296927f4f484f55f128310b56bf176f29079c2ac33b4a2504",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.solar-array.mesh.status",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          0.12363638924290678,
+          3.130000114440918,
+          -10.470000267028809
+        ],
+        "min": [
+          -0.12363638924290678,
+          2.869999885559082,
+          -10.730000495910645
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5706608098bb0096612e6e0a27f98db185c237053050fdac4838403a41c8393c",
+      "id": "sf.render.solar-array.mesh.tip-p.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.002",
+      "nodeId": "sf.render.solar-array.mesh.tip-p",
+      "primitiveIndex": 0,
+      "vertexCount": 142
+    },
+    {
+      "bounds": {
+        "max": [
+          0.12363638924290678,
+          3.130000114440918,
+          10.730000495910645
+        ],
+        "min": [
+          -0.12363638924290678,
+          2.869999885559082,
+          10.470000267028809
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5706608098bb0096612e6e0a27f98db185c237053050fdac4838403a41c8393c",
+      "id": "sf.render.solar-array.mesh.tip-s.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "87b3341f40761483253aaeb3ed7f2c4c1dde36ff03a002399b162aea94c228d6",
+      "materialPipelineKey": "opaque",
+      "meshName": "Sphere.003",
+      "nodeId": "sf.render.solar-array.mesh.tip-s",
+      "primitiveIndex": 0,
+      "vertexCount": 142
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9749748222296823,
+          2.600021380838027,
+          1
+        ],
+        "min": [
+          -0.9749748222296823,
+          0.7999786549247603,
+          -1
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d5e58507b96ab55478758debab0a21a3231f954ba96938492043680ce326d14e",
+      "id": "sf.render.solar-array.mesh.tracker.primitive.0",
+      "indexCount": 156,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.020",
+      "nodeId": "sf.render.solar-array.mesh.tracker",
+      "primitiveIndex": 0,
+      "vertexCount": 56
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "11ee3508b0192ad7582dd7fadd407f6914f47afb6f41aba0f7a8499f975df37f",
+      "id": "material:11ee3508b0192ad7582dd7fa",
+      "name": "esk_truss_galv",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "id": "material:143624083cd581b0939afdce",
+      "name": "esk_bare_steel",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "2df5fe4085e82053eaa20e316736ad31f0b587906b276af912a790c1f5999fe3",
+      "id": "material:2df5fe4085e82053eaa20e31",
+      "name": "esk_paint_civic_bone",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "321a5c429af61691d4cf07a3ef29283452412531cd065d19202712fcc5b4d08f",
+      "id": "material:321a5c429af61691d4cf07a3",
+      "name": "esk_solar_cell",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "34f564162e21bc0296927f4f484f55f128310b56bf176f29079c2ac33b4a2504",
+      "id": "material:34f564162e21bc0296927f4f",
+      "name": "esk_light_signal_amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "87b3341f40761483253aaeb3ed7f2c4c1dde36ff03a002399b162aea94c228d6",
+      "id": "material:87b3341f40761483253aaeb3",
+      "name": "esk_light_nav_red",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
+      "id": "material:da4ab03ee34c8a536220eec2",
+      "name": "esk_light_nav_green",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
+      "id": "material:ef83aaa905288b1ffc8a4f70",
+      "name": "esk_struct_alloy",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.solar-array.mesh.base",
+      "localTransform": [
+        1.2999999523162842,
+        0,
+        0,
+        0,
+        0,
+        1.2999999523162842,
+        0,
+        0,
+        0,
+        0,
+        1.2999999523162842,
+        0,
+        0,
+        0.4000000177657057,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "base",
+      "nodeName": "base",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1.2999999523162842,
+        0,
+        0,
+        0,
+        0,
+        1.2999999523162842,
+        0,
+        0,
+        0,
+        0,
+        1.2999999523162842,
+        0,
+        0,
+        0.4000000177657057,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.hub",
+      "localTransform": [
+        1.200000286102295,
+        0,
+        0,
+        0,
+        0,
+        1.200000286102295,
+        0,
+        0,
+        0,
+        0,
+        1.200000286102295,
+        0,
+        0,
+        3,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "hub",
+      "nodeName": "hub",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1.200000286102295,
+        0,
+        0,
+        0,
+        0,
+        1.200000286102295,
+        0,
+        0,
+        0,
+        0,
+        1.200000286102295,
+        0,
+        0,
+        3,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.junction",
+      "localTransform": [
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        1.5999999046325684,
+        0.5,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "junction",
+      "nodeName": "junction",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        1.5999999046325684,
+        0.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.panel-p0",
+      "localTransform": [
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        3.450000047683716,
+        -2.4000000953674316,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "panel_p0",
+      "nodeName": "panel_p0",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        3.450000047683716,
+        -2.4000000953674316,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.panel-p1",
+      "localTransform": [
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        3.450000047683716,
+        -4.599999904632568,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "panel_p1",
+      "nodeName": "panel_p1",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        3.450000047683716,
+        -4.599999904632568,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.panel-p2",
+      "localTransform": [
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        3.450000047683716,
+        -6.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "panel_p2",
+      "nodeName": "panel_p2",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        3.450000047683716,
+        -6.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.panel-p3",
+      "localTransform": [
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        3.450000047683716,
+        -9,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "panel_p3",
+      "nodeName": "panel_p3",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        3.450000047683716,
+        -9,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.panel-s0",
+      "localTransform": [
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        3.450000047683716,
+        2.4000000953674316,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "panel_s0",
+      "nodeName": "panel_s0",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        3.450000047683716,
+        2.4000000953674316,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.panel-s1",
+      "localTransform": [
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        3.450000047683716,
+        4.599999904632568,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "panel_s1",
+      "nodeName": "panel_s1",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        3.450000047683716,
+        4.599999904632568,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.panel-s2",
+      "localTransform": [
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        3.450000047683716,
+        6.800000190734863,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "panel_s2",
+      "nodeName": "panel_s2",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        3.450000047683716,
+        6.800000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.panel-s3",
+      "localTransform": [
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        3.450000047683716,
+        9,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "panel_s3",
+      "nodeName": "panel_s3",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        0,
+        0,
+        2.299999952316284,
+        0,
+        0,
+        3.450000047683716,
+        9,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.spine-p",
+      "localTransform": [
+        4.221415102481842,
+        0,
+        0,
+        0,
+        0,
+        4.221415102481842,
+        0,
+        0,
+        0,
+        0,
+        4.221415102481842,
+        0,
+        1.4901161193847656e-8,
+        3,
+        -5.400000035762787,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "spine_p",
+      "nodeName": "spine_p",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        4.221415102481842,
+        0,
+        0,
+        0,
+        0,
+        4.221415102481842,
+        0,
+        0,
+        0,
+        0,
+        4.221415102481842,
+        0,
+        1.4901161193847656e-8,
+        3,
+        -5.400000035762787,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.spine-s",
+      "localTransform": [
+        4.221414089202881,
+        0,
+        0,
+        0,
+        0,
+        4.221414089202881,
+        0,
+        0,
+        0,
+        0,
+        4.221414089202881,
+        0,
+        -2.9802322387695312e-8,
+        3,
+        5.400000095367432,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "spine_s",
+      "nodeName": "spine_s",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        4.221414089202881,
+        0,
+        0,
+        0,
+        0,
+        4.221414089202881,
+        0,
+        0,
+        0,
+        0,
+        4.221414089202881,
+        0,
+        -2.9802322387695312e-8,
+        3,
+        5.400000095367432,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.status",
+      "localTransform": [
+        0.20000000298023224,
+        0,
+        0,
+        0,
+        0,
+        0.20000000298023224,
+        0,
+        0,
+        0,
+        0,
+        0.20000000298023224,
+        0,
+        2.119999885559082,
+        0.699999988079071,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "status",
+      "nodeName": "status",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        0.20000000298023224,
+        0,
+        0,
+        0,
+        0,
+        0.20000000298023224,
+        0,
+        0,
+        0,
+        0,
+        0.20000000298023224,
+        0,
+        2.119999885559082,
+        0.699999988079071,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.tip-p",
+      "localTransform": [
+        0.13000011444091797,
+        0,
+        0,
+        0,
+        0,
+        0.13000011444091797,
+        0,
+        0,
+        0,
+        0,
+        0.13000011444091797,
+        0,
+        0,
+        3,
+        -10.600000381469727,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tip_p",
+      "nodeName": "tip_p",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        0.13000011444091797,
+        0,
+        0,
+        0,
+        0,
+        0.13000011444091797,
+        0,
+        0,
+        0,
+        0,
+        0.13000011444091797,
+        0,
+        0,
+        3,
+        -10.600000381469727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.tip-s",
+      "localTransform": [
+        0.13000011444091797,
+        0,
+        0,
+        0,
+        0,
+        0.13000011444091797,
+        0,
+        0,
+        0,
+        0,
+        0.13000011444091797,
+        0,
+        0,
+        3,
+        10.600000381469727,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tip_s",
+      "nodeName": "tip_s",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        0.13000011444091797,
+        0,
+        0,
+        0,
+        0,
+        0.13000011444091797,
+        0,
+        0,
+        0,
+        0,
+        0.13000011444091797,
+        0,
+        0,
+        3,
+        10.600000381469727,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.mesh.tracker",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.7000000178813934,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tracker",
+      "nodeName": "tracker",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.solar-array.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.7000000178813934,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.solar-array.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "solar_array",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.solar-array.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "e04c86d7edb1b28b1792560bbc3baff5ad63105df1f9ae84a8c6eb0546c5ca59"
+    },
+    "sourceGlb": {
+      "bytes": 28436,
+      "sha256": "2f2c8ec6315f852c54ea03d141c3aa7f019596c453c21f48c8540d4dd557ef66",
+      "uri": "place_solar_array.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 30268,
+    "sha256": "1ee4378b6d18ca7936710a679f00c69383ad2b199fd5baa09d2b36012faabdc6",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        1.849998557520665,
+        0
+      ],
+      "max": [
+        2.299999952316284,
+        3.69999711504133,
+        10.730000495910645
+      ],
+      "min": [
+        -2.299999952316284,
+        0,
+        -10.730000495910645
+      ],
+      "size": [
+        4.599999904632568,
+        3.69999711504133,
+        21.46000099182129
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          3,
+          0,
+          1
+        ],
+        "name": "SOCKET_Gimbal",
+        "planIndex": 14,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Gimbal",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Gimbal",
+            "recordIds": [
+              "sf.render.solar-array.anchor.socket-gimbal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2.200000047683716,
+          0.5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Power_Out",
+        "planIndex": 15,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Power_Out",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Power_Out",
+            "recordIds": [
+              "sf.render.solar-array.anchor.socket-power-out"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 12,
+      "mechanical": 2,
+      "signal": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 18,
+        "role": "signal"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 19,
+        "role": "signal"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 20,
+        "role": "signal"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 21,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 22,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1.2999999523162842,
+          0,
+          0,
+          0,
+          0,
+          1.2999999523162842,
+          0,
+          0,
+          0,
+          0,
+          1.2999999523162842,
+          0,
+          0,
+          0.4000000177657057,
+          0,
+          1
+        ],
+        "name": "base",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.200000286102295,
+          0,
+          0,
+          0,
+          0,
+          1.200000286102295,
+          0,
+          0,
+          0,
+          0,
+          1.200000286102295,
+          0,
+          0,
+          3,
+          0,
+          1
+        ],
+        "name": "hub",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.5,
+          0,
+          0,
+          0,
+          0,
+          0.5,
+          0,
+          0,
+          0,
+          0,
+          0.5,
+          0,
+          1.5999999046325684,
+          0.5,
+          0,
+          1
+        ],
+        "name": "junction",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.299999952316284,
+          0,
+          0,
+          0,
+          0,
+          2.299999952316284,
+          0,
+          0,
+          0,
+          0,
+          2.299999952316284,
+          0,
+          0,
+          3.450000047683716,
+          -2.4000000953674316,
+          1
+        ],
+        "name": "panel_p0",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.299999952316284,
+          0,
+          0,
+          0,
+          0,
+          2.299999952316284,
+          0,
+          0,
+          0,
+          0,
+          2.299999952316284,
+          0,
+          0,
+          3.450000047683716,
+          -4.599999904632568,
+          1
+        ],
+        "name": "panel_p1",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.299999952316284,
+          0,
+          0,
+          0,
+          0,
+          2.299999952316284,
+          0,
+          0,
+          0,
+          0,
+          2.299999952316284,
+          0,
+          0,
+          3.450000047683716,
+          -6.800000190734863,
+          1
+        ],
+        "name": "panel_p2",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.299999952316284,
+          0,
+          0,
+          0,
+          0,
+          2.299999952316284,
+          0,
+          0,
+          0,
+          0,
+          2.299999952316284,
+          0,
+          0,
+          3.450000047683716,
+          -9,
+          1
+        ],
+        "name": "panel_p3",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.299999952316284,
+          0,
+          0,
+          0,
+          0,
+          2.299999952316284,
+          0,
+          0,
+          0,
+          0,
+          2.299999952316284,
+          0,
+          0,
+          3.450000047683716,
+          2.4000000953674316,
+          1
+        ],
+        "name": "panel_s0",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.299999952316284,
+          0,
+          0,
+          0,
+          0,
+          2.299999952316284,
+          0,
+          0,
+          0,
+          0,
+          2.299999952316284,
+          0,
+          0,
+          3.450000047683716,
+          4.599999904632568,
+          1
+        ],
+        "name": "panel_s1",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.299999952316284,
+          0,
+          0,
+          0,
+          0,
+          2.299999952316284,
+          0,
+          0,
+          0,
+          0,
+          2.299999952316284,
+          0,
+          0,
+          3.450000047683716,
+          6.800000190734863,
+          1
+        ],
+        "name": "panel_s2",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.299999952316284,
+          0,
+          0,
+          0,
+          0,
+          2.299999952316284,
+          0,
+          0,
+          0,
+          0,
+          2.299999952316284,
+          0,
+          0,
+          3.450000047683716,
+          9,
+          1
+        ],
+        "name": "panel_s3",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.221415102481842,
+          0,
+          0,
+          0,
+          0,
+          4.221415102481842,
+          0,
+          0,
+          0,
+          0,
+          4.221415102481842,
+          0,
+          1.4901161193847656e-8,
+          3,
+          -5.400000035762787,
+          1
+        ],
+        "name": "spine_p",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.221414089202881,
+          0,
+          0,
+          0,
+          0,
+          4.221414089202881,
+          0,
+          0,
+          0,
+          0,
+          4.221414089202881,
+          0,
+          -2.9802322387695312e-8,
+          3,
+          5.400000095367432,
+          1
+        ],
+        "name": "spine_s",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.20000000298023224,
+          0,
+          0,
+          0,
+          0,
+          0.20000000298023224,
+          0,
+          0,
+          0,
+          0,
+          0.20000000298023224,
+          0,
+          2.119999885559082,
+          0.699999988079071,
+          0,
+          1
+        ],
+        "name": "status",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.13000011444091797,
+          0,
+          0,
+          0,
+          0,
+          0.13000011444091797,
+          0,
+          0,
+          0,
+          0,
+          0.13000011444091797,
+          0,
+          0,
+          3,
+          -10.600000381469727,
+          1
+        ],
+        "name": "tip_p",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.13000011444091797,
+          0,
+          0,
+          0,
+          0,
+          0.13000011444091797,
+          0,
+          0,
+          0,
+          0,
+          0.13000011444091797,
+          0,
+          0,
+          3,
+          10.600000381469727,
+          1
+        ],
+        "name": "tip_s",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          1.7000000178813934,
+          0,
+          1
+        ],
+        "name": "tracker",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_solar_array.glb"
+  },
+  "runtimeHash": "dee03250bd529db9e9f73d7a6fe280b9e9997802a9282d5b0badb21af8e646d9",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          2.299999952316284,
+          3.69999711504133,
+          10.730000495910645
+        ],
+        "min": [
+          -2.299999952316284,
+          0,
+          -10.730000495910645
+        ]
+      },
+      "id": "sf.render.solar-array.body",
+      "nodeIds": [
+        "sf.render.solar-array.mesh.base",
+        "sf.render.solar-array.mesh.hub",
+        "sf.render.solar-array.mesh.junction",
+        "sf.render.solar-array.mesh.panel-p0",
+        "sf.render.solar-array.mesh.panel-p1",
+        "sf.render.solar-array.mesh.panel-p2",
+        "sf.render.solar-array.mesh.panel-p3",
+        "sf.render.solar-array.mesh.panel-s0",
+        "sf.render.solar-array.mesh.panel-s1",
+        "sf.render.solar-array.mesh.panel-s2",
+        "sf.render.solar-array.mesh.panel-s3",
+        "sf.render.solar-array.mesh.spine-p",
+        "sf.render.solar-array.mesh.spine-s",
+        "sf.render.solar-array.mesh.status",
+        "sf.render.solar-array.mesh.tip-p",
+        "sf.render.solar-array.mesh.tip-s",
+        "sf.render.solar-array.mesh.tracker",
+        "sf.render.solar-array.root"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+083db86d1 perf(hud): radar contacts still-layer — skip census while pose signature holds (~4×)

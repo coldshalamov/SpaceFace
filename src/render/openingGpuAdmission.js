@@ -1,0 +1,1426 @@
+// Finite opening GPU admission.
+//
+// The first-picture census used to collapse many live materials onto a handful of family
+// `customProgramCacheKey` strings, then compile those leaves without a real draw. Without a real
+// draw, link and bufferData still happen in the first bloomScene. This module admits unique
+// materials and geometries against the live target, yielding between units so neither cost lands
+// in one presented scene pass.
+//
+// Do not read the older "on Intel/ANGLE without KHR_parallel_shader_compile" framing as this
+// baseline's condition: measured 2026-08-28, that extension IS present on the project's
+// Intel/ANGLE D3D11 target. It is exactly why one-unit-at-a-time admission was expensive —
+// `renderer.compile()` returns in microseconds because it only STARTS the link, so waiting per
+// unit serialized 25.8 s of driver work the GPU would have overlapped. Pass
+// `beginReadinessBatch` to pool that wait. See design/perf/OPENING-COMPILE-BATCH-2026-08-28.md.
+
+import { compileSubjectsAcrossPresents } from './compilePresentSlice.js';
+import { isRetiredRigidOpaqueBatch } from './rigidOpaqueBatch.js';
+import {
+  detachedGeometryUploadPending,
+  detachedTextureUploadPending,
+  isPackageGeometryDetached,
+  orientationHoldHidesDrawable,
+  presentedCompressedUploadUnsafe,
+  rehydrateDetachedGeometries,
+  rehydrateDetachedTextures,
+  restorePresentedCompressedMips,
+  retainPresentedTextureLeases,
+} from './packageCpuDetach.js';
+import {
+  collectStartupGeometries,
+  collectStartupGeometriesSteps,
+  collectStartupTextures,
+  collectStartupTexturesSteps,
+} from './startupGpuResidency.js';
+import { dedupWarn } from '../core/warnDedup.js';
+import {
+  captureOpeningResourceIdentitySets,
+  captureOpeningSubmissionValidationState,
+} from './openingSubmissionPlan.js';
+
+/**
+ * A package texture whose CPU mirror was released after its proven upload still reaches three's
+ * uploader when the next bind re-enters it — a moved version, a different upload-cache key on
+ * the shared dedupe Source, or a properties record recreated after dispose — and uploadTexture
+ * reads mipmaps[0] on the emptied array (D150). Re-attach just those payloads before the touch
+ * loop draws: the forced upload then lands real bytes instead of throwing mid-draw and leaving
+ * the residual work to a presented pass. Still-stamped detached textures keep their release;
+ * the next residency stamp re-detaches whatever this restored. `renderer` is optional — callers
+ * without one skip the census (the texture list needs its properties map).
+ */
+async function reattachDetachedAdmissionTextures(subjects, renderer, yieldToMain) {
+  const properties = renderer && renderer.properties;
+  if (!properties || typeof properties.get !== 'function') return;
+  // The collect walks every cohort subtree — O(roots x nodes) inside the paced
+  // admit loop — so drive the Steps twin under the caller's yield contract.
+  let collected = null;
+  if (typeof collectStartupTexturesSteps === 'function' && typeof yieldToMain === 'function') {
+    const it = collectStartupTexturesSteps(subjects);
+    for (;;) {
+      const step = it.next();
+      if (step.done) { collected = step.value; break; }
+      await yieldToMain();
+    }
+  } else {
+    collected = collectStartupTextures(subjects);
+  }
+  const pending = collected
+    .filter((texture) => detachedTextureUploadPending(texture, properties));
+  if (pending.length === 0) return;
+  let receipt = null;
+  try {
+    receipt = await rehydrateDetachedTextures(pending, { yieldToMain });
+  } catch (error) {
+    dedupWarn('gpu-admission.reattach', '[render] admission texture reattach failed', error);
+    return;
+  }
+  if (receipt && Array.isArray(receipt.errors) && receipt.errors.length > 0) {
+    dedupWarn('gpu-admission.reattach-errors', '[render] admission texture reattach errors', JSON.stringify(receipt.errors));
+  }
+}
+
+/**
+ * Geometry twin of reattachDetachedAdmissionTextures: a cpu-detached package geometry whose
+ * released arrays this context's draw would re-upload (records died with a dispose, a version
+ * moved, or this renderer never uploaded post-detach state) hits WebGLAttributes.createBuffer
+ * on the emptied arrays and throws inside the touch. Refill just those manifests first — one
+ * decode per package serves its texture and geometry entries alike.
+ */
+async function reattachDetachedAdmissionGeometries(subjects, renderer, yieldToMain) {
+  if (!renderer) return;
+  let collected = null;
+  if (typeof collectStartupGeometriesSteps === 'function' && typeof yieldToMain === 'function') {
+    const it = collectStartupGeometriesSteps(subjects);
+    for (;;) {
+      const step = it.next();
+      if (step.done) { collected = step.value; break; }
+      await yieldToMain();
+    }
+  } else {
+    collected = collectStartupGeometries(subjects);
+  }
+  const pending = collected
+    .filter((geometry) => detachedGeometryUploadPending(geometry, renderer));
+  if (pending.length === 0) return;
+  let receipt = null;
+  try {
+    receipt = await rehydrateDetachedGeometries(pending, { yieldToMain });
+  } catch (error) {
+    dedupWarn('gpu-admission.reattach-geo', '[render] admission geometry reattach failed', error);
+    return;
+  }
+  if (receipt && Array.isArray(receipt.errors) && receipt.errors.length > 0) {
+    dedupWarn('gpu-admission.reattach-geo-errors', '[render] admission geometry reattach errors', JSON.stringify(receipt.errors));
+  }
+}
+
+function isDrawable(object) {
+  return !!(object && (
+    object.isMesh === true
+    || object.isSkinnedMesh === true
+    || object.isInstancedMesh === true
+    || object.isPoints === true
+    || object.isLine === true
+    || object.isSprite === true
+  ));
+}
+
+export function materialList(object) {
+  return Array.isArray(object && object.material)
+    ? object.material.filter(Boolean)
+    : object && object.material ? [object.material] : [];
+}
+
+function programIdentity(program) {
+  if (!program) return '';
+  return String(program.cacheKey || program.name || (program.id != null ? `id:${program.id}` : ''));
+}
+
+function rendererProgramKeys(renderer) {
+  const programs = renderer && renderer.info && renderer.info.programs;
+  return new Set(Array.isArray(programs) ? programs.map(programIdentity).filter(Boolean) : []);
+}
+
+function materialProgramKeys(renderer, material) {
+  if (!renderer || !material || !renderer.properties
+      || typeof renderer.properties.get !== 'function') return new Set();
+  let properties = null;
+  try { properties = renderer.properties.get(material); } catch (_) { return new Set(); }
+  const keys = new Set();
+  const programs = properties && properties.programs;
+  if (programs && typeof programs.keys === 'function') {
+    for (const key of programs.keys()) if (key != null && String(key)) keys.add(String(key));
+  }
+  const current = properties && properties.currentProgram;
+  const currentKey = programIdentity(current);
+  if (currentKey) keys.add(currentKey);
+  return keys;
+}
+
+function geometryDisposeListenerCount(geometry) {
+  const listeners = geometry && geometry._listeners && geometry._listeners.dispose;
+  if (Array.isArray(listeners)) return listeners.length;
+  return listeners && Number.isFinite(listeners.size) ? listeners.size : 0;
+}
+
+function admissionRoot(object, scene) {
+  let root = object || null;
+  while (root && root.parent && root.parent !== scene) root = root.parent;
+  return root || object || null;
+}
+
+function objectLabel(object) {
+  return String(object && (object.name || object.type || object.uuid) || 'unnamed-object');
+}
+
+function materialLabel(material) {
+  return String(material && (material.name || material.type || material.uuid) || 'no-material');
+}
+
+function combineResourceIdentities(values) {
+  const result = {};
+  for (const key of ['geometryBufferIds', 'blockingTextureIds', 'shadowResourceIds']) {
+    result[key] = Object.freeze([...new Set(values.flatMap((value) => value && value[key] || []))].sort());
+  }
+  return Object.freeze(result);
+}
+
+// One synchronous submission only. Preserve any guard/instrumentation already installed and
+// restore it even when the render throws. Three returns undefined for both a successful draw
+// and a guard refusal, so only an increased renderer.info.render.calls proves submission.
+export function beginOpeningFirstDrawObservation(renderer, { plan = null, receipt = null, preSubmitValidation = null } = {}) {
+  const scene = plan && plan.scene;
+  const before = captureOpeningSubmissionValidationState(null, renderer,
+    preSubmitValidation && preSubmitValidation.currentResources);
+  const previous = renderer && renderer.renderBufferDirect;
+  const records = [];
+  let active = true;
+  let finished = null;
+  let complete = typeof previous === 'function'
+    && Number.isFinite(renderer && renderer.info && renderer.info.render && renderer.info.render.calls);
+  const wrapper = function openingFirstDrawObserver(camera, drawScene, geometry, material, object, group) {
+    const callsBefore = renderer.info && renderer.info.render && renderer.info.render.calls;
+    let result;
+    try { result = previous.call(this, camera, drawScene, geometry, material, object, group); }
+    catch (error) { close(); throw error; }
+    const callsAfter = renderer.info && renderer.info.render && renderer.info.render.calls;
+    if (!Number.isFinite(callsBefore) || !Number.isFinite(callsAfter)) complete = false;
+    if (!(callsAfter > callsBefore)) return result;
+    if (scene) {
+      let ancestor = object;
+      while (ancestor && ancestor !== scene) ancestor = ancestor.parent;
+      if (ancestor !== scene) return result;
+    }
+    try {
+      const resources = captureOpeningResourceIdentitySets([{
+        geometry, material, castShadow: object && object.castShadow,
+        customDepthMaterial: object && object.customDepthMaterial,
+        customDistanceMaterial: object && object.customDistanceMaterial,
+      }], plan && plan.route || {});
+      records.push(Object.freeze({
+        object,
+        root: objectLabel(admissionRoot(object, scene)),
+        objectName: objectLabel(object),
+        materialName: materialLabel(material),
+        materialType: String(material && material.type || 'Material'),
+        geometryId: resources.geometryBufferIds[0] || null,
+        geometryDisposeListeners: geometryDisposeListenerCount(geometry),
+        programKeys: Object.freeze([...materialProgramKeys(renderer, material)]),
+        resourceIdentitySets: resources,
+      }));
+    } catch (_) {
+      // Diagnostic capture cannot turn a successfully submitted draw into an application throw.
+      // An incomplete observation still refuses to certify the first-draw receipt.
+      complete = false;
+    }
+    return result;
+  };
+  if (typeof previous === 'function') renderer.renderBufferDirect = wrapper;
+  const close = () => {
+    if (!active) return;
+    active = false;
+    if (renderer && renderer.renderBufferDirect === wrapper) renderer.renderBufferDirect = previous;
+  };
+  return {
+    before,
+    cancel: close,
+    finish() {
+      if (finished) return finished;
+      close();
+      const explicitTextures = scene ? [scene.background, scene.environment]
+        .filter((texture) => texture && texture.isTexture === true) : [];
+      const resources = combineResourceIdentities([
+        before.currentResources,
+        ...records.map((record) => record.resourceIdentitySets),
+        captureOpeningResourceIdentitySets([], {}, explicitTextures),
+      ]);
+      finished = Object.freeze({
+        ...captureOpeningSubmissionValidationState(receipt, renderer, resources),
+        before,
+        complete,
+        draws: Object.freeze(records.slice()),
+      });
+      return finished;
+    },
+  };
+}
+
+export function openingProgramFamilyKey(key) {
+  const value = String(key || 'unknown').trim();
+  if (!value) return 'unknown';
+  if (value === 'physical' || value.startsWith('physical,STANDARD')) return 'physical,STANDARD';
+  const comma = value.indexOf(',');
+  return comma >= 0 ? value.slice(0, comma) : value;
+}
+
+/**
+ * Capture the one-frame identity baseline used to attribute a renderer.info count delta back to
+ * production objects. Three does not expose WebGLGeometries, so the geometry marker observes the
+ * dispose listener installed by WebGLGeometries.get() on first admission. Resource IDs are frozen
+ * during this existing walk, so a later mutation of a retained Object3D cannot rewrite the census.
+ */
+export function captureOpeningAdmissionIdentity(renderer, scene, plan = null) {
+  const planned = new Set(Array.isArray(plan && plan.compileSubjects)
+    ? plan.compileSubjects.filter(Boolean) : []);
+  const objects = new Map();
+  if (scene && typeof scene.traverse === 'function') {
+    scene.traverse((object) => {
+      if (!isDrawable(object)) return;
+      const materials = new Map();
+      for (const material of materialList(object)) {
+        materials.set(material, materialProgramKeys(renderer, material));
+      }
+      objects.set(object, {
+        geometry: object.geometry || null,
+        geometryDisposeListeners: geometryDisposeListenerCount(object.geometry),
+        materials,
+        planned: planned.has(object),
+        resourceIdentitySets: captureOpeningResourceIdentitySets([object], plan && plan.route || {}),
+      });
+    });
+  }
+  return {
+    programKeys: rendererProgramKeys(renderer),
+    objects,
+    resourceIdentitySets: combineResourceIdentities([...objects.values()].map((value) => value.resourceIdentitySets)),
+  };
+}
+
+// Stepped twin: same census, iterative document-order DFS with a yield per batch of
+// visited nodes so the driver can spread the baseline across refused first-draw
+// frames and drain only the remainder inside the presented one.
+export function* captureOpeningAdmissionIdentitySteps(renderer, scene, plan = null) {
+  const planned = new Set(Array.isArray(plan && plan.compileSubjects)
+    ? plan.compileSubjects.filter(Boolean) : []);
+  const objects = new Map();
+  if (scene) {
+    const stack = [scene];
+    let visited = 0;
+    while (stack.length) {
+      const object = stack.pop();
+      if (object && isDrawable(object)) {
+        const materials = new Map();
+        for (const material of materialList(object)) {
+          materials.set(material, materialProgramKeys(renderer, material));
+        }
+        objects.set(object, {
+          geometry: object.geometry || null,
+          geometryDisposeListeners: geometryDisposeListenerCount(object.geometry),
+          materials,
+          planned: planned.has(object),
+          resourceIdentitySets: captureOpeningResourceIdentitySets([object], plan && plan.route || {}),
+        });
+      }
+      const children = object && object.children;
+      if (children && children.length) {
+        for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+      }
+      if (++visited % 512 === 0) yield;
+    }
+  }
+  return {
+    programKeys: rendererProgramKeys(renderer),
+    objects,
+    resourceIdentitySets: combineResourceIdentities([...objects.values()].map((value) => value.resourceIdentitySets)),
+  };
+}
+
+function exemptionFor(row, exemptions) {
+  for (const exemption of exemptions || []) {
+    const reason = String(exemption && exemption.reason || '').trim();
+    if (!reason) continue;
+    if (exemption.root != null && String(exemption.root) !== row.root) continue;
+    if (exemption.object != null && String(exemption.object) !== row.object) continue;
+    if (exemption.material != null && String(exemption.material) !== row.material) continue;
+    if (exemption.programFamilyKey != null
+        && !row.programFamilyKeys.includes(String(exemption.programFamilyKey))) continue;
+    return reason;
+  }
+  return null;
+}
+
+/** Name every scene-owned object/material that acquired geometry or a new program on first draw. */
+export function describeOpeningAdmissionIdentityDelta(
+  before, renderer, scene, plan = null, options = {},
+) {
+  const baseline = before || { programKeys: new Set(), objects: new Map() };
+  const afterProgramKeys = rendererProgramKeys(renderer);
+  const newProgramKeys = [...afterProgramKeys]
+    .filter((key) => !baseline.programKeys.has(key))
+    .sort();
+  const newProgramSet = new Set(newProgramKeys);
+  const newProgramFamilyKeys = [...new Set(newProgramKeys.map(openingProgramFamilyKey))].sort();
+  const planned = new Set(Array.isArray(plan && plan.compileSubjects)
+    ? plan.compileSubjects.filter(Boolean) : []);
+  const lateAdmissions = [];
+  const attributedProgramKeys = new Set();
+
+  if (scene && typeof scene.traverse === 'function') {
+    scene.traverse((object) => {
+      if (!isDrawable(object)) return;
+      const prior = baseline.objects.get(object);
+      const geometryAdmitted = !!object.geometry && (
+        !prior
+        || prior.geometry !== object.geometry
+        || geometryDisposeListenerCount(object.geometry) > prior.geometryDisposeListeners
+      );
+      const materials = materialList(object);
+      const rows = materials.length > 0 ? materials : [null];
+      for (const material of rows) {
+        const priorKeys = prior && prior.materials.get(material) || new Set();
+        const programKeys = [...materialProgramKeys(renderer, material)]
+          .filter((key) => newProgramSet.has(key) && !priorKeys.has(key))
+          .sort();
+        if (!geometryAdmitted && programKeys.length === 0) continue;
+        for (const key of programKeys) attributedProgramKeys.add(key);
+        const root = admissionRoot(object, scene);
+        const row = {
+          root: objectLabel(root),
+          object: objectLabel(object),
+          material: materialLabel(material),
+          materialType: String(material && material.type || 'Material'),
+          geometryAdmitted,
+          programFamilyKeys: [...new Set(programKeys.map(openingProgramFamilyKey))].sort(),
+          programKeys,
+          planned: planned.has(object) || !!(prior && prior.planned),
+          exempted: false,
+          exemptionReason: null,
+        };
+        const reason = exemptionFor(row, options.exemptions);
+        if (reason) {
+          row.exempted = true;
+          row.exemptionReason = reason;
+        }
+        lateAdmissions.push(row);
+      }
+    });
+  }
+
+  lateAdmissions.sort((a, b) => (
+    a.root.localeCompare(b.root)
+    || a.object.localeCompare(b.object)
+    || a.material.localeCompare(b.material)
+  ));
+  const unattributedProgramKeys = newProgramKeys
+    .filter((key) => !attributedProgramKeys.has(key));
+  const unattributedProgramFamilyKeys = [...new Set(
+    unattributedProgramKeys.map(openingProgramFamilyKey),
+  )].sort();
+  const exemptedProgramFamilyKeys = [];
+  const unexplainedProgramFamilies = [];
+  for (const family of unattributedProgramFamilyKeys) {
+    const exemption = exemptionFor({
+      root: '', object: '', material: '', programFamilyKeys: [family],
+    }, options.exemptions);
+    if (exemption) exemptedProgramFamilyKeys.push({ family, reason: exemption });
+    else unexplainedProgramFamilies.push(family);
+  }
+  return {
+    newProgramKeys,
+    newProgramFamilyKeys,
+    lateAdmissions,
+    unattributedProgramKeys,
+    unattributedProgramFamilyKeys: unexplainedProgramFamilies,
+    exemptedProgramFamilyKeys,
+    unexplained: lateAdmissions.some((row) => row.exempted !== true)
+      || unexplainedProgramFamilies.length > 0,
+  };
+}
+
+// Stepped twin of describeOpeningAdmissionIdentityDelta — the deferred diagnostics
+// drive it in ≤4ms timer-gap slices so the O(scene)+per-material pass never lands
+// whole inside one early-flight frame. Every output row/set is sorted or filtered
+// before returning, so the explicit-stack visit order produces identical output.
+export function* describeOpeningAdmissionIdentityDeltaSteps(
+  before, renderer, scene, plan = null, options = {},
+) {
+  if (options.observation) {
+    return yield* describeObservedOpeningAdmissionDeltaSteps(before, options.observation, plan, options);
+  }
+  const baseline = before || { programKeys: new Set(), objects: new Map() };
+  const afterProgramKeys = rendererProgramKeys(renderer);
+  const newProgramKeys = [...afterProgramKeys]
+    .filter((key) => !baseline.programKeys.has(key))
+    .sort();
+  const newProgramSet = new Set(newProgramKeys);
+  const newProgramFamilyKeys = [...new Set(newProgramKeys.map(openingProgramFamilyKey))].sort();
+  const planned = new Set(Array.isArray(plan && plan.compileSubjects)
+    ? plan.compileSubjects.filter(Boolean) : []);
+  const lateAdmissions = [];
+  const attributedProgramKeys = new Set();
+
+  if (scene && typeof scene.traverse === 'function') {
+    const stack = [scene];
+    let visited = 0;
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if ((++visited % 512) === 0) yield;
+      const children = object.children;
+      if (Array.isArray(children)) {
+        for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+      }
+      if (!isDrawable(object)) continue;
+      const prior = baseline.objects.get(object);
+      const geometryAdmitted = !!object.geometry && (
+        !prior
+        || prior.geometry !== object.geometry
+        || geometryDisposeListenerCount(object.geometry) > prior.geometryDisposeListeners
+      );
+      const materials = materialList(object);
+      const rows = materials.length > 0 ? materials : [null];
+      for (const material of rows) {
+        const priorKeys = prior && prior.materials.get(material) || new Set();
+        const programKeys = [...materialProgramKeys(renderer, material)]
+          .filter((key) => newProgramSet.has(key) && !priorKeys.has(key))
+          .sort();
+        if (!geometryAdmitted && programKeys.length === 0) continue;
+        for (const key of programKeys) attributedProgramKeys.add(key);
+        const root = admissionRoot(object, scene);
+        const row = {
+          root: objectLabel(root),
+          object: objectLabel(object),
+          material: materialLabel(material),
+          materialType: String(material && material.type || 'Material'),
+          geometryAdmitted,
+          programFamilyKeys: [...new Set(programKeys.map(openingProgramFamilyKey))].sort(),
+          programKeys,
+          planned: planned.has(object) || !!(prior && prior.planned),
+          exempted: false,
+          exemptionReason: null,
+        };
+        const reason = exemptionFor(row, options.exemptions);
+        if (reason) {
+          row.exempted = true;
+          row.exemptionReason = reason;
+        }
+        lateAdmissions.push(row);
+      }
+    }
+  }
+
+  lateAdmissions.sort((a, b) => (
+    a.root.localeCompare(b.root)
+    || a.object.localeCompare(b.object)
+    || a.material.localeCompare(b.material)
+  ));
+  const unattributedProgramKeys = newProgramKeys
+    .filter((key) => !attributedProgramKeys.has(key));
+  const unattributedProgramFamilyKeys = [...new Set(
+    unattributedProgramKeys.map(openingProgramFamilyKey),
+  )].sort();
+  const exemptedProgramFamilyKeys = [];
+  const unexplainedProgramFamilies = [];
+  for (const family of unattributedProgramFamilyKeys) {
+    const exemption = exemptionFor({
+      root: '', object: '', material: '', programFamilyKeys: [family],
+    }, options.exemptions);
+    if (exemption) exemptedProgramFamilyKeys.push({ family, reason: exemption });
+    else unexplainedProgramFamilies.push(family);
+  }
+  return {
+    newProgramKeys,
+    newProgramFamilyKeys,
+    lateAdmissions,
+    unattributedProgramKeys,
+    unattributedProgramFamilyKeys: unexplainedProgramFamilies,
+    exemptedProgramFamilyKeys,
+    unexplained: lateAdmissions.some((row) => row.exempted !== true)
+      || unexplainedProgramFamilies.length > 0,
+  };
+}
+
+function* describeObservedOpeningAdmissionDeltaSteps(before, observation, plan, options) {
+  const newProgramKeys = observation.programKeys
+    .filter((key) => !observation.before.programKeys.includes(key)).sort();
+  const newProgramSet = new Set(newProgramKeys);
+  const knownGeometry = new Set(observation.before.currentResources.geometryBufferIds);
+  const planned = new Set(plan && plan.compileSubjects || []);
+  const attributed = new Set();
+  const lateAdmissions = [];
+  const seen = new Set();
+  let visited = 0;
+  for (const draw of observation.draws) {
+    if (++visited % 128 === 0) yield;
+    const prior = before && before.objects && before.objects.get(draw.object);
+    const geometryAdmitted = !!draw.geometryId && (!knownGeometry.has(draw.geometryId)
+      || (prior && draw.geometryDisposeListeners > prior.geometryDisposeListeners));
+    const programKeys = draw.programKeys.filter((key) => newProgramSet.has(key)).sort();
+    if (!geometryAdmitted && programKeys.length === 0) continue;
+    const row = {
+      root: draw.root, object: draw.objectName, material: draw.materialName,
+      materialType: draw.materialType, geometryAdmitted,
+      programFamilyKeys: [...new Set(programKeys.map(openingProgramFamilyKey))].sort(),
+      programKeys, planned: planned.has(draw.object) || !!(prior && prior.planned),
+      exempted: false, exemptionReason: null,
+    };
+    const identity = JSON.stringify(row);
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+    for (const key of programKeys) attributed.add(key);
+    const reason = exemptionFor(row, options.exemptions);
+    if (reason) { row.exempted = true; row.exemptionReason = reason; }
+    lateAdmissions.push(row);
+  }
+  lateAdmissions.sort((a, b) => a.root.localeCompare(b.root)
+    || a.object.localeCompare(b.object) || a.material.localeCompare(b.material));
+  const unattributedProgramKeys = newProgramKeys.filter((key) => !attributed.has(key));
+  const exemptedProgramFamilyKeys = [];
+  const unexplainedProgramFamilies = [];
+  for (const family of [...new Set(unattributedProgramKeys.map(openingProgramFamilyKey))].sort()) {
+    const exemption = exemptionFor({ root: '', object: '', material: '', programFamilyKeys: [family] }, options.exemptions);
+    if (exemption) exemptedProgramFamilyKeys.push({ family, reason: exemption });
+    else unexplainedProgramFamilies.push(family);
+  }
+  return {
+    newProgramKeys,
+    newProgramFamilyKeys: [...new Set(newProgramKeys.map(openingProgramFamilyKey))].sort(),
+    lateAdmissions, unattributedProgramKeys,
+    unattributedProgramFamilyKeys: unexplainedProgramFamilies,
+    exemptedProgramFamilyKeys,
+    unexplained: lateAdmissions.some((row) => !row.exempted) || unexplainedProgramFamilies.length > 0,
+  };
+}
+
+export function materialHasCompiledProgram(material, getProperties) {
+  if (!material || typeof getProperties !== 'function') return false;
+  try {
+    const rec = getProperties(material);
+    return !!(rec && rec.currentProgram);
+  } catch {
+    return false;
+  }
+}
+
+export function uniqueAdmissionUnits(subjects, options = {}) {
+  const programSubjects = [];
+  const geometrySubjects = [];
+  // Callers driving the unit construction in slices pass their own dedupe sets —
+  // the sets carry the cross-chunk seen state, so chunked accumulation produces
+  // the same dedupe as one monolithic call.
+  const seenMaterials = options.seenMaterials instanceof Set ? options.seenMaterials : new Set();
+  const seenGeometries = options.seenGeometries instanceof Set ? options.seenGeometries : new Set();
+  const skipReady = typeof options.skipReadyMaterial === 'function'
+    ? options.skipReadyMaterial
+    : null;
+  const list = Array.isArray(subjects) ? subjects : [subjects];
+  // Sliced drivers pass a window instead of a sliced copy — one fresh array
+  // per chunk per pace tick was pure allocation churn mid-cook.
+  const listStart = Number.isInteger(options.start) ? Math.max(0, options.start) : 0;
+  const listEnd = Number.isInteger(options.end) ? Math.min(list.length, options.end) : list.length;
+  for (let listIndex = listStart; listIndex < listEnd; listIndex++) {
+    const object = list[listIndex];
+    if (!object) continue;
+    let addedProgram = false;
+    for (const material of materialList(object)) {
+      // Dedupe before the readiness probe: a material shared across subjects
+      // would pay the properties.get + currentProgram walk once per owner, and
+      // the probe is a pure read so a shared ready material can join the set too.
+      if (seenMaterials.has(material)) continue;
+      seenMaterials.add(material);
+      if (skipReady && skipReady(material)) continue;
+      if (!addedProgram) {
+        programSubjects.push(object);
+        addedProgram = true;
+      }
+    }
+    if (object.geometry && !seenGeometries.has(object.geometry)) {
+      seenGeometries.add(object.geometry);
+      geometrySubjects.push(object);
+    }
+  }
+  return {
+    programSubjects,
+    geometrySubjects,
+    materialCount: seenMaterials.size,
+    geometryCount: seenGeometries.size,
+  };
+}
+
+/**
+ * Reusable drawable-hide session for a batched touch loop. The scene's drawable
+ * enumeration is O(scene) — mint it once per cook and share `drawables` across
+ * the cook's legs. `keep` is per-CALL state (withOnlySubjectsDrawable mints it
+ * per batch); session objects carry no keep set at all — re-drawing every prior
+ * batch's subjects in
+ * each later absorbed pass. Under-hiding is safe by contract — a drawable the
+ * session under-covers just draws inside the absorbed touch pass (which exists
+ * to absorb links), never inside a presented frame; stale entries for detached
+ * nodes hide+restore harmlessly.
+ */
+export function drawableHideSession(scene) {
+  const drawables = [];
+  if (scene && typeof scene.traverse === 'function') {
+    scene.traverse((object) => {
+      if (isDrawable(object)) drawables.push(object);
+    });
+  }
+  return { scene, drawables };
+}
+
+// Stepped twin of the session mint: the O(scene) enumeration yields at stride
+// boundaries so a lazy mid-cook mint paces across presents instead of landing
+// atomic inside the admit leg. Reversed-children push reproduces traverse's
+// pre-order exactly (drawables order is cosmetic — the hide pass only reads
+// membership).
+export function* drawableHideSessionSteps(scene, sliceEvery = 4096) {
+  const drawables = [];
+  if (scene) {
+    const stack = [scene];
+    let visited = 0;
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if (isDrawable(object)) drawables.push(object);
+      const children = object.children || [];
+      for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+      if ((++visited % sliceEvery) === 0) yield;
+    }
+  }
+  return { scene, drawables };
+}
+
+export function withOnlySubjectsDrawable(scene, subjects, fn, session) {
+  // `keep` scopes to THIS call's subjects: whileRevealedGroup now holds reveals
+  // across suspension, so a session-accumulated keep re-draws every prior
+  // batch's subjects inside each later absorbed pass (≈N²/48 subject-draws per
+  // cook). Prior-batch members are hidden by the scan below — their programs
+  // already linked in their own batch — and restore in `finally`.
+  const keep = new Set();
+  // A drawable ancestor must stay un-hidden: render() skips a hidden object's whole subtree, so
+  // hiding one would make the subject's "draw" a silent no-op and leave its program cold. The
+  // same holds for descendants — a Group subject whose mesh children are hidden draws nothing.
+  for (const subject of (Array.isArray(subjects) ? subjects : [subjects])) {
+    if (!subject || keep.has(subject)) continue;
+    keep.add(subject);
+    for (let p = subject.parent; p && !keep.has(p); p = p.parent) keep.add(p);
+    if (typeof subject.traverse === 'function') subject.traverse((node) => keep.add(node));
+  }
+  const saved = [];
+  if (session) {
+    for (const object of session.drawables) {
+      if (object.visible === false || keep.has(object)) continue;
+      saved.push(object);
+      object.visible = false;
+    }
+  } else if (scene && typeof scene.traverse === 'function') {
+    // An already hidden branch cannot draw; leave its visibility untouched.
+    const traverse = typeof scene.traverseVisible === 'function' ? scene.traverseVisible : scene.traverse;
+    traverse.call(scene, (object) => {
+      if (object.visible === false || !isDrawable(object) || keep.has(object)) return;
+      saved.push(object);
+      object.visible = false;
+    });
+  }
+  try {
+    return fn();
+  } finally {
+    // Only visible objects were hidden, so restore is `visible = true`. Bare references, not
+    // {object, visible} records: this runs per touch over every drawable (~90 MB per cook).
+    for (let i = 0; i < saved.length; i += 1) saved[i].visible = true;
+  }
+}
+
+/**
+ * Draw one already-compiled subject to the exact HDR/screen target so ANGLE links the program
+ * and uploads its buffers. Other drawables stay in the graph for lights but are hidden so this
+ * is not a whole-scene discovery pass.
+ *
+ * `subject` may also be an array: every listed subject draws in ONE render. Each subject still
+ * gets exactly the draw it would get alone (same program, same buffers, same target, same
+ * lights); only the whole-scene hide/restore walk and the render call's fixed cost are shared.
+ */
+export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camera, lightingScene, options = {}) {
+  const subjects = (Array.isArray(subject) ? subject : [subject]).filter(Boolean);
+  const assertSubjectActive = (item) => {
+    if (!isRetiredRigidOpaqueBatch(item)) return;
+    const error = new Error('Exact-target admission owner became inactive');
+    error.name = 'AbortError';
+    error.code = 'SF_EXACT_TARGET_OWNER_INACTIVE';
+    throw error;
+  };
+  for (const item of subjects) assertSubjectActive(item);
+  if (!renderer || typeof renderer.render !== 'function' || subjects.length === 0 || !lightingScene) {
+    return { skipped: true, reason: 'touch unavailable' };
+  }
+  const previousTarget = typeof renderer.getRenderTarget === 'function'
+    ? renderer.getRenderTarget()
+    : null;
+  const previousAutoClear = renderer.autoClear;
+  // The render below draws the lighting scene's graph — a subject outside it (a detached authored
+  // root mid-prepare, or one parented into a foreign staging group) contributes nothing, so its
+  // "touched" program still links inside the first presented pass. Park each foreign subject in
+  // the lighting scene for the draw and restore its real parentage afterwards.
+  //
+  // Invariant: the parked subject must not carry a residency-owner identity — reparenting fires
+  // Object3D 'removed' events, and owner roots treat that as boundary removal (asset residency
+  // release). Every caller passes content roots/leaves, never an owner boundary.
+  const parked = [];
+  const cullable = new Set();
+  // D102: a keep-member drawable whose geometry is gone (torn down, or never
+  // committed while its admission was queued) still reaches Three's
+  // WebGLGeometries.get — projectObject runs WebGLObjects.update (which reads
+  // geometry.id) before it ever tests material.visible, so hiding the node via
+  // its MATERIAL cannot prevent the throw; only object.visible === false makes
+  // the traversal skip it. Hiding the node is therefore mandatory — but hiding
+  // its subtree is not, since a null-geometry node can sit on the subject's own
+  // ancestor chain or inside its subtree, and every keep member must stay
+  // drawable for the touch to admit anything. Each such node's children are
+  // moved to the nearest visible in-scene ancestor (or the scene itself for a
+  // detached keep root) through direct children-array edits — no add()/remove(),
+  // so no 'removed'/'added' events fire and residency owners see no boundary
+  // churn — the node itself is hidden for the draw, and all of it is restored
+  // in finally. Sim state, materials, and geometry are untouched.
+  const geometryless = [];
+  {
+    const seen = new Set();
+    const mark = (node, subject) => {
+      if (!node || seen.has(node)) return;
+      seen.add(node);
+      if (!isDrawable(node) || node.visible === false) return;
+      const geometry = node.geometry;
+      if (geometry != null && geometry.id != null) return;
+      geometryless.push({
+        node,
+        subject: objectLabel(subject),
+        object: objectLabel(node),
+        reason: 'null-geometry',
+      });
+    };
+    for (const item of subjects) {
+      if (typeof item.traverse === 'function') item.traverse((node) => mark(node, item));
+      else mark(item, item);
+      for (let p = item && item.parent; p; p = p.parent) mark(p, item);
+    }
+  }
+  const geometrylessNodes = new Set(geometryless.map((row) => row.node));
+  const isUnderScene = (node) => {
+    for (let p = node; p; p = p.parent) if (p === lightingScene) return true;
+    return false;
+  };
+  // The nearest ancestor that projectObject can still reach. Ancestors of keep
+  // members are keep members too, so a visible in-scene ancestor is never hidden
+  // by the keep pass below; a fully detached keep chain roots at the scene.
+  const spliceHostFor = (node) => {
+    for (let p = node.parent; p; p = p.parent) {
+      if (p.visible !== false && isUnderScene(p)) return p;
+    }
+    return lightingScene;
+  };
+  const depthOf = (node) => {
+    let depth = 0;
+    for (let p = node && node.parent; p; p = p.parent) depth += 1;
+    return depth;
+  };
+  // A subject still owes its draw when any subtree member can draw; a subject
+  // whose only drawables are geometryless has nothing to admit.
+  const drawableSubjects = subjects.filter((item) => {
+    const nodes = [];
+    if (typeof item.traverse === 'function') item.traverse((node) => nodes.push(node));
+    else nodes.push(item);
+    return nodes.some((node) => (
+      isDrawable(node) && !geometrylessNodes.has(node) && node.visible !== false
+    ));
+  });
+  const childSplices = [];
+  const hiddenForTouch = new Map();
+  const drawn = [];
+  const pendingPrograms = new Set();
+  let invalidProgram = false;
+  let releaseUploadLeases = () => {};
+  try {
+    // Shallowest-first so a nested null-geometry node is re-seated before its own
+    // children are moved; the finally below restores deepest-first.
+    const orderedGeometryless = geometryless.slice()
+      .sort((a, b) => depthOf(a.node) - depthOf(b.node));
+    for (const row of orderedGeometryless) {
+      const node = row.node;
+      const host = spliceHostFor(node);
+      const children = Array.isArray(node.children) ? node.children.slice() : [];
+      const splice = { node, host: null, children };
+      if (children.length > 0 && host && Array.isArray(host.children)) {
+        splice.host = host;
+        // Seat the children where the node itself sat so sibling order is
+        // otherwise preserved; the keep pass decides their visibility by node.
+        const at = host === node.parent ? host.children.indexOf(node) : -1;
+        for (const child of children) child.parent = host;
+        node.children.length = 0;
+        if (at >= 0) host.children.splice(at, 0, ...children);
+        else host.children.push(...children);
+      }
+      childSplices.push(splice);
+      hiddenForTouch.set(node, node.visible);
+      node.visible = false;
+    }
+    for (const item of subjects) {
+      assertSubjectActive(item);
+      if (item === lightingScene) continue;
+      let underScene = false;
+      for (let node = item; node; node = node.parent) {
+        if (node === lightingScene) { underScene = true; break; }
+      }
+      if (underScene || typeof lightingScene.add !== 'function') continue;
+      // Record the foreign parent's child index too — partsLibrary resolves objects through
+      // index-based paths (objectPathFromRoot), so appending on restore would corrupt them.
+      parked.push({
+        item,
+        parent: item.parent,
+        index: item.parent && Array.isArray(item.parent.children)
+          ? item.parent.children.indexOf(item)
+          : -1,
+      });
+      lightingScene.add(item);
+    }
+    // The touch's only job is to make the subject's draw issue — a subject outside the camera
+    // frustum (a parked detached root at its pre-commit local pose) would be culled and stay cold.
+    for (const item of subjects) {
+      if (typeof item.traverse === 'function') {
+        item.traverse((node) => {
+          if (node.frustumCulled === true) cullable.add(node);
+        });
+      }
+      for (let node = item.parent; node; node = node.parent) {
+        if (node.frustumCulled === true) cullable.add(node);
+      }
+    }
+    for (const node of cullable) node.frustumCulled = false;
+    renderer.autoClear = false;
+    if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(renderTarget || null);
+    if (drawableSubjects.length > 0) {
+      withOnlySubjectsDrawable(lightingScene, drawableSubjects, () => {
+        for (const item of drawableSubjects) {
+          if (typeof item.updateMatrixWorld === 'function') item.updateMatrixWorld(true);
+          // The bloom frame hides these for the aspect-flip hold. This touch is a
+          // second draw that reveals the subject on purpose, and three uploads
+          // attributes before any draw guard can refuse. Hide the released meshes
+          // for this draw too so it cannot create a zero-length buffer.
+          if (typeof item.traverse === 'function') {
+            item.traverse((node) => {
+              if (!node || node.visible === false) return;
+              // Sibling atlases still hold the chain the residency pass cleared
+              // on this user. Restore before the draw so texStorage sees levels.
+              restorePresentedCompressedMips(node.material);
+              // projectObject uploads attributes before any draw guard. A released
+              // mesh here would create a zero-length buffer and fail the indexed
+              // draw. The presented frame still draws it against the GPU copy.
+              const hide = orientationHoldHidesDrawable(renderer, node)
+                || isPackageGeometryDetached(node.geometry)
+                || presentedCompressedUploadUnsafe(renderer, node.material);
+              if (!hide) return;
+              if (!hiddenForTouch.has(node)) hiddenForTouch.set(node, true);
+              node.visible = false;
+            });
+          }
+        }
+        // Keep refilled chains alive for this bind. A residency release in the
+        // same turn would empty them again before texStorage reads mipmaps[0].
+        releaseUploadLeases = retainPresentedTextureLeases(collectStartupTextures(drawableSubjects));
+        for (const item of subjects) assertSubjectActive(item);
+        // The exact draw can select a variant absent from the completed compile cohort.
+        // Capture Three's selected wrapper without queueing a recursive admission.
+        const previousDepth = renderer.__sfUnreadyDrawGuardDepth;
+        const previousDefer = renderer.__sfDeferSelectedProgram;
+        const previousExact = renderer.__sfExactTargetTouch;
+        const hadDepth = Object.hasOwn(renderer, '__sfUnreadyDrawGuardDepth');
+        const hadDefer = Object.hasOwn(renderer, '__sfDeferSelectedProgram');
+        const hadExact = Object.hasOwn(renderer, '__sfExactTargetTouch');
+        renderer.__sfExactTargetTouch = true;
+        renderer.__sfUnreadyDrawGuardDepth = (previousDepth || 0) + 1;
+        renderer.__sfDeferSelectedProgram = (program) => {
+          let ready = !!program && (!Object.hasOwn(program, 'program') || !!program.program);
+          if (ready && typeof renderer.__sfExactProgramInvalid === 'function'
+              && renderer.__sfExactProgramInvalid(program)) {
+            invalidProgram = true;
+            ready = false;
+          }
+          if (ready && typeof program.isReady === 'function') {
+            try { ready = program.isReady() === true; } catch (_) { ready = false; }
+          }
+          if (!ready) { pendingPrograms.add(program); return true; }
+          return false;
+        };
+        try { renderer.render(lightingScene, camera); }
+        finally {
+          if (hadDepth) renderer.__sfUnreadyDrawGuardDepth = previousDepth; else delete renderer.__sfUnreadyDrawGuardDepth;
+          if (hadDefer) renderer.__sfDeferSelectedProgram = previousDefer; else delete renderer.__sfDeferSelectedProgram;
+          if (hadExact) renderer.__sfExactTargetTouch = previousExact; else delete renderer.__sfExactTargetTouch;
+        }
+      }, options.drawableSession);
+      drawn.push(...drawableSubjects.map((item) => objectLabel(item)));
+    }
+    return {
+      skipped: drawableSubjects.length === 0 || pendingPrograms.size > 0,
+      incomplete: pendingPrograms.size > 0,
+      contextLost: invalidProgram,
+      pendingPrograms: [...pendingPrograms],
+      subjects: subjects.length,
+      drawn: drawn.length,
+      drawnSubjects: drawn,
+      skippedSubjects: geometryless.length,
+      skippedNullGeometry: geometryless.map(({ node, ...row }) => row),
+      reason: invalidProgram ? 'invalid-program' : pendingPrograms.size ? 'pending-exact-program' : drawableSubjects.length === 0 ? 'null-geometry' : undefined,
+    };
+  } finally {
+    releaseUploadLeases();
+    for (const node of cullable) node.frustumCulled = true;
+    // Last-in-first-out: a list holding both an ancestor and its descendant parks them in
+    // order, so unwinding in reverse keeps each reparent consistent with the one before it.
+    for (let i = parked.length - 1; i >= 0; i--) {
+      const { item, parent, index } = parked[i];
+      // Retirement during the draw invalidates this saved home. The canonical batch owner has
+      // already restored the authored sources and removed the disposed mesh from its parent.
+      if (isRetiredRigidOpaqueBatch(item)) continue;
+      if (parent && typeof parent.add === 'function') {
+        parent.add(item);
+        if (index >= 0 && index < parent.children.length - 1) {
+          const currentIndex = parent.children.indexOf(item);
+          if (currentIndex >= 0) {
+            parent.children.splice(currentIndex, 1);
+            parent.children.splice(index, 0, item);
+          }
+        }
+      } else if (typeof lightingScene.remove === 'function') {
+        lightingScene.remove(item);
+      }
+    }
+    // Splice restore runs after the parked restore (a parked subject could itself be a
+    // spliced child — the park returns it to the recorded host first). Deepest-first,
+    // the inverse of the shallow-first seating above, and only for children still under
+    // the recorded host: a child re-parented by something else during the draw keeps
+    // its new parent instead of being forced back.
+    for (let i = childSplices.length - 1; i >= 0; i--) {
+      const { node, host, children } = childSplices[i];
+      if (!host || !Array.isArray(host.children) || !Array.isArray(node.children)) continue;
+      for (const child of children) {
+        if (child.parent !== host) continue;
+        const at = host.children.indexOf(child);
+        if (at >= 0) host.children.splice(at, 1);
+        child.parent = node;
+      }
+      for (const child of children) {
+        if (child.parent === node && !node.children.includes(child)) node.children.push(child);
+      }
+    }
+    for (const [node, wasVisible] of hiddenForTouch) {
+      try { node.visible = wasVisible; } catch (_) { /* teardown race: node already disposed */ }
+    }
+    renderer.autoClear = previousAutoClear;
+    if (typeof renderer.setRenderTarget === 'function') {
+      renderer.setRenderTarget(previousTarget || null);
+    }
+  }
+}
+
+const PACE_BUDGET_MS = 24;
+const PACE_MAX_UNITS = 8;
+
+// Retry only the wrappers actually selected by Three at the exact-target draw. Waiting is
+// outside the serial GPU reservation, so the owner never queues behind its own admission.
+export async function retryPendingExactTouch(touch, { renderer, isActive, timeoutMs = 20000 } = {}) {
+  const now = () => globalThis.performance?.now?.() ?? Date.now();
+  const deadline = now() + Math.max(0, timeoutMs);
+  const canvas = renderer?.domElement;
+  let lost = false;
+  const onLost = () => { lost = true; };
+  canvas?.addEventListener?.('webglcontextlost', onLost);
+  try {
+    let attempted = false;
+    for (;;) {
+      if (lost || renderer?.getContext?.()?.isContextLost?.()) return { skipped: true, contextLost: true, reason: 'context-lost' };
+      if (isActive && !isActive()) return { skipped: true, cancelled: true, reason: 'owner-inactive' };
+      if (attempted && now() >= deadline) return { skipped: true, incomplete: true, readinessTimedOut: true, reason: 'pending-exact-program' };
+      attempted = true;
+      const receipt = await touch();
+      if (receipt?.reason !== 'pending-exact-program') return receipt;
+      const pending = receipt.pendingPrograms || [];
+      for (;;) {
+        if (lost || renderer?.getContext?.()?.isContextLost?.()) return { skipped: true, contextLost: true, reason: 'context-lost' };
+        if (isActive && !isActive()) return { skipped: true, cancelled: true, reason: 'owner-inactive' };
+        let allReady = pending.length > 0;
+        for (const program of pending) {
+          if (!program || (Object.hasOwn(program, 'program') && !program.program)
+              || (typeof renderer?.__sfExactProgramInvalid === 'function' && renderer.__sfExactProgramInvalid(program))
+              || typeof program.isReady !== 'function') return { skipped: true, contextLost: true, reason: 'invalid-program' };
+          let ready;
+          try { ready = program.isReady(); } catch (_) { ready = null; }
+          if (ready == null) return { skipped: true, contextLost: true, reason: 'invalid-program' };
+          if (ready !== true) allReady = false;
+        }
+        if (allReady) break;
+        if (now() >= deadline) return { skipped: true, incomplete: true, readinessTimedOut: true, reason: 'pending-exact-program' };
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+    }
+  } finally { canvas?.removeEventListener?.('webglcontextlost', onLost); }
+}
+
+export async function admitOpeningUnitsAcrossSlices(options = {}) {
+  const units = options.units || uniqueAdmissionUnits(options.subjects || []);
+  const compileOne = typeof options.compileOne === 'function' ? options.compileOne : null;
+  const touchOne = typeof options.touchOne === 'function' ? options.touchOne : null;
+  const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : null;
+  // Required opening drains opt into a fail-closed result. The ordinary late-repair callers keep
+  // their historical best-effort behavior; only the caller that owns a required opening seal sets
+  // this flag. `isActive` is passed to the shared renderer admission queue so a superseded owner
+  // cannot submit a late compile or touch after its handoff.
+  const strict = options.strict === true;
+  const isActive = typeof options.isActive === 'function' ? options.isActive : null;
+  const now = typeof options.now === 'function'
+    ? options.now
+    : () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now() : Date.now());
+  const started = now();
+  const deadlineMs = Number.isFinite(options.deadlineMs) ? options.deadlineMs : 0;
+  const overBudget = () => deadlineMs > 0 && (now() - started) > deadlineMs;
+  const seen = new Set();
+  const ordered = [];
+  for (const subject of [...(units.programSubjects || []), ...(units.geometrySubjects || [])]) {
+    if (!subject || seen.has(subject)) continue;
+    seen.add(subject);
+    ordered.push(subject);
+  }
+  // An empty unit set has nothing to compile or touch — skip the batch-open/drain/
+  // allSettled/close ceremony entirely rather than paying it per call.
+  if (ordered.length === 0) {
+    return {
+      skipped: true,
+      subjects: 0,
+      materials: Number(units.materialCount) || 0,
+      geometries: Number(units.geometryCount) || 0,
+      results: [],
+    };
+  }
+  // Without a readiness batch this stays exactly as it was: compile a unit, touch it, yield, next.
+  // With one, the shape changes to issue-all / drain-once / touch-all. That matters because
+  // `renderer.compile()` under KHR_parallel_shader_compile costs microseconds and only STARTS the
+  // driver link — so admitting units one at a time serializes waits the driver would gladly
+  // overlap. Touches must still follow the drain: a draw against an unlinked program pays the same
+  // stall this is removing. Same units, same programs, same picture; only the waiting is pooled.
+  const beginBatch = typeof options.beginReadinessBatch === 'function'
+    ? options.beginReadinessBatch
+    : null;
+  if (!beginBatch) {
+    // Compile+touch interleave per unit, so the detach census runs before the first draw.
+    await reattachDetachedAdmissionTextures(ordered, options.renderer, yieldToMain);
+    await reattachDetachedAdmissionGeometries(ordered, options.renderer, yieldToMain);
+    const results = await compileSubjectsAcrossPresents(
+      ordered,
+      async (subject) => {
+        const compiled = compileOne ? await compileOne(subject) : null;
+        if (compiled?.contextLost || compiled?.readinessTimedOut || compiled?.incomplete) {
+          if (strict) {
+            const error = new Error('opening GPU admission incomplete: readiness did not settle');
+            if (compiled.readinessTimedOut && !compiled.contextLost) error.code = 'SF_PIPELINE_READINESS_TIMEOUT';
+            throw error;
+          }
+          return { compiled, touched: null };
+        }
+        const touched = touchOne ? await retryPendingExactTouch(() => touchOne(subject), {
+          renderer: options.renderer, isActive,
+          timeoutMs: deadlineMs > 0 ? Math.max(0, deadlineMs - (now() - started)) : 20000,
+        }) : null;
+        if (strict && touched?.skipped) {
+          const error = new Error(`opening GPU admission touch skipped: ${touched.reason || 'unknown reason'}`);
+          if (touched.readinessTimedOut && !touched.contextLost && !touched.cancelled) error.code = 'SF_PIPELINE_READINESS_TIMEOUT';
+          throw error;
+        }
+        return { compiled, touched };
+      },
+      yieldToMain,
+      { budgetMs: 0 },
+    );
+    return {
+      skipped: ordered.length === 0,
+      incomplete: results.some(({ compiled, touched }) => compiled?.contextLost || compiled?.readinessTimedOut
+        || compiled?.incomplete || touched?.skipped || touched?.incomplete || touched?.contextLost),
+      subjects: ordered.length,
+      materials: Number(units.materialCount) || (units.programSubjects || []).length,
+      geometries: Number(units.geometryCount) || (units.geometrySubjects || []).length,
+      results,
+    };
+  }
+
+  const batch = beginBatch();
+  // Serial-route queue pacing (see gpuQueuePace.js). On a driver with
+  // KHR_parallel_shader_compile this is null and the loop is unchanged; without it, nothing
+  // else drains the command buffer until the next forced finish, so the whole cohort's GL cost
+  // would serialize inside one compositor readback and starve the page's task queue for tens of
+  // seconds (headless SwiftShader, CI run 36486329212). Pacing after each unit keeps the
+  // backlog ~one unit deep — the same work happens, spread over task-queue slots.
+  const paceQueue = batch && typeof batch.paceQueue === 'function' ? batch.paceQueue : null;
+  // Pacing after a direct GL call does not exclude another producer that submitted during the
+  // pacer's yield. PR383 exposes the same-renderer reservation on the readiness batch; use it
+  // before invoking compile/touch. The paceQueue.submit fallback keeps this function compatible
+  // with older batches while their owner is still rolling out the batch.submit surface.
+  const batchSubmit = batch && typeof batch.submit === 'function'
+    ? batch.submit.bind(batch)
+    : null;
+  const paceSubmit = !batchSubmit && paceQueue && typeof paceQueue.submit === 'function'
+    ? paceQueue.submit
+    : null;
+  const submitSerial = batchSubmit || paceSubmit;
+  // Only the known serial pacer's reservation guarantees a yielded task and GL drain.
+  // A custom batch.submit may not pace at all, so keep its caller-owned yield.
+  const touchAlreadyPaced = Boolean(paceSubmit
+    || (batchSubmit && paceQueue && batch.submit === paceQueue.submit));
+  const submitAdmission = {
+    ...(isActive ? { isActive } : {}),
+    ...(options.urgent === true ? { urgent: true } : {}),
+  };
+  // A serial reservation must not wait on this batch's own KHR readiness drain. Callers pass the
+  // second argument through to compilePipelinesContextSafe/_compilePostRoute; closures that do
+  // not consume it remain API-compatible and retain their prior behavior on the KHR path.
+  const compileOptions = submitSerial || isActive
+    ? {
+      ...(submitSerial ? { skipSharedBatch: true } : {}),
+      ...(isActive ? { isActive } : {}),
+    }
+    : undefined;
+  let paceDebtMs = 0;
+  let paceDebtUnits = 0;
+  const issued = [];
+  let compiled = [];
+  let drained = null;
+  let issueSettled = [];
+  // Where the step's wall time went. A cook that reads "110 s" in the ledger is unreadable
+  // without knowing whether it was issuing, waiting on the driver, or touching.
+  let issueMs = 0;
+  let drainMs = 0;
+  let touchMs = 0;
+  // `issueKeyFor` is a producer-side program signature (material manifest + object/geometry
+  // features). Units dedupe by material OBJECT, so thousands of palette-cloned subjects share
+  // one signature: only the first needs its compile issued — the linked program is keyed by
+  // signature, not material identity. A covered subject still owes its touch (its own geometry
+  // buffers and material uniforms upload on that draw), and a signature miss degrades to the
+  // same blocking link an unissued subject already pays inside a batched touch — never worse.
+  const issueKeyFor = typeof options.issueKeyFor === 'function' ? options.issueKeyFor : null;
+  const seenIssueKeys = issueKeyFor ? new Set() : null;
+  let issueDedupeSkips = 0;
+  try {
+    // Issue without awaiting. Each call runs `renderer.compile()` synchronously inside its promise
+    // executor and then suspends on the batch, so the whole cohort reaches the driver before the
+    // first wait begins. Awaiting here instead would deadlock: nothing settles until drain().
+    const issueStarted = now();
+    for (let index = 0; index < ordered.length; index++) {
+      if (overBudget()) break;
+      const subject = ordered[index];
+      let issueKey = null;
+      if (issueKeyFor) {
+        try { issueKey = issueKeyFor(subject); } catch (_) { issueKey = null; }
+      }
+      if (issueKey && seenIssueKeys.has(issueKey)) {
+        // Keep `issued` index-aligned with `ordered` so the touch gate still counts this
+        // subject as issued — its program is covered by the sibling's in-flight compile.
+        issued.push(Promise.resolve({ skipped: true, reason: 'program-signature-covered' }));
+        issueDedupeSkips += 1;
+        continue;
+      }
+      if (issueKey) seenIssueKeys.add(issueKey);
+      const unitStarted = now();
+      const submit = () => (compileOne ? compileOne(subject, compileOptions) : null);
+      issued.push(submitSerial ? submitSerial(submit, submitAdmission) : submit());
+      paceDebtMs += now() - unitStarted;
+      paceDebtUnits += 1;
+      // Pace before the scheduled yield: the pacer drains everything queued so far behind a
+      // task-queue slot, so the drain stays bounded instead of piling up the whole cohort.
+      // Each pace waits a presented frame (~60-100 ms on SwiftShader while the shell paints), so
+      // pacing every unit made the opening drain frame-bound (≈12 s for ~10% link time). Pace
+      // once a few units or a frame's worth of issue time has queued; the backlog stays a handful
+      // of units deep, never the cohort.
+      // The shared submit reservation already drains its callback; only older batches use this pacer.
+      if (!submitSerial && paceQueue && (paceDebtMs >= PACE_BUDGET_MS || paceDebtUnits >= PACE_MAX_UNITS
+        || index === ordered.length - 1)) {
+        await paceQueue();
+        paceDebtMs = 0;
+        paceDebtUnits = 0;
+      }
+      if (yieldToMain && index < ordered.length - 1) await yieldToMain();
+    }
+    issueMs = now() - issueStarted;
+    const drainStarted = now();
+    drained = await batch.drain(
+      deadlineMs > 0 ? { timeoutMs: Math.max(0, deadlineMs - (now() - started)) } : undefined,
+    );
+    // One rejected compile must not discard the cohort's touches — every issued unit that skips
+    // its draw still links inside the first presented scene pass. Settle each and keep going.
+    issueSettled = await Promise.allSettled(issued);
+    compiled = issueSettled
+      .map((entry) => (entry && entry.status === 'fulfilled' ? entry.value : null));
+    if (strict) {
+      if (issued.length < ordered.length) {
+        throw new Error(`opening GPU admission incomplete: issued ${issued.length}/${ordered.length}`);
+      }
+      if (!drained || drained.contextLost === true || drained.incomplete === true
+        || Number(drained.programs) > 0) {
+        throw new Error('opening GPU admission incomplete: readiness drain did not settle');
+      }
+      const rejected = issueSettled.find((entry) => entry && entry.status === 'rejected');
+      if (rejected) throw rejected.reason || new Error('opening GPU admission compile rejected');
+      const failed = issueSettled.find((entry) => {
+        if (!entry || entry.status !== 'fulfilled' || !entry.value) return false;
+        if (entry.value.contextLost === true || entry.value.readinessTimedOut === true) return true;
+        return entry.value.skipped === true && entry.value.reason !== 'program-signature-covered';
+      });
+      if (failed) {
+        throw new Error(`opening GPU admission skipped: ${failed.value.reason || 'unknown reason'}`);
+      }
+    }
+    drainMs = now() - drainStarted;
+  } finally {
+    batch.close();
+    // Settling only RESOLVES each suspended compile; the `finally` that restores its captured
+    // render target runs a microtask later, and those captures nest into one another. Wait for
+    // every one of them to unwind, then put the renderer back where the batch found it.
+    await Promise.allSettled(issued);
+    if (typeof batch.restoreEntryTarget === 'function') batch.restoreEntryTarget();
+  }
+  // A timed-out batch releases its local waiters, not the driver's pending programs. Do not
+  // force a draw against them; a later admission can recompile and wait for the same wrappers.
+  const incomplete = !drained || drained.contextLost === true || drained.incomplete === true
+    || Number(drained.programs) > 0
+    || issueSettled.some((entry) => entry.status === 'fulfilled'
+      && (entry.value?.contextLost === true || entry.value?.readinessTimedOut === true));
+  if (incomplete) {
+    return {
+      batched: true, incomplete: true, contextLost: drained?.contextLost === true,
+      skipped: false, subjects: ordered.length, issued: issued.length, issueDedupeSkips,
+      touched: 0, materials: Number(units.materialCount) || (units.programSubjects || []).length,
+      geometries: Number(units.geometryCount) || (units.geometrySubjects || []).length,
+      timing: { issueMs: Math.round(issueMs), drainMs: Math.round(drainMs), touchMs: 0 },
+      results: [],
+    };
+  }
+  // Touches run next: restore any cpu-detached payloads a forced upload would read empty before
+  // the first draw binds them. Issue order above stays exactly as it was.
+  await reattachDetachedAdmissionTextures(ordered, options.renderer, yieldToMain);
+  await reattachDetachedAdmissionGeometries(ordered, options.renderer, yieldToMain);
+  const results = [];
+  paceDebtMs = 0;
+  paceDebtUnits = 0;
+  const touchStarted = now();
+  // Optional grouped touch: `touchMany(subjects)` draws a whole group in one render. Same subjects
+  // in the same order, each drawn exactly as touchOne would draw it; what is shared is the
+  // whole-scene hide/restore walk and the render call, which were most of a touch's cost.
+  const touchMany = typeof options.touchMany === 'function' ? options.touchMany : null;
+  const touchBatchSize = Math.max(1, Math.floor(Number(options.touchBatchSize) || 1));
+  const touchFailures = [];
+  const reportTouchResult = (touched, label) => {
+    if (!strict || !touched || typeof touched !== 'object') return;
+    if (touched.contextLost === true || touched.skipped === true) {
+      const error = new Error(
+        `opening GPU admission ${label} skipped: ${touched.reason || 'unknown reason'}`,
+      );
+      if (touched.readinessTimedOut && !touched.contextLost && !touched.cancelled) error.code = 'SF_PIPELINE_READINESS_TIMEOUT';
+      touchFailures.push(error);
+    }
+  };
+  // The deadline gates ISSUE, not touch: a compiled-but-never-drawn unit still pays its final
+  // link/bufferData inside the first presented scene pass, which is the brick this admission
+  // exists to remove. Every issued subject is drawn even over budget; subjects that were never
+  // issued stay budget-gated, since their touch would pay a full blocking link under the shell.
+  if (touchMany && touchBatchSize > 1) {
+    for (let index = 0; index < ordered.length; index += touchBatchSize) {
+      if (overBudget() && index >= issued.length) break;
+      // A batch must not straddle the issued boundary: an unissued subject pays a full
+      // blocking link under the shell, which is exactly what the deadline exists to avoid.
+      const group = ordered.slice(index, Math.min(index + touchBatchSize, issued.length));
+      if (!group.length) break;
+      // A throwing touch reports per-row and keeps the rest of the cohort drawing — every
+      // skipped issued subject would otherwise link inside the first presented scene pass.
+      let touched = null;
+      let touchError = null;
+      try {
+        const touch = () => touchMany(group);
+        touched = await retryPendingExactTouch(() => submitSerial
+          ? submitSerial(touch, submitAdmission) : touch(), {
+          renderer: options.renderer, isActive,
+          timeoutMs: deadlineMs > 0 ? Math.max(0, deadlineMs - (now() - started)) : 20000,
+        });
+        reportTouchResult(touched, `touch group ${index}`);
+      } catch (error) {
+        touchError = error;
+        if (strict) touchFailures.push(error);
+      }
+      for (let offset = 0; offset < group.length; offset++) {
+        results.push({ compiled: compiled[index + offset] ?? null, touched, touchError });
+      }
+      if (!submitSerial && paceQueue) await paceQueue();
+      if (!touchAlreadyPaced && yieldToMain && index + touchBatchSize < ordered.length) await yieldToMain();
+    }
+  } else {
+    for (let index = 0; index < ordered.length; index++) {
+      if (overBudget() && index >= issued.length) break;
+      let touched = null;
+      let touchError = null;
+      const touchUnitStarted = now();
+      try {
+        const touch = () => (touchOne ? touchOne(ordered[index]) : null);
+        touched = await retryPendingExactTouch(() => submitSerial
+          ? submitSerial(touch, submitAdmission) : touch(), {
+          renderer: options.renderer, isActive,
+          timeoutMs: deadlineMs > 0 ? Math.max(0, deadlineMs - (now() - started)) : 20000,
+        });
+        reportTouchResult(touched, `touch ${index}`);
+      } catch (error) {
+        touchError = error;
+        if (strict) touchFailures.push(error);
+      }
+      results.push({
+        compiled: compiled[index] ?? null,
+        touched,
+        touchError,
+      });
+      paceDebtMs += now() - touchUnitStarted;
+      paceDebtUnits += 1;
+      // Same bounded-backlog pacing as the issue loop (see PACE_BUDGET_MS).
+      if (!submitSerial && paceQueue && (paceDebtMs >= PACE_BUDGET_MS || paceDebtUnits >= PACE_MAX_UNITS
+        || index === ordered.length - 1)) {
+        await paceQueue();
+        paceDebtMs = 0;
+        paceDebtUnits = 0;
+      }
+      if (!touchAlreadyPaced && yieldToMain && index < ordered.length - 1) await yieldToMain();
+    }
+  }
+  touchMs = now() - touchStarted;
+  if (strict && touchFailures.length > 0) throw touchFailures[0];
+  return {
+    batched: true,
+    incomplete: issued.length < ordered.length || results.length < issued.length
+      || issueSettled.some((entry) => entry.status === 'rejected')
+      || results.some((result) => result.touchError || result.touched?.skipped === true
+        || result.touched?.contextLost === true),
+    contextLost: drained ? drained.contextLost === true : false,
+    skipped: ordered.length === 0,
+    subjects: ordered.length,
+    issued: issued.length,
+    issueDedupeSkips,
+    touched: results.length,
+    materials: Number(units.materialCount) || (units.programSubjects || []).length,
+    geometries: Number(units.geometryCount) || (units.geometrySubjects || []).length,
+    timing: {
+      issueMs: Math.round(issueMs),
+      drainMs: Math.round(drainMs),
+      touchMs: Math.round(touchMs),
+    },
+    results,
+  };
+}

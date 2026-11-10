@@ -1,0 +1,981 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.works-refinery",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "896d6eb406211746e3420754250d2bebb30faeee6d72c2c1beebaa5364bd0eac",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          -0.16047999262809753,
+          0.29399622267625275,
+          -0.01844041500256822
+        ],
+        "min": [
+          -0.2795200049877167,
+          0.2860037904367691,
+          -0.06155958693458273
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b715f7800695d2a276adcd85ab02e7c7af1d504f63f536885b3ec987f30d5a25",
+      "id": "sf.render.works-refinery.mesh.lod0-furnace-slit.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "d00d55432450ca18fc986b4bdbb5fd64ac72718b227d3f2bd06b5cecec43d5db",
+      "materialPipelineKey": "opaque",
+      "meshName": "Furnace_SlitLens_Mesh",
+      "nodeId": "sf.render.works-refinery.mesh.lod0-furnace-slit",
+      "primitiveIndex": 0,
+      "vertexCount": 80
+    },
+    {
+      "bounds": {
+        "max": [
+          0.32600000500679016,
+          0.7540006683376793,
+          -0.6361406940174309
+        ],
+        "min": [
+          0.2939999997615814,
+          0.741999323556089,
+          -0.6638593179034981
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "244070f480447d8563db087ca7c21530e13015c63a008066c9f19e28519db846",
+      "id": "sf.render.works-refinery.mesh.lod0-lamp-lens.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "080d798212eaadc506e877f4d8b3d653790cf3dda53120143d3461990fa8ec87",
+      "materialPipelineKey": "opaque",
+      "meshName": "Lamp_Lens_Mesh",
+      "nodeId": "sf.render.works-refinery.mesh.lod0-lamp-lens",
+      "primitiveIndex": 0,
+      "vertexCount": 38
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9213700294494629,
+          1.2000216490075972,
+          0.5999888276931593
+        ],
+        "min": [
+          -0.8001000285148621,
+          -0.000021658711178096368,
+          -0.946218798148329
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1a4eceda4eb295db80b67593a6cf3b9773eb32765da4d3fcdee80b04ff28a41d",
+      "id": "sf.render.works-refinery.mesh.lod0-refinery.primitive.0",
+      "indexCount": 22074,
+      "indexed": true,
+      "materialHash": "bac79f40e3d2e4050b38168823170dcbddf873bf9ce8d9fd9c92692b1ba477ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_refinery",
+      "nodeId": "sf.render.works-refinery.mesh.lod0-refinery",
+      "primitiveIndex": 0,
+      "vertexCount": 9779
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.16047999262809753,
+          0.29399622267625275,
+          -0.01844041500256822
+        ],
+        "min": [
+          -0.2795200049877167,
+          0.2860037904367691,
+          -0.06155958693458273
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dbecb012229eabe88632cbd6a050bc1bfe67ae3a185dba006895f7ee2ba458da",
+      "id": "sf.render.works-refinery.mesh.lod1-furnace-slit.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "39e9fb1479c2b922e51349e4d2da9760e91cf916b6f698f5bc65e9d0fb1e08f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "Furnace_SlitLens_Mesh.001",
+      "nodeId": "sf.render.works-refinery.mesh.lod1-furnace-slit",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          0.32600000500679016,
+          0.7540006683376793,
+          -0.6361406940174309
+        ],
+        "min": [
+          0.2939999997615814,
+          0.741999323556089,
+          -0.6638593179034981
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "244070f480447d8563db087ca7c21530e13015c63a008066c9f19e28519db846",
+      "id": "sf.render.works-refinery.mesh.lod1-lamp-lens.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "2d39a91ebf3a5b31c8ebb0c56f6176b4253cb25d7f45dd36a42f509163eccbbc",
+      "materialPipelineKey": "opaque",
+      "meshName": "Lamp_Lens_Mesh.001",
+      "nodeId": "sf.render.works-refinery.mesh.lod1-lamp-lens",
+      "primitiveIndex": 0,
+      "vertexCount": 38
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9202499985694885,
+          1.2000478399527617,
+          0.6000104600063237
+        ],
+        "min": [
+          -0.7919999957084656,
+          -0.00004778578616759788,
+          -0.9540104323497686
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e2f0f1b2e39910046f91fe4f0dbc9a1ccd0bc29f9803f662998a4b2c02084a88",
+      "id": "sf.render.works-refinery.mesh.lod1-refinery.primitive.0",
+      "indexCount": 5364,
+      "indexed": true,
+      "materialHash": "ccf7e529a99bc72515f2234b5d0df167db1468316818c553c68ba6ffbc4fa606",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_refinery",
+      "nodeId": "sf.render.works-refinery.mesh.lod1-refinery",
+      "primitiveIndex": 0,
+      "vertexCount": 2823
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "080d798212eaadc506e877f4d8b3d653790cf3dda53120143d3461990fa8ec87",
+      "id": "material:080d798212eaadc506e877f4",
+      "name": "Material_lamp_LOD0",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "2d39a91ebf3a5b31c8ebb0c56f6176b4253cb25d7f45dd36a42f509163eccbbc",
+      "id": "material:2d39a91ebf3a5b31c8ebb0c5",
+      "name": "Material_lamp_LOD1",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "39e9fb1479c2b922e51349e4d2da9760e91cf916b6f698f5bc65e9d0fb1e08f4",
+      "id": "material:39e9fb1479c2b922e51349e4",
+      "name": "Material_slit_LOD1",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "bac79f40e3d2e4050b38168823170dcbddf873bf9ce8d9fd9c92692b1ba477ce",
+      "id": "material:bac79f40e3d2e4050b381688",
+      "name": "Material_Refinery_LOD0",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "refinery_lod0_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_lod0_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_lod0_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ccf7e529a99bc72515f2234b5d0df167db1468316818c553c68ba6ffbc4fa606",
+      "id": "material:ccf7e529a99bc72515f2234b",
+      "name": "Material_Refinery_LOD1",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "refinery_lod1_site_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_lod1_site_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_lod1_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d00d55432450ca18fc986b4bdbb5fd64ac72718b227d3f2bd06b5cecec43d5db",
+      "id": "material:d00d55432450ca18fc986b4b",
+      "name": "Material_slit_LOD0",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.works-refinery.mesh.lod0-furnace-slit",
+      "localTransform": [
+        0.05952000617980957,
+        0,
+        0,
+        0,
+        0,
+        0.05952000617980957,
+        0,
+        0,
+        0,
+        0,
+        0.05952000617980957,
+        0,
+        0,
+        -0.001999989151954651,
+        -1.862645149230957e-9,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_furnace_slit",
+      "nodeName": "LOD0_furnace_slit",
+      "nodePath": [
+        0,
+        1,
+        0
+      ],
+      "parentId": "sf.render.works-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-refinery.body",
+      "worldTransform": [
+        0.05952000617980957,
+        0,
+        0,
+        0,
+        0,
+        0.05952000617980957,
+        0,
+        0,
+        0,
+        0,
+        0.05952000617980957,
+        0,
+        -0.2199999988079071,
+        0.2900000065565109,
+        -0.04000000096857548,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-refinery.mesh.lod0-lamp-lens",
+      "localTransform": [
+        0.01600000262260437,
+        0,
+        0,
+        0,
+        0,
+        0.01600000262260437,
+        0,
+        0,
+        0,
+        0,
+        0.01600000262260437,
+        0,
+        0,
+        0.007999986410140991,
+        -2.9802322387695312e-8,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_lamp_lens",
+      "nodeName": "LOD0_lamp_lens",
+      "nodePath": [
+        0,
+        2,
+        0
+      ],
+      "parentId": "sf.render.works-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-refinery.body",
+      "worldTransform": [
+        0.01600000262260437,
+        0,
+        0,
+        0,
+        0,
+        0.01600000262260437,
+        0,
+        0,
+        0,
+        0,
+        0.01600000262260437,
+        0,
+        0.3100000023841858,
+        0.7479999959468842,
+        -0.6500000059604645,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-refinery.mesh.lod0-refinery",
+      "localTransform": [
+        0.8607350289821625,
+        0,
+        0,
+        0,
+        0,
+        0.8607350289821625,
+        0,
+        0,
+        0,
+        0,
+        0.8607350289821625,
+        0,
+        0.060635000467300415,
+        0.5999999951482096,
+        -0.17311498522758484,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_refinery",
+      "nodeName": "LOD0_refinery",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.works-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-refinery.body",
+      "worldTransform": [
+        0.8607350289821625,
+        0,
+        0,
+        0,
+        0,
+        0.8607350289821625,
+        0,
+        0,
+        0,
+        0,
+        0.8607350289821625,
+        0,
+        0.060635000467300415,
+        0.5999999951482096,
+        -0.17311498522758484,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-refinery.mesh.lod1-furnace-slit",
+      "localTransform": [
+        0.05952000617980957,
+        0,
+        0,
+        0,
+        0,
+        0.05952000617980957,
+        0,
+        0,
+        0,
+        0,
+        0.05952000617980957,
+        0,
+        0,
+        -0.001999989151954651,
+        -1.862645149230957e-9,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_furnace_slit",
+      "nodeName": "LOD1_furnace_slit",
+      "nodePath": [
+        0,
+        1,
+        1
+      ],
+      "parentId": "sf.render.works-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-refinery.body",
+      "worldTransform": [
+        0.05952000617980957,
+        0,
+        0,
+        0,
+        0,
+        0.05952000617980957,
+        0,
+        0,
+        0,
+        0,
+        0.05952000617980957,
+        0,
+        -0.2199999988079071,
+        0.2900000065565109,
+        -0.04000000096857548,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-refinery.mesh.lod1-lamp-lens",
+      "localTransform": [
+        0.01600000262260437,
+        0,
+        0,
+        0,
+        0,
+        0.01600000262260437,
+        0,
+        0,
+        0,
+        0,
+        0.01600000262260437,
+        0,
+        0,
+        0.007999986410140991,
+        -2.9802322387695312e-8,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_lamp_lens",
+      "nodeName": "LOD1_lamp_lens",
+      "nodePath": [
+        0,
+        2,
+        1
+      ],
+      "parentId": "sf.render.works-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-refinery.body",
+      "worldTransform": [
+        0.01600000262260437,
+        0,
+        0,
+        0,
+        0,
+        0.01600000262260437,
+        0,
+        0,
+        0,
+        0,
+        0.01600000262260437,
+        0,
+        0.3100000023841858,
+        0.7479999959468842,
+        -0.6500000059604645,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-refinery.mesh.lod1-refinery",
+      "localTransform": [
+        0.856124997138977,
+        0,
+        0,
+        0,
+        0,
+        0.856124997138977,
+        0,
+        0,
+        0,
+        0,
+        0.856124997138977,
+        0,
+        0.06412500143051147,
+        0.600000027083297,
+        -0.1769999861717224,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_refinery",
+      "nodeName": "LOD1_refinery",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.works-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-refinery.body",
+      "worldTransform": [
+        0.856124997138977,
+        0,
+        0,
+        0,
+        0,
+        0.856124997138977,
+        0,
+        0,
+        0,
+        0,
+        0.856124997138977,
+        0,
+        0.06412500143051147,
+        0.600000027083297,
+        -0.1769999861717224,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-refinery.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_WORKS_REFINERY_V1",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "a1b6f96bc99a804bcb60aebd839cdb4969a15047c2efb2aef2727a2e16b6a029"
+    },
+    "sourceGlb": {
+      "bytes": 3295360,
+      "sha256": "4c3a39f2721f4e184e461ba219992a400e3c49267ba7403af951833fb02e5e11",
+      "uri": "place_works_refinery.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 3195508,
+    "sha256": "fe2b56d4750bed08269b076d33e5b946baef59a93f3bbf3d700879ef6c5b1480",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.060635000467300415,
+        0.600000027083297,
+        -0.1769999861717224
+      ],
+      "max": [
+        0.9213700294494629,
+        1.2000478399527617,
+        0.6000104600063237
+      ],
+      "min": [
+        -0.8001000285148621,
+        -0.00004778578616759788,
+        -0.9540104323497686
+      ],
+      "size": [
+        1.721470057964325,
+        1.2000956257389293,
+        1.5540208923560923
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.2199999988079071,
+          0.2919999957084656,
+          -0.03999999910593033,
+          1
+        ],
+        "name": "furnace_slit",
+        "planIndex": 3,
+        "tags": {
+          "socket": true,
+          "socketRole": "works_hook"
+        },
+        "userData": {
+          "name": "furnace_slit",
+          "socket": true,
+          "spaceface": {
+            "role": "works_hook",
+            "socket": true
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.3100000023841858,
+          0.7400000095367432,
+          -0.6499999761581421,
+          1
+        ],
+        "name": "lamp",
+        "planIndex": 6,
+        "tags": {
+          "socket": true,
+          "socketRole": "works_hook"
+        },
+        "userData": {
+          "name": "lamp",
+          "socket": true,
+          "spaceface": {
+            "role": "works_hook",
+            "socket": true
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.18000000715255737,
+          1.1200000047683716,
+          -0.800000011920929,
+          1
+        ],
+        "name": "stack_vent",
+        "planIndex": 11,
+        "tags": {
+          "socket": true,
+          "socketRole": "works_hook"
+        },
+        "userData": {
+          "name": "stack_vent",
+          "socket": true,
+          "spaceface": {
+            "role": "works_hook",
+            "socket": true
+          },
+          "spacefaceSocket": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 4,
+      "signal": 2
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 12,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.05952000617980957,
+          0,
+          0,
+          0,
+          0,
+          0.05952000617980957,
+          0,
+          0,
+          0,
+          0,
+          0.05952000617980957,
+          0,
+          -0.2199999988079071,
+          0.2900000065565109,
+          -0.04000000096857548,
+          1
+        ],
+        "name": "LOD0_furnace_slit",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.05952000617980957,
+          0,
+          0,
+          0,
+          0,
+          0.05952000617980957,
+          0,
+          0,
+          0,
+          0,
+          0.05952000617980957,
+          0,
+          -0.2199999988079071,
+          0.2900000065565109,
+          -0.04000000096857548,
+          1
+        ],
+        "name": "LOD1_furnace_slit",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.01600000262260437,
+          0,
+          0,
+          0,
+          0,
+          0.01600000262260437,
+          0,
+          0,
+          0,
+          0,
+          0.01600000262260437,
+          0,
+          0.3100000023841858,
+          0.7479999959468842,
+          -0.6500000059604645,
+          1
+        ],
+        "name": "LOD0_lamp_lens",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.01600000262260437,
+          0,
+          0,
+          0,
+          0,
+          0.01600000262260437,
+          0,
+          0,
+          0,
+          0,
+          0.01600000262260437,
+          0,
+          0.3100000023841858,
+          0.7479999959468842,
+          -0.6500000059604645,
+          1
+        ],
+        "name": "LOD1_lamp_lens",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.8607350289821625,
+          0,
+          0,
+          0,
+          0,
+          0.8607350289821625,
+          0,
+          0,
+          0,
+          0,
+          0.8607350289821625,
+          0,
+          0.060635000467300415,
+          0.5999999951482096,
+          -0.17311498522758484,
+          1
+        ],
+        "name": "LOD0_refinery",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.856124997138977,
+          0,
+          0,
+          0,
+          0,
+          0.856124997138977,
+          0,
+          0,
+          0,
+          0,
+          0.856124997138977,
+          0,
+          0.06412500143051147,
+          0.600000027083297,
+          -0.1769999861717224,
+          1
+        ],
+        "name": "LOD1_refinery",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/works/place_works_refinery.glb"
+  },
+  "runtimeHash": "e5ee1c0bef254f6b60facd8dc6354283b5618171784e446dadc3e779ceffd55a",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          0.9213700294494629,
+          1.2000478399527617,
+          0.6000104600063237
+        ],
+        "min": [
+          -0.8001000285148621,
+          -0.00004778578616759788,
+          -0.9540104323497686
+        ]
+      },
+      "id": "sf.render.works-refinery.body",
+      "nodeIds": [
+        "sf.render.works-refinery.mesh.lod0-furnace-slit",
+        "sf.render.works-refinery.mesh.lod0-lamp-lens",
+        "sf.render.works-refinery.mesh.lod0-refinery",
+        "sf.render.works-refinery.mesh.lod1-furnace-slit",
+        "sf.render.works-refinery.mesh.lod1-lamp-lens",
+        "sf.render.works-refinery.mesh.lod1-refinery",
+        "sf.render.works-refinery.root"
+      ]
+    }
+  ]
+}

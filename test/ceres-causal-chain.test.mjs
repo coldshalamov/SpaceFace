@@ -1,0 +1,1983 @@
+/**
+ * PQ-045.causal-chain — eleven ambient microevents as one authored Ceres chain.
+ *
+ * Seconds-scale, seed-pinned characterization of the traffic-owned choreography timer.
+ * Does not touch goldens, npcJobsRuntime, or render.
+ */
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { createBus } from '../src/core/eventBus.js';
+import { createSimulation } from '../src/core/sim.js';
+import { getCombatKernel } from '../src/combat/kernel.js';
+import {
+  CERES_ACTIVITY_POCKETS,
+  CERES_ACTIVITY_SECTOR_ID,
+  CERES_ACTIVITY_SERVICE_SLOTS,
+} from '../src/data/sectorActivityPockets.js';
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+import {
+  CERES_CAUSAL_CHAIN,
+  CERES_CAUSAL_CHAIN_EVENT,
+  CERES_CAUSAL_CHAIN_MAX_CONCURRENT,
+  CERES_CAUSAL_CHAIN_SCHEMA,
+  traffic as trafficBase,
+} from '../src/systems/traffic.js';
+import { RECORD_KIND, stableRecordId } from '../src/world/worldRecords.js';
+import {
+  claimRichSeamOpportunity,
+  fieldDepletion as fieldDepletionBase,
+  richSeamOpportunityForEntity,
+} from '../src/systems/fieldDepletion.js';
+import { richSeamTargetReadout } from '../src/ui/targetPanel.js';
+import { livingWorkStatusText } from '../src/data/contactHail.js';
+import { save } from '../src/save/saveSystem.js';
+import { npcJobsRuntime } from '../src/systems/npcJobsRuntime.js';
+import { world } from '../src/systems/world.js';
+
+const SEED = 47;
+const TENDER_SLOT_ID = 'ceres_refinery_tender';
+const CHAIN_EVENT_IDS = Object.freeze(CERES_CAUSAL_CHAIN.map((entry) => entry.id));
+
+const EXPECTED_CHAIN = Object.freeze([
+  'ev_surveyor_probe_line',
+  'ev_rich_seam_strike',
+  'ev_miner_calls_hauler',
+  'ev_patrol_scans_suspect',
+  'ev_cargo_capsule_launch',
+  'ev_pod_breaks_clamp',
+  'ev_disabled_hauler_recovery',
+  'ev_tender_services_miner',
+  'ev_patrol_escorts_hauler',
+  'ev_cutter_strips_wreck',
+  'ev_rock_calving',
+]);
+
+function slotWorldRecordId(slot) {
+  return stableRecordId(
+    SEED,
+    CERES_ACTIVITY_SECTOR_ID,
+    RECORD_KIND.CONVOY,
+    slot.worldRecordSlotId,
+  );
+}
+
+function makeEntity(id, type, data = {}, pos = { x: 0, z: 0 }) {
+  return {
+    id,
+    type,
+    alive: true,
+    pos: { ...pos },
+    vel: { x: 0, z: 0 },
+    homeSectorId: CERES_ACTIVITY_SECTOR_ID,
+    data: {
+      sectorId: CERES_ACTIVITY_SECTOR_ID,
+      homeSectorId: CERES_ACTIVITY_SECTOR_ID,
+      ...data,
+    },
+  };
+}
+
+function prepareCombatShip(entity) {
+  Object.assign(entity, {
+    radius: 18,
+    hull: 140,
+    hullMax: 140,
+    shield: 60,
+    shieldMax: 60,
+    armorHp: 0,
+    armorMax: 0,
+    armorFlat: 0,
+    cap: 100,
+    capMax: 100,
+  });
+  return entity;
+}
+
+function pocketActorRows() {
+  return CERES_ACTIVITY_POCKETS.flatMap((pocket) => pocket.actorSlots
+    .filter((slot) => slot.id !== TENDER_SLOT_ID)
+    .map((slot) => ({ pocket, slot })));
+}
+
+function bootCausalHarness({ simTime = 10, npcJobs = null, withTenderCombat = false, lawSecurity = null } = {}) {
+  const station = makeEntity(10, 'station', { stationId: 'station_ceres' }, { x: 100, z: 100 });
+  const asteroid = makeEntity(38, 'asteroid', {
+    activityObjectSlotId: 'ceres_seam_ore_clast',
+    fieldId: 'f_ceres_1',
+    typeId: 'ast_metallic',
+    yieldU: 32,
+    oreHP: 40,
+  }, { x: 200, z: 50 });
+  const baseEntities = [station, asteroid];
+  const state = {
+    mode: 'flight',
+    tick: 60,
+    simTime,
+    meta: { seed: SEED },
+    world: { currentSectorId: CERES_ACTIVITY_SECTOR_ID, records: { byId: {} } },
+    npcJobs: { byId: {} },
+    entities: new Map(baseEntities.map((entity) => [entity.id, entity])),
+    entityList: baseEntities.slice(),
+    entityIndex: {
+      __spacefaceEntityIndexV1: true,
+      dockStations: [station],
+      stations: [station],
+      byStationId: new Map([['station_ceres', station]]),
+      // Combat's prePhysics tick source reads index.shipLike when the marker is present; a live
+      // view keeps the pocket cast ticking (pending subsystem transitions only commit there).
+      get shipLike() {
+        return state.entityList.filter((entity) => entity && entity.alive !== false
+          && (entity.type === 'ship' || entity.type === 'drone'));
+      },
+    },
+    traffic: {
+      freighters: [],
+      appliedArrivalIds: [],
+      appliedLossIds: [],
+      appliedMinerWorkIds: [],
+      appliedJobActionIds: [],
+      rngSeed: 0x5eed0047,
+    },
+  };
+
+  let nextId = 200;
+  for (const { pocket, slot } of pocketActorRows()) {
+    const worldRecordId = slotWorldRecordId(slot);
+    const pos = sectorLocalToGlobalForSector({
+      x: pocket.activityAnchor.localPos.x + slot.spawnOffset.x,
+      z: pocket.activityAnchor.localPos.z + slot.spawnOffset.z,
+    }, CERES_ACTIVITY_SECTOR_ID);
+    const entity = makeEntity(nextId++, 'ship', {
+      worldRecordId,
+      jobId: `job:${worldRecordId}`,
+      activityActorSlotId: slot.id,
+      ceresActivityCast: true,
+      ceresActivityJobOwned: true,
+      trafficRole: slot.presentationRole,
+      freightDockSeq: 0,
+    }, pos);
+    state.entities.set(entity.id, entity);
+    state.entityList.push(entity);
+    state.traffic.freighters.push({
+      id: entity.id,
+      role: slot.presentationRole,
+      dockSeq: 0,
+      manifest: null,
+      activityActorSlotId: slot.id,
+      ceresActivityCast: true,
+      ceresActivityJobOwned: true,
+      worldRecordId,
+    });
+  }
+
+  // Tender is factionPresence-owned; give it a live body under the stable world record so optional
+  // recovery/service links can bind without inventing a second movement owner.
+  const tenderSlot = CERES_ACTIVITY_POCKETS
+    .flatMap((pocket) => pocket.actorSlots)
+    .find((slot) => slot.id === TENDER_SLOT_ID);
+  assert.ok(tenderSlot, 'authored tender slot');
+  const tenderWorldRecordId = slotWorldRecordId(tenderSlot);
+  const tenderPos = sectorLocalToGlobalForSector({
+    x: CERES_ACTIVITY_POCKETS[0].activityAnchor.localPos.x + tenderSlot.spawnOffset.x,
+    z: CERES_ACTIVITY_POCKETS[0].activityAnchor.localPos.z + tenderSlot.spawnOffset.z,
+  }, CERES_ACTIVITY_SECTOR_ID);
+  const tender = makeEntity(nextId++, 'ship', {
+    worldRecordId: tenderWorldRecordId,
+    jobId: `job:${tenderWorldRecordId}`,
+    activityActorSlotId: TENDER_SLOT_ID,
+    // No trafficRole — production's tender stamp deletes it (factionPresence owns this hull).
+    durable: true,
+    factionPresence: { yardTender: true },
+  }, tenderPos);
+  if (withTenderCombat) prepareCombatShip(tender);
+  state.entities.set(tender.id, tender);
+  state.entityList.push(tender);
+
+  if (withTenderCombat) {
+    const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
+    const { actor: hauler } = actorBySlot(state, 'ceres_refinery_hauler');
+    prepareCombatShip(miner);
+    prepareCombatShip(hauler);
+  }
+
+  for (const service of CERES_ACTIVITY_SERVICE_SLOTS) {
+    const worldRecordId = slotWorldRecordId(service);
+    const entity = makeEntity(nextId++, 'ship', {
+      worldRecordId,
+      activityActorSlotId: service.id,
+      ceresActivityCast: true,
+      ceresActivityJobOwned: false,
+      trafficRole: service.presentationRole || 'hauler',
+    });
+    state.entities.set(entity.id, entity);
+    state.entityList.push(entity);
+    state.traffic.freighters.push({
+      id: entity.id,
+      role: service.presentationRole || 'hauler',
+      activityActorSlotId: service.id,
+      ceresActivityCast: true,
+      ceresActivityJobOwned: false,
+      worldRecordId,
+    });
+  }
+
+  const bus = createBus();
+  const receipts = [];
+  bus.on(CERES_CAUSAL_CHAIN_EVENT, (payload) => { receipts.push(payload); });
+
+  const controlClaims = new Map();
+  const jobs = npcJobs || { assign() { return null; }, get() { return null; } };
+  if (typeof jobs.claimControl !== 'function') {
+    jobs.claimControl = (jobId, { claimId } = {}) => {
+      const existing = controlClaims.get(jobId);
+      if (existing && existing !== claimId) return { granted: false, reason: 'already_claimed' };
+      controlClaims.set(jobId, claimId);
+      return { granted: true };
+    };
+  }
+  if (typeof jobs.releaseControl !== 'function') {
+    jobs.releaseControl = (jobId, claimId) => {
+      if (controlClaims.get(jobId) === claimId) controlClaims.delete(jobId);
+      return { released: true };
+    };
+  }
+  const helpers = {
+    spawnEntity() { return null; },
+    npcJobs: jobs,
+  };
+  let registry = null;
+  let combatKernel = null;
+  const combat = {
+    ensureKernel() {
+      if (!combatKernel) combatKernel = getCombatKernel({ state, bus, helpers, registry });
+      return combatKernel;
+    },
+  };
+  if (withTenderCombat || lawSecurity) {
+    registry = {
+      get(systemId) {
+        if (systemId === 'combat') return withTenderCombat ? combat : null;
+        if (systemId === 'lawSecurity') return lawSecurity;
+        return null;
+      },
+    };
+  }
+  const traffic = {
+    ...trafficBase,
+    state: null,
+    bus: null,
+    helpers: null,
+    _registry: null,
+    _active: [],
+    _stationScratch: [],
+    _pendingJobActionIds: new Set(),
+    _pendingMinerWorkIds: new Set(),
+    _pendingArrivalIds: new Set(),
+    _pendingJobActionTokens: new Map(),
+    _pendingMinerWorkTokens: new Map(),
+    _pendingArrivalTokens: new Map(),
+    _committedCeresMinerWorkIds: new Set(),
+    _committedCeresArrivalIds: new Set(),
+    _causalRunEpoch: 0,
+    _restoreEpochPending: false,
+    _ceresCausal: null,
+  };
+  traffic.init({
+    state,
+    bus,
+    helpers,
+    registry,
+  });
+  // init binds listeners but does not auto-arm the chain without sector:enter.
+  traffic._active = state.traffic.freighters.map((rec) => rec.id);
+  traffic._ensureCeresCausalChain('test_boot');
+
+  return {
+    state,
+    traffic,
+    bus,
+    receipts,
+    tender,
+    station,
+    asteroid,
+    controlClaims,
+    combatKernel: withTenderCombat ? combat.ensureKernel() : null,
+  };
+}
+
+function actorBySlot(state, slotId) {
+  const rec = state.traffic.freighters.find((row) => row.activityActorSlotId === slotId);
+  assert.ok(rec, `missing traffic row for ${slotId}`);
+  const actor = state.entities.get(rec.id);
+  assert.ok(actor, `missing entity for ${slotId}`);
+  return { rec, actor };
+}
+
+function rematerializeActor(state, slotId, id) {
+  const { rec, actor } = actorBySlot(state, slotId);
+  const replacement = {
+    ...actor,
+    id,
+    pos: { ...actor.pos },
+    vel: { ...actor.vel },
+    data: { ...actor.data },
+  };
+  state.entities.delete(actor.id);
+  state.entities.set(replacement.id, replacement);
+  state.entityList = state.entityList.map((entity) => entity === actor ? replacement : entity);
+  rec.id = replacement.id;
+  return { rec, actor: replacement };
+}
+
+function applyCeresMinerWork(traffic, state, asteroid, sequence = 1) {
+  const { rec, actor } = actorBySlot(state, 'ceres_seam_miner');
+  const context = {
+    jobId: actor.data.jobId,
+    worldRecordId: actor.data.worldRecordId,
+    entity: actor,
+    rec,
+    slot: { id: 'ceres_seam_miner' },
+  };
+  const workId = `npc-miner-work:test-rich:${sequence}`;
+  return {
+    actor,
+    rec,
+    workId,
+    applied: traffic._applyNpcMinerExtraction(context, { seq: sequence }, asteroid, workId),
+  };
+}
+
+// The probe line is the authored opener: the strike cannot seed rich_seam until the surveyor's
+// wave-close plants seam_mapped, then the strike must reach its 'strike' seed phase. stepTo
+// teleports simTime and advances at most one phase per call, so this steps until the seed lands.
+function stepUntilRichSeamSeeded(traffic, state, { maxS = 400, stepS = 5 } = {}) {
+  const at = runUntil(traffic, state, (snap) => snap && snap.seeds && snap.seeds.rich_seam === true,
+    { start: state.simTime, maxS, stepS });
+  assert.ok(at != null, 'probe line → strike should seed rich_seam under zero input');
+  return at;
+}
+
+function materializeRichLoad(traffic, state, asteroid, sequence = 1, { rendezvous = true } = {}) {
+  stepTo(traffic, state, 0);
+  stepUntilRichSeamSeeded(traffic, state);
+  const result = applyCeresMinerWork(traffic, state, asteroid, sequence);
+  assert.equal(result.applied, true, 'authored seam work should materialize one load');
+  if (rendezvous) {
+    const { actor: hauler } = actorBySlot(state, 'ceres_refinery_hauler');
+    hauler.pos = { ...result.actor.pos };
+  }
+  return result;
+}
+
+function stepTo(traffic, state, simTime) {
+  state.simTime = simTime;
+  traffic._stepCeresCausalChain(1 / 60);
+  traffic._stepCeresMinerHaulerHandoffs(1 / 60);
+}
+
+function runUntil(traffic, state, predicate, { start = state.simTime, maxS = 900, stepS = 5 } = {}) {
+  for (let t = start; t <= start + maxS; t += stepS) {
+    stepTo(traffic, state, t);
+    if (predicate(traffic.getCeresCausalChainSnapshot(), t)) return t;
+  }
+  return null;
+}
+
+test('catalog order is the eleven admitted microevents', () => {
+  assert.deepEqual(CHAIN_EVENT_IDS, [...EXPECTED_CHAIN]);
+  assert.equal(CERES_CAUSAL_CHAIN_MAX_CONCURRENT, 2);
+  assert.equal(CERES_CAUSAL_CHAIN_SCHEMA, 'spaceface.ceresCausalChain.v1');
+});
+
+test('chain arms on ensure and opens with the probe line; the strike waits on seam_mapped', () => {
+  const { traffic, receipts } = bootCausalHarness({ simTime: 10 });
+  const snap0 = traffic.getCeresCausalChainSnapshot();
+  assert.ok(snap0);
+  assert.equal(snap0.schema, CERES_CAUSAL_CHAIN_SCHEMA);
+  assert.equal(snap0.activeCount, 0);
+
+  stepTo(traffic, traffic.state, 10);
+  let snap = traffic.getCeresCausalChainSnapshot();
+  assert.equal(snap.activeCount, 1);
+  assert.equal(snap.active[0].eventId, 'ev_surveyor_probe_line');
+  assert.equal(snap.active[0].phase, 'mark_run');
+  assert.equal(snap.active[0].cue, 'reading_the_dark');
+  assert.ok(receipts.some((r) => r.kind === 'chain_ready'));
+  assert.ok(receipts.some((r) => r.kind === 'event_start' && r.eventId === 'ev_surveyor_probe_line'));
+  assert.notEqual(snap.seeds.seam_mapped, true, 'the find lands only at the wave close');
+  assert.ok(!snap.active.some((l) => l.eventId === 'ev_rich_seam_strike'),
+    'the strike cannot start before the survey says where');
+
+  const mappedAt = runUntil(traffic, traffic.state,
+    (s) => s && s.seeds && s.seeds.seam_mapped === true,
+    { start: traffic.state.simTime, maxS: 400, stepS: 5 });
+  assert.ok(mappedAt != null, 'the wave close plants seam_mapped under zero input');
+  const struckAt = runUntil(traffic, traffic.state,
+    (s) => s && (s.active.some((l) => l.eventId === 'ev_rich_seam_strike')
+      || s.completed.includes('ev_rich_seam_strike')),
+    { start: traffic.state.simTime, maxS: 200, stepS: 2 });
+  assert.ok(struckAt != null, 'the strike opens once the probe line mapped the seam');
+});
+
+test('concurrency never exceeds two authored events', () => {
+  const { traffic, state, asteroid } = bootCausalHarness({ simTime: 0 });
+  materializeRichLoad(traffic, state, asteroid);
+  let peak = 0;
+  for (let t = Math.max(60, state.simTime); t <= 600; t += 2) {
+    stepTo(traffic, state, t);
+    const snap = traffic.getCeresCausalChainSnapshot();
+    peak = Math.max(peak, snap.activeCount);
+    assert.ok(snap.activeCount <= CERES_CAUSAL_CHAIN_MAX_CONCURRENT,
+      `activeCount ${snap.activeCount} at t=${t}`);
+  }
+  assert.ok(peak >= 2, 'chain should exercise the concurrency cap with an overlap');
+});
+
+test('full chain reaches a believable terminal outcome after authored miner work', () => {
+  const {
+    traffic,
+    state,
+    receipts,
+    asteroid,
+    tender,
+    combatKernel,
+    bus,
+  } = bootCausalHarness({ simTime: 0, withTenderCombat: true });
+  assert.ok(combatKernel, 'the tender link uses the live combat-kernel registry seam');
+  const newsLines = [];
+  bus.on('news:publish', (p) => newsLines.push(p));
+  stepTo(traffic, state, 0);
+  stepUntilRichSeamSeeded(traffic, state);
+  assert.equal(applyCeresMinerWork(traffic, state, asteroid).applied, true,
+    'the authored miner work materializes the load needed by the next link');
+  // Cycle re-arms clear the seed bag in the same step as the final complete, so the terminal
+  // proof is the cycle counter plus per-event completion receipts — not a lingering seed.
+  let doneAt = null;
+  let sawDriveDisabled = false;
+  let sawRepair = false;
+  for (let t = Math.max(60, state.simTime); t <= 924; t += 3) {
+    // This timer-only harness has no flight integrator; keep the actual pair together after the
+    // rendezvous-specific test above has already proven the hauler drives there under its intent.
+    const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
+    const { actor: hauler } = actorBySlot(state, 'ceres_refinery_hauler');
+    hauler.pos = { ...miner.pos };
+    const disabledIncident = state.traffic.ceresDisabledHaulerIncident;
+    if (disabledIncident && !['repaired', 'recovered', 'stolen', 'abandoned', 'destroyed', 'failed'].includes(disabledIncident.state)) {
+      const standoff = traffic._ceresTenderServiceStandoff(tender, hauler);
+      tender.pos = { x: hauler.pos.x + standoff, z: hauler.pos.z };
+    }
+    const incident = state.traffic.ceresTenderServiceIncident;
+    if (incident && incident.state !== 'succeeded' && incident.state !== 'failed') {
+      const standoff = traffic._ceresTenderServiceStandoff(tender, miner);
+      tender.pos = { x: miner.pos.x + standoff, z: miner.pos.z };
+    }
+    stepTo(traffic, state, t);
+    state.tick += 1;
+    combatKernel.prePhysics(1 / 60);
+    const drive = state.combat.entities[String(miner.id)]?.subsystems?.subsystem_drive;
+    sawDriveDisabled ||= drive?.destroyed === true || drive?.effectiveDisabled === true;
+    sawRepair ||= state.traffic.ceresTenderServiceIncident?.state === 'repair';
+    if ((traffic.getCeresCausalChainSnapshot().cycle | 0) >= 1) {
+      doneAt = t;
+      break;
+    }
+  }
+  assert.ok(doneAt != null, 'chain should complete inside ten minutes of sim time');
+  assert.ok(doneAt <= 600, `expected a sub-ten-minute zero-input resolve, got t=${doneAt}`);
+  assert.equal(sawDriveDisabled, true, 'the real combat drive transitions to disabled before repair');
+  assert.equal(sawRepair, true, 'tender service waits at standoff before requesting combat repair');
+  assert.equal(state.traffic.ceresTenderServiceIncident.state, 'succeeded');
+
+  for (const id of EXPECTED_CHAIN.filter((id) => id !== 'ev_cutter_strips_wreck')) {
+    assert.ok(
+      receipts.some((r) => r.eventId === id && r.kind === 'event_complete'),
+      `missing event_complete for ${id}`,
+    );
+    assert.ok(
+      receipts.some((r) => r.eventId === id && (r.kind === 'phase' || r.kind === 'event_start')),
+      `no visible phase path for ${id}`,
+    );
+  }
+  assert.ok(receipts.some((r) => r.eventId === 'ev_cutter_strips_wreck'
+    && r.kind === 'event_interrupt' && r.outcome === 'skip_service_success'),
+  'a successful repair skips wreck aftermath instead of manufacturing it');
+  assert.ok(receipts.some((r) => r.eventId === 'ev_cutter_strips_wreck'
+    && r.kind === 'event_interrupt' && r.outcome === 'skip_service_success'
+    && Array.isArray(r.seeded) && r.seeded.includes('chain_complete')),
+  'the skipped aftermath still closes the causal cycle');
+  assert.ok(receipts.some((r) => r.kind === 'cycle_complete' && (r.cycle | 0) >= 1));
+
+  // Intermediate seeds must have been observed on the bus before the re-arm wipe.
+  const seedKinds = receipts.filter((r) => r.kind === 'seed');
+  for (const key of [
+    'seam_mapped', 'rich_seam', 'miner_loaded', 'scan_complete',
+    'miner_wear', 'miner_serviced', 'rock_calved',
+  ]) {
+    assert.ok(
+      seedKinds.some((r) => r.seeds && r.seeds[key] === true),
+      `seed ${key} never observed`,
+    );
+  }
+  assert.equal(seedKinds.some((r) => r.seeds && r.seeds.aftermath_open === true), false,
+    'the repaired miner does not open aftermath');
+
+  // The calving coda ran its authored environmental phases on the shared cue vocabulary. The
+  // groan (phase 0) reaches the bus only as event_start — phase receipts fire on transitions —
+  // which the audio family keys on; this pins that contract from the emitter side.
+  for (const [phase, cue, kind] of [
+    ['groan', 'blind_cone', 'event_start'],
+    ['calve', 'breaking_the_pattern', 'phase'],
+    ['drift', 'stacking', 'phase'],
+  ]) {
+    assert.ok(
+      receipts.some((r) => r.eventId === 'ev_rock_calving' && r.kind === kind
+        && r.phase === phase && r.cue === cue),
+      `missing calving ${kind} receipt ${phase}/${cue}`,
+    );
+  }
+
+  // The resolved cycle tells its story on the flight news channel — the clean-shift line on the
+  // success path, published once through the authored news:publish channel.
+  const cleanStories = newsLines.filter((p) => p.kind === 'ceres_seam_story');
+  assert.equal(cleanStories.length, 1, 'one seam story per resolved cycle');
+  assert.match(cleanStories[0].text, /clean seam shift/);
+  assert.equal(cleanStories[0].channelId, 'news');
+  assert.equal(cleanStories[0].stationId, 'station_ceres');
+  assert.equal(cleanStories[0].sectorId, CERES_ACTIVITY_SECTOR_ID);
+});
+
+test('real miner work opens the hauler-call link while rich seam may still be active', () => {
+  const { traffic, state, asteroid } = bootCausalHarness({ simTime: 0 });
+  // Probe line (~53s) → strike enters 'strike' after 15s cutting → the opportunity opens; greed
+  // still has 30s left.
+  stepTo(traffic, state, 0);
+  stepUntilRichSeamSeeded(traffic, state);
+  let snap = traffic.getCeresCausalChainSnapshot();
+  assert.notEqual(snap.seeds.miner_loaded, true, 'a timer cannot claim cargo exists');
+  assert.equal(richSeamOpportunityForEntity(state, asteroid).state, 'open');
+  assert.equal(applyCeresMinerWork(traffic, state, asteroid).applied, true);
+  stepTo(traffic, state, state.simTime + 1);
+  snap = traffic.getCeresCausalChainSnapshot();
+  assert.equal(snap.seeds.miner_loaded, true);
+  assert.equal(snap.seeds.rich_seam, true);
+  // Both concurrency slots may still be held (probe close + strike) — the call joins when one
+  // frees, not on a timer.
+  const calledAt = runUntil(traffic, state, (s) => s
+    && (s.active.some((live) => live.eventId === 'ev_miner_calls_hauler')
+      || s.completed.includes('ev_miner_calls_hauler')),
+    { start: state.simTime, maxS: 240, stepS: 2 });
+  assert.ok(calledAt != null, 'hauler call should open once the load is real');
+  snap = traffic.getCeresCausalChainSnapshot();
+  const ids = snap.active.map((live) => live.eventId).sort();
+  assert.ok(ids.includes('ev_rich_seam_strike') || snap.completed.includes('ev_rich_seam_strike'));
+  assert.ok(
+    ids.includes('ev_miner_calls_hauler') || snap.completed.includes('ev_miner_calls_hauler'),
+    'hauler call should be active or already completed after miner_loaded',
+  );
+  assert.ok(snap.activeCount <= 2);
+});
+
+test('miner-to-hauler handoff drives a physical rendezvous, transfers one conserved lot, and reaches the refinery sink', () => {
+  const { traffic, state, bus, station, asteroid, controlClaims } = bootCausalHarness({ simTime: 0 });
+  const { actor: miner } = materializeRichLoad(traffic, state, asteroid, 1, { rendezvous: false });
+  const { rec: haulerRec, actor: hauler } = actorBySlot(state, 'ceres_refinery_hauler');
+  const sourceQty = miner.data.cargoManifest.totalQty;
+  assert.equal(sourceQty, 16);
+
+  stepTo(traffic, state, state.simTime + 1);
+  const requested = state.traffic.ceresMinerHaulerHandoff;
+  assert.ok(requested, 'real miner work requests one durable handoff');
+  assert.equal(requested.state, 'rendezvous');
+  assert.equal(hauler.data.intent.moveZ, 1, 'hauler physically drives toward the held miner');
+  assert.equal(miner.data.ceresHandoffTargetId, hauler.id);
+  assert.match(miner.data.ceresHandoffStatus, /HOLDING FOR HAULER/);
+  assert.match(livingWorkStatusText(miner), /HOLDING FOR HAULER/);
+
+  // The transfer stays closed until the actual actors meet and the authored transfer phase opens.
+  hauler.pos = { ...miner.pos };
+  const transferredAt = runUntil(
+    traffic,
+    state,
+    () => state.traffic.ceresMinerHaulerHandoff.state === 'in_transit',
+    { start: state.simTime, maxS: 180, stepS: 1 },
+  );
+  assert.ok(transferredAt != null, 'physical range + authored transfer window should hand over the lot');
+  const handoff = state.traffic.ceresMinerHaulerHandoff;
+  const moved = hauler.data.cargoManifest;
+  assert.equal(miner.data.cargoManifest.totalQty, 0, 'miner only resumes after its hold is empty');
+  assert.equal(moved.totalQty, sourceQty);
+  assert.equal(moved.custody.handoffId, handoff.handoffId);
+  assert.equal(moved.custody.holderId, hauler.data.worldRecordId);
+  assert.equal(moved.lotSource.rootLotId, handoff.rootLotId);
+  assert.equal(miner.data.cargoManifest.totalQty + moved.totalQty, sourceQty, 'manifest total is conserved');
+  const transferSeq = handoff.transferSeq;
+  stepTo(traffic, state, transferredAt + 1);
+  assert.equal(handoff.transferSeq, transferSeq, 'duplicate traffic ticks cannot transfer the same lot twice');
+  assert.equal(hauler.data.cargoManifest.totalQty, sourceQty);
+
+  const tradeRequests = [];
+  bus.on('aiTrader:requestTrade', (intent) => tradeRequests.push(intent));
+  const delivered = traffic._emitArrival(hauler, haulerRec, station, {
+    dockSeq: haulerRec.dockSeq,
+    manifest: moved,
+    ceresAction: true,
+  });
+  assert.equal(delivered, true, 'the transferred manifest enters the existing refinery arrival owner');
+  assert.equal(traffic._markCeresHandoffDelivered(moved, {
+    entity: hauler,
+    receiptId: `test-refinery:${handoff.handoffId}:${transferSeq}`,
+  }), true);
+  traffic._setTrafficManifest(hauler, haulerRec, traffic._buildMinerManifest(hauler, haulerRec.dockSeq, null, 0, 'hauler'));
+  assert.equal(handoff.state, 'delivered');
+  assert.equal(handoff.deliveredQty, sourceQty);
+  assert.equal(tradeRequests.reduce((sum, intent) => sum + intent.qty, 0), sourceQty);
+  assert.equal(controlClaims.size, 0, 'terminal handoff releases both existing job controls');
+});
+
+test('partial handoff survives Continue by stable identity and hauler death routes only its transferred share to loss', () => {
+  const { traffic, state, bus, asteroid, controlClaims } = bootCausalHarness({ simTime: 0 });
+  const { actor: miner } = materializeRichLoad(traffic, state, asteroid, 2, { rendezvous: false });
+  const { actor: hauler } = actorBySlot(state, 'ceres_refinery_hauler');
+  hauler.data.ceresHandoffCapacityU = 8;
+  hauler.pos = { ...miner.pos };
+  const transferAt = runUntil(
+    traffic,
+    state,
+    () => state.traffic.ceresMinerHaulerHandoff.transferSeq === 1,
+    { start: state.simTime, maxS: 180, stepS: 1 },
+  );
+  assert.ok(transferAt != null);
+  const handoff = state.traffic.ceresMinerHaulerHandoff;
+  assert.equal(miner.data.cargoManifest.totalQty, 8);
+  assert.equal(hauler.data.cargoManifest.totalQty, 8);
+  assert.equal(handoff.remainingQty, 8);
+  assert.equal(controlClaims.size, 1, 'the miner stays held while its remainder waits for the hauler');
+
+  const minerWorldRecordId = miner.data.worldRecordId;
+  const haulerWorldRecordId = hauler.data.worldRecordId;
+  const continuedMiner = rematerializeActor(state, 'ceres_seam_miner', 9101);
+  const continuedHauler = rematerializeActor(state, 'ceres_refinery_hauler', 9102);
+  bus.emit('save:loaded', {});
+  stepTo(traffic, state, transferAt + 1);
+  assert.equal(handoff.minerWorldRecordId, minerWorldRecordId);
+  assert.equal(handoff.haulerWorldRecordId, haulerWorldRecordId);
+  assert.equal(continuedMiner.actor.data.cargoManifest.totalQty, 8);
+  assert.equal(continuedHauler.actor.data.cargoManifest.totalQty, 8);
+  assert.equal(controlClaims.size, 0, 'Continue does not retain a dead control lease by numeric id');
+
+  const losses = [];
+  bus.on('freight:loss', (intent) => losses.push(intent));
+  continuedHauler.actor.alive = false;
+  bus.emit('entity:killed', { id: continuedHauler.actor.id, killerId: 1 });
+  assert.equal(handoff.state, 'interrupted');
+  assert.equal(continuedMiner.actor.data.cargoManifest.totalQty, 8,
+    'the miner remainder stays in its original custody after the other hull dies');
+  assert.equal(losses.length, 1, 'the transferred share enters the existing loss owner once');
+  assert.equal(losses[0].totalQty, 8);
+  assert.equal(controlClaims.size, 0, 'death cannot leave a Ceres handoff control lock behind');
+});
+
+test('miner loss after a partial transfer preserves the live hauler fragment through one refinery settlement', () => {
+  const { traffic, state, bus, station, asteroid } = bootCausalHarness({ simTime: 0 });
+  const { actor: miner } = materializeRichLoad(traffic, state, asteroid, 3, { rendezvous: false });
+  const { actor: hauler, rec: haulerRec } = actorBySlot(state, 'ceres_refinery_hauler');
+  hauler.data.ceresHandoffCapacityU = 8;
+  hauler.pos = { ...miner.pos };
+  assert.ok(runUntil(traffic, state,
+    () => state.traffic.ceresMinerHaulerHandoff.transferSeq === 1,
+    { start: state.simTime, maxS: 180, stepS: 1 }) != null);
+  const handoff = state.traffic.ceresMinerHaulerHandoff;
+  const moved = hauler.data.cargoManifest;
+  const losses = [];
+  bus.on('freight:loss', (intent) => losses.push(intent));
+  miner.alive = false;
+  bus.emit('entity:killed', { id: miner.id, killerId: 1 });
+  assert.equal(handoff.state, 'in_transit');
+  assert.equal(handoff.terminalizedQty, 8);
+  assert.equal(hauler.data.cargoManifest.totalQty, 8);
+  assert.equal(losses.length, 1);
+  assert.equal(losses[0].totalQty, 8, 'only the miner-held remainder enters loss');
+  assert.equal(traffic._emitArrival(hauler, haulerRec, station, {
+    dockSeq: haulerRec.dockSeq, manifest: moved, ceresAction: true,
+  }), true);
+  assert.equal(traffic._markCeresHandoffDelivered(moved, {
+    entity: hauler, receiptId: `miner-loss:${handoff.handoffId}:1`,
+  }), true);
+  assert.equal(handoff.state, 'delivered');
+  assert.equal(handoff.deliveredQty, 8);
+});
+
+test('asymmetric rendezvous control acquisition releases the one lease it obtained', () => {
+  const releases = [];
+  let claimCount = 0;
+  const npcJobs = {
+    assign() { return null; },
+    get() { return null; },
+    claimControl() {
+      claimCount += 1;
+      return { granted: claimCount === 1 };
+    },
+    releaseControl(jobId, claimId) {
+      releases.push({ jobId, claimId });
+      return { released: true };
+    },
+  };
+  const { traffic, state, asteroid } = bootCausalHarness({ simTime: 0, npcJobs });
+  materializeRichLoad(traffic, state, asteroid, 4, { rendezvous: false });
+  stepTo(traffic, state, state.simTime + 1);
+  claimCount = 0;
+  releases.length = 0;
+  traffic._stepCeresMinerHaulerHandoffs(1 / 60);
+  assert.equal(claimCount, 2);
+  assert.equal(releases.length, 1);
+  assert.match(releases[0].claimId, /:miner$/);
+});
+
+test('malformed persisted handoff is cleared and cannot block the next real extraction', () => {
+  const { traffic, state, asteroid } = bootCausalHarness({ simTime: 0 });
+  state.traffic.ceresMinerHaulerHandoff = { state: 'requested' };
+  const { actor } = materializeRichLoad(traffic, state, asteroid, 5, { rendezvous: false });
+  stepTo(traffic, state, state.simTime + 1);
+  const handoff = state.traffic.ceresMinerHaulerHandoff;
+  assert.equal(handoff.schema, 'spaceface.ceresMinerHaulerHandoff.v1');
+  assert.equal(handoff.minerWorldRecordId, actor.data.worldRecordId);
+  traffic.deserialize({ schema: 'wrong', ceresMinerHaulerHandoff: handoff });
+  assert.equal(state.traffic.ceresMinerHaulerHandoff, null,
+    'schema-mismatched save data replaces rather than retaining outgoing state');
+});
+
+test('real save envelope restores the in-transit lot into a fresh runtime and reaches the refinery', () => {
+  const systems = [world, npcJobsRuntime, trafficBase, save];
+  const original = createSimulation({ seed: SEED, systems });
+  original.state.mode = 'flight';
+  const player = original.spawn({
+    type: 'ship', team: 2, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+    hull: 200, hullMax: 200, radius: 6, flags: { persistent: true },
+  });
+  original.state.playerId = player.id;
+  original.state.nextEntityId = 5000;
+  original.registry.get('world').enterSector(CERES_ACTIVITY_SECTOR_ID);
+  const originalTraffic = original.registry.get('traffic');
+  const minerSlot = CERES_ACTIVITY_POCKETS.flatMap((pocket) => pocket.actorSlots)
+    .find((slot) => slot.id === 'ceres_seam_miner');
+  const miner = original.state.entityList.find((entity) => entity && entity.data
+    && entity.data.activityActorSlotId === minerSlot.id);
+  const hauler = original.state.entityList.find((entity) => entity && entity.data
+    && entity.data.activityActorSlotId === 'ceres_refinery_hauler');
+  const minerRec = original.state.traffic.freighters.find((row) => row.id === miner.id);
+  const haulerRec = original.state.traffic.freighters.find((row) => row.id === hauler.id);
+  const manifest = originalTraffic._buildMinerManifest(
+    miner, 6, 'cmdty_ore_iron', 8, 'ore_carrier', { rootLotId: 'continue-root-lot' },
+  );
+  originalTraffic._setTrafficManifest(miner, minerRec, manifest);
+  const handoff = originalTraffic._requestCeresMinerHaulerHandoff({
+    entity: miner, rec: minerRec, slot: minerSlot, worldRecordId: miner.data.worldRecordId,
+  }, manifest);
+  hauler.pos = { ...miner.pos };
+  assert.equal(originalTraffic._transferCeresMinerHaulerHandoff(handoff,
+    { entity: miner, rec: minerRec, worldRecordId: miner.data.worldRecordId },
+    { entity: hauler, rec: haulerRec, worldRecordId: hauler.data.worldRecordId }, 0), true);
+  const envelope = original.registry.get('save').serialize('handoff-continue');
+  assert.equal(envelope.data.traffic.ceresMinerHaulerHandoff.handoffId, handoff.handoffId);
+
+  const continued = createSimulation({ seed: SEED, systems });
+  const arrivals = [];
+  continued.bus.on('freight:arrival', (intent) => arrivals.push(intent));
+  assert.equal(continued.registry.get('save').loadEnvelope(
+    JSON.parse(JSON.stringify(envelope)), 'handoff-continue',
+  ), true);
+  continued.state.mode = 'flight';
+  const restored = continued.state.traffic.ceresMinerHaulerHandoff;
+  const restoredHauler = continued.state.entityList.find((entity) => entity && entity.data
+    && entity.data.worldRecordId === handoff.haulerWorldRecordId);
+  assert.ok(restoredHauler);
+  assert.notEqual(restoredHauler.id, hauler.id, 'Continue rematerializes numeric ids');
+  assert.equal(restoredHauler.data.cargoManifest.custody.handoffId, handoff.handoffId);
+  const station = continued.state.entityList.find((entity) => entity && entity.data
+    && entity.data.stationId === 'station_ceres');
+  restoredHauler.pos = { x: station.pos.x + 72, z: station.pos.z };
+  for (const entity of continued.state.entityList) {
+    if (entity && entity.type === 'ship' && entity.team === 1 && entity.pos) {
+      entity.pos = { x: station.pos.x + 10_000, z: station.pos.z + 10_000 };
+    }
+  }
+  for (let i = 0; i < 18_000 && restored.state !== 'delivered'; i++) continued.step(1 / 60);
+  const restoredJob = continued.helpers.npcJobs.get(`job:${handoff.haulerWorldRecordId}`);
+  assert.equal(restored.state, 'delivered', JSON.stringify({
+    phase: restoredJob && restoredJob.job.phase,
+    progress: restoredJob && restoredJob.job.progress,
+    routeIndex: restoredJob && restoredJob.job.routeIndex,
+    jobId: restoredHauler.data.jobId,
+    status: restoredHauler.data.ceresHandoffStatus,
+    arrivals: arrivals.length,
+  }));
+  assert.equal(arrivals.length, 1);
+  assert.equal(restored.deliveredQty, 8);
+});
+
+test('rich-seam strike opens one material opportunity and exact miner work loads it once', () => {
+  const { traffic, state, asteroid } = bootCausalHarness({ simTime: 0 });
+  stepTo(traffic, state, 0);
+  stepUntilRichSeamSeeded(traffic, state);
+  const minerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_miner');
+  const miner = state.entities.get(minerRec.id);
+  const snap = traffic.getCeresCausalChainSnapshot();
+  assert.equal(snap.seeds.rich_seam, true);
+  assert.notEqual(snap.seeds.miner_loaded, true);
+  const open = richSeamOpportunityForEntity(state, asteroid);
+  assert.equal(open.state, 'open');
+  assert.equal(open.bonusU, 8);
+  // No fabricated rich load — cargo only appears via the extraction owner path.
+  assert.ok(
+    !miner.data.cargoManifest
+      || !miner.data.cargoManifest.totalQty
+      || miner.data.cargoManifest.totalQty === 0,
+    'strike must not mint ore onto the miner',
+  );
+  const work = applyCeresMinerWork(traffic, state, asteroid, state.tick);
+  assert.equal(work.applied, true);
+  assert.equal(miner.data.cargoManifest.totalQty, 16);
+  assert.equal(miner.data.cargoManifest.lotSource.richOpportunityId, open.opportunityId);
+  assert.equal(miner.data.cargoManifest.lotSource.richBonusU, 8);
+  assert.equal(traffic.getCeresCausalChainSnapshot().seeds.miner_loaded, true);
+  assert.equal(richSeamOpportunityForEntity(state, asteroid).state, 'worked');
+  assert.equal(traffic._applyNpcMinerExtraction({
+    jobId: miner.data.jobId,
+    worldRecordId: miner.data.worldRecordId,
+    entity: miner,
+    rec: minerRec,
+    slot: { id: 'ceres_seam_miner' },
+  }, { seq: state.tick }, asteroid, work.workId), false);
+  assert.equal(miner.data.cargoManifest.totalQty, 16, 'duplicate work cannot mint a second rich lot');
+});
+
+test('calving coda re-arms the rich-seam window as the fresh-face aftermath', () => {
+  const { traffic, state, asteroid } = bootCausalHarness({ simTime: 0 });
+  stepTo(traffic, state, 0);
+  stepUntilRichSeamSeeded(traffic, state);
+  const strikeWindow = richSeamOpportunityForEntity(state, asteroid);
+  assert.equal(strikeWindow.state, 'open');
+  assert.equal(strikeWindow.sourceEventId, 'ev_rich_seam_strike');
+
+  // A calving that reached its calve phase cannot preempt the live strike window...
+  const preempt = traffic._openCeresRichSeamOpportunity({ eventId: 'ev_rock_calving', phaseSeeded: true });
+  assert.equal(preempt.opportunityId, strikeWindow.opportunityId);
+  // ...and an interrupted calving (calve phase never reached) opens nothing at all.
+  assert.equal(traffic._openCeresRichSeamOpportunity({ eventId: 'ev_rock_calving', phaseSeeded: false }), null);
+  assert.equal(richSeamOpportunityForEntity(state, asteroid).opportunityId, strikeWindow.opportunityId);
+
+  // Work the strike window through the extraction owner; the calved fresh face then re-arms it —
+  // via the PRODUCTION completion path (the calve seed was refused while the window was live, so
+  // completion retries the opener once).
+  const minerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_miner');
+  const miner = state.entities.get(minerRec.id);
+  const work = applyCeresMinerWork(traffic, state, asteroid, state.tick);
+  assert.equal(work.applied, true);
+  assert.equal(richSeamOpportunityForEntity(state, asteroid).state, 'worked');
+  traffic._completeCeresCausalEvent({
+    eventId: 'ev_rock_calving',
+    seeded: true,
+    phaseSeeded: true,
+    actorSlotIds: ['ceres_seam_miner'],
+  }, 'complete');
+  const rearmed = richSeamOpportunityForEntity(state, asteroid);
+  assert.ok(rearmed.state === 'open', 'completion retries the refused fresh-face open');
+  assert.equal(rearmed.sourceEventId, 'ev_rock_calving');
+  assert.equal(rearmed.attempt, 1);
+  assert.equal(rearmed.bonusU, 12, 'the calved fresh face out-pays the strike window (brighter ore)');
+  // The re-armed window names itself on the target readout so the richer pay is legible on sight.
+  // c90af4a92: the chip says OPEN, not HOT CUT.
+  const readout = richSeamTargetReadout(asteroid, state);
+  assert.equal(readout.text, 'FRESH SEAM · +12u · OPEN');
+  void miner;
+});
+
+test('calving interrupted before its calve phase opens no fresh-face window', () => {
+  const { traffic, state, asteroid } = bootCausalHarness({ simTime: 0 });
+  stepTo(traffic, state, 0);
+  stepUntilRichSeamSeeded(traffic, state);
+  const work = applyCeresMinerWork(traffic, state, asteroid, state.tick);
+  assert.equal(work.applied, true);
+  assert.equal(richSeamOpportunityForEntity(state, asteroid).state, 'worked');
+
+  // Drive the PRODUCTION interrupt path: start the real calving link, then terminally destroy its
+  // only bound actor during groan — before seedAtPhase 'calve' — and let the chain fall back.
+  const calvingDef = CERES_CAUSAL_CHAIN.find((entry) => entry.id === 'ev_rock_calving');
+  assert.ok(calvingDef);
+  const live = traffic._startCeresCausalEvent(calvingDef, state.simTime);
+  assert.ok(live);
+  assert.equal(live.phase, 'groan');
+  const minerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_miner');
+  const miner = state.entities.get(minerRec.id);
+  miner.alive = false;
+  state.world.records.byId[miner.data.worldRecordId] = {
+    recordId: miner.data.worldRecordId,
+    kind: RECORD_KIND.CONVOY,
+    sectorId: CERES_ACTIVITY_SECTOR_ID,
+    alive: false,
+    outcome: 'destroyed',
+  };
+  stepTo(traffic, state, state.simTime + 2);
+  // The completion path force-sets live.seeded for anti-softlock; the fresh-face gate must still
+  // hold: a rock that never split does not light a RICH SEAM window.
+  const snap = traffic.getCeresCausalChainSnapshot();
+  assert.ok(snap.completed.includes('ev_rock_calving'), 'interrupted calving leaves the cycle');
+  assert.equal(richSeamOpportunityForEntity(state, asteroid).state, 'worked',
+    'no phantom fresh-face window after an interrupted calving');
+});
+
+test('explicit HELP reserves the seam for the NPC owner and changes the resolved lot', () => {
+  const { traffic, state, bus, asteroid } = bootCausalHarness({ simTime: 0 });
+  const depletion = { ...fieldDepletionBase };
+  depletion.init({ state, bus });
+  stepTo(traffic, state, 0);
+  stepUntilRichSeamSeeded(traffic, state);
+  const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
+  const open = richSeamOpportunityForEntity(state, asteroid);
+  assert.equal(open.state, 'open');
+
+  bus.emit('contactHail:response', {
+    requestId: 'contact-hail:worker:rich-help',
+    targetId: miner.id,
+    choice: 'help',
+  });
+  const reserved = richSeamOpportunityForEntity(state, asteroid);
+  assert.equal(reserved.state, 'open');
+  assert.equal(reserved.reservedByKind, 'npc');
+  assert.equal(reserved.reservedById, miner.id);
+  assert.equal(reserved.reservedByStableId, miner.data.worldRecordId);
+  assert.equal(reserved.reservedByActivityActorSlotId, 'ceres_seam_miner');
+  assert.equal(reserved.reservedByJobId, miner.data.jobId);
+  // c90af4a92: a reservation reads ALREADY CLAIMED, not NPC HELP LOCK.
+  assert.match(richSeamTargetReadout(asteroid, state).text, /ALREADY CLAIMED/);
+  assert.equal(claimRichSeamOpportunity(state, {
+    fieldId: asteroid.data.fieldId,
+    activityObjectSlotId: asteroid.data.activityObjectSlotId,
+    claimId: 'player-exploit-after-help',
+    claimedByKind: 'player',
+    claimedById: 1,
+    resolution: 'exploit',
+    simTime: state.simTime,
+  }), null, 'HELP cedes the open opportunity to the named NPC miner');
+
+  const work = applyCeresMinerWork(traffic, state, asteroid, 901);
+  assert.equal(work.applied, true);
+  const worked = richSeamOpportunityForEntity(state, asteroid);
+  assert.equal(worked.state, 'worked');
+  assert.equal(worked.resolution, 'help');
+  assert.equal(miner.data.cargoManifest.lotSource.richResolution, 'help');
+  assert.equal(state.fieldDepletion.fields[asteroid.data.fieldId].extractedU, 16);
+  assert.equal(applyCeresMinerWork(traffic, state, asteroid, 901).applied, false);
+  assert.equal(state.fieldDepletion.fields[asteroid.data.fieldId].extractedU, 16);
+  depletion.destroy();
+});
+
+test('HELP reservation survives Continue rematerialization by stable miner identity only', () => {
+  const { traffic, state, bus, asteroid } = bootCausalHarness({ simTime: 0 });
+  const depletion = { ...fieldDepletionBase };
+  depletion.init({ state, bus });
+  stepTo(traffic, state, 0);
+  stepUntilRichSeamSeeded(traffic, state);
+  const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
+  bus.emit('contactHail:response', { requestId: 'stable-help', targetId: miner.id, choice: 'help' });
+  const saved = depletion.serialize();
+
+  const continuedState = { ...state, simTime: 25, fieldDepletion: {} };
+  const continuedBus = createBus();
+  const continuedDepletion = { ...fieldDepletionBase };
+  continuedDepletion.init({ state: continuedState, bus: continuedBus });
+  continuedDepletion.deserialize(saved);
+  const rematerialized = { ...miner, id: 999, data: { ...miner.data } };
+  continuedState.entities = new Map([...state.entities.entries()].map(([id, entity]) => [id === miner.id ? 999 : id, id === miner.id ? rematerialized : entity]));
+  continuedState.entityList = [...continuedState.entities.values()];
+  const open = richSeamOpportunityForEntity(continuedState, asteroid);
+  assert.equal(open.reservedByStableId, miner.data.worldRecordId);
+  const partialSaved = JSON.parse(JSON.stringify(saved));
+  const partialOpportunity = Object.values(partialSaved.opportunities)[0];
+  delete partialOpportunity.reservedByStableId;
+  delete partialOpportunity.reservedByWorldRecordId;
+  delete partialOpportunity.reservedByActivityActorSlotId;
+  delete partialOpportunity.reservedByJobId;
+  const partialState = { ...state, fieldDepletion: {} };
+  const partialDepletion = { ...fieldDepletionBase };
+  partialDepletion.init({ state: partialState, bus: createBus() });
+  partialDepletion.deserialize(partialSaved);
+  assert.equal(richSeamOpportunityForEntity(partialState, asteroid).reservationId, null,
+    'partial legacy reservation fails closed instead of retaining an id-only lock');
+  const resumedClaim = claimRichSeamOpportunity(continuedState, {
+    fieldId: asteroid.data.fieldId,
+    activityObjectSlotId: asteroid.data.activityObjectSlotId,
+    claimId: 'continued-work',
+    claimedByKind: 'npc',
+    claimedById: rematerialized.id,
+    claimedByStableId: rematerialized.data.worldRecordId,
+    claimedByWorldRecordId: rematerialized.data.worldRecordId,
+    claimedByActivityActorSlotId: rematerialized.data.activityActorSlotId,
+    claimedByJobId: rematerialized.data.jobId,
+    simTime: 25,
+  });
+  assert.equal(resumedClaim.state, 'worked');
+
+  const wrongState = { ...state, fieldDepletion: JSON.parse(JSON.stringify(saved)) };
+  assert.equal(claimRichSeamOpportunity(wrongState, {
+    fieldId: asteroid.data.fieldId,
+    activityObjectSlotId: asteroid.data.activityObjectSlotId,
+    claimId: 'wrong-owner',
+    claimedByKind: 'npc',
+    claimedById: 1000,
+    claimedByStableId: 'other-world-record',
+    claimedByWorldRecordId: 'other-world-record',
+    claimedByActivityActorSlotId: 'ceres_seam_miner',
+    claimedByJobId: 'job:other-world-record',
+    simTime: 25,
+  }), null);
+  continuedDepletion.destroy();
+  partialDepletion.destroy();
+  depletion.destroy();
+});
+
+test('reserved HELP seam resolves immediately to MISS when its stable miner dies', () => {
+  const { traffic, state, bus, asteroid } = bootCausalHarness({ simTime: 0 });
+  stepTo(traffic, state, 0);
+  stepUntilRichSeamSeeded(traffic, state);
+  const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
+  bus.emit('contactHail:response', { requestId: 'death-help', targetId: miner.id, choice: 'help' });
+  assert.equal(richSeamOpportunityForEntity(state, asteroid).state, 'open');
+  bus.emit('entity:killed', { id: miner.id });
+  const missed = richSeamOpportunityForEntity(state, asteroid);
+  assert.equal(missed.state, 'missed');
+  assert.equal(missed.resolution, 'miss');
+  assert.doesNotMatch(richSeamTargetReadout(asteroid, state).text, /NPC HELP LOCK/);
+});
+
+test('actor death falls back and plants interrupt seeds (divergent from complete)', () => {
+  const { traffic, state } = bootCausalHarness({ simTime: 0 });
+  // The probe line is the authored opener; the strike needs its seam_mapped seed first.
+  stepTo(traffic, state, 0);
+  const struckAt = runUntil(traffic, state, (s) => s
+    && s.active.some((live) => live.eventId === 'ev_rich_seam_strike'),
+    { start: 0, maxS: 400, stepS: 5 });
+  assert.ok(struckAt != null, 'strike link should be live once the probe line mapped the seam');
+  const minerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_miner');
+  const miner = state.entities.get(minerRec.id);
+  miner.alive = false;
+  stepTo(traffic, state, state.simTime + 2);
+  let snap = traffic.getCeresCausalChainSnapshot();
+  // Active rich-seam link should fall back; concurrency slot freed.
+  assert.ok(!snap.active.some((live) => live.eventId === 'ev_rich_seam_strike'));
+  // D1: interrupt plants aftermath_open, NOT miner_loaded (complete path).
+  assert.equal(snap.seeds.rich_seam, true);
+  assert.equal(snap.seeds.aftermath_open, true);
+  assert.notEqual(snap.seeds.miner_loaded, true);
+  assert.ok(snap.completed.includes('ev_rich_seam_strike'));
+
+  // Terminal-destroy the miner so superseded mid-chain links skip and the cycle can close.
+  state.world.records.byId[miner.data.worldRecordId] = {
+    recordId: miner.data.worldRecordId,
+    kind: RECORD_KIND.CONVOY,
+    sectorId: CERES_ACTIVITY_SECTOR_ID,
+    alive: false,
+    outcome: 'destroyed',
+  };
+  const continuedAt = runUntil(
+    traffic,
+    state,
+    (s) => s && (
+      s.activeCount >= 1
+      || s.seeds.chain_complete === true
+      || (s.cycle | 0) >= 1
+    ),
+    { start: state.simTime, maxS: 600, stepS: 3 },
+  );
+  assert.ok(continuedAt != null, 'chain must continue after an interrupted rich-seam link');
+  snap = traffic.getCeresCausalChainSnapshot();
+  assert.ok(
+    snap.activeCount >= 1
+      || snap.seeds.chain_complete === true
+      || (snap.cycle | 0) >= 1,
+    'expected progress past the interrupted rich-seam link',
+  );
+});
+
+test('D1: kill hauler mid-scan seeds aftermath_open, not hauler_stressed', () => {
+  const { traffic, state, receipts, asteroid, bus } = bootCausalHarness({ simTime: 0 });
+  const newsLines = [];
+  bus.on('news:publish', (p) => newsLines.push(p));
+  materializeRichLoad(traffic, state, asteroid);
+  const entered = runUntil(
+    traffic,
+    state,
+    (snap) => snap && snap.active.some((l) => l.eventId === 'ev_patrol_scans_suspect'),
+    { start: state.simTime, maxS: 400, stepS: 2 },
+  );
+  assert.ok(entered != null, 'patrol scan link should open under zero input');
+  const haulerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_refinery_hauler');
+  const hauler = state.entities.get(haulerRec.id);
+  assert.ok(hauler, 'hauler cast present');
+  // Kill the hauler mid-scan and stamp durable destruction (player-kill world path).
+  hauler.alive = false;
+  state.world.records.byId[hauler.data.worldRecordId] = {
+    recordId: hauler.data.worldRecordId,
+    kind: RECORD_KIND.CONVOY,
+    sectorId: CERES_ACTIVITY_SECTOR_ID,
+    alive: false,
+    outcome: 'destroyed',
+  };
+  stepTo(traffic, state, state.simTime + 2);
+  const snap = traffic.getCeresCausalChainSnapshot();
+  assert.ok(!snap.active.some((l) => l.eventId === 'ev_patrol_scans_suspect'),
+    'patrol link should fall back on hauler death');
+  assert.equal(snap.seeds.aftermath_open, true, 'interrupt seeds aftermath for salvor');
+  assert.notEqual(snap.seeds.hauler_stressed, true, 'must NOT plant complete-path hauler_stressed');
+  assert.ok(
+    receipts.some((r) => r.kind === 'event_interrupt' && r.eventId === 'ev_patrol_scans_suspect'),
+    'interrupt receipt for patrol scan',
+  );
+  // Full cycle still closes with the divergent branch (no softlock).
+  const doneAt = runUntil(
+    traffic,
+    state,
+    (s) => s && (s.cycle | 0) >= 1,
+    { start: state.simTime, maxS: 900, stepS: 3 },
+  );
+  assert.ok(doneAt != null, 'cycle must complete after mid-scan interrupt');
+  // The aftermath cycle tells the loss story, not the clean-shift line — and it leads with the
+  // casualty, never asserting a strip the cutter may not have completed.
+  const stories = newsLines.filter((p) => p.kind === 'ceres_seam_story');
+  assert.equal(stories.length, 1, 'one seam story per resolved cycle');
+  assert.match(stories[0].text, /writes off another seam casualty/);
+  assert.doesNotMatch(stories[0].text, /Salvors strip/);
+});
+
+test('D1: every chain entry authors interruptSeeds distinct from complete seeds where story diverges', () => {
+  for (const entry of CERES_CAUSAL_CHAIN) {
+    assert.ok(Array.isArray(entry.seeds), `${entry.id} seeds array`);
+    assert.ok(Array.isArray(entry.interruptSeeds), `${entry.id} interruptSeeds array`);
+    if (entry.seeds.length === 0) {
+      // A seedless-on-complete entry cannot claim facts its phases did not make physical. What
+      // its interrupt path may still do depends on whether the world can interrupt it at all:
+      // a cast-slot entry loses actors (the call link's aftermath_open), while an actorless
+      // station-side link has nothing in the world to interrupt, so both outcomes tell the same
+      // story and its resolution — not a seed bag — is what the cycle ledger counts. That
+      // no-softlock duty transfers to the runtime: the link must resolve on every outcome.
+      if (entry.interruptSeeds.length > 0) {
+        assert.ok(Array.isArray(entry.actorSlots) && entry.actorSlots.length > 0,
+          `${entry.id} diverges on interrupt only through its cast participants`);
+      } else {
+        assert.ok(Array.isArray(entry.actorSlots) && entry.actorSlots.length === 0,
+          `${entry.id} resolves identically on every outcome only without cast slots`);
+      }
+      continue;
+    }
+    assert.ok(entry.interruptSeeds.length > 0, `${entry.id} interruptSeeds`);
+  }
+  const handoff = CERES_CAUSAL_CHAIN.find((e) => e.id === 'ev_miner_calls_hauler');
+  assert.deepEqual(handoff.seeds, [], 'the event phase cannot claim cargo before a physical transfer');
+  const patrol = CERES_CAUSAL_CHAIN.find((e) => e.id === 'ev_patrol_scans_suspect');
+  assert.ok(patrol.seeds.includes('hauler_stressed'));
+  assert.ok(!patrol.interruptSeeds.includes('hauler_stressed'));
+  assert.ok(patrol.interruptSeeds.includes('aftermath_open'));
+});
+
+test('terminal cast destruction skips the dead link and still completes a cycle', () => {
+  const { traffic, state, receipts } = bootCausalHarness({ simTime: 0 });
+  const minerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_miner');
+  const miner = state.entities.get(minerRec.id);
+  const worldRecordId = miner.data.worldRecordId;
+  assert.ok(worldRecordId, 'miner has a durable world record id');
+
+  // Permanently destroy the seam miner cast hull (survives Continue via durable outcome).
+  state.world.records.byId[worldRecordId] = {
+    recordId: worldRecordId,
+    kind: RECORD_KIND.CONVOY,
+    sectorId: CERES_ACTIVITY_SECTOR_ID,
+    alive: false,
+    outcome: 'destroyed',
+  };
+  miner.alive = false;
+
+  const doneAt = runUntil(
+    traffic,
+    state,
+    (snap) => snap && (snap.cycle | 0) >= 1,
+    { start: 0, maxS: 900, stepS: 3 },
+  );
+  assert.ok(doneAt != null, 'chain should complete a cycle despite a destroyed cast hull');
+  const snap = traffic.getCeresCausalChainSnapshot();
+  assert.ok((snap.cycle | 0) >= 1);
+  // Miner-required links must have been seed-skipped rather than waited on forever.
+  assert.ok(
+    receipts.some((r) => r.outcome === 'skip_terminal_cast' && r.eventId === 'ev_rich_seam_strike'),
+    'rich-seam link should skip on terminal miner loss',
+  );
+  assert.ok(
+    receipts.some((r) => r.outcome === 'skip_terminal_cast' && r.eventId === 'ev_miner_calls_hauler'),
+    'hauler-call link should skip on terminal miner loss',
+  );
+  assert.ok(
+    receipts.some((r) => r.outcome === 'skip_terminal_cast' && r.eventId === 'ev_rock_calving')
+      && receipts.some((r) => r.eventId === 'ev_rock_calving' && Array.isArray(r.seeded)
+        && r.seeded.includes('rock_calved')),
+    'calving coda should skip on terminal miner loss and still plant rock_calved',
+  );
+  assert.ok(receipts.some((r) => r.kind === 'cycle_complete' && (r.cycle | 0) >= 1));
+});
+
+test('save mid-recovery clears ceresCausal stamps from a persistent civilian', () => {
+  const { traffic, state, asteroid } = bootCausalHarness({ simTime: 0 });
+  materializeRichLoad(traffic, state, asteroid);
+  // Drive into the disabled-hauler recovery window (needs hauler_stressed seed first).
+  const entered = runUntil(
+    traffic,
+    state,
+    (snap) => snap && snap.active.some((l) => l.eventId === 'ev_disabled_hauler_recovery'),
+    { start: state.simTime, maxS: 600, stepS: 2 },
+  );
+  assert.ok(entered != null, 'recovery link should open under zero input');
+  const haulerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_refinery_hauler');
+  const hauler = state.entities.get(haulerRec.id);
+  assert.equal(Object.prototype.hasOwnProperty.call(hauler.data, 'ceresCausalDisabled'), false,
+    'the real incident never uses a decorative disabled flag');
+  assert.equal(state.traffic.ceresDisabledHaulerIncident.manifestId,
+    hauler.data.cargoManifest.manifestId);
+  assert.ok(hauler.data.ceresCausalEventId);
+
+  // Surrender/recovery path marks disabled civilians persistent — the leak surface.
+  hauler.flags = hauler.flags || {};
+  hauler.flags.persistent = true;
+
+  // Chain reset (save:loaded / sector leave) must wipe every ceresCausal* key.
+  traffic._resetCeresCausalChain('save_loaded');
+  const residual = Object.keys(hauler.data).filter((k) => k.startsWith('ceresCausal'));
+  assert.deepEqual(residual, [], `ceresCausal keys leaked into save surface: ${residual.join(',')}`);
+  assert.equal(Object.prototype.hasOwnProperty.call(haulerRec, 'ceresCausalDisabled'), false);
+
+  // Also assert a save-shaped clone of entity.data has no residual stamps.
+  const serializedData = JSON.parse(JSON.stringify(hauler.data));
+  const serializedResidual = Object.keys(serializedData).filter((k) => k.startsWith('ceresCausal'));
+  assert.deepEqual(serializedResidual, []);
+});
+
+test('traffic cleanup clears ceresCausal stamps from all entity-scoped actors', () => {
+  const { traffic, state, asteroid } = bootCausalHarness({ simTime: 0 });
+  materializeRichLoad(traffic, state, asteroid);
+  const entered = runUntil(
+    traffic,
+    state,
+    (snap) => snap && snap.active.some((l) => l.eventId === 'ev_disabled_hauler_recovery'),
+    { start: state.simTime, maxS: 600, stepS: 2 },
+  );
+  assert.ok(entered != null, 'recovery link should open under zero input');
+  const { actor: hauler } = actorBySlot(state, 'ceres_refinery_hauler');
+  assert.ok(Object.keys(hauler.data).some((k) => k.startsWith('ceresCausal')),
+    'test should enter with a stamped hauler');
+
+  traffic._cleanup();
+
+  const residual = [];
+  for (const entity of state.entityList) {
+    if (!entity || !entity.data) continue;
+    for (const key of Object.keys(entity.data)) {
+      if (key.startsWith('ceresCausal')) residual.push(`${entity.id}:${key}`);
+    }
+  }
+  assert.deepEqual(residual, [], `ceresCausal keys survived cleanup: ${residual.join(',')}`);
+});
+
+test('failed patrol redirect does not tear down the actor job at link termination', () => {
+  const { traffic, state, asteroid } = bootCausalHarness({ simTime: 0 });
+  materializeRichLoad(traffic, state, asteroid);
+  const { actor: patrol } = actorBySlot(state, 'ceres_cathedral_patrol');
+  const priorJobId = patrol.data.jobId;
+
+  const startedAt = runUntil(
+    traffic,
+    state,
+    (snap) => snap && snap.active.some((l) => l.eventId === 'ev_patrol_scans_suspect'),
+    { start: state.simTime, maxS: 240, stepS: 2 },
+  );
+  assert.ok(startedAt != null, 'patrol scan link should start');
+  assert.equal(patrol.data.jobId, priorJobId, 'failed redirect should restore the prior job immediately');
+
+  const completedAt = runUntil(
+    traffic,
+    state,
+    (snap) => snap && snap.completed.includes('ev_patrol_scans_suspect'),
+    { start: state.simTime, maxS: 120, stepS: 2 },
+  );
+  assert.ok(completedAt != null, 'patrol scan link should terminate');
+  assert.equal(patrol.data.jobId, priorJobId, 'failed redirect must not be restored as a fresh job');
+});
+
+test('patrol redirect restores the prior job id after a successful assign round trip', () => {
+  const releases = [];
+  const assignments = [];
+  let jobState = null;
+  const npcJobs = {
+    assign(entity, spec) {
+      const jobId = `job:${entity.data.worldRecordId}`;
+      assignments.push({ entityId: entity.id, jobId, spec });
+      entity.data.jobId = jobId;
+      jobState.npcJobs.byId[jobId] = {
+        entityId: entity.id,
+        job: { route: spec.route },
+        kind: spec.kind,
+      };
+      return jobId;
+    },
+    release(jobId) {
+      releases.push(jobId);
+      delete jobState.npcJobs.byId[jobId];
+    },
+    get(jobId) {
+      return jobState.npcJobs.byId[jobId] || null;
+    },
+  };
+  const { traffic, state, asteroid } = bootCausalHarness({ simTime: 0, npcJobs });
+  jobState = state;
+  materializeRichLoad(traffic, state, asteroid);
+  const { actor: patrol } = actorBySlot(state, 'ceres_cathedral_patrol');
+  const priorJobId = patrol.data.jobId;
+  const priorEntry = {
+    entityId: patrol.id,
+    job: { route: [{ id: 'patrol-a' }, { id: 'patrol-b' }] },
+    kind: 'patrol',
+  };
+  state.npcJobs.byId[priorJobId] = priorEntry;
+
+  const completedAt = runUntil(
+    traffic,
+    state,
+    (snap) => snap && snap.completed.includes('ev_patrol_scans_suspect'),
+    { start: state.simTime, maxS: 360, stepS: 2 },
+  );
+
+  assert.ok(completedAt != null, 'patrol scan link should complete');
+  assert.equal(patrol.data.jobId, priorJobId, 'patrol redirect should restore the prior job id');
+  const patrolAssignments = assignments.filter((assignment) => assignment.entityId === patrol.id);
+  assert.equal(patrolAssignments.length, 1, 'patrol redirect should assign once for the scan window');
+  assert.equal(patrolAssignments[0].spec.kind, 'patrol');
+  assert.equal(patrolAssignments[0].spec.route[1].targetRef, 'actor:ceres_refinery_hauler');
+  assert.deepEqual(releases.filter((jobId) => jobId === priorJobId), [priorJobId, priorJobId]);
+  assert.equal(state.npcJobs.byId[priorJobId], priorEntry);
+});
+
+test('chain ledger is transient and clears on save:loaded / newGame', () => {
+  const { traffic, state, bus } = bootCausalHarness({ simTime: 0 });
+  stepTo(traffic, state, 0);
+  assert.ok(traffic.getCeresCausalChainSnapshot());
+  bus.emit('save:loaded', {});
+  // save:loaded resets then re-arms because we remain in the Ceres sector.
+  const afterLoad = traffic.getCeresCausalChainSnapshot();
+  assert.ok(afterLoad);
+  assert.equal(afterLoad.activeCount, 0);
+  assert.deepEqual(afterLoad.completed, []);
+  assert.deepEqual({ ...afterLoad.seeds }, {});
+
+  stepTo(traffic, state, state.simTime);
+  assert.equal(traffic.getCeresCausalChainSnapshot().activeCount, 1);
+  traffic.newGame();
+  assert.equal(traffic.getCeresCausalChainSnapshot(), null);
+});
+
+test('same seed and simTime path is deterministic across two harnesses', () => {
+  const a = bootCausalHarness({ simTime: 0 });
+  const b = bootCausalHarness({ simTime: 0 });
+  const times = [0, 20, 40, 80, 120, 200, 320, 480];
+  const traceA = [];
+  const traceB = [];
+  for (const t of times) {
+    stepTo(a.traffic, a.state, t);
+    stepTo(b.traffic, b.state, t);
+    traceA.push(a.traffic.getCeresCausalChainSnapshot());
+    traceB.push(b.traffic.getCeresCausalChainSnapshot());
+  }
+  assert.deepEqual(
+    traceA.map((s) => ({
+      active: s.active.map((l) => `${l.eventId}:${l.phase}`),
+      completed: s.completed,
+      seeds: s.seeds,
+      cycle: s.cycle,
+    })),
+    traceB.map((s) => ({
+      active: s.active.map((l) => `${l.eventId}:${l.phase}`),
+      completed: s.completed,
+      seeds: s.seeds,
+      cycle: s.cycle,
+    })),
+  );
+});
+
+test('visible cue stamps land on bound actors for the ordinary camera path', () => {
+  const { traffic, state } = bootCausalHarness({ simTime: 0 });
+  stepTo(traffic, state, 0);
+  // The probe line opens the cycle, so the surveyor carries the first visible stamp.
+  const surveyorRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_surveyor');
+  const surveyor = state.entities.get(surveyorRec.id);
+  assert.equal(surveyor.data.ceresCausalEventId, 'ev_surveyor_probe_line');
+  assert.equal(surveyor.data.ceresCausalPhase, 'mark_run');
+  assert.equal(surveyor.data.ceresCausalCue, 'reading_the_dark');
+  // Once the line closes, the strike takes over the stamp path.
+  const struckAt = runUntil(traffic, state, (snap) => snap
+    && snap.active.some((live) => live.eventId === 'ev_rich_seam_strike'),
+    { start: state.simTime, maxS: 400, stepS: 5 });
+  assert.ok(struckAt != null, 'the strike opens once the probe line mapped the seam');
+  const minerRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_miner');
+  const miner = state.entities.get(minerRec.id);
+  assert.equal(miner.data.ceresCausalEventId, 'ev_rich_seam_strike');
+  assert.equal(miner.data.ceresCausalCue, 'blind_cone');
+});
+
+test('the cutter count spill drops real grabbable pickups at the wreck, once per link', () => {
+  const { traffic, state } = bootCausalHarness({ simTime: 100 });
+  stepTo(traffic, state, 100); // materialize the activity cast
+  // The harness stub spawns nothing; give it a minimal real spawn for this spill-only test.
+  let spawnSeq = 9000;
+  traffic.helpers.spawnEntity = (spec) => {
+    const entity = {
+      id: spawnSeq++, type: spec.type, alive: true,
+      pos: { ...spec.pos }, vel: { ...(spec.vel || {}) }, radius: spec.radius,
+      data: { ...spec.data },
+    };
+    state.entityList.push(entity);
+    state.entities.set(entity.id, entity);
+    return entity;
+  };
+  const cutterDef = CERES_CAUSAL_CHAIN.find((entry) => entry.id === 'ev_cutter_strips_wreck');
+  const live = { eventId: cutterDef.id, phase: 'stack', actorSlotIds: [cutterDef.actorSlots[0]] };
+  const spillPickups = () => [...state.entityList].filter((entity) => entity
+    && entity.type === 'pickup' && entity.data
+    && entity.data.ceresSpillSource === 'ev_cutter_strips_wreck');
+  assert.equal(spillPickups().length, 0, 'no spill before the stack phase');
+
+  traffic._applyCeresCausalPhaseEffects(cutterDef, live, 'stack');
+  const spilled = spillPickups();
+  assert.equal(spilled.length, 3, 'the stack spills the cutting count');
+  const salvor = state.entityList.find((entity) => entity.data
+    && entity.data.activityActorSlotId === 'ceres_cathedral_salvor');
+  assert.ok(salvor, 'the salvor cast is live in the harness');
+  for (const pickup of spilled) {
+    assert.equal(pickup.data.commodityId, 'cmdty_scrap_metal');
+    assert.equal(pickup.data.amount, 2);
+    assert.ok(pickup.data.despawnAt > state.simTime, 'the spill despawns on a timer');
+    const drift = Math.hypot(pickup.pos.x - salvor.pos.x, pickup.pos.z - salvor.pos.z);
+    assert.ok(drift < 30, `spill lands at the wreck (drift ${drift.toFixed(1)}wu)`);
+  }
+
+  traffic._applyCeresCausalPhaseEffects(cutterDef, live, 'stack');
+  assert.equal(spillPickups().length, 3, 'the stack spills once per link, not per tick');
+});
+
+test('the refinery outbound capsule leaves the station face once per link as a real pickup', () => {
+  const { traffic, state } = bootCausalHarness({ simTime: 100 });
+  stepTo(traffic, state, 100); // materialize the activity cast
+  // The harness stub spawns nothing; give it a minimal real spawn for this capsule-only test.
+  let spawnSeq = 9500;
+  traffic.helpers.spawnEntity = (spec) => {
+    const entity = {
+      id: spawnSeq++, type: spec.type, alive: true,
+      pos: { ...spec.pos }, vel: { ...(spec.vel || {}) }, radius: spec.radius,
+      data: { ...spec.data },
+    };
+    state.entityList.push(entity);
+    state.entities.set(entity.id, entity);
+    return entity;
+  };
+  const capsuleDef = CERES_CAUSAL_CHAIN.find((entry) => entry.id === 'ev_cargo_capsule_launch');
+  assert.ok(capsuleDef, 'the capsule link is the fifth admitted event');
+  assert.deepEqual(capsuleDef.requires, ['ore_handoff'],
+    'the launch rides the custody transfer, not a cooldown draw');
+  const station = state.entityList.find((entity) => entity.data
+    && entity.data.stationId === 'station_ceres');
+  assert.ok(station, 'station_ceres is live in the harness');
+  const live = { eventId: capsuleDef.id, phase: 'launch', actorSlotIds: [] };
+  const capsules = () => [...state.entityList].filter((entity) => entity
+    && entity.type === 'pickup' && entity.data
+    && entity.data.ceresCapsuleSource === 'ev_cargo_capsule_launch');
+  assert.equal(capsules().length, 0, 'no capsule before the launch phase');
+
+  traffic._applyCeresCausalPhaseEffects(capsuleDef, live, 'stage');
+  assert.equal(capsules().length, 0, 'the stage beat launches nothing');
+
+  traffic._applyCeresCausalPhaseEffects(capsuleDef, live, 'launch');
+  const launched = capsules();
+  assert.equal(launched.length, 1, 'the launch phase puts one capsule on the lane');
+  const capsule = launched[0];
+  assert.equal(capsule.data.commodityId, 'cmdty_refined_metals', 'the batch is the refinery product');
+  assert.equal(capsule.data.amount, 5);
+  assert.equal(capsule.data.name, 'Refinery Outbound Capsule');
+  assert.ok(capsule.data.despawnAt > state.simTime, 'the capsule despawns on a timer');
+  const leg = Math.hypot(capsule.vel.x, capsule.vel.z);
+  assert.ok(leg > 0 && leg <= 20, `the capsule coasts a catchable leg (${leg.toFixed(1)}wu/s)`);
+  const clearance = Math.hypot(capsule.pos.x - station.pos.x, capsule.pos.z - station.pos.z);
+  assert.ok(clearance > (station.radius || 30),
+    `the capsule clears the launch face (${clearance.toFixed(1)}wu)`);
+
+  traffic._applyCeresCausalPhaseEffects(capsuleDef, live, 'launch');
+  assert.equal(capsules().length, 1, 'one launch per link, not per tick');
+  traffic._applyCeresCausalPhaseEffects(capsuleDef, live, 'coast');
+  assert.equal(capsules().length, 1, 'later phases never relaunch');
+
+  // A launcher with no resolvable face falls back to the catalog's stage-only behavior.
+  const liveNoFace = { eventId: capsuleDef.id, phase: 'launch', actorSlotIds: [] };
+  const realStations = traffic._sectorStations;
+  traffic._sectorStations = () => [];
+  traffic._applyCeresCausalPhaseEffects(capsuleDef, liveNoFace, 'launch');
+  traffic._sectorStations = realStations;
+  assert.equal(capsules().length, 1, 'no face resolved → the fallback completes without a capsule');
+});
+
+test('the clamp pod shears off the refinery face at drift, once, as a real player-reserved pickup', () => {
+  const { traffic, state } = bootCausalHarness({ simTime: 100 });
+  stepTo(traffic, state, 100); // materialize the activity cast
+  let spawnSeq = 9800;
+  traffic.helpers.spawnEntity = (spec) => {
+    const entity = {
+      id: spawnSeq++, type: spec.type, alive: true,
+      pos: { ...spec.pos }, vel: { ...(spec.vel || {}) }, radius: spec.radius,
+      homeSectorId: spec.homeSectorId,
+      data: { ...spec.data },
+    };
+    state.entityList.push(entity);
+    state.entities.set(entity.id, entity);
+    return entity;
+  };
+  const podDef = CERES_CAUSAL_CHAIN.find((entry) => entry.id === 'ev_pod_breaks_clamp');
+  assert.ok(podDef, 'the clamp pod is the sixth admitted event');
+  assert.deepEqual(podDef.requires, ['ore_handoff'],
+    'the escape plays while the cargo face runs the day\'s ore');
+  assert.deepEqual(podDef.actorSlots, [], 'the station binds no cast slot — nothing to kill');
+  const station = state.entityList.find((entity) => entity.data
+    && entity.data.stationId === 'station_ceres');
+  assert.ok(station, 'station_ceres is live in the harness');
+  const live = { eventId: podDef.id, phase: 'drift', actorSlotIds: [] };
+  const pods = () => [...state.entityList].filter((entity) => entity
+    && entity.type === 'pickup' && entity.data && entity.data.ceresClampPod);
+  assert.equal(pods().length, 0, 'no pod before the drift phase');
+
+  traffic._applyCeresCausalPhaseEffects(podDef, live, 'shear');
+  assert.equal(pods().length, 0, 'the strobe beats the escape — shear drops nothing');
+
+  traffic._applyCeresCausalPhaseEffects(podDef, live, 'drift');
+  const drifted = pods();
+  assert.equal(drifted.length, 1, 'the drift phase tumbles one pod off the stack');
+  const pod = drifted[0];
+  assert.equal(pod.data.kind, 'cargo');
+  assert.equal(pod.data.commodityId, 'cmdty_refined_metals', 'the stack holds the refinery product');
+  assert.equal(pod.data.amount, 4);
+  assert.equal(pod.data.name, 'Loose Refinery Pod');
+  assert.equal(pod.data.playerCollectOnly, true,
+    'near traffic dodges the escape — only the player pockets station cargo');
+  assert.equal(pod.homeSectorId, CERES_ACTIVITY_SECTOR_ID);
+  assert.ok(pod.data.despawnAt > state.simTime, 'the pod clears on a timer, not forever');
+  assert.ok(pod.data.lotSource && pod.data.lotSource.sourceKind === 'station_clamp_break',
+    'the pod carries its provenance for the law');
+  const tumble = Math.hypot(pod.vel.x, pod.vel.z);
+  assert.ok(tumble > 0 && tumble <= 10, `the pod tumbles a catchable drift (${tumble.toFixed(1)}wu/s)`);
+  const clearance = Math.hypot(pod.pos.x - station.pos.x, pod.pos.z - station.pos.z);
+  assert.ok(clearance > (station.radius || 30),
+    `the pod clears the clamp face (${clearance.toFixed(1)}wu)`);
+
+  traffic._applyCeresCausalPhaseEffects(podDef, live, 'drift');
+  assert.equal(pods().length, 1, 'one pod per link, not per tick');
+  traffic._applyCeresCausalPhaseEffects(podDef, live, 'clear');
+  assert.equal(pods().length, 1, 'later phases never re-shear');
+
+  // No resolvable cargo face → the fallback completes as the strobe-blinks-wrong minute.
+  const liveNoFace = { eventId: podDef.id, phase: 'drift', actorSlotIds: [] };
+  const realStations = traffic._sectorStations;
+  traffic._sectorStations = () => [];
+  traffic._applyCeresCausalPhaseEffects(podDef, liveNoFace, 'drift');
+  traffic._sectorStations = realStations;
+  assert.equal(pods().length, 1, 'no face resolved → the fallback completes without a pod');
+});
+
+test('pocketing the escaped pod files the station theft with the law, once', () => {
+  const lawCalls = [];
+  const lawSecurity = {
+    reportIncident(req) {
+      lawCalls.push(req);
+      return { accepted: true, incidentReceiptId: `receipt:${lawCalls.length}` };
+    },
+  };
+  const { traffic, state, bus } = bootCausalHarness({ simTime: 100, lawSecurity });
+  state.playerId = 777;
+  stepTo(traffic, state, 100);
+  let spawnSeq = 9900;
+  traffic.helpers.spawnEntity = (spec) => {
+    const entity = {
+      id: spawnSeq++, type: spec.type, alive: true,
+      pos: { ...spec.pos }, vel: { ...(spec.vel || {}) }, radius: spec.radius,
+      data: { ...spec.data },
+    };
+    state.entityList.push(entity);
+    state.entities.set(entity.id, entity);
+    return entity;
+  };
+  const podDef = CERES_CAUSAL_CHAIN.find((entry) => entry.id === 'ev_pod_breaks_clamp');
+  const live = { eventId: podDef.id, phase: 'drift', actorSlotIds: [] };
+  traffic._applyCeresCausalPhaseEffects(podDef, live, 'drift');
+  const pod = state.entityList.find((entity) => entity.data && entity.data.ceresClampPod);
+  assert.ok(pod, 'a pod is loose on the face');
+
+  // A bystander grabbing it is not theft; the player collecting it is the authored witness.
+  bus.emit('pickup:collected', { pickupId: pod.id, collectorId: 4242, acceptedAmount: 4 });
+  assert.equal(lawCalls.length, 0, 'an NPC-collected pod files nothing');
+  bus.emit('pickup:collected', { pickupId: pod.id, collectorId: 777, acceptedAmount: 4 });
+  assert.equal(lawCalls.length, 1, 'the station files the pod theft once');
+  assert.equal(lawCalls[0].kind, 'payload_theft');
+  assert.equal(lawCalls[0].offenderStableId, 'player');
+  assert.equal(lawCalls[0].offenderEntityId, 777);
+  assert.equal(lawCalls[0].payloadStableId, pod.data.ceresClampPod.podStableId);
+  bus.emit('pickup:collected', { pickupId: pod.id, collectorId: 777, acceptedAmount: 4 });
+  assert.equal(lawCalls.length, 1, 'the pod is gone — a repeat collect cannot double-file');
+});
+
+test('the surveyor probe line drops three real probes at its drop phases, once each', () => {
+  const { traffic, state } = bootCausalHarness({ simTime: 100 });
+  stepTo(traffic, state, 100); // materialize the activity cast
+  // The harness stub spawns nothing; give it a minimal real spawn for this probe-only test.
+  let spawnSeq = 9700;
+  traffic.helpers.spawnEntity = (spec) => {
+    const entity = {
+      id: spawnSeq++, type: spec.type, alive: true,
+      pos: { ...spec.pos }, vel: { ...(spec.vel || {}) }, radius: spec.radius,
+      homeSectorId: spec.homeSectorId,
+      data: { ...spec.data },
+    };
+    state.entityList.push(entity);
+    state.entities.set(entity.id, entity);
+    return entity;
+  };
+  const probeDef = CERES_CAUSAL_CHAIN.find((entry) => entry.id === 'ev_surveyor_probe_line');
+  assert.ok(probeDef, 'the probe line is the first admitted event');
+  assert.equal(CERES_CAUSAL_CHAIN[0].id, 'ev_surveyor_probe_line',
+    'the survey opens the cycle — the strike answers its find');
+  assert.deepEqual(probeDef.seeds, ['seam_mapped']);
+  const strike = CERES_CAUSAL_CHAIN.find((entry) => entry.id === 'ev_rich_seam_strike');
+  assert.deepEqual([...strike.requires], ['seam_mapped'],
+    'the strike waits on the probe line, not a cooldown');
+
+  const surveyor = state.entityList.find((entity) => entity.data
+    && entity.data.activityActorSlotId === 'ceres_seam_surveyor');
+  assert.ok(surveyor, 'the surveyor cast is live in the harness');
+
+  // The authored line is the surveyor's own sweep wedge — derive the segment independently from
+  // the pocket data the harness materializes the cast from.
+  const surveyorPocket = CERES_ACTIVITY_POCKETS.find((pocket) => pocket.actorSlots
+    .some((slot) => slot.id === 'ceres_seam_surveyor'));
+  const surveyorSlot = surveyorPocket.actorSlots.find((slot) => slot.id === 'ceres_seam_surveyor');
+  const anchor = surveyorPocket.activityAnchor.localPos;
+  const ends = surveyorSlot.route.marks.map((mark) => sectorLocalToGlobalForSector({
+    x: anchor.x + mark.offset.x,
+    z: anchor.z + mark.offset.z,
+  }, CERES_ACTIVITY_SECTOR_ID));
+  const segDx = ends[1].x - ends[0].x;
+  const segDz = ends[1].z - ends[0].z;
+  const segLen = Math.hypot(segDx, segDz);
+  const distToLine = (p) => Math.abs(
+    (p.pos.x - ends[0].x) * segDz - (p.pos.z - ends[0].z) * segDx) / segLen;
+  const distTo = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+
+  const live = { eventId: probeDef.id, phase: 'drop_1', actorSlotIds: [...probeDef.actorSlots] };
+  const probes = () => [...state.entityList].filter((entity) => entity
+    && entity.type === 'pickup' && entity.data
+    && entity.data.ceresProbeSource === 'ev_surveyor_probe_line');
+  assert.equal(probes().length, 0, 'no probes before the first drop phase');
+
+  traffic._applyCeresCausalPhaseEffects(probeDef, live, 'mark_run');
+  assert.equal(probes().length, 0, 'the mark_run beat drops nothing');
+
+  // The line is authored geometry, not the mover's trail — the surveyor's live position does not
+  // move the drop points (it only gates that a living planter exists).
+  surveyor.pos = { x: -400, z: 900 };
+  traffic._applyCeresCausalPhaseEffects(probeDef, live, 'drop_1');
+  surveyor.pos = { x: 12, z: -77 };
+  traffic._applyCeresCausalPhaseEffects(probeDef, live, 'drop_2');
+  traffic._applyCeresCausalPhaseEffects(probeDef, live, 'drop_3_close');
+  const dropped = probes().sort((a, b) => a.data.ceresProbeIndex - b.data.ceresProbeIndex);
+  assert.equal(dropped.length, 3, 'three drop phases leave three probes');
+  for (let i = 0; i < dropped.length; i++) {
+    const probe = dropped[i];
+    assert.equal(probe.data.kind, 'ore', 'probes ride the standard pickup pipeline');
+    assert.equal(probe.data.commodityId, 'cmdty_electronics');
+    assert.equal(probe.data.amount, 1);
+    assert.equal(probe.data.name, 'Survey Probe');
+    assert.equal(probe.data.ceresProbeIndex, i);
+    assert.equal(probe.data.playerCollectOnly, true,
+      'NPC hulls pass through the line — only the player steals a probe');
+    assert.equal(probe.homeSectorId, CERES_ACTIVITY_SECTOR_ID,
+      'top-level residency owns the line so it cannot double-plant on sector re-entry');
+    assert.equal(probe.data.homeSectorId, CERES_ACTIVITY_SECTOR_ID);
+    assert.ok(probe.data.despawnAt > state.simTime, 'the probe persists on a session-scale TTL');
+    assert.ok(distToLine(probe) < 0.001,
+      `probe ${i} sits on the authored sweep line (off by ${distToLine(probe)})`);
+    if (i > 0) {
+      const gap = Math.hypot(probe.pos.x - dropped[i - 1].pos.x,
+        probe.pos.z - dropped[i - 1].pos.z);
+      assert.ok(Math.abs(gap - 40) < 0.01, `probes stand ${gap} wu apart, authored 40`);
+    }
+  }
+  // The line's far end is the end nearer the seam face the strike opens — pin the semantic
+  // (proximity to the ore-face mark), not the current mark order.
+  const minerPocket = CERES_ACTIVITY_POCKETS.find((pocket) => pocket.actorSlots
+    .some((slot) => slot.id === 'ceres_seam_miner'));
+  const minerSlot = minerPocket.actorSlots.find((slot) => slot.id === 'ceres_seam_miner');
+  const faceMark = minerSlot.route.marks.find((mark) => typeof mark.targetRef === 'string'
+    && mark.targetRef.indexOf('ceres_seam_ore_clast') >= 0);
+  const facePos = sectorLocalToGlobalForSector({
+    x: minerPocket.activityAnchor.localPos.x + faceMark.offset.x,
+    z: minerPocket.activityAnchor.localPos.z + faceMark.offset.z,
+  }, CERES_ACTIVITY_SECTOR_ID);
+  const nearEnd = distTo(ends[0], facePos) < distTo(ends[1], facePos) ? ends[0] : ends[1];
+  assert.ok(distTo(dropped[2].pos, nearEnd) < distTo(dropped[2].pos,
+    nearEnd === ends[0] ? ends[1] : ends[0]),
+  'the close probe marks the far end — the seam face the strike opens');
+
+  // seedAtPhase re-fires the close phase's effects on the same tick — still exactly three.
+  traffic._applyCeresCausalPhaseEffects(probeDef, live, 'drop_3_close');
+  traffic._applyCeresCausalPhaseEffects(probeDef, live, 'drop_2');
+  assert.equal(probes().length, 3, 'one drop per phase index, not per tick');
+
+  // A surveyor already gone (transient gap) drops nothing new; placed probes remain.
+  const surveyorRec = state.traffic.freighters.find((r) => r.activityActorSlotId === 'ceres_seam_surveyor');
+  const realEntity = state.entities.get(surveyorRec.id);
+  state.entities.delete(surveyorRec.id);
+  const liveLate = { eventId: probeDef.id, phase: 'drop_1', actorSlotIds: [...probeDef.actorSlots] };
+  traffic._applyCeresCausalPhaseEffects(probeDef, liveLate, 'drop_1');
+  assert.equal(probes().length, 3, 'no probe without the surveyor on the lattice');
+  state.entities.set(surveyorRec.id, realEntity);
+});
+
+test('the escort link covers the recovered hauler once and plants yard_cover, not aftermath', () => {
+  const {
+    traffic,
+    state,
+    receipts,
+    asteroid,
+    tender,
+    combatKernel,
+    bus,
+  } = bootCausalHarness({ simTime: 0, withTenderCombat: true });
+  const newsLines = [];
+  bus.on('news:publish', (p) => newsLines.push(p));
+  stepTo(traffic, state, 0);
+  stepUntilRichSeamSeeded(traffic, state);
+  assert.equal(applyCeresMinerWork(traffic, state, asteroid).applied, true,
+    'the authored miner work materializes the load the chain hands down the lane');
+
+  // Drive the physical recovery the honest way, exactly like the full-chain cycle above: keep
+  // the pair together, hold the tender at its standoff, and let the combat kernel commit the
+  // subsystem transitions — no seed the world did not earn.
+  let sawEscortLive = null;
+  for (let t = Math.max(60, state.simTime); t <= 924; t += 3) {
+    const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
+    const { actor: hauler } = actorBySlot(state, 'ceres_refinery_hauler');
+    hauler.pos = { ...miner.pos };
+    const disabledIncident = state.traffic.ceresDisabledHaulerIncident;
+    if (disabledIncident && !['repaired', 'recovered', 'stolen', 'abandoned', 'destroyed', 'failed'].includes(disabledIncident.state)) {
+      const standoff = traffic._ceresTenderServiceStandoff(tender, hauler);
+      tender.pos = { x: hauler.pos.x + standoff, z: hauler.pos.z };
+    }
+    const incident = state.traffic.ceresTenderServiceIncident;
+    if (incident && incident.state !== 'succeeded' && incident.state !== 'failed') {
+      const standoff = traffic._ceresTenderServiceStandoff(tender, miner);
+      tender.pos = { x: miner.pos.x + standoff, z: miner.pos.z };
+    }
+    stepTo(traffic, state, t);
+    state.tick += 1;
+    combatKernel.prePhysics(1 / 60);
+    if (!sawEscortLive) {
+      const snap = traffic.getCeresCausalChainSnapshot();
+      const live = snap.active.find((l) => l.eventId === 'ev_patrol_escorts_hauler');
+      if (live) sawEscortLive = { at: t, phase: live.phase };
+    }
+    if ((traffic.getCeresCausalChainSnapshot().cycle | 0) >= 1) break;
+  }
+  assert.ok(sawEscortLive, 'the escort opens in the physically-driven cycle');
+  assert.ok(['fall_in', 'shadow', 'eye', 'handoff'].includes(sawEscortLive.phase),
+    'the escort was seen in an authored phase');
+
+  const snap = traffic.getCeresCausalChainSnapshot();
+  assert.ok(receipts.some((r) => r.kind === 'event_start' && r.eventId === 'ev_patrol_escorts_hauler'));
+  assert.notEqual(snap.seeds.aftermath_open, true, 'a clean cycle never opens the loss branch');
+  const stories = newsLines.filter((p) => p.kind === 'ceres_seam_story');
+  assert.ok(stories.length >= 1);
+  assert.match(stories[stories.length - 1].text, /clean seam shift/);
+});
+
+// SF-086 — a work shift that changes the same place (equivalence pin on the handover itself).
+// The acceptance asks that the pocket hand responsibility over and re-rhythm without spawning a
+// second permanent population: same cast, same berths, a different working rhythm on return.
+// The causal chain is exactly that shift machine — this test pins the part the other rows do
+// not: cycle N resolves, the pocket takes its authored idle gap, and the SAME hulls open the
+// next shift's first act. No entity joins or leaves; identity stays stable across the seam.
+test('SF-086: a resolved shift idles, then the same cast opens the next shift', () => {
+  const { traffic, state, receipts, asteroid, tender, combatKernel } =
+    bootCausalHarness({ simTime: 0, withTenderCombat: true });
+  stepTo(traffic, state, 0);
+  stepUntilRichSeamSeeded(traffic, state);
+  assert.equal(applyCeresMinerWork(traffic, state, asteroid).applied, true,
+    'the authored miner work materializes the load the chain hands down the lane');
+
+  // Run shift 1 to its resolved terminal, keeping the bound pairs together (this timer-only
+  // harness has no flight integrator — the rendezvous proof lives in the dedicated test).
+  let doneAt = null;
+  for (let t = Math.max(60, state.simTime); t <= 924; t += 3) {
+    const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
+    const { actor: hauler } = actorBySlot(state, 'ceres_refinery_hauler');
+    hauler.pos = { ...miner.pos };
+    const disabledIncident = state.traffic.ceresDisabledHaulerIncident;
+    if (disabledIncident && !['repaired', 'recovered', 'stolen', 'abandoned', 'destroyed', 'failed'].includes(disabledIncident.state)) {
+      const standoff = traffic._ceresTenderServiceStandoff(tender, hauler);
+      tender.pos = { x: hauler.pos.x + standoff, z: hauler.pos.z };
+    }
+    const incident = state.traffic.ceresTenderServiceIncident;
+    if (incident && incident.state !== 'succeeded' && incident.state !== 'failed') {
+      const standoff = traffic._ceresTenderServiceStandoff(tender, miner);
+      tender.pos = { x: miner.pos.x + standoff, z: miner.pos.z };
+    }
+    stepTo(traffic, state, t);
+    state.tick += 1;
+    combatKernel.prePhysics(1 / 60);
+    if ((traffic.getCeresCausalChainSnapshot().cycle | 0) >= 1) { doneAt = t; break; }
+  }
+  assert.ok(doneAt != null, 'shift 1 resolves inside ten minutes of sim time');
+  assert.ok(receipts.some((r) => r.kind === 'cycle_complete' && (r.cycle | 0) >= 1));
+
+  // THE HANDOVER SEAM. Snapshot the whole cast's stable identity and the pocket population —
+  // a second permanent population would show up here as new entities or new world records.
+  const castBefore = state.entityList
+    .map((e) => e && e.data && e.data.worldRecordId)
+    .filter(Boolean).sort();
+  const entityCountBefore = state.entityList.length;
+  const snapAtHandover = traffic.getCeresCausalChainSnapshot();
+  assert.equal(snapAtHandover.cycle | 0, 1);
+  assert.equal(snapAtHandover.active.length, 0, 'the pocket is quiet between shifts');
+  assert.ok(snapAtHandover.nextEligibleAt > state.simTime,
+    'the authored inter-shift gap is real — the rhythm visibly rests');
+
+  // Through the gap: nothing runs early, then the SAME place re-opens its first act.
+  const gapEnd = snapAtHandover.nextEligibleAt;
+  let reopenedAt = null;
+  for (let t = state.simTime; t <= gapEnd + 120; t += 2) {
+    stepTo(traffic, state, t);
+    const snap = traffic.getCeresCausalChainSnapshot();
+    if (t < gapEnd) assert.equal(snap.active.length, 0, 'the gap is an honest idle, not hidden work');
+    if (t >= gapEnd && snap.active.length > 0) { reopenedAt = t; break; }
+  }
+  assert.ok(reopenedAt != null, 'the pocket re-arms on schedule after the authored gap');
+
+  // The re-opened act is the authored opener again — the new shift reads as a new rhythm on
+  // the same stage, and a second probe-line start receipt proves the cycle restarted.
+  const probeStarts = receipts.filter((r) => r.eventId === 'ev_surveyor_probe_line'
+    && r.kind === 'event_start');
+  assert.ok(probeStarts.length >= 2, 'the next shift opens the surveyor line again');
+
+  // Nobody spawned, nobody was replaced: the population is the same hulls under the same
+  // durable identities before and after the shift change.
+  const castAfter = state.entityList
+    .map((e) => e && e.data && e.data.worldRecordId)
+    .filter(Boolean).sort();
+  assert.deepEqual(castAfter, castBefore, 'the shift change hands the same cast, not a new population');
+  assert.equal(state.entityList.length, entityCountBefore, 'no second population materialized');
+});
+
+// SF-090 — a quiet encounter worth watching (equivalence pin on the casualty the cast fixes).
+// The disabled-hauler link is the packet's bounded noncombat sequence: a casualty that only
+// exists because a real conserved handoff was in transit (the incident binds ONLY to a live
+// custody manifest, never a spawned setpiece), a real player window during which the cast
+// waits — help is offered, never required — and then the yard tender takes a genuine control
+// lease and repairs the casualty at standoff. Zero player input resolves it; the world answers
+// with a different rhythm (the patrol escort link) instead of a quest flag. The player-facing
+// branches (RECOVER / STEAL / ABANDON) are owned and pinned by the PQ-048 suite; the generic
+// interrupt-seed divergence is pinned above. What those rows don't pin is the envelope itself:
+// the cast's correction is real, leases a real hull, and completes with nobody watching.
+test('SF-090: the casualty the cast corrects is real, helpable, and resolves unwatched', () => {
+  const {
+    traffic,
+    state,
+    receipts,
+    asteroid,
+    tender,
+    combatKernel,
+    controlClaims,
+  } = bootCausalHarness({ simTime: 0, withTenderCombat: true });
+  assert.ok(combatKernel, 'the recovery link uses the live combat-kernel registry seam');
+
+  // The mistake is downstream of real work: the recovery link cannot open until the patrol
+  // scan link has actually stressed the hauler — no cooldown draw, no random spawn.
+  const def = CERES_CAUSAL_CHAIN.find((entry) => entry.id === 'ev_disabled_hauler_recovery');
+  assert.ok(def, 'the recovery link is authored');
+  assert.deepEqual(def.requires, ['hauler_stressed'],
+    'the casualty must be born from a real work event, not spawned for the scene');
+
+  stepTo(traffic, state, 0);
+  stepUntilRichSeamSeeded(traffic, state);
+  assert.equal(applyCeresMinerWork(traffic, state, asteroid).applied, true,
+    'the conserved load the casualty interrupts is real work output');
+
+  // Drive the same zero-input walk the full-cycle row uses; observe the incident's envelope.
+  let sawWindowOpen = false;
+  let claimDuringWindow = false;
+  let claimAfterWindow = false;
+  let incidentTerminal = null;
+  let escortStarted = false;
+  const responderClaimFor = (incidentId) => [...controlClaims.entries()]
+    .some(([jobId, claimId]) => jobId === `job:${tender.data.worldRecordId}`
+      && claimId === `ceres-disabled-hauler:${incidentId}:responder`);
+  for (let t = Math.max(60, state.simTime); t <= 924; t += 3) {
+    const { actor: miner } = actorBySlot(state, 'ceres_seam_miner');
+    const { actor: hauler } = actorBySlot(state, 'ceres_refinery_hauler');
+    hauler.pos = { ...miner.pos };
+    const incident = state.traffic.ceresDisabledHaulerIncident;
+    if (incident && !['repaired', 'recovered', 'stolen', 'abandoned', 'destroyed', 'failed'].includes(incident.state)) {
+      const standoff = traffic._ceresTenderServiceStandoff(tender, hauler);
+      tender.pos = { x: hauler.pos.x + standoff, z: hauler.pos.z };
+    }
+    const service = state.traffic.ceresTenderServiceIncident;
+    if (service && service.state !== 'succeeded' && service.state !== 'failed') {
+      const standoff = traffic._ceresTenderServiceStandoff(tender, miner);
+      tender.pos = { x: miner.pos.x + standoff, z: miner.pos.z };
+    }
+    stepTo(traffic, state, t);
+    state.tick += 1;
+    combatKernel.prePhysics(1 / 60);
+
+    if (incident) {
+      // While the player's window is open the correction has not been claimed — the cast
+      // genuinely waits; the player may act first, need not, and is never charged a quest.
+      if (t < incident.responseAtSimT) {
+        sawWindowOpen ||= incident.state === 'impair' || incident.state === 'distress';
+        claimDuringWindow ||= responderClaimFor(incident.incidentId);
+      } else {
+        claimAfterWindow ||= responderClaimFor(incident.incidentId);
+      }
+      incidentTerminal ||= ['repaired', 'recovered'].includes(incident.state) ? incident.state : null;
+    }
+    if (receipts.some((r) => r.eventId === 'ev_patrol_escorts_hauler' && r.kind === 'event_start')) {
+      escortStarted = true;
+    }
+    if ((traffic.getCeresCausalChainSnapshot().cycle | 0) >= 1) break;
+  }
+
+  assert.equal(sawWindowOpen, true, 'the casualty opens a real window the player may watch or use');
+  const incident = state.traffic.ceresDisabledHaulerIncident;
+  assert.ok(incident, 'the recovery bound a live incident to the conserved handoff');
+  assert.ok(incident.responseAtSimT > incident.startedAtSimT,
+    'the help window is a real interval, not a zero-width flag');
+  assert.equal(incident.choice, null, 'nobody took ownership — the cast fixed it anyway');
+  assert.equal(claimDuringWindow, false,
+    'the cast waits out the player window instead of pre-empting the encounter');
+  assert.equal(claimAfterWindow, true,
+    'after the window the tender takes a real control lease — correction, not narration');
+  assert.ok(incidentTerminal === 'repaired' || incidentTerminal === 'recovered',
+    `the correction terminalizes with zero player input (got ${incidentTerminal})`);
+  assert.equal(escortStarted, true,
+    'the world answers the correction with a changed rhythm — the escort — not a quest receipt');
+  assert.ok(receipts.some((r) => r.eventId === 'ev_disabled_hauler_recovery' && r.kind === 'event_complete'),
+    'the encounter closes as an authored event');
+  assert.equal(receipts.some((r) => r.kind === 'seed' && r.seeds && r.seeds.aftermath_open === true),
+    false, 'a corrected casualty never opens the aftermath branch');
+});

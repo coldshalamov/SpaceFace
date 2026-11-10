@@ -1,0 +1,91 @@
+From b732fc4c40e5dceb79e69c3e04ffcd8516b69cf0 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 06:12:25 -0400
+Subject: [PATCH] =?UTF-8?q?perf(combat):=20quiet-skip=20empty=20postPhysic?=
+ =?UTF-8?q?s=20residual=20(~3.3=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+After #86, quiet postPhysics still paid reconcilePhysics (orphan walk +
+Map.clear + orderedAttachments) and updateTelemetryAndBreak on empty
+attachments.byId, then walked every combatant for a first-seen ensure
+prePhysics had already covered. Early-out attachment pair when byId has
+no keys (for-in O(1)); skip ensure walk when sorted cache still covers
+this tick's roster. Soft-GPU fps not claimed.
+---
+ src/combat/attachments.js | 16 ++++++++++++++++
+ src/combat/kernel.js      | 16 +++++++++++++---
+ 2 files changed, 29 insertions(+), 3 deletions(-)
+
+diff --git a/src/combat/attachments.js b/src/combat/attachments.js
+index 359280091..f06dff011 100644
+--- a/src/combat/attachments.js
++++ b/src/combat/attachments.js
+@@ -530,6 +530,11 @@ export function createAttachmentService(context) {
+   }
+ 
+   function reconcilePhysics() {
++    // Quiet Ceres never deploys a line — byId stays {}. Skip orphan walk, Map.clear,
++    // and orderedAttachments materialize until something is actually attached.
++    if (!hasAttachmentKeys(state.combat && state.combat.attachments && state.combat.attachments.byId)) {
++      return { recreated: 0, pending: 0 };
++    }
+     const physics = combatPhysics();
+     if (!physics || typeof physics.createAttachment !== 'function' || typeof physics.getAttachmentTelemetry !== 'function') {
+       return { recreated: 0, pending: 0 };
+@@ -774,6 +779,10 @@ export function createAttachmentService(context) {
+   }
+ 
+   function updateTelemetryAndBreak() {
++    // Same quiet empty-byId gate as reconcilePhysics — no active or historic lines.
++    if (!hasAttachmentKeys(state.combat && state.combat.attachments && state.combat.attachments.byId)) {
++      return;
++    }
+     const physics = combatPhysics();
+     if (!physics || typeof physics.getAttachmentTelemetry !== 'function') return;
+     for (const attachment of orderedAttachments()) {
+@@ -1161,6 +1170,13 @@ function serializableHandle(handle) {
+ 
+ const EMPTY_ATTACHMENTS = Object.freeze([]);
+ 
++/** Own enumerable key probe — O(1) empty, avoids Object.keys alloc on the quiet path. */
++function hasAttachmentKeys(map) {
++  if (!map || typeof map !== 'object') return false;
++  for (const _ in map) return true;
++  return false;
++}
++
+ function byId(a, b) {
+   return compareText(String(a.id), String(b.id));
+ }
+diff --git a/src/combat/kernel.js b/src/combat/kernel.js
+index 0613273bd..e874f608a 100644
+--- a/src/combat/kernel.js
++++ b/src/combat/kernel.js
+@@ -144,9 +144,19 @@ export function createCombatKernel(ctx, options = {}) {
+   function postPhysics() {
+     reconcilePhysicsAttachments();
+     attachments.updateTelemetryAndBreak();
+-    // Quiet postPhysics re-ensured every combatant (resolve profile + sync bounds) after
+-    // prePhysics already did both. Physics does not mutate vitals/heat; first-seen combatants
+-    // still get ensureCombatant.
++    // Quiet postPhysics: prePhysics already ensured every living combatant on this tick's
++    // roster. Physics does not mutate vitals/heat. Skip the first-seen ensure walk when the
++    // sorted cache is still valid for this tick (no spawn/destroy invalidate mid-step).
++    // A mid-tick roster change bumps sortedCacheRevision / index version and falls through.
++    const indexVersion = combatTickIndexVersion(state);
++    if (
++      sortedCache
++      && sortedCacheTick === state.tick
++      && sortedCacheSeenRevision === sortedCacheRevision
++      && sortedCacheIndexVersion === indexVersion
++    ) {
++      return;
++    }
+     const table = state.combat && state.combat.entities;
+     for (const entity of sortedEntitiesForTick()) {
+       if (!entity.alive || !isCombatantType(entity.type)) continue;
+-- 
+2.47.3
+

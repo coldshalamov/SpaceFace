@@ -1,0 +1,1100 @@
+import { isCeresWorkfleetHardware } from '../data/ceresWorkfleetIdentity.js';
+import { selectHitSubsystem } from './geometry.js';
+import { ensureCombatant, syncCombatantBounds } from './runtime.js';
+import { damageSubsystem } from './subsystems.js';
+import { appendCombatTrace } from './trace.js';
+import { difficultyDamageScale } from '../data/difficulty.js';
+import { combatFlag } from '../data/featureFlags.js';
+import {
+  publishHitstunImpulse,
+  recordImpulseProvenance,
+  signedHitSide,
+} from './impulseKernel.js';
+import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
+import { isHostileToPlayer } from '../systems/scannerReadModel.js';
+import {
+  currentPlayerRewardIdentity,
+  readPlayerFirstHitTruth,
+  writePlayerFirstHitTruth,
+} from './rewardEligibility.js';
+import { wardScreenTarget } from '../ai/specialistCounterplay.js';
+import { breakSwarmGuard } from '../ai/swarmSpecialistRuntime.js';
+import { isSwarmSpecialistRun, SWARM_SPECIALIST_TUNING } from '../data/swarmSpecialists.js';
+import { deliverPhysicalImpulseDetailed } from './physicalEffects.js';
+import { isEnvironmentalBody, isPhysicalMissionBody } from '../core/physicalResponse.js';
+import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { addEnvironmentHeat } from '../systems/environmentMaterials.js';
+import { GRAVITY_MARK_STATUS_ID } from '../data/combatDefs.js';
+import { swarmFortifyDevice, SWARM_FORTIFY_SCHEMA_VERSION } from '../data/swarmFortify.js';
+import { swarmPilotHasActed } from '../systems/swarmSafety.js';
+import { crossfireDisciplineFor } from '../ai/temperament.js';
+import { ironKrakenCoreDamageMultiplier } from './ironKraken.js';
+
+/**
+ * Linked shield pylons (packet 06): a pylon endpoint is a destructible body, so hostile fire reaches
+ * its hull through the ordinary damage route. Deployed field emitters (wells, repulsors) keep their
+ * existing damage rules; only an endpoint the shieldPylons system spawned opts in.
+ */
+function isShieldPylonEndpoint(target) {
+  return !!(target && target.type === 'fieldEmitter' && target.data && target.data.shieldPylonEndpoint === true);
+}
+
+// Fortify defenses are physical, run-owned beacons rather than a generally damageable entity
+// type. Admit only the concrete schema emitted by the Fortify placement owner; ordinary beacons
+// and malformed/stale marker data keep the normal damage verb gate.
+function isSwarmFortifyStructure(target) {
+  const data = target && target.data && target.data.swarmFortify;
+  const body = target && target.physicsBody;
+  return !!(target && target.type === 'beacon' && target.alive !== false && target.collides === true
+    && body && body.schemaVersion === 1 && body.dynamic === false
+    && Number.isFinite(body.radius) && body.radius > 0
+    && Number.isFinite(target.hullMax) && target.hullMax > 0
+    && data && data.schemaVersion === SWARM_FORTIFY_SCHEMA_VERSION
+    && swarmFortifyDevice(data.deviceId)
+    && Number.isInteger(data.runToken) && data.runToken > 0
+    && Number.isInteger(data.ordinal) && data.ordinal > 0);
+}
+
+/**
+ * AL-FIGHT-1 / AL-HF-02: a reckless NPC's weapon round (direct bolt or splash) on a same-team
+ * non-lawful NPC ship is real damage. Everything else keeps the friendly-fire law.
+ */
+export function npcCrossfireAdmits(state, attacker, target, origin) {
+  if (!state || !attacker || !target || attacker.id === target.id) return false;
+  if (attacker.id === state.playerId || target.id === state.playerId) return false;
+  if (target.type !== 'ship') return false;
+  const kind = origin && origin.kind;
+  if (kind !== 'weapon' && kind !== 'legacy' && kind !== 'mine') return false;
+  const tai = target.data && target.data.ai;
+  if (!tai || tai.lawful === true) return false;
+  if (target.team === 0 || (target.data && target.data.runCohort != null)) return false;
+  if (isProtectedCivilianShip(target)) return false;
+  const seed = (state.meta && Number(state.meta.seed)) || 1;
+  return crossfireDisciplineFor(attacker, seed) === 'reckless';
+}
+
+const PROTECTED_CIVILIAN_ROLE_WORDS = Object.freeze([
+  'hauler', 'courier', 'miner', 'trader', 'civilian', 'fleeing_trader',
+]);
+
+/**
+ * The adjudication's protected-civilian definition, mirrored read-only so the two friendly-fire
+ * admissions below can never route a round into traffic the law protects: a team-2 hull, the
+ * authored Ceres ambush hauler, a convoy-context hull, or a role-tagged civilian.
+ */
+function isProtectedCivilianShip(target) {
+  if (!target || target.type !== 'ship') return false;
+  if (target.team === 2) return true;
+  const data = target.data || {};
+  if (data.activityActorSlotId === 'ceres_ambush_loaded_hauler') return true;
+  const ai = data.ai || {};
+  if (ai.spawnContext === 'convoy_civilian') return true;
+  const role = String(data.trafficRole || data.role || ai.role || ai.archetype || '').toLowerCase();
+  return PROTECTED_CIVILIAN_ROLE_WORDS.some((word) => role.includes(word));
+}
+
+/**
+ * AL-FIGHT-1 / AL-HF-01: a hull that explicitly holds an NPC grudge on a same-team ship may
+ * return fire even when its own fire discipline is not reckless. The grudge record written by
+ * lawSecurity is the authorization, so a disciplined victim's return shot is real damage.
+ * Lawful, player-side, civilian, Swarm-cohort and non-weapon packets keep the friendly-fire law.
+ */
+export function npcGrudgeAdmits(state, attacker, target, origin) {
+  if (!state || !attacker || !target || attacker.id === target.id) return false;
+  if (attacker.id === state.playerId || target.id === state.playerId) return false;
+  if (target.type !== 'ship') return false;
+  const kind = origin && origin.kind;
+  if (kind !== 'weapon' && kind !== 'legacy') return false;
+  const attackerAi = attacker.data && attacker.data.ai;
+  const grudge = attackerAi && attackerAi.npcGrudge;
+  if (!grudge || grudge.targetId !== target.id || attackerAi.lawful === true) return false;
+  if (attacker.team === 0 || attacker.team === 2 || (attacker.data && attacker.data.runCohort != null)) return false;
+  const tai = target.data && target.data.ai;
+  if (!tai || tai.lawful === true) return false;
+  if (target.team === 0 || (target.data && target.data.runCohort != null)) return false;
+  if (isProtectedCivilianShip(target)) return false;
+  return true;
+}
+
+/**
+ * The damage authority's friendly-fire admission, as a pure read: true when a hit from `attacker`
+ * on `target` is REFUSED as friendly fire. routeDamage rejects with 'friendly_fire' on it, and the
+ * continuous-beam sweep (systems/combat.js) asks it before a same-team hull may block the ray —
+ * so a beam admits exactly what a bolt admits: a player attack on a neutral team-0 civilian or
+ * station goes through (law handles the consequence) while the player's own deployables and
+ * player-faction devices stay protected. Player malice is adjudicated by law (player_assault /
+ * player_piracy incidents) and NPC retaliation, not by the NPC IFF team gate: neutral stations,
+ * civilians and ambient ships share the player's default team 0.
+ */
+export function friendlyFireRefuses(state, attacker, target, origin, flags) {
+  if (flags && flags.ignoreFriendlyFire) return false;
+  if (!attacker || !target || attacker.id === target.id) return false;
+  if (attacker.team == null || target.team == null || attacker.team !== target.team) return false;
+  const attackerIsPlayer = state != null && attacker.id === state.playerId;
+  const targetIsOwnDevice = (target.ownerId != null && target.ownerId === attacker.id)
+    || target.factionId === 'faction_player';
+  if (attackerIsPlayer && !targetIsOwnDevice) return false;
+  if (npcCrossfireAdmits(state, attacker, target, origin) || npcGrudgeAdmits(state, attacker, target, origin)) return false;
+  return true;
+}
+
+/** Player id 0 is a real entity id. A truthy check treated that hull as nobody. */
+export function playerIsDamageTarget(state, target) {
+  return !!(state && state.playerId != null && target && target.id === state.playerId);
+}
+
+export function createDamageRouter(context, statusService, options = {}) {
+  const { state, catalog, bus, helpers } = context;
+  const onKill = typeof options.onKill === 'function' ? options.onKill : null;
+  const combatPhysics = () => helpers && helpers.combatPhysics;
+
+  // AI victims persist first-hit legal/reward provenance inside their existing data.ai world record,
+  // so sector capture/rematerialization and Continue cannot turn later retaliation into pre-existing
+  // hostility. Non-AI/local-only targets have no durable record and use this object-lifetime fallback.
+  const playerDamageTruthByTarget = new WeakMap();
+
+  // Reusable scratch channel objects for routeDamage. The buffers are dead before the combat:damage
+  // emit (a listener may route a nested hit, e.g. a volatile rupture — the emit payload is pooled
+  // per dispatch depth for that), so six stable slots cover the full
+  // coexisting lifetime of the transient channel buffers: penetratingRaw, postShieldRaw, postFlatRaw,
+  // terminalRaw, subsystemInput, hullInput. (hullByChannel is intentionally still allocated — it is
+  // returned in the result object.) This removes ~6 small-object allocations per projectile hit,
+  // which is the dominant per-hit GC pressure during firefights. Arithmetic is unchanged: the *Into
+  // helpers produce byte-identical channel values in the same iteration order.
+  const ROUTE_SCRATCH = [{}, {}, {}, {}, {}, {}];
+
+  function routeDamage(input) {
+    const attacker = entity(input && input.attackerId);
+    const aimed = entity(input && input.targetId);
+    const screen = wardScreenTarget(state, attacker, aimed, input && input.origin);
+    if (screen && screen.id !== (input && input.targetId)) {
+      const link = screen.data?.swarmSpecialist;
+      if (isSwarmSpecialistRun(state) && link?.kind === 'warden'
+        && link.phase === 'active' && link.targetId === aimed?.id) {
+        const normalized = normalizeDamagePacket(input?.packet, catalog.damageModel.channelOrder);
+        const total = sumChannels(normalized.channels);
+        const redirectedRaw = Math.min(Math.max(0, link.linkEnergy || 0),
+          total * SWARM_SPECIALIST_TUNING.warden.redirectFraction);
+        if (redirectedRaw > 0 && total > 0) {
+          const share = redirectedRaw / total;
+          link.linkEnergy = Math.max(0, link.linkEnergy - redirectedRaw);
+          link.linkHp = link.linkEnergy;
+          const scaled = (fraction, guard = false) => ({
+            ...normalized,
+            channels: Object.fromEntries(catalog.damageModel.channelOrder.map(channel =>
+              [channel, (normalized.channels[channel] || 0) * fraction])),
+            flags: { ...normalized.flags },
+            statuses: guard ? [] : [...normalized.statuses],
+            heat: guard ? 0 : normalized.heat * fraction,
+            impulse: guard ? null : normalized.impulse,
+          });
+          const origin = input.origin && typeof input.origin === 'object' ? input.origin : {};
+          const guard = routeDamage({ ...input, targetId: screen.id, wardFromId: aimed.id,
+            packet: scaled(share, true),
+            origin: { ...origin, swarmWardRedirected: true, wardedId: aimed.id } });
+          const remainder = routeDamage({ ...input, packet: scaled(1 - share),
+            origin: { ...origin, swarmWardRedirected: true } });
+          if (link.linkEnergy <= 0) breakSwarmGuard(screen, state.tick | 0);
+          return { ...remainder, swarmGuardRedirected: guard?.totalApplied || 0,
+            warderId: screen.id, wardedId: aimed.id };
+        }
+        // A zero-damage packet cannot bypass the finite guard pool or carry conditions for free.
+      } else input = { ...input, targetId: screen.id, wardFromId: aimed && aimed.id };
+    }
+    const packet = normalizeDamagePacket(input && input.packet, catalog.damageModel.channelOrder);
+    const target = entity(input && input.targetId);
+    // Shield drains keep their authored strength and stop at the shield pool.
+    const shieldOnly = packet.flags.shieldOnly === true;
+    // INF-025: authored directional armor. A heavy with data.directionalArmor sheds shots that
+    // arrive on its mirror prow and takes bonus damage on its exposed stern, so circling changes
+    // the outcome instead of inflating health. Pure geometry off hit.pos (attacker pos fallback);
+    // packets without a source direction route neutrally (DoTs, fields, self-hits).
+    const directional = shieldOnly ? DIRECTIONAL_NEUTRAL : resolveDirectionalArmor(target, attacker, packet);
+    if (directional.factor !== 1) {
+      for (const channel of catalog.damageModel.channelOrder) {
+        packet.channels[channel] = (packet.channels[channel] || 0) * directional.factor;
+      }
+    }
+    const coreFactor = shieldOnly || difficultyInvariantDisablePacket(packet)
+      ? 1 : ironKrakenCoreDamageMultiplier(state, target, input);
+    if (coreFactor !== 1) {
+      for (const channel of catalog.damageModel.channelOrder) packet.channels[channel] *= coreFactor;
+    }
+    // Run difficulty only scales hits involving the local player (outgoing or incoming). Ambient
+    // NPC brawls stay on the authored baseline so sector ecology is not difficulty-rewritten.
+    const diffScale = (shieldOnly || difficultyInvariantDisablePacket(packet))
+      ? 1
+      : difficultyDamageScale(state, input && input.attackerId, input && input.targetId);
+    if (diffScale !== 1) {
+      for (const channel of catalog.damageModel.channelOrder) {
+        packet.channels[channel] = (packet.channels[channel] || 0) * diffScale;
+      }
+      packet.heat = (packet.heat || 0) * diffScale;
+    }
+    const origin = input && input.origin || null;
+    const rawTotal = sumChannels(packet.channels);
+
+    if (!target || !target.alive) return rejected('target_missing', input, packet);
+    if (!packet.flags.ignoreInvulnerability && playerDockProtected(state, target)) return rejected('target_docked', input, packet);
+    // Physical contact is independent of hull damage, IFF and invulnerable hit points.
+    const impulseResult = applyImpulse(target, attacker, packet, input, origin);
+    // The opening cohort stays a live physical problem until this wave's first pilot act.
+    // Gun holds alone cannot stop idle hulls from dying to terrain contacts or room blasts.
+    if (target.data?.runCohort === 'survival' && !swarmPilotHasActed(state)) {
+      return { ...rejected('swarm_waiting_for_input', input, packet), impulseApplied: impulseResult.applied };
+    }
+    if (isEnvironmentalBody(target)) addEnvironmentHeat(state, target, packet.heat + (packet.channels.thermal || 0) + (packet.channels.plasma || 0), { actorId: input && input.attackerId, ...origin });
+    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target) && !isPhysicalMissionBody(target) && !isShieldPylonEndpoint(target) && !isSwarmFortifyStructure(target)) {
+      const marks = packet.statuses.filter(status => status.id === GRAVITY_MARK_STATUS_ID);
+      if (marks.length) {
+        const runtime = ensureCombatant(state, target, catalog);
+        for (const status of marks) statusService.schedule(target, runtime, status, { attackerId: input && input.attackerId });
+        const marked = state.combat.markedEnvironment || (state.combat.markedEnvironment = []);
+        if (!marked.includes(target.id)) marked.push(target.id);
+      }
+      return { ...rejected('target_not_damageable', input, packet), impulseApplied: impulseResult.applied };
+    }
+    // PQ-011: 'massSeed' joins the damageable deployed-device family (mine parity) — the anchor
+    // is shootable in every phase by ordinary hostile fire; own-team fire stays gated by the
+    // friendly-fire rule below, exactly like own mines.
+    // PQ-015: damageable type-membership from the shared catalog (identical to the former
+    // ship|station|drone|mine|massSeed literal). The allowAnyTarget bypass, dock/invuln/friendly-fire
+    // layers below, and the 'target_not_damageable' reason string are ALL UNCHANGED.
+    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target) && !isPhysicalMissionBody(target) && !isShieldPylonEndpoint(target) && !isSwarmFortifyStructure(target)) return rejected('target_not_damageable', input, packet);
+    if (!packet.flags.ignoreInvulnerability && playerDockProtected(state, target)) return rejected('target_docked', input, packet);
+    if (target.flags && target.flags.invuln && !packet.flags.ignoreInvulnerability) return rejected('target_invulnerable', input, packet);
+    // Player malice is adjudicated by law (player_assault/player_piracy incidents) and NPC
+    // retaliation (self-defense motive), not by the NPC IFF team gate: neutral team-0 stations,
+    // civilians, and ambient ships share the player's default team, so gating the player here
+    // silently blocks the designed assault-to-dispatch loop (the sector-law panel advertises that
+    // station attacks trigger dispatch). The gate still protects the player's own deployables
+    // (owner-marked mines/anchors) and player-faction devices (drones).
+    if (friendlyFireRefuses(state, attacker, target, origin, packet.flags)) {
+      return rejected('friendly_fire', input, packet);
+    }
+    // X-02 v4: the onboarding wing's rounds touch only the player while its raid beat is live —
+    // any packet aimed at a bystander is rejected, so no stray piracy and no traffic damage.
+    if (attacker && attacker.data?.onboardingRaidWing === true && state?.onboarding?.raid?.active
+      && !state?.onboarding?.raid?.wingDone && target.id !== state.playerId) {
+      return rejected('onboarding_wing_ward', input, packet);
+    }
+    if (!(rawTotal > 0) && !(packet.heat > 0) && !packet.statuses.length && !hasImpulse(packet.impulse)) return rejected('empty_packet', input, packet);
+
+    const runtime = ensureCombatant(state, target, catalog);
+    const before = snapshotVitals(target, runtime);
+    const model = catalog.damageModel;
+    const isPlayerTarget = playerIsDamageTarget(state, target);
+    // QoL overhaul: As long as the player's shield is up, hull HP is 100% protected (no cheap bypass or penetration bleed-through)
+    const penetration = (shieldOnly || (isPlayerTarget && (target.shield || 0) > 0)) ? 0 : clamp01(packet.penetration);
+    // Shield bypass (EMP/disable verb, spec §9): a fraction of the damage couples through the
+    // shield directly to armor/hull/subsystems. 1.0 = shields ignored entirely.
+    const shieldBypass = (shieldOnly || (isPlayerTarget && (target.shield || 0) > 0)) ? 0 : clamp01(Number(packet.shieldBypass) || 0);
+    // Scratch slots: [0]=penetratingRaw, [1]=postShieldRaw, [2]=postFlatRaw, [3]=terminalRaw,
+    // [4]=subsystemInput, [5]=hullInput. Zeroed across the active channel order before each use.
+    const penetratingRaw = emptyChannelsInto(model.channelOrder, ROUTE_SCRATCH[0]);
+    const postShieldRaw = emptyChannelsInto(model.channelOrder, ROUTE_SCRATCH[1]);
+    let shieldDamage = 0;
+
+    for (const channel of model.channelOrder) {
+      const raw = packet.channels[channel] || 0;
+      penetratingRaw[channel] = raw * penetration;
+      // The bypassed fraction skips the shield pool entirely.
+      const bypassed = raw * shieldBypass;
+      const normal = (raw - penetratingRaw[channel] - bypassed);
+      const multiplier = positiveMultiplier(model.shieldMultipliers[channel]);
+      const potentialHp = normal * multiplier;
+      const absorbedHp = Math.min(Math.max(0, target.shield || 0), potentialHp);
+      target.shield = Math.max(0, (target.shield || 0) - absorbedHp);
+      shieldDamage += absorbedHp;
+      const consumedRaw = multiplier > 0 ? absorbedHp / multiplier : 0;
+      // Shield-only drains discard overflow; bypassed EMP damage otherwise passes onward.
+      postShieldRaw[channel] = shieldOnly ? 0 : Math.max(0, normal - consumedRaw) + bypassed;
+    }
+
+    const shieldBroke = before.shield > 0 && target.shield <= 0;
+    // Flat armor is a per-packet deduction. A continuous source (beam) splits its damage into one
+    // packet per tick, so it carries armorFlatScale (< 1) and pays the flat once per armor window
+    // instead of once per tick. Absent = 1 (projectiles, rams, fields).
+    const armorFlat = Math.max(0, Number(target.armorFlat) || 0) * (packet.armorFlatScale == null ? 1 : packet.armorFlatScale);
+    const postFlatRaw = applyArmorFlatInto(postShieldRaw, armorFlat, model.channelOrder, ROUTE_SCRATCH[2]);
+    const terminalRaw = emptyChannelsInto(model.channelOrder, ROUTE_SCRATCH[3]);
+    let armorDamage = 0;
+    for (const channel of model.channelOrder) {
+      const raw = postFlatRaw[channel] || 0;
+      const multiplier = positiveMultiplier(model.armorMultipliers[channel]);
+      const potentialHp = raw * multiplier;
+      const absorbedHp = Math.min(Math.max(0, target.armorHp || 0), potentialHp);
+      target.armorHp = Math.max(0, (target.armorHp || 0) - absorbedHp);
+      armorDamage += absorbedHp;
+      const consumedRaw = multiplier > 0 ? absorbedHp / multiplier : 0;
+      terminalRaw[channel] = Math.max(0, raw - consumedRaw) + penetratingRaw[channel];
+    }
+
+    // PQ-015 component targeting: when the local player has sub-selected a serviceable combat
+    // subsystem on their CURRENT target, their weapon hits concentrate on it (focus fire) by seeding
+    // packet.hit.subsystemId, which selectHitSubsystem honors. Validated against the live runtime
+    // (must exist and not be destroyed). Guarded to player fire on the locked target only, and skips
+    // when a projectile already carries an explicit subsystemId — so NPC fire and the 47a golden
+    // (which never populates state.ui.componentSelection) are byte-identical / determinism-safe.
+    applySelectedComponentHit(state, input, target, runtime, packet);
+    const selectedSubsystemId = selectHitSubsystem(target, runtime, catalog, packet.hit || {});
+    // GOLD-COLOSSI: a plate still bolted over its subsystem takes the hit for it — the shot
+    // lands on hull at the ordinary multiplier instead. The plate is data on the live fight;
+    // the cover map is stamped by the fight owner whenever plates change.
+    const plateCover = target.data && target.data.capitalPlateCover;
+    const subsystemId = selectedSubsystemId && plateCover && plateCover[selectedSubsystemId]
+      ? null : selectedSubsystemId;
+    const subsystemShare = subsystemId ? clamp01(packet.subsystemShare == null ? model.subsystemShare : packet.subsystemShare) : 0;
+    const subsystemInput = scaleChannelsInto(terminalRaw, subsystemShare, model.channelOrder, ROUTE_SCRATCH[4]);
+    const hullInput = scaleChannelsInto(terminalRaw, 1 - subsystemShare, model.channelOrder, ROUTE_SCRATCH[5]);
+    const subsystemInputTotal = sumChannels(subsystemInput);
+    let subsystemResult = null;
+    let subsystemDamage = 0;
+    if (subsystemId && subsystemInputTotal > 0) {
+      context.currentAttackerId = input && input.attackerId;
+      subsystemResult = damageSubsystem(context, target, runtime, subsystemId, subsystemInputTotal, subsystemInput, penetration);
+      context.currentAttackerId = null;
+      subsystemDamage = subsystemResult.applied;
+      if (subsystemResult.overflow > 0) addProportional(hullInput, subsystemInput, subsystemResult.overflow, model.channelOrder);
+    }
+
+    const damageReduction = clamp(Number(target.data && target.data.derived && target.data.derived.damageReductionMult) || 1, 0, 1);
+    let hullDamage = 0;
+    const hullByChannel = emptyChannels(model.channelOrder);
+    for (const channel of model.channelOrder) {
+      const applied = (hullInput[channel] || 0) * positiveMultiplier(model.hullMultipliers[channel]) * damageReduction;
+      hullByChannel[channel] = applied;
+      hullDamage += applied;
+    }
+    hullDamage = Math.min(Math.max(0, target.hull || 0), hullDamage);
+    target.hull = Math.max(0, (target.hull || 0) - hullDamage);
+    target.lastDamageT = Number.isFinite(state.simTime) ? state.simTime : (state.tick || 0) / 60;
+    // PIC-31: a hull carried into the damaged band by this hit starts venting where it was
+    // hurt (one record on the combat runtime, side from the hit geometry). Repair-above-band
+    // and death stops are admitted on the presentation side; death also clears the latch
+    // here so a wreck carries no vent.
+    updateHullVent(state, target, runtime, packet, before.hull, target.hull);
+
+    const heatBefore = runtime.heat;
+    runtime.heat = clamp(runtime.heat + packet.heat, 0, runtime.heatMax);
+    const heatApplied = runtime.heat - heatBefore;
+    for (const status of packet.statuses) {
+      statusService.schedule(target, runtime, status, {
+        attackerId: input && input.attackerId,
+        actionId: origin && origin.kind === 'action' ? origin.id : null,
+      });
+    }
+
+    syncCombatantBounds(target, runtime);
+    const after = snapshotVitals(target, runtime);
+    // One scratch record per hit — the bus hands this object to every listener synchronously
+    // and the only deferred consumer (presentationOrchestrator._emitCue) snapshots top-level
+    // fields on entry. Nested fields stay fresh-per-emit or externally owned (channels, before,
+    // after, pos/approach/normal, origin), so no one sees a rewritten sub-object.
+    const totalApplied = shieldDamage + armorDamage + subsystemDamage + hullDamage;
+    if (totalApplied > 0 && isSwarmSpecialistRun(state)
+      && target.data?.runCohort === 'survival' && target.data?.swarmSpecialist?.kind === 'warden'
+      && input?.origin?.swarmWardRedirected !== true) {
+      breakSwarmGuard(target, state.tick | 0);
+    }
+    const result = {
+      ok: true,
+      attackerId: input && input.attackerId == null ? null : input.attackerId,
+      targetId: target.id,
+      rawTotal,
+      totalApplied,
+      shieldDamage,
+      armorDamage,
+      hullDamage,
+      hullByChannel,
+      subsystemId,
+      subsystemDamage,
+      subsystemResult,
+      directionalArc: directional.arc,
+      directionalFactor: directional.factor,
+      ...(coreFactor === 1 ? null : { ironKrakenCoreFactor: coreFactor }),
+      heatApplied,
+      shieldBroke,
+      dominantLayer: hullDamage > 0 ? 'hull' : armorDamage > 0 ? 'armor' : shieldDamage > 0 ? 'shield' : null,
+      before,
+      after,
+      impulseApplied: impulseResult.applied,
+      packet,
+    };
+    // Freeze canonical target truth on the player's first accepted hit for this victim lifetime.
+    // Synchronous combat:damage listeners may grant retaliation authority, and later projectiles
+    // must not reinterpret that self-defense response as pre-existing hostility. AI receipts travel
+    // through world-record capture/save/rematerialization; the WeakMap is only for non-durable targets.
+    // Non-player hits still publish current truth but never seed or replace player provenance.
+    const playerId = state.playerId;
+    const player = entity(playerId);
+    const playerAttack = !!player && result.attackerId === playerId;
+    if (coreFactor > 1 && playerAttack && totalApplied > 0 && bus?.emit) {
+      bus.emit('combat:weakPointHit', { targetId: target.id, ownerId: playerId,
+        label: 'MANTLE CORE', mult: coreFactor, critical: true, criticalLabel: 'CORE',
+        pos: { x: packet.hit.pos.x, z: packet.hit.pos.z } });
+    }
+    const playerIdentity = playerAttack ? currentPlayerRewardIdentity(state, player) : null;
+    const durableTruth = playerAttack ? readPlayerFirstHitTruth(target, playerIdentity) : null;
+    const fallbackTruth = playerAttack && !durableTruth ? playerDamageTruthByTarget.get(target) : null;
+    const frozenTruth = durableTruth || (
+      fallbackTruth && fallbackTruth.playerIdentity === playerIdentity ? fallbackTruth : null
+    );
+    let factionLawful;
+    let targetHostileToPlayer;
+    if (frozenTruth) {
+      factionLawful = frozenTruth.factionLawful;
+      targetHostileToPlayer = frozenTruth.targetHostileToPlayer;
+    } else {
+      factionLawful = !!(target.data && target.data.ai && target.data.ai.lawful);
+      targetHostileToPlayer = !!isHostileToPlayer(target, player && player.team, state);
+      if (playerAttack) {
+        const durableRecord = writePlayerFirstHitTruth(
+          target,
+          playerIdentity,
+          factionLawful,
+          targetHostileToPlayer,
+        );
+        if (!durableRecord) {
+          playerDamageTruthByTarget.set(target, Object.freeze({
+            playerIdentity,
+            factionLawful,
+            targetHostileToPlayer,
+          }));
+        }
+      }
+    }
+
+    appendCombatTrace(state.combat, state.tick, 'damage.routed', {
+      actorId: result.attackerId,
+      targetId: target.id,
+      origin,
+      rawTotal,
+      applied: totalApplied,
+      shieldDamage,
+      armorDamage,
+      hullDamage,
+      subsystemId,
+      subsystemDamage,
+      penetration,
+      heatApplied,
+      shieldBroke,
+      before,
+      after,
+      channels: packet.channels,
+    });
+
+    if (shieldBroke && bus) bus.emit('shieldDown', { combatantId: target.id, pos: packet.hit && packet.hit.pos || target.pos });
+    if (bus) {
+      if (bus.setPayloadSnapshot) bus.setPayloadSnapshot('combat:damage', snapshotDamagePayload);
+      if (input && input.wardFromId != null) {
+        const hit = packet.hit;
+        const warded = {
+          escortId: target.id,
+          targetId: input.wardFromId,
+          attackerId: result.attackerId,
+        };
+        if (hit && hit.pos) warded.pos = { x: hit.pos.x, z: hit.pos.z };
+        if (hit && hit.normal) warded.normal = { x: hit.normal.x, z: hit.normal.z };
+        if (hit && hit.approach) warded.approach = { x: hit.approach.x, z: hit.approach.z };
+        bus.emit('combat:warded', warded);
+      }
+      const empHit = isEmpDamagePacket(packet, origin);
+      const weaponId = origin && origin.kind === 'weapon' ? (origin.weaponId || origin.id || null) : null;
+      // One pooled record per DISPATCH DEPTH (see acquireDamageEmitPayload): a listener that
+      // routes another hit (a thermal hit rupturing a volatile pod) gets its own record, so the
+      // outer hit's remaining listeners still read the outer attacker, amounts and result.
+      const dp = acquireDamageEmitPayload();
+      dp.targetId = target.id;
+      dp.attackerId = result.attackerId;
+      dp.amount = rawTotal;
+      dp.rawTotal = rawTotal;
+      dp.applied = totalApplied;
+      dp.type = dominantChannel(packet.channels, model.channelOrder);
+      dp.damageType = empHit ? 'emp' : null;
+      dp.emp = empHit;
+      dp.channels = { ...packet.channels };
+      dp.shieldDamage = shieldDamage;
+      dp.armorDamage = armorDamage;
+      dp.hullDamage = hullDamage;
+      dp.subsystemDamage = subsystemDamage;
+      dp.before = before;
+      dp.after = after;
+      dp.shieldHit = shieldDamage > 0;
+      dp.armorHit = armorDamage > 0;
+      dp.hullHit = hullDamage > 0;
+      dp.dominantLayer = result.dominantLayer;
+      dp.brokeShield = shieldBroke;
+      dp.shieldAbsorbed = shieldDamage > 0;
+      dp.isPlayer = target.id === state.playerId;
+      dp.pos = packet.hit && packet.hit.pos || { x: target.pos.x, z: target.pos.z };
+      dp.approach = packet.hit && packet.hit.approach || null;
+      dp.normal = packet.hit && packet.hit.normal || null;
+      dp.factionId = target.factionId || null;
+      dp.factionLawful = factionLawful;
+      dp.targetHostileToPlayer = targetHostileToPlayer;
+      dp.subsystemId = subsystemId;
+      dp.origin = origin;
+      dp.weaponId = weaponId;
+      try {
+        bus.emit('combat:damage', dp);
+      } finally {
+        _damageEmitDepth -= 1;
+      }
+      if (empHit) {
+        bus.emit('combat:emp', {
+          targetId: target.id,
+          attackerId: result.attackerId,
+          pos: packet.hit && packet.hit.pos || { x: target.pos.x, z: target.pos.z },
+          weaponId,
+        });
+      }
+    }
+
+    if (before.hull > 0 && target.hull <= 0) {
+      if (onKill) onKill(target, result.attackerId, {
+        origin,
+        packet,
+        result,
+        factionLawful,
+        targetHostileToPlayer,
+      });
+      else fallbackKill(target, result.attackerId);
+    }
+    return result;
+  }
+
+  function isEmpDamagePacket(packet, origin) {
+    const weaponId = (origin && (origin.weaponId || origin.id))
+      || (packet && packet.source && packet.source.weaponId)
+      || '';
+    // Match `emp` as a whole id token only: `wpn_emp_disruptor_m` and `mine_emp` yes,
+    // a future `wpn_tempest_launcher` (contains 'temp') no.
+    const id = String(weaponId).toLowerCase();
+    if (id === 'wpn_emp_disruptor_m' || /(^|[^a-z])emp([^a-z]|$)/.test(id)) return true;
+    const channels = packet && packet.channels;
+    return !!(packet && channels && packet.subsystemShare === 1 && packet.shieldBypass === 1
+      && (Number(channels.ion) || 0) > 0
+      && !(Number(channels.kinetic) || 0)
+      && !(Number(channels.thermal) || 0)
+      && !(Number(channels.plasma) || 0)
+      && !(Number(channels.phase) || 0));
+  }
+
+  function difficultyInvariantDisablePacket(packet) {
+    // The canonical EMP is a non-lethal capability verb, tuned to the 45-point starter drive.
+    // Scaling its pure subsystem packet turns the Fulfillment's authored stop-and-board route into
+    // an effectively unreachable multi-hit lottery. Keep the authored 45 damage—never a boosted
+    // shortcut—while ordinary hull, heat, mixed-ion, and legacy packets retain difficulty scaling.
+    const channels = packet && packet.channels;
+    return packet && channels && packet.subsystemShare === 1 && packet.shieldBypass === 1
+      && packet.source && packet.source.kind === 'weapon'
+      && packet.source.weaponId === 'wpn_emp_disruptor_m'
+      && channels.kinetic === 0 && channels.thermal === 0
+      && channels.plasma === 0 && channels.phase === 0;
+  }
+
+  function applyImpulse(target, attacker, packet, input, origin) {
+    const tag = packet.source && packet.source.impulseProvenance || null;
+    if (tag && !combatFlag('weaponImpulseConsequences')) {
+      return { applied: false, reason: 'weapon_impulse_disabled' };
+    }
+    const vector = resolveImpulseVector(target, attacker, packet.impulse, packet.hit);
+    if (!vector) return { applied: false, reason: 'none' };
+    try {
+      const weaponId = packet.source && packet.source.weaponId
+        || (origin && origin.kind === 'weapon' && (origin.weaponId || origin.id)) || null;
+      const provenance = tag ? {
+        actorId: input && input.attackerId == null ? null : input.attackerId,
+        weaponId,
+        tag,
+        appliedTick: state.tick,
+      } : null;
+      const reason = tag ? 'weapon_hit' : 'damage';
+      const maxTorque = packet && Number.isFinite(packet.tumbleTorque)
+        ? packet.tumbleTorque
+        : (input && input.packet && Number.isFinite(input.packet.tumbleTorque) ? input.packet.tumbleTorque : undefined);
+      const environmentImpulse = packet.source && packet.source.environmentImpulse;
+      // Weapon packets carry momentum, unlike authored Force/field response. Keep
+      // explicit nonweapon sources authoritative; older weapon packets may name
+      // their origin or provenance without a source kind.
+      const sourceKind = packet.source && packet.source.kind;
+      const weaponImpact = sourceKind === 'weapon' || (!sourceKind
+        && (origin?.kind === 'weapon' || (!origin?.kind && tag && weaponId != null)));
+      const delivery = deliverPhysicalImpulseDetailed(state, target, vector, {
+        ...provenance, provenance: provenance || { tag: reason }, reason, maxTorque,
+        point: input && input.packet && input.packet.hit && input.packet.hit.pos || null,
+      }, { port: combatPhysics(), scaleEnvironment: weaponImpact ? false : undefined,
+        referenceImpulse: isEnvironmentalBody(target) && Number.isFinite(environmentImpulse) ? environmentImpulse : undefined });
+      if (!delivery.accepted) return { applied: false, reason: 'physics_rejected' };
+      const magnitude = Math.hypot(delivery.impulse.x, delivery.impulse.z);
+      const victimMass = Math.max(0.1, Number(resolvePhysicsBodySpec(target)?.mass) || Number(target.mass) || 1);
+      const attackerMass = attacker && Number.isFinite(attacker.mass) && attacker.mass > 0
+        ? attacker.mass
+        : 1;
+      const hitSide = signedHitSide(target, vector, packet.hit, target.id);
+      if (provenance) {
+        recordImpulseProvenance(target, { ...provenance, magnitude });
+      }
+      if (target.id !== state.playerId && combatFlag('weaponImpulseConsequences')) {
+        publishHitstunImpulse(bus, {
+          source: 'gun',
+          victimId: target.id,
+          attackerId: input && input.attackerId == null ? null : input.attackerId,
+          attackerMass,
+          victimMass,
+          deltaV: delivery.deltaV,
+          dirX: vector.x,
+          dirZ: vector.z,
+          hitSide,
+          provenance,
+          tick: state.tick,
+        });
+      }
+      appendCombatTrace(state.combat, state.tick, 'physics.impulse', {
+        actorId: input && input.attackerId,
+        targetId: target.id,
+        impulse: vector,
+        reason,
+        weaponId,
+        provenance: tag,
+        hitSide,
+        torqueApplied: false,
+      });
+      return {
+        applied: true,
+        impulse: vector,
+        torqueApplied: false,
+        hitSide,
+        deltaV: delivery.deltaV,
+        angularProduction: true,
+      };
+    } catch (error) {
+      appendCombatTrace(state.combat, state.tick, 'physics.error', {
+        actorId: input && input.attackerId,
+        targetId: target.id,
+        operation: 'applyImpulse',
+        error: String(error && error.message || error),
+      });
+      return { applied: false, reason: 'physics_error' };
+    }
+  }
+
+  function fallbackKill(target, killerId) {
+    target.alive = false;
+    if (bus) bus.emit('entity:killed', {
+      id: target.id,
+      killerId,
+      type: target.type,
+      pos: { x: target.pos.x, z: target.pos.z },
+      factionId: target.factionId || null,
+      victimClass: target.data && target.data.shipClass || target.type,
+    });
+  }
+
+  function rejected(reason, input, packet) {
+    appendCombatTrace(state.combat, state.tick, 'damage.rejected', {
+      actorId: input && input.attackerId == null ? null : input.attackerId,
+      targetId: input && input.targetId == null ? null : input.targetId,
+      reason,
+      channels: packet.channels,
+    });
+    return { ok: false, reason, packet };
+  }
+
+  function entity(id) {
+    return state.entities && state.entities.get ? state.entities.get(id) || null : null;
+  }
+
+  return routeDamage;
+}
+
+// INF-025: authored directional armor for heavies. Config lives on target.data.directionalArmor
+// ({ frontArcDeg, frontMult, rearArcDeg, rearMult }); +X local is the nose. Returns a neutral
+// { factor: 1, arc: null } for targets without config or packets without a source direction, so
+// ordinary ships and directionless damage (DoTs, fields) route exactly as before. Pure: no writes,
+// no RNG, no wall clock — the same hit geometry always yields the same factor.
+const DIRECTIONAL_NEUTRAL = Object.freeze({ factor: 1, arc: null });
+
+// Per-hit 'combat:damage' record — refilled every accepted packet. Listeners consume it
+// synchronously within the emit; the deferred presentation lane snapshots top-level fields at
+// _emitCue entry. Every field must be rewritten on each use or removed; nested sub-objects
+// (channels, before, after, pos, approach, normal, origin) are never pooled.
+// Deferred presentation tails queue this pooled record past the emit — the shallow clone
+// below freezes every field they can read (nested refs are fresh-per-packet per above).
+function snapshotDamagePayload(p) {
+  return { ...p };
+}
+function createDamageEmitPayload() {
+  return {
+    targetId: null, attackerId: null, amount: 0, rawTotal: 0, applied: 0, type: null,
+    damageType: null, emp: false, channels: null,
+    shieldDamage: 0, armorDamage: 0, hullDamage: 0, subsystemDamage: 0,
+    before: null, after: null,
+    shieldHit: false, armorHit: false, hullHit: false, dominantLayer: null,
+    brokeShield: false, shieldAbsorbed: false, isPlayer: false,
+    pos: null, approach: null, normal: null,
+    factionId: null, factionLawful: false, targetHostileToPlayer: false,
+    subsystemId: null, origin: null, weaponId: null,
+  };
+}
+// A combat:damage listener can synchronously route another hit (volatileExposure ruptures a pod a
+// thermal hit just pushed past its threshold). One shared record let that nested emit rewrite the
+// outer hit's attacker/amounts under the listeners still waiting on the outer emit, so the record
+// is pooled per dispatch depth: depth 0 (every ordinary hit) reuses one stable object — no
+// allocation — and a nested route takes the next slot until its own emit returns.
+const _damageEmitPool = [createDamageEmitPayload()];
+let _damageEmitDepth = 0;
+function acquireDamageEmitPayload() {
+  if (_damageEmitDepth >= _damageEmitPool.length) _damageEmitPool.push(createDamageEmitPayload());
+  const dp = _damageEmitPool[_damageEmitDepth];
+  _damageEmitDepth += 1;
+  return dp;
+}
+
+function resolveDirectionalArmor(target, attacker, packet) {
+  const config = target && target.data && target.data.directionalArmor;
+  if (!config || typeof config !== 'object') return DIRECTIONAL_NEUTRAL;
+  const from = (packet && packet.hit && packet.hit.pos) || (attacker && attacker.pos) || null;
+  if (!from || !target.pos) return DIRECTIONAL_NEUTRAL;
+  const dx = (Number(from.x) || 0) - (Number(target.pos.x) || 0);
+  const dz = (Number(from.z) || 0) - (Number(target.pos.z) || 0);
+  if (!(Math.hypot(dx, dz) > 1e-9)) return DIRECTIONAL_NEUTRAL;
+  const facing = Number(target.rot) || 0;
+  const delta = Math.abs(Math.atan2(Math.sin(Math.atan2(dz, dx) - facing), Math.cos(Math.atan2(dz, dx) - facing)));
+  const frontHalf = (clampDirectionalArc(config.frontArcDeg, 150) * Math.PI / 180) / 2;
+  const rearHalf = (clampDirectionalArc(config.rearArcDeg, 150) * Math.PI / 180) / 2;
+  if (delta <= frontHalf) return { factor: clampDirectionalMult(config.frontMult, 1), arc: 'front' };
+  if (delta >= Math.PI - rearHalf) return { factor: clampDirectionalMult(config.rearMult, 1), arc: 'rear' };
+  return DIRECTIONAL_NEUTRAL;
+}
+
+function clampDirectionalArc(value, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(180, Math.max(0, n));
+}
+
+function clampDirectionalMult(value, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(10, Math.max(0, n));
+}
+
+// PQ-015: seed the selected combat subsystem as the hit target for player focus-fire. Pure guard,
+// no writes to sim state beyond the transient packet it was handed. See routeDamage call site.
+function applySelectedComponentHit(state, input, target, runtime, packet) {
+  const attackerId = input && input.attackerId;
+  if (attackerId == null || state == null || attackerId !== state.playerId) return;
+  const player = state.player;
+  if (!player || target.id !== player.targetId) return;
+  const sel = state.ui && state.ui.componentSelection;
+  if (!sel || sel.kind !== 'subsystem' || sel.targetId !== target.id || sel.componentId == null) return;
+  if (packet.hit && packet.hit.subsystemId != null) return; // never override an explicit projectile hit
+  const sub = runtime && runtime.subsystems ? runtime.subsystems[sel.componentId] : null;
+  if (!sub || sub.destroyed) return; // not serviceable → fall back to geometric selection (truthful)
+  if (!packet.hit) packet.hit = {};
+  packet.hit.subsystemId = sel.componentId;
+}
+
+// PIC-31 — damaged-hull vent. The damage bands are owned by the integrity instrument
+// (src/ui/views/hullIntegrity.js `stepIntegrity`: damaged is hull/hullMax in [0.25, 0.55)).
+// This module never changes them; it only mirrors the entry edge so a hit that carries a
+// hull below it starts exactly one vent record attached to the hit side. Pure geometry:
+// no RNG, no wall clock — the same hit always yields the same side.
+export const HULL_VENT_BAND_LO = 0.25;
+export const HULL_VENT_BAND_HI = 0.55;
+
+export function resolveHullVentSide(target, hit) {
+  const rot = Number(target && target.rot) || 0;
+  const fx = Math.cos(rot);
+  const fz = Math.sin(rot);
+  const px = Number(target && target.pos && target.pos.x) || 0;
+  const pz = Number(target && target.pos && target.pos.z) || 0;
+  if (hit && hit.pos && Number.isFinite(hit.pos.x) && Number.isFinite(hit.pos.z)) {
+    const cross = fx * (Number(hit.pos.z) - pz) - fz * (Number(hit.pos.x) - px);
+    if (Math.abs(cross) > 1e-6) return cross > 0 ? 1 : -1;
+  }
+  const approach = hit && hit.approach;
+  if (approach && Number.isFinite(approach.x) && Number.isFinite(approach.z)) {
+    const cross = fx * Number(approach.z) - fz * Number(approach.x);
+    if (Math.abs(cross) > 1e-6) return cross > 0 ? 1 : -1;
+  }
+  const id = target && target.id;
+  const parity = typeof id === 'number' ? Math.abs(id | 0) % 2 : String(id == null ? '' : id).length % 2;
+  return parity === 0 ? 1 : -1;
+}
+
+export function updateHullVent(state, target, runtime, packet, beforeHull, afterHull) {
+  if (!runtime || typeof runtime !== 'object') return null;
+  const max = Number(target && target.hullMax) || 0;
+  if (!(max > 0)) {
+    runtime.hullVent = null;
+    return null;
+  }
+  const beforeF = Math.max(0, Number(beforeHull) || 0) / max;
+  const afterF = Math.max(0, Number(afterHull) || 0) / max;
+  if (!(afterF > 0) || (target && target.alive === false)) {
+    if (runtime.hullVent != null) {
+      runtime.hullVent = null;
+      wakeStatusAttachedLoop(state);
+    } else {
+      runtime.hullVent = null;
+    }
+    return null;
+  }
+  if (beforeF >= HULL_VENT_BAND_HI && afterF < HULL_VENT_BAND_HI) {
+    const hit = packet && packet.hit;
+    const vent = {
+      side: resolveHullVentSide(target, hit),
+      x: hit && hit.pos && Number.isFinite(hit.pos.x) ? Number(hit.pos.x) : Number(target.pos && target.pos.x) || 0,
+      z: hit && hit.pos && Number.isFinite(hit.pos.z) ? Number(hit.pos.z) : Number(target.pos && target.pos.z) || 0,
+      startedTick: Number.isInteger(state && state.tick) ? state.tick : 0,
+    };
+    runtime.hullVent = vent;
+    wakeStatusAttachedLoop(state);
+    return vent;
+  }
+  return runtime.hullVent || null;
+}
+
+// PIC-31 — the status-attached loop sleeps while its victim flow is empty and wakes
+// on statusNextPendingSeq (owned by src/combat/statuses.js). A vent opening or
+// clearing during that sleep must wake it the same way, or a hull hurt quietly
+// would never show its trouble. Deterministic: called only from the damage router
+// on real latch transitions, so the same hits always bump the same count.
+function wakeStatusAttachedLoop(state) {
+  const combat = state && state.combat;
+  if (combat && Number.isInteger(combat.statusNextPendingSeq)) {
+    combat.statusNextPendingSeq += 1;
+  }
+}
+
+export function normalizeDamagePacket(packet = {}, channelOrder = ['kinetic', 'thermal', 'ion', 'plasma', 'phase']) {
+  const channels = emptyChannels(channelOrder);
+  for (const channel of channelOrder) channels[channel] = finiteNonNegative(packet.channels && packet.channels[channel]);
+  return {
+    schemaVersion: 1,
+    channels,
+    penetration: clamp01(Number(packet.penetration) || 0),
+    impulse: normalizeImpulse(packet.impulse),
+    tumbleTorque: finiteNonNegative(packet.tumbleTorque),
+    heat: finiteNonNegative(packet.heat),
+    statuses: Array.isArray(packet.statuses) ? packet.statuses
+      .filter((status) => status && typeof status.id === 'string')
+      .map((status) => ({ id: status.id, stacks: Math.max(1, Math.floor(status.stacks || 1)), durationTicks: integerOrUndefined(status.durationTicks) })) : [],
+    hit: normalizeHit(packet.hit),
+    subsystemShare: packet.subsystemShare == null ? null : clamp01(Number(packet.subsystemShare) || 0),
+    shieldBypass: clamp01(Number(packet.shieldBypass) || 0),
+    flags: packet.flags && typeof packet.flags === 'object' ? { ...packet.flags } : {},
+    source: packet.source && typeof packet.source === 'object' ? { ...packet.source } : null,
+    // Present only on continuous (per-tick) packets, so every other packet keeps its shape.
+    ...(packet.armorFlatScale == null ? null : { armorFlatScale: clamp01(Number(packet.armorFlatScale) || 0) }),
+  };
+}
+
+export function scalarHitToDamagePacket({ damage = 0, damageType = 'kinetic', pos = null, approach = null, normal = null, penetration = 0, impulse = null, tumbleTorque = 0, heat = 0, statuses = [], source = null, subsystemShare = null, shieldBypass = 0 } = {}) {
+  const amount = Math.max(0, Number(damage) || 0);
+  const channels = { kinetic: 0, thermal: 0, ion: 0, plasma: 0, phase: 0 };
+  switch (damageType) {
+    case 'kinetic': channels.kinetic = amount; break;
+    case 'thermal': channels.thermal = amount; break;
+    case 'ion': channels.ion = amount; break;
+    case 'plasma': channels.plasma = amount; break;
+    case 'phase': channels.phase = amount; break;
+    case 'energy': channels.thermal = amount * 0.72; channels.ion = amount * 0.28; break;
+    case 'explosive': channels.kinetic = amount * 0.65; channels.thermal = amount * 0.35; break;
+    // EMP (spec §9): pure ion disruption — couples through shields to fry subsystems. The weapon's
+    // subsystemShare routes this to components (drive/weapon/power), not the hull.
+    case 'emp': channels.ion = amount; break;
+    default: channels.thermal = amount; break;
+  }
+  return {
+    channels,
+    penetration: clamp01(Number(penetration) || 0),
+    impulse,
+    tumbleTorque: Math.max(0, Number(tumbleTorque) || 0),
+    heat: Math.max(0, Number(heat) || 0),
+    statuses,
+    hit: (pos || approach || normal) ? {
+      pos: pos ? { x: Number(pos.x) || 0, z: Number(pos.z) || 0 } : null,
+      approach: approach ? { x: Number(approach.x) || 0, z: Number(approach.z) || 0 } : null,
+      normal: normal ? { x: Number(normal.x) || 0, z: Number(normal.z) || 0 } : null,
+    } : null,
+    source: source && typeof source === 'object' ? { ...source } : null,
+    // Subsystem-targeting + shield coupling (EMP/disable verb, spec §9). subsystemShare 1.0 = all
+    // damage to components; shieldBypass 1.0 = ignores shields entirely.
+    subsystemShare: subsystemShare == null ? null : clamp01(Number(subsystemShare) || 0),
+    shieldBypass: clamp01(Number(shieldBypass) || 0),
+  };
+}
+
+export function legacyHitToDamagePacket(input = {}) {
+  return scalarHitToDamagePacket(input);
+}
+
+function applyArmorFlat(channels, flat, order) {
+  const total = sumChannels(channels);
+  if (!(total > 0) || !(flat > 0)) return { ...channels };
+  const remaining = Math.max(0, total - Math.min(total, flat));
+  return scaleChannels(channels, remaining / total, order);
+}
+
+// Allocation-free variants of the channel helpers above. The damage router is called once per
+// projectile hit and previously allocated ~6 transient channel objects per call (postShieldRaw,
+// penetratingRaw, postFlatRaw, terminalRaw, subsystemInput, hullInput). These *Into helpers write
+// into a caller-provided target object that is zeroed across the active channel order first, so the
+// arithmetic is byte-identical to the allocating versions (same values, same iteration order). The
+// caller owns a small pool of stable scratch channel objects (see ROUTE_SCRATCH below) so no per-hit
+// garbage is produced.
+function emptyChannelsInto(order, target) {
+  for (const channel of order) target[channel] = 0;
+  return target;
+}
+
+function scaleChannelsInto(channels, scale, order, target) {
+  for (const channel of order) target[channel] = Math.max(0, (channels[channel] || 0) * scale);
+  return target;
+}
+
+// Replicates applyArmorFlat's arithmetic but writes into `target` instead of allocating. When there
+// is no flat armor to apply, the result is a copy of the input channels (same as the allocating
+// path's `{ ...channels }`), realized here by copying each channel value into the target.
+function applyArmorFlatInto(channels, flat, order, target) {
+  const total = sumChannels(channels);
+  if (!(total > 0) || !(flat > 0)) {
+    for (const channel of order) target[channel] = channels[channel] || 0;
+    return target;
+  }
+  const remaining = Math.max(0, total - Math.min(total, flat));
+  return scaleChannelsInto(channels, remaining / total, order, target);
+}
+
+function addProportional(target, weights, amount, order) {
+  const total = sumChannels(weights);
+  if (!(amount > 0)) return target;
+  if (!(total > 0)) {
+    target.kinetic = (target.kinetic || 0) + amount;
+    return target;
+  }
+  for (const channel of order) target[channel] = (target[channel] || 0) + amount * ((weights[channel] || 0) / total);
+  return target;
+}
+
+function resolveImpulseVector(target, attacker, impulse, hit) {
+  if (!impulse) return null;
+  if (Number.isFinite(impulse.x) || Number.isFinite(impulse.z)) {
+    const x = Number(impulse.x) || 0, z = Number(impulse.z) || 0;
+    return x || z ? { x, z } : null;
+  }
+  const magnitude = Math.max(0, Number(impulse.magnitude) || 0);
+  if (!(magnitude > 0)) return null;
+  let dx = Number(impulse.dirX), dz = Number(impulse.dirZ);
+  if ((!Number.isFinite(dx) || !Number.isFinite(dz)) && hit && hit.approach) {
+    dx = Number(hit.approach.x);
+    dz = Number(hit.approach.z);
+  }
+  if (!Number.isFinite(dx) || !Number.isFinite(dz)) {
+    dx = (target.pos && target.pos.x || 0) - (attacker && attacker.pos && attacker.pos.x || 0);
+    dz = (target.pos && target.pos.z || 0) - (attacker && attacker.pos && attacker.pos.z || 0);
+  }
+  const length = Math.hypot(dx, dz) || 1;
+  return { x: dx / length * magnitude, z: dz / length * magnitude };
+}
+
+function normalizeImpulse(impulse) {
+  if (!impulse || typeof impulse !== 'object') return null;
+  if (Number.isFinite(impulse.x) || Number.isFinite(impulse.z)) return { x: Number(impulse.x) || 0, z: Number(impulse.z) || 0 };
+  return {
+    magnitude: Math.max(0, Number(impulse.magnitude) || 0),
+    dirX: Number.isFinite(impulse.dirX) ? impulse.dirX : undefined,
+    dirZ: Number.isFinite(impulse.dirZ) ? impulse.dirZ : undefined,
+  };
+}
+
+function normalizeHit(hit) {
+  if (!hit || typeof hit !== 'object') return null;
+  const out = {};
+  if (hit.pos) out.pos = { x: Number(hit.pos.x) || 0, z: Number(hit.pos.z) || 0 };
+  const approach = normalizeHitDirection(hit.approach);
+  const normal = normalizeHitDirection(hit.normal);
+  if (approach) out.approach = approach;
+  if (normal) out.normal = normal;
+  if (typeof hit.subsystemId === 'string') out.subsystemId = hit.subsystemId;
+  return Object.keys(out).length ? out : null;
+}
+
+function normalizeHitDirection(value) {
+  if (!value || typeof value !== 'object') return null;
+  const x = Number(value.x) || 0;
+  const z = Number(value.z) || 0;
+  const length = Math.hypot(x, z);
+  if (length < 1e-8) return null;
+  return { x: x / length, z: z / length };
+}
+
+function snapshotVitals(entity, runtime) {
+  return {
+    shield: Math.max(0, Number(entity.shield) || 0),
+    shieldMax: Math.max(0, Number(entity.shieldMax) || 0),
+    armor: Math.max(0, Number(entity.armorHp) || 0),
+    armorMax: Math.max(0, Number(entity.armorMax) || 0),
+    hull: Math.max(0, Number(entity.hull) || 0),
+    hullMax: Math.max(0, Number(entity.hullMax) || 0),
+    heat: Math.max(0, Number(runtime && runtime.heat) || 0),
+  };
+}
+
+function dominantChannel(channels, order) {
+  let best = order[0], amount = -1;
+  for (const channel of order) if ((channels[channel] || 0) > amount) { amount = channels[channel] || 0; best = channel; }
+  return best;
+}
+
+function emptyChannels(order) {
+  const out = {};
+  for (const channel of order) out[channel] = 0;
+  return out;
+}
+
+function scaleChannels(channels, scale, order) {
+  const out = {};
+  for (const channel of order) out[channel] = Math.max(0, (channels[channel] || 0) * scale);
+  return out;
+}
+
+function sumChannels(channels) {
+  let sum = 0;
+  for (const amount of Object.values(channels || {})) if (amount > 0 && Number.isFinite(amount)) sum += amount;
+  return sum;
+}
+
+function positiveMultiplier(value) {
+  return Number.isFinite(value) ? Math.max(0.000001, value) : 1;
+}
+
+function finiteNonNegative(value) {
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+function integerOrUndefined(value) {
+  return Number.isInteger(value) && value > 0 ? value : undefined;
+}
+
+function hasImpulse(impulse) {
+  return !!resolveImpulseVector({ pos: { x: 0, z: 0 } }, null, impulse);
+}
+
+function playerDockProtected(state, target) {
+  if (!state || !target || target.id !== state.playerId) return false;
+  if (target.flags && target.flags.docked) return true;
+  return !!(state.ui && state.ui.docked);
+}
+
+function clamp01(value) {
+  return value < 0 ? 0 : value > 1 ? 1 : value;
+}
+
+function clamp(value, min, max) {
+  return value < min ? min : value > max ? max : value;
+}

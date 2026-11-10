@@ -1,0 +1,1639 @@
+// Tilted top-down chase camera (ARCHITECTURE §0.14): follows player POSITION only (never yaw,
+// anti-nausea), with damped follow, velocity look-ahead, aim bias, and trauma-based shake.
+// Phase 1: adds a subtle camera roll that counter-leans into the ship's bank so high-G turns feel
+// dynamic without violating the no-yaw-follow rule (we never rotate the camera's heading).
+import * as THREE from 'three';
+import { createTrailerStaging } from './trailerStaging.js';
+import { damp } from '../core/math.js';
+import { globalToFrame } from '../core/coordinates.js';
+import { isHostileToPlayer } from '../systems/scannerReadModel.js';
+import { interpolateGlobalToFrame, readFrameOrigin } from './frameCoordinates.js';
+import { adoptFlybyHandoffDirector, CAMERA_DIRECTOR_COMBAT_MAX_ZOOM, CameraDirectorMode, createCameraDirector } from './cameraDirector.js';
+import { createCameraGlide, resetCameraGlide, stepCameraGlide } from './cameraGlide.js';
+import {
+  readOwnedExceptionalSpeed,
+  readVelocityLanguage,
+  resolveExceptionalSpeed,
+  VL_EXCEPTIONAL_SPEED_RATIO_MAX,
+} from './velocityLanguage.js';
+import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
+import { COLLISION_CUE } from '../audio/audioSystem.js';
+import { screenShakeScale, traumaFromContact } from './feel.js';
+import { entityWeaponBlocked } from '../combat/runtime.js';
+import { laneWriteSetting } from '../core/simLaneCommands.js';
+import {
+  createLatchSpring,
+  stepBoostLag,
+  stepLatchSpring,
+} from '../presentation/flightOverheadMath.js';
+import { resolveSteeringView, racingRigOf } from '../systems/racingSteer.js';
+import { createRacingCameraBlend, stepRacingCameraBlend } from './racingCameraBlend.js';
+import { isSwarmControls } from '../data/swarmControls.js';
+// The settled chase-framing derivation (speed-zoom, threat/tether/gyre composition,
+// safe-rect, zoom ceilings) lives in src/render/tabletopPolicy.js — a Three-free module
+// the sim-lane projector (tableWorldToScreen) also consumes, so the worker's analytic
+// frustum and this rig read ONE source. Re-exported here for every existing importer.
+import {
+  chaseCompositionMotionScale,
+  ACTIVE_ATTACKER_LOOKAHEAD_SCALE,
+  CAMERA_ZOOM_MIN,
+  CAMERA_ZOOM_MAX,
+  COMPOSITION_ZOOM_MAX,
+  SPEED_ZOOM_SPEED_SMOOTHING_S,
+  SPEED_ZOOM_MIN,
+  CHASE_ZOOM_CLOSE,
+  recenterBiasScale,
+  resolveAimLead,
+  clampFocusToPlayerSafeRect,
+  resolveSpeedZoomFactor,
+  resolveExceptionalSpeedZoomFactor,
+  stepBoostZoomFactor,
+  resolveInitialChaseZoom,
+  playerHasActiveAttackerFraming,
+  resolveCombatCompositionZoomCap,
+  resolveChaseComposition,
+  DEFAULT_ZOOM,
+  CONTEXT_ZOOM_LERP,
+  COMPOSITION_BIAS_LERP,
+  COMPOSITION_BIAS_SLEW,
+  LOOKAHEAD_LEAD_S,
+  LOOKAHEAD_LEAD_MAX_WU,
+  LOOKAHEAD_LEAD_SMOOTHING_S,
+} from './tabletopPolicy.js';
+export {
+  chaseCompositionMotionScale,
+  CONTEXT_ZOOM_MAX,
+  resolveThreatZoomBias,
+  CONTEXT_ZOOM_DAMP_HALF_LIFE_S,
+  ACTIVE_ATTACKER_LOOKAHEAD_SCALE,
+  COMPOSITION_THREAT_STICK_S,
+  COMPOSITION_THREAT_STICK_CLOSER,
+  CAMERA_ZOOM_MIN,
+  CAMERA_ZOOM_MAX,
+  COMPOSITION_ZOOM_MAX,
+  GROUP_FIT_RANGE_WU,
+  GYRE_COMPOSITION_ZOOM_MAX,
+  GYRE_COMPOSITION_RELEASE_S,
+  GYRE_BOWL_COMPOSITION_ZOOM_MAX,
+  SPEED_ZOOM_SPEED_SMOOTHING_S,
+  SPEED_ZOOM_SAMPLE_INTERVAL,
+  SPEED_ZOOM_MIN,
+  SPEED_ZOOM_MAX,
+  PHYSICS_EARNED_SPEED_ZOOM_MAX,
+  PHYSICS_EARNED_SPEED_RATIO_MAX,
+  BOOST_CAMERA_ZOOM_TARGET,
+  BOOST_CAMERA_ZOOM_RISE,
+  BOOST_CAMERA_ZOOM_FALL,
+  BOOST_CAMERA_ZOOM_LERP,
+  CHASE_ZOOM_DEFAULT,
+  CHASE_ZOOM_CLOSE,
+  recenterBiasScale,
+  clampFocusToPlayerSafeRect,
+  resolveSpeedZoomFactor,
+  resolveExceptionalSpeedZoomFactor,
+  stepBoostZoomFactor,
+  resolveInitialChaseZoom,
+  playerHasActiveAttackerFraming,
+  resolveCombatCompositionZoomCap,
+  resolveChaseComposition,
+} from './tabletopPolicy.js';
+
+// M2 floating origin: chase focus / camera pose are frame-local. Entity.pos stays galactic-global.
+const _frameOriginScratch = { x: 0, z: 0 };
+const _playerLocalScratch = { x: 0, z: 0 };
+const _playerLocalProxy = { pos: _playerLocalScratch };
+
+/**
+ * Resolve the frame-local anchor the chase camera tracks. The presented mesh pose (frame-local,
+ * already interpolated across the same snapshot-fence span syncEntityViews used this frame) is the
+ * only anchor that cannot disagree with the drawn hull: sim prevPos→pos covers exactly one tick,
+ * while a presented pack can span several on a catch-up frame — anchoring to the narrower span reads
+ * as the hull jigging forward/back against the camera. Without a presented pose, fall back to the
+ * same prevPos→pos interpolation the fence would produce for a single-tick pack.
+ */
+function resolvePlayerAnchorLocal(p, alpha, frameOrigin, presentedLocal, out) {
+  if (presentedLocal && Number.isFinite(presentedLocal.x) && Number.isFinite(presentedLocal.z)) {
+    out.x = presentedLocal.x;
+    out.z = presentedLocal.z;
+    return out;
+  }
+  const prevValid = p.prevPos && Number.isFinite(p.prevPos.x) && Number.isFinite(p.prevPos.z);
+  const distSq = prevValid ? (p.pos.x - p.prevPos.x) ** 2 + (p.pos.z - p.prevPos.z) ** 2 : 0;
+  if (prevValid && alpha < 1 && distSq < 400 * 400) {
+    return interpolateGlobalToFrame(p.prevPos, p.pos, alpha, frameOrigin, out);
+  }
+  return globalToFrame(p.pos, frameOrigin, out);
+}
+
+// Chase lookAt retain: follow() writes eye then lookAt every frame. Once focus/zoom/kick
+// settle, eye+target are bit-identical and Three Object3D.lookAt still pays
+// updateWorldMatrix + Matrix4.lookAt + setFromRotationMatrix. Cache the base look quat and
+// restore it on unchanged eye/target; roll/shake still post-multiply after. Soft-GPU fps not claimed.
+let CHASE_LOOKAT_RETAIN = true;
+export function setChaseLookAtRetainForBench(enabled) {
+  CHASE_LOOKAT_RETAIN = enabled !== false;
+  return CHASE_LOOKAT_RETAIN;
+}
+export function getChaseLookAtRetainForBench() {
+  return CHASE_LOOKAT_RETAIN !== false;
+}
+
+// Quiet chase drift used to miss lookAt retain every frame: eye/target floats creep
+// by ≪ chase distance, so bit-identical keys never matched in flight (#72 settled-only).
+// Quantize the retain KEY (not the lookAt inputs) to the same 0.25 WU cell as
+// authored-instance / presentation-query / clearance-floor retain. Exact floats still
+// drive Three lookAt on cell change. At typical chase distance (~100–300 WU) a one-cell
+// delay is sub-degree. Soft-GPU fps not claimed.
+const CHASE_LOOKAT_RETAIN_POS_QUANT_WU = 0.25;
+let CHASE_LOOKAT_RETAIN_POS_QUANTIZE = true;
+export function setChaseLookAtRetainPosQuantizeForBench(enabled) {
+  CHASE_LOOKAT_RETAIN_POS_QUANTIZE = enabled !== false;
+  return CHASE_LOOKAT_RETAIN_POS_QUANTIZE;
+}
+export function getChaseLookAtRetainPosQuantizeForBench() {
+  return CHASE_LOOKAT_RETAIN_POS_QUANTIZE !== false;
+}
+function quantizeChaseLookAtRetainPos(value) {
+  if (CHASE_LOOKAT_RETAIN_POS_QUANTIZE === false) return value;
+  const q = CHASE_LOOKAT_RETAIN_POS_QUANT_WU;
+  return Math.round(value / q) * q;
+}
+
+/**
+ * Apply chase look-at. Caller must set cam.position to (eyeX,eyeY,eyeZ) first.
+ * cache bag (per camera): { eyeX, eyeY, eyeZ, targetX, targetZ, baseQuat }.
+ * Retain keys may be quantized (0.25 WU); lookAt always uses exact floats.
+ * Returns true when Three lookAt ran; false when the cached base quat was restored.
+ */
+export function applyChaseLookAt(cam, eyeX, eyeY, eyeZ, targetX, targetZ, cache = null) {
+  if (!cam) return false;
+  const tx = Number.isFinite(targetX) ? targetX : 0;
+  const tz = Number.isFinite(targetZ) ? targetZ : 0;
+  const qEyeX = quantizeChaseLookAtRetainPos(eyeX);
+  const qEyeY = quantizeChaseLookAtRetainPos(eyeY);
+  const qEyeZ = quantizeChaseLookAtRetainPos(eyeZ);
+  const qTx = quantizeChaseLookAtRetainPos(tx);
+  const qTz = quantizeChaseLookAtRetainPos(tz);
+  if (CHASE_LOOKAT_RETAIN && cache && cache.baseQuat
+      && qEyeX === cache.eyeX && qEyeY === cache.eyeY && qEyeZ === cache.eyeZ
+      && qTx === cache.targetX && qTz === cache.targetZ) {
+    cam.quaternion.copy(cache.baseQuat);
+    return false;
+  }
+  cam.lookAt(tx, 0, tz);
+  if (cache) {
+    if (!cache.baseQuat) cache.baseQuat = cam.quaternion.clone();
+    else cache.baseQuat.copy(cam.quaternion);
+    cache.eyeX = qEyeX;
+    cache.eyeY = qEyeY;
+    cache.eyeZ = qEyeZ;
+    cache.targetX = qTx;
+    cache.targetZ = qTz;
+  }
+  return true;
+}
+const SHAKE_POS_MAX = 1.55;
+// Shake noise resample interval. Fixed so the shake's frequency content is the same on a 30 Hz and a
+// 144 Hz display; only the amplitude envelope follows trauma decay. 32 Hz reads as a hard rattle
+// without aliasing into a visible strobe at the low end.
+const SHAKE_NOISE_STEP_S = 1 / 32;
+const MOTION_REDUCE_SHAKE_SCALE = 0.25;
+export const MASSLINE_RELEASE_ZOOM_MIN = 0.06;
+export const MASSLINE_RELEASE_ZOOM_MAX = 0.14;
+export const MASSLINE_RELEASE_ZOOM_DURATION_S = 0.65;
+const TRAUMA_DECAY_PER_S = 1.8;
+const MAX_MOMENTUM_TRAUMA = 0.5;
+// PQ-159.00 impact kick: a DIRECTED, translational jolt — the whole frame slides a few world units
+// in the direction the hull was knocked, then eases back. Scalar trauma shake cannot express a
+// shove direction; this channel is fed only by the momentum-scaled collision beat in feel.js.
+// Envelope/applied split mirrors the FOV punch doctrine: the authored impulse is the envelope, the
+// camera-carried offset rises toward it at a bounded rate, and the envelope only decays once the
+// applied offset has caught the peak — spectacle lands in full, the projection never thrashes.
+export const IMPACT_KICK_RISE_WU_S = 110;   // applied offset rate limit; a max kick peaks in ~2 frames
+export const IMPACT_KICK_DECAY_PER_S = 7.5; // envelope decay once the applied offset has caught it
+export const IMPACT_KICK_WU_MAX = 4;        // absolute displacement ceiling, world units
+// PQ-159.02 camera hold / death cam. Presentation-only: follow pose freezes, sim state is untouched.
+export const CAMERA_HOLD_S = 0.15;
+export const DEATH_CAM_HOLD_S = 1.2;
+export const DEATH_CAM_PUSH_ZOOM = 0.22;
+
+// PQ-159.03 photo mode. Free camera + exposure live on the chase controller; filters stay off
+// unless the player turns them on. Capture lives on the pause surface.
+export const PHOTO_EXPOSURE_DEFAULT = 1;
+export const PHOTO_EXPOSURE_MIN = 0.35;
+export const PHOTO_EXPOSURE_MAX = 2.2;
+export const PHOTO_FILTERS_DEFAULT = false;
+// FB-085 photo filters: the looks' authored parameters live in ONE place — PHOTO_FILTER_LOOKS in
+// src/render/post/spaceRenderGraph.js, whose first entry is the default — and only the selection
+// half (default id, cycle order) lives here beside the photo-mode state it feeds.
+export const PHOTO_FILTER_LOOK_DEFAULT = 'chrome';
+export const PHOTO_FILTER_LOOK_ORDER = Object.freeze(['chrome', 'warm', 'mono']);
+
+/** The next authored look id in cycle order (photo overlay's Look control). */
+export function cyclePhotoFilterLook(current) {
+  const order = PHOTO_FILTER_LOOK_ORDER;
+  const at = order.indexOf(current);
+  return order[(at + 1 + order.length) % order.length];
+}
+export const PHOTO_PAN_SPEED_WU_S = 90;
+export const PHOTO_MODE_SEED = 15903;
+/** Open the chase frame a little so a store still has air around the hull. */
+export const PHOTO_STORE_ZOOM_FACTOR = 1.18;
+const _KICK_AXES = Object.freeze([
+  Object.freeze({ env: 'envX', app: 'x' }),
+  Object.freeze({ env: 'envZ', app: 'z' }),
+]);
+
+/**
+ * Peak-preserving kick integrator (allocation-free; the kick record is mutated in place).
+ * `kick = { envX, envZ, x, z }`: envelope is the summed authored impulse per axis, x/z are what the
+ * camera carries. Envelope decay waits until applied has caught the peak; applied is rate-limited
+ * toward the envelope in both directions so re-kicks and recovery share one slew ceiling.
+ */
+export function stepCameraKick(kick, dt) {
+  if (!kick) return kick;
+  const step = Number.isFinite(dt) ? Math.max(0, dt) : 0;
+  const maxStep = IMPACT_KICK_RISE_WU_S * step;
+  for (const axis of _KICK_AXES) {
+    let env = Number.isFinite(kick[axis.env]) ? kick[axis.env] : 0;
+    let app = Number.isFinite(kick[axis.app]) ? kick[axis.app] : 0;
+    const caught = Math.abs(app - env) <= Math.max(1e-4, maxStep * 0.5);
+    if (caught || Math.abs(app) >= Math.abs(env) - 1e-4) {
+      env = damp(env, 0, IMPACT_KICK_DECAY_PER_S, step);
+      if (Math.abs(env) < 0.001) env = 0;
+    }
+    if (env > app) app = Math.min(env, app + maxStep);
+    else if (env < app) app = Math.max(env, app - maxStep);
+    if (Math.abs(app) < 0.001) app = 0;
+    kick[axis.env] = env;
+    kick[axis.app] = app;
+  }
+  return kick;
+}
+
+export function isPhotoModeActive(state) {
+  return !!(state && state.render && state.render.photoMode && state.render.photoMode.active);
+}
+
+/**
+ * FB-085 — push the photo-mode filter truth onto the render graph's grade stage (the stage
+ * itself: src/render/post/spaceRenderGraph.js setPhotoFilters). Reads only; safe when the graph
+ * route is not the live one (no renderGraph published, an older graph, or a probe harness).
+ * Exported for the focused pin (test/fb-photo-filters.test.mjs).
+ */
+export function syncPhotoFilterStage(state) {
+  const graph = state && state.render && state.render.renderGraph;
+  if (!graph || typeof graph.setPhotoFilters !== 'function') return;
+  const photo = state.render.photoMode;
+  graph.setPhotoFilters({
+    enabled: !!(photo && photo.active && photo.filters === true),
+    look: photo && typeof photo.filterLook === 'string' ? photo.filterLook : null,
+  });
+}
+
+export function createPhotoModeState(state, overrides = {}) {
+  const cam = state && state.camera;
+  const focus = cam && cam.focus;
+  const exposure = Number.isFinite(overrides.exposure)
+    ? Math.max(PHOTO_EXPOSURE_MIN, Math.min(PHOTO_EXPOSURE_MAX, overrides.exposure))
+    : PHOTO_EXPOSURE_DEFAULT;
+  return {
+    active: true,
+    hideHud: true,
+    freeCamera: overrides.freeCamera !== false,
+    filters: overrides.filters === true,
+    filterLook: typeof overrides.filterLook === 'string' ? overrides.filterLook : PHOTO_FILTER_LOOK_DEFAULT,
+    exposure,
+    focusX: focus && Number.isFinite(focus.x) ? focus.x : finiteOr(overrides.focusX, 0),
+    focusZ: focus && Number.isFinite(focus.z) ? focus.z : finiteOr(overrides.focusZ, 0),
+    zoom: finiteOr(overrides.zoom, finiteOr(cam && cam.zoom, DEFAULT_ZOOM)),
+    inputX: 0,
+    inputZ: 0,
+    zoomInput: 0,
+    panSpeed: PHOTO_PAN_SPEED_WU_S,
+  };
+}
+
+export function applyPhotoPresentation(state, photo) {
+  if (!state) return photo || null;
+  if (!state.render) state.render = {};
+  const next = photo || createPhotoModeState(state);
+  next.active = true;
+  next.hideHud = true;
+  next.freeCamera = next.freeCamera !== false;
+  next.filters = next.filters === true;
+  if (!Number.isFinite(next.exposure)) next.exposure = PHOTO_EXPOSURE_DEFAULT;
+  state.render.photoMode = next;
+  const video = state.settings && (state.settings.video || (state.settings.video = {}));
+  if (video) {
+    if (!next._prevVideo) {
+      next._prevVideo = {
+        bloom: video.bloom,
+        exposure: video.exposure,
+        grade: video.grade,
+        vignette: video.vignette,
+        grain: video.grain,
+      };
+    }
+    laneWriteSetting(state, 'settings.video.bloom', next.filters === true);
+    laneWriteSetting(state, 'settings.video.exposure', next.exposure);
+    if (next.filters !== true) {
+      laneWriteSetting(state, 'settings.video.grade', 0);
+      laneWriteSetting(state, 'settings.video.vignette', 0);
+      laneWriteSetting(state, 'settings.video.grain', 0);
+    }
+  }
+  composePhotoStoreFrame(state, next);
+  return next;
+}
+
+/** Store-page composition: HUD-off, filters off, trauma cleared, frame opened so the still sells. */
+export function composePhotoStoreFrame(state, photo) {
+  const record = photo || (state && state.render && state.render.photoMode) || null;
+  if (!record) return null;
+  if (!record._storeComposed) {
+    const base = finiteOr(record.zoom, finiteOr(state && state.camera && state.camera.zoom, DEFAULT_ZOOM));
+    record.zoom = Math.max(
+      CAMERA_ZOOM_MIN,
+      Math.min(CAMERA_ZOOM_MAX, base * PHOTO_STORE_ZOOM_FACTOR),
+    );
+    record.filters = false;
+    record._storeComposed = true;
+  }
+  record.hideHud = true;
+  record.freeCamera = record.freeCamera !== false;
+  if (!Number.isFinite(record.exposure)) record.exposure = PHOTO_EXPOSURE_DEFAULT;
+  if (state && state.camera) state.camera.trauma = 0;
+  return record;
+}
+
+export function restorePhotoPresentation(state) {
+  const photo = state && state.render && state.render.photoMode;
+  const video = state && state.settings && state.settings.video;
+  if (photo && photo._prevVideo && video) {
+    const prev = photo._prevVideo;
+    laneWriteSetting(state, 'settings.video.bloom', prev.bloom);
+    // Wire folds null for the absent-key restore (readers treat null like undefined).
+    laneWriteSetting(state, 'settings.video.exposure', prev.exposure !== undefined ? prev.exposure : null);
+    laneWriteSetting(state, 'settings.video.grade', prev.grade !== undefined ? prev.grade : null);
+    laneWriteSetting(state, 'settings.video.vignette', prev.vignette !== undefined ? prev.vignette : null);
+    laneWriteSetting(state, 'settings.video.grain', prev.grain !== undefined ? prev.grain : null);
+  }
+  if (state && state.render) {
+    state.render.photoMode = { active: false, hideHud: false, freeCamera: false, filters: PHOTO_FILTERS_DEFAULT };
+  }
+  return state && state.render && state.render.photoMode;
+}
+
+export function stepPhotoFreeCamera(photo, input, dt) {
+  if (!photo) return photo;
+  const step = Number.isFinite(dt) ? Math.max(0, dt) : 0;
+  const speed = finiteOr(photo.panSpeed, PHOTO_PAN_SPEED_WU_S);
+  let ax = finiteOr(photo.inputX, 0);
+  let az = finiteOr(photo.inputZ, 0);
+  if (input && input.axes) {
+    ax += finiteOr(input.axes.x, 0);
+    az += finiteOr(input.axes.z, finiteOr(input.axes.y, 0));
+  }
+  photo.focusX = finiteOr(photo.focusX, 0) + ax * speed * step;
+  photo.focusZ = finiteOr(photo.focusZ, 0) + az * speed * step;
+  const zoomDelta = finiteOr(photo.zoomInput, 0);
+  photo.zoom = Math.max(
+    CAMERA_ZOOM_MIN,
+    Math.min(CAMERA_ZOOM_MAX, finiteOr(photo.zoom, DEFAULT_ZOOM) + zoomDelta * 110 * step),
+  );
+  photo.zoomInput = 0;
+  if (Number.isFinite(photo.exposure)) {
+    photo.exposure = Math.max(PHOTO_EXPOSURE_MIN, Math.min(PHOTO_EXPOSURE_MAX, photo.exposure));
+  }
+  return photo;
+}
+
+const ZOOM_LERP = 4.0;              // /s — F5: the frame must open while the speed is still arriving
+// Outward zoom rate cap: opens smoothly at 330 wu/s (at most 5.5 wu/frame at 60 Hz).
+const ZOOM_OUT_RATE_MAX_WU_PER_S = 330;
+const ZOOM_OUT_STEP_MAX_FRAME_DT = 0.1; // a stall must not turn the rate into an 80 wu cut
+// Flyable-ship remaster stills must use this pose: tools/blender/spaceface_chase_camera.py
+// (60° tilt, 50° vertical FOV, offset (0, D*sin60, -D*cos60)). Studio beauty cameras do not count.
+
+export const CAMERA_TRAUMA_TUNING = Object.freeze({
+  decayPerSecond: TRAUMA_DECAY_PER_S,
+  maxMomentumTrauma: MAX_MOMENTUM_TRAUMA,
+  motionReduceShakeScale: MOTION_REDUCE_SHAKE_SCALE,
+  sources: Object.freeze({
+    shieldBreak: 0.3,
+    kill: 0.25,
+    cruiseDrop: 0.2,
+    slingshotRelease: 0.15,
+    playerDeath: 1.0,
+  }),
+});
+
+// FB-084 — the kill camera beat scales with victim weight and agrees with the ear. The tier
+// boundaries are the SAME acoustic-mass law the collision/kill audio resolves (COLLISION_CUE in
+// src/audio/audioSystem.js, imported below — one shared source, so a beat and its sound cannot
+// disagree about the victim). Light kills — the wasp and the throw-weight darts under the law's
+// unknown-mass nominal — get NO beat; medium keeps the authored 0.96x/250 ms kiss verbatim;
+// heavy and capital push deeper and hold longer, the capital hush already being the ear's side
+// of the same tier. The beat is push-zoom + hold only: no translational shake, no hit-stop change.
+export const KILL_BEAT_TUNING = Object.freeze({
+  tiers: Object.freeze({
+    light: Object.freeze({ factor: 0, durationS: 0, holdS: 0 }),
+    // The old one-size kill-cam kiss, kept verbatim as the medium tier.
+    medium: Object.freeze({ factor: -0.04, durationS: 0.25, holdS: 0 }),
+    heavy: Object.freeze({ factor: -0.07, durationS: 0.4, holdS: 0.2 }),
+    capital: Object.freeze({ factor: -0.1, durationS: 0.7, holdS: 0.35 }),
+  }),
+});
+
+/** Cap on the bounded kill-beat trail the camera exposes for probes and tests. */
+export const KILL_BEAT_LOG_CAP = 8;
+
+/** Tier from the victim's acoustic mass — the same boundaries COLLISION_CUE pitches by. */
+export function resolveKillBeatTier(victimMass, capital = false) {
+  if (capital === true) return 'capital';
+  const mass = Number.isFinite(victimMass) && victimMass > 0
+    ? victimMass
+    : COLLISION_CUE.ACOUSTIC_MASS_UNKNOWN;
+  if (mass >= COLLISION_CUE.MASS_HEAVY) return 'capital';
+  if (mass >= COLLISION_CUE.TIER_HEAVY_MASS) return 'heavy';
+  // The light swarm class (wasp 16 through the <=32 throw-weight darts) sits below the law's
+  // unknown-mass nominal; those deaths flicker, they do not beat.
+  if (mass >= COLLISION_CUE.ACOUSTIC_MASS_UNKNOWN) return 'medium';
+  return 'light';
+}
+
+/**
+ * Resolve one kill beat. `victimMass` is the acoustic mass the kill audio ladder keys on;
+ * `opts.capital` forces the capital tier (the feel layer's class/radius capital test). Reduced
+ * motion keeps the hold (a freeze is not vestibular motion) and drops the zoom.
+ */
+export function resolveKillBeat(victimMass, opts = {}) {
+  const tier = resolveKillBeatTier(victimMass, opts.capital === true);
+  const authored = KILL_BEAT_TUNING.tiers[tier];
+  const reducedMotion = opts.reducedMotion === true;
+  return {
+    tier,
+    factor: authored.factor,
+    durationS: authored.durationS,
+    holdS: authored.holdS,
+    reducedMotion,
+    zoom: !reducedMotion && authored.factor < 0,
+  };
+}
+
+/**
+ * Distance falloff for a camera shake raised by a WORLD event (a ship dying somewhere) rather than
+ * by something happening to the player.
+ *
+ * `camera:shake` has 13 emitters and the consumer used to read only `{ amount }`, so a shake was a
+ * scalar with no notion of where it came from — an NPC exploding at the far edge of the sector hit
+ * the player's camera exactly as hard as one exploding on their nose. Emitters that are already
+ * player-scoped by construction (player hit, player death, respawn, drill, tether) send no position
+ * and are passed through untouched; emitters describing a world event send one and get attenuated.
+ *
+ * Shape: full strength inside FULL_RADIUS, a 1/d rolloff beyond it, and a linear taper so the
+ * contribution reaches exactly zero at CUTOFF_RADIUS instead of trailing off asymptotically. Trauma
+ * is squared when it becomes shake amplitude, so mid-range values damp hard already.
+ */
+export const SHAKE_FULL_RADIUS_WU = 90;
+export const SHAKE_CUTOFF_RADIUS_WU = 1200;
+
+export function shakeDistanceAttenuation(distanceWu) {
+  const d = Number.isFinite(distanceWu) ? Math.max(0, distanceWu) : 0;
+  if (d <= SHAKE_FULL_RADIUS_WU) return 1;
+  if (d >= SHAKE_CUTOFF_RADIUS_WU) return 0;
+  const rolloff = SHAKE_FULL_RADIUS_WU / d;
+  const taper = 1 - (d - SHAKE_FULL_RADIUS_WU) / (SHAKE_CUTOFF_RADIUS_WU - SHAKE_FULL_RADIUS_WU);
+  return Math.max(0, Math.min(1, rolloff * taper));
+}
+
+export function traumaFromMomentumExchange(dp, context = {}) {
+  return traumaFromContact(dp, context);
+}
+
+export function decayCameraTrauma(trauma, dt) {
+  const value = Number.isFinite(trauma) ? Math.max(0, trauma) : 0;
+  const step = Number.isFinite(dt) ? Math.max(0, dt) : 0;
+  return Math.max(0, value - TRAUMA_DECAY_PER_S * step);
+}
+
+function finiteOr(value, fallback) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function readPlayerEntity(state) {
+  const entities = state && state.entities;
+  if (!entities || typeof entities.get !== 'function') return null;
+  return entities.get(state.playerId) || null;
+}
+
+function clamp01(value) {
+  return Math.max(0, Math.min(1, finiteOr(value, 0)));
+}
+
+function dampSlewed(current, target, lerp, maxSpeed, dt) {
+  const desired = damp(current, target, lerp, dt);
+  const maxStep = Math.max(0, maxSpeed * dt);
+  const delta = desired - current;
+  if (delta > maxStep) return current + maxStep;
+  if (delta < -maxStep) return current - maxStep;
+  return desired;
+}
+
+function isMotionReduced(state) {
+  return !!(state && state.settings && (
+    state.settings.video && state.settings.video.motionReduce
+    || state.settings.accessibility && state.settings.accessibility.motionPreference === 'reduce'
+  ));
+}
+
+export function resolveMasslineReleaseCameraCue(payload, motionReduced = false) {
+  const bonusDv = Math.max(0,
+    finiteOr(payload && payload.bonusDv, 0) || finiteOr(payload && payload.selfSlingBonusDv, 0));
+  const earned = !!(payload && payload.source === 'massline' && payload.physicsEarned && bonusDv > 0);
+  const strength = clamp01(bonusDv / 165);
+  return {
+    source: 'massline',
+    physicsEarned: earned,
+    zoomFactor: motionReduced || !earned
+      ? 0
+      : MASSLINE_RELEASE_ZOOM_MIN
+        + (MASSLINE_RELEASE_ZOOM_MAX - MASSLINE_RELEASE_ZOOM_MIN) * strength,
+    durationS: motionReduced ? 0 : MASSLINE_RELEASE_ZOOM_DURATION_S,
+  };
+}
+
+export function applyMasslineReleaseCameraCue(cameraController, state, payload = {}) {
+  const cue = resolveMasslineReleaseCameraCue(payload, isMotionReduced(state));
+  // S6: in a live Swarm run Line moves never change the frame — the release keeps its
+  // recenter and receipt, the punch stays out.
+  if (isSwarmControls(state)) cue.zoomFactor = 0;
+  const receipt = {
+    schema: 'spaceface.masslineReleaseCameraCue.v1',
+    releaseId: payload.releaseId || null,
+    source: cue.source,
+    physicsEarned: cue.physicsEarned,
+    zoomFactor: cue.zoomFactor,
+    durationS: cue.durationS,
+    tick: Math.max(0, Math.trunc(finiteOr(state && state.tick, 0))),
+  };
+  if (cue.physicsEarned && cameraController && typeof cameraController.easeRecenter === 'function') {
+    cameraController.easeRecenter(0.4);
+  }
+  if (cue.zoomFactor > 0 && cameraController && typeof cameraController.pushZoom === 'function') {
+    cameraController.pushZoom(cue.zoomFactor, cue.durationS);
+  }
+  if (state) {
+    if (!state.render) state.render = {};
+    state.render.lastMasslineReleaseCue = receipt;
+  }
+  return receipt;
+}
+
+// FB-082 — the best moment gets the room. The audio side admits a stunt hush (razor-rated
+// release or slingshot apex, one per STUNT_HUSH_GAP_MS) and stamps the shared camera record
+// with a tick-marked beat the same tick; the chase camera consumes the stamp once — a release
+// push-zoom held for the hush's own envelope. Reduced motion keeps the hush and drops the
+// zoom; the hold is a frozen frame, not vestibular motion, so it rides the killCam precedent
+// and survives reduce. The beat is push-zoom + hold only: no trauma, no particles.
+export const STUNT_HUSH_BEAT_ZOOM = 0.1;
+export const STUNT_HUSH_BEAT_ZOOM_DURATION_S = 0.65;
+// The hush envelope (HUSH.stunt in audioSystem.js): attack 0.35 + hold 0.28 + release 0.45.
+// Audio publishes the total on the beat; this is the fallback when the stamp omits it.
+export const STUNT_HUSH_BEAT_HOLD_S = 1.08;
+// A beat is "the same tick" while the sim clock has not moved more than one tick past it;
+// older stamps are swallowed so a hush can never zoom late.
+export const STUNT_HUSH_BEAT_MAX_AGE_TICKS = 1;
+
+export function resolveStuntHushCameraCue(beat, motionReduced = false) {
+  const admitted = !!(beat && beat.kind === 'stunt' && Number.isFinite(beat.tick));
+  const reduced = motionReduced === true;
+  return {
+    schema: 'spaceface.stuntHushCameraCue.v1',
+    tick: admitted ? Math.trunc(beat.tick) : null,
+    zoom: admitted && !reduced,
+    zoomFactor: admitted && !reduced ? STUNT_HUSH_BEAT_ZOOM : 0,
+    durationS: admitted && !reduced ? STUNT_HUSH_BEAT_ZOOM_DURATION_S : 0,
+    holdS: admitted ? Math.max(0, finiteOr(beat.holdS, STUNT_HUSH_BEAT_HOLD_S)) : 0,
+    reducedMotion: reduced,
+  };
+}
+
+
+export function createChaseCamera(state, viewport = globalThis.window, projectionCamera = null, eventBus = null) {
+  const trailerStaging = createTrailerStaging(state, eventBus);
+  // Far plane is deep (14k) so distant planets + far star layers render; fog still fades mid-distance.
+  const cam = projectionCamera || new THREE.PerspectiveCamera(state.settings.video.fov || 50, viewport.innerWidth / viewport.innerHeight, 1, 14000);
+  if (projectionCamera) {
+    cam.fov = state.settings.video.fov || 50;
+    cam.aspect = viewport.innerWidth / viewport.innerHeight;
+    cam.near = 1;
+    cam.far = 14000;
+    cam.zoom = 1;
+    cam.view = null;
+    cam.updateProjectionMatrix();
+  }
+  const c = state.camera;
+  c.zoom = resolveInitialChaseZoom(c.zoom);
+  c.shakeOffset = new THREE.Vector3();
+  c.kickOffset = new THREE.Vector3();
+  c.focus = new THREE.Vector3();
+  const tiltRad = (c.tilt || 60) * Math.PI / 180;
+  const offset = new THREE.Vector3();
+  const computeOffset = (D) => {
+    const distance = finiteOr(D, DEFAULT_ZOOM);
+    return offset.set(0, distance * Math.sin(tiltRad), -distance * Math.cos(tiltRad));
+  };
+  computeOffset(c.zoom);
+  cam.position.copy(offset);
+  cam.lookAt(0, 0, 0);
+
+  // smoothed camera roll (visual counter-lean into the player's bank)
+  let camRoll = 0;
+  const ROLL_MAX = 0.052;  // rad (~3.0 deg): bank-readable, horizon still stable
+  const ROLL_LERP = 3.6;   // slightly snappier lean
+  // scratch: roll is applied about the camera's local forward axis (the view direction), so the
+  // image spins in-plane without changing where the camera points.
+  const _rollQ = new THREE.Quaternion();
+  const _FORWARD = new THREE.Vector3(0, 0, -1);
+  // GR-6: rotational shake. Translational shake alone reads as a float; adding a small angular jitter
+  // (roll + pitch about the camera's local axes) gives trauma real impact. Scaled by trauma² so it's
+  // imperceptible at low trauma and punchy near death. Pitch (about local X) is the most visceral.
+  const SHAKE_ROT_ROLL = 0.024;  // rad (~1.4 deg) max roll from shake
+  const SHAKE_ROT_PITCH = 0.012; // rad (~0.7 deg) max pitch from shake
+  const _shakeRollQ = new THREE.Quaternion();
+  const _shakePitchQ = new THREE.Quaternion();
+  const _camRight = new THREE.Vector3(1, 0, 0);
+
+  // dynamic zoom — smoothly adapts camera distance to gameplay context
+  function resolveBaseZoom() {
+    const video = state.settings && state.settings.video;
+    if (video && video.chaseClose) return CHASE_ZOOM_CLOSE;
+    return finiteOr(c.zoom, DEFAULT_ZOOM);
+  }
+  let _dynamicZoom = resolveBaseZoom();
+  let _speedZoomFactor = SPEED_ZOOM_MIN;
+  let _speedZoomSpeedEma = 0;
+  let _boostZoomFactor = 1;
+  let _velocityLeadX = 0;
+  let _velocityLeadZ = 0;
+  let _boostLag = 0;
+  const _latchSpring = createLatchSpring();
+
+  // Push-zoom: a transient multiplicative nudge to the camera distance for scripted moments (docking
+  // fly-in, jump, cutscenes). set with pushZoom(factor, duration): the factor eases in then back out
+  // over the duration, multiplying targetZoom during its active window. 0 = inactive. This cooperates
+  // with the dynamic-zoom system (it biases the SAME _dynamicZoom the rest of the game uses) instead
+  // of clobbering c.zoom the way the old uiRoot hard-set did.
+  let _pushZoom = 0;          // current multiplicative offset added to the zoom factor (0 = none)
+  let _pushZoomDecay = 0;     // per-second decay rate (derived from duration at push time)
+  let _pushZoomPeak = 0;      // rise target while easing in; 0 once the peak has been reached
+  let _pushZoomRise = 0;      // per-second rise rate (derived from duration at push time)
+  // Shake noise is resampled at a fixed rate so shake FREQUENCY does not track display refresh.
+  let _shakeNoiseT = 0;
+  const _shakeNoise = [0, 0, 0, 0];   // posX, posZ, roll, pitch — held between resample steps
+  // PQ-159.00 directed impact kick. env = summed authored impulse (wu) per axis; x/z = applied
+  // offset the camera actually carries this frame. Allocation-free record stepped in follow().
+  const _kick = { envX: 0, envZ: 0, x: 0, z: 0 };
+  // FR-5: transient recenter after boost-release / tether-slingshot. While active, the lookahead +
+  // aim + composition bias is scaled down so the frame glides to player-centered instead of the
+  // sudden velocity change snapping the lookahead. Decays over its window with an ease-out.
+  let _recenterT = 0;         // seconds remaining in the recenter window
+  let _recenterDur = 0;       // total window length (for the ease fraction)
+  let _snappedPlayerId = null;
+  // Predictive obstacle glide (cameraGlide.js). Owns clearance via the column-addressable roof query.
+  const _glide = createCameraGlide();
+  const _racingBlend = createRacingCameraBlend();
+  const _racingRig = {};
+  const _overheadPose = {};
+  const _racingPose = {};
+  let _exceptionalHold = 0;
+  let _anchorHoldX = 0;
+  let _anchorHoldZ = 0;
+  let _anchorHoldValid = false;
+  // Retained chase lookAt base quat — see applyChaseLookAt.
+  const _lookAtCache = {
+    eyeX: NaN, eyeY: NaN, eyeZ: NaN, targetX: NaN, targetZ: NaN, baseQuat: null,
+  };
+  let _compositionBiasX = 0;
+  let _compositionBiasZ = 0;
+  let _contextZoomBias = 0;
+  let _contextMinZoom = 0;
+  let _contextZoomCap = COMPOSITION_ZOOM_MAX;
+  let _dynamicNear = cam.near;
+  // U13 sticky composed-threat bag — keeps dense furball bias from thrashing every frame.
+  const _compositionSticky = { id: null, remainS: 0, wasActive: false };
+  const cameraDirector = createCameraDirector();
+  adoptFlybyHandoffDirector(cameraDirector);
+  let _holdT = 0;
+  let _deathCam = false;
+  // FB-084 bounded kill-beat trail (probe/test surface; never read by gameplay).
+  const _killBeatLog = [];
+  // FB-082 stunt-hush beats: last consumed stamp + bounded trail (same surface as the kill log).
+  let _stuntHushTick = -1;
+  const _stuntHushLog = [];
+  let _directorFrame = cameraDirector.output;
+  let _industrialZoomRevision = 0;
+  const _directorView = {
+    followX: 0,
+    followZ: 0,
+    playerLocalX: NaN,
+    playerLocalZ: NaN,
+    followZoom: DEFAULT_ZOOM,
+    fov: cam.fov,
+    baseFov: cam.fov,
+    aspect: cam.aspect,
+    tiltDeg: c.tilt || 60,
+    dt: 0,
+  };
+  // FOLLOW runs every rendered frame. Keep its temporary value records camera-owned so ordinary
+  // flight does not manufacture garbage merely to pass the same numbers between pure calculations.
+  // Exported helpers still allocate by default; only this live route opts into reusable outputs.
+  const _aimLeadScratch = { x: 0, z: 0 };
+  const _compositionFocusScratch = { x: 0, z: 0 };
+  const _compositionScratch = {
+    x: 0,
+    z: 0,
+    nearbyEnemies: 0,
+    hasThreatFocus: false,
+    hasActiveAttacker: false,
+    hasTetherFocus: false,
+    zoomBias: 0,
+    minZoom: 0,
+  };
+  const _tetherAnchorScratch = { x: 0, z: 0 };
+  const _safeFocusInputScratch = { x: 0, z: 0 };
+  const _safeFocusOptionsScratch = { zoom: DEFAULT_ZOOM, fov: cam.fov, aspect: cam.aspect };
+  const _safeFocusScratch = { x: 0, z: 0, clamped: false, safeX: 0, safeZ: 0 };
+
+  function snapToEntity(p) {
+    if (!p || !p.pos || !Number.isFinite(p.pos.x) || !Number.isFinite(p.pos.z)) return false;
+    const frameOrigin = readFrameOrigin(state, _frameOriginScratch);
+    globalToFrame(p.pos, frameOrigin, _playerLocalScratch);
+    const px = _playerLocalScratch.x;
+    const pz = _playerLocalScratch.z;
+    c.focus.set(px, 0, pz);
+    _dynamicZoom = resolveBaseZoom();
+    _dynamicNear = 1;
+    if (cam.near !== 1) {
+      cam.near = 1;
+      cam.updateProjectionMatrix();
+    }
+    _speedZoomFactor = SPEED_ZOOM_MIN;
+    _speedZoomSpeedEma = 0;
+    _velocityLeadX = 0;
+    _velocityLeadZ = 0;
+    // A snap is a teleport; any in-flight kick would read as the world sliding after a cut.
+    _kick.envX = 0; _kick.envZ = 0; _kick.x = 0; _kick.z = 0;
+    if (c.kickOffset) c.kickOffset.set(0, 0, 0);
+    resetCameraGlide(_glide);
+    _exceptionalHold = 0;
+    _anchorHoldValid = false;
+    computeOffset(_dynamicZoom);
+    cam.position.set(c.focus.x + offset.x, offset.y, c.focus.z + offset.z);
+    cam.lookAt(c.focus.x, 0, c.focus.z);
+    _lookAtCache.eyeX = NaN;
+    cam.updateMatrixWorld(true);
+    _directorFrame = cameraDirector.reset(px, pz, _dynamicZoom);
+    _snappedPlayerId = p.id;
+    return true;
+  }
+
+  // Sim-lane visibility transport (round-4): stamp the DISPLAYED pose every
+  // follow — the frame-local eye, the post-lookAt/post-roll/post-shake
+  // orientation, the steering view kind + eased blend, and the displayed
+  // fov/near/far — plus the frame origin every local coordinate on the record
+  // (c.focus, the eye) belongs to. appendCameraFrame ships the record
+  // verbatim; because the origin travels with the frame it describes, a
+  // floating-origin hop between stamp and apply can never shift the worker's
+  // visibility answer. The scalar envelope above (displayedZoom, factor) is a
+  // projection input, not a pose — this is the pose.
+  function stampDisplayedPose(viewKind, viewMix) {
+    const poseOrigin = readFrameOrigin(state, _frameOriginScratch);
+    c.frameOriginX = poseOrigin.x;
+    c.frameOriginZ = poseOrigin.z;
+    c.viewKind = viewKind;
+    c.viewMix = viewMix;
+    c.eyeX = cam.position.x;
+    c.eyeY = cam.position.y;
+    c.eyeZ = cam.position.z;
+    c.quatX = cam.quaternion.x;
+    c.quatY = cam.quaternion.y;
+    c.quatZ = cam.quaternion.z;
+    c.quatW = cam.quaternion.w;
+    c.displayFov = cam.fov;
+    c.displayNear = cam.near;
+    c.displayFar = cam.far;
+  }
+
+  return {
+    obj: cam,
+    addTrauma(amount) {
+      const a = Number.isFinite(amount) ? Math.max(0, amount) : 0;
+      if (a <= 0) return;
+      const scale = isMotionReduced(state) ? MOTION_REDUCE_SHAKE_SCALE : 1;
+      c.trauma = Math.min(1, Math.max(0, c.trauma || 0) + a * scale);
+    },
+    // PQ-159.00: directed impact kick. `dirX/dirZ` is the direction the hull was knocked (any
+    // magnitude is normalized), `magnitudeWu` the peak view displacement in world units. Impulses
+    // add into the shared envelope (opposing kicks cancel, as exchanged momentum does) and clamp
+    // to the ceiling. Unlike trauma shake — which scales to 25% under reduced motion — the kick is
+    // fully vestibular, so reduce-motion shows none.
+    impactKick(dirX, dirZ, magnitudeWu) {
+      if (isMotionReduced(state)) return;
+      const mag = Math.min(IMPACT_KICK_WU_MAX, Math.max(0, finiteOr(magnitudeWu, 0)));
+      const dx = finiteOr(dirX, 0);
+      const dz = finiteOr(dirZ, 0);
+      const len = Math.hypot(dx, dz);
+      if (mag <= 0 || !(len > 1e-6)) return;
+      _kick.envX = Math.max(-IMPACT_KICK_WU_MAX, Math.min(IMPACT_KICK_WU_MAX, _kick.envX + (dx / len) * mag));
+      _kick.envZ = Math.max(-IMPACT_KICK_WU_MAX, Math.min(IMPACT_KICK_WU_MAX, _kick.envZ + (dz / len) * mag));
+    },
+    setZoom(z) {
+      const next = Math.max(CAMERA_ZOOM_MIN, Math.min(CAMERA_ZOOM_MAX, finiteOr(z, c.zoom || DEFAULT_ZOOM)));
+      if (next !== c.zoom) _industrialZoomRevision++;
+      c.zoom = next;
+    },
+    snapToPlayer() {
+      return snapToEntity(readPlayerEntity(state));
+    },
+    // M2: on frameOriginSeq change, reproject local focus/camera so the frame does not one-frame jump.
+    // Composition biases are relative and stay valid; director absolute focus is shifted by the same delta.
+    reprojectFrame(dx, dz) {
+      const ox = Number.isFinite(dx) ? dx : 0;
+      const oz = Number.isFinite(dz) ? dz : 0;
+      if (ox === 0 && oz === 0) return;
+      if (c.focus) {
+        c.focus.x += ox;
+        c.focus.z += oz;
+      }
+      cam.position.x += ox;
+      cam.position.z += oz;
+      if (cameraDirector && typeof cameraDirector.reprojectFrame === 'function') {
+        cameraDirector.reprojectFrame(ox, oz);
+      } else if (_directorFrame) {
+        _directorFrame.focusX = finiteOr(_directorFrame.focusX, 0) + ox;
+        _directorFrame.focusZ = finiteOr(_directorFrame.focusZ, 0) + oz;
+      }
+      cam.updateMatrixWorld(true);
+    },
+    composition() { return _directorFrame; },
+    // Read-only snapshot of every term that fed this frame's chase zoom and focus. Diagnostic
+    // surface for scripts/probe-body-scale.mjs; gameplay never reads it.
+    zoomDiagnostics() {
+      return {
+        requestedZoom: c.zoom,
+        baseZoom: resolveBaseZoom(),
+        dynamicZoom: _dynamicZoom,
+        composedZoom: c.composedZoom,
+        speedZoomFactor: _speedZoomFactor,
+        speedEmaWu: _speedZoomSpeedEma,
+        contextZoomBias: _contextZoomBias,
+        contextMinZoom: _contextMinZoom,
+        contextZoomCap: _contextZoomCap,
+        boostZoomFactor: _boostZoomFactor,
+        pushZoom: _pushZoom,
+        holdS: _holdT,
+        velocityLeadX: _velocityLeadX,
+        velocityLeadZ: _velocityLeadZ,
+        compositionBiasX: _compositionBiasX,
+        compositionBiasZ: _compositionBiasZ,
+        boostLag: _boostLag,
+        latchSpringX: _latchSpring.x,
+        latchSpringZ: _latchSpring.z,
+        kickX: c.kickOffset ? c.kickOffset.x : 0,
+        kickZ: c.kickOffset ? c.kickOffset.z : 0,
+        focusX: c.focus ? c.focus.x : 0,
+        focusZ: c.focus ? c.focus.z : 0,
+        director: _directorFrame ? {
+          mode: _directorFrame.mode,
+          focusX: _directorFrame.focusX,
+          focusZ: _directorFrame.focusZ,
+          zoom: _directorFrame.zoom,
+          requiredZoom: _directorFrame.requiredZoom,
+          targetId: _directorFrame.targetId,
+          nearPlane: _directorFrame.nearPlane,
+        } : null,
+      };
+    },
+    // pushZoom(factor, durationS): factor>0 pushes the camera OUT (wider), factor<0 pushes IN
+    // (tighter) for `durationS`, easing in and out. e.g. pushZoom(0.25, 0.8) widens 25% over 0.8s;
+    // pushZoom(-0.04, 0.25) tightens to 0.96x for 0.25s (kill-cam kiss). The effect is additive on
+    // top of the dynamic zoom and decays smoothly.
+    pushZoom(factor, durationS) {
+      const f = Number.isFinite(factor) ? factor : 0;
+      const d = Math.max(0.05, durationS || 0.5);
+      // Ease IN to the peak rather than jumping to it. The docstring above has always promised
+      // "eases in then back out", but this used to be `_pushZoom = f` — a single-frame step. The
+      // biggest caller is uiRoot.js's dock fly-in at pushZoom(-0.45, 1.2), so the camera snapped 45%
+      // tighter in one frame and then eased out, which read as a cut rather than a move. The rise is
+      // deliberately ~3x the decay rate so the peak still lands early in the window and the overall
+      // envelope keeps its old shape; only the discontinuity is gone.
+      _pushZoomPeak = f;
+      _pushZoomRise = 12.0 / d;
+      _pushZoomDecay = 4.0 / d;
+    },
+    killCam(victimMass, opts = {}) {
+      // FB-084 weight-keyed kill beat: resolveKillBeat maps the victim's acoustic mass (the same
+      // number the kill audio ladder keys) onto the tier table beside CAMERA_TRAUMA_TUNING.
+      // Light kills beat nothing; reduced motion keeps the hold and drops the zoom. No payload
+      // resolves through the unknown-mass law (the conservative medium kiss).
+      const beat = resolveKillBeat(victimMass, {
+        capital: opts.capital === true,
+        reducedMotion: isMotionReduced(state),
+      });
+      if (beat.tier === 'light' || (!beat.zoom && beat.holdS <= 0)) return null;
+      // A hold is a frozen frame, not vestibular motion — deliberately NOT hold()'s reduce gate.
+      if (beat.holdS > 0 && beat.holdS > _holdT) _holdT = beat.holdS;
+      if (beat.zoom) this.pushZoom(beat.factor, beat.durationS);
+      _killBeatLog.push({
+        tier: beat.tier,
+        zoom: beat.zoom === true,
+        holdS: beat.holdS,
+        tick: Number.isFinite(state && state.tick) ? state.tick | 0 : 0,
+      });
+      if (_killBeatLog.length > KILL_BEAT_LOG_CAP) _killBeatLog.shift();
+      return beat;
+    },
+    // The bounded kill-beat trail the probe and tests read ("the camera log shows three distinct
+    // kill beats"). Oldest first, at most KILL_BEAT_LOG_CAP entries.
+    killBeatLog() { return _killBeatLog.slice(); },
+    // FB-082 — one admitted stunt hush, one camera beat, the same tick. The audio admission
+    // stamps state.camera.stuntHushBeat; this consumes the stamp once — push-zoom plus a hold
+    // for the hush's own envelope. Same resolve-then-apply seam as killCam: reduced motion
+    // keeps the freeze (not vestibular motion) and drops the zoom. No trauma, no particles.
+    stuntHushBeat(beat) {
+      const cue = resolveStuntHushCameraCue(beat, isMotionReduced(state));
+      if (cue.tick == null || cue.tick === _stuntHushTick) return null;
+      _stuntHushTick = cue.tick;
+      if (cue.holdS > _holdT) _holdT = cue.holdS;
+      if (cue.zoom) this.pushZoom(cue.zoomFactor, cue.durationS);
+      _stuntHushLog.push({ tick: cue.tick, zoom: cue.zoom, holdS: cue.holdS });
+      if (_stuntHushLog.length > KILL_BEAT_LOG_CAP) _stuntHushLog.shift();
+      return cue;
+    },
+    stuntHushLog() { return _stuntHushLog.slice(); },
+    // PQ-159.02: freeze chase composition for `durationS` so a rated moment reads. Reduce-motion
+    // skips the hold (same vestibular gate as the kick).
+    hold(durationS) {
+      if (isMotionReduced(state)) return;
+      const d = Math.max(0, finiteOr(durationS, CAMERA_HOLD_S));
+      if (d > _holdT) _holdT = d;
+    },
+    holdRemaining() { return _holdT; },
+    // PQ-159.02 death cam: hold the wreck and ease out so the kill is a picture, not a cut.
+    deathCam() {
+      // The picture goes overhead even when reduced motion skips the hold and the zoom.
+      _deathCam = true;
+      if (isMotionReduced(state)) return;
+      this.hold(DEATH_CAM_HOLD_S);
+      this.pushZoom(DEATH_CAM_PUSH_ZOOM, DEATH_CAM_HOLD_S);
+    },
+    isDeathCam() { return _deathCam; },
+    // PQ-159.02: the death cam belongs to one death. A new life ends it so the next flight frames normally.
+    endDeathCam() {
+      if (!_deathCam) return;
+      _deathCam = false;
+      _holdT = 0;
+    },
+    // FR-5: ease the camera back to a player-centered pose over durS after a boost-release or a
+    // tether slingshot, instead of letting the sudden velocity change snap the lookahead. Respects
+    // motionReduce (shortened). Cruise-drop settle stays owned by its own spec2/02 §1 path.
+    easeRecenter(durS) {
+      const base = Math.max(0.05, Number.isFinite(durS) ? durS : 0.4);
+      _recenterDur = isMotionReduced(state) ? base * 0.25 : base;
+      _recenterT = _recenterDur;
+    },
+    // clearanceAt(x, z, y): optional renderer callback returning the lowest world-space Y the
+    // camera may occupy at that XZ (the roof of a containing structure) — -Infinity/NaN when the
+    // volume above the play plane is free. The floor snaps up instantly and releases downward at
+    // CAMERA_CLEARANCE_RELEASE_WU_S, so the camera never eases through geometry or jitters at a
+    // roof boundary.
+    follow(dt, alphaParam, presentedLocal, clearanceAt) {
+      trailerStaging.step(this);
+      const frameDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 1 / 15) : 0;
+      const alpha = Number.isFinite(alphaParam)
+        ? Math.max(0, Math.min(1, alphaParam))
+        : (state.render && Number.isFinite(state.render.interpolationAlpha)
+          ? Math.max(0, Math.min(1, state.render.interpolationAlpha))
+          : 1);
+      const photo = state.render && state.render.photoMode;
+      // FB-085: the photo filter stage lives on the render graph; the camera owns the photo-mode
+      // state, so every frame it hands the same truth over. Off (the default and the state after
+      // photo mode exits) is an idempotent no-op on the graph.
+      syncPhotoFilterStage(state);
+      // FB-082: an admitted stunt hush stamps the shared camera record the same tick — consume
+      // the stamp here so the hush and the room land together, once per admission. A stamp
+      // older than the same-tick window is swallowed so a hush can never zoom late.
+      const stuntBeat = c.stuntHushBeat;
+      if (stuntBeat && Number.isFinite(stuntBeat.tick)) {
+        const beatTick = Math.trunc(stuntBeat.tick);
+        const simTick = Number(state.tick);
+        const age = Number.isFinite(simTick) ? Math.abs(simTick - beatTick) : Infinity;
+        if (age <= STUNT_HUSH_BEAT_MAX_AGE_TICKS) {
+          this.stuntHushBeat(stuntBeat);
+        } else if (beatTick > _stuntHushTick) {
+          _stuntHushTick = beatTick;
+        }
+      }
+      if (photo && photo.active && photo.freeCamera !== false) {
+        _racingBlend.mix = 0;
+        stepPhotoFreeCamera(photo, state.input, frameDt);
+        c.focus.x = finiteOr(photo.focusX, finiteOr(c.focus.x, 0));
+        c.focus.z = finiteOr(photo.focusZ, finiteOr(c.focus.z, 0));
+        _dynamicZoom = Math.max(CAMERA_ZOOM_MIN, Math.min(CAMERA_ZOOM_MAX, finiteOr(photo.zoom, _dynamicZoom)));
+        computeOffset(_dynamicZoom);
+        const renderer = state.render && state.render.renderer;
+        if (renderer && Number.isFinite(photo.exposure)) {
+          renderer.toneMappingExposure = photo.exposure;
+        }
+        cam.position.set(c.focus.x + offset.x, offset.y, c.focus.z + offset.z);
+        cam.lookAt(c.focus.x, 0, c.focus.z);
+        _lookAtCache.eyeX = NaN;
+        if (_directorFrame) {
+          _directorFrame.mode = CameraDirectorMode.FOLLOW;
+          _directorFrame.focusX = c.focus.x;
+          _directorFrame.focusZ = c.focus.z;
+          _directorFrame.zoom = _dynamicZoom;
+        }
+        c.composedZoom = _dynamicZoom;
+        // Same displayed-pose transport as the chase path: a photo frame is
+        // overhead-kind, so the worker's projector answers this picture too.
+        stampDisplayedPose('overhead', 0);
+        return;
+      }
+      const p = readPlayerEntity(state);
+      let fx = finiteOr(c.focus.x, 0), fz = finiteOr(c.focus.z, 0);
+      let bankForLean = 0;
+      let playerSpeed = 0;
+      let directorOwnsComposition = false;
+      // SF-218: a RECOVER frame is the ended pair lease easing home, not an owning composition.
+      // The chase policy keeps running on top of the ease (see the branch below) so "release near
+      // another threat" hands the picture to the live attacker with the same damped containment a
+      // fight that opens gets, instead of a 0.35 s window at exactly zero containment.
+      let recoverEase = false;
+      if (p && p.pos && Number.isFinite(p.pos.x) && Number.isFinite(p.pos.z)) {
+        if (_snappedPlayerId !== p.id || !Number.isFinite(c.focus.x) || !Number.isFinite(c.focus.z)) {
+          snapToEntity(p);
+        }
+        // Frame-local player target: composition biases stay relative (global deltas === local deltas).
+        // Prefer the exact pose the hull was drawn at this frame (the presented mesh position); the
+        // prevPos→pos fallback interpolates with render alpha so camera follow and safe-rect clamping
+        // match the interpolated player mesh instead of stepping discretely on fixed 60 Hz sim ticks.
+        const frameOrigin = readFrameOrigin(state, _frameOriginScratch);
+        resolvePlayerAnchorLocal(p, alpha, frameOrigin, presentedLocal, _playerLocalScratch);
+        _playerLocalProxy.pos = _playerLocalScratch;
+        fx = _playerLocalScratch.x;
+        fz = _playerLocalScratch.z;
+        const vx = p.vel ? finiteOr(p.vel.x, 0) : 0;
+        const vz = p.vel ? finiteOr(p.vel.z, 0) : 0;
+        playerSpeed = Math.hypot(vx, vz);
+        // The drawn hull can teleport when a mesh is swapped. If the sim ship did not
+        // move with it, the picture is lying — keep the anchor we already believed.
+        // When the ship itself jumps (a real teleport), both agree and the camera follows.
+        if (_anchorHoldValid) {
+          const jump = Math.hypot(fx - _anchorHoldX, fz - _anchorHoldZ);
+          const budget = Math.max(120, playerSpeed * frameDt + 80);
+          const simX = p.pos.x - frameOrigin.x;
+          const simZ = p.pos.z - frameOrigin.z;
+          const meshAgrees = Math.hypot(fx - simX, fz - simZ) <= 80;
+          if (jump > budget && !meshAgrees) {
+            fx = _anchorHoldX;
+            fz = _anchorHoldZ;
+            _playerLocalScratch.x = fx;
+            _playerLocalScratch.z = fz;
+          }
+        }
+        _anchorHoldX = fx;
+        _anchorHoldZ = fz;
+        _anchorHoldValid = true;
+        const focusGap = Math.hypot(c.focus.x - fx, c.focus.z - fz);
+        if (_directorFrame.mode === CameraDirectorMode.FOLLOW
+          && focusGap > Math.max(320, _dynamicZoom * 2.6)) {
+          snapToEntity(p);
+          // snapToEntity wrote the scratch from the raw pos; restore the presented anchor.
+          resolvePlayerAnchorLocal(
+            p,
+            alpha,
+            readFrameOrigin(state, _frameOriginScratch),
+            presentedLocal,
+            _playerLocalScratch,
+          );
+          fx = _playerLocalScratch.x;
+          fz = _playerLocalScratch.z;
+        }
+        // Authored base FOV (settings) drives composition geometry. The feel-layer punch rides on
+        // cam.fov for spectacle only — it must not reframe minZoom / safe-rect every recoil tick.
+        const baseFov = Math.max(
+          10,
+          Math.min(140, finiteOr(state.settings && state.settings.video && state.settings.video.fov, 50)),
+        );
+        // Cheap combat-framing gate for look-ahead attenuation: sticky active hold, live lease, or
+        // any hostile currently targeting the player. Avoids a full composition pass before lead.
+        const activeAttacker = playerHasActiveAttackerFraming(state, p, _compositionSticky);
+        const combatLookaheadScale = activeAttacker ? ACTIVE_ATTACKER_LOOKAHEAD_SCALE : 1;
+
+        let velocityLeadTargetX = 0;
+        let velocityLeadTargetZ = 0;
+        if (playerSpeed > 1) {
+          const laCap = Number.isFinite(c.lookAhead) ? Math.max(0, c.lookAhead) : LOOKAHEAD_LEAD_MAX_WU;
+          const la = Math.min(laCap, playerSpeed * LOOKAHEAD_LEAD_S) * combatLookaheadScale;
+          velocityLeadTargetX = (vx / playerSpeed) * la;
+          velocityLeadTargetZ = (vz / playerSpeed) * la;
+          // Band-3 velocity lead (ADR D7): at >5x combat speed a few WU of camera lead along the
+          // velocity vector read as terrifying speed. READ, never re-derived — `readVelocityLanguage`
+          // is the one consumer of the record `feel.js` publishes; a reader that derived its own band
+          // would become a second producer and drift from what the streaks and the sky are saying.
+          // The record forces cameraLeadWU to 0 under motionReduce, so this single read respects it
+          // without the camera lane second-guessing the field's reduction.
+          // Under active-attacker framing the lead is scaled with ordinary look-ahead so extreme-speed
+          // combat still keeps the pair readable instead of leading into empty space.
+          const vl = readVelocityLanguage(state);
+          const leadWU = vl && vl.drive && Number.isFinite(vl.drive.cameraLeadWU) ? vl.drive.cameraLeadWU : 0;
+          if (leadWU > 0) {
+            const combatLead = leadWU * combatLookaheadScale;
+            velocityLeadTargetX += (vx / playerSpeed) * combatLead;
+            velocityLeadTargetZ += (vz / playerSpeed) * combatLead;
+          }
+        }
+        // The mesh anchor is interpolated across the presentation fence, but entity velocity is
+        // the latest fixed-tick sample. Smooth their velocity-derived offset so that sampling
+        // boundary cannot make the chase target step against the already-interpolated hull.
+        const leadRate = 1 / LOOKAHEAD_LEAD_SMOOTHING_S;
+        _velocityLeadX = damp(_velocityLeadX, velocityLeadTargetX, leadRate, frameDt);
+        _velocityLeadZ = damp(_velocityLeadZ, velocityLeadTargetZ, leadRate, frameDt);
+        fx += _velocityLeadX;
+        fz += _velocityLeadZ;
+        const aimLead = resolveAimLead(state.input, p, _aimLeadScratch);
+        fx += aimLead.x;
+        fz += aimLead.z;
+        const baseFx = fx;
+        const baseFz = fz;
+        _directorView.followX = baseFx;
+        _directorView.followZ = baseFz;
+        _directorView.playerLocalX = _playerLocalScratch.x;
+        _directorView.playerLocalZ = _playerLocalScratch.z;
+        _directorView.followZoom = resolveBaseZoom() * _speedZoomFactor;
+        _directorView.fov = baseFov;
+        _directorView.baseFov = baseFov;
+        _directorView.aspect = cam.aspect;
+        _directorView.tiltDeg = c.tilt || 60;
+        _directorView.dt = frameDt;
+        _directorView.maxZoom = resolveCombatCompositionZoomCap(p, _directorView);
+        _directorView.manualZoomRevision = _industrialZoomRevision;
+        _directorView.industrialBlocked = activeAttacker || _deathCam
+          || resolveSteeringView(state, { death: _deathCam }) === 'racing';
+        // Seed pair entry from the pose the player actually saw last frame, not the director's
+        // undamped FOLLOW request. Functional pair framing is identical under reduced motion.
+        if (_directorFrame.mode === CameraDirectorMode.FOLLOW) {
+          _directorFrame = cameraDirector.syncFollow(c.focus.x, c.focus.z, _dynamicZoom);
+        }
+        _directorFrame = cameraDirector.step(frameDt, state, p, _directorView);
+        recoverEase = _directorFrame.mode === CameraDirectorMode.RECOVER;
+        directorOwnsComposition = _directorFrame.mode !== CameraDirectorMode.FOLLOW;
+        if (directorOwnsComposition && !recoverEase) {
+          fx = _directorFrame.focusX;
+          fz = _directorFrame.focusZ;
+          _compositionBiasX = 0;
+          _compositionBiasZ = 0;
+          _contextZoomBias = 0;
+          _contextMinZoom = 0;
+        } else if (recoverEase) {
+          // The director's eased focus stays the base of the frame; the ordinary composition runs
+          // on top of it, seeded AT that focus, so the handover to FOLLOW (whose seed is the same
+          // follow pose the ease lands on) is continuous in both bias and zoom. The bias is slewed
+          // and damped from its carried value — never a cut — and with no threat nearby every term
+          // relaxes to zero, which is bit-identical to the old dead-window behavior.
+          fx = _directorFrame.focusX;
+          fz = _directorFrame.focusZ;
+          _contextZoomCap = _directorView.maxZoom;
+          _compositionFocusScratch.x = fx + frameOrigin.x;
+          _compositionFocusScratch.z = fz + frameOrigin.z;
+          const composition = resolveChaseComposition(
+            state,
+            p,
+            _compositionFocusScratch,
+            _directorView,
+            _compositionScratch,
+            _tetherAnchorScratch,
+            _compositionSticky,
+          );
+          // Keeping an active attacker, a gyre, or a release meeting visible is functional
+          // framing. Reduced motion may soften ambient/tether bias but must not move the
+          // thing about to be hit out of the zoom geometry that was computed to contain it.
+          const compositionScale = chaseCompositionMotionScale(composition, isMotionReduced(state));
+          _contextZoomCap = Math.max(_contextZoomCap, composition.maxZoom || 0, _contextMinZoom);
+          const desiredBiasX = (composition.x - _compositionFocusScratch.x) * compositionScale;
+          const desiredBiasZ = (composition.z - _compositionFocusScratch.z) * compositionScale;
+          const biasRate = composition.hasGyreBowlFocus ? 4 : COMPOSITION_BIAS_LERP;
+          const biasSlew = composition.hasGyreBowlFocus ? 180 : COMPOSITION_BIAS_SLEW;
+          _compositionBiasX = dampSlewed(_compositionBiasX, desiredBiasX, biasRate, biasSlew, frameDt);
+          _compositionBiasZ = dampSlewed(_compositionBiasZ, desiredBiasZ, biasRate, biasSlew, frameDt);
+          _contextZoomBias = damp(_contextZoomBias, (composition.zoomBias || 0) * compositionScale, CONTEXT_ZOOM_LERP, frameDt);
+          // Fight distance eases in and eases out. A one-frame change of who is nearest
+          // must not retarget the zoom; the sticky hold above already keeps the anchor.
+          _contextMinZoom = damp(_contextMinZoom, Math.max(0, finiteOr(composition.minZoom, 0)), composition.hasGyreBowlFocus ? 8 : CONTEXT_ZOOM_LERP, frameDt);
+          fx += _compositionBiasX;
+          fz += _compositionBiasZ;
+        } else {
+          _contextZoomCap = _directorView.maxZoom;
+          // Seed focus is frame-local; threat/tether biases are pure relative offsets (origin-invariant).
+          _compositionFocusScratch.x = baseFx + frameOrigin.x;
+          _compositionFocusScratch.z = baseFz + frameOrigin.z;
+          const composition = resolveChaseComposition(
+            state,
+            p,
+            _compositionFocusScratch,
+            _directorView,
+            _compositionScratch,
+            _tetherAnchorScratch,
+            _compositionSticky,
+          );
+          // Keeping an active attacker, a gyre, or a release meeting visible is functional
+          // framing. Reduced motion may soften ambient/tether bias but must not move the
+          // thing about to be hit out of the zoom geometry that was computed to contain it.
+          const compositionScale = chaseCompositionMotionScale(composition, isMotionReduced(state));
+          _contextZoomCap = Math.max(_contextZoomCap, composition.maxZoom || 0, _contextMinZoom);
+          const desiredBiasX = (composition.x - _compositionFocusScratch.x) * compositionScale;
+          const desiredBiasZ = (composition.z - _compositionFocusScratch.z) * compositionScale;
+          const biasRate = composition.hasGyreBowlFocus ? 4 : COMPOSITION_BIAS_LERP;
+          const biasSlew = composition.hasGyreBowlFocus ? 180 : COMPOSITION_BIAS_SLEW;
+          _compositionBiasX = dampSlewed(_compositionBiasX, desiredBiasX, biasRate, biasSlew, frameDt);
+          _compositionBiasZ = dampSlewed(_compositionBiasZ, desiredBiasZ, biasRate, biasSlew, frameDt);
+          _contextZoomBias = damp(_contextZoomBias, (composition.zoomBias || 0) * compositionScale, CONTEXT_ZOOM_LERP, frameDt);
+          // Fight distance eases in and eases out. A one-frame change of who is nearest
+          // must not retarget the zoom; the sticky hold above already keeps the anchor.
+          const requestedMin = Math.max(0, finiteOr(composition.minZoom, 0));
+          _contextMinZoom = damp(_contextMinZoom, requestedMin, composition.hasGyreBowlFocus ? 8 : CONTEXT_ZOOM_LERP, frameDt);
+          fx = baseFx + _compositionBiasX;
+          fz = baseFz + _compositionBiasZ;
+          _safeFocusInputScratch.x = fx;
+          _safeFocusInputScratch.z = fz;
+          _safeFocusOptionsScratch.zoom = _dynamicZoom;
+          _safeFocusOptionsScratch.fov = baseFov;
+          _safeFocusOptionsScratch.aspect = cam.aspect;
+          const desiredSafe = clampFocusToPlayerSafeRect(
+            _safeFocusInputScratch,
+            _playerLocalProxy,
+            _safeFocusOptionsScratch,
+            _safeFocusScratch,
+          );
+          fx = desiredSafe.x;
+          fz = desiredSafe.z;
+          // FR-5: during the recenter window, ease the accumulated lookahead/aim/composition bias
+          // toward the ship so a boost-release or slingshot glides to center rather than snapping.
+          if (_recenterT > 0) {
+            _recenterT = Math.max(0, _recenterT - frameDt);
+            const biasScale = recenterBiasScale(_recenterT, _recenterDur);
+            fx = _playerLocalScratch.x + (fx - _playerLocalScratch.x) * biasScale;
+            fz = _playerLocalScratch.z + (fz - _playerLocalScratch.z) * biasScale;
+          }
+          // Boost draws the chase frame back ~2% of camera distance along velocity.
+          // A heavy massline latch springs toward the anchor, then back to the ship.
+          const motionReduced = isMotionReduced(state);
+          _boostLag = stepBoostLag(
+            _boostLag,
+            !!(p.flags && p.flags.boosting),
+            _dynamicZoom,
+            frameDt,
+            motionReduced,
+          );
+          if (playerSpeed > 1 && _boostLag > 0.01) {
+            const invSpeed = 1 / playerSpeed;
+            fx -= vx * invSpeed * _boostLag;
+            fz -= vz * invSpeed * _boostLag;
+          }
+          const tetherNow = state.player && state.player.tether;
+          let latchHeavy = false;
+          let latchX = 0;
+          let latchZ = 0;
+          const tetherLatched = !!(tetherNow && tetherNow.active);
+          if (tetherLatched && tetherNow.targetId != null
+            && state.entities && typeof state.entities.get === 'function') {
+            const anchored = state.entities.get(tetherNow.targetId);
+            if (anchored && anchored.pos
+              && Number.isFinite(anchored.pos.x) && Number.isFinite(anchored.pos.z)) {
+              latchHeavy = anchored.type === 'asteroid'
+                || (anchored.type !== 'ship' && Number(anchored.mass) >= 80);
+              latchX = anchored.pos.x;
+              latchZ = anchored.pos.z;
+            }
+          }
+          stepLatchSpring(_latchSpring, {
+            latched: tetherLatched,
+            heavy: latchHeavy,
+            anchorX: latchX,
+            anchorZ: latchZ,
+            playerX: p.pos.x,
+            playerZ: p.pos.z,
+            motionReduced,
+          }, frameDt);
+          fx += _latchSpring.x;
+          fz += _latchSpring.z;
+        }
+        // counter-lean uses the ship's bank (already smoothed); fraction tuned for chase readability
+        bankForLean = (Number.isFinite(p.bank) ? p.bank : 0) * 0.068;
+      }
+      const holding = _holdT > 0;
+      if (holding) {
+        _holdT = Math.max(0, _holdT - frameDt);
+        fx = finiteOr(c.focus.x, fx);
+        fz = finiteOr(c.focus.z, fz);
+      }
+      const followLerp = finiteOr(c.lerp, 6);
+      fx = finiteOr(fx, finiteOr(c.focus.x, 0));
+      fz = finiteOr(fz, finiteOr(c.focus.z, 0));
+      if (holding || directorOwnsComposition) {
+        c.focus.x = fx;
+        c.focus.z = fz;
+      } else {
+        // damp() propagates NaN. A poisoned focus (death/corrupt pos) must recover, not stick.
+        c.focus.x = damp(finiteOr(c.focus.x, fx), fx, followLerp, frameDt);
+        c.focus.z = damp(finiteOr(c.focus.z, fz), fz, followLerp, frameDt);
+      }
+      if (!Number.isFinite(c.focus.x)) c.focus.x = fx;
+      if (!Number.isFinite(c.focus.z)) c.focus.z = fz;
+
+      // --- dynamic zoom ---
+      // chaseClose forces a tighter accessibility/profile choice; otherwise honor the exact c.zoom
+      // selection, whose fresh-run schema default is the R1 144-WU recovery frame.
+      const baseZoom = resolveBaseZoom();
+      let targetZoom = baseZoom;
+      if (p && p.pos) {
+        // The speed-zoom target follows a smoothed speed (SPEED_ZOOM_SPEED_SMOOTHING_S) so the
+        // camera never retargets from raw velocity noise, yet moves continuously instead of in
+        // 8 Hz steps. The actual distance still eases every frame through _dynamicZoom.
+        _speedZoomSpeedEma = damp(_speedZoomSpeedEma, playerSpeed, 1 / SPEED_ZOOM_SPEED_SMOOTHING_S, frameDt);
+        {
+          // Reduced motion keeps the ordinary 0.88..1.18 speed framing but suppresses the larger
+          // physics-earned pullback, matching the existing Massline release-camera contract.
+          // PQ-137.03: the ordinary frame is keyed to the hull's GOVERNED combat speed, not to the
+          // legacy derived `maxSpeed`. `p.maxSpeed` is ships.js's derived stat (engine topSpeed x
+          // SPEED_SCALE x handling x speedMass) and does not move with the drive catalog; for the
+          // starter it reads 172 against a governed cruise of 95, so a frame keyed to it would be
+          // saturated everywhere the fight actually happens.
+          const governedCap = resolveGovernedCombatSpeed(p, state, p.maxSpeed || 120);
+          const ordinarySpeedZoom = resolveSpeedZoomFactor(_speedZoomSpeedEma, governedCap, false);
+          // The above-cap opening is not computed here. `velocityLanguage`'s owner-bound record is
+          // the single writer; the owned exceptional-speed scalar and this ordinary camera curve
+          // share the governed combat-speed cap.
+          // A one-tick speed spike is not earned speed. The wide frame opens only after
+          // the owned exceptional scalar has held for a beat, then eases with everything else.
+          const rawExceptional = isMotionReduced(state) ? 0 : readOwnedExceptionalSpeed(state);
+          if (rawExceptional > 0) {
+            _exceptionalHold = Math.min(0.40, _exceptionalHold + frameDt);
+          } else {
+            _exceptionalHold = 0;
+          }
+          const exceptionalSpeed = _exceptionalHold >= 0.40 ? rawExceptional : 0;
+          _speedZoomFactor = resolveExceptionalSpeedZoomFactor(
+            exceptionalSpeed,
+            ordinarySpeedZoom,
+          );
+        }
+        targetZoom = baseZoom * _speedZoomFactor;
+        targetZoom *= (1 + _contextZoomBias);
+        targetZoom = Math.max(targetZoom, _contextMinZoom);
+        const tether = state.player && state.player.tether;
+        if (!directorOwnsComposition && tether && tether.active) {
+          // Mining/neutral massline keeps the ordinary chase camera. Slowing to work a tether must
+          // never make speed-zoom collapse the battlefield around player + rock; preserve the
+          // player's selected tactical distance and let context bias widen from there.
+          targetZoom = Math.max(targetZoom, baseZoom * (1 + _contextZoomBias));
+        }
+      }
+      _boostZoomFactor = stepBoostZoomFactor(
+        _boostZoomFactor,
+        !!(p && p.flags && p.flags.boosting),
+        frameDt,
+        isMotionReduced(state),
+      );
+      if (!directorOwnsComposition) targetZoom *= _boostZoomFactor;
+      // scripted push-zoom (dock fly-in / jump / kill-cam): multiplies the view while active, then
+      // decays. Negative factors push IN (tighter). Applied to targetZoom so it eases through the
+      // same _dynamicZoom damping as everything else.
+      // damp() rather than Euler (`x += -x * rate * dt`) in both phases: killCam() pushes with a
+      // 0.25 s duration, so _pushZoomDecay is 16/s, and against follow()'s 1/15 s frameDt clamp the
+      // Euler step factor reached 1.067 — past 1, which flips the sign. Because the factor is applied
+      // as `targetZoom *= (1 + _pushZoom)`, a sign flip pulls the camera through the ship. damp() is
+      // exp(-rate*dt) and cannot overshoot at any dt.
+      if (Math.abs(_pushZoom) > 0.0001 || Math.abs(_pushZoomPeak) > 0.0001) {
+        if (!directorOwnsComposition) targetZoom *= (1 + _pushZoom);
+        if (Math.abs(_pushZoomPeak) > 0.0001) {
+          _pushZoom = damp(_pushZoom, _pushZoomPeak, _pushZoomRise, frameDt);
+          // Hand off to the decay phase once the rise has essentially arrived, so a push always
+          // returns to 0 even if the peak is never reached exactly.
+          if (Math.abs(_pushZoomPeak - _pushZoom) <= Math.abs(_pushZoomPeak) * 0.06) _pushZoomPeak = 0;
+        } else {
+          _pushZoom = damp(_pushZoom, 0, _pushZoomDecay, frameDt);
+          if (Math.abs(_pushZoom) < 0.0001) _pushZoom = 0;
+        }
+      }
+      if (!directorOwnsComposition && _contextMinZoom > 0) {
+        // SF-225: a scripted tighten (dock fly-in, kill kiss) multiplies past the containment
+        // floor applied above and cuts the attacker it was holding — at the cap edge the fly-in
+        // pushed a 245 wu attacker from NDC 0.64 settled to 1.0 off-frame. The floor binds every
+        // tightening channel; with no attacker the floor is 0 and the tighten is untouched.
+        targetZoom = Math.max(targetZoom, Math.min(_contextMinZoom, _contextZoomCap));
+        targetZoom = Math.min(targetZoom, _contextZoomCap);
+      }
+      if (holding && !_deathCam) {
+        // PQ-159.02 camera hold: freeze distance as well as look-at.
+      } else if (directorOwnsComposition) {
+        // A gate, a hostile rope, or a two-ship line asks for a distance.
+        //
+        // The director frame IS the eased composition. It already runs the authored
+        // CAMERA_DIRECTOR_EASE_S (0.35s) from whatever zoom it held on the previous frame, so it
+        // is continuous across a mode switch and cannot snap. Damping toward it here was damping a
+        // motion that was already authored, and the second filter cost real containment: the
+        // picture spent the first ~0.4s of every rope, gate or pair below a fit the director had
+        // already solved. Measured on the 150-unit tether-pair fixture, a 60 WU composed zoom
+        // opened 0.37 WU on frame 0 and was still 32 WU short at t=0.25s, so the attached
+        // hostile sat off-frame (NDC x 2.97 -> 1.09) for 24 consecutive frames before it fit,
+        // and the pair finally settled at t=2.0s instead of the authored 0.35s.
+        //
+        // Focus and look-at have always been adopted straight from the director frame above.
+        // Distance consumes it the same way, so every channel the director writes is the channel
+        // the picture uses. The rate clamp stays on the FOLLOW path, which is where targetZoom
+        // can genuinely jump (player scroll, speed zoom).
+        _dynamicZoom = finiteOr(_directorFrame.zoom, _dynamicZoom);
+        // RECOVER eases home over the containment floor it is already warming (SF-218), so the
+        // released-into fight's frame starts opening during the ease instead of after it. The
+        // FOLLOW adoption continues from this zoom under the ordinary rate caps — no second
+        // cadence, no governor retune.
+        if (recoverEase) _dynamicZoom = Math.max(_dynamicZoom, _contextMinZoom);
+        if (_deathCam && Math.abs(_pushZoom) > 0.0001) _dynamicZoom *= (1 + _pushZoom);
+      } else {
+        let nextZoom = damp(_dynamicZoom, targetZoom, ZOOM_LERP, frameDt);
+        const zoomStep = ZOOM_OUT_RATE_MAX_WU_PER_S
+          * Math.min(Math.max(finiteOr(frameDt, 0), 0), ZOOM_OUT_STEP_MAX_FRAME_DT);
+        // Same rate in and out. A fight that opens and a fight that ends are one motion.
+        if (nextZoom > _dynamicZoom) nextZoom = Math.min(nextZoom, _dynamicZoom + zoomStep);
+        else if (nextZoom < _dynamicZoom) nextZoom = Math.max(nextZoom, _dynamicZoom - zoomStep);
+        _dynamicZoom = nextZoom;
+      }
+      // Sim-lane visibility transport: the worker's projector (tableChaseFraming)
+      // consumes the DISPLAYED envelope — the eased distance actually placed this
+      // frame and the damped speed-zoom factor — never the commanded base zoom or
+      // the instantaneous speed, which disagree mid-accel. c.focus above already
+      // carries the settled look-at. Plain scalars on state.camera; the lane
+      // bridge ships them per directive (the 'camera' command envelope).
+      c.displayedZoom = _dynamicZoom;
+      c.speedZoomFactor = _speedZoomFactor;
+      // The zoom the picture is opening toward, before damping arrives. Residency
+      // prefetches this so the rim of a zoom-out is already built when it lands.
+      c.composedZoom = directorOwnsComposition
+        ? (recoverEase
+          ? _dynamicZoom
+          : _directorFrame?.mode === CameraDirectorMode.INDUSTRIAL
+            ? Math.max(_dynamicZoom, finiteOr(_directorFrame.requiredZoom, _dynamicZoom))
+            : finiteOr(_directorFrame && _directorFrame.zoom, _dynamicZoom))
+        : targetZoom;
+      // Oversized authored gates can physically surround the chase camera even while the aperture
+      // is correctly composed. The director derives a conservative near plane from the mounted
+      // gate's real depth bounds; easing is owned by the same 0.35 s transition as focus/zoom.
+      // Ordinary chase, manual flight, and Flyby Focus all remain at the canonical 1 wu near plane.
+      const nextNear = directorOwnsComposition ? finiteOr(_directorFrame.nearPlane, 1) : 1;
+      const nearTarget = Math.max(1, Math.min(160, nextNear));
+      _dynamicNear = damp(_dynamicNear, nearTarget, 1 / 0.35, frameDt);
+      if (Math.abs(cam.near - _dynamicNear) > 0.01) {
+        cam.near = _dynamicNear;
+        cam.updateProjectionMatrix();
+      }
+      if (p && p.pos && !directorOwnsComposition) {
+        // Safe-rect is frame-local (player proxy holds projected XZ for this frame).
+        // Use authored base FOV so feel-layer punches cannot expand/contract the safe rect mid-dodge.
+        const safeBaseFov = Math.max(
+          10,
+          Math.min(140, finiteOr(state.settings && state.settings.video && state.settings.video.fov, 50)),
+        );
+        _safeFocusOptionsScratch.zoom = _dynamicZoom;
+        _safeFocusOptionsScratch.fov = safeBaseFov;
+        _safeFocusOptionsScratch.aspect = cam.aspect;
+        const safeFocus = clampFocusToPlayerSafeRect(
+          c.focus,
+          _playerLocalProxy,
+          _safeFocusOptionsScratch,
+          _safeFocusScratch,
+        );
+        if (safeFocus.clamped) {
+          c.focus.x = safeFocus.x;
+          c.focus.z = safeFocus.z;
+        }
+      }
+      if (!directorOwnsComposition) {
+        _directorFrame = cameraDirector.syncFollow(c.focus.x, c.focus.z, _dynamicZoom);
+      }
+      computeOffset(_dynamicZoom);
+      let shakeRoll = 0;
+      let shakePitch = 0;
+      if (c.trauma > 0) {
+        c.trauma = decayCameraTrauma(c.trauma, frameDt);
+        const t2 = c.trauma * c.trauma;
+        // Shake amplitude = motionReduce factor × band-3 shakeScale × trauma². The two reductions are
+        // composed deliberately rather than folded: motionReduce is the player's accessibility choice
+        // and is owned HERE; shakeScale is the ADR D7 band-3 design choice (1 → 0.55 across ratio
+        // 5 → 10) and is owned by velocityLanguage.js, which the field leaves UNSCALED by motionReduce
+        // so the camera lane's own motionReduce handling is what carries the accessibility reduction.
+        const motionScale = isMotionReduced(state) ? MOTION_REDUCE_SHAKE_SCALE : 1;
+        const vl = readVelocityLanguage(state);
+        const bandShake = vl && vl.drive && Number.isFinite(vl.drive.shakeScale) ? vl.drive.shakeScale : 1;
+        const shakeScale = motionScale * bandShake * screenShakeScale(state && state.settings);
+        // Resample the shake noise on a FIXED-RATE accumulator, not once per rendered frame. The
+        // amplitude was already frame-rate independent (trauma decays against frameDt above), but the
+        // *frequency* was the display refresh rate: the same trauma read as a fast buzz at 144 Hz and
+        // a slow wobble at 30 Hz, so shake felt like a different effect on different monitors. Held
+        // between steps, so the four channels stay mutually coherent the way the note below requires.
+        _shakeNoiseT += frameDt;
+        while (_shakeNoiseT >= SHAKE_NOISE_STEP_S) {
+          _shakeNoiseT -= SHAKE_NOISE_STEP_S;
+          _shakeNoise[0] = Math.random() * 2 - 1;
+          _shakeNoise[1] = Math.random() * 2 - 1;
+          _shakeNoise[2] = Math.random() * 2 - 1;
+          _shakeNoise[3] = Math.random() * 2 - 1;
+        }
+        c.shakeOffset.set(
+          _shakeNoise[0] * SHAKE_POS_MAX * shakeScale * t2,
+          0,
+          _shakeNoise[1] * SHAKE_POS_MAX * shakeScale * t2,
+        );
+        // GR-6: angular shake — roll + pitch jitter, trauma²-scaled. Sampled together with the
+        // translational channels so it stays coherent rather than vibrating independently.
+        shakeRoll = _shakeNoise[2] * SHAKE_ROT_ROLL * shakeScale * t2;
+        shakePitch = _shakeNoise[3] * SHAKE_ROT_PITCH * shakeScale * t2;
+      } else {
+        c.shakeOffset.set(0, 0, 0);
+        // Arm the resampler so the FIRST shaking frame displaces immediately. Without this the
+        // fixed-rate accumulator can swallow up to one step (31 ms) before the first sample lands,
+        // which both softens the impact the shake is reacting to and leaves shakeOffset at zero on
+        // the frame trauma arrives.
+        _shakeNoiseT = SHAKE_NOISE_STEP_S;
+      }
+      // PQ-159.00 kick integration: the offset translates BOTH the camera and its look-at target,
+      // so the whole frame slides in the direction the hull was knocked (the ship visibly displaces
+      // off-centre for a beat) instead of orbiting the focus the way a position-only offset would.
+      // c.focus itself is never written — the kick cannot feed back into the damped follow.
+      if (_kick.envX !== 0 || _kick.envZ !== 0 || _kick.x !== 0 || _kick.z !== 0) {
+        stepCameraKick(_kick, frameDt);
+      }
+      c.kickOffset.set(_kick.x, 0, _kick.z);
+      const reduced = isMotionReduced(state);
+      const stern = !!p && !_deathCam && resolveSteeringView(state, { death: _deathCam }) === 'racing';
+      _overheadPose.eyeX = c.focus.x + offset.x;
+      _overheadPose.eyeZ = c.focus.z + offset.z;
+      _overheadPose.eyeY = offset.y;
+      _overheadPose.lookX = c.focus.x;
+      _overheadPose.lookZ = c.focus.z;
+      racingRigOf(state && state.settings, _racingRig);
+      const hullRadius = p && Number.isFinite(p.radius) ? Math.max(0, p.radius) : 0;
+      _racingRig.distance = Math.max(_racingRig.distance, hullRadius * 2.2);
+      _racingRig.height = Math.max(_racingRig.height, hullRadius * 0.8);
+      const pose = stepRacingCameraBlend(_racingBlend, frameDt, stern,
+        p ? _playerLocalScratch : c.focus, p && p.rot, playerSpeed,
+        _racingRig, _overheadPose, reduced, _racingPose,
+        _deathCam || !!(photo && photo.active));
+      // BOTH views use the same predictive solid-clearance solver. The stern rig is anchored
+      // to the presented hull, not the overhead camera's velocity/threat-biased focus.
+      let camX = pose.eyeX, camY = pose.eyeY, camZ = pose.eyeZ;
+      if (typeof clearanceAt === 'function' && typeof clearanceAt.roofAt === 'function') {
+        const rx = camX - pose.lookX, rz = camZ - pose.lookZ;
+        const ceiling = Number.isFinite(cam.far) && cam.far > 0 ? cam.far : 14000;
+        const scale = stepCameraGlide(_glide, frameDt, pose.lookX, pose.lookZ,
+          rx, camY, rz, clearanceAt.roofAt, ceiling);
+        camX += rx * (scale - 1); camZ += rz * (scale - 1); camY *= scale;
+        c.clearanceScale = scale;
+        c.clearanceDiag = _glide.diag;
+      }
+      camX += c.shakeOffset.x + c.kickOffset.x;
+      camZ += c.shakeOffset.z + c.kickOffset.z;
+      cam.position.set(camX, camY, camZ);
+      // Kick slides the whole frame. Shake stays on the eye. Neither may orbit the look point.
+      applyChaseLookAt(
+        cam, camX, camY, camZ,
+        pose.lookX + c.kickOffset.x,
+        pose.lookZ + c.kickOffset.z,
+        _lookAtCache,
+      );
+      // apply a gentle, damped roll in the camera's local frame — counter to the ship's bank so the
+      // view tips into the turn. lookAt() set the quaternion; we post-multiply a local-Z rotation so
+      // we never clobber the heading (safe with the no-yaw-follow rule).
+      const targetRoll = reduced ? 0 : Math.max(-ROLL_MAX, Math.min(ROLL_MAX, bankForLean));
+      camRoll = damp(camRoll, targetRoll, ROLL_LERP, frameDt);
+      _rollQ.setFromAxisAngle(_FORWARD, camRoll);
+      cam.quaternion.multiply(_rollQ);
+      // GR-6: apply rotational shake after the bank roll. Post-multiplying local-axis quats keeps the
+      // shake in the camera's frame (spins the image, never drags the heading).
+      if (shakeRoll) { _shakeRollQ.setFromAxisAngle(_FORWARD, shakeRoll); cam.quaternion.multiply(_shakeRollQ); }
+      if (shakePitch) { _shakePitchQ.setFromAxisAngle(_camRight, shakePitch); cam.quaternion.multiply(_shakePitchQ); }
+      // The pose is final — publish it for the sim-lane visibility transport.
+      // viewKind follows the steering view the player selected; viewMix is the
+      // eased blend so a mid-transition frame still reads as the pose it is.
+      stampDisplayedPose(stern ? 'racing' : 'overhead', _racingBlend.mix);
+    },
+    onResize() {
+      cam.aspect = viewport.innerWidth / viewport.innerHeight;
+      cam.updateProjectionMatrix();
+    },
+  };
+}

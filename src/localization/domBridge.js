@@ -1,0 +1,364 @@
+// Opt-in DOM localization bridge for the public pseudo-locale route and the Settings language picker.
+//
+// Most SpaceFace screens are cached and rebuilt incrementally. The bridge translates text at the
+// DOM boundary so every newly mounted/refreshed screen exercises expansion and glyph coverage
+// without forcing localization concerns into station, HUD, simulation, or screen ownership lanes.
+// It is installed for any non-default locale; normal en-US play pays no observer/style cost. Once
+// installed it stays installed so a live switch back to English can restore the authored source.
+
+import { applyLocaleFonts } from './fonts.js';
+
+const LOCALIZED_COPY_ATTRIBUTE = 'data-localization-copy';
+const TEXT_ATTRIBUTES = Object.freeze(['aria-label', 'placeholder', 'title', 'alt']);
+const LOCALIZED_ATTRIBUTES = Object.freeze([...TEXT_ATTRIBUTES, LOCALIZED_COPY_ATTRIBUTE]);
+const SKIP_SELECTOR = '[data-localization-skip]';
+const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'CODE', 'PRE', 'CANVAS']);
+const PSEUDO_STYLE_ID = 'sf-localization-overflow-style';
+
+let installed = false;
+let observer = null;
+let restoreCanvasText = null;
+let activeTranslate = null;
+// Every node keeps the app-authored source it was rendered from, so a locale switch re-renders from
+// that source instead of translating an already-translated string. The `rendered*` maps record what
+// this bridge last wrote, which is how our own writes are told apart from an app-authored update.
+const sourceText = new WeakMap();
+const renderedText = new WeakMap();
+const sourceAttributes = new WeakMap();
+const renderedAttributes = new WeakMap();
+const canvasSamples = [];
+const stats = { textNodes: 0, attributes: 0, canvasTextDraws: 0, mutationBatches: 0 };
+
+// A single plain-text element may carry a source template plus interpolation values.
+// The source text remains its English fallback; this is metadata, never HTML.
+export function setLocalizedTextTemplate(element, copy, suffix = '') {
+  if (!element?.setAttribute) return;
+  const values = copy?.values;
+  const pairs = values && typeof values === 'object' && !Array.isArray(values) ? Object.entries(values) : [];
+  const valid = typeof copy?.template === 'string' && copy.template.length > 0 && copy.template.length <= 2000
+    && pairs.length <= 24 && pairs.every(([key, value]) => /^[A-Za-z_][\w.-]*$/.test(key)
+      && ['string', 'number', 'boolean'].includes(typeof value) && String(value).length <= 600)
+    && typeof suffix === 'string' && suffix.length <= 120;
+  if (!valid) {
+    if (element.hasAttribute?.(LOCALIZED_COPY_ATTRIBUTE)) element.removeAttribute(LOCALIZED_COPY_ATTRIBUTE);
+    return;
+  }
+  const serialized = JSON.stringify({ template: copy.template, values: Object.fromEntries(pairs), suffix });
+  if (element.getAttribute(LOCALIZED_COPY_ATTRIBUTE) !== serialized) element.setAttribute(LOCALIZED_COPY_ATTRIBUTE, serialized);
+}
+
+function localizedTextTemplate(element) {
+  const value = element?.getAttribute?.(LOCALIZED_COPY_ATTRIBUTE);
+  if (!value || value.length > 18000) return null;
+  try {
+    const copy = JSON.parse(value);
+    if (!copy || typeof copy.template !== 'string' || !copy.template || copy.template.length > 2000
+      || !copy.values || typeof copy.values !== 'object' || Array.isArray(copy.values)
+      || typeof copy.suffix !== 'string' || copy.suffix.length > 120) return null;
+    const pairs = Object.entries(copy.values);
+    if (pairs.length > 24 || pairs.some(([key, v]) => !/^[A-Za-z_][\w.-]*$/.test(key)
+      || !['string', 'number', 'boolean'].includes(typeof v) || String(v).length > 600)) return null;
+    return copy;
+  } catch { return null; }
+}
+
+export function localizeDocumentTree(root, translate) {
+  if (!root || typeof translate !== 'function') return { textNodes: 0, attributes: 0 };
+  const beforeText = stats.textNodes;
+  const beforeAttributes = stats.attributes;
+  visit(root, translate);
+  return {
+    textNodes: stats.textNodes - beforeText,
+    attributes: stats.attributes - beforeAttributes,
+  };
+}
+
+export function installLocalizedDocumentBridge({ document: doc, translate, locale }) {
+  if (!doc || !doc.documentElement || typeof translate !== 'function') return false;
+  activeTranslate = translate;
+  injectOverflowStyle(doc, locale);
+  applyLocaleFonts(doc, locale);
+  if (!installed) {
+    installed = true;
+    installCanvasTextBridge(doc.defaultView);
+    installObserver(doc);
+  }
+  // Install is also the live switch: re-run the whole tree so every cached screen re-renders from
+  // its stored source under the new translator. Default play pays nothing until a locale is chosen.
+  localizeDocumentTree(doc.documentElement, translate);
+  return true;
+}
+
+export function localizationBridgeStats() {
+  return Object.freeze({ ...stats, canvasSamples: canvasSamples.slice(), installed });
+}
+
+export function stopLocalizedDocumentBridge() {
+  if (observer) observer.disconnect();
+  if (restoreCanvasText) restoreCanvasText();
+  observer = null;
+  restoreCanvasText = null;
+  activeTranslate = null;
+  installed = false;
+}
+
+function installObserver(doc) {
+  if (typeof MutationObserver !== 'function') return;
+  observer = new MutationObserver((records) => {
+    stats.mutationBatches += 1;
+    const translate = activeTranslate;
+    if (typeof translate !== 'function') return;
+    for (const record of records) {
+      if (record.type === 'characterData') localizeTextNode(record.target, translate);
+      else if (record.type === 'attributes') {
+        if (record.attributeName === LOCALIZED_COPY_ATTRIBUTE) visit(record.target, translate);
+        else localizeAttribute(record.target, record.attributeName, translate);
+      }
+      else for (const node of record.addedNodes || []) visit(node, translate);
+    }
+  });
+  observer.observe(doc.documentElement, {
+    subtree: true,
+    childList: true,
+    characterData: true,
+    attributes: true,
+    attributeFilter: LOCALIZED_ATTRIBUTES,
+  });
+}
+
+function visit(node, translate) {
+  if (!node) return;
+  if (node.nodeType === 3) {
+    localizeTextNode(node, translate);
+    return;
+  }
+  if (node.nodeType !== 1 && node.nodeType !== 9 && node.nodeType !== 11) return;
+  if (node.nodeType === 1) {
+    if (shouldSkipElement(node)) return;
+    for (const attribute of TEXT_ATTRIBUTES) localizeAttribute(node, attribute, translate);
+  }
+  for (const child of node.childNodes || []) visit(child, translate);
+}
+
+function localizeTextNode(node, translate) {
+  const value = String(node && node.nodeValue || '');
+  if (!value) return;
+  const parent = node.parentElement;
+  if (!parent || shouldSkipElement(parent)) return;
+  const lastRendered = renderedText.get(node);
+  // Our own last write is not a new source; anything else (or the first visit) is authored source.
+  const source = (lastRendered !== undefined && lastRendered === value)
+    ? sourceText.get(node)
+    : value;
+  if (source == null) return;
+  const match = source.match(/^(\s*)([\s\S]*?)(\s*)$/);
+  const body = match ? match[2] : source;
+  sourceText.set(node, source);
+  if (!isTranslatable(body)) {
+    renderedText.set(node, value);
+    return;
+  }
+  const copy = localizedTextTemplate(parent);
+  const renderedBody = copy ? translate(copy.template, copy.values) + copy.suffix : translate(body);
+  const rendered = copy ? renderedBody : `${match ? match[1] : ''}${renderedBody}${match ? match[3] : ''}`;
+  renderedText.set(node, rendered);
+  if (rendered !== value) {
+    stats.textNodes += 1;
+    node.nodeValue = rendered;
+  }
+}
+
+function localizeAttribute(element, attribute, translate) {
+  if (!element || !attribute || !element.hasAttribute || !element.hasAttribute(attribute)) return;
+  const value = element.getAttribute(attribute);
+  let sourceCache = sourceAttributes.get(element);
+  if (!sourceCache) {
+    sourceCache = new Map();
+    sourceAttributes.set(element, sourceCache);
+  }
+  let renderedCache = renderedAttributes.get(element);
+  if (!renderedCache) {
+    renderedCache = new Map();
+    renderedAttributes.set(element, renderedCache);
+  }
+  const lastRendered = renderedCache.get(attribute);
+  const source = (lastRendered !== undefined && lastRendered === value)
+    ? sourceCache.get(attribute)
+    : value;
+  sourceCache.set(attribute, source);
+  if (!isTranslatable(source)) {
+    renderedCache.set(attribute, value);
+    return;
+  }
+  const rendered = translate(source);
+  renderedCache.set(attribute, rendered);
+  if (rendered !== value) {
+    stats.attributes += 1;
+    element.setAttribute(attribute, rendered);
+  }
+}
+
+function isTranslatable(value) {
+  const text = String(value == null ? '' : value).trim();
+  if (!text || !/[A-Za-z]/.test(text)) return false;
+  // Explicitly localized screen copy reaches the observer too. Never pseudo-localize it twice.
+  if (text.startsWith('⟦') && text.endsWith('⟧')) return false;
+  return true;
+}
+
+function shouldSkipElement(element) {
+  if (!element || SKIP_TAGS.has(element.tagName)) return true;
+  if (element.matches && element.matches(SKIP_SELECTOR)) return true;
+  return !!(element.closest && element.closest(SKIP_SELECTOR));
+}
+
+function installCanvasTextBridge(view) {
+  const proto = view && view.CanvasRenderingContext2D && view.CanvasRenderingContext2D.prototype;
+  if (!proto || restoreCanvasText) return;
+  const original = {
+    fillText: proto.fillText,
+    strokeText: proto.strokeText,
+    measureText: proto.measureText,
+  };
+  if (!original.fillText || !original.strokeText || !original.measureText) return;
+
+  const render = (value) => {
+    const source = String(value == null ? '' : value);
+    if (!isTranslatable(source) || typeof activeTranslate !== 'function') return source;
+    const localized = activeTranslate(source);
+    if (localized !== source && canvasSamples.length < 12) canvasSamples.push({ source, localized });
+    return localized;
+  };
+  proto.measureText = function localizedMeasureText(text) {
+    return original.measureText.call(this, render(text));
+  };
+  proto.fillText = function localizedFillText(text, ...args) {
+    stats.canvasTextDraws += 1;
+    return original.fillText.call(this, render(text), ...args);
+  };
+  proto.strokeText = function localizedStrokeText(text, ...args) {
+    stats.canvasTextDraws += 1;
+    return original.strokeText.call(this, render(text), ...args);
+  };
+  restoreCanvasText = () => {
+    proto.fillText = original.fillText;
+    proto.strokeText = original.strokeText;
+    proto.measureText = original.measureText;
+  };
+}
+
+export const GROWTH_LAYOUT_CSS = `
+    html:not([data-locale="en-US"]) #screens .screen { min-width:0; max-width:100vw; }
+    html:not([data-locale="en-US"]) #screens :is(button,label,h1,h2,h3,h4,p,li,td,th,.sf-slot-name,.sf-slot-sub,.k-display,.k-sentence) {
+      min-width:0; max-width:100%; overflow-wrap:anywhere; word-break:normal; white-space:normal;
+    }
+    html:not([data-locale="en-US"]) #screens :is(button,.sf-tab,.sf-btn) {
+      white-space:normal; block-size:auto; min-block-size:2.5rem;
+    }
+    html:not([data-locale="en-US"]) #screens :is(.sf-tabbar,.sf-foot,.sf-row,.sf-actions) { flex-wrap:wrap; }
+    html:not([data-locale="en-US"]) #screens .sf-menu { min-width:min(360px,92vw); }
+    html:not([data-locale="en-US"]) #hud :is(.sf-target__name,.sf-obj__t,.sf-objarrow__label,.sf-wpn-heat__label,.sf-lockring__label,.sf-nav-label,.sf-stat__v,.sf-cargo-row__name,.sf-prail__label,.sf-pslot__name,.sf-mt-title,.sf-alert,.sf-barrow__label,.sf-command-deck,.sf-vtape,.sf-vtape__track,.sf-overview-row__name,.sf-overview-row__detail,.sf-overview-footer) {
+      white-space:normal; overflow:visible; text-overflow:unset; overflow-wrap:anywhere; max-width:100%;
+    }
+    html:not([data-locale="en-US"]) #hud .sf-barrow { min-width:4.5rem; width:auto; max-width:8rem; }
+    html:not([data-locale="en-US"]) #hud .sf-barrow__label { white-space:normal; overflow:visible; max-width:100%; }
+    html:not([data-locale="en-US"]) #hud .sf-wpn-heat__label { width:auto; min-width:46px; max-width:9rem; }
+    html:not([data-locale="en-US"]) #hud .sf-objectives { max-width:min(360px,42vw); }
+    html:not([data-locale="en-US"]) #hud .sf-toast { max-width:min(420px,92vw); white-space:normal; }
+    html:not([data-locale="en-US"]) #hud :is(.sf-confirm,.sf-dialog,.sf-panel,aside) { max-width:min(480px,94vw); }
+    html:not([data-locale="en-US"]) #hud .sf-overview { width:min(280px,34vw); max-width:min(280px,34vw); }
+    html:not([data-locale="en-US"]) #hud .sf-overview-row { flex-wrap:wrap; align-items:flex-start; }
+    html:not([data-locale="en-US"]) #hud .sf-overview-row__name {
+      white-space:normal; overflow:visible; text-overflow:unset; overflow-wrap:anywhere;
+      max-width:min(220px,30vw); width:auto;
+    }
+    html:not([data-locale="en-US"]) #hud .sf-overview-row__right span {
+      width:auto !important; min-width:2.5rem; overflow:visible; white-space:nowrap;
+    }
+    html:not([data-locale="en-US"]) #screens :is(h1,h2,.k-display) { line-height:1.15; }
+    html:not([data-locale="en-US"]) [data-screen] { min-width:0; max-width:100vw; }
+    html:not([data-locale="en-US"]) [data-screen] :is(button,label,h1,h2,h3,h4,p,li,td,th,.sf-slot-name,.sf-slot-sub,.k-display,.k-sentence,select) {
+      min-width:0; max-width:100%; overflow-wrap:anywhere; word-break:normal; white-space:normal;
+    }
+    html:not([data-locale="en-US"]) [data-screen] :is(button,.sf-tab,.sf-btn) {
+      white-space:normal; block-size:auto; min-block-size:2.5rem;
+    }
+    html:not([data-locale="en-US"]) #hud .sf-leftstack {
+      width:min(400px,44vw); max-width:min(400px,44vw);
+    }
+    html:not([data-locale="en-US"]) #hud .sf-bars {
+      width:100%; max-width:100%;
+      grid-template-columns:minmax(92px,auto) minmax(0,1fr);
+      grid-template-rows:auto;
+    }
+    html:not([data-locale="en-US"]) #hud .sf-wpn-heat {
+      display:grid;
+      grid-template-columns:minmax(9rem,max-content) minmax(0,1fr);
+      align-items:start;
+    }
+    html:not([data-locale="en-US"]) #hud .sf-wpn-heat__label {
+      width:auto; max-width:none; white-space:normal; overflow:visible; text-overflow:unset;
+    }
+    html:not([data-locale="en-US"]) #hud .sf-barrow {
+      grid-template-columns:minmax(4.5rem,max-content) minmax(0,1fr) minmax(2.2rem,max-content);
+      width:100%; max-width:none; min-width:0;
+    }
+    html:not([data-locale="en-US"]) #hud .sf-overview { overflow:visible; height:auto; }
+    html:not([data-locale="en-US"]) #hud .sf-prail {
+      flex-wrap:wrap; width:max-content; max-width:min(96vw,1100px);
+    }
+    html:not([data-locale="en-US"]) #hud .sf-prail__slots { flex-wrap:wrap; }
+    html:not([data-locale="en-US"]) #hud .sf-pslot {
+      width:auto; min-width:38px; height:auto; min-height:38px; overflow:visible;
+    }
+    html:not([data-locale="en-US"]) #hud .sf-pslot__name {
+      position:static; white-space:normal; overflow:visible; max-width:7rem;
+    }
+    html:not([data-locale="en-US"]) #hud .sf-prail__label { white-space:normal; overflow:visible; }
+    html:not([data-locale="en-US"]) #hud .sf-firstuse {
+      white-space:normal; max-width:min(360px,46vw); overflow:visible;
+    }
+    html:not([data-locale="en-US"]) #hud .sf-objectives { white-space:normal; overflow:visible; }
+
+    /* D136 — surfaces whose own sheets pin one-line copy inside fixed boxes, or bleed a designed
+       decoration past the box the copy lives in. Each selector copies the surface's own rule
+       (including the ORRERY sheets' doubled classes and !important) and adds the locale guard, so
+       it wins exactly where the authored rule would otherwise clip a grown string. The :not(.sf-l10n-x)
+       tail breaks exact-specificity ties against same-!important rules without matching anything.
+       English keeps the authored form; an expanded locale wraps, or its designed bleed lands inside. */
+    html:not([data-locale="en-US"]) body #screens > .k-screen.of-settings.orr-settings .sf-tabbar .sf-tab { white-space:normal !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.of-help.orr-help .orr-help__tabs .sf-tab { white-space:normal !important; }
+    html:not([data-locale="en-US"]) body #screens #sf-galaxymap.of-chart.orr-chart :is(.gm-tab, .gm-layer-btn, .gm-frame-btn, .gm-ins-btn, .gm-rail-sum, .gm-stamp):not(.sf-l10n-x) { white-space:normal !important; }
+    html:not([data-locale="en-US"]) body #screens #sf-galaxymap.of-chart .gm-layer-name { white-space:normal !important; overflow-wrap:anywhere; min-width:0; }
+    html:not([data-locale="en-US"]) body #screens #sf-galaxymap.of-chart .gm-scale-buttons.k-words { flex-wrap:wrap !important; width:auto !important; max-width:100% !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.of-codex.orr-archive.orr-archive .cx-index { grid-template-columns:minmax(0, 100%) !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.of-codex.orr-archive.orr-archive .cx-index__list { flex-wrap:wrap !important; justify-content:flex-end; max-width:100%; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.of-codex.orr-archive.orr-archive .cx-index__w { overflow-wrap:anywhere !important; min-width:0 !important; max-width:100% !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog :is(.orr-mdial__trace-read, .orr-mdial__clock-read) { left:-1px !important; right:-1px !important; white-space:normal !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .ml-route::before { right:-1px !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog :is(.ml-route__from, .ml-route__to) { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.sf-gameover.orr-gameover.orr-gameover .sf-go-st,
+    html:not([data-locale="en-US"]) body #screens > .k-screen.sf-gameover.orr-gameover.orr-gameover .orr-tape__read { white-space:normal !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.sf-gameover.orr-gameover.orr-gameover .sf-go-tape::before { right:-1px !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.sf-gameover.orr-gameover.orr-gameover .sf-go-foot > .k-words { flex-wrap:wrap !important; row-gap:8px !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.sf-gameover.orr-gameover.orr-gameover .sf-go-foot .k-word { white-space:normal !important; overflow-wrap:anywhere !important; height:auto !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.of-saveload.orr-saveload.orr-saveload .orr-film__list > .k-row.sf-slot { padding-inline:8px !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.of-help.orr-help :is(.orr-hrig__st, .orr-hreg__row, .orr-help__close.sf-back.k-word) { padding-inline-end:3px !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.of-help.orr-help .orr-hrig__verb { white-space:normal !important; overflow-wrap:anywhere; min-width:0 !important; max-width:160px !important; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.of-help.orr-help .orr-hkey { white-space:normal !important; overflow-wrap:anywhere; }
+    html:not([data-locale="en-US"]) body #screens > .k-screen.of-help.orr-help .orr-help__close-word { min-width:0 !important; overflow-wrap:anywhere; }
+  `;
+
+function injectOverflowStyle(doc, locale) {
+  if (!doc) return;
+  let style = doc.getElementById(PSEUDO_STYLE_ID);
+  if (!style) {
+    style = doc.createElement('style');
+    style.id = PSEUDO_STYLE_ID;
+    style.setAttribute('data-localization-skip', '');
+    (doc.head || doc.documentElement).appendChild(style);
+  }
+  // Growth layout is live for every expanded locale, including the +40 % pseudo-locale.
+  // English keeps the authored nowrap; switching back drops the html[data-locale] match.
+  if (locale && locale !== 'en-US') style.textContent = GROWTH_LAYOUT_CSS;
+}

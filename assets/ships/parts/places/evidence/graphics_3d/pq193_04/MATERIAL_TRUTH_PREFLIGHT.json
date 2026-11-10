@@ -1,0 +1,54 @@
+{
+  "schema": "spaceface.pq193-04.materialTruthPreflight.v1",
+  "leaf": "PQ-193.04 — the 47-A code-built family reads as designed objects at the chase camera",
+  "passKind": "two new packaged story bodies in the PQ-193.03 manufacturing family, plus one slot re-pointed at an already-reviewed body",
+  "supportedViews": ["play_chase", "play_chase_abeam", "play_chase_close"],
+  "camera": "tools/blender/spaceface_chase_camera.py 60deg / FOV50, D=144 and D=58, props fitted to their live entity radius exactly as visualOverrides.fitPackagedGroup does",
+  "componentReferenceDecision": "not_needed",
+  "referenceReason": "Both bodies extend construction language already accepted at this camera: the PQ-193.03 ISO can (spindle) and the Hitch-family machined/ceramic split (capsule). No component is trapped by the software vocabulary badly enough to need a generated study.",
+  "before": {
+    "asset.slice.47a_spindle": "pods/pod_cargo_container.glb — reads as manufactured freight, but it is the identical body to the ordinary tow can, so the object the mission is about has no tell",
+    "asset.slice.civilian_pod": "places/place_habitat_pod.glb — 840 triangles, flat colours, no textures; at 16 WU a faceted white pill with one blue panel",
+    "asset.slice.bourse_carrier_wreck": "places/place_aftermath_wreck_liner_bow.glb — 724 triangles, flat colours; the 92 WU arena radius blows it up about 8x into a grey cone, a brown band and a black drum"
+  },
+  "zoneRegister": [
+    {
+      "asset": "pod_47a_evidence_spindle",
+      "zones": ["ISO shell + corrugation + castings (retained family)", "bolted sealed access cover", "custody seal straps (roof + flanks)", "evidence chevron bands (flanks + roof edges)", "ledger case + recessed status lamp + whip antenna", "door seal bar + padlock + custody tag"],
+      "disposition": "billed",
+      "dominatesSupportedView": true,
+      "bill": {
+        "function": "the 47-A evidence can: freight hardware that is under custody",
+        "substrate": "dark painted steel shell, machined alloy fittings, red/white custody tape over steel bands, yellow-black evidence paint, amber lamp lens",
+        "process": "ISO container body; strapped and banded at two stations; hatch plated and bolted; instrument case riveted to the lid; door leaves barred and padlocked",
+        "forbiddenReads": ["ordinary tow can", "glow stick in a box", "cylinder with rings", "unpainted clay box"]
+      }
+    },
+    {
+      "asset": "place_47a_rescue_capsule",
+      "zones": ["lofted pressure hull (nose shoulder, waist, aft taper)", "flush painted distress band", "viewport strips (frame, glass, mullions, cabin light)", "dorsal beacon housing + recessed strobe", "docking collar + hatch + six clamps", "aft skirt + heat shield + three bells", "keel skids + RCS quads + handrails"],
+      "disposition": "billed",
+      "dominatesSupportedView": true,
+      "bill": {
+        "function": "a civilian lifeboat launched from a stricken hull, broadcasting distress, carrying people",
+        "substrate": "bone ceramic-coated pressure shell with panel seams, machined alloy collar/skirt/skids, red distress paint with white chevrons, dark glass, red strobe and warm cabin light",
+        "process": "rolled and sectioned pressure hull; bolted docking collar; recessed viewport frames; riveted beacon housing; welded skid standoffs",
+        "forbiddenReads": ["white pill", "tube with rings", "capsule of flat colours", "glowing blob"]
+      }
+    },
+    {
+      "asset": "place_dead_hulk (re-pointed slot)",
+      "zones": ["whole asset"],
+      "disposition": "retained_reviewed",
+      "dominatesSupportedView": true,
+      "evidence": "PQ-193.10 chase review: pointed bow, dorsal house, rooted starboard-dorsal rupture with longerons, aft collar; semantic PBR and authored LOD0/1/2. Checked again 2026-09-14 at the 92 WU arena fit beside the liner bow it replaces."
+    }
+  ],
+  "allSupportedViewZonesClassified": true,
+  "workingScene": "tools/blender/build_pq193_04_47a_bodies.py; headless Blender 5.1",
+  "frozenIdentityChecks": {
+    "asset.slice.47a_spindle": { "proceduralRoot": "SF_47A_EVIDENCE_SPINDLE", "sockets": ["SOCKET_Tether_Massline", "SOCKET_Camera_Focus"], "fitRadius": 10, "packagedMount": "MOUNT_Child" },
+    "asset.slice.civilian_pod": { "proceduralRoot": "SF_47A_CIVILIAN_POD", "sockets": ["SOCKET_Tether_Massline", "SOCKET_Camera_Focus"], "fitRadius": 8, "packagedHelpers": ["COLLISION_HULL", "SOCKET_Airlock"] },
+    "asset.slice.bourse_carrier_wreck": { "proceduralRoot": "SF_47A_BOURSE_CARRIER_WRECK", "sockets": ["SOCKET_Hazard_Core", "SOCKET_Camera_Focus"], "fitRadius": 92 }
+  }
+}

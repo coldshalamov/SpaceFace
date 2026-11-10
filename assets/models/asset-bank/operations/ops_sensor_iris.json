@@ -1,0 +1,669 @@
+{
+  "assetId": "ops_sensor_iris",
+  "category": "service",
+  "description": "sensor iris",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "optic",
+      "position": [
+        0.0,
+        0.15,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.67,
+          0.26,
+          -0.0
+        ],
+        "size": [
+          0.38,
+          0.22,
+          0.38
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.4737615433949869,
+          0.26,
+          -0.47376154339498683
+        ],
+        "size": [
+          0.38,
+          0.22,
+          0.38
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          4.1025667771436334e-17,
+          0.26,
+          -0.67
+        ],
+        "size": [
+          0.38,
+          0.22,
+          0.38
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.47376154339498683,
+          0.26,
+          -0.4737615433949869
+        ],
+        "size": [
+          0.38,
+          0.22,
+          0.38
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.67,
+          0.26,
+          -8.205133554287267e-17
+        ],
+        "size": [
+          0.38,
+          0.22,
+          0.38
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.473761543394987,
+          0.26,
+          0.47376154339498683
+        ],
+        "size": [
+          0.38,
+          0.22,
+          0.38
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.23077003314309e-16,
+          0.26,
+          0.67
+        ],
+        "size": [
+          0.38,
+          0.22,
+          0.38
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.4737615433949868,
+          0.26,
+          0.473761543394987
+        ],
+        "size": [
+          0.38,
+          0.22,
+          0.38
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.7,
+          0.3825,
+          -0.0
+        ],
+        "size": [
+          0.08679999999999999,
+          0.025000000000000022,
+          0.08679999999999999
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.7,
+          0.41500000000000004,
+          -0.0
+        ],
+        "size": [
+          0.062,
+          0.03999999999999998,
+          0.062
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.4949747468305833,
+          0.3825,
+          -0.4949747468305832
+        ],
+        "size": [
+          0.08679999999999999,
+          0.025000000000000022,
+          0.08679999999999999
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.4949747468305833,
+          0.41500000000000004,
+          -0.4949747468305832
+        ],
+        "size": [
+          0.062,
+          0.03999999999999998,
+          0.062
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          4.286263797015736e-17,
+          0.3825,
+          -0.7
+        ],
+        "size": [
+          0.08679999999999999,
+          0.025000000000000022,
+          0.08679999999999999
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          4.286263797015736e-17,
+          0.41500000000000004,
+          -0.7
+        ],
+        "size": [
+          0.062,
+          0.03999999999999998,
+          0.062
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.4949747468305832,
+          0.3825,
+          -0.4949747468305833
+        ],
+        "size": [
+          0.08679999999999999,
+          0.025000000000000022,
+          0.08679999999999999
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.4949747468305832,
+          0.41500000000000004,
+          -0.4949747468305833
+        ],
+        "size": [
+          0.062,
+          0.03999999999999998,
+          0.062
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.7,
+          0.3825,
+          -8.572527594031472e-17
+        ],
+        "size": [
+          0.08679999999999999,
+          0.025000000000000022,
+          0.08679999999999999
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.7,
+          0.41500000000000004,
+          -8.572527594031472e-17
+        ],
+        "size": [
+          0.062,
+          0.03999999999999998,
+          0.062
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.49497474683058335,
+          0.3825,
+          0.4949747468305832
+        ],
+        "size": [
+          0.08679999999999999,
+          0.025000000000000022,
+          0.08679999999999999
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.49497474683058335,
+          0.41500000000000004,
+          0.4949747468305832
+        ],
+        "size": [
+          0.062,
+          0.03999999999999998,
+          0.062
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.2858791391047207e-16,
+          0.3825,
+          0.7
+        ],
+        "size": [
+          0.08679999999999999,
+          0.025000000000000022,
+          0.08679999999999999
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -1.2858791391047207e-16,
+          0.41500000000000004,
+          0.7
+        ],
+        "size": [
+          0.062,
+          0.03999999999999998,
+          0.062
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.4949747468305831,
+          0.3825,
+          0.49497474683058335
+        ],
+        "size": [
+          0.08679999999999999,
+          0.025000000000000022,
+          0.08679999999999999
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.4949747468305831,
+          0.41500000000000004,
+          0.49497474683058335
+        ],
+        "size": [
+          0.062,
+          0.03999999999999998,
+          0.062
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [
+    {
+      "id": "iris_leaf_00",
+      "pivot": [
+        0.6000000238418579,
+        0.25,
+        -0.0
+      ],
+      "parent": null,
+      "objects": [
+        "iris_leaf"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    },
+    {
+      "id": "iris_leaf_01",
+      "pivot": [
+        0.4242640733718872,
+        0.25,
+        -0.4242640733718872
+      ],
+      "parent": null,
+      "objects": [
+        "iris_leaf.001"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    },
+    {
+      "id": "iris_leaf_02",
+      "pivot": [
+        3.6739405577555036e-17,
+        0.25,
+        -0.6000000238418579
+      ],
+      "parent": null,
+      "objects": [
+        "iris_leaf.002"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    },
+    {
+      "id": "iris_leaf_03",
+      "pivot": [
+        -0.4242640733718872,
+        0.25,
+        -0.4242640733718872
+      ],
+      "parent": null,
+      "objects": [
+        "iris_leaf.003"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    },
+    {
+      "id": "iris_leaf_04",
+      "pivot": [
+        -0.6000000238418579,
+        0.25,
+        -7.347881115511007e-17
+      ],
+      "parent": null,
+      "objects": [
+        "iris_leaf.004"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    },
+    {
+      "id": "iris_leaf_05",
+      "pivot": [
+        -0.4242640733718872,
+        0.25,
+        0.4242640733718872
+      ],
+      "parent": null,
+      "objects": [
+        "iris_leaf.005"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    },
+    {
+      "id": "iris_leaf_06",
+      "pivot": [
+        -1.1021821011522021e-16,
+        0.25,
+        0.6000000238418579
+      ],
+      "parent": null,
+      "objects": [
+        "iris_leaf.006"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    },
+    {
+      "id": "iris_leaf_07",
+      "pivot": [
+        0.4242640733718872,
+        0.25,
+        0.4242640733718872
+      ],
+      "parent": null,
+      "objects": [
+        "iris_leaf.007"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    }
+  ],
+  "tags": [
+    "operations",
+    "service",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -0.800000011920929,
+      0.15000000596046448,
+      -0.800000011920929
+    ],
+    "max": [
+      0.800000011920929,
+      0.4350000023841858,
+      0.800000011920929
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_sensor_iris_lod0.glb",
+      "triangles": 10080,
+      "draws": 11,
+      "bytes": 756768,
+      "method": "source",
+      "sha256": "57fc89b507b228161f83f26a4ece3e82c817b95bb3f51e264bd95c24ab8d3c77"
+    },
+    {
+      "level": 1,
+      "file": "ops_sensor_iris_lod1.glb",
+      "triangles": 2560,
+      "draws": 10,
+      "bytes": 375436,
+      "method": "authored-topology",
+      "sha256": "c86b2e3fbd3906405aa710c8b7ad2ab62277ce663e33fddb4b8283fbf4b80137"
+    },
+    {
+      "level": 2,
+      "file": "ops_sensor_iris_lod2.glb",
+      "triangles": 736,
+      "draws": 10,
+      "bytes": 289516,
+      "method": "authored-topology",
+      "sha256": "ca1a65badbc49aefbfdd3f4f110e527b29f496671823fdccaddf38112c0d084b"
+    }
+  ]
+}

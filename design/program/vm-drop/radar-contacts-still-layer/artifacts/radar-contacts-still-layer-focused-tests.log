@@ -1,0 +1,55 @@
+TAP version 13
+# Subtest: radar contacts still-layer defaults ON
+ok 1 - radar contacts still-layer defaults ON
+  ---
+  duration_ms: 1.31203
+  ...
+# Subtest: first census walks; still pose then skips
+ok 2 - first census walks; still pose then skips
+  ---
+  duration_ms: 1.561127
+  ...
+# Subtest: latch OFF always walks
+ok 3 - latch OFF always walks
+  ---
+  duration_ms: 0.363568
+  ...
+# Subtest: player move beyond one radar pixel wakes
+ok 4 - player move beyond one radar pixel wakes
+  ---
+  duration_ms: 0.24058
+  ...
+# Subtest: sub-pixel drift stays latched
+ok 5 - sub-pixel drift stays latched
+  ---
+  duration_ms: 0.280104
+  ...
+# Subtest: contact pose change wakes the still-layer
+ok 6 - contact pose change wakes the still-layer
+  ---
+  duration_ms: 0.270926
+  ...
+# Subtest: targetId change wakes
+ok 7 - targetId change wakes
+  ---
+  duration_ms: 0.43788
+  ...
+# Subtest: rescan budget eventually forces a walk
+ok 8 - rescan budget eventually forces a walk
+  ---
+  duration_ms: 0.46335
+  ...
+# Subtest: bench toggle restores
+ok 9 - bench toggle restores
+  ---
+  duration_ms: 0.255963
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 554.028185

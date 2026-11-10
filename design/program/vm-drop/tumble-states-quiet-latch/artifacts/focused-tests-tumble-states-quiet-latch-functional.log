@@ -1,0 +1,47 @@
+TAP version 13
+# Subtest: tumble end opens a stabilization window instead of snapping to tactics
+ok 1 - tumble end opens a stabilization window instead of snapping to tactics
+  ---
+  duration_ms: 4.675924
+  ...
+# Subtest: stabilization damps spin, disrupts thrust, and holds fire
+ok 2 - stabilization damps spin, disrupts thrust, and holds fire
+  ---
+  duration_ms: 0.655203
+  ...
+# Subtest: the window closes recognizably and tactics resume at full authority
+ok 3 - the window closes recognizably and tactics resume at full authority
+  ---
+  duration_ms: 0.636126
+  ...
+# Subtest: the player never stabilizes: no window, no events
+ok 4 - the player never stabilizes: no window, no events
+  ---
+  duration_ms: 0.306114
+  ...
+# Subtest: the sensor frame carries recovery like any other helm fact
+ok 5 - the sensor frame carries recovery like any other helm fact
+  ---
+  duration_ms: 0.756314
+  ...
+# PQ-030.01 SEED=30001 CATCH=1 BURN=105 K=0.500 DURATION=2.250 CATCH_DV=48.750 YANK_DV=26.250 HULL=100 VX=105
+# Subtest: PQ-030.01 seed 30001: full-burn pursuer is caught, yanked toward the anchor, and tumbled
+ok 6 - PQ-030.01 seed 30001: full-burn pursuer is caught, yanked toward the anchor, and tumbled
+  ---
+  duration_ms: 14.164333
+  ...
+# PQ-031.02 seed=31002 aceCut=ace_cut heavyLine=active heavyDv=6.46 lightSpeed=79.54 ratio=0.081
+# Subtest: PQ-031.02 seed 31002: an ace cuts the bridle and a heavy ignores it by mass
+ok 7 - PQ-031.02 seed 31002: an ace cuts the bridle and a heavy ignores it by mass
+  ---
+  duration_ms: 141.749196
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 473.955919

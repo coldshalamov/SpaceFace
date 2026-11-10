@@ -1,0 +1,14 @@
+{
+  "probe": "probe:smooth-flight:crucible --seed=4242",
+  "master": "59df2a08ed9684e947f79d88e1d41f5c59acbee0",
+  "gpu": "software-swiftshader",
+  "metrics": {
+    "launchToFlightS": 13.1,
+    "worstFrameMs": 783.0,
+    "hitchCallbacks": 65,
+    "hitchFrames": 342,
+    "gameSpeedPct": 56.9,
+    "noveltyNovel": 15,
+    "cookLedger": "cook ledger                 opening.rockSurfaceLibrary 48ms resolved | opening.firstPresentAdmission 6ms resolved | opening.planWait 818ms resolved | opening.plan 0ms skipped (reason=opening-plan-incomplete) | wait.prepareOpeningGpuResources 874ms resolved"
+  }
+}

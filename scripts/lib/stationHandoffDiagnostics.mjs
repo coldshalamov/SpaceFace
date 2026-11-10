@@ -1,0 +1,535 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { gunzipSync } from 'node:zlib';
+
+// Passive, bounded observer. No frame pump, recurring timer, actor input or game-state write.
+export function installStationHandoffTimingObserver() {
+  if (window.__SF_HANDOFF_TIMING) return;
+  const timing = { supported: false, longTasks: [], error: null };
+  window.__SF_HANDOFF_TIMING = timing;
+  try {
+    if (typeof PerformanceObserver !== 'function'
+      || !PerformanceObserver.supportedEntryTypes?.includes('longtask')) return;
+    const observer = new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        timing.longTasks.push({ startTime: entry.startTime, duration: entry.duration });
+        if (timing.longTasks.length > 16) timing.longTasks.shift();
+      }
+    });
+    observer.observe({ type: 'longtask', buffered: true });
+    timing.supported = true;
+  } catch (error) { timing.error = String(error?.message || error).slice(0, 300); }
+}
+
+// Failure-only, observer-only evidence for station arrival and mission-board handoffs.
+// Keep this collector self-contained: Playwright serializes it into the page realm.
+export function collectStationHandoffSnapshot() {
+  const text = (v, cap = 200) => typeof v === 'string' ? v.slice(0, cap) : null;
+  const number = (v) => typeof v === 'number' && Number.isFinite(v) ? v : null;
+  const bool = (v) => typeof v === 'boolean' ? v : null;
+  const id = (v) => typeof v === 'string' ? text(v) : number(v);
+  const sf = window.SF;
+  const state = sf?.state;
+  const ui = sf?.registry?.get?.('ui');
+  const player = state?.entities?.get?.(state.playerId);
+  const inspect = (el) => {
+    if (!el) return { present: false };
+    const style = getComputedStyle(el), rect = el.getBoundingClientRect();
+    return { present: true, connected: bool(el.isConnected), hidden: bool(el.hidden),
+      inert: bool(el.inert), classes: text(el.getAttribute('class'), 500), ariaHidden: text(el.getAttribute('aria-hidden')),
+      display: text(style.display), visibility: text(style.visibility), opacity: text(style.opacity),
+      rect: { x: number(rect.x), y: number(rect.y), width: number(rect.width), height: number(rect.height) } };
+  };
+  const roots = [...document.querySelectorAll('[data-screen="station"]')];
+  const root = roots[0];
+  const board = state?.missions?.boards?.[state?.ui?.dockedStationId];
+  const slots = Array.isArray(board?.slots) ? board.slots : [];
+  let lane = null;
+  let laneDiagnosticError = null;
+  try {
+    const d = typeof sf?.simLaneDiag === 'function' ? sf.simLaneDiag() : null;
+    if (d) {
+      lane = { lane: text(d.lane), closed: bool(d.closed), ready: bool(d.laneReady),
+        replyCount: number(d.replyCount), postedDirectives: number(d.postedDirectives),
+        inFlight: bool(d.inFlight), pendingRpcs: number(d.pendingRpcs), error: text(d.error, 1000),
+        domainAppliedKeys: Object.fromEntries(Object.entries(d.domainAppliedKeys || {})
+          .filter(([key]) => /^(missions(?:\.|$)|ui\.(docked|dockedStationId)$)/.test(key))
+          .slice(0, 64).map(([key, count]) => [key.slice(0, 200), number(count)])) };
+    }
+  } catch (error) { laneDiagnosticError = text(error?.message, 300); }
+  // The existing presentation witness records actual completed frames, phase costs and lifecycle.
+  // Its bounded history distinguishes stopped frames from late worker domains without a new timer.
+  const timing = window.__SF_HANDOFF_TIMING;
+  const stamp = typeof performance !== 'undefined' ? number(performance.now()) : null;
+  const numericFields = ['wallMs', 'tick', 'simTime', 'executedFrames', 'renderUpdates',
+    'rendererFrame', 'drawCalls', 'frameErrorCount', 'callbackMs', 'simMs', 'renderMs',
+    'vfxMs', 'uiMs', 'admissionMs', 'topPhaseP95', 'geometryPending'];
+  const witnessRow = (row) => row && typeof row === 'object' ? {
+    ...Object.fromEntries(numericFields.map((key) => [key, number(row[key])])),
+    lifecycle: text(row.lifecycle), visibilityState: text(row.visibilityState),
+    suspended: bool(row.suspended), documentHidden: bool(row.documentHidden),
+    contextLost: bool(row.contextLost), rendererFrameObserved: bool(row.rendererFrameObserved),
+    lastFrameError: text(row.lastFrameError, 500), topPhase: text(row.topPhase),
+  } : null;
+  let witness = null, witnessError = null;
+  try {
+    const recorder = window.__SF_WITNESS__;
+    if (recorder) {
+      const recent = typeof recorder.recent === 'function' ? recorder.recent() : [];
+      witness = { current: witnessRow(recorder.snapshot?.()),
+        recent: Array.isArray(recent) ? recent.slice(-8).map(witnessRow) : [] };
+    }
+  } catch (error) { witnessError = text(error?.message, 300); }
+  let presentation = null, frameTiming = null, presentationError = null;
+  try {
+    const d = sf?.loop?.getDiagnostics?.();
+    if (d) presentation = {
+      ...Object.fromEntries(['requestedFrames', 'executedFrames', 'renderUpdates',
+        'completedTicksConsumed', 'frameCapSkips', 'frameErrorCount', 'consecutiveFrameErrors',
+        'presentationStallCount', 'lastPresentMs', 'stepsThisFrame'].map((key) => [key, number(d[key])])),
+      lifecycleState: text(d.lifecycleState), requestedLifecycleState: text(d.requestedLifecycleState),
+      lastLifecycleReason: text(d.lastLifecycleReason), visibilityState: text(d.visibilityState),
+      suspended: bool(d.suspended), destroyed: bool(d.destroyed), presentationStalled: bool(d.presentationStalled),
+      lastFrameError: text(d.lastFrameError, 500),
+    };
+    const f = state?.perfRuntime?.readFrameSample?.({});
+    if (f) frameTiming = Object.fromEntries(['frameDtMs', 'callbackMs', 'untrackedMs',
+      'callbackIntervalMs', 'externalCallbackGapMs', 'callbackDispatchLagMs', 'simMs', 'simFrameMs',
+      'presentationMs', 'renderMs', 'vfxMs', 'feelMs', 'uiMs', 'admissionMs'].map((key) => [key, number(f[key])]));
+  } catch (error) { presentationError = text(error?.message, 300); }
+  let paints = [];
+  try {
+    paints = performance.getEntriesByType('paint').slice(-4)
+      .map((entry) => ({ name: text(entry.name), startTime: number(entry.startTime), duration: number(entry.duration) }));
+  } catch (_) { /* unsupported paint entries are not evidence of no frames */ }
+  return {
+    timing: { now: stamp, documentHidden: bool(document.hidden), visibilityState: text(document.visibilityState),
+      longTaskObserverSupported: bool(timing?.supported), observerError: text(timing?.error, 300),
+      longTasks: Array.isArray(timing?.longTasks) ? timing.longTasks.slice(-16).map((entry) => ({
+        startTime: number(entry.startTime), duration: number(entry.duration) })) : [],
+      // Paint Timing reports initial paint only; witness counters are the live-frame evidence.
+      initialPaints: paints, witness, witnessError, presentation, frameTiming, presentationError },
+    mode: text(state?.mode), tick: number(state?.tick), simTime: number(state?.simTime),
+    requestedLane: text(sf?.ctx?.simLane), lane, laneDiagnosticError,
+    player: player ? { id: id(player.id), alive: bool(player.alive), hull: number(player.hull) } : null,
+    docked: bool(state?.ui?.docked), dockedStationId: id(state?.ui?.dockedStationId),
+    screenStack: Array.isArray(state?.ui?.screenStack) ? state.ui.screenStack.slice(0, 16).map(id) : null,
+    topScreen: id(ui?.screenManager?.top?.()), stationRegistered: bool(ui?._registeredScreens?.has?.('station')),
+    frameErrors: number(ui?._fe), stationRootCount: roots.length,
+    stationRoots: roots.slice(0, 4).map(inspect),
+    dock: inspect(root?.querySelector('.sx-dock')), contracts: inspect(root?.querySelector('.sx-ct')),
+    operation: text(root?.getAttribute('data-operation')), view: text(root?.getAttribute('data-view')),
+    boardPresent: Array.isArray(board?.slots), boardCount: slots.length,
+    postedIds: slots.slice(0, 64).map((row) => id(row?.id)),
+    renderedRows: [...(root?.querySelectorAll('.sx-ct-row') || [])].slice(0, 64)
+      .map((row) => ({ missionId: text(row.getAttribute('data-mid')),
+        decisionId: text(row.getAttribute('data-adventure-id')), connected: bool(row.isConnected) })),
+    recentLaneEvents: Array.isArray(window.__SF_LANE_APPLIED)
+      ? window.__SF_LANE_APPLIED.slice(-16).map((row) => text(typeof row === 'string' ? row : row?.type)) : [],
+  };
+}
+
+export async function captureStationHandoffScreenshot(page, context, {
+  prepareDirectory = mkdir,
+  beforeScreenshotDispatch = null,
+  screenshotTimeoutMs = 2000,
+} = {}) {
+  if (typeof page.screenshot !== 'function') return null;
+  const boundary = String(context?.boundary || 'handoff').replace(/[^a-z0-9]+/gi, '-').slice(0, 80);
+  const file = resolve('scratch/check-ci-report/station-handoff', `${Date.now()}-${boundary}.png`);
+  await prepareDirectory(resolve('scratch/check-ci-report/station-handoff'), { recursive: true });
+  // Optional caller deadline guard runs AFTER filesystem preparation and immediately before
+  // dispatch. A timed-out mkdir must not start a late screenshot against the acceptance gate.
+  if (beforeScreenshotDispatch) beforeScreenshotDispatch();
+  // Resolve a caller budget only after directory preparation, so it can use the remaining
+  // observation deadline. Omitted/invalid budgets retain the existing two-second default.
+  const requestedTimeout = typeof screenshotTimeoutMs === 'function' ? screenshotTimeoutMs() : screenshotTimeoutMs;
+  const timeout = Number.isFinite(requestedTimeout) && requestedTimeout > 0 ? requestedTimeout : 2000;
+  // Default screenshot semantics preserve animations. Do not freeze/unhide/alter the failed view.
+  await page.screenshot({ path: file, type: 'png', timeout });
+  return file;
+}
+
+export async function reportStationHandoffFailure(page, context, issues, originalError) {
+  let timer, screenshotTimer;
+  const screenshot = Promise.race([
+    Promise.resolve().then(() => captureStationHandoffScreenshot(page, context)),
+    new Promise((_, reject) => { screenshotTimer = setTimeout(() => reject(new Error('station handoff screenshot exceeded 2000ms')), 2000); }),
+  ]).then((path) => { if (path) console.error('[station-handoff] screenshot:', path); })
+    .catch((error) => { try { console.error('[station-handoff] screenshot unavailable:', error?.message); } catch (_) {} })
+    .finally(() => clearTimeout(screenshotTimer));
+  try {
+    const snapshot = await Promise.race([
+      page.evaluate(collectStationHandoffSnapshot),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error('station handoff snapshot exceeded 2000ms')), 2000);
+      }),
+    ]);
+    // Only bounded existing diagnostic fields, never request headers, bodies, storage or saves.
+    const recent = (rows) => (Array.isArray(rows) ? rows : []).slice(-8).map((row) => ({
+      type: String(row.type || '').slice(0, 40), text: String(row.text || '').slice(0, 1200),
+      at: String(row.at || '').slice(0, 80), method: String(row.method || '').slice(0, 16),
+    }));
+    console.error('[station-handoff] snapshot:', JSON.stringify({ ...context, ...snapshot,
+      pageErrors: recent(issues.errorIssues()), pageWarnings: recent(issues.warningIssues()) }));
+  } catch (error) {
+    try { console.error('[station-handoff] snapshot unavailable:', error?.message); } catch (_) { /* preserve failure */ }
+  } finally { clearTimeout(timer); }
+  await screenshot;
+  throw originalError;
+}
+
+// One targeted browser-process trace for a named handoff. CDP root-session tracing can
+// finish without executing JavaScript in the blocked page; it is not another page snapshot.
+export async function startStationHandoffTrace(browser, label = 'market-dock', { compact = false } = {}) {
+  const traceLabel = String(label).replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '').slice(0, 60) || 'market-dock';
+  const log = (...args) => { try { console.error(...args); } catch (_) {} };
+  const bounded = async (work, label, budgetMs = 2000) => {
+    let timer;
+    try {
+      return await Promise.race([Promise.resolve().then(work), new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} exceeded ${budgetMs}ms`)), budgetMs);
+      })]);
+    } finally { clearTimeout(timer); }
+  };
+  let session = null, stream = null, stopped = false, started = false, retired = false;
+  let traceStage = 'start', traceBytes = 0;
+  let resolveComplete;
+  const complete = new Promise((resolve) => { resolveComplete = resolve; });
+  const onComplete = (event) => { stream = event.stream; resolveComplete(event); };
+  const starting = (async () => {
+    session = await browser.newBrowserCDPSession();
+    session.on('Tracing.tracingComplete', onComplete);
+    await session.send('Tracing.start', {
+      transferMode: 'ReturnAsStream', streamFormat: 'json', streamCompression: 'gzip',
+      traceConfig: {
+        recordMode: 'recordContinuously', traceBufferSizeInKb: 8192, enableSampling: !compact,
+        // BUY traces showed duplicate toplevel task envelopes consuming the ring.
+        // RunTask, Commit and GPUTask remain in disabled-by-default-devtools.timeline.
+        includedCategories: ['devtools.timeline', 'v8.execute', ...(!compact ? ['toplevel'] : []),
+          'disabled-by-default-devtools.timeline', 'disabled-by-default-devtools.timeline.stack',
+          ...(!compact ? ['disabled-by-default-v8.cpu_profiler'] : []), 'disabled-by-default-devtools.screenshot'],
+        excludedCategories: ['*'],
+      },
+    });
+    started = true;
+  })();
+  try { await bounded(() => starting, 'station handoff trace start'); }
+  catch (error) { log('[station-handoff] trace start unavailable:', error?.message); }
+  return {
+    async stop() {
+      if (stopped) return;
+      stopped = true;
+      try {
+        await bounded(async () => {
+          await starting;
+          if (!started || retired) return;
+          traceStage = 'Tracing.end';
+          await session.send('Tracing.end');
+          traceStage = 'Tracing.tracingComplete';
+          await complete;
+          if (retired) return;
+          const chunks = [];
+          let bytes = 0;
+          for (;;) {
+            traceStage = 'IO.read';
+            const part = await session.send('IO.read', { handle: stream, size: 65536 });
+            if (retired) return;
+            const chunk = Buffer.from(part.data || '', part.base64Encoded ? 'base64' : 'utf8');
+            bytes += chunk.length;
+            traceBytes = bytes;
+            if (bytes > 16 * 1024 * 1024) throw new Error('station handoff trace exceeded 16MiB storage limit');
+            chunks.push(chunk);
+            if (part.eof) break;
+          }
+          if (retired) return;
+          traceStage = 'artifact write';
+          const dir = resolve('scratch/check-ci-report/station-handoff');
+          const file = resolve(dir, `${Date.now()}-${randomUUID()}-${traceLabel}.trace.json.gz`);
+          await mkdir(dir, { recursive: true });
+          if (retired) return;
+          const data = Buffer.concat(chunks);
+          await writeFile(file, data, { flag: 'wx' });
+          log('[station-handoff] browser trace:', file, `(${bytes} bytes)`);
+          if (compact) {
+            // Post-actor evidence only. Decode/analysis failure cannot replace the gate result.
+            try {
+              const decoded = gunzipSync(data, { maxOutputLength: 16 * 1024 * 1024 });
+              const integrity = summarizeTraceIntegrity(JSON.parse(decoded.toString('utf8')));
+              log('[station-handoff] trace integrity:', JSON.stringify({ file, ...integrity,
+                cpuSampling: 'disabled here; separate main-page Profiler snapshot' }));
+            } catch (error) {
+              log('[station-handoff] trace integrity:', JSON.stringify({
+                file, profileStatus: 'unavailable', traceLossStatus: 'unknown',
+                reason: String(error?.message || error).slice(0, 300),
+              }));
+            }
+          }
+        // Browser trace finalization is post-actor work, not part of a gameplay wait.
+        }, 'station handoff trace stop/read', 15000);
+      } catch (error) { log('[station-handoff] browser trace unavailable:', error?.message, `(stage=${traceStage}, bytes=${traceBytes})`); }
+      finally {
+        retired = true;
+        // Cleanup is also bounded. Browser close remains the terminal owner if CDP is unavailable.
+        try {
+          await bounded(async () => {
+            try { if (stream && session) await session.send('IO.close', { handle: stream }); }
+            finally {
+              if (session) { session.removeListener('Tracing.tracingComplete', onComplete); await session.detach(); }
+            }
+          }, 'station handoff trace cleanup');
+        } catch (error) { log('[station-handoff] trace cleanup unavailable:', error?.message); }
+      }
+    },
+  };
+}
+
+// Bounded structural evidence, not a CPU attribution or visual/performance verdict.
+export function summarizeTraceIntegrity(trace) {
+  const events = trace?.traceEvents;
+  if (!Array.isArray(events)) throw new Error('traceEvents array unavailable');
+  if (events.length > 200000) throw new Error('trace integrity event limit exceeded');
+  const profiles = new Map();
+  let nodeCount = 0, sampleCount = 0, deltaCount = 0;
+  const nodeId = value => Number.isSafeInteger(value) && value > 0;
+  const list = (value, name) => {
+    if (value === undefined) return [];
+    if (!Array.isArray(value)) throw new Error(`invalid trace ${name} array`);
+    return value;
+  };
+  const getProfile = event => {
+    // Chromium writes ProfileChunk on the profiler thread, not always the Profile thread.
+    const validId = typeof event.id === 'string'
+      ? event.id.length > 0 && event.id.length <= 80
+      : Number.isSafeInteger(event.id) && event.id >= 0;
+    if (!Number.isSafeInteger(event.pid) || event.pid < 0 || !validId) throw new Error('invalid trace profile identity');
+    const key = JSON.stringify([event.pid, event.id]);
+    if (!profiles.has(key)) {
+      if (profiles.size >= 16) throw new Error('trace integrity profile limit exceeded');
+      profiles.set(key, { key, hasStart: false, nodes: new Map(), samples: 0, missingNodeRefs: 0,
+        missingParentRefs: 0, parentCycles: 0, timingLengthMismatches: 0, invalidTimeDeltas: 0 });
+    }
+    return profiles.get(key);
+  };
+  for (const event of events) {
+    if (event?.name !== 'Profile' && event?.name !== 'ProfileChunk') continue;
+    const profile = getProfile(event);
+    const data = event.args?.data;
+    if (event.name === 'Profile' && Number.isFinite(data?.startTime)) profile.hasStart = true;
+    for (const node of list(data?.cpuProfile?.nodes, 'nodes')) {
+      if (++nodeCount > 100000) throw new Error('trace integrity node limit exceeded');
+      if (!nodeId(node?.id) || typeof node?.callFrame?.functionName !== 'string'
+        || (node.parent !== undefined && (!Number.isSafeInteger(node.parent) || node.parent < 0))) {
+        throw new Error('invalid trace node definition');
+      }
+      const parent = node.parent ?? (node.id === 1 || node.callFrame.functionName === '(root)' ? 0 : null);
+      if (profile.nodes.has(node.id) && profile.nodes.get(node.id) !== parent) throw new Error('conflicting trace node parent');
+      profile.nodes.set(node.id, parent);
+    }
+  }
+  for (const profile of profiles.values()) {
+    const visited = new Set();
+    for (const [id, parent] of profile.nodes) {
+      if (parent !== 0 && !profile.nodes.has(parent)) profile.missingParentRefs++;
+      if (visited.has(id)) continue;
+      const chain = new Set();
+      let current = id;
+      while (current !== 0 && profile.nodes.has(current) && !visited.has(current)) {
+        if (chain.has(current)) { profile.parentCycles++; break; }
+        chain.add(current);
+        current = profile.nodes.get(current);
+      }
+      for (const member of chain) visited.add(member);
+    }
+  }
+  for (const event of events) {
+    if (event?.name !== 'ProfileChunk') continue;
+    const profile = getProfile(event);
+    const samples = list(event.args?.data?.cpuProfile?.samples, 'samples');
+    const deltas = list(event.args?.data?.timeDeltas, 'timeDeltas');
+    if (samples.length !== deltas.length) profile.timingLengthMismatches++;
+    for (const delta of deltas) {
+      if (++deltaCount > 1000000) throw new Error('trace integrity timeDelta limit exceeded');
+      if (typeof delta !== 'number' || !Number.isFinite(delta) || delta < 0) profile.invalidTimeDeltas++;
+    }
+    for (const id of samples) {
+      if (++sampleCount > 1000000) throw new Error('trace integrity sample limit exceeded');
+      if (!nodeId(id)) throw new Error('invalid trace sample identity');
+      profile.samples++;
+      if (!profile.nodes.has(id)) profile.missingNodeRefs++;
+    }
+  }
+  const stats = trace.metadata?.trace_processor_stats;
+  const finite = value => typeof value === 'number' && Number.isFinite(value) ? value : null;
+  const rawBuffers = stats?.traced_buf;
+  const buffers = Array.isArray(rawBuffers) ? rawBuffers.slice(0, 8).map(buffer => ({
+    bufferBytes: finite(buffer.buffer_size), bytesWritten: finite(buffer.bytes_written),
+    bytesOverwritten: finite(buffer.bytes_overwritten), chunksOverwritten: finite(buffer.chunks_overwritten),
+    writeWrapCount: finite(buffer.write_wrap_count),
+  })) : [];
+  const invalidCallsites = finite(stats?.legacy_v8_cpu_profile_invalid_callsite);
+  const invalidSamples = finite(stats?.legacy_v8_cpu_profile_invalid_sample);
+  const rows = [...profiles.values()].map(({ nodes, ...row }) => ({ ...row, nodeCount: nodes.size }));
+  const incomplete = rows.some(row => !row.hasStart || row.missingNodeRefs > 0
+    || row.missingParentRefs > 0 || row.parentCycles > 0 || row.timingLengthMismatches > 0 || row.invalidTimeDeltas > 0)
+    || invalidCallsites > 0 || invalidSamples > 0;
+  const lossKnown = buffers.length > 0 && rawBuffers.length <= 8
+    && buffers.every(buffer => buffer.bytesOverwritten !== null && buffer.chunksOverwritten !== null);
+  return {
+    eventCount: events.length, sampleCount, profiles: rows,
+    profileStatus: !rows.length || !sampleCount ? 'unavailable' : incomplete ? 'incomplete' : 'complete',
+    traceLossStatus: buffers.some(buffer => buffer.bytesOverwritten > 0 || buffer.chunksOverwritten > 0)
+      ? 'reported' : lossKnown ? 'not-reported' : 'unknown',
+    buffers, invalidCallsites, invalidSamples,
+    note: 'No reported loss is not proof of paint, native GPU cause, or performance acceptance.',
+  };
+}
+
+// Main-page CPU companion only: workers/GPU threads are outside this profile.
+export async function startMarketBuyCpuProfile(page) {
+  const log = (...args) => { try { console.error(...args); } catch (_) {} };
+  const bounded = async (work, label, ms) => {
+    let timer;
+    try { return await Promise.race([Promise.resolve().then(work), new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} exceeded ${ms}ms`)), ms);
+    })]); } finally { clearTimeout(timer); }
+  };
+  let session, retired = false, captureTimer, capturePromise, stopPromise;
+  let durationLimited = false, setupError = null;
+  const cleanup = async () => {
+    retired = true;
+    clearTimeout(captureTimer);
+    const current = session;
+    if (!current) return;
+    session = null;
+    try { await bounded(() => current.detach(), 'BUY profiler detach', 2000); }
+    catch (error) { log('[market-buy] CPU cleanup unavailable:', String(error?.message || error).slice(0, 300)); }
+  };
+  const capture = () => {
+    if (!capturePromise) capturePromise = (async () => {
+      try {
+        if (!session || retired) throw new Error('BUY profiler session unavailable');
+        return (await bounded(() => session.send('Profiler.stop'), 'BUY profiler stop', 15000)).profile;
+      } finally { await cleanup(); }
+    })();
+    // The duration ceiling may initiate capture before the actor finishes. Retain failure,
+    // but do not create an unhandled rejection or analyze/write until explicit stop.
+    capturePromise.catch(() => {});
+    return capturePromise;
+  };
+  const starting = (async () => {
+    const attached = await page.context().newCDPSession(page);
+    if (retired) { session = attached; await cleanup(); return; }
+    session = attached;
+    await attached.send('Profiler.enable'); if (retired) return;
+    await attached.send('Profiler.setSamplingInterval', { interval: 4000 }); if (retired) return;
+    await attached.send('Profiler.start'); if (retired) return;
+    captureTimer = setTimeout(() => { durationLimited = true; void capture(); }, 60000);
+  })();
+  try { await bounded(() => starting, 'BUY profiler start', 2000); }
+  catch (error) { setupError = String(error?.message || error).slice(0, 300); await cleanup(); }
+  return {
+    stop() {
+      if (!stopPromise) stopPromise = (async () => {
+        let artifactFile = null, artifactWriteStarted = false;
+        try {
+          if (setupError) throw new Error(setupError);
+          const profile = await capture();
+          const summary = summarizeMarketBuyCpuProfile(profile);
+          const data = JSON.stringify(profile, ['nodes', 'id', 'callFrame', 'functionName', 'scriptId', 'url',
+            'lineNumber', 'columnNumber', 'hitCount', 'children', 'startTime', 'endTime', 'samples', 'timeDeltas']);
+          if (Buffer.byteLength(data) > 16 * 1024 * 1024) throw new Error('BUY CPU artifact exceeds 16MiB');
+          const dir = resolve('scratch/check-ci-report/station-handoff');
+          const file = resolve(dir, `${Date.now()}-${randomUUID()}-market-buy.cpuprofile`);
+          artifactFile = file;
+          let storageRetired = false;
+          const storageAbort = new AbortController();
+          try {
+            await bounded(async () => {
+              await mkdir(dir, { recursive: true });
+              if (storageRetired) return;
+              artifactWriteStarted = true;
+              await writeFile(file, data, { flag: 'wx', signal: storageAbort.signal });
+            }, 'BUY CPU artifact write', 2000);
+          } finally { storageRetired = true; storageAbort.abort(); }
+          log('[market-buy] CPU profile:', JSON.stringify({ file, samplingIntervalUs: 4000,
+            durationLimited, temporalCoverage: durationLimited ? 'capped-partial' : 'actor-boundary', ...summary, scope: 'main-page CPU only; not workers, GPU, paint or performance acceptance' }));
+        } catch (error) {
+          log('[market-buy] CPU profile unavailable:', JSON.stringify({ samplingIntervalUs: 4000,
+            durationLimited, profileStatus: 'unavailable', artifactFile, artifactMayBePartial: artifactWriteStarted, reason: String(error?.message || error).slice(0, 300) }));
+        } finally { await cleanup(); }
+      })();
+      return stopPromise;
+    },
+  };
+}
+
+export function summarizeMarketBuyCpuProfile(profile) {
+  if (!Array.isArray(profile?.nodes) || !Array.isArray(profile.samples) || !Array.isArray(profile.timeDeltas)) {
+    throw new Error('CPU profile arrays unavailable');
+  }
+  if (profile.nodes.length > 100000 || profile.samples.length > 100000 || profile.timeDeltas.length > 100000) {
+    throw new Error('CPU profile node/sample limit exceeded');
+  }
+  if (!Number.isFinite(profile.startTime) || !Number.isFinite(profile.endTime)
+    || profile.endTime < profile.startTime || profile.endTime - profile.startTime > 75000000) {
+    throw new Error('CPU profile duration invalid or exceeds 75s stop ceiling');
+  }
+  const nodes = new Map(), parents = new Map();
+  let edges = 0, estimatedBytes = profile.samples.length * 32 + profile.timeDeltas.length * 32;
+  for (const node of profile.nodes) {
+    if (!Number.isSafeInteger(node?.id) || node.id <= 0 || nodes.has(node.id)
+      || typeof node.callFrame?.functionName !== 'string' || (node.children !== undefined && !Array.isArray(node.children))) {
+      throw new Error('CPU profile node identity invalid');
+    }
+    for (const key of ['lineNumber', 'columnNumber']) {
+      const value = node.callFrame[key];
+      if (value !== undefined && (!Number.isSafeInteger(value) || value < -1)) throw new Error('CPU profile frame coordinate invalid');
+    }
+    if (node.hitCount !== undefined && (!Number.isSafeInteger(node.hitCount) || node.hitCount < 0)) {
+      throw new Error('CPU profile hitCount invalid');
+    }
+    for (const key of ['functionName', 'scriptId', 'url']) {
+      const value = node.callFrame[key];
+      if (value !== undefined && (typeof value !== 'string' || value.length > 8192)) throw new Error('CPU profile frame string limit exceeded');
+      estimatedBytes += (value?.length || 0) * 6;
+    }
+    estimatedBytes += 512 + (node.children?.length || 0) * 32;
+    if (estimatedBytes > 16 * 1024 * 1024) throw new Error('CPU profile serialized estimate exceeds 16MiB');
+    nodes.set(node.id, node);
+    for (const child of node.children || []) {
+      if (++edges > 100000) throw new Error('CPU profile edge limit exceeded');
+      if (!Number.isSafeInteger(child) || child <= 0 || parents.has(child)) throw new Error('CPU profile child identity invalid');
+      parents.set(child, node.id);
+    }
+  }
+  const converted = [];
+  let missingChildren = 0, roots = 0;
+  for (const child of parents.keys()) if (!nodes.has(child)) missingChildren++;
+  for (const node of nodes.values()) {
+    const parent = parents.get(node.id);
+    if (parent === undefined) roots++;
+    converted.push({ id: node.id, callFrame: node.callFrame,
+      parent: parent ?? (node.callFrame.functionName === '(root)' ? 0 : null) });
+  }
+  // Reuse the bounded iterative parent/sample validation, not an unbounded recursive summarizer.
+  for (const node of converted) if (node.parent === null) node.parent = 100001;
+  const result = summarizeTraceIntegrity({ traceEvents: [
+    { name: 'Profile', pid: 0, id: 'page', args: { data: { startTime: profile.startTime } } },
+    { name: 'ProfileChunk', pid: 0, id: 'page', args: { data: {
+      cpuProfile: { nodes: converted, samples: profile.samples }, timeDeltas: profile.timeDeltas,
+    } } },
+  ] });
+  const row = result.profiles[0];
+  const sampledUs = profile.timeDeltas.reduce((sum, delta) => sum + delta, 0);
+  const timingOutsideRange = !Number.isFinite(sampledUs) || sampledUs < 0
+    || sampledUs > profile.endTime - profile.startTime;
+  return { profileStatus: roots !== 1 || missingChildren || timingOutsideRange ? 'incomplete' : result.profileStatus,
+    timingOutsideRange,
+    durationMs: (profile.endTime - profile.startTime) / 1000, nodeCount: nodes.size,
+    samples: profile.samples.length, roots, missingChildren, missingNodeRefs: row.missingNodeRefs,
+    missingParentRefs: row.missingParentRefs, parentCycles: row.parentCycles,
+    timingLengthMismatches: row.timingLengthMismatches, invalidTimeDeltas: row.invalidTimeDeltas };
+}

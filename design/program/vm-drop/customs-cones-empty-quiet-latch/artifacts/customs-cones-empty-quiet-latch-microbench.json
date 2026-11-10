@@ -1,0 +1,86 @@
+{
+  "name": "customs-cones-empty-quiet-latch",
+  "primary": "quiet-job-interactable-census-no-scanner-no-pod",
+  "iters": 60000,
+  "runs": 11,
+  "roster": {
+    "ships": 49,
+    "stations": 4,
+    "wrecks": 8,
+    "payloads": 8,
+    "pickups": 12
+  },
+  "pairs": [
+    {
+      "beforeMs": 753.5600380000001,
+      "afterMs": 249.74695900000006,
+      "speedup": 3.017294148514537,
+      "latched": true
+    },
+    {
+      "beforeMs": 776.677492,
+      "afterMs": 243.5540430000001,
+      "speedup": 3.188932864481333,
+      "latched": true
+    },
+    {
+      "beforeMs": 791.0631490000001,
+      "afterMs": 253.13900599999988,
+      "speedup": 3.1250148347347166,
+      "latched": true
+    },
+    {
+      "beforeMs": 758.092807,
+      "afterMs": 243.27486999999928,
+      "speedup": 3.1161985905079397,
+      "latched": true
+    },
+    {
+      "beforeMs": 753.3223590000007,
+      "afterMs": 241.82295800000065,
+      "speedup": 3.115181309625692,
+      "latched": true
+    },
+    {
+      "beforeMs": 751.149101,
+      "afterMs": 245.37782900000002,
+      "speedup": 3.0611938497507856,
+      "latched": true
+    },
+    {
+      "beforeMs": 763.0023710000005,
+      "afterMs": 244.6143630000006,
+      "speedup": 3.1192051097997,
+      "latched": true
+    },
+    {
+      "beforeMs": 752.2505730000003,
+      "afterMs": 244.3696570000011,
+      "speedup": 3.0783305187517485,
+      "latched": true
+    },
+    {
+      "beforeMs": 757.2761210000008,
+      "afterMs": 241.11404499999844,
+      "speedup": 3.1407383215689726,
+      "latched": true
+    },
+    {
+      "beforeMs": 738.7614429999994,
+      "afterMs": 236.6702460000015,
+      "speedup": 3.121480014855753,
+      "latched": true
+    },
+    {
+      "beforeMs": 744.1584199999998,
+      "afterMs": 239.6053150000007,
+      "speedup": 3.1057675828267732,
+      "latched": true
+    }
+  ],
+  "medianSpeedup": 3.1161985905079397,
+  "minSpeedup": 3.017294148514537,
+  "maxSpeedup": 3.188932864481333,
+  "dirtyWakeOk": true,
+  "note": "Soft-GPU fps not claimed. Picture unchanged (no cones when empty)."
+}

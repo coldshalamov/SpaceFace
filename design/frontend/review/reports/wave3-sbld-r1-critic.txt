@@ -1,0 +1,210 @@
+WAVE 3 SANDBOX + LOADING RE-SCORE — CRITIC REPORT (r1, previous: wave3-sites-audit)
+Stills: .devshots/ui-review/view/w3c-{sandbox,loading}-{1920,1280}.png
+Crops: .devshots/ui-review/crops/w3c-sbld-*.png (18 crops, Read and measured)
+Method: sharp crops + .raw() pixel rows/cols. Ratios are WCAG contrast on composited pixels.
+Staging notes honored: (1) loading stills show the SUPERSEDED detail line — F6 judged on
+emitters in src/main.js + src/core/newGameStartTransition.js, not the still; (2) pct 67 vs
+scripted 62 is presenter overhang creep — not scored. Bench artefacts not scored: frozen
+motion, committed backdrops. (The loading timer 00:00:19.1 / 00:00:07.4 differs per shot, so
+it is NOT the frozen bench clock — it is screen chrome and IS scored.)
+
+======================================================================
+SURFACE 3 — SANDBOX (dev harness, full bar; build: ladder + seam + Launch + type)
+======================================================================
+1. VERDICT: NOT PASSED, overall 6.4 (previous 4.5).
+2. AXES (score / prev / note):
+   - Composition 6.5 / 5.0 / One rail left, art right, gradient join — genuinely
+     composed now; but the Launch key floats ON the list and row 13 is cut at the
+     fold with no overflow cue.
+   - Hierarchy 6.0 / 4.5 / Head fixed (title > status > sub), titles vs bodies now
+     distinct; but 13 titles still shout equally — no group rhythm (F7 NOT).
+   - Legibility 7.0 / 7.0 / Titles ~12:1, bodies ~6-7:1, sentence case; two rows'
+     legibility is destroyed by the key overlap.
+   - ORRERY fidelity 6.5 / 1.5 / Ladder + Lamp Key + bone rest + one Hand exist;
+     missing bead, group ticks, and any instrument beyond the spine.
+   - Craft/detail 6.0 / 4.5 / Disciplined type rhythm, clean 45° key cut, smooth
+     seam; spine sits at the bare 2.3:1 minimum and the key/list collision is raw.
+   - Interaction clarity 6.5 / 5.5 / Arm-on-row + Launch reads as "this one, fire
+     it"; overlap confuses the bottom rows, scroll state invisible, focus unverified.
+3. PREVIOUS ROUND item by item:
+   F1 ladder-for-13-boxes: DONE. Zero borders in the panel (row scans: void
+     between rows). Spine x64-65, 2px, 78,78,76 (~2.3:1 vs void — just over the
+     body bar); leftward ticks ~12px per row (crop w3c-sbld-sb-midrows); amber arm
+     3px core x64-66 + ~14px bloom decay, y252-296 (44px) on the DRILL TEST row.
+   F2 seam dissolve: DONE. Row y=400: flat 11,13,16 to x630, smooth ramp to
+     27,31,42 by x770 — ~140px gradient, no step (crop w3c-sbld-sb-seam).
+   F3 Ready mint: DONE. READY glyph 236,230,216 bone, dot 191,186,176 bone
+     (x69,y134); no 79,191,143 anywhere on the row.
+   F4 type pass: DONE. Bodies sentence case ~14px (crops sb-row2/sb-midrows),
+     titles Archivo caps bone. The 13-descriptions-screaming is gone.
+   F5 Launch Lamp Key: HALF. The key itself is correct — x66-261+cut, y1000-1055
+     (55px tall, ~195px + 45° cut), lamp 242,185,80, dark-ink LAUNCH — BUT it
+     covers live content: CRIME INTERCEPTION body (y~1000-1020) and the left
+     175px of VISUAL STRESS SCENE title (row y=1037: solid amber x88-262 where
+     the title runs). At 1280 it covers MASSLINE-SHORT's body mid-line.
+   F6 head row: DONE. "Sandbox" ~28px Archivo 800 bone; READY 12px bone + bone
+     dot; sub 14px dim sentence case on its own line (crop sb-head). One head.
+   F7 group ticks: NOT. QUICK SETUPS is still a 15px gray dash (x66-81, y222,
+     100,99,95) + tracked caps, detached above the spine (spine starts y~250).
+     Same ruled-heading kind as before; nothing folded into the ladder.
+   F8 bead + focus: HALF. Selection reads (44px amber arm w/ bloom). NO bead —
+     row y=290: arm x64-66 then void to x101, no round cluster. Focus light
+     segment unverifiable in a frozen still (--walk not run by critic).
+   F9 1280 parity: DONE. Ship fully in frame (1280 row y=400 x1100-1280 all sky
+     28,32,43 — nothing clipped), planet whole, ladder single-column both widths.
+     (Launch overlap at 1280 counted under F5.)
+   F10 cheap pass: DONE (via F3+F4+F6).
+4. RANKED FIXES:
+   F1. Launch/list collision (key x66-261+, y1000-1055 over CRIME body + VISUAL
+       title; 1280: over SHORT LINE body). Fix: end the ladder scroll region at
+       y940 with a 60px void fade, and dock the key in a reserved y985-1055 zone
+       the list can never enter. (Alt: move key over the art at x1450,y985.)
+   F2. Missing bead (spine x64-65): add a 7px bone bead centered on the armed
+       row's title centerline (~x64, y274); keep the 44px arm. Law wants bead+arm.
+   F3. QUICK SETUPS ruled heading (x66-81 dash + label y218-232): delete the dash
+       rule; set the label as a ladder major tick ON the spine (x52-90 tick +
+       label), and add the second group the same way so the rail has rhythm.
+   F4. Cut-off 13th row (VISUAL STRESS SCENE title half under the key, body past
+       y1080): with the scroll region (Fix 1) add a rail-foot counter tick —
+       "13 SETUPS" + position bead — so the fold is never a silent cut.
+   F5. Spine weight (78,78,76, 2.3:1): lift rest spine to ~95,95,90 (~3:1) so the
+       rail reads as an instrument at a glance, not a wire at the limit.
+   F6. Arm span (y252-296, 44px): shorten to ~24px centered on the DRILL TEST
+       title cap line so it points AT the choice instead of bracketing title+gap.
+   F7. Row grouping: add 8px air above each title (title belongs to its body);
+       currently title/body/gap spacing is uniform down all 13 rows.
+   F8. READY dot (191,186,176) vs READY text (236,230,216): match them — one bone
+       (236,230,216) for both, or the dot reads as a dimmer second state.
+   F9. Focus proof: --walk the ladder and confirm the vertical light segment on
+       the focused row (bench check, not pixels).
+   F10. Nothing on the art side: ship/planet/regolith carry the screen — do not
+       touch; all remaining budget goes to the rail's bottom third.
+5. MEMORABLE LINE: The rail is now a correct ladder and nothing more — the
+   previous round's launch rail still waits: the armed scenario's track should
+   ignite as a beam from its tick across the seam to the ship, so picking a run
+   visibly fuels the ship you're about to fire.
+7. OWNER CRITERIA:
+   (a) Thin/generic: PASS with one named wart. The 13 wireframe boxes are gone;
+       the spine clears the measured bar (2.3:1) and the 3px arm + bloom has
+       weight. Wart: the QUICK SETUPS dash+label is still a generic web section
+       header — it needs the ladder-group treatment (Fix 3).
+   (b) Signature: PASS (weak). "Pick a scenario and fire it" is distinct
+       per-screen work and is now rendered with the Hand + Lamp Key grammar
+       instead of Bootstrap cards. Memorable it is not yet — the beam-to-ship
+       ignition (above) would make it Sandbox's own.
+
+======================================================================
+SURFACE 4 — LOADING (first visual score; previous 4.5 code-audit only)
+======================================================================
+1. VERDICT: NOT PASSED, overall 7.7 (previous 4.5 code-inferred).
+2. AXES (score / prev / note):
+   - Composition 6.5 / 4.0 / The ring+pct+lockup cluster is beautifully composed
+     — and the upper 60% of the frame (y0-600) is pure untouched void. Bottom-
+     heavy; the missing field/lattice/drift read as absence, not restraint.
+   - Hierarchy 8.0 / 4.0 / Clean scale ladder: 200px instrument > 64px numeral >
+     wordmark > 12px label > 13px detail. Best hierarchy in wave 3.
+   - Legibility 7.5 / 5.0 / Lockup ~16:1, pct ~17:1 on void — perfect. The top
+     bar + timer at ~2.9:1 fail 4.5:1 and cost the point.
+   - ORRERY fidelity 7.5 / 4.5 / Orbit Ring + emblem + ice arc + bone stage ticks
+     + phos numeral are faithful; no tableaux-in-ring (§6 element missing) and
+     the top chrome is generic gray caps, not the Archivo voice.
+   - Craft/detail 8.0 / 5.0 / Finest pixels in wave 3: 3px ice core + 12px bloom,
+     22px bone stage ticks, engraved emblem, exact #DFEEFF numeral. Ring 20px
+     under spec and the void above are the deductions.
+   - Interaction clarity 8.5 / 6.0 / Nothing to touch (correct); progress reads
+     three ways at once — arc sweep, 4 stage ticks, rolling numeral. Never-stuck
+     by construction.
+3. PREVIOUS ROUND item by item:
+   F1 bench shot: DONE. Ring, 4 ticks, label, detail, pct all visible in one
+     frame at 1920 + 1280. (Interior field not visible — see F3.)
+   F2 one-field palettes: HALF. The rainbow is GONE — far-field max (10,12,16),
+     top-band max (10,12,16), both pure void. But no replacement field exists
+     either: no bone contours, ice accents, or amber note anywhere outside the
+     instrument, and ring interior between emblem lines is pure void (5,7,11).
+     Violation removed; the one-ORRERY-field itself not in evidence.
+   F3 containment: HALF (same pixels). Nothing full-bleed, nothing rivaling the
+     hero — but nothing playing INSIDE the ring either. §6's "tableaux inside
+     the ring" is unproven; either the canvas isn't painting in the still or the
+     contained field is dark-phase. A re-shoot must show interior light or the
+     code must prove it paints.
+   F4 ring 220-260px: HALF. Measured 200px tick-to-tick (center ~(835,747),
+     r=100: top tick y647, bottom arc y847, left tick x735, right arc x935) —
+     up 39% from 144, reads as hero, ticks have room, but 20px under the 220
+     floor. The "240px" build claim is not on the pixels.
+   F5 glass + contrast: HALF. Contrast passes trivially (lockup ~16:1, pct
+     ~17:1). Glass does NOT exist: lockup surround 7-8,10-11,14-15 vs far void
+     4-6,6-9,9-12 — no tint, no blur, no dissolved edge (moot on pure black, but
+     the "glass lockup" claim is unproven).
+   F6 copy audit: DONE (emitters, per staging note — the still's detail line is
+     superseded and unscored). All 8 new-game labels in newGameStartTransition.js
+     ('Preparing flight systems' … 'Handing over flight control') plus all 8
+     load label/detail pairs in src/main.js:151-963 ('Restoring flight state' /
+     'Rebuilding the saved sector', 'Loading the ships' / 'Bringing the saved
+     sector back with its ships intact', 'Building the opening scene' / 'Placing
+     ships and stations before you arrive', 'Preparing the visuals' / 'Warming
+     up so the opening runs smooth', 'Preparing the opening route' / 'Loading
+     the opening stretch smoothly', 'Handing over flight control' / 'Final
+     checks before handover', retry 'Still placing ships and stations — giving
+     it another moment', 'Creating the pilot, ship, and starting sector'). Zero
+     dev-shaped strings: no "hydrating", asset names, or system ids. (Tree says
+     'saved sector' where the staging note said 'current' — equally clean.)
+   F7 pct hero: DONE. Thin-display-numeral hero: cap extent y715-779 (64px, right
+     for a 96px em), color 223,238,255 = #DFEEFF phos exact. Arc + ticks +
+     numeral compose instead of triplicating (sweep, stages, reading).
+   F8 emblem: DONE. Produced art, not a ghost: graduated ring (150,146,136),
+     orbit tracks, planets, sun — crisp at 200px (crop ld-emblem).
+   F9 hidden bar: DONE on pixels. No 2px bar anywhere in frame (full-frame scans
+     clean); no double-render. (The never-visible assert in loading checks is
+     still owed as code.)
+   Bonus confirmed: the 4 long bone ticks ARE the stage signature — bone
+     91,89,86, ~22px (east tick x899-905 at y790; south tick y886-908 at x830),
+     sitting at the scripted 8/25/50/62% stations with the 67% arc swept past
+     them. Real stages on a ring, never a timer — it reads at a glance.
+4. RANKED FIXES:
+   F1. Upper-field void (x0-1920, y0-600 at 5-10, pure black): bring the screen's
+       authored air back — faint Sensor Lattice in bone at ~6% across the field
+       + the tableaux masked to the ring disc (r=100, 30% falloff to r=160). The
+       cluster is a jewel in an empty room.
+   F2. Ring 200->240 (center (835,747), r100): scale the ring group x1.2
+       (r->120, ticks y627-867). 20px is the gap between medallion-plus and hero.
+   F3. Top bar (x38-230, y26-40, 86,93,105, ~2.9:1): CUT it, or reset in Archivo
+       600 caps bone-dim lifted to ~150,150,145 (>=4.5:1). Currently generic gray
+       caps with no light or voice.
+   F4. Timer top-right ("00:00:19.1", same gray voice): a raw stopwatch is
+       dev-shaped — cut it, or restyle as a labelled Counter reading ("ELAPSED"
+       + rolling digits).
+   F5. Glass claim: ship real Glass (tint + blur + dissolved edges) once a field
+       exists behind the lockup (Fix 1), or drop the "glass lockup" claim —
+       text-on-void is legible but unglassed.
+   F6. Pct detachment (numeral left edge x~985 vs ring right x~935): nudge the
+       numeral left to x~960 or join it to the ring with a leader tick — 50px of
+       void unhookes it from its instrument.
+   F7. Arc-head/tick overlap (SW tick vs head dot at ~8 o'clock): offset the head
+       dot 4px outward along the radius so it never fully caps the 62% tick.
+   F8. 1280 left backdrop arc (max 41,42,44, x0-360 — committed backdrop,
+       unscored): note only — keep the ring clear of it as the ring grows.
+   F9. Old-bar assert (code): add the never-visible assertion to the loading
+       checks to close F9's second half (no tests run by this critic).
+   F10. Wordmark stencil cuts (triangle cuts in the A's): keep — produced voice,
+       reads expensive. No fix; named so nobody "cleans" it.
+5. MEMORABLE LINE: The ring already wakes the ship system by system — but every
+   system wakes the same bone track. If each stage tick ignited its own emblem
+   orbit in ice as its stage landed (ships light the outer orbit, the scene the
+   next...), the emblem would assemble itself as the world does, and no two
+   seconds of loading would look alike.
+7. OWNER CRITERIA:
+   (a) Thin/generic: PASS on the instrument, one named wart. The ring has real
+       weight (3px ice core + 12px bloom, 22px bone stage ticks, engraved
+       produced-art emblem) — nothing hairline-only. Wart: the top bar + timer
+       are thin generic gray caps with no light (Fixes 3-4: cut or give voice).
+       The field is absent — neither wire nor body — and Fix 1 must bring it
+       back as light, not lines.
+   (b) Signature: PASS. Stage-ticks-on-a-ring (real stages, never a timer) is
+       loading's distinct per-screen act, it is honestly built, and it now reads
+       at a glance. The per-orbit ignition (above) would make it unforgettable.
+
+CROSS-SURFACE: Sandbox 6.4 and Loading 7.7 — both NOT PASSED, both up ~2-3pts on
+structure that is real (ladder, seam, key, ring, ticks, numeral, emitters). The
+remaining gaps are also real: a key that eats its list, a group heading still in
+web clothes, a ring 20px under spec, an empty upper field, and top chrome with
+no voice. Nearest to passing: Loading, one field + one chrome decision away.

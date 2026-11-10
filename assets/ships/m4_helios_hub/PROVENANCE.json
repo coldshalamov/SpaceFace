@@ -1,0 +1,58 @@
+{
+  "schema": "spaceface.assetProvenance.v1",
+  "packet": "M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001",
+  "family": "helios_hub_env",
+  "generator": "tools/blender/build_m4_helios_hub_family.py",
+  "builtAt": "2026-07-11T17:49:06Z",
+  "textureSize": 1024,
+  "qualityFloor": "SF-K0 Borrowed Time (reference craft; geometry not reused)",
+  "referencePackages": [
+    "C:\\Users\\93rob\\Downloads\\SpaceFace_SF-K0_Borrowed-Time_Revamp.zip",
+    "C:\\Users\\93rob\\Downloads\\SpaceFace_SF-K0_Borrowed-Time_Runtime.zip"
+  ],
+  "rejectedComparisons": [
+    "Primitive blockouts / beveled boxes as final forms",
+    "Accessory-only hulls",
+    "Generic gray materials / file-size proxies",
+    "assets/ships/m4_ashline (failure comparison only)"
+  ],
+  "wiringStatus": "candidate_pending_promote",
+  "allowlist": [
+    "assets/ships/m4_helios_hub/**",
+    "tools/blender/build_m4_helios_hub_family.py",
+    "tools/art/finalize_m4_helios_hub_candidate.mjs",
+    ".devshots/m4-helios-hub/**"
+  ],
+  "assets": [
+    {
+      "id": "helios_hub_station",
+      "assetId": "SF_PLACE_HELIOS_HUB_STATION",
+      "liveId": "place_station_trade_hub",
+      "sha256": "A145111D88AA6C8EEFD867E6E7A386DEE63A2E1B8C71F640BB77688F85C3F9B4"
+    },
+    {
+      "id": "helios_gate",
+      "assetId": "SF_PLACE_HELIOS_GATE",
+      "liveId": "place_gate_jump_ring",
+      "sha256": "A01D07B201BAAF656AD1E473DCFC7951DD34B6A7E8B2BC060D2C980BCF497FA6"
+    },
+    {
+      "id": "helios_rock_a",
+      "assetId": "SF_PLACE_HELIOS_ROCK_A",
+      "liveId": "place_asteroid_rock_a",
+      "sha256": "23F0671DD7D08EAB0D1629310BE1263F11E4E9F5F1AF93560579DEBCA559E9E0"
+    },
+    {
+      "id": "helios_rock_b",
+      "assetId": "SF_PLACE_HELIOS_ROCK_B",
+      "liveId": "place_asteroid_rock_b",
+      "sha256": "9525E5BD6C34FD992228954314128394C155F5B520047B65116E470344D520C8"
+    },
+    {
+      "id": "helios_rock_c",
+      "assetId": "SF_PLACE_HELIOS_ROCK_C",
+      "liveId": "place_asteroid_rock_c",
+      "sha256": "368A35B6C39403816A8E3DC459B454B661EFD2E4AF280D45B39A14C00CF39DE0"
+    }
+  ]
+}

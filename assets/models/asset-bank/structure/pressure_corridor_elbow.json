@@ -1,0 +1,489 @@
+{
+  "assetId": "pressure_corridor_elbow",
+  "category": "habitat-dock",
+  "description": "pressure corridor elbow",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_structure.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_PASSAGE_-1_0",
+      "position": [
+        -2.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_PASSAGE_0_1",
+      "position": [
+        0.0,
+        0.0,
+        -2.0
+      ],
+      "forward": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "up": [
+        0.0,
+        0.9999999403953552,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -1.8,
+          -0.0
+        ],
+        "size": [
+          4,
+          0.18,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.8,
+          -0.0
+        ],
+        "size": [
+          4,
+          0.18,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.0,
+          -1.8,
+          -0.0
+        ],
+        "size": [
+          0.28,
+          0.28,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.0,
+          1.8,
+          -0.0
+        ],
+        "size": [
+          0.28,
+          0.28,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          0.18,
+          3.6,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          -1.8,
+          -0.0
+        ],
+        "size": [
+          0.28,
+          0.28,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          1.8,
+          -0.0
+        ],
+        "size": [
+          0.28,
+          0.28,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          4,
+          3.6,
+          0.18
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          0.0,
+          2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -1.8,
+          2.0
+        ],
+        "size": [
+          4,
+          0.28,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.8,
+          2.0
+        ],
+        "size": [
+          4,
+          0.28,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -2.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          0.0,
+          -2.0
+        ],
+        "size": [
+          0.28,
+          3.6,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -1.8,
+          -2.0
+        ],
+        "size": [
+          4,
+          0.28,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.8,
+          -2.0
+        ],
+        "size": [
+          4,
+          0.28,
+          0.28
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "modular",
+    "reusable",
+    "Forge",
+    "attachment-metadata",
+    "library-only"
+  ],
+  "bounds": {
+    "min": [
+      -2.140000104904175,
+      -1.9399999380111694,
+      -2.140000104904175
+    ],
+    "max": [
+      2.140000104904175,
+      2.1575000286102295,
+      2.140000104904175
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "pressure_corridor_elbow_lod0.glb",
+      "triangles": 6464,
+      "draws": 7,
+      "bytes": 582628,
+      "method": "source",
+      "sha256": "ad2b3e41e3db324d1392c6077c4333cc4c41aa07559960698c98d4f6408a8a7d"
+    },
+    {
+      "level": 1,
+      "file": "pressure_corridor_elbow_lod1.glb",
+      "triangles": 2584,
+      "draws": 7,
+      "bytes": 399052,
+      "method": "Forge-decimation",
+      "sha256": "037f1de72dce098f2a9ad4ac43759816c2f94f8a4b904c4edbe8099a5470e77a"
+    },
+    {
+      "level": 2,
+      "file": "pressure_corridor_elbow_lod2.glb",
+      "triangles": 1162,
+      "draws": 7,
+      "bytes": 329076,
+      "method": "Forge-decimation",
+      "sha256": "db5abe1f5343564186038d4bb35361abbe3ae8e0d86bfea299b79d3a75da19e7"
+    }
+  ]
+}

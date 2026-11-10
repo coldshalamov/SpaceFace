@@ -1,0 +1,116 @@
+HELP (meta, six tabs) -- critic round 4
+Stills: k5-* (six tabs at 1280/1920/2560; pressW x3, pad x2, rm-pressW x2, steerA, rm-loops,
+goods-turn, ships-mule x2, ships-atlas, ships-pinned). Copies opened under scratchpad/r4v/c4-*.
+Coordinates are 1920x1080 unless marked (1280). Crops: scratchpad/crops/help4-*.png.
+
+1. VERDICT: PASSED, overall 8.0 (previous 7.9).
+   - All three gate items from round 3 landed, and I verified each one on the pixels.
+   - One new defect came with them: the CHEAPER / DEARER end labels sit on the flank arcs. At 1280 the
+     arcs strike through the letters; at 1920 they touch.
+   - It is two 11 px labels, not a reading and not the rig, so it does not hold the pass. It is the
+     first follow-up (fix 1) and should land before the owner looks.
+   - The axes average 8.08.
+
+2. THE SIX AXES
+- Composition 8.0 (prev 8.0). No change. Dead top-right fields remain on Factions and Commodities.
+- Hierarchy 8.1 (prev 8.0). The pinned-state noise is gone: one small "pinned" under the crown price,
+  no pinned line in the reading, and the verb reads "› PINNED C" when inert.
+- Legibility 7.8 (prev 7.6). The 1280 rig is clean: AFT and BOW are clear in rest, press and pad, and
+  the nose anchors are 16 px apart. Against:
+  - New: CHEAPER / DEARER sit on the arcs (fix 1).
+  - At 1280, THROTTLE and BRAKE now end on one shared aft anchor (fix 3).
+- ORRERY fidelity 8.0 (prev 7.8).
+  - The grey rectangles are gone. What remains around the fills is a flat bloom sleeve of about lum 60
+    on each side (e.g. Atlas shield row y 635: 59-60 | 244 core | 62-65). That is the law's own bloom:
+    a wider stroke of the same path.
+  - Its square end caps are the only thing that still reads faintly boxy (fix 4).
+  - The livery orange on the Controls Hitch is unchanged (amber-class counts 77 + 74 px vs the Hand's
+    77); it is pending the render pass.
+- Craft/detail 8.0 (prev 7.9). The comparison now reads in light:
+  - Gain is a filled slab.
+  - Shortfall is a hollow slab: Wasp handling row y 630 shows outline cores of 145-211 around a lum-7
+    core.
+  - Price is centre-zero: for Atlas, a hollow slab runs from the crown bead to the right end.
+  - The dock pictogram is a closed ring with a berth notch and a seated chevron.
+  - Mule is still flat, and the steer silhouette still wobbles.
+- Interaction clarity 8.6 (prev 8.5). Three signature verbs, all verified again:
+  - Controls "press anything": pressW 1920/1280, the pad, and reduced motion (rm-pressW) with no
+    pulse.
+  - Commodities "drag the ring": goods-turn.
+  - Ships "pin to compare": Hornet-pinned Wasp shows -130 / -110 / -30 u / -0.30 / -82,000 cr, with
+    hollow slabs for the losses.
+
+3. ROUND-3 LIST, ITEM BY ITEM
+- (B)1 Rig at 1280: DONE.
+  - Nose anchors at about (587, 275) and (602, 273): 16 px apart (crop help4-c1280-nose).
+  - Both aft anchors sit above the AFT plate, and AFT reads clean in rest and pad.
+  - In pad mode no streak crosses BOW (help4-p1280-nose).
+  - The cost: BRAKE has lost its own anchor at 1280 (fix 3).
+- (B)2 Ships plates: DONE. No rectangles remain. Gains are a 244 slab with a lum-60 sleeve.
+- (B)3 Shortfall and price: DONE.
+  - Shortfall is a hollow slab (Wasp handling, Atlas handling).
+  - Price is centre-zero: the crown bead is pinned, Atlas runs right as a hollow slab, and Wasp's head
+    sits just left of the bead.
+  - The CHEAPER / DEARER labels are placed onto the flank arcs (fix 1).
+- (B)4 Pinned state: DONE. One "pinned" sits under the crown. The verb is "› PINNED C" when inert and
+  "› PIN TO COMPARE C" otherwise, on one line at 1280.
+- (B)5 Dock pictogram: DONE. It reads as dock-and-berth at hub size. At 20 px chip size it drifts toward
+  a fish shape (fix 5).
+- Not done, by agreement: livery orange, silhouette smoothing, Factions ripple.
+
+4. RANKED FIXES (follow-ups; none block the pass)
+1) CHEAPER / DEARER end labels
+   - At 1920 they sit at (917-988, 457) and (1173-1234, 457): "C" touches the shield arc's cap and "R"
+     touches the handling arc's cap.
+   - At 1280 they sit at (617-688, 346) and (768-830, 346), and the shield and handling arcs run through
+     "A" and "AR".
+   - Fix: set them on the price arc's own ends, 8 px outside its outer radius and rotated to the arc
+     tangent, or inside the ring directly under each price end. Keep them clear of the flank arcs' boxes
+     plus 6 px at every size.
+2) Wasp price delta is sub-pixel: -82,000 cr moves the head only about 8 px from the crown bead
+   (1073 vs 1081, y 410). Put the price arc on a log scale (fleet cheapest to dearest), so a 4x price
+   difference shows as a visible slab.
+3) Shared aft anchor at 1280: THROTTLE and BRAKE both end at about (586, 505), so W and S light the
+   same point. Give BRAKE the retro-nozzle point one step to the side (at least 16 px), inside the
+   berth, or lean it across the keel as the nose anchors now do.
+4) Bloom sleeves on the gauge fills: square end caps on the lum-60 sleeve (Atlas shield 868-895 x
+   617-645; Atlas handling 1216-1248 x 465-500) read as small plates. Use round caps, or taper the
+   sleeve's last 6 px to zero.
+5) Dock pictogram at chip size (1262, 610): the notch and chevron read as a fish at about 20 px. Draw a
+   simplified chip variant: ring plus chevron with no inner hub circle, and a 2 px stroke.
+6) Pending asset and render pass: pull livery orange toward rust on the Controls plan and Ships
+   renders, re-light the Mule, and smooth the steer silhouette (Chaikin x2).
+7) Optional margin: the Factions standing ripple (round-3 section 5).
+
+5. MEMORABLE: Factions could ripple. Hold a crest, and a pulse runs its beams while signed standing
+   deltas appear at the allies and rivals. It is the one tab still borrowing a station instrument.
+
+6. PER-TAB SCORES
+- CONTROLS 8.3. Clean at every size. The shared aft anchor at 1280 and the livery orange are the only
+  marks.
+- LOOPS 8.0. Opaque chips, a pulse on the ring, ordered steps, and a real dock glyph in the hub. The
+  chip-size dock glyph is the one weak spot.
+- SHIPS 8.1. A comparison instrument that reads in light: filled gain, hollow loss, centre-zero price.
+  The label collision and the tiny price delta keep it from 8.3.
+- COMMODITIES 8.3. Unchanged and finished.
+- ORES 8.0. Unchanged.
+- FACTIONS 7.4. Unchanged: the library orbit reused with no Help verb. The optional ripple would lift it.
+
+7. OWNER CRITERIA
+(a) Thin wireframe / generic: PASSES.
+- Every hero band measures as body: berth 73/7, Commodities ring 73-74, Ores split ring, Factions orbit
+  69, Ships tracks with 244 slabs.
+- The pad is filled, the chips are opaque, and no stock controls or plates remain.
+(b) Signature interaction: PASSES, with three verbs no other screen has:
+- press anything (Controls)
+- drag the price ring (Commodities)
+- pin to compare (Ships)
+Loops (ring to gate) and Ores (type to split ring) have adequate interaction of their own. Factions
+alone reuses the station instrument.
+
+(A) STRUCTURAL CHANGE: none. The screen passes. For margin, the Factions ripple is the one structural
+addition left.
+(B) CRAFT: fixes 1-3 above are the follow-up set, in that order. Fix 1 should land before the owner
+review.
+
+Help: PASSED at 8.0. Available for a follow-up look if the builder wants fix 1 confirmed.

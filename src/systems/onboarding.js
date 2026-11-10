@@ -1,0 +1,5207 @@
+// Onboarding / objective system. Gives a brand-new pilot a premise and a staged "learn the ropes"
+// chain so the game makes sense instead of dropping them into space with no explanation. Entirely
+// optional and non-blocking: it never freezes the sim, never steals movement, and respects
+// state.settings.gameplay.tutorialHints. Self-contained — it builds its own DOM (an objective
+// tracker panel + a dismissible intro card) and drives progress off real gameplay events.
+//
+// CONTEXTUAL FIRST-TIME HINTS (Phase 2): on top of the staged tutorial, the system fires one-shot
+// toast hints the first time the player encounters a new mechanic (combat, shield break, stations,
+// gates, cargo full). Tracked in state.player.hints so they persist across saves and never repeat.
+// These are independent of the tutorial chain — they fire even if the tutorial was skipped.
+//
+// CONTEXTUAL CONTROL BAR (Phase 2): the static bottom-center hint strip is updated each frame to
+// show controls relevant to the player's current activity (mining, combat, near station, open flight).
+//
+// System contract: { name, init(ctx), update(dt, state) }. Wired into registry SYSTEMS + UPDATE_ORDER.
+//
+// STORY OBJECTIVE TRACKER (P2-14): once the paced tutorial finishes (or for a returning player on
+// load), the same panel slot switches to "story mode" and persistently shows the CURRENT story beat's
+// objective + direction hint, read from state.story.beatIndex + STORY_BEATS (data) + BEAT_CONTENT
+// (narrative). A player who missed the ephemeral comms toast can always see "what should I do now"
+// without opening a menu.
+
+import { drawSeeded, hash32 } from '../core/rng.js';
+import { isFullHoldRefusal, successfulPickupAmount } from '../core/pickupAcceptance.js';
+import { Masks, occupantGenerationOf } from '../core/entity.js';
+import { firstUseLine, resolveFirstUseEntityId, RANGE_POINTER_LINE, shelfVerbLine } from '../ui/hudAttention.js';
+import { bindFirstHourFelt } from '../ui/firstHourFelt.js';
+import { deboxCss, INK_SHADOW } from '../ui/hudBrackets.js';
+import { continueRecap } from '../ui/sim/missionRecap.js';
+import { makeEnemySpawnSpec } from './combat.js';
+import { activeFieldSnapshot } from './fields.js';
+import { ONBOARDING_CHOICE_SOURCE } from './missions.js';
+import { massline2Flag } from '../data/featureFlags.js';
+import { MODULES } from '../data/modules.js';
+import { DROP_KICK_CRUISE_SPEED } from './jettisonImpulse.js';
+import { readCadencePair, rateCadenceTechnique, STRAIN_GLOW_DANGER_THRESHOLD } from './masslineControlLaw.js';
+import { resolveActionLabel, MOUSE_ACTION_LABELS } from './input.js';
+import { decoyAnswersLock } from './countermeasures.js';
+import { fitFeelRowFor, pickFitFelt } from '../onboarding/fitFeel.js';
+import { WEAPONS } from '../data/weapons.js';
+import { buildSlotList, exclusivityRepMet, findMasslineHeadConflict, fits, getDerivedStats, outfitBudgetBlocker, stationShopOffer } from './ships.js';
+import { SHIPS } from '../data/ships.js';
+import { substanceFor } from '../core/physicsAuthority.js';
+import { towClassMassFor } from './shipCapabilities.js';
+import { asteroidColliderRadius } from '../data/asteroidColliders.js';
+import { isRacingCorridorSession } from '../world/racingCorridor.js';
+import { MASS_ANCHOR_RATIO } from './tetherGameplay.js';
+import {
+  ONBOARDING_TRACKER_STEPS, RAID_WINGMAN_NAME, SWING_CLINIC_LINE, SWING_CLINIC_RUNG_ID,
+  freshPaceState, normalizePaceState, notePaceFlight, notePendingSwing, onboardingTrackerStep,
+  paceCreditFor, settlePendingSwing, swingClinicDue, trackerStepDone,
+} from '../onboarding/firstHalfHourPace.js';
+import {
+  POWER_SITUATIONS, POWER_SITUATION_FIRST_S, POWER_SITUATION_GAP_S, POWER_SITUATION_TTL_S,
+  POWER_SITUATION_WINDOW_S, normalizePowerSit, propWorldPos, propWorldVel, situationFor,
+} from '../onboarding/powerSituations.js';
+
+export { MASS_ANCHOR_RATIO, STRAIN_GLOW_DANGER_THRESHOLD };
+
+// U5 — the planetary bands' first-contact lines. Instrument register, one line each: what
+// the band is, and the law that governs it. Spoken once per band per body per save.
+const PLANET_BAND_FIRST_LINES = Object.freeze({
+  sling: 'The sling band — speed you carry out of this arc is yours to keep.',
+  skim: 'The working band — the scoop harvests here, and hull heat is climbing.',
+  danger: 'The danger band — drag owns the hull now. The recovery burn is the way back out.',
+  reentry: 'Reentry — everything hot is real. Get the nose up and burn.',
+});
+// TEACH-06: FIELD_ESCAPES is the authored "you are never trapped without a verb" table, and until
+// now nothing in src/ read it. The player had a named escape for every power and no way to learn it.
+import { fieldEscapeOf, FIELD_KINDS } from '../data/fields.js';
+import { fieldAffectsBody, fieldContainsPoint } from '../core/fields/fieldKernel.js';
+import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
+import { chargeableLotOwnerId } from './lawSecurity.js';
+import {
+  FIRST_TRADE_CONTRACT,
+  FIRST_TRADE_CONTRACT_DEST_STATION_ID,
+  FIRST_TRADE_CONTRACT_SOURCE,
+} from '../data/economyContractTemplates.js';
+import { gateTollFor } from '../data/travelChoices.js';
+import { SECTORS } from '../data/sectors.js';
+import { CORRIDOR_SECTOR_IDS, sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
+import {
+  FLIGHT_DRILL_BRAKE_WU,
+  FLIGHT_DRILL_BURST_SHOTS,
+  FLIGHT_DRILL_DISENGAGE_RANGE_WU,
+  FLIGHT_DRILL_HEAT_RECOVER_FRAC,
+  FLIGHT_DRILL_MARKER_RANGE_WU,
+  FLIGHT_DRILL_SPEED_WU,
+  isTrainingActor,
+  maxWeaponHeatFraction,
+} from '../onboarding/flightDrill.js';
+
+// Keep the next first-use hint queued until the current seven-second HUD/toast window ends.
+const FIRST_USE_HINT_DISPLAY_S = 7;
+import {
+  RESCUE_GATE,
+  RESCUE_ORDER,
+  RESCUE_PREREQ,
+  RESCUE_REEL_TIGHT_WU,
+  RESCUE_ROCK_HIT_MIN_SPEED_WU,
+  RESCUE_RUN_MIN_SPEED_WU,
+  RESCUE_SHOVE_PROOF_SPEED_WU,
+  buildRangeOpenedFunnelEvent,
+  buildRescueCompleteEvent,
+  RESCUE_ESCAPE_WU,
+  buildRescueFunnelEvent,
+  buildRescueStartedEvent,
+  freshRescueState,
+  makeRescueCastSpecs,
+  rescueBeatLine,
+  rescuePlayerLatchedTo,
+  rescuePodAtBeacon,
+  rescueRangeRungId,
+  rescueRockHitDerelict,
+  rescueScoutAtAsteroid,
+  rescueScoutEscaped,
+  rescueSlotRespawnTransform,
+} from '../onboarding/rescueOpening.js';
+import {
+  FIRST_HOUR_S,
+  MISSING_THREE_GATE,
+  MISSING_THREE_ORDER,
+  MISSING_THREE_PREREQ,
+  buildFirstHourBeatEvent,
+  buildFirstHourCompleteEvent,
+  buildFirstHourStartedEvent,
+  buildFirstHourVerbEvent,
+  freshMissingThreeState,
+  makeConeLaneSpec,
+  makeRepulsorClumpSpec,
+  makeWellScrapSpec,
+  missingThreeBeatLine,
+  missingThreeBoosting,
+  missingThreeRangeRungId,
+  missingThreeStrokeActive,
+  missingThreeWithinHour,
+  normalizeMissingThreeState,
+} from '../onboarding/missingThree.js';
+import {
+  STORE_SENTENCE,
+  STORE_FLIGHT_SENTENCE,
+  buildFirstHourSentenceEvent,
+  freshStoreSentenceState,
+  stampStoreClause,
+} from '../onboarding/storeSentence.js';
+// FB-002/FB-116 — the verb shelf: every bound verb is spoken exactly once, in the player's own
+// device vocabulary, on a real trigger. The five-verb rail teaches by doing; these seven teach
+// by the moment the verb matters. Table + pure trigger checks live in src/onboarding/verbSpeech.js.
+import {
+  SHELF_LONG_STRAIGHT_S,
+  SHELF_VERBS,
+  shelfHintKey,
+  shelfHostileChargeReady,
+  shelfLongStraightActive,
+  shelfVerbEnabled,
+  verbBindingLabel,
+} from '../onboarding/verbSpeech.js';
+import { isHostileToPlayer } from './scanner.js';
+import { fittedCloakModule } from './cloak.js';
+import { isPlayerWanted } from './heat.js';
+import { lawfulPatrolOnGlass } from './lawSecurity.js';
+import {
+  ActivityKind,
+  RulesOfEngagement,
+  normalizeActivity,
+  setEntityDoctrine,
+} from '../ai/doctrine.js';
+
+const FIT_FEEL_DEFS = new Map();
+for (const def of [...MODULES, ...WEAPONS]) {
+  if (def && def.id && fitFeelRowFor(def)) FIT_FEEL_DEFS.set(def.id, def);
+}
+const PANEL_ID = 'sf-onboarding';
+const STYLE_ID = 'sf-onboarding-style';
+const TAU = Math.PI * 2;
+
+// ── Save/load helpers (FB-114) ────────────────────────────────────────────────
+// Rail records are plain JSON-shaped data (beats, flags, actor id slots). Actor ids
+// are session-local and dead after any restore, so a persisted record always
+// serializes with empty id slots and restores them empty.
+function plainClone(v) {
+  if (v == null || typeof v !== 'object') return v == null ? null : v;
+  try { return JSON.parse(JSON.stringify(v)); } catch (_) { return null; }
+}
+
+function emptyIdSlots(ids) {
+  const out = {};
+  if (ids && typeof ids === 'object') {
+    for (const k in ids) out[k] = Array.isArray(ids[k]) ? [] : null;
+  }
+  return out;
+}
+
+function railRecord(rec) {
+  const copy = plainClone(rec);
+  if (!copy || typeof copy !== 'object') return null;
+  copy.ids = emptyIdSlots(rec && rec.ids);
+  return copy;
+}
+
+function restoreRescueRecord(d) {
+  if (!d || typeof d !== 'object') return null;
+  const fresh = freshRescueState();
+  const saved = plainClone(d);
+  const out = Object.assign(fresh, saved);
+  out.ids = fresh.ids; // actor ids never survive a restore
+  out.beats = {};
+  for (const key of RESCUE_ORDER) {
+    // Newer rail beats appear pending on old saves; unknown saved beats drop.
+    out.beats[key] = Object.assign({ state: 'pending', fails: 0, doneAt: null },
+      saved.beats && saved.beats[key]);
+  }
+  return out;
+}
+
+function restoreMissingThreeRecord(d) {
+  if (!d || typeof d !== 'object') return null;
+  const fresh = freshMissingThreeState();
+  const saved = plainClone(d);
+  const out = Object.assign(fresh, saved);
+  out.ids = fresh.ids;
+  for (const key of MISSING_THREE_ORDER) {
+    out.beats[key] = Object.assign({ state: 'pending', fails: 0, doneAt: null },
+      saved.beats && saved.beats[key]);
+    out.used[key] = Object.assign({ count: 0, firstAt: null, prompted: false, unprompted: false },
+      saved.used && saved.used[key]);
+  }
+  return normalizeMissingThreeState(out) || out;
+}
+
+// ── FIRST-HOUR PACING (spec2/03, reworked 2026-09-18: the thesis-first route) ────
+// The fix for "the open teaches five things at once" is PACING, not deletion: one beat → one verb
+// → ≥4 s of silence → next beat. This BEATS table is the single source of truth for the first 15
+// minutes (the runtime order is authored HERE; flightDrill.js remains the shared drill contract
+// for its constants and audit consumers). All tutorial lines are imperative, name ONE verb, and
+// are ≤12 words (spec2/00 §5). Each beat fires only when the previous beat's DONE fired AND
+// ≥SILENCE_S of text silence passed.
+//
+// THESIS-FIRST ORDER (design/VISION.md "the 60-second fantasy"): the player DOES the fantasy
+// before anything else — first Massline attach inside the first minute, a raid tableau where the
+// taught swing turns an enemy into a projectile, then the consequence: claimed salvage, a law
+// witness, and a real WANTED search ring to outrun. Flight-control drills follow the attach (the
+// player is already flying); the economy on-ramp (seam → dock → choice) closes the hour. The
+// sandbox stays intact: every beat guides, none walls — a player who ignores the raid or leaves
+// the claimed salvage is never blocked, and the rail simply moves on.
+//
+// `line`  : the verb bark shown at beat entry (the single tutorial voice in its window).
+// `followups` : extra barks gated on in-beat events (latch/reel/cut, scan/seam/vent, sell/board).
+// `done`  : the kind of DONE condition this beat resolves on (handled in _resolveBeatDone and,
+//           for raid/claimed, the dedicated _onRaid*/_onClaimed* handlers).
+// Handoff: completing B5 (accepting any of three offers) calls _finish() → story-mode panel.
+const SILENCE_S = 4;          // ≥4 s of text silence between a beat's DONE and the next beat's text
+const TETHER_REEL_MAX_WU = 60;// B1: reel target distance
+const SEAM_ORE_TARGET = 3;    // B2 DONE: ore collected
+const B1_DERELICT_OFFSET_WU = 80;   // tether lesson starts inside the stronger live latch envelope
+const TRAINER_MARKER_OFFSET_WU = 620;
+const TRAINER_BURST_OFFSET_WU = 260;
+const TRAINER_FLYBY_SPEED_WU = 118;
+const TRAINER_FLYBY_OFFSET_WU = 52;
+
+// Raid tableau (the momentum kill). The raider is a real, hostile pirate hull — the taught swing
+// turns it into a projectile against the rescue asteroid wall. Hull sits above a starter-gun
+// burst (a gun kill is a long, deliberate refusal of the lesson) but under one honest throw into
+// rock: whip recoil + tumble contact do the work the moment the player lets go at speed.
+const RAID_RAIDER_HULL = 150;
+const RAID_RAIDER_OFFSET_WU = 240;   // from the player, near the rescue wall bearing
+const RAID_THROW_MIN_SPEED_WU = 25;
+const RAID_CLINIC_RAIDER_OFFSET_WU = 120;
+const RAID_CLINIC_ROCK_GAP_WU = 110;
+const RAID_HAULER_OFFSET_WU = 190;   // the civilian the raider is working over (scene dressing)
+// INF-062 — consecutive genuine latch denials before the one contextual hint.
+const LATCH_DENIAL_HINT_AFTER = 3;
+
+// The denial event already carries the cause. The hint used to collapse every cause
+// except cooldown and a missing target into the range line. Unknown causes still use
+// that line — INF-062 pins owner_attachment_limit there. Prefixes match the HUD strip.
+function latchDenialHintLine(reason) {
+  const raw = typeof reason === 'string' ? reason.replace(/^(snare|bridle)_/, '') : '';
+  if (raw === 'cooldown') return 'Line resetting. Wait a breath, then latch.';
+  if (raw === 'no-target' || raw === 'no_target') return 'Target a rock or wreck first. Then latch.';
+  if (raw === 'protected') return 'That body is protected. Latch something else.';
+  if (raw === 'scripted-body') return 'That body is locked in place. Latch something else.';
+  if (raw === 'blocked') return 'The line of sight is blocked.';
+  if (raw === 'out-of-range' || raw === 'out_of_range') return 'Latch needs a target in range.';
+  return 'Latch needs a target in range.';
+}
+const RAID_WHIP_KILL_WINDOW_S = 12;  // kill credited to the throw inside this window after a whip
+// Claimed-salvage tableau (the wanted beat). Spilled cargo from the raid is lawfully claimed; a
+// law cutter stands witness. Taking it reports the theft through the real law owner entry
+// (lawSecurity.reportIncident → heat.applyIncidentReceipt), so the player EXPERIENCES the search
+// ring instead of reading a warning. Leaving it is a first-class choice: the tableau stands down
+// after CLAIMED_WINDOW_S and the rail moves on — no wall.
+const CLAIMED_WINDOW_S = 120;
+const CLAIMED_PICKUP_COUNT = 3;
+const CLAIMED_WITNESS_OFFSET_WU = 380; // inside LAW_INCIDENT_WITNESS_RADIUS (450)
+const CLAIMED_CLEAR_GRACE_S = 2;       // level-0 heat must hold this long before DONE resolves
+
+// B0 one-verb hierarchy (UIUX-B0-ONE-VERB):
+//   1. HUD mission tracker (.sf-mission-tracker) is the sole persistent actionable objective
+//      (fed by nav.waypoint.reason while onboarding waypoint is active).
+//   2. #sf-onboarding panel is demoted during B0: progress/status only (no competing verb copy).
+//   3. Transient tutorial voice (_sayTutorial) speaks the beat line once.
+//   4. firstFlight control-hint wall is deferred until the staged rail is finished.
+//   5. Mission Log / story longform stay on-demand context (not a second primary command).
+// The authored first-hour route. Exported for focused tests that drive the beat FSM by key;
+// the static pacing/one-voice checks still read this literal from source so the audit sees the
+// authored copy, not the imported object.
+export const BEATS = [
+  { // FIRST TETHER — the signature verb leads. Attach lands inside the first minute of control.
+    key: 'tether',
+    line: 'Target the marked derelict.',
+    followups: [
+      { on: 'target:acquired', line: 'Latch it. Massline.' },
+      { on: 'tether:latched', line: 'Winch in. Hold tether to reel.' },
+      { on: 'tether:nearBreak', line: 'Ease off. Let the line settle.' },
+      { on: 'tether:reel', line: 'Cut and coast. Tap tether to cut.' },
+    ],
+    done: 'tether:released',
+  },
+  { // THE RAID — enemy becomes a projectile: latch, swing, release into the rock.
+    key: 'raid',
+    line: 'Latch the raider. Swing him into the rock.',
+    followups: [
+      { on: 'raid:latched', line: 'Build speed. Let go at the big rock.' },
+    ],
+    done: 'raidKill',
+  },
+  { // THE CONSEQUENCE — claimed salvage, a law witness, a real search ring to outrun.
+    key: 'claimed',
+    line: 'Claimed salvage. Take it anyway, or leave it.',
+    followups: [
+      { on: 'claimed:taken', line: "You're marked. Outrun the search ring." },
+    ],
+    done: 'wantedCleared',
+  },
+  { // The player is already flying; the speed drill formalizes what the attach just used.
+    key: 'thrust',
+    line: 'Thrust until speed passes forty.',
+    done: 'speedUp',
+  },
+  {
+    key: 'brake',
+    line: 'Brake below ten.',
+    done: 'speedDown',
+  },
+  {
+    key: 'marker',
+    line: 'Follow the amber diamond to the fleeing raider.',
+    done: 'trainerRange',
+  },
+  {
+    key: 'focus',
+    line: 'Hold course. Let the raider cross your bow.',
+    done: 'flybyFocus:start',
+  },
+  {
+    key: 'burst',
+    line: 'Fire a short burst into the raider.',
+    followups: [
+      { on: 'burst:ready', line: 'Release. Let the heat bar clear.' },
+    ],
+    done: 'burstCooled',
+  },
+  {
+    key: 'disengage',
+    line: 'Thrust away until the raider leaves scope.',
+    done: 'disengaged',
+  },
+  { // B2 FIRST SEAM — scan + mine; modality-neutral verbs
+    key: 'seam',
+    line: 'Pulse the scanner.',
+    followups: [
+      { on: 'scan:hit', line: 'Beam the bright seams.' },
+    ],
+    done: 'oreCollected',
+  },
+  { // B4 DOCK — the berth itself: selling, fitting and the next job all happen here
+    key: 'dock',
+    line: 'Helios. Dock when close.',
+    done: 'docked',
+  },
+  { // B5 CHOICE — at the same berth: the authored Ceres run plus three side-by-side offers.
+    // Accepting any real work ends the tutorial; undocking without one hands the player the ship.
+    key: 'choice',
+    line: 'Pick the work that fits.',
+    followups: [
+      { on: 'sold', line: "The board's holding work that fits." },
+    ],
+    done: 'mission:accepted',
+  },
+];
+// Beat index for the choice beat (B5) — accepting its offer ends tutorial mode permanently.
+const CHOICE_BEAT_INDEX = BEATS.length - 1;
+
+// SEED-ST-04 — the taught verbs print their key. Each rail line that teaches a control names
+// that control's LIVE bound key once, resolved when the line is spoken or bound to the
+// objective, never at table-authoring time (a rebind is honored on the next beat; touch
+// resolves to no label and leaves the line exactly as authored).
+const TAUGHT_VERB_LINE_ACTIONS = Object.freeze({
+  // Beat lines, keyed by beat.key; followups, keyed by the firedFollowups id (beat.key + ':' + fu.on).
+  // A string value appends that action's key; a function composes the whole line (SEED-ST-05).
+  thrust: 'forward',            // Thrust until speed passes forty.
+  'tether:target:acquired': 'tether', // Latch it. Massline.
+  // SEED-ST-05 — "Hold tether to reel" taught only the modifier, so a stranger holding just the
+  // tether key reels nothing. The first-hold line names the whole chord: the hold that gives line
+  // control and the two axis ends that reel, all live labels.
+  'tether:tether:latched': (state) => {
+    const hold = verbBindingLabel(state, 'tether');
+    if (!hold) return null;
+    const reelIn = verbBindingLabel(state, 'forward');
+    const reelOut = verbBindingLabel(state, 'brake');
+    return `Winch in. Hold ${hold} — ${reelIn || 'forward'} reels in${reelOut ? `, ${reelOut} pays out` : ''}.`;
+  },
+  burst: 'fire',                // Fire a short burst into the raider.
+  seam: 'scanPulse',            // Pulse the scanner.
+  'seam:scan:hit': 'mine',      // Beam the bright seams.
+});
+
+/** The beat line with its taught control's live key appended, or the line unchanged. */
+export function taughtVerbLine(state, id, line) {
+  const entry = TAUGHT_VERB_LINE_ACTIONS[id];
+  if (!entry || !line) return line;
+  if (typeof entry === 'function') return entry(state, line) || line;
+  const label = verbBindingLabel(state, entry) || MOUSE_ACTION_LABELS[entry] || '';
+  if (!label) return line;
+  return `${line} (${label})`;
+}
+
+// The rescue verbs fill the new order's gaps: swing opens right after the first attach (the
+// player immediately re-uses the latch on a live rock), shove rides the gun lesson's exit, and
+// grab-and-run fills the gap before the raid. Composed here — rescueOpening.js's own map stays
+// untouched for its audit consumers; the onboarding route owns which drill beat each verb gates.
+const RESCUE_GATE_ROUTE = Object.freeze({
+  swing: 'raid',       // while the rock swing is current, the raid waits its turn
+  shove: 'disengage',
+  grab: 'seam',        // while the pod run is current, the seam lesson waits
+});
+
+// Cold-open premise (spec2/03 B0 "no modal"): the tutorial voice frames the 47-A contract at the
+// opening beat rather than via a modal. This carries the 47-A intent that the intro card used to own.
+const COLD_OPEN_PREMISE = 'Contract 47-A: the manifest says one mass — your instruments say another.';
+// Surfaced when the firing lesson first hands the player a trigger, so the starter weapon is named,
+// not just felt. Pulled from NEW_GAME's fitted starter loadout (see check:phase0-slice-contract).
+// The hull is Hitch — the callsign the opening already uses; the market copy keeps the class name.
+const STARTER_WEAPON_HINT = 'Hitch is armed: fire the Pulse Laser S, then let the heat clear.';
+// A captioned opening: the one-line hook and the weapon hint also live briefly in the existing
+// objective tracker, because a muted pilot must still be able to read the premise. Captions are
+// queued in simulation time and never replace the actionable objective.
+const TRACKER_CAPTION_S = 12;
+const TRACKER_CAPTION_IDS = new Set(['premise', 'weapon']);
+
+function sanitizeTrackerCaptions(raw) {
+  const out = [];
+  if (!Array.isArray(raw)) return out;
+  for (const rec of raw) {
+    if (!rec || typeof rec !== 'object') continue;
+    const id = rec.id;
+    if (!TRACKER_CAPTION_IDS.has(id)) continue;
+    const text = typeof rec.text === 'string' ? rec.text : '';
+    const startAtS = Number(rec.startAtS);
+    const endAtS = Number(rec.endAtS);
+    if (!text || !Number.isFinite(startAtS) || !Number.isFinite(endAtS) || !(endAtS > startAtS)) continue;
+    if (out.some((kept) => kept.id === id)) continue;
+    out.push({ id, text, startAtS, endAtS });
+    if (out.length >= 2) break;
+  }
+  return out;
+}
+
+const ORE_PREFIXES = [
+  'cmdty_ore', 'cmdty_silicate', 'cmdty_ice', 'cmdty_volatiles',
+  'cmdty_crystal', 'cmdty_gas', 'cmdty_scrap', 'cmdty_salvage',
+];
+
+export const ONBOARDING_OBJECTIVE_MARKER = Object.freeze({
+  markerKind: 'mission-objective',
+  mapLabel: '◆ Objective',
+});
+
+// Canonical live waypoint builder shared with headless first-ten-minute acceptance. Marker identity
+// is beat-stable and independent of ephemeral entity ids, so UI/radar/map surfaces agree after load.
+export function buildOnboardingObjectiveWaypoint(beat, target) {
+  if (!target || !target.pos) return null;
+  const beatKey = String(beat && beat.key || 'objective').replace(/[^a-z0-9_-]+/gi, '-').toLowerCase();
+  return {
+    onboarding: true,
+    pos: { x: target.pos.x, z: target.pos.z },
+    label: target.label || 'Beacon',
+    reason: (beat && beat.line) || target.label || 'Objective',
+    markerId: `onboarding:${beatKey}`,
+    markerKind: ONBOARDING_OBJECTIVE_MARKER.markerKind,
+    mapLabel: ONBOARDING_OBJECTIVE_MARKER.mapLabel,
+  };
+}
+
+function hasPlayerSelectedNavWaypoint(state) {
+  const waypoint = state && state.nav && state.nav.waypoint;
+  if (!waypoint || waypoint.onboarding === true) return false;
+  // Both `nav` and `local` are canonical course kinds written by ui:setCourse. The local
+  // waypoint is the durable player intent after flightV3 stops the autopilot and clears its
+  // transient target bind. Tutorial objectives have their own onboarding:true ownership mark.
+  return waypoint.kind === 'nav' || waypoint.kind === 'local';
+}
+
+function validTrainingDerelict(owner) {
+  const wreck = owner._derelictId != null && owner.state?.entities?.get(owner._derelictId);
+  return wreck && wreck === owner._derelictBody && wreck.alive !== false
+    && occupantGenerationOf(wreck) === owner._derelictGeneration
+    && wreck.data?.onboarding === true && wreck.data?.kind === 'derelict' ? wreck : null;
+}
+
+function tetherLessonIsLocal(state, owner) {
+  const home = state?.onboarding?.tetherSectorId;
+  const current = state?.world?.currentSectorId;
+  // Continuous corridor travel keeps both physical bodies in global coordinates. An actual
+  // same-life wreck follows its canonical position, even after the player's membership changes.
+  const wreck = validTrainingDerelict(owner);
+  if (current && CORRIDOR_SECTOR_IDS.includes(current) && wreck?.pos
+      && Number.isFinite(wreck.pos.x) && Number.isFinite(wreck.pos.z)) {
+    return sectorMembershipAtGlobal(wreck.pos) === current;
+  }
+  return !home || !current || home === current;
+}
+
+function hasTrackedActiveMission(state) {
+  const id = state?.ui?.trackedMissionId;
+  return id != null && (state?.missions?.active || []).some((m) => m?.id === id && m.status === 'active');
+}
+
+export const onboarding = {
+  name: 'onboarding',
+
+  init(ctx) {
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    this.helpers = ctx.helpers || {};
+    this.registry = ctx.registry || null;
+    this.gamepad = ctx.gamepad;
+    this.touch = ctx.touch;
+    this._firstHourFelt?.destroy();
+    this._firstHourFelt = bindFirstHourFelt(this.bus, { say: (text, event) => {
+      // The Range pointer already sits beside the current objective. It must
+      // never replace the actionable verb on the tutorial's single voice floor.
+      if (event !== 'onboarding:rangePrompt') this._sayTutorial(text);
+    } });
+    this._panel = null;
+    this._bodyEl = null;
+    this._titleEl = null;
+    this._countEl = null;
+    this._stepsEl = null;
+    this._progressEl = null;
+    this._flavorEl = null;
+    this._kickerLabelEl = null;
+    this._modalAriaHidden = null;
+    this._accum = 0;
+    this._autoFireWasOn = null;
+    this._combatStickHintOwed = false;
+    this._deferredHints = null;
+    this._firstUseHintUntilS = -Infinity;
+    this._lastTextAtS = -Infinity;
+    this._holdGrewBeforeFull = false;
+    this._holdGrewClearQueued = false;
+
+    this._dockControlInRange = false;
+    this._gateControlInRange = false;
+    this._derelictId = null;
+    this._derelictBody = null;
+    this._derelictGeneration = null;
+    this._miningRockId = null;
+    this._trainerId = null;
+    this._firstRunSplashPending = false;
+    this._preparedRescue = null;
+    // The system object is a module singleton every runtime re-inits. Session-local ids and
+    // resume/story latches from a previous run must not survive into the next world (prop ids
+    // recycle; a stale resume latch would restage a tutorial the new run never saved).
+    this._powerSitIds = null;
+    this._resumeMainTutorial = false;
+    this._storyMode = false;
+    this._storySig = '';
+    this._ownedScanAt = undefined;
+    this._rangePromptEl = null;
+
+    const bus = this.bus;
+    bus.on('orbital-gallery:started', () => this._teardown());
+    bus.on('kinetic-league:started', () => this._teardown());
+    // The first-run splash is the sole opening line. B0 waits until it is physically removed.
+    bus.on('ui:firstRunSplash:active', () => { this._firstRunSplashPending = true; });
+    bus.on('ui:firstRunSplash:done', () => {
+      this._firstRunSplashPending = false;
+      try { this._tryAdvanceBeat(); } catch (_) { /* never let onboarding break the bus */ }
+    });
+    bus.on('game:scenePrepared', (p) => {
+      const state = this.state;
+      const player = state && state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(state.playerId)
+        : null;
+      const generation = state && state.render ? state.render.admissionRunGeneration : undefined;
+      queueMicrotask(() => {
+        try {
+          const live = this.state;
+          if (live !== state) return;
+          const livePlayer = live && live.entities && typeof live.entities.get === 'function'
+            ? live.entities.get(live.playerId)
+            : null;
+          if (livePlayer !== player) return;
+          const liveGeneration = live && live.render ? live.render.admissionRunGeneration : undefined;
+          if (liveGeneration !== generation) return;
+          this.prepareStartingScene(p || {});
+        } catch (_) {}
+      });
+    });
+    // Start only for a fresh game. Loaded saves emit save:loaded (no tutorial for a returning pilot).
+    // The payload names a scenario slice for harness boots (47a sim, lab scenarios); those own
+    // their cast, so the rescue opening only stages on the default route (no scenario payload).
+    bus.on('game:started', (p) => this._begin(p || {}));
+    bus.on('game:newGame', (p) => { this._pendingFlownBefore = !!(p && p.flownBefore === true); });
+    // On load, a returning pilot doesn't get the tutorial — but they DO get the story objective
+    // tracker (P2-14), so they can always see their current beat objective. Tear down any tutorial
+    // state, then bring up the story panel.
+    bus.on('save:loaded', (p) => {
+      this._pendingFlownBefore = false;
+      this._teardown();
+      this._dockControlInRange = false;
+      this._fitFeltOwed = false;
+      this._autoFireWasOn = null;
+      this._combatStickHintOwed = false;
+      this._gateControlInRange = false;
+      this._lastControlMode = null;
+      // FB-114: a first-hour rail serialized mid-flight resumes at its saved beat —
+      // the returning-pilot path (story tracker + recap) is for finished rails only.
+      if (this._resumeSavedRail()) return;
+      this._beginStoryMode();
+      this._speakContinueRecap(p);
+    });
+
+    // Objective completion hooks (real events verified against the systems).
+    bus.on('dock:docked', (p) => {
+      this._dockControlInRange = false;
+      this._onBeatEvent('dock:docked', p);
+      // A berth arrival after the rail still earns the rack pointer — during the rail the B5
+      // line owns this same floor, so the sale/payout triggers below carry it there instead.
+      if (!this._tutorialRailOwnsVoice()) this._maybeSpeakFitOffer(p && p.stationId);
+    });
+    bus.on('economy:tradeCompleted', (p) => {
+      if (!p || p.side !== 'sell') return;
+      // The earned rack pointer outranks the generic board pointer: a sale that closes an
+      // offer's price gap names the exact module it buys. _maybeSpeakFitOffer spends the
+      // static followup itself, so one sale never plays two guidance lines — including a
+      // sale whose contract payout already spoke the pointer via economy:grantCredits.
+      this._maybeSpeakFitOffer(p.stationId);
+      this._onBeatEvent('sold', p);
+    });
+    bus.on('economy:grantCredits', () => this._maybeSpeakFitOffer());
+    bus.on('mining:start', (p) => this._onBeatEvent('mining:start', p || {}));
+    bus.on('mining:yield', (p) => this._recordTrainingOreYield(p || {}));
+    bus.on('pickup:collected', (p) => this._recordOreCollected(p || {}));
+    bus.on('mission:accepted', (p) => this._onMissionAccepted(p || {}));
+    bus.on('mission:completed', (p) => this._onMissionCompleted(p || {}));
+
+    // ── First-hour beat events (spec2/03) ─────────────────────────────────────────────────
+    bus.on('tether:latched', (p) => this._onBeatEvent('tether:latched', p || {}));
+    // Production winch path (attachments.reel) emits tether:reel {before,after}. Gate the B1 cut
+    // follow-up on rest length <= TETHER_REEL_MAX_WU so loose pay-out/early ticks do not teach cut.
+    bus.on('tether:reel', (p) => this._onTetherReel(p || {}));
+    bus.on('tether:released', (p) => this._onBeatEvent('tether:released', p || {}));
+    bus.on('tether:broke', (p) => this._onTetherBroken(p || {}));
+    bus.on('tether:nearBreak', (p) => this._onBeatEvent('tether:nearBreak', p || {}));
+    bus.on('scan:completed', (p) => this._onTrainingScanComplete(p || {}));
+    bus.on('flybyFocus:start', (p) => {
+      if (p && p.targetId === this._trainerId) this._onBeatEvent('flybyFocus:start', p);
+    });
+    bus.on('combat:fire', (p) => this._onTrainingFire(p || {}));
+
+    // ── Rescue-opening rail (PQ-163.00) ─────────────────────────────────────────────────
+    // The three rescue verbs ride the production event stream next to the drill handlers.
+    // Every handler below no-ops unless its rescue beat is current, so the drill, the
+    // 47-A slice harness, and the B1 audit scripts observe zero behavior change.
+    bus.on('tether:latched', (p) => this._onRescueLatched(p || {}));
+    bus.on('tether:reel', (p) => this._onRescueReel(p || {}));
+    bus.on('tether:released', (p) => this._onRescueReleased(p || {}));
+    bus.on('tether:cut', (p) => this._onRescueCut(p || {}));
+    bus.on('tether:broke', (p) => this._onRescueBroke(p || {}));
+    bus.on('tether:whipImpact', (p) => this._onRescueWhipImpact(p || {}));
+    bus.on('combat:shove', (p) => this._onRescueShoveEvent(p || {}));
+    bus.on('combat:fire', (p) => this._onRescueFire(p || {}));
+    bus.on('entity:killed', (p) => this._onRescueKilled(p || {}));
+    bus.on('player:death', () => this._onRescuePlayerDeath());
+    bus.on('rescue:started', (p) => this._showStoreSentenceOnce(p || {}));
+
+    // TEACH-04 — fitting the transverse snare head speaks its deploy verb once, naming the
+    // player's own bound key. The head does nothing until it is asked to lay the line, so the
+    // lesson belongs at the fit, not before it and not at the first catch.
+    bus.on('module:equipped', (p) => {
+      if (!p || p.defId !== 'mod_transverse_snare_m') return;
+      if (!massline2Flag('masslineHeadTransverseSnare')) return;
+      const key = resolveActionLabel(this.state, 'tether', { empty: 'LATCH' });
+      this._showHint('masslineSnareHead',
+        `Snare head fitted — ${key} lays the line across their path.`,
+        p);
+    });
+    // Fitting the Repulsion Trap adds a verb beside the sticky plate instead of replacing it:
+    // one line, once per profile, naming both verbs on the player's own bound keys.
+    bus.on('module:equipped', (p) => {
+      if (!p || !MODULES.find((m) => m.id === p.defId)?.mods?.repulsionTrap) return;
+      const throwKey = resolveActionLabel(this.state, 'chargeThrow', { empty: 'THROW' });
+      const brakeKey = resolveActionLabel(this.state, 'brake', { empty: 'BRAKE' });
+      this._showHint('repulsionTrapVerbs',
+        `Repulsion Trap fitted — ${throwKey} sticks a plate; ${brakeKey} + ${throwKey} drops the trap.`,
+        p);
+    });
+    // SFQ-B064: an unspent verb-changing fit is felt at the next undock, once per verb per
+    // profile, through the same first-use voice.
+    bus.on('dock:undocked', () => {
+      this._onUndockedFromChoice();
+      this._maybeSpeakFitFelt();
+    });
+
+    // ── Range pointer & funnel (PQ-163.01 — "The Range is the door") ─────────────────────
+    bus.on('tether:latched', (p) => this._onLatchPointer(p || {}));
+    bus.on('range:opened', (p) => this._onRangeOpened(p || {}));
+    bus.on('ship:boostStart', (p) => this._onMissingThreeBoostStart(p || {}));
+    bus.on('fields:deployed', (p) => this._onMissingThreeFieldDeploy(p || {}));
+    bus.on('fields:coneToggled', (p) => this._onMissingThreeCone(p || {}));
+
+    // ── Raid + claimed tableau (thesis-first route, 2026-09-18) ─────────────────────────
+    // The momentum kill reads the production whip/tumble event stream; the wanted beat rides
+    // the real heat owner (lawSecurity.reportIncident → heat.applyIncidentReceipt → heat:changed).
+    bus.on('tether:latched', (p) => this._onRaidLatched(p || {}));
+    bus.on('tether:released', (p) => this._onRaidReleased(p || {}));
+    bus.on('tether:cut', (p) => this._onRaidReleased(p || {}));
+    bus.on('tether:whipImpact', (p) => this._onRaidWhipImpact(p || {}));
+    bus.on('entity:killed', (p) => this._onRaidKilled(p || {}));
+    bus.on('player:death', () => this._onRaidPlayerDeath());
+    bus.on('pickup:collected', (p) => this._onClaimedPickup(p || {}));
+    bus.on('heat:changed', (p) => this._onClaimedHeat(p || {}));
+    // TEACH-10 — the first wanted escalation teaches the stand-down path (own listener;
+    // the claimed-beat heat listener above is untouched).
+    bus.on('heat:changed', (p) => this._onWantedStandDownLesson(p || {}));
+    bus.on('tether:released', (p) => this._onSwingRelease(p || {}));
+    bus.on('tether:cut', (p) => this._onSwingRelease(p || {}));
+
+    // ── Contextual first-time hints (fire once per hint, persist across saves) ───────────────
+    // These are independent of the tutorial chain: they fire for all players whose
+    // settings.gameplay.tutorialHints is not explicitly false, including players who
+    // skipped the staged tutorial.
+
+    // First enemy encounter: triggered when the player first takes damage from a hostile.
+    bus.on('combat:damage', (p) => {
+      if (!p) return;
+      const hitPlayer = !!(p.isPlayer || (this.state && p.targetId === this.state.playerId));
+      if (!hitPlayer) return;
+      this._showHint('firstCombat', firstUseLine('firstCombat'), {
+        ...p,
+        entityId: p.attackerId != null ? p.attackerId : p.sourceId,
+      });
+    });
+
+    // First shield break: triggered when shields drop to zero.
+    bus.on('combat:damage', (p) => {
+      if (!p || !p.isPlayer || !p.brokeShield) return;
+      this._showHint('firstShieldDrop', firstUseLine('firstShieldDrop'), {
+        ...p,
+        entityId: p.attackerId != null ? p.attackerId : p.sourceId,
+      });
+    });
+
+    // First hull bite: the shield regrows in front of the player; the hull never does.
+    // The first hit that reaches plate teaches the survival rule once — plate stays hurt
+    // until a repair berth welds it — so the hull bar is never silently persistent.
+    // A killing hit stays quiet: the defeat screen owns that moment, lesson unspent.
+    bus.on('combat:damage', (p) => {
+      if (!p || !(Number(p.hullDamage) > 0)) return;
+      const hitPlayer = !!(p.isPlayer || (this.state && p.targetId === this.state.playerId));
+      if (!hitPlayer) return;
+      if (p.after && Number(p.after.hull) <= 0) return;
+      this._showHint('firstHullBite', firstUseLine('firstHullBite'), {
+        ...p,
+        entityId: p.attackerId != null ? p.attackerId : p.sourceId,
+      });
+    });
+
+    // TEACH-13 — the first inbound lock with a decoy aboard names the bound key
+    // once. An empty magazine stays silent. The MISSILE LOCK warning is not this line.
+    bus.on('combat:lockChanged', (p) => this._onInboundMissileLock(p || {}));
+
+    // First station approach: enriches the existing dock prompt with what stations offer.
+    bus.on('dock:range', (payload) => {
+      this._dockControlInRange = !!(payload && payload.inRange);
+      if (!payload || !payload.inRange) return;
+      this._showHint('firstStation', firstUseLine('firstStation'), payload);
+    });
+
+    // First jump gate approach: teach the player how gates work. Holding the first trade run
+    // upgrades the generic "Plot a jump." once — the tolls are part of the pay, so the gate
+    // line quotes them and stamps firstGate so the generic line never follows.
+    bus.on('gate:range', (payload) => {
+      this._gateControlInRange = !!(payload && payload.inRange);
+      if (!payload || !payload.inRange) return;
+      const run = this._firstTradeRun();
+      if (run && payload.gateTo === run.destSectorId) {
+        const out = gateTollFor(this._sectorById(run.destSectorId)) || 0;
+        const home = gateTollFor(this._sectorById(this._runOriginSectorId(run))) || 0;
+        const pay = Number(run.reward_cr) || FIRST_TRADE_CONTRACT.terms.paysCr;
+        this._showHint('firstGateToll', `Toll ${out} out, ${home} home. The run pays ${pay}. Jump.`, payload);
+        if (!this.state.player.hints) this.state.player.hints = {};
+        this.state.player.hints.firstGate = true;
+        return;
+      }
+      this._showHint('firstGate', firstUseLine('firstGate'), payload);
+    });
+
+    // X-04: landing in the contract's sector names the worklight lead-in once.
+    bus.on('jump:arrive', (p) => {
+      const run = this._firstTradeRun();
+      if (!run || !p || p.sectorId !== run.destSectorId) return;
+      // Only the Helios leg reads this way — the Flare Rack lead-in is the out-run, not a
+      // return or a later Ceres entry. world.js stamps the departure sector on the payload
+      // (state.world keeps no previous-sector field).
+      if (p.fromSectorId !== this._runOriginSectorId(run)) return;
+      this._showHint('firstGateArrive', 'Ceres. Follow the Flare Rack to the refinery.', {});
+    });
+
+    // An add that fit emits cargo:changed and, when it also overflowed, cargo:full
+    // in the same turn. The flag dies with that turn: an exact fill never emits
+    // cargo:full, and the pickup listener below clears it before the next rock.
+    bus.on('cargo:changed', () => this._noteHoldGrew());
+    // First cargo full still teaches the sale — unless the hold was already full
+    // and this add took nothing. That refusal names the jettison key once (TEACH-11).
+    bus.on('cargo:full', (p) => this._onCargoFull(p || {}));
+    bus.on('pickup:collected', () => { this._holdGrewBeforeFull = false; });
+
+    // X-01: the salvage loop pays but the first-hour player cannot see it — say it once each,
+    // on the fill and on the cash-in. _showHint defers while the rail owns the voice, so a 344
+    // kill inside the rail speaks on the next post-rail fill or dock.
+    bus.on('salvage:changed', (p) => {
+      if (p && p.cashIn) return;
+      if ((p && p.used | 0) > 0) this._showHint('firstSalvageBay', firstUseLine('firstSalvageBay'), {});
+    });
+    bus.on('salvage:bayCashedIn', (p) => {
+      if ((p && p.credits | 0) > 0) this._showHint('firstSalvageCashIn', firstUseLine('firstSalvageCashIn'), {});
+    });
+
+    // X-07: the vent pays a named lesson once each — a clean cut teaches the release, and a
+    // beam that cooked at the peg learns the banked-ore stop. Each is one-time per profile.
+    bus.on('mining:ventBonus', (p) => {
+      if (!p) return;
+      if (p.clean === true) {
+        this._showHint('miningCleanCut', 'Clean cut. Let go before the peg.', {});
+      } else if ((p.peggedS || 0) >= 1) {
+        this._showHint('miningPegged', 'Pegged beam stops banking. Let go in the amber.', {});
+      }
+    });
+
+    // X-03: buying the named module retires the chip id; hints.fitOffer stays true.
+    bus.on('module:purchased', (p) => {
+      if (p && p.defId && this.state.player.hints
+        && this.state.player.hints.fitOfferDefId === p.defId) {
+        delete this.state.player.hints.fitOfferDefId;
+      }
+    });
+
+    // First frontier crossing (2026-09-28 INFERENCE): the first uncharted sector the player
+    // enters gets ONE line — the chart ends here, the rim is theirs to name. Fires on
+    // world's firstVisit flag so return trips never re-teach; player.hints keeps it once-only.
+    bus.on('sector:enter', (p) => {
+      if (!p || !p.firstVisit) return;
+      const sector = p.sector;
+      if (!sector || sector.charted !== false) return;
+      this._showHint('firstFrontier', firstUseLine('firstFrontier'), p);
+    });
+
+    // ── Mid/late-game system onboarding (P1-10) ─────────────────────────────────────────────
+    // The first-session rail covers flight + first dock/sell, but drill-mining, outfitting, the tech
+    // tree, automation, claims/bases, and crafting are all un-onboarded — the player hits a steep
+    // self-serve cliff the moment they dock. Each of these fires a ONE-TIME contextual hint on the
+    // player's first interaction with that system, via the same player.hints mechanism as the
+    // flight hints above. The hint explains what the system IS + the immediate next step, so the
+    // player is never staring at an unfamiliar screen with no guidance.
+
+    // First dock: orient the player to the station's LEFT RAIL. This is the single biggest "cliff"
+    // moment — a new player docking for the first time meets a screen full of operations with no
+    // explanation. (The comment used to describe an 8-tab hub across the top; that layout is gone,
+    // and the live copy in hudAttention.js already points at the rail and at Departure Check.) This fires on every first dock (not just
+    // the tutorial's dock step) so returning players who skipped the tutorial still get oriented.
+    bus.on('dock:docked', (p) => {
+      this._showHint('firstHub', firstUseLine('firstHub'), p);
+    });
+
+    // Deep-drill (ant-farm mining): the first time the player activates a drill on an asteroid.
+    bus.on('drill:start', (p) => {
+      this._showHint('firstDrill', firstUseLine('firstDrill'), p);
+    });
+
+    // Outfitting: the first time the player equips OR buys a module at a station.
+    bus.on('ui:fitModule', (p) => {
+      this._showHint('firstOutfit', firstUseLine('firstOutfit'), p);
+    });
+    bus.on('ui:buyModule', (p) => {
+      this._showHint('firstOutfit', firstUseLine('firstOutfit'), p);
+    });
+
+    // Tech tree: the first time the player researches a node.
+    bus.on('tech:researched', (p) => {
+      this._showHint('firstTech', firstUseLine('firstTech'), p);
+    });
+
+    // Automation: the first time the player deploys a drone.
+    bus.on('asset:deployed', (p) => {
+      if (!p || p.kind !== 'drone') return;
+      this._showHint('firstAutomation', firstUseLine('firstAutomation'), p);
+    });
+
+    // Claims/bases: the first time the player claims a body.
+    bus.on('claim:claimed', (p) => {
+      this._showHint('firstClaim', firstUseLine('firstClaim'), p);
+    });
+
+    // Crafting: the first time the player queues a craft job (refine/assemble/augment).
+    bus.on('craft:queueChanged', (p) => {
+      this._showHint('firstCraft', firstUseLine('firstCraft'), p);
+    });
+
+    // Bomb bay: the first time the player releases a drift bomb. NPC droppers do not
+    // exist yet; the owner filter keeps their future drops from spending the lesson.
+    bus.on('bombs:dropped', (p) => {
+      const playerId = this.state && this.state.playerId;
+      if (p && p.ownerId != null && playerId != null && p.ownerId !== playerId) return;
+      this._showHint('firstBombDrop', firstUseLine('firstBombDrop'), p);
+    });
+
+    // Massline Physics Identity (Wave M2, massline2Flag-gated so headless contract runs and
+    // flag-off sessions never see them). One-shot contextual hints for the three new verbs; the
+    // authored first-hour BEATS rail is untouched.
+    // INF-062 — the latch lesson is taught by failure, not by interrupting success. The
+    // old first-latch 'masslineThrow' bark lectured competent pilots mid-lesson (and doubled
+    // the staged tether beat's own cut line), so it is gone. Instead, consecutive genuine
+    // latch denials earn ONE contextual hint naming the block; any clean latch resets the
+    // streak — success suppresses the pending lesson — and player.hints keeps it once-only.
+    bus.on('tether:latchDenied', (payload) => {
+      if (!massline2Flag('throw')) return;
+      this._latchDenialStreak = (this._latchDenialStreak || 0) + 1;
+      if (this._latchDenialStreak < LATCH_DENIAL_HINT_AFTER) return;
+      const line = latchDenialHintLine(payload && payload.reason);
+      this._showHint('masslineLatchDenied', line, payload);
+    });
+    bus.on('tether:latched', () => {
+      this._latchDenialStreak = 0;
+    });
+    bus.on('tether:latched', (payload) => {
+      if (!massline2Flag('hitchhiking') || !payload || payload.targetId == null) return;
+      const target = this.state.entities && this.state.entities.get(payload.targetId);
+      if (!isHitchHintTarget(target)) return;
+      this._showHint('masslineHitchhiking', firstUseLine('masslineHitchhiking'), { ...payload, entityId: payload.targetId });
+    });
+    // SF-291 — the same rope, two careers. The fitting screen already grades the fit's tow
+    // class and swing rating (shipCapabilities); these beats connect a MEASURED strain to that
+    // number exactly once each: latching a movable load the drive cannot put under way, and
+    // whipping a mass the same drive could never have towed. Each names the honest existing
+    // fit that improves that specific difficulty; refusing it gates nothing — the physics
+    // already worked, the line just says why it was hard.
+    bus.on('tether:latched', (payload) => {
+      if (!payload || payload.targetId == null) return;
+      const target = this.state.entities && this.state.entities.get(payload.targetId);
+      const player = this.state.entities && this.state.entities.get(this.state.playerId);
+      const load = ropeLoadMassT(target);
+      // Anchored endpoints (stations, planet bodies, ordinary rocks) are hitch points, not tow
+      // loads — latching one rides the hull, and a tow-class line would lie about a body that
+      // cannot be moved. Only a dynamic mass strains the rating — and physicsBody===false
+      // bodies (lane freighters, drift proxies) are kinematic-scripted: the line can't haul
+      // them at all, so they don't strain it either. A hitchable hull is a ride, not freight:
+      // the hitch hint owns that lesson (and a 55 t mule IS past class — the two lines must
+      // never double-fire on one latch).
+      if (!(load > 0) || target.physicsBody === false
+        || substanceFor(target).dynamic !== true
+        || isHitchHintTarget(target)) return;
+      const towClass = towClassMassFor(player && player.data && player.data.derived);
+      if (!(towClass > 0) || load <= towClass) return;
+      this._showHint('masslineTowClass',
+        'That load is past your drive\'s tow rating — it will haul, just slowly. A stronger drive raises the class.',
+        { entityId: payload.targetId });
+    });
+    // TEACH-12 — the first latch on a far heavier body teaches the brace once per profile.
+    bus.on('tether:latched', (payload) => this._onTetherLatchedBrace(payload || {}));
+    // TEACH-14 — the first swing that loads the rope toward its limit names the release window once per profile.
+    bus.on('tether:nearBreak', (payload) => this._teachReleaseWindow(payload || {}));
+    bus.on('tether:strain', (payload) => this._teachReleaseWindow({ ...payload, actorId: this.state.playerId }));
+    bus.on('tether:whipImpact', (payload) => {
+      if (!massline2Flag('throw')) return;
+      const player = this.state.entities && this.state.entities.get(this.state.playerId);
+      const towClass = towClassMassFor(player && player.data && player.data.derived);
+      // Same stick as the tow gate: the thrown body's physics mass, resolved off the record's
+      // targetId (the thrown mass — masslineImpacts emits it), falling back to the payload's
+      // entity.mass copy when the body is already gone.
+      const thrown = payload && payload.targetId != null
+        ? this.state.entities && this.state.entities.get(payload.targetId)
+        : null;
+      const mass = ropeLoadMassT(thrown) || Number(payload && payload.mass);
+      if (!(towClass > 0) || !(Number.isFinite(mass) && mass > towClass)) return;
+      this._showHint('masslineThrowClass',
+        'You just threw a mass your drive cannot tow — a winch kit cinches the next swing faster.',
+        payload);
+    });
+    bus.on('massline:selfSling', (p) => {
+      if (!massline2Flag('throw')) return;
+      this._showHint('masslineSelfSling', firstUseLine('masslineSelfSling'), p);
+    });
+    bus.on('cargo:jettisoned', (p) => {
+      if (!massline2Flag('jettisonImpulse')) return;
+      // TEACH-01 — 'Dump aft to push' is the drop-kick lesson; it must be earned at cruise
+      // speed. A parked dump teaches nothing about reaction mass, so it cannot spend the
+      // one-per-profile line.
+      const player = this.state.entities && this.state.entities.get(this.state.playerId);
+      const speed = Math.hypot(
+        Number(player && player.vel && player.vel.x) || 0,
+        Number(player && player.vel && player.vel.z) || 0,
+      );
+      if (!(speed >= DROP_KICK_CRUISE_SPEED)) return;
+      // FB-002: the shelf's jettisonLot listener runs after this one on the same emit — flag
+      // when the kick line actually lands so one dump never speaks two lessons.
+      const before = !!(this.state.player.hints && this.state.player.hints.masslineJettisonImpulse);
+      this._showHint('masslineJettisonImpulse', firstUseLine('masslineJettisonImpulse'), p);
+      this._dropKickJustSpoke = !before
+        && !!(this.state.player.hints && this.state.player.hints.masslineJettisonImpulse);
+    });
+    bus.on('bulletTime:start', (p) => {
+      if (!massline2Flag('bulletTime')) return;
+      this._showHint('masslineBulletTime', firstUseLine('masslineBulletTime'), p);
+    });
+    bus.on('cloak:engaged', (p) => {
+      if (!massline2Flag('cloak')) return;
+      this._showHint('masslineCloak', firstUseLine('masslineCloak'), p);
+    });
+    bus.on('charge:aftDropped', (p) => {
+      if (!massline2Flag('bombPropulsion')) return;
+      this._showHint('bombPropulsion', firstUseLine('bombPropulsion'), p);
+    });
+    // TEACH-05 — the first mass seed deploy is spoken with the warning-then-collapse rule
+    // the seed lives by. Once per profile; a foreign owner's deploy never teaches it.
+    bus.on('massSeed:deployed', (p) => {
+      const playerId = this.state && this.state.playerId;
+      if (p && p.ownerId != null && playerId != null && p.ownerId !== playerId) return;
+      this._showHint('massSeedDeploy', firstUseLine('massSeedDeploy'), p);
+    });
+
+    // ── Verb shelf (FB-002/FB-116): every bound verb is spoken once, in the player's own
+    // device vocabulary, on the moment the verb matters. The five-verb rail already teaches
+    // by doing; these seven have no authored beat, so a real context fires them instead.
+    // Each line is built at fire time so it names the LIVE binding — a rebind mid-career
+    // can never strand the words — and player.hints keeps every line once-per-profile.
+    // A trigger that lands while the staged rail owns the voice is NOT lost: it parks in
+    // _shelfPending and the cadence tick re-tries until the hint actually speaks.
+    this._shelfPending = null;
+    this._shelfStraightS = 0;
+
+    bus.on('module:equipped', (p) => {
+      if (!p || !this.state || p.shipId !== this.state.playerId) return;
+      // bulletTime rides the first fit of any kind — the moment the hull stops being stock.
+      this._speakShelfVerb('bulletTime');
+      // cloak speaks only when the fit actually grants a shroud — teaching a verb with no
+      // hardware behind it is the lie the trigger exists to prevent.
+      if (fittedCloakModule(this.state)) this._speakShelfVerb('cloak');
+    });
+
+    // First-use verbs speak on their own receipts — the player already did the thing, and the
+    // line names the binding that did it.
+    bus.on('beacon:deployed', (p) => this._speakShelfVerb('deployBeacon', p));
+    bus.on('planet:collector', (p) => {
+      if (!p || p.on !== true) return; // toggling off is not the lesson
+      this._speakShelfVerb('toggleSkimCollector', p);
+    });
+    // The planet's bands speak the first time the player reaches them (U5): each band's
+    // receipt names what the band is and the law that governs it — once per save.
+    bus.on('planet:bandFirst', (p) => this._speakBandFirst(p));
+    bus.on('cargo:jettisoned', (p) => {
+      // The drop-kick line owns an at-speed first dump; the shelf defers so the moment
+      // never speaks two lessons. At rest, flag-off, or any later dump the shelf names
+      // the verb itself — jettisonLot stays a bound verb the player used.
+      const deferredToKick = this._dropKickJustSpoke === true;
+      this._dropKickJustSpoke = false;
+      if (deferredToKick) return;
+      this._speakShelfVerb('jettisonLot', p);
+    });
+
+    this._lastControlMode = null;
+  },
+
+  // Speak one shelf verb once. When the staged rail owns the voice the moment parks in
+  // _shelfPending and _tickShelfVerbs retries on the cadence tick until the hint lands —
+  // a trigger suppressed by silence is deferred, never spent. Returns true when the line
+  // actually fired (its player.hints stamp is set).
+  _speakShelfVerb(verbId, payload) {
+    const st = this.state;
+    const verb = SHELF_VERBS.find((v) => v.key === verbId);
+    if (!verb || !st) return false;
+    const hints = st.player && st.player.hints;
+    if (hints && hints[shelfHintKey(verbId)]) return false;
+    if (!shelfVerbEnabled(verb, st)) return false;
+    if (this._tutorialRailOwnsVoice()) {
+      if (!this._shelfPending) this._shelfPending = new Map();
+      this._shelfPending.set(verbId, payload || null);
+      return false;
+    }
+    const label = verbBindingLabel(st, verb.action);
+    this._showHint(shelfHintKey(verbId), shelfVerbLine(verbId, label), payload);
+    return !!(st.player.hints && st.player.hints[shelfHintKey(verbId)]);
+  },
+
+  // Cadence-tick the context triggers (same 0.2 s gate as the field-escape teacher):
+  // travelBurn's long-straight timer, chargeThrow's first-hostile-with-a-racked-charge,
+  // and any parked shelf lines retrying past the rail's voice.
+  _tickShelfVerbs(dt, state) {
+    if (!state || state.mode !== 'flight') { this._shelfStraightS = 0; return; }
+    const playerEntity = state.entities && state.entities.get && state.entities.get(state.playerId);
+    const playerTeam = playerEntity && playerEntity.team;
+    const isHostile = (e) => isHostileToPlayer(e, playerTeam, state);
+    if (shelfLongStraightActive(state, isHostile)) {
+      this._shelfStraightS = (this._shelfStraightS || 0) + dt;
+      if (this._shelfStraightS >= SHELF_LONG_STRAIGHT_S) this._speakShelfVerb('travelBurn');
+    } else {
+      this._shelfStraightS = 0;
+    }
+    if (shelfHostileChargeReady(state, isHostile)) this._speakShelfVerb('chargeThrow');
+    if (this._shelfPending && this._shelfPending.size) {
+      for (const [verbId, payload] of Array.from(this._shelfPending.entries())) {
+        if (this._speakShelfVerb(verbId, payload)) this._shelfPending.delete(verbId);
+        else if (!this._tutorialRailOwnsVoice()) this._shelfPending.delete(verbId); // spent or gated off
+      }
+      if (!this._shelfPending.size) this._shelfPending = null;
+    }
+  },
+
+  // Show a one-time contextual hint via the toast system. The hint key corresponds to a flag in
+  // U5 — one receipt per planetary band, per body, per save. The instrument shows the band
+  // every frame; this is the one time the band explains itself.
+  _speakBandFirst(p) {
+    const st = this.state;
+    if (!p || !st || p.isPlayer !== true) return false;
+    const line = PLANET_BAND_FIRST_LINES[p.band];
+    if (!line) return false;
+    const key = `band_first_${p.siteId || 'body'}_${p.band}`;
+    const hints = st.player && st.player.hints;
+    if (hints && hints[key]) return false;
+    this._showHint(key, line, p);
+    return !!(st.player.hints && st.player.hints[key]);
+  },
+
+  // TEACH-11 — the first full-hold refusal names the bound jettison key, once per
+  // profile. Later rocks stay quiet. A scoop that still accepted units is the sell
+  // lesson above, not this one. No key to name (touch, unbound) leaves that lesson.
+  _noteHoldGrew() {
+    this._holdGrewBeforeFull = true;
+    if (this._holdGrewClearQueued) return;
+    this._holdGrewClearQueued = true;
+    queueMicrotask(() => {
+      this._holdGrewBeforeFull = false;
+      this._holdGrewClearQueued = false;
+    });
+  },
+
+  _onCargoFull(payload) {
+    const grew = this._holdGrewBeforeFull === true;
+    this._holdGrewBeforeFull = false;
+    const cargo = this.state && this.state.player && this.state.player.cargo;
+    if (isFullHoldRefusal(cargo, grew ? 1 : 0) && this._speakFullHoldJettison(payload)) return;
+    this._showHint('firstCargoFull', firstUseLine('firstCargoFull'), payload);
+  },
+
+  _speakFullHoldJettison(payload) {
+    const st = this.state;
+    if (!st || !st.player) return false;
+    if (st.player.hints && st.player.hints.firstFullHoldJettison) return true;
+    const label = verbBindingLabel(st, 'jettisonLot');
+    if (!label) return false;
+    const text = /[.!?]$/.test(label)
+      ? `Hold is full — jettison — ${label}`
+      : `Hold is full — jettison — ${label}.`;
+    this._showHint('firstFullHoldJettison', text, payload);
+    return !!(st.player.hints && st.player.hints.firstFullHoldJettison);
+  },
+
+  // TEACH-13 — one hint, once per profile, on the first lock warning while a decoy
+  // can still be dropped. Zero stock is the NXI-045 refusal, so it stays quiet and
+  // does not spend the lesson. No key to name (touch, unbound) leaves it too.
+  _onInboundMissileLock(payload) {
+    if (!payload || payload.locked !== true) return;
+    const st = this.state;
+    if (!st || !st.player) return;
+    const playerId = st.playerId;
+    if (payload.targetId != null && playerId != null && payload.targetId !== playerId) return;
+    if (st.player.hints && st.player.hints.firstDecoyLock) return;
+    const player = st.entities && st.entities.get && st.entities.get(playerId);
+    if (!player || player.alive === false) return;
+    if (!decoyAnswersLock(player)) return;
+    const label = verbBindingLabel(st, 'countermeasure');
+    if (!label) return;
+    const text = /[.!?]$/.test(label)
+      ? `Missile locked — drop a decoy — ${label}`
+      : `Missile locked — drop a decoy — ${label}.`;
+    this._showHint('firstDecoyLock', text, payload);
+  },
+
+  // TEACH-12 — the first latch on a far heavier body teaches the brace once per profile.
+  _onTetherLatchedBrace(payload) {
+    if (!payload || payload.targetId == null) return;
+    const st = this.state;
+    if (!st || !st.player) return;
+    if (st.player.hints && st.player.hints.masslineBrace) return;
+    const playerId = st.playerId;
+    if (payload.sourceId != null && playerId != null && payload.sourceId !== playerId) return;
+    if (payload.actorId != null && playerId != null && payload.actorId !== playerId) return;
+    if (payload.ownerId != null && playerId != null && payload.ownerId !== playerId) return;
+    const target = st.entities && st.entities.get && st.entities.get(payload.targetId);
+    const player = st.entities && st.entities.get && st.entities.get(playerId);
+    if (!target || !player) return;
+    if (target.id === player.id) return;
+    const targetMass = ropeLoadMassT(target);
+    const playerMass = ropeLoadMassT(player);
+    const massRatio = Number.isFinite(payload.massRatio)
+      ? payload.massRatio
+      : (playerMass > 0 ? targetMass / playerMass : 0);
+    if (massRatio < MASS_ANCHOR_RATIO) return;
+    const label = verbBindingLabel(st, 'boost') || resolveActionLabel(st, 'boost', { empty: 'BOOST' });
+    const text = label
+      ? (/[.!?]$/.test(label)
+        ? `Heavy body — boost and brace — ${label}`
+        : `Heavy body — boost and brace — ${label}.`)
+      : 'Heavy body — boost and brace.';
+    this._showHint('masslineBrace', text, { ...payload, entityId: payload.targetId });
+  },
+
+  // state.player.hints. If the flag is already true (hint was shown before, even in a prior save),
+  // this is a no-op. Respects the tutorialHints setting.
+  _showHint(key, text, payload, { fromQueue = false } = {}) {
+    const st = this.state;
+    if (isRacingCorridorSession(st)) return;
+    if (st.run?.kind === 'survival' && st.run.phase !== 'inactive') return;
+    if (st.settings && st.settings.gameplay && st.settings.gameplay.tutorialHints === false) return;
+    if (!st.player.hints) st.player.hints = {};
+    if (st.player.hints[key]) return;
+    const now = Number.isFinite(st.simTime) ? st.simTime : 0;
+    // The staged rail owns the voice first; after that, one contextual hint owns the HUD
+    // for its full display window. Preserve FIFO order so same-tick event bursts cannot
+    // mark several hints seen while the HUD only has room to show the last one.
+    if (!fromQueue && (this._tutorialRailOwnsVoice()
+      || (this._deferredHints && this._deferredHints.size > 0)
+      || now < this._firstUseHintUntilS)) {
+      if (!this._deferredHints) this._deferredHints = new Map();
+      if (this._deferredHints.size < 12 && !this._deferredHints.has(key)) {
+        this._deferredHints.set(key, { text, payload });
+      }
+      return;
+    }
+    st.player.hints[key] = true;
+    const entityId = resolveFirstUseEntityId(st, payload || {});
+    this.bus.emit('hud:firstUse', { verbId: key, text, entityId });
+    this._firstUseHintUntilS = now + FIRST_USE_HINT_DISPLAY_S;
+  },
+
+  // Drain the deferred contextual hints the staged rail muted. Runs on the same 0.2 s
+  // cadence the shelf pending queue uses; each key replays through _showHint so the
+  // ordinary gates (settings, venue, once-per-profile) still apply at speak time.
+  _drainHintQueue() {
+    const queue = this._deferredHints;
+    if (!queue || !queue.size || this._tutorialRailOwnsVoice()) return;
+    const now = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
+    if (now < this._firstUseHintUntilS) return;
+    while (queue.size) {
+      const [key, rec] = queue.entries().next().value;
+      queue.delete(key);
+      if (queue.size === 0) this._deferredHints = null;
+      // Seen keys and hints whose settings/venue gate changed while queued are skipped;
+      // the first hint that can speak claims the HUD window and leaves the tail queued.
+      const before = this._firstUseHintUntilS;
+      this._showHint(key, rec.text, rec.payload, { fromQueue: true });
+      if (this._firstUseHintUntilS !== before) return;
+    }
+  },
+
+  // Leaving the B5 berth without taking a job is a choice too: the player flies their own plan.
+  // The rail retires instead of pinning "Pick the work that fits" over open space; the offers
+  // stay on the board as ordinary rows, and any owed fit-felt line speaks at this undock.
+  _onUndockedFromChoice() {
+    const ob = this.state && this.state.onboarding;
+    const beat = ob && ob.active && !ob.finished && BEATS[ob.currentBeat];
+    if (!beat) return;
+    // Leaving inside the silence gap (B4 done at the berth, B5 not yet entered) is the same
+    // decline: never let the choice beat open in flight with nothing to pick from.
+    const choicePending = beat.key === 'dock' && ob.beatDoneAt && ob.beatDoneAt.dock != null;
+    if (beat.key !== 'choice' && !choicePending) return;
+    this._finish();
+  },
+
+  _tutorialRailOwnsVoice() {
+    const ob = this.state && this.state.onboarding;
+    return !!(ob && ob.active && !ob.finished);
+  },
+
+  // SFQ-B064: re-derived at every undock from what is actually fitted and what has not yet been
+  // felt, so a save/load mid-dock loses nothing. The most verb-changing unspent fit speaks; the
+  // rest wait for later undocks. A line the tutorial rail deferred is owed and drains the moment
+  // the rail releases the voice (see _tickFitFelt).
+  _maybeSpeakFitFelt() {
+    const st = this.state;
+    const player = st && st.player;
+    if (!player) return false;
+    const owned = player.ownedShips && player.ownedShips[player.activeShipIndex || 0];
+    const defId = typeof owned === 'string' ? owned : owned && owned.defId;
+    const fittings = (owned && typeof owned === 'object' && owned.fittings) || [];
+    if (!defId || !fittings.length) { this._fitFeltOwed = false; return false; }
+    const defs = fittings
+      .map((id) => (id ? FIT_FEEL_DEFS.get(id) : null))
+      .filter(Boolean);
+    const pick = pickFitFelt(defs, getDerivedStats(defId, fittings, player), player.hints);
+    if (!pick) { this._fitFeltOwed = false; return false; }
+    if (this._tutorialRailOwnsVoice()) { this._fitFeltOwed = true; return false; }
+    const key = (action, empty) => resolveActionLabel(st, action, { empty });
+    this._showHint(pick.hintKey, pick.row.line(key, pick.def), { shipId: st.playerId });
+    this._fitFeltOwed = false;
+    return !!(player.hints && player.hints[pick.hintKey]);
+  },
+
+  _tickFitFelt(state) {
+    if (!this._fitFeltOwed || !state || state.mode !== 'flight') return;
+    if (state.ui && state.ui.docked) return;
+    if (this._tutorialRailOwnsVoice()) return;
+    this._maybeSpeakFitFelt();
+  },
+
+  // SR-01 earned rack pointer. A berth event — a sale, a docked payout, or an arrival after
+  // the rail — that leaves the pilot able to afford a verb-changing module on THIS station's
+  // rack earns one line naming it. The pointer is earned, not scripted: the candidate must be
+  // a real hull-compatible offer actually in reach under the same gates the purchase row
+  // applies, unowned, and verb-changing, and the line spends itself once per profile.
+  _fitOfferCandidate(stationId) {
+    const st = this.state;
+    const player = st && st.player;
+    if (!stationId || !player) return null;
+    const owned = Array.isArray(player.ownedShips) ? player.ownedShips[player.activeShipIndex || 0] : null;
+    const shipDefId = typeof owned === 'string' ? owned : owned && owned.defId;
+    const shipDef = SHIPS.find((hull) => hull && hull.id === shipDefId);
+    if (!shipDef) return null;
+    const fittings = (owned && typeof owned === 'object' && Array.isArray(owned.fittings)) ? owned.fittings : [];
+    const held = new Set();
+    for (const hull of player.ownedShips || []) {
+      for (const id of hull && typeof hull === 'object' && Array.isArray(hull.fittings) ? hull.fittings : []) if (id) held.add(id);
+    }
+    for (const item of player.moduleInventory || []) {
+      const invId = item && typeof item === 'object' ? item.defId : item;
+      if (invId) held.add(invId);
+    }
+    const slots = buildSlotList(shipDef);
+    const ships = this.registry && this.registry.get && this.registry.get('ships');
+    const credits = Number.isFinite(player.credits) ? Math.max(0, player.credits) : 0;
+    let best = null;
+    for (const def of FIT_FEEL_DEFS.values()) {
+      if (held.has(def.id)) continue;
+      const offer = stationShopOffer(def, stationId);
+      if (!offer) continue;
+      // Same gates describeOutfittingPurchase applies: standing lock, research/offer unlock,
+      // a slot this hull can take, and the real offer price against real credits.
+      if (def.exclusivity && !exclusivityRepMet(def.exclusivity, st.factions)) continue;
+      if (ships && typeof ships.isUnlocked === 'function' && !ships.isUnlocked(def)) continue;
+      if (!slots.some((slot, slotIndex) => {
+        if (!fits(slot, def)) return false;
+        if (ships && typeof ships.moduleFitBlocker === 'function') {
+          return !ships.moduleFitBlocker({ shipIndex: player.activeShipIndex || 0, slotIndex, def });
+        }
+        if (findMasslineHeadConflict(fittings, slotIndex, def)) return false;
+        const prospective = fittings.slice(); prospective[slotIndex] = def.id;
+        return !outfitBudgetBlocker(shipDef, prospective);
+      })) continue;
+      if (credits < offer.price) continue;
+      // The swing drive extends the latch the tutorial already taught, so it leads; the
+      // cheapest remaining verb-fit is the honest tiebreak.
+      const rank = [def.mods && def.mods.swingDrive ? 0 : 1, offer.price];
+      if (!best || rank[0] < best.rank[0] || (rank[0] === best.rank[0] && rank[1] < best.rank[1])) {
+        best = { def, rank };
+      }
+    }
+    return best && best.def;
+  },
+
+  _maybeSpeakFitOffer(stationId) {
+    const st = this.state;
+    const player = st && st.player;
+    const ob = st && st.onboarding;
+    if (!player) return '';
+    const berth = st.ui && st.ui.dockedStationId;
+    if (!berth || (stationId != null && stationId !== berth)) return '';
+    if (!(st.ui.docked === true || st.mode === 'station')) return '';
+    if (!ob || (!ob.active && !ob.finished)) return '';
+    // The voice cannot speak in these modes — spending the flag first would eat the pointer
+    // without ever showing it (same gates _showHint applies).
+    if (st.settings && st.settings.gameplay && st.settings.gameplay.tutorialHints === false) return '';
+    if (isRacingCorridorSession(st)) return '';
+    if (st.physicsVenueSession || st.physicsVenue?.active) return '';
+    if (st.run?.kind === 'survival' && st.run.phase !== 'inactive') return '';
+    if (player.hints && player.hints.fitOffer) return '';
+    const def = this._fitOfferCandidate(berth);
+    if (!def) return '';
+    if (!player.hints) player.hints = {};
+    player.hints.fitOffer = true;
+    // X-03: remember WHICH module the voice named so the yard row can wear its chip;
+    // module:purchased clears the key, the boolean stays the once-ever flag.
+    player.hints.fitOfferDefId = def.id;
+    // The earned line supersedes B5's generic board followup whichever berth event spoke it
+    // (a contract payout's grantCredits fires inside the same sale, before tradeCompleted
+    // reaches this system).
+    if (ob.firedFollowups) ob.firedFollowups['choice:sold'] = true;
+    const line = `Your credits cover the yard's ${def.name}.`;
+    if (this._tutorialRailOwnsVoice()) ob.beatAction = line;
+    this._sayTutorial(line);
+    return line;
+  },
+
+  _isOre(id) { return !!id && ORE_PREFIXES.some((p) => String(id).startsWith(p)); },
+
+  _begin(payload) {
+    const flownBefore = this._pendingFlownBefore === true; this._pendingFlownBefore = false;
+    const st = this.state;
+    this._resumeMainTutorial = false;
+    this._autoFireWasOn = null;
+    this._combatStickHintOwed = false;
+    // Temporary physics challenges share New Game, but own their actors and instructions.
+    if (st.physicsVenueSession === true) {
+      this._teardown({ removeActors: false });
+      st.onboarding = { active: false, finished: false };
+      return;
+    }
+    this._dockControlInRange = false;
+    this._fitFeltOwed = false;
+    this._gateControlInRange = false;
+    this._lastControlMode = null;
+    this._latchDenialStreak = 0;
+    this._shelfPending = null;
+    this._shelfStraightS = 0;
+    this._deferredHints = null;
+    this._firstUseHintUntilS = -Infinity;
+    if (st.physicsVenueSession || isRacingCorridorSession(st) || payload?.crucibleLaunch === true
+      || (st.run?.kind === 'survival' && st.run.phase !== 'inactive')) {
+      // The fresh world may already have reused the old tutorial actor IDs.
+      this._teardown({ removeActors: false });
+      st.onboarding = { active: false, finished: false };
+      return;
+    }
+    const hintsOn = !st.settings || !st.settings.gameplay || st.settings.gameplay.tutorialHints !== false;
+    // First-hour pacing state (spec2/03). currentBeat is the beat the player is ON (its line has
+    // fired); pendingBeat is the next one waiting for the silence gate. beatDoneAtS timestamps each
+    // beat's DONE so the ≥SILENCE_S gate can enforce the one-verb cadence.
+    st.onboarding = {
+      pace: null,
+      active: hintsOn, finished: false,
+      currentBeat: -1,            // no beat's text has fired yet
+      beatDoneAt: {},             // { beatKey: simTimeS }
+      firedFollowups: {},         // { beatKey:eventName: true } — followup barks fire once
+      oreCollected: 0,            // B2 progress
+      trainingOre: 0,
+      tetherReeled: false,
+      tetherSectorId: null,
+      tetherBreaks: 0,
+      beatAction: '',
+      burstShots: 0,
+      burstPeakHeat: 0,
+      burstCooling: false,
+      firstLatchDone: false,
+      firstLatchAt: null,
+      rangePromptActive: false,
+      rangePrompt: null,
+      pointedAtRange: false,
+      rangeOpened: false,
+      rangeOpenedAt: null,
+      rangeOpenedFromPrompt: false,
+      rangeOpenedFromPromptAt: null,
+      rangeFunnel: null,
+      rangePromptRungId: null,
+      trackerCaptions: [],        // bounded { id, text, startAtS, endAtS } — tutorial lifetime only
+      // Row 546: one situation per power inside the first ten minutes. Plain JSON so a save in
+      // the window resumes the ladder instead of replaying it.
+      powerSit: normalizePowerSit(null),
+      startedAt: st.simTime || 0,
+    };
+    // Thesis-first tableau state (raid + claimed). Only staged on the default route — see
+    // _beginRescue for the scenario-payload carve-out the 47-A slice harness depends on.
+    st.onboarding.raid = null;
+    st.onboarding.claimed = null;
+    // A fresh new game starts in tutorial mode (not story mode).
+    this._storyMode = false;
+    this._lastTextAtS = -Infinity;
+    if (!hintsOn) {
+      // Player opted out of the tutorial entirely — still give them the story objective tracker so
+      // they're never without a "what now" (P2-14).
+      this._releasePreparedRescue();
+      this._beginStoryMode();
+      return;
+    }
+    this._injectStyle();
+    this._buildPanel();
+    // The rescue opening stages on the default route only: harness boots that name a scenario
+    // slice (47a sim, lab scenarios) keep their own cast and their golden snapshots.
+    if (!payload || payload.scenario == null) {
+      st.onboarding.pace = freshPaceState({ flownBefore });
+      this._beginRescue();
+    }
+    else this._releasePreparedRescue();
+    // No intro modal (spec2/03 B0: "no modal"). The B0 line fires on the first update tick after the
+    // 4 s silence gate (no predecessor → fires immediately).
+    this._refreshBeatPanel();
+  },
+
+  // Enter story-mode (the persistent objective tracker) without the tutorial. Used by save:loaded
+  // (returning pilots) and by players who skipped/disabled tutorial hints. Respects the tutorialHints
+  // setting — a pilot who turned hints off still gets the tracker ONLY if they haven't also disabled
+  // story cues; for simplicity we always show the story tracker (it's the objective, not a hint).
+  _beginStoryMode() {
+    this._storyMode = true;
+    this._storySig = '';
+    this._retireTutorialPanel();
+    this._refreshStory();
+  },
+
+  // INF-070: Continue restores the pilot's intention. One dismissible flight-log recap
+  // of restored state — active objective, current sector, one unresolved risk — on the
+  // existing comms surface. Reads only (never a reward), fires once per load, leaves
+  // controls untouched: no modal, no mode change.
+  _speakContinueRecap(payload) {
+    try {
+      if (payload && (payload.scenario || payload.harness)) return; // harness boots own their cast
+      const recap = continueRecap(this.state);
+      if (!recap) return;
+      const lines = [];
+      if (recap.objective) lines.push(`Objective: ${recap.objective}`);
+      if (recap.location) lines.push(`Position: ${recap.location}`);
+      if (recap.risk) lines.push(`Risk: ${recap.risk}`);
+      if (!lines.length) return;
+      this.bus.emit('comms:popup', {
+        sender: 'Flight Log',
+        text: `Welcome back. ${lines.join(' ')}`,
+        category: 'personal',
+        ttl: 10,
+      });
+    } catch (_) { /* never let onboarding break the bus */ }
+  },
+
+  // ── Save/load (FB-114) ─────────────────────────────────────────────────────
+  // The first-hour rail is durable run state: a save written mid-rail resumes at the
+  // saved beat instead of stranding a pilot who was never taught the bound verbs.
+  // Staged props are transient entities (flags.persistent unset) and never serialize,
+  // so the record carries beat progress only — resume re-stages whatever the current
+  // beat needs next to the restored player.
+
+  serialize() {
+    const ob = this.state && this.state.onboarding;
+    if (!ob || typeof ob !== 'object') return null;
+    const rail = ob.missingThree && typeof ob.missingThree === 'object' ? ob.missingThree : null;
+    const rescue = ob.rescue && typeof ob.rescue === 'object' ? ob.rescue : null;
+    const railDone = !rail || rail.completed === true || ob.finished === true;
+    const rescueDone = !rescue || rescue.completed === true;
+    const mainRailActive = ob.active === true && ob.finished !== true;
+    // A finished or never-started first hour carries nothing durable; writing it would
+    // risk a mature save re-firing the tutorial on load.
+    if (railDone && rescueDone && !mainRailActive) return null;
+    return {
+      version: 1,
+      mainRailActive,
+      active: ob.active === true,
+      finished: ob.finished === true,
+      currentBeat: typeof ob.currentBeat === 'number' ? ob.currentBeat : -1,
+      beatDoneAt: plainClone(ob.beatDoneAt),
+      firedFollowups: plainClone(ob.firedFollowups),
+      oreCollected: ob.oreCollected | 0,
+      trainingOre: ob.trainingOre | 0,
+      tetherReeled: ob.tetherReeled === true,
+      tetherSectorId: typeof ob.tetherSectorId === 'string' ? ob.tetherSectorId : null,
+      tetherBreaks: ob.tetherBreaks | 0,
+      beatAction: typeof ob.beatAction === 'string' ? ob.beatAction : '',
+      rescue: rescue ? railRecord(rescue) : null,
+      raid: ob.raid && typeof ob.raid === 'object' ? railRecord(ob.raid) : null,
+      claimed: ob.claimed && typeof ob.claimed === 'object' ? railRecord(ob.claimed) : null,
+      missingThree: rail ? railRecord(rail) : null,
+      storeSentence: ob.storeSentence ? plainClone(ob.storeSentence) : null,
+      pace: ob.pace ? normalizePaceState(ob.pace) : null,
+      powerSit: ob.powerSit ? normalizePowerSit(ob.powerSit) : null,
+      choiceStationId: typeof ob.choiceStationId === 'string' ? ob.choiceStationId : null,
+      choiceOfferIds: Array.isArray(ob.choiceOfferIds) ? ob.choiceOfferIds.slice() : null,
+      recommendedMissionId: ob.recommendedMissionId != null ? ob.recommendedMissionId : null,
+      trackerCaptions: sanitizeTrackerCaptions(ob.trackerCaptions),
+    };
+  },
+
+  deserialize(d) {
+    const st = this.state;
+    if (!st) return;
+    this._resumeMainTutorial = !!(d && d.mainRailActive === true && d.finished !== true);
+    const ob = st.onboarding && typeof st.onboarding === 'object' ? st.onboarding : {};
+    if (!d || typeof d !== 'object') {
+      // Pre-rail saves carry no slice: reset to the pre-begin baseline so a live
+      // session's rail cannot bleed into the loaded game.
+      st.onboarding = { active: false, finished: false };
+      return;
+    }
+    ob.active = d.active === true;
+    ob.finished = d.finished === true;
+    ob.currentBeat = typeof d.currentBeat === 'number' ? d.currentBeat : -1;
+    ob.beatDoneAt = plainClone(d.beatDoneAt) || {};
+    ob.firedFollowups = plainClone(d.firedFollowups) || {};
+    ob.oreCollected = d.oreCollected | 0;
+    ob.trainingOre = d.trainingOre | 0;
+    ob.tetherReeled = d.tetherReeled === true;
+    // Older ordinary saves did not retain the first-pull site; that opening began in Helios.
+    ob.tetherSectorId = typeof d.tetherSectorId === 'string' ? d.tetherSectorId
+      : (d.tetherSectorId === undefined && BEATS[ob.currentBeat]?.key === 'tether' && st.world?.currentSectorId
+        ? 'sector_helios_prime' : null);
+    ob.tetherBreaks = d.tetherBreaks | 0;
+    ob.beatAction = typeof d.beatAction === 'string' ? d.beatAction : '';
+    ob.pace = normalizePaceState(d.pace);
+    ob.powerSit = normalizePowerSit(d.powerSit);
+    if (d.storeSentence) ob.storeSentence = plainClone(d.storeSentence); else delete ob.storeSentence;
+    // B5's berth and offers survive a docked save, so the board keeps its choice framing.
+    if (typeof d.choiceStationId === 'string') ob.choiceStationId = d.choiceStationId; else delete ob.choiceStationId;
+    if (Array.isArray(d.choiceOfferIds)) ob.choiceOfferIds = d.choiceOfferIds.slice(); else delete ob.choiceOfferIds;
+    if (d.recommendedMissionId != null) ob.recommendedMissionId = d.recommendedMissionId; else delete ob.recommendedMissionId;
+    // Absolute simulation timestamps survive: a restored caption resumes its window, never restarts it.
+    ob.trackerCaptions = sanitizeTrackerCaptions(d.trackerCaptions);
+    ob.rescue = restoreRescueRecord(d.rescue);
+    ob.raid = plainClone(d.raid);
+    ob.claimed = plainClone(d.claimed);
+    ob.missingThree = restoreMissingThreeRecord(d.missingThree);
+    st.onboarding = ob;
+  },
+
+  // Re-enter an unfinished rail after save:loaded tore the live tutorial down.
+  // The sub-rails overlap in time — a rescue verb stays current across the raid and
+  // claimed tableaus — so EVERY incomplete record restages; returning after the first
+  // live rail used to strand whatever ran beside it (the audit's "no actors, no
+  // diamond, no timer" Continue). What the pilot hears afterwards obeys the same
+  // precedence as the objective diamond: a current rescue verb, then a current
+  // missing-three verb, then the saved main-beat line.
+  _resumeSavedRail() {
+    const st = this.state;
+    const ob = st && st.onboarding;
+    // save:loaded runs this AFTER _teardown(), which clears ob.active and the
+    // raid/claimed active flags — the resume gate is the rail records' completion
+    // state, not flags the teardown just rewrote.
+    if (!ob || ob.finished === true) return false;
+    if (st.settings?.gameplay?.tutorialHints === false) {
+      this._resumeMainTutorial = false;
+      return false;
+    }
+    let resumed = false;
+    const rescue = ob.rescue;
+    if (rescue && rescue.active === true && rescue.completed !== true) {
+      ob.active = true;
+      // A saved latch is dead state: the tether itself never survives a restore, so
+      // the beat's latch/reel progress rewinds with the restaged cast.
+      rescue.rockLatched = false;
+      rescue.rockReeled = false;
+      rescue.rockReleasedAfterReel = false;
+      rescue.podLatched = false;
+      rescue.shoveShots = 0;
+      this._spawnRescueCast();
+      resumed = true;
+    }
+    const raid = ob.raid;
+    let raidRestaged = false;
+    if (raid && ob.beatDoneAt.raid == null) {
+      ob.active = true;
+      raid.active = true;
+      this._spawnRaidCast();
+      raidRestaged = true;
+      resumed = true;
+    }
+    const claimed = ob.claimed;
+    let claimedRestaged = false;
+    if (claimed && claimed.resolved !== true) {
+      if (ob.beatDoneAt.claimed == null) {
+        ob.active = true;
+        claimed.active = true;
+        this._spawnClaimedCast();
+        claimedRestaged = true;
+        resumed = true;
+      } else {
+        // The beat already resolved without closing the record — seal it instead of
+        // spawning a tableau for a lesson that is done.
+        claimed.resolved = true;
+        claimed.active = false;
+      }
+    }
+    const three = ob.missingThree;
+    if (three && three.active === true && three.completed !== true) {
+      ob.active = true;
+      const cur = three.current;
+      if (cur && three.beats[cur] && three.beats[cur].state === 'current') {
+        // Rewind the current beat to pending so the normal start path re-fires the
+        // line, restages its props, and re-arms the waypoint — a saved-step resume,
+        // never a completed-beat replay.
+        three.current = null;
+        three.beats[cur].state = 'pending';
+        this._startMissingThreeBeat(cur);
+      }
+      resumed = true;
+    }
+    // Side rails can finish while flight, mining or the first berth is still being taught.
+    // save:loaded has cleared active; the saved marker retains the main rail's ownership.
+    let speakMainBeat = false;
+    if (this._resumeMainTutorial) {
+      this._resumeMainTutorial = false;
+      ob.active = true;
+      this._storyMode = false;
+      const beat = BEATS[ob.currentBeat];
+      if (beat && ob.beatDoneAt[beat.key] == null) {
+        // Raid/claimed stage through their restored records above; _enterBeat would
+        // rebuild (and reset) the record the restore just preserved.
+        const subrailStaged = (beat.key === 'raid' && raidRestaged)
+          || (beat.key === 'claimed' && claimedRestaged);
+        const tetherAway = beat.key === 'tether' && !tetherLessonIsLocal(this.state, this);
+        if (!subrailStaged && !tetherAway) {
+          // The restaged derelict is a fresh body — a saved reel flag described a
+          // wreck the restore could not keep, so the lesson asks for the reel again.
+          if (beat.key === 'tether') ob.tetherReeled = false;
+          this._enterBeat(beat);
+        }
+        if (!ob.beatAction) ob.beatAction = taughtVerbLine(this.state, beat.key, beat.line);
+        speakMainBeat = !tetherAway;
+      } else {
+        // A completed tether beat already dropped its salvage. Let the normal cadence
+        // advance to its successor instead of replaying entry/reward work.
+        this._lastTextAtS = -Infinity;
+      }
+      resumed = true;
+    }
+    if (!resumed) return false;
+    // The tracker chrome (step strip, Range chip) is part of the restored tutorial
+    // floor on EVERY resume branch, not only the main-rail one.
+    this._injectStyle();
+    this._buildPanel();
+    const rescueCurrent = rescue && rescue.current && rescue.beats[rescue.current]
+      && rescue.beats[rescue.current].state === 'current' ? rescue.current : null;
+    if (rescueCurrent) {
+      const line = rescueBeatLine(rescueCurrent);
+      ob.beatAction = line;
+      this._sayTutorial(line);
+    } else if (three && three.current) {
+      // _startMissingThreeBeat already re-spoke the resumed verb's line.
+    } else if (speakMainBeat && ob.beatAction) {
+      this._sayTutorial(ob.beatAction);
+    }
+    this._refreshBeatPanel();
+    return true;
+  },
+
+  _retireTutorialPanel() {
+    if (this._panel) this._panel.remove();
+    this._panel = null;
+    this._bodyEl = null;
+    this._titleEl = null;
+    this._countEl = null;
+    this._stepsEl = null;
+    this._progressEl = null;
+    this._rangePromptEl = null;
+    this._flavorEl = null;
+    this._kickerLabelEl = null;
+  },
+
+  _teardown({ removeActors = true } = {}) {
+    this._deferredHints = null;
+    this._firstUseHintUntilS = -Infinity;
+    const prepared = this._preparedRescue;
+    this._preparedRescue = null;
+    if (prepared && removeActors) this._discardPreparedRescue(prepared);
+    const ob = this.state.onboarding; if (ob) ob.active = false;
+    if (removeActors) {
+      this._removeTrainingActors();
+      this._removeRescueActors();
+      this._removeMissingThreeActors();
+      this._removeRaidActors();
+      this._removeClaimedActors();
+      // Props only — the record keeps its active slot: save:loaded restores powerSit
+      // BEFORE this teardown, and the ghost check in _tickPowerSituations requeues a
+      // prop-less setup for the next window (the Continue path must re-stage, not skip).
+      this._despawnPowerSituation(null);
+    }
+    // Prop ids are session-local: even an actor-preserving teardown (a world swap whose
+    // fresh ids may already collide) must forget them so the situation requeues cleanly.
+    this._powerSitIds = null;
+    if (ob && ob.raid) ob.raid.active = false;
+    if (ob && ob.claimed) ob.claimed.active = false;
+    this._trainerId = this._derelictId = this._miningRockId = null;
+    this._derelictBody = this._derelictGeneration = null;
+    this._latchDenialStreak = 0;
+    if (this._panel) { this._panel.remove(); this._panel = null; }
+    this._bodyEl = null;
+    this._titleEl = null;
+    this._countEl = null;
+    this._stepsEl = null;
+    this._progressEl = null;
+    this._rangePromptEl = null;
+    this._flavorEl = null;
+    this._kickerLabelEl = null;
+    this._modalAriaHidden = null;
+    this._clearObjectiveWaypoint();
+    this._storyMode = false;
+    this._storySig = '';
+  },
+
+  // ── The single tutorial-voice chokepoint (spec2/03 §5.2 one-voice audit) ──────────────────
+  // EVERY first-hour tutorial line passes through here so the check can audit text overlap at one
+  // place. Emits on the 'tutorial' tier (toast kind 'info'). Updates the silence-gate clock.
+  _sayTutorial(text, { visual = true } = {}) {
+    // Keep the audited public signature literal; the optional caption id rides the same options
+    // object without changing the shape the first-hour audit reads.
+    const trackerCaptionId = arguments[1] && arguments[1].trackerCaptionId != null
+      ? arguments[1].trackerCaptionId
+      : null;
+    if (!text || this.state.physicsVenueSession === true || isRacingCorridorSession(this.state)) return;
+    this._lastTextAtS = this.state.simTime || 0;
+    // Record for the one-voice audit: { atS, text } appended to a session log on state.onboarding.
+    const ob = this.state.onboarding;
+    if (ob) {
+      if (!Array.isArray(ob.tutorialLog)) ob.tutorialLog = [];
+      ob.tutorialLog.push({ atS: this._lastTextAtS, text });
+      // Captions are a separate, muted-safe channel beside the objective. Enqueue once per ID for
+      // the rail's whole lifetime (expired records still block a replay), and start after the
+      // previous caption's window so two authored lines can never erase each other.
+      if (TRACKER_CAPTION_IDS.has(trackerCaptionId)) {
+        if (!Array.isArray(ob.trackerCaptions)) ob.trackerCaptions = [];
+        if (!ob.trackerCaptions.some((rec) => rec && rec.id === trackerCaptionId)) {
+          let lastCaptionEndAtS = 0;
+          for (const rec of ob.trackerCaptions) {
+            if (rec && Number.isFinite(rec.endAtS)) lastCaptionEndAtS = Math.max(lastCaptionEndAtS, rec.endAtS);
+          }
+          const startAtS = Math.max(this.state.simTime || 0, lastCaptionEndAtS);
+          ob.trackerCaptions.push({
+            id: trackerCaptionId,
+            text,
+            startAtS,
+            endAtS: startAtS + TRACKER_CAPTION_S,
+          });
+          if (ob.trackerCaptions.length > 2) ob.trackerCaptions.length = 2;
+        }
+      }
+    }
+    this.bus.emit('tutorial:say', { text, atS: this._lastTextAtS });
+    // A matching onboarding waypoint already exposes this command through the persistent,
+    // accessible HUD objective. Keep the canonical tutorial event (audio/audit/story cadence) but
+    // do not repeat the exact imperative on the transient top-center visual floor.
+    if (!visual) return;
+    // Route the tutorial voice through the one-voice arbiter (channel 'tutorial'): it preempts
+    // objective nudges + chatter but yields to danger and story. A stable id means a beat's followup
+    // lines replace the beat line in place (one tutorial voice at a time). Fall back to a toast only
+    // when the arbiter helper is unavailable (headless/unit contexts).
+    const voice = this.helpers && this.helpers.voice;
+    const said = voice && typeof voice.say === 'function'
+      && voice.say({ channel: 'tutorial', text, kind: 'info', ttl: 6, id: 'tutorial:beat' });
+    if (!said) this.bus.emit('toast', { text, kind: 'info', ttl: 6 });
+  },
+
+  // Fixed-seed proof events for the thesis-first route (measured by the public playthrough
+  // pilot driver's ledger). Emitted only on real completions: first attach, the swing payoff,
+  // the momentum kill, the wanted beat, and its resolution.
+  _emitMilestone(milestone, extra = {}) {
+    this.bus.emit('firsthour:milestone', {
+      milestone: String(milestone),
+      atS: this.state.simTime || 0,
+      ...extra,
+    });
+  },
+
+  // Try to advance to the next beat if the silence gate has passed since the previous beat's DONE.
+  // Called from update(). Fires the new beat's entry line + spawns the beat's world content.
+  _tryAdvanceBeat(opts = {}) {
+    const ob = this.state.onboarding;
+    if (!ob || !ob.active || ob.finished) return;
+    const nextIndex = ob.currentBeat + 1;
+    if (nextIndex >= BEATS.length) return;
+    // First-run opening line owns the screen until its fade has completed.
+    if (nextIndex === 0 && this._firstRunSplashPending) {
+      const splashLive = typeof document !== 'undefined'
+        && document.querySelector('.sf-firstrun-splash');
+      if (splashLive) return;
+      // Splash node was torn down without a done event (boot/UI replacement). Do not
+      // leave B0 gated forever.
+      this._firstRunSplashPending = false;
+    }
+    // Silence gate: the previous beat must have DONE'd AND ≥SILENCE_S passed since the last text.
+    if (nextIndex > 0) {
+      const prev = BEATS[nextIndex - 1];
+      const prevDoneAt = ob.beatDoneAt[prev.key];
+      if (prevDoneAt == null) return;                 // predecessor not DONE yet
+      const now = this.state.simTime || 0;
+      // The station screen pauses sim time, so a beat DONE'd by docking opens at the berth.
+      const gateFromS = ob.pace && ob.pace.folded && ob.pace.folded[prev.key] ? this._lastTextAtS : Math.max(prevDoneAt, this._lastTextAtS);
+      if (!opts.atBerth && now - gateFromS < SILENCE_S) return;
+    }
+    // Rescue-opening gate (PQ-163.00): while a rescue verb is current, the drill beat it gates
+    // waits. The rescue speaks through the same one-voice chokepoint, so the ≥4 s cadence the
+    // silence gate enforces below already covers the rescue line — no second timer needed.
+    // Inactive rescue (harness boots, opted-out pilots, finished rails) never gates anything.
+    // The route gate (RESCUE_GATE_ROUTE) keeps the verbs inside the thesis-first order's gaps;
+    // rescueOpening.js's own map stays untouched for its audit consumers.
+    const rescueKey = this._rescueCurrentKey();
+    const rescueGate = RESCUE_GATE_ROUTE[rescueKey] != null
+      ? RESCUE_GATE_ROUTE[rescueKey]
+      : (rescueKey ? RESCUE_GATE[rescueKey] : null);
+    if (rescueGate != null && rescueGate === BEATS[nextIndex].key) return;
+    // Missing-three gate (PQ-163.02): boost, stroke, and the well occupy the grab → seam gap.
+    const three = this._missingThree();
+    if (three && !three.completed && (MISSING_THREE_GATE[three.current] || 'seam') === BEATS[nextIndex].key) return;
+    // Row 458 — a drill the pilot already flew (or waived with "I've flown before") resolves silently.
+    const credit = ob.pace ? paceCreditFor(ob.pace, BEATS[nextIndex].key) : null;
+    if (credit) {
+      const folded = BEATS[nextIndex];
+      ob.currentBeat = nextIndex;
+      ob.pace.folded[folded.key] = credit;
+      this._beatDone(folded);
+      this.bus.emit('onboarding:drillFolded', { beat: folded.key, cause: credit, atS: this.state.simTime || 0 });
+      this._refreshBeatPanel();
+      return this._tryAdvanceBeat(opts);
+    }
+    ob.currentBeat = nextIndex;
+    const beat = BEATS[nextIndex];
+    ob.beatAction = taughtVerbLine(this.state, beat.key, beat.line);
+    this._enterBeat(beat);
+    const waypoint = this.state.nav && this.state.nav.waypoint;
+    const persistentObjectiveOwnsLine = !!(waypoint && waypoint.onboarding
+      && (String(waypoint.reason || '').trim() === String(ob.beatAction || '').trim()
+        || (beat.key === 'tether'
+          && String(waypoint.reason || '').trim() === `Optional: ${String(ob.beatAction || '').trim()}`)));
+    this._sayTutorial(ob.beatAction, { visual: !persistentObjectiveOwnsLine });
+    this._refreshBeatPanel();
+  },
+
+  // Spawn only inert, invulnerable training content during the flight drill.
+  _enterBeat(beat) {
+    if (!beat) return;
+    if (beat.key === 'thrust') {
+      this._setObjectiveWaypoint(true);
+    }
+    else if (beat.key === 'brake') this._setObjectiveWaypoint(true);
+    else if (beat.key === 'marker') {
+      this._spawnTrainer('marker');
+      this._setObjectiveWaypoint(true);
+    }
+    else if (beat.key === 'focus') this._beginTrainerFlyby();
+    else if (beat.key === 'tether') {
+      this._spawnDerelict();
+      this._setObjectiveWaypoint(true);
+      // Cold-open: frame the 47-A contract with the opening tether lesson (replaces the old intro
+      // modal's headline intent, per spec2/03 B0 "no modal"). The caption keeps it readable while
+      // muted; the beat voice still speaks the same line for audio.
+      this._sayTutorial(COLD_OPEN_PREMISE, {
+        visual: false,
+        trackerCaptionId: 'premise',
+      });
+    }
+    else if (beat.key === 'burst') {
+      this._spawnTrainer('burst');
+      const ob = this.state.onboarding;
+      if (ob) {
+        ob.burstShots = 0;
+        ob.burstPeakHeat = 0;
+        ob.burstCooling = false;
+      }
+      this._setObjectiveWaypoint(true);
+      // Name the starter weapon at the firing lesson so the loadout is surfaced, not just felt.
+      this._sayTutorial(STARTER_WEAPON_HINT, { visual: false, trackerCaptionId: 'weapon' });
+    }
+    else if (beat.key === 'disengage') this._setObjectiveWaypoint(true);
+    else if (beat.key === 'raid') this._enterRaidBeat();
+    else if (beat.key === 'claimed') this._enterClaimedBeat();
+    else if (beat.key === 'seam') {
+      this._spawnMiningRock();
+      this._setObjectiveWaypoint(true);
+    }
+    else if (beat.key === 'dock') this._setObjectiveWaypoint(true);
+    else if (beat.key === 'choice') this._openChoice();
+  },
+
+  // B1 reel follow-up: only when the production tether:reel payload shows a tight winch.
+  // attachments.reel emits { before, after } rest lengths (wu). TETHER_REEL_MAX_WU is the
+  // winched-enough teach-cut threshold (spec2/03 B1: reel <= 60 wu).
+  _onTetherReel(payload) {
+    if (!payload || payload.targetId !== this._derelictId) return;
+    if (!this._liveTrainingDerelict()) return;
+    const after = Number(payload && payload.after);
+    if (!Number.isFinite(after) || after > TETHER_REEL_MAX_WU) return;
+    if (this.state.onboarding) this.state.onboarding.tetherReeled = true;
+    this._onBeatEvent('tether:reel', payload);
+  },
+
+  _onTetherBroken(payload) {
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!ob || !beat || beat.key !== 'tether' || payload.targetId !== this._derelictId) return;
+    ob.tetherBreaks = (ob.tetherBreaks || 0) + 1;
+    ob.tetherReeled = false;
+    delete ob.firedFollowups['tether:tether:latched'];
+    delete ob.firedFollowups['tether:tether:nearBreak'];
+    delete ob.firedFollowups['tether:tether:reel'];
+    ob.beatAction = 'Close distance. Latch the derelict again.';
+    this._sayTutorial(ob.beatAction);
+    this._setObjectiveWaypoint(true);
+    this._refreshBeatPanel();
+  },
+
+  _onTrainingScanComplete(payload) {
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!ob || !beat || beat.key !== 'seam' || this._miningRockId == null) return;
+    const rock = this.state.entities && this.state.entities.get(this._miningRockId);
+    if (!rock || !rock.data || !(rock.data.scanHighlightUntil >= (this.state.simTime || 0))) return;
+    if (!payload.found || !(payload.found.asteroids > 0)) return;
+    this._onBeatEvent('scan:hit', { ...payload, targetId: rock.id });
+  },
+
+  _onMissionAccepted(payload) {
+    const ob = this.state.onboarding;
+    if (!ob) return;
+    if (payload.source === 'racingCircuit' && ob.active && !ob.finished) {
+      this._finish();
+      return;
+    }
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!ob || !beat) return;
+    if (payload.source === FIRST_TRADE_CONTRACT_SOURCE) ob.recommendedMissionId = payload.missionId || null;
+    this._onBeatEvent('mission:accepted', payload);
+    // The rail yields to real work: any accepted contract — a B5 choice, the authored Ceres run,
+    // or an ordinary board row — ends the tutorial through the same _finish(), so the objective
+    // slot follows the job the player actually took instead of pinning a stale beat. The Ceres
+    // delivery is tracked and owns navigation like any other accepted job; nothing local waits
+    // for its completion.
+    const railWasLive = ob.active && !ob.finished;
+    if (railWasLive) this._finish();
+    const missions = this.registry && this.registry.get && this.registry.get('missions');
+    if (railWasLive && payload.missionId != null && missions && typeof missions.releaseOnboardingNavigation === 'function') {
+      missions.releaseOnboardingNavigation(payload.missionId);
+    }
+  },
+
+  // X-04 — the first trade run carries its own toll math: the out leg is priced by the
+  // destination's security, the home leg by the origin's. Everything below is computed at
+  // speak time from gateTollFor — no literals.
+  _firstTradeRun() {
+    const missions = this.state && this.state.missions && this.state.missions.active;
+    return Array.isArray(missions) ? missions.find((m) => m && m.source === FIRST_TRADE_CONTRACT_SOURCE) || null : null;
+  },
+
+  _sectorById(id) {
+    return SECTORS.find((s) => s && s.id === id) || null;
+  },
+
+  // X-05 — read the owner before the act. The first lot the player gets inside reach of
+  // (220 wu — inside the 450 wu witness radius, outside contact range) that belongs to
+  // somebody else speaks its consequence once, anchored to the lot itself.
+  _scanOwnedGoods(state) {
+    const hints = state.player && state.player.hints;
+    if (!hints || hints.firstOwnedGoods) return;
+    // The line is spent once; never spend it where _showHint would refuse or where the lot is a
+    // venue/arena prop rather than the open world.
+    if (state.physicsVenueSession === true) return;
+    if (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive') return;
+    if (state.settings && state.settings.gameplay && state.settings.gameplay.tutorialHints === false) return;
+    const player = state.entities && state.entities.get(state.playerId);
+    if (!player || !player.pos) return;
+    const playerWr = state.player && state.player.worldRecordId;
+    const isPlayers = (id) => String(id) === String(state.playerId) || id === 'player'
+      || (playerWr != null && String(id) === String(playerWr));
+    let found = null;
+    // "You're wanted" must be true: speak only over exactly what lawSecurity would file as
+    // payload_theft in sight of a lawful eye — `chargeableLotOwnerId` is the law's own read
+    // (pod/chip doors, custody and priced-manifest exemptions, jurisdiction). Ships, stations,
+    // wrecks and free loot never qualify.
+    const visit = (e) => {
+      if (found || !e || e.alive === false || !e.pos || e.id === state.playerId) return;
+      const d2 = (e.pos.x - player.pos.x) ** 2 + (e.pos.z - player.pos.z) ** 2;
+      if (d2 > 220 * 220) return;
+      const ownerId = chargeableLotOwnerId(state, e);
+      if (ownerId == null || isPlayers(ownerId)) return;
+      found = e;
+    };
+    const payloads = indexedTypeScan(state, 'payloads');
+    const pickups = indexedTypeScan(state, 'pickups');
+    for (let i = 0; i < payloads.length && !found; i++) visit(payloads[i]);
+    if (pickups !== payloads) for (let i = 0; i < pickups.length && !found; i++) visit(pickups[i]);
+    if (found) {
+      this._showHint('firstOwnedGoods', firstUseLine('firstOwnedGoods'), { entityId: found.id });
+    }
+  },
+
+  // The board station's sector is where the run started — the "gate home" toll is priced there.
+  // At mission:completed the run is already off the active list (missions.js removes before
+  // emitting), so a null run falls back to the contract's own board station before the
+  // player's current sector — quoting the Ceres-side toll as "home" would read 194, not 246.
+  _runOriginSectorId(run) {
+    if (run && run.originSectorId) return run.originSectorId;
+    const stationId = (run && run.stationId) || FIRST_TRADE_CONTRACT.stationId;
+    if (stationId) {
+      const home = SECTORS.find((s) => s && Array.isArray(s.stations)
+        && s.stations.some((st) => st && st.id === stationId));
+      if (home) return home.id;
+    }
+    return this.state.world && this.state.world.currentSectorId;
+  },
+
+  _onMissionCompleted(payload) {
+    // X-04: the paid line must speak even off-rail — accepting the run ends the rail, so the
+    // dock-beat early-return below cannot carry it. "Keep the home toll" is the round trip's
+    // last cost named at the moment the player has the purse for it.
+    if (payload && payload.source === FIRST_TRADE_CONTRACT_SOURCE) {
+      const run = this._firstTradeRun();
+      const pay = Number(payload.rewardCr) || Number(run && run.reward_cr) || FIRST_TRADE_CONTRACT.terms.paysCr;
+      const home = gateTollFor(this._sectorById(this._runOriginSectorId(run))) || 0;
+      this._showHint('firstTradePaid', `Paid ${pay}. Keep ${home} for the gate home.`, {});
+    }
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!ob || !beat || beat.key !== 'dock') return;
+    if (payload.source !== FIRST_TRADE_CONTRACT_SOURCE) return;
+    if (ob.recommendedMissionId && payload.missionId !== ob.recommendedMissionId) return;
+    // Legacy saves only: a rail saved on B4 with the delivery already accepted. The current rail
+    // resolves B4 at the berth and finishes on the accept, so this path never runs for new runs.
+    ob.choiceStationId = this.state.ui && this.state.ui.dockedStationId
+      || FIRST_TRADE_CONTRACT_DEST_STATION_ID;
+    this._onBeatEvent('recommended:completed', payload);
+  },
+
+  _recordTrainingOreYield(payload) {
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!ob || !beat || beat.key !== 'seam' || payload.minerId !== this.state.playerId) return;
+    const rock = this._miningRockId != null && this.state.entities && this.state.entities.get(this._miningRockId);
+    if (!rock || !rock.pos || !payload.pos) return;
+    if (Math.hypot(payload.pos.x - rock.pos.x, payload.pos.z - rock.pos.z) > Math.max(6, rock.radius || 0)) return;
+    const qty = Math.max(1, Number(payload.qty) || 1);
+    ob.trainingOre = (ob.trainingOre || 0) + qty;
+    ob.oreCollected = Math.max(ob.oreCollected || 0, ob.trainingOre);
+    if (ob.trainingOre >= SEAM_ORE_TARGET) this._beatDone(beat);
+    this._refreshBeatPanel();
+  },
+
+  // Route a gameplay event to the current beat's followups + DONE resolution.
+  _onBeatEvent(eventName, payload) {
+    const ob = this.state.onboarding;
+    if (!ob || !ob.active || ob.finished) return;
+    const beat = BEATS[ob.currentBeat];
+    if (!beat) return;
+    if (beat.key === 'tether' && eventName !== 'target:acquired') {
+      if (!payload || payload.targetId !== this._derelictId) return;
+      if (!this._liveTrainingDerelict()) return;
+    }
+    // Followup barks (fire once per beat).
+    for (const fu of (beat.followups || [])) {
+      if (fu.on !== eventName) continue;
+      const fkey = beat.key + ':' + fu.on;
+      if (ob.firedFollowups[fkey]) continue;
+      ob.firedFollowups[fkey] = true;
+      ob.beatAction = taughtVerbLine(this.state, fkey, fu.line);
+      this._sayTutorial(ob.beatAction);
+    }
+    this._resolveBeatDone(beat, eventName, payload);
+    this._refreshBeatPanel();
+  },
+
+  // Resolve the current beat's DONE condition. Each beat maps to a done-kind (see BEATS table).
+  _resolveBeatDone(beat, eventName, payload) {
+    const ob = this.state.onboarding;
+    if (!ob || ob.beatDoneAt[beat.key] != null) return; // already DONE
+    const done = beat.done;
+    let resolved = false;
+    if (done === 'tether:released' && eventName === 'tether:released' && ob.tetherReeled === true) {
+      resolved = true;
+      this._dropDerelictSalvage();
+    } else if (done === 'flybyFocus:start' && eventName === 'flybyFocus:start') {
+      resolved = true;
+    } else if (done === 'mission:accepted' && eventName === 'mission:accepted') {
+      const choiceIds = Array.isArray(ob.choiceOfferIds) ? ob.choiceOfferIds : [];
+      resolved = payload && payload.source === ONBOARDING_CHOICE_SOURCE
+        && choiceIds.includes(payload.sourceOfferId);
+    } else if (done === 'docked' && (eventName === 'dock:docked' || eventName === 'recommended:completed')) {
+      // B4 resolves at the berth: selling, fitting and choosing the next job are local. The
+      // choice beat opens its offers at this station, beside the authored Ceres run.
+      // The dock intent names the berth; uiRoot commits ui.dockedStationId after this listener.
+      const stationId = (payload && payload.stationId) || (this.state.ui && this.state.ui.dockedStationId);
+      if (stationId) ob.choiceStationId = stationId;
+      resolved = eventName === 'recommended:completed' || !!stationId;
+    }
+    // Movement, heat recovery, distance, and ore collection resolve from deterministic state reads.
+    if (resolved) {
+      this._beatDone(beat);
+      if (done === 'docked' && eventName === 'dock:docked') this._tryAdvanceBeat({ atBerth: true });
+    }
+  },
+
+  // Mark a beat DONE and, if it was the choice beat, finish the tutorial.
+  _beatDone(beat) {
+    const ob = this.state.onboarding;
+    if (!ob || ob.beatDoneAt[beat.key] != null) return;
+    ob.beatDoneAt[beat.key] = this.state.simTime || 0;
+    // X-02: the lesson landing releases the wing — it runs rather than fading out.
+    if (beat.key === 'raid') this._stepRaidWing();
+    this._maybeStartRescueBeat(beat.key);
+    if (beat.key === 'choice' || BEATS.indexOf(beat) === CHOICE_BEAT_INDEX) {
+      this._finish();
+    }
+  },
+
+  _recordOreCollected(p) {
+    const ob = this.state.onboarding;
+    if (!ob || !ob.active || ob.finished) return;
+    const beat = BEATS[ob.currentBeat];
+    // The authored seam lesson advances only from ore physically cut from its marked rock. Generic
+    // pickup counting remains as a fallback for old saves that entered B2 without the training rock.
+    if (beat && beat.key === 'seam' && this._miningRockId != null) return;
+    // Count any ore the player collects while on/after the seam beat (B2). Salvage pods
+    // ride the same event but are 'cargo' kind — the SAMPLE card shows this count, so a
+    // tableau drop can never pre-fill it.
+    if (p.collectorId != null && p.collectorId !== this.state.playerId) return;
+    // Only the ore kind feeds the seam readout: the tether/rescue/claimed tableaus
+    // drop 'cargo'-kind salvage pods, which must not pre-fill SAMPLE before the
+    // marked rock is cut.
+    if (p.kind != null && p.kind !== 'ore') return;
+    if (!this._isOre(p.commodityId)) return;
+    const accepted = successfulPickupAmount(p);
+    if (accepted <= 0) return;
+    ob.oreCollected = (ob.oreCollected || 0) + accepted;
+    if (beat && beat.done === 'oreCollected' && ob.oreCollected >= SEAM_ORE_TARGET) {
+      this._beatDone(beat);
+    }
+    this._refreshBeatPanel();
+  },
+
+  _onTrainingFire(p) {
+    const ob = this.state.onboarding;
+    if (!ob || !ob.active || ob.finished) return;
+    const beat = BEATS[ob.currentBeat];
+    if (!beat || beat.key !== 'burst' || p.ownerId !== this.state.playerId) return;
+    ob.burstShots = (ob.burstShots || 0) + 1;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    ob.burstPeakHeat = Math.max(ob.burstPeakHeat || 0, maxWeaponHeatFraction(player));
+    if (ob.burstShots >= FLIGHT_DRILL_BURST_SHOTS && !ob.burstCooling) {
+      ob.burstCooling = true;
+      this._onBeatEvent('burst:ready', { shots: ob.burstShots, peakHeat: ob.burstPeakHeat });
+    }
+  },
+
+  _finish() {
+    const ob = this.state.onboarding; if (!ob) return;
+    this._removeTrainingActors();
+    this._removeRescueActors();
+    this._removeMissingThreeActors();
+    this._removeRaidActors();
+    this._removeClaimedActors();
+    this._despawnPowerSituation(ob.powerSit);
+    if (ob.rescue) ob.rescue.active = false;
+    if (ob.missingThree) ob.missingThree.active = false;
+    if (ob.raid) ob.raid.active = false;
+    if (ob.claimed) ob.claimed.active = false;
+    ob.finished = true;
+    ob.active = false; // tutorial mode ends permanently (spec2/03 B5)
+    // Captions live only for the tutorial's lifetime. _teardown must not clear them: save:loaded
+    // tears the rail down and then resumes the restored one.
+    if (Array.isArray(ob.trackerCaptions)) ob.trackerCaptions.length = 0;
+    this._clearObjectiveWaypoint();
+    // Tell the story system the tutorial is over so it can release the deferred cold-start voice.
+    this.bus.emit('tutorial:finished', {});
+    // The HUD mission tracker is the one persistent objective owner after B5. Retire this tutorial
+    // panel so story prose cannot compete with verb + destination + radar-marker guidance.
+    this._storyMode = true;
+    this._retireTutorialPanel();
+    this._refreshStory();
+  },
+
+  // Story objectives persist through the HUD mission tracker. This system deliberately keeps no
+  // second story/lore panel; the comms backlog remains available on demand.
+  _refreshStory() {
+    if (this._storyMode) this._retireTutorialPanel();
+  },
+
+  // Keep the objective panel's assistive-tree state in sync with the modal UI. When a modal or
+  // dock screen hides the panel via CSS, we also mark it aria-hidden so screen readers do not
+  // traverse the hidden content; removing the class restores it accurately.
+  _syncModalAccessibility() {
+    if (!this._panel || typeof document === 'undefined') return;
+    // Both pausing modals and live overlays hide the onboarding panel (CSS), so both count here.
+    const modalOpen = !!(document.body && (document.body.classList.contains('ui-modal-open')
+      || document.body.classList.contains('ui-live-screen')));
+    if (modalOpen) {
+      if (this._panel.getAttribute('aria-hidden') !== 'true') {
+        this._panel.setAttribute('aria-hidden', 'true');
+        this._modalAriaHidden = true;
+      }
+    } else {
+      if (this._panel.hasAttribute('aria-hidden')) {
+        this._panel.removeAttribute('aria-hidden');
+        this._modalAriaHidden = false;
+      }
+    }
+  },
+
+  // per-frame: proximity check for the starter claim + panel fade-out + contextual hints + control bar.
+  update(dt, state) {
+    if (isRacingCorridorSession(state)) return;
+    // Modal UI hides the objective via CSS; mirror that in assistive state without focus side-effects.
+    try { this._syncModalAccessibility(); } catch (_) { /* non-critical a11y mirror */ }
+    try { this._speakCombatStickHint(state); } catch (_) { /* never let onboarding break the loop */ }
+
+    // ── First-hour pacing (only while active) ────────────────────────────────────────────
+    const ob = state.onboarding;
+    if (!ob) return;
+    try {
+      this._accum = (this._accum || 0) + dt;
+      if (this._accum < 0.2) return;
+      const intervalS = this._accum;
+      this._accum = 0;
+      this._noteMissingThreeUses();
+      this._teachFieldEscapes();
+      this._teachCadencePump();
+      this._teachReleaseWindow();
+      this._tickShelfVerbs(intervalS, state);
+      this._tickFitFelt(state);
+      this._drainHintQueue();
+      if (!ob.active || ob.finished) {
+        // X-05: past the rail, one read before the act — the first owned lot the player gets
+        // close enough to reach for names its consequence once. 15-tick cadence; the scan
+        // retires for good once the hint has spoken.
+        const scanTick = state.tick | 0;
+        // A New Game / load rewinds the tick under this module-lifetime stamp — re-latch so
+        // the scan never stalls until the clock catches back up.
+        if (ob.finished && !(this._ownedScanAt <= scanTick)) this._ownedScanAt = scanTick;
+        if (ob.finished && scanTick - this._ownedScanAt >= 15) {
+          this._ownedScanAt = scanTick;
+          this._scanOwnedGoods(state);
+        }
+        return;
+      }
+      this._notePaceFlight();
+      this._tryAdvanceBeat();
+      this._resolveProximityDone();
+      this._resolveRescueDone();
+      this._resolveRaidDone();
+      this._tickSwingClinic();
+      this._tickClaimed();
+      // The authored rail (missing-three advance) takes the single tutorial voice before an
+      // authored situation may speak — a situation line must never push a rail beat's silence
+      // gate out from under it. Placement itself obeys the same ≥4 s gate below.
+      this._maybeAdvanceMissingThree();
+      this._tickPowerSituations(state);
+      this._resolveMissingThreeDone();
+      this._setObjectiveWaypoint(false);
+      // Course selection can change independently of tutorial beats. Reuse this update's existing
+      // cadence, and only rebuild the panel when its objective ownership actually changes.
+      if (this._panel && this._titleEl && !this._storyMode
+        && this._beatPanelYields() !== (this._titleEl.style.display === 'none')) {
+        this._refreshBeatPanel();
+      }
+      } catch (_) { /* never let onboarding break the loop */ }
+  },
+
+  _notePaceFlight() {
+    const ob = this.state.onboarding;
+    if (!ob.pace || ob.currentBeat < 0 || ob.beatDoneAt.brake != null) return;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (player && player.vel) notePaceFlight(ob.pace, Math.hypot(player.vel.x, player.vel.z), this.state.simTime || 0);
+  },
+
+  _onSwingRelease(p) {
+    const ob = this.state.onboarding;
+    if (!ob || !ob.active || ob.finished || !ob.pace) return;
+    const now = this.state.simTime || 0;
+    const rescue = ob.rescue;
+    if (this._rescueCurrentKey() === 'swing' && p.targetId === rescue.ids.rock
+      && rescue.rockReleasedAfterReel === true) {
+      notePendingSwing(ob.pace, 'rescue', now);
+      return;
+    }
+    const raid = this._raid();
+    const raider = this._raidActor('raider');
+    if (BEATS[ob.currentBeat]?.key === 'raid' && ob.beatDoneAt.raid == null
+      && raid && p.targetId === raid.ids.raider && raider && raider.vel
+      && Math.hypot(raider.vel.x, raider.vel.z) >= RAID_THROW_MIN_SPEED_WU) {
+      notePendingSwing(ob.pace, 'raid', now);
+    }
+  },
+
+  _tickSwingClinic() {
+    const ob = this.state.onboarding;
+    if (!ob.pace) return;
+    const lesson = ob.pace.swing.pendingLesson;
+    const paidOff = lesson === 'rescue' ? ob.rescue?.beats.swing.state === 'done'
+      : lesson === 'raid' && ob.beatDoneAt.raid != null;
+    settlePendingSwing(ob.pace, { paidOff, atS: this.state.simTime || 0 });
+    if (swingClinicDue(ob.pace)) this._openSwingClinic(lesson);
+  },
+
+  _openSwingClinic(lesson) {
+    const ob = this.state.onboarding;
+    const swing = ob.pace.swing;
+    const now = this.state.simTime || 0;
+    swing.clinicOpenedAtS = now;
+    swing.clinicLesson = lesson;
+    if (lesson === 'raid' && this._raid()) this._spawnRaidCast({ clinic: true });
+    else if (lesson === 'rescue' && this._rescueCurrentKey() === 'swing') {
+      this._respawnRescueSlot('swing');
+      ob.rescue.rockLatched = false;
+      ob.rescue.rockReeled = false;
+      ob.rescue.rockReleasedAfterReel = false;
+      this._setRescueWaypoint(true);
+    }
+    ob.rangePromptActive = true;
+    ob.pointedAtRange = true;
+    ob.rangePrompt = RANGE_POINTER_LINE;
+    ob.rangePromptRungId = SWING_CLINIC_RUNG_ID;
+    this.bus.emit('onboarding:rangePrompt', {
+      active: true, text: RANGE_POINTER_LINE, atS: now, rungId: SWING_CLINIC_RUNG_ID, reason: 'swingClinic',
+    });
+    ob.beatAction = SWING_CLINIC_LINE;
+    this._sayTutorial(SWING_CLINIC_LINE);
+    this.bus.emit('onboarding:swingClinic', { lesson, misses: swing.misses, atS: now });
+    this._refreshBeatPanel();
+  },
+
+  _wingmanBreakOff() {
+    const actor = this._trainingActor();
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (!actor || !actor.pos || !player || !player.pos) return;
+    const dx = actor.pos.x - player.pos.x;
+    const dz = actor.pos.z - player.pos.z;
+    const length = Math.hypot(dx, dz);
+    const heading = Number.isFinite(player.rot) ? player.rot : 0;
+    actor.vel = {
+      x: (length ? dx / length : Math.cos(heading)) * TRAINER_FLYBY_SPEED_WU,
+      z: (length ? dz / length : Math.sin(heading)) * TRAINER_FLYBY_SPEED_WU,
+    };
+  },
+
+  // Resolve drill conditions from canonical sim state. No key assumptions and no wall clock.
+  _resolveProximityDone() {
+    const ob = this.state.onboarding;
+    if (!ob || !ob.active || ob.finished) return;
+    const beat = BEATS[ob.currentBeat];
+    if (!beat || ob.beatDoneAt[beat.key] != null) return;
+    if (beat.key === 'tether' && !tetherLessonIsLocal(this.state, this)) return;
+    const player = this.state.entities.get(this.state.playerId);
+    if (!player || !player.pos) return;
+    // A seam rock destroyed in crossfire (the wanted-escape chaos) restages — retry,
+    // never a wall: the seam beat respawns its marked rock the moment it is gone.
+    const miningRock = this._miningRockId != null && this.state.entities.get(this._miningRockId);
+    if (beat.key === 'seam'
+      && (!miningRock || miningRock.alive === false || !miningRock.data?.trainingMining)) {
+      this._spawnMiningRock();
+      this._setObjectiveWaypoint(true);
+    }
+    if (beat.key === 'tether' && !this._liveTrainingDerelict()) {
+      const oldId = this._derelictId;
+      this._spawnDerelict();
+      if (this._liveTrainingDerelict()) {
+        ob.tetherReeled = false;
+        for (const key of Object.keys(ob.firedFollowups || {})) {
+          if (key.startsWith('tether:')) delete ob.firedFollowups[key];
+        }
+        if (this.state.player.targetId === oldId) this.state.player.targetId = this._derelictId;
+        this._setObjectiveWaypoint(true);
+      }
+      return;
+    }
+    const speed = Math.hypot(Number(player.vel && player.vel.x) || 0, Number(player.vel && player.vel.z) || 0);
+    let trainer = this._trainingActor();
+    if (!trainer && ['marker', 'focus', 'burst', 'disengage'].includes(beat.key)) {
+      trainer = this._spawnTrainer(beat.key === 'burst' || beat.key === 'disengage' ? 'burst' : 'marker');
+      if (beat.key === 'focus') this._beginTrainerFlyby();
+      this._setObjectiveWaypoint(true);
+      return; // automatic retry starts from a clean, readable placement next tick
+    }
+    const trainerDistance = trainer && trainer.pos
+      ? Math.hypot(trainer.pos.x - player.pos.x, trainer.pos.z - player.pos.z)
+      : Infinity;
+    // A flyby pass spent without leasing — the player dodged, fired, or held boost through the
+    // crossing window and the census refuses the arm while the stick is hot — leaves the
+    // wingman alive but inert, and the respawn path above only fires on a lost actor. Restage
+    // the authored pass once it stops closing or slows below arming speed: retry, never a wall,
+    // same contract as the seam rock above. A live approach is left alone, so a player's own
+    // fast closing can still arm the pair on its way in.
+    if (beat.key === 'focus' && trainer && trainer.pos) {
+      const rvx = (trainer.vel ? trainer.vel.x : 0) - (player.vel ? player.vel.x : 0);
+      const rvz = (trainer.vel ? trainer.vel.z : 0) - (player.vel ? player.vel.z : 0);
+      const relSpeed = Math.hypot(rvx, rvz);
+      const dxT = trainer.pos.x - player.pos.x;
+      const dzT = trainer.pos.z - player.pos.z;
+      if (dxT * rvx + dzT * rvz > 0 || relSpeed < TRAINER_FLYBY_SPEED_WU * 0.5) {
+        this._beginTrainerFlyby();
+        this._setObjectiveWaypoint(true);
+        return;
+      }
+    }
+    if (beat.key === 'tether' && this._derelictId != null
+      && this.state.player.targetId === this._derelictId
+      && !ob.firedFollowups['tether:target:acquired']) {
+      this._onBeatEvent('target:acquired', { targetId: this._derelictId });
+    }
+    if (beat.done === 'speedUp' && speed >= FLIGHT_DRILL_SPEED_WU) this._beatDone(beat);
+    else if (beat.done === 'speedDown' && speed <= FLIGHT_DRILL_BRAKE_WU) this._beatDone(beat);
+    else if (beat.done === 'trainerRange' && trainerDistance <= FLIGHT_DRILL_MARKER_RANGE_WU) this._beatDone(beat);
+    else if (beat.done === 'burstCooled') {
+      const heat = maxWeaponHeatFraction(player);
+      ob.burstPeakHeat = Math.max(ob.burstPeakHeat || 0, heat);
+      if (ob.burstCooling && ob.burstShots >= FLIGHT_DRILL_BURST_SHOTS
+        && heat <= Math.max(0.02, (ob.burstPeakHeat || 0) * FLIGHT_DRILL_HEAT_RECOVER_FRAC)) {
+        this._beatDone(beat);
+        if (ob.pace) this._wingmanBreakOff();
+      }
+    } else if (beat.done === 'disengaged') {
+      if (trainerDistance >= FLIGHT_DRILL_DISENGAGE_RANGE_WU) {
+        this._removeTrainingActors();
+        this._beatDone(beat);
+      }
+    }
+  },
+
+  // B1: spawn a derelict wreck near the beacon for the tether trio (latch/winch/cut).
+  _spawnDerelict() {
+    const st = this.state;
+    if (!tetherLessonIsLocal(st, this)) return;
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!player || !player.pos || !this.helpers || !this.helpers.spawnEntity) return;
+    // Offset from the current ship so the stronger live massline can be learned without a chase.
+    const ang = onboardingRandom(st) * TAU;
+    const pos = {
+      x: player.pos.x + Math.cos(ang) * B1_DERELICT_OFFSET_WU,
+      z: player.pos.z + Math.sin(ang) * B1_DERELICT_OFFSET_WU,
+    };
+    const wreck = this.helpers.spawnEntity({
+      type: 'wreck', pos, vel: { x: 0, z: 0 }, radius: 14, mass: 900,
+      hull: 1, hullMax: 1, // derelict — already dead, tether-only
+      // SFQ-B025: the authored 900-mass derelict is the rope's real load — the body keeps the
+      // named mass instead of normalizing to the wreck-density value.
+      physicsBody: { shape: 'capsule', mass: 900 },
+      data: { parentType: 'ship', proportions: WRECK_COLLIDER_PROPORTIONS, loot: [], salvagePool: {}, salvageTimeLeft: 0, onboarding: true, kind: 'derelict' },
+    });
+    if (wreck) {
+      if (st.onboarding && !st.onboarding.tetherSectorId && st.world?.currentSectorId) {
+        st.onboarding.tetherSectorId = st.world.currentSectorId;
+      }
+      this._derelictId = wreck.id;
+      this._derelictBody = wreck;
+      this._derelictGeneration = occupantGenerationOf(wreck);
+    }
+  },
+
+  _liveTrainingDerelict() {
+    if (!tetherLessonIsLocal(this.state, this)) return null;
+    return validTrainingDerelict(this);
+  },
+
+  // B1 DONE: the vacuum shows itself — drop 2 salvage pickups, no line.
+  _dropDerelictSalvage() {
+    const st = this.state;
+    if (this._derelictId == null || !this.helpers || !this.helpers.spawnEntity) return;
+    const wreck = this._liveTrainingDerelict();
+    if (!wreck || !wreck.pos || !wreck.vel
+      || !Number.isFinite(wreck.pos.x) || !Number.isFinite(wreck.pos.z)
+      || !Number.isFinite(wreck.vel.x) || !Number.isFinite(wreck.vel.z)) return;
+    const angle = onboardingRandom(st) * TAU;
+    for (let i = 0; i < 2; i++) {
+      const ang = angle + i * Math.PI;
+      const sp = 3;
+      this.helpers.spawnEntity({
+        type: 'pickup',
+        pos: { x: wreck.pos.x + Math.cos(ang) * 17, z: wreck.pos.z + Math.sin(ang) * 17 },
+        vel: { x: wreck.vel.x + Math.cos(ang) * sp, z: wreck.vel.z + Math.sin(ang) * sp },
+        radius: 2.2,
+        data: { kind: 'cargo', commodityId: 'cmdty_salvage_electronics', amount: 1, despawnAt: (st.simTime || 0) + 60 },
+      });
+    }
+  },
+
+  _spawnTrainer(mode) {
+    const st = this.state;
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!player || !player.pos || !this.helpers || !this.helpers.spawnEntity) return null;
+    this._removeTrainingActors();
+    const heading = Number.isFinite(player.rot) ? player.rot : 0;
+    const range = mode === 'burst' ? TRAINER_BURST_OFFSET_WU : TRAINER_MARKER_OFFSET_WU;
+    const pos = {
+      x: player.pos.x + Math.cos(heading) * range,
+      z: player.pos.z + Math.sin(heading) * range,
+    };
+    const spec = makeEnemySpawnSpec('reaver_pirate', 1, pos, { startedTick: st.tick });
+    if (spec) {
+      spec.name = mode === 'burst' ? 'SCN Gunnery Buoy' : 'SCN Flight Trainer';
+      if (st.onboarding && st.onboarding.rescue) spec.name = RAID_WINGMAN_NAME;
+      spec.type = 'drone';
+      spec.team = 0;
+      if (!(st.onboarding && st.onboarding.rescue)) spec.factionId = 'faction_scn';
+      // Projectile-only custom mask gives the gunnery burst a real hit receipt; the ghost Rapier
+      // material guarantees the trainer can never ram the player.
+      spec.collides = true;
+      spec.collisionMask = Masks.PROJECTILE;
+      spec.physicsBody = { ...(spec.physicsBody || {}), material: 'projectile' };
+      spec.mass = 90;
+      spec.vel = { x: 0, z: 0 };
+      spec.flags = { ...(spec.flags || {}), invuln: true };
+      spec._invulnUntil = Infinity;
+      spec.data = spec.data || {};
+      spec.data.weapons = [];
+      spec.data.ai = {
+        ...(spec.data.ai || {}),
+        passive: true,
+        roe: 'hold_fire',
+        spawnContext: 'tutorial_training',
+        motive: 'training',
+      };
+      spec.data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: heading };
+      spec.data.onboarding = true;
+      spec.data.onboardingTraining = true;
+      // The marker beat uses this same actor, but Focus is a distinct lesson.  A fast player
+      // must not spend the trainer's Focus cooldown before the authored flyby begins.
+      spec.data.trainingFocusEligible = false;
+      spec.data.trainingMode = mode;
+      // The entity's raw `name` stays the pinned 'SCN Flight Trainer' registration, but player
+      // surfaces (hover readout, local/galaxy map, the lock panel) read data.name first — bill
+      // the fleeing-raider fiction the tracker already speaks (RC-11), never a "trainer".
+      if (spec.name === 'SCN Flight Trainer') spec.data.name = 'Fleeing Raider';
+      spec.shieldRegenRate = 0;
+      spec.hull = spec.hullMax = Math.max(100, spec.hullMax || 100);
+      const trainer = this.helpers.spawnEntity(spec);
+      if (trainer) {
+        trainer._invulnUntil = Infinity;
+        this._trainerId = trainer.id;
+        if (st.onboarding) st.onboarding._trainerId = trainer.id;
+        st.player.targetId = trainer.id;
+        return trainer;
+      }
+    }
+    return null;
+  },
+
+  _spawnMiningRock() {
+    const st = this.state;
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!player || !player.pos || !this.helpers || !this.helpers.spawnEntity) return null;
+    const existing = this._miningRockId != null && st.entities.get(this._miningRockId);
+    if (existing && existing.alive !== false && existing.data?.trainingMining) return existing;
+    const angle = onboardingRandom(st) * TAU;
+    const rock = this.helpers.spawnEntity({
+      type: 'asteroid',
+      pos: { x: player.pos.x + Math.cos(angle) * 118, z: player.pos.z + Math.sin(angle) * 118 },
+      vel: { x: 0, z: 0 },
+      radius: 18,
+      mass: 180,
+      hull: 60,
+      hullMax: 60,
+      // The tutorial finish line must not be punt-able (same defect class as the rescue
+      // beacon's mass-1 body): a field-lesson shove into a dynamic rock makes it drift,
+      // and the shelved world record then advances it ballistically — the seam waypoint
+      // chases a body that rematerializes kilometres away forever (stranger run 39:
+      // rock exiled 129wu → 41 416wu while the ship trailed at 15wu/s).
+      physicsBody: { radius: asteroidColliderRadius('ast_common_rock', 18), dynamic: false },
+      data: {
+        typeId: 'ast_common_rock', oreHP: 60, oreHPMax: 60, yieldU: SEAM_ORE_TARGET,
+        onboarding: true, onboardingTraining: true, trainingMining: true,
+      },
+    });
+    if (rock) {
+      this._miningRockId = rock.id;
+      if (st.onboarding) st.onboarding._miningRockId = rock.id;
+    }
+    return rock;
+  },
+
+  _beginTrainerFlyby() {
+    const trainer = this._trainingActor() || this._spawnTrainer('marker');
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (!trainer || !player || !player.pos) return;
+    trainer.data = trainer.data || {};
+    trainer.data.trainingFocusEligible = true;
+    const heading = Number.isFinite(player.rot) ? player.rot : 0;
+    const rightX = -Math.sin(heading);
+    const rightZ = Math.cos(heading);
+    trainer.pos.x = player.pos.x + Math.cos(heading) * 138 + rightX * TRAINER_FLYBY_OFFSET_WU;
+    trainer.pos.z = player.pos.z + Math.sin(heading) * 138 + rightZ * TRAINER_FLYBY_OFFSET_WU;
+    trainer.vel.x = -Math.cos(heading) * TRAINER_FLYBY_SPEED_WU;
+    trainer.vel.z = -Math.sin(heading) * TRAINER_FLYBY_SPEED_WU;
+    trainer.prevPos.copy(trainer.pos);
+  },
+
+  _trainingActor() {
+    if (this._trainerId == null || !this.state.entities) return null;
+    const actor = this.state.entities.get(this._trainerId);
+    return actor && actor.alive !== false && isTrainingActor(actor) ? actor : null;
+  },
+
+  _removeTrainingActors() {
+    if (this._trainerId != null && this.helpers && typeof this.helpers.removeEntity === 'function') {
+      this.helpers.removeEntity(this._trainerId);
+    }
+    const player = this.state && this.state.player;
+    if (player && player.targetId === this._trainerId) player.targetId = null;
+    this._trainerId = null;
+    for (const id of [this._liveTrainingDerelict() ? this._derelictId : null, this._miningRockId]) {
+      if (id != null && this.helpers && typeof this.helpers.removeEntity === 'function') this.helpers.removeEntity(id);
+    }
+    this._derelictId = null;
+    this._derelictBody = this._derelictGeneration = null;
+    this._miningRockId = null;
+    if (this.state && this.state.onboarding) {
+      this.state.onboarding._trainerId = null;
+      this.state.onboarding._miningRockId = null;
+    }
+    // Power-situation props are not training actors: a trainer restage must leave the
+    // staged setup standing. Their record self-heals in _tickPowerSituations if the
+    // props genuinely vanished; only _teardown/_finish despawn them.
+  },
+
+  // ── Row 546 (W-TEACH): teach by situation, not by lock ──────────────────────────────────
+  // The first ten minutes place one physical setup per power — a loose pack for Pull, a drifter
+  // on the bow for Shove, a tumbling pod for Pin, a scrap knot for Bomb, a debris fan for Rig.
+  // The held-key preview (row 493) is the teacher: the one line names the key, the outlines show
+  // the outcome, and trying the power resolves it. "I've flown before" skips all of it — the
+  // pace flag gates the whole ladder before anything is placed. Specs live in
+  // src/onboarding/powerSituations.js (pure); this tick owns placement, expiry, and the voice.
+  _tickPowerSituations(state) {
+    const ob = state && state.onboarding;
+    if (!ob || !ob.active || ob.finished) return;
+    if (ob.pace && ob.pace.flownBefore === true) return;
+    if (state.mode && state.mode !== 'flight') return;
+    const now = state.simTime || 0;
+    const sit = ob.powerSit || (ob.powerSit = normalizePowerSit(null));
+    // Past the window the ladder stands down: nothing new is placed and a live setup expires.
+    if (now - (ob.startedAt || 0) > POWER_SITUATION_WINDOW_S) {
+      this._despawnPowerSituation(sit);
+      sit.next = POWER_SITUATIONS.length;
+      return;
+    }
+    const player = state.entities && state.entities.get(state.playerId);
+    if (!player || !player.pos) return;
+    const acts = state.input && state.input.actions;
+
+    const active = sit.active;
+    if (active) {
+      const spec = situationFor(active.power);
+      if (!spec) { sit.active = null; return; }
+      // The props are session-local bodies: a Continue (ids never serialize), a trainer
+      // restage, or stray crossfire can leave this record pointing at nothing. An emptied
+      // setup requeues its power for the next window instead of holding the ladder on
+      // ghosts until TTL.
+      const ids = this._powerSitIds;
+      const propsLive = !!(ids && ids.length && state.entities
+        && ids.some((id) => {
+          const e = id != null && typeof state.entities.get === 'function'
+            ? state.entities.get(id) : null;
+          return !!(e && e.alive !== false);
+        }));
+      if (!propsLive) {
+        this._powerSitIds = null;
+        sit.active = null;
+        const idx = POWER_SITUATIONS.indexOf(spec);
+        if (idx >= 0 && idx < sit.next && sit.doneAt[spec.power] == null) {
+          sit.next = idx;
+          sit.nextAtS = now + POWER_SITUATION_GAP_S;
+        }
+        return;
+      }
+      const action = acts ? acts[spec.power] : null;
+      const used = !!(action && (action === true || action.held === true || action.pressed === true));
+      if (used) {
+        // Tried it — the physical result IS the resolution. The props stay in the world as
+        // ordinary rocks; what the pilot just threw or gathered does not vanish under them.
+        this._powerSitIds = null;
+        sit.doneAt[spec.power] = now;
+        sit.active = null;
+        sit.nextAtS = now + POWER_SITUATION_GAP_S;
+        this._emitMilestone('powerSituation', { power: spec.power, used: true });
+      } else if (now - active.placedAtS >= POWER_SITUATION_TTL_S) {
+        // Ignored — the rail guides, it never walls. The unstaged props stand down.
+        sit.doneAt[active.power] = now;
+        sit.active = null;
+        sit.nextAtS = now + POWER_SITUATION_GAP_S;
+        this._despawnPowerSituation(sit);
+        this._emitMilestone('powerSituation', { power: active.power, used: false });
+      }
+      return;
+    }
+    if (sit.next >= POWER_SITUATIONS.length) return;
+    // The first setup waits out the stick drills; later ones ride the voice-pacing gap.
+    const earliest = sit.next === 0 ? (ob.startedAt || 0) + POWER_SITUATION_FIRST_S : sit.nextAtS;
+    if (now < earliest) return;
+    // One tutorial voice: a situation may only speak after the same ≥SILENCE_S of text silence
+    // every rail beat obeys. A due setup waits for the next silent tick rather than speaking
+    // over the line another teacher just placed — the placement slot is not consumed until it
+    // lands, so the deferral retries cleanly.
+    if (now - (this._lastTextAtS == null ? -Infinity : this._lastTextAtS) < SILENCE_S) return;
+    const spec = POWER_SITUATIONS[sit.next];
+    // Consume the ladder slot only when the setup actually lands in the world — a placement
+    // failure (no spawn helper, despawned cast) retries the same power on the next window.
+    if (this._placePowerSituation(spec, now, player)) sit.next += 1;
+  },
+
+  _placePowerSituation(spec, nowS, player) {
+    const ob = this.state && this.state.onboarding;
+    if (!ob || !spec || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return false;
+    const heading = Number.isFinite(player.rot) ? player.rot : 0;
+    const pos = { x: 0, z: 0 };
+    const vel = { x: 0, z: 0 };
+    const ids = [];
+    for (const p of spec.props) {
+      propWorldPos(p, player.pos, heading, pos);
+      propWorldVel(p, pos, player.pos, vel);
+      // A seeded ±5 % jitter keeps each setup physical without moving the authored read —
+      // deterministic through the onboarding rng, never ambient randomness.
+      const j = p.distWu * 0.05;
+      pos.x += (onboardingRandom(this.state) - 0.5) * 2 * j;
+      pos.z += (onboardingRandom(this.state) - 0.5) * 2 * j;
+      const rock = this.helpers.spawnEntity({
+        type: 'asteroid',
+        pos: { x: pos.x, z: pos.z },
+        vel: { x: vel.x, z: vel.z },
+        radius: p.radius,
+        mass: p.mass,
+        hull: p.radius * 4,
+        hullMax: p.radius * 4,
+        physicsBody: { radius: asteroidColliderRadius('ast_common_rock', p.radius) },
+        data: {
+          typeId: 'ast_common_rock', oreHP: 0, yieldU: 0,
+          onboarding: true, powerSituation: spec.power,
+        },
+      });
+      if (rock && rock.id != null) ids.push(rock.id);
+    }
+    if (!ids.length) return false;
+    this._powerSitIds = ids;
+    ob.powerSit.active = { power: spec.power, placedAtS: nowS };
+    // One line names the ONE power and asks for the hold — the preview teaches the rest.
+    this._sayTutorial(spec.line);
+    this._emitMilestone('powerSituationPlaced', { power: spec.power });
+    return true;
+  },
+
+  _despawnPowerSituation(sit) {
+    const ids = this._powerSitIds;
+    this._powerSitIds = null;
+    if (sit && sit.active) sit.active = null;
+    if (!ids || !ids.length || !this.helpers || typeof this.helpers.removeEntity !== 'function') return;
+    const entities = this.state && this.state.entities;
+    for (const id of ids) {
+      if (id == null) continue;
+      // Entity ids recycle between worlds: only remove a body still stamped as this
+      // ladder's prop. A reissued id belongs to whatever the new world made of it.
+      const e = entities && typeof entities.get === 'function' ? entities.get(id) : null;
+      if (e && e.data && e.data.powerSituation != null) this.helpers.removeEntity(id);
+    }
+  },
+
+  // B5: surface three side-by-side offers (HAUL/BOUNTY/SURVEY) through the ordinary mission
+  // authority. No parallel tutorial jobs: these offers accept, track, pay, and receipt normally.
+  _openChoice() {
+    const st = this.state;
+    const ob = st.onboarding;
+    const stationId = ob && ob.choiceStationId || st.ui && st.ui.dockedStationId;
+    if (!stationId) return;
+    const missions = this.registry && this.registry.get && this.registry.get('missions');
+    if (!missions || typeof missions.ensureOnboardingChoiceOffers !== 'function') return;
+    missions.ensureOnboardingChoiceOffers(stationId);
+  },
+
+  // ── Rescue opening (PQ-163.00) ────────────────────────────────────────────────────────
+  // Three verbs in the drill's silence gaps: swing (after tether), shove (after burst),
+  // grab-and-run (after disengage). Each is taught by doing through production events, then
+  // silence; the funnel records complete/fail per beat. Fails reset the beat's actors and
+  // retry — never a wall, never a second voice.
+
+  _rescue() {
+    const ob = this.state && this.state.onboarding;
+    return ob && ob.rescue && ob.rescue.active && !ob.finished ? ob.rescue : null;
+  },
+
+  _rescueCurrentKey() {
+    const rescue = this._rescue();
+    return rescue && rescue.current ? rescue.current : null;
+  },
+
+  _rescueActor(slot) {
+    const rescue = this._rescue();
+    if (!rescue) return null;
+    const id = rescue.ids && rescue.ids[slot];
+    if (id == null || !this.state.entities) return null;
+    const entity = this.state.entities.get(id);
+    return entity && entity.alive !== false ? entity : null;
+  },
+
+  prepareStartingScene(payload = {}) {
+    const st = this.state;
+    if (!st || st.mode !== 'loading') return false;
+    if (st.physicsVenueSession === true) return false;
+    if (isRacingCorridorSession(st)) return false;
+    if (payload && payload.scenario != null) return false;
+    // A Crucible/Swarm launch owns its arena; its run may begin only after this (worker lane).
+    if (payload && payload.crucibleLaunch === true) return false;
+    const run = st.run;
+    if (run && (run.kind === 'survival' || run.kind === 'lab') && run.phase !== 'inactive') return false;
+    if (st.settings && st.settings.gameplay && st.settings.gameplay.tutorialHints === false) return false;
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return false;
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!player || player.alive === false || !player.pos) return false;
+    const existing = this._preparedRescue;
+    if (existing && this._preparedCastIsAdoptable(existing)) return true;
+    this._releasePreparedRescue();
+    const rescue = freshRescueState();
+    const actors = this._createRescueCast(rescue);
+    if (!actors) return false;
+    this._preparedRescue = { state: st, player, rescue, actors };
+    this._warmScriptedCohort();
+    return true;
+  },
+
+  // Mid-flight scripted beats spawn real GLB bodies with no lead: the raid raider and
+  // trainer fly a reaver_pirate hull, the claims patrol a patrol_lawman. Publish them
+  // during 'loading' through the roster warm runway so each entity:spawned kick at the
+  // glass is a cache hit; asteroid/wreck/drone/combat exemplars (the raid hauler,
+  // throw rock, pickups) ride the handler's own appended families.
+  _warmScriptedCohort() {
+    const st = this.state;
+    const bus = this.bus;
+    if (!bus || typeof bus.emit !== 'function' || !st) return;
+    const origin = (st.entities && st.entities.get(st.playerId) || {}).pos || { x: 0, z: 0 };
+    const opts = { startedTick: st.tick };
+    const specs = [];
+    const raider = makeEnemySpawnSpec('reaver_pirate', 1, origin, opts);
+    if (raider) { raider.id = 'onboarding_warm_raider'; specs.push(raider); }
+    const patrol = makeEnemySpawnSpec('patrol_lawman', 1, origin, opts);
+    if (patrol) { patrol.id = 'onboarding_warm_patrol'; specs.push(patrol); }
+    bus.emit('onboarding:rosterPrewarm', { specs });
+  },
+
+  _preparedCastIsAdoptable(prepared) {
+    const st = this.state;
+    if (!prepared || !st || prepared.state !== st) return false;
+    const entities = st.entities;
+    if (!entities || typeof entities.get !== 'function') return false;
+    if (entities.get(st.playerId) !== prepared.player) return false;
+    const rescue = prepared.rescue;
+    const actors = prepared.actors;
+    if (!rescue || !rescue.ids || !actors) return false;
+    for (const slot of Object.keys(rescue.ids)) {
+      const actor = actors[slot];
+      if (!actor || actor.alive === false || actor.id == null) return false;
+      if (entities.get(actor.id) !== actor) return false;
+    }
+    return true;
+  },
+
+  _discardPreparedRescue(prepared) {
+    const actors = prepared && prepared.actors;
+    if (!actors) return;
+    const entities = this.state && this.state.entities;
+    const player = this.state && this.state.player;
+    for (const slot of Object.keys(actors)) {
+      const actor = actors[slot];
+      if (!actor || actor.id == null) continue;
+      if (!entities || entities.get(actor.id) !== actor) continue;
+      if (this.helpers && typeof this.helpers.removeEntity === 'function') {
+        this.helpers.removeEntity(actor.id);
+      }
+      if (player && player.targetId === actor.id) player.targetId = null;
+    }
+  },
+
+  _releasePreparedRescue(removeActors = true) {
+    const prepared = this._preparedRescue;
+    this._preparedRescue = null;
+    if (prepared && removeActors) this._discardPreparedRescue(prepared);
+  },
+
+  _beginRescue() {
+    const st = this.state;
+    const ob = st.onboarding;
+    const prepared = this._preparedRescue;
+    this._preparedRescue = null;
+    if (!ob || ob.rescue) {
+      if (prepared) this._discardPreparedRescue(prepared);
+      return;
+    }
+    const adopted = this._preparedCastIsAdoptable(prepared);
+    if (prepared && !adopted) this._discardPreparedRescue(prepared);
+    ob.rescue = adopted ? prepared.rescue : freshRescueState();
+    ob.rescue.startedAt = st.simTime || 0;
+    ob.missingThree = freshMissingThreeState();
+    ob.missingThree.startedAt = st.simTime || 0;
+    ob.storeSentence = freshStoreSentenceState();
+    if (!adopted) this._spawnRescueCast();
+    this.bus.emit('rescue:started', buildRescueStartedEvent(st.simTime || 0));
+  },
+
+  // PQ-163.03: the store-page sentence is shown once at rescue start, then silence.
+  // Distinct voice id so leftover B0 / verb lines do not replace it. Never hudAttention.
+  _showStoreSentenceOnce() {
+    const ob = this.state && this.state.onboarding;
+    if (!ob) return;
+    if (!ob.storeSentence) ob.storeSentence = freshStoreSentenceState();
+    if (ob.storeSentence.shown) return;
+    const atS = this.state.simTime || 0;
+    ob.storeSentence.shown = true;
+    ob.storeSentence.shownAt = atS;
+    this._sayTutorial(STORE_FLIGHT_SENTENCE, { visual: false });
+    const voice = this.helpers && this.helpers.voice;
+    const said = voice && typeof voice.say === 'function'
+      && voice.say({
+        channel: 'tutorial',
+        text: STORE_FLIGHT_SENTENCE,
+        kind: 'info',
+        ttl: 8,
+        id: 'firsthour:sentence',
+      });
+    if (!said) this.bus.emit('toast', { text: STORE_FLIGHT_SENTENCE, kind: 'info', ttl: 8, id: 'firsthour:sentence' });
+    this.bus.emit('firsthour:sentence', buildFirstHourSentenceEvent(atS));
+  },
+
+  _stampStoreClause(leftoverKey) {
+    const rec = this.state && this.state.onboarding && this.state.onboarding.storeSentence;
+    if (!rec) return;
+    stampStoreClause(rec, leftoverKey, this.state.simTime || 0);
+  },
+
+  _createRescueCast(rescue) {
+    const st = this.state;
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!rescue || !rescue.active || !player || !player.pos
+      || !this.helpers || !this.helpers.spawnEntity) return null;
+    const specs = makeRescueCastSpecs(player.pos, () => onboardingRandom(st));
+    makeRescueRockTowable(specs.rock);
+    const actors = {};
+    for (const slot of Object.keys(specs)) {
+      const spawned = this.helpers.spawnEntity(specs[slot]);
+      actors[slot] = spawned || null;
+      rescue.ids[slot] = spawned && spawned.id != null ? spawned.id : null;
+      if (spawned && spawned.data && (slot === 'derelict' || slot === 'beacon')) {
+        spawned._invulnUntil = Infinity;
+      }
+    }
+    return actors;
+  },
+
+  _spawnRescueCast() {
+    const st = this.state;
+    const rescue = st.onboarding && st.onboarding.rescue;
+    if (!rescue || !rescue.active) return;
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!player || !player.pos || !this.helpers || !this.helpers.spawnEntity) return;
+    // Remove any previous tableau before staging a fresh one (fail recovery, never a dupe).
+    this._removeRescueActors();
+    this._createRescueCast(rescue);
+  },
+
+  _removeRescueActors() {
+    const rescue = this.state && this.state.onboarding && this.state.onboarding.rescue;
+    if (!rescue || !rescue.ids) return;
+    const player = this.state && this.state.player;
+    for (const slot of Object.keys(rescue.ids)) {
+      const id = rescue.ids[slot];
+      if (id != null && this.helpers && typeof this.helpers.removeEntity === 'function') {
+        this.helpers.removeEntity(id);
+      }
+      if (player && id != null && player.targetId === id) player.targetId = null;
+      rescue.ids[slot] = null;
+    }
+  },
+
+  // A drill DONE may open the rescue verb that follows it: strict order (swing → shove →
+  // grab), each firing exactly once through the single tutorial voice.
+  _maybeStartRescueBeat(drillKey) {
+    const rescue = this._rescue();
+    if (!rescue || rescue.current || rescue.completed) return;
+    const next = RESCUE_ORDER.find((key) =>
+      rescue.beats[key].state !== 'done' && RESCUE_PREREQ[key] === drillKey);
+    if (!next) return;
+    const idx = RESCUE_ORDER.indexOf(next);
+    if (rescue.beats[next].state === 'done') return;
+    if (idx > 0 && rescue.beats[RESCUE_ORDER[idx - 1]].state !== 'done') return;
+    rescue.current = next;
+    rescue.beats[next].state = 'current';
+    const line = rescueBeatLine(next);
+    this.state.onboarding.beatAction = line;
+    // Adopt a latch the player already holds (grabbed early): the beat must never strand.
+    if (next === 'grab' && rescue.ids.pod != null
+      && rescuePlayerLatchedTo(this.state, this.state.playerId, rescue.ids.pod)) {
+      rescue.podLatched = true;
+    }
+    // The drills may have carried the pilot far from the original rescue site: restage the
+    // grab tableau near the pilot so the run is a rescue, not a long empty commute. Retry,
+    // never a wall — the same promise every other beat keeps.
+    if (next === 'grab') {
+      const podEnt = rescue.ids.pod != null && this.state.entities
+        ? this.state.entities.get(rescue.ids.pod) : null;
+      const beaconEnt = rescue.ids.beacon != null && this.state.entities
+        ? this.state.entities.get(rescue.ids.beacon) : null;
+      const playerNow = this.state.entities && this.state.entities.get(this.state.playerId);
+      if (playerNow && playerNow.pos && podEnt && podEnt.pos
+        && Math.hypot(podEnt.pos.x - playerNow.pos.x, podEnt.pos.z - playerNow.pos.z) > 1500) {
+        this._respawnRescueSlot('grab');
+        const newPod = rescue.ids.pod != null && this.state.entities
+          ? this.state.entities.get(rescue.ids.pod) : null;
+        if (newPod && newPod.pos && beaconEnt && beaconEnt.pos) {
+          // Keep the beacon a fixed run distance from the fresh pod position.
+          const runDx = newPod.pos.x - beaconEnt.pos.x;
+          const runDz = newPod.pos.z - beaconEnt.pos.z;
+          const runD = Math.hypot(runDx, runDz) || 1;
+          beaconEnt.pos.x = newPod.pos.x + (runDx / runD) * 700;
+          beaconEnt.pos.z = newPod.pos.z + (runDz / runD) * 700;
+        }
+      }
+    }
+    if (next === 'swing' && rescue.ids.rock != null
+      && rescuePlayerLatchedTo(this.state, this.state.playerId, rescue.ids.rock)) {
+      rescue.rockLatched = true;
+    }
+    this._sayTutorial(line);
+    this._setRescueWaypoint(true);
+    this._refreshBeatPanel();
+  },
+
+  // The marker identity stays beat-stable while onboarding owns nav; active player courses win.
+  _setRescueWaypoint(force) {
+    const st = this.state;
+    const ob = st.onboarding;
+    const rescue = this._rescue();
+    if (!rescue || !rescue.current || !st.nav) return false;
+    // Automatic lesson/recovery stamps yield to an explicit player course. The lesson actors and
+    // beat state remain live; the player can point the same course owner back at an objective.
+    if (hasPlayerSelectedNavWaypoint(st)) return true;
+    const key = rescue.current;
+    const line = rescueBeatLine(key);
+    let target = null;
+    if (key === 'swing') {
+      const rock = this._rescueActor('rock');
+      if (rock) target = { pos: rock.pos, label: 'Loose Rock' };
+    } else if (key === 'shove') {
+      const scout = this._rescueActor('scout');
+      if (scout) target = { pos: scout.pos, label: 'Scout' };
+    } else if (key === 'grab') {
+      const pod = this._rescueActor('pod');
+      const beacon = this._rescueActor('beacon');
+      const latched = rescue.podLatched
+        || (rescue.ids.pod != null && rescuePlayerLatchedTo(st, st.playerId, rescue.ids.pod));
+      if (latched && beacon) target = { pos: beacon.pos, label: 'Beacon' };
+      else if (pod) target = { pos: pod.pos, label: 'Escape Pod' };
+    }
+    const existing = st.nav.waypoint;
+    if ((!target || !target.pos)) {
+      if (existing && existing.onboarding && String(existing.markerId || '').startsWith('rescue:')) {
+        st.nav.waypoint = null;
+      }
+      return true;
+    }
+    if (existing && !existing.onboarding && !force) {
+      const foreignKind = existing.kind;
+      if (foreignKind !== 'mission' && foreignKind !== 'story') return true;
+    }
+    st.nav.waypoint = {
+      onboarding: true,
+      pos: { x: target.pos.x, z: target.pos.z },
+      label: target.label,
+      reason: line,
+      markerId: `rescue:${key}`,
+      markerKind: ONBOARDING_OBJECTIVE_MARKER.markerKind,
+      mapLabel: ONBOARDING_OBJECTIVE_MARKER.mapLabel,
+    };
+    if (st.onboarding) st.onboarding.beatAction = line;
+    return true;
+  },
+
+  // ── Rescue event handlers (all no-op unless their beat is current) ────────────────────
+  _onRescueLatched(payload) {
+    const rescue = this._rescue();
+    const key = this._rescueCurrentKey();
+    if (!rescue || !key || !payload) return;
+    if (key === 'swing' && payload.targetId === rescue.ids.rock) rescue.rockLatched = true;
+    if (key === 'grab' && payload.targetId === rescue.ids.pod) rescue.podLatched = true;
+  },
+
+  _onRescueReel(payload) {
+    const rescue = this._rescue();
+    if (!rescue || this._rescueCurrentKey() !== 'swing' || !payload) return;
+    if (payload.targetId !== rescue.ids.rock) return;
+    const after = Number(payload.after);
+    if (Number.isFinite(after) && after <= RESCUE_REEL_TIGHT_WU) rescue.rockReeled = true;
+  },
+
+  _onRescueReleased(payload) {
+    const rescue = this._rescue();
+    const key = this._rescueCurrentKey();
+    if (!rescue || !key || !payload) return;
+    if (key === 'swing' && payload.targetId === rescue.ids.rock && rescue.rockReeled === true) {
+      rescue.rockReleasedAfterReel = true;
+    }
+    if (key === 'grab' && payload.targetId === rescue.ids.pod) rescue.podLatched = false;
+  },
+
+  _onRescueCut(payload) {
+    const rescue = this._rescue();
+    const key = this._rescueCurrentKey();
+    if (!rescue || !key || !payload) return;
+    // A cut is a release with intent: same bookkeeping as a release.
+    this._onRescueReleased(payload);
+  },
+
+  _onRescueBroke(payload) {
+    const rescue = this._rescue();
+    const key = this._rescueCurrentKey();
+    if (!rescue || !key || !payload) return;
+    // A snapped line is recovery, not failure: the beat stays current, flags reset.
+    if (key === 'swing' && payload.targetId === rescue.ids.rock) {
+      rescue.rockLatched = false;
+      rescue.rockReeled = false;
+      rescue.rockReleasedAfterReel = false;
+    }
+    if (key === 'grab' && payload.targetId === rescue.ids.pod) rescue.podLatched = false;
+  },
+
+  // ── Range pointer & funnel (PQ-163.01 — "The Range is the door") ─────────────────────
+  _onLatchPointer(payload) {
+    const ob = this.state && this.state.onboarding;
+    if (!ob || ob.finished) return;
+    if (!ob.firstLatchDone) {
+      ob.firstLatchDone = true;
+      ob.firstLatchAt = this.state.simTime || 0;
+      this._emitMilestone('attach', { beat: ob.currentBeat >= 0 ? BEATS[ob.currentBeat].key : null });
+      ob.rangePromptActive = true;
+      ob.pointedAtRange = true;
+      ob.rangePrompt = RANGE_POINTER_LINE;
+      if (ob.rescue) {
+        ob.rescue.firstLatchDone = true;
+        ob.rescue.rangePromptActive = true;
+      }
+      this.bus.emit('onboarding:rangePrompt', {
+        active: true,
+        text: RANGE_POINTER_LINE,
+        atS: ob.firstLatchAt,
+        targetId: payload && payload.targetId,
+      });
+      this._refreshBeatPanel();
+    }
+  },
+
+  _onRangeOpened(payload) {
+    const ob = this.state && this.state.onboarding;
+    if (!ob) return;
+    const atS = Number.isFinite(payload && payload.atS) ? payload.atS : (this.state.simTime || 0);
+    const fromPrompt = Boolean(payload && payload.fromPrompt);
+    ob.rangeOpened = true;
+    ob.rangeOpenedAt = atS;
+    if (fromPrompt) {
+      ob.rangeOpenedFromPrompt = true;
+      ob.rangeOpenedFromPromptAt = atS;
+      ob.rangePromptActive = false;
+      ob.pointedAtRange = false;
+    }
+    ob.rangeFunnel = {
+      opened: true,
+      openedAt: atS,
+      fromPrompt,
+      rungId: (payload && payload.rungId) || null,
+      rungIndex: payload && payload.rungIndex != null ? payload.rungIndex : 0,
+    };
+    if (ob.rescue) {
+      ob.rescue.rangeOpened = true;
+      ob.rescue.rangeOpenedFromPrompt = fromPrompt;
+      ob.rescue.rangeOpenedAt = atS;
+      ob.rescue.rangePromptActive = false;
+    }
+    this._refreshBeatPanel();
+  },
+
+  _onRescueWhipImpact(payload) {
+    const rescue = this._rescue();
+    const key = this._rescueCurrentKey();
+    if (!rescue || !key || !payload) return;
+    // Rock whipped through the derelict: the swing-release payoff, no proximity wait needed.
+    // Same receipt as the proximity paths — the wreck sheds its scrap before the beat closes.
+    if (key === 'swing' && payload.targetId === rescue.ids.rock
+      && payload.victimId === rescue.ids.derelict) {
+      this._dropRescueScrap(this._rescueActor('derelict'));
+      this._rescueDone('swing');
+      return;
+    }
+    // Any whipped mass that reaches the scout is a shove with a receipt.
+    if (key === 'shove' && payload.victimId === rescue.ids.scout) {
+      this._emitRescueShove(payload.victimId);
+      this._rescueDone('shove');
+    }
+  },
+
+  _onRescueShoveEvent(payload) {
+    const rescue = this._rescue();
+    if (!rescue || this._rescueCurrentKey() !== 'shove' || !payload) return;
+    if (payload.targetId === rescue.ids.scout) this._rescueDone('shove');
+  },
+
+  _onRescueFire(payload) {
+    const rescue = this._rescue();
+    if (!rescue || this._rescueCurrentKey() !== 'shove' || !payload) return;
+    if (payload.ownerId === this.state.playerId) rescue.shoveShots = (rescue.shoveShots || 0) + 1;
+  },
+
+  _onRescueKilled(payload) {
+    const rescue = this._rescue();
+    const key = this._rescueCurrentKey();
+    if (!rescue || !payload || payload.id == null) return;
+    // Destroying a beat's working body fails the attempt and stages a fresh one — retry, not
+    // wall. A kill before its beat is current only restages the body; it never yanks the rail.
+    if (payload.id === rescue.ids.rock) {
+      if (key === 'swing') this._rescueFail('swing', 'rock destroyed');
+      else this._respawnRescueSlot('swing');
+    } else if (payload.id === rescue.ids.pod) {
+      if (key === 'grab') this._rescueFail('grab', 'pod destroyed');
+      else this._respawnRescueSlot('grab');
+    }
+  },
+
+  _onRescuePlayerDeath() {
+    const key = this._rescueCurrentKey();
+    if (!key) return;
+    this._rescueFail(key, 'pilot down');
+  },
+
+  // Proximity/velocity DONE resolution on the 0.2 s tick. Pure-position reads only.
+  _resolveRescueDone() {
+    const rescue = this._rescue();
+    const key = this._rescueCurrentKey();
+    if (!rescue || !key) return;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (!player || !player.pos) return;
+    if (key === 'swing') {
+      const rock = this._rescueActor('rock');
+      const derelict = this._rescueActor('derelict');
+      // A missing standing piece restages the whole authored tableau — respawning only
+      // the working slot would loop forever on a wreck or wall that is never coming back.
+      if (!derelict) { this._spawnRescueCast(); return; }
+      if (!rock) { this._rescueFail('swing', 'rock lost'); return; }
+      // A rock punted clear of the pocket (a wild release, a chance collision) is gone for
+      // good at these speeds: restage it near the pilot — retry, never a wall.
+      const playerPos = this.state.entities.get(this.state.playerId);
+      if (playerPos && playerPos.pos
+        && Math.hypot(rock.pos.x - playerPos.pos.x, rock.pos.z - playerPos.pos.z) > 1800) {
+        // If the standing wreck is also beyond reach, a respawned rock lands on its line
+        // still out of reach and the fail/restage pair loops forever. Restage the whole
+        // tableau near the pilot — the same recovery a missing standing piece takes.
+        if (Math.hypot(derelict.pos.x - playerPos.pos.x, derelict.pos.z - playerPos.pos.z) > 1800) {
+          this._spawnRescueCast();
+        } else {
+          this._rescueFail('swing', 'rock drifted out of reach');
+        }
+        return;
+      }
+      if (!rescue.rockReleasedAfterReel) return;
+      if (rescueRockHitDerelict(rock, derelict, RESCUE_ROCK_HIT_MIN_SPEED_WU)) {
+        this._dropRescueScrap(derelict);
+        this._rescueDone('swing');
+        return;
+      }
+      // Player-scale tolerance: a close shake-down pass at speed also counts — the lesson
+      // is cutting the rock across the wreck, and a near-pass shakes it just the same.
+      const dWreckRock = Math.hypot(rock.pos.x - derelict.pos.x, rock.pos.z - derelict.pos.z);
+      const rockSpeed = Math.hypot(Number(rock.vel && rock.vel.x) || 0, Number(rock.vel && rock.vel.z) || 0);
+      if (dWreckRock <= 70 && rockSpeed >= RESCUE_ROCK_HIT_MIN_SPEED_WU) {
+        this._dropRescueScrap(derelict);
+        this._rescueDone('swing');
+      }
+    } else if (key === 'shove') {
+      const scout = this._rescueActor('scout');
+      const asteroid = this._rescueActor('asteroid');
+      if (!asteroid) { this._spawnRescueCast(); return; }
+      if (!scout) { this._rescueFail('shove', 'scout lost'); return; }
+      // The escape envelope anchors to the pilot AND to the wall: a chased scout stays in
+      // the pilot's reach while the pair drifts kilometres off the wall's line — no escape
+      // fires, no fail, and the push can never arrive. Either way the tableau is spent.
+      if (rescueScoutEscaped(scout, player.pos)
+        || Math.hypot(scout.pos.x - asteroid.pos.x, scout.pos.z - asteroid.pos.z) > RESCUE_ESCAPE_WU) {
+        // The retry stages the scout on the STANDING wall's line: when the drills have
+        // carried the pilot beyond the wall's own reach, every respawn lands out of reach
+        // and the fail/restage pair loops forever. Restage the tableau near the pilot —
+        // the same recovery a missing standing piece takes.
+        if (Math.hypot(asteroid.pos.x - player.pos.x, asteroid.pos.z - player.pos.z) > RESCUE_ESCAPE_WU) {
+          this._spawnRescueCast();
+        } else {
+          this._rescueFail('shove', 'scout escaped');
+        }
+        return;
+      }
+      if (rescueScoutAtAsteroid(scout, asteroid, RESCUE_SHOVE_PROOF_SPEED_WU)) {
+        this._emitRescueShove(scout.id);
+        this._rescueDone('shove');
+      }
+    } else if (key === 'grab') {
+      const pod = this._rescueActor('pod');
+      const beacon = this._rescueActor('beacon');
+      if (!beacon) { this._spawnRescueCast(); return; }
+      if (!pod) { this._rescueFail('grab', 'pod lost'); return; }
+      // A pod punted clear of the pocket (ram, stray shot) is unrecoverable where it is:
+      // restage it near the pilot — retry, never a wall.
+      if (Math.hypot(pod.pos.x - player.pos.x, pod.pos.z - player.pos.z) > 3000) {
+        // If the standing beacon is also beyond reach, a respawned pod lands on its line
+        // still out of reach and the fail/restage pair loops forever. Restage the whole
+        // tableau near the pilot — the same recovery a missing standing piece takes.
+        if (Math.hypot(beacon.pos.x - player.pos.x, beacon.pos.z - player.pos.z) > 3000) {
+          this._spawnRescueCast();
+        } else {
+          this._rescueFail('grab', 'pod drifted out of reach');
+        }
+        return;
+      }
+      // The beacon is the delivery target: the disengage burn can carry a pod-latched
+      // pilot kilometres off the ring with the pod healthy in tow — no drift check ever
+      // fires and the run becomes a quarter-hour commute. Restage the ring on its own
+      // bearing one run out — the same retry, never a wall.
+      if (Math.hypot(beacon.pos.x - player.pos.x, beacon.pos.z - player.pos.z) > 3000) {
+        const bx = beacon.pos.x - player.pos.x;
+        const bz = beacon.pos.z - player.pos.z;
+        const bd = Math.hypot(bx, bz) || 1;
+        beacon.pos.x = player.pos.x + (bx / bd) * 700;
+        beacon.pos.z = player.pos.z + (bz / bd) * 700;
+        return;
+      }
+      const latched = rescue.podLatched
+        || rescuePlayerLatchedTo(this.state, this.state.playerId, rescue.ids.pod);
+      if (latched) rescue.podLatched = true;
+      if (!rescue.podLatched) return;
+      // The proof is the DELIVERY: the pod was latched (towed = the work) and now sits in
+      // the beacon ring. The old speed>=10 AND at-beacon conjunction pinned a towed pod
+      // against the beacon at ~2 wu/s forever — the tow itself is the run.
+      if (rescuePodAtBeacon(pod, beacon)) {
+        this._rescueDone('grab');
+      }
+    }
+  },
+
+  // The honest shove event the telemetry funnel already listens for: a real shove happened,
+  // so firstShoveAt + the shove verb count move like any production shove.
+  _emitRescueShove(targetId) {
+    this.bus.emit('combat:shove', {
+      targetId,
+      sourceId: this.state.playerId,
+      kind: 'rescue-shove',
+      atS: this.state.simTime || 0,
+    });
+  },
+
+  _rescueDone(key) {
+    const rescue = this._rescue();
+    if (!rescue || rescue.beats[key].state === 'done') return;
+    const atS = this.state.simTime || 0;
+    rescue.beats[key].state = 'done';
+    rescue.beats[key].doneAt = atS;
+    if (rescue.current === key) rescue.current = null;
+    rescue.rockLatched = false;
+    rescue.rockReeled = false;
+    rescue.rockReleasedAfterReel = false;
+    if (key !== 'grab') rescue.podLatched = false;
+    this.bus.emit('rescue:beat', { ...buildRescueFunnelEvent(key, 'complete', atS), fails: rescue.beats[key].fails });
+    this._stampStoreClause(key);
+    // The drill's silence gate already keys off the tutorial voice clock, which the rescue
+    // line moved — the next drill verb waits its ≥4 s without any extra timer.
+    if (rescue.beats.swing.state === 'done'
+      && rescue.beats.shove.state === 'done'
+      && rescue.beats.grab.state === 'done'
+      && !rescue.completed) {
+      rescue.completed = true;
+      rescue.completedAt = atS;
+      const fails = RESCUE_ORDER.reduce((n, k) => n + (rescue.beats[k].fails || 0), 0);
+      this.bus.emit('rescue:complete', buildRescueCompleteEvent(atS, fails));
+      this._postOpeningRescueRecognition(atS);
+    }
+    this._setRescueWaypoint(true);
+    this._refreshBeatPanel();
+    if (key === 'grab') this._maybeAdvanceMissingThree();
+  },
+
+  // The opening pod is a real rescue. INF-074 already turns recovery:completed
+  // (outcome rescue) into bar gossip — post that receipt once, with no pay, and
+  // never overwrite a notice a later rescue already wrote for this sector.
+  _postOpeningRescueRecognition(atS) {
+    const st = this.state;
+    if (!st || !this.bus) return false;
+    const sectorId = st.world && st.world.currentSectorId;
+    if (!sectorId) return false;
+    const notices = st.stationLife && st.stationLife.rescueNotices;
+    if (notices && notices[sectorId]) return false;
+    const seed = st.meta && st.meta.seed;
+    const recoveryId = `onboarding-pod:${seed == null ? 0 : seed}`;
+    this.bus.emit('recovery:completed', {
+      id: `recovery-receipt:${recoveryId}`,
+      recoveryId,
+      sectorId,
+      outcome: 'rescue',
+      pos: { x: 0, z: 0 },
+      credits: 0,
+      repDelta: 0,
+      cargo: {},
+      completedAt: atS,
+    });
+    return true;
+  },
+
+  _rescueFail(key, reason) {
+    const rescue = this._rescue();
+    if (!rescue || rescue.completed || rescue.beats[key].state === 'done') return;
+    // Never yank a different current verb off the rail.
+    if (rescue.current && rescue.current !== key) return;
+    const atS = this.state.simTime || 0;
+    const speakRecovery = (rescue.beats[key].fails || 0) === 0;
+    rescue.beats[key].fails = (rescue.beats[key].fails || 0) + 1;
+    rescue.beats[key].state = 'current';
+    rescue.current = key;
+    rescue.rockLatched = false;
+    rescue.rockReeled = false;
+    rescue.rockReleasedAfterReel = false;
+    rescue.podLatched = false;
+    rescue.shoveShots = 0;
+    this.bus.emit('rescue:beat', {
+      ...buildRescueFunnelEvent(key, 'fail', atS),
+      fails: rescue.beats[key].fails,
+      reason: String(reason || 'lost'),
+    });
+    // Stage a fresh tableau for the failed beat only: the rock, scout, and pod are the
+    // working bodies; the wreck, wall, and beacon stand.
+    this._respawnRescueSlot(key);
+    // Re-speak the verb once (recovery, not a lecture). Later fails of the same beat
+    // restage the body and keep the waypoint; they do not lecture again.
+    const line = rescueBeatLine(key);
+    if (this.state.onboarding) this.state.onboarding.beatAction = line;
+    if (speakRecovery) this._sayTutorial(line);
+    this._setRescueWaypoint(true);
+    this._refreshBeatPanel();
+  },
+
+  _respawnRescueSlot(key) {
+    const st = this.state;
+    const rescue = st.onboarding && st.onboarding.rescue;
+    if (!rescue || !this.helpers || !this.helpers.spawnEntity) return;
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!player || !player.pos) return;
+    const slot = key === 'swing' ? 'rock' : key === 'shove' ? 'scout' : 'pod';
+    const oldId = rescue.ids[slot];
+    if (oldId != null && typeof this.helpers.removeEntity === 'function') {
+      this.helpers.removeEntity(oldId);
+    }
+    // Specs carry the authored stats; placement comes from the STANDING tableau so the
+    // retry is the same readable lesson (PQ-163.00 receipt leftover — a re-rolled bearing
+    // used to strand the fresh scout off the standing wall's line).
+    const specs = makeRescueCastSpecs(player.pos, () => onboardingRandom(st));
+    makeRescueRockTowable(specs.rock);
+    const placement = rescueSlotRespawnTransform(slot, player.pos, {
+      derelict: this._rescueActor('derelict'),
+      asteroid: this._rescueActor('asteroid'),
+      beacon: this._rescueActor('beacon'),
+    }, () => onboardingRandom(st));
+    if (placement && specs[slot]) {
+      specs[slot].pos = placement.pos;
+      specs[slot].vel = placement.vel;
+    }
+    const spawned = this.helpers.spawnEntity(specs[slot]);
+    rescue.ids[slot] = spawned && spawned.id != null ? spawned.id : null;
+  },
+
+  // The vacuum shows itself: swinging the rock through the derelict shakes loose scrap.
+  _dropRescueScrap(derelict) {
+    const st = this.state;
+    if (!derelict || !derelict.pos || !this.helpers || !this.helpers.spawnEntity) return;
+    for (let i = 0; i < 2; i++) {
+      const ang = onboardingRandom(st) * Math.PI * 2;
+      const sp = 12;
+      this.helpers.spawnEntity({
+        type: 'pickup',
+        pos: { x: derelict.pos.x + Math.cos(ang) * 10, z: derelict.pos.z + Math.sin(ang) * 10 },
+        vel: { x: Math.cos(ang) * sp, z: Math.sin(ang) * sp },
+        radius: 2.2,
+        data: { kind: 'cargo', commodityId: 'cmdty_salvage_electronics', amount: 1, despawnAt: (st.simTime || 0) + 60 },
+      });
+    }
+  },
+
+  // ── Raid beat (thesis-first route) — the enemy becomes a projectile ──────────────────
+  // A real raider is working over a civilian hauler beside the rescue wall. The taught swing
+  // applies unchanged: latch the raider, reel, orbit for speed, release at the rock. Whip
+  // recoil + tumble contact (masslineImpactDamage, production flags) do the killing; the beat
+  // resolves only on that momentum kill. A gun kill restages the raider once — the lesson
+  // retries, it never walls; a second refusal resolves the beat and the rail moves on.
+
+  _raid() {
+    const ob = this.state && this.state.onboarding;
+    return ob && ob.raid && ob.raid.active && !ob.finished ? ob.raid : null;
+  },
+
+  _raidActor(slot) {
+    const raid = this._raid();
+    if (!raid) return null;
+    const id = raid.ids && raid.ids[slot];
+    if (id == null || !this.state.entities) return null;
+    const entity = this.state.entities.get(id);
+    if (slot === 'wing' && !(entity && entity.data && entity.data.onboardingRaidWing === true)) return null;
+    return entity && entity.alive !== false ? entity : null;
+  },
+
+  _enterRaidBeat() {
+    const st = this.state;
+    const ob = st.onboarding;
+    if (!ob) return;
+    // Scenario slices (47-A harness, lab boots) keep their own cast: resolve the beat silently
+    // so the drill advances without staging anything.
+    if (!ob.rescue) {
+      ob.beatDoneAt.raid = st.simTime || 0;
+      return;
+    }
+    ob.raid = {
+      active: true,
+      enteredAt: st.simTime || 0,
+      ids: { raider: null, hauler: null, throwRock: null },
+      lastWhipAt: null,
+      gunKills: 0,
+    };
+    this._spawnRaidCast();
+  },
+
+  _spawnRaidCast(opts = {}) {
+    const st = this.state;
+    const clinic = opts.clinic === true || !!(st.onboarding.pace && st.onboarding.pace.swing.clinicOpenedAtS != null && st.onboarding.pace.swing.clinicLesson === 'raid');
+    const raid = this._raid();
+    if (!raid || !this.helpers || !this.helpers.spawnEntity) return;
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!player || !player.pos) return;
+    this._removeRaidActors({ wing: opts.wing });
+    // Reuse the rescue wall's bearing so the release line reads: raider between the player and
+    // the big rock, the hauler dressed just off the raider's beam.
+    const wall = st.onboarding.rescue && st.onboarding.rescue.ids
+      ? st.entities.get(st.onboarding.rescue.ids.asteroid)
+      : null;
+    const ang = wall && wall.pos
+      ? Math.atan2(wall.pos.z - player.pos.z, wall.pos.x - player.pos.x)
+      : onboardingRandom(st) * TAU;
+    const at = (range, bearing) => ({
+      x: player.pos.x + Math.cos(ang + bearing) * range,
+      z: player.pos.z + Math.sin(ang + bearing) * range,
+    });
+    const raiderRange = clinic ? RAID_CLINIC_RAIDER_OFFSET_WU : RAID_RAIDER_OFFSET_WU;
+    const raiderPos = at(raiderRange, 0);
+    const haulerPos = at(RAID_HAULER_OFFSET_WU, 0.5);
+    const raiderSpec = makeEnemySpawnSpec('reaver_pirate', 1, raiderPos, { startedTick: st.tick });
+    if (raiderSpec) {
+      raiderSpec.name = 'Claim Jumper';
+      // Lesson body: real enough to be the fantasy (a hostile mid-raid), tuned so the taught
+      // throw kills and a starter-gun refusal is a long deliberate grind.
+      raiderSpec.hull = raiderSpec.hullMax = RAID_RAIDER_HULL;
+      // Crippled by the ram attempt: a slow drifter the starter hull can actually catch.
+      raiderSpec.maxSpeed = 45;
+      raiderSpec.combatSpeed = 40;
+      // Real mass so the taught throw carries momentum: whip recoil scales with it
+      // (momentum = mass x relSpeed), and a near-massless raider shrugs the lesson off.
+      raiderSpec.mass = 220;
+      raiderSpec.shield = raiderSpec.shieldMax = 0;
+      raiderSpec.shieldRegenRate = 0;
+      raiderSpec.data = raiderSpec.data || {};
+      raiderSpec.data.onboarding = true;
+      raiderSpec.data.onboardingRaid = true;
+      raiderSpec.data.weapons = [];
+      // Dead in space after the ram attempt: no drive (a live AI velocity-drives the
+      // hull every tick and cancels any tow), no guns — a drifting hulk to throw.
+      raiderSpec.data.ai = {
+        ...(raiderSpec.data.ai || {}),
+        passive: true, roe: 'hold_fire', spawnContext: 'onboarding_raid', motive: 'crippled',
+        // X-02: the wing answers for its crew — same squad marks the raider an own-wingmate
+        // under fireDiscipline, so the wing's pulse never finds the tow.
+        squadId: 'claim_jumper_wing',
+      };
+      const raider = this.helpers.spawnEntity(raiderSpec);
+      raid.ids.raider = raider && raider.id != null ? raider.id : null;
+    }
+    // X-02 — the Claim Jumper's wing. It stages off the tow on every non-clinic stage,
+    // holds fire until the line latches, and once it has fled or died it never returns
+    // (raid.wingDone). A kept slot (gun-kill/drift restage) is not re-spawned.
+    if (!clinic && !raid.wingDone && raid.ids.wing == null) {
+      const wingSpec = makeEnemySpawnSpec('wasp_swarmer', 1, at(480, -0.6), { startedTick: st.tick });
+      if (wingSpec) {
+        wingSpec.name = "Claim Jumper's Wing";
+        wingSpec.hull = wingSpec.hullMax = 60;
+        wingSpec.shield = wingSpec.shieldMax = 0;
+        wingSpec.shieldRegenRate = 0;
+        wingSpec.data = wingSpec.data || {};
+        wingSpec.data.onboarding = true;
+        wingSpec.data.onboardingRaidWing = true;
+        // Its resolved kit keeps only the pulse mount — defanged in place so a hit stings
+        // and never shoves the tow (impulsePerHit 0). Combat reads defId/dmg/rof at fire time.
+        const mounts = Array.isArray(wingSpec.data.weapons) ? wingSpec.data.weapons : [];
+        const pulse = mounts.find((w) => w && w.defId === 'wpn_pulse_laser_s');
+        if (pulse) {
+          pulse.dmg = 2; pulse.rof = 2; pulse.impulsePerHit = 0;
+          wingSpec.data.weapons = [pulse];
+        } else {
+          wingSpec.data.weapons = [];
+        }
+        wingSpec.data.ai = {
+          ...(wingSpec.data.ai || {}),
+          roe: 'hold_fire', spawnContext: 'onboarding_raid', squadId: 'claim_jumper_wing',
+        };
+        const wing = this.helpers.spawnEntity(wingSpec);
+        raid.ids.wing = wing && wing.id != null ? wing.id : null;
+      }
+    }
+    // A throw-target rock right downrange of the raider: the tow pass distance stays short
+    // and readable, and the thrown body always has a solid near its release line.
+    const throwRock = this.helpers.spawnEntity({
+      type: 'asteroid',
+      pos: at(raiderRange + (clinic ? RAID_CLINIC_ROCK_GAP_WU : 150), 0),
+      vel: { x: 0, z: 0 },
+      radius: 26,
+      mass: 4000,
+      hull: 5000,
+      hullMax: 5000,
+      physicsBody: { radius: asteroidColliderRadius('ast_raid_throw_rock', 26) },
+      data: {
+        onboarding: true, raidRole: 'throwRock',
+        typeId: 'ast_raid_throw_rock',
+      },
+    });
+    raid.ids.throwRock = throwRock && throwRock.id != null ? throwRock.id : null;
+    const hauler = this.helpers.spawnEntity({
+      type: 'drone',
+      name: 'Nervous Hauler',
+      team: 2,
+      factionId: 'faction_free',
+      pos: haulerPos,
+      vel: { x: 0, z: 0 },
+      radius: 12,
+      mass: 260,
+      hull: 900,
+      hullMax: 900,
+      data: {
+        weapons: [],
+        ai: { passive: true, roe: 'hold_fire', spawnContext: 'onboarding_raid', motive: 'flee' },
+        onboarding: true, raidRole: 'hauler',
+      },
+    });
+    raid.ids.hauler = hauler && hauler.id != null ? hauler.id : null;
+    raid.lastWhipAt = null;
+  },
+
+  // opts.wing: 'keep' leaves the live wing armed as it stands (gun-kill/drift restage);
+  // 'disarm' leaves it but puts it back on hold_fire (player-death restage); anything
+  // else — including the bare call _finish/_teardown make — removes every slot.
+  _removeRaidActors(opts = {}) {
+    const raid = this.state && this.state.onboarding && this.state.onboarding.raid;
+    if (!raid || !raid.ids) return;
+    const player = this.state && this.state.player;
+    for (const slot of Object.keys(raid.ids)) {
+      const id = raid.ids[slot];
+      if (slot === 'wing' && (opts.wing === 'keep' || opts.wing === 'disarm')) {
+        if (opts.wing === 'disarm' && id != null && this.state.entities) {
+          const wing = this.state.entities.get(id);
+          // The same stamp gate _raidActor, _onRaidKilled, and the bare removal path below
+          // enforce: entity ids recycle through freeIds, so a kept slot can name a foreign
+          // hull wearing the routed wing's old id — it keeps its own orders and never takes
+          // a stand-down the beat never authored.
+          if (wing && wing.data && wing.data.onboardingRaidWing === true && wing.data.ai) {
+            // A wing that already left honestly keeps its exit record through the restage —
+            // restamping its FLEE/DISENGAGE as a LOITER would park a routed hull mid-field
+            // instead of letting it finish running. wingDone is the same retirement: the
+            // scripted 'onboarding_raid:withdrawn' DISENGAGE is no _raidWingExited shape, but
+            // a wing the beat already released must finish running all the same. A merely
+            // disengaged wing stands down.
+            if (!raid.wingDone && !this._raidWingExited(wing)) {
+              wing.data.ai.roe = 'hold_fire';
+              // Stand the wing down with its record, not just its guns: a live 'onboarding_raid:'
+              // ATTACK_RUN would keep overriding the squad's FOCUS and the silent hull would keep
+              // stalking the player it can no longer shoot.
+              wing.data.ai.activity = normalizeActivity({
+                kind: ActivityKind.LOITER,
+                reason: 'onboarding_raid:standdown',
+                anchor: wing.pos,
+                leashRadius: 0,
+                startedTick: this.state.tick | 0,
+                targetId: null,
+              });
+            }
+            wing.data.ai.forcePlayerTarget = false;
+            wing.data.ai.huntPlayer = false;
+            const combat = wing.data.combat || (wing.data.combat = {});
+            combat.targetId = null;
+            if (combat.lockTarget === this.state.playerId) combat.lockTarget = null;
+          }
+        }
+        continue;
+      }
+      // A dead or egressed wing keeps its slot (wingDone guards the respawn), and entity ids
+      // recycle — never remove whatever hull now wears that id.
+      if (slot === 'wing' && id != null && this.state.entities) {
+        const held = this.state.entities.get(id);
+        if (!held || !held.data || held.data.onboardingRaidWing !== true) {
+          raid.ids[slot] = null;
+          continue;
+        }
+      }
+      if (id != null && this.helpers && typeof this.helpers.removeEntity === 'function') {
+        this.helpers.removeEntity(id);
+      }
+      if (player && id != null && player.targetId === id) player.targetId = null;
+      raid.ids[slot] = null;
+    }
+  },
+
+  // X-02: what "the wing honestly left" means. markFleeing/markSurrendered — and the custody,
+  // surrender-recovery, sanctuary-withdrawal, and parley break-off paths built on the same
+  // shape — stamp a durable denial every authority gate keeps honoring for the hull's life:
+  // pirateDisengaged, motiveSatisfied, or the pirateDisengage record itself. A bare
+  // forceFlee/fsm:'flee' is NOT that record: wingMorale's leader-killed scatter
+  // (_wingMoraleUntil) and difficultyDirector's pin-release hold (_pacingFleeUntil) stamp
+  // exactly those and are built to expire so the hull re-presses when the shock lapses.
+  _raidWingExited(wing) {
+    const data = wing && wing.data;
+    const ai = data && data.ai;
+    if (!ai) return false;
+    if (ai.pirateDisengaged === true || ai.motiveSatisfied === true) return true;
+    const rec = data.pirateDisengage;
+    return !!(rec && (rec.phase === 'flee' || rec.phase === 'surrender'));
+  },
+
+  // Adopt that honest rout as the wing's done state: fled is done. Otherwise a later latch
+  // would restamp a dead-letter ATTACK_RUN + weapons_free on a hull that can never fire, and
+  // the sanctuary identity gate would keep exempting a wing that already left the lesson. A
+  // wing merely scattered or paced off is not adopted — its hold lapses and it re-arms.
+  _adoptRaidWingExit(raid, wing) {
+    const ai = wing && wing.data && wing.data.ai;
+    if (!raid || !ai || !this._raidWingExited(wing)) return false;
+    raid.wingDone = true;
+    // Drop the pins an earlier arming left (markFleeing shape) so the routed hull stops
+    // resolving the player as its target anywhere downstream.
+    ai.forcePlayerTarget = false;
+    ai.huntPlayer = false;
+    const combat = wing.data.combat;
+    if (combat) {
+      if (combat.targetId === this.state.playerId) combat.targetId = null;
+      if (combat.lockTarget === this.state.playerId) combat.lockTarget = null;
+    }
+    return true;
+  },
+
+  _onRaidLatched(payload) {
+    const raid = this._raid();
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!raid || !ob || !beat || beat.key !== 'raid') return;
+    if (payload.targetId !== raid.ids.raider) return;
+    // X-02: the wing holds its fire until the tow actually starts — the first latch on the
+    // raider is the trigger it answers for. Re-latching an armed wing stays quiet.
+    const wing = this._raidActor('wing');
+    if (wing && this._adoptRaidWingExit(raid, wing)) return this._onBeatEvent('raid:latched', payload);
+    if (wing && wing.data && wing.data.ai && !raid.wingDone
+      && wing.data.ai.roe !== 'weapons_free') {
+      // The wing's lesson target is the pilot holding the tow — pin it through the sanctioned
+      // flag and hand it an AUTHORITATIVE ASSIGNMENT: the 'onboarding_raid:' ATTACK_RUN outranks
+      // the squad's advisory vote, so the shared squadId with the passive raider can no longer
+      // vote the offender non-hostile and starve the FOCUS objective (X-02 acquisition fix).
+      wing.data.ai.forcePlayerTarget = true;
+      const player = this.state.entities && typeof this.state.entities.get === 'function'
+        ? this.state.entities.get(this.state.playerId)
+        : null;
+      const raider = this._raidActor('raider');
+      setEntityDoctrine(wing, {
+        activity: {
+          kind: ActivityKind.ATTACK_RUN,
+          reason: 'onboarding_raid:claim_jumper',
+          anchor: (player && player.pos) || (raider && raider.pos) || wing.pos,
+          leashRadius: 2200,
+          startedTick: this.state.tick | 0,
+          targetId: this.state.playerId,
+        },
+        roe: RulesOfEngagement.WEAPONS_FREE,
+      });
+      wing.data.combat = { ...(wing.data.combat || {}), targetId: this.state.playerId };
+      this.bus.emit('comms:popup', {
+        sender: "Claim Jumper's Wing",
+        text: 'Hands off his boat.',
+        category: 'hostile',
+        ttl: 5,
+      });
+      this._sayTutorial("Keep swinging. He can't hold aim.");
+    }
+    this._onBeatEvent('raid:latched', payload);
+  },
+
+  _onRaidWhipImpact(payload) {
+    const raid = this._raid();
+    if (!raid) return;
+    if (payload.targetId !== raid.ids.raider && payload.victimId !== raid.ids.raider) return;
+    raid.lastWhipAt = this.state.simTime || 0;
+    // THE THESIS MOMENT: the thrown raider struck the rock as a projectile. A solid or
+    // crushing impact on the throw-target rock completes the lesson — the enemy became a
+    // projectile, whether or not the hull finally caves.
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!ob || !beat || beat.key !== 'raid') return;
+    const wallId = raid.ids.throwRock != null ? raid.ids.throwRock : (ob.rescue && ob.rescue.ids ? ob.rescue.ids.asteroid : null);
+    if (payload.victimId !== wallId) return;
+    if (payload.rating !== 'solid' && payload.rating !== 'crushing') return;
+    if (!ob.beatDoneAt.raid) {
+      this._beatDone(beat);
+      this._emitMilestone('momentumKill', { cause: 'throwImpact', rating: payload.rating, beat: 'raid' });
+    }
+  },
+
+  // A release is the throw: stamp it too, because the fatal tumble impact can kill before
+  // masslineImpacts' observer scan emits the whip event for that same contact tick.
+  _onRaidReleased(payload) {
+    const raid = this._raid();
+    if (!raid) return;
+    if (payload.targetId !== raid.ids.raider) return;
+    const raider = this._raidActor('raider');
+    const speed = raider && raider.vel
+      ? Math.hypot(Number(raider.vel.x) || 0, Number(raider.vel.z) || 0)
+      : 0;
+    // A dropped line that barely moved is not a throw; anything genuinely moving counts.
+    if (speed < RAID_THROW_MIN_SPEED_WU) return;
+    raid.lastWhipAt = this.state.simTime || 0;
+  },
+
+  _onRaidKilled(payload) {
+    const raid = this._raid();
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!raid || !ob || !beat || beat.key !== 'raid' || !payload) return;
+    // X-02 review round 9: entity ids recycle through freeIds, and the wing keeps its slot
+    // after it leaves (wingDone guards the respawn), so a bare raid.ids.wing match is not
+    // proof. A live occupant of that id without the stamp is a foreign hull — its death is
+    // not the wing's receipt and its kills are not wing strays. An EMPTY slot still honors
+    // the match: a same-tick-swept wing body and a despawned killer leave no occupant, and
+    // those receipts are the only honest close the slot gets.
+    const wingId = raid.ids.wing;
+    const occupant = wingId != null && this.state.entities
+      ? this.state.entities.get(wingId) : null;
+    const wingIdIsForeign = !!(occupant && (!occupant.data
+      || occupant.data.onboardingRaidWing !== true));
+    // X-02 review round 10: an UNSET slot is no wing either. ids.wing stays undefined on the
+    // clinic stage (and if the wing spawn ever fails), so a shapeless receipt — no dead id, or
+    // an uncredited raider kill — would equal it by absence: undefined === undefined latching
+    // wingDone or silently counting a "wing stray" the beat never staged. A null slot is the
+    // same non-wing. Only a recorded id may close or credit the wing.
+    const wingRecorded = wingId != null;
+    // X-02: the wing's own death ends its part — never a restage, never a beat result.
+    if (wingRecorded && payload.id === wingId && !wingIdIsForeign) { raid.wingDone = true; return; }
+    if (payload.id !== raid.ids.raider) return;
+    // X-02 v3: a stray wing round into the towed raider converges like a gun kill — silently,
+    // because "the raider broke off" is not what the player did.
+    if (wingRecorded && !wingIdIsForeign && (payload.killerId === wingId || payload.ownerId === wingId)) {
+      raid.strayKills = (raid.strayKills | 0) + 1;
+      if (raid.strayKills >= 2) {
+        this._beatDone(beat);
+        this._emitMilestone('momentumKill', { cause: 'stray', beat: 'raid' });
+      } else {
+        this._respawnRaidRaider(null);
+      }
+      return;
+    }
+    const credited = payload.killerId === this.state.playerId || payload.ownerId === this.state.playerId;
+    if (!credited) { this._respawnRaidRaider('The raider broke off.'); return; }
+    const now = this.state.simTime || 0;
+    const fromThrow = raid.lastWhipAt != null && (now - raid.lastWhipAt) <= RAID_WHIP_KILL_WINDOW_S;
+    if (fromThrow) {
+      this._beatDone(beat);
+      this._emitMilestone('momentumKill', { cause: 'throw', beat: 'raid' });
+      return;
+    }
+    // Gun kill: retry the lesson once; a second refusal resolves the beat — the world moves on.
+    raid.gunKills += 1;
+    if (raid.gunKills === 1) {
+      this._respawnRaidRaider('Another one, then. Latch him this time.');
+      return;
+    }
+    this._beatDone(beat);
+    this._emitMilestone('momentumKill', { cause: 'guns', beat: 'raid' });
+  },
+
+  _respawnRaidRaider(line, opts = {}) {
+    const raid = this._raid();
+    if (!raid) return;
+    this._spawnRaidCast({ wing: opts.wing || 'keep' });
+    if (line) {
+      this.state.onboarding.beatAction = line;
+      this._sayTutorial(line);
+    }
+    this._refreshBeatPanel();
+  },
+
+  _onRaidPlayerDeath() {
+    const raid = this._raid();
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!raid || !beat || beat.key !== 'raid') return;
+    // The wing survives the restage but stands down until the next first latch.
+    this._respawnRaidRaider('Back in one piece. Latch the raider. Swing him into the rock.',
+      { wing: 'disarm' });
+  },
+
+  // X-02 — the wing fights until the tow teaches its lesson or its own hull says enough:
+  // the beat ending, or hull at 30%, tells it to run through the ordinary flee/egress path.
+  // It is staged hostile, not morale-immune, so the same doctrine and egress rules apply.
+  _stepRaidWing() {
+    const raid = this._raid();
+    if (!raid || raid.wingDone) return;
+    const wing = this._raidActor('wing');
+    if (!wing) return;
+    // A morale scatter exits honestly through pirateDisengage without touching wingDone —
+    // adopt it before the scripted checks so the slot closes within a tick and no later
+    // latch can restamp a dead-letter ATTACK_RUN on a routed hull.
+    if (this._adoptRaidWingExit(raid, wing)) return;
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    const beatDone = !!(ob && ob.beatDoneAt && ob.beatDoneAt.raid != null)
+      || (beat && beat.key !== 'raid');
+    const lowHull = wing.hullMax > 0 && (wing.hull / wing.hullMax) <= 0.30;
+    if (!beatDone && !lowHull) return;
+    raid.wingDone = true;
+    if (wing.data && wing.data.ai) {
+      wing.data.ai.forceFlee = true;
+      wing.data.ai.fsm = 'flee';
+      wing.data.ai.roe = 'hold_fire';
+      // Retire the authoritative assignment honestly (pirateDisengage markFleeing pattern):
+      // a DISENGAGE record kills the FOCUS override and the fire bridge with it — forceFlee is
+      // the transient survival order, this is the durable one. The player-target flags go with
+      // it: once the wing is running it is no longer hunting the pilot.
+      wing.data.ai.forcePlayerTarget = false;
+      wing.data.ai.huntPlayer = false;
+      wing.data.ai.activity = normalizeActivity({
+        kind: ActivityKind.DISENGAGE,
+        reason: 'onboarding_raid:withdrawn',
+        anchor: wing.pos,
+        leashRadius: 0,
+        startedTick: this.state.tick | 0,
+        targetId: null,
+      });
+      const combat = wing.data.combat || (wing.data.combat = {});
+      combat.targetId = null;
+      if (combat.lockTarget === this.state.playerId) combat.lockTarget = null;
+      const intent = wing.data.intent || (wing.data.intent = {});
+      intent.fire = false;
+      intent.fireGroup = null;
+    }
+    this.bus.emit('comms:popup', {
+      sender: "Claim Jumper's Wing",
+      text: "Not for his cut. I'm gone.",
+      category: 'hostile',
+      ttl: 5,
+    });
+    this._sayTutorial("He's running. Let him.");
+  },
+
+  _resolveRaidDone() {
+    const raid = this._raid();
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!raid || !beat || beat.key !== 'raid') return;
+    this._stepRaidWing();
+    const raider = this._raidActor('raider');
+    if (!raider) {
+      // Kill handling stays event-driven (_onRaidKilled) and its emits are synchronous:
+      // a slot with no LIVE occupant after them — emptied by a Continue's id wipe, a
+      // sweep that never killed, or a cast that never landed — restages the lesson
+      // instead of returning forever. A done beat never restages.
+      const slotId = raid.ids && raid.ids.raider;
+      const occupant = slotId != null && this.state.entities
+        ? this.state.entities.get(slotId) : null;
+      if (ob.beatDoneAt.raid == null && !(occupant && occupant.alive !== false)) {
+        this._respawnRaidRaider();
+      }
+      return;
+    }
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (!player || !player.pos) return;
+    // Tow-slam proof: the raider latched and CARRIED into the throw-target rock at speed.
+    // The whip observer only rates energetic contacts; a slow heavy tow that grinds the
+    // raider into the rock is the same lesson landing, so accept the plain contact read.
+    const tetherMirror = this.state.player && this.state.player.tether;
+    const towLatched = !!(tetherMirror && tetherMirror.active && tetherMirror.targetId === raider.id);
+    if (towLatched) {
+      const wallId = raid.ids.throwRock != null ? raid.ids.throwRock
+        : (ob.rescue && ob.rescue.ids ? ob.rescue.ids.asteroid : null);
+      const wallEnt = wallId != null && this.state.entities ? this.state.entities.get(wallId) : null;
+      if (wallEnt && wallEnt.pos && raider.pos) {
+        const towSpeed = Math.hypot(Number(player.vel && player.vel.x) || 0, Number(player.vel && player.vel.z) || 0);
+        const dWallRaider = Math.hypot(raider.pos.x - wallEnt.pos.x, raider.pos.z - wallEnt.pos.z);
+        const contact = (Number(raider.radius) || 8) + (Number(wallEnt.radius) || 26) + 40;
+        if (dWallRaider <= contact && towSpeed >= 40) {
+          this._beatDone(beat);
+          this._emitMilestone('momentumKill', { cause: 'towSlam', beat: 'raid' });
+          return;
+        }
+      }
+    }
+    // A raider that somehow drifts clear restages near the wall — retry, never a wall.
+    // A morale-broken raider is the same failed attempt: it cannot be slammed, and leaving
+    // a 33-hull fugitive circling forever strands the lesson. Restage it like the drift case.
+    const raiderAi = raider.data && raider.data.ai;
+    const raiderFled = raider.alive === false
+      ? false
+      : raiderAi && (raiderAi.fsm === 'flee'
+        || (raiderAi.activity && raiderAi.activity.kind === ActivityKind.DISENGAGE));
+    if ((raiderFled && !towLatched)
+      || Math.hypot(raider.pos.x - player.pos.x, raider.pos.z - player.pos.z) > 3000) {
+      this._respawnRaidRaider('He ran. Follow the diamond and latch him.');
+    }
+  },
+
+  // ── Claimed beat (thesis-first route) — the wanted consequence, experienced ──────────
+  // The wreck's spill is lawfully claimed; a law cutter stands witness. Taking it reports a
+  // payload_theft through the real law owner entry; heat (the only heat writer) raises the
+  // search ring and the player outruns it. Leaving it is a first-class choice: after
+  // CLAIMED_WINDOW_S the tableau stands down and the rail moves on. No walls either way.
+
+  _claimed() {
+    const ob = this.state && this.state.onboarding;
+    return ob && ob.claimed && ob.claimed.active && !ob.finished ? ob.claimed : null;
+  },
+
+  _claimedActor(slot) {
+    const claimed = this._claimed();
+    if (!claimed) return null;
+    const id = claimed.ids && claimed.ids[slot];
+    if (id == null || !this.state.entities) return null;
+    const entity = this.state.entities.get(id);
+    return entity && entity.alive !== false ? entity : null;
+  },
+
+  _enterClaimedBeat() {
+    const st = this.state;
+    const ob = st.onboarding;
+    if (!ob) return;
+    if (!ob.rescue) {
+      ob.beatDoneAt.claimed = st.simTime || 0;
+      return;
+    }
+    ob.claimed = {
+      active: true,
+      enteredAt: st.simTime || 0,
+      ids: { patrol: null, pickups: [] },
+      taken: false,
+      wantedFired: false,
+      clearSince: null,
+      resolved: false,
+    };
+    this._spawnClaimedCast();
+  },
+
+  _spawnClaimedCast() {
+    const st = this.state;
+    const claimed = this._claimed();
+    if (!claimed || !this.helpers || !this.helpers.spawnEntity) return;
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!player || !player.pos) return;
+    this._removeClaimedActors();
+    // Spill site: ahead of the player, on the raid bearing — the wreck the player just made.
+    const raid = st.onboarding.raid;
+    const raider = raid && raid.ids && raid.ids.raider != null && st.entities.get(raid.ids.raider);
+    const wall = st.onboarding.rescue && st.onboarding.rescue.ids
+      ? st.entities.get(st.onboarding.rescue.ids.asteroid)
+      : null;
+    const anchor = raider && raider.pos ? raider
+      : (wall && wall.pos ? wall : player);
+    const ang = Math.atan2(anchor.pos.z - player.pos.z, anchor.pos.x - player.pos.x);
+    const at = (range, bearing) => ({
+      x: player.pos.x + Math.cos(ang + bearing) * range,
+      z: player.pos.z + Math.sin(ang + bearing) * range,
+    });
+    const despawnAt = (st.simTime || 0) + CLAIMED_WINDOW_S + 90;
+    // A restage (fail recovery or a Continue) re-dresses the witness but never re-spills
+    // cargo the pilot already took — taken pickups stay aboard, not duplicated in space.
+    for (let i = 0; !claimed.taken && i < CLAIMED_PICKUP_COUNT; i++) {
+      const ang2 = onboardingRandom(st) * TAU;
+      const pos = at(150 + i * 14, (i - 1) * 0.12);
+      const pickup = this.helpers.spawnEntity({
+        type: 'pickup',
+        pos,
+        vel: { x: Math.cos(ang2) * 3, z: Math.sin(ang2) * 3 },
+        radius: 3,
+        data: {
+          kind: 'cargo', commodityId: 'cmdty_salvage_electronics', amount: 4,
+          onboarding: true, claimedCargo: true, despawnAt,
+        },
+      });
+      if (pickup && pickup.id != null) claimed.ids.pickups.push(pickup.id);
+    }
+    const patrolSpec = makeEnemySpawnSpec('patrol_lawman', 1, at(CLAIMED_WITNESS_OFFSET_WU, 0.35),
+      { startedTick: st.tick });
+    if (patrolSpec) {
+      patrolSpec.name = 'Helios Claims Cutter';
+      patrolSpec.team = 1;
+      patrolSpec.data = patrolSpec.data || {};
+      patrolSpec.data.ai = {
+        ...(patrolSpec.data.ai || {}),
+        passive: true, roe: 'hold_fire', spawnContext: 'onboarding_claims', lawful: true,
+      };
+      patrolSpec.data.lawWitness = true;
+      patrolSpec.data.onboarding = true;
+      patrolSpec.data.claimsCutter = true;
+      const patrol = this.helpers.spawnEntity(patrolSpec);
+      claimed.ids.patrol = patrol && patrol.id != null ? patrol.id : null;
+    }
+  },
+
+  _removeClaimedActors() {
+    const claimed = this.state && this.state.onboarding && this.state.onboarding.claimed;
+    if (!claimed || !claimed.ids) return;
+    const player = this.state && this.state.player;
+    const patrolId = claimed.ids.patrol;
+    if (patrolId != null && this.helpers && typeof this.helpers.removeEntity === 'function') {
+      this.helpers.removeEntity(patrolId);
+    }
+    if (player && patrolId != null && player.targetId === patrolId) player.targetId = null;
+    claimed.ids.patrol = null;
+    for (const id of claimed.ids.pickups || []) {
+      if (id != null && this.helpers && typeof this.helpers.removeEntity === 'function') {
+        this.helpers.removeEntity(id);
+      }
+    }
+    claimed.ids.pickups = [];
+  },
+
+  _onClaimedPickup(payload) {
+    const claimed = this._claimed();
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!claimed || !ob || !beat || beat.key !== 'claimed' || claimed.taken) return;
+    if (!payload || payload.collectorId !== this.state.playerId) return;
+    if (!claimed.ids.pickups.includes(payload.pickupId)) return;
+    claimed.taken = true;
+    claimed.takenAt = this.state.simTime || 0;
+    this._onBeatEvent('claimed:taken', payload);
+    // Report through the real law owner entry. Law alone decides jurisdiction and witnesses;
+    // heat alone consumes an accepted receipt (heat:changed drives the rest of this beat).
+    const law = this.registry && this.registry.get && this.registry.get('lawSecurity');
+    const reportId = `onboarding:${hash32(String(payload.pickupId), 'claimed')}:payload_theft`;
+    const receipt = law && typeof law.reportIncident === 'function'
+      ? law.reportIncident({
+        reportId,
+        kind: 'payload_theft',
+        offenderStableId: 'player',
+        offenderEntityId: this.state.playerId,
+        payloadStableId: `onboarding_claimed:${payload.pickupId}`,
+        causalTick: Number.isInteger(this.state.tick) ? Math.max(0, this.state.tick) : 0,
+        pos: payload.pos && Number.isFinite(payload.pos.x)
+          ? { x: payload.pos.x, z: payload.pos.z }
+          : { x: 0, z: 0 },
+      })
+      : null;
+    if (receipt && receipt.accepted === true) return; // heat:changed completes the experience
+    // Law declined (witness lost, jurisdiction gone): no crime recognized, no wall — move on.
+    this._finishClaimed('reportDenied');
+  },
+
+  _onClaimedHeat(payload) {
+    const claimed = this._claimed();
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!claimed || !ob || !beat || beat.key !== 'claimed') return;
+    const level = Number(payload && (payload.level ?? payload.heat ?? payload.wanted));
+    if (!Number.isFinite(level)) return;
+    if (level > 0) {
+      if (!claimed.wantedFired) claimed.wantedFired = true;
+      // A flicker back INTO wanted un-arms the clear clock — the grace exists to prove
+      // the escape held, and a re-escalation proves it did not.
+      claimed.clearSince = null;
+      return;
+    }
+    // Level 0: the search ring cleared. Hold a short grace so a flicker cannot fake the escape.
+    if (!claimed.wantedFired) return;
+    if (claimed.clearSince == null) claimed.clearSince = this.state.simTime || 0;
+  },
+
+  // TEACH-10 — the first wanted escalation teaches the stand-down path. A UI/onboarding
+  // read of the law transition: heat:changed crossing INTO wanted (wantedCrossed with
+  // wanted true) while a lawful patrol is on glass (lawSecurity.lawfulPatrolOnGlass)
+  // earns one hint naming the surrender verb. Every later heat gain, every patrol-absent
+  // escalation, and every repeat stays silent; player.hints keeps it once per profile.
+  // No heat, rep, credit, cargo, or ship write — the law still owns the escalation.
+  _onWantedStandDownLesson(payload) {
+    if (!payload || payload.wanted !== true || payload.wantedCrossed !== true) return;
+    if (!lawfulPatrolOnGlass(this.state)) return;
+    this._showHint('firstWantedStandDown',
+      'WANTED — cut engines inside a patrol cone to surrender.',
+      payload);
+  },
+
+  _tickClaimed() {
+    const claimed = this._claimed();
+    const ob = this.state.onboarding;
+    const beat = ob && BEATS[ob.currentBeat];
+    if (!claimed || !ob || !beat || beat.key !== 'claimed' || claimed.resolved) return;
+    const now = this.state.simTime || 0;
+    if (!claimed.wantedFired) {
+      // Decline path: the player left the claimed cargo. Stand the tableau down, move on.
+      // A TAKEN cargo whose receipt never raised heat (the law answered "not wanted", or a
+      // Continue restored mid-report) resolves on the same clock from the take — the cargo
+      // is already aboard, so the scene stands down rather than waiting out a ring that
+      // can never come.
+      // Ancient or hand-cut records can lack either stamp; a missing clock re-opens the
+      // full window rather than hanging the tableau on NaN.
+      const idleSince = claimed.taken
+        ? (Number.isFinite(claimed.takenAt) ? claimed.takenAt
+          : (Number.isFinite(claimed.enteredAt) ? claimed.enteredAt : now))
+        : (Number.isFinite(claimed.enteredAt) ? claimed.enteredAt : now);
+      if (now - idleSince >= CLAIMED_WINDOW_S) {
+        this._finishClaimed(claimed.taken ? 'noEscalation' : 'declined');
+      }
+      return;
+    }
+    // The level-0 edge is event-driven, but a restored record can outlive the event that
+    // would close it: if the sim already reads clear, re-arm the grace clock from the
+    // live wanted state rather than waiting on an emit that may never come.
+    if (claimed.clearSince == null && !isPlayerWanted(this.state)) {
+      claimed.clearSince = now;
+    }
+    if (claimed.clearSince != null && now - claimed.clearSince >= CLAIMED_CLEAR_GRACE_S) {
+      this._finishClaimed('cleared');
+    }
+  },
+
+  _finishClaimed(how) {
+    const claimed = this._claimed();
+    const ob = this.state.onboarding;
+    if (!claimed || !ob || claimed.resolved) return;
+    claimed.resolved = true;
+    claimed.active = false;
+    const beat = BEATS[ob.currentBeat];
+    this._removeClaimedActors();
+    if (beat && beat.key === 'claimed') this._beatDone(beat);
+    this._emitMilestone('wantedBeat', { how, beat: 'claimed' });
+  },
+
+  // ── Missing three (PQ-163.02) — boost, stroke, well in the grab → seam gap ───────────────
+  _missingThreeRecord() {
+    const ob = this.state && this.state.onboarding;
+    const three = ob && ob.missingThree ? ob.missingThree : null;
+    return three ? normalizeMissingThreeState(three) : null;
+  },
+
+  _missingThree() {
+    const ob = this.state && this.state.onboarding;
+    return ob && ob.missingThree && ob.missingThree.active && !ob.finished ? ob.missingThree : null;
+  },
+
+  _missingThreeActor(slot) {
+    const three = this._missingThreeRecord();
+    if (!three) return null;
+    const id = three.ids && three.ids[slot];
+    if (id == null || !this.state.entities) return null;
+    const entity = this.state.entities.get(id);
+    return entity && entity.alive !== false ? entity : null;
+  },
+
+  _missingThreeActors(slot) {
+    const three = this._missingThreeRecord();
+    const ids = three && three.ids && Array.isArray(three.ids[slot]) ? three.ids[slot] : [];
+    const out = [];
+    for (const id of ids) {
+      if (id == null || !this.state.entities) continue;
+      const entity = this.state.entities.get(id);
+      if (entity && entity.alive !== false) out.push(entity);
+    }
+    return out;
+  },
+
+  _maybeAdvanceMissingThree() {
+    const three = this._missingThree();
+    if (!three || three.current || three.completed) return;
+    const next = MISSING_THREE_ORDER.find((key) => three.beats[key].state !== 'done');
+    if (!next) {
+      this._missingThreeAllDone();
+      return;
+    }
+    // The thesis-first route runs the raid + claimed beats between the rescue grab and the
+    // movement trio: the wanted consequence is the spine, the missing three follow it.
+    // A slice with no rescue rail has no spine either — the claimed-beat wait would hold
+    // forever on a tableau that can never enter, so both gates dissolve together.
+    const ob = this.state.onboarding;
+    const rescue = ob && ob.rescue;
+    if (rescue && ob.beatDoneAt.claimed == null) return;
+    const prereq = MISSING_THREE_PREREQ[next];
+    if (prereq === 'grab') {
+      // No rescue rail (scenario slices, stripped records): the grab prereq dissolves —
+      // an absent rail has no grab to wait on, and the drills downstream still owe
+      // the player their lessons.
+      if (rescue && rescue.beats && rescue.beats.grab && rescue.beats.grab.state !== 'done') return;
+    } else if (!three.beats[prereq] || three.beats[prereq].state !== 'done') {
+      return;
+    }
+    if (prereq !== 'grab') {
+      const now = this.state.simTime || 0;
+      if (now - this._lastTextAtS < SILENCE_S) return;
+    }
+    this._startMissingThreeBeat(next);
+  },
+
+  _startMissingThreeBeat(key) {
+    const three = this._missingThree();
+    const ob = this.state.onboarding;
+    if (!three || !ob || three.beats[key].state === 'done') return;
+    const first = !MISSING_THREE_ORDER.some((k) => three.beats[k].state === 'done' || three.beats[k].state === 'current');
+    three.current = key;
+    three.beats[key].state = 'current';
+    three.lastBoost = false;
+    three.lastStroke = false;
+    if (three.startedAt == null) three.startedAt = this.state.simTime || 0;
+    const line = missingThreeBeatLine(key);
+    ob.beatAction = line;
+    this._sayTutorial(line);
+    // Only verbs with an authored Range rung point at the Range. Repulsor and cone rungs
+    // exist as drill assets but no live rung rows — pointing now would land the player on
+    // the wrong drill, so these two teach without the pointer.
+    const rungId = missingThreeRangeRungId(key);
+    ob.rangePromptActive = rungId != null;
+    ob.pointedAtRange = rungId != null;
+    ob.rangePrompt = rungId != null ? RANGE_POINTER_LINE : null;
+    ob.rangePromptRungId = rungId;
+    if (rungId != null) {
+      this.bus.emit('onboarding:rangePrompt', {
+        active: true,
+        text: RANGE_POINTER_LINE,
+        rungId,
+        atS: this.state.simTime || 0,
+        beat: key,
+      });
+    }
+    if (first) this.bus.emit('firsthour:started', buildFirstHourStartedEvent(this.state.simTime || 0));
+    if (key === 'well') this._spawnWellScrap();
+    else if (key === 'repulsor') this._spawnRepulsorClump();
+    else if (key === 'cone') this._spawnConeLane();
+    this._setMissingThreeWaypoint(true);
+    this._refreshBeatPanel();
+  },
+
+  _spawnWellScrap() {
+    const st = this.state;
+    const three = this._missingThree();
+    if (!three || !this.helpers || !this.helpers.spawnEntity) return;
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!player || !player.pos) return;
+    const oldId = three.ids.scrap;
+    if (oldId != null && typeof this.helpers.removeEntity === 'function') {
+      this.helpers.removeEntity(oldId);
+    }
+    const spawned = this.helpers.spawnEntity(makeWellScrapSpec(player.pos));
+    three.ids.scrap = spawned && spawned.id != null ? spawned.id : null;
+  },
+
+  _spawnRepulsorClump() {
+    const three = this._missingThree();
+    if (!three || !this.helpers || !this.helpers.spawnEntity) return;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (!player || !player.pos) return;
+    for (const id of three.ids.clump || []) {
+      if (id != null && typeof this.helpers.removeEntity === 'function') this.helpers.removeEntity(id);
+    }
+    three.ids.clump = [];
+    for (const spec of makeRepulsorClumpSpec(player.pos)) {
+      const spawned = this.helpers.spawnEntity(spec);
+      if (spawned && spawned.id != null) three.ids.clump.push(spawned.id);
+    }
+  },
+
+  _spawnConeLane() {
+    const three = this._missingThree();
+    if (!three || !this.helpers || !this.helpers.spawnEntity) return;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (!player || !player.pos) return;
+    for (const id of three.ids.lane || []) {
+      if (id != null && typeof this.helpers.removeEntity === 'function') this.helpers.removeEntity(id);
+    }
+    three.ids.lane = [];
+    for (const spec of makeConeLaneSpec(player.pos, player.rot)) {
+      const spawned = this.helpers.spawnEntity(spec);
+      if (spawned && spawned.id != null) three.ids.lane.push(spawned.id);
+    }
+  },
+
+  _removeMissingThreeActors() {
+    const three = this.state && this.state.onboarding && this.state.onboarding.missingThree;
+    if (!three || !three.ids) return;
+    const player = this.state && this.state.player;
+    const ids = [three.ids.scrap, ...(three.ids.clump || []), ...(three.ids.lane || [])];
+    for (const id of ids) {
+      if (id == null) continue;
+      if (this.helpers && typeof this.helpers.removeEntity === 'function') this.helpers.removeEntity(id);
+      if (player && player.targetId === id) player.targetId = null;
+    }
+    three.ids.scrap = null;
+    three.ids.clump = [];
+    three.ids.lane = [];
+  },
+
+  _setMissingThreeWaypoint(force) {
+    const st = this.state;
+    const ob = st.onboarding;
+    const three = this._missingThree();
+    if (!three || !three.current || !st.nav) return false;
+    // Keep an armed manual course authoritative across automatic lesson restaging.
+    if (hasPlayerSelectedNavWaypoint(st)) return true;
+    const key = three.current;
+    const line = missingThreeBeatLine(key);
+    let target = null;
+    if (key === 'boost') target = this._findBeacon();
+    else if (key === 'well') {
+      const scrap = this._missingThreeActor('scrap');
+      if (scrap) target = { pos: scrap.pos, label: 'Scrap' };
+    } else if (key === 'repulsor') {
+      const clump = this._missingThreeActors('clump');
+      if (clump.length) target = { pos: clump[0].pos, label: 'Scrap' };
+    } else if (key === 'cone') {
+      const lane = this._missingThreeActors('lane');
+      if (lane.length) {
+        const mid = lane[Math.floor(lane.length / 2)];
+        target = { pos: mid.pos, label: 'Lane' };
+      }
+    }
+    const existing = st.nav.waypoint;
+    if ((!target || !target.pos)) {
+      if (existing && existing.onboarding && String(existing.markerId || '').startsWith('missingThree:')) {
+        st.nav.waypoint = null;
+      }
+      return true;
+    }
+    if (existing && !existing.onboarding && !force) {
+      const foreignKind = existing.kind;
+      if (foreignKind !== 'mission' && foreignKind !== 'story') return true;
+    }
+    st.nav.waypoint = {
+      onboarding: true,
+      pos: { x: target.pos.x, z: target.pos.z },
+      label: target.label,
+      reason: line,
+      markerId: `missingThree:${key}`,
+      markerKind: ONBOARDING_OBJECTIVE_MARKER.markerKind,
+      mapLabel: ONBOARDING_OBJECTIVE_MARKER.mapLabel,
+    };
+    if (ob) ob.beatAction = line;
+    return true;
+  },
+
+  // TEACH-06 — FIELD_ESCAPES had no consumer: the first time a field volume actually owns the
+  // player hull, speak that power's authored escape once (player.hints keeps it once per kind per
+  // profile). Player-deployed fields exclude their source hull in the kernel, so this can only
+  // fire on NPC/environmental traps — a hostile well, an anchor snare, a stranger's cone.
+  _teachFieldEscapes() {
+    const st = this.state;
+    if (!st || !st.player) return;
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!player || !player.pos) return;
+    const snapshot = activeFieldSnapshot(st);
+    const hints = st.player.hints || {};
+    const profile = this._fieldEscapeProfile
+      || (this._fieldEscapeProfile = { id: null, type: null, team: null });
+    profile.id = player.id;
+    profile.type = player.type;
+    profile.team = player.team;
+    for (const field of snapshot) {
+      // The kernel records a skim sheet by its volume kind ('sheet'); the escape table keys
+      // the power id ('skim'). Every other kind is already the power's own key.
+      const key = field && field.kind === FIELD_KINDS.SHEET ? 'skim' : (field && field.kind);
+      const escape = fieldEscapeOf(key);
+      if (!escape || hints['fieldEscape:' + escape.id]) continue;
+      if (!fieldContainsPoint(field, player.pos.x, player.pos.z)) continue;
+      if (!fieldAffectsBody(field, profile)) continue;
+      this._showHint('fieldEscape:' + escape.id, escape.name + ' — ' + escape.sentence);
+      return; // one lesson per pass — a stack of fields must not stack toasts in one tick
+    }
+  },
+
+  /** TEACH-03 — the cadence winch lesson is earned by the first swing that could actually
+   *  pump: the line is live and the pair's own technique rating reads 'swing'. A straight
+   *  tow, a slack line, or a dead payload never qualifies — and player.hints keeps the
+   *  lesson once-per-profile so later swings stay silent. */
+  _teachCadencePump() {
+    if (!massline2Flag('throw')) return;
+    const st = this.state;
+    if (!st || !st.player) return;
+    if (st.player.hints && st.player.hints.masslineCadenceWinch) return;
+    const tether = st.player.tether;
+    if (!tether || tether.active !== true || tether.targetId == null) return;
+    const owner = st.entities && st.entities.get(st.playerId);
+    const payload = st.entities && st.entities.get(tether.targetId);
+    if (!owner || !payload || payload.alive === false) return;
+    const pair = readCadencePair(owner, payload, Number(tether.restLength) || 0);
+    const rated = rateCadenceTechnique(pair, { phase: tether.phase });
+    if (rated.technique !== 'swing') return;
+    this._showHint('masslineCadenceWinch', firstUseLine('masslineCadenceWinch'), { entityId: tether.targetId });
+  },
+
+  /** TEACH-14 — the first swing that loads the rope toward its limit names the release
+   *  window. Earned when the pair's technique rating reads 'swing' and line strain or
+   *  strain-glow crosses the danger band (STRAIN_GLOW_DANGER_THRESHOLD). Once per profile
+   *  via player.hints.masslineReleaseWindow so later swings stay silent. */
+  _teachReleaseWindow(payload = null) {
+    if (!massline2Flag('throw')) return;
+    const st = this.state;
+    if (!st || !st.player) return;
+    if (st.player.hints && st.player.hints.masslineReleaseWindow) return;
+    const tether = st.player.tether;
+    if (!tether || tether.active !== true || tether.targetId == null) return;
+    if (payload) {
+      if ((payload.actorId ?? payload.ownerId) !== st.playerId) return;
+      if (payload.ownerId != null && payload.ownerId !== st.playerId) return;
+      if (payload.targetId != null && payload.targetId !== tether.targetId) return;
+      if (payload.attachmentId != null && payload.attachmentId !== tether.attachmentId) return;
+    }
+    const owner = st.entities && st.entities.get(st.playerId);
+    const targetId = tether.targetId;
+    const target = st.entities && st.entities.get(targetId);
+    if (!owner || !target || target.alive === false) return;
+    const pair = readCadencePair(owner, target, Number(tether.restLength) || 0);
+    const rated = rateCadenceTechnique(pair, { phase: tether.phase });
+    if (rated.technique !== 'swing') return;
+    const eventRatio = Number(payload && payload.ratio);
+    const strain = Math.max(
+      Number.isFinite(eventRatio) ? eventRatio : 0,
+      Number(tether.strainGlow) || 0,
+      Number(tether.strain) || 0,
+      Number(tether.load) || 0,
+    );
+    if (strain < STRAIN_GLOW_DANGER_THRESHOLD && tether.phase !== 'overload') return;
+    const label = verbBindingLabel(st, 'tether') || resolveActionLabel(st, 'tether', { empty: 'RELEASE' });
+    const text = label
+      ? (/[.!?]$/.test(label)
+        ? `Line near limit — release early — ${label}`
+        : `Line near limit — release early — ${label}.`)
+      : 'Line near limit — release early.';
+    this._showHint('masslineReleaseWindow', text, { entityId: targetId });
+  },
+
+  // SFQ-I008 — on a keyboard the G combat stick is a relative stick whose origin is
+  // the cursor, which nothing else says. One hint names the live-bound key and that
+  // cursor origin the first time the stick toggles on in flight. The device comes from
+  // state.input.promptDevice — worker-visible and kept current by the worker lane (D214) —
+  // never the main-thread-only prompt-device flag. A pad names its own toggle button
+  // but has no cursor origin to explain, so it stays quiet, and touch (no key to name)
+  // stays quiet. While the staged rail owns the voice the lesson parks and speaks once
+  // the rail lets go, if the stick is still on.
+  _speakCombatStickHint(state) {
+    const st = state || this.state;
+    if (!st || !st.input) return;
+    const on = st.input.autoFire === true;
+    if (this._autoFireWasOn == null) {
+      // A loaded save or a new game is not the pilot pressing the key: sample the
+      // stick where it already is so only a later off-to-on counts as a toggle.
+      this._autoFireWasOn = on;
+      return;
+    }
+    const was = this._autoFireWasOn === true;
+    this._autoFireWasOn = on;
+    if (!on) return;
+    const hintsOff = !!(st.settings && st.settings.gameplay && st.settings.gameplay.tutorialHints === false);
+    const inFlight = st.mode === 'flight' && !(st.ui && st.ui.docked);
+    const survival = !!(st.run && st.run.kind === 'survival' && st.run.phase !== 'inactive');
+    const device = st.input.promptDevice === 'gamepad' || st.input.promptDevice === 'touch'
+      ? st.input.promptDevice : 'kbm';
+    const kbm = device === 'kbm';
+    if (!was && inFlight && kbm && !hintsOff && !survival) this._combatStickHintOwed = true;
+    if (!this._combatStickHintOwed) return;
+    if (st.player && st.player.hints && st.player.hints.combatStickOrigin) {
+      this._combatStickHintOwed = false;
+      return;
+    }
+    if (!inFlight || !kbm || hintsOff || survival || this._tutorialRailOwnsVoice()) return;
+    const label = verbBindingLabel(st, 'autoFire');
+    if (!label) return;
+    const text = `${label} — the cursor is the stick's center. Deflect from that center to fly.`;
+    this._showHint('combatStickOrigin', text, { shipId: st.playerId });
+    if (st.player && st.player.hints && st.player.hints.combatStickOrigin) this._combatStickHintOwed = false;
+  },
+
+  _noteMissingThreeUses() {
+    const three = this._missingThreeRecord();
+    if (!three) return;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    const boosting = missingThreeBoosting(this.state, player);
+    if (boosting && !three.lastBoost) this._noteVerbUse('boost');
+    three.lastBoost = boosting;
+    const stroking = missingThreeStrokeActive(this.state.input);
+    if (stroking && !three.lastStroke) this._noteVerbUse('stroke');
+    three.lastStroke = stroking;
+  },
+
+  _noteVerbUse(verb) {
+    const ob = this.state && this.state.onboarding;
+    const three = this._missingThreeRecord();
+    if (!ob || !three || !three.used[verb]) return;
+    const atS = this.state.simTime || 0;
+    const startedAt = three.startedAt != null ? three.startedAt : (ob.startedAt || 0);
+    const withinHour = missingThreeWithinHour(atS, startedAt, FIRST_HOUR_S);
+    const current = three.current === verb;
+    const taught = three.beats[verb].state === 'done';
+    const rec = three.used[verb];
+    rec.count += 1;
+    if (rec.firstAt == null) rec.firstAt = atS;
+    if (current) rec.prompted = true;
+    else rec.unprompted = true;
+    this.bus.emit('firsthour:verb', buildFirstHourVerbEvent(verb, atS, {
+      prompted: current,
+      unprompted: !current,
+      taught,
+      withinHour,
+    }));
+    this.bus.emit('verb:used', { verb, atS, prompted: current });
+    if (current) this._missingThreeDone(verb);
+  },
+
+  _onMissingThreeBoostStart(payload) {
+    if (payload && this.state.playerId != null && payload.shipId != null && payload.shipId !== this.state.playerId) {
+      return;
+    }
+    const three = this._missingThreeRecord();
+    if (!three || three.lastBoost) return;
+    this._noteVerbUse('boost');
+    three.lastBoost = true;
+  },
+
+  _onMissingThreeFieldDeploy(payload) {
+    if (!payload || payload.npc) return;
+    const kind = payload.kind;
+    if (kind !== 'well' && kind !== 'repulsor') return;
+    const source = this.state?.entities?.get ? this.state.entities.get(payload.sourceId) : null;
+    const isPlayer = payload.isPlayer
+      || payload.sourceId === this.state?.playerId
+      || (source && source.ownerId === this.state?.playerId)
+      || (!payload.planted && (payload.sourceId == null || payload.sourceId === this.state?.playerId));
+    if (kind === 'well') {
+      if (!isPlayer) return;
+      this._noteVerbUse('well');
+      this._showHint('firstWellDrop', firstUseLine('firstWellDrop') || 'Well deployed. Pull the scrap.', payload);
+      return;
+    }
+    if (!isPlayer) return;
+    this._noteVerbUse('repulsor');
+    this._showHint('firstRepulsorDrop', firstUseLine('firstRepulsorDrop') || 'Repulsor out.', payload);
+  },
+
+  _onMissingThreeCone(payload) {
+    if (!payload || payload.active !== true || payload.npc) return;
+    if (payload.sourceId != null && payload.sourceId !== this.state?.playerId) return;
+    this._noteVerbUse('cone');
+    this._showHint('firstConeOn', firstUseLine('firstConeOn') || 'Cone on.', payload);
+  },
+
+  _resolveMissingThreeDone() {
+    const three = this._missingThree();
+    const key = three && three.current;
+    if (!key) return;
+    if (key === 'well' && !this._missingThreeActor('scrap')) this._spawnWellScrap();
+    else if (key === 'repulsor' && this._missingThreeActors('clump').length === 0) this._spawnRepulsorClump();
+    else if (key === 'cone' && this._missingThreeActors('lane').length === 0) this._spawnConeLane();
+  },
+
+  _missingThreeDone(key) {
+    const three = this._missingThree();
+    if (!three || three.beats[key].state === 'done') return;
+    const atS = this.state.simTime || 0;
+    three.beats[key].state = 'done';
+    three.beats[key].doneAt = atS;
+    if (three.current === key) three.current = null;
+    this.bus.emit('firsthour:beat', { ...buildFirstHourBeatEvent(key, 'complete', atS), fails: three.beats[key].fails });
+    this._stampStoreClause(key);
+    if (MISSING_THREE_ORDER.every((k) => three.beats[k].state === 'done')) this._missingThreeAllDone();
+    this._setMissingThreeWaypoint(true);
+    this._refreshBeatPanel();
+  },
+
+  _missingThreeAllDone() {
+    const three = this._missingThree();
+    if (!three || three.completed) return;
+    three.completed = true;
+    three.completedAt = this.state.simTime || 0;
+    three.current = null;
+    three.active = false;
+    // The drill props were staged to be practiced on, not kept: whatever is still
+    // standing despawns with the rail instead of orbiting as unmarked debris forever.
+    this._removeMissingThreeActors();
+    this.bus.emit('firsthour:complete', buildFirstHourCompleteEvent(three.completedAt));
+  },
+
+  _setObjectiveWaypoint(force) {
+    const st = this.state;
+    const ob = st.onboarding;
+    if (!ob || !ob.active || ob.finished || !st.nav) return;
+    // Entry/recovery stamps are automatic. Do not let them replace a player-selected local course
+    // while its own autopilot/ribbon is still active; explicit map course actions can retarget it.
+    if (hasPlayerSelectedNavWaypoint(st)) {
+      if (BEATS[ob.currentBeat]?.key === 'tether') {
+        const context = !tetherLessonIsLocal(st, this) ? 'away' : hasTrackedActiveMission(st) ? 'tracked' : 'lesson';
+        if (this._tetherCueContext !== context) {
+          this._tetherCueContext = context;
+          this._refreshBeatPanel();
+        }
+      }
+      return;
+    }
+    // A current rescue verb owns the marker: one verb, one diamond, same beat-stable identity.
+    if (this._setRescueWaypoint(force)) return;
+    if (this._setMissingThreeWaypoint(force)) return;
+    const beat = BEATS[ob.currentBeat];
+    const existing = st.nav.waypoint;
+    if (beat?.key === 'tether') {
+      const away = !tetherLessonIsLocal(st, this);
+      const yielding = away || hasTrackedActiveMission(st);
+      const context = away ? 'away' : yielding ? 'tracked' : 'lesson';
+      if (yielding && existing?.onboarding && existing.markerId === 'onboarding:tether') {
+        st.nav.waypoint = null;
+      }
+      if (this._tetherCueContext !== context) {
+        this._tetherCueContext = context;
+        this._refreshBeatPanel();
+      }
+      if (yielding) return;
+    }
+    if (beat && ob.pace && ob.pace.folded && ob.pace.folded[beat.key]) {
+      if (existing && existing.onboarding) st.nav.waypoint = null;
+      return;
+    }
+    // The raid diamond tracks the raider; the claimed diamond tracks the spill until taken.
+    if (beat && beat.key === 'raid') {
+      const raid = this._raid();
+      const raider = this._raidActor('raider');
+      if (!raid || !raider) {
+        if (existing && existing.onboarding && String(existing.markerId || '').startsWith('onboarding:raid')) {
+          st.nav.waypoint = null;
+        }
+        return;
+      }
+      st.nav.waypoint = {
+        onboarding: true,
+        pos: { x: raider.pos.x, z: raider.pos.z },
+        label: 'Raider',
+        reason: ob.beatAction || beat.line,
+        markerId: 'onboarding:raid',
+        markerKind: ONBOARDING_OBJECTIVE_MARKER.markerKind,
+        mapLabel: ONBOARDING_OBJECTIVE_MARKER.mapLabel,
+      };
+      return;
+    }
+    if (beat && beat.key === 'claimed') {
+      const claimed = this._claimed();
+      const wantedFired = claimed && claimed.wantedFired;
+      let target = null;
+      if (!wantedFired) {
+        const pickups = claimed && claimed.ids ? claimed.ids.pickups : [];
+        let best = null, bestD = Infinity;
+        const p = st.entities && st.entities.get(st.playerId);
+        for (const id of pickups || []) {
+          const e = id != null && st.entities ? st.entities.get(id) : null;
+          if (!e || e.alive === false || !e.pos) continue;
+          const d = p && p.pos ? Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z) : 0;
+          if (d < bestD) { bestD = d; best = e; }
+        }
+        if (best) target = { pos: best.pos, label: 'Claimed Cargo' };
+      }
+      if (!target) {
+        if (existing && existing.onboarding && String(existing.markerId || '').startsWith('onboarding:claimed')) {
+          st.nav.waypoint = null;
+        }
+        return;
+      }
+      st.nav.waypoint = {
+        onboarding: true,
+        pos: { x: target.pos.x, z: target.pos.z },
+        label: target.label,
+        reason: ob.beatAction || beat.line,
+        markerId: 'onboarding:claimed',
+        markerKind: ONBOARDING_OBJECTIVE_MARKER.markerKind,
+        mapLabel: ONBOARDING_OBJECTIVE_MARKER.mapLabel,
+      };
+      return;
+    }
+    // The B4 flight lesson ends at acceptance. Keep the tutorial state alive for completion/B5,
+    // but never reclaim the real delivery's route with the old Helios docking marker.
+    if (beat && beat.key === 'dock' && ob.recommendedMissionId) {
+      if (st.nav.waypoint && st.nav.waypoint.onboarding) st.nav.waypoint = null;
+      return;
+    }
+    // While teaching, reclaim mission/story claims so the opening marker stays onboarding-owned.
+    // Automatic stamps reach this point only when no manual nav course owns the waypoint. Mission
+    // and story claims still yield to the opening objective while the tutorial is active.
+    if (existing && !existing.onboarding && !force) {
+      const foreignKind = existing.kind;
+      if (foreignKind !== 'mission' && foreignKind !== 'story') return;
+    }
+    // Only the current physical lesson owns a waypoint; the marker identity stays beat-stable.
+    let target = null;
+    if (beat && (beat.key === 'thrust' || beat.key === 'brake')) target = this._findBeacon();
+    else if (beat && (beat.key === 'marker' || beat.key === 'focus'
+      || beat.key === 'burst' || beat.key === 'disengage')) {
+      const trainer = this._trainingActor();
+      // The drill actor plays the fiction's fleeing raider; the tracker names the fiction,
+      // never the training rig (the legacy route still bills the entity "SCN Flight Trainer").
+      if (trainer) target = { pos: trainer.pos, label: trainer.name && !/trainer/i.test(trainer.name) ? trainer.name : 'Fleeing Raider' };
+    }
+    else if (beat && beat.key === 'tether') {
+      const derelict = this._liveTrainingDerelict();
+      if (derelict) target = { pos: derelict.pos, label: 'Derelict' };
+    }
+    else if (beat && beat.key === 'seam') {
+      const rock = this._miningRockId != null && st.entities && st.entities.get(this._miningRockId);
+      if (rock && rock.alive !== false) target = { pos: rock.pos, label: 'Bright Seam' };
+    }
+    else if (beat && beat.key === 'dock') target = this._findHelios();
+    if (!target || !target.pos) {
+      if (existing && existing.onboarding) st.nav.waypoint = null;
+      return;
+    }
+    // HUD mission tracker reads wp.reason || wp.label as the sole persistent actionable line
+    // (hud.js Tutorial Objective branch). Prefer the beat verb in reason; keep short nav label.
+    st.nav.waypoint = buildOnboardingObjectiveWaypoint({
+      ...beat,
+      line: beat.key === 'tether' ? `Optional: ${ob.beatAction || beat.line}` : ob.beatAction || beat.line,
+    }, target);
+  },
+
+  _clearObjectiveWaypoint() {
+    const nav = this.state && this.state.nav;
+    if (nav && nav.waypoint && nav.waypoint.onboarding) nav.waypoint = null;
+  },
+
+  // Find the beacon entity (B0/B1 waypoint target). Falls back to the nearest asteroid if no beacon
+  // type exists in the live scene (the 47a opening spawns a kessler_handoff_beacon).
+  _findBeacon() {
+    const index = this.state.entityIndex;
+    const list = (index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && Array.isArray(index.radarContacts))
+      ? index.radarContacts
+      : (this.state.entityList || []);
+    let beacon = null;
+    for (const e of list) {
+      if (!e || !e.alive || !e.pos) continue;
+      if (e.type === 'beacon') { beacon = e; break; }
+    }
+    if (beacon) return { pos: beacon.pos, label: 'Beacon' };
+    // Fallback: nearest non-respawning asteroid (the "mass signal").
+    const p = this.state.entities.get(this.state.playerId);
+    if (!p) return null;
+    const mineables = indexedTypeScan(this.state, 'mineables');
+    let best = null, bestD = Infinity;
+    for (const e of mineables) {
+      if (!e || !e.alive || e.type !== 'asteroid' || (e.data && e.data.respawnAt != null)) continue;
+      const dx = e.pos.x - p.pos.x, dz = e.pos.z - p.pos.z;
+      const d = dx * dx + dz * dz;
+      if (d < bestD) { bestD = d; best = e; }
+    }
+    return best ? { pos: best.pos, label: 'Beacon' } : null;
+  },
+
+  _findHelios() {
+    const byStationId = this.state.entityIndex && this.state.entityIndex.byStationId;
+    const indexed = byStationId && typeof byStationId.get === 'function'
+      && byStationId.get('station_helios');
+    if (indexed && indexed.alive && indexed.type === 'station' && indexed.pos) {
+      const name = (indexed.data && (indexed.data.name || indexed.data.stationName)) || 'HELIOS';
+      return { pos: indexed.pos, label: name };
+    }
+    const list = indexedTypeScan(this.state, 'stations');
+    for (const e of list) {
+      if (!e || !e.alive || e.type !== 'station' || (e.data && e.data.isGate)) continue;
+      if (e.data && e.data.stationId === 'station_helios') {
+        const name = e.data.name || e.data.stationName || 'HELIOS';
+        return { pos: e.pos, label: name };
+      }
+    }
+    // Fallback: nearest station.
+    const p = this.state.entities.get(this.state.playerId);
+    if (!p) return null;
+    let best = null, bestD = Infinity;
+    for (const e of list) {
+      if (!e || !e.alive || e.type !== 'station' || (e.data && e.data.isGate)) continue;
+      const dx = e.pos.x - p.pos.x, dz = e.pos.z - p.pos.z;
+      const d = dx * dx + dz * dz;
+      if (d < bestD) { bestD = d; best = e; }
+    }
+    return best ? { pos: best.pos, label: 'Station' } : null;
+  },
+
+  // ---- DOM ------------------------------------------------------------------------------------
+  // All DOM surfaces are browser sugar around the sim-side beat FSM; headless hosts (probes,
+  // playthrough pilots) run the same state machine with the panel absent.
+  _injectStyle() {
+    if (typeof document === 'undefined') return;
+    if (document.getElementById(STYLE_ID)) return;
+    const s = document.createElement('style');
+    s.id = STYLE_ID;
+    s.textContent = `
+    #${PANEL_ID} { position:relative; width:100%; z-index:60; pointer-events:none;
+      font-family:var(--hud-body, "IBM Plex Sans", "Segoe UI", system-ui, sans-serif); }
+    #ui-root > #${PANEL_ID} { position:absolute; left:20px; top:150px; width:340px; }
+    /* J07 de-box (NEXT_JOBS J07 "ink on vacuum"): the onboarding status card was the topmost
+       plate in the left stack. Brackets + a per-glyph scrim read the same and spend far less ink. */
+    #${PANEL_ID} .sf-ob-card { padding:8px 10px 9px;
+      ${deboxCss()} text-shadow:${INK_SHADOW}; }
+    #${PANEL_ID} .sf-ob-kicker { font:700 9px var(--hud-display,"Saira SemiCondensed",sans-serif); letter-spacing:.12em;
+      text-transform:uppercase; color:var(--hud-cyan,#83ced8); margin-bottom:4px; display:flex; justify-content:space-between;
+      text-shadow:none; }
+    #${PANEL_ID} .sf-ob-title { font-size:13px; color:var(--hud-paper,#e7edf5); font-weight:500; margin-bottom:4px; text-shadow:none; }
+    #${PANEL_ID} .sf-ob-hint { font-size:12px; line-height:1.45; color:var(--text-secondary,#84a0c8); text-shadow:var(--text-shadow-hard); }
+    #${PANEL_ID} .sf-ob-flavor { font-size:11.5px; line-height:1.45; color:var(--ink-mute,#6b7d99);
+      font-style:italic; margin-top:7px; border-top:1px dashed rgba(132,160,200,.18); padding-top:6px; text-shadow:var(--text-shadow-hard); }
+    #${PANEL_ID} .sf-ob-progress { margin-top:7px; font-family:var(--mono,monospace); font-size:11px; color:var(--accent-2,#7af7d0); }
+    #${PANEL_ID} .sf-ob-steps { display:flex; gap:3px; margin-top:7px; }
+    #${PANEL_ID} .sf-ob-dot { flex:1; height:2px; border-radius:0; background:rgba(132,160,200,.2); }
+    #${PANEL_ID} .sf-ob-dot.done { background:#789da6; box-shadow:none; }
+    #${PANEL_ID} .sf-ob-dot.curr { background:var(--hud-cyan,#83ced8); box-shadow:0 0 4px rgba(131,206,216,.35); }
+    @media (max-width:760px), (max-height:620px) {
+      .sf-leftcontext > #${PANEL_ID} { left:auto !important; top:auto !important; width:100% !important; }
+    }
+    `;
+    document.head.appendChild(s);
+  },
+
+  _buildPanel() {
+    if (typeof document === 'undefined') return;
+    if (this._panel) this._panel.remove();
+    const root = document.querySelector('.sf-leftcontext') || document.getElementById('ui-root') || document.body;
+    const el = document.createElement('div');
+    el.id = PANEL_ID;
+    el.setAttribute('role', 'region');
+    el.setAttribute('aria-label', 'Objective tracker');
+
+    const card = document.createElement('div');
+    card.className = 'sf-ob-card';
+
+    const kicker = document.createElement('div');
+    kicker.className = 'sf-ob-kicker';
+    const kickerLabel = document.createElement('span');
+    kickerLabel.textContent = 'Objective';
+    const count = document.createElement('span');
+    count.className = 'sf-ob-count';
+    kicker.appendChild(kickerLabel);
+    kicker.appendChild(count);
+
+    const body = document.createElement('div');
+    body.className = 'sf-ob-body';
+    const title = document.createElement('div');
+    title.className = 'sf-ob-title';
+    body.appendChild(title);
+
+    const steps = document.createElement('div');
+    steps.className = 'sf-ob-steps';
+    steps.setAttribute('aria-hidden', 'true');
+
+    card.appendChild(kicker);
+    card.appendChild(body);
+    card.appendChild(steps);
+    el.appendChild(card);
+    if (root.classList && root.classList.contains('sf-leftcontext')) root.prepend(el);
+    else root.appendChild(el);
+
+    this._panel = el;
+    this._kickerLabelEl = kickerLabel;
+    this._countEl = count;
+    this._bodyEl = body;
+    this._titleEl = title;
+    this._stepsEl = steps;
+    this._syncModalAccessibility();
+  },
+
+  _beatPanelYields() {
+    const beat = BEATS[this.state.onboarding?.currentBeat];
+    const waypoint = this.state.nav?.waypoint;
+    return (beat?.key === 'tether' && !tetherLessonIsLocal(this.state, this))
+      || !!waypoint?.onboarding || hasPlayerSelectedNavWaypoint(this.state);
+  },
+
+  // Render the current beat into the objective panel.
+  // The HUD mission tracker owns the sole persistent actionable verb (via nav.waypoint.reason).
+  // This panel yields whenever the HUD owns a spatial lesson; tutorial verbs speak once through the
+  // voice arbiter and never become a second persistent command or assistive live region.
+  _refreshBeatPanel() {
+    if (!this._panel || this._storyMode) return;
+    const ob = this.state.onboarding; if (!ob) return;
+    const beat = BEATS[ob.currentBeat];
+    const step = onboardingTrackerStep(ob, BEATS);
+    // Exactly one persistent command surface: spatial lessons use the HUD waypoint; non-spatial
+    // lessons (thrust/brake/heat) use this compact panel title.
+    const tetherYields = beat?.key === 'tether' && hasTrackedActiveMission(this.state);
+    const demoteObjectiveCopy = this._beatPanelYields();
+
+    if (this._kickerLabelEl) {
+      const kicker = 'Tutorial';
+      if (this._kickerLabelEl.textContent !== kicker) this._kickerLabelEl.textContent = kicker;
+    }
+
+    if (this._countEl) {
+      const countText = step.number + ' / ' + step.total;
+      if (this._countEl.textContent !== countText) this._countEl.textContent = countText;
+      const stepLabel = 'step ' + step.number + ' of ' + step.total;
+      if (this._countEl.getAttribute('aria-label') !== stepLabel) {
+        this._countEl.setAttribute('aria-label', stepLabel);
+      }
+    }
+
+    if (this._titleEl) {
+      const line = tetherYields ? 'Optional: practice Massline on the derelict.' : beat ? (beat.line || '') : '';
+      // Keep textContent in sync for beat tests while hiding the duplicate verb from the visual and
+      // assistive trees. The one transient tutorial line already routes through _sayTutorial().
+      if (this._titleEl.textContent !== line) this._titleEl.textContent = line;
+      if (demoteObjectiveCopy) {
+        if (this._titleEl.style.display !== 'none') this._titleEl.style.display = 'none';
+        if (this._titleEl.getAttribute('aria-hidden') !== 'true') {
+          this._titleEl.setAttribute('aria-hidden', 'true');
+        }
+      } else {
+        if (this._titleEl.style.display === 'none') this._titleEl.style.display = '';
+        if (this._titleEl.hasAttribute('aria-hidden')) this._titleEl.removeAttribute('aria-hidden');
+      }
+    }
+
+    // B2 shows 47-A sample collection progress.
+    if (beat && beat.key === 'seam') {
+      if (!this._progressEl) {
+        this._progressEl = document.createElement('div');
+        this._progressEl.className = 'sf-ob-progress';
+        this._bodyEl.appendChild(this._progressEl);
+      }
+      const progText = 'SAMPLE: ' + Math.min(ob.oreCollected || 0, SEAM_ORE_TARGET) + ' / ' + SEAM_ORE_TARGET;
+      if (this._progressEl.textContent !== progText) this._progressEl.textContent = progText;
+    } else if (this._progressEl) {
+      this._progressEl.remove();
+      this._progressEl = null;
+    }
+
+    if (this._stepsEl) {
+      this._stepsEl.innerHTML = '';
+      ONBOARDING_TRACKER_STEPS.forEach((b, i) => {
+        const d = document.createElement('div');
+        const isDone = trackerStepDone(ob, i);
+        d.className = 'sf-ob-dot' + (isDone ? ' done' : (i === step.index ? ' curr' : ''));
+        this._stepsEl.appendChild(d);
+      });
+    }
+
+    // Range pointer affordance (PQ-163.01 — "The Range is the door").
+    // After the first latch, onboarding points at the Range (F4). The panel is
+    // pointer-events:none with no click path — the chip is a label, never a button,
+    // so it carries no data-action for a dead affordance to advertise.
+    if (ob.rangePromptActive) {
+      if (!this._rangePromptEl && this._bodyEl) {
+        this._rangePromptEl = document.createElement('div');
+        this._rangePromptEl.className = 'sf-ob-range-prompt';
+        this._bodyEl.appendChild(this._rangePromptEl);
+      }
+      const promptText = ob.rangePrompt || RANGE_POINTER_LINE;
+      if (this._rangePromptEl && this._rangePromptEl.textContent !== promptText) {
+        this._rangePromptEl.textContent = promptText;
+      }
+    } else if (this._rangePromptEl) {
+      this._rangePromptEl.remove();
+      this._rangePromptEl = null;
+    }
+  },
+};
+
+// The swing lesson's rock must be a DYNAMIC body or the tether can never move it:
+// physicsAuthority.defaultDynamic only promotes asteroids flagged isChunk/tetherPayload.
+// The rescue pod already carries tetherPayload (that is why grab-and-run works); the rock
+// gets the same flag so the taught swing is physically possible, not just authored.
+function makeRescueRockTowable(rockSpec) {
+  if (rockSpec && rockSpec.data) rockSpec.data.tetherPayload = true;
+  return rockSpec;
+}
+
+function onboardingRandom(state) {
+  if (state && typeof state.rng === 'function') return state.rng();
+  const onboardingState = state && state.onboarding && typeof state.onboarding === 'object'
+    ? state.onboarding
+    : {};
+  return drawSeeded(onboardingState, '_rngSeed', hash32(state && state.meta && state.meta.seed, 'onboarding'));
+}
+
+function masslineThrowHint(state) {
+  const mode = state && state.settings && state.settings.gameplay
+    && state.settings.gameplay.masslineReleaseAssist;
+  if (mode === 'snap') return 'Tap RIGHT MOUSE near the white diamond to snap the release.';
+  if (mode === 'off') return 'Tap RIGHT MOUSE to release on the current vector.';
+  return 'Hold RIGHT MOUSE; release waits for the white diamond.';
+}
+
+// The mass the line actually feels: the physics body's authored mass, else the record's.
+// Matches the cadence pair's own read so the rating check and the swing mechanics agree.
+function ropeLoadMassT(entity) {
+  if (!entity || entity.alive === false) return 0;
+  const bodyMass = Number(entity.physicsBody && entity.physicsBody.mass);
+  if (Number.isFinite(bodyMass) && bodyMass > 0) return bodyMass;
+  const mass = Number(entity.mass);
+  return Number.isFinite(mass) && mass > 0 ? mass : 0;
+}
+
+// The hitch hint teaches riding a latched hull. It gated on the express liner's
+// itinerary flag, so the only ship that could teach it was the rarest one — the
+// opening mule and every other ship_mule freight frame could never qualify. Any
+// passive civilian on the mule hull (hauler, arclight, tanker, shuttle, express)
+// is a real ride; the itinerary flag stays as the contract for future
+// non-mule hitchable services.
+function isHitchHintTarget(entity) {
+  const data = entity && entity.data;
+  const ai = data && data.ai;
+  return !!(entity && entity.alive !== false
+    && entity.team === 2
+    && data && (data.defId === 'ship_mule'
+      || (data.itinerary && data.itinerary.hitchable === true))
+    && ai && ai.passive === true);
+}

@@ -1,0 +1,866 @@
+// SG-08 presentation recipes for semantic slice events.
+// This is headless data: renderer, VFX, UI, audio, and accessibility adapters consume these lanes later.
+
+import { SEVERITY_SHAPE_TIERS } from './causalVfxGrammar.js';
+
+export const PRESENTATION_RECIPE_VERSION = 1;
+
+export const PRESENTATION_LANES = Object.freeze([
+  'camera',
+  'vfx',
+  'audio',
+  'ui',
+  'accessibility',
+]);
+
+/**
+ * PQ-023 family (d): what a cue's reduced-motion / reduced-flash form actually IS, rather than only
+ * how far to scale it down.
+ *
+ *  - `static_dim`   hold the cue still and carry it on brightness/size instead of movement
+ *  - `slow`         same shape, reduced rate
+ *  - `caption_only` drop the visual entirely; the accessible text is the cue
+ *  - `unchanged`    already safe in reduced modes
+ *
+ * FB-077: every recipe declares a reduced-motion form. A leaf that does not name one gets the
+ * honest derived default below — a critical visual cue holds its shape still (`static_dim`),
+ * any other visual cue keeps its shape at a reduced rate (`slow`), and a cue with no visual
+ * lane at all is already safe (`unchanged`). Missing declarations now fail validation.
+ */
+export const REDUCED_CUE_MODES = Object.freeze(['static_dim', 'slow', 'caption_only', 'unchanged']);
+
+export const PRESENTATION_RECIPES = Object.freeze({
+  'travel.cruise.charging': travelRecipe(0.5, 30, 'cruise', 'vfx.direct_cruise_existing', ['travel', 'cruise', 'charging']),
+  'travel.cruise.engaged': travelRecipe(0.64, 30, 'cruise', 'vfx.direct_cruise_existing', ['travel', 'cruise', 'engaged']),
+  'travel.cruise.cancelled': travelRecipe(0.38, 12, 'cruise', 'vfx.direct_cruise_existing', ['travel', 'cruise', 'cancelled']),
+  'travel.cruise.interrupted': travelRecipe(0.76, 12, 'cruise', 'vfx.direct_cruise_existing', ['travel', 'cruise', 'interrupted']),
+  'travel.gate.approach': travelRecipe(0.52, 60, 'gate', 'vfx.direct_travel_gate', ['travel', 'approach', 'gate']),
+  'travel.corridor.continuity': travelRecipe(0.44, 30, 'corridor', 'vfx.direct_travel_corridor', ['travel', 'continuity', 'corridor']),
+  'travel.jump.aligning': travelRecipe(0.56, 30, 'jump_drive', 'vfx.direct_travel_alignment', ['travel', 'alignment']),
+  'travel.jump.commit_window': travelRecipe(0.7, 60, 'jump_drive', 'vfx.direct_travel_commit', ['travel', 'commit', 'anticipation']),
+  // Spoken beats reuse the existing caption lane. Continuity stays visual.
+  'travel.jump.committed': travelRecipe(0.82, 60, 'jump_drive', 'vfx.direct_travel_commit', ['travel', 'commit', 'no_return'], 'accessibility.caption_priority'),
+  'travel.transition.continuity': travelRecipe(0.68, 60, 'jump_drive', 'vfx.direct_travel_transition', ['travel', 'continuity', 'transition']),
+  'travel.arrival.oriented': travelRecipe(0.72, 30, 'arrival', 'vfx.direct_travel_arrival', ['travel', 'arrival', 'oriented'], 'accessibility.caption_priority'),
+  'travel.arrival.sector_identity': travelRecipe(0.58, 30, 'sector', 'vfx.direct_travel_identity', ['travel', 'arrival', 'sector_identity']),
+  'travel.discovery.mapped': travelRecipe(0.62, 30, 'discovery', 'vfx.direct_travel_discovery', ['travel', 'discovery', 'mapped']),
+  'travel.interdiction.triggered': travelRecipe(0.92, 30, 'interdiction', 'vfx.direct_travel_interdiction', ['travel', 'disruption', 'interdiction'], 'accessibility.caption_priority'),
+  'travel.jump.failed': travelRecipe(0.7, 20, 'jump_drive', 'vfx.direct_travel_failure', ['travel', 'disruption', 'failure']),
+  'travel.recovery.resumed': travelRecipe(0.48, 30, 'travel_recovery', 'vfx.direct_travel_recovery', ['travel', 'recovery', 'resumed']),
+  'travel.aftermath.clear': travelRecipe(0.46, 30, 'arrival', 'vfx.direct_travel_aftermath', ['travel', 'aftermath', 'clear']),
+  'travel.aftermath.contested': travelRecipe(0.84, 30, 'arrival', 'vfx.direct_travel_aftermath', ['travel', 'aftermath', 'contested']),
+  'mining.survey.pulse': miningRecipe(0.52, 30, 'survey', 'vfx.direct_mining_survey', ['mining', 'survey', 'pulse']),
+  'mining.survey.resolved': miningRecipe(0.58, 30, 'survey', 'vfx.direct_mining_survey', ['mining', 'survey', 'resolved']),
+  'mining.survey.classified': miningRecipe(0.62, 30, 'survey', 'vfx.direct_mining_survey', ['mining', 'survey', 'classified']),
+  'mining.survey.tracked': miningRecipe(0.54, 20, 'survey', 'vfx.direct_mining_survey', ['mining', 'survey', 'tracked']),
+  'mining.survey.investigated': miningRecipe(0.7, 30, 'survey', 'vfx.direct_mining_survey', ['mining', 'survey', 'investigated']),
+  // FB-131 — the scanner speaks. Three variants close the family: a lost contact, a counted
+  // bearing (pitch rises with count, sequence distinguishes each step in the dedupe window),
+  // and a reveal receipt for wrecks and debris caches.
+  'mining.survey.escaped': miningRecipe(0.68, 30, 'survey', 'vfx.direct_mining_survey', ['mining', 'survey', 'escaped']),
+  'mining.survey.bearing': miningRecipe(0.5, 8, 'survey', 'vfx.direct_mining_survey', ['mining', 'survey', 'bearing']),
+  'mining.survey.revealed': miningRecipe(0.66, 20, 'survey', 'vfx.direct_mining_survey', ['mining', 'survey', 'revealed']),
+  'mining.extraction.locked': miningRecipe(0.5, 1, 'mining_beam', 'vfx.direct_mining_beam', ['mining', 'extraction', 'locked']),
+  'mining.seam.quality': miningRecipe(0.64, 1, 'seam', 'vfx.direct_mining_seam', ['mining', 'seam']),
+  'mining.seam.reward': miningRecipe(0.64, 30, 'seam', 'vfx.direct_mining_seam', ['mining', 'seam', 'reward']),
+  'mining.fracture.anticipation': miningRecipe(0.72, 60, 'asteroid', 'vfx.direct_mining_fracture', ['mining', 'fracture', 'anticipation']),
+  'mining.fracture.released': miningRecipe(0.78, 4, 'asteroid', 'vfx.direct_mining_fracture', ['mining', 'fracture', 'released']),
+  'mining.rich_core.exposed': miningRecipe(0.86, 30, 'rich_core', 'vfx.direct_mining_core', ['mining', 'rich_core', 'exposed']),
+  'mining.rich_core.charge': miningRecipe(0.7, 30, 'rich_core', 'vfx.direct_mining_core', ['mining', 'rich_core', 'charge']),
+  'mining.rich_core.completed': miningRecipe(0.92, 30, 'rich_core', 'vfx.direct_mining_core', ['mining', 'rich_core', 'completed']),
+  'mining.rich_core.fizzle': miningRecipe(0.62, 30, 'rich_core', 'vfx.direct_mining_core', ['mining', 'rich_core', 'fizzle']),
+  'mining.chunk.tether_required': miningRecipe(0.74, 30, 'bulk_chunk', 'vfx.direct_mining_chunk', ['mining', 'chunk', 'tether_required']),
+  'mining.chunk.mass_engaged': miningRecipe(0.7, 30, 'bulk_chunk', 'vfx.direct_tether_attach', ['mining', 'chunk', 'mass_engaged']),
+  'mining.cargo.mass_settled': miningRecipe(0.48, 30, 'cargo', 'vfx.direct_cargo_mass', ['mining', 'cargo', 'mass']),
+  'mining.cargo.full': miningRecipe(0.82, 30, 'cargo', 'vfx.direct_cargo_full', ['mining', 'cargo', 'full']),
+  'mining.field.aftermath': miningRecipe(0.58, 30, 'field', 'vfx.direct_field_memory', ['mining', 'field', 'aftermath']),
+  'mining.heat.overheated': miningRecipe(0.8, 60, 'drill_heat', 'vfx.direct_drill_ui', ['mining', 'drill', 'heat', 'overheated']),
+  'mining.vent.ready': miningRecipe(0.66, 60, 'drill_heat', 'vfx.direct_drill_ui', ['mining', 'drill', 'vent', 'ready']),
+  'mining.yield.collected': miningRecipe(0.58, 8, 'ore', 'vfx.direct_mining_yield', ['mining', 'yield', 'collected']),
+  'mining.drill.seismic_pulse': miningRecipe(0.54, 20, 'drill_scan', 'vfx.direct_drill_ui', ['mining', 'drill', 'seismic', 'pulse']),
+  'mining.drill.contact': miningRecipe(0.46, 12, 'drill_contact', 'vfx.direct_drill_ui', ['mining', 'drill', 'contact']),
+  'mining.drill.break': miningRecipe(0.58, 4, 'drill_break', 'vfx.direct_drill_ui', ['mining', 'drill', 'break']),
+  'mining.drill.yield': miningRecipe(0.66, 8, 'drill_yield', 'vfx.direct_drill_ui', ['mining', 'drill', 'yield']),
+  'mining.drill.gas_hazard': miningRecipe(0.92, 30, 'drill_hazard', 'vfx.direct_drill_ui', ['mining', 'drill', 'gas', 'hazard']),
+  'mining.drill.aborted': miningRecipe(0.48, 20, 'drill_abort', 'vfx.direct_drill_ui', ['mining', 'drill', 'aborted']),
+  'mining.drill.retry': miningRecipe(0.52, 20, 'drill_retry', 'vfx.direct_drill_ui', ['mining', 'drill', 'retry']),
+  'combat.doctrine.setup': recipe({
+    importance: 0.56,
+    dedupeWindowTicks: 30,
+    material: 'doctrine',
+    lanes: { ...laneSet('vfx.direct_ai_telegraph'), audio: 'audio.combat_doctrine' },
+    budgets: { voices: 1 },
+    tags: ['combat', 'doctrine', 'setup'],
+  }),
+  'combat.doctrine.telegraph': recipe({
+    importance: 0.76,
+    dedupeWindowTicks: 30,
+    material: 'doctrine',
+    lanes: { ...laneSet('vfx.direct_ai_telegraph'), audio: 'audio.combat_doctrine' },
+    budgets: { voices: 0 },
+    tags: ['combat', 'doctrine', 'telegraph'],
+  }),
+  'combat.doctrine.action': recipe({
+    importance: 0.72,
+    dedupeWindowTicks: 1,
+    material: 'doctrine',
+    lanes: { ...laneSet('vfx.direct_combat_fire'), audio: 'audio.combat_doctrine' },
+    budgets: { voices: 0 },
+    // Critical: the action is the payoff of a telegraphed threat — once per cycle, never
+    // refired. On a detonation tick it shares the lane with per-hit damage noise that does
+    // refire; losing the commit beat to flavor traffic is exactly what the reserve is for.
+    tags: ['critical', 'combat', 'doctrine', 'action'],
+  }),
+  'combat.doctrine.aftermath': recipe({
+    importance: 0.68,
+    dedupeWindowTicks: 1,
+    material: 'doctrine',
+    lanes: { ...laneSet('vfx.direct_combat_aftermath'), audio: 'audio.combat_doctrine' },
+    budgets: { voices: 0 },
+    // Critical, same argument: the aftermath is the cycle's terminal resolution — the dart
+    // that popped on your hull resolves its story here. action + damage.applied + player.hit
+    // fill the general audio pool on that tick and the beat silently never landed.
+    tags: ['critical', 'combat', 'doctrine', 'aftermath'],
+  }),
+  'combat.doctrine.break': recipe({
+    importance: 0.7,
+    dedupeWindowTicks: 12,
+    material: 'doctrine',
+    lanes: { ...laneSet('vfx.direct_ai_telegraph'), audio: 'audio.combat_doctrine' },
+    budgets: { voices: 1 },
+    tags: ['combat', 'doctrine', 'break'],
+  }),
+  'combat.doctrine.withdraw': recipe({
+    importance: 0.58,
+    dedupeWindowTicks: 20,
+    material: 'doctrine',
+    lanes: { ...laneSet('vfx.direct_ai_telegraph'), audio: 'audio.combat_doctrine' },
+    budgets: { voices: 1 },
+    tags: ['combat', 'doctrine', 'withdraw'],
+  }),
+  // FB-072 — the combat ladder hit → kill also escalates by declared shape (cone → ring);
+  // budgets are already flat across the family and stay that way.
+  'combat.damage.applied': recipe({
+    importance: 0.66,
+    // One tick: the same pair struck twice in one tick is one composed response — the same
+    // pair/tick merging the vfx impact lane already performs — while distinct ticks (rapid
+    // repeaters land ~11 ticks apart) each answer. INF-041.
+    dedupeWindowTicks: 1,
+    material: 'damage',
+    lanes: { ...laneSet('vfx.direct_combat_damage'), audio: 'audio.combat_aftermath' },
+    // combat:damage already owns the physical shield/armor/hull voice.
+    budgets: { voices: 0 },
+    shape: SEVERITY_SHAPE_TIERS[1],
+    tags: ['combat', 'damage'],
+  }),
+  'combat.near_miss': recipe({
+    importance: 0.7,
+    dedupeWindowTicks: 12,
+    material: 'projectile',
+    lanes: { ...laneSet('vfx.combat_near_miss'), audio: 'audio.combat_aftermath' },
+    budgets: { particles: 12, voices: 1 },
+    shape: SEVERITY_SHAPE_TIERS[1],
+    tags: ['combat', 'near_miss'],
+  }),
+  'combat.player.hit': recipe({
+    importance: 0.78,
+    dedupeWindowTicks: 4,
+    material: 'damage',
+    lanes: { ...laneSet('vfx.direct_player_damage'), audio: 'audio.combat_aftermath' },
+    // The raw damage owner also supplies the ship-local directional urgency voice.
+    budgets: { voices: 0 },
+    shape: SEVERITY_SHAPE_TIERS[1],
+    tags: ['combat', 'player', 'damage'],
+  }),
+  'combat.player.kill': recipe({
+    importance: 0.86,
+    dedupeWindowTicks: 4,
+    material: 'kill',
+    lanes: { ...laneSet('vfx.direct_entity_killed', 'ui.combat_kill', 'accessibility.combat_kill'), audio: 'audio.combat_aftermath' },
+    // entity:killed owns the explosion; this receipt owns UI/accessibility confirmation only.
+    budgets: { voices: 0, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[3],
+    tags: ['combat', 'player', 'kill'],
+  }),
+  // PQ-133.04 R4 — the compiled ricochet continuation (combat:bounceContinued). Modeled on
+  // combat.damage.applied: one tick, so the receipt-identity dedupe key merges replays of the
+  // SAME continuation while distinct banks each answer; the physical impact lane is already
+  // composed by the direct damage family, and the authored armor-hit voice (see
+  // PRESENTATION_AUDIO_CUE_BY_ID) carries the audio. Not critical: a bank is feedback, never a
+  // warning that may steal a reserved slot from real state changes. Reduced forms are declared,
+  // not implied: under reduced motion/flash the bank spark holds still and carries on brightness
+  // (static_dim), the same declared shape world_site damage uses.
+  'combat.bounce': recipe({
+    importance: 0.66,
+    dedupeWindowTicks: 1,
+    material: 'projectile',
+    lanes: { ...laneSet('vfx.direct_combat_damage'), audio: 'audio.combat_aftermath' },
+    budgets: { voices: 0 },
+    reducedMotionMode: 'static_dim',
+    reducedFlashMode: 'static_dim',
+    tags: ['combat', 'bounce'],
+  }),
+  // FB-072 — the tether ladder attach → near-break → break is a SHAPE ladder (cone → sheet →
+  // ring from SEVERITY_SHAPE_TIERS). Particle budgets and camera trauma are capped at the
+  // tier-1 values (48 particles / 0.12 trauma): severity reads through the layout swap and the
+  // directed impact kick the cue's `direction` drives, never through more dots or more shake.
+  'tether.attach': recipe({
+    importance: 0.78,
+    dedupeWindowTicks: 6,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.payload_composition',
+      vfx: 'vfx.tether_snap',
+      audio: 'audio.tether_snap',
+      ui: 'ui.tension_arc',
+      accessibility: 'accessibility.tension_alt',
+    },
+    budgets: { cameraTrauma: 0.12, particles: 48, voices: 2, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[1],
+    tags: ['critical', 'tether', 'slice'],
+  }),
+  // SEED-HF-10 — a hostile line on the player's hull is a threat, not the player's own latch.
+  'tether.line_on_you': recipe({
+    importance: 0.9,
+    dedupeWindowTicks: 6,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.payload_composition',
+      vfx: 'vfx.tether_snap',
+      audio: 'audio.tether_snap',
+      ui: 'ui.tension_warning',
+      accessibility: 'accessibility.tension_alt',
+    },
+    budgets: { cameraTrauma: 0.12, particles: 48, voices: 2, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[2] || SEVERITY_SHAPE_TIERS[1],
+    tags: ['critical', 'tether', 'line_on_you'],
+  }),
+  'tether.near_break': recipe({
+    importance: 0.72,
+    dedupeWindowTicks: 12,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.tether_strain',
+      vfx: 'vfx.tether_strain',
+      audio: 'audio.tether_strain',
+      ui: 'ui.tension_warning',
+      accessibility: 'accessibility.tension_alt',
+    },
+    budgets: { cameraTrauma: 0.08, particles: 24, voices: 2, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[2],
+    tags: ['critical', 'tether', 'warning'],
+  }),
+  // Rung 10 — massline threat feedback (consumes masslineThreats' rung-09 massline:threat emit).
+  // One recipe for all three threat kinds (line-near-break / hostile-on-arc / collision-course);
+  // severity rides the cue magnitude so the audio sting + HUD warn scale, and the kind rides the
+  // tags. HUD read stays clean non-diegetic (a plain warn pulse — no visor/cockpit motifs).
+  'massline.threat': recipe({
+    importance: 0.74,
+    dedupeWindowTicks: 12,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.threat_composition',
+      vfx: 'vfx.massline_threat',
+      audio: 'audio.massline_threat',
+      ui: 'ui.threat_warning',
+      accessibility: 'accessibility.directional_warning',
+    },
+    budgets: { cameraTrauma: 0.06, particles: 20, voices: 2, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[1],
+    tags: ['critical', 'tether', 'threat'],
+  }),
+  // SF-023 (PB-MASS-A) — a committed hostile blade inside the cut span. Same lane family and
+  // material as the umbrella threat, tighter dedupe so a re-committed cutter re-speaks, and the
+  // record's `position` (the bite point on the player's rope) carries the located VFX/where-to-
+  // look read. The HUD's world-anchored X mark owns the persistent "cut lands HERE" signal.
+  'massline.threat.sweep_commit': recipe({
+    importance: 0.82,
+    dedupeWindowTicks: 18,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.threat_composition',
+      vfx: 'vfx.massline_threat',
+      audio: 'audio.massline_threat',
+      ui: 'ui.threat_warning',
+      accessibility: 'accessibility.directional_warning',
+    },
+    budgets: { cameraTrauma: 0.06, particles: 20, voices: 2, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[2],
+    tags: ['critical', 'tether', 'threat', 'sweep_commit'],
+  }),
+  'massline.counter_tether.cut': recipe({
+    importance: 0.9,
+    dedupeWindowTicks: 60,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.threat_composition',
+      vfx: 'vfx.massline_threat',
+      audio: 'audio.massline_threat',
+      ui: 'ui.threat_warning',
+      accessibility: 'accessibility.directional_warning',
+    },
+    budgets: { cameraTrauma: 0.06, particles: 20, voices: 2, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[3],
+    tags: ['critical', 'tether', 'counter_tether', 'cut', 'warning'],
+  }),
+  'massline.counter_tether.overload': recipe({
+    importance: 0.9,
+    dedupeWindowTicks: 60,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.threat_composition',
+      vfx: 'vfx.massline_threat',
+      audio: 'audio.massline_threat',
+      ui: 'ui.threat_warning',
+      accessibility: 'accessibility.directional_warning',
+    },
+    budgets: { cameraTrauma: 0.06, particles: 20, voices: 2, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[3],
+    tags: ['critical', 'tether', 'counter_tether', 'overload', 'warning'],
+  }),
+  // FB-072 — the snap is the tier-3 ring: budgets stay at the tier-1 cap (48 particles /
+  // 0.12 trauma), the ring layout + directed kick carry the escalation.
+  'tether.break': recipe({
+    importance: 0.92,
+    dedupeWindowTicks: 10,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.tether_snap',
+      vfx: 'vfx.tether_break',
+      audio: 'audio.tether_break',
+      ui: 'ui.tether_break',
+      accessibility: 'accessibility.break_caption',
+    },
+    budgets: { cameraTrauma: 0.12, particles: 48, voices: 3, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[3],
+    tags: ['critical', 'tether', 'break'],
+  }),
+  // INF-018: the break family splits by cause while sharing the authored snap lanes: overload fails under its own load (full snap), a severed line is cut across by an external action (full snap), and a vanished endpoint simply ends the line (lighter touch). No new assets, no new lane handlers.
+  'tether.break.overload': recipe({
+    importance: 0.92,
+    dedupeWindowTicks: 10,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.tether_snap',
+      vfx: 'vfx.tether_break',
+      audio: 'audio.tether_break',
+      ui: 'ui.tether_break',
+      accessibility: 'accessibility.break_caption',
+    },
+    budgets: { cameraTrauma: 0.12, particles: 48, voices: 3, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[3],
+    tags: ['critical', 'tether', 'break', 'overload'],
+  }),
+  'tether.break.severed': recipe({
+    importance: 0.92,
+    dedupeWindowTicks: 10,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.tether_snap',
+      vfx: 'vfx.tether_break',
+      audio: 'audio.tether_break',
+      ui: 'ui.tether_break',
+      accessibility: 'accessibility.break_caption',
+    },
+    budgets: { cameraTrauma: 0.12, particles: 48, voices: 3, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[3],
+    tags: ['critical', 'tether', 'break', 'severed'],
+  }),
+  'tether.break.endpoint': recipe({
+    importance: 0.8,
+    dedupeWindowTicks: 10,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.tether_snap',
+      vfx: 'vfx.tether_break',
+      audio: 'audio.tether_break',
+      ui: 'ui.tether_break',
+      accessibility: 'accessibility.break_caption',
+    },
+    budgets: { cameraTrauma: 0.08, particles: 32, voices: 2, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[1],
+    tags: ['critical', 'tether', 'break', 'endpoint'],
+  }),
+  // Rung 14 — whip-impact feedback (consumes masslineImpacts' rung-13 tether:whipImpact emit).
+  // The payoff crack: the whipped mass slamming a body. Severity rides the cue magnitude so the
+  // flash/sting scale with the hit; rating + latched/slung ride the tags. Feedback is the point —
+  // the optional damage half lives in combat.js behind the whipDamage combat flag.
+  'tether.whip_impact': recipe({
+    importance: 0.8,
+    dedupeWindowTicks: 10,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.whip_impact',
+      vfx: 'vfx.whip_impact',
+      audio: 'audio.whip_impact',
+      ui: 'ui.whip_impact',
+      accessibility: 'accessibility.impact_caption',
+    },
+    budgets: { cameraTrauma: 0.14, particles: 64, lights: 1, voices: 2, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[3],
+    tags: ['critical', 'tether', 'impact'],
+  }),
+  // Prompt 03 — release-rated feedback. Classification tiers map to escalating cues; "messy"
+  // has no recipe on purpose so the orchestrator suppresses it (missing_recipe) and emits no
+  // presentation:cue, leaving messy releases with no premium feedback. Camera trauma lives on the
+  // reduced-motion-safe presentation:cameraCue path (presentationAdapters dampens it under
+  // motionReduce), so these stay accessibility-safe even at the razor tier.
+  // FB-072 — release quality is a shape ladder too: good → clean → razor walks cone → sheet →
+  // ring at the tier-1 budget (12 particles / 0.04 trauma). A razor release is the biggest
+  // SHAPE, not the biggest handful of dots.
+  'tether.release.good': recipe({
+    importance: 0.5,
+    dedupeWindowTicks: 6,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.tether_release',
+      vfx: 'vfx.tether_release',
+      audio: 'audio.tether_release',
+      ui: 'ui.tether_release',
+      accessibility: 'accessibility.release_caption',
+    },
+    budgets: { cameraTrauma: 0.04, particles: 12, voices: 1, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[1],
+    tags: ['tether', 'release', 'good'],
+  }),
+  'tether.release.clean': recipe({
+    importance: 0.72,
+    dedupeWindowTicks: 6,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.tether_release',
+      vfx: 'vfx.tether_release',
+      audio: 'audio.tether_release',
+      ui: 'ui.tether_release',
+      accessibility: 'accessibility.release_caption',
+    },
+    budgets: { cameraTrauma: 0.04, particles: 12, voices: 1, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[2],
+    tags: ['tether', 'release', 'clean'],
+  }),
+  'tether.release.razor': recipe({
+    importance: 0.9,
+    dedupeWindowTicks: 6,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.tether_release',
+      vfx: 'vfx.tether_release',
+      audio: 'audio.tether_release',
+      ui: 'ui.tether_release',
+      accessibility: 'accessibility.release_caption',
+    },
+    budgets: { cameraTrauma: 0.04, particles: 12, voices: 2, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[3],
+    tags: ['tether', 'release', 'razor'],
+  }),
+  // Post-release validation owns one calm attempted-window fact. The retained-velocity release
+  // grammar remains on the direct Massline presentation route, so this semantic cue deliberately
+  // drives no camera, world VFX, or audio lane.
+  'massline.release.missed': recipe({
+    importance: 0.62,
+    dedupeWindowTicks: 60,
+    material: 'massline',
+    lanes: {
+      camera: 'camera.none',
+      vfx: 'vfx.none',
+      audio: 'audio.none',
+      ui: 'ui.massline_release_missed',
+      accessibility: 'accessibility.release_missed_caption',
+    },
+    budgets: { cameraTrauma: 0, particles: 0, lights: 0, voices: 0, uiPulses: 1 },
+    tags: ['massline', 'release', 'missed'],
+  }),
+  'shield.collapse': recipe({
+    importance: 0.84,
+    // 8 ticks (133 ms) was sized for a cue that fired for EVERY combatant, where a short window was
+    // the only thing keeping a squad fight from producing a continuous alarm — it permitted 7.5
+    // banners a second. Now that the player-scoped lanes are gated on playerRelevance
+    // (presentationAdapters._applyCue) this cue describes the player's own shields, and a player
+    // cannot plausibly lose them more than about once a second.
+    dedupeWindowTicks: 45,
+    material: 'shield',
+    lanes: {
+      camera: 'camera.threat_composition',
+      vfx: 'vfx.shield_collapse',
+      audio: 'audio.shield_collapse',
+      ui: 'ui.shield_down',
+      accessibility: 'accessibility.directional_warning',
+    },
+    budgets: { cameraTrauma: 0.16, particles: 80, voices: 2, lights: 1, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[2],
+    tags: ['critical', 'combat', 'shield'],
+  }),
+  'subsystem.disabled': recipe({
+    importance: 0.86,
+    // Same reasoning as shield.collapse above. 4 ticks (67 ms) was an anti-flood window for an
+    // all-combatants cue; per-player this is a distinct event per subsystem, so half a second is
+    // ample and keeps two different subsystems failing together legible as two events.
+    dedupeWindowTicks: 30,
+    material: 'subsystem',
+    lanes: {
+      camera: 'camera.subsystem_focus',
+      vfx: 'vfx.subsystem_sparks',
+      audio: 'audio.subsystem_disabled',
+      ui: 'ui.subsystem_brackets',
+      accessibility: 'accessibility.subsystem_caption',
+    },
+    budgets: { cameraTrauma: 0.1, particles: 56, voices: 1, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[2],
+    tags: ['critical', 'combat', 'subsystem'],
+  }),
+  // Subsystem reboot completion (combat:subsystemEnabled). Deliberately lighter than the disable
+  // cue: restoration is confirmation, not alarm — no camera steal, smaller spark budget, and the
+  // accessibility caption carries the "which system came back" fact via the emitted subsystemId.
+  'subsystem.restored': recipe({
+    importance: 0.62,
+    dedupeWindowTicks: 30,
+    material: 'subsystem',
+    lanes: {
+      camera: 'camera.none',
+      vfx: 'vfx.subsystem_restored',
+      audio: 'audio.subsystem_restored',
+      ui: 'ui.subsystem_brackets',
+      accessibility: 'accessibility.subsystem_caption',
+    },
+    budgets: { particles: 24, voices: 1, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[1],
+    tags: ['combat', 'subsystem', 'recovery'],
+  }),
+  // Ordinance reaching its authored lifetime (weapons:mineExpired). Before this leaf the event had
+  // zero presentation consumers, so an armed mine simply vanished. A small expiry puff only —
+  // silent lane set keeps a routine timeout from ever competing with a real detonation.
+  'ordnance.expired': recipe({
+    importance: 0.34,
+    dedupeWindowTicks: 12,
+    material: 'ordnance',
+    lanes: {
+      camera: 'camera.none',
+      vfx: 'vfx.ordnance_expired',
+      audio: 'audio.none',
+      ui: 'ui.none',
+      accessibility: 'accessibility.none',
+    },
+    budgets: { cameraTrauma: 0, particles: 14, lights: 0, voices: 0, uiPulses: 0 },
+    tags: ['ordnance', 'expiry'],
+  }),
+  // A rated cluster moment — the well piled hulls and a primed light cooked them off (PQ-147.03).
+  // The sim already rates and publishes fields:clusterDetonate; these recipes give the moment the
+  // same premium receipt a whip impact earns. Player-authored wells infer participant relevance;
+  // NPC clusters keep the world-scoped lanes only.
+  // FB-072 — the cascade is the tier-3 ring of the same well going off: budgets capped at the
+  // detonation's tier-2 values (64 particles / 0.10 trauma), the ring layout carries it.
+  'fields.cluster_detonate': recipe({
+    importance: 0.82,
+    dedupeWindowTicks: 30,
+    material: 'field',
+    lanes: {
+      camera: 'camera.whip_impact',
+      vfx: 'vfx.cluster_detonate',
+      audio: 'audio.cluster_detonate',
+      ui: 'ui.cluster_detonate',
+      accessibility: 'accessibility.cluster_caption',
+    },
+    budgets: { cameraTrauma: 0.1, particles: 64, lights: 1, voices: 1, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[2],
+    tags: ['critical', 'field', 'cluster', 'detonation'],
+  }),
+  'fields.cluster_detonate.cascade': recipe({
+    importance: 0.86,
+    dedupeWindowTicks: 30,
+    material: 'field',
+    lanes: {
+      camera: 'camera.whip_impact',
+      vfx: 'vfx.cluster_detonate',
+      audio: 'audio.cluster_detonate',
+      ui: 'ui.cluster_detonate',
+      accessibility: 'accessibility.cluster_caption',
+    },
+    budgets: { cameraTrauma: 0.1, particles: 64, lights: 2, voices: 1, uiPulses: 1 },
+    shape: SEVERITY_SHAPE_TIERS[3],
+    tags: ['critical', 'field', 'cluster', 'cascade'],
+  }),
+  'scenario.signal.pulse': recipe({
+    importance: 0.68,
+    dedupeWindowTicks: 30,
+    material: 'signal',
+    lanes: {
+      camera: 'camera.threat_composition',
+      vfx: 'vfx.signal_pulse',
+      audio: 'audio.signal_pulse',
+      ui: 'ui.spatial_objective',
+      accessibility: 'accessibility.shape_coded_signal',
+    },
+    budgets: { particles: 40, voices: 1, uiPulses: 1 },
+    // Critical: the opening objective pulse is addressed to the player and must survive
+    // same-tick flavor saturation (cold-open spawn noise charges the camera lane's general
+    // pool before the queued scenario:beatEntered flushes; see check-47a-live-cold-open).
+    tags: ['critical', 'scenario', 'objective', 'slice'],
+  }),
+  'scenario.comms.kessler': recipe({
+    importance: 0.74,
+    dedupeWindowTicks: 60,
+    material: 'comms',
+    lanes: {
+      camera: 'camera.payload_composition',
+      vfx: 'vfx.comms_static',
+      audio: 'audio.ducked_comms',
+      ui: 'ui.comms_priority',
+      accessibility: 'accessibility.caption_priority',
+    },
+    budgets: { voices: 1, uiPulses: 1 },
+    tags: ['scenario', 'comms', 'kessler'],
+  }),
+  'scenario.comms.denial': recipe({
+    importance: 0.8,
+    dedupeWindowTicks: 60,
+    material: 'comms',
+    lanes: {
+      camera: 'camera.tug_of_war',
+      vfx: 'vfx.comms_static',
+      audio: 'audio.ducked_comms',
+      ui: 'ui.comms_priority',
+      accessibility: 'accessibility.caption_priority',
+    },
+    budgets: { voices: 1, uiPulses: 1 },
+    tags: ['scenario', 'comms', 'denial'],
+  }),
+  'scenario.objective.priority_split': recipe({
+    importance: 0.82,
+    dedupeWindowTicks: 30,
+    material: 'objective',
+    lanes: {
+      camera: 'camera.priority_split',
+      vfx: 'vfx.pod_beacon',
+      audio: 'audio.distress_call',
+      ui: 'ui.dual_objective',
+      accessibility: 'accessibility.objective_shapes',
+    },
+    budgets: { particles: 36, voices: 1, uiPulses: 2 },
+    tags: ['scenario', 'objective', 'civilian'],
+  }),
+  // PQ-023 family (c) — World Site damage / recovery.
+  // Owner events: worldSite:failureReceipt and worldSite:operationReceipt (src/systems/asteroidSites.js).
+  // Before this leaf the orchestrator had ZERO worldSite subscriptions, so a Wreck Cathedral
+  // component failing or being restored reached no presentation lane at all.
+  //
+  // Lane choices are deliberate, not placeholders:
+  //  - camera.none  — a site component failing must never steal the camera while the player is
+  //                   flying a beam onto it (PQ-023 non-goal: camera that fights aiming).
+  //  - audio        — reuses an authored signature (see PRESENTATION_AUDIO_CUE_BY_ID); audio is a
+  //                   reinforcing channel here and is never the sole carrier of the state.
+  //  - ui.none      — HUD telemetry hierarchy is PQ-023 item 5, a different leaf.
+  //  - vfx.direct_* — the fixture controller in render/worldSitePresentation.js owns the visual.
+  //  - accessibility.world_site_condition — carries the noncolor / no-audio equivalent.
+  // With `.none` lanes no longer charged, these cost one vfx and one accessibility slot each.
+  'world_site.damage': recipe({
+    importance: 0.84,
+    dedupeWindowTicks: 12,
+    material: 'world_site',
+    lanes: {
+      camera: 'camera.none',
+      vfx: 'vfx.direct_world_site_condition',
+      audio: 'audio.world_site_condition',
+      ui: 'ui.none',
+      accessibility: 'accessibility.world_site_condition',
+    },
+    budgets: { voices: 1 },
+    // The impaired fixture's stutter collapses to a steady dim: the condition still reads through
+    // opacity and scale, but nothing moves. See worldSiteDamageStates.impairedDutyCycle.
+    reducedMotionMode: 'static_dim',
+    reducedFlashMode: 'static_dim',
+    // Losing stabilization undoes durable player work, so this must survive a saturated tick.
+    tags: ['critical', 'world_site', 'damage'],
+  }),
+  'world_site.recovery': recipe({
+    importance: 0.6,
+    dedupeWindowTicks: 12,
+    material: 'world_site',
+    lanes: {
+      camera: 'camera.none',
+      vfx: 'vfx.direct_world_site_condition',
+      audio: 'audio.world_site_condition',
+      ui: 'ui.none',
+      accessibility: 'accessibility.world_site_condition',
+    },
+    budgets: { voices: 1 },
+    reducedMotionMode: 'static_dim',
+    reducedFlashMode: 'static_dim',
+    // Deliberately NOT critical: a completion receipt is confirmation, and promoting every success
+    // to the reserved tier would refill the reserve that exists for failures.
+    tags: ['world_site', 'recovery'],
+  }),
+  'scenario.branch.resolved': recipe({
+    importance: 0.88,
+    dedupeWindowTicks: 30,
+    material: 'branch',
+    lanes: {
+      camera: 'camera.exit_composition',
+      vfx: 'vfx.branch_signal',
+      audio: 'audio.aftermath_state',
+      ui: 'ui.aftermath_summary',
+      accessibility: 'accessibility.branch_caption',
+    },
+    budgets: { particles: 52, voices: 1, uiPulses: 2 },
+    tags: ['scenario', 'branch', 'aftermath'],
+  }),
+  // Lane2's witnessed incident: a live carrier loses custody-stamped pods to violence or a raid.
+  // The pods are physical and claimable, so the cue's world lanes answer where the pods ARE —
+  // the authored amber pod-beacon ring plus the cargo-jettison voice — while the player lanes
+  // (receipt, caption) surface only for a player-addressed cue through the adapters' relevance
+  // floor. A raider's distant spill stays world-scoped; barkDirector keeps the spoken line.
+  // camera.none: a spill must never kick the camera off the player's own work.
+  'freight.cargo_spilled': recipe({
+    importance: 0.6,
+    dedupeWindowTicks: 45,
+    material: 'freight',
+    lanes: {
+      camera: 'camera.none',
+      vfx: 'vfx.pod_beacon',
+      audio: 'audio.freight_spill',
+      ui: 'ui.freight_spill',
+      accessibility: 'accessibility.freight_spill',
+    },
+    budgets: { particles: 20, voices: 1, uiPulses: 1 },
+    tags: ['freight', 'spill', 'witnessed'],
+  }),
+});
+
+export function getPresentationRecipe(id) {
+  return PRESENTATION_RECIPES[id] || null;
+}
+
+export function validatePresentationRecipes(recipes = PRESENTATION_RECIPES) {
+  const issues = [];
+  const ids = Object.keys(recipes || {}).sort();
+  for (const id of ids) {
+    const item = recipes[id];
+    const path = `$.${id}`;
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      issues.push(`${path} must be an object`);
+      continue;
+    }
+    if (item.id !== id) issues.push(`${path}.id must match the recipe key`);
+    if (item.version !== PRESENTATION_RECIPE_VERSION) issues.push(`${path}.version must be ${PRESENTATION_RECIPE_VERSION}`);
+    if (!Number.isFinite(item.importance) || item.importance < 0 || item.importance > 1) {
+      issues.push(`${path}.importance must be in [0,1]`);
+    }
+    if (!Number.isSafeInteger(item.dedupeWindowTicks) || item.dedupeWindowTicks < 0) {
+      issues.push(`${path}.dedupeWindowTicks must be a non-negative safe integer`);
+    }
+    for (const lane of PRESENTATION_LANES) {
+      if (!item.lanes || typeof item.lanes[lane] !== 'string' || !item.lanes[lane]) {
+        issues.push(`${path}.lanes.${lane} is required`);
+      }
+    }
+    if (!item.budgets || typeof item.budgets !== 'object' || Array.isArray(item.budgets)) {
+      issues.push(`${path}.budgets must be an object`);
+    }
+    // FB-077 — the reduced-motion form is REQUIRED on every recipe; reduced-flash is validated
+    // when present. A missing declaration is a real defect now, not an opted-out leaf.
+    if (item.reducedMotionMode == null) {
+      issues.push(`${path}.reducedMotionMode is required`);
+    }
+    for (const field of ['reducedMotionMode', 'reducedFlashMode']) {
+      if (item[field] != null && !REDUCED_CUE_MODES.includes(item[field])) {
+        issues.push(`${path}.${field} must be one of ${REDUCED_CUE_MODES.join('/')}`);
+      }
+    }
+    // FB-072 — a declared shape tier is { tier, silhouette, layout, signaturePrimitive }.
+    if (item.shape != null) {
+      const s = item.shape;
+      if (typeof s !== 'object' || !Number.isFinite(s.tier)
+        || typeof s.silhouette !== 'string' || !s.silhouette
+        || typeof s.layout !== 'string' || !s.layout
+        || typeof s.signaturePrimitive !== 'string' || !s.signaturePrimitive) {
+        issues.push(`${path}.shape must carry tier + silhouette + layout + signaturePrimitive`);
+      }
+    }
+  }
+  return { ok: issues.length === 0, issues };
+}
+
+function recipe({
+  importance, dedupeWindowTicks, material, lanes, budgets, tags,
+  reducedMotionMode, reducedFlashMode, shape,
+}) {
+  const built = {
+    version: PRESENTATION_RECIPE_VERSION,
+    id: null,
+    importance,
+    dedupeWindowTicks,
+    material,
+    lanes: Object.freeze({ ...lanes }),
+    budgets: Object.freeze({ ...budgets }),
+    tags: Object.freeze([...(tags || [])]),
+  };
+  // FB-072 — optional shape tier from SEVERITY_SHAPE_TIERS: the silhouette/layout/primitive
+  // swap that carries severity when particle and trauma budgets are held flat.
+  if (shape) built.shape = Object.freeze({ ...shape });
+  // PQ-023 family (d) + FB-077. A cue's reduced form is DECLARED on every recipe — a leaf may
+  // still override explicitly, but the factory never emits a cue with no form at all.
+  built.reducedMotionMode = reducedMotionMode || derivedReducedMotionMode(built);
+  built.reducedFlashMode = reducedFlashMode || derivedReducedFlashMode(built);
+  return built;
+}
+
+/**
+ * FB-077 defaults. A visual cue under reduced motion is either held still and carried on
+ * brightness/size (critical — it must never vanish) or slowed (the rest). A cue with no visual
+ * lane, no particles, no lights, and no camera budget changes nothing visible and is already
+ * safe. Reduced flash mirrors the same split: brightness events hold their shape while dimming.
+ */
+function cueIsVisual(built) {
+  const lanes = built.lanes || {};
+  const budgets = built.budgets || {};
+  return (typeof lanes.vfx === 'string' && lanes.vfx !== 'vfx.none')
+    || (Number(budgets.particles) || 0) > 0
+    || (Number(budgets.lights) || 0) > 0;
+}
+
+function derivedReducedMotionMode(built) {
+  if (!cueIsVisual(built) && !(Number(built.budgets.cameraTrauma) > 0)) return 'unchanged';
+  return (built.tags || []).includes('critical') ? 'static_dim' : 'slow';
+}
+
+function derivedReducedFlashMode(built) {
+  return cueIsVisual(built) ? 'static_dim' : 'unchanged';
+}
+
+function laneSet(vfx, ui = 'ui.none', accessibility = 'accessibility.none') {
+  return {
+    camera: 'camera.none',
+    vfx,
+    audio: 'audio.none',
+    ui,
+    accessibility,
+  };
+}
+
+function miningRecipe(importance, dedupeWindowTicks, material, vfx, tags) {
+  return recipe({
+    importance,
+    dedupeWindowTicks,
+    material,
+    lanes: { ...laneSet(vfx), audio: 'audio.mining' },
+    budgets: { voices: 1 },
+    tags,
+  });
+}
+
+function travelRecipe(importance, dedupeWindowTicks, material, vfx, tags, accessibility = 'accessibility.none') {
+  return recipe({
+    importance,
+    dedupeWindowTicks,
+    material,
+    lanes: { ...laneSet(vfx, 'ui.none', accessibility), audio: 'audio.travel' },
+    // One semantic journey cue owns the audible floor for each source event. Layered synth
+    // recipes still count as one scheduled voice and remain beneath the global SG-08 cap.
+    budgets: { voices: 1 },
+    tags,
+  });
+}
+
+for (const [id, value] of Object.entries(PRESENTATION_RECIPES)) {
+  Object.defineProperty(value, 'id', { value: id, enumerable: true });
+  Object.freeze(value);
+}
