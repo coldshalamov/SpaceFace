@@ -1,6 +1,6 @@
 # Ninth Mouth service-cut rescue candidate
 
-Status: unpublished, bounded implementation. This is not the complete Ninth Mouth commission.
+Status: bounded implementation independently reviewed and published in draft PR #945 at c76b796f25c874f723f4801a7a778c2136fff30f. This is not the complete Ninth Mouth commission.
 Base: draft PR #945, cf4625c536f4f0ab5573492d362da455d8bdde97, EC-S02 Ceres Belt.
 
 ## Canonical boundary
@@ -27,7 +27,7 @@ The receiving apron and three lamp positions use the existing HUD goal-diamond s
 - Existing traffic and canonical mission code are unchanged. This is a bounded local rescue entry, not a new general traffic census or full mission-commission integration.
 - Existing anchor winches remain dedicated to the original Long Plate. They were not silently generalized to an unrelated barge. Their mechanics and persistence are inherited unchanged.
 - Browser feature hooks mount the Prompt Deck adapter and three light objects. Main-to-sim intent is allowlisted. Read-model presentation includes offers and service marks, and a bounded life/identity-checked lamp-light vitality channel.
-- No previously denied upload path was edited. No shared working-tree modification, commit, push, merge or deployment is part of this candidate.
+- No previously denied upload path was edited. The isolated candidate did not modify the shared working tree. Its independently reviewed 22-path source was subsequently published at the commit above; no merge or deployment occurred.
 
 ## Verification and remaining acceptance
 
@@ -37,7 +37,7 @@ Separate staged Rapier force fixtures prove actual throat clearance, contact bet
 
 The native lamp regression separately verifies ordinary raw-input Line acquisition and motion, then deliberately stages a settled lamp at its service position to test Seat. It checks the real fixed collider over repeated normal ticks, full Continue, Unbolt back to a real dynamic collider, subsequent ordinary Line motion, and another Continue. The staged placement is not evidence of a complete ordinary lamp-seating route. This regression was added after independent review found that the initial implementation changed the specification but omitted the physics-membership publication, losing the collider after Seat and retaining the fixed body after Unbolt.
 
-Final counts and continuity results are recorded with the candidate's exact-source evidence manifest, rather than inferred from a dirty checkout. Independent review is required before any publication.
+The final repaired candidate passed 37/37 focused checks, independent 37/37 checks plus the native posture probe, and fast tier 39/39. Independent review identified and reverified the Seat/Unbolt collider repair before publication. Frozen overlay SHA-256: 085ff61c69d8d9aebbe51709b6417939f931042f24b1cf56259473ef3f36a849. Exact parent, all 22 published file bytes, full tree preservation and non-force branch update were verified. These facts correct the former pre-publication snapshot label; they do not close any player-route, visual or commission acceptance gap.
 
 Rendered browser/GPU appearance remains unverified because the available browser launch was blocked by the environment's socket permission. That restriction was not bypassed. Dark-cave atmosphere, lighting contrast, lamp readability, label overlap and camera behavior need a real browser acceptance run.
 

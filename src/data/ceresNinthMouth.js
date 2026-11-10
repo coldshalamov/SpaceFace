@@ -31,13 +31,14 @@ const definitions = [
 ];
 export const CERES_NINTH_MOUTH = freeze({
   id,sectorId,center,worldPoint,localPoint,definitions,
-  scope:'one-barge service-cut rescue; not the full Nine-Mouth cave',
+  scope:'one-barge shaded service-cut rescue; not the full Nine-Mouth cave',
+  shade:{local:{x:2.5,z:0},halfExtents:{x:112.5,y:70,z:45},feather:25,broadFloor:.22},
   admissionRadius:650,hearingRadius:720,alertRadius:720,
   barge:{role:'barge',defId:'ship_ironback',local:{x:79,z:0},rot:Math.PI,radius:24,
     // Census at canonical radius24. Runtime uses makeShipEntitySpec, not a prop fit.
     measuredEnvelope:{x:41.28,y:7.927002,z:14.055596}},
   lamps:[{x:-95,z:-23},{x:-5,z:-23},{x:75,z:-22}].map((local,i)=>({
-    role:`lamp:${i}`,local,radius:8,seatRadius:8,maxSpeed:1,maxSpin:.2,dwellS:1.5,
+    role:`lamp:${i}`,label:['Lip','Throat','Inner edge'][i],local,radius:8,seatRadius:8,maxSpeed:1,maxSpin:.2,dwellS:1.5,
   })),
   berth:{local:{x:-270,z:0},radius:46,maxSpeed:2,maxSpin:.15,dwellS:2},
   route:{extraction:[{x:79,z:0},{x:-150,z:0},{x:-270,z:0}],

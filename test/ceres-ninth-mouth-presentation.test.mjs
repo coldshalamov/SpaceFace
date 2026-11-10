@@ -14,14 +14,18 @@ const promptModule = await loadAdapter('../src/ui/ceresNinthMouthPrompt.js', [[
   'const getPromptDeck = () => globalThis.__ninthMouthTestDeck;',
 ]]);
 const renderModule = await loadAdapter('../src/render/ceresNinthMouthVisuals.js', [
-  ["import * as THREE from 'three';", `const THREE = { PointLight: class {
-    constructor(color, intensity, distance, decay) {
-      Object.assign(this, {color, intensity, distance, decay, userData: {}, position: {
-        set(x, y, z) { Object.assign(this, {x, y, z}); },
-      }});
-    }
-    dispose() { this.disposed = true; }
-  } };`],
+  ["import * as THREE from 'three';", `const THREE = {Vector3: class {set(x,y,z){Object.assign(this,{x,y,z});return this;}}};`],
+  ["import { nocturneForScene, createLogicalLight, emptyLogicalLight } from './nocturne/bridge.js';", `
+    const nocturneForScene = scene => {scene.sources=scene.logical;scene.capacity=512;scene.get=name=>scene.logical.find(l=>l.name===name)?._nocturneSource;return {registry:scene};};
+    const emptyLogicalLight = () => ({intensity:0,position:{set(x,y,z){Object.assign(this,{x,y,z});}}});
+    function createLogicalLight(scene,id,type,options) {
+      const source={registered:true};
+      const light = {...emptyLogicalLight(),...options,name:id,_nocturneSource:source,distance:options.range,dispose(){this.disposed=true;source.registered=false;scene.logical.splice(scene.logical.indexOf(this),1);}};
+      scene.get = name => scene.logical.find(l=>l.name===name)?._nocturneSource;
+      scene.logical.push(light);return light;
+    }`],
+  ["import { claimShadeRegion } from './nocturne/shadeRegions.js';", `const claimShadeRegion = () => ({update(){},release(){}});`],
+  ["import { CERES_NINTH_MOUTH as CUT } from '../data/ceresNinthMouth.js';", `const CUT = {id:'lw_ceres_ninth_mouth',center:{x:0,z:0},shade:{local:{x:2.5,z:0}},definitions:[{role:'shoulder_north',local:{x:0,z:-125},rot:0},{role:'shoulder_south',local:{x:0,z:125},rot:0}],worldPoint:p=>p};`],
   ["import { presentedAnchorXZ } from './presentedAnchor.js';", `function presentedAnchorXZ(e, a, out) {
     const p = e.prevPos || e.pos;
     out.x = p.x + (e.pos.x - p.x) * a;
@@ -104,25 +108,26 @@ function lamp(id, slot) {
 function visualFixture() {
   const lamps = [lamp(1, 0), lamp(2, 1), lamp(3, 2)];
   const state = { entityList: lamps, entities: new Map(lamps.map(e => [e.id, e])), world: {frameOrigin: {x: 1000, z: 2000}} };
-  const scene = { children: [], add(light) { this.children.push(light); }, remove(light) { this.children.splice(this.children.indexOf(light), 1); } };
+  const scene = { children: [], logical: [], add(light) { this.children.push(light); }, remove(light) { this.children.splice(this.children.indexOf(light), 1); } };
   const adapter = renderModule.createCeresNinthMouthVisuals({state, scene});
+  adapter.update(0);
   return {lamps, state, scene, adapter};
 }
-test('three resident warm lights follow interpolated physical lamps and origin without state writes', () => {
-  const f = visualFixture(), before = JSON.stringify(f.state), lights = [...f.scene.children];
+test('three logical warm light requests follow interpolated physical lamps and origin without state writes', () => {
+  const f = visualFixture(), before = JSON.stringify(f.state), lights = [...f.scene.logical];
   f.adapter.update(0.5);
   assert.equal(lights.length, 3);
   assert.deepEqual([lights[0].position.x, lights[0].position.y, lights[0].position.z], [10, 3, 30]);
   for (const light of lights) {
     assert.equal(light.color, 0xffd2a0); assert.equal(light.castShadow, false);
-    assert.equal(light.distance, 95); assert.equal(light.intensity, 2.4);
+    assert.equal(light.distance, 95); assert.equal(light.intensity, 1800);
   }
   assert.equal(JSON.stringify(f.state), before);
   f.lamps[0].pos.x += 20; f.state.world.frameOrigin.x += 5;
   f.adapter.update(1); assert.equal(lights[0].position.x, 35);
-  assert.deepEqual(f.scene.children, lights);
-  f.adapter.destroy(); f.adapter.destroy(); assert.equal(f.scene.children.length, 0);
-  f.adapter.update(); assert.equal(f.scene.children.length, 0); assert.ok(lights.every(l => l.disposed));
+  assert.deepEqual(f.scene.logical, lights);
+  f.adapter.destroy(); f.adapter.destroy(); assert.equal(f.scene.logical.length, 0);
+  f.adapter.update(); assert.equal(f.scene.logical.length, 0); assert.ok(lights.every(l => l.disposed));
 });
 test('light guard rejects dead, stale, foreign, duplicate and disabled bodies; recycled life rebinds', () => {
   for (const change of [
@@ -134,14 +139,14 @@ test('light guard rejects dead, stale, foreign, duplicate and disabled bodies; r
     f => { const duplicate = lamp(4, 0); f.lamps.push(duplicate); f.state.entities.set(4, duplicate); },
   ]) {
     const f = visualFixture(); change(f); f.adapter.update();
-    assert.equal(f.scene.children[0].intensity, 0); assert.equal(f.scene.children[0].userData.entityId, null); f.adapter.destroy();
+    assert.equal(f.scene.logical[0].intensity, 0); assert.equal(f.scene.logical[0].userData.entityId, null); f.adapter.destroy();
   }
   const f = visualFixture(); f.adapter.update();
   const fresh = lamp(1, 0); fresh.occupantGeneration = 2; fresh.pos.x += 60;
-  f.state.entities.set(1, fresh); f.adapter.update(); assert.equal(f.scene.children[0].intensity, 0);
+  f.state.entities.set(1, fresh); f.adapter.update(); assert.equal(f.scene.logical[0].intensity, 0);
   f.lamps[0] = fresh; f.adapter.update();
-  assert.equal(f.scene.children[0].userData.occupantGeneration, 2);
-  assert.equal(f.scene.children[0].position.x, 80); f.adapter.destroy();
+  assert.equal(f.scene.logical[0].userData.occupantGeneration, 2);
+  assert.equal(f.scene.logical[0].position.x, 80); f.adapter.destroy();
 });
 test('bound renderer mesh pose wins without double origin; pending/recycled mesh is unlit', () => {
   const f = visualFixture();
@@ -149,13 +154,13 @@ test('bound renderer mesh pose wins without double origin; pending/recycled mesh
     userData: {presentationEntityId: 1, presentationOccupantGeneration: 1} };
   f.state.render = {meshes: new Map([[1, mesh]])};
   f.adapter.update(0.5);
-  const light = f.scene.children[0];
+  const light = f.scene.logical[0];
   assert.deepEqual([light.position.x, light.position.y, light.position.z], [7, 5, 9]);
-  assert.equal(light.intensity, 2.4);
+  assert.equal(light.intensity, 1800);
   f.lamps[0].occupantGeneration = 2;
   f.adapter.update(); assert.equal(light.intensity, 0);
   mesh.userData.presentationOccupantGeneration = 2;
-  f.adapter.update(); assert.equal(light.intensity, 2.4);
+  f.adapter.update(); assert.equal(light.intensity, 1800);
   mesh.visible = false; f.adapter.update(); assert.equal(light.intensity, 0);
   f.adapter.destroy();
 });

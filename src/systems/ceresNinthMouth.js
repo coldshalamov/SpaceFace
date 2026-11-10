@@ -170,7 +170,7 @@ function publish(owner, force = false) {
       ? `The original barge reached the berth and its Line was released. Crew transfer is recorded. ${status.lights}/3 worklights seated. ${r.tag ? 'Your rescue tag stays at the radio mast.' : 'The lamps are separate work; tow each original to its service mark if you want the approach to stay lit.'}`
       : status.status === 'lost' ? 'The original barge is lost. No safe arrival was recorded. The service cut and any surviving worklights remain here.'
         : status.status === 'unavailable' ? 'The barge is not currently resolved. I will not post a safe arrival from a missing signal.'
-          : 'One barge is still in the service cut. Its crew is holding thrust. Tow the bow straight back toward this berth, or carry the worklights in ahead of you. Pulling sideways into the loose rock moves the rock too. Release the barge in the receiving apron, almost stopped. No timer and no paid extraction claim.';
+          : 'One barge is still in the service cut. Its crew is holding thrust. Tow its bow straight back to this berth, or take a worklight through first. Each light travels with the Line; the three service marks lead from the lip to the inner edge. Release a settled light at its mark, then Seat it. The far opening stays clear for retreat. Pulling sideways can move the loose rock. Bring the barge into the apron and release it almost stopped.';
     if (r.rockShifted) detail += ' The fallen rock has shifted. Check the gap before another pull; the far end remains open.';
     for (let i = 0; i < CUT.lamps.length; i++) {
       const lamp = body(owner, `lamp:${i}`);
@@ -187,7 +187,7 @@ function publish(owner, force = false) {
   }
   const headline = status.status === 'rescued' ? 'ONE BARGE HOME' : 'NINTH MOUTH · RESCUE BERTH';
   const serviceMarks = [{id:'berth',label:'Receiving apron',pos:worldPoint(CUT.berth.local),radius:CUT.berth.radius},
-    ...(rt.page === 'full' ? CUT.lamps.map((def,i)=>({id:def.role,label:`Light ${i+1} service mark`,pos:worldPoint(def.local),radius:def.seatRadius})) : [])];
+    ...(rt.page === 'full' ? CUT.lamps.map((def,i)=>({id:def.role,label:`Light ${i+1} · ${def.label}`,pos:worldPoint(def.local),radius:def.seatRadius})) : [])];
   const payload = { headline, detail, choices, serviceMarks, playerLife: p.occupantGeneration };
   const signature = JSON.stringify([payload, p.id, r.rescue, r.tag]);
   if (!force && signature === rt.signature) return;
