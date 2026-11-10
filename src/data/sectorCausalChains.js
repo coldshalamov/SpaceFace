@@ -668,6 +668,102 @@ function vestaCycleNewsText(seeds) {
     : 'Vesta haulers swapped the junction and the slag ran out under escort; the yard took its break on schedule.';
 }
 
+// ── Kepler Scar: "the tally day" ─────────────────────────────────────────────────────────────────
+// The Scar Bazaar already flies its four authored hulls (sectorActivityPockets.js): the stash
+// runner and the Reach picket on the apron, and the salvor with the glow reader working the hulk's
+// cut plate. The zone copy sells the Bazaar as a place where cargo changes hands off the books;
+// until this chain the hands were static — the runner fetched and the salvor cut and the tally
+// never moved. The chain strings the two catalog events that were always the Bazaar's own story
+// across three of those hulls:
+//
+//   work   ev_tug_repositions_cargo   a drift lot is walked back to the stack — the runner's
+//                                     stash run is the walk, the salvor's plate is the stack
+//                                     (runner, salvor)
+//   crime  ev_smuggler_dumps_cache    the same runner sheds one hot piece off the stash leg,
+//                                     unhurried (runner)
+//
+// The catalog casts a tug plus a pod; the Bazaar flies a runner whose fetch legs ARE the reposition
+// walk — line up, kiss, walk, set — so both hulls reaffirm their authored routes throughout and the
+// story rides the lamp the catalog already draws. The dump needs no gate: the stash leg is the
+// runner's own habit, not a sequel to the walk, so the two links share the afternoon side by side
+// under the two-link cap. Losing the runner mid-walk plants the honest branch — the stack kept its
+// drift — and the same hull then skips the dump outright (terminal cast), never a stall.
+// Catalog boundaries recorded here: no lot prop is minted on the walk phase (the stack is the
+// salvor's authored cut plate, not a spawned pod), the drop phase mints no pickup (the catalog's
+// cache is choreography, not a player take), and nobody shoots — the picket never leaves its chord.
+const KEPLER_BAZAAR_RUNNER = 'kepler_bazaar_runner';
+const KEPLER_HULK_SALVOR = 'kepler_hulk_salvor';
+export const KEPLER_SCAR_SECTOR_ID = 'sector_kepler_scar';
+
+export const KEPLER_CAUSAL_CHAIN = Object.freeze([
+  Object.freeze({
+    // work, next20: "a hull flying NOSE-FIRST at a dead object, decelerating to a crawl nobody
+    // else uses". The Bazaar's version is the tally's own: a drift lot walked home while the
+    // salvor holds the stack face it will sit on.
+    id: 'ev_tug_repositions_cargo',
+    actorSlots: Object.freeze([KEPLER_BAZAAR_RUNNER, KEPLER_HULK_SALVOR]),
+    requires: Object.freeze([]),
+    seedAtPhase: 'walk',
+    seeds: Object.freeze(['lot_walked']),
+    // Tug or stack lost before the walk: the lot drifted on — the tally posts the honest miss.
+    interruptSeeds: Object.freeze(['lot_drifted']),
+    jobHints: Object.freeze([
+      // The runner's stash fetch is the walk; the salvor's plate loop is the stack face. Both
+      // fly their authored routes — the story is the stamps on them, not a redirect.
+      Object.freeze({
+        actorSlotId: KEPLER_BAZAAR_RUNNER,
+        reaffirm: true,
+        phases: Object.freeze(['line_up', 'kiss', 'walk', 'set']),
+      }),
+      Object.freeze({
+        actorSlotId: KEPLER_HULK_SALVOR,
+        reaffirm: true,
+        phases: Object.freeze(['line_up', 'kiss', 'walk', 'set']),
+      }),
+    ]),
+    phases: Object.freeze([
+      Object.freeze({ name: 'line_up', durationS: 15, cue: 'stacking' }),
+      Object.freeze({ name: 'kiss', durationS: 8, cue: null }),
+      Object.freeze({ name: 'walk', durationS: 30, cue: 'heavy_burn' }),
+      Object.freeze({ name: 'set', durationS: 10, cue: 'clean_burn' }),
+    ]),
+  }),
+  Object.freeze({
+    // crime, next20: "a trader flying a lane exit that serves no destination". The stash leg
+    // already IS that exit — the runner sheds the hot piece on its own route, and rejoins light.
+    id: 'ev_smuggler_dumps_cache',
+    actorSlots: Object.freeze([KEPLER_BAZAAR_RUNNER]),
+    requires: Object.freeze([]),
+    seedAtPhase: 'drop',
+    seeds: Object.freeze(['cache_shed']),
+    // Runner lost before the drop: nothing left the hull — the stash kept its cache.
+    interruptSeeds: Object.freeze(['cache_kept']),
+    jobHints: Object.freeze([
+      Object.freeze({
+        actorSlotId: KEPLER_BAZAAR_RUNNER,
+        reaffirm: true,
+        phases: Object.freeze(['drift_out', 'drop', 'rejoin']),
+      }),
+    ]),
+    phases: Object.freeze([
+      Object.freeze({ name: 'drift_out', durationS: 15, cue: 'clean_burn' }),
+      Object.freeze({ name: 'drop', durationS: 6, cue: null }),
+      Object.freeze({ name: 'rejoin', durationS: 20, cue: 'clean_burn' }),
+    ]),
+  }),
+]);
+
+function keplerCycleNewsText(seeds) {
+  const walked = !!(seeds && seeds.lot_walked === true);
+  const shed = !!(seeds && seeds.cache_shed === true);
+  if (walked && shed) {
+    return 'The Scar Bazaar tally logged a walked lot, and the runner left one cache dark off the stash leg.';
+  }
+  if (walked) return 'The Scar Bazaar tally logged a walked lot; the stash leg stayed light.';
+  if (shed) return 'The runner left one cache dark off the stash leg; the Bazaar stack kept its drift.';
+  return 'The Scar Bazaar posted an empty tally: no lot walked, no cache shed.';
+}
+
 /**
  * Every non-Ceres sector that runs a staged ambient chain, keyed by sector id. `traffic.js` turns
  * each row into a `SECTOR_CAUSAL_CHAINS` entry (shared cap, shared cycle gap).
@@ -700,6 +796,13 @@ export const SECTOR_CAUSAL_CHAIN_DEFS = Object.freeze({
     stationId: 'station_dione',
     newsKind: 'dione_convoy_day',
     cycleNewsText: dioneCycleNewsText,
+  }),
+  [KEPLER_SCAR_SECTOR_ID]: Object.freeze({
+    sectorId: KEPLER_SCAR_SECTOR_ID,
+    chain: KEPLER_CAUSAL_CHAIN,
+    stationId: 'station_kepler_scar',
+    newsKind: 'kepler_bazaar_tally',
+    cycleNewsText: keplerCycleNewsText,
   }),
 });
 
