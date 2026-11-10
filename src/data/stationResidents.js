@@ -332,4 +332,3 @@ export function canonicalContactsForStation(stationId) {
     choices: Array.isArray(base.choices) ? base.choices.slice() : undefined,
   }));
 }
-
