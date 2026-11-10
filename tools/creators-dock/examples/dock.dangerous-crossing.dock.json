@@ -1,0 +1,192 @@
+{
+  "camera": {
+    "x": 0,
+    "z": 0,
+    "zoom": 3.2
+  },
+  "composition": "dangerous-crossing",
+  "description": "Hold south of a fast sweeper, then thrust across its line. The sweeper velocity is authored on that body. The oracle is the player trace: stay south, then finish north.",
+  "encounter": {
+    "choices": [
+      {
+        "id": "pay",
+        "label": "Pay the lane"
+      },
+      {
+        "id": "run",
+        "label": "Cross and burn"
+      }
+    ],
+    "context": "encounter",
+    "cooldownS": 480,
+    "deck": "combat",
+    "factionId": "faction_scn",
+    "id": "dock_dangerous_crossing",
+    "order": 1006,
+    "pressureCost": 12,
+    "proximity": true,
+    "script": "toll",
+    "shape": {
+      "actor": "customs_cutter",
+      "place": [
+        "ambush_lane"
+      ],
+      "situation": "toll",
+      "twist": "none"
+    },
+    "squad": {
+      "archetypes": [
+        "customs_cutter"
+      ]
+    },
+    "tier": "minor",
+    "timeoutChoice": "run",
+    "title": "Dangerous crossing",
+    "weight": 1,
+    "zoneTypes": [
+      "ambush_lane"
+    ]
+  },
+  "evidenceClass": "focused-fixture",
+  "fixtureExceptions": [
+    "focused-fixture authored in Creator's Dock; not production-manifest evidence"
+  ],
+  "frames": [
+    {
+      "input": {
+        "boost": false,
+        "fire": false,
+        "moveX": 0,
+        "moveZ": 0,
+        "turnIntent": 0
+      },
+      "tick": 0
+    },
+    {
+      "input": {
+        "boost": false,
+        "fire": false,
+        "moveX": 0,
+        "moveZ": 1,
+        "turnIntent": 0
+      },
+      "tick": 70
+    }
+  ],
+  "grid": {
+    "size": 10,
+    "snap": true
+  },
+  "id": "dock.dangerous-crossing",
+  "inputEvents": [],
+  "notes": {
+    "composition": "dangerous-crossing",
+    "creatorsDock": "1",
+    "expectedObservation": "playerZ minimum stays on the south side of the lane, then the final sample is north of 0 after the delayed thrust."
+  },
+  "objects": [
+    {
+      "angularVelocity": 0,
+      "factionId": "faction_free",
+      "heading": 1.570796,
+      "id": "player",
+      "isPlayer": true,
+      "kind": "actor",
+      "label": "Hitch waiting",
+      "persistent": true,
+      "profile": "ship.starter",
+      "role": "player",
+      "team": 0,
+      "velX": 0,
+      "velZ": 0,
+      "x": 0,
+      "z": -20
+    },
+    {
+      "angularVelocity": 0,
+      "heading": 0,
+      "id": "sweeper",
+      "kind": "actor",
+      "label": "lane sweeper",
+      "overrides": {
+        "mass": 500,
+        "radius": 7
+      },
+      "persistent": true,
+      "profile": "asteroid.mid",
+      "role": "hazard",
+      "team": 2,
+      "velX": 22,
+      "velZ": 0,
+      "x": -30,
+      "z": 0
+    },
+    {
+      "assertion": {
+        "holdsTicks": 60,
+        "kind": "holds",
+        "signal": "playerAlive"
+      },
+      "id": "lane",
+      "kind": "trigger",
+      "labOnly": true,
+      "label": "player stays alive through the cross",
+      "radius": 20,
+      "shape": "circle",
+      "x": -90,
+      "z": 0
+    },
+    {
+      "id": "south",
+      "kind": "objective",
+      "labOnly": true,
+      "label": "began south",
+      "metric": "trace.min",
+      "op": "<=",
+      "signal": "playerZ",
+      "value": -5,
+      "x": -40,
+      "z": -20
+    },
+    {
+      "id": "north",
+      "kind": "objective",
+      "labOnly": true,
+      "label": "finished north",
+      "metric": "trace.final",
+      "op": ">",
+      "signal": "playerZ",
+      "value": 0,
+      "x": 0,
+      "z": 10
+    },
+    {
+      "from": "player",
+      "gameplay": false,
+      "id": "to_lane",
+      "kind": "route",
+      "label": "cross after the sweep",
+      "to": "sweeper"
+    }
+  ],
+  "observer": {
+    "enabled": false
+  },
+  "runtimeProfile": "focused-lab",
+  "schema": "spaceface.creatorsDock.v1",
+  "seed": 11006,
+  "standardInvariants": true,
+  "ticks": 180,
+  "title": "Dangerous crossing",
+  "traceSignals": [],
+  "version": 1,
+  "world": {
+    "aiBackend": "legacy",
+    "credits": 5000,
+    "fixtureProfile": "empty-flight",
+    "flightBackend": "v3",
+    "mode": "flight",
+    "physicsBackend": "rapier-dynamic",
+    "sectorId": "sector_helios_prime"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "median": 4.268541313630803,
+  "min": 4.031290887362799,
+  "max": 4.679254062301258,
+  "dirtyWake": {
+    "ok": true,
+    "latched": true,
+    "woke": true,
+    "burst": true
+  }
+}

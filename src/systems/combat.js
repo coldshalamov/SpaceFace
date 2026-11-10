@@ -1,0 +1,1660 @@
+// LAST_ARGUMENT_INTEGRATION_V1
+// combat system: the damage pipeline (shield→armor→hull), shield/cap regen, death + loot +
+// player respawn, and enemy spawn builders. Consumes projectile:hit from physics (ARCHITECTURE §2.3
+// step 8, §4.4). Single source of health mutation for ships/stations/drones.
+import { KillCause, KillSurface } from '../combat/killCausality.js';
+import { removeCargo } from './cargo.js';
+import { hash32 } from '../core/rng.js';
+import { getCombatKernel } from '../combat/kernel.js';
+import { friendlyFireRefuses, legacyHitToDamagePacket, scalarHitToDamagePacket } from '../combat/damage.js';
+import { createVictimRewardRng, missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
+import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
+import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
+import { opticBeamHit, opticMaterialOf, planArcWireContact } from '../combat/opticField.js';
+import { activeWebChords, noteArcWireShot } from '../combat/tetherWebs.js';
+import { markDirty, isDirty, hasDirty, DIRTY } from '../core/dirtyJournal.js';
+import { combatFlag, massline2Flag } from '../data/featureFlags.js';
+import { weakPointForEntity, isHitInWeakArc } from '../data/weakPoints.js';
+import { buildDefeatReceipt, buildRecoveryPlan, lawfulStationInSector,
+  liveStationPosition } from '../combat/playerDefeat.js';
+import { requireCapitalBossEncounter } from '../data/encounters/capital-boss.js';
+import { DEFEAT_STREAK_WINDOW_S, defeatMercyScale } from '../data/difficulty.js';
+import { isHostileToPlayer } from './scanner.js';
+import { queryPhysicalBodies } from '../combat/physicalEffects.js';
+import { hasBlockingPanels, interceptSegment, acceptIntercept, PYLON_CONTACT } from '../combat/pylonShieldQuery.js';
+import { occupantGenerationOf } from '../core/entity.js';
+import { isEnvironmentalBody } from '../core/physicalResponse.js';
+import { WPN } from './enemySpawnSpec.js';
+export { makeEnemySpawnSpec, scaleCombatant, readEnemySpawnRepeatWork, resetEnemySpawnRepeatWork } from './enemySpawnSpec.js';
+
+// Massline whip damage (rung 14, flag combat.whipDamage): a solid/crushing whip-impact routes
+// momentum-scaled kinetic damage to the struck body. Tuning knobs, not physics — the momentum
+// number comes from masslineImpacts' record (mass × relSpeed).
+const WHIP_DAMAGE_TYPES = new Set(['ship', 'station', 'drone']);
+const WHIP_DAMAGE_MOMENTUM_SCALE = 1 / 1600; // 640-mass rock at 60 wu/s (solid) -> 24 damage
+const WHIP_DAMAGE_MAX = 45;                  // ceiling for the heaviest slings
+const RECOVERY_BERTH_CLEARANCE_WU = 140;
+// Row 463 "Retry act": the staging point must sit outside the score's 900 WU suspend radius
+// (data/encounters/capital-boss scores) so the rewound act re-arms by approach, not in place.
+const BOSS_STAGING_DISTANCE_WU = 1100;
+/** Seconds of invulnerability after undock / soft respawn window extension (overnight B1). */
+export const UNDOCK_INVULN_S = 8;
+/**
+ * SEED-SW-16 — the tap-dash's grace window. From the dash impulse, damage packets against the
+ * player are rejected for this long: dodging through a closing gap is a skill read, not a
+ * contact trade. The window rides the same flag + expiry the undock grace uses (the generic
+ * `_invulnUntil` sweep clears it), never a held boost — only the dash's own press arms it.
+ */
+export const DASH_IFRAME_S = 0.2;
+
+// One vocabulary: the emitter validates against the same table the downstream readers use
+// (src/combat/killCausality.js), so a new cause cannot silently degrade to GENERIC downstream.
+const KILL_PRESENTATION_CAUSES = new Set(Object.values(KillCause));
+const KILL_PRESENTATION_SURFACES = new Set(Object.values(KillSurface));
+const BEAM_QUERY_RADIUS_PAD = 256;
+
+// ── FB-090 owner-local quiet latch ──────────────────────────────────────────────
+// Bench A/B: production default ON. The per-tick ship walk only writes shield/cap regen and
+// invuln expiry, and only for ships already below max or flagged invuln — damage arrives via
+// onHit/onWhipImpact (DIRTY.COMBAT marks) and spawn/despawn bumps the entity-index version, so
+// a scan that found nothing regenerating cannot find work until one of those signals fires.
+// A 0.5 s rescan covers foreign writers that drain cap/shield without marking dirty
+// (countermeasures, unique loot). Beams are checked live: a non-empty list means weapons fired
+// this tick and _applyBeamDamage must run.
+let COMBAT_QUIET_LATCH = true;
+export function setCombatQuietLatchForBench(enabled) {
+  COMBAT_QUIET_LATCH = enabled !== false;
+}
+export function getCombatQuietLatchForBench() {
+  return COMBAT_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const COMBAT_QUIET_RESCAN_TICKS = 30;
+
+function combatEntityIndexVersion(state) {
+  const index = state && state.entityIndex;
+  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
+    ? index.version
+    : null;
+}
+
+function combatBeamsIdle(state) {
+  const beams = state && state.combat && state.combat.beams;
+  return !Array.isArray(beams) || beams.length === 0;
+}
+
+function publishCombatQuiet(state, latched) {
+  const rt = state.combatRuntime || (state.combatRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
+/** Build a spawnEntity spec for a hostile NPC (team 1) from an enemy archetype id. */
+// Weapon capacitor regen boost for the player — same ~15% faster recharge as weapons.js heat pacing.
+const WEAPON_CAP_REGEN_MULT = 1.15;
+
+const CHARGE_CELL_CAP_FRACTION = 0.75;
+const CHARGE_CELL_RADIUS_WU = 3;
+const CHARGE_CELL_MASS = 20;
+const CHARGE_CELL_LIFETIME_S = 30;
+const CHARGE_CELL_COLLECTION_GRACE_S = 0.25;
+const CHARGE_CELL_THROW_GRACE_S = 0.5;
+const MAX_CHARGE_CELLS = 24;
+const BROOD_REMAINS_LIFETIME_S = 45;
+const MAX_BROOD_REMAINS = 16;
+
+function chargeCellData(entity) {
+  if (entity?.type !== 'payload' || entity.data?.payloadType !== 'charge_cell') return null;
+  const cell = entity.data.chargeCell;
+  if (cell?.version !== 1 || !Number.isFinite(cell.charge) || cell.charge <= 0
+    || !Number.isFinite(cell.collectAfter) || cell.collectAfter < 0
+    || !Number.isFinite(entity.data.despawnAt) || entity.data.despawnAt < 0) return null;
+  return cell;
+}
+
+function isChargeCellKill(payload, victim, state) {
+  const receipt = payload?.presentation;
+  return !!victim && victim.alive === false && victim.id === payload.id
+    && victim.type === payload.type && (victim.type === 'ship' || victim.type === 'drone')
+    && state.playerId != null && payload.killerId === state.playerId
+    && payload.targetHostileToPlayer === true
+    && receipt?.version === 1 && receipt.playerCaused === true
+    && (receipt.cause === 'terrain_collision' || receipt.cause === 'ship_collision'
+      || payload.cause === 'massline_whip')
+    && Number.isFinite(payload.pos?.x) && Number.isFinite(payload.pos?.z);
+}
+
+function chargeCellBodies(state) {
+  return state.entityIndex?.payloads || state.entityList || [];
+}
+
+function chargeCellAttached(state, id) {
+  const attachments = state.combat?.attachments?.byId;
+  for (const key in attachments) {
+    const attachment = attachments[key];
+    if (attachment?.state === 'active'
+      && (attachment.ownerId === id || attachment.targetId === id)) return true;
+  }
+  return false;
+}
+
+// W-BLOOM-LOW remains: a payload the brood engine left behind — a real latched body that
+// carries the family's authored effect (splash burst, leech glue, the eel's held whip) into
+// the flock. Same physical-custody shape as a charge cell, different consequence.
+function broodRemainData(entity) {
+  if (entity?.type !== 'payload' || entity.data?.payloadType !== 'brood_remains') return null;
+  const rem = entity.data.broodRemain;
+  return rem && typeof rem.kind === 'string' ? rem : null;
+}
+
+function broodRemainBodies(state) {
+  const list = state.entityIndex?.payloads || state.entityList || [];
+  const out = [];
+  for (const entity of list) if (entity && broodRemainData(entity)) out.push(entity);
+  return out;
+}
+
+
+
+function qrange(range, r) { if (!range) return 1; const [lo, hi] = range; return Math.round(lo + (hi - lo) * r()); }
+
+function setVecXZ(vec, x, z) {
+  if (!vec) return;
+  if (typeof vec.set === 'function') vec.set(x, 0, z);
+  else { vec.x = x; vec.y = 0; vec.z = z; }
+}
+
+function deathVelocity(entity) {
+  const vel = entity && entity.vel;
+  const x = Number(vel && vel.x);
+  const z = Number(vel && vel.z);
+  return {
+    x: Number.isFinite(x) ? x : 0,
+    z: Number.isFinite(z) ? z : 0,
+  };
+}
+
+function activeSectorStations(state) {
+  return state && state.world && state.world.activeSector && Array.isArray(state.world.activeSector.stations)
+    ? state.world.activeSector.stations
+    : [];
+}
+
+function stationRecordId(station) {
+  if (!station) return null;
+  if (station.stationId) return station.stationId;
+  return typeof station.id === 'string' && station.id.startsWith('station_') ? station.id : null;
+}
+
+function stationRecordFor(state, stationId) {
+  if (!stationId) return null;
+  return activeSectorStations(state).find((station) => stationRecordId(station) === stationId) || null;
+}
+
+function liveStationFor(state, stationId) {
+  if (!state || !stationId) return null;
+  const index = state.entityIndex;
+  const indexed = index && index.byStationId && typeof index.byStationId.get === 'function'
+    ? index.byStationId.get(stationId)
+    : null;
+  if (indexed && indexed.alive !== false && indexed.type === 'station') return indexed;
+  const stations = index && Array.isArray(index.stations) ? index.stations : null;
+  const candidates = stations || state.entityList || [];
+  for (const entity of candidates) {
+    if (entity && entity.alive !== false && entity.type === 'station' && entity.data && entity.data.stationId === stationId) {
+      return entity;
+    }
+  }
+  return null;
+}
+
+/**
+ * Build the transient presentation-only view of a combat-owned death. The receipt is deliberately
+ * derived from the lethal packet and live target snapshot; it is never stored on state/entities and
+ * it cannot create damage, contact, causality, or a second death path.
+ */
+export function buildKillPresentationReceipt(state, target, killerId, lethal = {}) {
+  const packet = lethal && lethal.packet && typeof lethal.packet === 'object' ? lethal.packet : null;
+  const hit = packet && packet.hit && typeof packet.hit === 'object' ? packet.hit : null;
+  const collision = collisionPresentationProvenance(lethal, packet);
+  const surface = normalizeKillSurface(collision && collision.surface);
+  const cause = collision
+    ? collisionCause(surface)
+    : weaponKillCause(lethal, packet);
+  const position = freezeKillPoint(
+    collision && collision.position || hit && hit.pos || target && target.pos,
+  );
+  const direction = freezeKillDirection(
+    collision
+      ? collision.direction
+      : hit && hit.approach || lethal && lethal.direction,
+  );
+  const normal = freezeKillDirection(
+    collision
+      ? collision.normal
+      : hit && hit.normal || lethal && lethal.normal,
+  );
+  const targetVelocity = freezeKillPoint(
+    collision && collision.targetVelocity || target && target.vel,
+  );
+  const impact = freezeKillImpact(collision && collision.impact);
+  const rawLink = collision && collision.provenance;
+  const impactLink = rawLink && typeof rawLink === 'object'
+    ? Object.freeze({
+      actorId: rawLink.actorId ?? null,
+      tag: typeof rawLink.tag === 'string' ? rawLink.tag : '',
+      appliedTick: Number.isFinite(rawLink.appliedTick) ? rawLink.appliedTick : null,
+      holdUntilTick: Number.isFinite(rawLink.holdUntilTick) ? rawLink.holdUntilTick : null,
+    })
+    : null;
+  return Object.freeze({
+    version: 1,
+    cause: KILL_PRESENTATION_CAUSES.has(cause) ? cause : 'generic',
+    position,
+    direction,
+    normal,
+    surface,
+    targetVelocity,
+    playerCaused: !!state && killerId === state.playerId,
+    impact,
+    impactLink,
+  });
+}
+
+/**
+ * The body a collision-killed victim struck (null for every non-collision death). Law reads it
+ * off the entity:killed payload so a thrown rock never occludes the kill it caused; it stays off
+ * the versioned presentation receipt, which is a presentation-only contract.
+ */
+function killImpactorId(lethal) {
+  const packet = lethal && lethal.packet && typeof lethal.packet === 'object' ? lethal.packet : null;
+  const collision = collisionPresentationProvenance(lethal, packet);
+  return collision && collision.otherId != null ? collision.otherId : null;
+}
+
+function collisionPresentationProvenance(lethal, packet) {
+  const origin = lethal && lethal.origin;
+  const source = packet && packet.source;
+  if (!origin || origin.kind !== 'collision' || !source || typeof source.kind !== 'string'
+    || !source.kind.startsWith('collision_')) return null;
+  const value = source.collisionPresentation;
+  return value && typeof value === 'object' ? value : null;
+}
+
+function collisionCause(surface) {
+  if (surface === 'craft') return 'ship_collision';
+  if (surface === 'terrain' || surface === 'structure') return 'terrain_collision';
+  return 'generic';
+}
+
+/**
+ * The kill cause the room's own physics ends carry. `swarmKillCauseWord`'s law (row 481) says
+ * MINED is "an explosive end (mine, charge, cookoff)" and each arena names the end — but only
+ * authored WEAPON packets ever reached a cause, so a hull a mine, a drift bomb, a sympathetic
+ * cookoff or the crusher's jaws took stamped 'generic' and read — popup word and style family
+ * alike — as a gun kill. The crusher's own damage owner calls its verdict a terrain-crumple
+ * reading (survivalArena._crushBody routes terrainCrumpleDamage), so its end is terrain.
+ * A player-attributed explosive end therefore pays the documented PQ-174.02 physics rate,
+ * which is the first time that rate is reachable by the ends its law names.
+ */
+const ROOM_END_CAUSES = Object.freeze({
+  mine: KillCause.EXPLOSIVE,
+  bomb: KillCause.EXPLOSIVE,
+  light_cookoff: KillCause.EXPLOSIVE,
+  crusher_jaws: KillCause.TERRAIN_COLLISION,
+});
+
+function roomEndCause(lethal, packet) {
+  const kind = (lethal && lethal.origin && lethal.origin.kind)
+    || (packet && packet.source && packet.source.kind);
+  return Object.prototype.hasOwnProperty.call(ROOM_END_CAUSES, kind)
+    ? ROOM_END_CAUSES[kind]
+    : null;
+}
+
+function weaponKillCause(lethal, packet) {
+  const origin = lethal && lethal.origin;
+  const source = packet && packet.source;
+  const authoredOrigin = origin && origin.kind === 'weapon';
+  const authoredPacket = source && source.kind === 'weapon';
+  if (!authoredOrigin && !authoredPacket) return roomEndCause(lethal, packet) || 'generic';
+  const weaponId = authoredOrigin
+    ? (origin.weaponId ?? origin.id ?? (source && source.weaponId))
+    : source.weaponId;
+  const definition = weaponId == null ? null : WPN.get(weaponId);
+  if (!definition) return roomEndCause(lethal, packet) || 'generic';
+  if (definition.damageType === 'kinetic') return 'kinetic';
+  if (definition.damageType === 'explosive') return 'explosive';
+  return roomEndCause(lethal, packet) || 'generic';
+}
+
+function normalizeKillSurface(value) {
+  return KILL_PRESENTATION_SURFACES.has(value) ? value : null;
+}
+
+/**
+ * The kill-END label a damage-over-time end carries. A hull the burn or the tar corroded
+ * through stamped 'generic' — the honest canonical cause for an attrition end — and the kill
+ * popup then read it as a gun kill (SHREDDED/PUNCHED). The label rides the payload next to
+ * the massline_whip precedent; the room-grammar owner (swarmKillCauseWord) speaks it, while
+ * styleCauseFromKill keeps it out of the style families, so a torch burn pays gun rate — an
+ * attrition end is not a physics play, and must not reach the force-table ratio.
+ */
+export function killEndLabelFor(lethal) {
+  const kind = lethal && lethal.origin && lethal.origin.kind;
+  return kind === 'status' ? 'wasted' : null;
+}
+
+function freezeKillPoint(value) {
+  return Object.freeze({
+    x: Number.isFinite(value && value.x) ? value.x : 0,
+    z: Number.isFinite(value && value.z) ? value.z : 0,
+  });
+}
+
+function freezeKillDirection(value) {
+  const x = Number.isFinite(value && value.x) ? value.x : 0;
+  const z = Number.isFinite(value && value.z) ? value.z : 0;
+  const length = Math.hypot(x, z);
+  if (!(length > 1e-9)) return null;
+  return Object.freeze({ x: x / length, z: z / length });
+}
+
+function freezeKillImpact(value) {
+  if (!value || typeof value !== 'object') return null;
+  return Object.freeze({
+    deltaV: finiteKillMetric(value.deltaV),
+    exchangedMomentum: finiteKillMetric(value.exchangedMomentum),
+    impactDamage: finiteKillMetric(value.impactDamage),
+  });
+}
+
+function finiteKillMetric(value) {
+  return Number.isFinite(value) ? Math.max(0, value) : 0;
+}
+
+// INF-025: clamp authored directional-armor rows at the spawn seam. Arcs stay within a
+// hemisphere per side; multipliers stay finite and bounded so a bad row can neither
+// immunize a hull (frontMult 0 still routes heat/statuses, never full immunity) nor
+// multiply damage without bound.
+
+export const combat = {
+  name: 'combat',
+  init(ctx) {
+    for (const off of this._chargeCellUnsubs || []) if (typeof off === 'function') off();
+    this._chargeCellUnsubs = [];
+    this._chargeCellVictims = new WeakSet();
+    this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers;
+    this.registry = ctx.registry || null;
+    this.kernel = getCombatKernel(ctx, { onKill: (target, killerId, lethal) => this.kill(target, killerId, lethal) });
+    this._pendingPlayerRecovery = null;
+    this._recoveryInFlight = false;
+    this._beamCandidateScratch = [];
+    this._beamQueryCenter = { x: 0, z: 0 };
+    this._combatQuiet = null;
+    this._diag = {
+      beamSpatialQueries: 0,
+      beamCandidates: 0,
+    };
+    // Every subscription that can create work for the per-tick walk also drops the quiet
+    // latch; the journal/index signals inside update() are the redundant second wake.
+    const wakeQuiet = () => { this._combatQuiet = null; };
+    ctx.bus.on('projectile:hit', (p) => { wakeQuiet(); this.onHit(p); });
+    ctx.bus.on('tether:whipImpact', (p) => { wakeQuiet(); this.onWhipImpact(p || {}); });
+    ctx.bus.on('dock:docked', (p) => {
+      wakeQuiet();
+      this.rememberRespawnStation(p && p.stationId);
+      this.setPlayerDocked(true);
+    });
+    ctx.bus.on('dock:undocked', () => { wakeQuiet(); this.setPlayerDocked(false); });
+    ctx.bus.on('player:recoveryRequested', (payload) => { wakeQuiet(); this.recoverPendingPlayer(payload || {}); });
+    // SEED-SW-16 — the dash's grace window. Only the player hull is armed (NPC craft have no
+    // dash); the generic `_invulnUntil` sweep in update() expires it. A held boost never emits
+    // ship:dash, so the window is the tap alone.
+    ctx.bus.on('ship:dash', (p) => {
+      const state = this.state;
+      if (!state || !p || p.shipId !== state.playerId) return;
+      const player = state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(state.playerId) : null;
+      if (!player) return;
+      player.flags = player.flags || {};
+      player.flags.invuln = true;
+      player._invulnUntil = (state.simTime || 0) + DASH_IFRAME_S;
+    });
+    const clearPendingDefeat = () => {
+      wakeQuiet();
+      this._recoveryInFlight = false;
+      const player = this.state.entities && typeof this.state.entities.get === 'function'
+        ? this.state.entities.get(this.state.playerId)
+        : null;
+      const restoredDefeat = !!player
+        && (player.alive === false || !!(player.flags && player.flags.defeated));
+      if (restoredDefeat) {
+        // SF-285: a save written mid-defeat restores the wreck AND the offer attached to it.
+        // Clearing here would strand the player in a dead hull with no reachable resolution —
+        // latch onto the restored durable receipt (or a receipt-less pending for pre-field
+        // saves, so buildRecoveryPlan still derives a truthful berth from live state).
+        // Ironman stays permadeath: the final screen is owed, a recovery latch is not.
+        const difficulty = this.state.settings && this.state.settings.gameplay
+          && this.state.settings.gameplay.difficulty;
+        this._pendingPlayerRecovery = difficulty === 'ironman'
+          ? null
+          : {
+            playerId: player.id,
+            receipt: (this.state.combat && this.state.combat.lastPlayerDefeat) || null,
+          };
+        return;
+      }
+      this._pendingPlayerRecovery = null;
+      if (this.state.combat) this.state.combat.lastPlayerDefeat = null;
+    };
+    ctx.bus.on('game:started', clearPendingDefeat);
+    ctx.bus.on('save:loaded', clearPendingDefeat);
+    ctx.bus.on('debug:refillPlayer', () => { wakeQuiet(); refillLabPlayer(this.state, this.bus); });
+    ctx.bus.on('debug:invulnerable', (p) => { wakeQuiet(); setLabInvulnerable(this.state, p || {}); });
+    const onCell = (event, listener) => this._chargeCellUnsubs.push(ctx.bus.on(event, listener));
+    onCell('entity:killed', (payload) => this._onChargeCellKill(payload));
+    onCell('massline:throw', (payload) => {
+      const cell = chargeCellData(this.state.entities.get(payload?.payloadId));
+      if (cell) cell.collectAfter = Math.max(cell.collectAfter, this.state.simTime + CHARGE_CELL_THROW_GRACE_S);
+    });
+    onCell('run:wavePlanned', (payload) => this._clearChargeCells((entity) =>
+      entity.data.runCohort === 'survival' && entity.data.runWave !== (payload?.wave ?? this.state.run?.wave)));
+    onCell('run:ended', () => this._clearChargeCells((entity) => entity.data.runCohort === 'survival'));
+    // Victory is a terminal phase reached by transition — no run:ended follows it.
+    onCell('run:transitioned', (payload) => {
+      if (payload && (payload.phase === 'victory' || payload.phase === 'ended')) {
+        this._clearChargeCells((entity) => entity.data.runCohort === 'survival');
+      }
+    });
+    for (const event of ['game:started', 'game:new', 'game:newGame']) {
+      onCell(event, () => this.newGame());
+    }
+    // Restored bodies own their remaining charge/deadlines. Only transient identity resets.
+    onCell('save:loaded', () => { this._chargeCellVictims = new WeakSet(); });
+    // W-BLOOM-LOW remains: the brood engine speaks the death intent, this system owns the
+    // bodies — same run-boundary clears as the charge cells that share its custody rules.
+    onCell('swarm:broodRemains', (payload) => this._onBroodRemains(payload));
+    onCell('swarm:broodRemainsSpent', (payload) => this._onBroodRemainSpent(payload));
+    onCell('run:wavePlanned', (payload) => this._clearBroodRemains((entity) =>
+      entity.data.runCohort === 'survival' && entity.data.runWave !== (payload?.wave ?? this.state.run?.wave)));
+    onCell('run:ended', () => this._clearBroodRemains((entity) => entity.data.runCohort === 'survival'));
+    onCell('run:transitioned', (payload) => {
+      if (payload && (payload.phase === 'victory' || payload.phase === 'ended')) {
+        this._clearBroodRemains((entity) => entity.data.runCohort === 'survival');
+      }
+    });
+  },
+
+  newGame() {
+    this._chargeCellVictims = new WeakSet();
+    this._clearChargeCells(() => true);
+    this._clearBroodRemains(() => true);
+  },
+
+  _retireChargeCell(entity) {
+    if (!entity.alive) return;
+    if (typeof this.helpers?.removeEntity === 'function') this.helpers.removeEntity(entity.id);
+    else entity.alive = false; // Core's lifetime sweep owns removal from every index.
+    markDirty(this.state, entity.id, DIRTY.MEMBERSHIP);
+  },
+
+  _clearChargeCells(predicate) {
+    for (const entity of chargeCellBodies(this.state)) {
+      if (entity.alive && chargeCellData(entity) && predicate(entity)) this._retireChargeCell(entity);
+    }
+  },
+
+  // W-BLOOM-LOW remains: a brood death spoke its authored deathLeaves — spawn the real body.
+  // The victim's last position and momentum come through on the intent; the pool is bounded
+  // and the oldest unattached body leaves first, exactly like the charge-cell residency law.
+  _onBroodRemains(payload) {
+    const state = this.state;
+    if (!payload || typeof this.helpers?.spawnEntity !== 'function') return;
+    if (!Number.isFinite(payload.pos?.x) || !Number.isFinite(payload.pos.z)) return;
+    if (typeof payload.kind !== 'string' || !payload.kind) return;
+    const run = state.run;
+    const runScoped = run?.kind === 'survival' && run.phase !== 'ended' && run.phase !== 'victory';
+    let count = 0, oldest = null;
+    for (const entity of broodRemainBodies(state)) {
+      if (!entity.alive) continue;
+      count++;
+      if (chargeCellAttached(state, entity.id)) continue;
+      const birth = entity.data.broodRemain.createdTick ?? (entity.data.despawnAt - BROOD_REMAINS_LIFETIME_S) * 60;
+      const previous = oldest && (oldest.data.broodRemain.createdTick
+        ?? (oldest.data.despawnAt - BROOD_REMAINS_LIFETIME_S) * 60);
+      if (!oldest || birth < previous || (birth === previous && entity.id < oldest.id)) oldest = entity;
+    }
+    if (count >= MAX_BROOD_REMAINS) {
+      // A fully latched pool has no legal eviction; preserve custody and the residency bound.
+      if (!oldest) return;
+      this._retireChargeCell(oldest);
+    }
+    const mass = Number.isFinite(payload.mass) && payload.mass > 0 ? payload.mass : 10;
+    this.helpers.spawnEntity({
+      type: 'payload', alive: true, collides: true,
+      radius: Number.isFinite(payload.radius) && payload.radius > 0 ? payload.radius : 4,
+      mass,
+      physicsBody: { dynamic: true, mass },
+      pos: { x: payload.pos.x, z: payload.pos.z },
+      vel: {
+        x: Number.isFinite(payload.vel?.x) ? payload.vel.x : 0,
+        z: Number.isFinite(payload.vel?.z) ? payload.vel.z : 0,
+      },
+      hull: 20, hullMax: 20,
+      data: {
+        kind: 'payload', payloadType: 'brood_remains',
+        name: typeof payload.name === 'string' ? payload.name : 'Brood remains',
+        masslineTetherable: true, physicalCustodyOnly: true, salvagePool: {},
+        transientSector: true, despawnAt: state.simTime + BROOD_REMAINS_LIFETIME_S,
+        ...(runScoped ? { runCohort: 'survival', runWave: payload.wave ?? run.wave } : {}),
+        broodRemain: {
+          familyId: payload.familyId, kind: payload.kind,
+          splashRadius: payload.splashRadius, glueS: payload.glueS,
+          whipMult: payload.whipMult, createdTick: state.tick,
+        },
+      },
+    });
+  },
+
+  // The engine has spoken: the burst landed or the leech stuck. The body retires through the
+  // same transient-payload removal path — identity-scoped, so a stale or foreign receipt can
+  // never clear a live remain or a cell.
+  _onBroodRemainSpent(payload) {
+    const entity = this.state.entities.get(payload?.entityId);
+    if (entity && broodRemainData(entity)) this._retireChargeCell(entity);
+  },
+
+  _clearBroodRemains(predicate) {
+    for (const entity of broodRemainBodies(this.state)) {
+      if (entity.alive && predicate(entity)) this._retireChargeCell(entity);
+    }
+  },
+
+  _onChargeCellKill(payload) {
+    const state = this.state;
+    const victim = state.entities.get(payload?.id);
+    if (!isChargeCellKill(payload, victim, state) || this._chargeCellVictims.has(victim)) return;
+    const player = state.entities.get(state.playerId);
+    if (!(player?.capMax > 0) || !Number.isFinite(player.capMax)
+      || typeof this.helpers?.spawnEntity !== 'function') return;
+    // Claim before spawning: entity:spawned listeners may synchronously redeliver this death.
+    this._chargeCellVictims.add(victim);
+    let count = 0, oldest = null;
+    for (const entity of chargeCellBodies(state)) {
+      if (!entity.alive || !chargeCellData(entity)) continue;
+      count++;
+      if (chargeCellAttached(state, entity.id)) continue;
+      const birth = entity.data.chargeCell.createdTick ?? (entity.data.despawnAt - CHARGE_CELL_LIFETIME_S) * 60;
+      const previous = oldest && (oldest.data.chargeCell.createdTick
+        ?? (oldest.data.despawnAt - CHARGE_CELL_LIFETIME_S) * 60);
+      if (!oldest || birth < previous || (birth === previous && entity.id < oldest.id)) oldest = entity;
+    }
+    if (count >= MAX_CHARGE_CELLS) {
+      // A fully latched pool has no legal eviction; preserve custody and the residency bound.
+      if (!oldest) return;
+      this._retireChargeCell(oldest);
+    }
+    const run = state.run;
+    const runScoped = run?.kind === 'survival' && run.phase !== 'ended' && run.phase !== 'victory'
+      && victim.data?.runCohort === 'survival' && victim.data.runWave === run.wave;
+    this.helpers.spawnEntity({
+      type: 'payload', alive: true, collides: true,
+      radius: CHARGE_CELL_RADIUS_WU, mass: CHARGE_CELL_MASS,
+      physicsBody: { dynamic: true, mass: CHARGE_CELL_MASS },
+      pos: { x: payload.pos.x, z: payload.pos.z }, vel: { x: 0, z: 0 },
+      hull: 20, hullMax: 20,
+      data: {
+        kind: 'payload', payloadType: 'charge_cell', name: 'Charge cell',
+        masslineTetherable: true, physicalCustodyOnly: true, salvagePool: {},
+        transientSector: true, despawnAt: state.simTime + CHARGE_CELL_LIFETIME_S,
+        ...(runScoped ? { runCohort: 'survival', runWave: run.wave } : {}),
+        chargeCell: {
+          version: 1, charge: player.capMax * CHARGE_CELL_CAP_FRACTION,
+          collectAfter: state.simTime + CHARGE_CELL_COLLECTION_GRACE_S,
+          createdTick: state.tick,
+        },
+      },
+    });
+  },
+
+  _updateChargeCells(state) {
+    if (state.mode !== 'flight') return;
+    const player = state.entities.get(state.playerId);
+    if (!player?.alive || player.flags?.docked || !player.pos
+      || !Number.isFinite(player.cap) || !Number.isFinite(player.capMax) || player.cap >= player.capMax) return;
+    for (const entity of chargeCellBodies(state)) {
+      const cell = entity.alive && chargeCellData(entity);
+      if (!cell || !entity.pos || state.simTime < cell.collectAfter
+        || state.simTime >= entity.data.despawnAt || chargeCellAttached(state, entity.id)) continue;
+      const dx = player.pos.x - entity.pos.x, dz = player.pos.z - entity.pos.z;
+      const radius = player.radius + entity.radius;
+      if (!(dx * dx + dz * dz <= radius * radius)) continue;
+      const chargeRestored = Math.min(cell.charge, player.capMax - player.cap);
+      if (!(chargeRestored > 0)) break;
+      // Retire before publishing feedback, so reentrant update/event delivery cannot pay twice.
+      this._retireChargeCell(entity);
+      player.cap = Math.min(player.capMax, player.cap + chargeRestored);
+      markDirty(state, player.id, DIRTY.COMBAT);
+      this.bus.emit('pickup:collected', {
+        pickupId: entity.id, collectorId: player.id, kind: 'charge_cell',
+        amount: 1, acceptedAmount: 1, rejectedAmount: 0, chargeRestored,
+        pos: { x: entity.pos.x, z: entity.pos.z },
+      });
+    }
+  },
+
+  // Transitional adapter: authored projectile/beam packets are routed directly; older scalar hit
+  // producers still pass through the legacy bridge until their emitters migrate.
+  onHit({ targetId, ownerId, damage, damageType, pos, penetration = 0, impulse = null, heat = 0, statuses = [], damagePacket = null, packet = null, weaponId = null, origin = null }) {
+    if (targetId === this.state.playerId && this.playerIsDockProtected()) {
+      return { ok: false, reason: 'target_docked', targetId, attackerId: ownerId == null ? null : ownerId };
+    }
+    markDirty(this.state, targetId, DIRTY.COMBAT);
+    if (ownerId != null) markDirty(this.state, ownerId, DIRTY.COMBAT);
+    let authoredPacket = damagePacket || packet || null;
+    const target = this.state.entities.get(targetId);
+    // This demolition cast is physical wreckage; gun damage still belongs to the kernel.
+    if (['wreck', 'asteroid'].includes(target?.type) && Number.isInteger(target.data?.battlefieldSlot)
+      && this.state.missions?.active?.some(m => m.status === 'active'
+        && m.id === target.data.missionTag && m.params?.workingBattlefield)) {
+      authoredPacket ||= legacyHitToDamagePacket({ damage, damageType, pos, penetration, impulse, heat, statuses });
+      authoredPacket = { ...authoredPacket, flags: { ...authoredPacket.flags, allowAnyTarget: true } };
+    }
+    // Weak-point bonus (BP-02): a PLAYER shot landing in a large hull's exposed subsystem arc does
+    // bonus damage. Player-only + flag-gated (`combat.weakPoints`, OFF in the golden) + geometric, so
+    // NPC combat and the deterministic 47-A sim are untouched. Scales the outgoing packet.
+    const weakMult = this._weakPointMult(targetId, ownerId, pos);
+    const result = this.ensureKernel().routeDamage({
+      attackerId: ownerId,
+      targetId,
+      packet: authoredPacket
+        ? scaleDamagePacket(damagePacketWithHit(authoredPacket, pos), weakMult)
+        : legacyHitToDamagePacket({ damage: damage * weakMult, damageType, pos, penetration, impulse, heat, statuses }),
+      origin: origin || (weaponId || authoredPacket && authoredPacket.source && authoredPacket.source.weaponId
+        ? { kind: 'weapon', id: weaponId || authoredPacket.source.weaponId }
+        : { kind: 'legacy', id: 'projectile:hit' }),
+    });
+    // Arc-wire: an energy shot into a hull the Snarl has pinned loads that chord. Kinetic
+    // shots and optic rocks keep their own contact. The chord, not this hit, pays the crosser.
+    if (result.ok && target && damageType === 'energy') {
+      const chords = activeWebChords(this.state, target.id);
+      if (planArcWireContact(target, { damageType }, chords)) {
+        noteArcWireShot(this.state, target, pos || null, chords);
+      }
+    }
+    if (result.ok && targetId === this.state.playerId) {
+      this.bus.emit('camera:shake', { amount: result.shieldBroke ? 0.4 : 0.2 });
+    }
+    return result;
+  },
+
+  // Rung 14 (the damage half): a whip-impact from masslineImpacts becomes hull damage on the
+  // struck body — through the kernel (single-writer), never direct hp. Flag-gated: combat.whipDamage
+  // is OFF in the deterministic node golden and ON in the browser (featureFlags.js Tier-B model).
+  // Only energetic hits (rating solid/crushing, relSpeed >= 55) hurt; glances are feedback-only.
+  // Friendly fire is on, matching impulse-charge blasts — physics doesn't check IFF.
+  onWhipImpact(payload) {
+    if (!combatFlag('whipDamage')) return null;
+    if (payload.rating !== 'solid' && payload.rating !== 'crushing') return null;
+    const victim = this.state.entities.get(payload.victimId);
+    if (!victim || victim.alive === false || !WHIP_DAMAGE_TYPES.has(victim.type)) return null;
+    const momentum = Number.isFinite(payload.momentum) ? Math.max(0, payload.momentum) : 0;
+    const damage = Math.min(WHIP_DAMAGE_MAX, momentum * WHIP_DAMAGE_MOMENTUM_SCALE);
+    if (damage <= 0) return null;
+    // INF-044 — the damage rides the receipt's contact read (point, incoming axis, outward
+    // side), so the victim's sparks vent from the struck side instead of the hull center.
+    const contact = payload.pos && Number.isFinite(payload.pos.x) && Number.isFinite(payload.pos.z)
+      ? { x: payload.pos.x, z: payload.pos.z }
+      : { x: victim.pos.x, z: victim.pos.z };
+    const packet = scalarHitToDamagePacket({
+      damage,
+      damageType: 'kinetic',
+      pos: contact,
+      approach: payload.approach,
+      normal: payload.normal,
+      source: { kind: 'massline_whip', massId: payload.targetId ?? null },
+    });
+    packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+    return this.ensureKernel().routeDamage({
+      attackerId: this.state.playerId,
+      targetId: victim.id,
+      packet,
+      origin: { kind: 'massline_whip', id: payload.targetId ?? null },
+    });
+  },
+
+  ensureKernel() {
+    if (this.kernel) return this.kernel;
+    const helpers = this.helpers || (this.helpers = {});
+    this.kernel = getCombatKernel({
+      state: this.state,
+      bus: this.bus,
+      helpers,
+      registry: this.registry || null,
+    }, { onKill: (target, killerId, lethal) => this.kill(target, killerId, lethal) });
+    return this.kernel;
+  },
+
+  // Weak-point damage multiplier for a hit (BP-02). Returns >1 only when: the feature flag is on, the
+  // attacker is the local player, and the shot landed in the target's exposed subsystem arc. Emits a
+  // combat:weakPointHit cue for the HUD callout. Never draws RNG; never mutates the target.
+  _weakPointMult(targetId, ownerId, pos) {
+    if (!pos || ownerId !== this.state.playerId || !combatFlag('weakPoints')) return 1;
+    const target = this.state.entities && this.state.entities.get ? this.state.entities.get(targetId) : null;
+    if (!target || target.alive === false) return 1;
+    // The Kraken's timed aperture is adjudicated once by the canonical damage router,
+    // which has direct-hit provenance. The static scan arc must not announce a closed-core crit.
+    if (target.data?.ironKraken) return 1;
+    const wp = weakPointForEntity(target);
+    if (!wp || !isHitInWeakArc(target, pos, wp)) return 1;
+    this.bus.emit('combat:weakPointHit', {
+      targetId, ownerId, label: wp.label, mult: wp.bonusMult,
+      // Earned by the existing arc test; this is presentation metadata, never a chance roll.
+      critical: true, criticalLabel: 'CRIT',
+      pos: { x: pos.x, z: pos.z },
+    });
+    return wp.bonusMult;
+  },
+
+  kill(t, killerId, lethal = {}) {
+    const state = this.state, bus = this.bus, d = t.data || {};
+    if (t.id === state.playerId) {
+      if (this._pendingPlayerRecovery || t.alive === false) return;
+      const receipt = buildDefeatReceipt(state, t, killerId, lethal);
+      // Ironman (advertised as "permadeath" in the New Game UI) honors that promise: death ends
+      // the run instead of respawning. We still fire player:death so the death banner/VFX play,
+      // then emit game:over (a gameOver screen subscribes and shows a run summary). The entity is
+      // left dead (not healed/relocated) so the screen opens over a real wreck, not a live ship.
+      const difficulty = state.settings && state.settings.gameplay && state.settings.gameplay.difficulty;
+      if (difficulty === 'ironman') {
+        state.combat.lastPlayerDefeat = receipt;
+        t.alive = false;
+        const victimVel = deathVelocity(t);
+        setVecXZ(t.vel, 0, 0);
+        bus.emit('player:death', { ...receipt, recoverable: false, victimVel });
+        bus.emit('game:over', { reason: 'ironman_death', recoverable: false, receipt });
+        return;
+      }
+      this.beginPlayerDefeat(t, receipt);
+      return;
+    }
+    if (!t.alive) return;
+    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    const targetHostileToPlayer = lethal && typeof lethal.targetHostileToPlayer === 'boolean'
+      ? lethal.targetHostileToPlayer
+      : !!isHostileToPlayer(t, player && player.team, state);
+    t.alive = false;
+    const killedByPlayer = killerId === state.playerId;
+    // Mission targets settle through missions' synchronous entity:killed listener. Paying their
+    // archetype bounty/loot here as well makes one contract kill resolve through two reward
+    // authorities. The durable mission identity survives sector rematerialization and Continue;
+    // ambient enemies have neither tag and retain the normal combat reward path below.
+    const missionOwns = missionOwnsReward(t);
+    // A Survival body pays the RUN wallet, never campaign credits (PQ-133 ruling 2 / CRU-015).
+    // The marker is written onto the victim by the wave materializer, so this reserves the
+    // authored bounty/loot path for the run without asking whether a run happens to be live.
+    const runOwns = runOwnsReward(t);
+    // The career kill tally: gameOver's recap, the Life Ledger, and the finale's combat-tally
+    // sentence all read stats.kills and nothing ever wrote it. Same adjudication as the
+    // telemetry sink — killerId === playerId only (NPC attrition, drone-owned kills, and the
+    // player's own death all excluded); Survival bodies stay run-scoped like the run wallet,
+    // while mission-owned kills still count (missions own the reward, not the fact). Ships only,
+    // matching aceMemory — the finale calls this "hulls you broke", and a popped mine, mass seed,
+    // payload, or station is not a hull.
+    if (state.playerId != null && killedByPlayer && !runOwns && t.type === 'ship') {
+      const p = state.player || (state.player = {});
+      const stats = (p.stats && typeof p.stats === 'object') ? p.stats : (p.stats = {});
+      stats.kills = Math.max(0, Math.floor(Number(stats.kills) || 0)) + 1;
+    }
+    const authoredRewardEligible = killedByPlayer && !missionOwns && !runOwns;
+    const factionLawful = lethal && typeof lethal.factionLawful === 'boolean'
+      ? lethal.factionLawful
+      : !!(d.ai && d.ai.lawful);
+    const presentation = buildKillPresentationReceipt(state, t, killerId, lethal);
+    // lootShards owns the physical kill burst (chips + materials) for player-authored hostile
+    // kills. Granting bounty/loot here, spawning authored pickups, or emitting a second loot:drop
+    // would pay the same hull twice (AC-01: death does not grant; collection does).
+    const shardsOwnKillBurst = massline2Flag('lootShards') && authoredRewardEligible && targetHostileToPlayer;
+    bus.emit('entity:killed', {
+      id: t.id, killerId, type: t.type, pos: { x: t.pos.x, z: t.pos.z },
+      // bountyCr is the CAMPAIGN payout figure and drives the "+N CR" kill toast. A Survival
+      // body pays no campaign credits, so publishing its archetype bounty here would promise the
+      // player money they never receive; the run chip is what they actually collect. A
+      // shard-owned hostile kill is the same case — the collectible chip carries the money.
+      factionId: t.factionId, factionLawful, bountyCr: (missionOwns || runOwns || shardsOwnKillBurst) ? 0 : (d.bountyCr || 0),
+      lootTableId: d.lootTableId || null, victimClass: d.shipClass || t.type,
+      targetHostileToPlayer,
+      baseKind: d.baseKind || null,
+      // A lethal whip need not leave an impulse record; keep its damage-owned cause. A DoT end
+      // carries its own attrition label so the room can say the end honestly (killEndLabelFor).
+      ...(lethal?.origin?.kind === 'massline_whip' ? { cause: 'massline_whip' }
+        : killEndLabelFor(lethal) ? { cause: killEndLabelFor(lethal) } : {}),
+      // The collision partner — law's witness sightline must not let it occlude its own kill.
+      impactorId: killImpactorId(lethal),
+      ...(lethal?.origin?.kind === 'collision' && lethal?.packet?.source?.chainWitness
+        ? { chainWitness: lethal.packet.source.chainWitness } : {}),
+      presentation,
+    });
+    // SEAM-BASE: a destructible base entity is an ordinary damageable station carrying
+    // `data.baseKind`; killing it is the only producer of `combat:baseDestroyed`
+    // (economy.onBaseDestroyed consumes it: piracy events tied to its station end and a
+    // contraband shortage is injected when a stationId is set).
+    if (d.baseKind) {
+      bus.emit('combat:baseDestroyed', {
+        type: d.baseKind,
+        stationId: d.stationId || null,
+        stationType: d.stationTypeId || null,
+        factionId: t.factionId || d.factionId || null,
+        sectorId: (state.world && state.world.currentSectorId) || null,
+        killerId,
+        pos: { x: t.pos.x, z: t.pos.z },
+      });
+    }
+    // World event, not a player event: this fires for EVERY entity killed, so with no position it hit
+    // the player's camera at full 0.5 trauma for a kill anywhere in the sector — three times the
+    // amplitude of the destruction-VFX shake. The neighbouring emitters in this file are all
+    // player-scoped by construction (player hit, player death, respawn) and correctly send none.
+    bus.emit('camera:shake', { amount: 0.5, position: { x: t.pos.x, z: t.pos.z } });
+    const bounty = Math.max(0, Math.round(d.bountyCr || 0));
+    if (bounty > 0 && authoredRewardEligible && !shardsOwnKillBurst) {
+      bus.emit('economy:grantCredits', { amount: bounty, reason: 'bounty' });
+    }
+    if (d.loot && !missionOwns && !shardsOwnKillBurst) {
+      // Current run seed + durable victim identity makes authored rewards stable across entity-id
+      // rematerialization and save/load without a private combat cursor to serialize or reset.
+      const rewardRng = createVictimRewardRng(
+        state.meta && state.meta.seed,
+        t,
+        'combat_authored_loot_v1',
+      );
+      const { credits, items } = this.rollLoot(d.loot, rewardRng);
+      const creditedLoot = authoredRewardEligible ? credits : 0;
+      if (creditedLoot > 0) bus.emit('economy:grantCredits', { amount: creditedLoot, reason: 'loot' });
+      // NPC-on-NPC kills still publish the deterministic world receipt used by observers, but
+      // authored credits and physical pickups remain player-earned. Commodity cargo continues to
+      // materialize only through its owning loot/custody systems, never this metadata-only receipt.
+      bus.emit('loot:drop', {
+        pos: { x: t.pos.x, z: t.pos.z },
+        credits: creditedLoot,
+        items,
+      });
+      if (authoredRewardEligible) {
+        for (const it of items) {
+          const ang = rewardRng() * Math.PI * 2, sp = 18 + rewardRng() * 28;
+          const kind = lootPickupKind(it.id);
+          this.helpers.spawnEntity({
+            type: 'pickup', pos: { x: t.pos.x + Math.cos(ang) * 8, z: t.pos.z + Math.sin(ang) * 8 },
+            vel: { x: Math.cos(ang) * sp, z: Math.sin(ang) * sp }, radius: 2.2,
+            data: { kind, commodityId: it.id, amount: it.qty, despawnAt: state.simTime + 30 },
+          });
+        }
+      }
+    }
+  },
+
+  beginPlayerDefeat(t, receipt) {
+    if (!t || this._pendingPlayerRecovery) return false;
+    t.alive = false;
+    t.flags = t.flags || {};
+    t.flags.defeated = true;
+    const victimVel = deathVelocity(t);
+    setVecXZ(t.vel, 0, 0);
+    this._pendingPlayerRecovery = { playerId: t.id, receipt };
+    this.state.combat.lastPlayerDefeat = receipt;
+    // Row 463: a live authored capital fight that just killed the player owes the after-action
+    // screen a "Retry act" offer. finish('defeat') only lands on the score's next step, so the
+    // record is still non-terminal at this moment — stamp the durable receipt while it reads live.
+    // lastPlayerDefeat is save-durable, so the offer survives a save/load over the open sheet.
+    const bossFights = this.state.capitalBossEncounters && this.state.capitalBossEncounters.fights;
+    if (bossFights) {
+      for (const fight of Object.values(bossFights)) {
+        if (!fight || fight.terminal || fight.suspended || fight.started !== true) continue;
+        if (typeof fight.fightId === 'string' && fight.fightId.startsWith('swarm:')) continue;
+        if (fight.targetId !== t.id) continue;
+        receipt.capitalBossFightId = fight.fightId;
+        try {
+          const score = requireCapitalBossEncounter(fight.encounterId).score;
+          receipt.capitalBossName = (score && score.name) || '';
+          const act = score && Array.isArray(score.acts)
+            && Number.isInteger(fight.actIndex) && fight.actIndex >= 0 ? score.acts[fight.actIndex] : null;
+          receipt.capitalBossActTitle = (act && act.title) || '';
+        } catch (_) {
+          receipt.capitalBossName = '';
+          receipt.capitalBossActTitle = '';
+        }
+        break;
+      }
+    }
+    // Defeat-streak bookkeeping (the adaptive floor in data/difficulty.js): a counter plus the
+    // sim timestamp, written once per recoverable defeat. Ironman exits before this seam, so a
+    // permadeath run never accrues mercy; Veteran accrues the count but its profile never eases.
+    // The receipt carries both the streak and the post-defeat scale so the lever stays auditable
+    // without ever surfacing as a banner.
+    const streak = this._recordDefeatStreak();
+    receipt.defeatStreak = streak.count;
+    const mercyScale = defeatMercyScale(this.state);
+    receipt.defeatMercyScale = mercyScale < 1 ? mercyScale : null;
+    this.bus.emit('player:death', { ...receipt, recoverable: true, victimVel });
+    this.bus.emit('game:over', { reason: 'ship_destroyed', recoverable: true, receipt });
+    return true;
+  },
+
+  /** Bounded streak on state.player: resets when the gap since the last defeat exceeds the window. */
+  _recordDefeatStreak() {
+    const state = this.state;
+    const player = state.player || (state.player = {});
+    const streak = player.defeatStreak && typeof player.defeatStreak === 'object'
+      ? player.defeatStreak : (player.defeatStreak = { count: 0, lastDefeatSimTime: null });
+    const now = Number(state.simTime) || 0;
+    const last = streak.lastDefeatSimTime;
+    streak.count = typeof last === 'number' && Number.isFinite(last) && now - last <= DEFEAT_STREAK_WINDOW_S
+      ? Math.max(0, Math.floor(Number(streak.count) || 0)) + 1
+      : 1;
+    streak.lastDefeatSimTime = now;
+    return streak;
+  },
+
+  /**
+   * Rebuild the in-memory recovery latch from the durable after-action receipt when the wreck is
+   * still present. The UI reads lastPlayerDefeat; combat previously only honored _pendingPlayerRecovery
+   * (cleared on re-init / partial failure), so Continue could no-op with no feedback.
+   */
+  rearmPendingRecoveryFromReceipt() {
+    if (this._pendingPlayerRecovery) return this._pendingPlayerRecovery;
+    const state = this.state;
+    if (!state) return null;
+    const difficulty = state.settings && state.settings.gameplay && state.settings.gameplay.difficulty;
+    if (difficulty === 'ironman') return null;
+    const receipt = state.combat && state.combat.lastPlayerDefeat;
+    if (!receipt) return null;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    if (!player) return null;
+    const defeated = player.alive === false || !!(player.flags && player.flags.defeated);
+    if (!defeated) return null;
+    this._pendingPlayerRecovery = { playerId: player.id, receipt };
+    return this._pendingPlayerRecovery;
+  },
+
+  notifyRecoveryFailure(reason) {
+    const messages = {
+      no_pending_defeat: 'Recovery is not available for this wreck. Load a save or start a new run.',
+      player_missing: 'Recovery failed: ship record missing. Load a save or start a new run.',
+      recovery_in_flight: 'Recovery is already in progress.',
+      recovery_failed: 'Recovery failed. Try again, or load a save.',
+    };
+    const text = messages[reason] || messages.no_pending_defeat;
+    if (this.bus) {
+      this.bus.emit('toast', { text, kind: 'error', ttl: 4.5 });
+      this.bus.emit('player:recoveryFailed', { reason: reason || 'no_pending_defeat' });
+    }
+  },
+
+  recoverPendingPlayer(payload = {}) {
+    if (this._recoveryInFlight) {
+      this.notifyRecoveryFailure('recovery_in_flight');
+      return { ok: false, reason: 'recovery_in_flight' };
+    }
+
+    // Prefer the live latch; if it was lost while the after-action receipt still describes a
+    // recoverable wreck, re-arm from lastPlayerDefeat so Continue is not a silent no-op.
+    const pending = this._pendingPlayerRecovery || this.rearmPendingRecoveryFromReceipt();
+    if (!pending) {
+      this.notifyRecoveryFailure('no_pending_defeat');
+      return { ok: false, reason: 'no_pending_defeat' };
+    }
+    const player = this.state.entities && typeof this.state.entities.get === 'function'
+      ? (this.state.entities.get(pending.playerId) || this.state.entities.get(this.state.playerId))
+      : null;
+    if (!player) {
+      this.notifyRecoveryFailure('player_missing');
+      return { ok: false, reason: 'player_missing' };
+    }
+
+    // Block re-entry for the duration of this call so a double-click cannot charge twice.
+    // Keep the latch until placement succeeds — if restore throws, the player can retry without
+    // losing the receipt and without a silent dead button.
+    this._recoveryInFlight = true;
+    try {
+      const receipt = pending.receipt || {};
+      let plan = receipt.recovery || buildRecoveryPlan(this.state, player);
+      // Row 463 "Retry act": same berth economics, a different berth — the staging point sits
+      // ~1100 WU off the boss on the recovery-station bearing, outside the score's 900 WU
+      // suspend radius so the rewound act re-arms by approach. A missing fight, mission, boss,
+      // or lawful station falls back to the ordinary berth plan.
+      if (payload.plan === 'boss_staging') {
+        const staged = this._bossStagingPlan(plan, receipt);
+        if (staged) plan = staged;
+      }
+
+      // Place first. Cargo/credit consequences apply only after the berth is committed so a
+      // failed cross-sector restore cannot strip inventory and leave the after-action modal stuck.
+      this.restorePlayerAtRecoveryDock(player, plan);
+
+      let cargoLostQty = 0;
+      for (const loss of plan.cargoLosses || []) {
+        cargoLostQty += removeCargo(this.state, loss.commodityId, loss.qty);
+      }
+      if (plan.costCr > 0) {
+        // An uninsured recovery is a hull share, not a deductible — the session ledger
+        // would otherwise file a 6,000-cr uninsured charge under 'insurance'.
+        this.bus.emit('economy:chargeCredits', {
+          amount: plan.costCr,
+          reason: plan.insured ? 'recovery:deductible' : 'recovery:hull_share',
+        });
+      }
+      // FB-124: a live cargo policy pays its priced claim once, at the recovery berth —
+      // the policy is consumed here so a second defeat on the same trip cannot re-claim it.
+      if (plan.cargoPayoutCr > 0) {
+        this.bus.emit('economy:grantCredits', {
+          amount: plan.cargoPayoutCr,
+          reason: 'recovery:cargo_policy',
+        });
+      }
+      // Recovery ends the insured trip even if there was no payable cargo loss.
+      if (this.state.player && this.state.player.cargoPolicy) delete this.state.player.cargoPolicy;
+
+      this._pendingPlayerRecovery = null;
+      if (this.state.combat) this.state.combat.lastPlayerDefeat = null;
+
+      const recoveryReceipt = {
+        stationId: plan.stationId,
+        stationName: plan.stationName,
+        shipId: player.data && player.data.defId,
+        costCr: plan.costCr,
+        insuranceStatus: plan.insuranceStatus,
+        cargoLost: cargoLostQty > 0,
+        cargoLostQty,
+        cause: receipt.cause || null,
+        source: payload.source || 'after_action',
+      };
+      this.bus.emit('player:respawn', recoveryReceipt);
+      this.bus.emit('camera:shake', { amount: 0.45 });
+      return { ok: true, ...recoveryReceipt };
+    } catch (err) {
+      console.error('[combat] player recovery failed', err);
+      this.notifyRecoveryFailure('recovery_failed');
+      return { ok: false, reason: 'recovery_failed' };
+    } finally {
+      this._recoveryInFlight = false;
+    }
+  },
+
+  /**
+   * Row 463 "Retry act": derive the boss-staging placement for a defeat-terminated fight whose
+   * mission is still active. Returns a recovery-plan-shaped object (same economics as the berth
+   * plan the caller already priced) or null to fall back to the ordinary berth.
+   */
+  _bossStagingPlan(plan, receipt) {
+    const state = this.state;
+    const fightId = receipt && receipt.capitalBossFightId;
+    if (fightId == null) return null;
+    const fights = state.capitalBossEncounters && state.capitalBossEncounters.fights;
+    const fight = fights && fights[String(fightId)];
+    if (!fight || fight.bossKilled === true) return null;
+    // 'defeat' is the settled shape; a still-live record is the same loss the score never got to
+    // observe — the boss's own authored hit kills inside the score's step and the paused
+    // after-action screen freezes the sim before the next tick. Recovery rewinds both.
+    const interrupted = fight.terminal == null && fight.started === true
+      && fight.targetId === state.playerId;
+    if (fight.terminal !== 'defeat' && !interrupted) return null;
+    const active = (state.missions && Array.isArray(state.missions.active) && state.missions.active) || [];
+    const mission = active.find((m) => m && String(m.id) === String(fightId));
+    if (!mission || mission.status !== 'active' || !mission.destSectorId) return null;
+    // The boss's live position is only meaningful in the loaded sector; a fight whose room is
+    // elsewhere falls back to the berth rather than staging on another sector's coordinates.
+    const currentSectorId = state.world && state.world.currentSectorId;
+    if (currentSectorId && currentSectorId !== mission.destSectorId) return null;
+    const boss = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(fight.bossId) : null;
+    if (!boss || boss.alive === false || !boss.pos) return null;
+    const station = lawfulStationInSector(mission.destSectorId);
+    if (!station) return null;
+    const stationPos = liveStationPosition(state, station.id)
+      || (station.pos && Number.isFinite(station.pos.x) ? { x: station.pos.x, z: station.pos.z } : null);
+    if (!stationPos) return null;
+    const dx = stationPos.x - boss.pos.x, dz = stationPos.z - boss.pos.z;
+    const dist = Math.hypot(dx, dz);
+    const ux = dist > 1 ? dx / dist : 1, uz = dist > 1 ? dz / dist : 0;
+    return {
+      ...plan,
+      sectorId: mission.destSectorId,
+      stationId: station.id,
+      stationName: station.name || plan.stationName,
+      stationPos,
+      pos: {
+        x: boss.pos.x + ux * BOSS_STAGING_DISTANCE_WU,
+        z: boss.pos.z + uz * BOSS_STAGING_DISTANCE_WU,
+      },
+    };
+  },
+
+  restorePlayerAtRecoveryDock(t, plan) {
+    const currentSectorId = this.state.world && this.state.world.currentSectorId;
+    if (plan && plan.sectorId && plan.sectorId !== currentSectorId) {
+      const world = this.registry && typeof this.registry.get === 'function' ? this.registry.get('world') : null;
+      if (world && typeof world.enterSector === 'function') {
+        world.enterSector(plan.sectorId, {
+          via: 'recovery',
+          fromSectorId: currentSectorId || null,
+          placePlayer: true,
+        });
+      }
+    }
+    const livePos = this.respawnPosition(plan && plan.stationId);
+    const stationPos = livePos && (livePos.x !== 0 || livePos.z !== 0) ? livePos
+      : plan && plan.stationPos || livePos || { x: 0, z: 0 };
+    // Recover beside the station rather than at its collision origin. Lawful-station engagement
+    // authority already prevents attackers firing into this berth, so recovery needs no temporary
+    // invulnerability reward-hack and stale projectiles remain back at the wreck site.
+    // Row 463: a boss_staging plan carries its own computed pos — the same teleport path, a
+    // different point on the field.
+    const pos = plan && plan.pos && Number.isFinite(plan.pos.x) && Number.isFinite(plan.pos.z)
+      ? { x: plan.pos.x, z: plan.pos.z }
+      : { x: stationPos.x + RECOVERY_BERTH_CLEARANCE_WU, z: stationPos.z };
+    t.alive = true;
+    t.hull = t.hullMax;
+    t.armorHp = t.armorMax;
+    t.shield = t.shieldMax;
+    t.cap = t.capMax;
+    setVecXZ(t.pos, pos.x, pos.z);
+    setVecXZ(t.vel, 0, 0);
+    if (t.prevPos && typeof t.prevPos.copy === 'function') t.prevPos.copy(t.pos);
+    else setVecXZ(t.prevPos, pos.x, pos.z);
+    t.flags = t.flags || {};
+    delete t.flags.defeated;
+    // Recovery never re-docks the ship: a revive must not resurrect a dock latch (all live kill
+    // paths are dock-guarded today, but nothing else clears flags.docked off a recovered hull).
+    delete t.flags.docked;
+    t.flags.invuln = false;
+    t._invulnUntil = null;
+  },
+
+  rollLoot(loot, r) {
+    // Production supplies the stateless per-victim stream explicitly. The optional `this.rng`
+    // fallback is dependency injection used by the offline loot-table audit; combat init never owns
+    // or advances such a cursor.
+    r = typeof r === 'function' ? r : (this && typeof this.rng === 'function' ? this.rng : null);
+    if (!r) throw new TypeError('rollLoot requires an injected deterministic RNG');
+    const cr0 = (loot.creditsRange && loot.creditsRange[0]) || 0;
+    const cr1 = (loot.creditsRange && loot.creditsRange[1]) || 0;
+    const credits = Math.round(cr0 + (cr1 - cr0) * r());
+    const items = [];
+    for (const g of (loot.guaranteed || [])) items.push({ id: g.id, qty: qrange(g.qtyRange, r) });
+    for (const drop of (loot.drops || [])) if (r() < (drop.chance ?? 0)) items.push({ id: drop.id, qty: qrange(drop.qtyRange, r) });
+    return { credits, items };
+  },
+
+  rememberRespawnStation(stationId) {
+    if (!stationId) return;
+    const player = this.state && this.state.player;
+    if (!player) return;
+    const ins = player.insurance || (player.insurance = { rate: 0.6, deductibleCr: 500, insuredModules: false, lastStationId: null });
+    ins.lastStationId = stationId;
+  },
+
+  setPlayerDocked(docked) {
+    const player = this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(this.state.playerId)
+      : null;
+    if (!player) return;
+    player.flags = player.flags || {};
+    player.flags.docked = !!docked;
+    if (docked) {
+      player.flags.invuln = true;
+      player._invulnUntil = Infinity;
+      setVecXZ(player.vel, 0, 0);
+    } else {
+      // Overnight B1: longer undock grace so early pirates can't delete the player at the pad.
+      player.flags.invuln = true;
+      player._invulnUntil = (this.state.simTime || 0) + UNDOCK_INVULN_S;
+    }
+  },
+
+  playerIsDockProtected() {
+    const player = this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(this.state.playerId)
+      : null;
+    return !!(player && player.flags && player.flags.docked) || !!(this.state && this.state.ui && this.state.ui.docked);
+  },
+
+  respawnPosition(stationId) {
+    const station = stationRecordFor(this.state, stationId);
+    let pos = station && station.pos;
+    if (!pos && station && typeof station.id === 'number' && this.state && this.state.entities) {
+      const entity = this.state.entities.get(station.id);
+      pos = entity && entity.pos;
+    }
+    if (!pos) {
+      const live = liveStationFor(this.state, stationId);
+      pos = live && live.pos;
+    }
+    return pos ? { x: pos.x || 0, z: pos.z || 0 } : { x: 0, z: 0 };
+  },
+
+  update(dt, state) {
+    ensureCombatRuntime(this);
+    if (this.kernel && typeof this.kernel.stepPlayerFieldRepair === 'function') {
+      this.kernel.stepPlayerFieldRepair();
+    }
+    this._updateChargeCells(state);
+    resetCombatDiagnostics(this._diag);
+    state.combatRuntime = state.combatRuntime || {};
+    const membership = combatEntityIndexVersion(state);
+    const tick = state.tick | 0;
+    const beamsIdle = combatBeamsIdle(state);
+    const combatDirty = hasDirty(state, DIRTY.COMBAT);
+    // Quiet-latched: the last full scan proved no ship needs regen or invuln service and no
+    // damage is in flight, so the walk + beam sweep can only no-op this tick. The kernel still
+    // runs — it owns attachment telemetry and keeps its own independent quiet path.
+    const quiet = this._combatQuiet;
+    if (COMBAT_QUIET_LATCH !== false
+        && quiet
+        && membership != null
+        && quiet.membership === membership
+        && !combatDirty
+        && beamsIdle
+        && ((tick - (quiet.armedTick | 0)) < COMBAT_QUIET_RESCAN_TICKS)) {
+      publishCombatQuiet(state, true);
+      state.combatRuntime.diagnostics = this._diag;
+      if (this.kernel) this.kernel.postPhysics(dt);
+      return;
+    }
+    const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
+    let needsService = false;
+    for (const e of ships) {
+      if (e.type !== 'ship' || !e.alive) continue;
+      // Fitted module energyDraw — summed by getDerivedStats into derived.continuousDrain — is a
+      // continuous tax on the same capacitor the guns spend. The outfitting forecast ("Continuous
+      // module draw exceeds capacitor regeneration", the trigger-time readout) is enforced here:
+      // a power-hungry fit bleeds charge even while nothing fires, and an honest one recharges
+      // slower by exactly the advertised amount. Reactor damage scales only the regen half — the
+      // modules still draw. A negative draw is a generator feeding the same line. NPC hulls
+      // mount no powered fittings (drain 0), so their path is unchanged; hulls without a
+      // derived block read as zero draw.
+      const capDrain = e.capMax > 0
+        ? Number(e.data && e.data.derived && e.data.derived.continuousDrain) || 0
+        : 0;
+      const capNetRate = e.capMax > 0
+        ? (e.capRegen || 0)
+            * (this.kernel ? this.kernel.capRegenMultiplier(e.id) : 1)
+            * (e.id === state.playerId ? WEAPON_CAP_REGEN_MULT : 1)
+            - capDrain
+        : 0;
+      // A starving fit still counts as needing service while it bleeds — the quiet latch must not
+      // freeze a capacitor mid-discharge. A capacitor that can no longer move (empty or full at
+      // its equilibrium) stops being work, the same honesty the old cap<capMax check had.
+      const capWorking = e.capMax > 0
+        && ((capNetRate > 0 && e.cap < e.capMax) || (capNetRate < 0 && e.cap > 0));
+      const regenerating = (e.shieldMax > 0 && e.shield < e.shieldMax)
+        || capWorking
+        || !!(e.flags && e.flags.invuln);
+      if (regenerating) needsService = true;
+      if (!regenerating && !isDirty(state, e.id, DIRTY.COMBAT | DIRTY.POSE)) continue;
+      if (e.flags && e.flags.invuln && e._invulnUntil != null && state.simTime >= e._invulnUntil) e.flags.invuln = false;
+      if (e.shieldMax > 0 && e.shield < e.shieldMax && state.simTime - (e.lastDamageT || -1e9) >= (e.shieldRegenDelay || 3)) {
+        const shieldWasDown = e.shield <= 0;
+        e.shield = Math.min(e.shieldMax, e.shield + (e.shieldRegenRate || 0) * dt);
+        // Shield collapse has a dramatic cue; coming back online deserved the same notice. Fires
+        // once per depletion->recovery crossing, not per regen tick.
+        if (shieldWasDown && e.shield > 0 && this.bus) {
+          this.bus.emit('shieldRestored', { combatantId: e.id, pos: e.pos ? { x: e.pos.x, z: e.pos.z } : null });
+        }
+      }
+      if (capWorking) {
+        e.cap = Math.min(e.capMax, Math.max(0, e.cap + capNetRate * dt));
+      }
+    }
+    this._applyBeamDamage(state);
+    state.combatRuntime.diagnostics = this._diag;
+    // Arm only when the just-run scan proved every live ship is fully serviced. A dirty mark or
+    // live beam this tick keeps the walk live; a missing entity index refuses the latch so the
+    // entityList fallback stays live for harnesses without the typed index.
+    if (COMBAT_QUIET_LATCH !== false
+        && membership != null
+        && !needsService
+        && !combatDirty
+        && beamsIdle) {
+      this._combatQuiet = { membership, armedTick: tick };
+      publishCombatQuiet(state, true);
+    } else {
+      this._combatQuiet = null;
+      publishCombatQuiet(state, false);
+    }
+    if (this.kernel) this.kernel.postPhysics(dt);
+  },
+
+  // Continuous beam weapons (weapons.js) push a ray per firing beam into state.combat.beams each tick
+  // with a dpsThisTick value; weapons clears the list at the start of its update, so this consumes the
+  // current tick's beams (weapons runs before combat in UPDATE_ORDER). Each beam damages the FIRST
+  // entity along its path. Without this sweep, beam weapons (and the Dreadnought's heavy beams) deal
+  // zero damage — only writes, no reads.
+  _applyBeamDamage(state) {
+    ensureCombatRuntime(this);
+    const beams = state.combat && state.combat.beams;
+    if (!beams || !beams.length) return;
+    for (let i = 0; i < beams.length; i++) {
+      const beam = beams[i];
+      if (!beam || !beam.from || !beam.to || !(beam.dpsThisTick > 0)) continue;
+      const ax = beam.from.x, az = beam.from.z;
+      const dx = beam.to.x - ax, dz = beam.to.z - az;
+      const len2 = dx * dx + dz * dz || 1e-6;
+      const owner = state.entities.get(beam.ownerId);
+      // Same-team hulls are admitted by the damage authority's own friendly-fire rule (the one a
+      // bolt meets in routeDamage), not a blanket team skip: a beam must hit the neutral team-0
+      // civilian or station a bolt hits, while the shooter's own devices stay protected.
+      const beamOrigin = BEAM_ADMISSION_ORIGIN;
+      beamOrigin.id = beamOrigin.weaponId = beam.weaponId || null;
+      const beamFlags = beam.damagePacket ? beam.damagePacket.flags : null;
+      let bestT = Infinity, bestE = null;
+      const damageables = beamDamageCandidates(this, state, beam, dx, dz);
+      for (const e of damageables) {
+        if (!e.alive) continue;
+        // A shield pylon endpoint is a destructible body (packet 06): a beam can hit it like a hull.
+        if (e.type !== 'ship' && e.type !== 'station' && e.type !== 'drone'
+          && !(e.data && e.data.shieldPylonEndpoint === true)) continue;
+        if (e.id === beam.ownerId) continue;
+        if (e.id === state.playerId && this.playerIsDockProtected()) continue;
+        if (friendlyFireRefuses(state, owner, e, beamOrigin, beamFlags)) continue; // no friendly fire
+        const hit = opticBeamHit(beam, e);
+        if (hit && hit.t < bestT) { bestT = hit.t; bestE = e; }
+      }
+      // Compact field rocks participate in the same first-skin race before promotion. Choosing
+      // from a budget-limited set of live bodies lets crowded rays shoot through foreground cover.
+      const envBlockers = beamEnvironmentCandidates(this, state, beam, dx, dz, len2);
+      for (const e of envBlockers) {
+        if (!e.alive) continue;
+        if (e.id === beam.ownerId) continue;
+        const hit = opticBeamHit(beam, e);
+        if (hit && hit.t < bestT) { bestT = hit.t; bestE = e; }
+      }
+      // §24 "Beams and missiles": an energy beam also answers to the optic lattice — stone,
+      // metal, and diamond surfaces were never hulls, but the first optic body on the ray owns
+      // the contact (absorb/split — a beam never reflects) ahead of any hull beyond it. The
+      // weapons system settles the grammar on 'optic:beamContact' and marks the request
+      // handled; an unhandled request means the optic owner is absent and the beam keeps its
+      // legacy pass-through.
+      let opticT = Infinity, opticE = null, opticHit = null;
+      if ((beam.dmgType || 'energy') === 'energy') {
+        // A compact winner is absent from the live collider query below, but retains its optic
+        // material grammar when admitted. Consider its skin without promoting any deeper rocks.
+        if (bestE && opticMaterialOf(bestE)) {
+          opticHit = opticBeamHit(beam, bestE);
+          if (opticHit) { opticT = opticHit.t; opticE = bestE; }
+        }
+        const optics = beamOpticCandidates(this, state, beam, dx, dz);
+        for (const e of optics) {
+          if (!e || e.alive === false || e.id === beam.ownerId) continue;
+          if (!opticMaterialOf(e)) continue;
+          const hit = opticBeamHit(beam, e);
+          if (hit && hit.t < opticT) { opticT = hit.t; opticE = e; opticHit = hit; }
+        }
+      }
+      if (opticE && bestE) {
+        // Same entry-crossing convention on both sides: whichever skin the ray meets first
+        // owns the contact — a hull in front of the lattice takes the hit, not the rock.
+        const hullHit = opticBeamHit(beam, bestE);
+        if (hullHit && hullHit.t < opticT) { opticE = null; opticHit = null; }
+      }
+      // Linked shield pylons (packet 06): a hostile ray ends at the first panel crossing on this same
+      // path, ahead of any hull or optic surface beyond it. The shared geometry read decides; the
+      // contact is only recorded here and the shieldPylons system debits it once.
+      if (hasBlockingPanels(state)) {
+        const wall = interceptSegment(state, PYLON_CONTACT.BEAM, beam.ownerId, ax, az, beam.to.x, beam.to.z, 0,
+          { fallbackTeam: beam.sourceTeam ?? ownerTeam, sourceLife: beam.sourceLife === undefined ? occupantGenerationOf(owner) : beam.sourceLife });
+        if (wall && wall.t < (bestE ? bestT : Infinity) && wall.t < (opticE ? opticT : Infinity)) {
+          beam.to.x = ax + dx * wall.t;
+          beam.to.z = az + dz * wall.t;
+          acceptIntercept(state, wall, PYLON_CONTACT.BEAM, { damage: beam.dpsThisTick }, beam.ownerId);
+          continue;
+        }
+      }
+      const target = opticE || bestE;
+      if (target && !state.entities.get(target.id)) {
+        const admitted = admitBeamTarget(this, state, target);
+        if (!admitted) {
+          // Budget exhaustion delays the physical response, never makes solid cover transparent.
+          const contactT = opticE ? opticT : bestT;
+          beam.to.x = ax + dx * contactT;
+          beam.to.z = az + dz * contactT;
+          continue;
+        }
+        if (opticE) opticE = admitted;
+        if (bestE?.id === target.id) bestE = admitted;
+      }
+      if (opticE) {
+        const req = {
+          beam,
+          targetId: opticE.id,
+          pos: opticHit.pos,
+          normal: opticHit.normal,
+          handled: false,
+        };
+        if (this.bus) this.bus.emit('optic:beamContact', req);
+        if (req.handled) {
+          // The surface ate the ray — the beam ends at the contact, never reaching hulls past it.
+          beam.to.x = opticHit.pos.x;
+          beam.to.z = opticHit.pos.z;
+          continue;
+        }
+      }
+      if (bestE) {
+        // Presentation and damage end at the same skin. The previous center projection drew
+        // the ray through cover (and could hit a small hull behind a larger, nearer surface).
+        beam.to.x = ax + dx * bestT;
+        beam.to.z = az + dz * bestT;
+        this.onHit({
+          targetId: bestE.id,
+          ownerId: beam.ownerId,
+          damage: beam.dpsThisTick,
+          damageType: beam.dmgType || 'energy',
+          damagePacket: beam.damagePacket || null,
+          weaponId: beam.weaponId || null,
+          pos: { x: beam.to.x, z: beam.to.z },
+        });
+      }
+    }
+  },
+};
+
+// Scratch origin for the beam sweep's friendly-fire admission read (consumed synchronously).
+const BEAM_ADMISSION_ORIGIN = { kind: 'weapon', id: null, weaponId: null };
+
+function beamDamageCandidates(host, state, beam, dx, dz) {
+  ensureCombatRuntime(host);
+  const fallback = (state.entityIndex && state.entityIndex.damageables) || state.entityList;
+  const center = host._beamQueryCenter;
+  center.x = (beam.from.x + beam.to.x) * 0.5;
+  center.z = (beam.from.z + beam.to.z) * 0.5;
+  const queryRadius = Math.hypot(dx, dz) * 0.5 + BEAM_QUERY_RADIUS_PAD;
+  const tableHits = queryCombatTableEntities(
+    state,
+    center.x,
+    center.z,
+    queryRadius,
+    host._beamTableScratch || (host._beamTableScratch = []),
+    COMBAT_TABLE_FLAGS.SHIP,
+  );
+  if (!tableHits.length) {
+    const candidates = hasActiveSpatialHash(state.spatialHash)
+      ? beamSharedDisc(host, state, beam, dx, dz)
+      : queryNearbyEntities(state, center, queryRadius, host._beamCandidateScratch, fallback);
+    if (candidates === host._beamCandidateScratch || candidates === host._beamDiscScratch) {
+      host._diag.beamSpatialQueries++;
+    }
+    host._diag.beamCandidates += candidates.length;
+    return candidates;
+  }
+  // The table only packs ship/projectile/wreck lanes, and the beam owner's own row keeps
+  // tableHits non-empty — returning it alone strands the station lane the hit loop accepts
+  // (packCombatTable must stay ship-lane-only: its projectile consumers assume that domain).
+  // Stations are few, so a linear scan appended into the same reused scratch is the cheap fix.
+  const stations = state.entityIndex && state.entityIndex.stations;
+  if (stations && stations.length) {
+    const r2 = queryRadius * queryRadius;
+    for (let i = 0; i < stations.length; i++) {
+      const s = stations[i];
+      if (!s || s.alive === false || !s.pos) continue;
+      const sx = s.pos.x - center.x;
+      const sz = s.pos.z - center.z;
+      if (sx * sx + sz * sz > r2) continue;
+      tableHits.push(s);
+    }
+  }
+  host._diag.beamSpatialQueries++;
+  host._diag.beamCandidates += tableHits.length;
+  return tableHits;
+}
+
+function beamEnvironmentCandidates(host, state, beam, dx, dz, len2) {
+  ensureCombatRuntime(host);
+  const center = host._beamQueryCenter;
+  center.x = (beam.from.x + beam.to.x) * 0.5;
+  center.z = (beam.from.z + beam.to.z) * 0.5;
+  const ax = beam.from.x, az = beam.from.z;
+  return queryPhysicalBodies(state, center, Math.hypot(dx, dz) * 0.5 + BEAM_QUERY_RADIUS_PAD,
+    host.helpers, host._beamEnvScratch, {
+      includeAnchored: false,
+      promote: false,
+      contains(e) {
+        if (!isEnvironmentalBody(e)) return false;
+        let t = ((e.pos.x - ax) * dx + (e.pos.z - az) * dz) / len2;
+        if (t < 0) t = 0; else if (t > 1) t = 1;
+        const px = e.pos.x - (ax + dx * t), pz = e.pos.z - (az + dz * t);
+        const rr = (e.radius || 6) + 2;
+        return px * px + pz * pz <= rr * rr;
+      },
+    });
+}
+
+function admitBeamTarget(host, state, target) {
+  const scratch = host._beamAdmissionScratch || (host._beamAdmissionScratch = []);
+  return queryPhysicalBodies(state, target.pos, 0.01, host.helpers, scratch, {
+    includeAnchored: false,
+    contains: candidate => candidate.id === target.id,
+  })[0] || null;
+}
+
+// The active-hash path of queryNearbyEntities walks the shared collider buckets — the
+// fallback lane is only consulted when no hash is live, so the hull sweep and the optic
+// sweep were paying the identical disc scan twice per energy beam. Keyed on the beam
+// object: one fill per beam serves whichever consumer reaches it first.
+function beamSharedDisc(host, state, beam, dx, dz) {
+  if (host._beamDiscBeam !== beam) {
+    host._beamDiscBeam = beam;
+    const center = host._beamQueryCenter;
+    center.x = (beam.from.x + beam.to.x) * 0.5;
+    center.z = (beam.from.z + beam.to.z) * 0.5;
+    const queryRadius = Math.hypot(dx, dz) * 0.5 + BEAM_QUERY_RADIUS_PAD;
+    host._beamDiscScratch.length = 0;
+    state.spatialHash.queryRadius(center.x, center.z, queryRadius, host._beamDiscScratch);
+  }
+  return host._beamDiscScratch;
+}
+
+// Optic terrain rides `collidables` (rocks are colliders, never damageables): same query
+// shape as the hull sweep, filtered by opticMaterialOf at the hit test. Runs only for
+// energy beams — a kinetic ray ignores the grammar exactly like a kinetic round does.
+function beamOpticCandidates(host, state, beam, dx, dz) {
+  ensureCombatRuntime(host);
+  const fallback = (state.entityIndex && state.entityIndex.collidables) || state.entityList;
+  if (hasActiveSpatialHash(state.spatialHash)) return beamSharedDisc(host, state, beam, dx, dz);
+  const center = host._beamQueryCenter;
+  center.x = (beam.from.x + beam.to.x) * 0.5;
+  center.z = (beam.from.z + beam.to.z) * 0.5;
+  const queryRadius = Math.hypot(dx, dz) * 0.5 + BEAM_QUERY_RADIUS_PAD;
+  return queryNearbyEntities(state, center, queryRadius, host._opticBeamScratch, fallback);
+}
+
+function ensureCombatRuntime(host) {
+  if (!host._beamCandidateScratch) host._beamCandidateScratch = [];
+  if (!host._opticBeamScratch) host._opticBeamScratch = [];
+  if (!host._beamEnvScratch) host._beamEnvScratch = [];
+  if (!host._beamDiscScratch) host._beamDiscScratch = [];
+  if (!host._beamQueryCenter) host._beamQueryCenter = { x: 0, z: 0 };
+  if (!host._diag) {
+    host._diag = {
+      beamSpatialQueries: 0,
+      beamCandidates: 0,
+    };
+  }
+}
+
+function resetCombatDiagnostics(diag) {
+  if (!diag) return;
+  diag.beamSpatialQueries = 0;
+  diag.beamCandidates = 0;
+}
+
+function lootPickupKind(id) {
+  return (typeof id === 'string' && id.startsWith('cmdty_')) ? 'cargo' : 'module';
+}
+
+function isLiveLabSession(state) {
+  const run = state && state.run;
+  return !!(run && run.kind === 'lab' && run.phase !== 'inactive');
+}
+
+function labPlayerEntity(state) {
+  if (!isLiveLabSession(state)) return null;
+  if (!state || state.playerId == null || !state.entities || typeof state.entities.get !== 'function') {
+    return null;
+  }
+  return state.entities.get(state.playerId) || null;
+}
+
+function refillLabPlayer(state, bus) {
+  const player = labPlayerEntity(state);
+  if (!player) return;
+  // Same pool restore as the live recovery path (restorePlayerAtRecoveryDock) — pools to full,
+  // the maxima themselves untouched.
+  if (Number.isFinite(player.hullMax)) player.hull = player.hullMax;
+  if (Number.isFinite(player.armorMax)) player.armorHp = player.armorMax;
+  if (Number.isFinite(player.shieldMax)) player.shield = player.shieldMax;
+  if (Number.isFinite(player.capMax)) player.cap = player.capMax;
+  // entity.heat is the ship's combat/propulsion pool — restored directly like hull/cap. The
+  // sole-writer law covers state.player.heat (WANTED); heat:clear would expunge a live record.
+  if (Number.isFinite(player.heat)) player.heat = 0;
+}
+
+function setLabInvulnerable(state, payload) {
+  const player = labPlayerEntity(state);
+  if (!player) return;
+  if (typeof payload.on !== 'boolean') return;
+  player.flags = player.flags || {};
+  if (payload.on) {
+    player.flags.invuln = true;
+    player._invulnUntil = Infinity;
+  } else {
+    player.flags.invuln = false;
+    player._invulnUntil = null;
+  }
+}
+
+// Scale every damage channel of a packet by `mult` (BP-02 weak-point bonus). Returns the packet
+// unchanged when mult is 1 (the overwhelming common case), so there is zero allocation off the hot
+// path. Clones defensively so the source packet (often a shared authored def) is never mutated.
+function scaleDamagePacket(packet, mult) {
+  if (!packet || !(mult > 1)) return packet;
+  const channels = { ...(packet.channels || {}) };
+  for (const k in channels) channels[k] = channels[k] * mult;
+  return { ...packet, channels };
+}
+
+function damagePacketWithHit(packet, pos) {
+  if (!pos) return packet;
+  return {
+    ...packet,
+    channels: { ...(packet.channels || {}) },
+    statuses: (packet.statuses || []).map((status) => ({ ...status })),
+    flags: packet.flags ? { ...packet.flags } : undefined,
+    source: packet.source ? { ...packet.source } : undefined,
+    hit: {
+      ...(packet.hit || {}),
+      pos: { x: Number(pos.x) || 0, z: Number(pos.z) || 0 },
+    },
+    impulse: packet.impulse ? { ...packet.impulse } : packet.impulse,
+  };
+}

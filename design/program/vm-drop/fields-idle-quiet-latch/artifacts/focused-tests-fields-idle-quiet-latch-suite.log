@@ -1,0 +1,168 @@
+TAP version 13
+# Subtest: seeded authored spawn produces one anchor controller plus escorts
+ok 1 - seeded authored spawn produces one anchor controller plus escorts
+  ---
+  duration_ms: 21.932866
+  ...
+# Subtest: anchor snare alters a body trajectory through the shared field owner
+ok 2 - anchor snare alters a body trajectory through the shared field owner
+  ---
+  duration_ms: 166.083366
+  ...
+# Subtest: anchor death removes its field in the same simulation tick
+ok 3 - anchor death removes its field in the same simulation tick
+  ---
+  duration_ms: 3.084962
+  ...
+# Subtest: anchor displacement moves the field with the hull record
+ok 4 - anchor displacement moves the field with the hull record
+  ---
+  duration_ms: 2.61979
+  ...
+# Subtest: two seeds replay byte-identical field-anchor outcomes
+ok 5 - two seeds replay byte-identical field-anchor outcomes
+  ---
+  duration_ms: 107.076177
+  ...
+# Subtest: save-style round trip rebuilds an anchor field from the hull record, not state.fields
+ok 6 - save-style round trip rebuilds an anchor field from the hull record, not state.fields
+  ---
+  duration_ms: 10.524229
+  ...
+# Subtest: quiet latch engages on idle flight with no field interest
+ok 7 - quiet latch engages on idle flight with no field interest
+  ---
+  duration_ms: 6.993693
+  ...
+# Subtest: membership bump wakes idle quiet latch
+ok 8 - membership bump wakes idle quiet latch
+  ---
+  duration_ms: 5.091746
+  ...
+# Subtest: player cone deploy leaves idle and clears latch
+ok 9 - player cone deploy leaves idle and clears latch
+  ---
+  duration_ms: 1.270697
+  ...
+# Subtest: bench toggle restores always-walk idle path
+ok 10 - bench toggle restores always-walk idle path
+  ---
+  duration_ms: 0.708844
+  ...
+# Subtest: latched idle skips discover until rescan window
+ok 11 - latched idle skips discover until rescan window
+  ---
+  duration_ms: 0.686234
+  ...
+# Subtest: flag OFF (node golden default) → deploy is a strict no-op
+ok 12 - flag OFF (node golden default) → deploy is a strict no-op
+  ---
+  duration_ms: 10.78742
+  ...
+# Subtest: Well PULLS a light body toward its center (consumer 1)
+ok 13 - Well PULLS a light body toward its center (consumer 1)
+  ---
+  duration_ms: 175.134372
+  ...
+# Subtest: Repulsor PUSHES a light body outward (consumer 2)
+ok 14 - Repulsor PUSHES a light body outward (consumer 2)
+  ---
+  duration_ms: 27.764901
+  ...
+# Subtest: Cone CLEARS forward and ignores bodies behind it (consumer 3)
+ok 15 - Cone CLEARS forward and ignores bodies behind it (consumer 3)
+  ---
+  duration_ms: 24.043023
+  ...
+# Subtest: Repulsor dropped at the ship never shoves the deploying player
+ok 16 - Repulsor dropped at the ship never shoves the deploying player
+  ---
+  duration_ms: 17.301938
+  ...
+# Subtest: Well deployed beside the ship never pulls the deploying player
+ok 17 - Well deployed beside the ship never pulls the deploying player
+  ---
+  duration_ms: 13.198599
+  ...
+# Subtest: heavy ship moves a small fraction of a light body under the same well
+ok 18 - heavy ship moves a small fraction of a light body under the same well
+  ---
+  duration_ms: 14.411488
+  ...
+# Subtest: a field alone (no physics system) never mutates a body velocity directly
+ok 19 - a field alone (no physics system) never mutates a body velocity directly
+  ---
+  duration_ms: 4.773423
+  ...
+# Subtest: a deployed Well expires on its bounded lifetime and starts a cooldown
+ok 20 - a deployed Well expires on its bounded lifetime and starts a cooldown
+  ---
+  duration_ms: 11.042009
+  ...
+# Subtest: shooting down the emitter unregisters its field the same tick (no orphan force)
+ok 21 - shooting down the emitter unregisters its field the same tick (no orphan force)
+  ---
+  duration_ms: 1.727133
+  ...
+# Subtest: simultaneous fields never exceed FIELD_MAX_ACTIVE
+ok 22 - simultaneous fields never exceed FIELD_MAX_ACTIVE
+  ---
+  duration_ms: 3.407161
+  ...
+# Subtest: save:loaded normalizes fields away (no orphan field, emitter, or runtime)
+ok 23 - save:loaded normalizes fields away (no orphan field, emitter, or runtime)
+  ---
+  duration_ms: 3.465659
+  ...
+# Subtest: state.fields is not a serialized top-level key (runtime-only, sidesteps save-schema)
+ok 24 - state.fields is not a serialized top-level key (runtime-only, sidesteps save-schema)
+  ---
+  duration_ms: 1.113338
+  ...
+# Subtest: two identical field runs produce identical body trajectories
+ok 25 - two identical field runs produce identical body trajectories
+  ---
+  duration_ms: 16.722646
+  ...
+# Subtest: Well publishes accumulated field-caused delta-V onto the hitstun path
+ok 26 - Well publishes accumulated field-caused delta-V onto the hitstun path
+  ---
+  duration_ms: 10.811484
+  ...
+# Subtest: materialized miner work depletes the shared field and delivers the mined ore once
+ok 27 - materialized miner work depletes the shared field and delivers the mined ore once
+  ---
+  duration_ms: 7.962037
+  ...
+# Subtest: fitting-screen sentences for the five powers stay authored data
+ok 28 - fitting-screen sentences for the five powers stay authored data
+  ---
+  duration_ms: 2.039719
+  ...
+# Subtest: ordinary-traffic sweeper and salvor plan a cone; anchors do not double-deploy
+ok 29 - ordinary-traffic sweeper and salvor plan a cone; anchors do not double-deploy
+  ---
+  duration_ms: 0.748731
+  ...
+# PQ-147.01 well seed 14701 / 40 ticks: bent 5/5 — cargo-a: 101.5 WU/s, 25.3 WU | cargo-b: 101.5 WU/s, 25.3 WU | debris: 79.7 WU/s, 20.0 WU | wreck: 78.7 WU/s, 19.8 WU | npc-hull: 27.2 WU/s, 8.0 WU
+# PQ-147.01 telemetry.affected=5
+# PQ-147.01 NPC deploy role=sweeper volume=cone tag=npc
+# Subtest: a well on seed 14701 bends ≥ 5 bodies without cutting hull
+ok 30 - a well on seed 14701 bends ≥ 5 bodies without cutting hull
+  ---
+  duration_ms: 186.057622
+  ...
+# Subtest: a scrap sweeper in ordinary traffic deploys a cone, not a sphere
+ok 31 - a scrap sweeper in ordinary traffic deploys a cone, not a sphere
+  ---
+  duration_ms: 4.049896
+  ...
+1..31
+# tests 31
+# suites 0
+# pass 31
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 824.827552

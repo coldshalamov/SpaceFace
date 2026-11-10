@@ -1,0 +1,10 @@
+{
+  "label": "before-568d",
+  "ms": 285.18,
+  "queries": 8000,
+  "rows": 400,
+  "hits": 3120000,
+  "cellKeyType": "string",
+  "cellKeySample": "0:0",
+  "FAR_ACTOR_CELL": 400
+}

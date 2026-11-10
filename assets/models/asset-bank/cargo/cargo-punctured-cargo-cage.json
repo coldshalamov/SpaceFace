@@ -1,0 +1,165 @@
+{
+  "assetId": "cargo-punctured-cargo-cage",
+  "category": "cargo",
+  "description": "Cargo frame with bent puncture rails",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_cargo.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_Mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Grab",
+      "position": [
+        0.0,
+        1.649999976158142,
+        0.11249998211860657
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_Forward",
+      "position": [
+        1.1749999523162842,
+        0.8574999868869781,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.2,
+          0.7
+        ],
+        "size": [
+          2,
+          0.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.2,
+          -0.7
+        ],
+        "size": [
+          2,
+          0.2,
+          0.14
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "aftermath",
+    "cargo-remaining-review",
+    "forge"
+  ],
+  "bounds": {
+    "min": [
+      -1.1749999523162842,
+      0.06499999761581421,
+      -0.824999988079071
+    ],
+    "max": [
+      1.1749999523162842,
+      1.649999976158142,
+      1.0499999523162842
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "cargo-punctured-cargo-cage_lod0.glb",
+      "triangles": 8272,
+      "draws": 5,
+      "bytes": 647136,
+      "method": "source",
+      "sha256": "30f5c58116dc2e72db3a57a915470670dc169319b6061819edba86459edf775b"
+    },
+    {
+      "level": 1,
+      "file": "cargo-punctured-cargo-cage_lod1.glb",
+      "triangles": 992,
+      "draws": 5,
+      "bytes": 305064,
+      "method": "authored-topology",
+      "sha256": "fa014a78dbaf1ad22a7ca65370cec1f87135dd3bafbcc8f1d340c361c59e1650"
+    },
+    {
+      "level": 2,
+      "file": "cargo-punctured-cargo-cage_lod2.glb",
+      "triangles": 560,
+      "draws": 5,
+      "bytes": 283264,
+      "method": "authored-topology",
+      "sha256": "5d4bf244658bc2ec5ee8745ef1a64420ad83ae566c7a5d12500c07440ed12067"
+    }
+  ]
+}

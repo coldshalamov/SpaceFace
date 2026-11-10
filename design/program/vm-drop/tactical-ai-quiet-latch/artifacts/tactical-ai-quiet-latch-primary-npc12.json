@@ -1,0 +1,1 @@
+{"name":"tactical-ai-quiet-latch@npc12","medianSpeedup":1.043,"minSpeedup":0.939,"maxSpeedup":1.226,"pairs":[1.226,1.197,0.989,1.065,1.028,1.05,1.043,1.05,0.939,1.016,0.987],"dirtyWakeOk":true,"latched":true,"wokeMembership":true,"relatched":true,"wokeThink":true,"offRefuses":true}

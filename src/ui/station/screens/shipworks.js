@@ -1,0 +1,5860 @@
+import { shipworksFrameHtml } from '../../views/stationFrames.js';
+import { injectOrreryShipworks, powerDialSvg } from '../../orrery/shipworksLayouts.js';
+import { injectOrreryStationShipworks } from '../../orrery/station-shipworksLayouts.js';
+import { isPhoneLayout } from '../../../systems/mobile/model.js';
+import { createHullSchematic } from '../../orrery/hullSchematic.js';
+import { createBlackFlagRegistry } from '../../blackFlagRegistry.js';
+import { rollTo } from '../../orrery/text.js';
+import { createSpring } from '../../orrery/motion.js';
+import { svg as orrSvg, arcD as orrArcD, ticksD as orrTicksD, polar as orrPolar } from '../../orrery/svg.js';
+import { syncScrollExtent } from '../../orrery/scrollExtent.js';
+import { dressLampKey } from '../../orrery/lampKey.js';
+import { hullPosterUrl } from '../../hullPosters.js';
+import { icon as stationIcon, hasIcon as hasStationIcon } from '../icons.js';
+import { equipmentIcon } from '../../orrery/equipmentGlyphs.js';
+// src/ui/station/screens/shipworks.js — "Shipworks" and THE SHIP: the shared stage (Frontend
+// Task C §1.9). The hull fills the panel behind everything, orbitable; the hulls (fleet / for sale)
+// as a column of rows down the hang; the hull's name at title size with its blurb; six compact
+// static rows in the corner (Mass · Energy · Shield · Cargo · Thrust · Heat); labels pinned to the
+// hull by hairline leaders; the four bands — handling, power, condition, capability — as four hero
+// numbers along the foot, the selected one explaining itself in rows beneath; the verbs as words.
+// Slots are clickable — choosing one puts the compatible modules in the hang column in place of the
+// hulls (no modal). One reused preview mount (createShipPreviewMount) serves both hosts.
+// Field Hardware chrome (kit plates, keys, quiet type) is pinned from this module; Buy / Fit /
+// Make active stay the same verbs.
+// Emits ui:buyShip / ui:setActiveShip / ui:buyModule / ui:fitModule / ui:unfitModule
+// plus the PQ-205.03 rack intents: ui:buyPayload / ui:fitPayload / ui:unfitPayload /
+// ui:sellPayload / ui:restockBombRack / ui:upgradeBombRack (the bombs system owns the writes)
+// and the paint-rack intent ui:setShipAppearance (the ships system owns the appearance record).
+//
+// Engineering numbers come only from presenters/engineeringPreview.js → ships.getDerivedStats.
+// Never invent simplified fittings/geometry or raw module.mods key diffs as flight stats.
+// `.sx-sw`, `.sx-sw__canvas`, `.sx-sw__stage`, `.sx-sw__stats`, `.sx-sw-row[data-fleet|data-buy]`,
+// `.sx-hardpoint[data-spatial-slot]`, `.sx-hardpoint__copy`, `.sx-modrow[data-preview-module]`,
+// `[data-buyfit]`, `[data-buyship]`, `[data-verb]`, `.sx-sw__acquiring` are hooks the checks query.
+import { modelTruthMountFractions } from '../../../data/modelTruth.js';
+import {
+  SHIP_HULL_PAINTS,
+  SHIP_ACCENT_PAINTS,
+  SHIP_FINISH_STOCK,
+  SHIP_WEAR_STOCK,
+  SHIP_DECAL_STOCK,
+  buildPaintAppearance,
+  shipPaintRow,
+} from '../../../data/shipPaints.js';
+import { normalizeShipAppearance, shipAppearanceSignature } from '../../../core/shipAppearance.js';
+import {
+  buildSlotList,
+  dryRunLoadoutPresetApply,
+  exclusivityLockLabel,
+  exclusivityRepMet,
+  findMasslineHeadConflict,
+  fitRefusalText,
+  fits,
+  catalogHullFacts,
+  moduleSimPrice,
+  getDerivedStats,
+  hardpointClassOf,
+  mountOutputFactor,
+  mountRefusal,
+  outfitBudgetBlocker,
+  shipworksStationAccess,
+  shipyardPurchaseQuote,
+  sizeFits,
+  stationShopOffer,
+} from '../../../systems/ships.js';
+import { impoundLotBoard } from '../../../systems/impoundLot.js';
+import { historyWearDead } from '../../../systems/historyWear.js';
+import { livingHullTrinkets } from '../../../core/livingHull.js';
+import { laneCommandSink, nextLaneToken } from '../../../core/simLaneCommands.js';
+import { reservedCargoQuantity } from '../../../systems/cargo.js';
+import { sableVennServiceAvailable } from '../../../data/sableVenn.js';
+import { mountSableDemo, sablePreviewStamp, sablePreviewMatches } from '../../orrery/sableDemo.js';
+import { instanceIdentityText } from '../../../systems/shipLedger.js';
+import { normalizeModuleProvenance } from '../../../data/lineProgression.js';
+import { hullNameForOwnedShip, SHIP_NAME_MAX } from '../../../data/hullIdentity.js';
+import { buildParkedHoldModel } from '../../navigation/cargoDeck.js';
+import { forwardAccelFor, governedFightSpeedFor, travelSpeedFor, turnRecordText } from '../../../systems/shipCapabilities.js';
+import { SHIPS } from '../../../data/ships.js';
+import { techDisplayName } from '../../../data/tech.js';
+import { describeHullRole } from '../../../data/shipRoleLattice.js';
+import { SECTORS } from '../../../data/sectors.js';
+import { MODULES } from '../../../data/modules.js';
+import { BOMB_DEFS, BOMB_IDS, BOMB_RACK } from '../../../data/bombs.js';
+import { TURRET_RING_OUTPUT, WEAPONS } from '../../../data/weapons.js';
+import { escapeHtml } from '../../comms.js';
+import { CAL_DAY_S } from '../../../data/worldCalendar.js';
+import { GRAFFITI } from '../../../data/narrative.js';
+import { entitySpanHtml } from '../../entityResolver.js';
+import { confirm, isConfirmOpen } from '../../confirm.js';
+import { describeOutfittingSpendConfirm, focusNamedStationControl, isOutfittingSpendDanger, statedHullStillViewed, statedModulePurchaseStillMatches } from '../../outfittingSpendConfirm.js';
+import { moduleRiskStrip } from '../../panels/moduleRisk.js';
+import { describeOutfittingPurchase, outfittingJobImpact } from '../outfittingGuidance.js';
+import {
+  createShipPreviewMount,
+  dockInteriorIdForArchetype,
+  secondaryPreviewWebGlBlocked,
+} from '../../shipPreviewMount.js';
+import { createRouteBeam } from '../../effects/index.js';
+import { prefersReducedMotion } from '../../effects/effectRuntime.js';
+import { mountDataState, settleDataState } from '../../uiPrimitives.js';
+import {
+  presentModuleFitPreview,
+  previewMetricValue,
+} from '../../presenters/engineeringPreview.js';
+import {
+  capabilityBandModel,
+  conditionFromEntity,
+  scarCalloutsForHull,
+} from '../../ship/shipBandModels.js';
+import {
+  buildLoadoutPresetRailModel,
+  sanitizePresetSelectionMap,
+  applyPresetRejection,
+} from '../../ship/loadoutPresets.js';
+import { roleLabelFor, shipSheetSentence, shipStatDelta, shipStatSheet } from '../../ship/shipStats.js';
+import { bindShipSheet, ensureShipSheetStyles, shipSheetHtml } from '../../ship/shipSheet.js';
+import { compareParts, intentDiffersFromSlot, partFacts, sortIdsByIntent } from '../../ship/partFacts.js';
+import { fitHullInk, layoutHullCallouts, pointsBox, separateBeads } from '../../ship/calloutLayout.js';
+import { createStagePoster, loadHullPosterManifest } from '../../ship/hullPoster.js';
+import { stampFitCapabilityExpectation } from '../../ship/capabilityMilestone.js';
+import {
+  dressState,
+  ensureInteriorStyle,
+  paintHero,
+  paintHeroNum,
+  paintKey,
+  paintLegend,
+  paintMarking,
+  paintPlate,
+  paintRow,
+  pinKeyrack,
+  syncKeys,
+} from './fhChrome.js';
+import { bindStationMarkup, markStationControl, stationControlAttrs, stationControlLabel } from '../stationBindingMap.js';
+
+const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+export function shipworksHullName(defId) {
+  return SHIP_BY_ID.get(defId)?.name || 'Unidentified hull';
+}
+const STATION_ARCHETYPE_BY_ID = new Map();
+for (const sector of SECTORS) {
+  for (const station of sector.stations || []) {
+    STATION_ARCHETYPE_BY_ID.set(station.id, station.archetypeGlb || null);
+  }
+}
+const CENTERED_SHIP_YAW = 0;
+// THE FOR SALE DETENTS, from the hull. Every hull is built bow +X, starboard +Z (the asset contract), and the
+// preview's camera stands on one bearing from it (shipPreviewMount fitCameraToCurrent: -0.42 x, +0.72 z).
+// A hull faces a local direction (deg, atan2(z, x)) to the camera at yaw = direction - that bearing.
+// CENTER is the hero, the produced poster's bearing (on the nose side, 35 deg to port); LEFT is the port
+// profile (bow to the left); RIGHT the starboard profile (bow to the right: the 'side' poster), LEFT's mirror
+// about the bow axis.
+const SALE_CAMERA_BEARING = (Math.atan2(0.72, -0.42) * 180) / Math.PI;
+const SALE_HERO_YAW = -35 - SALE_CAMERA_BEARING;
+const SALE_PORT_YAW = -90 - SALE_CAMERA_BEARING;
+const SALE_STARBOARD_YAW = 90 - SALE_CAMERA_BEARING;
+// The bezel keeps its detents at +-60 and turns one to one with the hand; the hull runs through a gear so each
+// detent lands on its bearing (hero to port is 55 deg, hero to starboard 125 deg through the nose). The gear is
+// a monotone Hermite through the three with one slope at CENTER (no kink as the hand drags through it), and
+// runs on at each side's own rate past the detents.
+function hullYawAt(turn) {
+  const t = Number(turn) || 0;
+  const dL = SALE_HERO_YAW - SALE_PORT_YAW;       // the hull's turn at the LEFT detent (+55)
+  const dR = SALE_HERO_YAW - SALE_STARBOARD_YAW;  // and at the RIGHT detent (-125)
+  const m0 = (dL - dR) / 120;
+  const herm = (s, p0, p1, a, b) => {
+    const s2 = s * s; const s3 = s2 * s;
+    return (2 * s3 - 3 * s2 + 1) * p0 + (s3 - 2 * s2 + s) * 60 * a + (-2 * s3 + 3 * s2) * p1 + (s3 - s2) * 60 * b;
+  };
+  let d;
+  if (t >= 60) d = dL + (t - 60) * (dL / 60);
+  else if (t >= 0) d = herm(t / 60, 0, dL, m0, dL / 60);
+  else if (t >= -60) d = herm((t + 60) / 60, dR, 0, -dR / 60, m0);
+  else d = dR + (t + 60) * (-dR / 60);
+  return ((SALE_HERO_YAW - d) * Math.PI) / 180;
+}
+const FITTABLE = MODULES.concat(WEAPONS);
+const FITTABLE_BY_ID = new Map(FITTABLE.map((d) => [d.id, d]));
+
+const SLOT_LABEL = { weapon: 'Weapon', shield: 'Shield', engine: 'Drive', cargo: 'Cargo', mining: 'Mining', utility: 'Utility', thruster: 'Thrusters' };
+
+
+const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
+
+// X-03 — the named module wears its chip. The onboarding voice stamps hints.fitOfferDefId when it
+// speaks "Your credits cover the yard's X"; the yard row for that id carries one chip in the
+// metrics line (the one sub-line a collapsed row shows; appended so the lead metric stays the hero) until the purchase clears the key.
+export function fitOfferChipHtml(d, hints, purchase, equipped, credits) {
+  if (!d || !hints || hints.fitOfferDefId !== d.id) return '';
+  if (equipped) return '';
+  const state = purchase && purchase.state;
+  if (state === 'funding') {
+    const shortfall = Math.max(0, (purchase.price | 0) - (Number(credits) || 0));
+    return `<span class="sx-modrow__chip">Named at the berth · short ${fmt(shortfall)} cr</span>`;
+  }
+  if (state === 'fit' || state === 'inventory') {
+    return `<span class="sx-modrow__chip is-up">Named at the berth</span>`;
+  }
+  return '';
+}
+const shipName = (id) => { const s = SHIP_BY_ID.get(id); return s ? s.name : id; };
+const UI_SWITCH_DETENT_CUE = 'sfx_ui_switch_detent';
+const UI_DRAWER_LATCH_CUE = 'sfx_ui_drawer_latch';
+
+function finite(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+/** Read the cargo owner's actual per-hull and reserved-freight rules for the activation choice. */
+export function hullSwitchCargoGuidance(state, targetIndex) {
+  const player = state?.player;
+  const ships = Array.isArray(player?.ownedShips) ? player.ownedShips : [];
+  const activeIndex = player?.activeShipIndex;
+  if (!Number.isInteger(targetIndex) || targetIndex === activeIndex || !ships[activeIndex] || !ships[targetIndex]) return '';
+  const name = (owned) => hullNameForOwnedShip(owned, ships.indexOf(owned), state?.meta?.seed)
+    || SHIP_BY_ID.get(owned.defId)?.name || 'the hull';
+  let stays = 0, protectedUnits = 0, incoming = 0;
+  for (const [id, amount] of Object.entries(player.cargo?.items || {})) {
+    const held = Math.max(0, Math.floor(Number(amount) || 0));
+    const reserved = Math.min(held, Math.max(0, reservedCargoQuantity(state, id)));
+    stays += held - reserved;
+    protectedUnits += reserved;
+  }
+  for (const amount of Object.values(ships[targetIndex].cargo?.items || {})) {
+    incoming += Math.max(0, Math.floor(Number(amount) || 0));
+  }
+  const outgoing = stays ? `${stays} unreserved unit${stays === 1 ? '' : 's'} stay on ${name(ships[activeIndex])}.`
+    : `No unreserved cargo stays on ${name(ships[activeIndex])}.`;
+  const protectedText = protectedUnits ? ` ${protectedUnits} sealed or protected unit${protectedUnits === 1 ? '' : 's'} must fit in ${name(ships[targetIndex])} to travel with you.` : '';
+  const incomingText = incoming ? ` ${name(ships[targetIndex])} has ${incoming} stored unit${incoming === 1 ? '' : 's'}; it loads what fits and keeps the rest aboard.`
+    : ` ${name(ships[targetIndex])} has no stored cargo.`;
+  return outgoing + protectedText + incomingText;
+}
+
+function withCargoMass(player, usedMass) {
+  const source = player && typeof player === 'object' ? player : {};
+  return {
+    ...source,
+    cargo: {
+      ...(source.cargo && typeof source.cargo === 'object' ? source.cargo : {}),
+      usedMass: Math.max(0, finite(usedMass, 0)),
+    },
+  };
+}
+
+// NXI-120 — the comparison's declared load: the hold mass the player is actually carrying,
+// projected onto whichever hulls the screen derives. Hull selection changes the hulls, never
+// the basis; the basis resets only when the hold itself changes. The projection borrows the
+// live cargo record — it is not a second inventory, cargo still owns every unit.
+function declaredLoadPlayer(player) {
+  return withCargoMass(player, player && player.cargo && player.cargo.usedMass);
+}
+
+/**
+ * NXI-120 — both sides of the buy-rail comparison at the same declared load: the candidate hull
+ * as the yard sells it and the active hull with its actual accepted fit, each carrying the live
+ * hold's cargo mass. Switching candidates swaps only `candidate`; `current` and `loadMass`
+ * change only when the hold does. Pure read through getDerivedStats — nothing here writes cargo.
+ */
+export function buyRailComparisonFacts(player, candidateDefId) {
+  const ownedShips = Array.isArray(player && player.ownedShips) ? player.ownedShips : [];
+  const activeIndex = Math.max(0, Math.floor(Number(player && player.activeShipIndex) || 0));
+  const active = ownedShips[activeIndex] || ownedShips[0] || null;
+  const basisPlayer = declaredLoadPlayer(player);
+  const candDef = SHIP_BY_ID.get(candidateDefId);
+  const activeDef = active && SHIP_BY_ID.get(active.defId);
+  return {
+    loadMass: finite(basisPlayer && basisPlayer.cargo && basisPlayer.cargo.usedMass, 0),
+    candidate: candDef ? catalogHullFacts(candDef.id, [], basisPlayer) : null,
+    current: activeDef ? catalogHullFacts(activeDef.id, active.fittings || [], basisPlayer) : null,
+  };
+}
+
+// The rack verb's own words (words-yard-count-lines): the yard can count to one round.
+// Whole singular/plural sentences with the verb agreeing ("1 unit loads", "2 units load").
+// Pure text — exported so the focused test reads exactly what the rack says.
+export function rackPartialFillLine(rounds) {
+  const n = Math.max(0, Math.floor(Number(rounds) || 0));
+  return n === 1
+    ? 'Partial fill — 1 unit loads before credits run out'
+    : `Partial fill — ${n} units load before credits run out`;
+}
+
+export function rackLoadLine(rounds) {
+  const n = Math.max(0, Math.floor(Number(rounds) || 0));
+  return n === 1
+    ? 'Load 1 unit — hangar stock first, then purchased ammunition'
+    : `Load ${n} units — hangar stock first, then purchased ammunition`;
+}
+
+export function rackShortLine(unmet) {
+  const n = Math.max(0, Math.floor(Number(unmet) || 0));
+  return n === 1
+    ? 'The rack is short 1 unit — restock fee plus ammunition exceed the balance'
+    : `The rack is short ${n} units — restock fee plus ammunition exceed the balance`;
+}
+
+function whyAttr(text) {
+  if (!text || !String(text).trim()) return '';
+  // tabindex travels with the why: a hover-only affordance does not exist for a keyboard player
+  // (INSTRUMENT_GRAMMAR §7 tier 2 = hover AND focus). Buttons carrying this attr are unaffected.
+  return ` data-why="${escapeHtml(String(text))}" tabindex="0"`;
+}
+
+export function shipworksDockIdForState(state) {
+  const stationId = state && state.ui && state.ui.dockedStationId;
+  return dockInteriorIdForArchetype(STATION_ARCHETYPE_BY_ID.get(stationId) || null);
+}
+
+export function syncShipworksDockForState(mount, state) {
+  const dockId = shipworksDockIdForState(state);
+  if (mount && typeof mount.setDockId === 'function') mount.setDockId(dockId);
+  // ANI-25: showing the shipworks while docked means the berth is holding this hull —
+  // seat the clamps and mate the boom on the backdrop rig (replayed after the async
+  // backdrop load lands inside the mount).
+  if (dockId && mount && typeof mount.dockVerb === 'function') mount.dockVerb('dock:docked');
+  return dockId;
+}
+
+/** Pure action projection used by the screen and focused authority tests. The bay remains
+ * inspectable at limited berths; only unsupported physical operations are disabled. */
+export function shipworksActionAvailability(state) {
+  const access = shipworksStationAccess(state);
+  return {
+    hullEnabled: access.hull,
+    outfitEnabled: access.outfit,
+    hullLabel: access.hull ? 'Shipyard service available' : access.hullReason,
+    outfitLabel: access.outfit ? 'Outfitting service available' : access.outfitReason,
+  };
+}
+const titleCaseWords = (value) => String(value || '').replace(/[_-]+/g, ' ')
+  .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+
+let fieldMeasureCtx = null;
+/** Width of `text` set in an input's computed font (canvas metrics; 0 when there is no canvas). */
+function fieldTextWidth(text, cs) {
+  if (!fieldMeasureCtx) {
+    const canvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+    fieldMeasureCtx = canvas && canvas.getContext ? canvas.getContext('2d') : null;
+    if (!fieldMeasureCtx) return 0;
+  }
+  fieldMeasureCtx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  // Tracking is added by hand: this private context never sets ctx.letterSpacing, so measureText
+  // returns untracked width and the two never double-count.
+  const spacing = parseFloat(cs.letterSpacing) || 0;
+  return fieldMeasureCtx.measureText(text).width + spacing * text.length;
+}
+
+/**
+ * The system labels around the hull. Every bead is inside the hull's box (`keepOut`: the render's
+ * ink on the poster, the beads' own spread on the live hull, never narrower than centre +-100);
+ * the labels stand in a column on each side of it, stacked so no two touch, and a label can never
+ * print over a bead (src/ui/ship/calloutLayout.js). The old solver placed each card next to its
+ * own bead and never looked at the others, so "Thrusters OPEN / S" carried the weapon's bead on
+ * its text, and each leader started 17 px below its bead, which is why they read as loose elbows.
+ *
+ * Returns per slot: the card relative to its bead (`calloutX` is the card's facing edge -- the
+ * right edge for a left card, which the CSS pulls left by its own width), the card in stage
+ * coordinates, and the leader as an SVG path relative to the bead.
+ */
+export function calculateSpatialSlotLayout({
+  projectedSlots = [],
+  stageWidth = 1100,
+  stageHeight = 500,
+  nodeRadius = 17,
+  calloutWidth = 200,
+  calloutHeight = 36,
+  edgeInset = 12,
+  nameplateBottom = 0,
+  // Chrome that owns the right flank (gauges rack, operation plate): [{ top, bottom, leftX }].
+  rightZones = [],
+  // Chrome in the left flank (nameplate, camera words): [{ top, bottom, rightX, push }].
+  leftZones = [],
+  // Where labels may go at all (stage px); defaults to the stage less the edge inset.
+  bounds = null,
+  // The hull's box; defaults to the beads' spread grown by nodeRadius, at least centre +-100.
+  keepOut = null,
+  // Any other chrome labels must keep off, in stage px: [{ left, top, right, bottom }].
+  obstacles: extraObstacles = [],
+  gap = 28,
+  pitch = 6,
+  beadRadius = 6,
+} = {}) {
+  if (!Array.isArray(projectedSlots) || !projectedSlots.length || stageWidth <= 0 || stageHeight <= 0) return [];
+  const cx = stageWidth * 0.5;
+  const area = bounds || { left: edgeInset, top: edgeInset, right: stageWidth - edgeInset, bottom: stageHeight - edgeInset };
+  let hull = keepOut;
+  if (!hull) {
+    const spread = pointsBox(projectedSlots, nodeRadius) || { left: cx, right: cx, top: 0, bottom: stageHeight };
+    hull = {
+      left: Math.min(spread.left, cx - 100),
+      right: Math.max(spread.right, cx + 100),
+      top: spread.top,
+      bottom: spread.bottom,
+    };
+  }
+  const obstacles = [];
+  if (nameplateBottom > 0) obstacles.push({ left: 0, right: Math.max(0, hull.left - 1), top: 0, bottom: nameplateBottom });
+  for (const zone of leftZones) {
+    if (!zone || zone.rightX == null) continue;
+    obstacles.push({ left: 0, right: zone.rightX, top: zone.top, bottom: zone.bottom });
+  }
+  for (const zone of rightZones) {
+    if (!zone || zone.leftX == null) continue;
+    obstacles.push({ left: zone.leftX, right: stageWidth, top: zone.top, bottom: zone.bottom });
+  }
+  // A local x that disagrees with the projection only matters dead on the centre line.
+  const dots = projectedSlots.map((s) => {
+    const localX = s.local && typeof s.local.x === 'number' ? s.local.x : 0;
+    const onCentre = Math.abs(s.x - (hull.left + hull.right) / 2) <= 12;
+    return {
+      x: s.x,
+      y: s.y,
+      w: s.cardW || calloutWidth,
+      h: s.cardH || calloutHeight,
+      side: onCentre && localX ? (localX < 0 ? 'left' : 'right') : undefined,
+    };
+  });
+  for (const ob of extraObstacles) if (ob) obstacles.push(ob);
+  const placed = layoutHullCallouts({ dots, bounds: area, keepOut: hull, obstacles, gap, pitch, beadRadius });
+  return placed.map((card, i) => {
+    const item = projectedSlots[i];
+    const isLeft = card.side === 'left';
+    const calloutX = Math.round((isLeft ? card.right : card.left) - item.x);
+    const calloutY = Math.round(card.top - item.y);
+    const leaderD = card.leader.length
+      ? card.leader.map(([px, py], k) => `${k ? 'L' : 'M'} ${Math.round(px - item.x)} ${Math.round(py - item.y)}`).join(' ')
+      : '';
+    return {
+      item,
+      index: item.index,
+      order: item.order,
+      x: item.x,
+      y: item.y,
+      isLeft,
+      calloutX,
+      calloutY,
+      visualCardLeft: card.left,
+      visualCardRight: card.right,
+      visualCardTop: card.top,
+      visualCardBottom: card.bottom,
+      leaderD,
+      zIndex: projectedSlots.length - (item.order || 0) + 2,
+    };
+  });
+}
+
+export function createShipworksScreen(ctx) {
+  // Dock host (station destination): the shared stage locked to commerce. One module instance and
+  // one WebGL mount serve this dock destination AND the in-flight 'ship' screen (SCREENS_B §0.5) —
+  // whoever shows last re-parents the same node; nobody re-creates the mount. Dispose is a no-op
+  // on purpose: the station shell caches and tears down destinations, but the shared stage outlives
+  // any single host and must never be disposed by one of them.
+  const stage = getSharedShipStage(ctx);
+  return {
+    el: stage.el,
+    onShow(showCtx) { stage.setHost('dock'); stage.onShow(showCtx); },
+    onHide() { stage.onHide(); },
+    refresh(refreshCtx) { stage.refresh(refreshCtx); },
+    dispose() { /* shared stage — see above */ },
+  };
+}
+
+let sharedStage = null;
+
+/** The one ship stage (SCREENS_B §0.5: one module instance, one WebGLRenderer, two hosts). */
+export function getSharedShipStage(ctx) {
+  if (!sharedStage) sharedStage = createShipStage(ctx, { host: 'dock' });
+  return sharedStage;
+}
+
+/**
+ * The shipworks stage. `host` selects the entry point (SCREENS_B §1.2):
+ *  - 'dock'  (default): full commerce — fleet + Buy Ship rail, fit/unfit, MAKE ACTIVE, station bay.
+ *  - 'flight': the same instrument minus commerce — fleet rail inspect-only, chooser read-only
+ *    (buttons carry the unavailability reason), no MAKE ACTIVE, transparent dock backdrop.
+ * Everything else — the mount, the projection, the callouts, ghost preview — is identical.
+ */
+export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
+  let host = initialHost;
+  const el = document.createElement('div');
+  el.className = 'k-panel sx-sw';
+  // ORRERY: the dock host's composition (src/ui/orrery/shipworksLayouts.js); THE SHIP keeps its sheet.
+  // The dock-only refinements (the record ledger's seat) live in station-shipworksLayouts.js so the
+  // shared sheet stays exactly what the flight host reads.
+  injectOrreryShipworks(document);
+  injectOrreryStationShipworks(document);
+  // The kit panel: the hulls down the hang column, the stage to its right. The canvas fills the
+  // whole panel behind both (positioned like .k-world); the corner rows, the pinned labels, the
+  // four bands along the foot and the verbs all sit on top. The chooser is a third child that
+  // takes the hang column's cell while a slot is being chosen (`is-choosing` on the panel).
+  el.innerHTML = bindStationMarkup(shipworksFrameHtml());
+
+  const railListEl = el.querySelector('.sx-sw__list');
+  const railPrevEl = el.querySelector('[data-rail-step="prev"]');
+  const railNextEl = el.querySelector('[data-rail-step="next"]');
+  const railProgressEl = el.querySelector('.sx-sw__railtrack i');
+  const canvas = el.querySelector('.sx-sw__canvas');
+  const nameplateEl = el.querySelector('.sx-sw__nameplate');
+  const nameplateHome = document.createComment('shipworks nameplate');
+  nameplateEl?.before(nameplateHome);
+  const compactFlightNameplate = window.matchMedia('(max-width:1500px) and (max-height:800px)');
+  const syncNameplatePlacement = () => {
+    const main = el.querySelector('.sx-sw__main');
+    if (!nameplateEl || !main) return;
+    // Keep the same editable nameplate and description, but give compact flight callouts
+    // the entire stage instead of forcing both columns to share space with the prose.
+    if (isPhoneLayout() || (host === 'flight' && compactFlightNameplate.matches)) {
+      if (main.firstChild !== nameplateEl) main.insertBefore(nameplateEl, main.firstChild);
+    } else if (nameplateHome.parentNode && nameplateHome.nextSibling !== nameplateEl) nameplateHome.after(nameplateEl);
+  };
+  syncNameplatePlacement();
+  compactFlightNameplate.addEventListener('change', syncNameplatePlacement);
+  const statsEl = el.querySelector('.sx-sw__stats');
+  const sideEl = el.querySelector('.sx-sw__side');
+  const compactInstrument = window.matchMedia('(min-width:901px) and (max-width:1100px) and (max-height:640px)');
+  const sideHome = document.createComment('shipworks side');
+  sideEl?.before(sideHome);
+  const syncCompactInstrument = () => {
+    const main = el.querySelector('.sx-sw__main');
+    if (!sideEl || !main) return;
+    if (host === 'dock' && compactInstrument.matches) main.appendChild(sideEl);
+    else if (sideHome.parentNode) sideHome.after(sideEl);
+  };
+  syncCompactInstrument();
+  compactInstrument.addEventListener('change', syncCompactInstrument);
+  // The short landscape berth needs a separate decision surface: its service column is below
+  // the fold. The native top layer escapes the station's clipping and owns keyboard focus.
+  const lotOpener = document.createElement('button');
+  lotOpener.type = 'button';
+  lotOpener.className = 'sx-sw-lot-open';
+  lotOpener.textContent = 'Lot desk';
+  markStationControl(lotOpener, 'lot-desk-open');
+  lotOpener.hidden = true;
+  lotOpener.setAttribute('aria-haspopup', 'dialog');
+  lotOpener.setAttribute('aria-expanded', 'false');
+  const lotDialog = document.createElement('dialog');
+  lotDialog.className = 'sx-sw-lot-dialog';
+  lotDialog.setAttribute('aria-labelledby', 'sx-sw-lot-title');
+  lotDialog.innerHTML = `<header class="sx-sw-lot-dialog__head"><div><h2 id="sx-sw-lot-title">Lot desk</h2><p class="sx-sw-lot-dialog__context"></p></div><button type="button" ${stationControlAttrs('lot-desk-close')} data-lot-close>${stationControlLabel('lot-desk-close')}</button></header><div class="sx-sw-lot-dialog__body"></div>`;
+  el.append(lotOpener, lotDialog);
+  const compactLotMedia = window.matchMedia('(min-width:801px) and (max-width:1100px) and (max-height:460px) and (hover:hover)');
+  function closeLotDesk(restoreFocus = true) {
+    if (!lotDialog.open) return;
+    lotDialog.close();
+    lotOpener.setAttribute('aria-expanded', 'false');
+    if (restoreFocus && lotOpener.isConnected && !lotOpener.hidden) lotOpener.focus({ preventScroll: true });
+  }
+  lotOpener.addEventListener('click', () => {
+    if (!lotDialog.open && !lotOpener.hidden) {
+      lotDialog.showModal();
+      lotOpener.setAttribute('aria-expanded', 'true');
+      lotDialog.querySelector('[data-lot-close]').focus({ preventScroll: true });
+    }
+  });
+  lotDialog.querySelector('[data-lot-close]').addEventListener('click', () => closeLotDesk());
+  lotDialog.addEventListener('cancel', (ev) => { ev.preventDefault(); closeLotDesk(); });
+  function interceptLotKeys(ev) {
+    if (!lotDialog.open) return;
+    // Station listens on window for Escape and shortcuts; native dialog owns them while open.
+    if (ev.key === 'Escape') { ev.stopImmediatePropagation(); ev.preventDefault(); closeLotDesk(); }
+    // The station command palette owns Ctrl/Cmd-K at window capture; do not open it above the desk.
+    else if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'k') { ev.stopImmediatePropagation(); ev.preventDefault(); }
+  }
+  window.addEventListener('keydown', interceptLotKeys, true);
+  const onLotMediaChange = () => { if (stageShown) refresh(); };
+  compactLotMedia.addEventListener('change', onLotMediaChange);
+  function syncCompactLotDesk(hullName) {
+    const desk = sideEl.querySelector('.sx-sw-lotdesk');
+    const compact = compactLotMedia.matches && !!desk;
+    lotOpener.hidden = !compact;
+    if (!compact) {
+      closeLotDesk(false);
+      lotDialog.querySelector('.sx-sw-lot-dialog__body').replaceChildren();
+      return;
+    }
+    lotOpener.textContent = desk.querySelector('[data-lot-verb="acceptRansom"]') ? 'Papers offer' : 'Lot desk';
+    lotDialog.querySelector('.sx-sw-lot-dialog__context').textContent = `${hullName} · ${fmt(Math.max(0, Number(ctx.state.player?.credits) || 0))} cr available`;
+    lotDialog.querySelector('.sx-sw-lot-dialog__body').replaceChildren(desk);
+    for (const btn of desk.querySelectorAll('[data-lot-verb]')) paintKey(btn, 'small');
+    syncKeys(desk);
+  }
+  const blackFlagRegistry = createBlackFlagRegistry(ctx, { dockHost: () => host === 'dock' });
+  el.querySelector('.sx-sw__rail')?.appendChild(blackFlagRegistry.el);
+  const chooserEl = el.querySelector('.sx-sw__chooser');
+  const stageEl = el.querySelector('.sx-sw__stage');
+  const slotfieldEl = el.querySelector('.sx-sw__slotfield');
+  const scarfieldEl = el.querySelector('.sx-sw__scarfield');
+  const powerOverlayEl = el.querySelector('.sx-sw__power');
+  const gaugeRackEl = el.querySelector('.sx-sw__gauges');
+  // P1 - the old six raw gauges (mass / energy / shield / cargo / thrust / heat) duplicated the
+  // ship sheet's Details door in engineering units. The rack is an empty, hidden shell kept only
+  // because the station frame template still owns the element; no gauge value is computed or
+  // synced any more, and the sheet's `Details` door is the one place those numbers live.
+  if (gaugeRackEl) {
+    gaugeRackEl.hidden = true;
+    gaugeRackEl.style.display = 'none';
+    gaugeRackEl.replaceChildren();
+  }
+  const acquiringEl = el.querySelector('.sx-sw__acquiring');
+  // The hull's produced render (src/ui/ship/hullPoster.js): the stage until the authored hull has
+  // drawn, and the stage for good where the live preview never arrives. Both hosts show the
+  // three-quarter hero view: it is the angle the live camera frames, so the crossfade to the live
+  // hull does not jump.
+  const POSTER_VIEW = 'hero';
+  const poster = createStagePoster(stageEl, { after: canvas, onChange: () => scheduleSpatialProjection() });
+  // Wave 2 r2 SH6: the callout solver measures live glyph ink (the nameplate zone, the
+  // card widths, the S1 clamp column). A pass that runs before the display faces arrive
+  // measures fallback-metric ink and can place a column on the prose; re-project once
+  // the faces settle so the clamped layout always wins. One-shot and harmless.
+  if (typeof document !== 'undefined' && document.fonts && document.fonts.ready
+      && typeof document.fonts.ready.then === 'function') {
+    document.fonts.ready.then(() => scheduleSpatialProjection()).catch(() => {});
+  }
+  // The six readings (mass, energy, shield, cargo, thrust, heat) are one strip under the hull
+  // (ONE_PHOTOGRAPH 9.3), not a 400 px column standing over the stage's right flank: at 1280 wide
+  // that column took half the stage, the hull shrank to a thumbnail and the last reading was cut.
+  if (gaugeRackEl && stageEl.parentNode) stageEl.after(gaugeRackEl);
+
+  function dressFrame() {
+    ensureInteriorStyle();
+    pinKeyrack(el.querySelector('.sx-seg'));
+    for (const btn of el.querySelectorAll('.sx-seg__btn[data-mode]')) paintKey(btn, 'legend');
+    pinKeyrack(el.querySelector('.sx-sw__camera'));
+    for (const btn of el.querySelectorAll('[data-camera]')) paintKey(btn, 'small');
+    for (const btn of el.querySelectorAll('[data-rail-step]')) paintKey(btn, 'small');
+  }
+
+  function dressRail() {
+    ensureInteriorStyle();
+    for (const row of railListEl.querySelectorAll('.sx-sw-row')) {
+      paintRow(row, row.classList.contains('is-active') || row.getAttribute('aria-selected') === 'true');
+    }
+    syncKeys(el.querySelector('.sx-seg'));
+  }
+
+  function dressCrest() {
+    ensureInteriorStyle();
+    paintMarking(nameplateEl.querySelector('.sx-sw__name'));
+    paintLegend(nameplateEl.querySelector('.sx-sw__conditionVerb'), true);
+  }
+
+  function dressApron() {
+    ensureInteriorStyle();
+    for (const hero of statsEl.querySelectorAll('.sx-sw-hero')) {
+      paintHeroNum(hero.querySelector('.k-hero__n'));
+      paintLegend(hero.querySelector('.k-hero__w'), hero.classList.contains('is-selected'));
+    }
+    // The verbs (Take it to the range · Record · Select a slot) are the screen's actions; they used
+    // to sit at the end of the hero row, which wrapped them onto a third line inside the stats
+    // scroll at 1280x800 and 1080p, where they were out of sight under the side plate. They are
+    // pinned as a footer row under the stats scroll instead: always on the glass, and unlike a
+    // sticky-in-scroll bar they can never veil the stat rows at the scroll's trailing edge.
+    const verbsRack = statsEl.querySelector('.sx-sw-verbs');
+    if (verbsRack && statsEl.parentElement && verbsRack.parentElement !== statsEl.parentElement) {
+      // The refresh above rebuilt a fresh rack inside statsEl, but a rack pinned out here by an
+      // earlier refresh is still a child of the parent — without this the footer renders the same
+      // three verbs twice, stacked.
+      for (const stale of [...statsEl.parentElement.children]) {
+        if (stale !== verbsRack && stale.classList && stale.classList.contains('sx-sw-verbs')) stale.remove();
+      }
+      statsEl.parentElement.appendChild(verbsRack);
+    }
+    if (verbsRack && host === 'dock' && compactInstrument.matches) {
+      verbsRack.classList.add('sx-sw-verbs--unseated');
+      verbsRack.style.cssText = '';
+    }
+    pinKeyrack(verbsRack);
+    // at rest no verb is the Lamp Key: the amber key appears with BUY & FIT when a socket is chosen;
+    // taking the ship to the range stays a chevron word beside RECORD
+    const range = verbsRack && verbsRack.querySelector('[data-verb="range"]');
+    if (range) { range.classList.remove('orr-lampkey'); const ring = range.querySelector('.dp-holdring'); if (ring) ring.remove(); }
+    // a hull for sale has no slot to select: the verb stands down while the For Sale rail is open
+    el.classList.toggle('sx-sw--buying', mode === 'buy');
+    for (const btn of statsEl.querySelectorAll('[data-verb]')) {
+      paintKey(btn, btn.getAttribute('data-verb') === 'fit' || btn.getAttribute('data-verb') === 'activate' ? 'primary' : 'legend');
+    }
+    for (const label of statsEl.querySelectorAll('.sx-sw-band__label, .k-caps')) paintLegend(label, true);
+    for (const row of statsEl.querySelectorAll('.k-row')) paintRow(row, false);
+    pinKeyrack(statsEl.querySelector('.sx-sw-chiprow'));
+    pinKeyrack(statsEl.querySelector('.sx-sw-presetrow'));
+    pinKeyrack(statsEl.querySelector('.sx-sw-presetdrawer__actions'));
+    for (const btn of statsEl.querySelectorAll('.sx-sw-chip, .sx-sw-preset, [data-loadout-preset-delete]')) {
+      const kind = btn.hasAttribute('data-loadout-preset-delete') ? 'legend' : 'small';
+      paintKey(btn, kind);
+    }
+    syncKeys(statsEl);
+  }
+
+  function dressSide() {
+    ensureInteriorStyle();
+    if (!sideEl.firstChild) return;
+    paintPlate(sideEl, 'sunk');
+    paintLegend(sideEl.querySelector('.sx-sw-side__name, .sx-sw-circuit__identity'), true);
+    paintHero(sideEl.querySelector('.k-hero__n'));
+    paintLegend(sideEl.querySelector('.k-hero__w'));
+    for (const row of sideEl.querySelectorAll('.k-row')) paintRow(row, false);
+    pinKeyrack(sideEl.querySelector('.sx-buybar, .sx-sw-circuit__acts'));
+    const buy = sideEl.querySelector('[data-buyship]');
+    if (buy) paintKey(buy, 'primary');
+    const activate = sideEl.querySelector('[data-activate-ship]');
+    if (activate) paintKey(activate, 'primary');
+    pinKeyrack(sideEl.querySelector('.sx-sw-rack__verbs'));
+    for (const btn of sideEl.querySelectorAll('[data-rack-restock], [data-rack-upgrade]')) paintKey(btn, 'small');
+    for (const btn of sideEl.querySelectorAll('[data-lot-verb]')) paintKey(btn, 'small');
+    syncKeys(sideEl);
+  }
+
+  // The impound lot's attendant desk — the berth verbs the lot book has always had (haggle,
+  // the clerk's tip, an earnest-money hold, quieting a filed claim, watching the book, and a
+  // sealed bid on the open block) plus the kin's offer for a marked hull's papers. Every key
+  // emits `impoundLot:deskIntent`; the lot re-checks berth, book and wallet before anything moves.
+  function lotDays(n) {
+    const d = Math.max(0, Math.round(Number(n) || 0));
+    return d === 0 ? 'today' : d === 1 ? 'tomorrow' : `in ${d} days`;
+  }
+
+  function lotDeskHtml(credits) {
+    if (host === 'flight') return '';
+    const board = impoundLotBoard(ctx.state);
+    if (!board.open || !board.atLot) return '';
+    const who = board.attendant && board.attendant.name ? board.attendant.name : 'The lot attendant';
+    const facts = [];
+    if (board.hold) {
+      facts.push(`On hold for you at ${fmt(board.hold.price)} cr until the book reopens.`);
+    } else if (board.auction.open) {
+      facts.push(`On the block — the yard writes the price down every day until someone takes it.`);
+    } else {
+      facts.push(`The auction opens ${lotDays(board.auction.daysToOpen)}. Storage adds ${fmt(board.feePerDay)} cr a day.`);
+    }
+    if (board.tip && board.auction.strike) facts.push(`The quiet bidder tops out at ${fmt(board.auction.strike)} cr.`);
+    if (board.dispute && board.dispute.outcome === 'pending') facts.push(`${board.dispute.claimant} filed a claim on it.`);
+    if (board.redeem) {
+      facts.push(board.redeem.daysToOpen != null
+        ? `${board.redeem.claimant} comes to buy it back ${lotDays(board.redeem.daysToOpen)}.`
+        : `${board.redeem.claimant} may come to buy it back.`);
+    }
+    const key = (verb, label, cost, enabled, why) => {
+      const can = !lotDeskPending && enabled && (!(cost > 0) || cost <= credits);
+      const reason = lotDeskPending ? 'waiting for the lot desk' : !enabled ? why : (cost > 0 && cost > credits ? `${fmt(cost - credits)} cr short` : '');
+      const aria = can ? label : `${label}, ${reason}`;
+      return `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="${verb}" ${can ? '' : 'disabled'} aria-label="${escapeHtml(aria)}" data-why="${escapeHtml(can ? label : reason)}">${escapeHtml(label)}${cost > 0 ? ` <small>${fmt(cost)} cr</small>` : ''}</button></li>`;
+    };
+    const verbs = [];
+    if (!board.hold) {
+      verbs.push(key('haggle', board.haggled ? 'Price agreed' : `Haggle (${board.hagglesLeft} left)`, 0,
+        !board.haggled && board.hagglesLeft > 0, board.haggled ? 'already agreed' : 'the attendant is done'));
+      verbs.push(key('hold', 'Hold at this price', board.holdFeeCr, !board.holdDepositPaid, 'deposit already spent'));
+    }
+    verbs.push(key('tip', board.tip ? 'Tip bought' : 'Buy the tip', board.tip ? 0 : board.tipFeeCr, !board.tip, 'already told'));
+    if (board.dispute && board.dispute.outcome === 'pending') {
+      verbs.push(key('quiet', 'Quiet the claim', board.quietFeeCr, true, ''));
+    }
+    verbs.push(`<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="watch" data-lot-on="${board.watched ? 'false' : 'true'}" aria-pressed="${board.watched ? 'true' : 'false'}" ${lotDeskPending ? 'disabled aria-label="Waiting for the lot desk"' : ''}>${board.watched ? 'Stop watching' : 'Watch the book'}</button></li>`);
+    let bidRow = '';
+    if (board.auction.open && !board.hold) {
+      const suggest = board.tip && board.auction.strike ? board.auction.strike : board.price;
+      const initialBid = Math.max(1, Math.round(suggest));
+      const canBid = !lotDeskPending && initialBid <= credits;
+      const reason = lotDeskPending ? 'waiting for the lot desk' : `${fmt(initialBid - credits)} cr short`;
+      const bidLabel = canBid ? 'Place bid' : `Place bid, ${reason}`;
+      bidRow = `<p class="k-sentence sx-sw-lotdesk__bid"><label>Sealed bid <input class="k-input k-input--num" type="number" inputmode="numeric" min="1" step="1" value="${initialBid}" data-lot-bid aria-label="Sealed bid in credits"></label> ` +
+        `<button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="bid" ${canBid ? '' : 'disabled'} aria-label="${escapeHtml(bidLabel)}" data-why="${escapeHtml(canBid ? 'Place bid' : reason)}">Place bid</button></p>`;
+    }
+    return `<div class="sx-sw-lotdesk">` +
+      `<p class="k-t-fine k-38 sx-sw-lotdesk__who">${escapeHtml(who)} · lot desk</p>` +
+      // Claimant names arrive lowercase ("the house that lost …"); each fact opens a sentence.
+      `<p class="k-sentence sx-muted">${escapeHtml(facts.map((f) => f.charAt(0).toUpperCase() + f.slice(1)).join(' '))}</p>` +
+      `<ul class="k-words k-words--row sx-sw-lotdesk__verbs">${verbs.join('')}</ul>` +
+      bidRow +
+    `</div>`;
+  }
+
+  function ransomDeskHtml() {
+    if (host === 'flight') return '';
+    const board = impoundLotBoard(ctx.state);
+    const r = board.ransom;
+    if (!r || r.state !== 'offered' || r.resolved) return '';
+    if (!r.stationId || r.stationId !== ctx.state.ui?.dockedStationId) return '';
+    const left = Number.isFinite(r.untilDay) ? Math.max(0, r.untilDay - board.day) : null;
+    const named = r.claimant || 'the former crew';
+    const claimant = named.charAt(0).toUpperCase() + named.slice(1);
+    return `<div class="sx-sw-lotdesk">` +
+      `<p class="k-t-fine k-38 sx-sw-lotdesk__who">Lot attendant · papers offer</p>` +
+      `<p class="k-sentence sx-muted">${escapeHtml(`${claimant} will pay ${fmt(r.amount)} cr for the dead owner's papers on this hull. Sell them and the debt riding it ends. Keep them and their collector stays on schedule.${left != null ? ` The offer stands ${left === 0 ? 'until tomorrow' : `${left + 1} more days`}.` : ''}`)}</p>` +
+      `<ul class="k-words k-words--row sx-sw-lotdesk__verbs">` +
+        `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="acceptRansom" ${lotDeskPending ? 'disabled aria-label="Waiting for the lot desk"' : ''}>Sell the papers <small>+${fmt(r.amount)} cr</small></button></li>` +
+        `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="declineRansom" ${lotDeskPending ? 'disabled aria-label="Waiting for the lot desk"' : ''}>Keep the papers</button></li>` +
+      `</ul>` +
+    `</div>`;
+  }
+
+  function updateLotBidAffordance(scope = sideEl) {
+    const input = scope.querySelector('input[data-lot-bid]');
+    const button = scope.querySelector('[data-lot-verb="bid"]');
+    if (!input || !button) return;
+    const amount = Math.round(Number(input.value) || 0);
+    const credits = Math.max(0, Number(ctx.state.player?.credits) || 0);
+    const canBid = !lotDeskPending && amount > 0 && amount <= credits;
+    const reason = lotDeskPending ? 'waiting for the lot desk' : amount <= 0 ? 'enter a positive bid' : `${fmt(amount - credits)} cr short`;
+    button.disabled = !canBid;
+    button.setAttribute('aria-label', canBid ? 'Place bid' : `Place bid, ${reason}`);
+    button.setAttribute('data-why', canBid ? 'Place bid' : reason);
+  }
+
+  function dressChooser() {
+    // the list is the scroller (the panel around it never overflows), so the extent measures the list
+    syncScrollExtent(chooserEl.querySelector('.sx-chooser__list:last-of-type') || chooserEl);
+    ensureInteriorStyle();
+    if (chooserEl.querySelector('.sf-state')) { dressState(chooserEl); return; }
+    for (const label of chooserEl.querySelectorAll('.sx-chooser__kicker, .k-caps, h3')) paintLegend(label, true);
+    pinKeyrack(chooserEl.querySelector('.sx-chooser__head .k-words'));
+    for (const btn of chooserEl.querySelectorAll('[data-close], [data-unfit], [data-payload-unfit]')) {
+      paintKey(btn, btn.hasAttribute('data-unfit') || btn.hasAttribute('data-payload-unfit') ? 'legend' : 'small');
+    }
+    for (const row of chooserEl.querySelectorAll('.sx-modrow')) {
+      paintRow(row, row.classList.contains('is-eq'));
+    }
+    for (const btn of chooserEl.querySelectorAll('[data-buyfit], [data-payload-fit], [data-fit-inv]')) {
+      paintKey(btn, btn.hasAttribute('data-fit-slot') || btn.hasAttribute('data-payload-fit') || btn.hasAttribute('data-fit-inv') ? 'primary' : 'small');
+      // the one verb that fits the chosen module is the screen's Lamp Key while choosing —
+      // on the dock. The flight host is read-only: its fit verb is an unavailability note
+      // (a dotted word), never a lamp that cannot light (wave 2 r2 SH2).
+      if ((btn.hasAttribute('data-fit-slot') || btn.hasAttribute('data-payload-fit')) && host !== 'flight') dressLampKey(btn);
+    }
+    for (const btn of chooserEl.querySelectorAll('[data-payload-buy], [data-payload-sell]')) paintKey(btn, 'small');
+    syncKeys(chooserEl);
+  }
+
+  dressFrame();
+
+  // Authored mesh required — never treat box-LOD / false warmup as primary truth.
+  canvas.dataset.authoredRequired = 'true';
+  canvas.dataset.fallbackAllowed = 'false';
+  canvas.dataset.previewReady = 'false';
+  canvas.dataset.previewAssetState = 'empty';
+
+  let mode = 'fleet';
+  let viewIdx = 0;          // owned ship index being viewed/fitted
+  let buyId = SHIPS[0].id;  // hull being previewed in Buy mode
+  let mount = null;
+  // A failed graphics allocation must not break inventory or retry on every UI refresh.
+  let previewMountFailed = false;
+  let curPreviewKey = '';
+  let expectedPreviewDefId = null;
+  let ghostActive = false;
+  let ghostSource = null;
+  let selectedSlot = -1;
+  let payloadSocket = -1;  // rack socket index while the ordnance chooser is open
+  let paintOpen = false;   // the paint rack occupies the hang column while true
+  let chooserAnchor = null;
+  let projectionFrame = 0;
+  let pinnedSideTop = -1;
+  let chooserCloseTimer = 0;
+  let previewSettleTimer = 0;
+  let previewSettleGeneration = 0;
+  let previewRevealPhase = 'idle';
+  // While the preview is in blocked mode (secondary WebGL refused — Intel/ANGLE TDRs the live
+  // flight context), the shared berth stage has been asked to seat the previewed hull; leaving
+  // Shipworks must restore the player's own hull there.
+  let blockedPreviewActive = false;
+  let activeBandModel = null;
+  let ghostBandModel = null;
+  let ghostNote = '';
+  let activePresetRailModel = null;
+  let presetSelectionByHull = {};
+  let recordOpen = false;
+  let rangeIntentUnsub = null;
+  let appearanceSavedUnsub = null;
+  let presetRejectedUnsub = null;
+  let presetAppliedUnsub = null;
+  let pendingPresetRejection = null;
+  let stageShown = false;
+  let chooserEpoch = 0;
+  let unfitPending = false;
+  let fitPending = null;
+  let sableDemo = null, sableSelection = null, sableStamp = null;
+  const clearSableDemo = () => { sableDemo?.dispose(); sableDemo = null; sableStamp = null; };
+  const sableLifecycleUnsubs = ['save:restoring', 'game:newGame'].map(event => ctx.bus?.on(event, clearSableDemo)).filter(Boolean);
+  const powerBeam = createRouteBeam(powerOverlayEl, { width: 400, height: 240 });
+  let currentPowerHeadroom = 0;
+  let currentPowerCapMax = 0;
+  let currentPowerSlotIndices = [];
+  let presetDeleteBusy = false;
+
+  function isReducedMotion() {
+    const settings = ctx && ctx.state && ctx.state.settings && ctx.state.settings.video;
+    const motionReduce = settings && typeof settings.motionReduce === 'boolean'
+      ? settings.motionReduce
+      : undefined;
+    return prefersReducedMotion({ motionReduce });
+  }
+
+  function emitUiCue(id) {
+    if (ctx.bus) ctx.bus.emit('audio:cue', { id });
+  }
+
+  function owned() { return (ctx.state.player && ctx.state.player.ownedShips) || []; }
+  function viewedShip() { const o = owned(); return o[viewIdx] || o[ctx.state.player && ctx.state.player.activeShipIndex] || o[0] || null; }
+
+  function setHost(next) {
+    if (host === next) return;
+    host = next;
+    // Flight entry: inspect-only. Buy mode and MAKE ACTIVE belong to a station berth.
+    el.classList.toggle('sx-sw--flight', host === 'flight');
+    syncNameplatePlacement();
+    syncCompactInstrument();
+    if (!chooserEl.hidden) closeChooser({ silent: true });
+    if (host === 'flight') {
+      mode = 'fleet';
+      selectedSlot = -1;
+      // Opening in flight means "my ship": land on the active hull, not index 0.
+      const activeIdx = (ctx.state.player && ctx.state.player.activeShipIndex) || 0;
+      if (owned()[activeIdx]) viewIdx = activeIdx;
+    }
+    renderRail();
+    renderCenter();
+    renderSide();
+  }
+
+  function ensureRangeIntentHandler() {
+    if (rangeIntentUnsub || !ctx.bus || typeof ctx.bus.on !== 'function') return;
+    rangeIntentUnsub = ctx.bus.on('ui:ship:range', (payload = {}) => {
+      if (!payload || payload.source !== 'ship-stage') return;
+      if (ctx.state && ctx.state.ui) {
+        ctx.state.ui.rangeSubject = {
+          shipId: payload.shipId || null,
+          fittings: Array.isArray(payload.fittings) ? payload.fittings.slice() : [],
+        };
+      }
+      const manager = ctx && ctx.screenManager;
+      if (!manager || typeof manager.pushScreen !== 'function') return;
+      try { manager.pushScreen('range'); } catch (_) {}
+    });
+  }
+
+  // The ships system answers every accepted ui:setShipAppearance with ship:appearanceSaved —
+  // repaint the stage and the rack marks here so the screen never shows a stale coat, whoever
+  // changed the appearance (the paint rack, a preset, a future habit system).
+  function refreshPaintedPreview() {
+    const viewed = viewedShip();
+    if (!viewed || !owned().length) return;
+    if (paintOpen) renderPaintChooser();
+    const c = currentPreviewContext();
+    if (c) previewShip(c.defId, c.fittings, c.isPlayer, null, c.appearance);
+  }
+
+  function ensureAppearanceSavedHandler() {
+    if (appearanceSavedUnsub || !ctx.bus || typeof ctx.bus.on !== 'function') return;
+    appearanceSavedUnsub = ctx.bus.on('ship:appearanceSaved', (payload = {}) => {
+      const index = Number(payload && payload.shipIndex);
+      const viewed = viewedShip();
+      if (!viewed || !owned().length) return;
+      if (Number.isFinite(index) && index !== owned().indexOf(viewed)) return;
+      refreshPaintedPreview();
+    });
+  }
+
+  // ship:loadoutPresetApplyRejected already toasts. The instrument still has to say the
+  // rack-specific reason on the build that failed, and keep that sentence after the
+  // apply path's refresh rebuilds the rail.
+  function paintPendingPresetRejection() {
+    if (!pendingPresetRejection || !el || typeof el.querySelector !== 'function') return;
+    const id = pendingPresetRejection.presetId;
+    if (!id || /["'\\]/.test(id)) return;
+    const button = el.querySelector(`button.sx-sw-preset[data-loadout-preset-id="${id}"]:not([data-loadout-preset-save])`);
+    if (button) {
+      applyPresetRejection(button, pendingPresetRejection.reason, { focus: stageShown && !pendingPresetRejection.focused });
+      if (stageShown) pendingPresetRejection.focused = true;
+    }
+  }
+
+  function ensurePresetRejectedHandler() {
+    if (presetRejectedUnsub || !ctx.bus || typeof ctx.bus.on !== 'function') return;
+    presetRejectedUnsub = ctx.bus.on('ship:loadoutPresetApplyRejected', (payload = {}) => {
+      const presetId = payload && payload.presetId;
+      if (!presetId) return;
+      pendingPresetRejection = { presetId: String(presetId), reason: payload.reason };
+      paintPendingPresetRejection();
+    });
+    presetAppliedUnsub = ctx.bus.on('ship:loadoutPresetApplied', (payload = {}) => {
+      if (!pendingPresetRejection) return;
+      if (!payload || payload.presetId === pendingPresetRejection.presetId) pendingPresetRejection = null;
+    });
+  }
+
+  function writeCanvasPreviewMeta(defId, fittings, meta) {
+    canvas.dataset.previewDefId = defId || '';
+    canvas.dataset.previewFittings = JSON.stringify(Array.isArray(fittings) ? fittings : []);
+    canvas.dataset.fallbackAllowed = 'false';
+    if (meta && meta.mode === 'module') {
+      canvas.dataset.previewMode = 'module';
+      canvas.dataset.previewModule = meta.moduleId || '';
+    } else {
+      delete canvas.dataset.previewMode;
+      delete canvas.dataset.previewModule;
+    }
+  }
+
+  function stablePreviewState(state) {
+    return !!state && !['empty', 'loading', 'procedural-fallback'].includes(state);
+  }
+
+  function selectedPresetIdForHull(hullDefId) {
+    if (!hullDefId || !presetSelectionByHull || typeof presetSelectionByHull !== 'object') return null;
+    return presetSelectionByHull[hullDefId] || null;
+  }
+
+  function setSelectedPresetIdForHull(hullDefId, presetId, { remember = true } = {}) {
+    if (!hullDefId) return;
+    if (!presetSelectionByHull || typeof presetSelectionByHull !== 'object') presetSelectionByHull = {};
+    if (typeof presetId === 'string' && presetId) presetSelectionByHull[hullDefId] = presetId;
+    else delete presetSelectionByHull[hullDefId];
+    if (remember) rememberShipView();
+  }
+
+  function clearPresetSelectionForViewedHull(options = {}) {
+    const ship = viewedShip();
+    if (!ship || !ship.defId) return;
+    setSelectedPresetIdForHull(ship.defId, null, options);
+  }
+
+  function rememberShipView() {
+    const mem = ctx.screenMemory;
+    if (!mem) return;
+    mem.set('ship', {
+      mode,
+      viewIdx,
+      buyId: String(buyId || ''),
+      recordOpen: !!recordOpen,
+      presetSelectionByHull: sanitizePresetSelectionMap(presetSelectionByHull),
+    });
+  }
+
+  function restoreShipView() {
+    const mem = ctx.screenMemory;
+    if (!mem) return;
+    const savedMode = mem.read('ship', 'mode', null);
+    const savedIdx = mem.read('ship', 'viewIdx', null);
+    const savedBuy = mem.read('ship', 'buyId', null);
+    const savedRecordOpen = mem.read('ship', 'recordOpen', null);
+    const savedPresetSelection = mem.read('ship', 'presetSelectionByHull', null);
+    if (host !== 'flight' && (savedMode === 'fleet' || savedMode === 'buy')) mode = savedMode;
+    if (Number.isInteger(savedIdx) && owned()[savedIdx]) viewIdx = savedIdx;
+    if (savedBuy && SHIP_BY_ID.has(savedBuy)) buyId = savedBuy;
+    if (typeof savedRecordOpen === 'boolean') recordOpen = savedRecordOpen;
+    presetSelectionByHull = sanitizePresetSelectionMap(savedPresetSelection);
+    syncModeWords();
+  }
+
+  function syncModeWords() {
+    el.querySelectorAll('.sx-seg__btn').forEach((x) => {
+      const on = x.getAttribute('data-mode') === mode;
+      x.classList.toggle('is-on', on);
+      x.classList.toggle('is-active', on);
+      x.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  function beginPreviewReveal(defId, gated) {
+    previewSettleGeneration++;
+    if (previewSettleTimer) clearTimeout(previewSettleTimer);
+    previewSettleTimer = 0;
+    canvas.dataset.previewReady = 'false';
+    canvas.dataset.previewAssetState = 'loading';
+    canvas.dataset.previewReveal = gated ? 'acquiring' : 'direct';
+    previewRevealPhase = gated ? 'acquiring' : 'direct';
+    // A hull with a produced render needs no "reading the hull" card: the render is the stage
+    // while the optics resolve, with its name, gauges and system beads on it. The card (and the
+    // yielding of everything else) stays for hulls that have no render.
+    const carded = gated && !poster.has();
+    stageEl.classList.toggle('is-acquiring', carded);
+    stageEl.classList.remove('is-revealing');
+    if (acquiringEl) {
+      if (carded) {
+        const generation = previewSettleGeneration;
+        mountDataState(acquiringEl, 'loading', {
+          code: 'OPTICS_UNRESOLVED',
+          headline: 'Reading the ' + shipName(defId) + ' hull.',
+          fills: 'Waiting on the shipyard optics to resolve your fitted modules — this finishes when the scan does, not on a timer.',
+          skeleton: [{ w: '58%', h: 14 }, { w: '88%' }, { w: '42%' }],
+          verb: {
+            label: 'Show the hull now',
+            onActivate: () => {
+              const asset = mount && mount.getAssetState ? mount.getAssetState() : 'rendered';
+              settlePreviewReveal(defId, asset, generation);
+            },
+          },
+        });
+      } else {
+        settleDataState(acquiringEl);
+      }
+    }
+    return previewSettleGeneration;
+  }
+
+  function settlePreviewReveal(defId, state, generation = previewSettleGeneration) {
+    if (generation !== previewSettleGeneration || !defId || defId !== expectedPreviewDefId) return;
+    if (previewRevealPhase === 'revealing') return;
+    const gated = stageEl.dataset.revealWasGated === 'true';
+    if (gated) {
+      if (previewSettleTimer) clearTimeout(previewSettleTimer);
+      canvas.dataset.previewDefId = defId;
+      canvas.dataset.previewAssetState = state || 'rendered';
+      canvas.dataset.previewReveal = 'revealing';
+      previewRevealPhase = 'revealing';
+      stageEl.classList.remove('is-acquiring');
+      if (acquiringEl) settleDataState(acquiringEl);
+      stageEl.classList.add('is-revealing');
+      stageEl.dataset.revealWasGated = 'false';
+      // `previewReady` means visible and settled, not merely that a WebGL root exists. Holding it
+      // through the optical reveal prevents callers and screenshots from observing an empty bay.
+      previewSettleTimer = setTimeout(() => {
+        previewSettleTimer = 0;
+        if (generation !== previewSettleGeneration || defId !== expectedPreviewDefId) return;
+        canvas.dataset.previewReady = 'true';
+        canvas.dataset.previewReveal = 'settled';
+        previewRevealPhase = 'idle';
+        stageEl.classList.remove('is-revealing');
+        scheduleSpatialProjection();
+      }, 190);
+      return;
+    }
+    if (previewSettleTimer) clearTimeout(previewSettleTimer);
+    previewSettleTimer = 0;
+    canvas.dataset.previewReady = 'true';
+    canvas.dataset.previewDefId = defId;
+    canvas.dataset.previewAssetState = state || 'rendered';
+    canvas.dataset.previewReveal = 'settled';
+    previewRevealPhase = 'idle';
+    stageEl.classList.remove('is-acquiring');
+    stageEl.classList.remove('is-revealing');
+    if (acquiringEl) settleDataState(acquiringEl);
+    stageEl.dataset.revealWasGated = 'false';
+    scheduleSpatialProjection();
+  }
+
+  function watchPreviewSettlement(defId, generation, startedAt = performance.now()) {
+    if (generation !== previewSettleGeneration || defId !== expectedPreviewDefId || !mount) return;
+    const state = mount.getAssetState ? mount.getAssetState() : 'rendered';
+    if (stablePreviewState(state)) {
+      settlePreviewReveal(defId, state, generation);
+      return;
+    }
+    // Budget raised 8s -> 20s: a cold flight-first open (no prior dock to warm the mesh cache)
+    // measured 12s+ to resolve the authored hull, so the old budget expired BEFORE the asset
+    // arrived and revealed an empty bay. The terminal degraded state below is the honest floor,
+    // not the common path — it must not be reached by an asset that was merely slow.
+    if (performance.now() - startedAt >= 20000) {
+      // Never leave the bay blank forever. This is an explicit degraded terminal state, not a
+      // silent placeholder-to-final swap, and remains visible to the probe through the dataset.
+      settlePreviewReveal(defId, state === 'loading' ? 'fallback-timeout' : state, generation);
+      return;
+    }
+    previewSettleTimer = setTimeout(() => watchPreviewSettlement(defId, generation, startedAt), 50);
+  }
+
+  // The preview's bay has one owner: For Sale draws the hull alone on the stage ring's glass, so the
+  // hangar set leaves the render there; every other state keeps the docked station's bay.
+  function syncStageDock() {
+    if (!mount) return;
+    if (host === 'dock' && mode === 'buy') { if (typeof mount.setDockId === 'function') mount.setDockId(null); return; }
+    syncShipworksDockForState(mount, ctx.state);
+  }
+
+  function ensureMount() {
+    if (mount) {
+      syncStageDock();
+      return mount;
+    }
+    if (previewMountFailed) return null;
+    if (secondaryPreviewWebGlBlocked(ctx && ctx.state)) {
+      canvas.dataset.previewReady = 'false';
+      canvas.dataset.previewBlocked = 'secondary-webgl';
+      return null;
+    }
+    canvas.dataset.authoredRequired = 'true';
+    canvas.dataset.fallbackAllowed = 'false';
+    canvas.dataset.previewReady = 'false';
+    try {
+      mount = createShipPreviewMount(canvas, {
+      allowFastFallback: false,
+      authoredShips: true,
+      authoredWarmup: true,
+      dockId: shipworksDockIdForState(ctx.state),
+      onFirstFrame: ({ defId } = {}) => {
+        if (!defId || defId !== expectedPreviewDefId) return;
+        syncPosterLive();
+        const state = mount && mount.getAssetState ? mount.getAssetState() : 'rendered';
+        if (!stageEl.classList.contains('is-acquiring') || stablePreviewState(state)) settlePreviewReveal(defId, state);
+        else watchPreviewSettlement(defId, previewSettleGeneration);
+      },
+      onAssetSettled: ({ defId, state } = {}) => {
+        if (!defId || defId !== expectedPreviewDefId) return;
+        syncPosterLive();
+        settlePreviewReveal(defId, state || (mount && mount.getAssetState ? mount.getAssetState() : 'authored'));
+      },
+    });
+    } catch (_) {
+      previewMountFailed = true;
+      canvas.dataset.previewReady = 'false';
+      canvas.dataset.previewBlocked = 'webgl-unavailable';
+      canvas.dataset.previewAssetState = 'unavailable';
+      stageEl.classList.remove('is-acquiring', 'is-revealing');
+      // With a produced render the stage still has its picture: the render is the final image,
+      // the way it is on a device that refuses the second context. No error card over it.
+      if (poster.has()) return null;
+      stageEl.classList.add('is-preview-unavailable');
+      mountDataState(acquiringEl, 'error', {
+        code: 'PREVIEW_UNAVAILABLE',
+        headline: 'Ship preview unavailable.',
+        fills: 'The graphics context could not start. Your fleet, fittings and ship statistics remain available.',
+        verb: {
+          label: 'Retry ship preview',
+          onActivate: () => {
+            previewMountFailed = false;
+            stageEl.classList.remove('is-preview-unavailable');
+            settleDataState(acquiringEl);
+            delete canvas.dataset.previewBlocked;
+            refresh();
+          },
+        },
+      });
+      return null;
+    }
+    delete canvas.dataset.previewBlocked;
+    stageEl.classList.remove('is-preview-unavailable');
+    syncStageDock();
+    // Read-only hook used by the live browser acceptance probe. It exposes the preview's rendered
+    // scene facts without giving UI code permission to mutate Three.js objects.
+    Object.defineProperty(canvas, '__sfPreviewDiagnostics', {
+      configurable: true,
+      value: () => mount && mount.getVisualDiagnostics ? mount.getVisualDiagnostics() : [],
+    });
+    // Warm authored assets; do not mark ready from a false/failed warmup.
+    try {
+      const warm = mount.warmAssets && mount.warmAssets();
+      if (warm && typeof warm.then === 'function') {
+        warm.then((ok) => {
+          if (ok !== true) return;
+          // Warm success alone is not readiness; onFirstFrame still owns previewReady.
+        }).catch(() => { /* keep previewReady false */ });
+      }
+    } catch (_) { /* keep previewReady false */ }
+    return mount;
+  }
+
+  /**
+   * The blocked-mount preview. A second WebGL context is refused where it would TDR the live
+   * flight context (Intel/ANGLE — `secondaryPreviewWebGlBlocked`), so the stage window's picture
+   * is the authored berth-bay plate the sheet paints under `data-preview-blocked`: the same
+   * authored-fallback doctrine the screen manager grants every staged screen ("the authored plate
+   * is the final image"), never an empty bay. `previewReady` therefore means what it means there —
+   * the final picture is on screen — and `previewAssetState` says honestly that it is a plate.
+   *
+   * While docked the shared UI stage still draws the berth behind the panel (veiled); re-requesting
+   * `state.ui.stageRequest` with the previewed def — the same seam the berth uses (stationApp's
+   * createBerth.show) — seats the selected hull there, so the ghost behind the screen and the
+   * berth itself show the ship being fitted rather than a stale one.
+   */
+  function sharedBerthRequest() {
+    const ui = ctx && ctx.state && ctx.state.ui;
+    const request = ui && ui.stageRequest;
+    return request && request.scene === 'berth' ? request : null;
+  }
+
+  function previewThroughSharedStage(defId) {
+    blockedPreviewActive = true;
+    canvas.dataset.previewAssetState = 'authored-plate';
+    canvas.dataset.previewReady = 'true';
+    canvas.dataset.previewReveal = 'settled';
+    const ui = ctx && ctx.state && ctx.state.ui;
+    const request = sharedBerthRequest();
+    if (!request) return; // the in-flight host stands on the held flight frame; the plate is enough
+    if (request.hullDefId !== defId) {
+      ui.stageRequest = { ...request, hullDefId: defId || null, __lastStatus: undefined };
+    }
+  }
+
+  /** Leaving Shipworks re-seats the player's own hull so the berth shows the ship you fly. */
+  function restoreSharedStageHull() {
+    if (!blockedPreviewActive) return;
+    blockedPreviewActive = false;
+    const ui = ctx && ctx.state && ctx.state.ui;
+    const request = sharedBerthRequest();
+    if (!request) return;
+    const player = ctx.state && ctx.state.player;
+    const ships = (player && player.ownedShips) || [];
+    const ship = ships[Number(player && player.activeShipIndex) || 0] || ships[0] || null;
+    const defId = (ship && ship.defId) || 'ship_kestrel';
+    if (request.hullDefId === defId) return;
+    ui.stageRequest = { ...request, hullDefId: defId, __lastStatus: undefined };
+  }
+
+  function previewShip(defId, fittings, isPlayer, meta, appearance = null) {
+    poster.setHull(defId || null, posterViewFor(defId));
+    ensureMount();
+    writeCanvasPreviewMeta(defId, fittings, meta);
+    expectedPreviewDefId = defId || null;
+    if (!mount) {
+      canvas.dataset.previewReady = 'false';
+      if (!canvas.dataset.previewBlocked) canvas.dataset.previewBlocked = 'secondary-webgl';
+      previewThroughSharedStage(defId);
+      return;
+    }
+    blockedPreviewActive = false;
+    const sameHull = mount.getDefId && mount.getDefId() === defId;
+    // Gate on ASSET READINESS, not hull identity alone. The stage is a shared singleton built for
+    // the dock host, so a flight-first F2 open can match the hull id while that hull's GLB is
+    // still seconds away on a cold cache. An identity-only gate dismissed the acquiring state
+    // immediately and left the player staring at an empty bay with floating slot callouts —
+    // measured at 12s+ before the hull arrived (scripts/probe-ship-polish-audit.mjs).
+    const assetStableNow = stablePreviewState(mount.getAssetState ? mount.getAssetState() : 'rendered');
+    const gated = (!sameHull && !(meta && meta.mode === 'module')) || !assetStableNow;
+    stageEl.dataset.revealWasGated = gated ? 'true' : 'false';
+    const revealGeneration = beginPreviewReveal(defId, gated);
+    const appearanceSig = appearance ? shipAppearanceSignature(appearance, defId) : '';
+    const key = defId + '|' + (fittings || []).join(',') + '|' + (isPlayer ? 'p' : 's') + '|' + ((meta && meta.mode) || 'base') + (appearanceSig ? '|' + appearanceSig : '');
+    if (key === curPreviewKey) {
+      mount.setActive(true);
+      const state = mount.getAssetState ? mount.getAssetState() : 'rendered';
+      if (!gated || stablePreviewState(state)) settlePreviewReveal(defId, state, revealGeneration);
+      else watchPreviewSettlement(defId, revealGeneration);
+      return;
+    }
+    curPreviewKey = key;
+    try {
+      const preserveView = sameHull;
+      // Shipworks is direct manipulation: the settled ship does not burn a render loop merely to
+      // prove it is alive. Drag, zoom, selection and authored-asset upgrades render on demand.
+      mount.show(defId, { fittings: fittings || [], isPlayer: !!isPlayer, rotating: false, preserveView, appearance: appearance || null });
+      // Keep room for both columns after the authored 3D hull replaces its poster on a compact
+      // flight stage. The normal preview keeps its existing closer framing.
+      if (!preserveView) mount.setZoom(host === 'flight' && compactFlightNameplate.matches ? 1 : 1.68);
+      mount.setActive(true);
+      mount.resize();
+      const state = mount.getAssetState ? mount.getAssetState() : 'rendered';
+      if (!gated || stablePreviewState(state)) settlePreviewReveal(defId, state, revealGeneration);
+      else watchPreviewSettlement(defId, revealGeneration);
+    } catch (e) { /* preview optional; UI still works — ready stays false */ }
+  }
+
+  function currentPreviewContext() {
+    if (mode === 'fleet') {
+      const s = viewedShip();
+      const def = s ? SHIP_BY_ID.get(s.defId) : null;
+      if (!def) return null;
+      return {
+        defId: def.id,
+        fittings: Array.isArray(s.fittings) ? s.fittings.slice() : [],
+        isPlayer: true,
+        player: ctx.state.player,
+        stock: false,
+        // The paint rack's look rides the preview like the fittings do.
+        appearance: s.appearance || null,
+      };
+    }
+    const def = SHIP_BY_ID.get(buyId);
+    if (!def) return null;
+    return {
+      defId: def.id,
+      fittings: [],
+      isPlayer: def.id === 'ship_kestrel',
+      // NXI-120: the catalog hull is read at the same declared load the fleet hulls are —
+      // a bare hull carrying the hold the player actually flies, not an empty guess.
+      player: declaredLoadPlayer(ctx.state.player),
+      stock: true,
+    };
+  }
+
+  function activeFleetIndex() {
+    return Number(ctx.state && ctx.state.player && ctx.state.player.activeShipIndex) || 0;
+  }
+
+  function viewedEntityForModel() {
+    if (mode !== 'fleet') return null;
+    if (viewIdx !== activeFleetIndex()) return null;
+    const entities = ctx.state && ctx.state.entities;
+    const playerId = ctx.state && ctx.state.playerId;
+    if (!entities || !playerId || typeof entities.get !== 'function') return null;
+    return entities.get(playerId) || null;
+  }
+
+  function viewedLivingHullForModel() {
+    if (mode !== 'fleet') return null;
+    const ship = viewedShip();
+    return ship && ship.livingHull ? ship.livingHull : null;
+  }
+
+  function slotHasContinuousDraw(moduleDef) {
+    if (!moduleDef) return false;
+    if (Number(moduleDef.energyDraw) > 0) return true;
+    return !!(moduleDef.continuous && Number(moduleDef.energyCost) > 0);
+  }
+
+  function recordRowsHtml(model) {
+    if (!model || !model.derived) return '';
+    const d = model.derived;
+    const entries = [
+      ['Hull max', `${fmt(d.hullMax)}`],
+      ['Shield max', `${fmt(d.shieldMax)}`],
+      ['Cap max', `${fmt(d.capMax)}`],
+      ['Cap regen', `${Math.round(finite(d.capRegen, 0) * 10) / 10}/s`],
+      ['Continuous drain', `${Math.round(finite(d.continuousDrain, 0) * 10) / 10}/s`],
+      ['Cargo cap', `${fmt(d.cargoCap)} u`],
+      ['Operational mass', `${fmt(d.operationalMass)} t`],
+      ['Turn rate', turnRecordText(d)],
+      // NXB-030: 'Thrust' and 'Fight speed' quote the live propulsion profile (the numbers
+      // the kernel commands — forward accel at this mass, the governed fight cap), not the
+      // legacy spec fields that kept scaling in ways the tick no longer applies.
+      ['Thrust', `${fmt(forwardAccelFor(d))}`],
+      ['Fight speed', `${fmt(governedFightSpeedFor(d))}`],
+    ];
+    // The kit's ruled row (.k-row is the grid; kit.css 251), the same shape the side panel uses —
+    // the old display:contents divs bypassed every row style and read as prose.
+    return entries.map(([k, v]) =>
+      `<li class="k-row k-row--static"><span class="k-row__name k-62">${escapeHtml(k)}</span><span class="k-row__num">${escapeHtml(String(v))}</span></li>`
+    ).join('');
+  }
+
+  // special-500 batch 18 — the hull margin notes: the four counter legs that read as dressing
+  // rows on THE SHIP's condition band. Each is a plain-named story flag written once by the
+  // counter leg that owns the moment; a hull without the stamp shows nothing here.
+  //   SP2-007  hull_held_15     — "BULKHEAD 3 LOG — SHE HELD TOGETHER. WE DIDN'T." (GRAFFITI
+  //                              corpus; the handwriting is not the player's)
+  //   SPX-B-02 rack_mark_done   — the launch rack's scored line: "rack mark, {date}"
+  //   SP2-120  rubric_signed    — the stencil "HM-11 ✕ [callsign]", dated the first sighting
+  //   SP2-035  wren_buoy_found  — the hull note the buoy tag files: "she pulls left"
+  function hullMarginNotesFor(state) {
+    const flags = state && state.story && state.story.flags;
+    if (!flags || typeof flags !== 'object') return [];
+    const notes = [];
+    if (flags.hull_held_15 != null) {
+      notes.push({ id: 'bulkhead_log', label: 'BULKHEAD 3 LOG', value: GRAFFITI.GANG_SHE_HELD });
+    }
+    const scar = flags.first_hull_damage;
+    if (flags.rack_mark_done != null && scar && Number.isFinite(Number(scar.day))) {
+      notes.push({ id: 'rack_mark', label: 'Rack mark', value: `rack mark, day ${Math.max(0, Math.floor(Number(scar.day)))}` });
+    }
+    const signed = flags.rubric_signed;
+    if (signed && typeof signed === 'object' && Number.isFinite(Number(signed.firstSighting))) {
+      const day = Math.max(0, Math.floor(Number(signed.firstSighting) / CAL_DAY_S));
+      notes.push({ id: 'rubric_stencil', label: 'HM-11 \u2715', value: `stencil dated day ${day}` });
+    }
+    if (flags.wren_buoy_found != null) {
+      notes.push({ id: 'wren_buoy', label: 'Hull notes', value: '"she pulls left"' });
+    }
+    return notes;
+  }
+
+  function deriveBandModel(previewCtx) {
+    if (!previewCtx) return null;
+    const def = SHIP_BY_ID.get(previewCtx.defId);
+    if (!def) return null;
+    const fittings = Array.isArray(previewCtx.fittings) ? previewCtx.fittings.slice() : [];
+    const player = previewCtx.player || null;
+    const derived = getDerivedStats(def.id, fittings, player);
+    const capability = capabilityBandModel({
+      derived,
+      state: ctx.state,
+      // PQ-142.00: the four physical verbs read the fit itself, not just its derived stats — the
+      // field-deploy verb is a question about what is bolted on, not about a number it produces.
+      fittings,
+    });
+    const conditionRaw = conditionFromEntity(viewedEntityForModel());
+    // the active hull docked here has no live entity to read, but it is docked, not stowed: STOWED
+    // belongs to the fleet's other hulls
+    const condition = conditionRaw && conditionRaw.ratio == null && viewIdx === activeFleetIndex()
+      ? { ...conditionRaw, verb: 'DOCKED' }
+      : conditionRaw;
+    const scars = scarCalloutsForHull({
+      shipId: def.id,
+      livingHull: viewedLivingHullForModel(),
+      simTime: finite(ctx.state && ctx.state.simTime, 0),
+    });
+    // PULSE-HISTORY — the hull's keepsake shelf plus the memorial array the ledger filed. Fleet
+    // view only: the catalog preview has no history of its own to read.
+    const history = mode === 'fleet'
+      ? { trinkets: livingHullTrinkets(viewedLivingHullForModel()), dead: historyWearDead(ctx.state) }
+      : null;
+    // special-500 batch 18 — the hull's own margin notes (counter-family readers). Each row
+    // reads one plain-named story flag its counter leg wrote; an unstamped hull shows none.
+    const hullNotes = mode === 'fleet' ? hullMarginNotesFor(ctx.state) : null;
+    const availability = shipworksActionAvailability(ctx.state);
+    const slots = buildSlotList(def);
+    const fittedDefs = fittings.map((id) => id && FITTABLE_BY_ID.get(id)).filter(Boolean);
+    const poweredSlotIndices = [];
+    slots.forEach((slot, index) => {
+      const fitted = fittings[index] && FITTABLE_BY_ID.get(fittings[index]);
+      if (slotHasContinuousDraw(fitted)) poweredSlotIndices.push(index);
+    });
+    // FB-057: the crest says the hull's real name — an owner-given word outranks the banked one;
+    // a catalog preview keeps the class name.
+    const ownedShip = mode === 'fleet' ? viewedShip() : null;
+    const hullName = mode === 'fleet' && ownedShip
+      ? hullNameForOwnedShip(ownedShip, viewIdx, ctx.state && ctx.state.meta && ctx.state.meta.seed)
+      : def.name;
+    // P1 — THE SHIP SHEET. One pure model, read here and nowhere re-derived: the six 1–10 stats,
+    // the build word from their shape, and the engineering block the Details door hides.
+    const sheet = shipStatSheet({ shipId: def.id, fittings, player });
+    // One classifier: the build word is the shape of the six stats, never a second pass over the
+    // module ids (the old classifyBuildIdentity read). A per-run scan badge stays in
+    // systems/buildIdentity.js for the scanner; the ship sheet does not use it.
+    const identity = sheet
+      ? { id: sheet.identity.id, label: sheet.identity.label, summary: sheet.identity.gloss, synergyNotes: [] }
+      : null;
+    return {
+      def,
+      fittings,
+      player,
+      derived,
+      stockDrive: !fittings.some((id) => {
+        const fitted = id && FITTABLE_BY_ID.get(id);
+        return !!(fitted && fitted.slotType === 'engine');
+      }),
+      capability,
+      condition,
+      scars,
+      history,
+      slots,
+      fittedDefs,
+      poweredSlotIndices,
+      availability,
+      ownedShip,
+      hullIndex: mode === 'fleet' ? viewIdx : null,
+      hullName,
+      identity,
+      sheet,
+      sheetSentence: shipSheetSentence(sheet),
+      hullNotes,
+    };
+  }
+
+  function derivePresetRailModel(model) {
+    if (!model || !model.def || mode !== 'fleet') return null;
+    const canRefit = !!(model.availability && model.availability.outfitEnabled);
+    const refitWhy = (model.availability && model.availability.outfitLabel) || 'Dock to refit';
+    const enforceCargo = viewIdx === activeFleetIndex();
+    return buildLoadoutPresetRailModel({
+      player: ctx.state.player,
+      hullDefId: model.def.id,
+      currentFittings: model.fittings,
+      selectedPresetId: selectedPresetIdForHull(model.def.id),
+      canRefit,
+      refitWhy,
+      simTime: finite(ctx.state && ctx.state.simTime, 0),
+      dryRunApply: (preset) => dryRunLoadoutPresetApply({
+        shipDefId: model.def.id,
+        currentFittings: model.fittings,
+        targetFittings: preset && preset.fittings,
+        moduleInventory: ctx.state && ctx.state.player && ctx.state.player.moduleInventory,
+        player: ctx.state.player,
+        enforceCargo,
+      }),
+    });
+  }
+
+  /**
+   * Machine-readable provenance mirror for the stats panel: the same derived-stat numbers the
+   * visible gauges/heroes show, stamped as [data-metric][data-value] rows so the acceptance route
+   * can prove the panel reads ships.getDerivedStats and not a fabricated second source. Mirrors
+   * whichever model was last synced — the ghost fit while a module/preset is previewed, the live
+   * fit otherwise. statsEl.innerHTML rebuilds wipe the mirror, so it re-appends on each sync.
+   */
+  const PREVIEW_METRIC_KEYS = [
+    'mass', 'hullMax', 'shieldMax', 'capMax', 'capRegen', 'continuousDrain',
+    'cargoCap', 'operationalMass', 'turnRate', 'thrust', 'maxSpeed',
+  ];
+  let metricsMirrorEl = null;
+  function stampStatsProvenance(model) {
+    if (!statsEl) return;
+    if (!model || !model.derived) {
+      delete statsEl.dataset.previewSource;
+      if (metricsMirrorEl) metricsMirrorEl.remove();
+      metricsMirrorEl = null;
+      return;
+    }
+    statsEl.dataset.previewSource = 'ships.getDerivedStats';
+    if (!metricsMirrorEl || !metricsMirrorEl.isConnected) {
+      metricsMirrorEl = document.createElement('span');
+      metricsMirrorEl.className = 'sx-sw__metrics';
+      metricsMirrorEl.hidden = true;
+      metricsMirrorEl.setAttribute('aria-hidden', 'true');
+      statsEl.appendChild(metricsMirrorEl);
+    }
+    // previewMetricValue resolves the motion keys to the live channels the panel actually
+    // prints (governed fight cap, kernel yaw ceiling, forward accel) so the mirror proves the
+    // VISIBLE numbers come from getDerivedStats — raw derived[key] would stamp the legacy
+    // spec fields the panel no longer shows (NXB-030).
+    metricsMirrorEl.innerHTML = PREVIEW_METRIC_KEYS.map((key) =>
+      `<span data-metric="${key}" data-value="${finite(previewMetricValue(model.derived, key), 0)}"></span>`,
+    ).join('');
+  }
+
+  function syncPowerBand(model) {
+    if (!model || !model.derived) {
+      currentPowerHeadroom = 0;
+      currentPowerCapMax = 0;
+      currentPowerSlotIndices = [];
+      powerBeam.setPath([], { active: false });
+      return;
+    }
+    currentPowerHeadroom = finite(model.derived.capRegen, 0) - finite(model.derived.continuousDrain, 0);
+    currentPowerCapMax = Math.max(1, finite(model.derived.capMax, 0));
+    currentPowerSlotIndices = model.poweredSlotIndices.slice();
+  }
+
+  function renderCrest(model) {
+    if (!model || !model.def) {
+      nameplateEl.innerHTML = '';
+      return;
+    }
+    const conditionClass = model.condition && model.condition.tone
+      ? ` sx-sw__condition--${escapeHtml(model.condition.tone)}`
+      : '';
+    const percent = model.condition && model.condition.percentText
+      ? `<span class="sx-sw__conditionPct">${escapeHtml(model.condition.percentText)}</span>`
+      : '';
+    const verb = model.condition ? model.condition.verb : 'DOCKED';
+    // P1 — the paragraph is gone. The sheet beside the hull carries the build word and its one
+    // sentence; the engineering reading lives behind its Details door. Keeping both would print
+    // the same sentence twice on one screen.
+    // FB-057 — the nameplate is the rename field's home: the resolved hull name stays the
+    // display title, and an owned hull carries an inline editor under it. The field only emits
+    // ui:setShipName; ships owns the write.
+    const nameInput = model.hullIndex != null
+      ? `<input class="k-input sx-sw__nameEdit" type="text" data-ship-name maxlength="${SHIP_NAME_MAX}" ` +
+          `value="${escapeHtml(model.ownedShip && typeof model.ownedShip.name === 'string' ? model.ownedShip.name : '')}" ` +
+          `placeholder="Name this hull" aria-label="Name this hull" spellcheck="false" autocomplete="off"/>`
+      : '';
+    nameplateEl.innerHTML =
+      `<div class="sx-sw__crestLine">` +
+        `<h2 class="k-display k-t-title sx-sw__name">${entitySpanHtml('hull:' + model.def.id, escapeHtml(model.hullName || model.def.name))}</h2>` +
+        `<span class="k-t-fine k-62 sx-sw__condition${conditionClass}"${whyAttr(model.condition && model.condition.why)}>` +
+          `<span class="sx-sw__conditionVerb">${escapeHtml(titleCaseWords(verb))}</span>${percent}` +
+        `</span>` +
+      `</div>` +
+      nameInput;
+    dressCrest();
+  }
+
+  // The capability band's detail: what this fit can physically DO, as one wrapping sentence. The
+  // key-word chips this band used to carry clipped their own verbs in the readings column, and they
+  // are the resting reading of the screen — so nothing here is allowed to truncate.
+  function renderCapabilityChips(model) {
+    if (!model || !model.capability) return '';
+    const chips = (model.capability.chips || []).filter((chip) => chip && chip.verb);
+    const next = model.capability.next;
+    if (!chips.length) return '';
+    const verbs = [];
+    const seen = new Set();
+    for (const chip of chips) {
+      const words = String(chip.verb).trim().replace(/\.$/, '');
+      if (!words || seen.has(words)) continue;
+      seen.add(words);
+      verbs.push(words);
+    }
+    if (!verbs.length) return '';
+    const sentence = `${verbs.slice(0, 3).join('. ')}.`;
+    const nextLine = next && next.verb
+      ? `<p class="k-t-fine k-38 sx-sw-band__meta">Next: ${escapeHtml(String(next.verb).replace(/\.$/, ''))}.</p>`
+      : '';
+    return `<p class="k-sentence sx-sw-capabilities">${escapeHtml(sentence)}</p>${nextLine}`;
+  }
+
+  // Loadout presets as a row of fine words under the bands; the save slot is the last word.
+  function renderPresetRail(model, railModel) {
+    if (!model || !railModel) return '';
+    const presets = Array.isArray(railModel.presets) ? railModel.presets : [];
+    const saveSlot = railModel.saveSlot || null;
+    const presetRows = presets.map((preset) => {
+      const classes = [
+        'k-word k-word--fine sx-sw-preset',
+        preset.selected ? 'is-selected is-active' : '',
+        preset.applyState && !preset.applyState.ok ? 'is-dim' : '',
+      ].filter(Boolean).join(' ');
+      const why = preset.applyState && !preset.applyState.ok ? preset.applyState.text : '';
+      const aria = `${preset.label || 'Build'}. ${preset.subtitle || 'Preset'}. ${
+        preset.applyState && preset.applyState.ok
+          ? 'Select this build. Press again or use Apply to commit.'
+          : (preset.applyState && preset.applyState.text) || 'Cannot apply right now'
+      }`;
+      return (
+        `<li><button type="button" ${stationControlAttrs('loadout-preset')} class="${classes}" data-loadout-preset-id="${escapeHtml(preset.id)}" aria-pressed="${preset.selected ? 'true' : 'false'}"${whyAttr(why)} aria-label="${escapeHtml(aria)}">` +
+          `<span class="sx-sw-preset__label">${escapeHtml(preset.label || 'Build')}</span>` +
+          `<span class="k-word-sub sx-sw-preset__sub">${escapeHtml(preset.subtitle || 'Preset')}</span>` +
+        `</button></li>`
+      );
+    }).join('');
+    const saveDisabled = !saveSlot || !saveSlot.canSave;
+    const saveWhy = saveDisabled ? (saveSlot && saveSlot.reasonText) || 'Cannot save right now' : '';
+    const saveLabel = saveSlot ? `Save current fit as ${saveSlot.label}` : 'Save current fit';
+    const countText = saveSlot ? `${saveSlot.count}/${saveSlot.cap}` : '';
+    const saveButton = (
+      `<li><button type="button" ${stationControlAttrs('save-build')} class="k-word k-word--fine sx-sw-preset sx-sw-preset--save${saveDisabled ? ' is-dim' : ''}" data-loadout-preset-save="1"${saveSlot ? ` data-loadout-preset-id="${escapeHtml(saveSlot.presetId)}" data-loadout-label-key="${escapeHtml(saveSlot.labelKey)}" data-loadout-created-at="${saveSlot.createdAt}"` : ''}${saveDisabled ? ' disabled' : ''}${whyAttr(saveWhy)} aria-label="${escapeHtml(saveLabel)}">` +
+        `<span class="sx-sw-preset__label">Save fit</span>` +
+        (countText ? `<span class="k-word-sub sx-sw-preset__sub">${escapeHtml(countText)}</span>` : '') +
+      `</button></li>`
+    );
+    return (
+      `<section class="sx-sw-band sx-sw-band--presets">` +
+        `<p class="k-caps sx-sw-band__label">Builds <span class="k-38">· select to preview, again to apply</span></p>` +
+        `<ul class="k-words k-words--row sx-sw-presetrow">${presetRows}${saveButton}</ul>` +
+      `</section>`
+    );
+  }
+
+  function renderPresetDrawer(railModel) {
+    const selectedPreset = railModel && railModel.selectedPreset ? railModel.selectedPreset : null;
+    if (!selectedPreset) return '';
+    const verbs = Array.isArray(selectedPreset.capabilityVerbs) ? selectedPreset.capabilityVerbs.slice(0, 5) : [];
+    const verbsHtml = verbs.length
+      ? verbs.map((verb) => escapeHtml(verb)).join(' · ')
+      : '<span class="k-38">No capability verb available</span>';
+    const applyText = selectedPreset.applyState && selectedPreset.applyState.ok
+      ? 'Ready to apply'
+      : ((selectedPreset.applyState && selectedPreset.applyState.text) || 'Cannot apply right now');
+    return (
+      `<section class="sx-sw-record sx-sw-record--preset">` +
+        `<p class="k-caps sx-sw-band__label">Build record</p>` +
+        `<ul class="k-rows sx-sw-presetdrawer">` +
+          `<li class="k-row k-row--static sx-sw-presetdrawer__row"><span class="k-row__name k-62">Label</span><span class="k-row__num">${escapeHtml(selectedPreset.label || 'Build')}</span></li>` +
+          `<li class="k-row k-row--static sx-sw-presetdrawer__row"><span class="k-row__name k-62">Created cycle</span><span class="k-row__num">${escapeHtml(String(Math.max(0, Math.round(finite(selectedPreset.createdAt, 0)))))}</span></li>` +
+          `<li class="k-row k-row--static sx-sw-presetdrawer__row"><span class="k-row__name k-62">Apply state</span><span class="k-row__num"${whyAttr(applyText)}>${escapeHtml(applyText)}</span></li>` +
+          `<li class="k-row k-row--static sx-sw-presetdrawer__row sx-sw-presetdrawer__verbs"><span class="k-row__name k-62">Capability</span><span class="k-row__num k-t-body">${verbsHtml}</span></li>` +
+        `</ul>` +
+        `<ul class="k-words k-words--row sx-sw-presetdrawer__actions">` +
+          `<li><button type="button" ${stationControlAttrs('delete-build')} class="k-word k-word--fine k-bad sx-sw-verb sx-sw-verb--danger" data-loadout-preset-delete="${escapeHtml(selectedPreset.id)}">${stationControlLabel('delete-build')}</button></li>` +
+        `</ul>` +
+      `</section>`
+    );
+  }
+
+  // The four hidden band presenters (handling / power / condition / identity) are gone: the sheet
+  // above is the one reading, and the capability sentence below is the only band detail this
+  // screen still mounts. A dead selector and a roster-relative handling model are not a second
+  // presenter; they are a second answer waiting to disagree with the first.
+
+  function renderApron(model, ghostModel = null) {
+    if (!model || !model.def || !model.derived) {
+      statsEl.innerHTML = '';
+      activePresetRailModel = null;
+      return;
+    }
+    ensureShipSheetStyles();
+    activePresetRailModel = derivePresetRailModel(model);
+    if (activePresetRailModel && selectedPresetIdForHull(model.def.id) && !activePresetRailModel.selectedPreset) {
+      setSelectedPresetIdForHull(model.def.id, null, { remember: false });
+      activePresetRailModel = derivePresetRailModel(model);
+    }
+    const conditionVerb = titleCaseWords(model.condition ? model.condition.verb : 'DOCKED');
+    const selectedPreset = activePresetRailModel && activePresetRailModel.selectedPreset
+      ? activePresetRailModel.selectedPreset
+      : null;
+    const fitAction = selectedPreset ? 'apply-preset' : 'fit-slot';
+    const fitEnabled = selectedPreset
+      ? !!(selectedPreset.applyState && selectedPreset.applyState.ok)
+      : !!(model.availability && model.availability.outfitEnabled && selectedSlot >= 0);
+    const fitLabel = selectedPreset
+      ? `Apply ${selectedPreset.label || 'build'}`
+      : (
+        fitEnabled
+          ? 'Fit'
+          : (selectedSlot >= 0
+            ? (model.availability && model.availability.outfitEnabled ? 'Select a module' : model.availability.outfitLabel || 'Dock to fit')
+            : 'Select a slot')
+      );
+    const fitBlockedText = selectedPreset
+      ? (((selectedPreset.applyState && selectedPreset.applyState.text) || 'Cannot apply this build'))
+      : fitLabel;
+    const makeActiveVisible = host === 'dock' && mode === 'fleet' && viewIdx !== activeFleetIndex();
+    const makeActiveEnabled = makeActiveVisible && model.availability && model.availability.hullEnabled;
+    const makeActiveLabel = makeActiveEnabled
+      ? 'Make active'
+      : (model.availability && model.availability.hullLabel ? model.availability.hullLabel : 'Make active');
+    const switchCargo = makeActiveVisible ? hullSwitchCargoGuidance(ctx.state, viewIdx) : '';
+    // The paint rack is a berth verb like Make active: dock-side fleet hulls only, gated by the
+    // same hull-service access (the yard mixes and cures while you are berthed).
+    const paintVisible = host === 'dock' && mode === 'fleet';
+    const paintEnabled = paintVisible && model.availability && model.availability.hullEnabled;
+    // FB-061 — viewing a parked hull shows its hold and, at a shipyard, the deck verbs that move
+    // units between it and the live hold. The verbs emit ui:transferParkedCargo; cargo owns the
+    // move. The parked hold line stays visible even without yard service — it is the hull's
+    // record, not a station fact.
+    const holdModel = host === 'dock' && mode === 'fleet' ? buildParkedHoldModel(ctx.state) : null;
+    const holdRow = holdModel && model.hullIndex != null && model.hullIndex !== holdModel.activeIndex
+      ? (holdModel.holds.find((row) => row.index === model.hullIndex) || { index: model.hullIndex, units: 0 })
+      : null;
+    const holdDeckReady = !!(holdModel && holdModel.dockedAtShipyard && holdRow);
+    const loadHoldEnabled = holdDeckReady && holdRow.units > 0;
+    const stowHoldEnabled = holdDeckReady && holdModel.activeUnits > 0;
+    const holdWhy = holdDeckReady ? '' : 'Deck transfer needs a shipyard berth';
+    statsEl.innerHTML =
+      // P1 — the sheet leads. Six bounded stats and a build word, with the green/red deltas of a
+      // hovered part painted straight onto the rows, and the engineering numbers behind Details.
+      shipSheetHtml(model.sheet, {
+        sentence: model.sheetSentence,
+        emptyNote: ghostNote,
+        delta: ghostModel && ghostModel.sheet && model.sheet
+          ? shipStatDelta(model.sheet, ghostModel.sheet)
+          : null,
+      }) +
+      `<div class="sx-sw-bands" role="group" aria-label="Ship bands">` +
+        `<ul class="k-words k-words--row sx-sw-verbs">` +
+          `<li><button type="button" ${stationControlAttrs('range')} class="k-word k-word--body sx-sw-verb" data-verb="range">${escapeHtml(String(stationControlLabel('range')).replace(/\bit\b/i, `the ${model.hullName || model.def.name}`))}</button></li>` +
+          `<li><button type="button" ${stationControlAttrs('record')} class="k-word k-word--body sx-sw-verb${recordOpen ? ' is-active' : ''}" data-verb="record" aria-pressed="${recordOpen ? 'true' : 'false'}">${stationControlLabel('record')}</button></li>` +
+          `<li><button type="button" ${stationControlAttrs('fit')} class="k-word k-word--body sx-sw-verb" data-verb="fit" data-fit-action="${escapeHtml(fitAction)}"${selectedPreset ? ` data-loadout-preset-id="${escapeHtml(selectedPreset.id)}"` : ''}${fitEnabled ? '' : ` disabled aria-label="${escapeHtml(fitBlockedText)}"`}>${escapeHtml(fitLabel)}</button></li>` +
+          (makeActiveVisible
+            ? `<li><button type="button" ${stationControlAttrs('activate')} class="k-word k-word--body sx-sw-verb" data-verb="activate"${makeActiveEnabled ? ` aria-label="${escapeHtml('Make active. ' + switchCargo)}"` : ` disabled aria-label="${escapeHtml(makeActiveLabel)}"`}>${escapeHtml(makeActiveLabel)}</button></li>`
+            : '') +
+          (paintVisible
+            ? `<li><button type="button" ${stationControlAttrs('paint')} class="k-word k-word--body sx-sw-verb${paintOpen ? ' is-active' : ''}" data-verb="paint" aria-pressed="${paintOpen ? 'true' : 'false'}"${paintEnabled ? '' : ` disabled aria-label="${escapeHtml((model.availability && model.availability.hullLabel) || 'Dock at a shipyard to paint')}"`}>${stationControlLabel('paint')}</button></li>`
+            : '') +
+          (holdRow
+            ? `<li><button type="button" ${stationControlAttrs('load-hold')} class="k-word k-word--body sx-sw-verb" data-verb="load-hold"${loadHoldEnabled ? '' : ` disabled aria-label="${escapeHtml(holdWhy || 'That hold is empty')}"`}>${stationControlLabel('load-hold')}</button></li>` +
+              `<li><button type="button" ${stationControlAttrs('stow-hold')} class="k-word k-word--body sx-sw-verb" data-verb="stow-hold"${stowHoldEnabled ? '' : ` disabled aria-label="${escapeHtml(holdWhy || 'Your hold is empty')}"`}>${stationControlLabel('stow-hold')}</button></li>`
+            : '') +
+        `</ul>` +
+      `</div>` +
+      // The Record verb swaps the column's reading. The record used to hang under the preset
+      // drawer: ten rows that started 3px inside a stats box with 185px of hidden scroll, so the
+      // press read as nothing until the player discovered a fold. The record replaces the selected
+      // band's detail in place, and the verb carries is-active/aria-pressed for the state.
+      (recordOpen
+        ? `<section class="sx-sw-record" aria-live="polite"><p class="k-caps sx-sw-band__label">Record</p><ul class="k-rows sx-sw-record__grid">${recordRowsHtml(model)}</ul></section>`
+        : `<section class="sx-sw-band sx-sw-band--capability" aria-live="polite">${renderCapabilityChips(model)}</section>`) +
+      // The record takes the column below the heroes, so the presets fold with it — a one-run
+      // sliver of BUILDS at the scroll fold reads as a broken block. They return on close.
+      (recordOpen ? '' : renderPresetRail(model, activePresetRailModel)) +
+      renderPresetDrawer(activePresetRailModel);
+    bindShipSheet(statsEl.querySelector('[data-sfs]'));
+    dressApron();
+    paintPendingPresetRejection();
+  }
+
+  // The hull's systems round the dial: each slot type once, how many of its slots are fitted, and
+  // whether a stock drive stands in for an empty engine slot (the drawing counts it as fitted).
+  function circuitSystems(def, fittings) {
+    const slots = buildSlotList(def);
+    const fits = fittings || [];
+    const stockDrive = !!(activeBandModel && activeBandModel.stockDrive);
+    const selType = selectedSlot >= 0 && slots[selectedSlot] ? slots[selectedSlot].type : null;
+    const out = [];
+    for (const type of ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility', 'thruster']) {
+      const available = slots.filter((slot) => slot.type === type).length;
+      if (!available) continue;
+      const fitted = slots.reduce((n, slot, i) => n + (slot.type === type && fits[i] ? 1 : 0), 0);
+      out.push({ type, label: SLOT_LABEL[type] || type, fitted, available, stock: type === 'engine' && fitted === 0 && stockDrive, selected: type === selType });
+    }
+    return out;
+  }
+
+  // Wave 2 S4/S6: the rail row and the dial segment follow the hull's chosen slot (the Hand
+  // itself is the amber bead + arm on the hull; rail and dial answer in bone). Choosing a
+  // slot does not re-render the side, so this syncs the side's DOM in place.
+  function selectedSystemType() {
+    if (selectedSlot < 0) return null;
+    const ship = viewedShip();
+    const def = ship && SHIP_BY_ID.get(ship.defId);
+    if (!def) return null;
+    const slots = buildSlotList(def);
+    return slots[selectedSlot] ? slots[selectedSlot].type : null;
+  }
+  function syncSystemSelection() {
+    const type = selectedSystemType();
+    if (sideEl) {
+      for (const row of sideEl.querySelectorAll('.sx-sw-flow[data-system-type]')) {
+        row.classList.toggle('is-selected', !!type && row.getAttribute('data-system-type') === type);
+      }
+    }
+    const ship = viewedShip();
+    const def = ship && SHIP_BY_ID.get(ship.defId);
+    if (def) syncPowerGhost(def, null);
+  }
+
+  // The circuit's ghost arc: what the fittings being previewed would draw from the core.
+  function circuitDraws(def, fittings) {
+    const draws = new Map();
+    for (const f of fittings || []) {
+      const d = f && FITTABLE_BY_ID.get(f);
+      if (!d) continue;
+      const draw = Number(d.energyDraw) || (d.continuous ? Number(d.energyCost) || 0 : 0);
+      draws.set(d.slotType, (draws.get(d.slotType) || 0) + draw);
+    }
+    return [...draws.entries()];
+  }
+  function syncPowerGhost(def, afterFittings) {
+    const core = sideEl && sideEl.querySelector('.sx-sw-circuit__core');
+    const s = viewedShip();
+    if (!core || !def || !s) return;
+    const dial = core.querySelector('.orr-power');
+    const html = powerDialSvg({ cap: def.energyCap || 0, draws: circuitDraws(def, s.fittings), ghost: afterFittings ? circuitDraws(def, afterFittings) : null,
+      systems: circuitSystems(def, afterFittings || s.fittings) });
+    if (dial) dial.outerHTML = html;
+  }
+
+  function restoreCurrentPreview() {
+    clearSableDemo(); sableSelection = null;
+    if (!explodeLockSeat) explodeSeat(false);
+    for (const n of jigHost ? jigHost.querySelectorAll('.orr-sw-node.is-preview') : []) n.classList.remove('is-preview');
+    { const s = viewedShip(); const def = s ? SHIP_BY_ID.get(s.defId) : null; if (def) syncPowerGhost(def, null); }
+    ghostActive = false;
+    ghostSource = null;
+    ghostBandModel = null;
+    ghostNote = '';
+    const ctxPrev = currentPreviewContext();
+    if (!ctxPrev) {
+      nameplateEl.innerHTML = '';
+      statsEl.innerHTML = '';
+      scarfieldEl.innerHTML = '';
+      return;
+    }
+    previewShip(ctxPrev.defId, ctxPrev.fittings, ctxPrev.isPlayer, null, ctxPrev.appearance);
+    activeBandModel = deriveBandModel(ctxPrev);
+    renderCrest(activeBandModel);
+    renderApron(activeBandModel);
+    stampStatsProvenance(activeBandModel);
+    syncPowerBand(activeBandModel);
+    renderScarCallouts(activeBandModel);
+    if (activePresetRailModel && activePresetRailModel.selectedPreset) {
+      applyPresetGhost(activePresetRailModel.selectedPreset);
+      return;
+    }
+    scheduleSpatialProjection();
+  }
+
+  // ---------- object-centric system projection ----------
+  let spatialAnchors = new Map();
+  // Per slot index: its type and its place among slots of that type, for the poster's marks.
+  let spatialSlotMeta = new Map();
+  let scarAnchors = new Map();
+
+  function typeOrdinal(slots, slotIndex) {
+    const type = slots[slotIndex] && slots[slotIndex].type;
+    return slots.slice(0, slotIndex).filter((s) => s.type === type).length;
+  }
+
+  function localSlotAnchor(def, slots, slotIndex) {
+    const slot = slots[slotIndex];
+    if (!def || !slot) return { x: 0, y: 0, z: 0, authored: false };
+    const visuals = def.visuals || {};
+    const radius = Math.max(5, Number(def.collisionRadius) || 12);
+    const ordinal = typeOrdinal(slots, slotIndex);
+    let pos = null;
+    let authored = false;
+    const weaponMounts = modelTruthMountFractions(def.id, 'SOCKET_Weapon_');
+    const engineMounts = modelTruthMountFractions(def.id, 'SOCKET_Engine_');
+    if (slot.type === 'weapon' && weaponMounts[ordinal]) {
+      pos = weaponMounts[ordinal].pos;
+      authored = true;
+    } else if (slot.type === 'engine' && engineMounts.length) {
+      if (slots.filter((s) => s.type === 'engine').length > 1 && engineMounts[ordinal]) {
+        pos = engineMounts[ordinal].pos;
+      } else {
+        const sum = engineMounts.reduce((a, m) => [a[0] + m.pos[0], a[1] + m.pos[1], a[2] + m.pos[2]], [0, 0, 0]);
+        pos = sum.map((n) => n / engineMounts.length);
+      }
+      authored = true;
+    } else if (slot.type === 'mining') {
+      const miningMounts = modelTruthMountFractions(def.id, 'SOCKET_Mining_');
+      if (miningMounts[ordinal] || miningMounts[0]) {
+        pos = (miningMounts[ordinal] || miningMounts[0]).pos;
+        authored = true;
+      } else if (visuals.drill) {
+        const spread = (ordinal - (slots.filter((s) => s.type === 'mining').length - 1) / 2) * .18;
+        pos = [visuals.drill[0], visuals.drill[1] - .04, visuals.drill[2] + spread];
+        authored = true;
+      }
+    } else if (slot.type === 'utility' && visuals.sensor) {
+      pos = visuals.sensor;
+      authored = true;
+    } else {
+      // Shield and cargo are abstract ship systems when the authored hull has no literal socket.
+      // Keep the distinction explicit in data attributes and copy; these are honest schematic
+      // anchors, not invented physical hardpoints.
+      const count = slots.filter((s) => s.type === slot.type).length;
+      const spread = (ordinal - (count - 1) / 2) * .28;
+      if (slot.type === 'shield') pos = [0.02, .36, spread];
+      else if (slot.type === 'cargo') pos = [-.12 + ordinal * .08, -.28, spread];
+      else pos = [.05, .28 - ordinal * .18, spread];
+    }
+    return {
+      x: (pos && Number(pos[0]) || 0) * radius,
+      y: (pos && Number(pos[1]) || 0) * radius,
+      z: (pos && Number(pos[2]) || 0) * radius,
+      authored,
+    };
+  }
+
+  function renderScarCallouts(model) {
+    scarAnchors = new Map();
+    if (!model || !model.def || !Array.isArray(model.scars) || !model.scars.length) {
+      scarfieldEl.innerHTML = '';
+      return;
+    }
+    const radius = Math.max(5, Number(model.def.collisionRadius) || 12);
+    scarfieldEl.innerHTML = model.scars.map((scar, index) => {
+      const pos = Array.isArray(scar.local) ? scar.local : [0, 0, 0];
+      scarAnchors.set(scar.id, {
+        x: finite(pos[0], 0) * radius,
+        y: finite(pos[1], 0) * radius,
+        z: finite(pos[2], 0) * radius,
+      });
+      const kind = scar.kind === 'approx' ? 'approx' : 'authored';
+      const sub = scar.sub || (kind === 'approx' ? 'APPROX' : 'AUTHORED');
+      return (
+        `<button type="button" ${stationControlAttrs('scar')} class="sf-anchor sf-scar sx-sw-scar" data-scar-id="${escapeHtml(scar.id)}" data-anchor-kind="${kind}" tabindex="0"${whyAttr(scar.why)} aria-label="${escapeHtml(`${scar.label}. ${sub}`)}">` +
+          `<span class="sx-sw-scar__dot" aria-hidden="true"></span>` +
+          `<span class="sx-sw-scar__copy"><b>${escapeHtml(scar.label)}</b><em>${escapeHtml(sub)}</em></span>` +
+        `</button>`
+      );
+    }).join('');
+  }
+
+  // ORRERY (dock host): the hull on its jig -- the plan drawing in a dial, every system a node on
+  // it with its name on a leader in a column beside (the refit's law, src/ui/orrery/hullSchematic.js).
+  // The hardpoint buttons stay the controls (focus, Enter, the chooser, the checks); a node or its
+  // name is a way to the same button. Where a hull has no drawing the schematic stands down and the
+  // live stage shows as before.
+  // ONE STAGE RING: the dial the Fleet jig draws and the For Sale ring are one box. The band under the
+  // dial (the verbs' row, and on a short screen the caption) is reserved from the stage's size alone, so
+  // the jig's ring never chases the verbs and the verbs never chase the ring; For Sale reuses the ring the
+  // jig last drew at this stage size, so switching modes reloads the same dial.
+  const RING_EDGE = 40; const RING_GAP = 30; const RING_LABEL = 220;
+  const ringShort = () => (typeof window !== 'undefined' ? window.innerHeight : 1080) <= 800;
+  // the jig's own radius rule for a band [top, bottom] (src/ui/orrery/hullSchematic.js)
+  function ringRadius(W, top, bottom) {
+    const bandMargin = Math.min(52, Math.round((bottom - top) * 0.11));
+    return Math.max(110, Math.min(W / 2 - RING_EDGE - RING_GAP - RING_LABEL, (bottom - top) / 2 - bandMargin));
+  }
+  // where the verbs' row stands (stage px): under the dial's engraving on a tall stage; on a short
+  // dock stage its words stand on the stage's foot, clear of the dial's caption and of the dock rail
+  function verbRowTop(W, H) {
+    if (ringShort() && host === 'dock') return H - 13;
+    return H / 2 + ringRadius(W, 28, H - 28) + 42;
+  }
+  // the top of the jig's band: nameplate lines crossing the stage's middle third push it down (the jig's rule)
+  function jigBandTop(W, H) {
+    const sr = stageEl.getBoundingClientRect();
+    let top = 28;
+    for (const e of [nameplateEl.querySelector('.sx-sw__crestLine'), nameplateEl.querySelector('.sx-sw__blurb'), el.querySelector('.sx-sw__gauges')]) {
+      if (!e) continue;
+      const r = e.getBoundingClientRect();
+      if (!(r.width > 0 && r.height > 0)) continue;
+      const ob = { left: r.left - sr.left - 12, right: r.right - sr.left + 12, top: r.top - sr.top - 12, bottom: r.bottom - sr.top + 12 };
+      if (ob.right <= W * 0.34 || ob.left >= W * 0.66) continue;
+      if ((ob.top + ob.bottom) / 2 < H / 2) top = Math.max(top, ob.bottom);
+    }
+    return top;
+  }
+  // the bottom of the dial's band (stage px): the verbs' row less its clearance; on a short dock stage
+  // the dial's foot stands 27px above the stage's foot, so its caption and the verbs both clear it
+  function ringBandBottom(W, H, top) {
+    if (!(ringShort() && host === 'dock')) return Math.min(H - 28, verbRowTop(W, H) - 12);
+    let bottom = H - 28;
+    for (let i = 0; i < 3; i++) bottom = Math.min(H - 28, 2 * (H - 27 - ringRadius(W, top, bottom)) - top);
+    return bottom;
+  }
+  // the band under the dial as the jig's obstacle: the dial's own width, from the band to the stage's foot
+  // (it spans the middle third, so the jig's band ends on it; it stays out of the label columns)
+  const ringBandObstacle = {
+    getBoundingClientRect() {
+      const sr = stageEl.getBoundingClientRect();
+      const W = stageEl.clientWidth || 0; const H = stageEl.clientHeight || 0;
+      const top = sr.top + ringBandBottom(W, H, jigBandTop(W, H)) + 12;
+      const left = sr.left + W / 2 - 110;
+      const bottom = Math.max(top + 1, sr.top + H);
+      return { left, right: left + 220, top, bottom, width: 220, height: bottom - top, x: left, y: top };
+    },
+  };
+  // the ring the jig drew last, read off its own dial path, with the stage size it was drawn for
+  let jigRing = null;
+  // the jig's ring stands on a luminous band (weight, not wire): drawn into the jig's host under its layers
+  let jigBand = null;
+  let jigBandKey = '';
+  function drawJigBand() {
+    const r = host === 'dock' && mode !== 'buy' ? readJigRing() : null;
+    if (!r || !jigHost) { if (jigBand) jigBand.style.display = 'none'; jigBandKey = ''; return; }
+    if (!jigBand) jigBand = orrSvg('svg', { class: 'orr-svg sx-sw__jigband', 'aria-hidden': 'true', focusable: 'false' });
+    if (jigBand.parentNode !== jigHost) {
+      const pool = jigHost.querySelector(':scope > .orr-hull__pool');
+      jigHost.insertBefore(jigBand, pool ? pool.nextSibling : jigHost.firstChild);
+      jigBandKey = '';
+    }
+    jigBand.style.display = '';
+    const key = `${r.hx}|${r.hy}|${r.R}|${r.W}|${r.H}`;
+    if (key === jigBandKey) return;
+    jigBandKey = key;
+    jigBand.setAttribute('viewBox', `0 0 ${r.W} ${r.H}`);
+    jigBand.textContent = '';
+    // the same bezel body the For Sale ring carries, static: a band from R - bw to R, edged inside (the jig's
+    // own ring is its outer edge)
+    const bw = bezelWidth(r);
+    jigBand.appendChild(orrSvg('path', { d: orrArcD(r.hx, r.hy, r.R - bw / 2, 0, 360), class: 'sx-sw__bezel-band', 'stroke-width': bw }));
+    jigBand.appendChild(orrSvg('path', { d: orrArcD(r.hx, r.hy, r.R - bw, 0, 360), class: 'sx-sw__bezel-edge' }));
+  }
+  function readJigRing() {
+    if (!jigHost || !jigHost.classList.contains('orr-hull--on')) return null;
+    for (const p of jigHost.querySelectorAll('path.orr-rest')) {
+      const m = /^M (-?[\d.]+) (-?[\d.]+) A (-?[\d.]+) \3 0 1 1 [^A]+A /.exec(p.getAttribute('d') || '');
+      const vb = p.ownerSVGElement && String(p.ownerSVGElement.getAttribute('viewBox') || '').split(/\s+/).map(Number);
+      if (m && vb && vb.length === 4) return { hx: Number(m[1]), hy: Number(m[2]) + Number(m[3]), R: Number(m[3]), W: Math.round(vb[2]), H: Math.round(vb[3]) };
+    }
+    return null;
+  }
+  // the stage ring's geometry: the jig's own ring at this stage size, else the jig's formula over the same band
+  function stageRingGeo() {
+    const W = stageEl.clientWidth || 0; const H = stageEl.clientHeight || 0;
+    if (W < 240 || H < 160) return null;
+    if (mode !== 'buy') { const r = readJigRing(); if (r) jigRing = r; }
+    if (jigRing && Math.abs(jigRing.W - W) <= 1 && Math.abs(jigRing.H - H) <= 1) return { hx: jigRing.hx, hy: jigRing.hy, R: jigRing.R, W, H };
+    const top = mode === 'buy' ? 28 : jigBandTop(W, H);
+    const bottom = ringBandBottom(W, H, top);
+    const R = ringRadius(W, top, bottom);
+    // For Sale reached before the jig has drawn at this size: on a short dock stage the Fleet dial stands
+    // on its foot line (the nameplate's lines push it there), so the sale dial stands there too
+    const hy = mode === 'buy' && ringShort() && host === 'dock' ? Math.max((top + bottom) / 2, H - 27 - R) : (top + bottom) / 2;
+    return { hx: W / 2, hy, R, W, H };
+  }
+  // the render manifest: a hull's length for the caption (four hulls carry one; the rest say none)
+  let posterManifest = null;
+  loadHullPosterManifest().then((m) => { if (m) { posterManifest = m; scheduleSpatialProjection(); } }).catch(() => {});
+  function hullLengthM(defId) {
+    const hull = posterManifest && posterManifest.hulls && posterManifest.hulls[defId];
+    const view = hull && (hull.hero || hull.top || hull.side);
+    const n = view && Array.isArray(view.hullSize) ? Number(view.hullSize[view.longAxis || 0]) : NaN;
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+  // a caption on the dial's lower arc, reading left to right, baseline `r` out from the centre
+  function captionArc(svgEl, g, r, text, id) {
+    const f = (n) => Math.round(n * 100) / 100;
+    const [x0, y0] = orrPolar(g.hx, g.hy, r, 240);
+    const [x1, y1] = orrPolar(g.hx, g.hy, r, 120);
+    svgEl.appendChild(orrSvg('path', { id, d: `M ${f(x0)} ${f(y0)} A ${f(r)} ${f(r)} 0 0 0 ${f(x1)} ${f(y1)}`, fill: 'none', stroke: 'none' }));
+    const t = orrSvg('text', { class: 'sx-sw__salering-cap' });
+    const tp = orrSvg('textPath', { href: `#${id}`, startOffset: '50%', 'text-anchor': 'middle' });
+    tp.textContent = text;
+    t.appendChild(tp);
+    svgEl.appendChild(t);
+    return t;
+  }
+  // the caption's radius: the jig engraving's on a tall stage, tucked under the foot on a short one
+  const captionRadius = (g) => g.R + (ringShort() ? 16 : 38);
+  // the Fleet dial's caption where the jig could not engrave one (its leaders cross both arcs on a short stage)
+  let jigCaption = null;
+  let fleetCap = null;
+  function drawFleetCaption(g) {
+    const want = g && host === 'dock' && mode === 'fleet' && jigCaption && jigHost && jigHost.classList.contains('orr-hull--on')
+      && !jigHost.querySelector('.orr-micro');
+    if (!want) { if (fleetCap) { fleetCap.remove(); fleetCap = null; } return; }
+    // The caption paints above the jig host: the shared sheet seats this svg at z2 while the jig
+    // (whose dark pool wash spans the dial) sits at z3, so at every tall stage the caption was
+    // buried under the wash exactly where it crosses the pool's box. Inline z wins — the sheet's
+    // z2 is not !important — and the pool's own dark wash becomes the caption's ground, not its lid.
+    if (!fleetCap) { fleetCap = orrSvg('svg', { class: 'orr-svg sx-sw__fleetcap', style: 'z-index:5', 'aria-hidden': 'true', focusable: 'false' }); stageEl.appendChild(fleetCap); }
+    fleetCap.setAttribute('viewBox', `0 0 ${g.W} ${g.H}`);
+    fleetCap.textContent = '';
+    const len = hullLengthM(jigCaption.defId);
+    const text = [jigCaption.name, len ? `${len.toFixed(1)} m` : ''].filter(Boolean).join(' · ').toUpperCase();
+    if (text) captionArc(fleetCap, g, captionRadius(g), text, 'sx-sw-fleetcap');
+  }
+  let saleRing = null;
+  let saleZoomKey = '';
+  const captionSpans = new Map();
+  // The live hull on the glass. Once per hull (and ring size, and asset) the render is read back across the
+  // whole turn (128px copies at thirteen bearings): at each bearing the silhouette's own box centre is kept, so
+  // the hull is carried on its box centre, not the model's origin, and sits centred on the ring at every
+  // bearing; the canvas is scaled so the farthest pixel over the whole turn stays inside 82% of R; and the
+  // render is lifted until its bright pixels match the produced poster's (so the hand-over keeps the ship's
+  // brightness).
+  let saleLightKey = '';
+  let saleLightTimer = 0;
+  let saleSample = null;
+  let saleLightHull = '';
+  let saleLightTries = 0;
+  let saleCentres = null;
+  let saleCanvasSize = { cw: 0, ch: 0 };
+  let saleLightRun = null;
+  const SALE_HULL_P90 = 125;
+  const SALE_FIT = 0.82;
+  // every 12 deg of bezel across the detents (up to 25 deg of hull where the gear runs fast through the nose)
+  const SALE_SAMPLES = [-84, -60, -48, -36, -24, -12, 0, 12, 24, 36, 48, 60, 84];
+  // the look-again cadence while the authored hull is still arriving (no projection follows it on a hull with no
+  // render): look again shortly while the picture is empty or still a stand-in
+  function relightSaleHullSoon(g) {
+    if (saleLightTimer || saleLightTries >= 24) return;
+    saleLightTries += 1;
+    saleLightTimer = setTimeout(() => {
+      saleLightTimer = 0;
+      if (stageEl.isConnected && stageEl.classList.contains('has-salering')) lightSaleHull(stageRingGeo() || g);
+    }, 500);
+  }
+  // the silhouette's box centre at a bezel turn, between the sampled bearings (canvas px)
+  function saleCentreAt(t) {
+    const c = saleCentres;
+    if (!c || !c.length) return null;
+    if (t <= c[0].t) return c[0];
+    for (let i = 1; i < c.length; i++) {
+      if (t <= c[i].t) {
+        const a = c[i - 1]; const b = c[i];
+        const u = b.t > a.t ? (t - a.t) / (b.t - a.t) : 0;
+        return { x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u };
+      }
+    }
+    return c[c.length - 1];
+  }
+  // carry the hull on its box centre: that point of the canvas stands on the ring's centre, the fit scales about it
+  function placeSaleHull() {
+    if (!canvas || !saleCentres || !stageEl.classList.contains('has-salering')) return;
+    const c = saleCentreAt(bezelTurn);
+    if (!c) return;
+    // the canvas's size as the readback found it (a turn's frame reads no layout)
+    const { cw, ch } = saleCanvasSize;
+    canvas.style.setProperty('transform-origin', `${c.x.toFixed(1)}px ${c.y.toFixed(1)}px`);
+    canvas.style.setProperty('translate', `${(cw / 2 - c.x).toFixed(1)}px ${(ch / 2 - c.y).toFixed(1)}px`);
+  }
+  // one bearing of the read-back: turn, render, copy, scan — all inside the task that drew it, because
+  // the drawing buffer is only readable then. While the poster still covers the stage the drawn bearings
+  // never show; once the live canvas is the stage the turn's own frame is drawn again inside the same
+  // task, so the hull never flickers through the sampling sweep.
+  function saleLightStep(run) {
+    if (run !== saleLightRun || run.dead) return;
+    // the run is stale if the hull, the dial's size or the asset moved under it: drop it and let the
+    // next key re-read instead of grading a mix of two states
+    const state = mount && typeof mount.getAssetState === 'function' ? mount.getAssetState() : '';
+    if (!mount || !canvas || !canvas.isConnected || !stageEl.isConnected || buyId !== run.hull
+        || state !== run.state || canvas.clientWidth !== run.cw || canvas.clientHeight !== run.ch) {
+      failSaleLightRun(run);
+      return;
+    }
+    const { N, c2, sx, sy, rows, cols, lum, centres } = run;
+    try {
+      const t = SALE_SAMPLES[run.i];
+      mount.setYaw(hullYawAt(t));
+      c2.clearRect(0, 0, N, N);
+      c2.drawImage(canvas, 0, 0, N, N);
+      const d = c2.getImageData(0, 0, N, N).data;
+      rows.fill(0); cols.fill(0);
+      let n = 0;
+      for (let y = 0; y < N; y++) {
+        for (let x = 0; x < N; x++) {
+          const i = (y * N + x) * 4;
+          const l = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+          if (l < 6) continue;
+          lum.push(l); rows[y] += 1; cols[x] += 1; n += 1;
+        }
+      }
+      if (n >= 40) {
+        // the silhouette's box: rows and columns holding at least two lit pixels (a stray spark does not widen it)
+        let x0 = 0; while (x0 < N - 1 && cols[x0] < 2) x0++;
+        let x1 = N - 1; while (x1 > x0 && cols[x1] < 2) x1--;
+        let y0 = 0; while (y0 < N - 1 && rows[y0] < 2) y0++;
+        let y1 = N - 1; while (y1 > y0 && rows[y1] < 2) y1--;
+        const cx = ((x0 + x1 + 1) / 2) * sx; const cy = ((y0 + y1 + 1) / 2) * sy;
+        centres.push({ t, x: cx, y: cy });
+        for (let y = y0; y <= y1; y++) {
+          for (let x = x0; x <= x1; x++) {
+            const i = (y * N + x) * 4;
+            if (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2] < 6) continue;
+            const dist = Math.hypot(((x + 0.5) * sx) - cx, ((y + 0.5) * sy) - cy);
+            if (dist > run.far) run.far = dist;
+          }
+        }
+      }
+      // the live canvas is the stage: leave the bezel's frame standing where a presented frame would flicker
+      if (!poster.has() || poster.isLive()) mount.setYaw(turnYaw());
+    } catch (_) { failSaleLightRun(run); return; }
+    run.i += 1;
+    if (run.i < SALE_SAMPLES.length) { scheduleSaleLightStep(run); return; }
+    finishSaleLightRun(run);
+  }
+  function scheduleSaleLightStep(run) {
+    const step = () => {
+      if (run.dead) return;
+      if (run.raf) { cancelAnimationFrame(run.raf); run.raf = 0; }
+      if (run.timer) { clearTimeout(run.timer); run.timer = 0; }
+      saleLightStep(run);
+    };
+    run.raf = requestAnimationFrame(step);
+    run.timer = setTimeout(step, 160); // a stalled rAF (hidden tab) still finishes under the poster
+  }
+  function abortSaleLightRun(run, ok) {
+    if (!run || run.dead) return;
+    run.dead = true;
+    if (run === saleLightRun) saleLightRun = null;
+    if (run.raf) { cancelAnimationFrame(run.raf); run.raf = 0; }
+    if (run.timer) { clearTimeout(run.timer); run.timer = 0; }
+    const waiters = run.waiters.splice(0);
+    for (const w of waiters) { try { w(ok); } catch (_) { /* a dead waiter must not stall the rest */ } }
+  }
+  function failSaleLightRun(run) {
+    const g = run && run.g;
+    abortSaleLightRun(run, false);
+    if (g) relightSaleHullSoon(g);
+  }
+  function finishSaleLightRun(run) {
+    const { g, key, state, cw, ch, lum, centres, far } = run;
+    try {
+      mount.setYaw(turnYaw());
+      if (lum.length < 200 || centres.length < 3) { failSaleLightRun(run); return; }
+      saleLightKey = key;
+      saleCentres = centres;
+      saleCanvasSize = { cw, ch };
+      if (!/^authored/.test(String(state || ''))) relightSaleHullSoon(g);
+      lum.sort((a, b) => a - b);
+      const p90 = lum[Math.floor(lum.length * 0.9)];
+      const k = Math.max(1.2, Math.min(3.4, SALE_HULL_P90 / Math.max(1, p90)));
+      const scale = Math.max(0.5, Math.min(1.25, (SALE_FIT * g.R) / Math.max(1, far)));
+      canvas.style.setProperty('filter', `brightness(${k.toFixed(2)}) saturate(.84) contrast(1.04)`);
+      canvas.style.setProperty('scale', scale.toFixed(3));
+      placeSaleHull();
+      const at0 = saleCentreAt(0);
+      canvas.dataset.saleLight = `p90 ${Math.round(p90)} k ${k.toFixed(2)} far ${Math.round(far)} fit ${scale.toFixed(3)} centre0 ${Math.round(at0.x - cw / 2)},${Math.round(at0.y - ch / 2)}`;
+      canvas.dataset.saleCentres = centres.map((c) => `${c.t}:${Math.round(c.x - cw / 2)},${Math.round(c.y - ch / 2)}`).join(' ');
+      abortSaleLightRun(run, true);
+    } catch (_) { failSaleLightRun(run); /* a render that cannot be read keeps the sheet's lift */ }
+  }
+  function lightSaleHull(g, { force = false, onDone = null } = {}) {
+    if (!mount || typeof mount.frame !== 'function' || typeof mount.setYaw !== 'function' || !canvas || !g) return false;
+    if (buyId !== saleLightHull) { saleLightHull = buyId; saleLightTries = 0; saleCentres = null; }
+    if (!force && poster.has() && !poster.isLive()) return false;
+    const state = typeof mount.getAssetState === 'function' ? mount.getAssetState() : '';
+    const key = `${buyId}|${Math.round(g.R)}|${state}|${canvas.clientWidth}`;
+    if (key === saleLightKey) return true;
+    // a live run for this key answers its waiters together when it lands
+    if (saleLightRun && saleLightRun.key === key) {
+      if (onDone) saleLightRun.waiters.push(onDone);
+      return 'pending';
+    }
+    try {
+      const N = 128;
+      if (!saleSample) { saleSample = document.createElement('canvas'); saleSample.width = N; saleSample.height = N; }
+      const c2 = saleSample.getContext('2d', { willReadFrequently: true });
+      if (!c2) return false;
+      const cw = canvas.clientWidth || 0; const ch = canvas.clientHeight || 0;
+      if (cw < 20 || ch < 20) return false;
+      if (saleLightRun) abortSaleLightRun(saleLightRun, false);
+      // thirteen bearings at one a frame instead of thirteen renders in a single task: the samples,
+      // the lift and the fit are byte-identical, the poster covers until the run lands
+      saleLightRun = {
+        key, g, state, hull: buyId, i: 0, N, c2, cw, ch,
+        sx: cw / N, sy: ch / N,
+        lum: [], centres: [], far: 0,
+        rows: new Uint16Array(N), cols: new Uint16Array(N),
+        waiters: onDone ? [onDone] : [],
+        raf: 0, timer: 0, dead: false,
+      };
+      saleLightStep(saleLightRun);
+      return 'pending';
+    } catch (_) { return false; /* a render that cannot be read keeps the sheet's lift */ }
+  }
+  // the For Sale stage as the instrument: the ring, its tick scale, the caption arc naming the hull, the view
+  // words as marks on the upper arc, a glass under the render so the ship separates from the hangar
+  // the hull's socket kinds on the disc's lower arc, flanking the caption: left from the equator down,
+  // right from the foot up (bearings clockwise from the top)
+  const SOCKET_MARKS = [['weapon', 255], ['shield', 240], ['engine', 225], ['cargo', 210], ['mining', 150], ['utility', 135], ['thruster', 120]];
+  // a short stage's caption takes a wider share of its small dial: the marks step up away from it
+  const SOCKET_MARKS_SHORT = [['weapon', 258], ['shield', 244], ['engine', 230], ['cargo', 216], ['mining', 144], ['utility', 130], ['thruster', 116]];
+  function drawSaleRing(g) {
+    if (!g) {
+      if (saleRing) { saleRing.remove(); saleRing = null; }
+      saleZoomKey = '';
+      saleLightKey = '';
+      saleGeo = null;
+      abortSaleLightRun(saleLightRun, false);
+      const wasSale = stageEl.classList.contains('has-salering');
+      stageEl.classList.remove('has-salering', 'has-viewmarks', 'has-sockets', 'is-turning');
+      if (bezelTurn !== 0 || saleView !== 'reset') { saleView = 'reset'; turnSpring.set(0, { instant: true }); }
+      if (canvas && canvas.style) { for (const p of ['filter', 'translate', 'scale', 'transform-origin']) canvas.style.removeProperty(p); }
+      saleCentres = null;
+      // the fleet's hull stands at the authored centred composition again
+      if (wasSale && mount && typeof mount.setYaw === 'function') { try { mount.setYaw(CENTERED_SHIP_YAW); } catch (_) { /* no yaw */ } }
+      return;
+    }
+    measureViewWords();
+    if (!saleRing) {
+      saleRing = orrSvg('svg', { class: 'orr-svg sx-sw__salering', 'aria-hidden': 'true', focusable: 'false' });
+      stageEl.appendChild(saleRing);
+    }
+    ensureTurnSurface();
+    // a new hull on the disc arrives facing the centre view, and the bezel takes on its mass
+    if (buyId !== saleTurnHull) {
+      saleTurnHull = buyId;
+      setTurnMass(buyId);
+      if (bezelTurn !== 0 || saleView !== 'reset') { saleView = 'reset'; turnSpring.set(0, { instant: true }); }
+    }
+    saleRing.setAttribute('viewBox', `0 0 ${g.W} ${g.H}`);
+    saleRing.textContent = '';
+    const f = (n) => Math.round(n * 100) / 100;
+    const short = ringShort();
+    // the bezel: a band with a body from R - bw to R (inward: every word outside keeps its place), edged at both radii
+    const bw = bezelWidth(g);
+    saleRing.appendChild(orrSvg('path', { d: orrArcD(g.hx, g.hy, g.R - bw / 2, 0, 360), class: 'sx-sw__bezel-band', 'stroke-width': bw }));
+    saleRing.appendChild(orrSvg('path', { d: orrArcD(g.hx, g.hy, g.R - bw, 0, 360), class: 'sx-sw__bezel-edge' }));
+    saleRing.appendChild(orrSvg('path', { d: orrArcD(g.hx, g.hy, g.R, 0, 360), class: 'sx-sw__bezel-edge sx-sw__salering-ring' }));
+    // the fixed index at the top, outside the band: the view standing under it is the one you look from
+    { const [x0, y0] = orrPolar(g.hx, g.hy, g.R + 2, 0); const [x1, y1] = orrPolar(g.hx, g.hy, g.R + 11, 0);
+      saleRing.appendChild(orrSvg('path', { d: `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)}`, class: 'sx-sw__bezel-index' })); }
+    // the arcs the scale leaves open: under the caption and under each socket group
+    const open = [];
+    // the caption on the lower arc leads with the hull's name, then what the column beside does not say:
+    // its length, and on a tall stage its role (a short stage keeps it to the name and the length)
+    const def = SHIP_BY_ID.get(buyId);
+    if (def) {
+      const len = hullLengthM(def.id);
+      const role = short ? '' : ((describeHullRole(def.id) || {}).roleLabel || roleLabelFor(def.role));
+      // the caption keeps clear of the nearest socket word beside it (8 deg): the role, which the list
+      // beside also names, is the first thing it gives up
+      const mineNow = activeOwnedDef();
+      let room = 90;
+      for (const [type, bearing] of (short ? SOCKET_MARKS_SHORT : SOCKET_MARKS)) {
+        const has = ((def.slots && def.slots[type]) || []).length || ((mineNow && mineNow.id !== def.id && mineNow.slots && mineNow.slots[type]) || []).length;
+        if (has) room = Math.min(room, Math.abs(bearing - 180) - 8);
+      }
+      const rc = captionRadius(g);
+      const spanOf = (t, text) => {
+        const k = `${text}|${Math.round(rc)}`;
+        if (captionSpans.has(k)) return captionSpans.get(k);
+        let span = 0;
+        try { span = (t.getComputedTextLength() / rc) * (180 / Math.PI); } catch (_) { span = 0; }
+        if (span > 0) captionSpans.set(k, span);
+        return span > 0 ? span : (text.length * 8) / rc * (180 / Math.PI);
+      };
+      const sep = ' · ';
+      let text = [def.name, len ? `${len.toFixed(1)} m` : '', role].filter(Boolean).join(sep).toUpperCase();
+      if (text) {
+        let t = captionArc(saleRing, g, rc, text, 'sx-sw-salecap');
+        let span = spanOf(t, text);
+        // then the length (a short stage's small dial): the name alone always stands
+        const fallbacks = [[def.name, len ? `${len.toFixed(1)} m` : ''], [def.name]]
+          .map((parts) => parts.filter(Boolean).join(sep).toUpperCase()).filter((s) => s.length < text.length);
+        for (const next of fallbacks) {
+          if (span / 2 <= room) break;
+          t.remove();
+          const arc = saleRing.querySelector('#sx-sw-salecap');
+          if (arc) arc.remove();
+          text = next;
+          t = captionArc(saleRing, g, rc, text, 'sx-sw-salecap');
+          span = spanOf(t, text);
+        }
+        open.push([180 - span / 2 - 3, 180 + span / 2 + 3]);
+      }
+    }
+    // the sockets: this hull's across the stroke (one your hull lacks in ice), yours as ghost ticks inside
+    // it, each kind named beyond its ticks by the word's nearest corner (the view marks' rule)
+    const mine = activeOwnedDef();
+    const compare = !!(def && mine && mine.id !== def.id);
+    let socketPaths = { sale: '', gain: '', ghost: '' };
+    if (def) {
+      for (const [type, bearing] of (short ? SOCKET_MARKS_SHORT : SOCKET_MARKS)) {
+        const n = ((def.slots && def.slots[type]) || []).length;
+        const m = compare ? ((mine.slots && mine.slots[type]) || []).length : n;
+        const count = Math.max(n, m);
+        if (!count) continue;
+        const stepPx = count > 1 ? Math.min(short ? 5 : 6, (g.R * (10 * Math.PI / 180)) / (count - 1)) : 0;
+        const stepDeg = (stepPx / g.R) * (180 / Math.PI);
+        for (let i = 0; i < count; i++) {
+          const a = bearing + (i - (count - 1) / 2) * stepDeg;
+          // this hull's socket crosses the whole bezel and stands out past it; yours stays inside the band
+          if (i < n) {
+            const [x0, y0] = orrPolar(g.hx, g.hy, g.R - bw, a); const [x1, y1] = orrPolar(g.hx, g.hy, g.R + 8, a);
+            socketPaths[compare && i >= m ? 'gain' : 'sale'] += `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)} `;
+          } else if (compare && i < m) {
+            const [x0, y0] = orrPolar(g.hx, g.hy, g.R - bw + 2, a); const [x1, y1] = orrPolar(g.hx, g.hy, g.R - 2, a);
+            socketPaths.ghost += `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)} `;
+          }
+        }
+        const half = ((count - 1) / 2) * stepDeg;
+        open.push([bearing - half - 2.5, bearing + half + 2.5]);
+        // the word, seated by its corner nearest the ring at R + 12
+        const [px, py] = orrPolar(g.hx, g.hy, g.R + 12, bearing);
+        const left = Math.sin((bearing * Math.PI) / 180) < 0;
+        const word = orrSvg('text', { x: f(px), y: f(py), class: `sx-sw__socket-word${n ? '' : ' is-none'}`, 'text-anchor': left ? 'end' : 'start', 'dominant-baseline': 'hanging' });
+        word.textContent = (SLOT_LABEL[type] || type).toUpperCase();
+        saleRing.appendChild(word);
+      }
+    }
+    if (socketPaths.ghost) saleRing.appendChild(orrSvg('path', { d: socketPaths.ghost.trim(), class: 'orr-core sx-sw__socket is-ghost', 'stroke-width': 1.5 }));
+    if (socketPaths.sale) saleRing.appendChild(orrSvg('path', { d: socketPaths.sale.trim(), class: 'orr-core sx-sw__socket', 'stroke-width': 2 }));
+    if (socketPaths.gain) saleRing.appendChild(orrSvg('path', { d: socketPaths.gain.trim(), class: 'orr-core sx-sw__socket is-gain', 'stroke-width': 2 }));
+    stageEl.classList.toggle('has-sockets', !!def);
+    stageEl.classList.add('has-salering');
+    saleGeo = g;
+    saleOpen = open;
+    // the live render is framed to the dial's own square (the canvas stands on the ring in For Sale) at
+    // zoom 1, then fitted by its reach over the whole turn about its own turn axis
+    const zoomKey = `${buyId}|${Math.round(g.R)}`;
+    if (mount && typeof mount.setZoom === 'function' && zoomKey !== saleZoomKey) {
+      saleZoomKey = zoomKey;
+      saleLightKey = '';
+      try { mount.setZoom(1); } catch (_) { /* a mount without zoom keeps its own fit */ }
+    }
+    // the hull stands at the bezel's bearing (a fresh show() puts every hull back at the authored yaw zero)
+    if (mount && typeof mount.setYaw === 'function' && typeof mount.getView === 'function' && !turnDrag) {
+      try { if (Math.abs((mount.getView().yaw || 0) - turnYaw()) > 1e-4) mount.setYaw(turnYaw()); } catch (_) { /* no yaw */ }
+    }
+    lightSaleHull(g);
+    placeSaleHull();
+    stageEl.style.setProperty('--sw-ring-x', `${Math.round(g.hx)}px`);
+    stageEl.style.setProperty('--sw-ring-y', `${Math.round(g.hy)}px`);
+    stageEl.style.setProperty('--sw-ring-r', `${Math.round(g.R)}px`);
+    // the view words are marks on the bezel; with no live preview they still turn the ring and the render
+    const cam = el.querySelector('.sx-sw__camera');
+    stageEl.classList.toggle('has-viewmarks', !!cam);
+    drawBezel();
+  }
+
+  // THE TURN (the Shipworks signature): the disc's bezel -- its tick scale and the three view marks --
+  // turns under the fixed plate that carries the caption and the sockets. Drag the ring (or the hull in
+  // it) and the bezel and the ship turn together, one to one; let go and the bezel springs to the view
+  // nearest the top index, whose word lights. LEFT, CENTER and RIGHT are the bezel turned so that mark
+  // stands at the top. Keyboard: the arrow keys on the view words. Reduced motion: every turn snaps.
+  const VIEW_BASE = { left: 300, reset: 0, right: 60 };
+  const VIEW_TURN = { left: 60, reset: 0, right: -60 };
+  const VIEW_ORDER = ['left', 'reset', 'right'];
+  const TURN_LIMIT = 84;
+  let saleGeo = null;
+  let saleOpen = [];
+  let bezelTurn = 0;
+  let saleView = 'reset';
+  let saleTurnHull = '';
+  let turnSettleFrame = 0;
+  let turnMass = 1;
+  let turnMoving = false;
+  let detentAt = 0;
+  let indexFlashTimer = 0;
+  const norm360 = (a) => ((a % 360) + 360) % 360;
+  const nearestView = (t) => VIEW_ORDER.reduce((best, k) => (Math.abs(VIEW_TURN[k] - t) < Math.abs(VIEW_TURN[best] - t) ? k : best), 'reset');
+  // the view words' boxes, read once per projection (in one batch, before the ring is redrawn): the bezel
+  // redraws every frame of a turn and must not force a layout of the station to find them
+  const viewWordSize = new Map();
+  function measureViewWords() {
+    const cam = el.querySelector('.sx-sw__camera');
+    if (!cam) return;
+    for (const b of cam.querySelectorAll('[data-camera]')) {
+      const w = b.offsetWidth; const h = b.offsetHeight;
+      if (w > 0 && h > 0) viewWordSize.set(b.getAttribute('data-camera'), { w, h });
+    }
+  }
+  const viewWord = (key) => viewWordSize.get(key) || { w: 44, h: 14 };
+  // the bezel's body: a band you can grip, drawn inward so every word outside the ring keeps its place
+  function bezelWidth(g) { return Math.max(13, Math.round(((g && g.R) || 272) * 0.059)); }
+  function onTurnUpdate(v) {
+    applyTurn(v);
+    if (v === turnSpring.target && !turnDrag) {
+      turnMoving = false;
+      if (turnSettleFrame) cancelAnimationFrame(turnSettleFrame);
+      turnSettleFrame = requestAnimationFrame(() => { turnSettleFrame = 0; afterTurnSettle(); });
+    }
+  }
+  // the bezel carries the hull's mass (Hitch 18 t = 1): a light hull swings free and settles fast, a heavy
+  // one lags the hand and takes longer to come to rest; the damping ratio stays the same
+  function makeTurnSpring(massRatio) {
+    const m = Math.max(0.6, Math.min(4, Number(massRatio) || 1));
+    return createSpring({ value: bezelTurn, preset: { k: 170 / m, c: 16 / Math.sqrt(m) }, onUpdate: onTurnUpdate });
+  }
+  let turnSpring = makeTurnSpring(1);
+  function setTurnMass(defId) {
+    const def = SHIP_BY_ID.get(defId);
+    const m = def && Number(def.mass) > 0 ? Number(def.mass) / 18 : 1;
+    if (Math.abs(m - turnMass) < 1e-6) return;
+    turnMass = m;
+    turnSpring.stop();
+    turnSpring = makeTurnSpring(m);
+  }
+  // the hull turns with the bezel through its gear (a clockwise drag turns it clockwise as seen from above)
+  function turnYaw() { return hullYawAt(bezelTurn); }
+  function flashIndex() {
+    const ix = saleRing && saleRing.querySelector('.sx-sw__bezel-index');
+    if (!ix) return;
+    ix.classList.add('is-detent');
+    if (indexFlashTimer) clearTimeout(indexFlashTimer);
+    indexFlashTimer = setTimeout(() => { indexFlashTimer = 0; ix.classList.remove('is-detent'); }, 150);
+  }
+  function applyTurn(v) {
+    const prev = bezelTurn;
+    bezelTurn = Math.max(-TURN_LIMIT - 12, Math.min(TURN_LIMIT + 12, Number(v) || 0));
+    // the live hull turns with the bezel frame by frame while it is on the glass; hidden behind the render,
+    // it takes its bearing once when the bezel settles
+    const liveOnGlass = !poster.has() || poster.isLive();
+    if (liveOnGlass && mount && typeof mount.setYaw === 'function' && stageEl.classList.contains('has-salering')) {
+      try { mount.setYaw(turnYaw()); placeSaleHull(); } catch (_) { /* a mount without yaw keeps its view */ }
+    }
+    stageEl.dataset.turn = bezelTurn.toFixed(2);
+    // a detent as each major mark (every 30 degrees) reaches the top index, while the hand or the spring turns it
+    if (turnDrag || turnMoving) {
+      const cur = bezelTurn;
+      const crossed = cur > prev ? Math.floor(cur / 30) * 30 > prev : (cur < prev ? Math.ceil(cur / 30) * 30 < prev : false);
+      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      if (crossed && now - detentAt > 60) { detentAt = now; emitUiCue(UI_SWITCH_DETENT_CUE); flashIndex(); }
+    }
+    drawBezel();
+  }
+  // the render a still picture can offer for a view: the starboard elevation for RIGHT, the hero otherwise
+  function posterViewFor(defId) {
+    return mode === 'buy' && saleView === 'right' && hullPosterUrl(defId, 'side') ? 'side' : POSTER_VIEW;
+  }
+  function afterTurnSettle() {
+    saleView = nearestView(bezelTurn);
+    stageEl.dataset.view = saleView;
+    if (mount && typeof mount.setYaw === 'function' && stageEl.classList.contains('has-salering')) {
+      try { mount.setYaw(turnYaw()); placeSaleHull(); } catch (_) { /* a mount without yaw keeps its view */ }
+    }
+    if (mode === 'buy' && buyId && poster.has() && poster.view && poster.view() !== posterViewFor(buyId)) poster.setHull(buyId, posterViewFor(buyId));
+    scheduleSpatialProjection();
+  }
+  function turnToView(view) {
+    if (!(view in VIEW_TURN)) return;
+    saleView = view;
+    turnMoving = true;
+    turnSpring.set(VIEW_TURN[view]);
+    if (!stageEl.classList.contains('has-salering')) return;
+    // a snap (reduced motion, or already there) still settles the poster and the light
+    if (turnSpring.value === VIEW_TURN[view]) { turnMoving = false; afterTurnSettle(); }
+  }
+  // the bezel's moving parts: the tick scale cut across the band (dark notches, bright majors) and the three
+  // view words riding inside the band, upright along it. The current view is light, not a fill: its word lit
+  // on the band, the stretch it stands in closed by two lit end ticks (the other words stay at the socket
+  // words' level). The scale opens where the fixed plate holds the caption and the sockets.
+  function drawBezel() {
+    const g = saleGeo;
+    if (!saleRing || !g) return;
+    let bez = saleRing.querySelector(':scope > .sx-sw__bezel');
+    if (!bez) { bez = orrSvg('g', { class: 'sx-sw__bezel' }); saleRing.appendChild(bez); }
+    bez.textContent = '';
+    const f = (n) => Math.round(n * 100) / 100;
+    const bw = bezelWidth(g);
+    const rMid = g.R - bw / 2;
+    const inArc = (a, [a0, a1]) => { const x = norm360(a - a0); return x <= norm360(a1 - a0); };
+    const cam0 = el.querySelector('.sx-sw__camera');
+    const wordArcs = cam0 ? [...cam0.querySelectorAll('[data-camera]')].map((b) => {
+      const a = norm360((VIEW_BASE[b.getAttribute('data-camera')] ?? 0) + bezelTurn);
+      // the word's stretch and 4px past its end ticks stay clear of the scale
+      const half = (((viewWord(b.getAttribute('data-camera')).w + 14) / 2 + 4) / rMid) * (180 / Math.PI);
+      return [a - half, a + half];
+    }) : [];
+    const shut = (a) => saleOpen.some((arc) => inArc(a, arc)) || wordArcs.some((arc) => inArc(a, arc));
+    let notch = ''; let major = '';
+    for (let i = 0; i < 72; i++) {
+      const a = norm360(i * 5 + bezelTurn);
+      if (shut(a)) continue;
+      const isMajor = i % 6 === 0;
+      const [x0, y0] = orrPolar(g.hx, g.hy, g.R - bw + (isMajor ? 0.75 : 1.5), a);
+      const [x1, y1] = orrPolar(g.hx, g.hy, g.R - (isMajor ? 0.75 : 1.5), a);
+      const seg = `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)} `;
+      if (isMajor) major += seg; else notch += seg;
+    }
+    if (notch) bez.appendChild(orrSvg('path', { d: notch.trim(), class: 'sx-sw__bezel-notch' }));
+    if (major) bez.appendChild(orrSvg('path', { d: major.trim(), class: 'sx-sw__bezel-major' }));
+    const cam = el.querySelector('.sx-sw__camera');
+    if (!cam) return;
+    const current = nearestView(bezelTurn);
+    // a word that turns down into the plate's sector fades under it (the plate holds the sockets and the caption)
+    const plateFade = (a) => {
+      const x = norm360(a);
+      const into = Math.min(x - 100, 260 - x);
+      return into <= 0 ? 1 : Math.max(0, 1 - into / 14);
+    };
+    for (const b of cam.querySelectorAll('[data-camera]')) {
+      const key = b.getAttribute('data-camera');
+      const a = norm360((VIEW_BASE[key] ?? 0) + bezelTurn);
+      const vis = plateFade(a);
+      const on = key === current;
+      b.classList.toggle('is-current', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.style.opacity = vis >= 1 ? '' : vis.toFixed(2);
+      b.style.pointerEvents = vis < 0.5 ? 'none' : '';
+      const { w, h } = viewWord(key);
+      if (on && vis > 0) {
+        const half = (((w + 14) / 2) / rMid) * (180 / Math.PI);
+        let ends = '';
+        for (const e of [a - half, a + half]) {
+          const [x0, y0] = orrPolar(g.hx, g.hy, g.R - bw + 0.75, e); const [x1, y1] = orrPolar(g.hx, g.hy, g.R - 0.75, e);
+          ends += `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)} `;
+        }
+        const endPath = orrSvg('path', { d: ends.trim(), class: 'sx-sw__bezel-end' });
+        if (vis < 1) endPath.style.opacity = vis.toFixed(2);
+        bez.appendChild(endPath);
+      }
+      // the word rides the band's middle, turned along it and never upside down
+      const [px, py] = orrPolar(g.hx, g.hy, rMid, a);
+      const rot = a > 90 && a < 270 ? a - 180 : a;
+      b.style.left = `${Math.round(px - w / 2)}px`;
+      b.style.top = `${Math.round(py - h / 2)}px`;
+      b.style.setProperty('--vw-rot', `rotate(${rot.toFixed(1)}deg)`);
+    }
+  }
+  // the grip: a disc over the ring and the hull in it (the words stay above it and keep their clicks)
+  let turnEl = null;
+  let turnDrag = null;
+  function ensureTurnSurface() {
+    if (turnEl || typeof document === 'undefined') return;
+    turnEl = document.createElement('div');
+    turnEl.className = 'sx-sw__turn';
+    turnEl.setAttribute('aria-hidden', 'true');
+    stageEl.appendChild(turnEl);
+    const angleAt = (ev) => {
+      const g = saleGeo; const sr = stageEl.getBoundingClientRect();
+      const dx = ev.clientX - (sr.left + g.hx); const dy = ev.clientY - (sr.top + g.hy);
+      return { deg: (Math.atan2(dx, -dy) * 180) / Math.PI, r: Math.hypot(dx, dy) };
+    };
+    turnEl.addEventListener('pointerdown', (ev) => {
+      if (ev.button !== 0 || !saleGeo) return;
+      const p = angleAt(ev);
+      turnSpring.stop();
+      turnDrag = { id: ev.pointerId, last: p.deg, x: ev.clientX, turn: bezelTurn, near: p.r < saleGeo.R * 0.3, t: performance.now(), v: 0 };
+      try { turnEl.setPointerCapture(ev.pointerId); } catch (_) { /* capture is a nicety */ }
+      stageEl.classList.add('is-turning');
+      ev.preventDefault();
+    });
+    turnEl.addEventListener('pointermove', (ev) => {
+      if (!turnDrag || ev.pointerId !== turnDrag.id || !saleGeo) return;
+      const p = angleAt(ev);
+      let delta;
+      if (turnDrag.near || p.r < saleGeo.R * 0.2) delta = (ev.clientX - turnDrag.x) * 0.45;
+      else { delta = p.deg - turnDrag.last; if (delta > 180) delta -= 360; if (delta < -180) delta += 360; }
+      turnDrag.last = p.deg; turnDrag.x = ev.clientX;
+      const now = performance.now();
+      const dt = Math.max(1, now - turnDrag.t) / 1000;
+      turnDrag.t = now;
+      // past the last view the bezel resists
+      const next = turnDrag.turn + delta;
+      const over = Math.max(0, Math.abs(next) - TURN_LIMIT);
+      turnDrag.turn = over > 0 ? Math.sign(next) * (TURN_LIMIT + over * 0.3) : next;
+      turnDrag.v = delta / dt;
+      // the bezel chases the hand on the hull's own spring: a heavy hull lags it (reduced motion: it follows at once)
+      turnSpring.set(turnDrag.turn);
+    });
+    const release = (ev) => {
+      if (!turnDrag || (ev && ev.pointerId !== turnDrag.id)) return;
+      const fling = Math.max(-240, Math.min(240, turnDrag.v || 0));
+      // a light hull carries a flick further than a heavy one
+      const view = nearestView(turnDrag.turn + (fling * 0.16) / turnMass);
+      turnDrag = null;
+      try { turnEl.releasePointerCapture(ev.pointerId); } catch (_) { /* already released */ }
+      stageEl.classList.remove('is-turning');
+      saleView = view;
+      turnMoving = true;
+      turnSpring.kick((fling * 0.5) / turnMass);
+      turnSpring.set(VIEW_TURN[view]);
+      if (turnSpring.value === VIEW_TURN[view]) { turnMoving = false; afterTurnSettle(); }
+    };
+    turnEl.addEventListener('pointerup', release);
+    turnEl.addEventListener('pointercancel', release);
+  }
+
+  // THE EXPLODED SCHEMATIC (Fleet's signature): choosing a socket slides its module 48 px out along its
+  // leader, the leader the rail it rides: the part itself, its own glyph at 30 px, its name riding the leader
+  // beside it. While the chooser previews a candidate the part on the rail is that candidate, lit; BUY & FIT
+  // drives it home into the socket. Reduced motion snaps.
+  const EXPLODE_OUT = 48;
+  let explodeSvg = null;
+  let explodeSlot = -1;
+  let explodeSeated = false;
+  let explodeDist = 0;
+  let explodeLockSeat = false;
+  let explodeModule = '';
+  const EXPLODE_GLYPH = 30;
+  const explodeSpring = createSpring({
+    value: 0,
+    preset: 'swing',
+    onUpdate: (v) => {
+      explodeDist = v;
+      if (v === 0 && explodeSpring.target === 0) { explodeSlot = -1; explodeLockSeat = false; if (explodeSvg) explodeSvg.style.display = 'none'; return; }
+      placeExplode();
+    },
+  });
+  // the leader of socket i as a polyline from the socket to the ring (read off the jig's own drawing)
+  function explodeRail(i) {
+    const layer = jigHost && [...jigHost.querySelectorAll(':scope > svg')].find((s) => s.querySelector('.orr-hull__node'));
+    if (!layer) return null;
+    const node = layer.querySelectorAll('.orr-hull__node')[i];
+    const ring = node && node.querySelector('.orr-hull__ring');
+    if (!ring) return null;
+    const p = { x: Number(ring.getAttribute('cx')), y: Number(ring.getAttribute('cy')) };
+    const pts = [];
+    const take = (path) => {
+      const nums = String((path && path.getAttribute('d')) || '').match(/-?\d+(?:\.\d+)?/g) || [];
+      for (let k = 0; k + 1 < nums.length; k += 2) pts.push({ x: Number(nums[k]), y: Number(nums[k + 1]) });
+    };
+    take(layer.querySelectorAll('path.orr-hull__leader--hidden')[i]);
+    take(layer.querySelectorAll('path.orr-hull__leader:not(.orr-hull__leader--hidden)')[2 * i]);
+    const bloom = layer.querySelectorAll('path.orr-hull__leader-bloom')[i];
+    const exitNums = String((bloom && bloom.getAttribute('d')) || '').match(/-?\d+(?:\.\d+)?/g);
+    const g = jigRing;
+    const inside = (q) => q && Number.isFinite(q.x) && Number.isFinite(q.y) && !(q.x === 0 && q.y === 0) && (!g || Math.hypot(q.x - g.hx, q.y - g.hy) <= g.R + 2);
+    const rail = pts.filter(inside);
+    if (exitNums && exitNums.length >= 2) rail.push({ x: Number(exitNums[0]), y: Number(exitNums[1]) });
+    rail.sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y));
+    const out = [p];
+    for (const q of rail) { const last = out[out.length - 1]; if (Math.hypot(q.x - last.x, q.y - last.y) > 0.5) out.push(q); }
+    return out.length > 1 ? out : null;
+  }
+  // the part on the rail: the candidate on preview, else the module fitted in the socket (none: the empty
+  // socket's own shape, dashed)
+  function explodePart() {
+    const s = viewedShip(); const def = s ? SHIP_BY_ID.get(s.defId) : null;
+    const slot = def ? buildSlotList(def)[explodeSlot] : null;
+    const type = (slot && slot.type) || 'utility';
+    const id = (explodeSeated && explodeModule) || ((s && s.fittings) || [])[explodeSlot] || '';
+    const mod = id ? FITTABLE_BY_ID.get(id) : null;
+    return { type, id: mod ? id : '', name: mod ? String(mod.name || '') : '' };
+  }
+  function glyphMarkup(type) {
+    const name = hasStationIcon('slot_' + type) ? 'slot_' + type : (type === 'thruster' ? 'slot_engine' : 'slot_utility');
+    const markup = stationIcon(name, 24);
+    const open = markup.indexOf('>');
+    const close = markup.lastIndexOf('</svg>');
+    return open > 0 && close > open ? markup.slice(open + 1, close) : '';
+  }
+  function placeExplode() {
+    if (explodeSlot < 0 || !jigHost || !jigHost.classList.contains('orr-hull--on')) { if (explodeSvg) explodeSvg.style.display = 'none'; return; }
+    const rail = explodeRail(explodeSlot);
+    if (!rail) return;
+    if (!explodeSvg) {
+      explodeSvg = orrSvg('svg', { class: 'orr-svg sx-sw__explode', 'aria-hidden': 'true', focusable: 'false' });
+      const glyph = orrSvg('g', { class: 'sx-sw__module-glyph' });
+      glyph.appendChild(orrSvg('g', { class: 'sx-sw__module-halo' }));
+      glyph.appendChild(orrSvg('g', { class: 'sx-sw__module-ink' }));
+      explodeSvg.appendChild(glyph);
+      explodeSvg.appendChild(orrSvg('text', { class: 'sx-sw__module-name' }));
+    }
+    if (explodeSvg.parentNode !== jigHost) jigHost.appendChild(explodeSvg);
+    const vb = jigRing ? `0 0 ${jigRing.W} ${jigRing.H}` : null;
+    if (vb && explodeSvg.getAttribute('viewBox') !== vb) explodeSvg.setAttribute('viewBox', vb);
+    // walk the rail to the part, keeping the tangent it rides on
+    const walk = (dist) => {
+      let left = Math.max(0, dist);
+      let x = rail[0].x; let y = rail[0].y;
+      let ux = rail[1].x - rail[0].x; let uy = rail[1].y - rail[0].y;
+      for (let k = 1; k < rail.length; k++) {
+        const dx = rail[k].x - rail[k - 1].x; const dy = rail[k].y - rail[k - 1].y;
+        const len = Math.hypot(dx, dy);
+        if (len <= 0) continue;
+        ux = dx / len; uy = dy / len;
+        const u = Math.min(1, left / len);
+        x = rail[k - 1].x + dx * u; y = rail[k - 1].y + dy * u;
+        left -= len;
+        if (left <= 0) break;
+      }
+      if (left > 0) { x += ux * left; y += uy * left; }
+      return { x, y, ux, uy };
+    };
+    const at = walk(explodeDist);
+    const part = explodePart();
+    const key = `${part.type}|${part.id}`;
+    const glyph = explodeSvg.querySelector('.sx-sw__module-glyph');
+    explodeSvg.style.display = '';
+    if (glyph.dataset.part !== key) {
+      glyph.dataset.part = key;
+      const inner = glyphMarkup(part.type);
+      for (const layer of glyph.children) layer.innerHTML = inner;
+      // the glyph's own ink box (its 24-grid leaves a margin): the part's long side is drawn at 30 px
+      let bb = null;
+      try { bb = glyph.lastElementChild.getBBox(); } catch (_) { bb = null; }
+      glyph._ink = bb && bb.width > 0 && bb.height > 0 ? { cx: bb.x + bb.width / 2, cy: bb.y + bb.height / 2, long: Math.max(bb.width, bb.height) } : null;
+    }
+    const S = EXPLODE_GLYPH;
+    const ink = glyph._ink || { cx: 12, cy: 12, long: 24 };
+    const gk = S / ink.long;
+    glyph.setAttribute('transform', `translate(${at.x.toFixed(1)} ${at.y.toFixed(1)}) scale(${gk.toFixed(4)}) translate(${(-ink.cx).toFixed(2)} ${(-ink.cy).toFixed(2)})`);
+    // the name rides the leader past the part, along the rail's run there, set beside the line and never upside down
+    const name = explodeSvg.querySelector('.sx-sw__module-name');
+    name.textContent = part.name.toUpperCase();
+    if (part.name) {
+      const from = walk(explodeDist + S / 2 + 6);
+      let deg = (Math.atan2(from.uy, from.ux) * 180) / Math.PI;
+      const flip = deg > 90 || deg < -90;
+      if (flip) deg += 180;
+      name.setAttribute('x', '0'); name.setAttribute('y', '-6');
+      name.setAttribute('text-anchor', flip ? 'end' : 'start');
+      name.setAttribute('transform', `translate(${from.x.toFixed(1)} ${from.y.toFixed(1)}) rotate(${deg.toFixed(1)})`);
+    }
+    explodeSvg.style.setProperty('--explode-out', Math.max(0, Math.min(1, explodeDist / EXPLODE_OUT)).toFixed(3));
+    explodeSvg.classList.toggle('is-seated', explodeSeated);
+    explodeSvg.classList.toggle('is-empty', !part.id);
+    explodeSvg.style.display = '';
+    explodeSvg.dataset.part = `${part.type} ${part.id || 'empty'} at ${at.x.toFixed(0)},${at.y.toFixed(0)} d ${explodeDist.toFixed(1)}`;
+  }
+  function explodeOut(slot) {
+    if (host !== 'dock' || !jigHost || !jigHost.classList.contains('orr-hull--on')) return;
+    if (explodeSlot !== slot) { explodeSpring.set(0, { instant: true }); explodeDist = 0; }
+    explodeSlot = slot;
+    explodeSeated = false;
+    explodeModule = '';
+    explodeLockSeat = false;
+    explodeSpring.set(EXPLODE_OUT);
+    placeExplode();
+  }
+  function explodeSeat(on, moduleId = '') {
+    if (explodeSlot < 0) return;
+    explodeSeated = !!on;
+    if (on && moduleId) explodeModule = String(moduleId);
+    placeExplode();
+  }
+  function explodeHome() {
+    if (explodeSlot < 0) return;
+    explodeSpring.set(0);
+  }
+  // the verbs' one home, both modes and both sizes: centred under the ring's caption
+  function seatSaleStats(g) {
+    const stats = el.querySelector('.sx-sw__stats');
+    if (!stats) return;
+    const props = ['position', 'left', 'top', 'right', 'bottom', 'width', 'max-width', 'transform', 'z-index'];
+    if (!g || !el.classList.contains('sx-sw--buying')) { stats.classList.remove('sx-sw__stats--unseated'); for (const k of props) stats.style.removeProperty(k); clearStatsOfRoster(); return; }
+    // a short stage gives the readouts the whole gutter left of the dial (the pair row needs 170px of it)
+    const tight = ringShort();
+    // a stage too narrow for the pinned column has no gutter left of the dial at all — let the
+    // readouts fall back to the sheet's static seat under the stage (D112). The class marks the
+    // bail itself: it fires on the measured stage, not the window — the ≤700 media stack only
+    // covers phone widths, but a mid-width berth can starve the stage the same way.
+    if (g.hx - g.R - (tight ? 18 : 28) < 170) { stats.classList.add('sx-sw__stats--unseated'); for (const k of props) stats.style.removeProperty(k); return; }
+    stats.classList.remove('sx-sw__stats--unseated');
+    const w = Math.max(170, Math.min(250, g.hx - g.R - (tight ? 18 : 28)));
+    const sr = stageEl.getBoundingClientRect();
+    const k = stageScale();
+    stats.style.setProperty('position', 'fixed', 'important');
+    stats.style.setProperty('width', `${Math.round(w)}px`, 'important');
+    stats.style.setProperty('max-width', `${Math.round(w)}px`, 'important');
+    stats.style.setProperty('right', 'auto', 'important');
+    stats.style.setProperty('bottom', 'auto', 'important');
+    stats.style.setProperty('transform', 'none', 'important');
+    stats.style.setProperty('z-index', '3', 'important');
+    const h = stats.offsetHeight || 200;
+    const short = sr.height / k < 600;
+    placeFixed(stats, sr.left + (tight ? 6 : 16) * k, short ? sr.top + 6 * k : sr.bottom - (h + 14) * k);
+  }
+  // the verbs' one home, both modes: one row centred on the dial, at the band reserved under it
+  function seatVerbs(g) {
+    seatSaleStats(g);
+    const rack = el.querySelector('.sx-sw-verbs');
+    if (!rack) return;
+    // The compact berth scrolls the instrument: its actions must scroll with it.
+    if (host === 'dock' && typeof window !== 'undefined'
+        && window.matchMedia('(min-width:901px) and (max-width:1100px) and (max-height:640px)').matches) {
+      rack.classList.add('sx-sw-verbs--unseated'); rack.style.cssText = ''; return;
+    }
+    if (!g) { rack.classList.remove('sx-sw-verbs--unseated'); rack.style.cssText = ''; return; }
+    const sr = stageEl.getBoundingClientRect();
+    const k = stageScale();
+    // a stage narrower than the rack cannot host the pinned row: centred on the dial it would sit
+    // half off the glass (a 390px berth seats it at x<0 reaching ~130px past the frame — D112).
+    // Fall back to the CSS seat — in flow, wrapped, and on the glass. Measure the NATURAL width,
+    // not the seated one: the CSS fallback box reads ~250px while the unpinned nowrap rack is ~490,
+    // and it is the rack's own words that have to fit the stage. The class marks the bail for the
+    // sheet at any window width, not only the phone stack.
+    const gap = parseFloat(getComputedStyle(rack).columnGap) || 0;
+    const w0 = [...rack.children].reduce((s, li) => s + (li.offsetWidth || 0), 0)
+      + Math.max(0, rack.children.length - 1) * gap;
+    if (w0 * k > sr.width - 12) { rack.classList.add('sx-sw-verbs--unseated'); rack.style.cssText = ''; return; }
+    // Short laptop berths reserve a local foot for Range / Record / Paint. A viewport-fixed
+    // seat can cross that foot or chase a callout back onto the hull (1280×720 / 1366×768).
+    const laptopDock = el.ownerDocument?.documentElement?.dataset?.sfMobile !== '1'
+      && typeof window !== 'undefined' && window.innerWidth >= 901 && window.innerWidth <= 1366;
+    if (host === 'dock' && ringShort() && (sr.height < 300 || laptopDock)) {
+      rack.classList.add('sx-sw-verbs--unseated'); rack.style.cssText = ''; return;
+    }
+    rack.classList.remove('sx-sw-verbs--unseated');
+    rack.style.cssText = 'position:fixed !important; left:0px !important; top:0px !important; margin:0 !important; z-index:4;';
+    const w = rack.offsetWidth || 300;
+    const rh = rack.offsetHeight || 29;
+    let cx = sr.left + g.hx * k;
+    // Wave 2 r2 SH2: on the flight host the view words share the foot band (the dock
+    // seats its verbs under the stats, so only flight collides). Centre the rack in the
+    // band right of the measured view words when it fits there; a wider rack (choosing)
+    // keeps the dial axis — choosing hides the view words, so nothing meets.
+    if (host === 'flight') {
+      const cam = stageEl.querySelector('.sx-sw__camera');
+      const camBox = cam && cam.offsetWidth > 0 && getComputedStyle(cam).visibility !== 'hidden'
+        ? cam.getBoundingClientRect() : null;
+      if (camBox && camBox.width > 0 && camBox.right > sr.left && camBox.left < sr.right) {
+        const bandL = camBox.right + 8;
+        const bandR = sr.right - 8;
+        if (w * k <= bandR - bandL) cx = (bandL + bandR) / 2;
+      }
+    }
+    const top = ringShort() && host !== 'dock' ? sr.bottom - (rh - 4) * k : sr.top + verbRowTop(g.W, g.H) * k;
+    placeFixed(rack, cx - (w * k) / 2, top);
+    // centre the words on the dial, not the box: an empty slot's gap or the last word's tracking must not
+    // pull the row off the ring's axis
+    const ink = verbInk(rack);
+    if (ink) {
+      const shift = cx - (ink.left + ink.right) / 2;
+      if (Math.abs(shift) >= 1) { const r = rack.getBoundingClientRect(); placeFixed(rack, r.left + shift, r.top); }
+    }
+    clearVerbsOfCallouts(rack, sr);
+  }
+  function clearVerbsOfCallouts(rack, sr) {
+    const releaseToFlow = () => {
+      rack.classList.add('sx-sw-verbs--unseated');
+      rack.style.cssText = '';
+    };
+    const labels = [...stageEl.querySelectorAll('.orr-sw-node.orr-hull__label'), ...el.querySelectorAll('.sx-sw__stats')]
+      .map((n) => n.getBoundingClientRect())
+      .filter((b) => b.width > 0 && b.height > 0);
+    const reach = Math.max(sr.right, el.getBoundingClientRect().right - 8);
+    if (!labels.length) return;
+    const hits = (r) => labels.filter((b) => b.left < r.right + 6 && b.right > r.left - 6
+      && b.top < r.bottom + 4 && b.bottom > r.top - 4);
+    const r = rack.getBoundingClientRect();
+    const blocking = hits(r);
+    if (!blocking.length) return;
+    const below = Math.max(...blocking.map((b) => b.bottom)) + 8;
+    if (below + r.height <= sr.bottom - 2
+      && !hits({ left: r.left, right: r.right, top: below, bottom: below + r.height }).length) {
+      placeFixed(rack, r.left, below);
+      return;
+    }
+    const mid = (r.left + r.right) / 2;
+    const left = blocking.filter((b) => (b.left + b.right) / 2 < mid);
+    const right = blocking.filter((b) => (b.left + b.right) / 2 >= mid);
+    if (left.length && right.length) { releaseToFlow(); return; }
+    const seatBeside = (w) => {
+      const x = left.length
+        ? Math.max(...left.map((b) => b.right)) + 12
+        : Math.min(...right.map((b) => b.left)) - 12 - w;
+      if (x < sr.left + 4 || x + w > reach - 4) return null;
+      return hits({ left: x, right: x + w, top: r.top, bottom: r.bottom }).length ? null : x;
+    };
+    let x = seatBeside(r.width);
+    if (x == null) {
+      rack.style.setProperty('column-gap', '8px', 'important');
+      x = seatBeside(rack.getBoundingClientRect().width);
+      if (x == null) { releaseToFlow(); return; }
+    }
+    placeFixed(rack, x, r.top);
+  }
+  // the stage's scale on screen (the station scales its whole layout to fit a large screen)
+  function stageScale() {
+    const w = stageEl.offsetWidth || 0;
+    const k = w > 0 ? stageEl.getBoundingClientRect().width / w : 1;
+    return Number.isFinite(k) && k > 0 ? k : 1;
+  }
+  // seat a fixed box at a point on the screen: under a scaled ancestor a fixed box lays out in that ancestor's
+  // own (unscaled) coordinates, so its origin is read back and the scale divided out
+  function placeFixed(node, x, y) {
+    node.style.setProperty('left', '0px', 'important');
+    node.style.setProperty('top', '0px', 'important');
+    const o = node.getBoundingClientRect();
+    const k = stageScale();
+    node.style.setProperty('left', `${Math.round((x - o.left) / k)}px`, 'important');
+    node.style.setProperty('top', `${Math.round((y - o.top) / k)}px`, 'important');
+  }
+  // the lit extent of the verb row: from the first verb's chevron to the last glyph of the last word
+  function verbInk(rack) {
+    const verbs = [...rack.querySelectorAll('[data-verb]')].filter((b) => b.offsetWidth > 0 && getComputedStyle(b).visibility !== 'hidden');
+    if (!verbs.length) return null;
+    let left = Infinity; let right = -Infinity; let trail = 0;
+    for (const b of verbs) {
+      const r = b.getBoundingClientRect();
+      left = Math.min(left, r.left);
+      const walker = document.createTreeWalker(b, NodeFilter.SHOW_TEXT);
+      for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+        if (!t.nodeValue || !t.nodeValue.trim()) continue;
+        const range = document.createRange();
+        range.selectNodeContents(t);
+        for (const rr of range.getClientRects()) {
+          if (rr.width > 0 && rr.right > right) { right = rr.right; trail = parseFloat(getComputedStyle(t.parentElement || b).letterSpacing) || 0; }
+        }
+      }
+    }
+    if (!(right > left)) return null;
+    return { left, right: right - trail };
+  }
+  // a scrolled ladder folds at the end that has more beyond it: its head once rows hang above, its foot while rows hang below
+  function syncListFold() {
+    const max = Math.max(0, railListEl.scrollHeight - railListEl.clientHeight);
+    railListEl.setAttribute('data-fold-head', max > 6 && railListEl.scrollTop > 2 ? '1' : '0');
+    railListEl.setAttribute('data-fold-foot', max > 6 && railListEl.scrollTop < max - 2 ? '1' : '0');
+  }
+  let jig = null;
+  let jigHost = null;
+  let jigLit = -1;
+  function ensureJig() {
+    if (jig || host !== 'dock' || typeof document === 'undefined') return jig;
+    jigHost = document.createElement('div');
+    jigHost.className = 'orr-sw-jig';
+    stageEl.appendChild(jigHost);
+    jig = createHullSchematic({
+      host: jigHost,
+      // the name's words and the verbs under them (the nameplate's own box runs the stage's height)
+      // (the verbs' band is reserved from the stage's size, so the ring never chases the verbs)
+      avoid: () => [nameplateEl.querySelector('.sx-sw__crestLine'), nameplateEl.querySelector('.sx-sw__blurb'), ringBandObstacle, el.querySelector('.sx-sw__gauges')],
+      // Phone landscape (~844×390) still uses the jig; compact columns so labels clear the dial.
+      labelWidth: isPhoneLayout() ? 128 : 220,
+      gap: isPhoneLayout() ? 16 : 30,
+      edge: isPhoneLayout() ? 18 : 40,
+      allowNone: true,
+      // a narrow stage keeps its nodes clean: the labels carry the numerals
+      numeralsMinWidth: 1100,
+      onPick: (index) => {
+        // The spatial-slot anchors are rebuilt on the next projection frame, so the anchor can be
+        // momentarily absent — openChooser re-resolves it itself; the pick must never be swallowed.
+        jigLit = index;
+        openChooser(index, slotfieldEl.querySelector(`[data-spatial-slot="${index}"]`));
+      },
+    });
+    // the stage ring and the Fleet caption follow the jig's dial wherever it lays out
+    if (typeof MutationObserver !== 'undefined') new MutationObserver(() => scheduleSpatialProjection()).observe(jigHost, { childList: true, subtree: true });
+    jigHost.addEventListener('click', (ev) => {
+      const node = ev.target.closest && ev.target.closest('.orr-sw-node[data-slot]');
+      if (!node) return;
+      const index = Number(node.getAttribute('data-slot'));
+      jigLit = index;
+      openChooser(index, slotfieldEl.querySelector(`[data-spatial-slot="${index}"]`));
+    });
+    jigHost.addEventListener('pointerover', (ev) => {
+      const node = ev.target.closest && ev.target.closest('.orr-sw-node[data-slot]');
+      if (!node || !jig) return;
+      if (typeof performance !== 'undefined' && performance.now() - jig.laidOutAt() < 420) return;
+      jig.light(Number(node.getAttribute('data-slot')));
+    });
+    jigHost.addEventListener('pointerleave', () => { if (jig) jig.light(selectedSlot >= 0 ? selectedSlot : -1); });
+    // keyboard on the hidden hardpoint buttons moves the Hand to the same node
+    slotfieldEl.addEventListener('focusin', (ev) => {
+      const anchor = ev.target.closest && ev.target.closest('[data-spatial-slot]');
+      if (anchor && jig) jig.light(Number(anchor.getAttribute('data-spatial-slot')));
+    });
+    return jig;
+  }
+  function syncJig(def, slots, fittings, shipName) {
+    // the panel composes for the drawing before it lays out (the stage needs the column's height)
+    el.classList.toggle('orr-sw--jig', host === 'dock' && !!(def && hullPosterUrl(def.id, 'jig')));
+    if (host !== 'dock') { if (jigHost) jigHost.hidden = true; return; }
+    const j = ensureJig();
+    if (!j || !jigHost) return;
+    jigHost.hidden = false;
+    const existing = new Map([...jigHost.querySelectorAll('.orr-sw-node[data-slot]')].map((n) => [n.getAttribute('data-slot'), n]));
+    const nodes = (def ? slots : []).map((slot, i) => {
+      const fitted = fittings[i] && FITTABLE_BY_ID.get(fittings[i]);
+      let node = existing.get(String(i));
+      if (!node) {
+        node = document.createElement('div');
+        node.className = 'orr-sw-node';
+        node.setAttribute('data-slot', String(i));
+        node.setAttribute('aria-hidden', 'true');
+        jigHost.appendChild(node);
+      }
+      existing.delete(String(i));
+      const slotName = SLOT_LABEL[slot.type] || slot.type;
+      const ring = hardpointClassOf(slot) === 'ring' ? ' · ring' : '';
+      const stockDrive = !fitted && slot.type === 'engine' && activeBandModel && activeBandModel.stockDrive;
+      const name = fitted ? fitted.name : slotName;
+      const state = fitted ? `${slotName} · ${slot.size || ''}${ring}` : (stockDrive ? `stock · ${slot.size || ''}` : `empty · ${slot.size || ''}${ring}`);
+      const html = `<span class="orr-sw-node__num">${String(i + 1).padStart(2, '0')}</span>`
+        + `<span class="orr-sw-node__body"><b class="orr-sw-node__name">${escapeHtml(name)}</b>`
+        + `<span class="orr-sw-node__state">${escapeHtml(state)}</span></span>`;
+      node.classList.toggle('is-stock', !!stockDrive);
+      if (node.innerHTML !== html) node.innerHTML = html;
+      node.classList.toggle('is-fitted', !!fitted);
+      node.classList.toggle('is-empty', !fitted && !stockDrive);
+      return { el: node, slotType: slot.type, state: fitted || stockDrive ? 'fitted' : 'open', num: String(i + 1).padStart(2, '0') };
+    });
+    for (const stale of existing.values()) stale.remove();
+    const fittedCount = nodes.filter((n) => n.state === 'fitted').length;
+    j.setHull(def ? def.id : null);
+    jigCaption = def ? { defId: def.id, name: shipName || def.name || '' } : null;
+    j.setNodes(nodes, { engraving: def ? `${shipName || def.name || ''} \u00b7 ${fittedCount} of ${nodes.length} fitted` : '' });
+    j.light(selectedSlot >= 0 && selectedSlot < nodes.length ? selectedSlot : -1, { swing: false });
+  }
+
+  function renderSpatialSlots() {
+    spatialAnchors = new Map();
+    spatialSlotMeta = new Map();
+    if (mode !== 'fleet') { slotfieldEl.innerHTML = ''; syncJig(null, [], [], ''); return; }
+    const ship = viewedShip();
+    const def = ship && SHIP_BY_ID.get(ship.defId);
+    if (!def) { slotfieldEl.innerHTML = ''; syncJig(null, [], [], ''); return; }
+    const slots = buildSlotList(def);
+    const fittings = ship.fittings || [];
+    slotfieldEl.innerHTML = slots.map((slot, i) => {
+      const fitted = fittings[i] && FITTABLE_BY_ID.get(fittings[i]);
+      const anchor = localSlotAnchor(def, slots, i);
+      spatialAnchors.set(i, anchor);
+      spatialSlotMeta.set(i, {
+        type: slot.type,
+        ordinal: typeOrdinal(slots, i),
+        count: slots.filter((s) => s.type === slot.type).length,
+      });
+      // An unfitted slot is named for the SLOT, not for a part called "Empty Cargo". The old label
+      // ("Empty " + type) read as installed hardware whose name happened to start with "Empty",
+      // which is why an open bay looked like a component of the ship. Name the mount, then state
+      // that it is open.
+      const slotName = SLOT_LABEL[slot.type] || slot.type;
+      const label = fitted ? fitted.name : slotName;
+      // The stock drive is installed hardware, not an open bay: the same `activeBandModel.stockDrive`
+      // the side table and the fitted count read must also own this callout, or THE SHIP says
+      // "OPEN / M" over a hull it counts as 1/7 fitted.
+      const stockDrive = !fitted && slot.type === 'engine' && activeBandModel && activeBandModel.stockDrive;
+      const selected = i === selectedSlot ? ' is-selected' : '';
+      const kind = anchor.authored ? 'PHYSICAL' : 'SYSTEM';
+      // PQ-176.02: a turret ring is a different kind of mount; the pin says so before the chooser does.
+      const ring = hardpointClassOf(slot) === 'ring' ? ' / RING' : '';
+      const sub = fitted || stockDrive ? `${stockDrive ? 'STOCK' : kind} / ${slot.size || ''}${ring}` : `OPEN / ${slot.size || ''}${ring}`;
+      const aria = fitted
+        ? `${slotName} ${i + 1}: ${label}. Open compatible modules.`
+        : stockDrive
+          ? `${slotName} ${i + 1}: stock drive installed. Open compatible modules.`
+          : `${slotName} ${i + 1}: open slot. Open compatible modules.`;
+      return `<button type="button" ${stationControlAttrs('hardpoint')} class="sx-hardpoint sx-hardpoint--${escapeHtml(slot.type)}${selected}${fitted || stockDrive ? '' : ' is-empty'}${stockDrive ? ' is-stock' : ''}" data-spatial-slot="${i}" data-anchor-kind="${kind.toLowerCase()}" aria-label="${escapeHtml(aria)}">` +
+        `<svg class="sx-hardpoint__leader" aria-hidden="true"><path></path></svg>` +
+        `<span class="sx-hardpoint__reticle" aria-hidden="true"><i></i></span>` +
+        `<span class="sx-hardpoint__copy"><b>${escapeHtml(label)}</b><em>${escapeHtml(sub)}</em></span>` +
+      `</button>`;
+    }).join('');
+    syncJig(def, slots, fittings,
+      // one name for the hull on this screen: the crest resolves the owned record's canon or
+      // hand-typed word, so the dial's caption and engraving say what the nameplate says
+      (hullNameForOwnedShip(ship, viewIdx, ctx.state && ctx.state.meta && ctx.state.meta.seed)) || ship.name);
+    scheduleSpatialProjection();
+  }
+
+  // The hull's readings stand under the fleet roster at a fixed top in the left column, but a roster
+  // row's role and ACTIVE flag wrap to three lines in that column (STARTER SCOUT · / T0 / ACTIVE), so
+  // the 439 TOP SPEED reading printed over ACTIVE at every desktop size. The readings drop just under
+  // the roster's last row whenever it reaches them. For Sale seats its own readings (seatSaleStats).
+  function clearStatsOfRoster() {
+    if (!statsEl || !railListEl || !statsEl.isConnected || !railListEl.isConnected) return;
+    if (el.classList.contains('sx-sw--buying') || statsEl.classList.contains('sx-sw__stats--unseated')) return;
+    statsEl.style.removeProperty('top');
+    statsEl.style.removeProperty('bottom');
+    const cs = getComputedStyle(statsEl);
+    if (cs.position !== 'absolute' || cs.display === 'none') return;
+    const sr = statsEl.getBoundingClientRect();
+    const rows = railListEl.querySelectorAll('.sx-sw-row');
+    const last = rows.length ? rows[rows.length - 1].getBoundingClientRect() : null;
+    if (!last || sr.height <= 0 || last.height <= 0) return;
+    const listBox = railListEl.getBoundingClientRect();
+    // the row's box carries padding below its words, so measure where its last line of type ends
+    let inkBottom = 0;
+    const walker = document.createTreeWalker(rows[rows.length - 1], NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (!n.textContent.trim()) continue;
+      range.selectNodeContents(n);
+      const b = range.getBoundingClientRect();
+      if (b.height > 0) inkBottom = Math.max(inkBottom, b.bottom);
+    }
+    const rosterBottom = Math.min(inkBottom || last.bottom, listBox.bottom);
+    // only when the two share the column and the roster actually prints into the readings; a near miss
+    // stays put, because the column has no spare room under the readings (1280×720 lost BUILD, and
+    // 1440×900 lost its Top speed bar, when they dropped for a gap alone)
+    if (last.right <= sr.left || last.left >= sr.right || rosterBottom <= sr.top) return;
+    // A drop must not cost a reading: at 1366×600 and 1366×768 it pushed +12/s, can tow and Inertia past
+    // a panel edge that cuts them off (a reading moved into a box that scrolls is still there). So the
+    // readings drop, and go back up if any line that showed before is cut off after.
+    const cutBefore = statsLinesCut();
+    const top = Math.round((parseFloat(cs.top) || 0) + rosterBottom + 8 - sr.top);
+    statsEl.style.setProperty('top', `${top}px`, 'important');
+    statsEl.style.setProperty('bottom', 'auto', 'important');
+    if ([...statsLinesCut()].some((line) => !cutBefore.has(line))) {
+      statsEl.style.removeProperty('top');
+      statsEl.style.removeProperty('bottom');
+    }
+  }
+
+  // Lines of the readings' type that run past the top or bottom of a box that clips them with no way to
+  // scroll there (the drop only moves them down, so only the vertical edges count).
+  function statsLinesCut() {
+    const cut = new Set();
+    const range = document.createRange();
+    const walker = document.createTreeWalker(statsEl, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (!n.textContent.trim() || !n.parentElement) continue;
+      range.selectNodeContents(n);
+      const r = range.getBoundingClientRect();
+      if (r.height <= 0) continue;
+      for (let p = n.parentElement; p && p !== document.body; p = p.parentElement) {
+        const o = getComputedStyle(p);
+        const scrolls = /auto|scroll/.test(`${o.overflowY} ${o.overflowX}`);
+        if (!scrolls && !/hidden|clip/.test(`${o.overflowY} ${o.overflowX}`)) continue;
+        const h = p.getBoundingClientRect();
+        if (r.bottom <= h.bottom + 4 && r.top >= h.top - 4) continue;
+        if (!(scrolls && p.scrollHeight > p.clientHeight + 8)) cut.add(n);
+        break;
+      }
+    }
+    return cut;
+  }
+
+  function scheduleSpatialProjection() {
+    if (projectionFrame) cancelAnimationFrame(projectionFrame);
+    projectionFrame = requestAnimationFrame(() => {
+      projectionFrame = 0;
+      updateSpatialProjection();
+    });
+  }
+
+  // `pointOf(slotIndex)` -> the slot's bead in stage px (live hull or poster); `reactor` is where
+  // the power flows from: the hull's heart on the poster, the stage's lower centre on the live hull.
+  function syncPowerBeamProjection(stageRect, pointOf, reactor) {
+    if (!stageRect || typeof pointOf !== 'function') return;
+    powerBeam.resize(stageRect.width, stageRect.height);
+    if (!Array.isArray(currentPowerSlotIndices) || !currentPowerSlotIndices.length) {
+      powerBeam.setPath([], { active: false });
+      return;
+    }
+    const points = [reactor || { x: stageRect.width * 0.5, y: stageRect.height * 0.62 }];
+    for (const slotIndex of currentPowerSlotIndices) {
+      const p = pointOf(slotIndex);
+      if (p) points.push(p);
+    }
+    if (points.length < 2) {
+      powerBeam.setPath([], { active: false });
+      return;
+    }
+    const reversed = currentPowerHeadroom < 0;
+    const reduced = isReducedMotion();
+    powerBeam.setPath(points, {
+      active: !reduced,
+      kind: reversed ? 'danger' : 'energy',
+      direction: reversed ? 'from' : 'to',
+    });
+    const path = powerBeam && powerBeam.svg && powerBeam.svg.querySelector
+      ? powerBeam.svg.querySelector('.sf-fx-beam__path')
+      : null;
+    if (path) {
+      const ratio = Math.min(2, Math.abs(currentPowerHeadroom) / Math.max(1, currentPowerCapMax));
+      const duration = Math.max(220, Math.min(1600, 900 - ratio * 520));
+      path.style.animationDuration = `${Math.round(duration)}ms`;
+    }
+  }
+
+  /** The live hull has drawn when its authored asset is in: then the poster yields to it. */
+  let saleHandover = false;
+  let saleHandoverTimer = 0;
+  let saleHandoverTries = 0;
+  let saleHandoverHull = '';
+  // the read-back run's answer: unready retries on the old cadence; ready hands over a frame later,
+  // so the disc never blinks empty
+  function settleSaleHandover(ok) {
+    if (!ok) {
+      if (!saleHandoverTimer && saleHandoverTries < 40) {
+        saleHandoverTries += 1;
+        saleHandoverTimer = setTimeout(() => { saleHandoverTimer = 0; syncPosterLive(); }, 250);
+      }
+      return;
+    }
+    if (saleHandover) return;
+    saleHandover = true;
+    const hull = poster.defId();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      saleHandover = false;
+      if (poster.isLive() || poster.defId() !== hull) return;
+      poster.setLive(true);
+      scheduleSpatialProjection();
+    }));
+  }
+  function syncPosterLive() {
+    if (!poster.has()) { canvas.tabIndex = 0; return; }
+    const state = mount && mount.getAssetState ? mount.getAssetState() : '';
+    const sameHull = !!mount && (!mount.getDefId || mount.getDefId() === poster.defId());
+    // Only ever poster -> live for one hull: a refit that re-seats the same hull must not flash
+    // the render back in. A different hull resets through poster.setHull.
+    if (!poster.isLive() && sameHull && /^authored/.test(String(state || ''))) {
+      if (host === 'dock' && mode === 'buy' && stageEl.classList.contains('has-salering')) {
+        // For Sale hands over only once the live canvas has drawn this hull, graded and fitted to the ring;
+        // one more frame, then the two cross-fade (the sheet's 180 ms), so the disc never blinks empty
+        if (saleHandoverHull !== poster.defId()) { saleHandoverHull = poster.defId(); saleHandoverTries = 0; }
+        if (!saleHandover) {
+          const g = stageRingGeo();
+          // the run samples one bearing a frame and answers through onDone; a refused or already-lit
+          // key answers here
+          const ready = g ? lightSaleHull(g, { force: true, onDone: settleSaleHandover }) : false;
+          if (ready !== 'pending') settleSaleHandover(ready === true);
+        }
+      } else {
+        poster.setLive(true);
+        scheduleSpatialProjection();
+      }
+    }
+    // The canvas cannot be orbited while it is hidden behind the render: keep it out of the tab order.
+    canvas.tabIndex = poster.showing() ? -1 : 0;
+  }
+
+  function stageLocalRect(rect, stageRect, pad = 0) {
+    if (!rect || rect.width <= 0 || rect.height <= 0) return null;
+    return {
+      left: rect.left - stageRect.left - pad,
+      top: rect.top - stageRect.top - pad,
+      right: rect.right - stageRect.left + pad,
+      bottom: rect.bottom - stageRect.top + pad,
+    };
+  }
+
+  // The nameplate's padded box is far wider than its ink; the zone follows the text extent
+  // (per-text-node Range rects -- a whole-contents bounding rect would union the block boxes and
+  // be no narrower than the padded box), or a card crossing only padding would be pushed away.
+  function nameplateInkRect() {
+    if (!nameplateEl || !nameplateEl.isConnected) return null;
+    let ink = null;
+    const walker = document.createTreeWalker(nameplateEl, NodeFilter.SHOW_TEXT);
+    for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+      if (!t.nodeValue || !t.nodeValue.trim()) continue;
+      const r = document.createRange();
+      r.selectNodeContents(t);
+      for (const rr of r.getClientRects()) {
+        if (rr.width <= 0 || rr.height <= 0) continue;
+        ink = ink
+          ? { left: Math.min(ink.left, rr.left), top: Math.min(ink.top, rr.top), right: Math.max(ink.right, rr.right), bottom: Math.max(ink.bottom, rr.bottom) }
+          : { left: rr.left, top: rr.top, right: rr.right, bottom: rr.bottom };
+      }
+    }
+    // The rename field prints its value (or, empty, its placeholder) without a text node, so the
+    // walk above never sees it and a card could land on "Name this hull". Measure that string in
+    // the field's own font from its content edge.
+    for (const input of nameplateEl.querySelectorAll('input')) {
+      const text = input.value || input.placeholder || '';
+      const box = input.getBoundingClientRect();
+      if (!text.trim() || box.width <= 0 || box.height <= 0) continue;
+      const cs = getComputedStyle(input);
+      const padL = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.borderLeftWidth) || 0);
+      const w = Math.min(box.width - padL, fieldTextWidth(text, cs));
+      if (!(w > 0)) continue;
+      const rr = { left: box.left + padL, top: box.top, right: box.left + padL + w, bottom: box.bottom };
+      ink = ink
+        ? { left: Math.min(ink.left, rr.left), top: Math.min(ink.top, rr.top), right: Math.max(ink.right, rr.right), bottom: Math.max(ink.bottom, rr.bottom) }
+        : rr;
+    }
+    if (!ink) return null;
+    // When the rename field is focused, grow the keep-out under its ring so a left-column
+    // callout (Utility / Drive) cannot sit on the focus box at short mid-width stages.
+    let bottom = ink.bottom;
+    for (const input of nameplateEl.querySelectorAll('input.sx-sw__nameEdit')) {
+      if (input !== document.activeElement) continue;
+      const box = input.getBoundingClientRect();
+      if (box.height > 0) bottom = Math.max(bottom, box.bottom + 14);
+    }
+    return { left: ink.left, top: ink.top, right: ink.right, bottom, width: ink.right - ink.left, height: bottom - ink.top };
+  }
+
+  function updateSpatialProjection() {
+    if (!stageEl.isConnected) return;
+    syncPosterLive();
+    const posterOn = poster.showing();
+    // The live hull pins the systems when it is on the glass: no render for this hull, or the
+    // authored hull has drawn over the render. Otherwise the render pins them, on its own marks.
+    const livePath = !!mount && !posterOn;
+    // No hull picture at all -- no preview mount (secondaryPreviewWebGlBlocked: a second hangar
+    // compile TDRs Intel/ANGLE, the owner's own laptop) and no render for this hull -- means no
+    // hull to pin the systems to. They lay out as a systems board: the same buttons, the same
+    // copy, as a wrapped row of chips at the foot of the stage.
+    if (slotfieldEl) slotfieldEl.classList.toggle('is-board', !livePath && !posterOn);
+    // The operation plate is bottom-anchored to the panel while the gauges rack lives at the
+    // stage's top-right; CSS cannot express "start under the rack" across the two containing
+    // blocks, so the plate's top is pinned here in its own containing-block coordinates. When
+    // the station grid owns the column (position:static) the pin is skipped entirely.
+    if (sideEl && gaugeRackEl && sideEl.isConnected && gaugeRackEl.isConnected
+        && getComputedStyle(sideEl).position === 'absolute' && sideEl.offsetParent) {
+      const top = Math.round(
+        gaugeRackEl.getBoundingClientRect().bottom
+        - sideEl.offsetParent.getBoundingClientRect().top + 8);
+      if (top > 0 && top !== pinnedSideTop) {
+        pinnedSideTop = top;
+        sideEl.style.top = `${top}px`;
+      }
+    }
+    clearStatsOfRoster();
+    if (!livePath && !posterOn) return;
+    const stageRect = stageEl.getBoundingClientRect();
+    if (stageRect.width <= 0 || stageRect.height <= 0) return;
+    const focusLine = el.querySelector('.sx-sw__focusline');
+    if (focusLine && selectedSlot < 0) focusLine.classList.remove('is-on');
+
+    const nodes = [...slotfieldEl.querySelectorAll('[data-spatial-slot]')];
+    // The copy is white-space:nowrap -- its size is text-driven and position-independent, so
+    // measure it now: a planning width would push a 60 px card into columns it never enters.
+    const cards = nodes.map((node) => {
+      const copyEl = node.querySelector('.sx-hardpoint__copy');
+      const r = copyEl ? copyEl.getBoundingClientRect() : null;
+      // An inline copy containing block lines can have a zero-width element box even while
+      // its text paints normally. Measure the painted lines rather than reserving 200px per
+      // column and reducing the actual ship to a thumbnail.
+      if (host === 'flight' && compactFlightNameplate.matches && copyEl && (!r || r.width <= 4)) {
+        const range = document.createRange();
+        range.selectNodeContents(copyEl);
+        const lines = [...range.getClientRects()].filter((line) => line.width > 0 && line.height > 0);
+        if (lines.length) return { w: Math.max(...lines.map((line) => line.width)),
+          h: Math.max(...lines.map((line) => line.bottom)) - Math.min(...lines.map((line) => line.top)) };
+      }
+      return { w: r && r.width > 4 ? r.width : 200, h: r && r.height > 4 ? r.height : 36 };
+    });
+
+    // Where the hull and its labels may go: the stage less its edge, less the gauges rack's
+    // column when the rack stands down the right flank.
+    const inset = 12;
+    const region = { left: inset, top: inset, right: stageRect.width - inset, bottom: stageRect.height - inset };
+    // Wave 2 S1: at narrow widths the left callout column has nowhere to stand but on the
+    // prose. Clamp the solver's label region so left cards stay right of screen x=560 (the
+    // prose ends ~460 there); the hull fit keeps the full region. Skipped when the stage is
+    // too narrow for the clamp to leave the solver a working column, and on a short dock
+    // stage (~162px at 960×540) where the same clamp parks left cards on the hull poster.
+    let labelRegion = region;
+    if (typeof window !== 'undefined' && window.innerWidth <= 1366 && stageRect.width > 0
+        && stageRect.height >= 300) {
+      const clampLeft = 560 - stageRect.left;
+      if (clampLeft > region.left + 40 && clampLeft < region.right - 220) {
+        labelRegion = { ...region, left: Math.round(clampLeft) };
+      }
+    }
+    const obstacles = [];
+    const gaugesRect = gaugeRackEl && gaugeRackEl.isConnected && getComputedStyle(gaugeRackEl).visibility !== 'hidden'
+      ? stageLocalRect(gaugeRackEl.getBoundingClientRect(), stageRect, 4) : null;
+    if (gaugesRect) {
+      if (gaugesRect.bottom - gaugesRect.top > stageRect.height * 0.3 && gaugesRect.left > stageRect.width * 0.4) {
+        region.right = Math.min(region.right, gaugesRect.left - 12);
+      } else obstacles.push(gaugesRect);
+    }
+    const npRect = nameplateInkRect();
+    const nameplateZone = npRect ? stageLocalRect(npRect, stageRect, 6) : null;
+    if (nameplateZone) obstacles.push(nameplateZone);
+    if (livePath) {
+      for (const sel of ['.sx-sw__camera', '.sx-sw__dragcue']) {
+        const chrome = el.querySelector(sel);
+        const r = chrome && chrome.isConnected ? stageLocalRect(chrome.getBoundingClientRect(), stageRect, 4) : null;
+        if (r) obstacles.push(r);
+      }
+    }
+
+    // The render: its hull fitted into the region with a label column's width free on each side,
+    // and never over the nameplate (then it drops into the band under it).
+    let keepOut = null;
+    let heart = null;
+    const shortStage = stageRect.height < 300;
+    // Phone / narrow dock stages (~362px on 390×844): label columns need a real gutter. Without
+    // a keep-out the live-path solver treats the bead spread as the hull (often edge-to-edge)
+    // and parks Utility/Drive/Cargo past the stage's overflow:hidden clip.
+    const narrowStage = stageRect.width < 520 || isPhoneLayout();
+    if (posterOn) {
+      // Short dock stages (~162px at 960×540): leave a wider label band so Utility/Drive/Cargo
+      // sit in clear columns beside the hull, not on its silhouette. Narrow phone stages need
+      // the same extra reserve even when the stage is tall.
+      const reserveX = nodes.length
+        ? Math.max(...cards.map((c) => c.w)) + (host === 'flight' && compactFlightNameplate.matches
+          ? 80 : (shortStage || narrowStage ? 52 : 32))
+        : 0;
+      const fitArgs = { ink: poster.ink(), imageAspect: poster.aspect(), reserveX, reserveY: 8 };
+      let fit = fitHullInk({ region, ...fitArgs });
+      if (nameplateZone && fit.inkRect.left < nameplateZone.right && fit.inkRect.right > nameplateZone.left
+          && fit.inkRect.top < nameplateZone.bottom && fit.inkRect.bottom > nameplateZone.top) {
+        // Wave 2 r2 SH1: the band under the nameplate must hold a hull, not a postage
+        // stamp. At <=1366 widths the prose runs nearly the full stage height, and the
+        // old unconditional refit crushed the poster to ~110x62 — the "missing hull" at
+        // 1280. Take the band only when it keeps a real hull's height; otherwise the
+        // hull stays on the full region behind the prose (which carries its own glass).
+        const bandTop = Math.max(region.top, nameplateZone.bottom + 6);
+        const bandH = region.bottom - bandTop;
+        const regionH = region.bottom - region.top;
+        if (bandH >= 120 && bandH >= regionH * 0.55) {
+          fit = fitHullInk({ region: { ...region, top: bandTop }, ...fitArgs });
+        }
+      }
+      const ringG = el.classList.contains('sx-sw--buying') ? stageRingGeo() : null;
+      if (ringG) {
+        // the hull for sale sits inside the stage ring by its own ink: its long side at four fifths of the
+        // dial, the ink box's corners inside the ring, the ink centred on the ring's centre
+        const asp = poster.aspect() || 1.6;
+        const ink = poster.ink() || { x0: 0, y0: 0, x1: 1, y1: 1 };
+        const iw = Math.max(0.05, ink.x1 - ink.x0); const ih = Math.max(0.05, ink.y1 - ink.y0);
+        const inkAspect = (iw * asp) / ih;
+        let inkW = 2 * ringG.R * 0.8; let inkH = inkW / inkAspect;
+        if (inkH > inkW) { inkH = 2 * ringG.R * 0.8; inkW = inkH * inkAspect; }
+        const reach = Math.hypot(inkW, inkH) / (2 * ringG.R * 0.94);
+        if (reach > 1) { inkW /= reach; inkH /= reach; }
+        const w = inkW / iw; const h = w / asp;
+        const left = ringG.hx - (ink.x0 + iw / 2) * w; const top = ringG.hy - (ink.y0 + ih / 2) * h;
+        fit = { imgRect: { left, top, width: w, height: h }, inkRect: { left: left + ink.x0 * w, top: top + ink.y0 * h, right: left + ink.x1 * w, bottom: top + ink.y1 * h } };
+      }
+      poster.place(fit.imgRect);
+      drawSaleRing(ringG);
+      // Compact flight labels need enough air around the poster's actual ink, not just its
+      // projected beads: a narrow left column otherwise prints across the hull silhouette.
+      const keepPad = host === 'flight' && compactFlightNameplate.matches
+        ? 36 : (shortStage || narrowStage ? 18 : 6);
+      keepOut = { left: fit.inkRect.left - keepPad, top: fit.inkRect.top, right: fit.inkRect.right + keepPad, bottom: fit.inkRect.bottom };
+      heart = { x: (fit.inkRect.left + fit.inkRect.right) / 2, y: (fit.inkRect.top + fit.inkRect.bottom) / 2 };
+    } else if (narrowStage && nodes.length) {
+      // Live path on a phone-width stage: invent the same side gutters the poster fit would leave,
+      // so callout cards stay on-glass instead of overhanging the keep-out past the clip.
+      const colW = Math.max(64, ...cards.map((c) => c.w));
+      const gutter = colW + (isPhoneLayout() ? 14 : 20);
+      keepOut = {
+        left: region.left + gutter,
+        right: region.right - gutter,
+        top: region.top + 10,
+        bottom: region.bottom - 20,
+      };
+      heart = { x: (keepOut.left + keepOut.right) / 2, y: (keepOut.top + keepOut.bottom) / 2 };
+    }
+
+    if (!el.classList.contains('sx-sw--buying')) drawSaleRing(null);
+    else if (!posterOn) drawSaleRing(stageRingGeo());
+    const ringNow = stageRingGeo();
+    seatVerbs(ringNow);
+    // the verb row just took its seat at the stage's foot: a card the solver leaves on it reads as
+    // print under glass, so its box joins the chrome the columns must stand clear of
+    { const verbsRack = el.querySelector('.sx-sw-verbs');
+      const verbsZone = verbsRack && verbsRack.isConnected && verbsRack.offsetWidth > 0
+        ? stageLocalRect(verbsRack.getBoundingClientRect(), stageRect, 6) : null;
+      if (verbsZone) obstacles.push(verbsZone); }
+    drawFleetCaption(ringNow);
+    drawJigBand();
+    if (explodeSlot >= 0) placeExplode();
+
+    const pointOf = (index) => {
+      if (livePath) {
+        const local = spatialAnchors.get(index);
+        const projected = local && mount.projectLocalPoint(local);
+        return projected ? { x: projected.x - stageRect.left, y: projected.y - stageRect.top } : null;
+      }
+      const meta = spatialSlotMeta.get(index);
+      return meta ? poster.pointFor(meta.type, meta.ordinal, meta.count) : null;
+    };
+
+    const cx = heart ? heart.x : stageRect.width * 0.5;
+    const cy = heart ? heart.y : stageRect.height * 0.5;
+    const projectedSlots = [];
+    nodes.forEach((node, order) => {
+      const index = Number(node.getAttribute('data-spatial-slot'));
+      const p = pointOf(index);
+      // A bead with nowhere to go yet (the render's marks still arriving) waits unseen rather
+      // than piling on the slotfield's origin.
+      node.style.visibility = p ? '' : 'hidden';
+      if (!p) return;
+      projectedSlots.push({
+        node,
+        index,
+        order,
+        x: Math.max(24, Math.min(stageRect.width - 24, p.x)),
+        y: Math.max(24, Math.min(stageRect.height - 24, p.y)),
+        local: spatialAnchors.get(index),
+        cardW: cards[order].w,
+        cardH: cards[order].h,
+      });
+    });
+
+    if (projectedSlots.length) {
+      separateBeads(projectedSlots, 14).forEach((p, i) => { projectedSlots[i].x = p.x; projectedSlots[i].y = p.y; });
+      // On a narrow stage, beads that projected into the label gutters would fight the cards for
+      // the same air — pull them into the keep-out so leaders run from hull to column.
+      if (narrowStage && keepOut) {
+        const pad = 10;
+        for (const s of projectedSlots) {
+          s.x = Math.max(keepOut.left + pad, Math.min(keepOut.right - pad, s.x));
+          s.y = Math.max(keepOut.top + pad, Math.min(keepOut.bottom - pad, s.y));
+        }
+      }
+      const layout = calculateSpatialSlotLayout({
+        projectedSlots,
+        stageWidth: stageRect.width,
+        stageHeight: stageRect.height,
+        nodeRadius: 17,
+        bounds: labelRegion,
+        keepOut,
+        obstacles,
+        gap: narrowStage ? 16 : (shortStage ? 36 : 28),
+      });
+
+      let selectedBead = null;
+      const labelRects = [];
+      layout.forEach((res) => {
+        const { item, isLeft, calloutX, calloutY, leaderD, zIndex } = res;
+        const { node, index, x, y } = item;
+        node.style.left = `${x}px`;
+        node.style.top = `${y}px`;
+        node.style.zIndex = String(zIndex);
+        node.classList.toggle('is-callout-left', isLeft);
+        node.style.setProperty('--callout-x', `${calloutX}px`);
+        node.style.setProperty('--callout-y', `${calloutY}px`);
+        labelRects.push({
+          left: res.visualCardLeft, top: res.visualCardTop,
+          right: res.visualCardRight, bottom: res.visualCardBottom,
+        });
+
+        const leaderPath = node.querySelector('.sx-hardpoint__leader path');
+        if (leaderPath) {
+          if (leaderD) leaderPath.setAttribute('d', leaderD);
+          else leaderPath.removeAttribute('d');
+        }
+
+        if (index === selectedSlot) {
+          selectedBead = { x, y };
+          const dx = x - cx;
+          const dy = y - cy;
+          if (focusLine) {
+            focusLine.style.left = `${cx}px`;
+            focusLine.style.top = `${cy}px`;
+            focusLine.style.width = `${Math.hypot(dx, dy)}px`;
+            focusLine.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
+            focusLine.classList.add('is-on');
+          }
+        }
+      });
+    }
+
+    // Scars are placed on the live hull's geometry; the render carries no scar marks, so they
+    // wait for the live hull (the poster CSS hides the field meanwhile).
+    if (livePath) {
+      const scars = [...scarfieldEl.querySelectorAll('[data-scar-id]')];
+      scars.forEach((node, order) => {
+        const scarId = node.getAttribute('data-scar-id');
+        const local = scarAnchors.get(scarId);
+        const projected = local && mount.projectLocalPoint(local);
+        if (!projected) return;
+        const x = Math.max(28, Math.min(stageRect.width - 28, projected.x - stageRect.left));
+        const y = Math.max(30, Math.min(stageRect.height - 30, projected.y - stageRect.top));
+        node.style.left = `${x}px`;
+        node.style.top = `${y}px`;
+        node.style.zIndex = String(70 - order);
+      });
+    }
+    syncPowerBeamProjection(stageRect, (index) => {
+      const hit = projectedSlots.find((p) => p.index === index);
+      return hit ? { x: hit.x, y: hit.y } : pointOf(index);
+    }, heart);
+  }
+
+  // ---------- left rail ----------
+  function updateRailControls() {
+    const max = Math.max(0, railListEl.scrollWidth - railListEl.clientWidth);
+    const progress = max > 0 ? Math.max(0, Math.min(1, railListEl.scrollLeft / max)) : 0;
+    const viewport = railListEl.scrollWidth > 0
+      ? Math.max(.12, Math.min(1, railListEl.clientWidth / railListEl.scrollWidth)) : 1;
+    railPrevEl.disabled = max <= 1 || railListEl.scrollLeft <= 1;
+    railNextEl.disabled = max <= 1 || railListEl.scrollLeft >= max - 1;
+    railProgressEl.style.width = `${(viewport * 100).toFixed(2)}%`;
+    railProgressEl.style.transform = `translateX(${(progress * (100 / viewport - 100)).toFixed(2)}%)`;
+  }
+
+  function revealSelectedShip({ focus = false } = {}) {
+    const active = railListEl.querySelector('.sx-sw-row.is-active');
+    if (!active) {
+      requestAnimationFrame(updateRailControls);
+      return;
+    }
+    if (focus) active.focus({ preventScroll: true });
+    // The hang column scrolls vertically now: keep the chosen hull's row in view.
+    const railRect = railListEl.getBoundingClientRect();
+    const activeRect = active.getBoundingClientRect();
+    const max = Math.max(0, railListEl.scrollHeight - railListEl.clientHeight);
+    if (max <= 0) { requestAnimationFrame(updateRailControls); return; }
+    const desired = railListEl.scrollTop
+      + (activeRect.top + activeRect.height / 2)
+      - (railRect.top + railRect.height / 2);
+    const top = Math.max(0, Math.min(max, desired));
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    railListEl.scrollTo({ top, behavior: reducedMotion ? 'auto' : 'smooth' });
+    requestAnimationFrame(updateRailControls);
+  }
+
+  function queueRevealSelectedShip(options = {}) {
+    requestAnimationFrame(() => revealSelectedShip(options));
+  }
+
+  function renderRail() {
+    if (mode === 'fleet') {
+      const o = owned();
+      const activeIdx = (ctx.state.player && ctx.state.player.activeShipIndex) || 0;
+      // The hang column: the hulls you own as rows (name · role, "Active" as the number).
+      railListEl.innerHTML = o.length ? o.map((s, i) => {
+        const def = SHIP_BY_ID.get(s.defId) || {};
+        const roleLabel = describeHullRole(s.defId)?.roleLabel || roleLabelFor(def.role);
+        // The row is narrow: "STARTER SCOUT · T0" wrapped to an orphaned "· T0" line — a line
+        // opening on a middot. Every middot glues to the word BEFORE it, so a wrap can end a
+        // line on the separator but never open one with it.
+        const subLabel = `${String(roleLabel).replace(/\s+([^\s]+)\s*$/, '\u00a0$1')}\u00a0\u00b7 T${def.tier != null ? def.tier : '?'}`;
+        const on = i === viewIdx ? ' is-active' : '';
+        const isActive = i === activeIdx;
+        return (
+          `<button type="button" ${stationControlAttrs('inspect-hull')} class="k-row sx-sw-row${on}" data-fleet="${i}" data-why="${escapeHtml(shipworksHullName(s.defId))}" aria-label="Inspect ${escapeHtml(shipworksHullName(s.defId))}" aria-pressed="${i === viewIdx}" aria-selected="${i === viewIdx}">` +
+            `<span class="k-row__name sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(shipworksHullName(s.defId))}</span>` +
+              `<span class="k-row__sub sx-sw-row__sub">${escapeHtml(subLabel)}</span></span>` +
+            `<span class="k-row__num k-t-fine sx-sw-row__flag">${isActive ? 'Active' : ''}</span>` +
+          `</button>`
+        );
+      }).join('') : `<p class="k-sentence sx-muted">No ships owned.</p>`;
+    } else {
+      // FB-062 — the rail is this yard's ledger, not the whole catalog: a hull another yard
+      // builds exclusively is absent here, and a yard offer price is the price on the row.
+      railListEl.innerHTML = SHIPS.filter((s) => (s.price || 0) >= 0).map((s) => {
+        const yard = shipyardPurchaseQuote(ctx.state, s.id);
+        if (!yard.listed) return '';
+        const on = s.id === buyId ? ' is-active' : '';
+        const roleLabel = describeHullRole(s.id)?.roleLabel || roleLabelFor(s.role);
+        // the roster row's glue (see the fleet rail): every middot glues to the word before it,
+        // so a wrap ends a line on the separator and never opens one with it
+        const subLabel = `${String(roleLabel).replace(/\s+([^\s]+)\s*$/, '\u00a0$1')}\u00a0\u00b7 T${s.tier}` +
+          (yard.usedHull ? `\u00a0\u00b7 used\u00a0hull` : yard.offer ? `\u00a0\u00b7 yard\u00a0offer` : '');
+        const hullLabel = yard.usedHull ? `Used ${s.name}${yard.usedHull.callsign ? ' \u00b7 ' + yard.usedHull.callsign : ''}` : s.name;
+        const price = yard.price;
+        const priceWord = price > 0 ? fmt(price) + ' credits' : 'owned';
+        return (
+          `<button type="button" ${stationControlAttrs('preview-hull')} class="k-row sx-sw-row${on}" data-buy="${escapeHtml(s.id)}" data-why="${escapeHtml(s.name)} · ${escapeHtml(roleLabel)}" aria-label="Preview ${escapeHtml(hullLabel)}, ${escapeHtml(roleLabel)}, ${escapeHtml(priceWord)}" aria-pressed="${s.id === buyId}" aria-selected="${s.id === buyId}">` +
+            `<span class="k-row__name sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(hullLabel)}</span>` +
+              `<span class="k-row__sub sx-sw-row__sub">${escapeHtml(subLabel)}</span></span>` +
+            `<span class="k-row__num sx-sw-row__price">${price > 0 ? fmt(price) : 'Owned'}</span>` +
+          `</button>`
+        );
+      }).join('');
+    }
+    dressRail();
+    syncScrollExtent(railListEl);
+    syncListFold();
+    requestAnimationFrame(updateRailControls);
+    requestAnimationFrame(syncListFold);
+  }
+
+  function selectRailButton(button, { focus = false } = {}) {
+    if (!button || !railListEl.contains(button)) return false;
+    const fleetIndex = button.getAttribute('data-fleet');
+    const buyShipId = button.getAttribute('data-buy');
+    if (fleetIndex == null && buyShipId == null) return false;
+    if (fleetIndex != null) viewIdx = Number(fleetIndex);
+    else buyId = buyShipId;
+    selectedSlot = -1;
+    rememberShipView();
+    renderRail();
+    renderCenter();
+    renderSide();
+    queueRevealSelectedShip({ focus });
+    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+    return true;
+  }
+
+  // ---------- center: preview + stats ----------
+  function renderCenter() {
+    ghostActive = false;
+    ghostSource = null;
+    ghostBandModel = null;
+    const previewCtx = currentPreviewContext();
+    if (!previewCtx) {
+      nameplateEl.innerHTML = '';
+      statsEl.innerHTML = '';
+      scarfieldEl.innerHTML = '';
+      activeBandModel = null;
+      return;
+    }
+    previewShip(previewCtx.defId, previewCtx.fittings, previewCtx.isPlayer, null, previewCtx.appearance);
+    activeBandModel = deriveBandModel(previewCtx);
+    renderCrest(activeBandModel);
+    renderApron(activeBandModel);
+    stampStatsProvenance(activeBandModel);
+    syncPowerBand(activeBandModel);
+    renderScarCallouts(activeBandModel);
+    renderSpatialSlots();
+    if (activePresetRailModel && activePresetRailModel.selectedPreset) applyPresetGhost(activePresetRailModel.selectedPreset);
+  }
+
+  // ---------- right: slots (fleet) or spec+buy (buy) ----------
+  function renderSide() {
+    blackFlagRegistry.render(mode === 'fleet' ? viewedShip() : null);
+    if (mode === 'buy') {
+      const def = SHIP_BY_ID.get(buyId);
+      if (!def) { sideEl.innerHTML = ''; return; }
+      const slotSummary = Object.entries(def.slots || {}).filter(([, arr]) => (arr || []).length)
+        .map(([t, arr]) => `<span class="sx-spec__hp">${(arr || []).length}×\u00a0${escapeHtml(SLOT_LABEL[t] || t)}</span>`).join('');
+      const credits = (ctx.state.player && ctx.state.player.credits) || 0;
+      // NXI-120: both hulls in the compare are read at the same declared load — the hold the
+      // player carries now — so switching candidates never mixes an empty guess with a loaded
+      // truth, and the candidate number matches the preview the same selection renders.
+      const railCompare = buyRailComparisonFacts(ctx.state.player, def.id);
+      const facts = railCompare.candidate || catalogHullFacts(def.id);
+      // FB-062 — the chit reads this yard's price, and a hull another yard builds exclusively
+      // is not buyable here at all.
+      const yard = shipyardPurchaseQuote(ctx.state, def.id);
+      const usedHull = yard.usedHull;
+      const hullLabel = usedHull ? `Used ${def.name}${usedHull.callsign ? ' \u00b7 ' + usedHull.callsign : ''}` : def.name;
+      const buyLabel = usedHull ? 'Buy used hull' : 'Buy ship';
+      const price = yard.price;
+      const afford = price <= credits;
+      const isOwned = !usedHull && owned().some((s) => s.defId === def.id);
+      const availability = shipworksActionAvailability(ctx.state);
+      const canBuy = afford && availability.hullEnabled && yard.listed;
+      // a key that cannot be pressed still says what it would do; why it cannot stands under it as a label
+      const whyNot = !yard.listed
+        ? 'Not built at this yard'
+        : !availability.hullEnabled ? availability.hullLabel : (afford ? '' : `${fmt(price - credits)} cr short`);
+      const buyAria = canBuy ? buyLabel : `${buyLabel}, ${whyNot}`;
+      // The stage-right column: the hull's name and class, its price as the hero number, then the hull as
+      // readings against the one you fly (each carries your hull's value as its ghost: ice where this hull
+      // gains, dim bone where it costs), and Buy as the one primary key. The sockets stand on the disc.
+      const mine = activeOwnedDef();
+      const mineFacts = railCompare.current || (mine ? catalogHullFacts(mine.id) : null);
+      const compare = !!(mine && mine.id !== def.id);
+      // One class + build word: the same sheet the stage already mounts. The authored role and the
+      // bare tier digit used to stand here beside the sheet's own words, naming the hull twice.
+      const sideSheet = shipStatSheet({
+        shipId: def.id,
+        fittings: [],
+        player: declaredLoadPlayer(ctx.state.player),
+      });
+      const sideClass = sideSheet
+        ? `${sideSheet.roleLabel} \u00b7 ${sideSheet.identity.label}`
+        : roleLabelFor(def.role);
+      const reading = (label, value, ownValue, unit, lowerIsBetter = false) => {
+        const v = Number(value) || 0; const o = Number(ownValue) || 0;
+        let ghost = '';
+        if (compare && v !== o) {
+          const better = lowerIsBetter ? v < o : v > o;
+          ghost = `<i class="sx-sw-read__ghost ${better ? 'is-gain' : 'is-loss'}">\u2190 ${fmt(o)}</i>`;
+        }
+        return `<li class="sx-sw-read__cell"><span class="sx-sw-read__v"><b>${fmt(v)}${unit ? `<small>${unit}</small>` : ''}</b>${ghost}</span><span class="sx-sw-read__k">${label}</span></li>`;
+      };
+      sideEl.innerHTML =
+        `<h3 class="k-t-sub sx-sw-side__name">${entitySpanHtml('hull:' + def.id, escapeHtml(hullLabel))}</h3>` +
+        `<p class="sx-sw-side__class">${escapeHtml(sideClass)}</p>` +
+        `<div class="k-hero sx-sw-side__hero"><span class="k-hero__n">${price > 0 ? fmt(price) : 'Starter'}</span><span class="k-hero__w">${price > 0 ? (usedHull ? 'credits · used hull' : yard.offer ? 'credits · yard offer' : 'credits') : 'hull'}</span></div>` +
+        (usedHull ? `<p class="k-sentence sx-muted">${escapeHtml(usedHull.scarSentence)} ${escapeHtml(usedHull.deedLine)} Thrusters bored out; pulls harder than stock.</p>` : '') +
+        // Engineering readings do not lead the buy decision; they are one press away.
+        `<details class="sx-sw-side__details">` +
+          `<summary>Details</summary>` +
+          `<ul class="sx-sw-read" aria-label="${compare ? `Readings against your ${escapeHtml(mine.name)}` : 'Readings'}">` +
+            reading('Hull', facts.hull, mineFacts && mineFacts.hull, '') + reading('Shield', facts.shield, mineFacts && mineFacts.shield, '') +
+            reading('Cargo', facts.cargo, mineFacts && mineFacts.cargo, 'u') + reading('Mass', facts.mass, mineFacts && mineFacts.mass, 't', true) +
+            reading('Speed', facts.speed, mineFacts && mineFacts.speed, '') +
+          `</ul>` +
+          (compare
+            ? `<p class="sx-sw-read__vs">\u2190 your ${escapeHtml(mine.name)} — both at your ${fmt(railCompare.loadMass)} t load</p>`
+            : '') +
+        `</details>` +
+        `<p class="sx-sw-read__hp">Hardpoints: ${slotSummary || '\u2014'}</p>` +
+        `<ul class="k-words k-words--row sx-buybar${canBuy || isOwned ? '' : ' is-blocked'}">` +
+          (isOwned
+            ? `<li><span class="k-word k-word--emph k-38 sx-btn-ghost">In your fleet</span></li>`
+            : `<li><button type="button" ${stationControlAttrs('buy-ship')} class="k-word k-word--emph k-word--primary sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${usedHull ? `data-listing-id="${escapeHtml(usedHull.listingId)}"` : ''} ${canBuy ? '' : 'disabled'} aria-label="${escapeHtml(buyAria)}">${buyLabel}${canBuy ? ` <small>${fmt(price)} cr</small>` : ''}</button></li>` +
+              (canBuy ? '' : `<li class="sx-buybar__why" aria-hidden="true">${escapeHtml(whyNot)}</li>`)) +
+        `</ul>` +
+        (usedHull ? lotDeskHtml(credits) : '');
+      dressSide();
+      syncCompactLotDesk(hullLabel);
+      drawBuyRim();
+      const priceN = sideEl.querySelector('.sx-sw-side__hero .k-hero__n');
+      if (priceN && price > 0) rollTo(priceN, price);
+      return;
+    }
+    // Fleet: the projected nodes on the hull own selection. This lower circuit makes the loadout
+    // legible at a glance without duplicating every slot in a permanent sidebar.
+    const s = viewedShip();
+    const def = s ? SHIP_BY_ID.get(s.defId) : null;
+    if (!def) { sideEl.innerHTML = ''; return; }
+    const slots = buildSlotList(def);
+    const fittings = s.fittings || [];
+    const equippedDefs = fittings.map((id) => id && FITTABLE_BY_ID.get(id)).filter(Boolean);
+    // The side panel's identity is the SHIP SHEET's class + build word, never the authored role
+    // alone: the sheet beside it and the rail must not name the same hull two different things.
+    const sideSheet = shipStatSheet({ shipId: def.id, fittings, player: ctx.state.player });
+    const sideClass = sideSheet ? sideSheet.roleLabel : roleLabelFor(def.role);
+    const sideWord = sideSheet ? ` \u00b7 ${sideSheet.identity.label}` : '';
+    const systemDraw = new Map();
+    for (const t of ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility', 'thruster']) systemDraw.set(t, 0);
+    for (const d of equippedDefs) {
+      const draw = Number(d.energyDraw) || (d.continuous ? Number(d.energyCost) || 0 : 0);
+      systemDraw.set(d.slotType, (systemDraw.get(d.slotType) || 0) + draw);
+    }
+    const totalDraw = [...systemDraw.values()].reduce((a, b) => a + b, 0);
+    // the stock drive is the hull's drive: counted with the fitted systems, as the drawing counts it
+    const stockDriveCounted = slots.some((slot, i) => slot.type === 'engine' && !fittings[i])
+      && !!(activeBandModel && activeBandModel.stockDrive);
+    const flows = [...systemDraw.entries()].filter(([type]) => slots.some((slot) => slot.type === type));
+    const activeIndex = Number(ctx.state.player && ctx.state.player.activeShipIndex) || 0;
+    const inspectedIndex = owned().indexOf(s);
+    const availability = shipworksActionAvailability(ctx.state);
+    // PQ-205.03: the bomb rack rides the same circuit plate — sockets are clickable cells that
+    // open the ordnance chooser; restock and the third-socket weld are berth verbs gated by
+    // outfitting access exactly like the module verbs above.
+    const rack = bombRackModel();
+    const rackCells = rack.cells.map((cell, i) => {
+      const d = cell && BOMB_DEFS[cell.id];
+      const dry = !!d && !(cell.count > 0);
+      const label = d ? d.name : 'Empty socket';
+      const sub = d ? (dry ? `fitted · magazine dry — restock from the hangar` : `${cell.count}/${d.magazine} loaded`) : 'choose ordnance';
+      return `<li class="k-row sx-sw-rack__cell${dry || !d ? ' is-empty' : ''}" data-rack-socket="${i}" tabindex="0" role="button" aria-label="Rack socket ${i + 1}: ${escapeHtml(label)}">` +
+        // Name over its state, the way the system rows above it read ("Weapon / 0/1 fitted"):
+        // inline, the two ran together as "Empty socketchoose ordnance".
+        `<span class="k-row__name sx-sw-flow__copy sx-sw-rack__copy">${escapeHtml(label)} <span class="k-row__sub">${escapeHtml(sub)}</span></span>` +
+        `<span class="k-row__num k-38">S${i + 1}</span></li>`;
+    }).join('');
+    const armedCells = rack.cells.filter((c) => c && c.id && c.count > 0).length;
+    const stockTotal = Object.values(rack.stock).reduce((sum, n) => sum + (Number(n) || 0), 0);
+    const anyMagazine = rack.cells.some((c) => c && BOMB_DEFS[c.id]);
+    // NXB-009: the rack verb asks the owner for the real whole-rack preparation plan —
+    // owned-stock top-up AND purchasable ammunition under one atomic yard charge. The
+    // label/hint read the quoted cost, loaded units and any partial-limiting reason.
+    const prepReq = availability.outfitEnabled && ctx.bus ? { options: {}, quote: null } : null;
+    if (prepReq) ctx.bus.emit('ui:previewBombRackPreparation', prepReq);
+    const prepPlan = prepReq && prepReq.quote && prepReq.quote.plan && prepReq.quote.plan.ok === true ? prepReq.quote.plan : null;
+    const prepReady = !!(prepPlan && prepPlan.changed);
+    // A dry magazine the yard cannot afford to touch is "need credits", not "nothing" —
+    // the disabled reason stays truthful.
+    const prepBroke = !!(prepPlan && !prepReady && prepPlan.unmetNeed > 0 && prepPlan.limitingReason === 'credits');
+    const rackVerbs = [];
+    let prepNote = null;
+    if (anyMagazine) {
+      const prepareLabel = !availability.outfitEnabled ? 'Dock to prepare'
+        : prepReady
+          ? `Prepare ${prepPlan.roundsLoaded} · ${fmt(prepPlan.totalCost)} cr`
+          : prepBroke ? 'Need credits to prepare' : 'Nothing to prepare';
+      const prepareHint = !availability.outfitEnabled ? availability.outfitLabel
+        : prepReady
+          ? (prepPlan.limitingReason === 'credits'
+            ? rackPartialFillLine(prepPlan.roundsLoaded)
+            : rackLoadLine(prepPlan.roundsLoaded))
+          : prepBroke
+            ? rackShortLine(prepPlan.unmetNeed)
+            : 'Rack is already prepared';
+      if (prepReady && prepPlan.limitingReason === 'credits') prepNote = prepareHint;
+      // No native title: the hint prints in visible type (prepNote) and the disabled state
+      // carries the aria-label — matching the upgrade verb below (check-ui-native-titles).
+      rackVerbs.push(`<li><button type="button" ${stationControlAttrs('restock')} class="k-word k-word--fine" data-rack-restock ${availability.outfitEnabled && prepReady ? '' : `disabled aria-label="${escapeHtml(prepareHint)}"`}>${escapeHtml(prepareLabel)}</button></li>`);
+    }
+    if (rack.sockets < BOMB_RACK.socketsMax) {
+      const afford = rack.credits >= BOMB_RACK.socketUpgradeCr;
+      const upgradeLabel = !availability.outfitEnabled ? 'Dock to extend'
+        : afford ? `Third socket · ${fmt(BOMB_RACK.socketUpgradeCr)} cr` : `Third socket · need ${fmt(BOMB_RACK.socketUpgradeCr)} cr`;
+      const upgradeHint = !availability.outfitEnabled ? availability.outfitLabel
+        : afford ? 'Weld a third bomb-rack socket into the bay' : 'Not enough credits';
+      rackVerbs.push(`<li><button type="button" ${stationControlAttrs('upgrade-rack')} class="k-word k-word--fine" data-rack-upgrade ${availability.outfitEnabled && afford ? '' : `disabled aria-label="${escapeHtml(upgradeHint)}"`}>${escapeHtml(upgradeLabel)}</button></li>`);
+    }
+    const rackBlock =
+      `<div class="sx-sw-rack">` +
+        `<p class="k-caps sx-sw-band__label">Bomb rack <span class="k-38">${armedCells}/${rack.sockets} armed · ${stockTotal} stowed</span></p>` +
+        `<ul class="k-rows sx-sw-rack__cells">${rackCells}</ul>` +
+        (rackVerbs.length ? `<ul class="k-words k-words--row sx-sw-rack__verbs">${rackVerbs.join('')}</ul>` : '') +
+        // Credit-limited partial fills say so in visible type, not just the button title.
+        (prepNote ? `<p class="k-sentence sx-muted">${escapeHtml(prepNote)}</p>` : '') +
+      `</div>`;
+    // MAKE ACTIVE is a berth verb — it never renders on the flight host (SCREENS_B §1.2). While
+    // docked it stays gated by hull service availability with the reason printed on the verb.
+    const switchCargo = host === 'dock' && inspectedIndex !== activeIndex
+      ? hullSwitchCargoGuidance(ctx.state, inspectedIndex) : '';
+    const activeControl = host === 'flight' ? '' : inspectedIndex !== activeIndex
+      ? `<li><button type="button" ${stationControlAttrs('make-active')} class="k-word k-word--emph sx-sw-circuit__activate" data-activate-ship="${inspectedIndex}" ${availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(availability.hullEnabled ? 'Make active. ' + switchCargo : availability.hullLabel)}">${availability.hullEnabled ? 'Make active' : escapeHtml(availability.hullLabel)}</button></li>`
+      : `<li><span class="k-word k-word--emph k-38 sx-sw-circuit__active">Active flight hull</span></li>`;
+    // The stage-right column: the build's class + word, each system's fit state as a row, and one
+    // sentence telling the player where to click. Engineering units live behind the sheet's Details
+    // door, not here.
+    sideEl.innerHTML =
+      `<div class="sx-sw-circuit">` +
+        `<h3 class="k-t-sub sx-sw-circuit__identity">${escapeHtml(sideClass)}${escapeHtml(sideWord)}` +
+          `<span class="k-t-fine k-38 sx-sw-circuit__sub">${equippedDefs.length + (stockDriveCounted ? 1 : 0)}/${slots.length} systems fitted</span></h3>` +
+        // ORRERY: the core as a dial -- its capacity the arc, each system's draw lit along it.
+        // No capacity or draw number is printed: those are Details readings.
+        `<div class="k-hero sx-sw-circuit__core">${powerDialSvg({ cap: def.energyCap || 0, draws: flows, systems: circuitSystems(def, fittings) })}</div>` +
+        `<ul class="k-rows sx-sw-circuit__flows">${flows.map(([type, draw]) => {
+          const available = slots.filter((slot) => slot.type === type).length;
+          const fitted = slots.reduce((n, slot, i) => n + (slot.type === type && fittings[i] ? 1 : 0), 0);
+          const strength = Math.max(.12, Math.min(1, totalDraw > 0 ? draw / totalDraw : .12));
+          // a hull flying its stock drive has a drive: the table says so, as the drawing does
+          const stock = type === 'engine' && fitted === 0 && activeBandModel && activeBandModel.stockDrive;
+          const chosen = selectedSlot >= 0 && slots[selectedSlot] && slots[selectedSlot].type === type;
+          return `<li class="k-row k-row--static sx-sw-flow${chosen ? ' is-selected' : ''}" style="--flow:${strength}" data-system-type="${escapeHtml(type)}">` +
+            `<span class="k-row__name k-62 sx-sw-flow__copy">${escapeHtml(SLOT_LABEL[type] || type)}<span class="k-row__sub">${stock ? 'stock' : `${fitted}/${available} fitted`}</span></span>` +
+          `</li>`;
+        }).join('')}</ul>` +
+        `<p class="k-sentence sx-sw-circuit__instruction">Choose a system on the hull to preview compatible hardware.</p>` +
+        (switchCargo ? `<p class="k-sentence sx-sw-circuit__hold-note">${escapeHtml(switchCargo)}</p>` : '') +
+        (activeControl ? `<ul class="k-words k-words--row sx-sw-circuit__acts">${activeControl}</ul>` : '') +
+        (inspectedIndex === activeIndex ? ransomDeskHtml() : '') +
+        rackBlock +
+      `</div>`;
+    dressSide();
+    syncCompactLotDesk(s.name || def.name);
+  }
+
+  // The rack lives on the bombs bag, not the hull record — the bay is one per player, shared
+  // across owned hulls (same ownership lane as selectedId before it). Reads are defensive:
+  // a pre-rack bag reads as a two-socket starter so the plate always renders honest.
+  function bombRackModel() {
+    const rt = (ctx.state && ctx.state.bombs) || {};
+    const rack = rt.rack && typeof rt.rack === 'object' ? rt.rack : null;
+    const sockets = Math.max(1, Math.floor(Number(rack && rack.sockets)) || BOMB_RACK.socketsBase);
+    const cells = [];
+    const source = rack && Array.isArray(rack.cells) ? rack.cells : [];
+    for (let i = 0; i < sockets; i++) {
+      const c = source[i];
+      cells.push(c && BOMB_DEFS[c.id] ? { id: c.id, count: Math.max(0, Math.floor(Number(c.count) || 0)) } : null);
+    }
+    const stock = {};
+    if (rt.stock && typeof rt.stock === 'object') {
+      for (const [id, n] of Object.entries(rt.stock)) {
+        if (BOMB_DEFS[id] && Number.isFinite(Number(n)) && n > 0) stock[id] = Math.floor(Number(n));
+      }
+    }
+    return { sockets, cells, stock, credits: Math.max(0, Number(ctx.state.player && ctx.state.player.credits) || 0) };
+  }
+
+  // the hull the player flies: the For Sale readings and sockets are read against it
+  function activeOwnedDef() {
+    const o = owned();
+    const idx = Number(ctx.state && ctx.state.player && ctx.state.player.activeShipIndex) || 0;
+    const ship = o[idx] || o[0];
+    return ship ? SHIP_BY_ID.get(ship.defId) || null : null;
+  }
+  // a Buy key that cannot be pressed is its own cut outline (the 45 degree corner the lit key carries) in
+  // bone, the verb dim inside it
+  function drawBuyRim() {
+    const key = sideEl.querySelector('.sx-buybar [data-buyship]:disabled');
+    if (!key) return;
+    const place = () => {
+      const w = key.offsetWidth || 0; const h = key.offsetHeight || 0;
+      if (w < 20 || h < 12) return;
+      let rim = key.querySelector(':scope > .sx-buykey__rim');
+      if (!rim) { rim = orrSvg('svg', { class: 'sx-buykey__rim', 'aria-hidden': 'true', focusable: 'false' }); key.appendChild(rim); }
+      rim.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      // the rim covers the key's border box (the lit key's field fills its border too)
+      const cs = getComputedStyle(key);
+      Object.assign(rim.style, { left: `${-(parseFloat(cs.borderLeftWidth) || 0)}px`, top: `${-(parseFloat(cs.borderTopWidth) || 0)}px`, width: `${w}px`, height: `${h}px` });
+      const c = 10;
+      rim.innerHTML = '';
+      rim.appendChild(orrSvg('path', { d: `M 0.5 0.5 L ${w - c - 0.5} 0.5 L ${w - 0.5} ${c + 0.5} L ${w - 0.5} ${h - 0.5} L 0.5 ${h - 0.5} Z` }));
+    };
+    place();
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(place);
+  }
+
+  // The six-stat reading of a candidate, from the same model the sheet above mounts. A row never
+  // prints a raw engineering number; it prints the tenths move the player will see on the bars.
+  function sheetDeltaChipsHtml(liveSheet, hullDef, fittings, slotIndex, candidate) {
+    if (!liveSheet || !hullDef || !candidate) return '';
+    const prospective = Array.isArray(fittings) ? fittings.slice() : [];
+    prospective[slotIndex] = candidate.id;
+    const after = shipStatSheet({ shipId: hullDef.id, fittings: prospective, player: ctx.state.player });
+    if (!after) return '';
+    const rows = shipStatDelta(liveSheet, after)
+      .filter((row) => row.delta !== 0)
+      .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+      .slice(0, 3);
+    if (!rows.length) return '<span class="sx-modrow__unchanged">No change to the six</span>';
+    return rows.map((row) => {
+      const sign = row.delta > 0 ? '+' : '\u2212';
+      const amount = (Math.abs(row.delta) / 10).toFixed(1);
+      return `<span class="sx-modrow__chip is-${row.tone === 'gain' ? 'up' : 'down'}">${sign}${amount} ${escapeHtml(row.label)}</span>`;
+    }).join(' ');
+  }
+
+  // The role - Mk line. The intent is only repeated on the row when it is not the slot default;
+  // the intent heading above the group already says what the player is browsing.
+  function partMetaHtml(facts, id) {
+    if (!facts) return 'Mk I';
+    const intent = intentDiffersFromSlot(id) ? ` · ${facts.intentLabel}` : '';
+    return `${escapeHtml(facts.role)} · ${escapeHtml(facts.tier)}${escapeHtml(intent)}`;
+  }
+
+  // Intent-first headings with their counts. The list is already sorted; this only inserts one
+  // heading when the intent changes, so a 40-row Work bucket reads as a section, not a wall.
+  function intentGroupedHtml(items, htmlFor) {
+    const idOf = (item) => {
+      if (!item) return null;
+      if (item.d && item.d.id) return item.d.id;
+      if (item.row && item.row.d && item.row.d.id) return item.row.d.id;
+      return item.id || null;
+    };
+    const counts = new Map();
+    for (const item of items) {
+      const facts = partFacts(idOf(item));
+      const key = facts ? facts.intent : 'work';
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    let last = null;
+    const out = [];
+    for (const item of items) {
+      const facts = partFacts(idOf(item));
+      const key = facts ? facts.intent : 'work';
+      if (key !== last) {
+        out.push(`<li class="sx-chooser__intent k-caps" role="presentation"><span>${escapeHtml(facts ? facts.intentLabel : 'Other')}</span> <span class="k-38">${counts.get(key) || 0}</span></li>`);
+        last = key;
+      }
+      out.push(htmlFor(item));
+    }
+    return out.join('');
+  }
+
+  function moduleRiskChipsHtml(shipDef, fittings, slotIndex, candidate) {
+    if (!shipDef || !candidate) return '';
+    const prospective = Array.isArray(fittings) ? fittings.slice() : [];
+    prospective[slotIndex] = candidate.id;
+    const risks = moduleRiskStrip(prospective, {
+      shipId: shipDef.id,
+      fittings: prospective,
+      player: ctx.state.player,
+    }).risks || [];
+    return risks.slice(0, 3).map((risk) =>
+      `<span class="sx-modrow__chip">Risk: ${escapeHtml(risk.label)}</span>`).join('');
+  }
+
+  // ---------- slot chooser (the compatible modules take the hang column) ----------
+  function openChooser(slotIndex, anchorEl, opts = {}) {
+    chooserEpoch++;
+    cancelFitPending();
+    clearSableDemo(); sableSelection = null;
+    const s = viewedShip(); const def = s ? SHIP_BY_ID.get(s.defId) : null;
+    if (!def) return;
+    if (selectedPresetIdForHull(def.id)) {
+      setSelectedPresetIdForHull(def.id, null, { remember: true });
+      restoreCurrentPreview();
+    }
+    const slots = buildSlotList(def); const slot = slots[slotIndex];
+    if (!slot) { if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' }); return; }
+    if (!opts.silent) emitUiCue(UI_SWITCH_DETENT_CUE);
+    explodeOut(slotIndex);
+    const fittings = s.fittings || [];
+    const liveSheet = shipStatSheet({ shipId: def.id, fittings, player: ctx.state.player });
+    const fittedId = fittings[slotIndex];
+    const availability = shipworksActionAvailability(ctx.state);
+    const shopStationId = ctx.state.ui && ctx.state.ui.docked === true ? ctx.state.ui.dockedStationId : null;
+    const byTierThenPrice = (a, b) => (a.tier - b.tier) || (a.price - b.price);
+    // Retired arsenal (owner 2026-10-22, design/expansion/05_ASSET_ROSTER.md §7.3) is off the buy list;
+    // an owned copy still leads the chooser from the hold below.
+    const sameType = FITTABLE.filter((d) => d.slotType === slot.type && d.purchasable !== false && !d.retiredInto);
+    // P2 — the catalogue is ordered by WHAT YOU WANT TO DO (fight, survive, move, carry, work,
+    // sneak), then down the Mk ladder, then by name. A slot type is a fitting constraint, not a way
+    // to browse.
+    const compatById = new Map(sameType.map((d) => [d.id, d]));
+    const compat = sortIdsByIntent(sameType.filter((d) => fits(slot, d)).map((d) => d.id))
+      .map((id) => compatById.get(id))
+      .filter(Boolean);
+    // PQ-176.02: a weapon of the right size that this hardpoint's class refuses stays on the list,
+    // locked, with the sentence. The fit screen refuses an illegal mount in words, not by omission.
+    const refused = slot.type === 'weapon'
+      ? sameType.filter((d) => sizeFits(slot, d) && !fits(slot, d)).sort(byTierThenPrice)
+      : [];
+    const hardpoint = hardpointClassOf(slot);
+    const ringPct = Math.round(TURRET_RING_OUTPUT * 100);
+
+    // Modules the player already owns and un-fitted sit in player.moduleInventory — the only
+    // way back into a slot is ui:fitModule with the row's instanceId, so the hold leads the
+    // chooser. Duplicate defs collapse to one row with a count; the fit verb carries the first
+    // matching instance. Rows without a usable instanceId are unfittable — a dead Fit button is
+    // the defect class this section exists to close, so they are skipped.
+    const inventory = (ctx.state.player && Array.isArray(ctx.state.player.moduleInventory))
+      ? ctx.state.player.moduleInventory : [];
+    // NXI-127 — a provenance/condition-tagged instance keeps its own row: two identical catalog
+    // units with different identities never collapse into one pristine-looking count, and the
+    // Fit verb still carries the identity group's own instanceId. Pristine units share the
+    // empty signature and collapse exactly as before.
+    const holdByDef = new Map();
+    const holdRefusedByDef = new Map();
+    for (const item of inventory) {
+      const d = item && FITTABLE_BY_ID.get(item.defId);
+      if (!d || d.slotType !== slot.type) continue;
+      const instText = instanceIdentityText(item);
+      // Row 500 — a unit with a recorded history keeps its tier rim on the icon
+      // (copper/silver/gold/pearl/paper), the same mark the hull part shows.
+      const provMark = (normalizeModuleProvenance(item, d) || {}).mark || null;
+      const key = d.id + '|' + instText;
+      if (fits(slot, d)) {
+        if (typeof item.instanceId !== 'string' || !item.instanceId) continue;
+        const row = holdByDef.get(key) || { d, count: 0, instanceId: item.instanceId, instText, provMark };
+        row.count += 1;
+        holdByDef.set(key, row);
+      } else if (slot.type === 'weapon' && sizeFits(slot, d)) {
+        // Right size, wrong mount — the buy list refuses these in words; the hold must too.
+        const row = holdRefusedByDef.get(key) || { d, count: 0, instText, provMark };
+        row.count += 1;
+        holdRefusedByDef.set(key, row);
+      }
+    }
+    const researched = (ctx.state.player && Array.isArray(ctx.state.player.researchedNodes))
+      ? ctx.state.player.researchedNodes : [];
+    const sableTrialButton = d => sableVennServiceAvailable(ctx.state)
+      ? `<button type="button" ${stationControlAttrs('sable-demo')} class="k-word k-word--fine" data-sable-demo="${escapeHtml(d.id)}" data-sable-slot="${slotIndex}" aria-label="Sable Venn: demonstrate ${escapeHtml((partFacts(d.id) || {}).name || d.name)}">${stationControlLabel('sable-demo')}</button>` : '';
+    const holdRowHtml = ({ d, count, instanceId, instText, mountBlock, provMark }) => {
+      const headConflict = findMasslineHeadConflict(fittings, slotIndex, d);
+      const prospective = fittings.slice();
+      prospective[slotIndex] = d.id;
+      const budgetBlocker = outfitBudgetBlocker(def, prospective);
+      // The backend's isUnlocked gate — a held research-locked module must refuse in words,
+      // not click through to a toast. A standing exclusive refuses the same way: the rep
+      // mirror of the research stop (rep ≥ minRep opens it, nothing else does).
+      const standingBlock = d.exclusivity && !exclusivityRepMet(d.exclusivity, ctx.state && ctx.state.factions)
+        ? (exclusivityLockLabel(d.exclusivity) || 'Requires Allied standing with its faction') : null;
+      const researchBlock = (d.requiresTech && !researched.includes(d.requiresTech) && !stationShopOffer(d, shopStationId)
+        ? 'Research required: ' + techDisplayName(d.requiresTech) : null) || standingBlock;
+      const blocked = mountBlock || headConflict || budgetBlocker || researchBlock;
+      const blockedText = mountBlock
+        ? (mountRefusal(slot, d) || fitRefusalText(slot, d) || `${(partFacts(d.id) || {}).name || d.name} does not fit this slot`)
+        : headConflict
+          ? `Unfit ${headConflict.name} before installing another Massline head.`
+          : researchBlock || (budgetBlocker && budgetBlocker.text) || '';
+      const countTag = count > 1 ? ` ×${count}` : '';
+      // P2 — the ladder is Mk I/II/III and the role says what the part is. The intent lives in the
+      // group heading above the row, not as a repeated middot on every line.
+      const facts = partFacts(d.id);
+      const metaFallback = partMetaHtml(facts, d.id);
+      const btn = blocked
+        ? `<span class="k-t-fine k-38 sx-modrow__lock">In hold${countTag}</span>`
+        : `<button type="button" ${stationControlAttrs('fit-from-hold')} class="k-word k-word--fine k-word--primary sx-modrow__buy" data-fit-inv="${escapeHtml(instanceId)}" data-fit-inv-slot="${slotIndex}" ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>Fit${countTag}</button>`;
+      const iconHtml = provMark
+        ? `<span class="sx-provmark" data-mark="${escapeHtml(provMark)}" tabindex="0" role="img" aria-label="${escapeHtml(provMark)} rim" data-why="${escapeHtml(provMark)} rim">${equipmentIcon(d, 24)}</span>`
+        : equipmentIcon(d, 24);
+      return (
+        `<li class="k-row sx-modrow sx-modrow--hold${blocked ? ' is-locked' : ''}"${headConflict ? '' : ` data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${iconHtml} ${entitySpanHtml('module:' + d.id, escapeHtml(facts ? facts.name : d.name))}</span>` +
+            `<span class="k-row__sub sx-modrow__role">${metaFallback} · ${escapeHtml(facts ? facts.sentence : '')}</span>` +
+            `<span class="k-row__sub sx-modrow__metrics">${sheetDeltaChipsHtml(liveSheet, def, fittings, slotIndex, d)}</span>` +
+            (instText ? `<span class="k-row__sub k-38 sx-modrow__instance">This unit: ${escapeHtml(instText)}</span>` : '') +
+            `<span class="k-row__sub k-38 sx-modrow__role"${blocked ? ' data-refusal' : ''}>${blocked ? escapeHtml(blockedText) : 'Already paid for — fits this slot.'}</span></span>` +
+          `<span class="k-row__num sx-modrow__act">${sableTrialButton(d)}${btn}</span>` +
+        `</li>`
+      );
+    };
+    const holdRows = [...holdByDef.values()]
+      .sort((a, b) => compareParts(partFacts(a.d.id), partFacts(b.d.id)))
+      .map((r) => ({ row: r }))
+      .concat([...holdRefusedByDef.values()]
+        .sort((a, b) => compareParts(partFacts(a.d.id), partFacts(b.d.id)))
+        .map((r) => ({ row: { ...r, mountBlock: true } })));
+    const holdList = intentGroupedHtml(holdRows, (entry) => holdRowHtml(entry.row));
+
+    const list = intentGroupedHtml(compat, (d) => {
+      const headConflict = findMasslineHeadConflict(fittings, slotIndex, d);
+      const equipped = d.id === fittedId;
+      // NXI-127 — the fitted occupancy's instance record names THIS unit (recovered/worn) so the
+      // selected instance does not read as a generic pristine catalog unit.
+      const equippedInstText = equipped
+        ? instanceIdentityText((s.fittedInstances || {})[slotIndex])
+        : '';
+      // Row 500 — the fitted unit's recorded history rims its icon with the tier mark.
+      const equippedMark = equipped
+        ? ((normalizeModuleProvenance((s.fittedInstances || {})[slotIndex], d) || {}).mark || null)
+        : null;
+      const fittedDef = fittedId ? FITTABLE_BY_ID.get(fittedId) : null;
+      const chips = sheetDeltaChipsHtml(liveSheet, def, fittings, slotIndex, d);
+      const purchase = describeOutfittingPurchase(d, ctx.state.player || {}, slots, fittings, def, { stationId: shopStationId, factions: ctx.state.factions, state: ctx.state });
+      const selectedFittings = fittings.slice();
+      selectedFittings[slotIndex] = d.id;
+      const selectedBudgetBlocker = outfitBudgetBlocker(def, selectedFittings);
+      const selectedFit = !equipped && !purchase.disabled && !headConflict && !selectedBudgetBlocker;
+      const riskChips = moduleRiskChipsHtml(def, fittings, slotIndex, d);
+      // P2 — the ladder is Mk I/II/III and the role says what the part is. The intent lives in the
+      // group heading above the row, not as a repeated middot on every line.
+      const facts = partFacts(d.id);
+      const metaFallback = partMetaHtml(facts, d.id);
+      const ringNote = mountOutputFactor(d, slot) < 1 ? ` The ring aims it for you at ${ringPct} % output.` : '';
+      const detailName = facts ? facts.name : d.name;
+      const fittedName = fittedDef ? ((partFacts(fittedDef.id) || {}).name || fittedDef.name) : null;
+      const actionDetail = equipped ? 'Installed in this slot.'
+        : purchase.disabled ? purchase.title
+        : headConflict ? `Unfit ${headConflict.name} before installing another Massline head. This purchase goes to inventory.`
+        : selectedBudgetBlocker ? `${selectedBudgetBlocker.text || 'This fitting exceeds the hull budget'}. This purchase goes to inventory.`
+        : selectedFit && fittedId
+        ? `Buy ${detailName} and replace ${fittedName || 'the fitted module'}; the removed module goes to inventory.${ringNote}`
+        : selectedFit
+          ? `Buy ${detailName} and fit it to this ${slot.type} ${slot.size} slot.${ringNote}`
+        : purchase.title;
+      const viewingActiveHull = viewIdx === ((ctx.state.player && ctx.state.player.activeShipIndex) || 0);
+      const fitsOnceFunded = !equipped && purchase.state === 'funding' && !headConflict && !selectedBudgetBlocker;
+      const jobImpact = (selectedFit || fitsOnceFunded) && viewingActiveHull
+        ? outfittingJobImpact(ctx.state, d, fittedId || null, { stationId: shopStationId }) : '';
+      const actionDetailFull = jobImpact ? `${actionDetail} ${jobImpact}` : actionDetail;
+      const advice = [purchase.state === 'funding' ? purchase.earnHint : '', jobImpact].filter(Boolean).join(' ');
+      const buyWord = availability.outfitEnabled ? (selectedFit ? (fittedId ? 'Buy & Replace' : 'Buy & Fit') : 'Buy to Inventory') : 'Dock to fit';
+      const btn = equipped
+        ? `<span class="k-t-fine k-38 sx-modrow__eq">Equipped</span>`
+        : purchase.state === 'locked' || purchase.state === 'standing' || purchase.state === 'noberth'
+          ? `<span class="k-t-fine k-38 sx-modrow__lock">${escapeHtml(purchase.label)}</span>`
+          : purchase.state === 'funding'
+            ? `<span class="k-t-fine k-38 sx-modrow__buy is-funding" data-why="${escapeHtml(advice ? `${purchase.title} ${jobImpact}`.trim() : purchase.title)}">${fmt(purchase.price)} cr · ${escapeHtml(purchase.label)}</span>`
+            : `<button type="button" ${stationControlAttrs('buy-fit', selectedFit ? { primary: true } : undefined)} class="k-word k-word--fine${selectedFit ? ' k-word--primary' : ''} sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}"${selectedFit ? ` data-fit-slot="${slotIndex}"` : ''} ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${buyWord} <small class="k-38">${fmt(purchase.price)} cr</small></button>`;
+      const equippedIconHtml = equippedMark
+        ? `<span class="sx-provmark" data-mark="${escapeHtml(equippedMark)}" tabindex="0" role="img" aria-label="${escapeHtml(equippedMark)} rim" data-why="${escapeHtml(equippedMark)} rim">${equipmentIcon(d, 24)}</span>`
+        : equipmentIcon(d, 24);
+      return (
+        `<li class="k-row sx-modrow${equipped ? ' is-eq' : ''}${purchase.disabled || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${equippedIconHtml} ${entitySpanHtml('module:' + d.id, escapeHtml(facts ? facts.name : d.name))}</span>` +
+            `<span class="k-row__sub sx-modrow__role">${metaFallback} · ${escapeHtml(facts ? facts.sentence : '')}</span>` +
+            `<span class="k-row__sub sx-modrow__metrics">${chips}${fitOfferChipHtml(d, ctx.state.player && ctx.state.player.hints, purchase, equipped, ctx.state.player && ctx.state.player.credits)}</span>` +
+            `<span class="k-row__sub sx-modrow__meta">${equippedInstText ? `<span class="sx-modrow__instance">This unit: ${escapeHtml(equippedInstText)}</span> ` : ''}${riskChips ? `<span class="sx-modrow__chips">${riskChips}</span>` : ''}</span>` +
+            `<span class="k-row__sub k-38 sx-modrow__role">${escapeHtml(actionDetailFull)}</span>` +
+            (advice ? `<span class="k-row__sub sx-modrow__role sx-modrow__advice">${escapeHtml(advice)}</span>` : '') + `</span>` +
+          `<span class="k-row__num sx-modrow__act">${sableTrialButton(d)}${btn}</span>` +
+        `</li>`
+      );
+    });
+    const refusedList = refused.map((d) => {
+      const sentence = mountRefusal(slot, d) || fitRefusalText(slot, d) || `${(partFacts(d.id) || {}).name || d.name} does not fit this slot`;
+      // P2 — the ladder is Mk I/II/III and the role says what the part is. The intent lives in the
+      // group heading above the row, not as a repeated middot on every line.
+      const facts = partFacts(d.id);
+      const metaFallback = partMetaHtml(facts, d.id);
+      return (
+        `<li class="k-row sx-modrow is-locked" data-refused-module="${escapeHtml(d.id)}" tabindex="0">` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${equipmentIcon(d, 24)} ${entitySpanHtml('module:' + d.id, escapeHtml(facts ? facts.name : d.name))}</span>` +
+            `<span class="k-row__sub sx-modrow__role">${metaFallback} · ${escapeHtml(facts ? facts.sentence : '')}</span>` +
+            `<span class="k-row__sub k-38 sx-modrow__role" data-refusal>${escapeHtml(sentence)}</span></span>` +
+          `<span class="k-row__num sx-modrow__act"><span class="k-t-fine k-38 sx-modrow__lock">Won’t mount</span></span>` +
+        `</li>`
+      );
+    }).join('');
+
+    if (chooserCloseTimer) { clearTimeout(chooserCloseTimer); chooserCloseTimer = 0; }
+    selectedSlot = slotIndex;
+    payloadSocket = -1;
+    paintOpen = false;
+    // Exploded-view focus (feature 15): the selected bay lifts its plate and glows cyan on the
+    // 3D preview. spatialAnchors carries the same authored local point the DOM pin projects from.
+    if (mount && typeof mount.setExplodedFocus === 'function') {
+      mount.setExplodedFocus(spatialAnchors.get(slotIndex) || null);
+    }
+    chooserAnchor = anchorEl || slotfieldEl.querySelector(`[data-spatial-slot="${slotIndex}"]`);
+    if (jig) { jigLit = slotIndex; jig.light(slotIndex); }
+    slotfieldEl.classList.add('is-focusing');
+    slotfieldEl.querySelectorAll('[data-spatial-slot]').forEach((node) => {
+      node.classList.toggle('is-selected', Number(node.getAttribute('data-spatial-slot')) === slotIndex);
+    });
+    syncSystemSelection();
+    scheduleSpatialProjection();
+    // No modal: the compatible modules take the hang column's cell in place of the hulls; "Back"
+    // returns them (Task C §1.9).
+    const fittedName = fittedId ? ((FITTABLE_BY_ID.get(fittedId) || {}).name || 'module') : '';
+    chooserEl.innerHTML =
+      `<div class="sx-chooser__panel" role="region" aria-label="Compatible ${escapeHtml(SLOT_LABEL[slot.type] || slot.type)} modules">` +
+        `<header class="sx-chooser__head">` +
+          `<ul class="k-words k-words--row"><li><button type="button" ${stationControlAttrs('back')} class="k-word k-word--body sx-chooser__x" data-close aria-label="Back to the hulls">${stationControlLabel('back')}</button></li></ul>` +
+          // the roster rows' rule: every middot glues left, so a wrap ends a line on the
+          // separator and never opens one with it ("… · S" / "· FRONT" would lead with a middot)
+          `<p class="k-caps sx-chooser__kicker">${SLOT_LABEL[slot.type] || slot.type}\u00a0· ${escapeHtml(slot.size || '')}${hardpoint === 'ring' ? `\u00a0· ring` : (slot.facing ? `\u00a0· ${escapeHtml(slot.facing)}` : '')}</p>` +
+          `<h3 class="k-t-sub">Compatible modules${compat.length ? ` <span class="k-38">${compat.length}</span>` : ''}</h3>` +
+        `</header>` +
+        (hardpoint === 'ring'
+          ? `<p class="k-sentence sx-muted" data-ring-law>The ring aims for you. An aimed gun keeps ${ringPct} % of its output here; launchers and spinal guns need a fixed hardpoint.</p>`
+          : '') +
+        (availability.outfitEnabled ? '' : `<p class="k-sentence sx-muted">${escapeHtml(availability.outfitLabel)}</p>`) +
+        (fittedId ? `<ul class="k-words k-words--row"><li><button type="button" ${stationControlAttrs('remove-module')} class="k-word k-word--emph sx-chooser__unfit" data-unfit="${slotIndex}" ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${availability.outfitEnabled ? `Remove ${escapeHtml(fittedName)}` : 'Dock to remove'}</button></li></ul>` : '') +
+        (holdList ? `<p class="k-caps sx-chooser__kicker sx-chooser__hold">In your hold</p><ul class="k-rows sx-chooser__list">${holdList}</ul>` : '') +
+        `<ul class="k-rows sx-chooser__list">${(list + refusedList) || '<li class="k-sentence sx-muted">No compatible modules.</li>'}</ul>` +
+      `</div>`;
+    dressChooser();
+    chooserEl.hidden = false;
+    el.classList.add('is-choosing');
+    requestAnimationFrame(() => {
+      chooserEl.classList.add('is-open');
+      const first = chooserEl.querySelector('[data-preview-module]') || chooserEl.querySelector('[data-unfit], [data-close]');
+      if (first && typeof first.focus === 'function') first.focus({ preventScroll: true });
+    });
+  }
+
+  function emitFitIntent(eventName, payload) {
+    // inf-fit-milestone: stamp the viewed hull's capability ids BEFORE the fit dispatches, so the
+    // station receipt can name the verb this fit teaches (consumed once, TTL-bounded, UI-only).
+    if (eventName === 'ui:fitModule' && payload) {
+      const ships = ctx.state && ctx.state.player && Array.isArray(ctx.state.player.ownedShips)
+        ? ctx.state.player.ownedShips : [];
+      const owned = ships[Number(payload.shipIndex)];
+      if (owned && owned.defId) {
+        stampFitCapabilityExpectation(ctx.state, {
+          hullDefId: owned.defId,
+          slotIndex: payload.slotIndex,
+          fittings: owned.fittings,
+          player: ctx.state.player,
+        });
+      }
+    }
+    if (eventName === 'ui:fitModule' && laneCommandSink()) {
+      if (!ctx.bus || typeof ctx.bus.on !== 'function') return Promise.resolve(null);
+      const operationId = nextLaneToken('fit');
+      return new Promise((resolve) => {
+        let done = false;
+        let offAccepted = () => {}, offRefused = () => {}, timer = null;
+        const finish = (result) => {
+          if (done) return;
+          done = true;
+          offAccepted(); offRefused();
+          if (timer != null) clearTimeout(timer);
+          if (fitPending?.operationId === operationId) fitPending = null;
+          resolve(result);
+        };
+        fitPending = { operationId, cancel: () => finish(null) };
+        offAccepted = ctx.bus.on('module:equipped', (event) => {
+          if (event?.operationId === operationId && event.instanceId === payload.instanceId
+              && event.slotIndex === payload.slotIndex) finish(true);
+        });
+        offRefused = ctx.bus.on('module:fitRefused', (event) => {
+          if (event?.operationId === operationId) finish({ reason: event.reason });
+        });
+        timer = setTimeout(() => finish(null), 5000);
+        try { ctx.bus.emit(eventName, { ...payload, operationId }); } catch (_) { finish(null); }
+      });
+    }
+    if (eventName === 'ui:unfitModule' && laneCommandSink()) {
+      if (!ctx.bus || typeof ctx.bus.on !== 'function') return Promise.resolve(null);
+      const operationId = nextLaneToken('unfit');
+      return new Promise((resolve) => {
+        let done = false;
+        let offAccepted = () => {}, offRefused = () => {}, timer = null;
+        const finish = (result) => {
+          if (done) return;
+          done = true;
+          offAccepted(); offRefused();
+          if (timer != null) clearTimeout(timer);
+          resolve(result);
+        };
+        offAccepted = ctx.bus.on('module:unequipped', (event) => {
+          if (event?.operationId === operationId) finish(true);
+        });
+        offRefused = ctx.bus.on('module:fitRefused', (event) => {
+          if (event?.operationId === operationId) finish(false);
+        });
+        timer = setTimeout(() => finish(null), 5000);
+        try { ctx.bus.emit(eventName, { ...payload, operationId }); } catch (_) { finish(null); }
+      });
+    }
+    let refused = false;
+    const mark = () => { refused = true; };
+    const unsubscribe = ctx.bus && typeof ctx.bus.on === 'function' ? ctx.bus.on('module:fitRefused', mark) : null;
+    if (ctx.bus) ctx.bus.emit(eventName, payload);
+    if (typeof unsubscribe === 'function') unsubscribe();
+    return !refused;
+  }
+
+  function cancelFitPending() {
+    fitPending?.cancel();
+  }
+
+  function closeChooser(opts = {}) {
+    chooserEpoch++;
+    cancelFitPending();
+    clearSableDemo(); sableSelection = null;
+    if (chooserEl.hidden && !chooserEl.classList.contains('is-open')) return;
+    if (chooserCloseTimer) { clearTimeout(chooserCloseTimer); chooserCloseTimer = 0; }
+    if (!opts.silent) emitUiCue(UI_DRAWER_LATCH_CUE);
+    const returnFocus = chooserAnchor;
+    restoreCurrentPreview();
+    explodeHome();
+    selectedSlot = -1;
+    payloadSocket = -1;
+    paintOpen = false;
+    if (mount && typeof mount.setExplodedFocus === 'function') mount.setExplodedFocus(null);
+    chooserAnchor = null;
+    slotfieldEl.classList.remove('is-focusing');
+    slotfieldEl.querySelectorAll('[data-spatial-slot]').forEach((node) => node.classList.remove('is-selected'));
+    syncSystemSelection();
+    el.querySelector('.sx-sw__focusline').classList.remove('is-on');
+    chooserEl.classList.remove('is-open');
+    el.classList.remove('is-choosing');
+    chooserCloseTimer = setTimeout(() => {
+      chooserEl.hidden = true;
+      chooserEl.innerHTML = '';
+      chooserCloseTimer = 0;
+      if (returnFocus && returnFocus.isConnected && typeof returnFocus.focus === 'function') returnFocus.focus({ preventScroll: true });
+    }, 200);
+  }
+
+  // ---- bomb rack chooser (PQ-205.03) -----------------------------------------------------
+  // Same hang-column grammar as the module chooser: a rack socket row opens the ordnance
+  // list in place of the hulls; Back returns them. Every verb is an intent — the bombs
+  // system owns the rack and the economy owner debits the credits; this screen only asks.
+  function openPayloadChooser(socketIndex, anchorEl) {
+    chooserEpoch++;
+    cancelFitPending();
+    const rack = bombRackModel();
+    if (!Number.isInteger(socketIndex) || socketIndex < 0 || socketIndex >= rack.sockets) return;
+    emitUiCue(UI_SWITCH_DETENT_CUE);
+    payloadSocket = socketIndex;
+    selectedSlot = -1;
+    paintOpen = false;
+    syncSystemSelection();
+    if (mount && typeof mount.setExplodedFocus === 'function') mount.setExplodedFocus(null);
+    chooserAnchor = anchorEl || sideEl.querySelector(`[data-rack-socket="${socketIndex}"]`);
+    renderPayloadChooser();
+    chooserEl.hidden = false;
+    el.classList.add('is-choosing');
+    requestAnimationFrame(() => {
+      chooserEl.classList.add('is-open');
+      const first = chooserEl.querySelector('button:not([disabled])');
+      if (first && typeof first.focus === 'function') first.focus({ preventScroll: true });
+    });
+  }
+
+  function renderPayloadChooser() {
+    if (payloadSocket < 0) return;
+    const rack = bombRackModel();
+    const i = payloadSocket;
+    const cell = rack.cells[i];
+    const cellDef = cell && BOMB_DEFS[cell.id];
+    const availability = shipworksActionAvailability(ctx.state);
+    const outfit = availability.outfitEnabled;
+    // P2 — ordnance reads the same facts as the module rows: role, Mk (from `unlockTier`), the
+    // authored sentence, and the intent-first order. A bare `T2` digit is not a part fact.
+    const holdsPayload = (id) => (rack.stock[id] || 0) > 0 || rack.cells.some((c) => c && c.id === id);
+    const catalogue = sortIdsByIntent(BOMB_IDS.filter((id) => {
+      const d = BOMB_DEFS[id];
+      return d && (!d.retiredInto || holdsPayload(d.id));
+    })).map((id) => BOMB_DEFS[id]);
+    const rows = intentGroupedHtml(catalogue, (d) => {
+      const facts = partFacts(d.id);
+      const stock = rack.stock[d.id] || 0;
+      const inSocket = cellDef && cellDef.id === d.id ? cell.count : 0;
+      const elsewhereIndex = rack.cells.findIndex((c, k) => k !== i && c && c.id === d.id);
+      const afford = rack.credits >= d.price;
+      const sellValue = Math.max(1, Math.floor(d.price * BOMB_RACK.sellbackFraction));
+      const verbs = [];
+      // Load is the primary verb when the hangar actually holds this payload.
+      if (stock > 0) {
+        const move = inSocket ? Math.min(d.magazine - inSocket, stock) : Math.min(d.magazine, stock);
+        if (move > 0) {
+          const word = inSocket ? 'Top up' : elsewhereIndex >= 0 ? 'Move here' : 'Load';
+          verbs.push(`<button type="button" ${stationControlAttrs('payload-fit')} class="k-word k-word--fine k-word--primary sx-modrow__buy" data-payload-fit="${escapeHtml(d.id)}" ${outfit ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${word} <small class="k-38">${move} u</small></button>`);
+        }
+      }
+      const buyLabel = !outfit ? 'Dock to buy' : afford ? 'Buy' : `Need ${fmt(d.price)} cr`;
+      const buyHint = !outfit ? availability.outfitLabel : afford ? `Buy one ${(facts && facts.name) || d.name} into hangar stock` : 'Not enough credits';
+      verbs.push(`<button type="button" ${stationControlAttrs('payload-buy')} class="k-word k-word--fine sx-modrow__buy" data-payload-buy="${escapeHtml(d.id)}" ${outfit && afford ? '' : `disabled aria-label="${escapeHtml(buyHint)}"`}>${escapeHtml(buyLabel)} <small class="k-38">${fmt(d.price)} cr</small></button>`);
+      if (stock > 0) {
+        verbs.push(`<button type="button" ${stationControlAttrs('payload-sell')} class="k-word k-word--fine sx-modrow__buy" data-payload-sell="${escapeHtml(d.id)}" ${outfit ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${stationControlLabel('payload-sell')} <small class="k-38">${fmt(sellValue)} cr</small></button>`);
+      }
+      const seat = inSocket ? `Socket ${i + 1} holds ${inSocket}/${d.magazine}`
+        : elsewhereIndex >= 0 ? `Fitted in socket ${elsewhereIndex + 1}`
+        : stock > 0 ? `${stock} in the hangar` : 'None in the hangar';
+      return (
+        `<li class="k-row sx-modrow${inSocket ? ' is-eq' : ''}" data-payload-row="${escapeHtml(d.id)}" tabindex="0">` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${equipmentIcon(d, 24)} ${escapeHtml(facts ? facts.name : d.name)}</span>` +
+            `<span class="k-row__sub sx-modrow__role">${partMetaHtml(facts, d.id)} · magazine ${d.magazine}</span>` +
+            `<span class="k-row__sub sx-modrow__meta">${escapeHtml(facts ? facts.sentence : '')}</span>` +
+            `<span class="k-row__sub k-38 sx-modrow__role">${escapeHtml(seat)}</span></span>` +
+          `<span class="k-row__num sx-modrow__act">${verbs.join('')}</span>` +
+        `</li>`
+      );
+    });
+    const unfitRow = cellDef
+      ? `<ul class="k-words k-words--row"><li><button type="button" ${stationControlAttrs('unload')} class="k-word k-word--emph sx-chooser__unfit" data-payload-unfit="${i}" ${outfit ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${outfit ? `Unload ${escapeHtml(cellDef.name)}` : 'Dock to unload'}</button></li></ul>`
+      : '';
+    chooserEl.innerHTML =
+      `<div class="sx-chooser__panel" role="region" aria-label="Rack socket ${i + 1} ordnance">` +
+        `<header class="sx-chooser__head">` +
+          `<ul class="k-words k-words--row"><li><button type="button" ${stationControlAttrs('back')} class="k-word k-word--body sx-chooser__x" data-close aria-label="Back to the hulls">${stationControlLabel('back')}</button></li></ul>` +
+          // the count travels with its phrase ("1 OF 2"): the narrow column wrapped a lone "2"
+          // onto its own line — an orphaned digit under the socket's name
+          `<p class="k-caps sx-chooser__kicker">Bomb rack · socket\u00a0${i + 1}\u00a0of\u00a0${rack.sockets}</p>` +
+          `<h3 class="k-t-sub">Ordnance <span class="k-38">${catalogue.length}</span></h3>` +
+        `</header>` +
+        (outfit ? '' : `<p class="k-sentence sx-muted">${escapeHtml(availability.outfitLabel)}</p>`) +
+        unfitRow +
+        `<ul class="k-rows sx-chooser__list">${rows || '<li class="k-sentence sx-muted">No ordnance catalogued.</li>'}</ul>` +
+      `</div>`;
+    dressChooser();
+  }
+
+  function applyModuleGhost(moduleId, slotIndex) {
+    const s = viewedShip();
+    const def = s ? SHIP_BY_ID.get(s.defId) : null;
+    if (!def || !moduleId) return;
+    const ghost = presentModuleFitPreview({
+      defId: def.id,
+      fittings: s.fittings || [],
+      moduleId,
+      slotIndex: Number.isInteger(slotIndex) ? slotIndex : undefined,
+      player: ctx.state.player,
+    });
+    if (!ghost.ok || !Array.isArray(ghost.afterFittings)) return;
+    const selection = `${moduleId}:${ghost.slotIndex}`;
+    if (selection !== sableSelection) { clearSableDemo(); sableSelection = selection; }
+    ghostActive = true;
+    ghostSource = 'module';
+    explodeSeat(true, ghost.moduleId || moduleId);
+    previewShip(ghost.defId, ghost.afterFittings, true, {
+      mode: 'module',
+      moduleId: ghost.moduleId || moduleId,
+    }, viewedShip() && viewedShip().appearance || null);
+    ghostBandModel = deriveBandModel({
+      defId: ghost.defId,
+      fittings: ghost.afterFittings,
+      isPlayer: true,
+      player: ctx.state.player,
+      stock: false,
+    });
+    const moduleFacts = partFacts(ghost.moduleId || moduleId);
+    ghostNote = moduleFacts && moduleFacts.sentence
+      ? `No change to the six — this part adds: ${moduleFacts.sentence}`
+      : '';
+    if (activeBandModel) renderApron(activeBandModel, ghostBandModel);
+    if (ghostBandModel) {
+      stampStatsProvenance(ghostBandModel);
+      syncPowerBand(ghostBandModel);
+    }
+    const ghostSlot = Number.isInteger(slotIndex) ? slotIndex : selectedSlot;
+    const moduleDef = FITTABLE_BY_ID.get(ghost.moduleId || moduleId);
+    const previewNode = jigHost && jigHost.querySelector(`.orr-sw-node[data-slot="${ghostSlot}"]`);
+    if (previewNode && moduleDef) {
+      previewNode.classList.add('is-preview');
+      const nameEl = previewNode.querySelector('.orr-sw-node__name');
+      const stateEl = previewNode.querySelector('.orr-sw-node__state');
+      if (nameEl) nameEl.textContent = moduleDef.name;
+      if (stateEl) stateEl.textContent = 'preview';
+    }
+    syncPowerGhost(def, ghost.afterFittings);
+    scheduleSpatialProjection();
+  }
+
+  // ---- paint rack chooser ---------------------------------------------------------------------------------
+  // The paint rack rides the same hang-column grammar as the module and ordnance choosers: the
+  // PAINT verb opens the rack in place of the hulls; Back returns them. Every swatch is an
+  // intent — ui:setShipAppearance — and the ships system owns the appearance record; the save
+  // pipeline already keys off ship:appearanceSaved. The yard's mix-and-cure is included berth
+  // work, so the rack charges nothing; what the player buys here is the look that then flies.
+  function currentPaintedAppearance() {
+    const s = viewedShip();
+    if (!s) return null;
+    return normalizeShipAppearance(s.appearance, s.defId);
+  }
+
+  function openPaintChooser(anchorEl) {
+    chooserEpoch++;
+    cancelFitPending();
+    emitUiCue(UI_SWITCH_DETENT_CUE);
+    selectedSlot = -1;
+    payloadSocket = -1;
+    paintOpen = true;
+    syncSystemSelection();
+    if (mount && typeof mount.setExplodedFocus === 'function') mount.setExplodedFocus(null);
+    chooserAnchor = anchorEl || sideEl.querySelector('[data-verb="paint"]');
+    renderPaintChooser();
+    chooserEl.hidden = false;
+    el.classList.add('is-choosing');
+    requestAnimationFrame(() => {
+      chooserEl.classList.add('is-open');
+      const first = chooserEl.querySelector('button:not([disabled])');
+      if (first && typeof first.focus === 'function') first.focus({ preventScroll: true });
+    });
+  }
+
+  function paintSwatchChip(hex) {
+    // Fully inline: the chip answers from the catalog row itself and adds no stylesheet surface.
+    // A round draw of the paint (a dab of the colour itself), never a bordered square — straight
+    // edges are for scales and the Lamp Key's cut; the edge is the ink token at rest strength.
+    // The stock row (no hex) reads as a dashed empty circle: an unset swatch, not a box.
+    const bg = hex ? escapeHtml(hex) : 'transparent';
+    const edge = hex ? 'solid' : 'dashed';
+    return `<span aria-hidden="true" style="display:inline-block;flex:0 0 auto;width:13px;height:13px;margin-right:9px;border-radius:50%;border:1px ${edge} color-mix(in srgb, var(--dp-ink) 55%, transparent);background:${bg};"></span>`;
+  }
+
+  function paintGroupHtml(kicker, rows) {
+    return (
+      `<p class="k-caps sx-chooser__kicker">${escapeHtml(kicker)}</p>` +
+      `<ul class="k-rows sx-chooser__list">${rows.join('')}</ul>`
+    );
+  }
+
+  function renderPaintChooser() {
+    if (!paintOpen) return;
+    const ship = viewedShip();
+    const def = ship ? SHIP_BY_ID.get(ship.defId) : null;
+    if (!def) { closeChooser(); return; }
+    const availability = shipworksActionAvailability(ctx.state);
+    const outfit = availability.hullEnabled;
+    const current = currentPaintedAppearance();
+    const dis = () => (outfit ? '' : ` disabled aria-label="${escapeHtml(availability.hullLabel)}"`);
+    const mark = (on) => (on ? ' is-eq' : '');
+
+    const hullRows = SHIP_HULL_PAINTS.map((p) => {
+      const on = (current.hullColor || null) === (p.hex || null);
+      return (
+        `<li class="k-row sx-modrow${mark(on)}" data-paint-row="${escapeHtml(p.id)}" tabindex="0">` +
+          `<span class="k-row__name sx-modrow__body">${paintSwatchChip(p.hex)}` +
+            `<span class="sx-modrow__name">${escapeHtml(p.name)}</span>` +
+            `<span class="k-row__sub sx-modrow__meta">${escapeHtml(p.sentence)}</span></span>` +
+          `<span class="k-row__num sx-modrow__act"><button type="button" ${stationControlAttrs('paint')} class="k-word k-word--fine k-word--primary sx-modrow__buy" data-paint-hull="${escapeHtml(p.id)}"${dis()}>${on ? 'Wearing' : 'Paint'}</button></span>` +
+        `</li>`
+      );
+    });
+    const accentRows = SHIP_ACCENT_PAINTS.map((p) => {
+      const on = (current.accentColor || null) === (p.hex || null);
+      return (
+        `<li class="k-row sx-modrow${mark(on)}" data-paint-row="${escapeHtml(p.id)}" tabindex="0">` +
+          `<span class="k-row__name sx-modrow__body">${paintSwatchChip(p.hex)}` +
+            `<span class="sx-modrow__name">${escapeHtml(p.name)}</span>` +
+            `<span class="k-row__sub sx-modrow__meta">${escapeHtml(p.sentence)}</span></span>` +
+          `<span class="k-row__num sx-modrow__act"><button type="button" ${stationControlAttrs('paint')} class="k-word k-word--fine sx-modrow__buy" data-paint-accent="${escapeHtml(p.id)}"${dis()}>${on ? 'Wearing' : 'Trim'}</button></span>` +
+        `</li>`
+      );
+    });
+    const finishRows = SHIP_FINISH_STOCK.map((f) => {
+      const on = current.finish === f.id;
+      return (
+        `<li class="k-row sx-modrow${mark(on)}" data-paint-row="${escapeHtml(f.id)}" tabindex="0">` +
+          `<span class="k-row__name sx-modrow__body">` +
+            `<span class="sx-modrow__name">${escapeHtml(f.name)}</span>` +
+            `<span class="k-row__sub sx-modrow__meta">${escapeHtml(f.sentence)}</span></span>` +
+          `<span class="k-row__num sx-modrow__act"><button type="button" ${stationControlAttrs('paint')} class="k-word k-word--fine sx-modrow__buy" data-paint-finish="${escapeHtml(f.id)}"${dis()}>${on ? 'Cured' : 'Cure'}</button></span>` +
+        `</li>`
+      );
+    });
+    const wearRows = SHIP_WEAR_STOCK.map((w) => {
+      const on = Math.abs(current.wear - w.wear) < 0.001;
+      return (
+        `<li class="k-row sx-modrow${mark(on)}" data-paint-row="${escapeHtml(w.id)}" tabindex="0">` +
+          `<span class="k-row__name sx-modrow__body">` +
+            `<span class="sx-modrow__name">${escapeHtml(w.name)}</span>` +
+            `<span class="k-row__sub sx-modrow__meta">${escapeHtml(w.sentence)}</span></span>` +
+          `<span class="k-row__num sx-modrow__act"><button type="button" ${stationControlAttrs('paint')} class="k-word k-word--fine sx-modrow__buy" data-paint-wear="${escapeHtml(w.id)}"${dis()}>${on ? 'At this wear' : 'Work'}</button></span>` +
+        `</li>`
+      );
+    });
+    const decalRows = SHIP_DECAL_STOCK.map((d) => {
+      const on = current.decalId === d.decalId;
+      return (
+        `<li class="k-row sx-modrow${mark(on)}" data-paint-row="${escapeHtml(d.id)}" tabindex="0">` +
+          `<span class="k-row__name sx-modrow__body">` +
+            `<span class="sx-modrow__name">${escapeHtml(d.name)}</span>` +
+            `<span class="k-row__sub sx-modrow__meta">${escapeHtml(d.sentence)}</span></span>` +
+          `<span class="k-row__num sx-modrow__act"><button type="button" ${stationControlAttrs('paint')} class="k-word k-word--fine sx-modrow__buy" data-paint-decal="${escapeHtml(d.id)}"${dis()}>${on ? 'On the deck' : 'Mark'}</button></span>` +
+        `</li>`
+      );
+    });
+
+    // The rack names the hull the crest names — the owned record's word, not the class.
+    const viewed = viewedShip();
+    const hullLabel = (viewed && hullNameForOwnedShip(viewed, viewIdx, ctx.state && ctx.state.meta && ctx.state.meta.seed)) || def.name || def.id;
+    chooserEl.innerHTML =
+      `<div class="sx-chooser__panel" role="region" aria-label="Paint rack for the ${escapeHtml(hullLabel)}">` +
+        `<header class="sx-chooser__head">` +
+          `<ul class="k-words k-words--row"><li><button type="button" ${stationControlAttrs('back')} class="k-word k-word--body sx-chooser__x" data-close aria-label="Back to the hulls">${stationControlLabel('back')}</button></li></ul>` +
+          `<p class="k-caps sx-chooser__kicker">Paint rack\u00a0· ${escapeHtml(hullLabel)}</p>` +
+          `<h3 class="k-t-sub">The yard mixes while you dock</h3>` +
+        `</header>` +
+        (outfit ? '' : `<p class="k-sentence sx-muted">${escapeHtml(availability.hullLabel)}</p>`) +
+        paintGroupHtml('Coat', hullRows) +
+        paintGroupHtml('Trim', accentRows) +
+        paintGroupHtml('Finish', finishRows) +
+        paintGroupHtml('Wear', wearRows) +
+        paintGroupHtml('Markings', decalRows) +
+        `<p class="k-sentence sx-muted">Berth work, no charge — the finish is painted into the hull record and flies with you.</p>` +
+      `</div>`;
+    dressChooser();
+  }
+
+  /** One swatch intent: patch the viewed hull's current appearance with the chosen row and emit
+   * the live seam. Returns true when an intent went out. */
+  function emitPaintIntent(kind, rowId) {
+    const ship = viewedShip();
+    if (!ship) return false;
+    const current = currentPaintedAppearance();
+    let patch = null;
+    if (kind === 'hull') {
+      const row = shipPaintRow(SHIP_HULL_PAINTS, rowId);
+      if (row) patch = { hullColor: row.hex };
+    } else if (kind === 'accent') {
+      const row = shipPaintRow(SHIP_ACCENT_PAINTS, rowId);
+      if (row) patch = { accentColor: row.hex };
+    } else if (kind === 'finish') {
+      const row = shipPaintRow(SHIP_FINISH_STOCK, rowId);
+      if (row) patch = { finish: row.id };
+    } else if (kind === 'wear') {
+      const row = shipPaintRow(SHIP_WEAR_STOCK, rowId);
+      if (row) patch = { wear: row.wear };
+    } else if (kind === 'decal') {
+      const row = shipPaintRow(SHIP_DECAL_STOCK, rowId);
+      if (row) patch = { decalId: row.decalId };
+    }
+    if (!patch) return false;
+    if (!ctx.bus) return false;
+    ctx.bus.emit('ui:setShipAppearance', {
+      shipIndex: viewIdx,
+      appearance: buildPaintAppearance(current, patch),
+    });
+    ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
+    return true;
+  }
+
+  function applyPresetGhost(preset) {
+    const s = viewedShip();
+    const def = s ? SHIP_BY_ID.get(s.defId) : null;
+    if (!def || !preset || !Array.isArray(preset.fittings)) return;
+    ghostActive = true;
+    ghostSource = 'preset';
+    previewShip(def.id, preset.fittings, true, {
+      mode: 'preset',
+      moduleId: null,
+    }, s.appearance || null);
+    ghostBandModel = deriveBandModel({
+      defId: def.id,
+      fittings: preset.fittings,
+      isPlayer: true,
+      player: ctx.state.player,
+      stock: false,
+    });
+    ghostNote = '';
+    if (activeBandModel) renderApron(activeBandModel, ghostBandModel);
+    if (ghostBandModel) {
+      stampStatsProvenance(ghostBandModel);
+      syncPowerBand(ghostBandModel);
+    }
+    scheduleSpatialProjection();
+  }
+
+  function refreshPresetSelectionPreview() {
+    if (!activeBandModel || mode !== 'fleet') return;
+    const selectedPreset = activePresetRailModel && activePresetRailModel.selectedPreset
+      ? activePresetRailModel.selectedPreset
+      : null;
+    if (!selectedPreset) {
+      restoreCurrentPreview();
+      renderSpatialSlots();
+      return;
+    }
+    applyPresetGhost(selectedPreset);
+    renderSpatialSlots();
+  }
+
+  function selectPresetForViewedHull(presetId) {
+    if (mode !== 'fleet') return;
+    const ship = viewedShip();
+    if (!ship || !ship.defId) return;
+    const alreadySelected = selectedPresetIdForHull(ship.defId) === presetId;
+    if (alreadySelected) {
+      applySelectedPreset();
+      return;
+    }
+    if (!chooserEl.hidden) closeChooser({ silent: true });
+    selectedSlot = -1;
+    slotfieldEl.classList.remove('is-focusing');
+    setSelectedPresetIdForHull(ship.defId, presetId, { remember: true });
+    if (activeBandModel) renderApron(activeBandModel);
+    refreshPresetSelectionPreview();
+    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_click' });
+  }
+
+  function saveCurrentFitAsPreset(attrs = {}) {
+    const ship = viewedShip();
+    if (!ship || mode !== 'fleet') return;
+    const presetId = attrs.presetId || null;
+    const labelKey = attrs.labelKey || 'role';
+    const createdAt = finite(attrs.createdAt, ctx.state && ctx.state.simTime);
+    if (!ctx.bus) return;
+    ctx.bus.emit('ui:saveLoadoutPreset', {
+      shipIndex: viewIdx,
+      presetId,
+      labelKey,
+      createdAt,
+    });
+    if (presetId) setSelectedPresetIdForHull(ship.defId, presetId, { remember: true });
+    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+    setTimeout(refresh, 70);
+  }
+
+  function applySelectedPreset() {
+    if (mode !== 'fleet') return;
+    const ship = viewedShip();
+    if (!ship || !ship.defId) return;
+    const selectedPresetId = selectedPresetIdForHull(ship.defId);
+    const selectedPreset = activePresetRailModel && activePresetRailModel.presets
+      ? activePresetRailModel.presets.find((row) => row.id === selectedPresetId) || null
+      : null;
+    if (!selectedPreset) {
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+      return;
+    }
+    if (!(selectedPreset.applyState && selectedPreset.applyState.ok)) {
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+      return;
+    }
+    if (!ctx.bus) return;
+    ctx.bus.emit('ui:applyLoadoutPreset', { shipIndex: viewIdx, presetId: selectedPreset.id });
+    ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+    setTimeout(refresh, 80);
+  }
+
+  async function deleteSelectedPreset() {
+    if (presetDeleteBusy || isConfirmOpen() || mode !== 'fleet') return;
+    const ship = viewedShip();
+    if (!ship || !ship.defId) return;
+    const selectedPresetId = selectedPresetIdForHull(ship.defId);
+    const selectedPreset = activePresetRailModel && activePresetRailModel.presets
+      ? activePresetRailModel.presets.find((row) => row.id === selectedPresetId) || null
+      : null;
+    if (!selectedPreset || !ctx.bus) return;
+    const statedShipIndex = viewIdx;
+    const statedHullDefId = ship.defId;
+    const statedPresetId = selectedPreset.id;
+    presetDeleteBusy = true;
+    let ok = false;
+    try {
+      ok = await confirm({
+        title: 'Delete build?',
+        body: `${selectedPreset.label || 'This build'} will be removed from this hull.`,
+        confirmLabel: 'Delete',
+        cancelLabel: 'Keep',
+        danger: true,
+      });
+    } finally {
+      presetDeleteBusy = false;
+    }
+    if (!ok) {
+      ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+      return;
+    }
+    const liveShip = viewedShip();
+    if (!statedHullStillViewed(
+      { shipIndex: statedShipIndex, hullDefId: statedHullDefId },
+      { shipIndex: viewIdx, hullDefId: liveShip && liveShip.defId, connected: el.isConnected !== false },
+    )) {
+      ctx.bus.emit('toast', {
+        text: 'That confirmation was for a different hull. Review it and confirm again.',
+        kind: 'error',
+        ttl: 3,
+      });
+      return;
+    }
+    ctx.bus.emit('ui:deleteLoadoutPreset', { shipIndex: statedShipIndex, presetId: statedPresetId, hullDefId: statedHullDefId });
+    clearPresetSelectionForViewedHull({ remember: true });
+    restoreCurrentPreview();
+    ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+    setTimeout(refresh, 80);
+  }
+
+  // NXB-009 — one pending rack preparation per screen. The click re-quotes the owner's
+  // preview (state may have moved since render), the confirm names the exact quoted
+  // families/quantities/price/balance, and only then ui:prepareBombRack commits — the
+  // owner's quote fingerprint is still the final stale-state authority.
+  let rackPrepBusy = false;
+  async function prepareBombRack() {
+    if (rackPrepBusy || isConfirmOpen() || !ctx.bus) return;
+    const req = { options: {}, quote: null };
+    ctx.bus.emit('ui:previewBombRackPreparation', req);
+    const quote = req.quote, plan = quote && quote.plan;
+    if (!plan || plan.ok !== true || !plan.changed) { setTimeout(refresh, 60); return; }
+    const stated = {
+      shipIndex: viewIdx,
+      hullDefId: (viewedShip() || {}).defId,
+      dockId: ctx.state.ui && ctx.state.ui.docked === true ? ctx.state.ui.dockedStationId : null,
+    };
+    const parts = Object.entries(plan.loadedUnits || {}).map(([id, n]) => `${BOMB_DEFS[id].name} ×${n}`);
+    if (plan.appliedSockets > plan.rack.sockets) parts.push(`rack socket ${plan.appliedSockets}`);
+    const remaining = Math.max(0, plan.credits - plan.totalCost);
+    const partial = plan.limitingReason === 'credits' ? ' Partial fill — magazines stay short until more credits.' : '';
+    rackPrepBusy = true;
+    let ok = false;
+    try {
+      ok = await confirm({
+        title: 'Prepare bomb rack?',
+        body: `${parts.join(' · ') || 'Reconfigure rack'}. Cost: ${fmt(plan.totalCost)} CR — balance after ${fmt(remaining)} CR.${partial}`,
+        confirmLabel: 'Prepare',
+        cancelLabel: 'Cancel',
+        danger: isOutfittingSpendDanger(plan.totalCost, plan.credits),
+      });
+    } finally { rackPrepBusy = false; }
+    if (!ok) {
+      ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+      setTimeout(refresh, 60);
+      return;
+    }
+    const liveShip = viewedShip();
+    if (!statedHullStillViewed(
+      { shipIndex: stated.shipIndex, hullDefId: stated.hullDefId },
+      { shipIndex: viewIdx, hullDefId: liveShip && liveShip.defId, connected: el.isConnected !== false },
+    )) {
+      ctx.bus.emit('toast', { text: 'That confirmation was for a different hull. Review it and confirm again.', kind: 'error', ttl: 3 });
+      setTimeout(refresh, 60);
+      return;
+    }
+    const liveDockId = ctx.state.ui && ctx.state.ui.docked === true ? ctx.state.ui.dockedStationId : null;
+    if (liveDockId !== stated.dockId) {
+      ctx.bus.emit('toast', { text: 'Dock changed since the quote — review and confirm again.', kind: 'error', ttl: 3 });
+      setTimeout(refresh, 60);
+      return;
+    }
+    const settle = { quote };
+    ctx.bus.emit('ui:prepareBombRack', settle);
+    if (settle.result === true) {
+      ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
+    } else {
+      ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+      ctx.bus.emit('toast', { text: 'The quote went stale — review the rack and prepare again.', kind: 'error', ttl: 3 });
+    }
+    setTimeout(refresh, 70);
+  }
+
+  // ---------- events ----------
+  el.querySelector('.sx-seg').addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-mode]'); if (!b) return;
+    const m = b.getAttribute('data-mode'); if (m === mode) return;
+    if (!chooserEl.hidden) closeChooser({ silent: true });
+    mode = m;
+    selectedSlot = -1;
+    syncStageDock();
+    rememberShipView();
+    syncModeWords();
+    renderRail(); renderCenter(); renderSide();
+    queueRevealSelectedShip();
+    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tick' });
+  });
+
+  el.querySelector('.sx-sw__carousel').addEventListener('click', (ev) => {
+    const step = ev.target.closest('[data-rail-step]');
+    if (!step || step.disabled) return;
+    const direction = step.getAttribute('data-rail-step') === 'prev' ? -1 : 1;
+    railListEl.scrollBy({ left: direction * Math.max(220, railListEl.clientWidth * .72), behavior: 'smooth' });
+  });
+  railListEl.addEventListener('scroll', updateRailControls, { passive: true });
+  railListEl.addEventListener('scroll', syncListFold, { passive: true });
+
+  railListEl.addEventListener('keydown', (ev) => {
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(ev.key)) return;
+    const rows = [...railListEl.querySelectorAll('.sx-sw-row')];
+    if (!rows.length) return;
+    const current = ev.target.closest('.sx-sw-row') || railListEl.querySelector('.sx-sw-row.is-active');
+    const currentIndex = Math.max(0, rows.indexOf(current));
+    let nextIndex = currentIndex;
+    if (ev.key === 'ArrowLeft' || ev.key === 'ArrowUp') nextIndex = Math.max(0, currentIndex - 1);
+    if (ev.key === 'ArrowRight' || ev.key === 'ArrowDown') nextIndex = Math.min(rows.length - 1, currentIndex + 1);
+    if (ev.key === 'Home') nextIndex = 0;
+    if (ev.key === 'End') nextIndex = rows.length - 1;
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (nextIndex === currentIndex) {
+      current?.focus({ preventScroll: true });
+      queueRevealSelectedShip({ focus: true });
+      return;
+    }
+    selectRailButton(rows[nextIndex], { focus: true });
+  });
+
+  railListEl.addEventListener('click', (ev) => {
+    selectRailButton(ev.target.closest('[data-fleet], [data-buy]'));
+  });
+
+  let lotDeskPending = null;
+  function finishLotDeskPending(result, announceTimeout = false) {
+    const pending = lotDeskPending;
+    if (!pending) return;
+    lotDeskPending = null;
+    pending.off?.();
+    if (pending.timer != null) clearTimeout(pending.timer);
+    if (announceTimeout) ctx.bus?.emit('toast', {
+      text: 'The lot desk has not answered yet. Check the book before trying again.', kind: 'warn', ttl: 5,
+    });
+    if (result && stageShown) ctx.bus?.emit('audio:cue', { id: result.ok ? 'ui_accept' : 'ui_deny' });
+    if (stageShown) refresh();
+  }
+  function handleLotClick(ev, scope) {
+    const lotVerb = ev.target.closest('[data-lot-verb]');
+    if (lotVerb) {
+      if (!lotVerb.disabled && !lotDeskPending && ctx.bus && typeof ctx.bus.on === 'function') {
+        const verb = lotVerb.getAttribute('data-lot-verb');
+        const operationId = nextLaneToken('lot');
+        const intent = { verb, operationId };
+        if (verb === 'bid') {
+          const input = scope.querySelector('input[data-lot-bid]');
+          intent.amount = Math.round(Number(input && input.value) || 0);
+        }
+        if (verb === 'watch') intent.on = lotVerb.getAttribute('data-lot-on') !== 'false';
+        const pending = { operationId, off: null, timer: null };
+        lotDeskPending = pending;
+        pending.off = ctx.bus.on('impoundLot:deskAnswered', (answer) => {
+          if (answer?.operationId === operationId) finishLotDeskPending(answer);
+        });
+        pending.timer = setTimeout(() => finishLotDeskPending(null, true), 5000);
+        for (const button of scope.querySelectorAll('[data-lot-verb]')) button.disabled = true;
+        lotVerb.disabled = true;
+        lotVerb.setAttribute('aria-label', 'Waiting for the lot desk');
+        lotVerb.textContent = 'Waiting for the lot desk…';
+        try { ctx.bus.emit('impoundLot:deskIntent', intent); }
+        catch (_) { finishLotDeskPending(null, true); }
+      }
+      return true;
+    }
+    return false;
+  }
+  lotDialog.addEventListener('click', (ev) => handleLotClick(ev, lotDialog));
+  lotDialog.addEventListener('input', (ev) => {
+    if (ev.target.matches('input[data-lot-bid]')) updateLotBidAffordance(lotDialog);
+  });
+  lotDialog.addEventListener('keydown', (ev) => {
+    // Keep station/game shortcuts behind the modal while leaving native Tab and activation intact.
+    ev.stopPropagation();
+    if (!ev.target.matches('input[data-lot-bid]')) return;
+    if (ev.key === 'Enter') { ev.preventDefault(); lotDialog.querySelector('[data-lot-verb="bid"]')?.click(); }
+  });
+
+  sideEl.addEventListener('click', (ev) => {
+    const rackCell = ev.target.closest('[data-rack-socket]');
+    if (rackCell) { openPayloadChooser(Number(rackCell.getAttribute('data-rack-socket')), rackCell); return; }
+    const rackRestock = ev.target.closest('[data-rack-restock]');
+    if (rackRestock) {
+      if (!rackRestock.disabled) prepareBombRack();
+      return;
+    }
+    const rackUpgrade = ev.target.closest('[data-rack-upgrade]');
+    if (rackUpgrade) {
+      if (!rackUpgrade.disabled && ctx.bus) {
+        ctx.bus.emit('ui:upgradeBombRack', {});
+        ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
+        setTimeout(refresh, 70);
+      }
+      return;
+    }
+    if (handleLotClick(ev, sideEl)) return;
+    const slot = ev.target.closest('[data-slot]');
+    if (slot) { openChooser(Number(slot.getAttribute('data-slot'))); return; }
+    const buy = ev.target.closest('[data-buyship]');
+    if (buy && !buy.disabled && shipworksActionAvailability(ctx.state).hullEnabled) {
+      buy.disabled = true;
+      if (ctx.bus) {
+        const listingId = buy.getAttribute('data-listing-id');
+        ctx.bus.emit('ui:buyShip', { defId: buy.getAttribute('data-buyship'), ...(listingId ? { listingId } : {}) });
+        ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      }
+      setTimeout(refresh, 60);
+    }
+    const activate = ev.target.closest('[data-activate-ship]');
+    if (activate && !activate.disabled && ctx.bus && shipworksActionAvailability(ctx.state).hullEnabled) {
+      ctx.bus.emit('ui:setActiveShip', { index: Number(activate.getAttribute('data-activate-ship')) });
+      ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      setTimeout(refresh, 60);
+    }
+  });
+
+  sideEl.addEventListener('input', (ev) => {
+    const input = ev.target;
+    if (input && typeof input.matches === 'function' && input.matches('input[data-lot-bid]')) {
+      updateLotBidAffordance();
+    }
+  });
+
+  sideEl.addEventListener('keydown', (ev) => {
+    // The sealed-bid field: typing never reaches canvas or station hotkeys; Enter places it.
+    const t = ev.target;
+    const bidInput = !!t && String(t.tagName || '').toUpperCase() === 'INPUT'
+      && typeof t.hasAttribute === 'function' && t.hasAttribute('data-lot-bid');
+    if (bidInput) {
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        const place = sideEl.querySelector('[data-lot-verb="bid"]');
+        if (place) place.click();
+      }
+      return;
+    }
+    if (ev.key !== 'Enter' && ev.key !== ' ' && ev.key !== 'Spacebar') return;
+    const rackCell = ev.target.closest('[data-rack-socket]');
+    if (!rackCell) return;
+    ev.preventDefault();
+    openPayloadChooser(Number(rackCell.getAttribute('data-rack-socket')), rackCell);
+  });
+
+  // FB-057 — the nameplate input commits on change (Enter blurs, which fires change). The field
+  // only emits ui:setShipName; ships writes the record, then refresh re-reads the resolved name.
+  nameplateEl.addEventListener('keydown', (ev) => {
+    const input = ev.target.closest('input[data-ship-name]');
+    if (!input) return;
+    ev.stopPropagation(); // typing must never reach canvas or station hotkeys
+    if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+  });
+  // A card may sit to the right of a short name (the ink zone follows the text, not the field's
+  // empty right side), so re-place the cards as the name grows under typing, not only on change.
+  nameplateEl.addEventListener('input', (ev) => {
+    if (ev.target.closest('input[data-ship-name]')) scheduleSpatialProjection();
+  });
+  // Focus grows the nameplate keep-out under the field (see nameplateInkRect); re-place so the
+  // left callout column clears the ring at short mid-width stages.
+  nameplateEl.addEventListener('focusin', (ev) => {
+    if (ev.target.closest('input[data-ship-name]')) scheduleSpatialProjection();
+  });
+  nameplateEl.addEventListener('focusout', (ev) => {
+    if (ev.target.closest('input[data-ship-name]')) scheduleSpatialProjection();
+  });
+  nameplateEl.addEventListener('change', (ev) => {
+    const input = ev.target.closest('input[data-ship-name]');
+    if (!input || !ctx.bus) return;
+    ctx.bus.emit('ui:setShipName', { shipIndex: viewIdx, name: input.value });
+    ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+    setTimeout(refresh, 40);
+  });
+
+  statsEl.addEventListener('click', async (ev) => {
+    const savePreset = ev.target.closest('[data-loadout-preset-save]');
+    if (savePreset) {
+      if (savePreset.disabled) {
+        if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+        return;
+      }
+      saveCurrentFitAsPreset({
+        presetId: savePreset.getAttribute('data-loadout-preset-id') || null,
+        labelKey: savePreset.getAttribute('data-loadout-label-key') || 'role',
+        createdAt: Number(savePreset.getAttribute('data-loadout-created-at')),
+      });
+      return;
+    }
+    const presetNode = ev.target.closest('[data-loadout-preset-id]');
+    if (presetNode) {
+      const presetId = presetNode.getAttribute('data-loadout-preset-id');
+      if (presetId) selectPresetForViewedHull(presetId);
+      return;
+    }
+    const deletePreset = ev.target.closest('[data-loadout-preset-delete]');
+    if (deletePreset) {
+      await deleteSelectedPreset();
+      return;
+    }
+    if (await onVerbClick(ev)) { ev.stopPropagation(); return; }
+  });
+
+  // The verbs rack is pinned out of statsEl onto its parent (footer row under the stats scroll,
+  // see renderApron), so verb clicks never reach the delegated statsEl listener — the rack needs
+  // its own dispatch on the element it actually lives under.
+  async function onVerbClick(ev) {
+    const verb = ev.target.closest('[data-verb]');
+    if (!verb) return false;
+    const action = verb.getAttribute('data-verb');
+    if (action === 'range') {
+      const previewCtx = currentPreviewContext();
+      if (previewCtx && ctx.bus) {
+        ctx.bus.emit('ui:ship:range', {
+          source: 'ship-stage',
+          shipId: previewCtx.defId,
+          fittings: Array.isArray(previewCtx.fittings) ? previewCtx.fittings.slice() : [],
+        });
+      } else if (ctx && ctx.screenManager && typeof ctx.screenManager.pushScreen === 'function') {
+        try { ctx.screenManager.pushScreen('range'); } catch (_) {}
+      }
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_open' });
+      return true;
+    }
+    if (action === 'record') {
+      recordOpen = !recordOpen;
+      rememberShipView();
+      if (activeBandModel) renderApron(activeBandModel);
+      // renderApron rebuilt the verbs rack: its seat lives in the projection pass, so schedule
+      // one now or the row falls back to its CSS seat over the BUILDS block until a stage change
+      // happens to fire it (racy at best).
+      scheduleSpatialProjection();
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      return true;
+    }
+    if (action === 'fit') {
+      const fitAction = verb.getAttribute('data-fit-action') || 'fit-slot';
+      if (fitAction === 'apply-preset') {
+        applySelectedPreset();
+        return true;
+      }
+      const availability = shipworksActionAvailability(ctx.state);
+      if (!(availability.outfitEnabled && selectedSlot >= 0)) {
+        if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+        return true;
+      }
+      const anchor = slotfieldEl.querySelector(`[data-spatial-slot="${selectedSlot}"]`);
+      openChooser(selectedSlot, anchor || null);
+      return true;
+    }
+    if (action === 'activate') {
+      const availability = shipworksActionAvailability(ctx.state);
+      if (host !== 'dock' || mode !== 'fleet' || !availability.hullEnabled) {
+        if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+        return true;
+      }
+      if (ctx.bus) {
+        ctx.bus.emit('ui:setActiveShip', { index: viewIdx });
+        ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      }
+      setTimeout(refresh, 60);
+      return true;
+    }
+    if (action === 'paint') {
+      const availability = shipworksActionAvailability(ctx.state);
+      if (host !== 'dock' || mode !== 'fleet' || !availability.hullEnabled) {
+        if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+        return true;
+      }
+      openPaintChooser(verb);
+      return true;
+    }
+    if (action === 'load-hold' || action === 'stow-hold') {
+      // FB-061 — the deck verb emits an intent; cargo decides what moves.
+      if (host !== 'dock' || mode !== 'fleet' || !ctx.bus) {
+        if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+        return true;
+      }
+      ctx.bus.emit('ui:transferParkedCargo', {
+        shipIndex: viewIdx,
+        direction: action === 'load-hold' ? 'load' : 'stow',
+      });
+      ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      setTimeout(refresh, 60);
+      return true;
+    }
+    return false;
+  }
+  if (statsEl.parentElement) statsEl.parentElement.addEventListener('click', onVerbClick);
+
+  slotfieldEl.addEventListener('click', (ev) => {
+    const node = ev.target.closest('[data-spatial-slot]');
+    if (!node) return;
+    openChooser(Number(node.getAttribute('data-spatial-slot')), node);
+  });
+
+  // Direct manipulation camera. Rendering and projection are event-bound; no idle frame loop.
+  let dragPointer = null;
+  let dragX = 0;
+  const endDrag = (ev) => {
+    if (dragPointer == null || (ev.pointerId != null && ev.pointerId !== dragPointer)) return;
+    try { canvas.releasePointerCapture(dragPointer); } catch (_) {}
+    dragPointer = null;
+    canvas.classList.remove('is-dragging');
+  };
+  canvas.addEventListener('pointerdown', (ev) => {
+    if (ev.button !== 0 || !mount) return;
+    dragPointer = ev.pointerId;
+    dragX = ev.clientX;
+    canvas.setPointerCapture(ev.pointerId);
+    canvas.classList.add('is-dragging');
+  });
+  canvas.addEventListener('pointermove', (ev) => {
+    if (dragPointer !== ev.pointerId || !mount) return;
+    const dx = ev.clientX - dragX;
+    dragX = ev.clientX;
+    mount.rotateBy(dx * .009);
+    scheduleSpatialProjection();
+  });
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+  canvas.addEventListener('wheel', (ev) => {
+    if (!mount) return;
+    ev.preventDefault();
+    const unit = ev.deltaMode === 1 ? 16
+      : (ev.deltaMode === 2 ? Math.max(240, canvas.clientHeight) : 1);
+    const dx = ev.deltaX * unit;
+    const dy = ev.deltaY * unit;
+    if (!ev.ctrlKey && Math.abs(dx) > Math.abs(dy) * .7) {
+      // A two-finger horizontal gesture orbits the whole ship. It must never merely wake an idle
+      // engine animation while leaving the hull apparently fixed.
+      mount.rotateBy(dx * .0032);
+    } else {
+      // Vertical wheel and trackpad pinch both control magnification.
+      mount.zoomBy(-dy * (ev.ctrlKey ? .0024 : .0012));
+    }
+    scheduleSpatialProjection();
+  }, { passive: false });
+  canvas.addEventListener('keydown', (ev) => {
+    if (!mount) return;
+    // on the For Sale disc the arrows step the bezel from view to view (the hull runs through its gear)
+    if (stageEl.classList.contains('has-salering') && (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight')) {
+      ev.preventDefault();
+      const at = VIEW_ORDER.indexOf(saleView);
+      turnToView(VIEW_ORDER[Math.max(0, Math.min(VIEW_ORDER.length - 1, at + (ev.key === 'ArrowLeft' ? -1 : 1)))]);
+      return;
+    }
+    if (ev.key === 'ArrowLeft') { ev.preventDefault(); mount.rotateBy(-.14); scheduleSpatialProjection(); }
+    else if (ev.key === 'ArrowRight') { ev.preventDefault(); mount.rotateBy(.14); scheduleSpatialProjection(); }
+    else if (ev.key === '+' || ev.key === '=') { ev.preventDefault(); mount.zoomBy(.1); scheduleSpatialProjection(); }
+    else if (ev.key === '-') { ev.preventDefault(); mount.zoomBy(-.1); scheduleSpatialProjection(); }
+    else if (ev.key === 'Home') {
+      ev.preventDefault();
+      if (stageEl.classList.contains('has-salering')) { turnToView('reset'); return; }
+      mount.setYaw(CENTERED_SHIP_YAW); mount.setZoom(1); scheduleSpatialProjection();
+    }
+  });
+  el.querySelector('.sx-sw__camera').addEventListener('click', (ev) => {
+    const control = ev.target.closest('[data-camera]');
+    if (control && stageEl.classList.contains('has-salering')) { turnToView(control.getAttribute('data-camera')); return; }
+    if (!control || !mount) return;
+    const command = control.getAttribute('data-camera');
+    for (const b of control.parentElement.parentElement.querySelectorAll('[data-camera]')) b.classList.toggle('is-current', b === control);
+    if (command === 'left') mount.rotateBy(-.22);
+    else if (command === 'right') mount.rotateBy(.22);
+    else { mount.setYaw(CENTERED_SHIP_YAW); mount.setZoom(1); }
+    scheduleSpatialProjection();
+  });
+  el.querySelector('.sx-sw__camera').addEventListener('keydown', (ev) => {
+    if (!stageEl.classList.contains('has-salering') || (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight')) return;
+    const at = VIEW_ORDER.indexOf(saleView);
+    const next = VIEW_ORDER[Math.max(0, Math.min(VIEW_ORDER.length - 1, at + (ev.key === 'ArrowLeft' ? -1 : 1)))];
+    ev.preventDefault();
+    turnToView(next);
+    const word = el.querySelector(`.sx-sw__camera [data-camera="${next}"]`);
+    if (word) word.focus({ preventScroll: true });
+  });
+  const stageResizeObserver = typeof ResizeObserver !== 'undefined'
+    ? new ResizeObserver(() => scheduleSpatialProjection()) : null;
+  if (stageResizeObserver) {
+    stageResizeObserver.observe(stageEl);
+    // The rack's row count changes with the fit; a resize there must re-pin the side plate's top.
+    if (gaugeRackEl) stageResizeObserver.observe(gaugeRackEl);
+  }
+  // The verb rack is seated position:fixed in viewport px. A window resize that moves the stage without
+  // resizing it (the station head changes height across a breakpoint) leaves the observer silent and the
+  // rack at its old seat, floating mid-dossier. The head settles a few frames after the resize event
+  // (its note and signs reflow), so for a short while the stage's own position is watched and the rack
+  // re-seated whenever it moves, until it has held still for a few frames.
+  let seatWatchFrame = 0;
+  function watchStageSeat(frames = 90) {
+    if (seatWatchFrame) cancelAnimationFrame(seatWatchFrame);
+    let left = frames;
+    let still = 0;
+    let last = null;
+    const tick = () => {
+      seatWatchFrame = 0;
+      if (!stageShown || !stageEl.isConnected) return;
+      const r = stageEl.getBoundingClientRect();
+      const at = `${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.width)},${Math.round(r.height)}`;
+      if (last !== null && at !== last) { still = 0; scheduleSpatialProjection(); } else still += 1;
+      last = at;
+      left -= 1;
+      if (left > 0 && still < 12) seatWatchFrame = requestAnimationFrame(tick);
+    };
+    seatWatchFrame = requestAnimationFrame(tick);
+  }
+  const onWindowResize = () => {
+    syncNameplatePlacement();
+    if (stageShown) { scheduleSpatialProjection(); watchStageSeat(); }
+  };
+  if (typeof window !== 'undefined') window.addEventListener('resize', onWindowResize);
+
+  let buyConfirmBusy = false;
+  chooserEl.addEventListener('click', async (ev) => {
+    const trial = ev.target.closest('[data-sable-demo]');
+    if (trial) {
+      if (!sableVennServiceAvailable(ctx.state)) { clearSableDemo(); ctx.bus?.emit('toast',{text:'Patchwork is unavailable. Your current fit is unchanged.',kind:'info',ttl:3}); return; }
+      const ship = viewedShip(), moduleId = trial.getAttribute('data-sable-demo'), slotIndex = Number(trial.getAttribute('data-sable-slot'));
+      const ghost = presentModuleFitPreview({defId:ship.defId,fittings:ship.fittings,moduleId,slotIndex,player:ctx.state.player});
+      if (!ghost.ok) { ctx.bus?.emit('toast',{text:ghost.reason || 'This mount cannot carry the proposed fit.',kind:'error',ttl:3}); return; }
+      clearSableDemo(); sableSelection = `${moduleId}:${slotIndex}`;
+      const stamp = sablePreviewStamp(ctx.state,ship,moduleId,slotIndex); sableStamp = stamp;
+      sableDemo = mountSableDemo(chooserEl.querySelector('.sx-chooser__sheet') || chooserEl,{state:ctx.state,owned:ship,moduleId,slotIndex,afterFittings:ghost.afterFittings,
+        stillCurrent:()=>sableStamp===stamp && sableVennServiceAvailable(ctx.state) && sableSelection===`${moduleId}:${slotIndex}`
+          && sablePreviewMatches(stamp,ctx.state,viewedShip(),moduleId,slotIndex),
+        onClose:()=>{clearSableDemo(); if(trial.isConnected){trial.closest('[data-preview-module]')?.focus({preventScroll:true});trial.focus({preventScroll:true});}},
+        onMeasured:()=>ctx.bus?.emit('sable:demonstrated',{moduleId}),reducedMotion:prefersReducedMotion()});
+      return;
+    }
+    if (ev.target.closest('[data-close]')) { closeChooser(); return; }
+    // Ordnance verbs (PQ-205.03): every click is an intent to the bombs system — the rack
+    // owner applies it, the economy owner moves the credits. The chooser stays open and
+    // re-reads state so stock counts and socket contents repaint in place.
+    const payloadBuy = ev.target.closest('[data-payload-buy]');
+    if (payloadBuy) {
+      if (!payloadBuy.disabled && ctx.bus) {
+        ctx.bus.emit('ui:buyPayload', { payloadId: payloadBuy.getAttribute('data-payload-buy'), units: 1 });
+        ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
+        renderPayloadChooser();
+        renderSide();
+      }
+      return;
+    }
+    const payloadFit = ev.target.closest('[data-payload-fit]');
+    if (payloadFit) {
+      if (!payloadFit.disabled && ctx.bus) {
+        ctx.bus.emit('ui:fitPayload', { socketIndex: payloadSocket, payloadId: payloadFit.getAttribute('data-payload-fit') });
+        ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
+        renderPayloadChooser();
+        renderSide();
+      }
+      return;
+    }
+    const payloadSell = ev.target.closest('[data-payload-sell]');
+    if (payloadSell) {
+      if (!payloadSell.disabled && ctx.bus) {
+        ctx.bus.emit('ui:sellPayload', { payloadId: payloadSell.getAttribute('data-payload-sell'), units: 1 });
+        ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
+        renderPayloadChooser();
+        renderSide();
+      }
+      return;
+    }
+    const payloadUnfit = ev.target.closest('[data-payload-unfit]');
+    if (payloadUnfit) {
+      if (!payloadUnfit.disabled && ctx.bus) {
+        ctx.bus.emit('ui:unfitPayload', { socketIndex: Number(payloadUnfit.getAttribute('data-payload-unfit')) });
+        ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
+        renderPayloadChooser();
+        renderSide();
+      }
+      return;
+    }
+    // Paint rack: one swatch, one intent. The chooser stays open and re-reads the appearance so
+    // the "Wearing" marks and the stage hull repaint in place (ship:appearanceSaved below).
+    const paintIntent = (node, kind) => {
+      if (node.disabled || !emitPaintIntent(kind, node.getAttribute(`data-paint-${kind}`))) return;
+      // refreshPaintedPreview repaints both the rack marks and the stage; the focus restore has
+      // to come after it — the re-render replaced the button under the pointer/keys.
+      refreshPaintedPreview();
+      const again = chooserEl.querySelector(`[data-paint-${kind}="${node.getAttribute(`data-paint-${kind}`)}"]`);
+      if (again && typeof again.focus === 'function') again.focus({ preventScroll: true });
+    };
+    const paintHull = ev.target.closest('[data-paint-hull]');
+    if (paintHull) { paintIntent(paintHull, 'hull'); return; }
+    const paintAccent = ev.target.closest('[data-paint-accent]');
+    if (paintAccent) { paintIntent(paintAccent, 'accent'); return; }
+    const paintFinish = ev.target.closest('[data-paint-finish]');
+    if (paintFinish) { paintIntent(paintFinish, 'finish'); return; }
+    const paintWear = ev.target.closest('[data-paint-wear]');
+    if (paintWear) { paintIntent(paintWear, 'wear'); return; }
+    const paintDecal = ev.target.closest('[data-paint-decal]');
+    if (paintDecal) { paintIntent(paintDecal, 'decal'); return; }
+    const bf = ev.target.closest('[data-buyfit]');
+    if (bf && !bf.disabled && shipworksActionAvailability(ctx.state).outfitEnabled) {
+      if (buyConfirmBusy || isConfirmOpen()) return;
+      const defId = bf.getAttribute('data-buyfit');
+      const fitSlotValue = bf.getAttribute('data-fit-slot');
+      const fitSlotIndex = fitSlotValue == null ? null : Number(fitSlotValue);
+      const def = FITTABLE_BY_ID.get(defId);
+      if (!def) return;
+      const credits = Math.max(0, Number(ctx.state.player && ctx.state.player.credits) || 0);
+      const shopStationId = ctx.state.ui && ctx.state.ui.docked === true ? ctx.state.ui.dockedStationId : null;
+      const offer = stationShopOffer(def, shopStationId);
+      const viewedAtConfirm = viewedShip();
+      const statedShipIndex = viewIdx;
+      const statedHullDefId = viewedAtConfirm && viewedAtConfirm.defId;
+      const statedPrice = offer ? offer.price : moduleSimPrice(def);
+      const replacedId = Number.isInteger(fitSlotIndex) && viewedAtConfirm && Array.isArray(viewedAtConfirm.fittings)
+        ? viewedAtConfirm.fittings[fitSlotIndex] : null;
+      const replacedDef = replacedId ? FITTABLE_BY_ID.get(replacedId) : null;
+      const confirmingActiveHull = statedShipIndex === ((ctx.state.player && ctx.state.player.activeShipIndex) || 0);
+      const confirmOpts = describeOutfittingSpendConfirm(def, credits, {
+        fitSlotIndex,
+        price: statedPrice,
+        replacesName: replacedDef ? replacedDef.name : null,
+        jobImpact: Number.isInteger(fitSlotIndex) && confirmingActiveHull
+          ? outfittingJobImpact(ctx.state, def, replacedId || null, { stationId: shopStationId }) : '',
+      });
+      if (confirmOpts) {
+        focusNamedStationControl(bf, chooserEl);
+        buyConfirmBusy = true;
+        let ok = false;
+        try {
+          ok = await confirm(confirmOpts);
+        } finally {
+          buyConfirmBusy = false;
+        }
+        if (!ok) {
+          if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+          focusNamedStationControl(bf, chooserEl);
+          return;
+        }
+      }
+      const liveShip = viewedShip();
+      if (!statedHullStillViewed(
+        { shipIndex: statedShipIndex, hullDefId: statedHullDefId },
+        { shipIndex: viewIdx, hullDefId: liveShip && liveShip.defId, connected: el.isConnected !== false },
+      )) {
+        if (ctx.bus) ctx.bus.emit('toast', {
+          text: 'That confirmation was for a different hull. Review it and confirm again.',
+          kind: 'error',
+          ttl: 3,
+        });
+        focusNamedStationControl(bf, chooserEl);
+        return;
+      }
+      if (confirmOpts) {
+        const liveOffer = stationShopOffer(def, shopStationId);
+        const livePrice = liveOffer ? liveOffer.price : moduleSimPrice(def);
+        if (!statedModulePurchaseStillMatches(
+          { defId, shipIndex: statedShipIndex, fitSlotIndex, price: statedPrice, hullDefId: statedHullDefId },
+          { defId, shipIndex: statedShipIndex, fitSlotIndex, price: livePrice, hullDefId: liveShip && liveShip.defId },
+        )) {
+          if (ctx.bus) ctx.bus.emit('toast', {
+            text: `Price changed since the quote (${Math.round(livePrice)} vs ${Math.round(statedPrice)} cr) — review and confirm again.`,
+            kind: 'error',
+            ttl: 3,
+          });
+          focusNamedStationControl(bf, chooserEl);
+          return;
+        }
+      }
+      if (ctx.bus) {
+        const accepted = emitFitIntent('ui:buyModule', { defId, fitSlotIndex, shipIndex: statedShipIndex, expectedPrice: statedPrice, hullDefId: statedHullDefId });
+        if (!accepted) {
+          ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+          focusNamedStationControl(bf, chooserEl);
+          return;
+        }
+        ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
+      }
+      // the bought module rides home into its socket
+      explodeSeat(true, defId);
+      explodeLockSeat = true;
+      closeChooser(); setTimeout(refresh, 70); return;
+    }
+    // A module already owned in the hold: ui:fitModule takes the row's instanceId and the viewed
+    // hull's index — the chooser outfits the ship on screen, not always the active one.
+    const fi = ev.target.closest('[data-fit-inv]');
+    if (fi && !fi.disabled && shipworksActionAvailability(ctx.state).outfitEnabled) {
+      if (fitPending) return;
+      if (ctx.bus) {
+        const epoch = chooserEpoch;
+        const accepted = emitFitIntent('ui:fitModule', {
+          shipIndex: viewIdx,
+          slotIndex: Number(fi.getAttribute('data-fit-inv-slot')),
+          instanceId: fi.getAttribute('data-fit-inv'),
+        });
+        const asynchronous = accepted && typeof accepted.then === 'function';
+        if (asynchronous) fi.disabled = true;
+        const confirmed = asynchronous ? await accepted : accepted;
+        if (asynchronous) fi.disabled = false;
+        if (!stageShown || epoch !== chooserEpoch) return;
+        if (confirmed !== true) {
+          if (confirmed == null) ctx.bus.emit('toast', { text: 'Fit could not be confirmed. Check the fitting before retrying.', kind: 'warn', ttl: 4 });
+          else {
+            if (asynchronous && confirmed?.reason !== 'station_unavailable') ctx.bus.emit('toast', { text: 'Fit unavailable. Check the module and try again.', kind: 'warn', ttl: 4 });
+            ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+          }
+          if (typeof fi.focus === 'function') fi.focus({ preventScroll: true });
+          return;
+        }
+        ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
+      }
+      closeChooser(); setTimeout(refresh, 70); return;
+    }
+    const uf = ev.target.closest('[data-unfit]');
+    if (uf && !uf.disabled && shipworksActionAvailability(ctx.state).outfitEnabled) {
+      // Research G / P08 residual — the unfit intent settles through the same refused-fit
+      // listener as its fit twin: a refusal (e.g. cargo capacity changed between render and
+      // intent) names its reason through the owner's outcome, keeps the chooser open on the
+      // attempted slot, and plays no success detent; only an accepted unfit closes, once.
+      if (unfitPending) return;
+      if (ctx.bus) {
+        const epoch = chooserEpoch;
+        const accepted = emitFitIntent('ui:unfitModule', { shipIndex: viewIdx, slotIndex: Number(uf.getAttribute('data-unfit')) });
+        unfitPending = true;
+        uf.disabled = true;
+        const confirmed = accepted && typeof accepted.then === 'function' ? await accepted : accepted;
+        unfitPending = false;
+        if (!stageShown || epoch !== chooserEpoch) return;
+        if (confirmed !== true) {
+          uf.disabled = false;
+          if (confirmed == null) ctx.bus.emit('toast', { text: 'Removal could not be confirmed. Check the fitting before retrying.', kind: 'warn', ttl: 4 });
+          ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+          if (typeof uf.focus === 'function') uf.focus({ preventScroll: true });
+          return;
+        }
+        ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE });
+      }
+      closeChooser(); setTimeout(refresh, 70); return;
+    }
+  });
+
+  // Hover/focus: ghost afterFittings geometry + derived stats; leave restores current loadout.
+  chooserEl.addEventListener('pointerover', (ev) => {
+    const row = ev.target.closest('[data-preview-module]');
+    if (!row || !chooserEl.contains(row)) return;
+    const moduleId = row.getAttribute('data-preview-module');
+    const slotIndex = Number(row.getAttribute('data-preview-slot'));
+    applyModuleGhost(moduleId, Number.isInteger(slotIndex) ? slotIndex : undefined);
+  });
+  chooserEl.addEventListener('pointerleave', () => {
+    if (ghostActive || !chooserEl.hidden) restoreCurrentPreview();
+  });
+  chooserEl.addEventListener('focusin', (ev) => {
+    const row = ev.target.closest('[data-preview-module]');
+    if (!row || !chooserEl.contains(row)) return;
+    const moduleId = row.getAttribute('data-preview-module');
+    const slotIndex = Number(row.getAttribute('data-preview-slot'));
+    applyModuleGhost(moduleId, Number.isInteger(slotIndex) ? slotIndex : undefined);
+    // The row grows when focused to expose its metrics. Keep its name in the chooser's own
+    // scrollport after that layout change; nested Buy/lock controls keep their normal focus.
+    if (ev.target !== row) return;
+    requestAnimationFrame(() => {
+      if (!row.isConnected || chooserEl.hidden || document.activeElement !== row) return;
+      const list = row.closest('.sx-chooser__list');
+      const name = row.querySelector('.sx-modrow__name');
+      if (!list || !name || !list.isConnected) return;
+      const listRect = list.getBoundingClientRect();
+      const nameRect = name.getBoundingClientRect();
+      const visibleTop = listRect.top + list.clientTop + 4;
+      const visibleBottom = listRect.top + list.clientTop + list.clientHeight - 4;
+      let delta = 0;
+      if (nameRect.top < visibleTop) delta = nameRect.top - visibleTop;
+      else if (nameRect.bottom > visibleBottom) delta = nameRect.bottom - visibleBottom;
+      if (delta) {
+        const maxScroll = Math.max(0, list.scrollHeight - list.clientHeight);
+        list.scrollTop = Math.max(0, Math.min(maxScroll, list.scrollTop + delta));
+      }
+    });
+  });
+  chooserEl.addEventListener('focusout', (ev) => {
+    const next = ev.relatedTarget;
+    if (next && chooserEl.contains(next)) return;
+    if (ghostActive || !chooserEl.hidden) restoreCurrentPreview();
+  });
+
+  el.addEventListener('keydown', (ev) => {
+    if (chooserEl.hidden) return;
+    if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); closeChooser(); return; }
+    if (ev.key !== 'Tab') return;
+    const focusable = [...chooserEl.querySelectorAll('button:not([disabled]),[tabindex="0"]')]
+      .filter((node) => node.offsetParent !== null);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
+    else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
+  });
+
+  function refresh(periodicCtx) {
+    if (sableStamp && (!sableVennServiceAvailable(ctx.state) || !sablePreviewMatches(sableStamp,ctx.state,viewedShip(),sableStamp.moduleId,sableStamp.slotIndex))) clearSableDemo();
+    if (host === 'flight') {
+      // Flight host: no station bay behind the hull — the screen's own backdrop shows instead.
+      if (mount && typeof mount.setDockId === 'function') mount.setDockId(null);
+    } else {
+      syncStageDock();
+    }
+    // The shell owns its 18-frame status cadence. Shipworks is event-driven; repainting its full
+    // body on that cadence destroys live pointer targets and wastes the authored preview frame.
+    if (periodicCtx === ctx) return;
+    renderRail();
+    // Periodic station refreshes must not erase a pointer/focus after-fittings preview.
+    if (!(ghostActive && ghostSource === 'module')) renderCenter();
+    if (chooserEl.hidden) renderSide();
+  }
+
+  return {
+    el,
+    setHost,
+    get host() { return host; },
+    onShow() {
+      stageShown = true;
+      restoreShipView();
+      ensureRangeIntentHandler();
+      ensureAppearanceSavedHandler();
+      ensurePresetRejectedHandler();
+      refresh();
+      if (mount) mount.setActive(true);
+      powerBeam.setActive(true);
+      watchStageSeat();
+    },
+    onHide() {
+      closeLotDesk(false);
+      stageShown = false;
+      chooserEpoch++;
+      cancelFitPending();
+      pendingPresetRejection = null;
+      clearSableDemo(); sableSelection = null;
+      if (previewSettleTimer) clearTimeout(previewSettleTimer);
+      previewSettleTimer = 0;
+      restoreSharedStageHull();
+      if (mount) mount.setActive(false);
+      powerBeam.setActive(false);
+    }, // stop the render loop when leaving (perf)
+    refresh,
+    dispose() {
+      closeLotDesk(false);
+      stageShown = false;
+      chooserEpoch++;
+      cancelFitPending();
+      finishLotDeskPending(null);
+      window.removeEventListener('keydown', interceptLotKeys, true);
+      compactLotMedia.removeEventListener('change', onLotMediaChange);
+      compactInstrument.removeEventListener('change', syncCompactInstrument);
+      compactFlightNameplate.removeEventListener('change', syncNameplatePlacement);
+      blackFlagRegistry.dispose();
+      clearSableDemo(); for (const off of sableLifecycleUnsubs) off();
+      if (chooserCloseTimer) clearTimeout(chooserCloseTimer);
+      if (previewSettleTimer) clearTimeout(previewSettleTimer);
+      if (projectionFrame) cancelAnimationFrame(projectionFrame);
+      if (appearanceSavedUnsub) { try { appearanceSavedUnsub(); } catch (_) {} appearanceSavedUnsub = null; }
+      if (presetRejectedUnsub) { try { presetRejectedUnsub(); } catch (_) {} presetRejectedUnsub = null; }
+      if (presetAppliedUnsub) { try { presetAppliedUnsub(); } catch (_) {} presetAppliedUnsub = null; }
+      if (stageResizeObserver) stageResizeObserver.disconnect();
+      if (typeof window !== 'undefined') window.removeEventListener('resize', onWindowResize);
+      if (seatWatchFrame) { cancelAnimationFrame(seatWatchFrame); seatWatchFrame = 0; }
+      if (typeof rangeIntentUnsub === 'function') { try { rangeIntentUnsub(); } catch (_) {} }
+      rangeIntentUnsub = null;
+      try { powerBeam.dispose(); } catch (_) {}
+      abortSaleLightRun(saleLightRun, false);
+      if (mount) { try { mount.dispose(); } catch (_) {} mount = null; }
+      try { delete canvas.__sfPreviewDiagnostics; } catch (_) {}
+    },
+  };
+}

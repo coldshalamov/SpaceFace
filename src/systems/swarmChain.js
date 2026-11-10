@@ -1,0 +1,418 @@
+// The kill chain (PQ-135) — the number a swarm game is actually played for.
+//
+// WHY THIS EXISTS
+// ---------------
+// The mode had two figures that moved: a score, which is an accountant's number nobody watches
+// mid-fight, and a style multiplier, which quietly rewarded varying HOW you killed things. Neither
+// tells you, in the second it happens, that you are doing well. A swarm game lives on that: the
+// loop is kill → the number goes up → keep the number alive → take a risk you would not otherwise
+// take. Without it the fight is just attrition with a counter on it.
+//
+// So there is now ONE number, and it is the loudest thing on the readout.
+//
+// HOW IT WORKS, and why each rule is there
+// ----------------------------------------
+//   * The chain grows by ONE for a kill, and by TWO when the kill arrived differently from the
+//     last one. That second rule is the whole design: the fastest way to a big chain is to kill
+//     with the room — throw one into a rock, then shoot one, then let a mine take one — which is
+//     exactly the behaviour this mode was built to reward and previously only paid for in a
+//     multiplier nobody could see. Style is no longer a separate number competing for attention;
+//     it is the thing that makes THIS number climb faster.
+//   * It lapses on a CLOCK, not on damage. Breaking a chain because you took a hit sounds
+//     disciplined and plays terribly when thirty hulls are shooting at you — it would punish the
+//     density the mode exists to create. The only way to lose a chain is to stop killing.
+//   * It carries ACROSS waves. Every wave ends in the armory now, and the chain pins through
+//     that stop instead of resetting at a boundary the player is standing inside — a wipe
+//     there would kill a number the player was still spending on.
+//   * It pays SCORE, and the payment is the chain itself. No tuned curve: a kill at chain 30 is
+//     worth thirty more points than the same kill at chain zero. A player can read that off the
+//     screen and do the arithmetic, which is worth more than a better-shaped formula they cannot.
+//
+// Ownership: it never writes state.run — every point goes out as a `run:awardRequested`, and
+// runSession remains the sole writer of the run envelope. Event-driven except for the lapse check,
+// which needs a clock.
+
+import { runOwnsReward } from '../combat/rewardEligibility.js';
+import { validateRunState } from '../core/runState.js';
+import { styleCauseFromKill } from './survivalStyle.js';
+import { isSwarmRuleset } from './survivalSwarm.js';
+import { ownedSwarmLegendaryIds, swarmPassiveFireRateScale } from '../data/swarmDraft.js';
+import { createRewardDeathLedger } from '../combat/rewardEligibility.js';
+
+/** Seconds allowed between kills before the chain lapses. Fixed, so a player can learn it. */
+export const SWARM_CHAIN_WINDOW_S = 4;
+/** Chain gained by an ordinary kill, and by one that arrived differently from the last. */
+export const SWARM_CHAIN_STEP = 1;
+export const SWARM_CHAIN_VARIED_STEP = 2;
+/** Remaining seconds at which the chain says its one final warning. INF-032. */
+export const SWARM_CHAIN_WARN_S = 1;
+/**
+ * The last-second warning's own sound: a soft falling double tick. It used to share the plain
+ * alert beep with the chain-tier milestone, so a reward and a warning sounded identical.
+ */
+export const SWARM_CHAIN_WARN_CUE = 'swarm.chainWarn';
+/** Nothing above this pays more; the number keeps climbing, the score stops running away. */
+export const SWARM_CHAIN_SCORE_CAP = 60;
+/**
+ * Reaching the score cap opens one overdrive window for this chain. Fitted player guns
+ * read the rate; the window stays up while the chain holds and dies when the chain breaks.
+ * Heat and capacitor costs are not part of this — weapons must not refund them.
+ */
+export const SWARM_CHAIN_OVERDRIVE_RATE = 3;
+
+/**
+ * Player gun cooldown scale: the overdrive window times the armory's gun-cycler stack.
+ * The chain's own gift is the overdrive rate — 1 until this chain has opened its single
+ * window. The armory's passive (SWARM-08) rides the same cadence axis, ×1.06 per coil
+ * held on the run's own `swarm_passive` ledger, so the weapons path keeps reading one
+ * number and nothing outside a live swarm run can bend it.
+ */
+export function swarmChainFireRateScale() {
+  const overdrive = swarmChain._overdrive ? SWARM_CHAIN_OVERDRIVE_RATE : 1;
+  return overdrive * swarmPassiveGunRateScale(swarmChain.state);
+}
+
+/**
+ * SWARM-08 — the gun-cycler passive's share of the player cooldown scale: ×1.06 per
+ * coil held, ×1.3 at the rack cap. Reads the live run's own `swarm_passive` ledger,
+ * the same receipt every other armory effect honours; outside a live swarm run — or
+ * with no coils racked — the answer is 1, not a guess.
+ */
+export function swarmPassiveGunRateScale(state) {
+  const run = liveSwarmRun(state);
+  return run ? swarmPassiveFireRateScale(run) : 1;
+}
+
+/**
+ * Chain Feeder (SEED-SW-09): the legendary feeds the live chain into player damage.
+ * +1% per chain point — chain 12 reads ×1.12, a broken chain reads 1. Only the run's
+ * own `swarm_legendary` ledger proves ownership, the same receipt the armory wrote.
+ */
+export const SWARM_CHAIN_FEEDER_STEP = 0.01;
+
+/** Whether the live Swarm run's own modifier ledger owns `id`. The armory receipt is the proof. */
+export function swarmRunOwnsLegendary(state, id) {
+  const run = liveSwarmRun(state);
+  return !!run && ownedSwarmLegendaryIds(run).includes(id);
+}
+
+export function swarmChainDamageScale(state) {
+  if (!swarmRunOwnsLegendary(state, 'chain_feeder')) return 1;
+  const chain = Number.isFinite(swarmChain._chain) ? swarmChain._chain : 0;
+  return chain > 0 ? 1 + chain * SWARM_CHAIN_FEEDER_STEP : 1;
+}
+
+/** Chain values worth saying out loud. Milestones only — a line per kill would be noise. */
+export const SWARM_CHAIN_MILESTONES = Object.freeze([10, 25, 50, 100, 200]);
+
+/**
+ * Score a kill is worth on top of its ordinary value, at this chain. Pure.
+ *
+ * The chain itself, capped. Deliberately the plainest possible rule: the player is looking at the
+ * number, so the number should be the answer.
+ */
+export function swarmChainBonus(chain) {
+  const n = Number.isFinite(chain) ? Math.max(0, Math.trunc(chain)) : 0;
+  return Math.min(SWARM_CHAIN_SCORE_CAP, n);
+}
+
+/** How much a kill adds, given whether it arrived differently from the one before it. */
+export function swarmChainStep(cause, previousCause) {
+  if (!previousCause || cause === previousCause) return SWARM_CHAIN_STEP;
+  return SWARM_CHAIN_VARIED_STEP;
+}
+
+/** The highest milestone at or below `chain` that is above `previous`, or null. Pure. */
+export function swarmChainMilestone(chain, previous) {
+  let hit = null;
+  for (const mark of SWARM_CHAIN_MILESTONES) {
+    if (chain >= mark && previous < mark) hit = mark;
+  }
+  return hit;
+}
+
+function liveSwarmRun(state) {
+  if (!state) return null;
+  const run = state.run;
+  if (!run || typeof run !== 'object' || Array.isArray(run)) return null;
+  if (run.kind !== 'survival') return null;
+  if (run.phase === 'inactive' || run.phase === 'ended') return null;
+  if (!isSwarmRuleset(run.ruleset)) return null;
+  if (!validateRunState(run).ok) return null;
+  return run;
+}
+
+function simTimeOf(state) {
+  if (Number.isFinite(state && state.simTime)) return state.simTime;
+  return Math.max(0, Number(state && state.tick) || 0) / 60;
+}
+
+export const swarmChain = {
+  name: 'swarmChain',
+  id: 'swarmChain',
+
+  init(ctx) {
+    this.destroy();
+    this.state = ctx.state;
+    this.bus = ctx.bus || null;
+    this._unsubs = [];
+    this._deathLedger = createRewardDeathLedger();
+    this._reset();
+    if (!this.bus || typeof this.bus.on !== 'function') return;
+    this._unsubs.push(this.bus.on('entity:killed', (p) => this._onKilled(p)));
+    // SWARM-07 B1 — the Brood tier's deaths are not entity kills (brood are not entities), so
+    // they arrive as batched receipts from the brood engine. The chain owner stays the sole
+    // writer of chain state: this path walks the same continue/step/milestone logic per body.
+    this._unsubs.push(this.bus.on('swarm:broodKills', (p) => this._onBroodKills(p)));
+    this._unsubs.push(this.bus.on('run:ended', () => this._onRunEnded()));
+  },
+
+  destroy() {
+    for (const off of this._unsubs || []) if (typeof off === 'function') off();
+    this._unsubs = [];
+  },
+
+  newGame() {
+    this._reset();
+  },
+
+  /**
+   * The lapse check. This is the only reason the system ticks: a chain that ended because the
+   * player stopped killing has to notice on its own, with nothing to notify it.
+   */
+  update(dt, state) {
+    const st = state || this.state;
+    // One queued milestone toast per tick, highest mark first — a burst that crossed several
+    // marks says one line. A dead run drops it: the results plate already owns that moment.
+    // INF-031.
+    if (this._pendingMilestone > 0) {
+      const mark = this._pendingMilestone;
+      this._pendingMilestone = 0;
+      // `audio: false`: the mark already has its own voice (swarmJuice's chain-tier chord); the
+      // toast's generic click would sit under it as a second sound for one moment.
+      if (liveSwarmRun(st)) this._emit('toast', { text: `CHAIN ${mark}`, kind: 'good', ttl: 1.8, audio: false });
+    }
+    if (this._chain <= 0) return;
+    const run = liveSwarmRun(st);
+    if (!run) { this._break('run_over'); return; }
+    // The phase machine pauses the world on the draft and refit surfaces, but sim time can still
+    // advance around them; a chain must not die because the player was reading three cards.
+    if (run.phase !== 'active' && run.phase !== 'cleanup') {
+      this._lastKillAt = simTimeOf(st);
+      this._pinned = true;
+      return;
+    }
+    // Back from a menu with a live chain: re-announce it from NOW so every readout restarts
+    // its window instead of draining through the menu stay. INF-032.
+    if (this._pinned) {
+      this._pinned = false;
+      this._emit('swarm:chain', {
+        chain: this._chain, best: this._best, cause: this._lastCause, step: this._lastStep,
+        at: simTimeOf(st), wave: run.wave,
+      });
+    }
+    const remaining = SWARM_CHAIN_WINDOW_S - (simTimeOf(st) - this._lastKillAt);
+    if (remaining <= 0) { this._break('lapsed'); return; }
+    // The last second gets exactly one soft warning per chain — no countdown chatter. INF-032.
+    if (remaining <= SWARM_CHAIN_WARN_S && !this._warned) {
+      this._warned = true;
+      this._emit('audio:cue', { id: SWARM_CHAIN_WARN_CUE, gain: 0.45 });
+    }
+  },
+
+  /** Live chain state, for the readout and for tests. Read-only. */
+  chainState() {
+    return {
+      chain: this._chain,
+      best: this._best,
+      lastCause: this._lastCause,
+      overdrive: !!this._overdrive,
+      expiresIn: this._chain > 0
+        ? Math.max(0, SWARM_CHAIN_WINDOW_S - (simTimeOf(this.state) - this._lastKillAt))
+        : 0,
+    };
+  },
+
+  _reset() {
+    this._chain = 0;
+    this._best = 0;
+    this._lastCause = null;
+    this._lastStep = 0;
+    this._lastKillAt = 0;
+    this._milestone = 0;
+    this._pendingMilestone = 0;
+    this._warned = false;
+    this._pinned = false;
+    this._overdrive = false;
+    this._overdriveOpened = false;
+    // A new run is new bodies: last run's claims die with it. INF-034.
+    if (this._deathLedger) this._deathLedger.clear();
+  },
+
+  _onKilled(payload) {
+    const run = liveSwarmRun(this.state);
+    if (!run) return;
+    const id = payload && payload.id;
+    if (id == null) return;
+    const victim = this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(id)
+      : null;
+    // The cohort mark, exactly as the reward path uses it — and, exactly as there, WHOEVER killed
+    // it. A hull the room put through a rock is the player's kill; that is the entire point of the
+    // varied-cause rule below.
+    if (!runOwnsReward(victim)) return;
+    const actor = payload.killerId ?? payload.provenance?.actorId;
+    if (actor !== this.state.playerId) return;
+    // One authoritative death per body: a second terminal observation of the same hull is
+    // observed, not paid — no second step, no second bonus, no second milestone. A reused
+    // entity id carrying a NEW body object is a new life and pays independently. INF-034.
+    if (this._deathLedger && !this._deathLedger.claim(victim)) return;
+
+    const now = simTimeOf(this.state);
+    const cause = styleCauseFromKill(payload);
+    const continues = this._chain > 0 && (now - this._lastKillAt) <= SWARM_CHAIN_WINDOW_S;
+    // A late kill is a new chain of one. Overdrive belonged to the chain that just died.
+    if (!continues && this._chain > 0) this._break('lapsed');
+    const step = continues ? swarmChainStep(cause, this._lastCause) : SWARM_CHAIN_STEP;
+    this._chain = continues ? this._chain + step : step;
+    this._lastCause = cause;
+    this._lastStep = step;
+    this._lastKillAt = now;
+    // A fresh kill opens a fresh window, so the last-second warning arms again. INF-032.
+    this._warned = false;
+    if (this._chain > this._best) this._best = this._chain;
+
+    const bonus = swarmChainBonus(this._chain);
+    if (bonus > 0) {
+      this._emit('run:awardRequested', { score: bonus, reason: 'chain', wave: run.wave });
+    }
+
+    const milestone = swarmChainMilestone(this._chain, this._milestone);
+    if (milestone) {
+      this._milestone = milestone;
+      // Queued, not spoken: a multi-kill burst in one tick can cross several marks, and a stack
+      // of toasts would bury every other thing the fight has to say. update() says the highest
+      // one once. INF-031.
+      if (milestone > this._pendingMilestone) this._pendingMilestone = milestone;
+    }
+    // cause AND step travel together so the readout shows the variety bonus from this result
+    // instead of calculating a second score of its own. INF-031. `at` anchors the readout's
+    // depletion mark to the same sim clock the lapse check runs on — slow time and pause
+    // slow and freeze the mark with the window itself. INF-032.
+    this._openOverdrive();
+    this._emit('swarm:chain', { chain: this._chain, best: this._best, cause, step, at: now, wave: run.wave });
+    this._maybeTeachVariety({ cause, step, wave: run.wave });
+  },
+
+  // The variety rule (+2 for a kill that arrives differently) is the chain's
+  // whole game and nothing ever said so. The first varied step speaks it once
+  // per profile through the shared player-hints store (onboarding's own voice
+  // is suppressed in survival, so the chain teaches its own rule) and honors
+  // tutorialHints off by staying silent without spending the flag.
+  _maybeTeachVariety({ cause, step, wave } = {}) {
+    if (step !== SWARM_CHAIN_VARIED_STEP) return;
+    const st = this.state;
+    const settings = st && st.settings;
+    if (settings && settings.gameplay && settings.gameplay.tutorialHints === false) return;
+    const player = st && st.player;
+    if (!player) return;
+    if (!player.hints) player.hints = {};
+    if (player.hints.swarmChainVariety) return;
+    player.hints.swarmChainVariety = true;
+    this._emit('swarm:chainLesson', { cause, step, chain: this._chain, wave });
+    this._emit('toast', { text: 'Different kill — the chain climbs faster.', kind: 'good', ttl: 3.2 });
+  },
+
+  /**
+   * SWARM-07 B1 — one brood-kill receipt from the Brood tier. Every body in the batch walks the
+   * same continue/step logic an entity kill uses, so a 40-body room wipe climbs the chain
+   * exactly as 40 ship kills would. The receipt is the once-only accounting: the engine kills
+   * each body once, and nothing else consumes brood deaths.
+   *
+   * inf-brood-chain-open: each body IS a kill at `now`, and stamps it before the next body
+   * reads the window — exactly what N same-tick ship kills do, each through _onKilled. The
+   * stamp used to land only after the whole batch, so a wipe that OPENED a chain read the old
+   * kill time for every body after the first: each one "lapsed", broke the one-body chain it
+   * had just started and began again at one — a 40-mite opener counted 1 and threw 39 broken-
+   * chain receipts. Mid-chain batches were never affected (their window was already live).
+   */
+  _onBroodKills(payload) {
+    const run = liveSwarmRun(this.state);
+    if (!run || !payload) return;
+    const count = Math.max(0, Math.trunc(Number(payload.count) || 0));
+    if (count <= 0) return;
+    const now = simTimeOf(this.state);
+    const cause = typeof payload.cause === 'string' && payload.cause ? payload.cause : null;
+    let step = 0;
+    for (let i = 0; i < count; i++) {
+      const continues = this._chain > 0 && (now - this._lastKillAt) <= SWARM_CHAIN_WINDOW_S;
+      if (!continues && this._chain > 0) this._break('lapsed');
+      step = continues ? swarmChainStep(cause, this._lastCause) : SWARM_CHAIN_STEP;
+      this._chain = continues ? this._chain + step : step;
+      this._lastCause = cause;
+      this._lastStep = step;
+      this._lastKillAt = now;
+    }
+    this._warned = false;
+    if (this._chain > this._best) this._best = this._chain;
+
+    const bonus = swarmChainBonus(this._chain);
+    if (bonus > 0) {
+      this._emit('run:awardRequested', { score: bonus, reason: 'chain', wave: run.wave });
+    }
+
+    const milestone = swarmChainMilestone(this._chain, this._milestone);
+    if (milestone) {
+      this._milestone = milestone;
+      if (milestone > this._pendingMilestone) this._pendingMilestone = milestone;
+    }
+    this._openOverdrive();
+    this._emit('swarm:chain', { chain: this._chain, best: this._best, cause, step, at: now, wave: run.wave });
+    this._maybeTeachVariety({ cause, step, wave: run.wave });
+  },
+
+  _onRunEnded() {
+    // Publish the run's best before dropping it — the results plate and the record band both want
+    // it, and after this the state is gone.
+    if (this._best > 0) this._emit('swarm:chainBest', { best: this._best });
+    this._reset();
+  },
+
+  _openOverdrive() {
+    if (this._overdrive || this._overdriveOpened) return;
+    if (this._chain < SWARM_CHAIN_SCORE_CAP) return;
+    this._overdrive = true;
+    this._overdriveOpened = true;
+    this._emit('swarm:overdrive', {
+      active: true,
+      chain: this._chain,
+      rate: SWARM_CHAIN_OVERDRIVE_RATE,
+    });
+  },
+
+  _break(reason) {
+    if (this._chain <= 0) return;
+    const ended = this._chain;
+    const overdrive = !!this._overdrive;
+    this._chain = 0;
+    this._lastCause = null;
+    this._lastStep = 0;
+    this._milestone = 0;
+    // A lapsed chain takes its unsaid milestone with it — congratulating a dead number is noise.
+    this._pendingMilestone = 0;
+    this._warned = false;
+    this._pinned = false;
+    this._overdrive = false;
+    this._overdriveOpened = false;
+    this._emit('swarm:chainBroken', { chain: ended, best: this._best, reason });
+    if (overdrive) {
+      this._emit('swarm:overdrive', { active: false, chain: ended, rate: 1, reason });
+    }
+  },
+
+  _emit(event, payload) {
+    if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(event, payload);
+  },
+};
+
+export default swarmChain;

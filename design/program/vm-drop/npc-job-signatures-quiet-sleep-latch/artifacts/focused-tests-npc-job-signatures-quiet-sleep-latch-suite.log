@@ -1,0 +1,313 @@
+TAP version 13
+# Subtest: inactive plan is frozen and only tumbling or thrown trails look active
+ok 1 - inactive plan is frozen and only tumbling or thrown trails look active
+  ---
+  duration_ms: 1.2167
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: momentum-sink quiet-latches on empty combat bag with trustworthy seq
+ok 2 - momentum-sink quiet-latches on empty combat bag with trustworthy seq
+  ---
+  duration_ms: 137.145789
+  ...
+# Subtest: statusNextPendingSeq dirty-wake resumes then re-latches when empty
+ok 3 - statusNextPendingSeq dirty-wake resumes then re-latches when empty
+  ---
+  duration_ms: 36.492789
+  ...
+# Subtest: missing statusNextPendingSeq refuses latch (fallback stays live)
+ok 4 - missing statusNextPendingSeq refuses latch (fallback stays live)
+  ---
+  duration_ms: 33.689999
+  ...
+# Subtest: boundary resets clear momentum-sink quiet latch
+ok 5 - boundary resets clear momentum-sink quiet latch
+  ---
+  duration_ms: 28.158762
+  ...
+# Subtest: every kind x every non-terminal phase resolves to a signal
+ok 6 - every kind x every non-terminal phase resolves to a signal
+  ---
+  duration_ms: 2.223337
+  ...
+# Subtest: a completed job and a nonsense phase show nothing
+ok 7 - a completed job and a nonsense phase show nothing
+  ---
+  duration_ms: 0.217985
+  ...
+# Subtest: loaded and empty transit are DIFFERENT signals — "amber heartbeat means mass"
+ok 8 - loaded and empty transit are DIFFERENT signals — "amber heartbeat means mass"
+  ---
+  duration_ms: 0.321222
+  ...
+# Subtest: a patrol keeps sweeping across every phase it can occupy
+ok 9 - a patrol keeps sweeping across every phase it can occupy
+  ---
+  duration_ms: 0.473408
+  ...
+# Subtest: only a miner works a rock face, and only a miner comes home under rock
+ok 10 - only a miner works a rock face, and only a miner comes home under rock
+  ---
+  duration_ms: 0.767284
+  ...
+# Subtest: distress overrides everything and is the loudest signal in the code
+ok 11 - distress overrides everything and is the loudest signal in the code
+  ---
+  duration_ms: 0.37086
+  ...
+# Subtest: signals are distinguishable WITHOUT colour — every profile has a unique rhythm
+ok 12 - signals are distinguishable WITHOUT colour — every profile has a unique rhythm
+  ---
+  duration_ms: 0.208976
+  ...
+# Subtest: every profile declares all four far-field channels
+ok 13 - every profile declares all four far-field channels
+  ---
+  duration_ms: 0.706223
+  ...
+# Subtest: a link implies a contact or an explicit absence, never an accident
+ok 14 - a link implies a contact or an explicit absence, never an accident
+  ---
+  duration_ms: 0.374925
+  ...
+# Subtest: the frame writer is deterministic: same inputs, same frame
+ok 15 - the frame writer is deterministic: same inputs, same frame
+  ---
+  duration_ms: 0.543663
+  ...
+# Subtest: the frame writer mutates only the scratch it is handed — no allocation per beat
+ok 16 - the frame writer mutates only the scratch it is handed — no allocation per beat
+  ---
+  duration_ms: 0.197177
+  ...
+# Subtest: emitStep advances exactly once per beat at the profile cadence
+ok 17 - emitStep advances exactly once per beat at the profile cadence
+  ---
+  duration_ms: 0.356291
+  ...
+# Subtest: beat cycles through exactly `beats` values and never leaves range
+ok 18 - beat cycles through exactly `beats` values and never leaves range
+  ---
+  duration_ms: 11.51797
+  ...
+# Subtest: seed de-phases hulls showing the same signal
+ok 19 - seed de-phases hulls showing the same signal
+  ---
+  duration_ms: 0.354931
+  ...
+# Subtest: D3: ceresCausalCue preferred over job phase; fallback works
+ok 20 - D3: ceresCausalCue preferred over job phase; fallback works
+  ---
+  duration_ms: 0.229802
+  ...
+# Subtest: facing falls back to hull heading when the ship is station-keeping
+ok 21 - facing falls back to hull heading when the ship is station-keeping
+  ---
+  duration_ms: 1.028954
+  ...
+# Subtest: direction is always a unit vector with a perpendicular normal
+ok 22 - direction is always a unit vector with a perpendicular normal
+  ---
+  duration_ms: 0.268702
+  ...
+# Subtest: reduced motion slows every code and stills the station-keeping chatter
+ok 23 - reduced motion slows every code and stills the station-keeping chatter
+  ---
+  duration_ms: 0.338784
+  ...
+# Subtest: only station-keeping and breaking hulls chatter; cruising hulls hold attitude
+ok 24 - only station-keeping and breaking hulls chatter; cruising hulls hold attitude
+  ---
+  duration_ms: 3.046277
+  ...
+# Subtest: corrupt inputs degrade quietly instead of throwing into the render loop
+ok 25 - corrupt inputs degrade quietly instead of throwing into the render loop
+  ---
+  duration_ms: 0.424955
+  ...
+# Subtest: pool capacity covers a saturated sector; draw range matches what the camera can show
+ok 26 - pool capacity covers a saturated sector; draw range matches what the camera can show
+  ---
+  duration_ms: 0.267398
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: npc-job signatures quiet-latch on empty bag with trustworthy revision
+ok 27 - npc-job signatures quiet-latch on empty bag with trustworthy revision
+  ---
+  duration_ms: 112.99935
+  ...
+# Subtest: npcJobs.revision dirty-wake resumes then re-latches when empty
+ok 28 - npcJobs.revision dirty-wake resumes then re-latches when empty
+  ---
+  duration_ms: 80.420713
+  ...
+# Subtest: missing npcJobs.revision refuses latch (fallback stays live)
+ok 29 - missing npcJobs.revision refuses latch (fallback stays live)
+  ---
+  duration_ms: 20.753009
+  ...
+# Subtest: boundary resets clear npc-job quiet latch
+ok 30 - boundary resets clear npc-job quiet latch
+  ---
+  duration_ms: 24.748975
+  ...
+# Subtest: precondition: sim.step advances state.simTime
+ok 31 - precondition: sim.step advances state.simTime
+  ---
+  duration_ms: 7.403355
+  ...
+# Subtest: assign: producer links a job to its hull and the bag records the runtime meta
+ok 32 - assign: producer links a job to its hull and the bag records the runtime meta
+  ---
+  duration_ms: 2.674429
+  ...
+# Subtest: materialized: the job advances phases and writes the civilian transit intent toward the target
+ok 33 - materialized: the job advances phases and writes the civilian transit intent toward the target
+  ---
+  duration_ms: 5.235999
+  ...
+# Subtest: Ceres disabled-hauler condition physically brakes the job hull until recovery clears it
+ok 34 - Ceres disabled-hauler condition physically brakes the job hull until recovery clears it
+  ---
+  duration_ms: 5.067505
+  ...
+# Subtest: Ceres tender-service presentation stamp is not a job-control seam
+ok 35 - Ceres tender-service presentation stamp is not a job-control seam
+  ---
+  duration_ms: 1.926456
+  ...
+# Subtest: post-sink replacement aborts the obsolete batch before any same-ID successor is touched
+ok 36 - post-sink replacement aborts the obsolete batch before any same-ID successor is touched
+  ---
+  duration_ms: 21.964203
+  ...
+# Subtest: save/restore: serialize→deserialize preserves the job + meta and re-links on re-entry
+ok 37 - save/restore: serialize→deserialize preserves the job + meta and re-links on re-entry
+  ---
+  duration_ms: 16.531804
+  ...
+# Subtest: continuity: a miner loop survives exit → away → re-entry, advanced virtually, never reset
+ok 38 - continuity: a miner loop survives exit → away → re-entry, advanced virtually, never reset
+  ---
+  duration_ms: 30.169777
+  ...
+# Subtest: truncation-resume: a huge away interval on a tiny-phase job is fully processed (no silent drop)
+ok 39 - truncation-resume: a huge away interval on a tiny-phase job is fully processed (no silent drop)
+  ---
+  duration_ms: 347.518852
+  ...
+# Subtest: one writer: traffic yields (writes no intent) for a hull carrying a jobId
+ok 40 - one writer: traffic yields (writes no intent) for a hull carrying a jobId
+  ---
+  duration_ms: 11.23256
+  ...
+# Subtest: hauler terminal: on COMPLETE the job unlinks and drops from the bag (hull reverts to ambient)
+ok 41 - hauler terminal: on COMPLETE the job unlinks and drops from the bag (hull reverts to ambient)
+  ---
+  duration_ms: 10.409626
+  ...
+# Subtest: flee: a nearby hostile interrupts the job into flee; removing it resumes the prior phase
+ok 42 - flee: a nearby hostile interrupts the job into flee; removing it resumes the prior phase
+  ---
+  duration_ms: 1.748648
+  ...
+# Subtest: flee: a lawful-wanted-only patrol is not a predator; a weapons-free hull still is
+ok 43 - flee: a lawful-wanted-only patrol is not a predator; a weapons-free hull still is
+  ---
+  duration_ms: 1.518968
+  ...
+# Subtest: flee: a violence stamp still interrupts even when the nearby hull is a lawful patrol
+ok 44 - flee: a violence stamp still interrupts even when the nearby hull is a lawful patrol
+  ---
+  duration_ms: 1.371145
+  ...
+# Subtest: save/Continue (real envelope): a restored job relinks after its durable hull rematerializes before deserialize
+ok 45 - save/Continue (real envelope): a restored job relinks after its durable hull rematerializes before deserialize
+  ---
+  duration_ms: 75.527012
+  ...
+# Subtest: save/Continue: an outgoing virtual job cannot leave a phantom hull marker when the incoming bag is empty
+ok 46 - save/Continue: an outgoing virtual job cannot leave a phantom hull marker when the incoming bag is empty
+  ---
+  duration_ms: 12.973804
+  ...
+# Subtest: job-owned persistence: assign stamps the durable worker; release drops the un-anchored mark
+ok 47 - job-owned persistence: assign stamps the durable worker; release drops the un-anchored mark
+  ---
+  duration_ms: 0.950423
+  ...
+# Subtest: job-owned persistence: anchored workers keep the mark through release
+ok 48 - job-owned persistence: anchored workers keep the mark through release
+  ---
+  duration_ms: 1.256499
+  ...
+# Subtest: job-owned persistence: a towed lot sheds its mark when the tow releases
+ok 49 - job-owned persistence: a towed lot sheds its mark when the tow releases
+  ---
+  duration_ms: 0.846244
+  ...
+# Subtest: job-owned persistence: a virtualized job keeps the mark through the sweep; relink restamps
+ok 50 - job-owned persistence: a virtualized job keeps the mark through the sweep; relink restamps
+  ---
+  duration_ms: 0.597034
+  ...
+# Subtest: job-owned persistence: the sweep still drops the mark once the virtual job is gone
+ok 51 - job-owned persistence: the sweep still drops the mark once the virtual job is gone
+  ---
+  duration_ms: 0.469633
+  ...
+# Subtest: migration v11→v12 (real load): a pre-v12 envelope with no npcJobs loads to an empty bag (fail closed, no crash)
+ok 52 - migration v11→v12 (real load): a pre-v12 envelope with no npcJobs loads to an empty bag (fail closed, no crash)
+  ---
+  duration_ms: 2.718621
+  ...
+# Subtest: id list: update reuses one job-id list while the bag is settled
+ok 53 - id list: update reuses one job-id list while the bag is settled
+  ---
+  duration_ms: 2.078125
+  ...
+# Subtest: id list: assign, release, newGame and deserialize each dirty the list
+ok 54 - id list: assign, release, newGame and deserialize each dirty the list
+  ---
+  duration_ms: 0.976897
+  ...
+# Subtest: id list: a malformed entry swept during update leaves the list
+ok 55 - id list: a malformed entry swept during update leaves the list
+  ---
+  duration_ms: 0.606472
+  ...
+# Subtest: id list: a job that completes offscreen is relinked out of the list, not left stale
+ok 56 - id list: a job that completes offscreen is relinked out of the list, not left stale
+  ---
+  duration_ms: 0.802439
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: wreck-wisps quiet-latches when wrecks bucket is empty
+ok 57 - wreck-wisps quiet-latches when wrecks bucket is empty
+  ---
+  duration_ms: 155.999414
+  ...
+# Subtest: entityIndexVersion dirty-wake resumes then re-latches when empty
+ok 58 - entityIndexVersion dirty-wake resumes then re-latches when empty
+  ---
+  duration_ms: 63.843628
+  ...
+# Subtest: no entityIndex version refuses latch (entityList fallback stays live)
+ok 59 - no entityIndex version refuses latch (entityList fallback stays live)
+  ---
+  duration_ms: 17.609661
+  ...
+# Subtest: boundary resets clear wreck-wisps quiet latch
+ok 60 - boundary resets clear wreck-wisps quiet latch
+  ---
+  duration_ms: 16.74125
+  ...
+1..60
+# tests 60
+# suites 0
+# pass 60
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1020.461476

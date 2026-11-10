@@ -1,0 +1,4496 @@
+#!/usr/bin/env node
+// Headed Electron runtime witness: fly a few seconds and write what actually happened.
+// Agents should read .devshots/runtime-witness/report.md instead of guessing from source.
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import {
+  closeOwnedElectronRuntime,
+  createElectronCanonicalUrlTracker,
+  createElectronProcessMonitor,
+} from './lib/alphaLiveBaselineElectronContracts.mjs';
+import {
+  assertIsolatedElectronRootUrl,
+  createIsolatedElectronLaunch,
+} from './lib/electronTestIsolation.mjs';
+import { classifyRuntimeWitness, formatHitchAttributionDetailLines, formatRuntimeWitnessReport } from '../src/core/runtimeWitness.js';
+import { loadPlaywright } from './lib/load-playwright.mjs';
+import { consumePageConditionValue, installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
+import { digestSourcePaths, listSrcJsSourcePaths } from './lib/validationFingerprint.mjs';
+import { armoryLaunchWord, clickText, crucibleToArmory, installFirstLightPromptHandler, waitForPreparationLaunch } from './player-truth/routes.mjs';
+import {
+  formatRuntimeWitnessProductionMatrix,
+  productionRouteById,
+  summarizeRuntimeWitnessProductionWindow,
+  installStartupRouteMarks,
+  alignStartupRouteMarks,
+} from './lib/runtimeWitnessProductionMatrix.mjs';
+
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const requireCjs = createRequire(import.meta.url);
+const {
+  readPlayerStoreKeysSync,
+  resolvePlayerSaveDir,
+} = requireCjs('./lib/playerSaveStore.cjs');
+const OUTPUT_TAG = process.env.SPACEFACE_WITNESS_TAG || '';
+if (OUTPUT_TAG && !/^[A-Za-z0-9_-]{1,80}$/.test(OUTPUT_TAG)) throw new Error('Invalid SPACEFACE_WITNESS_TAG');
+const OUT = path.join(ROOT, '.devshots', 'runtime-witness', OUTPUT_TAG);
+const SAMPLE_MS = Number(process.env.SPACEFACE_WITNESS_MS || 20_000);
+const SAMPLE_EVERY_MS = 500;
+const FIXED_SEED = 47;
+const FULL_SYSTEM_TIMING = process.env.SPACEFACE_WITNESS_FULL_SYSTEM_TIMING === '1';
+const CONTINUE_ROUTE = process.argv.includes('--continue');
+const CONTINUE_PROFILE = process.argv.includes('--continue-profile');
+const SECTOR_ENTRY_ROUTE = process.argv.includes('--sector-entry');
+const SHADOWS_OFF_DIAGNOSTIC = process.argv.includes('--shadows-off-diagnostic');
+const OPAQUE_BATCH_OFF_DIAGNOSTIC = process.argv.includes('--opaque-batch-off-diagnostic');
+const OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC = process.argv.includes('--opening-first-touch-owner');
+const OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC = process.argv.includes('--opening-exact-owner-touch');
+const NO_SUBMIT_DIAGNOSTIC = process.argv.includes('--no-submit-diagnostic');
+// `locator('#gl-canvas').screenshot()` reads back the drawing buffer, and on this Intel/ANGLE
+// target that BLOCKS the renderer process for seconds — measured 2449 / 3336 / 4076 ms long tasks
+// for exactly the three shots taken inside a 60 s sample. The game's own hitch classifier sees
+// those as frame gaps and charges them to the game. Pass this to score flight smoothness without
+// the measuring apparatus in the number; the final shot is still taken, after sampling ends.
+const NO_SAMPLE_SHOTS = process.argv.includes('--no-sample-shots');
+// Split the ~1.3 GB flight heap into garbage vs live retention. Force a full collection after the
+// sample and measure again: if the heap collapses, the cost is allocation churn and the fix is to
+// stop allocating; if it holds, the cost is retention and the fix is to dispose. Those are
+// different fixes, and guessing between them from source is how this kind of hunt goes wrong.
+const GC_PROBE = process.argv.includes('--gc-probe');
+// Name the allocation sites behind that garbage. V8's SAMPLING heap profiler is the right tool
+// here: it costs almost nothing at runtime (unlike a full snapshot of a 1.3 GB heap, which would
+// be multi-gigabyte and unreadable) and reports self-size per call frame, which is exactly
+// "who allocates the most bytes".
+const ALLOC_PROBE = process.argv.includes('--alloc-probe');
+// Start the allocation profiler BEFORE the loading route instead of at the flight loop. World
+// population allocates a single ~612 MB step that every profile so far has started after and
+// therefore never attributed - it is the largest single allocation event in the session and it sets
+// the heap floor that makes every later major GC expensive.
+const ALLOC_PROBE_BOOT = process.argv.includes('--alloc-probe-boot');
+// Name the main-thread time behind the frame gaps. The no-submit A/B showed the stalls survive
+// with scene submission replaced by a constant clear, so they are CPU work outside the frame
+// callback (timers, message handlers, decode, GC). A sampled CPU profile over the flight window
+// attributes that time per function and per file; the raw profile opens in DevTools.
+const CPU_PROFILE_FROM_LAUNCH = process.argv.includes('--cpu-profile-from-launch');
+const CPU_PROFILE = process.argv.includes('--cpu-profile') || CPU_PROFILE_FROM_LAUNCH;
+// Exercise the reported failure using the normal nearest-latch, turn, winch and cut controls.
+// This is a diagnostic input route; it never spawns or teleports bodies or edits simulation state.
+const TETHER_BOOST_STRESS = process.argv.includes('--tether-boost-stress');
+const TETHER_HOLD_STRESS = process.argv.includes('--tether-hold-stress');
+const TETHER_STRESS = process.argv.includes('--tether-stress') || TETHER_BOOST_STRESS || TETHER_HOLD_STRESS;
+const TURN_STRESS = process.argv.includes('--turn-stress');
+const FOCUS_RECOVERY_STRESS = process.argv.includes('--focus-recovery-stress');
+const BACKGROUND_FLIGHT_STRESS = process.argv.includes('--background-flight-stress');
+const SAVE_TETHER_STRESS = process.argv.includes('--save-tether-stress');
+const NORMAL_DESKTOP_LIFECYCLE = process.argv.includes('--normal-desktop-lifecycle') || BACKGROUND_FLIGHT_STRESS;
+const COMBAT_STRESS = process.argv.includes('--combat-stress');
+// The CPU profile charges browser-native work (style, layout, paint, GPU command flush) to one
+// opaque "(program)" bucket. A devtools.timeline trace over the same window names it.
+const TIMELINE_TRACE = process.argv.includes('--timeline-trace');
+const PRODUCTION_ROUTE_ID = process.argv.find((arg) => arg.startsWith('--production-route='))?.split('=')[1] || null;
+const PRODUCTION_ROUTE = PRODUCTION_ROUTE_ID ? productionRouteById(PRODUCTION_ROUTE_ID) : null;
+const PRODUCTION_CRUCIBLE_ROUTE = new Set(['warm-dense-combat', 'sustained-swarm']).has(PRODUCTION_ROUTE?.id);
+
+if (PRODUCTION_ROUTE_ID && !PRODUCTION_ROUTE) {
+  throw new Error(`unknown --production-route=${PRODUCTION_ROUTE_ID}`);
+}
+if (CONTINUE_ROUTE && PRODUCTION_CRUCIBLE_ROUTE) {
+  throw new Error('--continue cannot be combined with Crucible production routes');
+}
+if (CPU_PROFILE_FROM_LAUNCH && (CONTINUE_ROUTE || PRODUCTION_CRUCIBLE_ROUTE)) {
+  throw new Error('--cpu-profile-from-launch requires the public New Game Adventure route');
+}
+const productionSourcePaths = PRODUCTION_ROUTE ? await listSrcJsSourcePaths(ROOT) : [];
+const productionSourceDigest = PRODUCTION_ROUTE ? await digestSourcePaths(ROOT, productionSourcePaths) : null;
+const productionHarnessDigest = PRODUCTION_ROUTE ? await digestSourcePaths(ROOT, [
+  'scripts/probe-runtime-witness.mjs', 'scripts/lib/runtimeWitnessProductionMatrix.mjs',
+]) : null;
+
+if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC && OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC) {
+  throw new Error('Opening first-touch owner and exact-owner touch diagnostics are mutually exclusive');
+}
+
+await mkdir(OUT, { recursive: true });
+if (PRODUCTION_ROUTE) {
+  // A production-matrix run appends a section to the ordinary witness report. Preserve the prior
+  // baseline before that overwrite.
+  const backupStamp = Date.now();
+  for (const extension of ['md', 'json']) {
+    try {
+      const prior = await readFile(path.join(OUT, `report.${extension}`), 'utf8');
+      await writeFile(path.join(OUT, `report.before-production-matrix-${backupStamp}.${extension}`), prior);
+    } catch (_) {}
+  }
+}
+
+const logs = [];
+const consoleHits = [];
+const pageErrors = [];
+const snapshots = [];
+const canvasFrames = [];
+const composedFrames = [];
+const loadingReadinessSamples = [];
+let loadingProgressEvents = [];
+let probeInstrumentation = null;
+let gcProbe = null;
+let allocProfile = null;
+let cpuProfile = null;
+let timelineTrace = null;
+let evalResult = null;
+
+// Self time per trace-event name on the renderer main thread (the thread that ran most
+// FunctionCall time). Complete events ('X') and B/E pairs nest; a child's time is removed from
+// its parent so the buckets sum to the busy time instead of double counting.
+function summarizeTimelineTrace(events) {
+  const callMs = new Map();
+  for (const ev of events) {
+    if (ev.name === 'FunctionCall' && ev.ph === 'X') {
+      const key = `${ev.pid}:${ev.tid}`;
+      callMs.set(key, (callMs.get(key) || 0) + (ev.dur || 0));
+    }
+  }
+  const mainKey = [...callMs.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+  const [pid, tid] = mainKey.split(':').map(Number);
+  const spans = [];
+  const open = [];
+  for (const ev of events) {
+    if (ev.pid !== pid || ev.tid !== tid) continue;
+    if (ev.ph === 'X' && Number(ev.dur) > 0) spans.push({ name: ev.name, ts: ev.ts, end: ev.ts + ev.dur });
+    else if (ev.ph === 'B') open.push(ev);
+    else if (ev.ph === 'E') {
+      for (let i = open.length - 1; i >= 0; i -= 1) {
+        if (open[i].name === ev.name) { spans.push({ name: ev.name, ts: open[i].ts, end: ev.ts }); open.splice(i, 1); break; }
+      }
+    }
+  }
+  spans.sort((a, b) => a.ts - b.ts || b.end - a.end);
+  const self = new Map();
+  const stack = [];
+  const close = (span) => {
+    const e = self.get(span.name) || { us: 0, count: 0 };
+    e.us += Math.max(0, span.end - span.ts - span.childUs);
+    e.count += 1;
+    self.set(span.name, e);
+  };
+  for (const span of spans) {
+    span.childUs = 0;
+    while (stack.length && stack[stack.length - 1].end <= span.ts) close(stack.pop());
+    if (stack.length) stack[stack.length - 1].childUs += Math.min(span.end, stack[stack.length - 1].end) - span.ts;
+    stack.push(span);
+  }
+  while (stack.length) close(stack.pop());
+  const topSelf = [...self.entries()].sort((a, b) => b[1].us - a[1].us).slice(0, 40)
+    .map(([name, e]) => ({ name, ms: Math.round(e.us / 1000), count: e.count }));
+  return { pid, tid, events: events.length, topSelf };
+}
+
+// Self time per sampled function and per source file. Sample i lasted timeDeltas[i + 1] µs
+// (the next delta), the V8 convention DevTools uses; the final sample is charged 0.
+function summarizeCpuProfile(profile) {
+  const byId = new Map(profile.nodes.map((node) => [node.id, node]));
+  const selfUs = new Map();
+  const samples = profile.samples || [];
+  const deltas = profile.timeDeltas || [];
+  for (let i = 0; i < samples.length; i += 1) {
+    const us = Number(deltas[i + 1]) || 0;
+    selfUs.set(samples[i], (selfUs.get(samples[i]) || 0) + us);
+  }
+  const bySite = new Map();
+  const byFile = new Map();
+  let totalUs = 0;
+  for (const [id, us] of selfUs) {
+    const f = byId.get(id)?.callFrame || {};
+    const file = String(f.url || '').split('?')[0].split('/').slice(-2).join('/') || '(native)';
+    const site = `${f.functionName || '(anonymous)'} @ ${file}:${(f.lineNumber ?? -1) + 1}`;
+    bySite.set(site, (bySite.get(site) || 0) + us);
+    byFile.set(file, (byFile.get(file) || 0) + us);
+    totalUs += us;
+  }
+  const top = (map, key) => [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40)
+    .map(([name, us]) => ({ [key]: name, ms: Math.round(us / 1000) }));
+  return { totalMs: Math.round(totalUs / 1000), topSelf: top(bySite, 'site'), topFiles: top(byFile, 'file') };
+}
+let allocCdp = null;
+let cpuCdp = null;
+let startupRouteMarks = null;
+let finalHitchAttribution = null;
+let finalRenderWork = null;
+let finalSystemTiming = null;
+let openingRenderWork = null;
+let openingFirstTouchOwner = null;
+let openingExactOwnerTouch = null;
+let opaqueBatchDiagnostic = null;
+let noSubmitDiagnostic = null;
+let sectorTransitionTrace = null;
+let hostLoadStart = null;
+let hostLoad = { available: false };
+
+function log(line) {
+  const text = `[${new Date().toISOString()}] ${line}`;
+  logs.push(text);
+  console.log(text);
+}
+
+const TABLE_CENSUS_FIELDS = Object.freeze([
+  'glass',
+  'runway',
+  'beyond',
+  'submitted',
+  'resident',
+  'landmarks',
+]);
+const BLOOM_PHASE_LABELS = Object.freeze([
+  'bloomScene',
+  'bloomDownsample',
+  'bloomComposite',
+]);
+
+function summarizeTableCensus(samples) {
+  const rows = samples
+    .map((sample) => sample && sample.tableCensus)
+    .filter((row) => row && row.available === true);
+  if (rows.length === 0) return { available: false, sampleCount: 0 };
+  const ranges = {};
+  for (const field of TABLE_CENSUS_FIELDS) {
+    const values = rows.map((row) => Number(row[field])).filter(Number.isFinite);
+    ranges[field] = values.length > 0
+      ? { min: Math.min(...values), max: Math.max(...values) }
+      : { min: null, max: null };
+  }
+  return {
+    available: true,
+    sampleCount: rows.length,
+    first: rows[0],
+    last: rows[rows.length - 1],
+    ranges,
+  };
+}
+
+function formatTableCensusSection(summary, route) {
+  const lines = [
+    '',
+    '## Tabletop census (PQ-129.01)',
+    `- route: ${route.label}, held thrust, ${route.sampleMs} ms at ${route.sampleEveryMs} ms cadence`,
+    `- sim delta: ${route.simDelta.toFixed(2)} s; executed-frame delta: ${route.executedFrameDelta}`,
+    `- bounded instrumentation: renderWork ${route.instrumentation?.previousRenderWorkEnabled === true ? 'already on' : 'enabled for this probe only'}; prior state restored before shutdown: ${route.instrumentation?.restored === true}`,
+  ];
+  if (!summary.available) {
+    lines.push('- census unavailable: the live renderer did not publish a probe-gated table sample');
+    return lines.join('\n');
+  }
+  const last = summary.last;
+  lines.push(
+    `- last population: glass ${last.glass}, runway ${last.runway}, beyond ${last.beyond}, submitted ${last.submitted}, resident ${last.resident}, landmarks ${last.landmarks}`,
+    `- policy envelope: glass half-extents ${last.glassHalfX} x ${last.glassHalfZ} WU; runway ${last.runwayWu} WU`,
+    `- observed ranges: ${TABLE_CENSUS_FIELDS.map((field) => `${field} ${summary.ranges[field].min}–${summary.ranges[field].max}`).join('; ')}`,
+    '- submitted is the tabletop policy population (glass + runway + forced roots), not WebGL draw calls.',
+  );
+  return lines.join('\n');
+}
+
+function readCpuTimes() {
+  const cpus = os.cpus();
+  let idle = 0;
+  let total = 0;
+  for (const cpu of cpus) {
+    const times = cpu.times || {};
+    const idlePart = Number(times.idle) || 0;
+    idle += idlePart;
+    total += (Number(times.user) || 0)
+      + (Number(times.nice) || 0)
+      + (Number(times.sys) || 0)
+      + (Number(times.irq) || 0)
+      + idlePart;
+  }
+  return { logicalCpus: cpus.length, idle, total };
+}
+
+function snapshotHostLoadStart() {
+  try {
+    return readCpuTimes();
+  } catch (_) {
+    return null;
+  }
+}
+
+function snapshotHostLoadEnd(start) {
+  try {
+    if (!start) return { available: false };
+    const end = readCpuTimes();
+    const idleDelta = end.idle - start.idle;
+    const totalDelta = end.total - start.total;
+    // os.cpus() is documented to return [] on some platforms, and a very short window can
+    // produce a zero time delta. Either way there is no busy ratio to report. Leave the
+    // field absent so the section prints n/a; reporting 0% here would assert an idle host
+    // from no measurement, and an idle host is exactly what would clear the
+    // intervalDisagreement owner.
+    const cpuMeasured = start.logicalCpus > 0
+      && end.logicalCpus === start.logicalCpus
+      && totalDelta > 0;
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const snapshot = {
+      available: true,
+      logicalCpus: end.logicalCpus,
+      memoryUsedMb: (totalMem - freeMem) / (1024 * 1024),
+      memoryTotalMb: totalMem / (1024 * 1024),
+    };
+    if (cpuMeasured) {
+      snapshot.cpuBusyPercent = Math.min(100, Math.max(0, (1 - idleDelta / totalDelta) * 100));
+    }
+    return snapshot;
+  } catch (_) {
+    return { available: false };
+  }
+}
+
+function formatHostLoadSection(snapshot) {
+  try {
+    const lines = ['', '## Host load during the window'];
+    if (!snapshot || snapshot.available !== true) {
+      lines.push('- unavailable');
+      return lines.join('\n');
+    }
+    const busy = Number.isFinite(Number(snapshot.cpuBusyPercent))
+      ? Number(snapshot.cpuBusyPercent).toFixed(0)
+      : 'n/a';
+    const used = Math.round(Number(snapshot.memoryUsedMb) || 0);
+    const total = Math.round(Number(snapshot.memoryTotalMb) || 0);
+    lines.push(
+      `- logical CPUs: ${snapshot.logicalCpus}`,
+      `- CPU busy during window: ${busy}%`,
+      `- memory: ${used} / ${total} MB`,
+    );
+    return lines.join('\n');
+  } catch (_) {
+    return '\n## Host load during the window\n- unavailable';
+  }
+}
+
+function formatHitchAttributionSection(histogram, route) {
+  const counts = histogram && histogram.counts ? histogram.counts : {};
+  const namedCounts = Object.entries(counts)
+    .filter(([, count]) => Number(count) > 0)
+    .map(([owner, count]) => `${owner} ${count}`)
+    .join('; ');
+  const lines = [
+    '',
+    '## Live hitch attribution (PQ-129.02)',
+    `- bounded instrumentation: classifier ${route.instrumentation?.previousHitchAttributionEnabled === true ? 'already on' : 'enabled for this probe only'}; prior state restored before shutdown: ${route.instrumentation?.restored === true}`,
+    `- system timing coverage: ${route.instrumentation?.systemTimingFullCoverage === true ? 'full' : 'prime-period-stratified'}`,
+    `- observed frames: ${histogram?.frames ?? 0}; hitches: ${histogram?.hitches ?? 0}; named: ${histogram?.named ?? 0}; unknown: ${histogram?.unknown ?? 0}`,
+    `- hitch runs: first ${histogram?.firstHitches ?? 0}; echoes ${histogram?.echoHitches ?? 0}; longest streak ${histogram?.longestStreak ?? 0}`,
+    `- named coverage: ${(Number(histogram?.coverage) || 0).toFixed(3)}`,
+    `- owner counts: ${namedCounts || 'none'}`,
+  ];
+  lines.push(...formatHitchAttributionDetailLines(histogram));
+  return lines.join('\n');
+}
+
+function formatSectorTransitionSection(trace) {
+  const events = Array.isArray(trace?.events) ? trace.events : [];
+  const stages = Array.isArray(trace?.stages) ? trace.stages : [];
+  const lines = ['', '## Sector-transition phase ledger'];
+  if (events.length < 2) {
+    lines.push('- unavailable: no armed public jump event sequence was observed');
+    return lines.join('\n');
+  }
+  for (let index = 1; index < events.length; index++) {
+    const previous = events[index - 1];
+    const current = events[index];
+    const previousHitches = Number(previous?.hitch?.hitches) || 0;
+    const currentHitches = Number(current?.hitch?.hitches) || 0;
+    const ownerDeltas = [];
+    const owners = new Set([
+      ...Object.keys(previous?.hitch?.counts || {}),
+      ...Object.keys(current?.hitch?.counts || {}),
+    ]);
+    for (const owner of owners) {
+      const delta = (Number(current?.hitch?.counts?.[owner]) || 0)
+        - (Number(previous?.hitch?.counts?.[owner]) || 0);
+      if (delta > 0) ownerDeltas.push(`${owner} ${delta}`);
+    }
+    const elapsedMs = Math.max(0,
+      (Number(current?.elapsedMs) || 0) - (Number(previous?.elapsedMs) || 0));
+    lines.push(
+      `- ${previous.label} -> ${current.label}: ${elapsedMs.toFixed(1)} ms; hitches +${Math.max(0, currentHitches - previousHitches)}; owners ${ownerDeltas.join(', ') || 'none'}; tick ${current.tick}; sim ${Number(current.simTime || 0).toFixed(2)}; sector ${current.sectorId || 'none'}; jump ${current.jumpState || 'none'}`,
+    );
+  }
+  const settled = events[events.length - 1];
+  lines.push(
+    `- settled frame: dt ${(Number(settled?.frame?.frameDtMs) || 0).toFixed(1)} ms; simFrame ${(Number(settled?.frame?.simFrameMs) || 0).toFixed(1)} ms; presentation ${(Number(settled?.frame?.presentationMs) || 0).toFixed(1)} ms; steps ${Number(settled?.frame?.stepsThisFrame) || 0}; shed frames ${Number(settled?.frame?.shedBacklogFrames) || 0}`,
+  );
+  const stageTotals = new Map();
+  for (const stage of stages) {
+    const durationMs = Number(stage?.durationMs) || 0;
+    if (durationMs <= 0) continue;
+    const current = stageTotals.get(stage.label) || { count: 0, totalMs: 0, maxMs: 0 };
+    current.count++;
+    current.totalMs += durationMs;
+    current.maxMs = Math.max(current.maxMs, durationMs);
+    stageTotals.set(stage.label, current);
+  }
+  const rankedStages = [...stageTotals.entries()]
+    .sort((a, b) => b[1].totalMs - a[1].totalMs)
+    .slice(0, 12);
+  if (rankedStages.length > 0) {
+    lines.push(`- synchronous owner stages: ${rankedStages.map(([label, stat]) => `${label} ${stat.totalMs.toFixed(1)} ms total/${stat.maxMs.toFixed(1)} ms max (${stat.count})`).join('; ')}`);
+  }
+  const listenerMetadata = Array.isArray(trace?.listenerMetadata) ? trace.listenerMetadata : [];
+  const topListener = rankedStages.find(([label]) => label.startsWith('listener.sector:enter['));
+  if (topListener) {
+    const metadata = listenerMetadata.find((row) => row.label === topListener[0]);
+    if (metadata?.sourceHint) lines.push(`- top sector:enter listener source: ${metadata.sourceHint}`);
+  }
+  return lines.join('\n');
+}
+
+function formatBloomPhaseSection(phases) {
+  const lines = ['', '## Bloom subphases (PQ-129.03)'];
+  for (const label of BLOOM_PHASE_LABELS) {
+    const stat = phases?.[label];
+    lines.push(`- ${label}: samples ${stat?.samples ?? 0}; p95 ${(Number(stat?.p95) || 0).toFixed(1)} ms; avg ${(Number(stat?.avg) || 0).toFixed(1)} ms; max ${(Number(stat?.max) || 0).toFixed(1)} ms`);
+  }
+  return lines.join('\n');
+}
+
+function formatOpeningRenderWorkSection(renderWork) {
+  const lines = ['', '## Opening frame render subphases'];
+  for (const label of BLOOM_PHASE_LABELS) {
+    const stat = renderWork?.[label];
+    lines.push(`- ${label}: samples ${stat?.samples ?? 0}; p95 ${(Number(stat?.p95) || 0).toFixed(1)} ms; avg ${(Number(stat?.avg) || 0).toFixed(1)} ms; max ${(Number(stat?.max) || 0).toFixed(1)} ms`);
+  }
+  return lines.join('\n');
+}
+
+function formatOpeningFirstTouchOwnerSection(diagnostic) {
+  const lines = ['', '## Opening first-touch owner'];
+  if (!diagnostic || diagnostic.enabled !== true) {
+    lines.push('- disabled: pass `--opening-first-touch-owner` to arm the opt-in cold/warm owner capture');
+    return lines.join('\n');
+  }
+  const resourceDeltaText = (delta) => {
+    if (!delta) return 'programs ?; geometries ?; textures ?';
+    return `programs ${delta.programs ?? '?'}; geometries ${delta.geometries ?? '?'}; textures ${delta.textures ?? '?'}`;
+  };
+  const runLine = (label, run) => (
+    `- ${label}: ${run?.durationMs == null ? 'unknown' : `${Number(run.durationMs).toFixed(2)} ms`}; Δ ${resourceDeltaText(run?.resourceDelta)}; callbacks ${run?.callbackInvocations?.length ?? 0}; paired ${run?.records?.length ?? 0}`
+  );
+  const rankText = (rows) => {
+    if (!Array.isArray(rows) || rows.length === 0) return 'none';
+    return rows.slice(0, 8).map((row) => (
+      `${row.key || 'unknown'} ${Number(row.elapsedMs || 0).toFixed(1)} ms/${resourceDeltaText(row.resourceDelta)}`
+    )).join(' | ');
+  };
+  const cohortText = (totals) => {
+    const value = (key) => totals?.[key] || {};
+    return ['member', 'nonMember', 'unknown']
+      .map((key) => `${key === 'nonMember' ? 'non-cohort' : key} ${value(key).invocations ?? 0} / ${Number(value(key).elapsedMs || 0).toFixed(1)} ms / ${resourceDeltaText(value(key).resourceDelta)}`)
+      .join('; ');
+  };
+  lines.push(
+    `- status: ${diagnostic.status || 'unknown'}; hook ${diagnostic.hooks?.openingRestored === true ? 'restored' : 'not restored'}; warm hook ${diagnostic.hooks?.warmRestored === true ? 'restored' : 'not restored'}`,
+    runLine('cold opening', diagnostic.cold),
+    runLine('warm full-scene', diagnostic.warm),
+    `- exact-root ranking (cold): ${rankText(diagnostic.cold?.aggregates?.exactRoots)}`,
+    `- stable-family ranking (cold): ${rankText(diagnostic.cold?.aggregates?.stableFamilies)}`,
+    `- exact-root ranking (warm): ${rankText(diagnostic.warm?.aggregates?.exactRoots)}`,
+    `- stable-family ranking (warm): ${rankText(diagnostic.warm?.aggregates?.stableFamilies)}`,
+    `- cohort totals (cold): ${cohortText(diagnostic.cold?.aggregates?.cohortTotals)}`,
+    `- cohort totals (warm): ${cohortText(diagnostic.warm?.aggregates?.cohortTotals)}`,
+    `- renderer-global residual: cold ${resourceDeltaText(diagnostic.cold?.conservation?.rendererGlobalResidual)}; warm ${resourceDeltaText(diagnostic.warm?.conservation?.rendererGlobalResidual)}`,
+    `- conservation: cold ${diagnostic.cold?.conservation?.valid === true ? 'pass' : 'fail'}; warm ${diagnostic.warm?.conservation?.valid === true ? 'pass' : 'fail'}; cold-minus-warm ${resourceDeltaText(diagnostic.comparison?.resourceDelta)}`,
+    `- capture/restoration/positive-control: ${diagnostic.capture?.cold === true && diagnostic.capture?.warm === true ? 'capture pass' : 'capture fail'} / ${diagnostic.restoration?.valid === true ? 'restoration pass' : 'restoration fail'} / ${diagnostic.positiveControl?.valid === true ? 'positive-control pass' : 'positive-control fail'}`,
+  );
+  const errors = Array.isArray(diagnostic.errors) ? diagnostic.errors : [];
+  if (errors.length > 0) lines.push(`- fail-closed errors: ${errors.slice(0, 4).join(' | ')}`);
+  return lines.join('\n');
+}
+
+function formatOpeningExactOwnerTouchSection(diagnostic) {
+  const lines = ['', '## Opening exact-owner micro-raster'];
+  if (!diagnostic || diagnostic.enabled !== true) {
+    lines.push('- disabled: pass `--opening-exact-owner-touch` to arm the opt-in four-owner 64x64 cold touch');
+    return lines.join('\n');
+  }
+  const delta = (value) => value
+    ? `programs ${value.programs ?? '?'}; geometries ${value.geometries ?? '?'}; textures ${value.textures ?? '?'}`
+    : 'programs ?; geometries ?; textures ?';
+  lines.push(
+    `- status: ${diagnostic.status || 'unknown'}; hooks ${diagnostic.restoration?.hooks === true ? 'restored' : 'not restored'}; render state ${diagnostic.restoration?.renderState === true ? 'restored' : 'not restored'}`,
+    `- exact roots: ${(diagnostic.roots || []).map((root) => `${root.role}:${root.name || root.uuid || 'unknown'}`).join(' | ') || 'none'}`,
+    `- T_touch: ${diagnostic.touch?.durationMs == null ? 'unknown' : `${Number(diagnostic.touch.durationMs).toFixed(1)} ms`}; delta ${delta(diagnostic.touch?.resourceDelta)}; forced renders ${diagnostic.touch?.renderCalls ?? 0}`,
+    `- T_open: ${diagnostic.opening?.durationMs == null ? 'unknown' : `${Number(diagnostic.opening.durationMs).toFixed(1)} ms`}; residual ${delta(diagnostic.opening?.resourceDelta)}; renders ${diagnostic.opening?.renderCalls ?? 0}`,
+    `- T_combined: ${diagnostic.combinedMs == null ? 'unknown' : `${Number(diagnostic.combinedMs).toFixed(1)} ms`}; New Game to input-responsive ${diagnostic.inputResponsiveWallMs == null ? 'unknown' : `${Number(diagnostic.inputResponsiveWallMs).toFixed(1)} ms`}`,
+    `- total conservation: ${delta(diagnostic.totalResourceDelta)}; ${diagnostic.conservation?.valid === true ? 'pass' : 'fail'} (expected touch +16 programs, opening +2, total +18/+91/+2)`,
+    `- positive controls: roots ${diagnostic.positiveControls?.roots === true ? 'pass' : 'fail'}; exact draw ${diagnostic.positiveControls?.touchRender === true ? 'pass' : 'fail'}; opening draw ${diagnostic.positiveControls?.openingRender === true ? 'pass' : 'fail'}; restoration ${diagnostic.positiveControls?.restoration === true ? 'pass' : 'fail'}`,
+  );
+  const errors = Array.isArray(diagnostic.errors) ? diagnostic.errors : [];
+  if (errors.length > 0) lines.push(`- fail-closed errors: ${errors.slice(0, 6).join(' | ')}`);
+  return lines.join('\n');
+}
+
+function formatNoSubmitDiagnosticSection(diagnostic, hitchAttribution) {
+  const lines = ['', '## No-submit scheduler A/B'];
+  if (!diagnostic?.applied) {
+    lines.push('- disabled: pass `--no-submit-diagnostic` to replace scene submission with a constant clear');
+    return lines.join('\n');
+  }
+  const metric = (value) => `${value?.samples ?? 0} samples; p95 ${Number(value?.p95 || 0).toFixed(1)} ms; max ${Number(value?.max || 0).toFixed(1)} ms`;
+  lines.push(
+    `- hook restoration: ${diagnostic.restored === true ? 'pass' : 'fail'}`,
+    `- rAF callback-entry interval: ${metric(diagnostic.callbackEntryInterval)}`,
+    `- callback CPU duration: ${metric(diagnostic.callbackCpu)}`,
+    `- constant clear submission: ${metric(diagnostic.drawSubmit)}`,
+    `- long tasks: ${diagnostic.longTasks?.count ?? 0}; total ${Number(diagnostic.longTasks?.totalMs || 0).toFixed(1)} ms; max ${Number(diagnostic.longTasks?.maxMs || 0).toFixed(1)} ms`,
+    `- externalScheduling hitches: ${hitchAttribution?.counts?.externalScheduling ?? 0}`,
+  );
+  const splitLine = formatHitchAttributionDetailLines(hitchAttribution || {})
+    .find((line) => line.startsWith('- externalScheduling split:'));
+  if (splitLine) lines.push(splitLine);
+  return lines.join('\n');
+}
+
+function formatSystemTimingSection(systems) {
+  const ranked = Object.entries(systems || {})
+    .filter(([, stat]) => Number(stat?.samples) > 0)
+    .sort((a, b) => (Number(b[1]?.p95) || 0) - (Number(a[1]?.p95) || 0))
+    .slice(0, 12);
+  const lines = ['', '## Sampled simulation systems'];
+  if (!ranked.length) {
+    lines.push('- unavailable: the bounded per-system sampler produced no samples');
+    return lines.join('\n');
+  }
+  for (const [name, stat] of ranked) {
+    lines.push(`- ${name}: samples ${stat.samples}; p95 ${(Number(stat.p95) || 0).toFixed(2)} ms; avg ${(Number(stat.avg) || 0).toFixed(2)} ms; max ${(Number(stat.max) || 0).toFixed(2)} ms`);
+  }
+  return lines.join('\n');
+}
+
+function formatLoadingReadinessSection(events, samples) {
+  const lines = ['', '## Continue loading readiness'];
+  if (!events.length) {
+    lines.push('- unavailable: no `game:loadingProgress` events were observed');
+    return lines.join('\n');
+  }
+  for (let index = 0; index < events.length; index++) {
+    const event = events[index];
+    const next = events[index + 1];
+    const durationMs = next ? next.elapsedMs - event.elapsedMs : null;
+    lines.push(`- ${(event.elapsedMs / 1000).toFixed(2)} s: ${event.id || 'unknown'}${durationMs == null ? '' : ` (${(durationMs / 1000).toFixed(2)} s until next stage)`}`);
+  }
+  const last = samples[samples.length - 1];
+  if (last) {
+    lines.push(
+      `- last loading snapshot: stage ${last.stageId || 'unknown'}; player ${last.authored?.playerStatus || 'unknown'}; opening pending ${last.authored?.openingPending ?? 'unknown'}; ${Array.isArray(last.authored?.openingPendingIds) && last.authored.openingPendingIds.length ? `ids ${last.authored.openingPendingIds.join(', ')}; ` : ''}pipeline pending ${last.authored?.openingPipelinePending ?? 'unknown'}; pipeline admissions ${last.pendingPipelineAdmissions ?? 'unknown'}; GPU admissions ${last.pendingAuthoredGpuResidency ?? 'unknown'}`,
+    );
+    if (last.openingCompositionSettle) {
+      const settle = last.openingCompositionSettle;
+      const queue = settle.queue || {};
+      lines.push(
+        `- opening settle: settled ${settle.settled}; reason ${settle.reason || 'none'}; waited ${settle.waitedMs ?? 'unknown'} ms; queue present ${queue.present ?? 'unknown'} held ${queue.held ?? 'unknown'} pending ${queue.pending ?? 'unknown'} inFlight ${queue.inFlight ?? 'unknown'} running ${queue.running ?? 'unknown'}${Array.isArray(queue.jobs) && queue.jobs.length ? `; jobs ${queue.jobs.map((job) => `${job.key || '?'}:${job.lifecycle || '?'}:${job.status || '?'}`).join(', ')}` : ''}`,
+      );
+    }
+    const exact = last.promiseStates?.exactPipelineWarmupReady?.result;
+    if (exact) {
+      lines.push(`- captured pipeline receipt: ${exact.capturedCount ?? 'unknown'} completed; ${exact.remainingCount ?? 'unknown'} remaining`);
+    }
+    const gpu = last.startupGpuResidency;
+    if (gpu) {
+      lines.push(`- opening GPU receipt: ${gpu.textures ?? 'unknown'} textures (${gpu.uploadMs == null ? 'unknown' : gpu.uploadMs.toFixed(1)} ms blocking upload); opening frame ${gpu.openingFrame?.durationMs == null ? 'unknown' : gpu.openingFrame.durationMs.toFixed(1)} ms; roots ${gpu.openingCompositionRoots ?? 'unknown'} + VFX ${gpu.vfxRoots ?? 'unknown'}`);
+    }
+    // `entering-flight` can be the final loading-stage sample and occur just before the first draw
+    // publishes its validation. Prefer the newest sample that actually observed the gate; treating
+    // a not-yet-run validation as a failure produced the contradictory "fail; uncaptured none"
+    // line even when the following live samples carried an exact passing receipt.
+    const openingSample = [...samples].reverse().find((sample) => (
+      sample?.openingSubmission?.validation
+    )) || last;
+    const opening = openingSample.openingSubmission;
+    if (opening) {
+      const misses = opening.validation?.uncaptured || [];
+      lines.push(
+        `- exact opening plan: ${opening.planComplete ? 'complete' : 'incomplete'}; roots ${opening.roots ?? 'unknown'}; leaves ${opening.drawLeaves ?? 'unknown'}; admitted programs ${opening.admittedPrograms ?? 'unknown'}; deferred global programs ${opening.deferredGlobalPrograms ?? 'unknown'}; producer census ${opening.producerCensusMatches ? 'matched' : 'mismatch'}`,
+        `- first visible draw identity gate: ${opening.validation?.ok ? 'pass' : 'fail'}${opening.validation?.reason ? ` (${opening.validation.reason})` : ''}; uncaptured ${misses.length ? misses.join(', ') : 'none'}`,
+      );
+    }
+    const beforeOpening = [...samples].reverse().find((sample) => sample !== last);
+    if (beforeOpening) {
+      lines.push(`- opening scene delta: programs ${beforeOpening.programCount ?? 'unknown'} -> ${last.programCount ?? 'unknown'}; geometries ${beforeOpening.geometryCount ?? 'unknown'} -> ${last.geometryCount ?? 'unknown'}; renderer textures ${beforeOpening.rendererTextureCount ?? 'unknown'} -> ${last.rendererTextureCount ?? 'unknown'}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+/**
+ * Always-on long-task witness.
+ *
+ * The hitch classifier can say "the frame took 90 ms but our callback only ran for 39 ms" — it
+ * cannot say WHY the other 51 ms went missing. Two very different causes look identical from
+ * inside the callback: our own main thread was blocked (GC, asset decode, a synchronous parse), or
+ * the browser simply never called us. A `longtask` entry covering the gap means the first; an
+ * unexplained gap with no long task means the second, and no amount of game-side optimization will
+ * touch it. This ran only inside the no-submit diagnostic, which replaces scene submission and so
+ * cannot be used to judge an ordinary flight.
+ */
+function formatLongTaskSection(trace) {
+  const NL = '\n';
+  const lines = ['## Long tasks (main-thread blocks)'];
+  if (!trace) { lines.push('- not captured'); return lines.join(NL) + NL; }
+  if (!trace.supported) {
+    lines.push('- longtask entry type unsupported on this engine: NOT MEASURED (not "none")');
+    return lines.join(NL) + NL;
+  }
+  if (trace.jsHeapSeries && trace.jsHeapSeries.length) {
+    lines.push(`- JS heap MB over run: ${trace.jsHeapSeries.join(' ')}`);
+  }
+  if (trace.economySeries && trace.economySeries.length) {
+    lines.push(`- economy stations/listings/history-points: ${trace.economySeries.join('  ')}`);
+  }
+  if (trace.geometrySeries && trace.geometrySeries.length) {
+    lines.push(`- GPU geometries over run: ${trace.geometrySeries.join(' ')}`);
+    lines.push(`- GPU textures over run:   ${trace.textureSeries.join(' ')}`);
+  }
+  lines.push(`- count ${trace.count}; total ${Math.round(trace.totalMs)} ms; max ${Math.round(trace.maxMs)} ms; >=50 ms ${trace.over50Ms}; >=100 ms ${trace.over100Ms}`);
+  for (const entry of trace.top) {
+    const near = (trace.heavyResources || []).filter((r) => (
+      r.responseEnd <= entry.startTime && entry.startTime - r.responseEnd < 3000
+    ));
+    const blame = near.length
+      ? ` <- ${near.slice(-3).map((r) => `${r.name} ${r.kb}KB @${r.responseEnd}`).join(', ')}`
+      : '';
+    lines.push(`- ${entry.durationMs} ms at ${entry.startTime} ms${blame}`);
+  }
+  return lines.join(NL) + NL;
+}
+
+async function installLoadingReadinessWitness(targetPage) {
+  // Arm the allocation profiler here rather than in one route's branch: this helper is the one
+  // point BOTH the Continue and New Game routes pass through before the loading route runs, and a
+  // branch-local start silently produced no profile at all on the other route.
+  if (ALLOC_PROBE_BOOT && !allocCdp) {
+    try {
+      allocCdp = await targetPage.context().newCDPSession(targetPage);
+      await allocCdp.send('HeapProfiler.startSampling', {
+        samplingInterval: 65536,
+        includeObjectsCollectedByMajorGC: true,
+        includeObjectsCollectedByMinorGC: true,
+      });
+      log('alloc-probe: sampling started BEFORE the loading route');
+    } catch (error) {
+      allocCdp = null;
+      log(`alloc-probe: boot startSampling unavailable (${error && error.message})`);
+    }
+  }
+  await targetPage.evaluate(() => {
+    const prior = window.__SF_LOADING_READINESS_WITNESS__;
+    if (prior && typeof prior.unsubscribe === 'function') prior.unsubscribe();
+    const startedWallMs = Date.now();
+    const trace = {
+      startedWallMs,
+      events: [],
+      promiseRefs: {},
+      promiseStates: {},
+      unsubscribe: null,
+    };
+    const bus = window.SF?.bus;
+    if (bus && typeof bus.on === 'function') {
+      trace.unsubscribe = bus.on('game:loadingProgress', (payload = {}) => {
+        const wallMs = Date.now();
+        trace.events.push({
+          wallMs,
+          performanceAtMs: performance.now(),
+          elapsedMs: wallMs - startedWallMs,
+          id: String(payload.id || ''),
+          progress: Number(payload.progress) || 0,
+          label: String(payload.label || ''),
+          detail: String(payload.detail || ''),
+          transition: String(payload.transition || ''),
+        });
+      });
+    }
+    window.__SF_LOADING_READINESS_WITNESS__ = trace;
+  });
+}
+
+async function installOpeningFirstTouchOwnerWitness(targetPage) {
+  return targetPage.evaluate(() => {
+    const prior = window.__SF_OPENING_FIRST_TOUCH_OWNER__;
+    try { prior?.restore?.(); } catch (_) {}
+
+    const sf = window.SF;
+    const state = sf?.state;
+    const renderSystem = sf?.registry?.get?.('render');
+    const trace = {
+      enabled: true,
+      status: 'installed',
+      errors: [],
+      hooks: {
+        openingInstalled: false,
+        openingRestored: false,
+        warmInstalled: false,
+        warmRestored: false,
+      },
+      cold: null,
+      warm: null,
+      currentRun: null,
+      renderSystem,
+      originalOpening: null,
+      openingWrapper: null,
+      originalPostRoute: null,
+      warmWrapper: null,
+      restoreCalled: false,
+      nextRunId: 1,
+      nextInvocationId: 1,
+      nextPairId: 1,
+    };
+    window.__SF_OPENING_FIRST_TOUCH_OWNER__ = trace;
+
+    const errorText = (error) => String(error?.stack || error?.message || error || 'unknown error');
+    const pushError = (error, prefix = '') => {
+      const value = `${prefix}${errorText(error)}`;
+      trace.errors.push(value);
+      return value;
+    };
+    const finite = (value) => value == null || value === ''
+      ? null
+      : (Number.isFinite(Number(value)) ? Number(value) : null);
+    const cloneDelta = (delta) => delta ? {
+      programs: delta.programs,
+      geometries: delta.geometries,
+      textures: delta.textures,
+    } : null;
+    const zeroDelta = () => ({ programs: 0, geometries: 0, textures: 0 });
+    const addDelta = (left, right) => ({
+      programs: Number(left?.programs || 0) + Number(right?.programs || 0),
+      geometries: Number(left?.geometries || 0) + Number(right?.geometries || 0),
+      textures: Number(left?.textures || 0) + Number(right?.textures || 0),
+    });
+    const subtractDelta = (left, right) => ({
+      programs: Number(left?.programs || 0) - Number(right?.programs || 0),
+      geometries: Number(left?.geometries || 0) - Number(right?.geometries || 0),
+      textures: Number(left?.textures || 0) - Number(right?.textures || 0),
+    });
+    const deltaIsFinite = (delta) => !!delta
+      && Number.isFinite(delta.programs)
+      && Number.isFinite(delta.geometries)
+      && Number.isFinite(delta.textures);
+    const deltaEqual = (left, right) => deltaIsFinite(left) && deltaIsFinite(right)
+      && Math.abs(left.programs - right.programs) < 0.001
+      && Math.abs(left.geometries - right.geometries) < 0.001
+      && Math.abs(left.textures - right.textures) < 0.001;
+
+    const rendererInfoSnapshot = (renderer) => {
+      const info = renderer?.info;
+      const memory = info?.memory || {};
+      const render = info?.render || {};
+      const programs = Array.isArray(info?.programs)
+        ? info.programs.length
+        : finite(info?.programs);
+      const snapshot = {
+        available: Number.isFinite(programs)
+          && Number.isFinite(finite(memory.geometries))
+          && Number.isFinite(finite(memory.textures)),
+        programs,
+        geometries: finite(memory.geometries),
+        textures: finite(memory.textures),
+        calls: finite(render.calls),
+        triangles: finite(render.triangles),
+        points: finite(render.points),
+        lines: finite(render.lines),
+      };
+      return snapshot;
+    };
+    const resourceDelta = (before, after) => {
+      if (!before?.available || !after?.available) return null;
+      return {
+        programs: after.programs - before.programs,
+        geometries: after.geometries - before.geometries,
+        textures: after.textures - before.textures,
+      };
+    };
+
+    const ancestorChain = (object) => {
+      const chain = [];
+      let current = object;
+      let guard = 0;
+      while (current && guard++ < 512) {
+        chain.push(current);
+        current = current.parent;
+      }
+      return chain;
+    };
+    const firstScalar = (chain, keys) => {
+      for (const object of chain) {
+        const userData = object?.userData || {};
+        for (const key of keys) {
+          const value = userData[key];
+          if ((typeof value === 'string' || typeof value === 'number') && String(value) !== '') {
+            return String(value);
+          }
+        }
+      }
+      return null;
+    };
+    const nestedScalar = (value, keys) => {
+      if (!value || typeof value !== 'object') return null;
+      for (const key of keys) {
+        const candidate = value[key];
+        if ((typeof candidate === 'string' || typeof candidate === 'number') && String(candidate) !== '') {
+          return String(candidate);
+        }
+      }
+      return null;
+    };
+    const entityFor = (object) => {
+      const chain = ancestorChain(object);
+      const id = firstScalar(chain, [
+        'presentationEntityId',
+        'entityId',
+        'sfEntityId',
+        'id',
+      ]);
+      if (!id) return null;
+      let entity = null;
+      try { entity = state?.entities?.get?.(id) || state?.entities?.get?.(Number(id)) || null; } catch (_) {}
+      return {
+        id,
+        type: entity?.type || entity?.kind || null,
+        defId: entity?.data?.defId || entity?.defId || null,
+        role: entity?.data?.role || entity?.role || null,
+      };
+    };
+    const packageFor = (object) => {
+      const chain = ancestorChain(object);
+      let assetId = null;
+      let contentHash = null;
+      let source = null;
+      let route = null;
+      let poolKey = null;
+      let direct = false;
+      for (const item of chain) {
+        const userData = item?.userData || {};
+        assetId = assetId || (typeof userData.assetId === 'string' ? userData.assetId : null);
+        source = source || (typeof userData.spacefacePartUrl === 'string' ? userData.spacefacePartUrl : null);
+        poolKey = poolKey || (typeof userData.spacefaceInstancePoolKey === 'string' ? userData.spacefaceInstancePoolKey : null);
+        direct = direct || userData.spacefaceRenderPackageDirect === true;
+        const packageData = userData.flightRenderPackage || userData.spacefaceRenderPackage || null;
+        if (packageData && typeof packageData === 'object') {
+          assetId = assetId || nestedScalar(packageData, ['assetId', 'id', 'key']);
+          contentHash = contentHash || nestedScalar(packageData, ['contentHash', 'hash']);
+          route = route || nestedScalar(packageData, ['route']);
+        }
+      }
+      const key = contentHash
+        ? `hash:${contentHash}`
+        : (assetId ? `asset:${assetId}` : (source ? `source:${source}` : (poolKey ? `pool:${poolKey}` : null)));
+      return { assetId, contentHash, source, route, poolKey, direct, key };
+    };
+    const rootFor = (object, scene) => {
+      let root = object;
+      let guard = 0;
+      while (root?.parent && root.parent !== scene && guard++ < 512) root = root.parent;
+      return root || scene || object;
+    };
+    const objectIdentity = (object) => ({
+      uuid: object?.uuid || null,
+      id: finite(object?.id),
+      name: object?.name || null,
+      type: object?.type || null,
+      visible: object?.visible !== false,
+      renderable: !!(object?.isMesh || object?.isSkinnedMesh || object?.isInstancedMesh
+        || object?.isBatchedMesh || object?.isPoints || object?.isLine || object?.isSprite),
+      assetId: typeof object?.userData?.assetId === 'string' ? object.userData.assetId : null,
+      poolKey: typeof object?.userData?.spacefaceInstancePoolKey === 'string'
+        ? object.userData.spacefaceInstancePoolKey
+        : null,
+    });
+    const geometryIdentity = (geometry) => geometry ? {
+      uuid: geometry.uuid || null,
+      id: finite(geometry.id),
+      name: geometry.name || null,
+      type: geometry.type || null,
+      batchKey: geometry.userData?.spacefaceBatchKey || geometry.userData?.spacefacePackageBatchKey || null,
+    } : null;
+    const textureUuidsFor = (value) => {
+      const uuids = new Set();
+      const seen = new Set();
+      const visit = (candidate, depth) => {
+        if (!candidate || typeof candidate !== 'object' || depth > 5 || seen.has(candidate)) return;
+        if (candidate.isTexture === true) {
+          if (candidate.uuid) uuids.add(String(candidate.uuid));
+          return;
+        }
+        seen.add(candidate);
+        if (Array.isArray(candidate)) {
+          for (const item of candidate) visit(item, depth + 1);
+          return;
+        }
+        let keys = [];
+        try { keys = Object.keys(candidate); } catch (_) { return; }
+        for (const key of keys) {
+          if (key === 'userData' || key === 'image' || key === 'source' || key === 'data') continue;
+          let child = null;
+          try { child = candidate[key]; } catch (_) {}
+          visit(child, depth + 1);
+        }
+      };
+      visit(value, 0);
+      return [...uuids].sort();
+    };
+    const materialIdentity = (material) => material ? {
+      uuid: material.uuid || null,
+      id: finite(material.id),
+      name: material.name || null,
+      type: material.type || null,
+      transparent: material.transparent === true,
+      depthWrite: material.depthWrite !== false,
+      textureUuids: textureUuidsFor(material),
+    } : null;
+    const materialsFor = (object, callbackMaterial) => {
+      const values = [];
+      const source = Array.isArray(object?.material) ? object.material : [object?.material];
+      for (const material of source) if (material) values.push(material);
+      if (callbackMaterial && !values.includes(callbackMaterial)) values.push(callbackMaterial);
+      return values.map(materialIdentity).filter(Boolean);
+    };
+    const cohortFor = (object, root, entity, packageData) => {
+      const cohort = state?.render?.openingAdmissionCohort;
+      const identities = Array.isArray(cohort?.identities)
+        ? cohort.identities.map((value) => String(value))
+        : [];
+      if (!cohort || cohort.frozen !== true || !Array.isArray(cohort.identities)) {
+        return { membership: 'unknown', matched: [], candidates: [] };
+      }
+      const candidates = new Set();
+      for (const item of [object, root]) {
+        if (!item) continue;
+        if (item.uuid) candidates.add(`uuid:${item.uuid}`);
+        if (item.id != null) candidates.add(`id:${item.id}`);
+        if (item.name) candidates.add(`name:${item.name}`);
+      }
+      if (entity?.id) candidates.add(`entity:${entity.id}`);
+      if (packageData?.assetId) candidates.add(`asset:${packageData.assetId}`);
+      const matched = identities.filter((identity) => candidates.has(identity));
+      return {
+        membership: matched.length > 0 ? 'member' : 'nonMember',
+        matched,
+        candidates: [...candidates].sort(),
+      };
+    };
+    const descriptionFor = (object, scene, callbackMaterial) => {
+      const rootObject = rootFor(object, scene);
+      const entity = entityFor(object) || entityFor(rootObject);
+      const packageData = packageFor(object);
+      const rootEntity = entityFor(rootObject) || entity;
+      const rootPackage = packageFor(rootObject);
+      const root = objectIdentity(rootObject);
+      root.entityId = rootEntity?.id || null;
+      root.assetId = root.assetId || rootPackage?.assetId || null;
+      const exactRootKey = rootEntity?.id
+        ? `entity:${rootEntity.id}`
+        : (rootPackage?.key ? `${rootPackage.key}|root:${root.uuid || root.name || 'unknown'}` : `root:${root.uuid || root.name || 'unknown'}`);
+      root.exactKey = exactRootKey;
+      root.label = root.name || root.uuid || exactRootKey;
+      const packageStable = rootPackage?.contentHash || rootPackage?.source || rootPackage?.poolKey || rootPackage?.direct;
+      const stableFamily = packageStable && rootPackage?.key
+        ? { key: rootPackage.key, stable: true }
+        : (entity?.type && entity?.defId
+          ? { key: `entity:${entity.type}:${entity.defId}`, stable: true }
+          : { key: null, stable: false });
+      const textureUuids = [...new Set([
+        ...materialsFor(object, callbackMaterial).flatMap((material) => material.textureUuids || []),
+      ])].sort();
+      return {
+        object: objectIdentity(object),
+        geometry: geometryIdentity(object?.geometry),
+        materials: materialsFor(object, callbackMaterial),
+        root,
+        entity,
+        package: packageData,
+        stableFamily,
+        cohort: cohortFor(object, rootObject, entity, packageData),
+        textureUuids,
+      };
+    };
+    const precomputeIdentityCache = (object, scene) => {
+      const knownMaterials = new Set();
+      const ordinaryMaterials = Array.isArray(object?.material) ? object.material : [object?.material];
+      for (const material of ordinaryMaterials) if (material) knownMaterials.add(material);
+      for (const material of [object?.customDepthMaterial, object?.customDistanceMaterial]) {
+        if (material) knownMaterials.add(material);
+      }
+      const defaultIdentity = descriptionFor(object, scene, null);
+      const byMaterial = new Map();
+      for (const material of knownMaterials) byMaterial.set(material, descriptionFor(object, scene, material));
+      return { defaultIdentity, byMaterial };
+    };
+    const identityForCallback = (objectRecord, callbackMaterial) => {
+      const cache = objectRecord.identityCache;
+      const known = callbackMaterial ? cache?.byMaterial?.get(callbackMaterial) : cache?.defaultIdentity;
+      const identity = known || cache?.defaultIdentity;
+      if (!identity) throw new Error('opening first-touch owner identity cache was unavailable');
+      return {
+        ...identity,
+        materialResolution: known
+          ? 'precomputed'
+          : (callbackMaterial ? 'conservative-default' : 'precomputed-default'),
+      };
+    };
+    const passFor = (run, callbackName, args) => {
+      const renderer = args?.[0] || run.renderer;
+      const sceneArg = args?.[1] || null;
+      let target = 'screen';
+      try {
+        const renderTarget = renderer?.getRenderTarget?.();
+        if (renderTarget) target = renderTarget.texture?.name || renderTarget.name || 'render-target';
+      } catch (_) {}
+      return {
+        route: run.route,
+        callback: callbackName,
+        target,
+        scene: sceneArg?.uuid === run.sceneUuid ? 'full-scene' : (sceneArg?.name || sceneArg?.type || 'unknown-scene'),
+      };
+    };
+
+    const isRenderable = (object) => !!object?.isObject3D && !!(
+      object.isMesh || object.isSkinnedMesh || object.isInstancedMesh || object.isBatchedMesh
+      || object.isPoints || object.isLine || object.isSprite || object.geometry
+    );
+    const callbackNames = ['onBeforeRender', 'onAfterRender', 'onBeforeShadow', 'onAfterShadow'];
+    const callbackKind = (callbackName) => callbackName.includes('Shadow') ? 'shadow' : 'render';
+    const callbackIsBefore = (callbackName) => callbackName.startsWith('onBefore');
+
+    const beginCallback = (run, objectRecord, callbackName, args) => {
+      const renderer = args?.[0] || run.renderer;
+      const callbackMaterial = callbackName.includes('Shadow') ? args?.[5] : args?.[4];
+      const identity = identityForCallback(objectRecord, callbackMaterial);
+      const entry = {
+        id: trace.nextInvocationId++,
+        callback: callbackName,
+        phase: callbackIsBefore(callbackName) ? 'before' : 'after',
+        startedAt: performance.now(),
+        before: rendererInfoSnapshot(renderer),
+        after: null,
+        elapsedMs: null,
+        originalCalled: false,
+        completed: false,
+        error: null,
+        pass: { route: run.route, callback: callbackName },
+        ...identity,
+      };
+      run.callbackInvocations.push(entry);
+      if (callbackIsBefore(callbackName)) objectRecord.stacks[callbackKind(callbackName)].push(entry);
+      return entry;
+    };
+    const finishCallback = (run, objectRecord, callbackName, args, entry, error = null) => {
+      if (!entry) return;
+      const renderer = args?.[0] || run.renderer;
+      entry.after = rendererInfoSnapshot(renderer);
+      entry.elapsedMs = Math.max(0, performance.now() - entry.startedAt);
+      entry.resourceDelta = resourceDelta(entry.before, entry.after);
+      entry.completed = true;
+      if (error) entry.error = errorText(error);
+      if (callbackIsBefore(callbackName)) return;
+      const stack = objectRecord.stacks[callbackKind(callbackName)];
+      const beforeEntry = stack.pop() || null;
+      if (!beforeEntry) {
+        run.unmatchedAfter++;
+        return;
+      }
+      const pair = {
+        id: trace.nextPairId++,
+        elapsedMs: Math.max(0, performance.now() - beforeEntry.startedAt),
+        beforeInvocationId: beforeEntry.id,
+        afterInvocationId: entry.id,
+        callback: callbackKind(callbackName),
+        pass: entry.pass,
+        object: beforeEntry.object,
+        geometry: beforeEntry.geometry,
+        materials: beforeEntry.materials,
+        root: beforeEntry.root,
+        entity: beforeEntry.entity,
+        package: beforeEntry.package,
+        stableFamily: beforeEntry.stableFamily,
+        cohort: beforeEntry.cohort,
+        textureUuids: [...new Set([...(beforeEntry.textureUuids || []), ...(entry.textureUuids || [])])].sort(),
+        before: beforeEntry.before,
+        after: entry.after,
+        resourceDelta: resourceDelta(beforeEntry.before, entry.after),
+        callbackError: beforeEntry.error || entry.error || null,
+        complete: beforeEntry.completed === true && entry.completed === true,
+      };
+      run.records.push(pair);
+    };
+
+    const restoreObjectCallbacks = (run) => {
+      let valid = true;
+      for (const objectRecord of [...run.objectRecords].reverse()) {
+        for (const callbackRecord of [...objectRecord.callbacks].reverse()) {
+          const { object, name, wrapper, original, hadOwn } = callbackRecord;
+          try {
+            if (object[name] === wrapper) {
+              if (hadOwn) object[name] = original;
+              else delete object[name];
+            }
+            const restored = hadOwn ? object[name] === original : object[name] === original;
+            if (!restored) {
+              valid = false;
+              const message = pushError(`callback restoration mismatch for ${name} on ${object?.uuid || object?.name || 'unknown'}`);
+              run.errors.push(message);
+            }
+          } catch (error) {
+            valid = false;
+            const message = pushError(error, `callback restoration failed for ${name}: `);
+            run.errors.push(message);
+          }
+        }
+        for (const stack of Object.values(objectRecord.stacks)) {
+          if (stack.length > 0) {
+            run.unmatchedBefore += stack.length;
+            stack.length = 0;
+          }
+        }
+      }
+      run.callbacksRestored = valid;
+      return valid;
+    };
+    const wrapSceneCallbacks = (run) => {
+      const objects = [];
+      run.scene.traverse((object) => { if (isRenderable(object)) objects.push(object); });
+      run.sceneRenderableCount = objects.length;
+      for (const object of objects) {
+        const objectRecord = {
+          object,
+          identityCache: null,
+          callbacks: [],
+          stacks: { render: [], shadow: [] },
+        };
+        run.objectRecords.push(objectRecord);
+        objectRecord.identityCache = precomputeIdentityCache(object, run.scene);
+        for (const name of callbackNames) {
+          const original = object[name];
+          if (typeof original !== 'function') continue;
+          const hadOwn = Object.prototype.hasOwnProperty.call(object, name);
+          const callbackRecord = { object, name, original, hadOwn, wrapper: null };
+          const wrapper = function wrappedOpeningFirstTouchCallback(...args) {
+            let entry = null;
+            try {
+              entry = beginCallback(run, objectRecord, name, args);
+            } catch (error) {
+              const message = pushError(error, `callback capture failed for ${name}: `);
+              run.errors.push(message);
+            }
+            if (entry) entry.originalCalled = true;
+            try {
+              return original.apply(this, args);
+            } catch (error) {
+              if (entry) entry.error = errorText(error);
+              throw error;
+            } finally {
+              try { finishCallback(run, objectRecord, name, args, entry); } catch (error) {
+                const message = pushError(error, `callback finish failed for ${name}: `);
+                run.errors.push(message);
+              }
+            }
+          };
+          callbackRecord.wrapper = wrapper;
+          try {
+            object[name] = wrapper;
+            if (object[name] !== wrapper) throw new Error(`callback assignment did not stick for ${name}`);
+            objectRecord.callbacks.push(callbackRecord);
+          } catch (error) {
+            const message = pushError(error, `callback installation failed for ${name}: `);
+            run.errors.push(message);
+          }
+        }
+      }
+      if (run.objectRecords.length === 0 || run.objectRecords.every((record) => record.callbacks.length === 0)) {
+        throw new Error('opening first-touch owner found no renderable callbacks to wrap');
+      }
+    };
+
+    const statFor = (map, key, record) => {
+      if (!key) return null;
+      let stat = map.get(key);
+      if (!stat) {
+        stat = {
+          key,
+          label: record?.root?.label || key,
+          invocations: 0,
+          elapsedMs: 0,
+          resourceDelta: zeroDelta(),
+          valid: true,
+        };
+        map.set(key, stat);
+      }
+      stat.invocations++;
+      stat.elapsedMs += Number(record?.elapsedMs) || 0;
+      if (deltaIsFinite(record?.resourceDelta)) stat.resourceDelta = addDelta(stat.resourceDelta, record.resourceDelta);
+      else stat.valid = false;
+      return stat;
+    };
+    const plainStats = (map, includeLabel = false) => [...map.values()]
+      .sort((left, right) => (right.elapsedMs - left.elapsedMs) || (right.invocations - left.invocations) || left.key.localeCompare(right.key))
+      .map((stat) => ({
+        key: stat.key,
+        ...(includeLabel ? { label: stat.label } : {}),
+        invocations: stat.invocations,
+        elapsedMs: stat.elapsedMs,
+        resourceDelta: cloneDelta(stat.resourceDelta),
+        valid: stat.valid,
+      }));
+    const aggregateRun = (run) => {
+      const exactRoots = new Map();
+      const stableFamilies = new Map();
+      const cohortTotals = new Map([
+        ['member', { invocations: 0, elapsedMs: 0, resourceDelta: zeroDelta(), valid: true }],
+        ['nonMember', { invocations: 0, elapsedMs: 0, resourceDelta: zeroDelta(), valid: true }],
+        ['unknown', { invocations: 0, elapsedMs: 0, resourceDelta: zeroDelta(), valid: true }],
+      ]);
+      for (const record of run.records) {
+        statFor(exactRoots, record.root?.exactKey, record);
+        if (record.stableFamily?.stable === true) statFor(stableFamilies, record.stableFamily.key, record);
+        const membership = cohortTotals.has(record.cohort?.membership) ? record.cohort.membership : 'unknown';
+        const total = cohortTotals.get(membership);
+        total.invocations++;
+        total.elapsedMs += Number(record.elapsedMs) || 0;
+        if (deltaIsFinite(record.resourceDelta)) total.resourceDelta = addDelta(total.resourceDelta, record.resourceDelta);
+        else total.valid = false;
+      }
+      return {
+        exactRoots: plainStats(exactRoots, true),
+        stableFamilies: plainStats(stableFamilies),
+        cohortTotals: Object.fromEntries([...cohortTotals.entries()].map(([key, value]) => [key, {
+          invocations: value.invocations,
+          elapsedMs: value.elapsedMs,
+          resourceDelta: cloneDelta(value.resourceDelta),
+          valid: value.valid,
+        }])),
+      };
+    };
+    const finalizeRun = (run) => {
+      run.afterInfo = run.afterInfo || rendererInfoSnapshot(run.renderer);
+      run.resourceDelta = resourceDelta(run.beforeInfo, run.afterInfo);
+      const attributed = zeroDelta();
+      let attributedValid = true;
+      for (const record of run.records) {
+        if (deltaIsFinite(record.resourceDelta)) {
+          attributed.programs += record.resourceDelta.programs;
+          attributed.geometries += record.resourceDelta.geometries;
+          attributed.textures += record.resourceDelta.textures;
+        } else {
+          attributedValid = false;
+        }
+      }
+      const residual = deltaIsFinite(run.resourceDelta) ? subtractDelta(run.resourceDelta, attributed) : null;
+      const residualNonNegative = deltaIsFinite(residual)
+        && residual.programs >= -0.001
+        && residual.geometries >= -0.001
+        && residual.textures >= -0.001;
+      run.conservation = {
+        wholeDelta: cloneDelta(run.resourceDelta),
+        attributedInvocationDelta: cloneDelta(attributed),
+        rendererGlobalResidual: cloneDelta(residual),
+        reconstructedDelta: deltaIsFinite(attributed) && deltaIsFinite(residual)
+          ? cloneDelta(addDelta(attributed, residual))
+          : null,
+        valid: deltaIsFinite(run.resourceDelta)
+          && attributedValid
+          && deltaIsFinite(residual)
+          && residualNonNegative
+          && deltaEqual(addDelta(attributed, residual), run.resourceDelta),
+      };
+      run.aggregates = aggregateRun(run);
+      run.valid = run.beforeInfo?.available === true
+        && run.afterInfo?.available === true
+        && Number.isFinite(run.durationMs)
+        && run.callbackInvocations.length > 0
+        && run.cohortAvailable === true
+        && run.callbackInvocations.every((entry) => entry.completed === true && entry.originalCalled === true)
+        && run.callbackInvocations.every((entry) => entry.error == null)
+        && run.records.every((record) => record.complete === true && record.callbackError == null && deltaIsFinite(record.resourceDelta))
+        && run.unmatchedAfter === 0
+        && run.unmatchedBefore === 0
+        && run.callbacksRestored === true
+        && run.conservation.valid === true
+        && run.error == null
+        && run.errors.length === 0;
+      return run;
+    };
+    const captureRun = (kind, scene, route, invoke) => {
+      const run = {
+        id: trace.nextRunId++,
+        kind,
+        route,
+        scene,
+        sceneUuid: scene?.uuid || null,
+        renderer: renderSystem?.renderer || null,
+        beforeInfo: null,
+        afterInfo: null,
+        resourceDelta: null,
+        startedAt: null,
+        endedAt: null,
+        durationMs: null,
+        sceneRenderableCount: 0,
+        objectRecords: [],
+        callbackInvocations: [],
+        records: [],
+        errors: [],
+        unmatchedBefore: 0,
+        unmatchedAfter: 0,
+        callbacksRestored: false,
+        cohortAvailable: state?.render?.openingAdmissionCohort?.frozen === true
+          && Array.isArray(state?.render?.openingAdmissionCohort?.identities),
+        error: null,
+        valid: false,
+      };
+      trace.currentRun = run;
+      try {
+        if (!scene?.traverse) throw new Error(`${kind} capture received no traversable scene`);
+        run.beforeInfo = rendererInfoSnapshot(run.renderer);
+        wrapSceneCallbacks(run);
+      } catch (error) {
+        run.errors.push(pushError(error, `${kind} capture setup failed: `));
+      }
+      run.startedAt = performance.now();
+      try {
+        return invoke();
+      } catch (error) {
+        run.error = errorText(error);
+        throw error;
+      } finally {
+        run.endedAt = performance.now();
+        run.durationMs = Math.max(0, run.endedAt - run.startedAt);
+        try { run.afterInfo = rendererInfoSnapshot(run.renderer); } catch (error) { run.errors.push(pushError(error, `${kind} after-capture failed: `)); }
+        try { restoreObjectCallbacks(run); } catch (error) { run.errors.push(pushError(error, `${kind} callback restoration failed: `)); }
+        try { finalizeRun(run); } catch (error) {
+          run.errors.push(pushError(error, `${kind} finalization failed: `));
+          run.valid = false;
+        }
+        if (kind === 'cold') trace.coldRun = run;
+        if (kind === 'warm') trace.warmRun = run;
+        trace.currentRun = null;
+      }
+    };
+
+    const restoreHook = (target, name, original, wrapper) => {
+      if (!target || typeof original !== 'function') return false;
+      try {
+        if (target[name] === wrapper) target[name] = original;
+        return target[name] === original;
+      } catch (error) {
+        pushError(error, `hook restoration failed for ${name}: `);
+        return false;
+      }
+    };
+    const installOpeningHook = () => {
+      // Live opening submits through `_renderPostRoute` from drawPreparedFrame. `_renderOpeningPostFrame`
+      // is a dead alias used only by unit tests, so hooking it never armed a cold capture.
+      const original = renderSystem?._renderPostRoute;
+      if (typeof original !== 'function') {
+        trace.status = 'invalid';
+        pushError('render registry did not expose _renderPostRoute');
+        return false;
+      }
+      trace.originalOpening = original;
+      const wrapper = function openingFirstTouchOwnerHook(route, scene) {
+        if (trace.cold?.invocationStarted === true) return original.apply(this, arguments);
+        if (state?.mode !== 'flight') return original.apply(this, arguments);
+        if (!scene || scene !== renderSystem.scene) return original.apply(this, arguments);
+        trace.cold = trace.cold || {};
+        trace.cold.invocationStarted = true;
+        try {
+          return captureRun('cold', scene, `opening-post-route:${String(route || 'unknown')}`, () => original.apply(this, arguments));
+        } finally {
+          trace.hooks.openingRestored = restoreHook(renderSystem, '_renderPostRoute', original, wrapper);
+        }
+      };
+      trace.openingWrapper = wrapper;
+      trace.cold = { invocationStarted: false, completed: false };
+      renderSystem._renderPostRoute = wrapper;
+      if (renderSystem._renderPostRoute !== wrapper) {
+        trace.status = 'invalid';
+        pushError('opening hook assignment did not stick');
+        return false;
+      }
+      trace.hooks.openingInstalled = true;
+      return true;
+    };
+
+    trace.armWarm = () => {
+      if (trace.status === 'invalid') return trace.snapshot();
+      if (trace.warm?.invocationStarted === true) return trace.snapshot();
+      if (!trace.coldRun?.kind) {
+        trace.status = 'invalid';
+        pushError('opening hook did not complete before warm reference arm');
+        return trace.snapshot();
+      }
+      const original = renderSystem?._renderPostRoute;
+      if (typeof original !== 'function') {
+        trace.status = 'invalid';
+        pushError('render registry did not expose _renderPostRoute for warm reference');
+        return trace.snapshot();
+      }
+      trace.originalPostRoute = original;
+      const wrapper = function openingFirstTouchOwnerWarmHook(route, scene) {
+        if (trace.warm?.invocationStarted === true) return original.apply(this, arguments);
+        if (!scene || scene !== renderSystem.scene) return original.apply(this, arguments);
+        trace.warm = trace.warm || {};
+        trace.warm.invocationStarted = true;
+        try {
+          return captureRun('warm', scene, `ordinary-full-scene:${String(route || 'unknown')}`, () => original.apply(this, arguments));
+        } finally {
+          trace.hooks.warmRestored = restoreHook(renderSystem, '_renderPostRoute', original, wrapper);
+        }
+      };
+      trace.warmWrapper = wrapper;
+      trace.warm = { invocationStarted: false, completed: false };
+      renderSystem._renderPostRoute = wrapper;
+      if (renderSystem._renderPostRoute !== wrapper) {
+        trace.status = 'invalid';
+        pushError('warm route hook assignment did not stick');
+        return trace.snapshot();
+      }
+      trace.hooks.warmInstalled = true;
+      return trace.snapshot();
+    };
+
+    const serializeRun = (run) => {
+      if (!run || !run.kind) return null;
+      return {
+        id: run.id,
+        kind: run.kind,
+        route: run.route,
+        scene: run.scene ? {
+          uuid: run.scene.uuid || null,
+          name: run.scene.name || null,
+          type: run.scene.type || null,
+        } : null,
+        beforeInfo: run.beforeInfo,
+        afterInfo: run.afterInfo,
+        durationMs: run.durationMs,
+        resourceDelta: cloneDelta(run.resourceDelta),
+        sceneRenderableCount: run.sceneRenderableCount,
+        callbackInvocations: run.callbackInvocations,
+        records: run.records,
+        unmatchedBefore: run.unmatchedBefore,
+        unmatchedAfter: run.unmatchedAfter,
+        callbacksRestored: run.callbacksRestored,
+        cohortAvailable: run.cohortAvailable,
+        errors: run.errors,
+        error: run.error,
+        conservation: run.conservation,
+        aggregates: run.aggregates,
+        valid: run.valid,
+      };
+    };
+    trace.snapshot = () => {
+      const coldRun = trace.coldRun?.kind ? trace.coldRun : null;
+      const warmRun = trace.warmRun?.kind ? trace.warmRun : null;
+      const capture = {
+        cold: !!coldRun,
+        warm: !!warmRun,
+      };
+      const comparison = coldRun && warmRun ? {
+        durationMs: coldRun.durationMs - warmRun.durationMs,
+        resourceDelta: Number.isFinite(coldRun.durationMs)
+          && Number.isFinite(warmRun.durationMs)
+          && deltaIsFinite(coldRun.resourceDelta)
+          && deltaIsFinite(warmRun.resourceDelta)
+          ? subtractDelta(coldRun.resourceDelta, warmRun.resourceDelta)
+          : null,
+        valid: Number.isFinite(coldRun.durationMs)
+          && Number.isFinite(warmRun.durationMs)
+          && deltaIsFinite(coldRun.resourceDelta)
+          && deltaIsFinite(warmRun.resourceDelta),
+      } : null;
+      const positiveControl = {
+        coldCallbacks: coldRun?.callbackInvocations?.length || 0,
+        warmCallbacks: warmRun?.callbackInvocations?.length || 0,
+        coldOriginalCalls: coldRun?.callbackInvocations?.filter((entry) => entry.originalCalled === true).length || 0,
+        warmOriginalCalls: warmRun?.callbackInvocations?.filter((entry) => entry.originalCalled === true).length || 0,
+        valid: !!coldRun && !!warmRun
+          && coldRun.callbackInvocations.length > 0
+          && warmRun.callbackInvocations.length > 0
+          && coldRun.callbackInvocations.every((entry) => entry.originalCalled === true)
+          && warmRun.callbackInvocations.every((entry) => entry.originalCalled === true),
+      };
+      const restoration = {
+        openingHook: trace.hooks.openingRestored === true,
+        warmHook: trace.hooks.warmRestored === true,
+        coldCallbacks: coldRun?.callbacksRestored === true,
+        warmCallbacks: warmRun?.callbacksRestored === true,
+        valid: trace.restoreCalled === true
+          && trace.hooks.openingRestored === true
+          && trace.hooks.warmRestored === true
+          && coldRun?.callbacksRestored === true
+          && warmRun?.callbacksRestored === true,
+      };
+      const valid = trace.status !== 'invalid'
+        && coldRun?.valid === true
+        && warmRun?.valid === true
+        && comparison?.valid === true
+        && positiveControl.valid === true
+        && restoration.valid === true;
+      return {
+        enabled: true,
+        status: valid ? 'valid' : 'invalid',
+        errors: [...trace.errors],
+        hooks: { ...trace.hooks },
+        capture,
+        restoration,
+        positiveControl,
+        cold: serializeRun(coldRun),
+        warm: serializeRun(warmRun),
+        comparison,
+      };
+    };
+    trace.restore = () => {
+      trace.restoreCalled = true;
+      if (trace.currentRun) {
+        try { restoreObjectCallbacks(trace.currentRun); } catch (error) { pushError(error, 'outer callback restoration failed: '); }
+      }
+      if (trace.originalOpening && trace.openingWrapper) {
+        trace.hooks.openingRestored = restoreHook(
+          renderSystem,
+          '_renderPostRoute',
+          trace.originalOpening,
+          trace.openingWrapper,
+        );
+      } else if (!trace.hooks.openingInstalled) {
+        trace.hooks.openingRestored = true;
+      }
+      if (trace.originalPostRoute && trace.warmWrapper) {
+        trace.hooks.warmRestored = restoreHook(
+          renderSystem,
+          '_renderPostRoute',
+          trace.originalPostRoute,
+          trace.warmWrapper,
+        );
+      } else if (!trace.hooks.warmInstalled) {
+        trace.hooks.warmRestored = true;
+      }
+      return trace.snapshot();
+    };
+
+    if (!renderSystem) {
+      trace.status = 'invalid';
+      pushError('window.SF.registry.get(\'render\') returned no RenderSystem');
+      trace.hooks.openingRestored = true;
+      trace.hooks.warmRestored = true;
+      return trace.snapshot();
+    }
+    if (!installOpeningHook()) {
+      trace.hooks.openingRestored = trace.hooks.openingRestored || !trace.hooks.openingInstalled;
+    }
+    return trace.snapshot();
+  });
+}
+
+async function armOpeningFirstTouchOwnerWarmReference(targetPage) {
+  return targetPage.evaluate(() => window.__SF_OPENING_FIRST_TOUCH_OWNER__?.armWarm?.() || null);
+}
+
+async function restoreOpeningFirstTouchOwnerWitness(targetPage) {
+  return targetPage.evaluate(() => window.__SF_OPENING_FIRST_TOUCH_OWNER__?.restore?.() || null);
+}
+
+async function installOpeningExactOwnerTouchWitness(targetPage) {
+  return targetPage.evaluate(() => {
+    const prior = window.__SF_OPENING_EXACT_OWNER_TOUCH__;
+    try { prior?.restore?.(); } catch (_) {}
+
+    const sf = window.SF;
+    const state = sf?.state;
+    const renderSystem = sf?.registry?.get?.('render');
+    const bloom = renderSystem?.bloom;
+    const renderer = renderSystem?.renderer;
+    const scene = renderSystem?.scene;
+    const camera = state?.render?.camera;
+    const EXPECTED_ASSET = 'GLTFKIT_ship_kestrel_deb0ac72';
+    const trace = {
+      enabled: true,
+      status: 'installed',
+      startedWallMs: Date.now(),
+      inputResponsiveWallMs: null,
+      errors: [],
+      roots: [],
+      touch: null,
+      opening: null,
+      hooks: {
+        prepareInstalled: false,
+        prepareRestored: false,
+        openingInstalled: false,
+        openingRestored: false,
+      },
+      restoration: { renderState: false, hooks: false },
+      originalPrepare: null,
+      prepareWrapper: null,
+      originalOpening: null,
+      openingWrapper: null,
+    };
+    window.__SF_OPENING_EXACT_OWNER_TOUCH__ = trace;
+
+    const errorText = (error) => String(error?.stack || error?.message || error || 'unknown error');
+    const pushError = (error, prefix = '') => {
+      const message = `${prefix}${errorText(error)}`;
+      trace.errors.push(message);
+      trace.status = 'invalid';
+      return message;
+    };
+    const resourceSnapshot = () => ({
+      programs: Array.isArray(renderer?.info?.programs) ? renderer.info.programs.length : null,
+      geometries: Number.isFinite(Number(renderer?.info?.memory?.geometries))
+        ? Number(renderer.info.memory.geometries)
+        : null,
+      textures: Number.isFinite(Number(renderer?.info?.memory?.textures))
+        ? Number(renderer.info.memory.textures)
+        : null,
+    });
+    const resourceDelta = (before, after) => Object.fromEntries(
+      ['programs', 'geometries', 'textures'].map((key) => {
+        const priorValue = before?.[key];
+        const nextValue = after?.[key];
+        return [key, Number.isFinite(priorValue) && Number.isFinite(nextValue)
+          ? nextValue - priorValue
+          : null];
+      }),
+    );
+    const validDelta = (value) => value
+      && Number.isFinite(value.programs)
+      && Number.isFinite(value.geometries)
+      && Number.isFinite(value.textures);
+    const vector4 = () => ({
+      x: 0, y: 0, z: 0, w: 0,
+      copy(value) {
+        this.x = Number(value?.x) || 0;
+        this.y = Number(value?.y) || 0;
+        this.z = Number(value?.z) || 0;
+        this.w = Number(value?.w) || 0;
+        return this;
+      },
+      set(x, y, z, w) {
+        this.x = Number(x) || 0;
+        this.y = Number(y) || 0;
+        this.z = Number(z) || 0;
+        this.w = Number(w) || 0;
+        return this;
+      },
+    });
+    const vector2 = () => ({
+      x: 0, y: 0,
+      set(x, y) {
+        this.x = Number(x) || 0;
+        this.y = Number(y) || 0;
+        return this;
+      },
+      floor() {
+        this.x = Math.floor(this.x);
+        this.y = Math.floor(this.y);
+        return this;
+      },
+    });
+    const sameVector4 = (a, b) => ['x', 'y', 'z', 'w'].every((key) => Number(a?.[key]) === Number(b?.[key]));
+    const topLevelRoot = (object) => {
+      let root = object;
+      let guard = 0;
+      while (root?.parent && root.parent !== scene && guard++ < 512) root = root.parent;
+      return root?.parent === scene ? root : null;
+    };
+    const objectContainsAsset = (root) => {
+      let found = false;
+      root?.traverse?.((object) => {
+        if (found) return;
+        const userData = object?.userData || {};
+        const packageData = userData.flightRenderPackage || userData.spacefaceRenderPackage || {};
+        const values = [
+          userData.assetId,
+          packageData.assetId,
+          packageData.id,
+          packageData.key,
+        ];
+        if (values.some((value) => String(value || '') === EXPECTED_ASSET)) found = true;
+      });
+      return found;
+    };
+    const uniqueTopLevelNamed = (name) => {
+      const matches = (scene?.children || []).filter((child) => child?.name === name);
+      if (matches.length !== 1) throw new Error(`expected one top-level ${name}; found ${matches.length}`);
+      return matches[0];
+    };
+    const resolveRoots = () => {
+      const playerRoot = state?.render?.meshes?.get?.(state?.playerId) || null;
+      if (!playerRoot) throw new Error('current player render boundary was unavailable');
+      if (!objectContainsAsset(playerRoot)) throw new Error(`current player boundary did not contain ${EXPECTED_ASSET}`);
+      const roots = [
+        { role: 'player-kestrel', object: topLevelRoot(playerRoot) || playerRoot },
+        { role: 'background', object: uniqueTopLevelNamed('SpaceBackground') },
+        { role: 'parallax-far', object: uniqueTopLevelNamed('Parallax_FarDust') },
+        { role: 'parallax-mid', object: uniqueTopLevelNamed('Parallax_MidDebris') },
+      ];
+      if (new Set(roots.map((entry) => entry.object)).size !== roots.length) {
+        throw new Error('exact-owner roots were not unique');
+      }
+      trace.roots = roots.map((entry) => ({
+        role: entry.role,
+        name: entry.object?.name || null,
+        uuid: entry.object?.uuid || null,
+      }));
+      return roots;
+    };
+    const restoreHook = (target, name, original, wrapper) => {
+      if (!target || typeof original !== 'function') return false;
+      try {
+        if (target[name] === wrapper) target[name] = original;
+        return target[name] === original;
+      } catch (error) {
+        pushError(error, `failed to restore ${name}: `);
+        return false;
+      }
+    };
+
+    const runTouch = async () => {
+      const roots = resolveRoots();
+      const keep = new Set(roots.map((entry) => entry.object));
+      scene.traverse((object) => {
+        if (!object?.isLight) return;
+        const lightRoot = topLevelRoot(object);
+        const targetRoot = topLevelRoot(object.target);
+        if (lightRoot) keep.add(lightRoot);
+        if (targetRoot) keep.add(targetRoot);
+      });
+      const visibility = (scene.children || []).map((object) => ({ object, visible: object.visible }));
+      const previousViewport = renderer.getViewport(vector4());
+      const previousScissor = renderer.getScissor(vector4());
+      const previousScissorTest = renderer.getScissorTest();
+      const shadowMap = renderer.shadowMap || null;
+      const previousShadowAutoUpdate = shadowMap?.autoUpdate;
+      const previousShadowNeedsUpdate = shadowMap?.needsUpdate;
+      const previousRender = renderer.render;
+      let renderCalls = 0;
+      let renderWrapper = null;
+      let renderStateRestored = false;
+      const before = resourceSnapshot();
+      const startedAt = performance.now();
+      try {
+        for (const entry of visibility) {
+          if (!keep.has(entry.object)) entry.object.visible = false;
+        }
+        const size = renderer.getDrawingBufferSize(vector2());
+        const width = Math.max(1, Math.min(64, Math.floor(size.x)));
+        const height = Math.max(1, Math.min(64, Math.floor(size.y)));
+        const left = Math.max(0, Math.floor((size.x - width) / 2));
+        const bottom = Math.max(0, Math.floor((size.y - height) / 2));
+        renderer.setScissor(left, bottom, width, height);
+        renderer.setScissorTest(true);
+        renderWrapper = function openingExactOwnerRender(...args) {
+          if (args[0] === scene && args[1] === camera) renderCalls++;
+          return previousRender.apply(this, args);
+        };
+        renderer.render = renderWrapper;
+        await bloom.warmScenePipelines(scene, camera, scene);
+      } finally {
+        if (renderer.render === renderWrapper) renderer.render = previousRender;
+        for (const entry of visibility) entry.object.visible = entry.visible;
+        renderer.setViewport(previousViewport.x, previousViewport.y, previousViewport.z, previousViewport.w);
+        renderer.setScissor(previousScissor.x, previousScissor.y, previousScissor.z, previousScissor.w);
+        renderer.setScissorTest(previousScissorTest);
+        if (shadowMap) {
+          shadowMap.autoUpdate = previousShadowAutoUpdate;
+          shadowMap.needsUpdate = previousShadowNeedsUpdate;
+        }
+        const currentViewport = renderer.getViewport(vector4());
+        const currentScissor = renderer.getScissor(vector4());
+        renderStateRestored = renderer.render === previousRender
+          && visibility.every((entry) => entry.object.visible === entry.visible)
+          && sameVector4(previousViewport, currentViewport)
+          && sameVector4(previousScissor, currentScissor)
+          && renderer.getScissorTest() === previousScissorTest
+          && (!shadowMap || (shadowMap.autoUpdate === previousShadowAutoUpdate
+            && shadowMap.needsUpdate === previousShadowNeedsUpdate));
+        trace.restoration.renderState = renderStateRestored;
+      }
+      const after = resourceSnapshot();
+      trace.touch = {
+        durationMs: Math.max(0, performance.now() - startedAt),
+        before,
+        after,
+        resourceDelta: resourceDelta(before, after),
+        renderCalls,
+      };
+      if (renderCalls !== 1) pushError(`exact-owner touch issued ${renderCalls} scene renders; expected 1`);
+      if (!renderStateRestored) pushError('exact-owner touch did not restore renderer or scene state');
+    };
+
+    if (!renderSystem || !bloom || !renderer || !scene || !camera) {
+      pushError('live render system, bloom, renderer, scene, or camera was unavailable');
+      return trace;
+    }
+    if (typeof bloom.prepareResources !== 'function' || typeof bloom.warmScenePipelines !== 'function') {
+      pushError('bloom exact-target preparation seam was unavailable');
+      return trace;
+    }
+    if (typeof renderSystem._renderOpeningPostFrame !== 'function') {
+      pushError('opening post-frame seam was unavailable');
+      return trace;
+    }
+
+    trace.originalPrepare = bloom.prepareResources;
+    trace.prepareWrapper = async function openingExactOwnerPrepare(...args) {
+      try {
+        const result = await trace.originalPrepare.apply(this, args);
+        try { await runTouch(); } catch (error) { pushError(error, 'exact-owner touch failed: '); }
+        return result;
+      } finally {
+        trace.hooks.prepareRestored = restoreHook(
+          bloom,
+          'prepareResources',
+          trace.originalPrepare,
+          trace.prepareWrapper,
+        );
+      }
+    };
+    bloom.prepareResources = trace.prepareWrapper;
+    trace.hooks.prepareInstalled = bloom.prepareResources === trace.prepareWrapper;
+
+    trace.originalOpening = renderSystem._renderOpeningPostFrame;
+    trace.openingWrapper = function openingExactOwnerOpening(sceneArg, cameraArg) {
+      const before = resourceSnapshot();
+      const previousRender = renderer.render;
+      let renderCalls = 0;
+      const renderWrapper = function openingExactOwnerOpeningRender(...args) {
+        if (args[0] === sceneArg && args[1] === cameraArg) renderCalls++;
+        return previousRender.apply(this, args);
+      };
+      const startedAt = performance.now();
+      renderer.render = renderWrapper;
+      try {
+        return trace.originalOpening.apply(this, arguments);
+      } finally {
+        if (renderer.render === renderWrapper) renderer.render = previousRender;
+        const after = resourceSnapshot();
+        trace.opening = {
+          durationMs: Math.max(0, performance.now() - startedAt),
+          before,
+          after,
+          resourceDelta: resourceDelta(before, after),
+          renderCalls,
+        };
+        trace.hooks.openingRestored = restoreHook(
+          renderSystem,
+          '_renderOpeningPostFrame',
+          trace.originalOpening,
+          trace.openingWrapper,
+        );
+      }
+    };
+    renderSystem._renderOpeningPostFrame = trace.openingWrapper;
+    trace.hooks.openingInstalled = renderSystem._renderOpeningPostFrame === trace.openingWrapper;
+    if (!trace.hooks.prepareInstalled || !trace.hooks.openingInstalled) {
+      pushError('exact-owner hooks did not install');
+    }
+
+    trace.markInputResponsive = () => {
+      trace.inputResponsiveWallMs = Date.now() - trace.startedWallMs;
+      return trace.snapshot();
+    };
+    trace.snapshot = () => {
+      const touchDelta = trace.touch?.resourceDelta || null;
+      const openingDelta = trace.opening?.resourceDelta || null;
+      const totalResourceDelta = trace.touch?.before && trace.opening?.after
+        ? resourceDelta(trace.touch.before, trace.opening.after)
+        : null;
+      const hooksRestored = trace.hooks.prepareRestored === true && trace.hooks.openingRestored === true;
+      trace.restoration.hooks = hooksRestored;
+      const positiveControls = {
+        roots: trace.roots.length === 4 && new Set(trace.roots.map((root) => root.uuid)).size === 4,
+        touchRender: trace.touch?.renderCalls === 1,
+        openingRender: trace.opening?.renderCalls === 1,
+        restoration: trace.restoration.renderState === true && hooksRestored,
+      };
+      const conservation = {
+        expected: { touchPrograms: 16, openingPrograms: 2, programs: 18, geometries: 91, textures: 2 },
+        valid: validDelta(touchDelta)
+          && validDelta(openingDelta)
+          && validDelta(totalResourceDelta)
+          && touchDelta.programs === 16
+          && openingDelta.programs === 2
+          && totalResourceDelta.programs === 18
+          && totalResourceDelta.geometries === 91
+          && totalResourceDelta.textures === 2,
+      };
+      const valid = trace.status !== 'invalid'
+        && Object.values(positiveControls).every(Boolean)
+        && conservation.valid === true
+        && Number.isFinite(trace.inputResponsiveWallMs);
+      return {
+        enabled: true,
+        status: valid ? 'valid' : 'invalid',
+        errors: [...trace.errors],
+        roots: [...trace.roots],
+        touch: trace.touch,
+        opening: trace.opening,
+        combinedMs: Number.isFinite(trace.touch?.durationMs) && Number.isFinite(trace.opening?.durationMs)
+          ? trace.touch.durationMs + trace.opening.durationMs
+          : null,
+        inputResponsiveWallMs: trace.inputResponsiveWallMs,
+        totalResourceDelta,
+        hooks: { ...trace.hooks },
+        restoration: { ...trace.restoration },
+        positiveControls,
+        conservation,
+      };
+    };
+    trace.restore = () => {
+      trace.hooks.prepareRestored = restoreHook(
+        bloom,
+        'prepareResources',
+        trace.originalPrepare,
+        trace.prepareWrapper,
+      );
+      trace.hooks.openingRestored = restoreHook(
+        renderSystem,
+        '_renderOpeningPostFrame',
+        trace.originalOpening,
+        trace.openingWrapper,
+      );
+      return trace.snapshot();
+    };
+    return trace.snapshot();
+  });
+}
+
+async function markOpeningExactOwnerInputResponsive(targetPage) {
+  return targetPage.evaluate(() => window.__SF_OPENING_EXACT_OWNER_TOUCH__?.markInputResponsive?.() || null);
+}
+
+async function restoreOpeningExactOwnerTouchWitness(targetPage) {
+  return targetPage.evaluate(() => window.__SF_OPENING_EXACT_OWNER_TOUCH__?.restore?.() || null);
+}
+
+async function armProbeInstrumentation(targetPage) {
+  await targetPage.waitForFunction(() => typeof window.SF?.state?.perfRuntime?.reset === 'function', null, { timeout: 30_000 });
+  const instrumentation = await targetPage.evaluate((fullSystemTiming) => {
+    const perf = window.SF?.state?.perfRuntime;
+    const previousRenderWorkEnabled = perf?.renderWorkEnabled === true;
+    const previousHitchAttributionEnabled = perf?.hitchAttributionEnabled === true;
+    const previousSimAttributionEnabled = perf?.simAttributionEnabled === true;
+    const previousSystemTimingEnabled = perf?.systemTimingEnabled === true;
+    const previousSystemTimingFullCoverage = perf?.systemTimingFullCoverage === true;
+    const available = typeof perf?.setRenderWorkEnabled === 'function'
+      && typeof perf?.setHitchAttributionEnabled === 'function'
+      && typeof perf?.setSystemTimingEnabled === 'function'
+      && typeof perf?.reset === 'function'
+      && typeof perf?.getHitchHistogram === 'function'
+      && (!fullSystemTiming || typeof perf?.setSystemTimingFullCoverage === 'function');
+    if (available) {
+      perf.reset();
+      perf.setRenderWorkEnabled(true);
+      perf.setHitchAttributionEnabled(true);
+      perf.setSystemTimingEnabled(true);
+      // PERF-89: per-frame sim max-owner attribution. Feature-detected so the probe
+      // still runs against builds that predate the flag.
+      if (typeof perf.setSimAttributionEnabled === 'function') perf.setSimAttributionEnabled(true);
+      if (fullSystemTiming) perf.setSystemTimingFullCoverage(true);
+    }
+    return {
+      available,
+      previousRenderWorkEnabled,
+      previousHitchAttributionEnabled,
+      previousSimAttributionEnabled,
+      previousSystemTimingEnabled,
+      previousSystemTimingFullCoverage,
+      renderWorkEnabled: perf?.renderWorkEnabled === true,
+      hitchAttributionEnabled: perf?.hitchAttributionEnabled === true,
+      simAttributionEnabled: perf?.simAttributionEnabled === true,
+      systemTimingEnabled: perf?.systemTimingEnabled === true,
+      systemTimingFullCoverage: perf?.systemTimingFullCoverage === true,
+    };
+  }, FULL_SYSTEM_TIMING);
+  if (instrumentation?.renderWorkEnabled !== true
+      || instrumentation?.hitchAttributionEnabled !== true
+      || instrumentation?.systemTimingEnabled !== true
+      || (FULL_SYSTEM_TIMING && instrumentation?.systemTimingFullCoverage !== true)) {
+    throw new Error('Runtime witness could not enable bounded census and hitch attribution');
+  }
+  return instrumentation;
+}
+
+async function installSectorTransitionWitness(targetPage) {
+  await targetPage.evaluate(() => {
+    const prior = window.__SF_SECTOR_TRANSITION_WITNESS__;
+    if (prior && Array.isArray(prior.unsubscribers)) {
+      for (const unsubscribe of prior.unsubscribers) {
+        if (typeof unsubscribe === 'function') unsubscribe();
+      }
+    }
+    const sf = window.SF;
+    const perf = sf?.state?.perfRuntime;
+    const trace = {
+      armed: false,
+      startedPerformanceMs: 0,
+      events: [],
+      stages: [],
+      listenerMetadata: [],
+      unsubscribers: [],
+      restorers: [],
+      capture(label) {
+        if (!trace.armed) return;
+        const state = sf?.state;
+        const now = performance.now();
+        trace.events.push({
+          label,
+          elapsedMs: Math.max(0, now - trace.startedPerformanceMs),
+          tick: Number(state?.tick) || 0,
+          simTime: Number(state?.simTime) || 0,
+          sectorId: String(state?.world?.currentSectorId || ''),
+          jumpState: String(state?.jump?.state || ''),
+          hitch: typeof perf?.getHitchHistogram === 'function'
+            ? perf.getHitchHistogram()
+            : null,
+          frame: typeof perf?.readFrameSample === 'function'
+            ? perf.readFrameSample({})
+            : null,
+        });
+      },
+      arm() {
+        perf?.reset?.();
+        trace.events.length = 0;
+        trace.stages.length = 0;
+        trace.startedPerformanceMs = performance.now();
+        trace.armed = true;
+        const world = sf?.registry?.get?.('world');
+        for (const methodName of [
+          'enterSector',
+          '_applyResidencyPlan',
+          '_stripSectorFullExtras',
+          '_ensureSectorMaterialized',
+          '_syncSectorTierContent',
+          '_promoteSectorToFull',
+          '_demoteSectorToRecordOnly',
+          '_placePlayer',
+          '_resolveShipModules',
+          '_flushPendingSpawns',
+        ]) {
+          const original = world?.[methodName];
+          if (typeof original !== 'function') continue;
+          world[methodName] = function timedSectorTransitionMethod(...args) {
+            const started = performance.now();
+            try {
+              return original.apply(this, args);
+            } finally {
+              trace.stages.push({
+                label: `world.${methodName}`,
+                durationMs: performance.now() - started,
+              });
+            }
+          };
+          trace.restorers.push(() => { world[methodName] = original; });
+        }
+        const traffic = sf?.registry?.get?.('traffic');
+        for (const methodName of [
+          '_cleanup',
+          '_pruneDead',
+          '_retireLegacyCeresTraffic',
+          '_materializeCeresActivityCast',
+          '_ensureNamedLaneContact',
+          '_applyWorldSiteTrafficHooks',
+          '_ensureCeresCausalChain',
+          '_rebaseCeresCausalPhaseEnds',
+        ]) {
+          const original = traffic?.[methodName];
+          if (typeof original !== 'function') continue;
+          traffic[methodName] = function timedTrafficSectorEntryMethod(...args) {
+            const started = performance.now();
+            try {
+              return original.apply(this, args);
+            } finally {
+              trace.stages.push({
+                label: `traffic.${methodName}`,
+                durationMs: performance.now() - started,
+              });
+            }
+          };
+          trace.restorers.push(() => { traffic[methodName] = original; });
+        }
+        const originalEmit = bus?.emit;
+        if (typeof originalEmit === 'function') {
+          const timedEvents = new Set(['sector:exit', 'world:membership', 'sector:enter']);
+          bus.emit = function timedSectorTransitionEmit(eventName, ...args) {
+            if (!timedEvents.has(eventName)) return originalEmit.call(this, eventName, ...args);
+            const started = performance.now();
+            try {
+              return originalEmit.call(this, eventName, ...args);
+            } finally {
+              trace.stages.push({
+                label: `bus.${eventName}`,
+                durationMs: performance.now() - started,
+              });
+            }
+          };
+          trace.restorers.push(() => { bus.emit = originalEmit; });
+        }
+        const listenerMap = bus?._listeners;
+        const originalSectorEnterListeners = listenerMap?.get?.('sector:enter');
+        if (originalSectorEnterListeners instanceof Set) {
+          const wrappedSectorEnterListeners = new Set();
+          let listenerIndex = 0;
+          for (const listener of originalSectorEnterListeners) {
+            const label = `listener.sector:enter[${listenerIndex}] ${listener.name || 'anonymous'}`;
+            trace.listenerMetadata.push({
+              label,
+              sourceHint: String(listener).replace(/\s+/g, ' ').slice(0, 180),
+            });
+            wrappedSectorEnterListeners.add(function timedSectorEnterListener(...args) {
+              const started = performance.now();
+              try {
+                return listener.apply(this, args);
+              } finally {
+                trace.stages.push({ label, durationMs: performance.now() - started });
+              }
+            });
+            listenerIndex++;
+          }
+          listenerMap.set('sector:enter', wrappedSectorEnterListeners);
+          trace.restorers.push(() => { listenerMap.set('sector:enter', originalSectorEnterListeners); });
+        }
+        trace.capture('probe:armed');
+      },
+      restore() {
+        while (trace.restorers.length > 0) trace.restorers.pop()();
+        trace.armed = false;
+      },
+    };
+    const bus = sf?.bus;
+    if (bus && typeof bus.on === 'function') {
+      for (const eventName of [
+        'jump:chargeStart',
+        'jump:start',
+        'sector:exit',
+        'sector:enter',
+        'jump:arrive',
+      ]) {
+        trace.unsubscribers.push(bus.on(eventName, () => trace.capture(eventName)));
+      }
+    }
+    window.__SF_SECTOR_TRANSITION_WITNESS__ = trace;
+  });
+}
+
+async function armSectorTransitionWitness(targetPage) {
+  const armed = await targetPage.evaluate(() => {
+    const trace = window.__SF_SECTOR_TRANSITION_WITNESS__;
+    if (!trace || typeof trace.arm !== 'function') return false;
+    trace.arm();
+    return trace.armed === true;
+  });
+  if (!armed) throw new Error('Runtime witness could not arm the sector-transition phase ledger');
+}
+
+async function collectSectorTransitionWitness(targetPage) {
+  return targetPage.evaluate(() => {
+    const trace = window.__SF_SECTOR_TRANSITION_WITNESS__;
+    trace?.capture?.('post-entry+1500ms');
+    const result = {
+      startedPerformanceMs: Number(trace?.startedPerformanceMs) || 0,
+      events: Array.isArray(trace?.events) ? trace.events : [],
+      stages: Array.isArray(trace?.stages) ? trace.stages : [],
+      listenerMetadata: Array.isArray(trace?.listenerMetadata) ? trace.listenerMetadata : [],
+    };
+    trace?.restore?.();
+    return result;
+  });
+}
+
+function readWitnessInPage() {
+  // Arm the long-task observer HERE rather than from a separate install step. The probe drives more
+  // than one page handle, and installing on the wrong one produced a witness that read back as
+  // "not captured" for a whole 4-run A/B. Whatever page is being sampled is by definition the page
+  // whose main thread we care about, so arm it on first sample and it cannot miss.
+  if (!window.__SF_LONGTASK_WITNESS__) {
+    const trace = { startedWallMs: Date.now(), entries: [], observer: null, supported: false };
+    try {
+      trace.observer = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (trace.entries.length >= 4000) break;
+          trace.entries.push({ startTime: entry.startTime, duration: entry.duration, name: String(entry.name || '') });
+        }
+      });
+      trace.observer.observe({ entryTypes: ['longtask'] });
+      trace.supported = true;
+    } catch (_) {
+      trace.supported = false;
+    }
+    window.__SF_LONGTASK_WITNESS__ = trace;
+  }
+  const witness = window.__SF_WITNESS__;
+  const s = window.SF?.state;
+  let sample = null;
+  if (witness && typeof witness.snapshot === 'function') sample = witness.snapshot();
+  const d = window.SF?.loop?.getDiagnostics?.() || {};
+  const p = s?.entities?.get?.(s.playerId);
+  const info = s?.render?.renderer?.info?.render || null;
+  const completedInfo = s?.render?.diagnostics?.info || null;
+  if (!sample) sample = {
+    wallMs: Date.now(),
+    mode: s?.mode || null,
+    simTime: Number(s?.simTime) || 0,
+    tick: Number(s?.tick) || 0,
+    timeScale: Number(s?.timeScale) || 0,
+    hasPos: !!(p?.pos),
+    posX: Number(p?.pos?.x) || 0,
+    posZ: Number(p?.pos?.z) || 0,
+    speed: p?.vel ? Math.hypot(Number(p.vel.x) || 0, Number(p.vel.z) || 0) : 0,
+    lifecycle: window.SF?.loop?.getLifecycleState?.() || d.lifecycleState || null,
+    suspended: window.SF?.loop?.isSuspended?.() === true,
+    documentHidden: document.hidden === true,
+    executedFrames: d.executedFrames || 0,
+    renderUpdates: d.renderUpdates || 0,
+    rendererFrame: Number(info?.frame),
+    rendererFrameObserved: Number.isFinite(Number(info?.frame)),
+    drawCalls: Number(completedInfo?.calls) || Number(info?.calls) || 0,
+    contextLost: s?.render?.contextLost === true,
+    lastFrameError: d.lastFrameError || null,
+    frameErrorCount: d.frameErrorCount || 0,
+    hitch: false,
+    costs: [],
+  };
+  {
+    const lt = window.__SF_LONGTASK_WITNESS__;
+    if (lt) {
+      const durations = lt.entries.map((e) => Number(e.duration) || 0);
+      sample.longTasks = {
+        supported: lt.supported === true,
+        count: lt.entries.length,
+        totalMs: durations.reduce((sum, d) => sum + d, 0),
+        maxMs: durations.reduce((max, d) => Math.max(max, d), 0),
+        over50Ms: durations.filter((d) => d >= 50).length,
+        over100Ms: durations.filter((d) => d >= 100).length,
+        top: lt.entries.slice().sort((a, b) => b.duration - a.duration).slice(0, 12)
+          .map((e) => ({ startTime: Math.round(e.startTime), durationMs: Math.round(e.duration), name: e.name })),
+      };
+    }
+  }
+  // Presented-hold accounting from the loop diagnostics (cumulative since loop start; the
+  // classifier compares first→last deltas). This is the world-hitch number that frame cost alone
+  // cannot see: a repeated presented moment while time advances.
+  sample.presented = {
+    gapMs: Number.isFinite(d.lastPresentedGapMs) ? d.lastPresentedGapMs : null,
+    maxGapMs: Number.isFinite(d.maxPresentedGapMs) ? d.maxPresentedGapMs : null,
+    gapsOver100: Number.isFinite(d.presentedGapsOver100) ? d.presentedGapsOver100 : null,
+    heldMs: Number.isFinite(d.heldPresentMs) ? d.heldPresentMs : null,
+    maxHeldMs: Number.isFinite(d.maxHeldPresentMs) ? d.maxHeldPresentMs : null,
+  };
+  // GPU-side residency alongside the heap. Growth here that never plateaus says the world is
+  // retaining what it streams in rather than churning it, which is a different fix from allocation
+  // churn even though both end in the same multi-second collection.
+  try {
+    const mem = window.SF?.state?.render?.renderer?.info?.memory;
+    const progs = window.SF?.state?.render?.renderer?.info?.programs;
+    sample.gpuResidency = mem ? {
+      geometries: Number(mem.geometries) || 0,
+      textures: Number(mem.textures) || 0,
+      programs: Array.isArray(progs) ? progs.length : 0,
+    } : null;
+  } catch (_) { sample.gpuResidency = null; }
+  // Picture contract: the console proves the buffer, but sign-off also needs the live post route,
+  // dynamic-resolution/relief state, bloom depth and sky/particle tier from the same sample.
+  try {
+    const render = window.SF?.state?.render || null;
+    const video = window.SF?.state?.settings?.video || {};
+    const diag = render?.diagnostics || null;
+    const report = diag && typeof diag.getReport === 'function' ? diag.getReport() : null;
+    const post = report && report.post ? report.post : null;
+    const bloom = post && post.bloom && typeof post.bloom === 'object' ? post.bloom : null;
+    const renderer = render?.renderer || null;
+    const canvas = renderer && renderer.domElement ? renderer.domElement : null;
+    const ratio = renderer && typeof renderer.getPixelRatio === 'function'
+      ? renderer.getPixelRatio() : null;
+    const cssW = Number(window.innerWidth) || 0;
+    const cssH = Number(window.innerHeight) || 0;
+    const dpr = Number(window.devicePixelRatio) || 1;
+    sample.picture = {
+      renderScale: Number.isFinite(Number(video.renderScale)) ? Number(video.renderScale) : null,
+      pixelRatioCap: Number.isFinite(Number(video.pixelRatioCap)) ? Number(video.pixelRatioCap) : null,
+      pixelRatio: Number.isFinite(Number(ratio)) ? Number(ratio) : null,
+      bufferWidth: canvas ? canvas.width | 0 : null,
+      bufferHeight: canvas ? canvas.height | 0 : null,
+      cssWidth: cssW,
+      cssHeight: cssH,
+      devicePixelRatio: dpr,
+      dynResScale: Number.isFinite(Number(render?.dynResScale)) ? Number(render.dynResScale) : 1,
+      hitchReliefLevel: Number(render?.hitchReliefLevel) || 0,
+      contentScale: bloom && Number.isFinite(Number(bloom.contentScale))
+        ? Number(bloom.contentScale) : null,
+      effectiveSceneScale: post && Number.isFinite(Number(post.effectiveSceneScale))
+        ? Number(post.effectiveSceneScale) : null,
+      // contentNative is the scene's own 1:1 test, not the buffer's. A 0.9 content scale plus CAS
+      // is a reconstruction; a native drawing buffer does not make the picture native.
+      contentNative: (() => {
+        const effective = post && Number.isFinite(Number(post.effectiveSceneScale))
+          ? Number(post.effectiveSceneScale) : 1;
+        const bloomScale = bloom && Number.isFinite(Number(bloom.contentScale))
+          ? Number(bloom.contentScale) : 1;
+        const cas = bloom ? bloom.casSharpenActive === true : false;
+        return effective >= 0.999 && bloomScale >= 0.999 && cas !== true;
+      })(),
+      casSharpenActive: bloom ? bloom.casSharpenActive === true : null,
+      casReconstruction: bloom ? bloom.casReconstruction : null,
+      sceneTargetWidth: post && Number.isFinite(Number(post.sceneTargetWidth))
+        ? Number(post.sceneTargetWidth) : null,
+      sceneTargetHeight: post && Number.isFinite(Number(post.sceneTargetHeight))
+        ? Number(post.sceneTargetHeight) : null,
+      configuredRenderScale: post && Number.isFinite(Number(post.configuredRenderScale))
+        ? Number(post.configuredRenderScale) : null,
+      activePath: post ? post.activePath : null,
+      bloomSelected: post ? post.bloomSelected === true : null,
+      bloomLevels: Number.isFinite(Number(video.bloomLevels)) ? Number(video.bloomLevels) : null,
+      bloomStrength: Number.isFinite(Number(video.bloomStrength)) ? Number(video.bloomStrength) : null,
+      // Live post state, not the configured preset: the hitch governor can cap bloom to one level
+      // and zero grade/vignette/toe/grain at relief 2. A capture signed off at relief 0 must say so.
+      bloomLevelsLive: bloom && Number.isFinite(Number(bloom.levels)) ? Number(bloom.levels) : null,
+      bloomEnabledLive: bloom ? bloom.enabled === true : null,
+      postGrade: bloom && Number.isFinite(Number(bloom.grade)) ? Number(bloom.grade) : null,
+      postVignette: bloom && Number.isFinite(Number(bloom.vignette)) ? Number(bloom.vignette) : null,
+      postToe: bloom && Number.isFinite(Number(bloom.toe)) ? Number(bloom.toe) : null,
+      postGrain: bloom && Number.isFinite(Number(bloom.grain)) ? Number(bloom.grain) : null,
+      postFxActive: bloom
+        ? (Number(bloom.grade) || 0) + (Number(bloom.vignette) || 0)
+          + (Number(bloom.toe) || 0) + (Number(bloom.grain) || 0) > 0
+        : null,
+      particleQuality: typeof video.particleQuality === 'string' ? video.particleQuality : null,
+      skyTier: render?.spaceBg?.tierName || null,
+      sharpen: video.sharpen === true,
+      frameCap: Number.isFinite(Number(video.frameCap)) ? Number(video.frameCap) : null,
+      // Native means the drawing buffer covers the CSS×DPR footprint. A sub-native raster is the
+      // pixelation class this probe must never report as healthy.
+      native: canvas
+        ? (canvas.width | 0) >= Math.floor(cssW * dpr) && (canvas.height | 0) >= Math.floor(cssH * dpr)
+        : null,
+    };
+  } catch (_) { sample.picture = null; }
+  // Worker-lane truth: reply apply cost and freeze state belong in every witness run, not only the
+  // tether-stress probe. A main-thread stall hides from frame counters; this is where it surfaces.
+  try {
+    const diag = window.SF?.simLaneDiag?.() || null;
+    sample.lane = diag ? {
+      replyCount: diag.replyCount,
+      lastCommandSequence: diag.workerClockLastAppliedCommandSequence,
+      workerApplyMaxMs: diag.workerApplyMaxMs,
+      appliesOver100ms: diag.workerApplyOver100,
+      msSinceLastAppliedReply: diag.msSinceLastAppliedReply,
+      commandInFlightWallMs: diag.commandInFlightWallMs ?? null,
+      freezeActive: diag.freezeActive === true,
+      freezeEpisodes: Array.isArray(diag.freezeEpisodes) ? diag.freezeEpisodes.slice(-3) : null,
+      lastReplyWork: diag.workerLastReplyWork || null,
+      worstReplyWork: diag.workerApplyMaxWork || null,
+      slowApplies: Array.isArray(diag.workerSlowApplies) ? diag.workerSlowApplies.slice(-3) : null,
+      slowEvents: Array.isArray(diag.workerSlowEvents) ? diag.workerSlowEvents.slice(-5) : null,
+    } : null;
+  } catch (_) { sample.lane = null; }
+  // Economy population alongside the heap. The flight allocation profile blames synthetic
+  // price-history seeding, which costs 64 points per LISTING at market creation - so the size of
+  // that cost is a function of how many markets come into existence during flight, not of the tick
+  // rate. Counting them is the difference between a real fix and optimising a rounding error.
+  try {
+    const markets = window.SF?.state?.economy?.markets;
+    if (markets) {
+      let listings = 0;
+      let withHistory = 0;
+      let historyPoints = 0;
+      for (const sid in markets) {
+        for (const cid in markets[sid]) {
+          listings += 1;
+          const h = markets[sid][cid] && markets[sid][cid].history;
+          if (Array.isArray(h) && h.length) { withHistory += 1; historyPoints += h.length; }
+        }
+      }
+      sample.economy = {
+        stations: Object.keys(markets).length, listings, withHistory, historyPoints,
+      };
+    }
+  } catch (_) { sample.economy = null; }
+  // JS heap alongside the blocks. If multi-second stalls are OUR garbage collection, the heap is
+  // large and sawtooths across them; if the heap is small and flat, the stall belongs to the host
+  // (paging, other processes) and no game-side change will remove it.
+  try {
+    const mem = performance.memory;
+    sample.jsHeap = mem ? {
+      usedMb: Math.round(mem.usedJSHeapSize / 1048576),
+      totalMb: Math.round(mem.totalJSHeapSize / 1048576),
+      limitMb: Math.round(mem.jsHeapSizeLimit / 1048576),
+    } : null;
+  } catch (_) { sample.jsHeap = null; }
+  // Pair every long task with the heavy assets that landed just before it. A multi-second block
+  // whose start follows a large .glb/.ktx2 responseEnd is main-thread parse/decode, which the
+  // game's own phase timers never see because it happens inside a fetch continuation, not inside a
+  // simulation or render phase.
+  try {
+    const resources = performance.getEntriesByType('resource') || [];
+    sample.heavyResources = resources
+      .filter((e) => (Number(e.decodedBodySize) || Number(e.transferSize) || 0) > 300000)
+      .map((e) => ({
+        name: String(e.name).split('/').slice(-2).join('/'),
+        kb: Math.round((Number(e.decodedBodySize) || Number(e.transferSize) || 0) / 1024),
+        responseEnd: Math.round(e.responseEnd),
+      }))
+      .sort((a, b) => a.responseEnd - b.responseEnd)
+      .slice(-40);
+  } catch (_) { sample.heavyResources = null; }
+  const loadingTrace = window.__SF_LOADING_READINESS_WITNESS__;
+  if (loadingTrace) {
+    const render = s?.render || {};
+    const summarizeReadinessResult = (value) => {
+      if (!value || typeof value !== 'object') return value ?? null;
+      return {
+        skipped: value.skipped === true,
+        reason: value.reason || null,
+        watermark: Number.isFinite(value.watermark) ? value.watermark : null,
+        capturedCount: Number.isFinite(value.capturedCount) ? value.capturedCount : null,
+        remainingCount: Number.isFinite(value.remainingCount) ? value.remainingCount : null,
+        textures: Number.isFinite(value.textures) ? value.textures : null,
+        uploads: Array.isArray(value.uploads) ? value.uploads.length : null,
+        uploadMs: Array.isArray(value.uploads)
+          ? value.uploads.reduce((total, upload) => total + (Number(upload?.durationMs) || 0), 0)
+          : null,
+        openingCompositionRoots: Number.isFinite(value.openingCompositionRoots)
+          ? value.openingCompositionRoots
+          : null,
+        vfxRoots: Number.isFinite(value.vfxRoots) ? value.vfxRoots : null,
+        vfxTextures: Number.isFinite(value.vfxTextures) ? value.vfxTextures : null,
+        openingFrame: value.openingFrame && typeof value.openingFrame === 'object'
+          ? {
+              durationMs: Number(value.openingFrame.durationMs) || 0,
+              roots: Number(value.openingFrame.roots) || 0,
+            }
+          : null,
+      };
+    };
+    const promiseNames = [
+      'pipelinePrecompileReady',
+      'exactPipelineWarmupReady',
+      'authoredGpuAdmissionReady',
+      'openingGpuResidencyReady',
+    ];
+    for (const name of promiseNames) {
+      const value = render[name];
+      if (value && typeof value.then === 'function' && loadingTrace.promiseRefs[name] !== value) {
+        loadingTrace.promiseRefs[name] = value;
+        loadingTrace.promiseStates[name] = { status: 'pending', observedWallMs: Date.now() };
+        Promise.resolve(value).then(
+          (result) => {
+            loadingTrace.promiseStates[name] = {
+              status: 'fulfilled',
+              settledWallMs: Date.now(),
+              result: summarizeReadinessResult(result),
+            };
+          },
+          (error) => { loadingTrace.promiseStates[name] = { status: 'rejected', settledWallMs: Date.now(), error: String(error) }; },
+        );
+      }
+    }
+    let authored = null;
+    try { authored = window.SF?.authoredVisualReadiness?.() || null; } catch (_) {}
+    const lastProgress = loadingTrace.events[loadingTrace.events.length - 1] || null;
+    sample.loadingReadiness = {
+      wallMs: Date.now(),
+      performanceAtMs: performance.now(),
+      elapsedMs: Date.now() - loadingTrace.startedWallMs,
+      stageId: lastProgress?.id || null,
+      authored: authored ? {
+        ready: authored.ready === true,
+        pipelineReady: authored.pipelineReady === true,
+        playerStatus: authored.playerStatus || null,
+        startingHubStatus: authored.startingHubStatus || null,
+        openingPending: Array.isArray(authored.openingPending) ? authored.openingPending.length : null,
+        openingPendingIds: Array.isArray(authored.openingPending)
+          ? authored.openingPending.slice(0, 8).map((entry) => (
+            [entry.id, entry.status, entry.type, entry.defId, entry.hook === false ? 'no-hook' : null, entry.promised === false ? 'no-promise' : (entry.promised ? 'promise' : null)]
+              .filter((bit) => bit !== undefined && bit !== null && bit !== '')
+              .join(':')
+          ))
+          : null,
+        openingPipelinePending: Array.isArray(authored.openingPipelinePending)
+          ? authored.openingPipelinePending.length
+          : null,
+      } : null,
+      pendingPipelineAdmissions: typeof render.pendingPipelineAdmissions === 'function'
+        ? render.pendingPipelineAdmissions()
+        : null,
+      pendingAuthoredGpuResidency: typeof render.pendingAuthoredGpuResidency === 'function'
+        ? render.pendingAuthoredGpuResidency()
+        : null,
+      openingCompositionSettle: render.openingCompositionSettle
+        ? {
+          settled: render.openingCompositionSettle.settled === true,
+          reason: render.openingCompositionSettle.reason || null,
+          waitedMs: render.openingCompositionSettle.waitedMs || null,
+          queue: render.openingCompositionSettle.queue || null,
+        }
+        : null,
+      programCount: Array.isArray(render.renderer?.info?.programs)
+        ? render.renderer.info.programs.length
+        : null,
+      geometryCount: Number.isFinite(render.renderer?.info?.memory?.geometries)
+        ? render.renderer.info.memory.geometries
+        : null,
+      rendererTextureCount: Number.isFinite(render.renderer?.info?.memory?.textures)
+        ? render.renderer.info.memory.textures
+        : null,
+      promiseStates: { ...loadingTrace.promiseStates },
+      startupGpuResidency: summarizeReadinessResult(render.startupGpuResidency),
+      openingSubmission: (() => {
+        const plan = render.openingSubmissionPlan;
+        const pipelineSet = plan?.firstPlayablePipelineSet;
+        const validation = render.openingSubmissionValidation;
+        if (!plan && !validation) return null;
+        return {
+          planComplete: plan?.complete === true,
+          roots: Array.isArray(plan?.roots) ? plan.roots.length : null,
+          drawLeaves: Array.isArray(plan?.drawLeaves) ? plan.drawLeaves.length : null,
+          producerCensusMatches: plan?.resourceIdentityCensusMatches === true,
+          admittedPrograms: Array.isArray(pipelineSet?.admittedProgramKeys)
+            ? pipelineSet.admittedProgramKeys.length
+            : null,
+          deferredGlobalPrograms: Array.isArray(pipelineSet?.deferredGlobalProgramKeys)
+            ? pipelineSet.deferredGlobalProgramKeys.length
+            : null,
+          validation: validation ? {
+            ok: validation.ok === true,
+            reason: validation.reason || null,
+            uncaptured: Array.isArray(validation.uncaptured) ? [...validation.uncaptured] : [],
+            uncapturedProgramKeys: Array.isArray(validation.uncapturedProgramKeys)
+              ? validation.uncapturedProgramKeys.length
+              : null,
+            uncapturedGeometryBufferIds: Array.isArray(validation.uncapturedGeometryBufferIds)
+              ? validation.uncapturedGeometryBufferIds.length
+              : null,
+            uncapturedTextureIds: Array.isArray(validation.uncapturedTextureIds)
+              ? validation.uncapturedTextureIds.length
+              : null,
+            uncapturedShadowResourceIds: Array.isArray(validation.uncapturedShadowResourceIds)
+              ? validation.uncapturedShadowResourceIds.length
+              : null,
+          } : null,
+        };
+      })(),
+      partLoads: Array.isArray(s?.diagnostics?.partLoads)
+        ? s.diagnostics.partLoads.slice(-5).map((entry) => ({
+            id: entry?.id ?? entry?.partId ?? null,
+            status: entry?.status ?? entry?.state ?? null,
+            error: entry?.error ? String(entry.error) : null,
+          }))
+        : [],
+    };
+  }
+  const table = s?.render?.entityViewSync || null;
+  const landmarkCount = Array.isArray(s?.entityList)
+    ? s.entityList.reduce((count, entity) => (
+      entity
+        && entity.alive !== false
+        && (entity.type === 'station' || entity.type === 'planet' || entity.type === 'fx')
+        ? count + 1
+        : count
+    ), 0)
+    : null;
+  const numberOrNull = (value) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  };
+  sample.tableCensus = {
+    available: !!table
+      && Number.isFinite(Number(table.tableGlass))
+      && Number.isFinite(Number(table.tableRunway))
+      && Number.isFinite(Number(table.tableBeyond)),
+    glass: numberOrNull(table?.tableGlass),
+    runway: numberOrNull(table?.tableRunway),
+    beyond: numberOrNull(table?.tableBeyond),
+    submitted: numberOrNull(table?.tableSubmitted),
+    resident: numberOrNull(table?.tableResident),
+    landmarks: numberOrNull(table?.tableLandmarks ?? landmarkCount),
+    glassHalfX: numberOrNull(table?.glassHalfX),
+    glassHalfZ: numberOrNull(table?.glassHalfZ),
+    runwayWu: numberOrNull(table?.runwayWu),
+    renderWorkEnabled: s?.perfRuntime?.renderWorkEnabled === true,
+    hitchAttributionEnabled: s?.perfRuntime?.hitchAttributionEnabled === true,
+  };
+  sample.hitchAttribution = typeof s?.perfRuntime?.getHitchHistogram === 'function'
+    ? s.perfRuntime.getHitchHistogram()
+    : null;
+  return sample;
+}
+
+function currentCandidateHash() {
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8', windowsHide: true }).trim();
+  } catch (_) {
+    return null;
+  }
+}
+
+async function installProductionMatrixRecorder(targetPage) {
+  return targetPage.evaluate(async () => {
+    const prior = window.__SF_PRODUCTION_MATRIX_RECORDER__;
+    await prior?.stop?.();
+    const gpuTimers = window.SF?.state?.render?.gpuTimers;
+    const gpuCapability = gpuTimers?.getCapability?.();
+    const gpuWasEnabled = gpuTimers?.enabled === true;
+    const gpuFirstQueryId = Number.isSafeInteger(gpuCapability?.nextQueryId)
+      ? gpuCapability.nextQueryId : null;
+    const ownsGpuWindow = !gpuWasEnabled && gpuFirstQueryId !== null
+      && gpuTimers?.setEnabled?.(true) === true;
+    const trace = {
+      startedAt: performance.now(),
+      lastAt: null,
+      samples: [],
+      raf: null,
+      stopped: false,
+      inputTimestampKeys: ['lastInputWallMs', 'lastInputAtMs', 'lastActionWallMs', 'lastActionAtMs'],
+      lastCapturedInputStamp: 0,
+      stopPromise: null,
+    };
+    // P7: input wall stamps live on the input system (never in serialized state.input).
+    // perfRuntime surfaces the latest presented stamp as frame.inputStampMs; legacy
+    // state.input keys remain as a fallback for older builds.
+    const readInputAge = (state, frameSample, now) => {
+      if (Number.isFinite(frameSample?.inputStampMs)) {
+        return Math.max(0, now - frameSample.inputStampMs);
+      }
+      const input = state?.input;
+      for (const key of trace.inputTimestampKeys) {
+        const value = Number(input?.[key]);
+        if (Number.isFinite(value) && value > 0) return Math.max(0, performance.now() - value);
+      }
+      return null;
+    };
+    const frame = (now) => {
+      if (trace.stopped) return;
+      const state = window.SF?.state;
+      const perf = state?.perfRuntime;
+      const sample = typeof perf?.readFrameSample === 'function' ? perf.readFrameSample({}) : null;
+      if (sample && document.visibilityState === 'visible') {
+        let inputToPresentMs = null;
+        const stamp = sample.inputStampMs;
+        if (Number.isFinite(stamp) && stamp >= trace.startedAt && stamp > trace.lastCapturedInputStamp
+          && Number.isFinite(sample.inputToPhotonMs) && sample.inputToPhotonMs >= 0) {
+          inputToPresentMs = sample.inputToPhotonMs;
+          trace.lastCapturedInputStamp = stamp;
+        }
+        const marks = window.__SF_STARTUP_ROUTE_MARKS__;
+        if (marks?.publicInput && !marks.inputPresented && Number.isFinite(stamp)
+          && stamp >= marks.publicInput.atMs && Number.isFinite(sample.inputToPhotonMs)
+          && sample.inputToPhotonMs >= 0 && state?.mode === 'flight') {
+          marks.inputPresented = { atMs: performance.now(), inputStampMs: stamp,
+            inputToPresentMs: sample.inputToPhotonMs, observation: 'first observed presented input; upper bound' };
+        }
+        trace.samples.push({
+          elapsedMs: Math.max(0, now - trace.startedAt),
+          intervalMs: trace.lastAt == null ? null : Math.max(0, now - trace.lastAt),
+          inputAgeMs: readInputAge(state, sample, now),
+          inputToPresentMs,
+          frame: sample,
+        });
+      }
+      trace.lastAt = document.visibilityState === 'visible' ? now : null;
+      trace.raf = requestAnimationFrame(frame);
+    };
+    trace.stop = () => {
+      if (trace.stopPromise) return trace.stopPromise;
+      trace.stopped = true;
+      if (trace.raf != null) cancelAnimationFrame(trace.raf);
+      trace.stopPromise = (async () => {
+        let gpuReport = null;
+        if (ownsGpuWindow && window.SF?.state?.render?.gpuTimers === gpuTimers) {
+          try {
+            await gpuTimers.drainPending();
+            if (window.SF?.state?.render?.gpuTimers !== gpuTimers) {
+              gpuReport = { available: false, reason: 'GPU context changed while draining capture' };
+            } else {
+              const report = gpuTimers.getReport();
+              gpuReport = {
+                ...report,
+                windowScoped: true,
+                windowQueryIdFloor: gpuFirstQueryId,
+                terminals: (report.terminals || []).filter((entry) => entry.queryId >= gpuFirstQueryId),
+                passes: {},
+              };
+            }
+          } catch (error) {
+            gpuReport = { available: false, reason: `GPU timer window failed: ${error.message || error}` };
+          } finally {
+            gpuTimers.setEnabled(false);
+          }
+        } else {
+          gpuReport = { available: false, reason: ownsGpuWindow ? 'GPU context changed during capture'
+            : gpuWasEnabled ? 'GPU timers already enabled outside this window'
+              : gpuCapability?.reason || 'GPU timer window unavailable' };
+        }
+        let inputToPhotonReport = null;
+        const perfApi = window.SF?.state?.perfRuntime;
+        try {
+          inputToPhotonReport = typeof perfApi?.getInputToPhotonReport === 'function'
+            ? perfApi.getInputToPhotonReport() : null;
+        } catch (_) {}
+        return { samples: trace.samples.slice(), gpuReport, inputToPhotonReport };
+      })();
+      return trace.stopPromise;
+    };
+    window.__SF_PRODUCTION_MATRIX_RECORDER__ = trace;
+    trace.raf = requestAnimationFrame(frame);
+    return { installed: true };
+  });
+}
+
+async function stopProductionMatrixRecorder(targetPage) {
+  return targetPage.evaluate(() => window.__SF_PRODUCTION_MATRIX_RECORDER__?.stop?.() || null);
+}
+
+async function launchProductionCrucible(targetPage, route) {
+  await targetPage.waitForFunction(() => {
+    const button = [...document.querySelectorAll('#screens button')].find((node) => node.textContent.replace(/\s+/g, ' ').trim() === 'Crucible');
+    return !!button && !button.disabled;
+  }, null, { timeout: 30_000 });
+  // SPACEFACE_CRUCIBLE_DWELL_MS models a human reading the door before launch: the menu-dwell
+  // roster warm is supposed to spend that time decoding/linking, so a fast click vs a 10 s
+  // dwell bracket how much launch time the dwell actually buys.
+  const dwellMs = Number(process.env.SPACEFACE_CRUCIBLE_DWELL_MS || 0);
+  const preparation = await crucibleToArmory(targetPage, { ruleset: 'swarm', seed: FIXED_SEED }, () => {}, {
+    onShip: async () => { if (dwellMs > 0) await targetPage.waitForTimeout(dwellMs); },
+  });
+  if (!preparation.seedSet) throw new Error(`Crucible witness could not set public seed ${FIXED_SEED}`);
+  await waitForPreparationLaunch(targetPage, { timeoutMs: 300_000 });
+  const launch = await armoryLaunchWord(targetPage);
+  if (!launch) throw new Error('Crucible witness has no public armory launch control');
+  await clickText(targetPage, launch);
+  // The launch gate must outlive the roster cook: since the PQ-033.00-family prewarm moved the
+  // roster's GLB/GPU cost into the launch shell, launch-to-flight reads ~156–176 s on the owner's
+  // host — a 120 s cap timed out every warm-dense-combat attempt before the scene existed.
+  await targetPage.waitForFunction(() => {
+    const state = window.SF?.state;
+    return state?.mode === 'flight' && state?.run?.kind === 'survival' && state?.run?.ruleset === 'swarm'
+      && state?.run?.phase === 'active' && (state.entityList || []).some((entity) => entity?.alive !== false && entity?.data?.runCohort === 'survival');
+  }, null, { timeout: 300_000 });
+  if (route?.id === 'warm-dense-combat') await targetPage.waitForTimeout(2_500);
+  return targetPage.evaluate(readWitnessInPage);
+}
+
+async function selectNearestAsteroidOnLocalMap(targetPage) {
+  await targetPage.keyboard.press('KeyM');
+  await targetPage.locator('#sf-galaxymap').waitFor({ state: 'visible', timeout: 30_000 });
+  await targetPage.waitForFunction(() => {
+    const screen = window.SF?.registry?.get?.('ui')?.screenManager?.getActiveScreenDef?.();
+    return screen?.id === 'galaxyMap' && (screen._clickTargets || []).some((target) => target.kind === 'asteroid');
+  }, null, { timeout: 20_000 });
+  const target = await targetPage.evaluate(() => {
+    const state = window.SF?.state;
+    const screen = window.SF?.registry?.get?.('ui')?.screenManager?.getActiveScreenDef?.();
+    const player = state?.entities?.get?.(state?.playerId);
+    const candidates = (screen?._clickTargets || []).filter((row) => {
+      const entity = state?.entities?.get?.(row.entityId);
+      return row.kind === 'asteroid' && entity?.alive !== false && entity?.data?.respawnAt == null;
+    }).sort((a, b) => Math.hypot(a.x - player.pos.x, a.z - player.pos.z) - Math.hypot(b.x - player.pos.x, b.z - player.pos.z));
+    const row = candidates[0];
+    return row ? { entityId: row.entityId, sx: row.sx, sy: row.sy, label: row.name || null } : null;
+  });
+  if (!target) throw new Error('visible local map exposed no live asteroid contact');
+  const box = await targetPage.locator('#sf-galaxymap canvas').boundingBox();
+  if (!box) throw new Error('visible local-map canvas had no pointer bounds');
+  await targetPage.mouse.click(box.x + target.sx, box.y + target.sy);
+  await targetPage.waitForFunction((entityId) => {
+    const selected = window.SF?.registry?.get?.('ui')?.screenManager?.getActiveScreenDef?.()?._selectedTarget;
+    return String(selected?.entityId ?? selected?.targetEntityId) === String(entityId);
+  }, target.entityId, { timeout: 10_000 });
+  const course = targetPage.locator('#gm-set-course-btn');
+  await course.waitFor({ state: 'visible', timeout: 10_000 });
+  await course.click();
+  await targetPage.waitForFunction((entityId) => window.SF?.state?.nav?.autopilot?.targetEntityId === entityId, target.entityId, { timeout: 10_000 });
+  await targetPage.waitForFunction((entityId) => {
+    const state = window.SF?.state;
+    const pilot = state?.nav?.autopilot;
+    const player = state?.entities?.get?.(state?.playerId);
+    return pilot?.targetEntityId === entityId && pilot?.active === false && pilot?.status === 'arrived' && player?.alive !== false ? true : null;
+  }, target.entityId, { timeout: 120_000 });
+  return target;
+}
+
+async function enterAsteroidWorksPublic(targetPage, asteroid) {
+  await targetPage.waitForFunction((entityId) => {
+    const state = window.SF?.state;
+    const receipt = state?.masslineAcquisition?.selected;
+    return String(receipt?.targetId) === String(entityId) && receipt?.status === 'ready' && Number(state?.masslineAcquisition?.validUntil) >= Number(state?.simTime) ? true : null;
+  }, asteroid.entityId, { timeout: 10_000 });
+  const startedTick = await targetPage.evaluate(() => Number(window.SF?.state?.tick) || 0);
+  await targetPage.keyboard.down('Space');
+  try {
+    await targetPage.waitForFunction(({ entityId, startedTick }) => {
+      const state = window.SF?.state;
+      return Number(state?.tick) > startedTick && state?.player?.tether?.active === true && String(state.player.tether.targetId) === String(entityId) ? true : null;
+    }, { entityId: asteroid.entityId, startedTick }, { timeout: 8_000 });
+  } finally { await targetPage.keyboard.up('Space').catch(() => {}); }
+  await targetPage.keyboard.press('KeyB');
+  await targetPage.locator('[data-screen="drill"]').waitFor({ state: 'visible', timeout: 20_000 });
+  await targetPage.waitForFunction((entityId) => window.SF?.state?.drill?.active === true && String(window.SF.state.drill.asteroidId) === String(entityId), asteroid.entityId, { timeout: 10_000 });
+}
+
+async function exitAsteroidWorksPublic(targetPage) {
+  const root = targetPage.locator('[data-screen="drill"] .ast-screen');
+  await root.waitFor({ state: 'visible', timeout: 10_000 });
+  if (await root.evaluate((node) => node.dataset.mode === 'build')) await targetPage.keyboard.press('Escape');
+  await targetPage.keyboard.press('Escape');
+  await targetPage.waitForFunction(() => window.SF?.state?.drill == null && window.SF?.state?.mode === 'flight', null, { timeout: 20_000 });
+}
+
+async function pressHeliosDockKey(targetPage) {
+  await targetPage.locator('#gl-canvas').focus();
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    await targetPage.keyboard.down('KeyE');
+    await targetPage.waitForTimeout(250);
+    await targetPage.keyboard.up('KeyE').catch(() => {});
+    if (await targetPage.evaluate(() => window.SF?.state?.ui?.docked === true)) return true;
+  }
+  return targetPage.evaluate(() => window.SF?.state?.ui?.docked === true);
+}
+
+async function relocatePlayerToHeliosDock(targetPage) {
+  return targetPage.evaluate(() => {
+    const state = window.SF?.state;
+    const world = window.SF?.registry?.get?.('world');
+    const station = (state?.entityList || []).find((entity) => (
+      entity?.alive !== false && entity?.data?.stationId === 'station_helios'
+    ));
+    if (!station?.pos || !world || typeof world.relocatePlayerInSector !== 'function') return false;
+    const dock = Math.max(24, Number(station.data?.dockRadius) || 72);
+    return !!world.relocatePlayerInSector({
+      x: station.pos.x + dock * 0.4,
+      z: station.pos.z + dock * 0.4,
+      heading: 0,
+    }, { reason: 'probe-dock-helios-freeze' });
+  });
+}
+
+async function dockAtHeliosPublic(targetPage) {
+  if (await targetPage.evaluate(() => window.SF?.state?.ui?.docked === true)) {
+    await targetPage.locator('[data-screen="station"]').waitFor({ state: 'visible', timeout: 20_000 });
+    return;
+  }
+  // Seed 47 starts ~313 WU from Helios. The public map approach TDR'd Intel at
+  // sim ~33 s before dock freeze could be scored. Relocate into dock radius,
+  // then use the same E key.
+  if (await relocatePlayerToHeliosDock(targetPage) && await pressHeliosDockKey(targetPage)) {
+    await targetPage.locator('[data-screen="station"]').waitFor({ state: 'visible', timeout: 20_000 });
+    return;
+  }
+  await targetPage.keyboard.press('KeyN');
+  await targetPage.locator('#sf-galaxymap').waitFor({ state: 'visible', timeout: 30_000 });
+  await targetPage.keyboard.press('/');
+  const search = targetPage.locator('.gm-search-input');
+  await search.waitFor({ state: 'visible', timeout: 10_000 });
+  await search.fill('Helios Station');
+  const result = targetPage.locator('.gm-search-item-name', { hasText: 'Helios Station' }).first();
+  await result.waitFor({ state: 'visible', timeout: 15_000 });
+  await result.click();
+  const course = targetPage.getByRole('button', { name: 'Set Waypoint', exact: true });
+  await course.waitFor({ state: 'visible', timeout: 15_000 });
+  await course.click();
+  await targetPage.locator('.sf-alert--dock').first().waitFor({ state: 'visible', timeout: 150_000 });
+  if (!(await pressHeliosDockKey(targetPage))) {
+    await targetPage.waitForFunction(() => window.SF?.state?.ui?.docked === true, null, { timeout: 20_000 });
+  }
+  await targetPage.locator('[data-screen="station"]').waitFor({ state: 'visible', timeout: 20_000 });
+}
+
+async function refitAndUndockPublic(targetPage) {
+  const station = targetPage.locator('[data-screen="station"]');
+  const shipworks = station.locator('[data-nav="shipworks"]');
+  await shipworks.waitFor({ state: 'visible', timeout: 20_000 });
+  await shipworks.click();
+  const shipworksRoot = station.locator('.sx-sw');
+  const canvas = shipworksRoot.locator('.sx-sw__canvas');
+  await canvas.waitFor({ state: 'visible', timeout: 30_000 });
+  await targetPage.waitForFunction(() => {
+    const canvas = document.querySelector('[data-screen="station"] .sx-sw__canvas');
+    return canvas?.dataset.previewReady === 'true' && canvas.dataset.previewReveal === 'settled';
+  }, null, { timeout: 30_000 });
+
+  // The dock records the currently fitted build through the public Shipworks preset control.
+  // That gives this route a real, reversible refit rather than inventing credits or inventory.
+  const before = await targetPage.evaluate(() => {
+    const state = window.SF?.state;
+    const shipIndex = Number(state?.player?.activeShipIndex) || 0;
+    const owned = state?.player?.ownedShips?.[shipIndex];
+    const fittings = Array.isArray(owned?.fittings) ? owned.fittings.slice() : [];
+    const slotIndex = fittings.findIndex((defId, index) => String(defId || '').startsWith('mod_')
+      && document.querySelector(`[data-screen="station"] .sx-sw [data-spatial-slot="${index}"]`));
+    const playerEntity = state?.entities?.get?.(state?.playerId);
+    if (!owned || slotIndex < 0 || !fittings[slotIndex]) return null;
+    return {
+      shipIndex,
+      slotIndex,
+      defId: fittings[slotIndex],
+      fittings,
+      inventory: (state?.player?.moduleInventory || []).map((item) => item?.defId || null),
+      entityFittings: Array.isArray(playerEntity?.data?.fittings) ? playerEntity.data.fittings.slice() : null,
+      presetCount: Array.isArray(state?.player?.loadoutPresets) ? state.player.loadoutPresets.length : 0,
+    };
+  });
+  if (!before) throw new Error('Shipworks exposed no fitted non-weapon module with a spatial hardpoint');
+
+  const savePreset = shipworksRoot.locator('.sx-sw-preset--save[data-loadout-preset-save]');
+  await savePreset.waitFor({ state: 'visible', timeout: 10_000 });
+  if (await savePreset.isDisabled()) throw new Error('Shipworks cannot save the current fitted build for a reversible refit');
+  await savePreset.click();
+  const presetId = await targetPage.waitForFunction((snapshot) => {
+    const presets = window.SF?.state?.player?.loadoutPresets || [];
+    const created = presets.slice(snapshot.presetCount).find((preset) => preset?.hullDefId
+      && Array.isArray(preset.fittings)
+      && preset.fittings.length === snapshot.fittings.length
+      && preset.fittings.every((defId, index) => defId === snapshot.fittings[index]));
+    return created?.id || null;
+  }, before, { timeout: 10_000 });
+  const savedPresetId = await consumePageConditionValue(presetId);
+  if (!savedPresetId) throw new Error('Shipworks save control did not create an owned loadout preset');
+
+  const hardpoint = shipworksRoot.locator(`[data-spatial-slot="${before.slotIndex}"]`);
+  await hardpoint.waitFor({ state: 'visible', timeout: 10_000 });
+  await hardpoint.click();
+  const unfit = shipworksRoot.locator(`[data-unfit="${before.slotIndex}"]`);
+  await unfit.waitFor({ state: 'visible', timeout: 10_000 });
+  await unfit.click();
+  await targetPage.waitForFunction((snapshot) => {
+    const state = window.SF?.state;
+    const owned = state?.player?.ownedShips?.[snapshot.shipIndex];
+    const playerEntity = state?.entities?.get?.(state?.playerId);
+    return owned?.fittings?.[snapshot.slotIndex] == null
+      && (state?.player?.moduleInventory || []).some((item) => item?.defId === snapshot.defId)
+      && playerEntity?.data?.fittings?.[snapshot.slotIndex] == null;
+  }, before, { timeout: 10_000 });
+
+  const savedPreset = shipworksRoot.locator(`.sx-sw-preset:not(.sx-sw-preset--save)[data-loadout-preset-id="${savedPresetId}"]`);
+  await savedPreset.waitFor({ state: 'visible', timeout: 10_000 });
+  await savedPreset.click();
+  const applyPreset = shipworksRoot.locator('[data-verb="fit"][data-fit-action="apply-preset"]');
+  await applyPreset.waitFor({ state: 'visible', timeout: 10_000 });
+  if (await applyPreset.isDisabled()) throw new Error('Shipworks selected preset is not currently applicable');
+  await applyPreset.click();
+  await targetPage.waitForFunction((snapshot) => {
+    const state = window.SF?.state;
+    const owned = state?.player?.ownedShips?.[snapshot.shipIndex];
+    const playerEntity = state?.entities?.get?.(state?.playerId);
+    const inventory = (state?.player?.moduleInventory || []).map((item) => item?.defId || null);
+    const sameInventory = inventory.length === snapshot.inventory.length
+      && inventory.every((defId, index) => defId === snapshot.inventory[index]);
+    const sameEntityFittings = snapshot.entityFittings == null
+      || (Array.isArray(playerEntity?.data?.fittings)
+        && playerEntity.data.fittings.length === snapshot.entityFittings.length
+        && playerEntity.data.fittings.every((defId, index) => defId === snapshot.entityFittings[index]));
+    return Array.isArray(owned?.fittings)
+      && owned.fittings.length === snapshot.fittings.length
+      && owned.fittings.every((defId, index) => defId === snapshot.fittings[index])
+      && sameInventory && sameEntityFittings;
+  }, before, { timeout: 10_000 });
+
+  const deletePreset = shipworksRoot.locator(`[data-loadout-preset-delete="${savedPresetId}"]`);
+  await deletePreset.waitFor({ state: 'visible', timeout: 10_000 });
+  await deletePreset.click();
+  const confirmDelete = targetPage.locator('#sf-confirm-root .sf-confirm__ok');
+  await confirmDelete.waitFor({ state: 'visible', timeout: 10_000 });
+  await confirmDelete.click();
+  await targetPage.waitForFunction((preset) => !(window.SF?.state?.player?.loadoutPresets || [])
+    .some((row) => row?.id === preset), savedPresetId, { timeout: 10_000 });
+
+  const undock = station.locator('.sxb-launch[data-act="undock"]');
+  await undock.waitFor({ state: 'visible', timeout: 20_000 });
+  await undock.click();
+  const confirm = targetPage.locator('[data-pop-launch]');
+  if (await confirm.isVisible().catch(() => false)) await confirm.click();
+  await targetPage.waitForFunction(() => window.SF?.state?.ui?.docked !== true && window.SF?.state?.mode === 'flight', null, { timeout: 20_000 });
+  return { slotIndex: before.slotIndex, defId: before.defId, operation: 'save-unfit-apply-preset-delete' };
+}
+
+async function driveEarnedSpeedTraversal(targetPage) {
+  await jumpToCeres(targetPage);
+  await targetPage.locator('#gl-canvas').focus();
+  const baseline = await targetPage.evaluate(() => {
+    const player = window.SF?.state?.entities?.get?.(window.SF?.state?.playerId);
+    return { speed: Math.hypot(Number(player?.vel?.x) || 0, Number(player?.vel?.z) || 0), boostEnergy: Number(player?.boost?.energy) || 0 };
+  });
+  await targetPage.keyboard.down('KeyW'); await targetPage.keyboard.down('ShiftLeft');
+  try {
+    const handle = await targetPage.waitForFunction((before) => {
+      const state = window.SF?.state; const player = state?.entities?.get?.(state?.playerId);
+      const speed = Math.hypot(Number(player?.vel?.x) || 0, Number(player?.vel?.z) || 0);
+      const boostEnergy = Number(player?.boost?.energy) || 0;
+      return player?.flags?.boosting === true && boostEnergy < before.boostEnergy && speed > before.speed + 10
+        ? { speed, boostEnergy, baseline: before, maxSpeed: Number(player.maxSpeed) || null } : null;
+    }, baseline, { timeout: 15_000 });
+    return consumePageConditionValue(handle);
+  } finally { await targetPage.keyboard.up('ShiftLeft').catch(() => {}); await targetPage.keyboard.up('KeyW').catch(() => {}); }
+}
+
+async function saveReloadBusySitePublic(targetPage) {
+  if (CONTINUE_ROUTE) {
+    await targetPage.waitForFunction(() => {
+      const sites = window.SF?.state?.sites?.byId || {};
+      return Object.values(sites).some((site) => site?.survey?.lifecycle === 'producing') ? true : null;
+    }, null, { timeout: 20_000 });
+  }
+  await targetPage.evaluate(() => {
+    const trace = { saved: false, loaded: false }; window.__SF_PRODUCTION_SAVE_RELOAD__ = trace;
+    window.SF?.bus?.once?.('save:completed', () => { trace.saved = true; });
+    window.SF?.bus?.once?.('save:loaded', () => { trace.loaded = true; });
+  });
+  await targetPage.keyboard.press('F5');
+  await targetPage.waitForFunction(() => window.__SF_PRODUCTION_SAVE_RELOAD__?.saved === true, null, { timeout: 30_000 });
+  await targetPage.keyboard.press('F9');
+  // F9 restore goes through the loading shell (~38 s on this Intel box). The
+  // in-page loaded flag can also vanish if the restore remounts the runtime.
+  try {
+    await targetPage.waitForFunction(() => (
+      window.__SF_PRODUCTION_SAVE_RELOAD__?.loaded === true
+      || window.SF?.state?.mode === 'loading'
+    ), null, { timeout: 15_000 });
+  } catch { /* waitUntilFlight below is the authority */ }
+  await waitUntilFlight(targetPage, 'F9 quick-load', 180_000);
+}
+
+async function prepareProductionRoute(targetPage, route) {
+  if (!route) return { status: 'not-requested' };
+  if (route.id === 'cold-opening') return { status: 'ready', driver: 'New Game button through first playable' };
+  if (route.id === 'warm-dense-combat') {
+    await targetPage.waitForFunction(() => (window.SF?.state?.entityList || []).filter((entity) => entity?.alive !== false && entity?.data?.runCohort === 'survival').length >= 3, null, { timeout: 30_000 });
+    return { status: 'ready', driver: 'Crucible Swarm UI; active dense survival cohort' };
+  }
+  if (route.id === 'sustained-swarm') { await targetPage.waitForTimeout(4_000); return { status: 'ready', driver: 'Crucible Swarm UI; sustained active survival cohort' }; }
+  if (route.id === 'earned-speed-traversal') { const earned = await driveEarnedSpeedTraversal(targetPage); return { status: 'ready', driver: 'public Ceres Belt jump then held W + L-Shift, with observed boost drain and velocity gain', earned }; }
+  if (route.id === 'dock-refit-undock') {
+    await dockAtHeliosPublic(targetPage);
+    const previewBlocked = await targetPage.evaluate(() => {
+      const state = window.SF?.state;
+      const gl = state?.render?.renderer?.getContext?.();
+      if (gl?.isContextLost?.()) return true;
+      try {
+        const debug = gl?.getExtension?.('WEBGL_debug_renderer_info');
+        const gpu = debug
+          ? String(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) || '')
+          : String(gl?.getParameter?.(gl.RENDERER) || '');
+        return /intel/i.test(gpu);
+      } catch {
+        return false;
+      }
+    });
+    if (previewBlocked) {
+      return {
+        status: 'ready',
+        driver: 'Helios dock-radius relocate, E dock; Shipworks WebGL skipped so dock freeze can be scored',
+        refit: { skipped: 'secondary-webgl-blocked' },
+      };
+    }
+    try {
+      const refit = await refitAndUndockPublic(targetPage);
+      return { status: 'ready', driver: 'Helios dock-radius relocate, E dock, Shipworks unfit/refit, visible Undock', refit };
+    } catch (error) {
+      return {
+        status: 'ready',
+        driver: 'Helios dock-radius relocate, E dock; Shipworks refit degraded, freeze window still scored',
+        refit: { status: 'degraded', error: String(error && error.message || error) },
+      };
+    }
+  }
+  if (route.id === 'asteroid-works-roundtrip') { const asteroid = await selectNearestAsteroidOnLocalMap(targetPage); await enterAsteroidWorksPublic(targetPage, asteroid); await exitAsteroidWorksPublic(targetPage); return { status: 'ready', driver: 'public local-map asteroid course, Massline, B Asteroid Works, Escape exit', asteroid }; }
+  if (route.id === 'busy-site-save-reload') { await saveReloadBusySitePublic(targetPage); return { status: 'ready', driver: CONTINUE_ROUTE ? 'Continue producing-site save, F5 quick-save, F9 quick-load' : 'New Game, F5 quick-save, F9 quick-load' }; }
+  throw new Error('no driver for production route ' + route.id);
+}
+
+function productionManifest(route) {
+  return {
+    candidateHash: currentCandidateHash(),
+    sourceDigest: productionSourceDigest,
+    harnessDigest: productionHarnessDigest,
+    evidenceClass: 'diagnostic',
+    profile: 'production',
+    backend: 'electron-webgl',
+    routeRevision: 'PQ-144.01-r2',
+    route: route?.id || null,
+    seed: FIXED_SEED,
+    tape: route?.id === 'cold-opening'
+      ? 'New Game seed 47; default opening; held KeyW during the foreground window'
+      : route?.id === 'earned-speed-traversal'
+        ? 'New Game seed 47; public Ceres Belt jump, then held W + L-Shift until boost energy and velocity were observed'
+        : route?.id === 'warm-dense-combat'
+          ? 'Main Menu Crucible -> Swarm -> selected launch button -> active cohort warmup'
+          : route?.id === 'sustained-swarm'
+            ? 'Main Menu Crucible -> Swarm -> selected launch button -> sustained active cohort'
+            : route?.id === 'dock-refit-undock'
+              ? 'Helios dock-radius relocate -> E dock -> Shipworks unfit/refit -> visible Undock'
+              : route?.id === 'asteroid-works-roundtrip'
+                ? 'Local-map asteroid course -> Massline -> B Asteroid Works -> Escape exit'
+                : route?.id === 'busy-site-save-reload'
+                  ? 'Continue producing site -> F5 quick-save -> F9 quick-load'
+                  : 'unknown',
+    hull: null,
+    host: {
+      platform: process.platform, arch: process.arch, osRelease: os.release(),
+      cpus: os.cpus()?.length || null, cpuModel: os.cpus()?.[0]?.model || null,
+    },
+    runtime: { node: process.version },
+    resolution: null,
+    settings: null,
+    coldWarm: route?.id === 'cold-opening' ? 'cold' : 'warm',
+  };
+}
+
+async function captureCanvasFrame(targetPage, shotPath, elapsedMs) {
+  await targetPage.locator('#gl-canvas').screenshot({
+    path: shotPath,
+    type: 'png',
+    style: '#ui-root { visibility: hidden !important; }',
+  });
+  const hash = createHash('sha256').update(await readFile(shotPath)).digest('hex');
+  canvasFrames.push({ elapsedMs, path: shotPath, hash });
+  return hash;
+}
+
+// The composed frame keeps the HUD and is captured at the page's device scale, so legibility and
+// the final presentation (post + CAS + DOM) are reviewed together instead of canvas-only.
+async function captureComposedFrame(targetPage, shotPath, elapsedMs) {
+  const reliefLevel = await targetPage.evaluate(() => (
+    Number(window.SF?.state?.render?.hitchReliefLevel) || 0
+  )).catch(() => null);
+  await targetPage.screenshot({ path: shotPath, type: 'png' });
+  composedFrames.push({ elapsedMs, path: shotPath, reliefLevel });
+  return shotPath;
+}
+
+async function dismissCinematic(targetPage) {
+  const splash = targetPage.locator('#cinematic-splash');
+  if (await splash.isVisible().catch(() => false)) {
+    await targetPage.keyboard.press('Space');
+    await splash.waitFor({ state: 'hidden', timeout: 8_000 }).catch(() => {});
+  }
+}
+
+async function installNoSubmitDiagnostic(targetPage) {
+  return targetPage.evaluate(() => {
+    const renderSystem = window.SF?.registry?.get?.('render');
+    if (!renderSystem?.renderer
+      || typeof renderSystem.drawPreparedFrame !== 'function'
+      || typeof renderSystem._renderOpeningPostFrame !== 'function') {
+      return { applied: false, reason: 'render-system-unavailable' };
+    }
+    const trace = {
+      callbackIntervals: [],
+      callbackCpu: [],
+      drawSubmit: [],
+      longTasks: [],
+      previousDraw: renderSystem.drawPreparedFrame,
+      previousOpening: renderSystem._renderOpeningPostFrame,
+      previousRaf: window.requestAnimationFrame,
+      observer: null,
+    };
+    let lastCallbackAt = null;
+    window.requestAnimationFrame = function noSubmitMeasuredRaf(callback) {
+      return trace.previousRaf.call(window, (timestamp) => {
+        const enteredAt = performance.now();
+        if (lastCallbackAt !== null) trace.callbackIntervals.push(enteredAt - lastCallbackAt);
+        lastCallbackAt = enteredAt;
+        try {
+          return callback(timestamp);
+        } finally {
+          trace.callbackCpu.push(performance.now() - enteredAt);
+        }
+      });
+    };
+    const constantSubmit = function constantSubmit() {
+      const startedAt = performance.now();
+      this.renderer.setRenderTarget(null);
+      this.renderer.clear(true, true, true);
+      trace.drawSubmit.push(performance.now() - startedAt);
+      if (this.state?.mode === 'flight' && !Number.isFinite(this.state?.render?.firstPlayableFrameAt)) {
+        this.state.render.firstPlayableFrameAt = performance.now();
+      }
+      return true;
+    };
+    renderSystem.drawPreparedFrame = constantSubmit;
+    renderSystem._renderOpeningPostFrame = constantSubmit;
+    try {
+      trace.observer = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          trace.longTasks.push({ startTime: entry.startTime, duration: entry.duration });
+        }
+      });
+      trace.observer.observe({ entryTypes: ['longtask'] });
+    } catch (_) {
+      trace.observer = null;
+    }
+    window.__SF_NO_SUBMIT_DIAGNOSTIC__ = trace;
+    return { applied: true };
+  });
+}
+
+async function restoreNoSubmitDiagnostic(targetPage) {
+  return targetPage.evaluate(() => {
+    const trace = window.__SF_NO_SUBMIT_DIAGNOSTIC__;
+    const renderSystem = window.SF?.registry?.get?.('render');
+    if (!trace || !renderSystem) return { applied: false, restored: false };
+    const summarize = (values) => {
+      const sorted = values.filter(Number.isFinite).sort((a, b) => a - b);
+      const at = (q) => sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))] : 0;
+      return {
+        samples: sorted.length,
+        p95: at(0.95),
+        max: sorted.length ? sorted[sorted.length - 1] : 0,
+      };
+    };
+    renderSystem.drawPreparedFrame = trace.previousDraw;
+    renderSystem._renderOpeningPostFrame = trace.previousOpening;
+    window.requestAnimationFrame = trace.previousRaf;
+    try { trace.observer?.disconnect?.(); } catch (_) {}
+    const restored = renderSystem.drawPreparedFrame === trace.previousDraw
+      && renderSystem._renderOpeningPostFrame === trace.previousOpening
+      && window.requestAnimationFrame === trace.previousRaf;
+    const result = {
+      applied: true,
+      restored,
+      callbackEntryInterval: summarize(trace.callbackIntervals),
+      callbackCpu: summarize(trace.callbackCpu),
+      drawSubmit: summarize(trace.drawSubmit),
+      longTasks: {
+        count: trace.longTasks.length,
+        totalMs: trace.longTasks.reduce((sum, entry) => sum + Number(entry.duration || 0), 0),
+        maxMs: trace.longTasks.reduce((max, entry) => Math.max(max, Number(entry.duration || 0)), 0),
+      },
+    };
+    delete window.__SF_NO_SUBMIT_DIAGNOSTIC__;
+    return result;
+  });
+}
+
+async function waitUntilFlight(targetPage, routeLabel, timeoutMs = 120_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const status = await targetPage.evaluate(readWitnessInPage).catch((error) => ({ dumpError: String(error) }));
+    if (status.mode === 'flight') {
+      if (status.loadingReadiness) loadingReadinessSamples.push(status.loadingReadiness);
+      loadingProgressEvents = await targetPage.evaluate(() => (
+        window.__SF_LOADING_READINESS_WITNESS__?.events || []
+      )).catch(() => []);
+      return status;
+    }
+    if (status.mode === 'loading') {
+      if (status.loadingReadiness) loadingReadinessSamples.push(status.loadingReadiness);
+      log(`loading stage=${status.loadingReadiness?.stageId || 'unknown'} sim=${status.simTime} frames=${status.executedFrames}`);
+    }
+    await targetPage.waitForTimeout(1000);
+  }
+  throw new Error(`${routeLabel} never entered flight`);
+}
+
+async function launchUntilFlight(targetPage, timeoutMs = 120_000) {
+  if (CPU_PROFILE_FROM_LAUNCH) await startCpuProfile(targetPage, 'before Launch');
+  await targetPage.getByRole('button', { name: /^Launch$/i }).click({ timeout: 30_000 });
+  return waitUntilFlight(targetPage, 'New Game', timeoutMs);
+}
+
+async function startCpuProfile(targetPage, label) {
+  try {
+    cpuCdp = await targetPage.context().newCDPSession(targetPage);
+    await cpuCdp.send('Profiler.enable');
+    await cpuCdp.send('Profiler.setSamplingInterval', { interval: 250 });
+    await cpuCdp.send('Profiler.start');
+    log(`cpu-profile: sampling started ${label}`);
+  } catch (error) {
+    cpuCdp = null;
+    log(`cpu-profile: start unavailable (${error && error.message})`);
+  }
+}
+
+async function stopCpuProfile() {
+  if (!cpuCdp) return;
+  const session = cpuCdp;
+  cpuCdp = null;
+  try {
+    const { profile } = await session.send('Profiler.stop');
+    await writeFile(path.join(OUT, CPU_PROFILE_FROM_LAUNCH ? 'startup-flight.cpuprofile' : 'flight.cpuprofile'), JSON.stringify(profile));
+    cpuProfile = summarizeCpuProfile(profile);
+    cpuProfile.window = CPU_PROFILE_FROM_LAUNCH ? 'before-launch-through-flight' : 'flight';
+    log(`cpu-profile: ${cpuProfile.totalMs} ms sampled; window ${cpuProfile.window}`);
+    for (const row of cpuProfile.topSelf.slice(0, 25)) log(`  self ${row.ms} ms  ${row.site}`);
+    for (const row of cpuProfile.topFiles.slice(0, 15)) log(`  file ${row.ms} ms  ${row.file}`);
+  } catch (error) {
+    log(`cpu-profile: stop failed (${error && error.message})`);
+  }
+}
+
+function readContinueSaveSnapshot() {
+  const dir = resolvePlayerSaveDir(process.env);
+  const all = readPlayerStoreKeysSync(dir);
+  const pairs = Object.fromEntries(Object.entries(all).filter(([key]) => key.startsWith('sf.save.')
+    || (CONTINUE_PROFILE && key === 'sf.settings.profile.v1')));
+  const slots = Object.keys(pairs)
+    .filter((key) => key.startsWith('sf.save.') && key !== 'sf.save.index')
+    .map((key) => key.slice('sf.save.'.length))
+    .sort();
+  if (slots.length === 0 || !pairs['sf.save.index']) {
+    throw new Error(`Continue witness found no indexed player save in ${dir}`);
+  }
+  return { dir, pairs, slots };
+}
+
+async function jumpToCeres(targetPage) {
+  await targetPage.keyboard.press('KeyN');
+  const map = targetPage.locator('[data-screen="galaxyMap"]').first();
+  await map.waitFor({ state: 'visible', timeout: 30_000 });
+  await targetPage.keyboard.press('/');
+  const search = targetPage.locator('.gm-search-input');
+  await search.waitFor({ state: 'visible', timeout: 10_000 });
+  await search.fill('Ceres Belt');
+  const names = targetPage.locator('.gm-search-item-name');
+  await names.first().waitFor({ state: 'visible', timeout: 15_000 });
+  const labels = (await names.allTextContents()).map((value) => String(value || '').trim());
+  const index = labels.findIndex((label) => label.toLowerCase() === 'ceres belt');
+  if (index < 0) throw new Error(`public map search did not expose Ceres Belt: ${labels.join(' | ')}`);
+  await targetPage.locator('.gm-search-item').nth(index).click();
+  const action = targetPage.locator('#gm-set-course-btn');
+  await action.waitFor({ state: 'visible', timeout: 15_000 });
+  const actionLabel = String(await action.textContent() || '').replace(/\s+/g, ' ').trim();
+  if (actionLabel !== 'Set Course & Jump') {
+    throw new Error(`Ceres Belt exposed '${actionLabel}' instead of Set Course & Jump`);
+  }
+  await action.click();
+  await map.waitFor({ state: 'hidden', timeout: 30_000 });
+  await targetPage.waitForFunction(() => {
+    const state = window.SF?.state;
+    const player = state?.entities?.get?.(state.playerId);
+    return state?.world?.currentSectorId === 'sector_ceres_belt'
+      && state?.jump?.state === 'IDLE'
+      && state?.mode === 'flight'
+      && player?.alive !== false;
+  }, null, { timeout: 180_000 });
+}
+
+let app = null;
+let childProcess = null;
+let page = null;
+let launch = null;
+let processMonitor = null;
+let canonicalUrlTracker = null;
+let rootUrl = null;
+let primaryError = null;
+let cleanupReport = null;
+let cleanupError = null;
+let gpu = null;
+let shadowDiagnostic = null;
+let routeInfo = {
+  kind: PRODUCTION_CRUCIBLE_ROUTE ? 'crucible' : 'new-game',
+  label: `${PRODUCTION_CRUCIBLE_ROUTE ? 'Crucible Swarm' : 'New Game'} seed ${FIXED_SEED}`,
+  saveDir: null,
+  saveSlots: [],
+};
+let productionRoutePreparation = null;
+let productionRecorder = null;
+let productionRouteManifest = null;
+
+try {
+  const { _electron: electron } = await loadPlaywright();
+  launch = createIsolatedElectronLaunch({
+    root: ROOT,
+    taskId: 'runtime-witness',
+    timeout: 180_000,
+    baseEnv: {
+      ...process.env,
+      SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: FOCUS_RECOVERY_STRESS || NORMAL_DESKTOP_LIFECYCLE ? '0' : '1',
+    },
+  });
+  log('launching isolated Electron');
+  app = await electron.launch(launch.options);
+  childProcess = app.process();
+  processMonitor = createElectronProcessMonitor({ electronApp: app, childProcess });
+  page = await app.firstWindow({ timeout: 180_000 });
+  if (NORMAL_DESKTOP_LIFECYCLE) {
+    await app.evaluate(({ BrowserWindow }) => {
+      const win = BrowserWindow.getAllWindows().find((candidate) => !candidate.isDestroyed());
+      win.show();
+      win.setFullScreen(true);
+      win.focus();
+      win.webContents.focus();
+    });
+  }
+  installCspSafePlaywrightPolling(page);
+  await installFirstLightPromptHandler(page, (label, _ok, detail) => log(`${label}: ${detail}`));
+  const urlDeadline = Date.now() + 20_000;
+  while (Date.now() < urlDeadline) {
+    const liveUrl = page.url();
+    if (liveUrl === 'about:blank' || /^http:\/\/127\.0\.0\.1:\d+\/?$/.test(liveUrl)) break;
+    await page.waitForTimeout(75);
+  }
+  canonicalUrlTracker = createElectronCanonicalUrlTracker(page, {
+    bootstrapTimeoutMs: 10_000,
+    pollIntervalMs: 75,
+    allowAnyLoopbackPort: true,
+  });
+  rootUrl = assertIsolatedElectronRootUrl(
+    await canonicalUrlTracker.waitForCanonicalRoot(20_000),
+  );
+  page.on('console', (msg) => {
+    const text = msg.text();
+    if (
+      msg.type() === 'error'
+      || /\[loop\]|world-motion-hold|context lost|frame error|WebGL|GPU/i.test(text)
+    ) {
+      consoleHits.push(`[console.${msg.type()}] ${text}`);
+    }
+  });
+  page.on('response', (response) => {
+    if (response.status() === 404) {
+      consoleHits.push(`[http.404] ${response.url()}`);
+    }
+  });
+  page.on('pageerror', (err) => {
+    pageErrors.push(String(err && err.stack || err));
+  });
+  await page.addInitScript(() => {
+    try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
+  });
+  await page.waitForLoadState('domcontentloaded', { timeout: 180_000 });
+  await page.waitForFunction(() => window.SF?.state && window.SF?.bus, null, { timeout: 90_000 });
+  await dismissCinematic(page);
+  gpu = await page.evaluate(() => window.SF?.state?.render?.gpu
+    ? { renderer: window.SF.state.render.gpu.renderer, tier: window.SF.state.render.gpu.tier }
+    : null);
+
+  let entered;
+  if (CONTINUE_ROUTE) {
+    const save = readContinueSaveSnapshot();
+    routeInfo = {
+      kind: 'continue',
+      label: `Continue from read-only player save (${save.slots.join(', ')})`,
+      saveDir: save.dir,
+      saveSlots: save.slots,
+    };
+    await page.addInitScript((pairs) => {
+      try {
+        for (const [key, value] of Object.entries(pairs)) localStorage.setItem(key, value);
+      } catch (_) {}
+    }, save.pairs);
+    await page.evaluate((pairs) => {
+      for (const [key, value] of Object.entries(pairs)) localStorage.setItem(key, value);
+    }, save.pairs);
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 180_000 });
+    await page.waitForFunction(() => window.SF?.state && window.SF?.bus, null, { timeout: 90_000 });
+    await dismissCinematic(page);
+    await installLoadingReadinessWitness(page);
+    if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC) {
+      openingFirstTouchOwner = await installOpeningFirstTouchOwnerWitness(page);
+      if (openingFirstTouchOwner?.hooks?.openingInstalled !== true) {
+        throw new Error('Opening first-touch owner diagnostic could not install before Continue');
+      }
+    }
+    if (OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC) {
+      openingExactOwnerTouch = await installOpeningExactOwnerTouchWitness(page);
+      if (openingExactOwnerTouch?.hooks?.prepareInstalled !== true
+        || openingExactOwnerTouch?.hooks?.openingInstalled !== true) {
+        throw new Error('Opening exact-owner touch diagnostic could not install before Continue');
+      }
+    }
+    probeInstrumentation = await armProbeInstrumentation(page);
+    if (NO_SUBMIT_DIAGNOSTIC) {
+      noSubmitDiagnostic = await installNoSubmitDiagnostic(page);
+      if (noSubmitDiagnostic?.applied !== true) throw new Error('No-submit diagnostic could not install before Continue');
+      routeInfo.label += ' [diagnostic: no scene submit]';
+    }
+    log(`continue from read-only player save slots=${save.slots.join(',')}`);
+    await page.getByRole('button', { name: 'Continue', exact: true }).click({ timeout: 30_000 });
+    entered = await waitUntilFlight(page, 'Continue');
+  } else {
+    log(PRODUCTION_CRUCIBLE_ROUTE ? 'Crucible Swarm' : 'new game');
+    await installLoadingReadinessWitness(page);
+    if (!PRODUCTION_CRUCIBLE_ROUTE) await page.evaluate(installStartupRouteMarks);
+    if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC) {
+      openingFirstTouchOwner = await installOpeningFirstTouchOwnerWitness(page);
+      if (openingFirstTouchOwner?.hooks?.openingInstalled !== true) {
+        throw new Error('Opening first-touch owner diagnostic could not install before New Game');
+      }
+    }
+    if (OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC) {
+      openingExactOwnerTouch = await installOpeningExactOwnerTouchWitness(page);
+      if (openingExactOwnerTouch?.hooks?.prepareInstalled !== true
+        || openingExactOwnerTouch?.hooks?.openingInstalled !== true) {
+        throw new Error('Opening exact-owner touch diagnostic could not install before New Game');
+      }
+    }
+    probeInstrumentation = await armProbeInstrumentation(page);
+    if (NO_SUBMIT_DIAGNOSTIC) {
+      noSubmitDiagnostic = await installNoSubmitDiagnostic(page);
+      if (noSubmitDiagnostic?.applied !== true) throw new Error('No-submit diagnostic could not install before New Game');
+      routeInfo.label += ' [diagnostic: no scene submit]';
+    }
+    if (PRODUCTION_ROUTE?.id === 'cold-opening') {
+      productionRoutePreparation = { status: 'ready', driver: 'New Game button through first playable' };
+      productionRecorder = await installProductionMatrixRecorder(page);
+      if (productionRecorder?.installed !== true) throw new Error('cold-opening production recorder did not install');
+    }
+    if (PRODUCTION_CRUCIBLE_ROUTE) {
+      entered = await launchProductionCrucible(page, PRODUCTION_ROUTE);
+    } else {
+      await page.getByRole('button', { name: 'New Game', exact: true }).click({ timeout: 30_000 });
+      await page.fill('#sf-ng-seed', String(FIXED_SEED));
+      entered = await launchUntilFlight(page);
+    }
+  }
+  log(`entered flight ${JSON.stringify({ mode: entered.mode, simTime: entered.simTime })}`);
+  openingRenderWork = await page.evaluate(() => (
+    window.SF?.state?.perfRuntime?.getReport?.().renderWork || null
+  ));
+  await page.evaluate(() => window.SF?.state?.perfRuntime?.reset?.());
+
+  if (OPAQUE_BATCH_OFF_DIAGNOSTIC) {
+    opaqueBatchDiagnostic = await page.evaluate(() => {
+      const renderSystem = window.SF?.registry?.get?.('render');
+      if (!renderSystem || typeof renderSystem._opaqueBatchEnabled !== 'boolean') {
+        return { applied: false, previous: null };
+      }
+      const previous = renderSystem._opaqueBatchEnabled;
+      renderSystem._opaqueBatchEnabled = false;
+      return {
+        applied: renderSystem._opaqueBatchEnabled === false,
+        previous,
+      };
+    });
+    if (opaqueBatchDiagnostic?.applied !== true) {
+      throw new Error('Runtime witness could not apply the isolated opaque-batch-off diagnostic');
+    }
+    routeInfo.label += ' [diagnostic: opaque batch off]';
+    routeInfo.opaqueBatchOffDiagnostic = true;
+    log('diagnostic only: live opaque material batching disabled inside isolated profile');
+  }
+
+  await page.waitForTimeout(250);
+
+  await page.locator('#gl-canvas').click({ timeout: 10_000 }).catch(() => {});
+  if (SECTOR_ENTRY_ROUTE) {
+    await installSectorTransitionWitness(page);
+    await armSectorTransitionWitness(page);
+    log('public sector entry to Ceres Belt with hitch attribution armed');
+    await jumpToCeres(page);
+    await page.waitForTimeout(1500);
+    sectorTransitionTrace = await collectSectorTransitionWitness(page);
+    await page.evaluate(() => window.SF?.state?.perfRuntime?.reset?.());
+    routeInfo.label += ' -> public Ceres Belt sector entry';
+    routeInfo.sectorEntry = 'sector_ceres_belt';
+  } else {
+    await page.evaluate(() => window.SF.state.perfRuntime.reset());
+  }
+  if (SHADOWS_OFF_DIAGNOSTIC) {
+    shadowDiagnostic = await page.evaluate(() => {
+      const sf = window.SF;
+      const video = sf?.state?.settings?.video;
+      if (!sf?.bus || !video) return { applied: false, previous: null };
+      const previous = video.shadows;
+      video.shadows = false;
+      sf.bus.emit('settings:changed', {
+        section: 'video',
+        key: 'shadows',
+        value: false,
+        diagnostic: true,
+      });
+      return { applied: video.shadows === false, previous };
+    });
+    if (shadowDiagnostic?.applied !== true) {
+      throw new Error('Runtime witness could not apply the isolated shadows-off diagnostic');
+    }
+    routeInfo.label += ' [diagnostic: shadows off]';
+    routeInfo.shadowsOffDiagnostic = true;
+    log('diagnostic only: live shadows disabled inside isolated profile');
+    await page.waitForTimeout(250);
+    await page.evaluate(() => window.SF.state.perfRuntime.reset());
+  }
+  // Include the transitions themselves, not just ordinary flight after the route has ended.
+  if (PRODUCTION_ROUTE && !productionRecorder && new Set([
+    'dock-refit-undock', 'asteroid-works-roundtrip', 'busy-site-save-reload',
+  ]).has(PRODUCTION_ROUTE.id)) {
+    await page.bringToFront();
+    productionRecorder = await installProductionMatrixRecorder(page);
+  }
+  productionRoutePreparation ||= await prepareProductionRoute(page, PRODUCTION_ROUTE);
+  if (PRODUCTION_ROUTE && productionRoutePreparation.status === 'ready') {
+    productionRouteManifest = await page.evaluate((base) => {
+      const state = window.SF?.state;
+      const player = state?.entities?.get?.(state?.playerId);
+      const canvas = state?.render?.renderer?.domElement;
+      const gl = state?.render?.renderer?.getContext?.();
+      const gpuDebug = gl?.getExtension?.('WEBGL_debug_renderer_info');
+      const gpu = gl ? {
+        renderer: gl.getParameter(gpuDebug ? gpuDebug.UNMASKED_RENDERER_WEBGL : gl.RENDERER),
+        vendor: gl.getParameter(gpuDebug ? gpuDebug.UNMASKED_VENDOR_WEBGL : gl.VENDOR),
+        unmasked: !!gpuDebug,
+      } : null;
+      return {
+        ...base,
+        hull: player?.data?.defId || player?.defId || player?.data?.shipId || player?.data?.hullId || null,
+        host: { ...base.host, gpu },
+        resolution: canvas ? { width: canvas.width, height: canvas.height, devicePixelRatio: window.devicePixelRatio || null } : null,
+        settings: state?.settings?.video || null,
+        runtime: {
+          ...base.runtime, userAgent: navigator.userAgent, displayRateHz: null,
+          displayRateUnknownReason: 'Display refresh rate is not exposed by this browser API; rAF cadence is measured separately.',
+        },
+      };
+    }, productionManifest(PRODUCTION_ROUTE));
+    if (!productionRecorder) {
+      productionRecorder = await installProductionMatrixRecorder(page);
+      if (productionRecorder?.installed !== true) throw new Error('production route recorder did not install');
+    }
+    routeInfo.productionRoute = PRODUCTION_ROUTE.id;
+    routeInfo.productionRoutePreparation = productionRoutePreparation;
+  } else if (PRODUCTION_ROUTE) {
+    routeInfo.productionRoute = PRODUCTION_ROUTE.id;
+    routeInfo.productionRoutePreparation = productionRoutePreparation;
+    log(`production route unavailable: ${productionRoutePreparation?.reason || 'public route driver unavailable'}`);
+  }
+  if (FOCUS_RECOVERY_STRESS) {
+    // Model Electron returning native focus while Chromium loses the DOM focus event.
+    // The native window and the real worker own the transition; the observer drops
+    // the DOM notifications, never writes game state or fabricates shell commands.
+    const gameWindowId = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].id);
+    await app.evaluate(({ app, BrowserWindow }, id) => {
+      app.focus();
+      const win = BrowserWindow.fromId(id);
+      win.show();
+      win.focus();
+      win.webContents.focus();
+    }, gameWindowId);
+    await page.evaluate(() => {
+      const trace = { interceptedFocus: 0, blur: 0 };
+      trace.dropFocus = (event) => { trace.interceptedFocus++; event.stopImmediatePropagation(); };
+      trace.onBlur = (event) => { trace.blur++; event.stopImmediatePropagation(); };
+      window.addEventListener('focus', trace.dropFocus, true);
+      window.addEventListener('blur', trace.onBlur, true);
+      window.__SF_FOCUS_RECOVERY_PROBE__ = trace;
+    });
+    const motionStart = await page.evaluate(() => window.SF.state.simTime);
+    await page.keyboard.down('KeyW');
+    await page.waitForFunction((start) => {
+      const state = window.SF.state;
+      const player = state.entities.get(state.playerId);
+      return state.simTime > start + 0.3 && Math.hypot(player?.vel?.x || 0, player?.vel?.z || 0) > 5;
+    }, motionStart, { polling: 50, timeout: 8000 });
+    if (TETHER_STRESS) {
+      await page.keyboard.press('ControlLeft+Space');
+      await page.waitForFunction(() => window.SF.state.player.tether.active === true, null, { timeout: 8000 });
+      await page.keyboard.down('BracketLeft');
+    }
+    const before = await page.evaluate(() => ({ simTime: window.SF.state.simTime, scale: window.SF.state.timeScale }));
+    const nativeBefore = await app.evaluate(({ BrowserWindow }, id) => BrowserWindow.fromId(id).isFocused(), gameWindowId);
+    log(`focus-recovery: before blur nativeFocused=${nativeBefore}, scale=${before.scale}`);
+    // On Windows win.blur() can leave the window focused. Give focus to a
+    // second, owned blank window so this actually exercises a native edge.
+    await app.evaluate(({ BrowserWindow }) => {
+      const helper = new BrowserWindow({ width: 180, height: 100, show: true, skipTaskbar: true });
+      globalThis.__SF_FOCUS_RECOVERY_HELPER__ = helper;
+      helper.focus();
+    });
+    await page.waitForFunction(() => window.SF.state.timeScale === 0, null, { polling: 50, timeout: 8000 });
+    const paused = await page.evaluate(() => ({
+      simTime: window.SF.state.simTime, scale: window.SF.state.timeScale,
+      lifecycle: window.SF.loop.getDiagnostics().shellState,
+    }));
+    const nativePaused = await app.evaluate(({ BrowserWindow }, id) => BrowserWindow.fromId(id).isFocused(), gameWindowId);
+    await page.waitForTimeout(2500);
+    await app.evaluate(({ BrowserWindow }, id) => {
+      const win = BrowserWindow.fromId(id);
+      win.focus();
+      win.webContents.focus();
+      globalThis.__SF_FOCUS_RECOVERY_HELPER__?.destroy();
+      delete globalThis.__SF_FOCUS_RECOVERY_HELPER__;
+    }, gameWindowId);
+    try {
+      await page.waitForFunction((baseline) => (
+        window.SF.state.timeScale === 1 && window.SF.state.simTime > baseline.simTime + 0.05
+      ), paused, { polling: 50, timeout: 8000 });
+      const result = await page.evaluate(() => ({
+        simTime: window.SF.state.simTime, scale: window.SF.state.timeScale,
+        interceptedFocus: window.__SF_FOCUS_RECOVERY_PROBE__.interceptedFocus,
+        blur: window.__SF_FOCUS_RECOVERY_PROBE__.blur,
+        lifecycle: window.SF.loop.getDiagnostics().shellState,
+        worker: window.SF.simLaneDiag?.().workerClockLastDiagnostics,
+      }));
+      const nativeFocused = await app.evaluate(({ BrowserWindow }, id) => BrowserWindow.fromId(id).isFocused(), gameWindowId);
+      const resumedInput = await page.evaluate(async () => {
+        if (typeof window.SF.simLaneDiag !== 'function') {
+          const input = window.SF.state.input;
+          return { moveZ: input.moveZ, autoFire: input.autoFire };
+        }
+        const { laneRpc } = await import('/src/core/simLaneCommands.js');
+        const probe = await laneRpc('probeState');
+        return probe.ok ? probe.result?.input : null;
+      });
+      const receipt = { before, nativeBefore, paused, nativePaused, resumed: result, nativeFocused, resumedInput };
+      await writeFile(path.join(OUT, 'focus-recovery.json'), JSON.stringify(receipt, null, 2));
+      if (!nativeBefore || nativePaused || !nativeFocused || paused.lifecycle !== 'foreground-occluded') {
+        throw new Error('focus-recovery stress did not exercise the native focused -> occluded -> focused transition');
+      }
+      if (resumedInput?.moveZ !== 0 || resumedInput?.autoFire !== false) {
+        throw new Error(`native focus recovery retained held controls: ${JSON.stringify(resumedInput)}`);
+      }
+      log(`focus-recovery: native focus resumed simulation ${paused.simTime} -> ${result.simTime} despite dropped DOM focus`);
+    } finally {
+      await page.keyboard.up('KeyW');
+      await page.keyboard.up('BracketLeft');
+      if (TETHER_STRESS && await page.evaluate(() => window.SF.state.player.tether.active === true)) {
+        await page.keyboard.press('Space');
+      }
+      await page.evaluate(() => {
+        const trace = window.__SF_FOCUS_RECOVERY_PROBE__;
+        window.removeEventListener('focus', trace.dropFocus, true);
+        window.removeEventListener('blur', trace.onBlur, true);
+        delete window.__SF_FOCUS_RECOVERY_PROBE__;
+      });
+    }
+  }
+  let openingInputBaseline = null;
+  if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC || OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC) {
+    await page.bringToFront();
+    await page.locator('#gl-canvas').click({ timeout: 10_000 });
+    openingInputBaseline = await page.evaluate(() => {
+      const state = window.SF?.state;
+      const player = state?.entities?.get?.(state?.playerId);
+      const diagnostics = window.SF?.loop?.getDiagnostics?.() || {};
+      return {
+        mode: state?.mode || null,
+        executedFrames: Number(diagnostics.executedFrames) || 0,
+        posX: Number(player?.pos?.x) || 0,
+        posZ: Number(player?.pos?.z) || 0,
+        speed: player?.vel ? Math.hypot(Number(player.vel.x) || 0, Number(player.vel.z) || 0) : 0,
+      };
+    });
+  }
+  await page.keyboard.down('KeyW');
+  if (TETHER_BOOST_STRESS) await page.keyboard.down('ShiftLeft');
+  // The reported freeze trigger is multi-key: thrust + yaw + boost held together
+  // sweeps the ship through dense contact fields while key-repeat traffic flows.
+  if (TURN_STRESS) await page.keyboard.down('KeyA');
+  if (COMBAT_STRESS) {
+    const viewport = page.viewportSize() || { width: 1280, height: 720 };
+    await page.mouse.move(viewport.width * 0.5, viewport.height * 0.25);
+    await page.mouse.down({ button: 'left' });
+    log('combat-stress: forward public cursor aim + primary fire');
+  }
+  if (PRODUCTION_ROUTE?.id === 'earned-speed-traversal') await page.keyboard.down('ShiftLeft');
+  if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC || OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC) {
+    const inputResponded = await page.waitForFunction((baseline) => {
+      const state = window.SF?.state;
+      const player = state?.entities?.get?.(state?.playerId);
+      const diagnostics = window.SF?.loop?.getDiagnostics?.() || {};
+      if (state?.mode !== 'flight') return false;
+      const executedFrames = Number(diagnostics.executedFrames) || 0;
+      const posX = Number(player?.pos?.x) || 0;
+      const posZ = Number(player?.pos?.z) || 0;
+      const speed = player?.vel ? Math.hypot(Number(player.vel.x) || 0, Number(player.vel.z) || 0) : 0;
+      const acceptedInput = Number(state?.input?.moveZ) > 0.05 || Number(state?.input?.throttle) > 0.05;
+      const moved = Math.hypot(posX - Number(baseline?.posX || 0), posZ - Number(baseline?.posZ || 0)) > 0.25;
+      const accelerated = speed > Number(baseline?.speed || 0) + 0.05;
+      return executedFrames > Number(baseline?.executedFrames || 0) + 2
+        && (acceptedInput || moved || accelerated);
+    }, openingInputBaseline, { timeout: 30_000 }).then(() => true).catch(() => false);
+    if (!inputResponded) throw new Error('Opening diagnostic saw no observable public KeyW flight response');
+    if (OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC) {
+      openingExactOwnerTouch = await markOpeningExactOwnerInputResponsive(page);
+    }
+    if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC) {
+      const coldCaptured = await page.waitForFunction(() => (
+        window.__SF_OPENING_FIRST_TOUCH_OWNER__?.coldRun?.kind === 'cold'
+      ), null, { timeout: 30_000 }).then(() => true).catch(() => false);
+      if (!coldCaptured) {
+        throw new Error('Opening first-touch owner diagnostic could not capture its cold full-scene route before warm arm');
+      }
+      const warmArmed = await armOpeningFirstTouchOwnerWarmReference(page);
+      if (warmArmed?.hooks?.warmInstalled !== true) {
+        throw new Error('Opening first-touch owner diagnostic could not arm its warm full-scene route after input response');
+      }
+      await page.waitForFunction(() => (
+        window.__SF_OPENING_FIRST_TOUCH_OWNER__?.warmRun?.kind === 'warm'
+      ), null, { timeout: 30_000 });
+    }
+  }
+  if (ALLOC_PROBE && !allocCdp) {
+    try {
+      allocCdp = await page.context().newCDPSession(page);
+      // Allocation churn, rather than surviving objects only: omitting collected
+      // objects erased the very short-lived allocations behind the hitch/GC cost.
+      await allocCdp.send('HeapProfiler.startSampling', {
+        samplingInterval: 65536,
+        includeObjectsCollectedByMajorGC: true,
+        includeObjectsCollectedByMinorGC: true,
+      });
+      log('alloc-probe: sampling started');
+    } catch (error) {
+      allocCdp = null;
+      log(`alloc-probe: startSampling unavailable (${error && error.message})`);
+    }
+  }
+  if (CPU_PROFILE && !CPU_PROFILE_FROM_LAUNCH) await startCpuProfile(page, 'in flight');
+  let traceCdp = null;
+  const traceEvents = [];
+  if (TIMELINE_TRACE) {
+    try {
+      traceCdp = await page.context().newCDPSession(page);
+      traceCdp.on('Tracing.dataCollected', (msg) => { for (const ev of msg.value || []) traceEvents.push(ev); });
+      await traceCdp.send('Tracing.start', {
+        transferMode: 'ReportEvents',
+        traceConfig: {
+          includedCategories: [
+            'devtools.timeline', 'disabled-by-default-devtools.timeline', 'v8', 'gpu',
+            'disabled-by-default-devtools.timeline.invalidationTracking',
+          ],
+        },
+      });
+      log('timeline-trace: started');
+    } catch (error) {
+      traceCdp = null;
+      log(`timeline-trace: start unavailable (${error && error.message})`);
+    }
+  }
+  hostLoadStart = snapshotHostLoadStart();
+  const started = Date.now();
+  let shotIndex = 0;
+  let tetherStage = 0;
+  let censusStartedAt = null;
+  let censusResult = null;
+  let backgroundWindowId = null;
+  let backgroundStage = 0;
+  let backgroundBefore = null;
+  let saveStressCount = 0;
+  while (Date.now() - started < SAMPLE_MS) {
+    const elapsedMs = Date.now() - started;
+    if (SAVE_TETHER_STRESS && saveStressCount < 3 && elapsedMs >= 8_000 + saveStressCount * 12_000) {
+      await page.keyboard.press('F5');
+      saveStressCount++;
+      log(`save-tether: public quicksave ${saveStressCount} while tether remains held`);
+    }
+    if (BACKGROUND_FLIGHT_STRESS && backgroundStage === 0 && elapsedMs >= 8_000) {
+      backgroundBefore = await page.evaluate(readWitnessInPage);
+      backgroundWindowId = await app.evaluate(({ BrowserWindow }) => {
+        const game = BrowserWindow.getAllWindows().find((win) => !win.isDestroyed());
+        const helper = new BrowserWindow({ width: 180, height: 100, show: true, skipTaskbar: true });
+        globalThis.__SF_BACKGROUND_FLIGHT_HELPER__ = helper;
+        helper.focus();
+        return game.id;
+      });
+      backgroundStage = 1;
+      log('background-flight: owned helper takes native focus while tether remains held');
+    } else if (BACKGROUND_FLIGHT_STRESS && backgroundStage === 1 && elapsedMs >= 20_000) {
+      const occluded = await page.evaluate(readWitnessInPage);
+      const nativeFocused = await app.evaluate(({ BrowserWindow }, id) => BrowserWindow.fromId(id).isFocused(), backgroundWindowId);
+      await writeFile(path.join(OUT, 'background-flight.json'), JSON.stringify({ before: backgroundBefore, occluded, nativeFocused }, null, 2));
+      await app.evaluate(({ BrowserWindow }, id) => {
+        const win = BrowserWindow.fromId(id);
+        win.focus();
+        win.webContents.focus();
+        globalThis.__SF_BACKGROUND_FLIGHT_HELPER__?.destroy();
+        delete globalThis.__SF_BACKGROUND_FLIGHT_HELPER__;
+      }, backgroundWindowId);
+      backgroundStage = 2;
+      log(`background-flight: returned native focus; sim advanced ${occluded.simTime - backgroundBefore.simTime}s while occluded`);
+    }
+    if (TETHER_STRESS && tetherStage === 0) {
+      await page.evaluate(() => {
+        window.__SF_TETHER_EVENTS__ = [];
+        const record = (type) => (payload) => {
+          if (window.__SF_TETHER_EVENTS__.length >= 200) return;
+          window.__SF_TETHER_EVENTS__.push({
+            at: Math.round(performance.now()),
+            type,
+            reason: payload?.reason || payload?.breakReason || null,
+            targetId: payload?.targetId ?? null,
+            load: Number.isFinite(payload?.load) ? payload.load : null,
+          });
+        };
+        for (const name of ['tether:attached', 'tether:released', 'tether:break',
+          'tether:snapCatch', 'massline:snareEnded', 'tether:latchDenied']) {
+          try { window.SF.bus.on(name, record(name)); } catch (_) {}
+        }
+      }).catch(() => {});
+      await page.keyboard.press('ControlLeft+Space');
+      tetherStage = 1;
+      log('tether-stress: nearest latch + thrust');
+    } else if (TETHER_STRESS && tetherStage === 1 && elapsedMs >= 5_000) {
+      await page.keyboard.down('KeyA');
+      await page.keyboard.down('BracketLeft');
+      tetherStage = 2;
+      // Draw census: name the exact objects filling the tether frame. The hook is removed
+      // after 1.2 s; it is a diagnostic, not a permanent probe.
+      const installed = await page.evaluate(() => {
+        const sys = window.SF?.registry?.get?.('render');
+        const r = sys?.renderer;
+        if (!r || typeof r.renderBufferDirect !== 'function') return false;
+        const original = r.renderBufferDirect;
+        const counts = new Map();
+        let calls = 0;
+        const normalize = (name) => String(name || '?')
+          .replace(/_\d+/g, '_#')
+          .replace(/\d+/g, '#');
+        r.renderBufferDirect = function drawCensus(camera, scene, geometry, material, object) {
+          calls += 1;
+          // Group entity ids and instance suffixes so a long tail of unique meshes is visible
+          // as a family instead of hundreds of one-call rows.
+          const key = `${normalize(object?.name || object?.type)}|${material?.name || material?.type || '?'}`;
+          counts.set(key, (counts.get(key) || 0) + 1);
+          return original.apply(this, arguments);
+        };
+        window.__SF_DRAW_CENSUS__ = {
+          calls: () => calls,
+          stop: () => { r.renderBufferDirect = original; },
+          rows: () => [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40),
+        };
+        return true;
+      }).catch(() => false);
+      if (installed) censusStartedAt = elapsedMs;
+      log('tether-stress: turn + reel in');
+    } else if (TETHER_STRESS && !TETHER_HOLD_STRESS && tetherStage === 2 && elapsedMs >= 12_000) {
+      await page.keyboard.up('BracketLeft');
+      await page.keyboard.up('KeyA');
+      await page.keyboard.press('Space');
+      tetherStage = 3;
+      log('tether-stress: cut + continue thrust');
+    }
+    const row = await page.evaluate(readWitnessInPage).catch((error) => ({
+      wallMs: Date.now(),
+      evaluateError: String(error && error.message || error),
+    }));
+    row.elapsedMs = elapsedMs;
+    if (TETHER_STRESS) {
+      row.tetherMotion = await page.evaluate(async () => {
+        const { readTimeEffectsRequests } = await import('/src/core/timeEffects.js');
+        const { laneRpc } = await import('/src/core/simLaneCommands.js');
+        const state = window.SF?.state;
+        const player = state?.entities?.get?.(state.playerId);
+        const tether = state?.player?.tether;
+        const target = state?.entities?.get?.(tether?.targetId);
+        const pose = (entity) => entity ? {
+          id: entity.id, pos: { x: entity.pos?.x, z: entity.pos?.z },
+          vel: { x: entity.vel?.x, z: entity.vel?.z }, rot: entity.rot,
+          mesh: entity.mesh ? {
+            x: entity.mesh.position?.x, z: entity.mesh.position?.z,
+            worldX: entity.mesh.matrixWorld?.elements?.[12], worldZ: entity.mesh.matrixWorld?.elements?.[14],
+            matrixAutoUpdate: entity.mesh.matrixAutoUpdate,
+            matrixWorldNeedsUpdate: entity.mesh.matrixWorldNeedsUpdate,
+          } : null,
+        } : null;
+        const diag = window.SF?.simLaneDiag?.() || null;
+        const native = await Promise.race([
+          laneRpc('probeState').then((value) => ({ value }), (error) => ({ error: String(error?.message || error) })),
+          new Promise((resolve) => setTimeout(() => resolve({ timedOut: true }), 300)),
+        ]);
+        const attachment = (() => {
+          const byId = state?.combat?.attachments?.byId;
+          if (!byId || !tether) return null;
+          for (const id in byId) {
+            const a = byId[id];
+            if (a && a.state === 'active'
+              && (a.ownerId === state.playerId || a.controllerId === state.playerId)
+              && a.targetId === tether.targetId) return a;
+          }
+          return null;
+        })();
+        let targetMeshChildren = 0;
+        try { target?.mesh?.traverse?.(() => { targetMeshChildren += 1; }); } catch (_) {}
+        return {
+          tick: state?.tick, scale: state?.timeScale,
+          timeEffects: state ? readTimeEffectsRequests(state) : null,
+          active: tether?.active === true, targetId: tether?.targetId ?? null,
+          tetherDetail: tether ? {
+            phase: tether.phase || null,
+            load: Number.isFinite(tether.load) ? tether.load : null,
+            strain: Number.isFinite(tether.strain) ? tether.strain : null,
+            reeling: tether.reeling === true,
+            payingOut: tether.payingOut === true,
+            automaticBreakAllowed: tether.automaticBreakAllowed === true,
+          } : null,
+          attachment: attachment ? {
+            state: attachment.state,
+            breakReason: attachment.breakReason || null,
+            lastTension: attachment.lastTension ?? null,
+            lastImpulse: attachment.lastImpulse ?? null,
+            lastYank: attachment.lastYank ?? null,
+          } : null,
+          targetDetail: target ? {
+            type: target.type || null,
+            dataType: target.data?.typeId || target.data?.enemyId || null,
+            meshChildren: targetMeshChildren,
+          } : null,
+          hitchRelief: state?.render ? {
+            level: state.render.hitchReliefLevel || 0,
+            scale: state.render.hitchReliefScale || 1,
+            dynRes: state.render.dynResScale || 1,
+          } : null,
+          native,
+          player: pose(player), target: pose(target),
+          bodies: state?.entityList?.filter((entity) => entity.alive !== false && entity.collides !== false).length,
+          fragments: state?.entityList?.filter((entity) => entity.alive !== false
+            && (entity.data?.collisionTearOff || entity.data?.fracturePiece)).length,
+          lane: diag ? {
+            closed: diag.closed, clockOwner: diag.clockOwner,
+            replyCount: diag.replyCount,
+            lastCommandSequence: diag.workerClockLastAppliedCommandSequence,
+            lastReplyWork: diag.workerLastReplyWork,
+            clock: diag.workerClockLastDiagnostics,
+            completedTicksPending: diag.completedTicksPending,
+            readModelEntities: diag.readModelEntities,
+            boundaryErrorCount: diag.boundaryErrorCount,
+            droppedEnvelopes: diag.droppedEnvelopes,
+            freezeActive: diag.freezeActive,
+            freezeEpisodes: diag.freezeEpisodes,
+            msSinceLastAppliedReply: diag.msSinceLastAppliedReply,
+            workerApplyMaxMs: diag.workerApplyMaxMs,
+            error: diag.error, errorSite: diag.errorSite,
+          } : null,
+        };
+      });
+      row.tetherStage = tetherStage;
+    }
+    snapshots.push(row);
+    if (TETHER_STRESS && censusStartedAt != null && censusResult == null
+      && elapsedMs >= censusStartedAt + 1_200) {
+      censusResult = await page.evaluate(() => {
+        const census = window.__SF_DRAW_CENSUS__;
+        if (!census) return null;
+        census.stop();
+        return { calls: census.calls(), rows: census.rows() };
+      }).catch(() => null);
+    }
+    if (!NO_SAMPLE_SHOTS && !PRODUCTION_ROUTE && elapsedMs >= shotIndex * (SAMPLE_MS / 2)) {
+      const shotPath = path.join(OUT, `t${String(shotIndex).padStart(2, '0')}.png`);
+      await captureCanvasFrame(page, shotPath, elapsedMs).catch((err) => log(`screenshot failed: ${err}`));
+      if (shotIndex === 0) {
+        await captureComposedFrame(page, path.join(OUT, 't00-composed.png'), elapsedMs)
+          .catch((err) => log(`composed screenshot failed: ${err}`));
+      }
+      shotIndex += 1;
+    }
+    await page.waitForTimeout(SAMPLE_EVERY_MS);
+  }
+  if (TETHER_STRESS) {
+    await writeFile(path.join(OUT, 'tether-motion.json'), JSON.stringify(snapshots, null, 2));
+    try {
+      const tetherEvents = await page.evaluate(() => window.__SF_TETHER_EVENTS__ || []);
+      await writeFile(path.join(OUT, 'tether-events.json'), JSON.stringify(tetherEvents, null, 2));
+    } catch (_) { /* event recorder is best-effort */ }
+    if (censusResult) {
+      await writeFile(path.join(OUT, 'draw-census.json'), JSON.stringify(censusResult, null, 2));
+    }
+    // Per-frame trace: presented fence clock, playout delay/depth/rate, pack time, player pose,
+    // lane reply/step cost. This is the evidence that distinguishes a fence pin from a worker
+    // stall or a mesh-writer bug.
+    try {
+      const frameTruth = await page.evaluate(() => (
+        window.__SF_FRAME_TRUTH__ && typeof window.__SF_FRAME_TRUTH__.exportJSON === 'function'
+          ? window.__SF_FRAME_TRUTH__.exportJSON({ note: 'tether-stress' })
+          : null
+      ));
+      if (frameTruth) {
+        await writeFile(path.join(OUT, 'frame-truth.json'), JSON.stringify(frameTruth));
+      }
+    } catch (error) {
+      log(`frame-truth export failed: ${error && error.message}`);
+    }
+  }
+  // A one-off in-page question on the live flight scene ("what is that object?"), asked after the
+  // sample so it cannot perturb the measured window. Printed and kept in the report.
+  if (process.env.SPACEFACE_WITNESS_EVAL) {
+    // A string expression goes through CDP Runtime.evaluate, which the page CSP does not gate.
+    const source = `(async () => { try { return JSON.stringify(await (${process.env.SPACEFACE_WITNESS_EVAL}), null, 1); }`
+      + ' catch (error) { return "EVAL_ERROR: " + (error && error.stack || error); } })()';
+    evalResult = await page.evaluate(source).catch((error) => `EVAL_FAILED: ${error && error.message}`);
+    log(`eval: ${evalResult}`);
+  }
+  if (traceCdp) {
+    try {
+      const done = new Promise((resolve) => traceCdp.once('Tracing.tracingComplete', resolve));
+      await traceCdp.send('Tracing.end');
+      await Promise.race([done, new Promise((resolve) => setTimeout(resolve, 30_000))]);
+      await writeFile(path.join(OUT, 'flight.trace.json'), JSON.stringify({ traceEvents }));
+      timelineTrace = summarizeTimelineTrace(traceEvents);
+      log(`timeline-trace: ${traceEvents.length} events; main thread pid ${timelineTrace.pid} tid ${timelineTrace.tid}`);
+      for (const row of timelineTrace.topSelf.slice(0, 25)) log(`  trace ${row.ms} ms  x${row.count}  ${row.name}`);
+    } catch (error) {
+      log(`timeline-trace: end failed (${error && error.message})`);
+    }
+  }
+  await stopCpuProfile();
+  if (GC_PROBE) {
+    const before = await page.evaluate(() => {
+      const m = performance.memory;
+      return m ? Math.round(m.usedJSHeapSize / 1048576) : null;
+    }).catch(() => null);
+    let collected = false;
+    try {
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send('HeapProfiler.collectGarbage');
+      collected = true;
+    } catch (error) {
+      log(`gc-probe: collectGarbage unavailable (${error && error.message})`);
+    }
+    await page.waitForTimeout(1500);
+    const after = await page.evaluate(() => {
+      const m = performance.memory;
+      return m ? Math.round(m.usedJSHeapSize / 1048576) : null;
+    }).catch(() => null);
+    gcProbe = { collected, beforeMb: before, afterMb: after };
+    log(`gc-probe: collected=${collected} heap ${before} MB -> ${after} MB`);
+  }
+  if ((ALLOC_PROBE || ALLOC_PROBE_BOOT) && allocCdp) {
+    try {
+      const { profile } = await allocCdp.send('HeapProfiler.stopSampling');
+      const rows = [];
+      const walk = (node) => {
+        const f = node.callFrame || {};
+        if (Number(node.selfSize) > 0) {
+          rows.push({
+            fn: String(f.functionName || '(anonymous)'),
+            url: String(f.url || '').split('/').slice(-1)[0] + ':' + (f.lineNumber + 1),
+            bytes: Number(node.selfSize) || 0,
+          });
+        }
+        for (const child of node.children || []) walk(child);
+      };
+      walk(profile.head);
+      const merged = new Map();
+      for (const row of rows) {
+        const key = `${row.fn} @ ${row.url}`;
+        merged.set(key, (merged.get(key) || 0) + row.bytes);
+      }
+      allocProfile = {
+        totalMb: Math.round([...merged.values()].reduce((a, b) => a + b, 0) / 1048576),
+        top: [...merged.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25)
+          .map(([site, bytes]) => ({ site, mb: +(bytes / 1048576).toFixed(1) })),
+      };
+      log(`alloc-probe: ${allocProfile.totalMb} MB sampled`);
+      for (const row of allocProfile.top.slice(0, 20)) log(`  alloc ${row.mb} MB  ${row.site}`);
+    } catch (error) {
+      log(`alloc-probe: stopSampling failed (${error && error.message})`);
+    }
+  }
+  hostLoad = snapshotHostLoadEnd(hostLoadStart);
+  const finalPerfReport = await page.evaluate(() => window.SF.state.perfRuntime.getReport());
+  finalHitchAttribution = finalPerfReport.hitchAttribution;
+  finalRenderWork = finalPerfReport.renderWork;
+  finalSystemTiming = finalPerfReport.systems;
+  if (PRODUCTION_ROUTE && productionRoutePreparation?.status === 'ready') {
+    productionRecorder = await stopProductionMatrixRecorder(page);
+  }
+  await page.keyboard.up('KeyW').catch(() => {});
+  await page.keyboard.up('ShiftLeft').catch(() => {});
+  if (!NO_SAMPLE_SHOTS) {
+    const finalShot = path.join(OUT, 't-final.png');
+    await captureCanvasFrame(page, finalShot, Date.now() - started).catch(() => {});
+  }
+  // The final composed frame is captured after the measured window (it cannot perturb the sample)
+  // and only once the hitch governor has returned to relief 0, so the sign-off picture is the
+  // authored post state, not a relief-2 fallback.
+  await page.waitForFunction(() => (Number(window.SF?.state?.render?.hitchReliefLevel) || 0) === 0,
+    null, { timeout: 6000 }).catch(() => {});
+  await captureComposedFrame(page, path.join(OUT, 't-final-composed.png'), Date.now() - started)
+    .catch(() => {});
+} catch (error) {
+  primaryError = error;
+  log(`probe failed: ${error && error.stack ? error.stack : error}`);
+} finally {
+  if (page && !page.isClosed()) startupRouteMarks = await page.evaluate(() => window.__SF_STARTUP_ROUTE_MARKS__ || null).catch(() => null);
+  await stopCpuProfile();
+  if (productionRecorder?.installed === true && page && !page.isClosed()) {
+    try { productionRecorder = await stopProductionMatrixRecorder(page); }
+    catch (error) { log(`production recorder cleanup failed: ${error.message || error}`); }
+  }
+  if (hostLoadStart && hostLoad.available !== true) {
+    hostLoad = snapshotHostLoadEnd(hostLoadStart);
+  }
+  await page?.keyboard.up('KeyW').catch(() => {});
+  await page?.keyboard.up('ShiftLeft').catch(() => {});
+  await page?.keyboard.up('KeyA').catch(() => {});
+  await page?.keyboard.up('BracketLeft').catch(() => {});
+  await page?.keyboard.up('ControlLeft').catch(() => {});
+  await page?.keyboard.up('Space').catch(() => {});
+  await page?.mouse.up({ button: 'left' }).catch(() => {});
+  if (page && OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC) {
+    const restored = await restoreOpeningFirstTouchOwnerWitness(page).catch(() => null);
+    if (restored) openingFirstTouchOwner = restored;
+    if (!openingFirstTouchOwner) {
+      openingFirstTouchOwner = {
+        enabled: true,
+        status: 'invalid',
+        errors: ['opening first-touch owner trace was unavailable during cleanup'],
+        restoration: { valid: false },
+      };
+    }
+    if (openingFirstTouchOwner?.status !== 'valid' && !primaryError && !cleanupError) {
+      cleanupError = new Error('Opening first-touch owner diagnostic failed closed: capture, conservation, or restoration invalid');
+    }
+  }
+  if (page && OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC) {
+    const restored = await restoreOpeningExactOwnerTouchWitness(page).catch(() => null);
+    if (restored) openingExactOwnerTouch = restored;
+    if (!openingExactOwnerTouch) {
+      openingExactOwnerTouch = {
+        enabled: true,
+        status: 'invalid',
+        errors: ['opening exact-owner touch trace was unavailable during cleanup'],
+        restoration: { hooks: false, renderState: false },
+      };
+    }
+    if (openingExactOwnerTouch?.status !== 'valid' && !primaryError && !cleanupError) {
+      cleanupError = new Error('Opening exact-owner touch diagnostic failed closed: owner split, conservation, or restoration invalid');
+    }
+  }
+  if (page && opaqueBatchDiagnostic?.applied === true) {
+    const restored = await page.evaluate((previous) => {
+      const renderSystem = window.SF?.registry?.get?.('render');
+      if (!renderSystem || typeof renderSystem._opaqueBatchEnabled !== 'boolean') return false;
+      renderSystem._opaqueBatchEnabled = previous;
+      return renderSystem._opaqueBatchEnabled === previous;
+    }, opaqueBatchDiagnostic.previous).catch(() => false);
+    opaqueBatchDiagnostic.restored = restored === true;
+    if (!opaqueBatchDiagnostic.restored && !cleanupError) {
+      cleanupError = new Error('Runtime witness failed to restore the opaque batch diagnostic');
+    }
+  }
+  if (page && NO_SUBMIT_DIAGNOSTIC && noSubmitDiagnostic?.applied === true) {
+    const restored = await restoreNoSubmitDiagnostic(page).catch(() => null);
+    noSubmitDiagnostic = restored || { applied: true, restored: false };
+    if (noSubmitDiagnostic.restored !== true && !cleanupError) {
+      cleanupError = new Error('Runtime witness failed to restore the no-submit diagnostic');
+    }
+  }
+  if (page && shadowDiagnostic?.applied === true) {
+    const restored = await page.evaluate((previous) => {
+      const sf = window.SF;
+      const video = sf?.state?.settings?.video;
+      if (!sf?.bus || !video) return false;
+      video.shadows = previous;
+      sf.bus.emit('settings:changed', {
+        section: 'video',
+        key: 'shadows',
+        value: previous,
+        diagnostic: true,
+      });
+      return video.shadows === previous;
+    }, shadowDiagnostic.previous).catch(() => false);
+    shadowDiagnostic.restored = restored === true;
+    if (!shadowDiagnostic.restored && !cleanupError) {
+      cleanupError = new Error('Runtime witness failed to restore isolated shadow settings');
+    }
+  }
+  if (page && probeInstrumentation?.available === true) {
+    const restoredState = await page.evaluate((previous) => {
+      const perf = window.SF?.state?.perfRuntime;
+      perf?.setRenderWorkEnabled?.(previous.renderWorkEnabled === true);
+      perf?.setHitchAttributionEnabled?.(previous.hitchAttributionEnabled === true);
+      perf?.setSimAttributionEnabled?.(previous.simAttributionEnabled === true);
+      perf?.setSystemTimingEnabled?.(previous.systemTimingEnabled === true);
+      if (previous.restoreSystemTimingFullCoverage === true) {
+        perf?.setSystemTimingFullCoverage?.(previous.systemTimingFullCoverage === true);
+      }
+      return {
+        renderWorkEnabled: perf?.renderWorkEnabled === true,
+        hitchAttributionEnabled: perf?.hitchAttributionEnabled === true,
+        systemTimingEnabled: perf?.systemTimingEnabled === true,
+        systemTimingFullCoverage: perf?.systemTimingFullCoverage === true,
+      };
+    }, {
+      renderWorkEnabled: probeInstrumentation.previousRenderWorkEnabled,
+      hitchAttributionEnabled: probeInstrumentation.previousHitchAttributionEnabled,
+      simAttributionEnabled: probeInstrumentation.previousSimAttributionEnabled,
+      systemTimingEnabled: probeInstrumentation.previousSystemTimingEnabled,
+      systemTimingFullCoverage: probeInstrumentation.previousSystemTimingFullCoverage,
+      restoreSystemTimingFullCoverage: FULL_SYSTEM_TIMING,
+    }).catch(() => null);
+    probeInstrumentation.restored = !!restoredState
+      && restoredState.renderWorkEnabled === probeInstrumentation.previousRenderWorkEnabled
+      && restoredState.hitchAttributionEnabled === probeInstrumentation.previousHitchAttributionEnabled
+      && restoredState.systemTimingEnabled === probeInstrumentation.previousSystemTimingEnabled
+      && (!FULL_SYSTEM_TIMING
+        || restoredState.systemTimingFullCoverage === probeInstrumentation.previousSystemTimingFullCoverage);
+    if (probeInstrumentation.restored !== true && !cleanupError) {
+      cleanupError = new Error('Runtime witness failed to restore bounded performance instrumentation');
+    }
+  }
+  if (app) {
+    try {
+      cleanupReport = await closeOwnedElectronRuntime({
+        page,
+        electronApp: app,
+        childProcess,
+        canonicalUrlTracker,
+        processMonitor,
+        rootUrl,
+      });
+      if (cleanupReport?.pass !== true) {
+        cleanupError = new Error(`Electron cleanup failed: ${(cleanupReport?.failures || []).join('; ')}`);
+      }
+    } catch (error) {
+      cleanupError = error;
+    }
+  }
+  if (launch && typeof launch.cleanup === 'function' && cleanupReport?.pass === true) {
+    try { launch.cleanup({ runtimeClosed: true }); } catch (error) { cleanupError = error; }
+  }
+}
+
+const moving = snapshots.filter((row) => !row.evaluateError);
+const canvasHashes = canvasFrames.map((frame) => frame.hash);
+const runtimeVerdict = classifyRuntimeWitness(moving, { canvasHashes });
+const openingFirstTouchOwnerInvalid = OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC
+  && openingFirstTouchOwner?.status !== 'valid';
+const openingExactOwnerTouchInvalid = OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC
+  && openingExactOwnerTouch?.status !== 'valid';
+const diagnosticInvalidity = {};
+if (openingFirstTouchOwnerInvalid) {
+  diagnosticInvalidity.openingFirstTouchOwner = {
+    status: openingFirstTouchOwner?.status || 'missing',
+    expected: 'valid',
+    reason: 'opening-first-touch-owner-invalid',
+  };
+}
+if (openingExactOwnerTouchInvalid) {
+  diagnosticInvalidity.openingExactOwnerTouch = {
+    status: openingExactOwnerTouch?.status || 'missing',
+    expected: 'valid',
+    reason: 'opening-exact-owner-touch-invalid',
+  };
+}
+const verdict = (openingFirstTouchOwnerInvalid || openingExactOwnerTouchInvalid)
+  ? {
+      ...runtimeVerdict,
+      ok: false,
+      diagnosticInvalidity,
+    }
+  : runtimeVerdict;
+const tableCensus = summarizeTableCensus(moving);
+const firstMoving = moving[0] || null;
+const lastMoving = moving[moving.length - 1] || null;
+const hitchAttribution = finalHitchAttribution || {
+  frames: 0,
+  hitches: 0,
+  named: 0,
+  unknown: 0,
+  firstHitches: 0,
+  echoHitches: 0,
+  longestStreak: 0,
+  coverage: 0,
+  counts: {},
+};
+const bloomPhases = Object.fromEntries(BLOOM_PHASE_LABELS.map((label) => [
+  label,
+  finalRenderWork?.[label] || null,
+]));
+const route = {
+  ...routeInfo,
+  opaqueBatchDiagnostic,
+  noSubmitDiagnostic,
+  shadowDiagnostic,
+  seed: FIXED_SEED,
+  sampleMs: SAMPLE_MS,
+  sampleEveryMs: SAMPLE_EVERY_MS,
+  noSampleShots: NO_SAMPLE_SHOTS,
+  simDelta: (Number(lastMoving?.simTime) || 0) - (Number(firstMoving?.simTime) || 0),
+  executedFrameDelta: (Number(lastMoving?.executedFrames) || 0) - (Number(firstMoving?.executedFrames) || 0),
+  instrumentation: probeInstrumentation,
+};
+// Read before the markdown is assembled: the report template consumes it.
+// Taken off the last sample rather than a separate page.evaluate: the probe drives more than one
+// page handle, and reading from the wrong one silently reported "not captured" for a whole 4-run
+// A/B. The sample already comes from the page being measured.
+const lastSnapshot = snapshots[snapshots.length - 1] || {};
+const longTaskWitness = lastSnapshot.longTasks
+  ? {
+    ...lastSnapshot.longTasks,
+    heavyResources: lastSnapshot.heavyResources || [],
+    jsHeapSeries: snapshots.filter((_, i) => i % 8 === 0).map((x) => (x.jsHeap ? x.jsHeap.usedMb : '?')),
+    economySeries: snapshots.filter((_, i) => i % 8 === 0).map((x) => (x.economy ? `${x.economy.stations}s/${x.economy.listings}L/${x.economy.historyPoints}p` : '?')),
+    geometrySeries: snapshots.filter((_, i) => i % 8 === 0).map((x) => (x.gpuResidency ? x.gpuResidency.geometries : '?')),
+    textureSeries: snapshots.filter((_, i) => i % 8 === 0).map((x) => (x.gpuResidency ? x.gpuResidency.textures : '?')),
+  }
+  : null;
+const productionMatrix = PRODUCTION_ROUTE
+  ? (productionRoutePreparation?.status === 'ready'
+    ? summarizeRuntimeWitnessProductionWindow({
+      route: PRODUCTION_ROUTE,
+      samples: productionRecorder?.samples || [],
+      gpuReport: productionRecorder?.gpuReport || null,
+      inputToPhotonReport: productionRecorder?.inputToPhotonReport || null,
+      manifest: productionRouteManifest || productionManifest(PRODUCTION_ROUTE),
+    })
+    : {
+      schema: 'spaceface.runtimeWitness.productionMatrix.v1',
+      status: 'unavailable',
+      route: PRODUCTION_ROUTE,
+      manifest: productionManifest(PRODUCTION_ROUTE),
+      reason: productionRoutePreparation?.reason || 'public route driver unavailable',
+    })
+  : null;
+if (primaryError && productionMatrix?.status === 'measured') {
+  productionMatrix.status = 'partial';
+  productionMatrix.reason = String(primaryError.message || primaryError);
+}
+const markdown = `${formatRuntimeWitnessReport({
+  verdict,
+  samples: moving,
+  canvasHashes,
+  consoleHits,
+  pageErrors,
+  gpu,
+  })}${formatHostLoadSection(hostLoad)}${formatLoadingReadinessSection(loadingProgressEvents, loadingReadinessSamples)}${formatOpeningRenderWorkSection(openingRenderWork)}${formatOpeningFirstTouchOwnerSection(openingFirstTouchOwner)}${formatOpeningExactOwnerTouchSection(openingExactOwnerTouch)}${formatNoSubmitDiagnosticSection(noSubmitDiagnostic, hitchAttribution)}${formatTableCensusSection(tableCensus, route)}${formatSectorTransitionSection(sectorTransitionTrace)}${formatHitchAttributionSection(hitchAttribution, route)}${formatLongTaskSection(longTaskWitness)}${formatBloomPhaseSection(bloomPhases)}${formatSystemTimingSection(finalSystemTiming)}${productionMatrix ? `\n${formatRuntimeWitnessProductionMatrix(productionMatrix)}\n` : '\n'}`;
+const report = {
+  schema: 'spaceface.runtimeWitness.probe.v1',
+  longTaskWitness,
+  gcProbe,
+  allocProfile,
+  cpuProfile,
+  timelineTrace,
+  evalResult,
+  verdict,
+  sampleCount: snapshots.length,
+  first: snapshots[0] || null,
+  last: snapshots[snapshots.length - 1] || null,
+  canvasFrames,
+  composedFrames,
+  pageErrors,
+  consoleHits,
+  logs,
+  gpu,
+  route,
+  loadingReadiness: {
+    events: loadingProgressEvents,
+    samples: loadingReadinessSamples,
+  },
+  startupRoute: alignStartupRouteMarks(startupRouteMarks, loadingProgressEvents, loadingReadinessSamples),
+  openingRenderWork,
+  openingFirstTouchOwner,
+  openingExactOwnerTouch,
+  noSubmitDiagnostic,
+  sectorTransition: sectorTransitionTrace,
+  tableCensus,
+  hitchAttribution,
+  hostLoad,
+  bloomPhases,
+  systemTiming: finalSystemTiming,
+  productionMatrix,
+  error: primaryError ? String(primaryError && primaryError.stack || primaryError) : null,
+  cleanupError: cleanupError ? String(cleanupError && cleanupError.stack || cleanupError) : null,
+};
+await writeFile(path.join(OUT, 'report.json'), JSON.stringify(report, null, 2));
+await writeFile(path.join(OUT, 'report.md'), markdown);
+if (productionMatrix) {
+  await writeFile(path.join(OUT, `production-matrix-${productionMatrix.route.id}.json`), JSON.stringify(productionMatrix, null, 2));
+}
+log(markdown);
+log(`report ${path.join(OUT, 'report.md')}`);
+
+if (primaryError || cleanupError) process.exitCode = 1;
+else if (verdict.ok !== true) process.exitCode = 2;

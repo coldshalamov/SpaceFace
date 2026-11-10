@@ -1,0 +1,108 @@
+{
+  "assetId": "terminal_cap",
+  "category": "structure",
+  "description": "terminal cap",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_structure.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_FRAME",
+      "position": [
+        -0.25,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        -1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.0,
+          -0.0
+        ],
+        "size": [
+          0.4,
+          1.6,
+          1.6
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "modular",
+    "reusable",
+    "Forge",
+    "attachment-metadata",
+    "library-only"
+  ],
+  "bounds": {
+    "min": [
+      -0.3450000584125519,
+      -0.8149999380111694,
+      -0.8149999380111694
+    ],
+    "max": [
+      0.4625000059604645,
+      0.8149999380111694,
+      0.8149999380111694
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "terminal_cap_lod0.glb",
+      "triangles": 1476,
+      "draws": 5,
+      "bytes": 320996,
+      "method": "source",
+      "sha256": "d155c7c4cf73fe818abc8393cd0526fc8080140eddc86bd1d14ce594c4ca83d4"
+    },
+    {
+      "level": 1,
+      "file": "terminal_cap_lod1.glb",
+      "triangles": 1284,
+      "draws": 5,
+      "bytes": 309876,
+      "method": "authored-topology",
+      "sha256": "c61b6bd438fc7385c7775fb55dd4d06b73a2dbbecb65ee258d6ffa150fcd96b0"
+    },
+    {
+      "level": 2,
+      "file": "terminal_cap_lod2.glb",
+      "triangles": 1108,
+      "draws": 5,
+      "bytes": 293844,
+      "method": "authored-topology",
+      "sha256": "438360ac241129e661bef064fb8592fd13519f1865a7cd18b4fc50d73b654c00"
+    }
+  ]
+}

@@ -1,0 +1,401 @@
+/* ============================================================================================
+ * fh.css -- the Field Hardware component layer, PRINTED.
+ *
+ * OWNER RULING 2026-09-22: "free of any common CSS anti-patterns of old internet (mostly when CSS
+ * is pretending to be physical materials, it looks awful and we need either custom or downloaded
+ * assets for a lot of things)". design/frontend/ONE_PHOTOGRAPH.md sections 0 and 9.
+ *
+ * This file has been through three doctrines in one day, and the history is the lesson:
+ *   1. PRODUCED BITMAPS. Every key, plate and window was a nine-sliced Cycles render. keys/
+ *      key.legend.rest.png is 160x40 and was stretched across every station tab; on a HiDPI
+ *      display every control in the game was a bitmap upsampled 2x -- the owner's "smudges".
+ *   2. COMPUTED MATERIAL. The bitmaps became gradients: a lit top rule, a dark sill and a seat
+ *      shadow standing in for a moulded cap, plus a paint worklet grinding a brushed face. Sharp at
+ *      any size -- and exactly the CSS-pretending-to-be-metal the owner then named as the problem.
+ *   3. PRINTED AND LIT (now). A surface is a flat field; a control you can press has the cut (one
+ *      45deg chamfer, top-right) and lights on that edge; a tab is a word on a rail; the one
+ *      consequential verb IS the lamp. Where the interface wants an OBJECT -- a hull, a crest, a
+ *      commodity -- it is produced art at the size it is shown, never CSS.
+ * The Cycles renders stay on disk as reference; nothing here may reference them.
+ *
+ * Requires: tokens/tokens.css (custom properties), the Deckplate tokens (--dp-*), motion.css.
+ *
+ * --------------------------------------------------------------------------------------------
+ * CLASS INDEX (names are stable)
+ *
+ *  SURFACES   .fh-plate [--raised --sunk --paper --edge]   .fh-window [--deep --viewport]
+ *             .fh-rail   .fh-row [.is-selected]            .fh-hairline
+ *  TYPE       .fh-name .fh-hero .fh-title .fh-heronum .fh-menu-item .fh-subhead
+ *             .fh-body .fh-emphasis .fh-data .fh-fine .fh-legend
+ *  CONTROLS   .fh-key [--primary --secondary --hazard --legend --small]  .fh-stepper  .fh-input
+ *  INDICATORS .fh-light[data-colour][data-level]
+ *  CONTENT    .fh-tile .fh-icon .fh-mark .fh-crest
+ *  STATE      [data-fh-lit=on|rest|off]  [data-fh-temp=docked|wanted|crucible]  :focus-visible
+ * Retired with their bitmaps (no screen used them): socket, toggle, slider, scroll, bar, gauge,
+ * radar, badge, tape, strip, tag, objective, grain, hazard.
+ * ============================================================================================ */
+
+/* ---------------------------------------------------------------- foundations */
+
+@font-face {
+  font-family: 'Archivo';
+  src: url('fonts/archivo-var-latin-standard-normal.woff2') format('woff2');
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Instrument Sans';
+  src: url('fonts/instrument-sans-var.woff2') format('woff2');
+  font-weight: 400 700;
+  font-display: block;
+}
+
+.fh-root,
+body.fh-root {
+  background: var(--fh-ground);
+  color: var(--fh-text);
+  font-family: var(--fh-face-text);
+  font-size: var(--fh-size-body);
+  line-height: var(--fh-lh-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------------------------------------------------------------- surfaces
+ *
+ * A surface is a printed field: one flat colour. Its border keeps the width the kit laid out with,
+ * transparent, so no content box moves -- the field simply runs to the outer edge.
+ */
+
+.fh-plate {
+  padding: var(--fh-space-l);
+  box-sizing: border-box;
+  color: var(--fh-text);
+  border: 24px solid transparent;
+  background: var(--dp-field);
+  box-shadow: none;
+}
+.fh-plate--raised { background: var(--dp-field); }
+.fh-plate--sunk   { background: var(--dp-field); }
+.fh-plate--paper  { color: #22201C; background: #e2dccd; box-shadow: none; }
+.fh-plate--edge {
+  padding: var(--fh-space-m);
+  border: 16px solid transparent;
+  background: var(--dp-field);
+  box-shadow: none;
+}
+
+/* A window: the field, a little deeper. No specular band, no lit rim -- there is no glass. */
+.fh-window {
+  border: 0;
+  border-radius: 0;
+  padding: var(--fh-space-l);
+  box-sizing: border-box;
+  background: var(--dp-field);
+  box-shadow: none;
+}
+.fh-window--deep { background: rgb(5 7 10 / .92); }
+/* The viewport is the chosen window: a lamp bar on its leading edge. */
+.fh-window--viewport { background: linear-gradient(90deg, var(--dp-lamp) 2px, transparent 0), var(--dp-field); }
+
+/* The legend rail: a hairline, not a bar of stock. */
+.fh-rail {
+  box-sizing: border-box;
+  border: 16px solid transparent;
+  background: linear-gradient(90deg, transparent calc(50% - .5px), var(--dp-rule-hi) 0 calc(50% + .5px), transparent 0);
+  box-shadow: none;
+}
+
+/* A row. Selected rows carry the lamp on the leading edge over a faint ink field. */
+.fh-row {
+  display: flex;
+  align-items: center;
+  gap: var(--fh-space-m);
+  padding: var(--fh-space-s) var(--fh-space-l);
+  border: 0;
+  background: transparent;
+  color: var(--fh-text-resting);
+  min-height: 40px;
+  box-sizing: border-box;
+}
+.fh-row.is-selected {
+  color: var(--fh-text);
+  border-style: solid;
+  border-color: transparent;
+  border-width: 8px 16px;
+  background: linear-gradient(90deg, var(--dp-lamp) 2px, transparent 0) border-box, linear-gradient(var(--dp-field-ink) 0 0) border-box;
+  box-shadow: none;
+}
+.fh-hairline { height: 1px; background: var(--dp-rule); }
+
+/* ---------------------------------------------------------------- type */
+
+.fh-name, .fh-hero, .fh-title, .fh-heronum, .fh-menu-item, .fh-subhead, .fh-legend {
+  font-family: var(--fh-face-display);
+  letter-spacing: var(--fh-track-display);
+  line-height: var(--fh-lh-display);
+  font-variation-settings: 'wght' 900, 'wdth' 125;
+  text-transform: uppercase;
+  margin: 0;
+}
+.fh-name    { font-size: var(--fh-size-name); }
+.fh-hero    { font-size: var(--fh-size-hero); }
+.fh-title   { font-size: var(--fh-size-screenTitle); }
+.fh-heronum { font-size: var(--fh-size-heroNum); font-variant-numeric: tabular-nums;
+              font-variation-settings: 'wght' 800, 'wdth' 125; }
+.fh-menu-item { font-size: var(--fh-size-menu); font-variation-settings: 'wght' 800, 'wdth' 125;
+                color: var(--fh-text-resting); }
+.fh-menu-item.is-focused  { color: var(--fh-text); }
+.fh-menu-item[aria-disabled='true'] { color: var(--fh-text-tertiary); }
+.fh-subhead { font-size: var(--fh-size-subhead); font-variation-settings: 'wght' 800, 'wdth' 125; }
+
+/* The backlit legend: condensed, tracked, and lit by LEVEL rather than by colour swap.
+ *
+ * The level is an ALPHA on the light, not a mix toward another ink. Mixing amber 45 % with
+ * 55 % bone produces a bright warm grey — a *different colour*, which is exactly the colour
+ * swap §4 forbids. A backlight at 45 % is the same amber, dimmer, with the plate showing
+ * through it: that is what the frames paint and what the contrast table measured. */
+.fh-legend {
+  font-size: var(--fh-size-fine);
+  font-variation-settings: 'wght' 600, 'wdth' 62;
+  letter-spacing: var(--fh-track-legend);
+  color: color-mix(in srgb, var(--fh-legend-now, var(--fh-legend))
+                   calc(var(--fh-lit-level, 0.45) * 100%), transparent);
+}
+.fh-legend[data-fh-lit='off'] { color: var(--fh-text-tertiary); }
+
+.fh-body     { font-family: var(--fh-face-text); font-size: var(--fh-size-body);
+               max-width: var(--fh-measure); }
+.fh-emphasis { font-family: var(--fh-face-text); font-weight: 500;
+               font-size: var(--fh-size-emphasis); }
+.fh-data     { font-family: var(--fh-face-text); font-weight: 500;
+               font-size: var(--fh-size-data); font-variant-numeric: tabular-nums;
+               text-align: right; }
+.fh-fine     { font-family: var(--fh-face-text); font-size: var(--fh-size-fine);
+               color: var(--fh-text-resting); }
+
+/* ---------------------------------------------------------------- controls
+ *
+ * A key is a ghost field with the cut. The cut is painted by the fill (not clip-path), so a lit
+ * key can still throw its glow past its edge. --fhk-fill carries the state.
+ */
+
+.fh-key {
+  --fhk-fill: var(--dp-field-ink);
+  --fhk-cut: none;
+  border: 0;
+  border-radius: 0;
+  background:
+    var(--fhk-cut),
+    linear-gradient(225deg, transparent calc(var(--dp-cut) * .7071), var(--fhk-fill) 0);
+  box-shadow: none;
+  color: var(--fh-text);
+  font-family: var(--fh-face-display);
+  font-variation-settings: "wght" 700, "wdth" 92;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  font-size: var(--fh-size-fine);
+  min-height: 56px;
+  min-width: 120px;
+  padding: 0 calc(var(--dp-cut) + var(--fh-space-xl)) 0 var(--fh-space-xl);
+  cursor: pointer;
+  box-sizing: border-box;
+  text-shadow: none;
+}
+.fh-key:hover { --fhk-fill: var(--dp-field-ink-hi); --fhk-cut: var(--dp-cut-lit); }
+.fh-key:active { --fhk-fill: rgb(232 226 212 / .05); }
+.fh-key:disabled,
+.fh-key[aria-disabled="true"] {
+  --fhk-fill: rgb(232 226 212 / .04);
+  --fhk-cut: none;
+  color: var(--fh-text-tertiary);
+  cursor: default;
+}
+
+/* PRIMARY is consequence: pressing it changes the world, so the field IS the lamp. */
+.fh-key--primary {
+  --fhk-fill: var(--dp-lamp);
+  color: #1a1206;
+  font-variation-settings: "wght" 800, "wdth" 100;
+}
+.fh-key--primary:hover { --fhk-fill: var(--dp-lamp-hot); --fhk-cut: none; box-shadow: var(--dp-lamp-glow); }
+.fh-key--primary:active { --fhk-fill: var(--dp-lamp-dim); }
+.fh-key--primary:disabled {
+  --fhk-fill: transparent;
+  background: linear-gradient(0deg, var(--dp-lamp-dim) 1px, transparent 0);
+  color: var(--fh-text-tertiary);
+}
+
+/* HAZARD: bone at rest with a red rule along the bottom; red arrives with intent. */
+.fh-key--hazard {
+  background:
+    var(--fhk-cut),
+    linear-gradient(0deg, var(--dp-danger) 2px, transparent 0),
+    linear-gradient(225deg, transparent calc(var(--dp-cut) * .7071), var(--fhk-fill) 0);
+}
+.fh-key--hazard:hover { --fhk-fill: var(--dp-danger); --fhk-cut: none; color: #1a0806; box-shadow: 0 0 18px rgb(255 80 56 / .38); }
+.fh-key--hazard:disabled { color: var(--fh-text-tertiary); }
+
+/* LEGEND IS NOT A KEY. A filter or a tab changes what you are LOOKING at, never the world, so it
+ * carries no field and no cut: it is a word that lights, with one lamp bar beneath it. This is the
+ * class the station dock and the market filters wear -- the most-seen control in the game. */
+.fh-key--legend {
+  position: relative;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  text-shadow: none;
+  min-height: 40px;
+  min-width: 0;
+  padding: 0 14px;
+  font-variation-settings: "wght" 560, "wdth" 78;
+  color: var(--fh-text-resting);
+  transition: color 160ms ease, font-variation-settings 160ms ease;
+}
+.fh-key--legend::after {
+  content: "";
+  position: absolute; left: 50%; translate: -50% 0; bottom: 0;
+  height: 2px; width: 0;
+  background: var(--fh-legend, #f2b950);
+  box-shadow: 0 0 10px rgb(242 185 80 / .5);
+  transition: width 200ms ease;
+  pointer-events: none;
+}
+.fh-key--legend:hover {
+  background: none;
+  color: var(--fh-text);
+  font-variation-settings: "wght" 640, "wdth" 86;
+}
+.fh-key--legend:hover::after {
+  width: 34%; background: currentColor; box-shadow: none; opacity: .45;
+}
+.fh-key--legend[aria-selected="true"],
+.fh-key--legend[aria-pressed="true"],
+.fh-key--legend.is-lit {
+  background: none;
+  box-shadow: none;
+  color: var(--fh-text);
+  font-variation-settings: "wght" 760, "wdth" 100;
+}
+.fh-key--legend[aria-selected="true"]::after,
+.fh-key--legend[aria-pressed="true"]::after,
+.fh-key--legend.is-lit::after {
+  width: 100%; opacity: 1;
+  background: var(--fh-legend, #f2b950);
+  box-shadow: 0 0 12px rgb(242 185 80 / .45);
+}
+.fh-key--legend:disabled,
+.fh-key--legend[aria-disabled="true"] {
+  background: none; box-shadow: none; color: var(--fh-text-tertiary); cursor: default;
+}
+.fh-key--legend:disabled::after { width: 0; }
+
+/* SMALL -- an adjuster you press repeatedly (quantity, steppers): the same key, compact. */
+.fh-key--small {
+  min-height: 36px;
+  min-width: 0;
+  padding: 0 calc(var(--dp-cut) + var(--fh-space-l)) 0 var(--fh-space-l);
+}
+
+/* A stepper reads its value in phosphor between its two keys. */
+.fh-stepper { display: inline-flex; align-items: center; gap: var(--fh-space-xs); }
+.fh-stepper-well {
+  min-width: 160px; min-height: 44px;
+  display: grid; place-items: center;
+  font-family: var(--fh-face-text); font-variant-numeric: tabular-nums;
+  color: var(--dp-phos, #dfeeff);
+  border: 14px solid transparent;
+  background: linear-gradient(0deg, var(--dp-rule-hi) 2px, transparent 0) border-box;
+  box-shadow: none;
+}
+
+/* An input is words on a rail; focus lights the rail. */
+.fh-input {
+  color: var(--fh-text);
+  font-family: var(--fh-face-text); font-size: var(--fh-size-body);
+  min-height: 40px; padding: 0 var(--fh-space-m); box-sizing: border-box;
+  border: 12px solid transparent;
+  background: linear-gradient(0deg, var(--dp-rule-hi) 2px, transparent 0) border-box;
+  box-shadow: none;
+}
+.fh-input:focus-visible { background: linear-gradient(0deg, var(--dp-lamp) 2px, transparent 0) border-box; }
+.fh-input[aria-invalid="true"] { background: linear-gradient(0deg, var(--dp-danger) 2px, transparent 0) border-box; }
+
+/* ---------------------------------------------------------------- indicators */
+
+/* A status light is a flat emitted bead, not a photographed lens. */
+.fh-light {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--fh-legend, #f2b950);
+  box-shadow: 0 0 8px rgb(242 185 80 / .45);
+}
+.fh-light[data-colour="cold"]   { background: var(--dp-ink-dim, #c9c4b6); box-shadow: none; }
+.fh-light[data-colour="wanted"] { background: var(--dp-danger, #ff5038); box-shadow: 0 0 8px rgb(255 80 56 / .4); }
+.fh-light[data-colour="good"]   { background: var(--dp-ink, #e8e2d4); box-shadow: none; }
+.fh-light[data-level="dim"]     { opacity: .55; box-shadow: none; }
+.fh-light[data-level="off"]     { background: var(--dp-rule-hi, rgb(232 226 212 / .22)); box-shadow: none; }
+.fh-light--bar { width: 24px; height: 2px; border-radius: 0; }
+
+/* ---------------------------------------------------------------- content */
+
+/* A tile is a produced image on a printed field. Pressable, so it has the cut; chosen, its cut
+ * and its leading edge light. */
+.fh-tile {
+  border: 0; border-radius: 0;
+  background: var(--dp-field);
+  clip-path: var(--dp-cut-shape);
+  box-shadow: none;
+  display: grid; grid-template-rows: 1fr auto;
+  min-width: 168px; min-height: 132px; padding: 10px; cursor: pointer;
+  color: var(--fh-text-resting);
+  box-sizing: border-box;
+  transition: color 160ms ease;
+}
+.fh-tile:hover { color: var(--fh-text); background: linear-gradient(var(--dp-field-ink) 0 0), var(--dp-field); }
+.fh-tile[aria-selected="true"] {
+  background: var(--dp-cut-lit), linear-gradient(90deg, var(--dp-lamp) 2px, transparent 0), var(--dp-field);
+  color: var(--fh-text);
+}
+.fh-tile-art { display: grid; place-items: center; min-height: 78px; }
+.fh-tile-legend {
+  font-family: var(--fh-face-display); font-variation-settings: "wght" 600, "wdth" 62;
+  letter-spacing: var(--fh-track-legend); text-transform: uppercase;
+  font-size: var(--fh-size-fine); text-align: center; padding: var(--fh-space-xs) 0;
+}
+
+.fh-icon { width: 24px; height: 24px; display: inline-block; vertical-align: -0.15em;
+           fill: currentColor; }
+.fh-icon--32 { width: 32px; height: 32px; }
+.fh-icon--48 { width: 48px; height: 48px; }
+.fh-icon .accent, .fh-mark .accent, .fh-crest .accent { fill: var(--fh-legend); }
+.fh-mark  { width: 96px; height: 96px; fill: currentColor; }
+.fh-crest { width: 64px; height: 64px; fill: currentColor; }
+
+/* ---------------------------------------------------------------- focus
+ *
+ * Bone, never amber (amber means live). A tile is clipped to its cut, so its focus is drawn
+ * inside it as the leading bracket rather than as an outline the clip would cut away.
+ */
+
+:where(.fh-key, .fh-input, .fh-row, .fh-menu-item):focus-visible {
+  outline: 2px solid var(--fh-bone);
+  outline-offset: 2px;
+}
+.fh-tile:focus-visible { outline: 2px solid transparent; background: var(--dp-bracket), var(--dp-field); }
+@media (forced-colors: active) {
+  :where(.fh-key, .fh-tile, .fh-input):focus-visible {
+    outline: 3px solid Highlight;
+  }
+  .fh-tile { clip-path: none; }
+  .fh-icon, .fh-mark, .fh-crest { fill: CanvasText; }
+}
+
+/* ---------------------------------------------------------------- layout helpers */
+
+.fh-stack { display: flex; flex-direction: column; gap: var(--fh-space-m); }
+.fh-cluster { display: flex; gap: var(--fh-space-m); align-items: center; flex-wrap: wrap; }
+.fh-rows { display: flex; flex-direction: column; }
+.fh-screen { position: relative; width: 100%; height: 100%; overflow: hidden; }
+.fh-world { position: absolute; inset: 0; background-size: cover; background-position: center; }
+.fh-over { position: absolute; inset: 0; }

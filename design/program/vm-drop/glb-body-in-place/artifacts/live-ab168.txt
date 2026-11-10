@@ -1,0 +1,11 @@
+# Live A/B #168, interleaved, from-launch + 30 s held thrust (Picture ON, soft-GPU), bare master 97c88f92b vs #168 @ 03c406090
+# probe: xvfb-run -a node scripts/probe-main-thread-profile.mjs --from-launch --flight-ms=30000 --label=ab168-<lane>-<i>
+# lane = samples whose stack contains GLTFBinaryExtension (bursts.mjs, <=1 ms merge). Patched residual is the JSON-chunk TextDecoder + header only (under.mjs: no 'get body' frames = body never materialized).
+bare-1 GLTFBinaryExtension: bursts 36 total 147.2 | largest burst 20.2ms | get-body frames: 0 | resources observed (probe log): 96
+patch-1 GLTFBinaryExtension: bursts 1 total 0.6 | largest burst  | get-body frames: 0 | resources observed (probe log): 60
+bare-2 GLTFBinaryExtension: bursts 13 total 43.9 | largest burst 15.2ms | get-body frames: 0 | resources observed (probe log): 60
+patch-2 GLTFBinaryExtension: bursts 9 total 8.5 | largest burst 3.4ms | get-body frames: 0 | resources observed (probe log): 146
+bare-3 GLTFBinaryExtension: bursts 14 total 46.6 | largest burst 8.4ms | get-body frames: 0 | resources observed (probe log): 60
+patch-3 GLTFBinaryExtension: bursts 2 total 1.4 | largest burst  | get-body frames: 0 | resources observed (probe log): 92
+# Summary: lane 147.2 / 43.9 / 46.6 ms -> 0.6 / 8.5 / 1.4 ms (median 46.6 -> 1.4, ~33x; floor 43.9/8.5 = 5.2x; patch-2 streamed the most resources of all six runs).
+# Largest single body-copy burst on its frame: 20.2 / 15.2 / 8.4 ms -> none / 3.4 (JSON decode) / none.

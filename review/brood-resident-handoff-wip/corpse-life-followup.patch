@@ -1,0 +1,10 @@
+--- a/src/combat/broodSplitter.js
++++ b/src/combat/broodSplitter.js
+@@ -69,6 +69,7 @@
+     data: {
+       broodBodyId: parent.data.broodBodyId,
+       splitterResidue: true,
++      splitterCorpse: { sourceId: parent.id, sourceLife: parent.occupantGeneration },
+       runCohort: parent.data.runCohort,
+       runWave: parent.data.runWave,
+       salvagePool: {},

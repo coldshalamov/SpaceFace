@@ -1,0 +1,20 @@
+{
+  "name": "bounty-hunt-empty-quiet-latch",
+  "floors": 5,
+  "medians": [
+    5.088,
+    5.006,
+    5.187,
+    5.25,
+    4.908
+  ],
+  "mins": [
+    4.749,
+    4.053,
+    4.841,
+    4.287,
+    4.487
+  ],
+  "floorMinSpeedup": 4.053,
+  "floorMedianOfMedians": 5.088
+}

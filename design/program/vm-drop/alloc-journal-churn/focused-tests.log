@@ -1,0 +1,70 @@
+TAP version 13
+# Subtest: PresentationJournal publishes ordered scalar spawn, transform, visual, and destroy records
+ok 1 - PresentationJournal publishes ordered scalar spawn, transform, visual, and destroy records
+  ---
+  duration_ms: 3.411794
+  ...
+# Subtest: PresentationJournal coalesces same-tick transform and visual writes to their latest scalars
+ok 2 - PresentationJournal coalesces same-tick transform and visual writes to their latest scalars
+  ---
+  duration_ms: 1.150015
+  ...
+# Subtest: PresentationJournal coalescing preserves monotonic revisions across interleaved record kinds
+ok 3 - PresentationJournal coalescing preserves monotonic revisions across interleaved record kinds
+  ---
+  duration_ms: 0.995139
+  ...
+# Subtest: PresentationJournal advances generation when an entity ID is reused
+ok 4 - PresentationJournal advances generation when an entity ID is reused
+  ---
+  duration_ms: 1.026473
+  ...
+# Subtest: PresentationJournal retains explicit ranges across discard and ring wrap
+ok 5 - PresentationJournal retains explicit ranges across discard and ring wrap
+  ---
+  duration_ms: 0.956442
+  ...
+# Subtest: PresentationJournal overflow is explicit and a full rebuild republishes the alive set
+ok 6 - PresentationJournal overflow is explicit and a full rebuild republishes the alive set
+  ---
+  duration_ms: 0.97166
+  ...
+# Subtest: PresentationJournal rebuild failure stays diagnostic and does not throw into simulation
+ok 7 - PresentationJournal rebuild failure stays diagnostic and does not throw into simulation
+  ---
+  duration_ms: 0.784223
+  ...
+# Subtest: PresentationJournal detects tick rewind and impossible identity ordering as rebuild boundaries
+ok 8 - PresentationJournal detects tick rewind and impossible identity ordering as rebuild boundaries
+  ---
+  duration_ms: 0.599036
+  ...
+# Subtest: PresentationJournal publishes transform records only for changed poses
+ok 9 - PresentationJournal publishes transform records only for changed poses
+  ---
+  duration_ms: 0.831614
+  ...
+# Subtest: PresentationJournal terminal close drains retained records and rejects every late operation
+ok 10 - PresentationJournal terminal close drains retained records and rejects every late operation
+  ---
+  duration_ms: 1.569935
+  ...
+# Subtest: PresentationJournal coalesces cross-tick transforms while the prior record is retained
+ok 11 - PresentationJournal coalesces cross-tick transforms while the prior record is retained
+  ---
+  duration_ms: 0.759165
+  ...
+# Subtest: PresentationJournal cross-tick coalesce microbench stays under append-heavy baseline
+ok 12 - PresentationJournal cross-tick coalesce microbench stays under append-heavy baseline
+  ---
+  duration_ms: 18.102361
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 203.08518

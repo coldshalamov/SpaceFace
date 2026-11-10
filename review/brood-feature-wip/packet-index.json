@@ -1,0 +1,695 @@
+{
+  "status": "UNIMPORTED review-only technical candidate; all shown Brood art user-rejected/redesign-needed",
+  "upstreamBase": "dc142c0108ce7663bc03574349623c3fda1033fa",
+  "applyAfter": "Current entry/native/Ceres continuation; reconcile exact recorded preimages by content",
+  "defaultEnabled": false,
+  "packets": [
+    {
+      "order": 1,
+      "patch": "patches/01-01-first-three-behavior.patch",
+      "sha256": "b03b69660a7145998f4fda43f9bdfbca645f96e8042a4678a0f51a9f7fc5405e",
+      "title": "01-first-three-behavior",
+      "files": [
+        {
+          "path": "src/ai/combatDoctrine.js",
+          "beforeSha256": "73379f6a4ea66e5fb1caca281fdcad76e3b0f43875653684467efb6263edf49d",
+          "afterSha256": "64ec50c13fcdc42d5c5ace425f754ab50c1380ada59ac33c35f19ff9d3ea3baf"
+        },
+        {
+          "path": "src/ai/continuation.js",
+          "beforeSha256": null,
+          "afterSha256": "2f04b6a12bfe7d79df234dbba829620d49def0f028fb1a7edd144c70999a5646"
+        },
+        {
+          "path": "src/ai/contracts.js",
+          "beforeSha256": "033c45accca9dcf0342a18e31e9fa08e0397ae685acf02ec37a618c970468124",
+          "afterSha256": "1f6583dee6a2e452b03ca8190088883fd10eb3b47c3f427b91148ea27a64978d"
+        },
+        {
+          "path": "src/ai/engagementAuthority.js",
+          "beforeSha256": "51db08b093b6122f27ab0de4270c1700f44140eafea6172a5854e174e3342342",
+          "afterSha256": "c64c78df17bbb847b868fe8e7a315f5613e9486bf0163675bea7ac096be3d504"
+        },
+        {
+          "path": "src/ai/fodderCohort.js",
+          "beforeSha256": "c91c3c5f0bfd5c6f52e692414c1a2c6695031b114a9dea3606b61697cb14f7a2",
+          "afterSha256": "ab2a94e23fce8e9ad59d892dcd40bb291f0e8577fe73a73b10a3baadf46ed23f"
+        },
+        {
+          "path": "src/ai/maneuver.js",
+          "beforeSha256": "23a8116ca612b65f6cf8a9428f6d487ce8efdf4a2347caa8a1e54e1783c52b43",
+          "afterSha256": "84590d77689b6615caa53e5b0e984076549369aacdd8585374d6ccfd6827b1ab"
+        },
+        {
+          "path": "src/ai/perception.js",
+          "beforeSha256": "068469a259419e246b1300db4b788c1ad59740bd0393c3618883ca17f3bedb8e",
+          "afterSha256": "45eebbca1eeebb26cb6c9c6bde9aa469b046dc168b389febd539c7db6070f0e8"
+        },
+        {
+          "path": "src/combat/broodContact.js",
+          "beforeSha256": null,
+          "afterSha256": "76de05fce8d57183a6220967e48eec45884a0a60fd3f3618d8b5d9c68f2f1ee7"
+        },
+        {
+          "path": "src/combat/broodProjectile.js",
+          "beforeSha256": null,
+          "afterSha256": "0d8a8acbca7b5d77f68aa54b6d93c327e24b3c67da80c181550e3ead3d0098a7"
+        },
+        {
+          "path": "src/combat/geometry.js",
+          "beforeSha256": "33b24c2afba090f32f00b4fde670d01778fe34dc4288ea9f2bfda25d5a27d54b",
+          "afterSha256": "703e755e73b6c4ffb692e07c25e5b2f6ae4c488a7a95d417a81b083dd2d99d7d"
+        },
+        {
+          "path": "src/data/broodAttackProfiles.js",
+          "beforeSha256": null,
+          "afterSha256": "90141c4113b23fede6384e050e3aa811c32f1afc580eb3793d2a37229ab19985"
+        },
+        {
+          "path": "src/data/enemies.js",
+          "beforeSha256": "cbab3a029914ee9ee439139977e8372db59d84808fe574932e3b479a76f64f01",
+          "afterSha256": "8b88beebb9a3a9b357be4a643b984f43d644e16ab99ff4750a30d982f2f6ea62"
+        },
+        {
+          "path": "src/data/squadChoreography.js",
+          "beforeSha256": "4b752ed70586eb10840dfe378dce632b82d76b3433f256bb02eb637900cb5bb0",
+          "afterSha256": "c9512458d3a28b62cbaf320018040578c7248800e51424f469809f39c8399efa"
+        },
+        {
+          "path": "src/data/swarmMode.js",
+          "beforeSha256": "56c981711863db67381091939e4d527aa501342f5061d533d619acc029cac0ed",
+          "afterSha256": "05d535c405b086b7b5fab6aa470015d3c388ac9c1449ac106c02df942b12d45b"
+        },
+        {
+          "path": "src/data/weapons.js",
+          "beforeSha256": "9254a3994e194c964a438978f3b021ae5953b59419bac898b35c00913c8b3e99",
+          "afterSha256": "3fed63b1f7f6317ab4b19b689321dc1dfa28c39ba8a5b39c938f03cfad36ff45"
+        },
+        {
+          "path": "src/systems/aiFireIntent.js",
+          "beforeSha256": "097d8393dd7044887baa4af4ec217b76663aff959e12eed04ba7baf4de353437",
+          "afterSha256": "12869b496405e18f03de6d9f619c7494fccff199b9576099f508bec07ac47db3"
+        },
+        {
+          "path": "src/systems/aiPorts.js",
+          "beforeSha256": "faea46e50a82f84eb34e6f71908d64c4a6620d9e485591f338632e13e07a3f82",
+          "afterSha256": "28b01b65e7426dd787ddd62e1a96ed1cbd9a4f8f14bf3f246fce155c9cb39d4d"
+        },
+        {
+          "path": "src/systems/combat.js",
+          "beforeSha256": "b16800e1e1ca4cf38367d84ee6ca86bceeb72abd2cfa2d2ccf7ea6504e7311ff",
+          "afterSha256": "827bff3e98e4c60eb2d29da253ca01ad6ab22dfb0809dd44084c04ba6d450f4b"
+        },
+        {
+          "path": "src/systems/waveMaterialization.js",
+          "beforeSha256": "d5d5ece9bad91e3f4830e2189ad1fb9e3e714c70f5782a71df8957f65096b922",
+          "afterSha256": "6581104ac53a824bec5d6ead2bdf490292fe63f471aae4549fdeebb575fe6f99"
+        },
+        {
+          "path": "src/systems/weapons.js",
+          "beforeSha256": "fe7c9d277a057839f75d39d7df1485ec161aff09b7f037c9dded3971a44d7aac",
+          "afterSha256": "3761bc8dbc903c0415832e8c59f64b316df1e6a4788edb73820569cb0cec41c3"
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "patch": "patches/02-02-historical-body-contract.patch",
+      "sha256": "ef2e9893fcabf4b1adf0cab0b86dbaf553e0769081d77131095b9cc6bd81cd0a",
+      "title": "02-historical-body-contract",
+      "files": [
+        {
+          "path": "src/data/broodBodies.js",
+          "beforeSha256": null,
+          "afterSha256": "dcf630470944cc2ed72a7f90553e0e6a4af134bde75abf722d9698c687f08db5"
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "patch": "patches/03-03-exact-life-commands.patch",
+      "sha256": "04c71449191e8513e36b63726556c33cfad17c2e518a9e96c1cc7fbdf07fff9f",
+      "title": "03-exact-life-commands",
+      "files": [
+        {
+          "path": "src/core/physicsAuthority.js",
+          "beforeSha256": "3ea19212a16ed19a8b513256bb538695755fd666222698e0f1d273cc38d207b5",
+          "afterSha256": "765d732aa5f9fce89b052bd7f0e75ce97ca4b2717d6436e19d62289fe3b2806f"
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "patch": "patches/04-04-source-tests-ci.patch",
+      "sha256": "c8129042bd8451b90cce826307cb33a589915e0b545b1d016a6ae3dc468fed8a",
+      "title": "04-source-tests-ci",
+      "files": [
+        {
+          "path": ".github/workflows/check.yml",
+          "beforeSha256": "2ce248775605c29882d63830f763e5e4450b026b6c0719e17135597e9c922931",
+          "afterSha256": "8e111b1efcf4344de482d5750258b9aceb80542fad39977b41f8a52af43b202e"
+        },
+        {
+          "path": "test/brood-combat.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "a35f18b4d634cecdf62651240ba811cf5e88ee4a1200cba138e845cd5c85afbd"
+        },
+        {
+          "path": "test/brood-force-interactions.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "7ba9c74caf0dc93da2bb0131162978d9399bc37b51eb13c1b1291415caaa7dd5"
+        },
+        {
+          "path": "test/brood-physics-command-lifetime.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "2cf533119ba765accf7d16dc67ddd85bb9513f2d94120b336e9f2b643d381b8e"
+        },
+        {
+          "path": "test/brood-projectile-query.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "022a42e50378e3fdf85495362d2eafcc59d3fc860d693bc7064f4eaf5647276d"
+        },
+        {
+          "path": "test/brood-retained-wave-lifecycle.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "7d9a93e29a2920b4076203cae5ef40726fd02d66b3fe60b4cbc2c36574d73e8b"
+        },
+        {
+          "path": "test/brood-source-ci.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "b0c0f33e7f8ed62b23ef386ed7fb20615309fa83fc61361b063ec2b37dfad457"
+        },
+        {
+          "path": "test/brood-spitter.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "13517fa3bec8ca8096a234070ec95f457853803a97764eb10d399b1f87a325be"
+        },
+        {
+          "path": "test/brood-wave-lifecycle.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "417885e89fb636f3f7760557a43eae7766acf5218fd3efd0f92f6213f5940979"
+        },
+        {
+          "path": "test/combat-doctrines.test.mjs",
+          "beforeSha256": "7a06b27413768ae67f2c3f697ebab733d23a5e8b94c61ee48a35cfeb88206f31",
+          "afterSha256": "55111579ad3a4dad6777e5fa649b9d759fe528fab57e62188a343b9ab6ae8128"
+        },
+        {
+          "path": "test/swarm-specialist-debut.test.mjs",
+          "beforeSha256": "d9f385ee37d620d30351943401dd9c3069fa5041720547ba7ae5270e2b7a5b24",
+          "afterSha256": "5c45a3ba49fee4fc07a4e62c6cb6dd437d8ae78a73efe76c3ae106d8fb95a8a7"
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "patch": "patches/05-body-map-registration.patch",
+      "sha256": "a8d6bd43785cdc321e009c480e4cda496c6b7ddc120a16328dfd5e6a4a03b19d",
+      "title": "body-map-registration",
+      "files": [
+        {
+          "path": "src/data/broodBodies.js",
+          "beforeSha256": "dcf630470944cc2ed72a7f90553e0e6a4af134bde75abf722d9698c687f08db5",
+          "afterSha256": "1d0ab4028e2f8fce67d708f277cb90286c5fc815b22c3829579a0f9b348850c8"
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "patch": "patches/06-shared-convex.patch",
+      "sha256": "57e49eec4526eaf60b0205cbf57b89a727d931154a0c6e6b60d985a253fc526b",
+      "title": "shared-convex",
+      "files": [
+        {
+          "path": "src/combat/lineOfSight.js",
+          "beforeSha256": "48e9134a829c5ab328971f3e1fbc0f65bc4dbec7d65d401ed0412f7b36f07295",
+          "afterSha256": "8856776d3eb9c6cadd585c5fd74271f674aad01aa07bce7c9e08ca5847b6ba96"
+        },
+        {
+          "path": "src/core/collisionProxySweep.js",
+          "beforeSha256": "9732adc8860c757fe9bc5a3738605bd55d6c0d6aff1ad5da31af16ac74bcd174",
+          "afterSha256": "63ccbe34a8c5a53d4b9b9c4442f67c2df0adf13b2af7e60edb1abcaf24dd7615"
+        },
+        {
+          "path": "src/core/convexProxyGeometry.js",
+          "beforeSha256": null,
+          "afterSha256": "3bc0598253bdf3ee210ef99fefc294370b6d3923f690a7c81a73bfaed8c00c64"
+        },
+        {
+          "path": "src/core/physics.js",
+          "beforeSha256": "58612fab2c1ccd6de132cf4c8bf4392db9bcaeca77d5f8543426738ad13383d7",
+          "afterSha256": "2709acfb6ef10d28c2c92023fe6b12d66fe0681ea306692335c1dcdda818ce2d"
+        },
+        {
+          "path": "src/core/rapierCollisionWorld.js",
+          "beforeSha256": "fe1a419f4a2587e87bcb01e62a2e0731b6ae82df673f64871bf50ffb49888393",
+          "afterSha256": "d1bce7a5f30ae4f2d3ab401f7ccaa1977c7501776d18edd2c84ffc93e8c96868"
+        },
+        {
+          "path": "src/core/sg02DynamicBodyOwner.js",
+          "beforeSha256": "7eedfa88e2dca21290ddf4e77aa66f6d189c22143bd12bbcbcc448d2ccbe457c",
+          "afterSha256": "6298206a2605daf28dd30a1a20e5323ee62f343b61dd8125275a6522652a5443"
+        },
+        {
+          "path": "src/data/collisionProxyManifests.js",
+          "beforeSha256": "ac29c3c06c4ff2b9e01f209a45d2bb0d19cb66a5bcea300570f664523e323d71",
+          "afterSha256": "e29d2b20026614f79d5e2e3a61e478baee575694712460aa369f4b3ccc773d9d"
+        },
+        {
+          "path": "src/data/modelTruth.js",
+          "beforeSha256": "4561243681325806761adeda3b4a0b3310e516ad6042152ad124d07e2a6ad35e",
+          "afterSha256": "1793f6be2c9c5356cd4d4a679a7a7eceb8188991788414087e0af1c72e7e0232"
+        },
+        {
+          "path": "src/data/modelTruthMath.js",
+          "beforeSha256": "d075f2529446468db78541b822621b8c65e02457a417d9c763f8e32efa4b4791",
+          "afterSha256": "0a10d8b06754e6615bd7010e726f400e2b98fa0ce907e3c39dcb39fb2509fe1e"
+        },
+        {
+          "path": "src/systems/lawSecurity.js",
+          "beforeSha256": "9f046168998254a365e10ba639205846280d39fa7bdf377f3d84ee7e356c8da8",
+          "afterSha256": "92388edfc5573fc07d2b0673b7865fd8a9d0fde30b976bf6bd570a9d33110c98"
+        },
+        {
+          "path": "test/collision-proxy-manifest.test.mjs",
+          "beforeSha256": "3c5aac7972f96736241f396206405582293247fc60f08406662a5d9134716256",
+          "afterSha256": "384018fc47a114c83029df3b92d3884d49ad70cd464c5019b0956daf23eda71f"
+        },
+        {
+          "path": "test/convex-collision-proxy.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "b24f6d8292f195e432d04c0f7c72c800a8795ee2417e6ada42b968176056bfc0"
+        },
+        {
+          "path": "test/fixtures/convex-proxies/brood-source-pieces.json",
+          "beforeSha256": null,
+          "afterSha256": "e1f928b58002bfe58fbde56944013a3d92b0f8def9519badc82e55ba5a6f8162"
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "patch": "patches/07-brood-normalization.patch",
+      "sha256": "2b0691face29f380f1e8ac74779d5748001162275c5a17089f422d99aa616bf6",
+      "title": "brood-normalization",
+      "files": [
+        {
+          "path": "src/data/broodBodies.js",
+          "beforeSha256": "1d0ab4028e2f8fce67d708f277cb90286c5fc815b22c3829579a0f9b348850c8",
+          "afterSha256": "9528c0d1b11ec06b7d0c35ec19f1db4983c0fd2a13747ea2bea2585ebe5d29f3"
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "patch": "patches/08-convex-law-coherence.patch",
+      "sha256": "23ccc9a7dfd9ebdc16bf4513b958e1f274c788648d882fe6368390a62e8f114f",
+      "title": "convex-law-coherence",
+      "files": [
+        {
+          "path": "src/systems/lawSecurity.js",
+          "beforeSha256": "92388edfc5573fc07d2b0673b7865fd8a9d0fde30b976bf6bd570a9d33110c98",
+          "afterSha256": "7ce00024d5deaf3a915ee8d88978441bce9ed0a8745c9b87685ed344c732f6e1"
+        },
+        {
+          "path": "test/convex-law-query-coherence.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "088b485c3698c340e7a6671317b3a6f5f5c80770fa15368b628817835daa8c71"
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "patch": "patches/09-05-after-normalization-historical-provenance.patch",
+      "sha256": "a946402e965ac963e58494b4391897298c4f166c738c2abf56a9d325d6c4d4bf",
+      "title": "05-after-normalization-historical-provenance",
+      "files": [
+        {
+          "path": "src/data/broodBodies.js",
+          "beforeSha256": "9528c0d1b11ec06b7d0c35ec19f1db4983c0fd2a13747ea2bea2585ebe5d29f3",
+          "afterSha256": "e35237932914962b7a851513e7d3a90ae15e3f93dcf6a486cdc530629ab72121"
+        }
+      ]
+    },
+    {
+      "order": 10,
+      "patch": "patches/10-native-partition.patch",
+      "sha256": "5eac0e5e53aca111575379b4c1f7201cacb84668517a0562091f8b06470f060e",
+      "title": "native-partition",
+      "files": [
+        {
+          "path": "src/core/bodyPartition.js",
+          "beforeSha256": null,
+          "afterSha256": "609ef6604d1035ae157aa2c70a52903be201ef5711154b95e2f0a94e85af52c9"
+        },
+        {
+          "path": "src/core/sg02DynamicBodyOwner.js",
+          "beforeSha256": "6298206a2605daf28dd30a1a20e5323ee62f343b61dd8125275a6522652a5443",
+          "afterSha256": "44fb2087c6d8b480f76975b9130353176a95967e51f056f72172be52b787fdae"
+        }
+      ]
+    },
+    {
+      "order": 11,
+      "patch": "patches/11-native-adapter-partition.patch",
+      "sha256": "cf9f066a7ddd2a03deddf10d46ebac65c235e4c0b5bb55264d8549007f42a486",
+      "title": "native-adapter-partition",
+      "files": [
+        {
+          "path": "src/core/physics.js",
+          "beforeSha256": "2709acfb6ef10d28c2c92023fe6b12d66fe0681ea306692335c1dcdda818ce2d",
+          "afterSha256": "39389b87e0fd5070a5c9b93dc78fbceadf62ae0ed41e055859c31a3ff6ee8e81"
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "patch": "patches/12-add-a6-splitter-finite-life-mechanics-with-presentation-prerequisite-still-separate.patch",
+      "sha256": "af30ee748a091d1d4f8ed5c48041b7281a8da172b0da50f03ecc7c8e313f5b21",
+      "title": "Add A6 Splitter finite-life mechanics with presentation prerequisite still separate",
+      "files": [
+        {
+          "path": "src/ai/combatDoctrine.js",
+          "beforeSha256": "64ec50c13fcdc42d5c5ace425f754ab50c1380ada59ac33c35f19ff9d3ea3baf",
+          "afterSha256": "4969657d83d7a7d4f2dbe2df9416771f44fc1f1021411c93ebc954ee8bac5a3c"
+        },
+        {
+          "path": "src/ai/continuation.js",
+          "beforeSha256": "2f04b6a12bfe7d79df234dbba829620d49def0f028fb1a7edd144c70999a5646",
+          "afterSha256": "baea9b4d2ae25f24d51f08695af8ef7684a145887a8f2625edd88563d02b744d"
+        },
+        {
+          "path": "src/ai/contracts.js",
+          "beforeSha256": "1f6583dee6a2e452b03ca8190088883fd10eb3b47c3f427b91148ea27a64978d",
+          "afterSha256": "aa3db4af3975843d703e4795d7e66e2b54dfa0e9d8c0c2131ef4e07cc57cb35a"
+        },
+        {
+          "path": "src/ai/maneuver.js",
+          "beforeSha256": "84590d77689b6615caa53e5b0e984076549369aacdd8585374d6ccfd6827b1ab",
+          "afterSha256": "459a00f57aba266ba597bd513d7e9faa7bc0c6f20d05f51f21b33d3fe105901c"
+        },
+        {
+          "path": "src/audio/audioSystem.js",
+          "beforeSha256": "6e7894af75f35f60676355896e6cf1e7fbe74372404e9b50f5df179a1187ca01",
+          "afterSha256": "83ea454e2cff45fb546f812defd2bb813b8d20dd68c10baa326041f8beeab470"
+        },
+        {
+          "path": "src/combat/broodContact.js",
+          "beforeSha256": "76de05fce8d57183a6220967e48eec45884a0a60fd3f3618d8b5d9c68f2f1ee7",
+          "afterSha256": "751286b12f151d884d653055d9d9eafabbbf33e4ccc7d50325b319097fd611d5"
+        },
+        {
+          "path": "src/combat/broodSplitter.js",
+          "beforeSha256": null,
+          "afterSha256": "fe1ec4d4a542ca9c1690ac5c963c0d133a3cf1d22d7cea88e6932373b4915413"
+        },
+        {
+          "path": "src/combat/damage.js",
+          "beforeSha256": "6c93b1d0e11723565571af4b5e7b946d345ad086e53852a94fc7120d36666a6d",
+          "afterSha256": "ffedb7d2020389626840a14f2d840c0a03a25ac1c33d2a8ee0bce93f18def82d"
+        },
+        {
+          "path": "src/combat/impulseKernel.js",
+          "beforeSha256": "c1648133d74c10a7cc33d7e471d1a4f2fe3b58bcab50bf3c29a4806ae7262356",
+          "afterSha256": "aebc018adb6bba1931a696f3cd8694168f0418fe2ebf1021b52c4b2ed710594a"
+        },
+        {
+          "path": "src/combat/kernel.js",
+          "beforeSha256": "0c64d746733b3318a1f6f4407b36ea82ebb01188165c5510548f302f3a8c3bc8",
+          "afterSha256": "fc06b054c02f713266d7ffd41f0f2e8df873ebdb434e5911d414bae50dddf888"
+        },
+        {
+          "path": "src/combat/statuses.js",
+          "beforeSha256": "5ffafeb04ffc0bb82a67a85281db1ad9cad7488a101e435e43dfa0047551ecc7",
+          "afterSha256": "116768adea2f69763b46e673ce65aefa75dd54dc42c29bdb4cedf6cf9adc92bc"
+        },
+        {
+          "path": "src/core/coreSystem.js",
+          "beforeSha256": "2f7916e1f6f4514fbbd34485d7a480bbaaaf71b31ac1a74bdefb31dd18239ad8",
+          "afterSha256": "4fa5d227bf0971b77722ffb3ac43182c2abce337d6ed1923fe8b00547575b42f"
+        },
+        {
+          "path": "src/data/broodAttackProfiles.js",
+          "beforeSha256": "90141c4113b23fede6384e050e3aa811c32f1afc580eb3793d2a37229ab19985",
+          "afterSha256": "78559dcaef73c3a41b3d089872ec2b6e4a7a16b79a2fb2f2e29dc8232fb10b28"
+        },
+        {
+          "path": "src/data/broodSplitter.js",
+          "beforeSha256": null,
+          "afterSha256": "8a16e1c88858116b7d9290c935c39a3503dd69bb7a31646e7f6047dfd7a4c363"
+        },
+        {
+          "path": "src/data/broodSplitterBodies.js",
+          "beforeSha256": null,
+          "afterSha256": "5fd167e70f3ae0060ed07d051e0123971666c8845f3fb2676a53b9219799ac40"
+        },
+        {
+          "path": "src/data/enemies.js",
+          "beforeSha256": "8b88beebb9a3a9b357be4a643b984f43d644e16ab99ff4750a30d982f2f6ea62",
+          "afterSha256": "3f45b46cb2c7cf3b2bb0418e2a63dd96a9d9422aa3b796076383cd176e1f664f"
+        },
+        {
+          "path": "src/data/swarmMode.js",
+          "beforeSha256": "05d535c405b086b7b5fab6aa470015d3c388ac9c1449ac106c02df942b12d45b",
+          "afterSha256": "b26cc9c542852a9871a1a33eeda6d47f557305e0737ed3a5e3eecd10db4c5b3c"
+        },
+        {
+          "path": "src/render/vfx.js",
+          "beforeSha256": "5031a8ace6b30af33aa705c686cc86a655773d83566fa1207a70f1a472c321b9",
+          "afterSha256": "17cb65b15ce9d2db05efdef04001c33e3952973bddb6d38ec8f82c4ea57df714"
+        },
+        {
+          "path": "src/render/visualFactory.js",
+          "beforeSha256": "d59576bc744b4618b2aa2db85f0c99167b574a0f790b93e03cd6d4dcf7e737fb",
+          "afterSha256": "de9f944a037706ee87ec1a080c53945ed0b2806278779788f5f33e1647fefbd7"
+        },
+        {
+          "path": "src/systems/aftermathWrecks.js",
+          "beforeSha256": "5ddbb80c1a94076166d2f9693681222c9a04cd0454304341d5e24ef3ceb87f78",
+          "afterSha256": "64f63f0452fe0016308ba1dbd6eb0d67cfe7f76508808220ac5b5159b7777dce"
+        },
+        {
+          "path": "src/systems/aiPorts.js",
+          "beforeSha256": "28b01b65e7426dd787ddd62e1a96ed1cbd9a4f8f14bf3f246fce155c9cb39d4d",
+          "afterSha256": "caab576fb2b4da0d5c2e6062cda0ca3603b9fca0b4b66a59211686db9038a868"
+        },
+        {
+          "path": "src/systems/combat.js",
+          "beforeSha256": "827bff3e98e4c60eb2d29da253ca01ad6ab22dfb0809dd44084c04ba6d450f4b",
+          "afterSha256": "3bcb3e25897efdc400331590145abd11d31bbef1c2fb20bb0c5ea82f795edfb4"
+        },
+        {
+          "path": "src/systems/mining.js",
+          "beforeSha256": "c00461b9ee7bbb2a96c2e471fa44ad4693c88338d08d343c40e6d7c7d2a7a827",
+          "afterSha256": "91eefedb43e4f821bada62d2dc1faa4f525a268477ddf41ae6bda8eb73ce4c5e"
+        },
+        {
+          "path": "src/systems/survivalWave.js",
+          "beforeSha256": "d4e3da7a499e400162d9b65c10a97624b5a322b40fa6ef3bc24cdedda0d6d3d9",
+          "afterSha256": "1ac6f6179de2e51b04af31de39a039b1df3baad548892fe1e245b82541868344"
+        },
+        {
+          "path": "src/systems/waveMaterialization.js",
+          "beforeSha256": "6581104ac53a824bec5d6ead2bdf490292fe63f471aae4549fdeebb575fe6f99",
+          "afterSha256": "3e69ae48f11d6d00857ab26c309b0f0c5392e35f1887eeff7ca23bc998d09675"
+        }
+      ]
+    },
+    {
+      "order": 13,
+      "patch": "patches/13-add-actual-a6-splitter-partition-and-finite-wave-regression-cases.patch",
+      "sha256": "126773c0c1a377220013a95f723c748b28e7684545dfebcaadfbf8d48b6830f5",
+      "title": "Add actual A6 Splitter partition and finite-wave regression cases",
+      "files": [
+        {
+          "path": "test/brood-splitter-attribution.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "9186d125708cf36a9a50dc4171874617621932907e4c6f777569ae849e33b860"
+        },
+        {
+          "path": "test/brood-splitter-counterplay.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "b946ee0793fe4789045cc3a01c18cde1239b2fac82ce290526aef7ccc999335b"
+        },
+        {
+          "path": "test/brood-splitter-death-presentation.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "9d02458fcca6e1b64e71c34030e900972903303676a0c4a1b6d46ecbbaaf91a0"
+        },
+        {
+          "path": "test/brood-splitter-lifecycle.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "b661829decd6613a3fb23db1c73c96a7c8e376994962c3670ba8501672d303d2"
+        },
+        {
+          "path": "test/brood-splitter-lod-continuity.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "0b3d5d452cdec571682b1e835bbbc19620eb24f8f554c0a5fb8be8d38b74d4fc"
+        },
+        {
+          "path": "test/brood-splitter-native.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "7e6c0a70b7a176a808edeb8a886a03d1b4fe7cc3cdf1e330f6837e1c7619034c"
+        },
+        {
+          "path": "test/brood-splitter-residue-clock.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "8cde6fc3d21576404cd821d955c52403bcfadf05e496984118816c7b3be5343e"
+        },
+        {
+          "path": "test/brood-splitter-retained-retry.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "5453c6e19466e5116ca48284aa405ea4c52868ec15970fa89d7c96a2f6aaca68"
+        },
+        {
+          "path": "test/brood-splitter-seventeen-wave-route.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "1b66b869f0c86c1c4f7a819fda6baabcb93845ac4c0a09fbc0512c5a04830ae2"
+        }
+      ]
+    },
+    {
+      "order": 14,
+      "patch": "patches/14-add-independent-splitter-lod-continuity-helper-pending-resident-owner-integration.patch",
+      "sha256": "c9abb2f16ab81e03be3801b4f69aa7f9da75c3a2faf7a9b7bbd6b9447660936d",
+      "title": "Add independent Splitter LOD continuity helper pending resident owner integration",
+      "files": [
+        {
+          "path": "src/render/broodPartitionLod.js",
+          "beforeSha256": null,
+          "afterSha256": "e9dd337b3509d517165130203ca31e24629bcb89e37c00f1a67df48b2b78388e"
+        }
+      ]
+    },
+    {
+      "order": 15,
+      "patch": "patches/15-01-brood-presentation-source.patch",
+      "sha256": "841f0c83ed65de18a4b5e0ea6e46ac402ccb73ecaca8360c6c33177adeaa3d2b",
+      "title": "01-brood-presentation-source",
+      "files": [
+        {
+          "path": "src/data/modelTruthMounts.js",
+          "beforeSha256": "26f4e651aae07a5a98c264a2ced48c1c8d2806fe63396c6178f09048fc261504",
+          "afterSha256": "2df5fdb0a3b90c125fbd549636af34f3ea4224a7d58b8780a16e0ff81d88a2c7"
+        },
+        {
+          "path": "src/render/actionVfx.js",
+          "beforeSha256": "9665fc672030e52ce24459a0814f8dea55990ab7ee21799dae402c711e0816e7",
+          "afterSha256": "68169369fca560067061b4c4b90c0fa4c3213108ecf5e671b1c34eea30118861"
+        },
+        {
+          "path": "src/render/authoredMotion.js",
+          "beforeSha256": "965542456c1428109f27f487294af13f56abc3ebca838623b46c5cf1f7c07ef6",
+          "afterSha256": "7ee4342378bb4938e761b17ec1bbb578640df18aaaf799ffede9fb27a0adc079"
+        },
+        {
+          "path": "src/render/broodVisuals.js",
+          "beforeSha256": null,
+          "afterSha256": "741cbe5febd10bef9969c84ffb239569cf0b073f3dee3d02c487e0ada4e73338"
+        },
+        {
+          "path": "src/render/vfx.js",
+          "beforeSha256": "17cb65b15ce9d2db05efdef04001c33e3952973bddb6d38ec8f82c4ea57df714",
+          "afterSha256": "06032cfbc821480d466653d3ee361bd0484e2fb6985948e1f57586f75cde1561"
+        },
+        {
+          "path": "src/render/vfx/actionEventRecipes.js",
+          "beforeSha256": "a120319b7640dc3294692bf04dd027bffd96184da9ea9dd281ef51451ba95c5c",
+          "afterSha256": "77af2c88de702e49cd703a07fd6895a1764ff927ecfb2eff89daf9ca81b6f8e6"
+        },
+        {
+          "path": "src/render/vfx/actionPrimitives.js",
+          "beforeSha256": "a37f83e12a745c1a26e4e16b795769c07e42ff96c537438c2a6aae8ba44dd519",
+          "afterSha256": "1d0544a925e1d5afd2b25020f4e096117584d20e239bb80d12493408784013ab"
+        },
+        {
+          "path": "src/render/visualFactory.js",
+          "beforeSha256": "de9f944a037706ee87ec1a080c53945ed0b2806278779788f5f33e1647fefbd7",
+          "afterSha256": "d0d6b844625c0cc60aec3049008b900d8d0f374f0074bafde7c89e93c7df61c4"
+        },
+        {
+          "path": "src/render/weapons/recipes.js",
+          "beforeSha256": "a9eb20a659b3a3dfa1132e2507214915b0d797c124fedf5ba925f972ba26cf05",
+          "afterSha256": "9628a19e641a137ba78307421be496015a3952090647dd33f2bf95c6c17af86b"
+        }
+      ]
+    },
+    {
+      "order": 16,
+      "patch": "patches/16-02-brood-presentation-tests-ci.patch",
+      "sha256": "86a49205e9d1c4191b92e9e7f64dab334fb2728acd4c5bd8c72e3e9a75c328d1",
+      "title": "02-brood-presentation-tests-ci",
+      "files": [
+        {
+          "path": ".github/workflows/check.yml",
+          "beforeSha256": "8e111b1efcf4344de482d5750258b9aceb80542fad39977b41f8a52af43b202e",
+          "afterSha256": "91e454af56eb9e06221c21a7c3dff1e6149f603de7dc93e17dc19f0c33e2f6c7"
+        },
+        {
+          "path": "test/brood-presentation-ci.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "ac582f2f4615428a77c42f49fafd72dcdda86b017fb562c932b89ec2807c9750"
+        },
+        {
+          "path": "test/brood-source-presentation.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "27abfadf2a7b7465595dbc9f23c8f1cf9752265a90714f29d05ddf80a58ce410"
+        },
+        {
+          "path": "test/brood-spitter-presentation.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "f0677603d335b7689d89819b81b6a257ea0493e9daaa5bb400a7b3262268f955"
+        }
+      ]
+    },
+    {
+      "order": 17,
+      "patch": "patches/17-extend-canonical-brood-presentation-helper-to-finite-splitter-cells.patch",
+      "sha256": "78c76f664fa88ae8e1dcbcb31e487cf8eac28db110418df0b46cfb82131a2a3c",
+      "title": "Extend canonical Brood presentation helper to finite Splitter cells",
+      "files": [
+        {
+          "path": "src/render/broodVisuals.js",
+          "beforeSha256": "741cbe5febd10bef9969c84ffb239569cf0b073f3dee3d02c487e0ada4e73338",
+          "afterSha256": "c33d0facf826d9847cf3a566dfb69eab0ac68c6904ad309bafb683c6c8ab63c6"
+        }
+      ]
+    },
+    {
+      "order": 18,
+      "patch": "patches/18-splitter-roster-closure.patch",
+      "sha256": "8ba5c153dd571709380177578fa2ec9ecca534a91f1ed690f0754d4494c9e40b",
+      "title": "splitter-roster-closure",
+      "files": [
+        {
+          "path": "src/data/swarmMode.js",
+          "beforeSha256": "b26cc9c542852a9871a1a33eeda6d47f557305e0737ed3a5e3eecd10db4c5b3c",
+          "afterSha256": "c368903bdfc524f20408af411f2767232acb363572ce6d5fb8a3126cd06fec72"
+        },
+        {
+          "path": "test/combat-doctrines.test.mjs",
+          "beforeSha256": "55111579ad3a4dad6777e5fa649b9d759fe528fab57e62188a343b9ab6ae8128",
+          "afterSha256": "c7af3c27499b3c09e3230c15ab00b8140c1dae7ad872288d4308c4bd3cdf5f7a"
+        },
+        {
+          "path": "test/swarm-specialist-debut.test.mjs",
+          "beforeSha256": "5c45a3ba49fee4fc07a4e62c6cb6dd437d8ae78a73efe76c3ae106d8fb95a8a7",
+          "afterSha256": "707fa60303d7f674acc569c5ae46c5dd35e27f45585e427d40febc14840af912"
+        }
+      ]
+    },
+    {
+      "order": 19,
+      "patch": "patches/19-presentation-static-splitter-fixtures.patch",
+      "sha256": "d0d60d866388f4b38ac54a5ce92c8cd5e506a21db2d0f91d8295129d3faed022",
+      "title": "presentation-static-splitter-fixtures",
+      "files": [
+        {
+          "path": "test/brood-source-presentation.test.mjs",
+          "beforeSha256": "27abfadf2a7b7465595dbc9f23c8f1cf9752265a90714f29d05ddf80a58ce410",
+          "afterSha256": "c5d15b6ac9c2e1616af3d9cacb4d49f819e7cadbb08d6515a15b3645da4a5c94"
+        }
+      ]
+    }
+  ]
+}

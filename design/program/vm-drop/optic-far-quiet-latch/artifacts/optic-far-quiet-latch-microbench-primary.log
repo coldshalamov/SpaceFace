@@ -1,0 +1,39 @@
+pair 0: 16.178× (before 208.8 / after 12.9) latched=true
+pair 1: 21.874× (before 204.7 / after 9.4) latched=true
+pair 2: 21.384× (before 210.3 / after 9.8) latched=true
+pair 3: 20.502× (before 208.8 / after 10.2) latched=true
+pair 4: 13.598× (before 217.4 / after 16.0) latched=true
+pair 5: 28.487× (before 277.2 / after 9.7) latched=true
+pair 6: 19.041× (before 208.1 / after 10.9) latched=true
+pair 7: 21.269× (before 206.7 / after 9.7) latched=true
+pair 8: 20.603× (before 205.9 / after 10.0) latched=true
+pair 9: 20.163× (before 204.4 / after 10.1) latched=true
+pair 10: 20.310× (before 211.4 / after 10.4) latched=true
+{
+  "label": "optic-far-quiet-latch",
+  "ITERS": 60000,
+  "RUNS": 11,
+  "isolatedPairs": 11,
+  "NON_OPTIC": 280,
+  "FAR_OPTIC": 40,
+  "medianSpeedup": 20.501771290109996,
+  "minSpeedup": 13.59809813227712,
+  "maxSpeedup": 28.4871929552672,
+  "pairs": [
+    13.5981,
+    16.1784,
+    19.0407,
+    20.1633,
+    20.31,
+    20.5018,
+    20.6025,
+    21.2695,
+    21.3844,
+    21.8741,
+    28.4872
+  ],
+  "primary": "~20.50×",
+  "ship_bar": 1.5,
+  "clears_bar": true,
+  "note": "Quiet tickOpticFieldRocks far-from-optic latch. Soft-GPU fps not claimed."
+}

@@ -1,0 +1,115 @@
+✔ fresh construction selects keepers-v2; unversioned durable records conservatively restore open-v1 (7.554925ms)
+✔ serialized strings, copied data, stale lives and foreign state cannot grant recipe selection (0.930759ms)
+[save] no player entity in save; player not restored
+[save] no player entity in save; player not restored
+[save] no player entity in save; player not restored
+✔ empty legacy admission stages eleven native shapes before publishing the unchanged original identity and pose (52.289446ms)
+✔ occupied legacy save preserves its original nine-shape body and layout across repeat captures and fresh lives (5.58155ms)
+✔ injected partial-colliders failure retains old pose/life/native ownership and leaves no candidate or pending residue (2.34185ms)
+✔ injected registered-ownership failure retains old pose/life/native ownership and leaves no candidate or pending residue (1.690561ms)
+✔ uncertain or owned legacy state stays open-v1: payload-unresolved (1.165372ms)
+✔ uncertain or owned legacy state stays open-v1: section-not-materialized (1.201726ms)
+✔ uncertain or owned legacy state stays open-v1: section-native-pose-unresolved (1.171601ms)
+✔ uncertain or owned legacy state stays open-v1: custody-unresolved (1.200344ms)
+✔ uncertain or owned legacy state stays open-v1: active-coupling (1.31731ms)
+✔ uncertain or owned legacy state stays open-v1: nearby-body-unresolved (1.75677ms)
+✔ uncertain or owned legacy state stays open-v1: already-presented (1.019102ms)
+✔ uncertain or owned legacy state stays open-v1: custody-or-health (0.846021ms)
+✔ legacy and keeper recipes use their own validated primitive indexes through a complete real native pad stroke (83.342042ms)
+✔ loading-mode owner reconciliation selects a conservative cold recipe without requiring a flight tick (1.653835ms)
+✔ actual save owner restores an occupied unversioned cradle without merge-upgrading or rewriting the saved plate (1109.298927ms)
+✔ ordinary owner admission publishes the exact staged recipe without a second geometry rebuild (2.132215ms)
+✔ a safe eleven-shape upgrade rejects an old nine-shape native snapshot and preserves the selected body for honest owner fallback (11.240135ms)
+✔ a foreign caller recipe cannot expand or weaken the staged keeper body (3.819702ms)
+✔ exact canonical admission rejects native angleDeg before touching native geometry (0.985621ms)
+✔ exact canonical admission rejects frame before touching native geometry (0.804239ms)
+✔ exact canonical admission rejects compact hull before touching native geometry (0.787213ms)
+✔ exact canonical admission rejects planar polygon before touching native geometry (0.724219ms)
+✔ exact canonical admission rejects articulation before touching native geometry (0.790048ms)
+✔ exact canonical admission rejects non-enumerable native angle before touching native geometry (0.762166ms)
+✔ exact canonical admission rejects inherited native angle before touching native geometry (1.09111ms)
+✔ exact canonical admission rejects accessor shape before touching native geometry (0.864981ms)
+✔ exact canonical admission rejects symbol metadata before touching native geometry (0.919603ms)
+✔ default admitted proxy cannot mutate the private canonical validator baseline (1.112533ms)
+✔ noncanonical live radius cannot alter staged native scale or mass (0.840593ms)
+✔ noncanonical live mass cannot alter staged native scale or mass (0.960123ms)
+RECOVERY_RUNTIME {"tick":32189,"maxForce":960.0000000000002,"maxHeadError":0.41441339098891716,"phaseTicks":[["recover_turn",701],["recover_approach",702],["recover_seat",7137],["recover_return_turn",18896],["recover_return",18897]],"pose":{"pos":{"x":-12867.896179199219,"z":9369.532104492188},"vel":{"x":-0.15307080745697021,"z":-0.16155530512332916},"rot":-0.00009061679169131468,"angVel":0.000013747872799285688}}
+✔ same original section force-reapproaches, seats, returns and preserves every newly persisted stage through fresh-life Continue (48383.272646ms)
+✔ recovery planner rejects moving, spinning, shell-bound, closed-shoe and unbounded capture targets (16.232126ms)
+✔ continuous real compound sweep rejects the unsafe signed turn and a middle-of-leg obstruction across rebasing (22.09742ms)
+✔ every persisted recovery stage yields to actual player custody, cut line, obstacle, stale life and timeout without replacement lines (488.416214ms)
+✔ offset native solids and allowed held-pose margins never disappear from the recovery query (13.61413ms)
+✔ unregistered planar polygon override cannot hide behind a tiny primitive radius (12.000857ms)
+✔ a distant dormant canonical compact hull or capsule is bounded without native promotion, while offset or malformed hulls remain closed (10.730788ms)
+✔ cold activity catch-up is queried at its canonical current pose before any recovery command is consumed (297.732885ms)
+✔ cold current-pose checks do not obstruct a moving-away peer or double-project an exact body (10.440651ms)
+✔ cold ordinary bodies leave native layers while attached retained bodies stay live and are queried at their actual native pose (10.281152ms)
+CERES_EXTRACTION {"reached":true,"breaker":{"x":-12868,"z":9341.86328125},"section":{"x":-12868,"z":9561.984375},"vel":{"x":1.0040477997630415e-11,"z":-0.8056756854057312},"rot":2.235921083698633e-12,"maxX":0,"maxYaw":2.235921083698633e-12}
+CERES_SEATING {"seated":true,"breaker":{"x":-12868,"z":9341.8623046875},"head":{"x":-12897.9228515625,"z":9303.982421875},"section":{"x":-12868,"z":9368.86328125},"vel":{"x":0.019103091210126877,"z":0.08426307141780853},"rot":0.0002861650466860361,"line":18,"slide":0.9944444444444419,"blocked":true}
+CERES_LEG 0 {"reached":true,"breaker":{"x":-12868,"z":9292.421875},"rot":1.5709453293649815,"section":{"x":-12868,"z":9320.5068359375},"sectionRot":0.0006970126979050287,"slide":0.9944444444444419}
+CERES_LEG 1 {"reached":true,"breaker":{"x":-12867.9677734375,"z":9292.095703125},"rot":3.1407484636839924,"section":{"x":-12894.966796875,"z":9292.08203125},"sectionRot":1.569941905675511,"slide":0.9944444444444419}
+CERES_LEG 2 {"reached":true,"breaker":{"x":-13138.455078125,"z":9292.0712890625},"rot":-3.1407740858100817,"section":{"x":-13168.33984375,"z":9292.0087890625},"sectionRot":1.57160230269562,"slide":0.9944444444444419}
+CERES_LEG 3 {"reached":true,"breaker":{"x":-13137.650390625,"z":9292.0712890625},"rot":1.5722222074328722,"section":{"x":-13137.69140625,"z":9319.072265625},"sectionRot":0.0010149002141961897,"slide":0.9944444444444419}
+CERES_LEG 4 {"reached":true,"breaker":{"x":-13137.650390625,"z":9485.34765625},"rot":1.5710999415130629,"section":{"x":-13137.66796875,"z":9513.109375},"sectionRot":0.0008231489775988492,"slide":0.9944444444444419}
+CERES_RETAINED {"section":{"x":-13137.66796875,"z":9513.00390625},"rot":0.028199488689629747,"vel":{"x":-0.11851150542497635,"z":0.08277333527803421},"slide":0.9499999999999976,"blocked":true,"blocker":4}
+CERES_PRODUCTION_PHASE 0 head_out
+CERES_PRODUCTION_PHASE 3213 head_cut
+CERES_PRODUCTION_PHASE 3455 head_retract
+CERES_PRODUCTION_PHASE 6669 tow_attach
+CERES_PRODUCTION_PHASE 6670 extract
+CERES_PRODUCTION_PHASE 21309 seat
+CERES_PRODUCTION_PHASE 33415 loaded
+CERES_PRODUCTION_PHASE 52787 receiver
+CERES_PRODUCTION_PHASE 52788 unshoe
+CERES_PRODUCTION_PHASE 59675 withdraw
+CERES_PRODUCTION_PHASE 64267 secured
+CERES_PRODUCTION_RESULT {"job":{"id":"job:ceres:second_measure:long_plate","worker":"ceres:second_measure:breaker","section":"world_site_ceres_second_measure/payload/long_plate","head":"ceres:second_measure:cutter_head","cradle":"ceres:second_measure:section_cradle","phase":"secured","phaseTick":64268,"updatedTick":64268,"index":5,"sequence":0,"mountId":"att_000002","blockedReason":null,"towId":null,"extractionMisalignedSince":null,"receiverId":"att_000004"},"bodies":[{"id":34,"role":"breaker","pos":{"x":-13137.995056152344,"y":0,"z":9291.520263671875},"vel":{"x":-0.0029660442378371954,"y":0,"z":0.4940747022628784},"rot":1.5708986277255645,"slide":0,"blocked":false},{"id":35,"role":"cradle","pos":{"x":-13138,"y":0,"z":9512},"vel":{"x":0,"y":0,"z":0},"rot":0,"slide":0.9944444444444419,"blocked":true,"blocker":"world_site_ceres_second_measure/payload/long_plate"},{"id":36,"role":"cutterHead","pos":{"x":-13168.006958007812,"y":0,"z":9253.516479492188},"vel":{"x":0.009402329102158546,"y":0,"z":0.4950111210346222},"rot":1.570900650887481,"slide":0}],"payload":{"status":"released","worldObjectId":"world_site_ceres_second_measure/payload/long_plate","settledReceiptId":null,"motion":{"pos":{"x":-13137.97705078125,"z":9513.49560546875},"vel":{"x":0.010004598647356033,"z":0.03766942024230957},"rot":-0.0002573296106880759,"angVel":0.0000014865028106214595},"remainingHull":1000,"remainingPool":{},"retained":{"receiverWorldRecordId":"ceres:second_measure:section_cradle","tick":64268}}}
+CERES_FULL_PRODUCTION {"profile":"production","evidence":"production-manifest","fingerprint":{"profileHash":"40a39b8f15ffb1b08db0d651b4e1fd44b8d6d144c81e5e7e34c352e556e4f8db","manifestHash":"488cf0c4b406323e6d48f4ffc3c933bf1fe56c8a9b11d96973cf42bce8d7aca3"},"selectedSlots":{"aiSlot":"tacticalAI","flightSlot":"flight","aiBackend":"sg06-tactical","flightBackend":"v3"},"sourceHashes":{"../src/systems/ceresWorkfleet.js":"66cbce558b66f37d5624361b05956ed84ea085ebd42a1e675cb7bdd90f8ac532","../src/data/ceresWorkfleet.js":"8f1d566a8a57d522625bfffa68dd9340c4bd76b95c7fee93fa8bfbcf731a1f67","../src/data/ceresWorkfleetHardware.js":"e98a1477636e5f41a9450dda2c5b64cf1b5edac4cff73e3382816cf73c84ddc5","../src/systems/flightV3.js":"c326987051ac8153c46ea7304bf913a0c07bb1d65ac57f956f9725568ed29fdb","../src/systems/worldSiteRuntime.js":"8ea9b51491b87bd79aedcd6cf8f25078d339eca8434734671aa52b67c2993eee","../src/systems/salvageActions.js":"d6df596b8c6b13eeba14edc8da6fad7e56393f37b3dfa4c6c990049c51324609"},"tick":7600,"phase":"head_retract","maxTravel":164.08743225170215,"sawThrust":true,"section":{"pos":{"x":-12868,"y":0,"z":9792},"vel":{"x":0,"y":0,"z":0},"rot":0,"mass":1800,"nativeRecord":true,"salvagePool":{}},"native":"rapier-dynamic","registry":["input","autoTargetAssist","flybyFocus","bulletTime","cloak","lawSecurity","scanner","scanReveal","buildIdentity","pirateDisguise","pirateParley","pirateDisengage","aceMemory","factionPresence","nemesis","nemesisEncounter","capitalBossEncounters","tacticalAI","barkDirector","aiEncounter","actions","beacons","travelLanes","flight","cruise","aiPorts","tumbleStates","collisionConsequences","stuntGrammar","weapons","countermeasures","bombs","emergentPrimitives","impulseCharges","hullBurst","mines","massSeed","uniqueLootAbilities","dockingCorridor","environmentalMachinery","survivalArena","fields","planetRuntime","morrow","vesper","bracket","ravel","solstice","physics","combat","combatOutcome","aftermathWrecks","titles","wingMorale","tetherGameplay","surrenderRecovery","custodyConsequences","masslineTelemetry","masslineThreats","masslineImpacts","masslineSnares","masslineThrow","masslineImpactDamage","lootShards","terrainAnchors","jettisonImpulse","volatileExposure","mining","fieldDepletion","cargo","fragileCargo","automation","asteroidSites","asteroidFormations","wingmen","crafting","economy","intervention","world","heistFacilities","regionalEcology","tensionDirector","encounterDirector","routeFollower","livingPoiBehaviors","pirateRumor","ambushSignatures","bountyHunt","stationSideEventDirector","stationServices","difficultyDirector","gateControlDirector","salvage","lossInvestigation","salvageActions","survivorPod","recoveryEncounter","factions","sectorSim","npcJobsRuntime","missions","careerOrigins","careerLadders","liveCareerLadderBranches","story","scenarioRuntime","swarmArena","survivalWave","survivalRun","swarmChain","killReplay","killcamRecorder","swarmJuice","swarmElites","heat","traffic","drill","claims","chronicler","bandRadio","onboarding","masslineHud","massSeedHud","fieldHud","planetHud","miningHud","survivalHud","swarmJuiceHud","crucibleFocus","noFireAdvisory","moralTrap","voiceArbiter","save"]}
+✔ native ordinary line extracts original 1800 mass through exact shell with powered head dock (8727.658348ms)
+✔ selected-owner brace cycle follows production flight-before-jobs order (27475.886417ms)
+✔ world records restore only exact canonical hardware at the measured first native pose (3.538669ms)
+✔ NPC and player seam cursors stay independent through interleaving and Continue (1.541517ms)
+✔ NPC operations require the healthy unique physical head, exact section, work socket and clear beam (4.142647ms)
+✔ breaker flight lease is bounded, one-sample, same-life, exact-job and player-override safe (1.355798ms)
+✔ only exact active custody freezes the joint work assembly during offsector catch-up (0.857579ms)
+✖ complete production factory commissions the public site worker and yields real cargo to player custody (26686.75511ms)
+✔ generic salvage annotation never invents commodity rewards for finite structural hardware (1.389218ms)
+✔ hardware Continue preserves player custody and rejects terminal or foreign-owner records (0.91854ms)
+✔ published workfleet thrust clears on expired, cancelled and idle leases (0.474673ms)
+✔ head demand is consumed only by the current pre-physics owner and cannot light from a queued or stale lease (0.888305ms)
+✔ damaged or foreign coupling is never reported as player custody and does not mint a replacement (2.343021ms)
+✔ activity ownership pins only the live three-body job and never persists or steals a stale pin (0.554273ms)
+✔ extraction cannot reel a displaced section into the cab back or across a rail (0.365559ms)
+✔ seating re-approach requires the complete original outline and bounded measured staging geometry (0.860784ms)
+✔ measured alignment never commands outside, moving or player-controlled cargo (1.739604ms)
+✔ alignment flight samples revoke on source ownership, occupant life or incoming custody changes (2.064773ms)
+✔ repeated measured alignment cannot creep its staging reference along with the cargo (0.390357ms)
+ℹ tests 61
+ℹ suites 0
+ℹ pass 60
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 64728.245309
+
+✖ failing tests:
+
+test at test/ceres-workfleet-runtime.test.mjs:297:1
+✖ complete production factory commissions the public site worker and yields real cargo to player custody (26686.75511ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'head_retract'
+  - 'extract'
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/current-expansion-composition/test/ceres-workfleet-runtime.test.mjs:322:12)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'head_retract',
+    expected: 'extract',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

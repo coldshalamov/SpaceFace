@@ -1,0 +1,251 @@
+# Produces a small, commit-pinned development snapshot for remote agents that cannot
+# economically clone the full SpaceFace repository. The artifact is NOT committed to Git.
+# It contains source, tests, scripts, configs and documentation while omitting heavyweight
+# models/media and oversized individual files. See .agent-omitted-files.tsv inside the artifact
+# for the exact exclusions.
+name: agent-code-packet
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: agent-code-packet-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: write
+  statuses: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Publish packet run locator
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # The ChatGPT GitHub connector can read commit statuses even when it cannot enumerate
+          # arbitrary push-triggered Actions runs. Publishing the run id here gives future agents a
+          # deterministic path: current master SHA -> this status -> run id -> artifact download.
+          gh api --method POST "/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state='pending' \
+            -f context='agent-code-packet' \
+            -f description="run=${GITHUB_RUN_ID} building" \
+            -f target_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+      - name: Fetch commit metadata without heavyweight blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git init --quiet source
+          git -C source remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          # Blobless partial fetch: commit/tree metadata arrives now; selected source blobs are
+          # fetched lazily only when the sparse checkout below materializes them.
+          git -C source -c protocol.version=2 fetch --quiet --depth=1 --filter=blob:none origin "${GITHUB_SHA}"
+          actual="$(git -C source rev-parse FETCH_HEAD)"
+          test "$actual" = "$GITHUB_SHA"
+
+      - name: Select the engineering surface
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Ceiling stays at 256 MiB. Tighten scripts/lib/agent_code_packet_selection.py
+          # (DENIED_PREFIXES / DENIED_EXT) when selected source grows — do not raise this.
+          MAX_FILE_BYTES: '8388608'       # 8 MiB per tracked file
+          MAX_SOURCE_BYTES: '268435456'   # 256 MiB raw selected-source ceiling
+        run: |
+          set -euo pipefail
+
+          # `git ls-tree -l` is intentionally NOT used here: in a blobless partial clone, asking
+          # Git for blob sizes can hydrate the very 20+ GB of objects this workflow exists to avoid.
+          # GitHub's tree API gives path + blob size from repository metadata without downloading the
+          # blob bodies. Only the selected files are hydrated later by sparse checkout.
+          tree_sha="$(git -C source rev-parse 'FETCH_HEAD^{tree}')"
+          gh api "/repos/${GITHUB_REPOSITORY}/git/trees/${tree_sha}?recursive=1" > tree.json
+
+          # Hydrate just the shared selector (one blob) so the workflow and the local check script
+          # cannot drift. Blob:none fetch means only this path is downloaded.
+          git -C source checkout --quiet FETCH_HEAD -- scripts/lib/agent_code_packet_selection.py
+
+          python3 - <<'PY'
+          import json
+          import os
+          import pathlib
+          import subprocess
+          import sys
+          from datetime import datetime, timezone
+
+          sys.path.insert(0, str(pathlib.Path('source/scripts/lib').resolve()))
+          import agent_code_packet_selection as acp
+
+          repo = pathlib.Path('source')
+          max_file = int(os.environ['MAX_FILE_BYTES'])
+          max_source = int(os.environ['MAX_SOURCE_BYTES'])
+          if max_file != acp.MAX_FILE_BYTES or max_source != acp.MAX_SOURCE_BYTES:
+              raise SystemExit(
+                  f'workflow ceilings ({max_file}/{max_source}) disagree with '
+                  f'scripts/lib/agent_code_packet_selection.py '
+                  f'({acp.MAX_FILE_BYTES}/{acp.MAX_SOURCE_BYTES}); keep them equal and '
+                  f'tighten DENIED_* instead of raising the ceiling'
+              )
+
+          tree = json.loads(pathlib.Path('tree.json').read_text(encoding='utf-8'))
+          result = acp.select_from_github_tree(tree)
+          selected = result['selected']
+          omitted = result['omitted']
+          selected_bytes = result['selected_bytes']
+          omitted_bytes = result['omitted_bytes']
+
+          print(
+              f'selected_files={len(selected)} selected_bytes={selected_bytes} '
+              f'selected_mib={selected_bytes / 1024 / 1024:.1f} '
+              f'ceiling_bytes={max_source} margin_bytes={max_source - selected_bytes} '
+              f'omitted_files={len(omitted)} omitted_bytes={omitted_bytes}'
+          )
+
+          if selected_bytes > max_source:
+              raise SystemExit(
+                  f'selected source is {selected_bytes} bytes, above the {max_source}-byte '
+                  'agent-packet ceiling; tighten the policy rather than publishing a huge artifact'
+              )
+
+          # Non-cone sparse-checkout patterns. Exact file paths mean omitted blobs never need to be
+          # materialized from the 20+ GB repository. Escape glob metacharacters defensively.
+          def sparse_pattern(path: str) -> str:
+              escaped = path.replace('\\', '\\\\')
+              for ch in ('*', '?', '[', ']'):
+                  escaped = escaped.replace(ch, '\\' + ch)
+              return '/' + escaped
+
+          info = repo / '.git' / 'info'
+          info.mkdir(parents=True, exist_ok=True)
+          (info / 'sparse-checkout').write_text(
+              ''.join(sparse_pattern(p) + '\n' for p in selected),
+              encoding='utf-8',
+          )
+          subprocess.run(['git', '-C', str(repo), 'config', 'core.sparseCheckout', 'true'], check=True)
+          subprocess.run(['git', '-C', str(repo), 'config', 'core.sparseCheckoutCone', 'false'], check=True)
+
+          # These generated files travel with the packet and make omissions explicit rather than
+          # allowing an agent to mistake "not transported" for "does not exist in SpaceFace".
+          omitted.sort(key=lambda row: row[0])
+          (repo / '.agent-omitted-files.tsv').write_text(
+              'path\tsize_bytes\treason\n' +
+              ''.join(f'{p}\t{s}\t{r}\n' for p, s, r in omitted),
+              encoding='utf-8',
+          )
+          (repo / '.agent-packet-files.txt').write_text(
+              ''.join(p + '\n' for p in sorted(selected)),
+              encoding='utf-8',
+          )
+          manifest = {
+              'format': 1,
+              'repository': os.environ['GITHUB_REPOSITORY'],
+              'ref': os.environ['GITHUB_REF_NAME'],
+              'commit': os.environ['GITHUB_SHA'],
+              'runId': os.environ['GITHUB_RUN_ID'],
+              'generatedAt': datetime.now(timezone.utc).isoformat(),
+              'artifactName': 'spaceface-agent-code',
+              'selectedFileCount': len(selected),
+              'selectedTrackedBytes': selected_bytes,
+              'omittedFileCount': len(omitted),
+              'omittedTrackedBytes': omitted_bytes,
+              'maxIndividualTrackedFileBytes': max_file,
+              'maxSelectedTrackedBytes': max_source,
+              'selectionPolicy': acp.SELECTION_POLICY,
+              'note': 'Missing paths may still exist in the full repository; consult .agent-omitted-files.tsv.',
+          }
+          (repo / '.agent-packet.json').write_text(
+              json.dumps(manifest, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          print(json.dumps(manifest, indent=2, sort_keys=True))
+          PY
+
+      - name: Materialize only selected blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Sparse patterns were installed before checkout. Because the repository was fetched with
+          # blob:none, checkout requests only selected code/docs blobs instead of every model/texture.
+          git -C source checkout --quiet --detach FETCH_HEAD
+
+          mkdir -p packet
+          rsync -a --exclude='.git/' source/ packet/
+
+          packet_bytes="$(du -sb packet | cut -f1)"
+          echo "packet_bytes=$packet_bytes"
+          if [ "$packet_bytes" -gt 262144000 ]; then
+            echo "::error::Materialized packet exceeds 250 MiB ($packet_bytes bytes)."
+            exit 1
+          fi
+
+          echo "### SpaceFace agent code packet" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commit: \`$GITHUB_SHA\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Raw packet bytes: \`$packet_bytes\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Heavy models/media are intentionally omitted; the artifact contains an exact omission manifest." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload current code packet
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: spaceface-agent-code
+          path: packet/
+          if-no-files-found: error
+          include-hidden-files: true
+          compression-level: 9
+          retention-days: 30
+
+      - name: Mark packet available
+        if: success()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT_ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          gh api --method POST "/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state='success' \
+            -f context='agent-code-packet' \
+            -f description="run=${GITHUB_RUN_ID} artifact=${CURRENT_ARTIFACT_ID}" \
+            -f target_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+      - name: Remove superseded code packets
+        if: success()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT_ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          # Keep one logical packet instead of accumulating ZIPs in Actions storage. Cleanup happens
+          # only after the replacement uploaded successfully, so a failed build cannot erase the
+          # previous usable packet.
+          gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=spaceface-agent-code&per_page=100" \
+            --jq '.artifacts[].id' |
+          while read -r artifact_id; do
+            [ -z "$artifact_id" ] && continue
+            if [ "$artifact_id" != "$CURRENT_ARTIFACT_ID" ]; then
+              gh api --method DELETE "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}"
+            fi
+          done
+
+      - name: Mark packet build failure
+        if: failure()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --method POST "/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state='failure' \
+            -f context='agent-code-packet' \
+            -f description="run=${GITHUB_RUN_ID} failed" \
+            -f target_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"

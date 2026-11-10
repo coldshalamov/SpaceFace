@@ -1,0 +1,89 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/assets/ships/parts/wholeships/ore_barge.glb",
+  "out": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/ore_barge",
+  "focus": [
+    -1.96,
+    0.0,
+    1.425
+  ],
+  "boundsMin": [
+    -21.77,
+    -3.82,
+    -1.8
+  ],
+  "boundsMax": [
+    17.85,
+    3.82,
+    4.65
+  ],
+  "size": [
+    39.62,
+    7.64,
+    6.45
+  ],
+  "lightScale": 3.6685,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_HOOK_DRIVE_CORE",
+      "triangles": 120,
+      "materials": [
+        "Material_Cyan"
+      ]
+    },
+    {
+      "name": "LOD0_HOOK_DRIVE_FAN",
+      "triangles": 240,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Cyan",
+      "triangles": 108,
+      "materials": [
+        "Material_Cyan"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Glass",
+      "triangles": 108,
+      "materials": [
+        "Material_Glass"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Hull",
+      "triangles": 2316,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Mechanical",
+      "triangles": 8716,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Warm",
+      "triangles": 288,
+      "materials": [
+        "Material_Warm"
+      ]
+    }
+  ],
+  "triangles": 11896,
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/ore_barge/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/ore_barge/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/ore_barge/play_chase_close.png"
+  },
+  "clay": null,
+  "clayClose": null
+}

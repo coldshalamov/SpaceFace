@@ -1,0 +1,1526 @@
+import { queryPhysicalBodies, deliverPhysicalImpulse, schedulePhysicalBlast } from '../combat/physicalEffects.js';
+// Impulse charges system (GDD §4.4 "blast plates", BUILD_PLAN WS-D2 / GROK-1).
+//
+// Sticky radial impulse bombs: lob from the player nose, adhere to hulls/asteroids, detonate on R.
+// armTimeS is the throw cooldown — charges arm instantly on stick. Friendly-fire on.
+//
+// Input contract (read-only): state.input.actions.chargeThrow / chargeDetonate (edge bools).
+// Cargo: one cmdty_impulse_charge consumed per throw via removeCargo (src/systems/cargo.js).
+// Impulse: routed through the physics authority's applyImpulse (helpers.combatPhysics, same port
+// as combat/actions.js + combat/damage.js) — never a direct entity.vel write (ARCHITECTURE §3:
+// under rapier-dynamic the backend owns body state; direct mutation desyncs the rigid body).
+// Damage via combat routeDamage / scalarHitToDamagePacket.
+// PQ-137.09 "Chains go off" (the second half of this file).
+// A hull carrying an armed plate detonates when it SLAMS — the same slam the collision
+// consequence kernel already calls a helm-taker (COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV) — and
+// every detonation primes whatever it knocks past the stun threshold, judged by the one hitstun
+// law (resolveHitstunLaw), for CHAIN_REACTION.primeWindowS. A primed hull with no plate left
+// cooks off at a reduced yield when IT slams. Wells prime on grind through `well:grind`.
+// This system is the SINGLE WRITER of primed state; fields.js only reports the grind.
+import { CHAIN_REACTION, IMPULSE_CHARGES, MASSLINE_COMBOS } from '../data/impulseCharges.js';
+import { LIGHT_COOKOFF, lightCookoffEligible, lightCookoffHits } from '../combat/lightCookoff.js';
+import { addCargo, removeCargo } from './cargo.js';
+import { redirectLiveBomb } from './bombs.js';
+import { scalarHitToDamagePacket } from '../combat/damage.js';
+import {
+  COLLISION_CONSEQUENCE_LIMITS,
+  publishHitstunImpulse,
+  recordImpulseProvenance,
+  resolveHitstunLaw,
+  signedHitSide,
+} from '../combat/impulseKernel.js';
+import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
+import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { MODULES } from '../data/modules.js';
+import { swarmPilotHasActed } from './swarmSafety.js';
+import {
+  activePlayerFittings, BOMB_PROPULSION_DIALS, bombPropulsionAvailable, chargeThrowPlan,
+  repulsionTrapFitted, resolveImpulseChargeCapacity,
+} from '../data/impulseChargeReadModel.js';
+
+// Compatibility exports retain the single canonical helper bindings for existing callers.
+export {
+  BOMB_PROPULSION_DIALS, bombPropulsionAvailable, chargeThrowPlan,
+  repulsionTrapFitted, resolveImpulseChargeCapacity,
+};
+
+const CHARGE_COMMODITY = 'cmdty_impulse_charge';
+
+/**
+ * An eligibility rejection does not debit. A throw that already paid (a deliberate miss)
+ * is not charged again. Only a newly accepted throw spends one charge.
+ */
+export function ordnanceChargeDebit(stock, request) {
+  const have = Math.max(0, Math.floor(Number(stock) || 0));
+  if (!request || request.accepted !== true) return have;
+  if (request.alreadyPaid === true) return have;
+  if (!(have >= 1)) return have;
+  return have - 1;
+}
+const STICK_TYPES = new Set(['ship', 'drone', 'asteroid']);
+
+// A plate sticks to hulls and rocks. The body on your line is often a wreck or a
+// crate, which that list misses, so the live tow is the one extra surface a dart
+// may grab — and only when the dart actually reaches it. Nothing aims the throw.
+function playerLatchedBody(state, host) {
+  const tether = state && state.player && state.player.tether;
+  return !!(host && tether && tether.active && tether.targetId != null && host.id === tether.targetId);
+}
+const BLAST_DAMAGE_TYPES = new Set(['ship', 'station', 'drone']);
+const CHARGE_BY_ID = new Map(Object.entries(IMPULSE_CHARGES));
+const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
+// Bounded causal blast payload for presentation. A radial mine may shove many hulls; VFX may
+// only illustrate the strongest real directions, never one invented global axis.
+export const IMPULSE_CHARGE_SHOVE_CAP = 8;
+
+function chargeDef(id) {
+  return CHARGE_BY_ID.get(id) || CHARGE_BY_ID.get('charge_standard');
+}
+
+/** Sim clock, never wall time (root AGENTS.md §2/§6). */
+function simNow(state) {
+  if (!state) return 0;
+  return Number.isFinite(state.simTime) ? state.simTime : (state.tick || 0) / 60;
+}
+
+/** Solver mass, authored body first — the same read the hitstun law and the fields owner use. */
+function massOf(entity, fallback = 1) {
+  const body = entity && entity.physicsBody;
+  const m = body && Number(body.mass) > 0 ? Number(body.mass) : Number(entity && entity.mass);
+  return Number.isFinite(m) && m > 0 ? m : fallback;
+}
+
+function ensurePlayerRuntime(player) {
+  const d = player.data || (player.data = {});
+  if (!d.impulseCharges) d.impulseCharges = { throwCdT: 0 };
+  return d.impulseCharges;
+}
+
+function linearFalloff(dist, radius) {
+  if (!(radius > 0)) return 0;
+  return Math.max(0, 1 - dist / radius);
+}
+
+function considerImpulseShove(shoves, id, dirX, dirZ, mag) {
+  const shove = { id, dx: dirX, dz: dirZ, mag };
+  if (shoves.length < IMPULSE_CHARGE_SHOVE_CAP) {
+    shoves.push(shove);
+    return;
+  }
+  let weakest = 0;
+  for (let i = 1; i < shoves.length; i++) {
+    if (shoves[i].mag < shoves[weakest].mag) weakest = i;
+  }
+  if (mag > shoves[weakest].mag) shoves[weakest] = shove;
+}
+
+function freezeImpulseShoves(shoves) {
+  const out = new Array(shoves.length);
+  for (let i = 0; i < shoves.length; i++) {
+    const row = shoves[i];
+    out[i] = Object.freeze({ id: row.id, dx: row.dx, dz: row.dz, mag: row.mag });
+  }
+  return Object.freeze(out);
+}
+
+function worldOffset(host, local) {
+  const cos = Math.cos(host.rot || 0), sin = Math.sin(host.rot || 0);
+  return {
+    x: host.pos.x + local.x * cos - local.z * sin,
+    z: host.pos.z + local.x * sin + local.z * cos,
+  };
+}
+
+function toLocalOffset(host, wx, wz) {
+  const dx = wx - host.pos.x, dz = wz - host.pos.z;
+  const cos = Math.cos(-(host.rot || 0)), sin = Math.sin(-(host.rot || 0));
+  return { x: dx * cos - dz * sin, z: dx * sin + dz * cos };
+}
+
+function normalizeAngle(angle) {
+  const tau = Math.PI * 2;
+  let value = Number.isFinite(angle) ? angle : 0;
+  value = ((value + Math.PI) % tau + tau) % tau - Math.PI;
+  return value;
+}
+
+function liveChargeList(state) {
+  return indexedTypeScan(state, 'charges');
+}
+
+// FB-015 — saved entity ids only ever refer to bodies combat persistence can name: the player
+// and flags.persistent actors. The restore's sessionEntityIdRemap carries their new ids; a
+// non-persistent endpoint is honestly gone (no id recycling across the boundary).
+function resolveSavedEntityId(state, savedId) {
+  if (savedId == null) return null;
+  const remap = state && state.sessionEntityIdRemap;
+  if (remap && typeof remap.get === 'function') {
+    const mapped = remap.get(String(savedId));
+    return mapped == null ? null : mapped;
+  }
+  // Harness restores that never opened a remap keep numeric ids verbatim; save ids are
+  // String()-ified, so coerce back to the map's key shape.
+  const key = Number.isFinite(Number(savedId)) ? Number(savedId) : savedId;
+  const direct = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(key)
+    : null;
+  return direct && direct.alive !== false ? key : null;
+}
+
+// A saved ref may only name durable bodies — the player or a flags.persistent hull; anything
+// else is honestly gone across the boundary and serializes as null.
+function durableSaveId(state, entityId) {
+  if (entityId == null || !state) return null;
+  if (entityId === state.playerId) return String(entityId);
+  const e = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(entityId)
+    : null;
+  return e && e.flags && e.flags.persistent ? String(entityId) : null;
+}
+
+function activeCharges(state, ownerId) {
+  const out = [];
+  for (const e of liveChargeList(state)) {
+    if (!e.alive || e.type !== 'charge') continue;
+    const d = e.data;
+    if (!d || d.ownerId !== ownerId) continue;
+    out.push(e);
+  }
+  out.sort((a, b) => (a.data.spawnedAt || 0) - (b.data.spawnedAt || 0));
+  return out;
+}
+
+// AE-124 (G10) — a fitted Heat Lure Beacon turns the same charge throw into bait: the
+// ecology layer registers a burn-flag at the throw point that predators prefer.
+export function heatLureFitted(state) {
+  return activePlayerFittings(state).some(id => MODULE_BY_ID.get(id)?.mods?.heatLure);
+}
+
+function stickCandidatesNear(state, pos, radius, out) {
+  const index = state && state.entityIndex;
+  const fallback = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.collidables)
+    ? index.collidables
+    : (state && state.entityList);
+  return queryNearbyEntities(state, pos, radius, out, fallback);
+}
+
+export const impulseCharges = {
+  name: 'impulseCharges',
+
+  init(ctx) {
+    this.destroy();
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    this.helpers = ctx.helpers;
+    this.registry = ctx.registry;
+    this._stickScratch = [];
+    this._blastScratch = [];
+    this._resetChainState();
+    if (this.bus && typeof this.bus.on === 'function') {
+      this._chainUnsubs = [
+        // COLLECT in the handler, ACT in update(). A detonation queues impulses and damage; doing
+        // that from inside another system's tick would put a blast in the middle of the physics
+        // owner's own contact pass.
+        this.bus.on('physics:impact', (p) => this._onPhysicsImpact(p)),
+        this.bus.on('well:grind', (p) => this._onWellGrind(p)),
+        this.bus.on('entity:killed', (p) => {
+          this._onPrimedDeath(p);
+          this._onLightCookoffDeath(p);
+          this._onDetonatorDeath(p);
+        }),
+        this.bus.on('game:new', () => this._resetChainState()),
+        this.bus.on('save:loaded', () => this._onSaveLoaded()),
+        this.bus.on('sector:exit', () => this._resetChainState()),
+      ];
+    }
+  },
+
+  destroy() {
+    for (const off of this._chainUnsubs || []) { if (typeof off === 'function') off(); }
+    this._chainUnsubs = [];
+    this._resetChainState();
+  },
+
+  newGame() {
+    this._resetChainState();
+  },
+
+  update(dt, state) {
+    if (state.mode !== 'flight') return;
+    // The chain is not the player's verb — it is what the room does to itself once the player has
+    // acted — so it ticks before (and independently of) the throw/detonate verbs below.
+    this._tickChain(state);
+
+    const player = state.entities.get(state.playerId);
+    if (!player || !player.alive) return;
+
+    const rt = ensurePlayerRuntime(player);
+    if (rt.throwCdT > 0) rt.throwCdT = Math.max(0, rt.throwCdT - dt);
+
+    this._tickCharges(dt, state);
+    this._handleThrow(player, rt, state);
+    this._handleDetonate(player, state);
+  },
+
+  // ── PQ-137.09: primed state (single writer) ────────────────────────────────────────────────
+
+  _resetChainState() {
+    this._primed = new WeakMap();
+    this._primedBodies = new Set();
+    this._pendingSlams = [];
+    this._pendingGrinds = [];
+    this._pendingDeaths = [];
+    this._pendingCookoffs = [];
+    this._pendingDetonations = [];
+    // Entity-object keyed, not id keyed: core recycles ids into freeIds the same step a body
+    // dies, so an id-keyed once-gate would mark the NEXT dart dealt that id as spent forever.
+    this._detonatedEnts = new WeakSet();
+    this._cookoffDepth = 0;
+    this._slamScratch = [];
+    // A staged save record dies with the chain it describes — init/game:new/sector:exit all
+    // route through here, so a half-restored apply can never leak into the next boundary.
+    this._pendingRestoredChain = null;
+  },
+
+  // ── FB-015: deployables survive a save ────────────────────────────────────────────────────
+  // Live charge entities and the primed chain are a player investment: the plate network the
+  // pilot laid is still owed on load. Entity ids never persist — charge records carry poses
+  // and ids re-resolve through the restore's sessionEntityIdRemap (persistent refs only).
+  serialize() {
+    const state = this.state;
+    const charges = [];
+    if (state) {
+      for (const e of liveChargeList(state)) {
+        if (!e || e.alive === false || e.type !== 'charge') continue;
+        const d = e.data;
+        if (!d || typeof d !== 'object') continue;
+        charges.push({
+          pos: { x: e.pos.x, z: e.pos.z },
+          vel: { x: e.vel ? e.vel.x : 0, z: e.vel ? e.vel.z : 0 },
+          rot: Number.isFinite(e.rot) ? e.rot : 0,
+          radius: e.radius,
+          mass: e.mass,
+          team: e.team,
+          data: {
+            ...d,
+            // Endpoint refs serialize as durable save ids — a plate stuck on a transient hull
+            // honestly records hostId:null and falls off at the boundary.
+            ownerId: durableSaveId(state, d.ownerId),
+            hostId: durableSaveId(state, d.hostId),
+            localOffset: d.localOffset ? { x: d.localOffset.x, z: d.localOffset.z } : null,
+            spawnPos: d.spawnPos ? { x: d.spawnPos.x, z: d.spawnPos.z } : null,
+          },
+        });
+      }
+    }
+    const primed = [];
+    if (this._primedBodies) {
+      for (const entity of this._primedBodies) {
+        if (!entity || entity.alive === false) continue;
+        // Only persistent hulls can re-resolve after load — a primed sector NPC is honestly gone.
+        if (!(entity.flags && entity.flags.persistent)) continue;
+        const rec = this._primed.get(entity);
+        if (!rec) continue;
+        primed.push({
+          saveId: String(entity.id),
+          until: rec.until,
+          // The attribution ref follows the same durable-body rule as the host: a transient
+          // initiator serializes as null rather than naming a dead id after load.
+          byId: durableSaveId(state, rec.byId),
+          reason: rec.reason,
+          link: rec.link,
+          primedTick: rec.primedTick,
+        });
+      }
+    }
+    return { version: 1, charges, primed };
+  },
+
+  deserialize(d) {
+    const payload = d && typeof d === 'object' ? d : {};
+    const charges = Array.isArray(payload.charges)
+      ? payload.charges
+        .filter((c) => c && c.pos && c.data && typeof c.data === 'object')
+        .map((c) => ({
+          pos: { x: Number(c.pos.x) || 0, z: Number(c.pos.z) || 0 },
+          vel: { x: c.vel ? Number(c.vel.x) || 0 : 0, z: c.vel ? Number(c.vel.z) || 0 : 0 },
+          rot: Number.isFinite(c.rot) ? c.rot : 0,
+          radius: Number.isFinite(c.radius) ? c.radius : 1.2,
+          mass: Number.isFinite(c.mass) ? c.mass : 0.5,
+          team: c.team,
+          data: { ...c.data },
+        }))
+      : [];
+    const primed = Array.isArray(payload.primed)
+      ? payload.primed
+        .filter((rec) => rec && rec.saveId != null && Number.isFinite(rec.until))
+      : [];
+    this._pendingRestoredChain = { charges, primed };
+  },
+
+  // The pending record applies AT save:loaded — the same boundary that used to wipe the chain —
+  // so a live session's stale maps die and only the loaded ledger survives.
+  _onSaveLoaded() {
+    const saved = this._pendingRestoredChain;
+    this._pendingRestoredChain = null;
+    this._resetChainState();
+    if (!saved) return;
+    this._applyRestoredChain(saved);
+  },
+
+  _applyRestoredChain(saved) {
+    const state = this.state;
+    const spawn = this.helpers && this.helpers.spawnEntity;
+    if (state && typeof spawn === 'function') {
+      for (const c of saved.charges) {
+        const data = { ...c.data };
+        data.ownerId = resolveSavedEntityId(state, data.ownerId);
+        data.hostId = resolveSavedEntityId(state, data.hostId);
+        spawn({
+          type: 'charge',
+          pos: { x: c.pos.x, z: c.pos.z },
+          vel: { x: c.vel.x, z: c.vel.z },
+          rot: c.rot,
+          radius: c.radius,
+          mass: c.mass,
+          collides: false,
+          team: c.team,
+          ownerId: data.ownerId,
+          data,
+        });
+      }
+    }
+    if (!state || !state.entities) return;
+    for (const rec of saved.primed) {
+      const id = resolveSavedEntityId(state, rec.saveId);
+      const entity = id != null ? state.entities.get(id) : null;
+      if (!entity || entity.alive === false) continue;
+      this._primed.set(entity, {
+        until: rec.until,
+        byId: resolveSavedEntityId(state, rec.byId),
+        reason: rec.reason,
+        link: rec.link,
+        primedTick: rec.primedTick,
+      });
+      this._primedBodies.add(entity);
+    }
+  },
+
+  /** Read-only view of a hull's primed state, for the HUD, the bench and tests. */
+  primeState(entity) {
+    if (!entity || !this._primed) return null;
+    const rec = this._primed.get(entity);
+    return rec
+      ? Object.freeze({ until: rec.until, byId: rec.byId, reason: rec.reason, link: rec.link, primedTick: rec.primedTick })
+      : null;
+  },
+
+  /** True while `entity` would cook off on its next slam. */
+  isPrimed(entity, state = this.state) {
+    const rec = this._primed && this._primed.get(entity);
+    if (!rec) return false;
+    return simNow(state) < rec.until;
+  },
+
+  /**
+   * WHAT COUNTS AS A SLAM, and why it is the PRE-SOLVE CLOSING SPEED and not the consequence
+   * receipt's per-tick deltaV.
+   *
+   * The threshold is the one the game already uses to take a helm: COLLISION_CONSEQUENCE_LIMITS
+   * .tumbleDeltaV. The INPUT is the speed the two bodies were closing at before the solver
+   * answered, exactly as PQ-137.06 established for terrain damage — "the solver bound stays a
+   * rate limit and never the damage input".
+   *
+   * MEASURED, 2026-09-05, seed 4242: a wasp shoved into another wasp at 57.5 WU/s produces a
+   * contact the soft solver spreads across twelve ticks (impulse 173 -> 107 -> 67 -> 42 -> ...),
+   * so the consequence receipt's first-tick deltaV is 10.8 and the pair cooldown suppresses the
+   * rest. Reading that number, a 57.5 WU/s slam is a scrape and nothing ever goes off. The
+   * pre-solve closing speed on the same contact reads 57.5 — the speed a player watched the ship
+   * arrive at.
+   */
+  _onPhysicsImpact(payload) {
+    if (!payload || payload.aId == null || payload.bId == null) return;
+    const closing = Number.isFinite(payload.preSolveClosingSpeed)
+      ? Math.max(0, payload.preSolveClosingSpeed)
+      : 0;
+    if (!(closing >= COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV)) return;
+    const tick = Number.isFinite(payload.tick) ? payload.tick : 0;
+    this._queueSlam(payload.aId, payload.bId, closing, tick);
+    this._queueSlam(payload.bId, payload.aId, closing, tick);
+  },
+
+  _queueSlam(targetId, otherId, closing, tick) {
+    const pending = this._pendingSlams;
+    if (!pending) return;
+    for (let i = 0; i < pending.length; i++) {
+      // One entry per hull per drain: the same contact is republished every tick it persists, and
+      // the hardest reading of it is the one that describes the arrival.
+      if (pending[i].targetId !== targetId) continue;
+      if (closing > pending[i].deltaV) { pending[i].deltaV = closing; pending[i].otherId = otherId; }
+      return;
+    }
+    if (pending.length >= CHAIN_REACTION.maxSlamsPerTick) return;
+    pending.push({ targetId, otherId, deltaV: closing, surface: null, tick });
+  },
+
+  _onWellGrind(payload) {
+    if (!payload || !this._pendingGrinds) return;
+    if (this._pendingGrinds.length >= CHAIN_REACTION.maxSlamsPerTick) return;
+    this._pendingGrinds.push({
+      aId: payload.aId,
+      bId: payload.bId,
+      fieldId: payload.fieldId == null ? null : payload.fieldId,
+    });
+  },
+
+  _tickChain(state) {
+    this._resolveDetonatorDeaths(state);
+    this._tickDetonatorFuses(state);
+    this._resolveLightCookoffs(state);
+    this._resolvePrimedDeaths(state);
+    this._expirePrimes(state);
+    this._resolveGrinds(state);
+    this._resolveSlams(state);
+  },
+
+  /**
+   * entity:killed COLLECT for the kamikaze fuse. Like the primed-death handler, this only queues;
+   * the blast itself runs in update() through _tickChain, never inside the kill path's own frame.
+   * The once-gate keys on the entity OBJECT — ids recycle, so a stale receipt resolving to a
+   * recycled (live) hull is refused on alive, and a duplicated receipt for the same corpse
+   * dedupes on the same object.
+   */
+  _onDetonatorDeath(payload) {
+    if (!payload || payload.id == null || !this._detonatedEnts) return;
+    const state = this.state;
+    const victim = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(payload.id)
+      : null;
+    const spec = victim && victim.data && victim.data.detonator;
+    if (!victim || !spec) return;
+    // Every entity:killed emitter fires after alive=false; a live lookup means the receipt's id
+    // was recycled onto a new hull and this is a stale or duplicated receipt, not a death.
+    if (victim.alive !== false) return;
+    if (this._detonatedEnts.has(victim)) return;
+    if (!this._pendingDetonations) this._pendingDetonations = [];
+    if (this._pendingDetonations.length >= 8) return;
+    // A duplicated kill receipt for a corpse still awaiting its blast used to queue a second
+    // pending record harmlessly (the blast's once-gate refused it) — but the commit beat now
+    // publishes at queue time, so the once-gate must live here too, on the same object key.
+    if (this._pendingDetonations.some((r) => r.ent === victim)) return;
+    // Snapshot the corpse's position AND object — the id may be dealt to a new hull before
+    // update() runs; the object identity cannot be.
+    const pos = { x: Number(victim.pos && victim.pos.x) || 0, z: Number(victim.pos && victim.pos.z) || 0 };
+    this._pendingDetonations.push({
+      id: victim.id,
+      ent: victim,
+      pos,
+      spec,
+      killerId: payload.killerId == null ? null : payload.killerId,
+      trigger: 'death',
+    });
+    // The commit beat fires here, at queue time — not at blast time. The blast resolves on the
+    // next tick, after the orchestrator's own entity:killed handler has already cleared the
+    // dart's doctrine cycle. This nested emit reaches _onCombatFire while the cycle still
+    // exists because impulseCharges' entity:killed subscription precedes it (registry order).
+    if (victim.data && victim.data.ai && victim.data.ai.combatDoctrineId === 'detonator_run') {
+      this._emitDetonatorCommit(victim.id, pos, 'death');
+    }
+  },
+
+  _resolveDetonatorDeaths(state) {
+    const pending = this._pendingDetonations || [];
+    if (!pending.length) return;
+    this._pendingDetonations = [];
+    // Kill receipts first, same travelling beat as primed deaths: a dart killed inside another
+    // dart's blast queues for next tick, so a chain of darts reads as links, not a white frame.
+    for (const rec of pending) {
+      this._detonatorBlast(state, rec, rec.trigger, rec.killerId, null);
+    }
+  },
+
+  /**
+   * Proximity fuse. An armed dart pops when any hull NOT on its own team crosses the trigger
+   * ring — the fuse only knows team, so a dart swung back into its own pack never early-pops on
+   * a wingman (the slam that kills it pops it instead). This runs inside _tickChain: the pop is
+   * room physics, not a weapon fire, and it belongs to the same lane the cook-offs use.
+   */
+  _tickDetonatorFuses(state) {
+    const shipLike = indexedShipLikeScan(state);
+    for (const dart of shipLike) {
+      if (!dart || dart.alive === false || !dart.pos) continue;
+      const spec = dart.data && dart.data.detonator;
+      if (!spec) continue;
+      // Do not spend the staged fuse while damage admission is waiting on the pilot.
+      // The dart keeps moving and the same live fuse resumes after the first act.
+      if (dart.data.runCohort === 'survival' && !swarmPilotHasActed(state)) continue;
+      if (this._detonatedEnts && this._detonatedEnts.has(dart)) continue;
+      const triggerRange = Math.max(0, Number(spec.triggerRange) || 56);
+      const aiData = dart.data.ai || {};
+      // A doctrine-armed dart's fuse is written for the hull it is running. Ambush lanes route
+      // the named prey straight past bystanders (the player flies the same corridor), and a
+      // team-only fuse pops on whichever hull the run brushes first — the Ceres dart kept dying
+      // on the player ~156 WU short of its hauler. While the doctrine names a target (the same
+      // chain aiPorts uses to name the fight), that hull is the only fuse; a doctrineless dart
+      // or a dart whose target is lost keeps the indiscriminate ring.
+      const fuseTargetId = aiData.combatDoctrineId === 'detonator_run'
+        ? ((dart.data.combat && dart.data.combat.targetId)
+          ?? (aiData.activity && aiData.activity.targetId)
+          ?? aiData.retaliationTargetId)
+        : null;
+      const near = stickCandidatesNear(state, dart.pos, triggerRange, this._stickScratch);
+      let hostile = null;
+      for (const cand of near) {
+        if (!cand || cand.id === dart.id || cand.alive === false || !cand.pos) continue;
+        if (cand.team === dart.team) continue;
+        if (cand.type !== 'ship' && cand.type !== 'drone') continue;
+        if (fuseTargetId != null && cand.id !== fuseTargetId) continue;
+        // stickCandidatesNear degrades to the whole entityList when no spatial hash is live —
+        // the ring is the fuse's contract, so the radius is enforced here, not by the query.
+        const dx = cand.pos.x - dart.pos.x, dz = cand.pos.z - dart.pos.z;
+        if (dx * dx + dz * dz > triggerRange * triggerRange) continue;
+        hostile = cand;
+        break;
+      }
+      if (hostile) {
+        this._detonatorBlast(state, {
+          id: dart.id,
+          pos: { x: Number(dart.pos.x) || 0, z: Number(dart.pos.z) || 0 },
+          spec,
+        }, 'proximity', null, dart);
+      }
+    }
+  },
+
+  /**
+   * THE dart's pop: one blast through _blastVictims — the same falloff, impulse, hitstun/prime
+   * law and damage router every other explosion uses, never a second blast implementation.
+   * Attribution mirrors light cook-off: a dart the PLAYER put down pops with player credit (the
+   * kill chain counts it as their counterplay); a dart that flew its own fuse attributes to
+   * itself. A live dart then pays its own hull through the same damage router, so a proximity
+   * pop produces a canonical kill receipt rather than a scripted removal.
+   */
+  _detonatorBlast(state, rec, trigger, killerId, liveEntity) {
+    if (!rec || rec.id == null || !this._detonatedEnts) return null;
+    const ent = liveEntity || rec.ent || null;
+    if (ent && this._detonatedEnts.has(ent)) return null;
+    if (ent) this._detonatedEnts.add(ent);
+    const spec = rec.spec || {};
+    const radius = Math.max(0, Number(spec.blastRadius) || 96);
+    const damage = Math.max(0, Number(spec.damage) || 0);
+    const impulse = Math.max(0, Number(spec.impulse) || 0);
+    const pos = {
+      x: Number(rec.pos && rec.pos.x) || 0,
+      z: Number(rec.pos && rec.pos.z) || 0,
+    };
+    const creditId = killerId === state.playerId ? state.playerId : rec.id;
+    // The doctrine's commit beat precedes the victims' damage receipts: _blastVictims routes
+    // combat:damage that completes the cycle into aftermath, so the action cue must already be
+    // queued or the four-beat order inverts. Death-triggered blasts already committed when the
+    // kill was queued — the cycle is gone by blast time.
+    if (trigger === 'proximity' && ent && ent.data && ent.data.ai
+      && ent.data.ai.combatDoctrineId === 'detonator_run') {
+      this._emitDetonatorCommit(rec.id, pos, trigger);
+    }
+    const result = this._blastVictims(state, {
+      pos,
+      ownerId: creditId,
+      radius,
+      impulse,
+      damage,
+      impulseMult: 1,
+      damageMult: 1,
+      chargeId: 'detonator_dart',
+      excludeId: rec.id,
+      originId: rec.id,
+      // The dart's own light hull is the mass the hitstun law weighs victims against — a shove
+      // that launches a 20-ton warhead into you reads differently than a thrown plate.
+      sourceId: rec.id,
+      trigger,
+      link: 1,
+    });
+    this.bus.emit('detonator:detonated', {
+      entityId: rec.id,
+      pos,
+      radius,
+      trigger,
+      killerId: creditId,
+      hits: result.hits,
+      shoves: result.shoves,
+      tick: state.tick | 0,
+    });
+    // The shared blast receipt: explosion VFX, audio and kill-credit chains already listen here.
+    this.bus.emit('charge:detonated', {
+      pos,
+      hits: result.hits,
+      radius,
+      shoves: result.shoves,
+      trigger: 'detonator_dart',
+      ownerId: creditId,
+      hostId: rec.id,
+    });
+    this.bus.emit('audio:cue', { id: 'sfx_explosion_small', position: pos, gain: 0.8 });
+    const live = liveEntity && liveEntity.alive !== false ? liveEntity
+      : (rec.ent && rec.ent.alive !== false ? rec.ent : null);
+    if (live && live.alive !== false) {
+      const packet = scalarHitToDamagePacket({
+        // Enough to clear its own hull/armor/shield stack deterministically — a fuse that
+        // fizzled on a ward screen would leave a dud kamikaze orbiting forever.
+        damage: Math.max(60, (Number(live.hull) || 0) * 2 + (Number(live.armorHp) || 0) * 2 + (Number(live.shield) || 0) * 2 + 8),
+        damageType: 'explosive',
+        pos,
+        source: { kind: 'detonator_dart', chargeId: 'detonator_dart' },
+      });
+      packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+      this._routeDamage({
+        attackerId: rec.id,
+        targetId: rec.id,
+        packet,
+        origin: { kind: 'detonator_dart', id: rec.id },
+      });
+    }
+    return result;
+  },
+
+  /**
+   * The detonator_run doctrine's commit beat. The choreography grammar names the detonation
+   * itself as the doctrine's action, and the orchestrator's only action ingress for a
+   * weaponless hull is combat:fire — the vocabulary weapons.js already uses for deployed
+   * ordnance (deploy: true). The dart reports its commit through that channel, carrying its
+   * doctrine id so the audio signature resolves to the authored fuse register instead of a
+   * bare charge voice. Callers gate on data.ai.combatDoctrineId so a player-dropped dart (no
+   * doctrine) stays a plain detonation receipt, never a doctrine row.
+   */
+  _emitDetonatorCommit(dartId, pos, trigger) {
+    this.bus.emit('combat:fire', {
+      ownerId: dartId,
+      sourceId: dartId,
+      weaponId: 'detonator_dart',
+      doctrineId: 'detonator_run',
+      actionId: 'commit',
+      origin: pos ? { x: pos.x, z: pos.z } : null,
+      pos: pos ? { x: pos.x, z: pos.z } : null,
+      deploy: true,
+      detonation: true,
+      trigger,
+    });
+  },
+
+  _onLightCookoffDeath(payload) {
+    if (this._cookoffDepth) return;
+    const state = this.state;
+    const victim = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(payload && payload.id)
+      : null;
+    if (!lightCookoffEligible(state, victim)) return;
+    if (!this._pendingCookoffs) this._pendingCookoffs = [];
+    if (this._pendingCookoffs.length >= 8) return;
+    this._pendingCookoffs.push({
+      id: victim.id,
+      pos: { x: victim.pos.x, z: victim.pos.z },
+      killerId: payload && payload.killerId,
+    });
+  },
+
+  _resolveLightCookoffs(state) {
+    const pending = this._pendingCookoffs || [];
+    if (pending.length === 0) return;
+    this._pendingCookoffs = [];
+    this._cookoffDepth = 1;
+    try {
+      for (const origin of pending) {
+        const neighbors = stickCandidatesNear(state, origin.pos, LIGHT_COOKOFF.radius, this._blastScratch);
+        const hits = lightCookoffHits(origin, neighbors, { playerId: state.playerId });
+        if (!hits.length) continue;
+        const creditId = origin.killerId === state.playerId ? state.playerId : origin.id;
+        const hitIds = [];
+        const shoves = [];
+        for (const hit of hits) {
+          const ent = state.entities && typeof state.entities.get === 'function'
+            ? state.entities.get(hit.id)
+            : null;
+          if (ent) {
+            this._applyBlastImpulse(ent, hit.dirX * hit.impulse, hit.dirZ * hit.impulse, state, creditId, 'light_cookoff');
+          }
+          const packet = scalarHitToDamagePacket({
+            damage: hit.damage,
+            damageType: 'explosive',
+            pos: origin.pos,
+            source: { kind: 'light_cookoff', chargeId: 'light_cookoff' },
+          });
+          packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+          this._routeDamage({
+            attackerId: creditId,
+            targetId: hit.id,
+            packet,
+            origin: { kind: 'light_cookoff', id: origin.id },
+          });
+          hitIds.push(hit.id);
+          considerImpulseShove(shoves, hit.id, hit.dirX, hit.dirZ, hit.impulse);
+        }
+        this.bus.emit('charge:detonated', {
+          pos: origin.pos,
+          hits: hitIds,
+          radius: LIGHT_COOKOFF.radius,
+          shoves: freezeImpulseShoves(shoves),
+          trigger: 'light_cookoff',
+          hostId: origin.id,
+        });
+        this.bus.emit('audio:cue', { id: 'sfx_explosion_small', position: origin.pos, gain: 0.55 });
+      }
+    } finally {
+      this._cookoffDepth = 0;
+    }
+  },
+
+  _onPrimedDeath(payload) {
+    const victim = this.state?.entities.get(payload?.id);
+    const rec = victim && this._primed?.get(victim);
+    if (!rec || simNow(this.state) >= rec.until || rec.link > CHAIN_REACTION.maxLinks) return;
+    if (this._pendingDeaths.length >= CHAIN_REACTION.maxSlamsPerTick) return;
+    // Keep the dead hull's position even if the entity pool reuses its id next frame.
+    this._pendingDeaths.push({ entity: { id: victim.id, pos: { ...victim.pos } }, rec: { ...rec } });
+    this._clearPrime(victim, 'destroyed');
+  },
+
+  _resolvePrimedDeaths(state) {
+    if (!this._pendingDeaths.length) return;
+    // New deaths generated by these blasts wait until the next tick. A chain has a
+    // visible travelling beat and the same link/yield limits as a collision cook-off.
+    const deaths = this._pendingDeaths;
+    this._pendingDeaths = [];
+    for (const { entity, rec } of deaths) this._sympatheticDetonation(entity, rec, state);
+  },
+
+  _expirePrimes(state) {
+    if (!this._primedBodies || this._primedBodies.size === 0) return;
+    const now = simNow(state);
+    let expired = null;
+    for (const entity of this._primedBodies) {
+      const rec = this._primed.get(entity);
+      if (!rec) { (expired || (expired = [])).push([entity, 'lost']); continue; }
+      if (entity.alive === false) { (expired || (expired = [])).push([entity, 'destroyed']); continue; }
+      if (now >= rec.until) (expired || (expired = [])).push([entity, 'expired']);
+    }
+    if (!expired) return;
+    for (const [entity, reason] of expired) this._clearPrime(entity, reason);
+  },
+
+  _resolveGrinds(state) {
+    const pending = this._pendingGrinds;
+    if (!pending || pending.length === 0) return;
+    for (let i = 0; i < pending.length; i++) {
+      const grind = pending[i];
+      const a = state.entities.get(grind.aId);
+      const b = state.entities.get(grind.bId);
+      // Both ends, because a grind is a thing two hulls do to each other. `_prime` refuses the
+      // player and anything that is not craft, so this cannot cook the player's hull.
+      this._prime(a, state, { byId: grind.bId, reason: 'well_grind' });
+      this._prime(b, state, { byId: grind.aId, reason: 'well_grind' });
+    }
+    pending.length = 0;
+  },
+
+  _resolveSlams(state) {
+    const pending = this._pendingSlams;
+    if (!pending || pending.length === 0) return;
+    // Drain into scratch first: a detonation below routes damage, which can kill, which can emit
+    // further receipts. Those belong to the NEXT tick's queue, not to the list being walked.
+    const slams = this._slamScratch;
+    slams.length = 0;
+    for (let i = 0; i < pending.length; i++) slams.push(pending[i]);
+    pending.length = 0;
+
+    const now = simNow(state);
+    for (let i = 0; i < slams.length; i++) {
+      const slam = slams[i];
+      const victim = state.entities.get(slam.targetId);
+      if (!victim || victim.alive === false) continue;
+      if (victim.id === state.playerId) continue;
+      if (victim.type !== 'ship' && victim.type !== 'drone') continue;
+
+      const charge = this._armedChargeOn(state, victim.id);
+      if (charge) {
+        this.bus.emit('chain:slam', {
+          schemaVersion: 1,
+          victimId: victim.id,
+          otherId: slam.otherId == null ? null : slam.otherId,
+          deltaV: slam.deltaV,
+          surface: slam.surface || null,
+          kind: 'charge',
+          tick: state.tick | 0,
+        });
+        this._detonateOne(charge, charge.data, charge.data.ownerId, state, 'slam');
+        continue;
+      }
+
+      const rec = this._primed.get(victim);
+      if (!rec || now >= rec.until) continue;
+      // A prime must PREDATE the slam that sets it off. Both ends of one contact are queued
+      // together, so without this a hull cooked by the blast that just went off next to it would
+      // cook off in the same drain, off the same contact — one slam producing two detonations and
+      // a chain that skips a beat. A link is a slam, and a slam is a tick.
+      if (!(rec.primedTick < (state.tick | 0))) continue;
+      this.bus.emit('chain:slam', {
+        schemaVersion: 1,
+        victimId: victim.id,
+        otherId: slam.otherId == null ? null : slam.otherId,
+        deltaV: slam.deltaV,
+        surface: slam.surface || null,
+        kind: 'sympathetic',
+        tick: state.tick | 0,
+      });
+      this._clearPrime(victim, 'detonated');
+      this._sympatheticDetonation(victim, rec, state);
+    }
+    slams.length = 0;
+  },
+
+  /** The armed plate stuck to `hostId`, or null. Bounded by the deployment cap (<= 8 charges). */
+  _armedChargeOn(state, hostId) {
+    for (const e of liveChargeList(state)) {
+      if (!e.alive || e.type !== 'charge') continue;
+      const d = e.data;
+      if (!d || !d.armed || d.hostId !== hostId) continue;
+      return e;
+    }
+    return null;
+  },
+
+  _prime(entity, state, { byId = null, reason = 'blast', deltaV = 0, durationS = 0, link = 1 } = {}) {
+    if (!entity || entity.alive === false) return false;
+    // The player is never a bomb. B13: "the player is never knocked around" — and never cooked.
+    if (entity.id === state.playerId) return false;
+    if (entity.type !== 'ship' && entity.type !== 'drone') return false;
+    const existing = this._primed.get(entity);
+    if (!existing && this._primedBodies.size >= CHAIN_REACTION.maxPrimedBodies) return false;
+    // Tick-quantized so a prime never straddles a frame and two replays of a seed agree exactly.
+    const windowS = Math.max(1, Math.round(CHAIN_REACTION.primeWindowS * 60)) / 60;
+    const until = simNow(state) + windowS;
+    if (existing) {
+      if (until > existing.until) existing.until = until;
+      return false; // already cooked; extending is not a second consequence
+    }
+    this._primed.set(entity, {
+      until, byId, reason,
+      link: Math.max(1, Math.trunc(link) || 1),
+      primedTick: state.tick | 0,
+    });
+    this._primedBodies.add(entity);
+    this.bus.emit('chain:primed', {
+      schemaVersion: 1,
+      victimId: entity.id,
+      byId,
+      reason,
+      deltaV,
+      durationS,
+      until,
+      windowS,
+      link: Math.max(1, Math.trunc(link) || 1),
+      tick: state.tick | 0,
+    });
+    // NO PRESENTATION CUE HERE, deliberately. PQ-137's non-goals: "No VFX/audio (that is PQ-139)".
+    // `chain:primed` above is the receipt the impact layer consumes when it gets its own leaf; a
+    // cue published from here paints a generic ring, which the impulse-cone grammar forbids
+    // (test/vfx-impulse-cone.test.mjs: "declared families stay cone/sheet/ribbon, not rings").
+    return true;
+  },
+
+  _clearPrime(entity, reason) {
+    if (!entity) return;
+    this._primed.delete(entity);
+    this._primedBodies.delete(entity);
+    this.bus.emit('chain:primeEnded', {
+      schemaVersion: 1,
+      victimId: entity.id,
+      reason,
+      tick: this.state ? (this.state.tick | 0) : 0,
+    });
+  },
+
+  /**
+   * A primed hull with no plate left cooks off: its own drive and ordnance answer the slam at
+   * CHAIN_REACTION.sympatheticYield of a plate, raised to the link depth. Decaying yield is what
+   * makes a chain FINITE without a clamp anywhere — three links is a spectacle, thirty is a bug —
+   * and CHAIN_REACTION.maxLinks is the hard stop. Nothing here scripts a death: the cook-off is a
+   * blast, and whether the hull survives is decided by the damage it and the slam did.
+   */
+  _sympatheticDetonation(entity, rec, state) {
+    const link = Math.max(1, Math.trunc(Number(rec && rec.link) || 1));
+    if (link > CHAIN_REACTION.maxLinks) return null;
+    const def = chargeDef('charge_standard');
+    const yieldSpec = CHAIN_REACTION.sympatheticYield;
+    const decay = Math.pow(yieldSpec.impulse, link);
+    const damageDecay = Math.pow(yieldSpec.damage, link);
+    const radius = def.radius * yieldSpec.radius;
+    const pos = { x: entity.pos.x, z: entity.pos.z };
+    const ownerId = rec && rec.byId != null ? rec.byId : entity.id;
+    const result = this._blastVictims(state, {
+      pos,
+      ownerId,
+      radius,
+      impulse: def.impulse * decay,
+      damage: def.damage * damageDecay,
+      chargeId: null,
+      excludeId: entity.id,
+      sourceId: entity.id,
+      trigger: 'sympathetic',
+      link: link + 1,
+    });
+    this.bus.emit('chain:detonated', {
+      schemaVersion: 1,
+      sourceId: entity.id,
+      byId: ownerId,
+      pos,
+      hits: result.hits,
+      radius,
+      link,
+      trigger: 'sympathetic',
+      tick: state.tick | 0,
+    });
+    // The same presentation receipt a plate publishes, so a cook-off is never an invisible event.
+    this.bus.emit('charge:detonated', {
+      pos,
+      hits: result.hits,
+      radius,
+      shoves: result.shoves,
+      trigger: 'sympathetic',
+      hostId: entity.id,
+    });
+    this.bus.emit('audio:cue', { id: 'sfx_explosion_small', position: pos, gain: 0.65 });
+    return result;
+  },
+
+  _tickCharges(dt, state) {
+    const charges = liveChargeList(state);
+    for (const e of charges) {
+      if (!e.alive || e.type !== 'charge') continue;
+      const d = e.data;
+      if (!d) continue;
+
+      if (d.chargeId === 'charge_repulsion_trap') {
+        const def = chargeDef(d.chargeId);
+        const age = simNow(state) - d.spawnedAt;
+        if (age >= def.lifetimeS) { e.alive = false; continue; }
+        if (!d.armed && age >= def.armingDelayS) {
+          d.armed = true;
+          this.bus.emit('charge:armed', { chargeId: e.id, pos: { x: e.pos.x, z: e.pos.z } });
+        }
+        if (d.armed) {
+          // Deployment caps bound this probe; actors keep their real bodies and collision response.
+          // Ships+drones are the only intruder types, so the compact shipLike bucket is the scan —
+          // the result is an existence check only, so bucket order cannot change the outcome.
+          const shipLike = indexedShipLikeScan(state);
+          let intruder = false;
+          for (let i = 0; i < shipLike.length; i++) {
+            const target = shipLike[i];
+            if (target.alive && target.id !== d.ownerId
+              && (target.type === 'ship' || target.type === 'drone') && target.team !== e.team
+              && Math.hypot(target.pos.x - e.pos.x, target.pos.z - e.pos.z) <= def.triggerRadius + (target.radius || 0)) {
+              intruder = true;
+              break;
+            }
+          }
+          if (intruder) this._detonateOne(e, d, d.ownerId, state, 'proximity');
+        }
+        continue;
+      }
+
+      if (d.hostId != null) {
+        const host = state.entities.get(d.hostId);
+        if (!host || !host.alive) {
+          // Losing the carrier releases the paid plate; it does not erase the player's
+          // follow-up. Its last inherited motion and armed state survive, so the same
+          // free-flight/stick path below can catch another body or answer manual detonation.
+          d.hostId = null;
+          d.localOffset = null;
+          d.localRot = null;
+        } else {
+          const w = worldOffset(host, d.localOffset || { x: 0, z: 0 });
+          e.pos.x = w.x;
+          e.pos.z = w.z;
+          e.vel.x = host.vel.x;
+          e.vel.z = host.vel.z;
+          if (!Number.isFinite(d.localRot)) {
+            // Old sticky saves preserve their visible pose on the first tick, then follow the host.
+            d.localRot = normalizeAngle((e.rot || 0) - (host.rot || 0));
+          }
+          e.rot = normalizeAngle((host.rot || 0) + d.localRot);
+          d.armed = true;
+          continue;
+        }
+      }
+
+      e.pos.x += e.vel.x * dt;
+      e.pos.z += e.vel.z * dt;
+      this._tryStick(e, d, state);
+    }
+  },
+
+  _tryStick(charge, d, state) {
+    const def = chargeDef(d.chargeId);
+    const r = def.stickRadius;
+    const candidates = stickCandidatesNear(state, charge.pos, r + (charge.radius || 1), this._stickScratch);
+    let best = null, bestDist = Infinity;
+    for (const host of candidates) {
+      if (!host.alive || host.id === charge.id) continue;
+      if (!STICK_TYPES.has(host.type) && !playerLatchedBody(state, host)) continue;
+      const dx = charge.pos.x - host.pos.x, dz = charge.pos.z - host.pos.z;
+      // Nose-launched charges spawn on the owner's hull — brief owner-stick lockout so the lob
+      // clears the thrower; rear-plate self-stick still works once the charge returns aft.
+      if (host.id === d.ownerId && state.simTime - (d.spawnedAt || 0) < 0.35) continue;
+      const surface = (host.radius || 6) + (charge.radius || 1);
+      const dist = Math.hypot(dx, dz);
+      if (dist > surface + r) continue;
+      if (dist < bestDist) { bestDist = dist; best = host; }
+    }
+    if (!best) return;
+
+    d.hostId = best.id;
+    d.localOffset = toLocalOffset(best, charge.pos.x, charge.pos.z);
+    d.localRot = normalizeAngle((charge.rot || 0) - (best.rot || 0));
+    d.armed = true;
+    charge.vel.x = best.vel.x;
+    charge.vel.z = best.vel.z;
+    const w = worldOffset(best, d.localOffset);
+    charge.pos.x = w.x;
+    charge.pos.z = w.z;
+    this.bus.emit('charge:stuck', { chargeId: charge.id, hostId: best.id, pos: { x: w.x, z: w.z } });
+  },
+
+  _handleThrow(player, rt, state) {
+    const actions = state.input && state.input.actions;
+    if (!actions?.chargeThrow) return;
+    actions.chargeThrow = false;
+
+    // The arming gap between throws was a silent no-op; say why instead of eating the press.
+    if (rt.throwCdT > 0) {
+      this.bus.emit('toast', { text: `Charge arming — ${Math.ceil(rt.throwCdT)}s`, kind: 'warn', ttl: 1.6 });
+      return;
+    }
+    if (player.flags && player.flags.docked) return;
+    if (state.ui && state.ui.screenStack && state.ui.screenStack.length > 0) return;
+
+    // The shortage answer needs nothing spatial — check the hold before planning the throw so a
+    // bare press can never die on the hull's motion shape.
+    const have = Number(state.player && state.player.cargo && state.player.cargo.items
+      && state.player.cargo.items[CHARGE_COMMODITY]) || 0;
+    const alreadyPaid = rt.debitedThrowTick === state.tick;
+    const nextStock = ordnanceChargeDebit(have, { accepted: true, alreadyPaid });
+    if (alreadyPaid || nextStock === have) {
+      if (!alreadyPaid) this.bus.emit('toast', { text: 'No impulse charges in cargo', kind: 'error', ttl: 2 });
+      return;
+    }
+    const consumed = removeCargo(state, CHARGE_COMMODITY, 1);
+    if (consumed <= 0) {
+      this.bus.emit('toast', { text: 'No impulse charges in cargo', kind: 'error', ttl: 2 });
+      return;
+    }
+    rt.debitedThrowTick = state.tick;
+
+    // A fitted Repulsion Trap adds a verb: a plain throw is still the aimed sticky plate, and
+    // throwing while braking lays the trap on the wake. Capacity, debit and arming are shared.
+    const plan = chargeThrowPlan(state, player);
+    const { trap, chargeId, def, aftDrop, dir, cf, sf, spawnDistance, throwSpeed } = plan;
+
+    const active = activeCharges(state, player.id);
+    const capacity = resolveImpulseChargeCapacity(state);
+    while (active.length >= capacity) {
+      const oldest = active.shift();
+      if (oldest) oldest.alive = false;
+    }
+
+    const charge = this.helpers.spawnEntity({
+      type: 'charge',
+      pos: { x: player.pos.x + cf * spawnDistance, z: player.pos.z + sf * spawnDistance },
+      vel: {
+        x: trap ? 0 : cf * throwSpeed + player.vel.x,
+        z: trap ? 0 : sf * throwSpeed + player.vel.z,
+      },
+      rot: dir,
+      radius: 1.2,
+      mass: 0.5,
+      collides: false,
+      team: player.team,
+      ownerId: player.id,
+      data: {
+        kind: 'impulse_charge',
+        chargeId,
+        ownerId: player.id,
+        hostId: null,
+        localOffset: null,
+        localRot: null,
+        armed: !trap && aftDrop,
+        aftDrop,
+        propulsionImpulseMult: !trap && aftDrop ? BOMB_PROPULSION_DIALS.selfImpulseMult : 1,
+        spawnedAt: state.simTime,
+        spawnPos: { x: player.pos.x + cf * spawnDistance, z: player.pos.z + sf * spawnDistance },
+      },
+    });
+
+    if (!charge) {
+      addCargo(state, CHARGE_COMMODITY, consumed);
+      rt.debitedThrowTick = -1;
+      return;
+    }
+
+    rt.throwCdT = def.armTimeS;
+    this.bus.emit('charge:thrown', { chargeId: charge.id, ownerId: player.id, pos: { x: charge.pos.x, z: charge.pos.z } });
+    // AE-124: the lure is registered at the throw point — where the charge leaves the hull.
+    if (heatLureFitted(state)) {
+      this.bus.emit('alienEcology:lureDropped', {
+        x: charge.pos.x, z: charge.pos.z,
+        sectorId: state.world && state.world.currentSectorId,
+        chargeId: charge.id,
+        burnS: 60,
+      });
+    }
+    if (aftDrop) {
+      const root = state.massline2 || (state.massline2 = {});
+      root.bombPropulsion = { lastDropTick: state.tick, chargeId: charge.id, standoff: spawnDistance };
+      this.bus.emit('charge:aftDropped', {
+        chargeId: charge.id, ownerId: player.id, pos: { x: charge.pos.x, z: charge.pos.z },
+        standoff: spawnDistance,
+      });
+      this.bus.emit('audio:cue', { id: 'massline.bombDrop', position: { x: charge.pos.x, z: charge.pos.z } });
+    }
+  },
+
+  _handleDetonate(player, state) {
+    const actions = state.input && state.input.actions;
+    if (!actions?.chargeDetonate) return;
+    actions.chargeDetonate = false;
+
+    let detonated = 0;
+    for (const charge of liveChargeList(state)) {
+      if (!charge.alive || charge.type !== 'charge') continue;
+      const d = charge.data;
+      if (!d || !d.armed) continue;
+      this._detonateOne(charge, d, player.id, state);
+      detonated += 1;
+    }
+
+    // Rung 16 — tailPop: cut + detonate on the same tick while tethered is the escape move. We
+    // only READ actions.tetherCut (tetherGameplay runs after us in UPDATE_ORDER and performs the
+    // actual cut from the same press); the burst is a backward player impulse along the line,
+    // away from the anchor, through the physics authority like every other impulse here.
+    if (detonated > 0 && actions.tetherCut) {
+      const tether = state.player && state.player.tether;
+      if (tether && tether.active && tether.targetId != null) {
+        const anchor = state.entities.get(tether.targetId);
+        let dirX, dirZ;
+        if (anchor && anchor.pos) {
+          const dx = player.pos.x - anchor.pos.x, dz = player.pos.z - anchor.pos.z;
+          const len = Math.hypot(dx, dz);
+          if (len > 1e-4) { dirX = dx / len; dirZ = dz / len; }
+        }
+        if (dirX == null) { // anchor gone this tick: burst straight astern instead
+          dirX = -Math.cos(player.rot || 0);
+          dirZ = -Math.sin(player.rot || 0);
+        }
+        const magnitude = MASSLINE_COMBOS.tailPop.impulse;
+        this._applyBlastImpulse(player, dirX * magnitude, dirZ * magnitude, state, state.playerId, undefined, true);
+        this.bus.emit('charge:combo', {
+          combo: 'tailPop',
+          ownerId: player.id,
+          targetId: tether.targetId,
+          impulse: magnitude,
+        });
+      }
+    }
+  },
+
+  // Rung 16 — per-charge combo detection at detonation time. Reads the massline mirrors
+  // observer-style (state.player.tether from tetherGameplay, state.player.masslineTelemetry from
+  // masslineTelemetry) — never mutates them. Player charges only: the massline is the player's.
+  // anchorKick outranks slingBomb for the same charge (the channeled kick IS the amplified form).
+  _detectCombo(d, ownerId, state) {
+    if (ownerId !== state.playerId) return null;
+    const playerState = state.player;
+    const tether = playerState && playerState.tether;
+    if (tether && tether.active && tether.targetId != null && d.hostId === tether.targetId) {
+      return { combo: 'anchorKick', anchorId: tether.targetId, def: MASSLINE_COMBOS.anchorKick };
+    }
+    const telemetry = playerState && playerState.masslineTelemetry;
+    if (telemetry && telemetry.active
+      && Math.abs(telemetry.tangentialSpeed) >= MASSLINE_COMBOS.slingBomb.minTangentialSpeed) {
+      return { combo: 'slingBomb', anchorId: null, def: MASSLINE_COMBOS.slingBomb };
+    }
+    return null;
+  },
+
+  _detonateOne(charge, d, ownerId, state, trigger = 'manual') {
+    const def = chargeDef(d.chargeId);
+    const pos = { x: charge.pos.x, z: charge.pos.z };
+
+    // Rung 16 — massline combo for THIS charge. slingBomb amplifies the whole blast; anchorKick
+    // channels the anchor's share of it along the tether line instead of the radial direction.
+    const combo = this._detectCombo(d, ownerId, state);
+    const result = this._blastVictims(state, {
+      pos,
+      ownerId,
+      radius: def.radius,
+      impulse: def.impulse,
+      damage: def.damage,
+      impulseMult: combo && combo.combo === 'slingBomb' ? combo.def.impulseMult : 1,
+      damageMult: combo && combo.combo === 'slingBomb' ? combo.def.damageMult : 1,
+      chargeId: d.chargeId,
+      excludeId: charge.id,
+      originId: charge.id,
+      // The plate's host hull is the body that "carried" the bomb: it is the attacker the one
+      // hitstun law weighs against each victim's mass, and it is never primed by its own plate.
+      sourceId: d.hostId != null ? d.hostId : null,
+      aftDrop: !!d.aftDrop,
+      propulsionImpulseMult: d.propulsionImpulseMult,
+      combo,
+      trigger,
+      link: 1,
+    });
+
+    charge.alive = false;
+    if (combo) {
+      this.bus.emit('charge:combo', {
+        combo: combo.combo,
+        chargeId: charge.id,
+        ownerId,
+        anchorId: combo.anchorId,
+        pos,
+      });
+    }
+    this.bus.emit('charge:detonated', {
+      pos,
+      hits: result.hits,
+      radius: def.radius,
+      shoves: result.shoves,
+      ownerId,
+      trigger,
+      hostId: d.hostId != null ? d.hostId : null,
+    });
+    this.bus.emit('audio:cue', { id: 'sfx_explosion_small', position: pos, gain: 0.65 });
+  },
+
+  /**
+   * ONE blast body. A thrown plate, a slam-triggered plate and a hull cooking off all shove and
+   * hurt through this single loop, so a chain link is the same physics as the verb that started
+   * it — never a second blast implementation with its own falloff.
+   *
+   * PQ-137.09 adds two things the plate always should have had:
+   *   • the fling is published to the ONE hitstun law (`publishHitstunImpulse`), so a mine that
+   *     throws a hull takes its helm exactly as a gun, a rope throw or a rock does (B11). It was
+   *     the only impulse source in the game that never published one.
+   *   • whatever the blast knocks past that law's stun threshold is PRIMED — judged by
+   *     `resolveHitstunLaw`, the same pure function tumbleStates evaluates, so "past the stun
+   *     threshold" cannot drift into meaning something else here.
+   */
+  _blastVictims(state, opts) {
+    const pos = opts.pos;
+    const ownerId = opts.ownerId;
+    const radius = Math.max(0, Number(opts.radius) || 0);
+    const impulse = Math.max(0, Number(opts.impulse) || 0);
+    const damage = Math.max(0, Number(opts.damage) || 0);
+    const impulseMult = Number.isFinite(opts.impulseMult) ? opts.impulseMult : 1;
+    const damageMult = Number.isFinite(opts.damageMult) ? opts.damageMult : 1;
+    const combo = opts.combo || null;
+    const link = Math.max(1, Math.trunc(Number(opts.link) || 1));
+    const player = state.entities.get(state.playerId);
+    const sourceEntity = opts.sourceId != null && state.entities && state.entities.get
+      ? state.entities.get(opts.sourceId)
+      : null;
+    const attackerMass = massOf(sourceEntity, massOf(player, 1));
+    const hits = [];
+    const shoves = [];
+
+    // Aft plates are outside the owner's hull. Spatial hashes index centers, so enlarge this one
+    // query by the owner radius and use surface distance for the owner below. Other blast victims
+    // retain the established center-distance falloff and therefore cannot gain accidental range.
+    const blastQueryRadius = radius + (opts.aftDrop && player ? (player.radius || 0) : 0);
+    const candidates = queryPhysicalBodies(state, pos, blastQueryRadius, this.helpers, this._blastScratch);
+    const applyBody = ent => {
+      if (!ent.alive) return;
+      if (opts.excludeId != null && ent.id === opts.excludeId) return;
+      const dx = ent.pos.x - pos.x, dz = ent.pos.z - pos.z;
+      const dist = Math.hypot(dx, dz);
+      const propulsionOwner = !!(opts.aftDrop && ent.id === ownerId);
+      const falloffDist = propulsionOwner ? Math.max(0, dist - (ent.radius || 0)) : dist;
+      if (falloffDist > radius) return;
+
+      const falloff = linearFalloff(falloffDist, radius);
+      if (falloff <= 0) return;
+
+      let dirX = 0, dirZ = 1;
+      if (dist > 1e-4) {
+        dirX = dx / dist;
+        dirZ = dz / dist;
+      }
+      let magnitude = impulse * falloff * impulseMult;
+      if (propulsionOwner) {
+        magnitude *= Math.max(1, Number(opts.propulsionImpulseMult) || 1);
+      }
+      // anchorKick: the line channels the anchor's blast share — direction becomes the tether
+      // line (player → anchor), amplified. Everything else in the radius still gets the radial.
+      if (combo && combo.combo === 'anchorKick' && ent.id === combo.anchorId && player && player.pos) {
+        const lx = ent.pos.x - player.pos.x, lz = ent.pos.z - player.pos.z;
+        const len = Math.hypot(lx, lz);
+        if (len > 1e-4) {
+          dirX = lx / len;
+          dirZ = lz / len;
+          magnitude = impulse * falloff * combo.def.impulseMult;
+        }
+      }
+      // A drift bomb is not a rigid body and is not ropeable. The bomb owner applies the
+      // shove on its own kinematic velocity. A rejected bomb spends no extra charge.
+      if (ent.type === 'bomb') {
+        const redirected = redirectLiveBomb(
+          ent,
+          { x: dirX * magnitude, z: dirZ * magnitude },
+          ownerId,
+          state.tick,
+        );
+        if (redirected.ok) {
+          hits.push(ent.id);
+          considerImpulseShove(shoves, ent.id, dirX, dirZ, magnitude);
+        }
+        return;
+      }
+      // Rung 15: the blast is an impulse REQUEST to the physics authority, applied at the
+      // blast-facing surface point (center minus the radial, times the hull radius). Magnitude
+      // impulse × falloff is the old per-entity Δv × mass — same physics, different owner of
+      // the mutation. A rejected request (no rigid body / no port) is skipped, never forced
+      // with a direct vel write.
+      // Preserve earned anchor/swing amplification on scenery too. A fixed
+      // reference impulse erased the combo before the body ever felt it.
+      const environmentImpulse = impulse > 0 ? 1280 * magnitude / impulse : 0;
+      // 1f864d1ea budgets hostile shoves so a swarm cannot take the helm. An owned
+      // charge that shoves its owner is the same deliberate launch as an aft-drop
+      // (Kickstart / Leave With It); it stays outside that budget.
+      const selfLaunch = ent.id === ownerId && ent.id === state.playerId;
+      // The plate's contact is the skin facing the blast, not a fabricated +z lever. On the
+      // radial the point's own cross is zero, so signedHitSide reads the hull heading.
+      const surfaceR = Math.max(0, Number(ent.radius) || 0);
+      const hitPos = Object.freeze({ x: ent.pos.x - dirX * surfaceR, z: ent.pos.z - dirZ * surfaceR });
+      const accepted = this._applyBlastImpulse(ent, dirX * magnitude, dirZ * magnitude, state, ownerId, opts.chargeId, propulsionOwner || selfLaunch, environmentImpulse, hitPos);
+      if (accepted) {
+        hits.push(ent.id);
+        considerImpulseShove(shoves, ent.id, dirX, dirZ, magnitude);
+        this._publishBlastHitstun(state, ent, {
+          dirX, dirZ, magnitude, ownerId, attackerMass, chargeId: opts.chargeId,
+          sourceId: opts.sourceId, trigger: opts.trigger, link, hitPos,
+        });
+      }
+
+      if (BLAST_DAMAGE_TYPES.has(ent.type) && damage > 0) {
+        const packet = scalarHitToDamagePacket({
+          damage: damage * falloff * damageMult,
+          damageType: 'explosive',
+          pos,
+          source: { kind: 'impulse_charge', chargeId: opts.chargeId },
+        });
+        packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+        this._routeDamage({
+          attackerId: ownerId,
+          targetId: ent.id,
+          packet,
+          origin: { kind: 'impulse_charge', id: opts.originId != null ? opts.originId : opts.sourceId },
+        });
+      }
+    };
+    schedulePhysicalBlast(state, { center: pos, radius: blastQueryRadius, helpers: this.helpers, excludeId: opts.excludeId,
+      payload: { kind: 'impulse_charge', sourceId: ownerId, weaponId: opts.chargeId, baseImpulse: impulse * impulseMult, referenceVelocity: 80, damage: damage * damageMult, damageType: 'explosive' }, onBody: applyBody });
+
+    return { hits, shoves: freezeImpulseShoves(shoves) };
+  },
+
+  /**
+   * The blast's fling, handed to the one hitstun law — and the prime decision, which IS that law's
+   * verdict. `resolveHitstunLaw(...).durationS > 0` is exactly the test tumbleStates applies
+   * before it takes a helm, so "primes what it knocks past the stun threshold" is not a number
+   * this file owns.
+   */
+  _publishBlastHitstun(state, victim, input) {
+    if (!victim || victim.alive === false) return false;
+    if (victim.type !== 'ship' && victim.type !== 'drone') return false;
+    // The player is never stunned and never cooked; publishing for them would be noise (B13).
+    if (victim.id === state.playerId) return false;
+    const victimMass = massOf(victim, 1);
+    const deltaV = input.magnitude / victimMass;
+    if (!(deltaV > 0)) return false;
+    const attackerMass = Math.max(0.1, Number(input.attackerMass) || 1);
+    const hitSide = signedHitSide(victim, { x: input.dirX, z: input.dirZ }, {
+      pos: input.hitPos || { x: Number(victim.pos && victim.pos.x) || 0, z: Number(victim.pos && victim.pos.z) || 0 },
+    }, victim.id);
+    const provenance = Object.freeze({
+      schemaVersion: 1,
+      kind: 'impulse_charge',
+      source: input.trigger || 'manual',
+      tag: 'impulse_charge_blast',
+      chargeId: input.chargeId == null ? null : String(input.chargeId),
+    });
+    // Attribute the shove on the victim so a hull thrown by a blast into another hull reads as a
+    // combat contact, not as "environment" — the same rule weapons.js applies to a gun shove.
+    recordImpulseProvenance(victim, {
+      actorId: input.ownerId == null ? null : input.ownerId,
+      weaponId: input.chargeId == null ? null : input.chargeId,
+      tag: 'impulse_charge_blast',
+      appliedTick: state.tick | 0,
+      magnitude: input.magnitude,
+    });
+    publishHitstunImpulse(this.bus, {
+      source: 'impulse_charge',
+      victimId: victim.id,
+      attackerId: input.ownerId == null ? null : input.ownerId,
+      attackerMass,
+      victimMass,
+      deltaV,
+      dirX: input.dirX,
+      dirZ: input.dirZ,
+      hitSide,
+      provenance,
+      tick: state.tick,
+    });
+    const law = resolveHitstunLaw({
+      deltaV,
+      victimCruise: resolveGovernedCombatSpeed(victim, state, 0),
+      attackerMass,
+      victimMass,
+    });
+    // The hull that CARRIED the plate still eats its own blast (that is the anchorKick), but it is
+    // never primed by it — a bomb does not cook the ship it was already stuck to. Past the link
+    // ceiling nothing is primed either: a prime that can never answer is a receipt for an event
+    // that will not happen.
+    if (law.durationS > 0 && victim.id !== input.sourceId && input.link <= CHAIN_REACTION.maxLinks) {
+      this._prime(victim, state, {
+        byId: input.ownerId != null ? input.ownerId : input.sourceId,
+        reason: 'blast',
+        deltaV,
+        durationS: law.durationS,
+        link: input.link,
+      });
+    }
+    return true;
+  },
+
+  // Physics-authority impulse (rung 15). Same port + call shape as combat/actions.js:185 and
+  // combat/damage.js:201: helpers.combatPhysics.applyImpulse({entityId, impulse, point, reason,
+  // tick}). Returns true only if the backend accepted the impulse.
+  _applyBlastImpulse(ent, impulseX, impulseZ, state, ownerId, chargeId, deliberate = false, referenceImpulse = undefined, hitPos = null) {
+    const evidence = { tick: state.tick, reason: 'impulse_charge', motionIntent: deliberate ? 'player_maneuver' : undefined,
+      point: hitPos || null,
+      provenance: { actorId: ownerId, weaponId: chargeId ?? 'impulse_charge', tag: 'impulse_charge_blast' } };
+    return deliverPhysicalImpulse(state, ent, { x: impulseX, z: impulseZ }, evidence,
+      { port: this.helpers?.combatPhysics, referenceImpulse });
+  },
+
+  _routeDamage(request) {
+    const helpers = this.helpers;
+    if (helpers && typeof helpers.routeCombatDamage === 'function') {
+      return helpers.routeCombatDamage(request);
+    }
+    const combatSys = this.registry && this.registry.get && this.registry.get('combat');
+    if (combatSys && typeof combatSys.ensureKernel === 'function') {
+      return combatSys.ensureKernel().routeDamage(request);
+    }
+    this.bus.emit('combat:routeDamage', request);
+    return null;
+  },
+};

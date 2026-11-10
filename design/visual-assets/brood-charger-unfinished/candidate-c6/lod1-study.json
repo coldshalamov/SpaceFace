@@ -1,0 +1,21 @@
+{
+  "candidate": "candidate-c6",
+  "lod": 1,
+  "triangles": 2308,
+  "meshCount": 15,
+  "boundsBlender": {
+    "min": [
+      -9.699999809265137,
+      -8.133986473083496,
+      -1.2799999713897705
+    ],
+    "max": [
+      11.0,
+      8.133986473083496,
+      3.3814001083374023
+    ]
+  },
+  "decimation": false,
+  "actualGameLookVerified": false,
+  "physicsTuningChanged": false
+}

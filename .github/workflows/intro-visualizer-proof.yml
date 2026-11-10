@@ -1,0 +1,78 @@
+name: Intro visualizer review
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/intro-visualizer-proof.yml'
+      - 'src/ui/introSignalRemix.js'
+      - 'src/ui/introSignalRemixBoot.js'
+      - 'src/ui/loadingSignalTableaux.js'
+      - 'tools/cinematic/signal-remix*'
+      - 'test/intro-signal-remix*.test.mjs'
+      - 'scripts/build-bundle.mjs'
+      - 'assets/cinematics/intro-visualizer.*'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: intro-review-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /src/ui/introSignalRemix*
+            /src/ui/bootEntry.js
+            /src/ui/loadingSignalTableaux.js
+            /src/ui/loadingTerminalArt.js
+            /tools/cinematic/signal-remix*
+            /test/intro-signal-remix*.test.mjs
+            /scripts/build-bundle.mjs
+            /scripts/lib/vercelReleaseBase.mjs
+            /assets/cinematics/intro-visualizer.mp4
+            /assets/cinematics/intro-visualizer.jpg
+            /styles/intro.css
+            /styles/ui.css
+            /index.html
+            /package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Preserve review sources
+        run: |
+          mkdir -p .intro-review/assets/cinematics
+          cp assets/cinematics/intro-visualizer.mp4 assets/cinematics/intro-visualizer.jpg .intro-review/assets/cinematics/
+          git rev-parse HEAD > .intro-review/SOURCE_COMMIT.txt
+      - name: Focused unit tests
+        run: node --test test/intro-signal-remix*.test.mjs
+      - name: Install only the browser client
+        timeout-minutes: 3
+        run: |
+          mkdir -p "$RUNNER_TEMP/intro-tools"
+          cd "$RUNNER_TEMP/intro-tools"
+          printf '{"private":true}' > package.json
+          npm install --no-save --ignore-scripts --no-audit --no-fund --fetch-retries=0 --fetch-timeout=60000 playwright@1.56.1
+          google-chrome --version
+      - name: Browser review with the shipped H.264 movie
+        run: |
+          python3 tools/cinematic/signal-remix-server.py --port 8123 > /tmp/intro-server.log 2>&1 &
+          INTRO_PLAYWRIGHT="$RUNNER_TEMP/intro-tools/node_modules/playwright/index.mjs" node tools/cinematic/signal-remix-proof.mjs --out .intro-review
+      - name: Install the optional offline video encoder
+        if: github.event_name == 'workflow_dispatch'
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Exact-frame motion preview (offline, not a performance benchmark)
+        if: github.event_name == 'workflow_dispatch'
+        run: INTRO_PLAYWRIGHT="$RUNNER_TEMP/intro-tools/node_modules/playwright/index.mjs" node tools/cinematic/signal-remix-bake-preview.mjs --out .intro-review
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: intro-visualizer-review
+          path: .intro-review/
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: error

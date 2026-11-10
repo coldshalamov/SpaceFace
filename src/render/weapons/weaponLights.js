@@ -1,0 +1,137 @@
+import * as THREE from 'three';
+import { noteShadowCensusLightMutation } from '../shadowDepthAdmission.js';
+import { EVENT_LIGHT_DECAY, EVENT_LIGHT_GAIN } from '../vfxColorLightDirector.js';
+import { nocturneForScene, NOCTURNE_GPU_POINTS } from '../nocturne/bridge.js';
+
+// P1: pool sized to measured p90 occupancy — 6 event + 2 weapon = 8 visible point lights total,
+// so NUM_POINT_LIGHTS stops burning a 22-wide unrolled loop on every lit fragment. The constant
+// count stays (toggling `visible` caused the 2026-07 recompile storm); priority eviction at
+// admission keeps the two weapon slots honest.
+export const WEAPON_LIGHT_POOL_SIZE = 2;
+
+// Event + weapon lights are logical proxies multiplexed onto NOCTURNE's fixed GPU points, so the
+// real visible point-light census is that fixed count regardless of the logical pool sizes.
+export function visiblePointLightBudget(_eventLightCount) {
+  return NOCTURNE_GPU_POINTS;
+}
+
+export class WeaponLightPool {
+  constructor(scene, options = {}) {
+    this.nocturne = nocturneForScene(scene);
+    this.capacity = Math.max(1, options.capacity || (this.nocturne ? 12 : WEAPON_LIGHT_POOL_SIZE));
+    this.slots = [];
+    this._scratch = new THREE.Color();
+    this.group = new THREE.Group();
+    this.group.name = 'SF_WeaponLightPool';
+    for (let i = 0; i < this.capacity; i++) {
+      const light = this.nocturne
+        ? this.nocturne.createLight(`weapon:${i}`, 'point', { color: 0x39d0ff, range: 16, priority: 3 })
+        : new THREE.PointLight(0x39d0ff, 0, 16, EVENT_LIGHT_DECAY);
+      light.name = `SF_WeaponLight_${i}`;
+      light.visible = true;
+      light.castShadow = false;
+      if (!this.nocturne) this.group.add(light);
+      this.slots.push({
+        light,
+        age: 0,
+        life: 0.12,
+        peak: 0,
+        priority: 0,
+        alive: 0,
+      });
+    }
+    this._live = 0;
+    if (scene) {
+      scene.add(this.group);
+      // Light-set mutation — a mounted pool group changes the rendered light
+      // census; the shadow memo must not serve the pre-mount signature.
+      if (!this.nocturne) noteShadowCensusLightMutation();
+    }
+  }
+
+  spawn({ x, y, z, color, intensity, distance, life, priority }) {
+    const want = Number.isFinite(priority) ? priority : 0.5;
+    let slot = null;
+    let lowest = null;
+    for (let i = 0; i < this.slots.length; i++) {
+      const candidate = this.slots[i];
+      if (!candidate.alive) { slot = candidate; break; }
+      if (!lowest || candidate.priority < lowest.priority) lowest = candidate;
+    }
+    if (!slot) {
+      // Strict 2-slot pool: a newcomer that cannot beat the dimmest resident is culled
+      // at admission instead of stealing a brighter heavy-weapon beat mid-flash.
+      if (!lowest || want <= lowest.priority) return null;
+      slot = lowest;
+    }
+    const wasAlive = !!slot.alive;
+    slot.alive = 1;
+    if (!wasAlive) this._live += 1;
+    slot.age = 0;
+    slot.life = Math.max(0.05, life || 0.12);
+    slot.peak = Math.max(0, intensity || 2);
+    slot.priority = want;
+    if (slot.light._nocturneSource) slot.light._nocturneSource.importance = 1 + Math.max(0, want);
+    slot.light.position.set(x || 0, y || 0.4, z || 0);
+    slot.light.distance = Math.max(4, distance || 14);
+    slot.light.decay = EVENT_LIGHT_DECAY;
+    this._scratch.set(color || '#39d0ff');
+    slot.light.color.copy(this._scratch);
+    slot.light.intensity = slot.peak * EVENT_LIGHT_GAIN;
+    return slot;
+  }
+
+  update(dt) {
+    // Quiet settled flight: 2-slot walk + intensity=0 every frame when nothing is alive.
+    // Trust _live (spawn ++ when taking a dead slot; retire --); intensities already 0.
+    if (!(this._live > 0)) return;
+    for (let i = 0; i < this.slots.length; i++) {
+      const slot = this.slots[i];
+      if (!slot.alive) {
+        slot.light.intensity = 0;
+        continue;
+      }
+      slot.age += dt;
+      if (slot.age >= slot.life) {
+        slot.alive = 0;
+        slot.priority = 0;
+        slot.light.intensity = 0;
+        this._live = Math.max(0, this._live - 1);
+        continue;
+      }
+      const t = slot.age / slot.life;
+      // A discharge is an impulse, not a lamp. The hard leading spike means an automatic burst
+      // reads as a stutter of separate shots rather than one held glow, without widening the
+      // strict 2-slot pool or raising the peak the accessibility profile already scaled.
+      slot.light.intensity = slot.peak * EVENT_LIGHT_GAIN * (1 - t) * (1 - t) * (0.62 + 0.38 * Math.exp(-t * 11));
+    }
+  }
+
+  get size() {
+    return this.capacity;
+  }
+
+  get live() {
+    return this._live;
+  }
+
+  clear() {
+    for (const slot of this.slots) {
+      slot.alive = 0;
+      slot.priority = 0;
+      slot.light.intensity = 0;
+    }
+    this._live = 0;
+  }
+
+  dispose() {
+    // Light-set mutation — the shadow census memo must not serve the live-set
+    // signature after pooled lights leave the scene.
+    if (!this.nocturne) noteShadowCensusLightMutation();
+    for (const slot of this.slots) {
+      if (slot.light.parent) slot.light.parent.remove(slot.light);
+      slot.light.dispose?.();
+    }
+    if (this.group.parent) this.group.parent.remove(this.group);
+  }
+}

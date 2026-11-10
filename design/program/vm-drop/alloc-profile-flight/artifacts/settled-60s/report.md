@@ -1,0 +1,130 @@
+# Runtime witness
+
+Verdict: presenting
+The 3D world is presenting. Biggest recent cost: presentation (p95 12.1 ms).
+
+Next: If you came here for performance, that is the only legal first target.
+
+## Live
+- mode: flight
+- simTime: 23.22
+- clockScale: 1
+- lifecycle: foreground-visible
+- suspended: false
+- documentHidden: false
+- contextLost: false
+- executedFrames: 623
+- rendererFrame: 2251
+- drawCalls: 79
+- lastFrameError: none
+- gpu: ANGLE (Mesa, llvmpipe (LLVM 19.1.7 256 bits), OpenGL 4.5) (tier software)
+
+## Where the last frames went (ms)
+- presentation: p95 12.1 / avg 9.3 / max 16.9
+- render: p95 8.0 / avg 6.1 / max 14.2
+- simFrame: p95 7.1 / avg 4.8 / max 16.3
+- ui: p95 3.8 / avg 2.5 / max 4.2
+- sim: p95 3.1 / avg 1.6 / max 3.6
+- vfx: p95 0.7 / avg 0.5 / max 1.0
+
+## Sample deltas (tail)
+- simDelta: 2.90
+- executedFrames delta: 52
+- rendererFrame delta: 156
+- hitch samples: 0
+- canvas hashes: 0 unique 0
+
+## Console (loop/GPU)
+- [console.log] [render] GPU: %s | tier: %s | pixelRatio: %s | buffer: %dx%d ANGLE (Mesa, llvmpipe (LLVM 19.1.7 256 bits), OpenGL 4.5) software 1.00 1280 719
+- [http.404] http://127.0.0.1:35895/__spaceface_player_store
+- [console.error] Failed to load resource: the server responded with a status of 404 (Not Found)
+- [console.info] [render] opening ledger 14387 ms: opening.rockSurfaceLibrary 24ms resolved | opening.firstPresentAdmission 1705ms resolved | opening.planWait 12625ms resolved | opening.residency 4ms resolved (subjects=67,textureRefs=79,textures=80) | opening.postResources 27ms resolved (route=bloom) | opening.capturedPipelineDrain 0ms skipped (captured=0,stillPending=0) | opening.drainWait 0ms resolved | opening.receipt 1ms resolved | wait.prepareOpeningGpuResources 14387ms resolved | lane samples 1
+- [console.warning] [GPU brick] bloomScene 165.4ms {"owners":[{"object":"plume-layer:core","material":"plume:family_industrial_main_plu","root":"plume-system:family_industrial_main_plume","key":"73,74,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fal","siblingKeys":[],"visible":true},{"object":"plume-layer:inner","material":"plume:family_industrial_main_plu","root":"plume-system:family_industrial_main_plume","key":"73,74,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fal","siblingKeys":[],"visible":true},{"object":"plume-layer:sheath","material":"plume:family_industrial_main_plu","root":"plume-system:family_industrial_main_plume","key":"73,74,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fal","siblingKeys":[],"visible":true},{"object":"plume-layer:vapor","material":"plume:family_industrial_main_plu","root":"plume-system:family_industrial_main_plume","key":"73,74,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fal","siblingKeys":[],"visible":true}],"newGeometries":[{"object":"plume-layer:core","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"92d81145","visible":true,"count":6},{"object":"plume-layer:inner","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"6da79b22","visible":true,"count":6},{"object":"plume-layer:sheath","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"f452d17b","visible":true,"count":6},{"object":"plume-layer:vapor","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"0d1f1c9b","visible":true,"count":6},{"object":"plume-layer:distortion","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"d9a8ec1f","visible":false,"count":0},{"object":"Mesh","root":"Group","geometry":"BoxGeometry","uuid":"96ad0dc0","visible":true},{"object":"Mesh","root":"Group","geometry":"BoxGeometry","uuid":"e5c920b5","visible":true},{"object":"Mesh","root":"Group","geometry":"BoxGeometry","uuid":"2d1dcae7","visible":true},{"object":"Mesh","root":"Group","geometry":"BoxGeometry","uuid":"30aabadd","visible":true},{"object":"Mesh","root":"Group","geometry":"BoxGeometry","uuid":"82fac1fc","visible":true},{"object":"Mesh","root":"Group","geometry":"PlaneGeometry","uuid":"77adc97b","visible":true},{"object":"Mesh","root":"Group","geometry":"PlaneGeometry","uuid":"77adc97b","visible":true},{"object":"Mesh","root":"Group","geometry":"CylinderGeometry","uuid":"5bd48ba4","visible":true},{"object":"sf-static-merge","root":"Group","geometry":"BufferGeometry","uuid":"0209e306","visible":true},{"object":"Mesh","root":"Group","geometry":"CylinderGeometry","uuid":"619f4b3d","visible":true},{"object":"Mesh","root":"Group","geometry":"ConeGeometry","uuid":"bf0b2dca","visible":true},{"object":"Mesh","root":"Group","geometry":"ConeGeometry","uuid":"cb1a2f56","visible":true},{"object":"sf-static-merge","root":"Group","geometry":"BufferGeometry","uuid":"342172e8","visible":true},{"object":"sf-static-merge","root":"Group","geometry":"BufferGeometry","uuid":"82f656cf","visible":true},{"object":"Mesh","root":"Group","geometry":"CylinderGeometry","uuid":"5bd48ba4","visible":true},{"object":"sf-static-merge","root":"Group","geometry":"BufferGeometry","uuid":"0209e306","visible":true},{"object":"Mesh","root":"Group","geometry":"CylinderGeometry","uuid":"619f4b3d","visible":true},{"object":"Mesh","root":"Group","geometry":"ConeGeometry","uuid":"bf0b2dca","visible":true},{"object":"Mesh","root":"Group","geometry":"ConeGeometry","uuid":"cb1a2f56","visible":true}],"unstampedVisible":[{"object":"SF_PlaceFallback_place_lane_pin_Hull","root":"SF_PlaceFallback_place_lane_pin_AuthoredAssetBoundary","geometry":"BoxGeometry","uuid":"776ae0b4","drawRange":null},{"object":"SF_PlaceFallback_place_tally_post_Hull","root":"SF_PlaceFallback_place_tally_post_AuthoredAssetBoundary","geometry":"BoxGeometry","uuid":"776ae0b4","drawRange":null},{"object":"plume-layer:core","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"92d81145","count":6,"drawRange":null},{"object":"plume-layer:inner","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"6da79b22","count":6,"drawRange":null},{"object":"plume-layer:sheath","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"f452d17b","count":6,"drawRange":null},{"object":"plume-layer:vapor","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"0d1f1c9b","count":6,"drawRange":null},{"object":"Mesh","root":"sf-liquid-plasma-root","geometry":"BufferGeometry","uuid":"42a3992f","drawRange":2304},{"object":"Mesh","root":"sf-liquid-plasma-root","geometry":"BufferGeometry","uuid":"55b059b1","drawRange":null},{"object":"Mesh","root":"sf-liquid-plasma-root","geometry":"BufferGeometry","uuid":"7353869f","drawRange":null},{"object":"sf-plasma-throat-0","root":"sf-liquid-plasma-root","geometry":"PlaneGeometry","uuid":"8a32715e","drawRange":null},{"object":"Mesh","root":"sf-energy-massline","geometry":"CylinderGeometry","uuid":"b80c67ae","drawRange":null},{"object":"Mesh","root":"sf-energy-massline","geometry":"CylinderGeometry","uuid":"b80c67ae","drawRange":null},{"object":"ae_manifold_0","root":"Group","geometry":"BufferGeometry","uuid":"d87220c5","drawRange":null},{"object":"ae_manifold_1","root":"Group","geometry":"BufferGeometry","uuid":"205da61b","drawRange":null},{"object":"ae_manifold_2","root":"Group","geometry":"BufferGeometry","uuid":"84928f87","drawRange":null},{"object":"ae_manifold_3","root":"Group","geometry":"BufferGeometry","uuid":"5017866a","drawRange":null},{"object":"break_mount_fray_0","root":"Group","geometry":"BufferGeometry","uuid":"fa5a5b96","drawRange":null},{"object":"break_mount_fray_1","root":"Group","geometry":"BufferGeometry","uuid":"576b124e","drawRange":null},{"object":"break_mount_fray_2","root":"Group","geometry":"BufferGeometry","uuid":"c173075c","drawRange":null},{"object":"break_mount_fray_3","root":"Group","geometry":"BufferGeometry","uuid":"9a3c0567","drawRange":null},{"object":"break_mount_fray_4","root":"Group","geometry":"BufferGeometry","uuid":"307aefaf","drawRange":null},{"object":"break_mount_hotcore","root":"Group","geometry":"BufferGeometry","uuid":"eeb1e3f0","drawRange":null},{"object":"break_mount_hotfray_0","root":"Group","geometry":"BufferGeometry","uuid":"1a2394d3","drawRange":null},{"object":"break_mount_hotfray_2","root":"Group","geometry":"BufferGeometry","uuid":"324dcdd7","drawRange":null}],"programsBefore":89,"programsAfter":90,"geometriesBefore":166,"geometriesAfter":170,"texturesBefore":117,"texturesAfter":121,"newPrograms":["73,74,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fal"]}
+- [console.warning] [GPU brick] bloomScene 259.3ms {"owners":[],"newGeometries":[],"unstampedVisible":[{"object":"SF_PlaceFallback_place_lane_pin_Hull","root":"SF_PlaceFallback_place_lane_pin_AuthoredAssetBoundary","geometry":"BoxGeometry","uuid":"776ae0b4","drawRange":null},{"object":"SF_PlaceFallback_place_tally_post_Hull","root":"SF_PlaceFallback_place_tally_post_AuthoredAssetBoundary","geometry":"BoxGeometry","uuid":"776ae0b4","drawRange":null},{"object":"ae_manifold_0","root":"Group","geometry":"BufferGeometry","uuid":"d87220c5","drawRange":null},{"object":"ae_manifold_1","root":"Group","geometry":"BufferGeometry","uuid":"205da61b","drawRange":null},{"object":"ae_manifold_2","root":"Group","geometry":"BufferGeometry","uuid":"84928f87","drawRange":null},{"object":"ae_manifold_3","root":"Group","geometry":"BufferGeometry","uuid":"5017866a","drawRange":null},{"object":"break_mount_fray_0","root":"Group","geometry":"BufferGeometry","uuid":"fa5a5b96","drawRange":null},{"object":"break_mount_fray_1","root":"Group","geometry":"BufferGeometry","uuid":"576b124e","drawRange":null},{"object":"break_mount_fray_2","root":"Group","geometry":"BufferGeometry","uuid":"c173075c","drawRange":null},{"object":"break_mount_fray_3","root":"Group","geometry":"BufferGeometry","uuid":"9a3c0567","drawRange":null},{"object":"break_mount_fray_4","root":"Group","geometry":"BufferGeometry","uuid":"307aefaf","drawRange":null},{"object":"break_mount_hotcore","root":"Group","geometry":"BufferGeometry","uuid":"eeb1e3f0","drawRange":null},{"object":"break_mount_hotfray_0","root":"Group","geometry":"BufferGeometry","uuid":"1a2394d3","drawRange":null},{"object":"break_mount_hotfray_2","root":"Group","geometry":"BufferGeometry","uuid":"324dcdd7","drawRange":null},{"object":"break_mount_hotfray_4","root":"Group","geometry":"BufferGeometry","uuid":"71e068f4","drawRange":null},{"object":"break_mount_peel_0","root":"Group","geometry":"BufferGeometry","uuid":"066c775d","drawRange":null},{"object":"break_mount_peel_1","root":"Group","geometry":"BufferGeometry","uuid":"89336af2","drawRange":null},{"object":"break_mount_peel_2","root":"Group","geometry":"BufferGeometry","uuid":"d49b4189","drawRange":null},{"object":"break_mount_peel_3","root":"Group","geometry":"BufferGeometry","uuid":"14e9db8e","drawRange":null},{"object":"stub_cbl_0a","root":"Group","geometry":"BufferGeometry","uuid":"11551e7d","drawRange":null},{"object":"stub_cbl_0b","root":"Group","geometry":"BufferGeometry","uuid":"ed3b9e05","drawRange":null},{"object":"stub_cbl_1a","root":"Group","geometry":"BufferGeometry","uuid":"19d8a6e2","drawRange":null},{"object":"stub_cbl_1b","root":"Group","geometry":"BufferGeometry","uuid":"36b5633a","drawRange":null},{"object":"stub_cbl_2a","root":"Group","geometry":"BufferGeometry","uuid":"80290030","drawRange":null}],"programsBefore":108,"programsAfter":108,"geometriesBefore":288,"geometriesAfter":288,"texturesBefore":129,"texturesAfter":129,"newPrograms":[]}
+- [console.warning] [GPU brick] bloomScene 636.5ms {"owners":[],"newGeometries":[],"unstampedVisible":[],"programsBefore":110,"programsAfter":110,"geometriesBefore":335,"geometriesAfter":335,"texturesBefore":264,"texturesAfter":264,"newPrograms":[]}
+- [console.warning] [GPU brick] bloomScene 221.3ms {"owners":[{"object":"SF_RibbonTrail","material":"ShaderMaterial","root":"SF_RibbonTrail","key":"79,80,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fal","siblingKeys":[],"visible":true}],"newGeometries":[],"unstampedVisible":[{"object":"plume-layer:core","root":"plume-system:family_ion_twin_main_plume","geometry":"PlaneGeometry","uuid":"feb9b7d1","count":1,"drawRange":null},{"object":"plume-layer:inner","root":"plume-system:family_ion_twin_main_plume","geometry":"PlaneGeometry","uuid":"146697d8","count":1,"drawRange":null},{"object":"plume-layer:sheath","root":"plume-system:family_ion_twin_main_plume","geometry":"PlaneGeometry","uuid":"b134bc3d","count":1,"drawRange":null},{"object":"plume-layer:vapor","root":"plume-system:family_ion_twin_main_plume","geometry":"PlaneGeometry","uuid":"3440cabc","count":1,"drawRange":null},{"object":"plume-layer:core","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"92d81145","count":1,"drawRange":null},{"object":"plume-layer:inner","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"6da79b22","count":1,"drawRange":null},{"object":"plume-layer:sheath","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"f452d17b","count":1,"drawRange":null},{"object":"plume-layer:vapor","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"0d1f1c9b","count":1,"drawRange":null},{"object":"plume-layer:core","root":"plume-system:family_vector_main_plume","geometry":"PlaneGeometry","uuid":"6aecab88","count":1,"drawRange":null},{"object":"plume-layer:inner","root":"plume-system:family_vector_main_plume","geometry":"PlaneGeometry","uuid":"8ff3cdb5","count":1,"drawRange":null},{"object":"plume-layer:sheath","root":"plume-system:family_vector_main_plume","geometry":"PlaneGeometry","uuid":"b1982262","count":1,"drawRange":null},{"object":"plume-layer:vapor","root":"plume-system:family_vector_main_plume","geometry":"PlaneGeometry","uuid":"3137ef45","count":1,"drawRange":null},{"object":"SF_RibbonTrail","root":"SF_RibbonTrail","geometry":"BufferGeometry","uuid":"bb67c5ed","drawRange":6}],"programsBefore":110,"programsAfter":111,"geometriesBefore":349,"geometriesAfter":350,"texturesBefore":341,"texturesAfter":341,"newPrograms":["79,80,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fal"]}
+- [console.warning] [GPU brick] bloomScene 1248.6ms {"owners":[],"newGeometries":[],"unstampedVisible":[{"object":"plume-layer:core","root":"plume-system:family_ion_twin_main_plume","geometry":"PlaneGeometry","uuid":"feb9b7d1","count":1,"drawRange":null},{"object":"plume-layer:inner","root":"plume-system:family_ion_twin_main_plume","geometry":"PlaneGeometry","uuid":"146697d8","count":1,"drawRange":null},{"object":"plume-layer:sheath","root":"plume-system:family_ion_twin_main_plume","geometry":"PlaneGeometry","uuid":"b134bc3d","count":1,"drawRange":null},{"object":"plume-layer:vapor","root":"plume-system:family_ion_twin_main_plume","geometry":"PlaneGeometry","uuid":"3440cabc","count":1,"drawRange":null},{"object":"plume-layer:core","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"92d81145","count":1,"drawRange":null},{"object":"plume-layer:inner","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"6da79b22","count":1,"drawRange":null},{"object":"plume-layer:sheath","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"f452d17b","count":1,"drawRange":null},{"object":"plume-layer:vapor","root":"plume-system:family_industrial_main_plume","geometry":"PlaneGeometry","uuid":"0d1f1c9b","count":1,"drawRange":null},{"object":"plume-layer:core","root":"plume-system:family_vector_main_plume","geometry":"PlaneGeometry","uuid":"6aecab88","count":2,"drawRange":null},{"object":"plume-layer:inner","root":"plume-system:family_vector_main_plume","geometry":"PlaneGeometry","uuid":"8ff3cdb5","count":2,"drawRange":null},{"object":"plume-layer:sheath","root":"plume-system:family_vector_main_plume","geometry":"PlaneGeometry","uuid":"b1982262","count":2,"drawRange":null},{"object":"plume-layer:vapor","root":"plume-system:family_vector_main_plume","geometry":"PlaneGeometry","uuid":"3137ef45","count":2,"drawRange":null},{"object":"SF_RibbonTrail","root":"SF_RibbonTrail","geometry":"BufferGeometry","uuid":"bb67c5ed","drawRange":36}],"programsBefore":114,"programsAfter":114,"geometriesBefore":353,"geometriesAfter":353,"texturesBefore":356,"texturesAfter":356,"newPrograms":[]}
+
+## Host load during the window
+- logical CPUs: 8
+- CPU busy during window: 35%
+- memory: 10399 / 16013 MB
+## Continue loading readiness
+- 1.10 s: preparing-run (0.30 s until next stage)
+- 1.40 s: authored-library (0.03 s until next stage)
+- 1.43 s: authored-visuals (7.12 s until next stage)
+- 8.55 s: render-pipelines (0.00 s until next stage)
+- 8.55 s: gpu-resources (0.00 s until next stage)
+- 8.56 s: entering-flight
+- last loading snapshot: stage entering-flight; player authored; opening pending 2; ids 308:loading:ship:ship_mule:promise, 309:loading:ship:ship_atlas:promise; pipeline pending 2; pipeline admissions 0; GPU admissions 0
+- exact opening plan: complete; roots 5; leaves 67; admitted programs 44; deferred global programs 0; producer census matched
+- first visible draw identity gate: fail; uncaptured none
+- opening scene delta: programs 37 -> 77; geometries 54 -> 126; renderer textures 16 -> 106
+## Opening frame render subphases
+- bloomScene: samples 2; p95 2.9 ms; avg 3.6 ms; max 4.2 ms
+- bloomDownsample: samples 2; p95 0.1 ms; avg 0.2 ms; max 0.3 ms
+- bloomComposite: samples 2; p95 0.1 ms; avg 14.0 ms; max 27.9 ms
+## Opening first-touch owner
+- disabled: pass `--opening-first-touch-owner` to arm the opt-in cold/warm owner capture
+## Opening exact-owner micro-raster
+- disabled: pass `--opening-exact-owner-touch` to arm the opt-in four-owner 64x64 cold touch
+## No-submit scheduler A/B
+- disabled: pass `--no-submit-diagnostic` to replace scene submission with a constant clear
+## Tabletop census (PQ-129.01)
+- route: New Game seed 47, held thrust, 60000 ms at 500 ms cadence
+- sim delta: 22.38 s; executed-frame delta: 537
+- bounded instrumentation: renderWork enabled for this probe only; prior state restored before shutdown: true
+- last population: glass 1, runway 0, beyond 67, submitted 1, resident 1, landmarks 21
+- policy envelope: glass half-extents 221 x 143 WU; runway 146 WU
+- observed ranges: glass 1–7; runway 0–6; beyond 61–70; submitted 1–11; resident 1–20; landmarks 21–21
+- submitted is the tabletop policy population (glass + runway + forced roots), not WebGL draw calls.
+## Sector-transition phase ledger
+- unavailable: no armed public jump event sequence was observed
+## Live hitch attribution (PQ-129.02)
+- bounded instrumentation: classifier enabled for this probe only; prior state restored before shutdown: true
+- system timing coverage: prime-period-stratified
+- observed frames: 568; hitches: 552; named: 542; unknown: 10
+- hitch runs: first 15; echoes 537; longest streak 258
+- named coverage: 0.982
+- owner counts: compile 7; upload 2; bloom 7; present 1; sim 1; externalScheduling 524; unknown 10
+- sim steps in hitch frames: 0x 0 | 1x 0 | 2x 1 | 3x 0 | 4+x 0
+- sim hitch coverage: fully measured 0 | partially measured 0 | unmeasured 1 | no sim steps 0
+- unknown residual: mean 122.4 ms unattributed interval over 10 hitch frames; largest measured phase: externalScheduling 9 | sim 1
+- frame interval vs measured callback interval: mean frameMs 104.8 | mean callbackInterval 111.6 | mean disagreement -6.8 ms over 551 hitch frames
+- interval disagreement: mean -6.8 | median 0.3 ms over 551 hitch frames (median over last 256 of 551); frames at the 250 ms frame-dt clamp: 19; mean disagreement on the clamped frames -112.0 ms
+- externalScheduling split: mean gap 88.3 ms | mean dispatch lag 17.2 ms | gap dominant 519 | dispatch dominant 5 over 524 frames## Long tasks (main-thread blocks)
+- JS heap MB over run: 365 468 496 505 393 403 410 374 364 388 377 385 372 376
+- economy stations/listings/history-points: 2s/90L/5760p  2s/90L/5760p  2s/90L/5760p  2s/90L/5760p  2s/90L/5760p  2s/90L/5760p  2s/90L/5760p  2s/90L/5760p  2s/90L/5760p  2s/90L/5760p  2s/90L/5760p  2s/90L/5760p  2s/90L/5760p  2s/90L/5760p
+- GPU geometries over run: 142 170 289 341 341 353 354 357 400 400 405 405 405 390
+- GPU textures over run:   109 121 129 341 341 356 356 356 371 385 385 385 385 385
+- count 71; total 24562 ms; max 4301 ms; >=50 ms 71; >=100 ms 55
+- 4301 ms at 22272 ms
+- 2299 ms at 19341 ms
+- 2082 ms at 29111 ms
+- 1272 ms at 64000 ms
+- 764 ms at 18241 ms
+- 655 ms at 51651 ms
+- 608 ms at 45207 ms
+- 594 ms at 40707 ms
+- 575 ms at 63187 ms
+- 500 ms at 46915 ms
+- 469 ms at 52318 ms
+- 461 ms at 46160 ms
+
+## Bloom subphases (PQ-129.03)
+- bloomScene: samples 180; p95 4.6 ms; avg 3.5 ms; max 5.7 ms
+- bloomDownsample: samples 180; p95 0.1 ms; avg 0.1 ms; max 0.2 ms
+- bloomComposite: samples 180; p95 0.1 ms; avg 0.0 ms; max 0.2 ms
+## Sampled simulation systems
+- tacticalAI: samples 162; p95 1.40 ms; avg 0.63 ms; max 1.90 ms
+- flight: samples 180; p95 0.50 ms; avg 0.27 ms; max 0.60 ms
+- physics: samples 180; p95 0.50 ms; avg 0.33 ms; max 0.70 ms
+- travelLanes: samples 8; p95 0.30 ms; avg 0.17 ms; max 0.40 ms
+- story: samples 8; p95 0.30 ms; avg 0.16 ms; max 0.50 ms
+- core.preStep: samples 180; p95 0.20 ms; avg 0.07 ms; max 0.20 ms
+- input: samples 180; p95 0.20 ms; avg 0.08 ms; max 0.40 ms
+- barkDirector: samples 8; p95 0.20 ms; avg 0.11 ms; max 0.20 ms
+- actions: samples 180; p95 0.20 ms; avg 0.09 ms; max 0.40 ms
+- fields: samples 180; p95 0.20 ms; avg 0.08 ms; max 0.30 ms
+- npcJobsRuntime: samples 162; p95 0.20 ms; avg 0.11 ms; max 0.70 ms
+- liveCareerLadderBranches: samples 8; p95 0.20 ms; avg 0.11 ms; max 0.20 ms

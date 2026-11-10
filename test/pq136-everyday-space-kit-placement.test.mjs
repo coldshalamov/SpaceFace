@@ -1,0 +1,275 @@
+// PQ-136.01 / PQ-136.00 — ordinary sectors place loader-legal everyday-space kit props
+// with variety at stations, lanes, work sites, and wreck fields. All forty-six
+// identities now have release bodies.
+import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import test from 'node:test';
+
+import { createSimulation } from '../src/core/sim.js';
+import {
+  EVERYDAY_SPACE_KIT_LEGAL_IDS,
+  EVERYDAY_SPACE_KIT_LEGAL_MODELS,
+  EVERYDAY_SPACE_KIT_MAX_CORE_PER_SECTOR,
+  EVERYDAY_SPACE_KIT_MAX_PER_SECTOR,
+  EVERYDAY_SPACE_KIT_ORIGINAL_IDS,
+  EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID,
+  EVERYDAY_SPACE_KIT_PROMOTED_IDS,
+  EVERYDAY_SPACE_KIT_PROMOTED_MODELS,
+  EVERYDAY_SPACE_KIT_PROMOTED_RELEASE_URL_BY_ID,
+  EVERYDAY_SPACE_KIT_UNUSED_IDS,
+  EVERYDAY_SPACE_KIT_UNUSED_MODELS,
+  everydaySpaceKitFileForPlaceId,
+  isEverydaySpaceKitPlaceId,
+} from '../src/data/everydaySpaceKitDressing.js';
+import { OCCUPATIONAL_YARD_PLACE_IDS } from '../src/data/occupationalYardDressing.js';
+import {
+  TETHYS_WATCH_OVERLOOK_ANCHOR,
+  TETHYS_WATCH_OVERLOOK_PROPS,
+} from '../src/data/tethysWatchOverlook.js';
+import { resolvePlaceFileForEntity } from '../src/render/partsLibrary.js';
+import { world } from '../src/systems/world.js';
+import {
+  VEIL_RESEARCH_EDGE_ANCHOR,
+  VEIL_RESEARCH_EDGE_MODELS,
+  VEIL_RESEARCH_EDGE_PROPS,
+} from '../src/data/veilResearchEdge.js';
+
+const ROOT = resolve(fileURLToPath(new URL('../', import.meta.url)));
+const SEEDS = Object.freeze([47, 101, 202, 303, 404, 505, 606, 707]);
+const ORDINARY_SECTORS = Object.freeze([
+  'sector_helios_prime',
+  'sector_ceres_belt',
+  'sector_tethys_junction',
+  'sector_vesta_forge',
+  'sector_pallas_drift',
+  'sector_veil_nebula',
+]);
+// Eight seeds across the original five ordinary sectors, cap 4–6 per sector,
+// forty-six identities. Authored Veil is checked separately below and does not
+// contribute to this diversity floor. Saturation of all 46 is not required.
+const MIN_DISTINCT_ACROSS_SEEDS = 16;
+const MIN_PROMOTED_ACROSS_SEEDS = 6;
+
+function parseGlbJson(abs) {
+  const buf = readFileSync(abs);
+  assert.equal(buf.toString('utf8', 0, 4), 'glTF', `not a GLB: ${abs}`);
+  const jsonLen = buf.readUInt32LE(12);
+  return JSON.parse(buf.subarray(20, 20 + jsonLen).toString('utf8').replace(/\0+$/, ''));
+}
+
+function glbHasPlaceExtras(abs) {
+  const json = parseGlbJson(abs);
+  const sf = json.asset && json.asset.extras && json.asset.extras.spacefaceAsset;
+  return !!(sf && sf.slot === 'place' && sf.assetId);
+}
+
+function dist2(a, b) {
+  const dx = Number(a && a.x) - Number(b && b.x);
+  const dz = Number(a && a.z) - Number(b && b.z);
+  return dx * dx + dz * dz;
+}
+
+function collectKit(seed, sectorId) {
+  const sim = createSimulation({ seed, systems: [world] });
+  sim.state.mode = 'flight';
+  const player = sim.spawn({
+    type: 'ship', team: 0, alive: true, collides: false, radius: 8, mass: 1,
+    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, data: {},
+  });
+  sim.state.playerId = player.id;
+  sim.registry.get('world').enterSector(sectorId, { placePlayer: false });
+  const active = sim.state.world.sectorContents[sectorId] || {};
+  const stations = (active.stations || []).map((row) => ({ stationId: row.stationId, x: Number(row.pos.x), z: Number(row.pos.z) }));
+  const gates = (active.gates || []).map((row) => ({ x: Number(row.pos.x), z: Number(row.pos.z) }));
+  const fields = (active.fields || []).map((row) => ({ x: Number(row.center.x), z: Number(row.center.z) }));
+  const wrecks = (active.pois || [])
+    .filter((row) => row.type === 'wreck' || row.type === 'derelict')
+    .filter((row) => !/lane_pin|tally|claim_mark|locker|ash_pin|whistle/.test(String(row.poiId || '')))
+    .map((row) => ({ x: Number(row.pos.x), z: Number(row.pos.z) }));
+  const placed = [];
+  // Kit dressing lands as dressing-table rows (insertDressingRow), not live entityList actors.
+  const residents = [
+    ...(sim.state.entityList || []),
+    ...((sim.state.world && sim.state.world.dressing && sim.state.world.dressing.rows) || []),
+  ];
+  for (const ent of residents) {
+    if (!ent || !ent.data || ent.data.everydaySpaceKit !== true) continue;
+    placed.push({
+      placeId: String(ent.data.placeId),
+      file: resolvePlaceFileForEntity(ent),
+      x: Number(ent.pos && ent.pos.x),
+      z: Number(ent.pos && ent.pos.z),
+      name: ent.data.name,
+      radius: ent.radius,
+    });
+  }
+  sim.dispose();
+  return { placed, stations, gates, fields, wrecks };
+}
+
+test('thirty newly-legal kit identities route through the release place family', () => {
+  assert.equal(EVERYDAY_SPACE_KIT_UNUSED_MODELS.length, 0);
+  assert.equal(EVERYDAY_SPACE_KIT_UNUSED_IDS.length, 0);
+  assert.equal(EVERYDAY_SPACE_KIT_PROMOTED_MODELS.length, 30);
+  assert.equal(EVERYDAY_SPACE_KIT_PROMOTED_IDS.length, 30);
+  assert.equal(Object.keys(EVERYDAY_SPACE_KIT_PROMOTED_RELEASE_URL_BY_ID).length, 30);
+  for (const model of EVERYDAY_SPACE_KIT_PROMOTED_MODELS) {
+    assert.equal(model.live, true, `${model.stem} must be marked live`);
+    assert.equal(everydaySpaceKitFileForPlaceId(model.id), model.file);
+    assert.equal(model.releaseUrl, EVERYDAY_SPACE_KIT_PROMOTED_RELEASE_URL_BY_ID[model.id]);
+    assert.ok(existsSync(resolve(ROOT, model.releaseUrl)), model.releaseUrl);
+    assert.ok(glbHasPlaceExtras(resolve(ROOT, model.releaseUrl)), `${model.id} release missing extras`);
+    assert.equal(
+      resolvePlaceFileForEntity({ type: 'fx', data: { placeId: model.id } }),
+      null,
+      `${model.id} stays out of PLACE_FILES without the kit dressing flag`,
+    );
+    assert.equal(
+      resolvePlaceFileForEntity({ type: 'fx', data: { placeId: model.id, everydaySpaceKit: true } }),
+      model.file,
+      `mutation: routing row missing for ${model.id}`,
+    );
+  }
+});
+
+test('forty-six legal kit identities route through the release place family', () => {
+  assert.equal(EVERYDAY_SPACE_KIT_LEGAL_MODELS.length, 46);
+  assert.deepEqual([...EVERYDAY_SPACE_KIT_ORIGINAL_IDS].sort(), [...OCCUPATIONAL_YARD_PLACE_IDS].sort());
+  assert.deepEqual(
+    Object.keys(EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID)
+      .filter((id) => !EVERYDAY_SPACE_KIT_LEGAL_IDS.includes(id))
+      .sort(),
+    [
+      'place_haumea_fracture_mouth',
+      'place_hush_gap',
+      'place_hyperion_caved_shaft',
+      'place_io_reach_wreck',
+      'place_nyx_false_gate',
+      'place_orcus_signal_plinth',
+      'place_phoebe_shard_sphere',
+      'place_proteus_funnel',
+      'place_rhea_slag_hauler',
+      'place_sedna_ringworld_arc',
+      'place_triton_aperture_monolith',
+    ],
+  );
+  for (const model of EVERYDAY_SPACE_KIT_LEGAL_MODELS) {
+    assert.equal(everydaySpaceKitFileForPlaceId(model.id), model.file);
+    assert.ok(existsSync(resolve(ROOT, model.releaseUrl)), model.releaseUrl);
+    assert.ok(glbHasPlaceExtras(resolve(ROOT, model.releaseUrl)), `${model.id} release missing extras`);
+    assert.equal(
+      resolvePlaceFileForEntity({ type: 'fx', data: { placeId: model.id } }),
+      null,
+      `${model.id} stays out of PLACE_FILES without the kit dressing flag`,
+    );
+    assert.equal(
+      resolvePlaceFileForEntity({ type: 'fx', data: { placeId: model.id, everydaySpaceKit: true } }),
+      model.file,
+      `mutation: routing row missing for ${model.id}`,
+    );
+  }
+});
+
+test('ordinary sectors place kit props deterministically within the sector bound', () => {
+  const a = collectKit(47, 'sector_vesta_forge');
+  const b = collectKit(47, 'sector_vesta_forge');
+  assert.ok(a.placed.length >= 1, 'Vesta must spawn kit dressing');
+  assert.ok(a.placed.length <= EVERYDAY_SPACE_KIT_MAX_PER_SECTOR);
+  assert.deepEqual(a.placed, b.placed);
+  for (const row of a.placed) {
+    assert.ok(isEverydaySpaceKitPlaceId(row.placeId));
+    assert.equal(row.file, EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID[row.placeId]);
+    assert.ok(!EVERYDAY_SPACE_KIT_UNUSED_IDS.includes(row.placeId));
+  }
+});
+
+test('a handful of seeds yields distinct kit models, including the extended set', () => {
+  const distinct = new Set();
+  const promoted = new Set();
+  const byAnchor = { station: 0, lane: 0, work: 0, wreck: 0 };
+  for (const seed of SEEDS) {
+    for (const sectorId of ORDINARY_SECTORS) {
+      const { placed, stations, gates, fields, wrecks } = collectKit(seed, sectorId);
+      const cap = sectorId === 'sector_helios_prime' || sectorId === 'sector_tethys_junction'
+        ? EVERYDAY_SPACE_KIT_MAX_CORE_PER_SECTOR
+        : EVERYDAY_SPACE_KIT_MAX_PER_SECTOR;
+      assert.ok(placed.length >= 1, `${sectorId} seed ${seed} placed no kit props`);
+      assert.ok(placed.length <= cap, `${sectorId} seed ${seed} exceeded sector bound`);
+      if (sectorId === 'sector_ceres_belt') {
+        assert.equal(placed.filter((row) => row.placeId === 'place_slurry_tank').length, 0);
+        assert.equal(placed.filter((row) => row.placeId === 'place_sensor_mast').length, 0);
+      }
+      if (sectorId === 'sector_tethys_junction') {
+        assert.equal(placed.filter((row) => row.placeId === 'place_transponder_gate').length, 0);
+        assert.equal(placed.filter((row) => row.placeId === 'place_interdiction_buoy').length, 0);
+      }
+      if (sectorId === 'sector_veil_nebula') {
+        // Veil deliberately borrows the already released occupational locker,
+        // not a forty-seventh random-kit identity. Keep every other sector's
+        // original membership/map/proximity assertions below unchanged.
+        assert.equal(placed.length, 4);
+        assert.equal(EVERYDAY_SPACE_KIT_LEGAL_MODELS.length, 46);
+        assert.equal(isEverydaySpaceKitPlaceId('place_cold_locker'), false);
+        assert.equal(EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID.place_cold_locker, undefined);
+        const veil = stations.find(row => row.stationId === VEIL_RESEARCH_EDGE_ANCHOR.stationId);
+        assert.ok(veil, 'Veil must resolve its unique named station');
+        assert.deepEqual(placed.map(row => row.placeId), VEIL_RESEARCH_EDGE_PROPS.map(row => row.placeId));
+        for (const row of placed) {
+          const prop = VEIL_RESEARCH_EDGE_PROPS.find(item => item.placeId === row.placeId);
+          const model = VEIL_RESEARCH_EDGE_MODELS.find(item => item.id === row.placeId);
+          assert.ok(prop && model);
+          assert.equal(row.name, prop.name);
+          assert.equal(row.radius, model.radius);
+          assert.equal(row.x, veil.x + prop.pos.x - VEIL_RESEARCH_EDGE_ANCHOR.x);
+          assert.equal(row.z, veil.z + prop.pos.z - VEIL_RESEARCH_EDGE_ANCHOR.z);
+          assert.equal(row.file, model.file, 'actual resolver must load every Veil body');
+        }
+        continue;
+      }
+      for (const row of placed) {
+        assert.ok(isEverydaySpaceKitPlaceId(row.placeId));
+        assert.equal(row.file, EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID[row.placeId],
+          `mutation: routing row missing for ${row.placeId}`);
+        distinct.add(row.placeId);
+        if (EVERYDAY_SPACE_KIT_PROMOTED_IDS.includes(row.placeId)) promoted.add(row.placeId);
+        const model = EVERYDAY_SPACE_KIT_LEGAL_MODELS.find((item) => item.id === row.placeId);
+        assert.ok(model);
+        if (sectorId === 'sector_tethys_junction') {
+          // Tethys uses the same four kit slots for an authored log-yard pass,
+          // not a random <=240 WU station ring. Verify the actual translated
+          // placement instead of weakening the proximity rule for other sectors.
+          const prop = TETHYS_WATCH_OVERLOOK_PROPS.find((item) => item.placeId === row.placeId);
+          const customs = stations.find((item) => item.stationId === TETHYS_WATCH_OVERLOOK_ANCHOR.stationId);
+          assert.ok(prop && customs, 'Tethys must resolve its authored kit and named station');
+          assert.equal(row.name, prop.name);
+          assert.equal(row.x, customs.x + prop.pos.x - TETHYS_WATCH_OVERLOOK_ANCHOR.x);
+          assert.equal(row.z, customs.z + prop.pos.z - TETHYS_WATCH_OVERLOOK_ANCHOR.z);
+          continue;
+        }
+        const sites = model.anchor === 'lane' ? gates
+          : (model.anchor === 'work' ? fields
+            : (model.anchor === 'wreck' ? wrecks : stations));
+        if (!sites.length) continue;
+        const nearest = Math.min(...sites.map((site) => dist2(row, site)));
+        const limit = model.anchor === 'work' ? 420 : 240;
+        assert.ok(nearest <= limit * limit,
+          `${row.placeId} on ${sectorId} is not near a ${model.anchor} anchor`);
+        byAnchor[model.anchor] += 1;
+      }
+    }
+  }
+  assert.ok(
+    distinct.size >= MIN_DISTINCT_ACROSS_SEEDS,
+    `expected at least ${MIN_DISTINCT_ACROSS_SEEDS} distinct kit models across ${SEEDS.length} seeds, got ${distinct.size}`,
+  );
+  assert.ok(
+    promoted.size >= MIN_PROMOTED_ACROSS_SEEDS,
+    `expected at least ${MIN_PROMOTED_ACROSS_SEEDS} newly-legal kit models across ${SEEDS.length} seeds, got ${promoted.size}`,
+  );
+  assert.ok(byAnchor.station >= 1, 'station-adjacent kit props never appeared');
+  assert.ok(byAnchor.lane >= 1, 'lane kit props never appeared');
+  assert.ok(byAnchor.work >= 1, 'work-site kit props never appeared');
+  assert.ok(byAnchor.wreck >= 1, 'wreck-field salvage props never appeared');
+});

@@ -1,0 +1,126 @@
+{
+  "assetId": "root_anchor_pad",
+  "category": "growth",
+  "description": "root anchor pad; reusable growth assembly in metres",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_natural.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_STALK",
+      "position": [
+        0.0,
+        0.5,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_HOST_CONTACT",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.06,
+          -0.0
+        ],
+        "size": [
+          0.9839999999999999,
+          0.12,
+          0.9839999999999999
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "growth",
+    "modular",
+    "authoring-candidate"
+  ],
+  "bounds": {
+    "min": [
+      -1.588136076927185,
+      -0.00016296048124786466,
+      -1.5976921319961548
+    ],
+    "max": [
+      1.6381698846817017,
+      0.6020495891571045,
+      1.6012705564498901
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "root_anchor_pad_lod0.glb",
+      "triangles": 12288,
+      "draws": 4,
+      "bytes": 539712,
+      "method": "source",
+      "sha256": "60d6b428f9d9771919580f0ac56a4d2cc244a0c5ba2b7b415c1e8a505e0fc0be"
+    },
+    {
+      "level": 1,
+      "file": "root_anchor_pad_lod1.glb",
+      "triangles": 4914,
+      "draws": 4,
+      "bytes": 261140,
+      "method": "Forge-decimation",
+      "sha256": "68e59709a05a56e226932211847113ca4407904265650de5167bb5148aa0801d"
+    },
+    {
+      "level": 2,
+      "file": "root_anchor_pad_lod2.glb",
+      "triangles": 2210,
+      "draws": 4,
+      "bytes": 146168,
+      "method": "Forge-decimation",
+      "sha256": "46251e58964515c3207d4f7c32fe46657339137566df1e19d494ad526aaf406b"
+    }
+  ]
+}

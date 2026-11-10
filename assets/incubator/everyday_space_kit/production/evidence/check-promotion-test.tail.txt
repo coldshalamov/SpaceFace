@@ -1,0 +1,14 @@
+Γû╢ PQ-045 everyday space prop promotion
+  [32mΓ£ö covers exactly the ledger ┬º4.2 sixteen [90m(1.0574ms)[39m[39m
+  [32mΓ£ö authors strictly reducing LOD0 > LOD1 > LOD2 for every prop [90m(0.3443ms)[39m[39m
+  [32mΓ£ö promotes source + release GLBs and manifest rows for each place id [90m(2.208ms)[39m[39m
+  [32mΓ£ö records vertex-tight box collision on every production row [90m(0.2343ms)[39m[39m
+[32mΓ£ö PQ-045 everyday space prop promotion [90m(5.1915ms)[39m[39m
+[34mΓä╣ tests 4[39m
+[34mΓä╣ suites 1[39m
+[34mΓä╣ pass 4[39m
+[34mΓä╣ fail 0[39m
+[34mΓä╣ cancelled 0[39m
+[34mΓä╣ skipped 0[39m
+[34mΓä╣ todo 0[39m
+[34mΓä╣ duration_ms 109.9338[39m

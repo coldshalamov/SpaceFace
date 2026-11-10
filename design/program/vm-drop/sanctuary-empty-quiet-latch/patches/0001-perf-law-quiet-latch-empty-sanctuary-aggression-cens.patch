@@ -1,0 +1,312 @@
+From 6d40af0ea78cb86f04257d1b5b0b3cb0e3659f80 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 13:25:47 -0400
+Subject: [PATCH] =?UTF-8?q?perf(law):=20quiet-latch=20empty=20sanctuary=20?=
+ =?UTF-8?q?aggression=20census=20(~15=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet open flight still paid lawSecurity._enforceSanctuaryWithdrawals'
+aiShips walk (isArmedNpc / isLawful / target bag) every tick while
+armed unlawful NPCs had no chase/fire signal. Quiet latch short-circuits
+when no aggressive candidate remains; wakes on membership, combat
+fire/damage seq, tactical AI wake, or 0.5 s rescan. Soft-GPU fps not
+claimed. Fresh law residual after #145 cones / #146 catch-nets.
+---
+ src/systems/lawSecurity.js                |  81 ++++++++++-
+ test/sanctuary-empty-quiet-latch.test.mjs | 155 ++++++++++++++++++++++
+ 2 files changed, 234 insertions(+), 2 deletions(-)
+ create mode 100644 test/sanctuary-empty-quiet-latch.test.mjs
+
+diff --git a/src/systems/lawSecurity.js b/src/systems/lawSecurity.js
+index 338198243..eebc9b005 100644
+--- a/src/systems/lawSecurity.js
++++ b/src/systems/lawSecurity.js
+@@ -65,9 +65,31 @@ import {
+   forEachLivingWorldActor,
+   indexedShipLikeScan,
+   indexedTypeScan,
++  entityIndexVersion,
+ } from '../world/livingWorldViews.js';
+ 
+ export const LAW_SECURITY_VERSION = 2;
++
++/** Bench A/B: production default ON. Quiet latch skips sanctuary aiShips walk when no
++ * armed unlawful NPC holds a chase/fire signal. Soft-GPU fps not claimed. Fresh law
++ * residual after #145 cones / #146 catch-nets (wanted/ambient stay on their own cadence). */
++let SANCTUARY_EMPTY_QUIET_LATCH = true;
++export function setSanctuaryEmptyQuietLatchForBench(enabled) {
++  SANCTUARY_EMPTY_QUIET_LATCH = enabled !== false;
++}
++export function getSanctuaryEmptyQuietLatchForBench() {
++  return SANCTUARY_EMPTY_QUIET_LATCH !== false;
++}
++
++/** Membership rescan while latched (0.5 s @ 60 Hz). */
++const SANCTUARY_EMPTY_QUIET_RESCAN_TICKS = 30;
++
++function publishSanctuaryQuiet(state, latched) {
++  if (!state) return;
++  const rt = state.lawSecurityRuntime || (state.lawSecurityRuntime = {});
++  rt.sanctuaryQuietLatched = !!latched;
++}
++
+ export const AMBIENT_TOLL_VALUE_FLOOR = 120;
+ 
+ /** PQ-148.02 — physical customs scan cone over a flying pod (heading + half-angle + range). */
+@@ -155,11 +177,21 @@ export const lawSecurity = {
+     this._coneScratchPods = [];
+     this._coneScratchOccluders = [];
+     this._coneScratchScanners = [];
++    this._sanctuaryQuiet = null;
++    this._sanctuaryWakeSeq = 0;
+     this._nextInspectionTick = 0;
+     this._inspectionRebindPasses = 0;
+     ensureState(this.state);
+-    this._onDamage = (payload) => this._handleDamage(payload);
+-    this._onFire = (payload) => this._handleFire(payload);
++    this._onDamage = (payload) => {
++      this._sanctuaryWakeSeq = (this._sanctuaryWakeSeq | 0) + 1;
++      this._sanctuaryQuiet = null;
++      this._handleDamage(payload);
++    };
++    this._onFire = (payload) => {
++      this._sanctuaryWakeSeq = (this._sanctuaryWakeSeq | 0) + 1;
++      this._sanctuaryQuiet = null;
++      this._handleFire(payload);
++    };
+     this._onSpawned = (payload) => this._stampAmbient(payload && payload.entity);
+     this._onResponderGone = (payload) => {
+       this._releaseJobResponsesForEntity(eventEntityId(payload), 'responder_gone');
+@@ -523,7 +555,33 @@ export const lawSecurity = {
+    * from encounters and sector promotion before the weapon system can consume it.
+   */
+   _enforceSanctuaryWithdrawals(state) {
++    // Quiet open flight: armed unlawful NPCs with no chase/fire signal still paid a full
++    // aiShips walk (isArmedNpc / isLawful / target bag) every tick. Latch when no
++    // aggressive candidate remains; wake on membership, combat fire/damage seq, tactical
++    // AI wake, or 0.5 s rescan. Soft-GPU fps not claimed. Fresh law residual after #145
++    // cones / #146 catch-nets.
++    if (SANCTUARY_EMPTY_QUIET_LATCH !== false) {
++      const membership = entityIndexVersion(state);
++      const tick = state.tick | 0;
++      const wakeSeq = this._sanctuaryWakeSeq | 0;
++      const quiet = this._sanctuaryQuiet;
++      const tacticalQuiet = !state.tacticalAiRuntime
++        || state.tacticalAiRuntime.quietLatched !== false;
++      if (quiet
++        && membership != null
++        && quiet.membership === membership
++        && quiet.wakeSeq === wakeSeq
++        && tacticalQuiet
++        && ((tick - (quiet.armedTick | 0)) < SANCTUARY_EMPTY_QUIET_RESCAN_TICKS)) {
++        publishSanctuaryQuiet(state, true);
++        return;
++      }
++    } else if (this._sanctuaryQuiet) {
++      this._sanctuaryQuiet = null;
++    }
++
+     const armed = indexedTypeScan(state, 'aiShips');
++    let aggressive = 0;
+     for (let i = 0; i < armed.length; i++) {
+       const entity = armed[i];
+       if (!isArmedNpc(entity, state) || isLawful(entity)) continue;
+@@ -537,6 +595,8 @@ export const lawSecurity = {
+       if (targetId == null && (ai.forcePlayerTarget || ai.huntPlayer || intent.fire)) {
+         targetId = state.playerId;
+       }
++      if (targetId == null) continue;
++      aggressive++;
+       const target = entityById(state, targetId);
+       if (!target) continue;
+       if (is47aScavengerCounterplayAuthorized(state, entity, target)) continue;
+@@ -544,6 +604,23 @@ export const lawSecurity = {
+       if (!jurisdiction) continue;
+       this._withdrawFromSanctuary(entity, target, jurisdiction);
+     }
++
++    if (SANCTUARY_EMPTY_QUIET_LATCH !== false) {
++      const membership = entityIndexVersion(state);
++      const tacticalQuietArm = !state.tacticalAiRuntime
++        || state.tacticalAiRuntime.quietLatched !== false;
++      if (membership != null && aggressive === 0 && tacticalQuietArm) {
++        this._sanctuaryQuiet = {
++          membership,
++          armedTick: state.tick | 0,
++          wakeSeq: this._sanctuaryWakeSeq | 0,
++        };
++        publishSanctuaryQuiet(state, true);
++      } else {
++        this._sanctuaryQuiet = null;
++        publishSanctuaryQuiet(state, false);
++      }
++    }
+   },
+ 
+   _withdrawFromSanctuary(entity, target, jurisdiction) {
+diff --git a/test/sanctuary-empty-quiet-latch.test.mjs b/test/sanctuary-empty-quiet-latch.test.mjs
+new file mode 100644
+index 000000000..a81e8e78a
+--- /dev/null
++++ b/test/sanctuary-empty-quiet-latch.test.mjs
+@@ -0,0 +1,155 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createGameState } from '../src/core/gameState.js';
++import { createBus } from '../src/core/eventBus.js';
++import { core } from '../src/core/coreSystem.js';
++import {
++  lawSecurity,
++  setSanctuaryEmptyQuietLatchForBench,
++  getSanctuaryEmptyQuietLatchForBench,
++} from '../src/systems/lawSecurity.js';
++
++function boot() {
++  const state = createGameState(1471);
++  state.mode = 'flight';
++  state.tick = 0;
++  state.world = state.world || {};
++  state.world.currentSectorId = 'sector_ceres';
++  const bus = createBus();
++  const helpers = {};
++  core.init({ state, bus, helpers, registry: null });
++  const player = helpers.spawnEntity({
++    type: 'ship', pos: { x: 800, z: 0 }, vel: { x: 0, z: 0 },
++    radius: 8, mass: 12, hull: 100, hullMax: 100, collides: true, team: 0, data: {},
++  });
++  state.playerId = player.id;
++  helpers.spawnEntity({
++    type: 'station', pos: { x: 800, z: 0 }, radius: 80, mass: 1000,
++    hull: 1000, hullMax: 1000, collides: true, team: 0,
++    factionId: 'faction_dmc',
++    data: { stationId: 'station_ceres' },
++  });
++  const ships = [player];
++  const aiShips = [];
++  for (let i = 0; i < 8; i++) {
++    const e = helpers.spawnEntity({
++      type: 'ship',
++      pos: { x: 100 + i * 20, z: 50 },
++      vel: { x: 0, z: 0 },
++      radius: 8, mass: 12, hull: 80, hullMax: 80, collides: true, team: 1,
++      factionId: 'faction_scn',
++      data: { ai: { passive: true, lawful: true }, role: 'patrol' },
++    });
++    ships.push(e);
++    aiShips.push(e);
++  }
++  for (let i = 0; i < 4; i++) {
++    const e = helpers.spawnEntity({
++      type: 'ship',
++      pos: { x: -200 - i * 20, z: -100 },
++      vel: { x: 0, z: 0 },
++      radius: 8, mass: 12, hull: 80, hullMax: 80, collides: true, team: 2,
++      factionId: 'faction_reach',
++      data: {
++        ai: { passive: true, lawful: false, archetype: 'raider' },
++        combat: {},
++        intent: {},
++        role: 'raider',
++      },
++    });
++    ships.push(e);
++    aiShips.push(e);
++  }
++  const stations = [];
++  for (const e of state.entityList || []) {
++    if (e && e.type === 'station') stations.push(e);
++  }
++  if (state.entityIndex) {
++    state.entityIndex.ready = true;
++    state.entityIndex.__spacefaceEntityIndexV1 = true;
++    state.entityIndex.ships = ships;
++    state.entityIndex.shipLike = ships;
++    state.entityIndex.aiShips = aiShips;
++    state.entityIndex.stations = stations;
++    state.entityIndex.wrecks = [];
++    state.entityIndex.payloads = [];
++    state.entityIndex.pickups = [];
++    state.entityIndex.version = 1;
++  }
++  lawSecurity.init({ state, bus, helpers, registry: null });
++  return { state, helpers, ships, aiShips, player };
++}
++
++test('sanctuary empty quiet latch arms and skips walk', () => {
++  assert.equal(getSanctuaryEmptyQuietLatchForBench(), true);
++  const { state } = boot();
++  setSanctuaryEmptyQuietLatchForBench(true);
++  for (let i = 0; i < 5; i++) {
++    state.tick++;
++    lawSecurity._enforceSanctuaryWithdrawals(state);
++  }
++  assert.equal(state.lawSecurityRuntime?.sanctuaryQuietLatched, true);
++  assert.ok(lawSecurity._sanctuaryQuiet);
++  const membership = lawSecurity._sanctuaryQuiet.membership;
++  for (let i = 0; i < 10; i++) {
++    state.tick++;
++    lawSecurity._enforceSanctuaryWithdrawals(state);
++  }
++  assert.equal(state.lawSecurityRuntime?.sanctuaryQuietLatched, true);
++  assert.equal(lawSecurity._sanctuaryQuiet.membership, membership);
++});
++
++test('sanctuary empty quiet latch wakes on chase into jurisdiction', () => {
++  const { state, aiShips, player } = boot();
++  setSanctuaryEmptyQuietLatchForBench(true);
++  for (let i = 0; i < 5; i++) {
++    state.tick++;
++    lawSecurity._enforceSanctuaryWithdrawals(state);
++  }
++  assert.equal(state.lawSecurityRuntime?.sanctuaryQuietLatched, true);
++
++  const pirate = aiShips.find((e) => e.factionId === 'faction_reach');
++  assert.ok(pirate);
++  pirate.pos.x = 820;
++  pirate.pos.z = 10;
++  pirate.data.ai.forcePlayerTarget = true;
++  pirate.data.combat.targetId = player.id;
++  state.entityIndex.version = (state.entityIndex.version | 0) + 1;
++
++  state.tick++;
++  lawSecurity._enforceSanctuaryWithdrawals(state);
++  assert.equal(state.lawSecurityRuntime?.sanctuaryQuietLatched, false);
++  assert.equal(pirate.data.ai.sanctuaryWithdrawn, true);
++  assert.equal(pirate.data.ai.engagementTrigger, 'jurisdiction_withdrawal');
++});
++
++test('sanctuary empty quiet latch wakes on combat fire seq', () => {
++  const { state } = boot();
++  setSanctuaryEmptyQuietLatchForBench(true);
++  for (let i = 0; i < 5; i++) {
++    state.tick++;
++    lawSecurity._enforceSanctuaryWithdrawals(state);
++  }
++  assert.equal(state.lawSecurityRuntime?.sanctuaryQuietLatched, true);
++  // Fire handler clears latch even without a live withdrawal candidate.
++  if (typeof lawSecurity._onFire === 'function') {
++    lawSecurity._onFire({ attackerId: state.playerId });
++  }
++  assert.equal(lawSecurity._sanctuaryQuiet, null);
++  state.tick++;
++  lawSecurity._enforceSanctuaryWithdrawals(state);
++  // Re-arms after empty aggressive scan.
++  assert.equal(state.lawSecurityRuntime?.sanctuaryQuietLatched, true);
++});
++
++test('sanctuary empty quiet latch can be disabled for bench', () => {
++  const { state } = boot();
++  setSanctuaryEmptyQuietLatchForBench(false);
++  assert.equal(getSanctuaryEmptyQuietLatchForBench(), false);
++  for (let i = 0; i < 5; i++) {
++    state.tick++;
++    lawSecurity._enforceSanctuaryWithdrawals(state);
++  }
++  assert.notEqual(state.lawSecurityRuntime?.sanctuaryQuietLatched, true);
++  setSanctuaryEmptyQuietLatchForBench(true);
++});
+-- 
+2.47.3
+

@@ -1,0 +1,1716 @@
+import { paneBuilder } from '../views/settingsControls.js';
+export { bindCommittedRange } from '../views/settingsControls.js';
+// Settings — Field Hardware BENCH (P04/P37). World held behind smoked glass; section keys on the
+// left; the live section as engraved rows on one plate. Toggles are machined switches, numbers are
+// sliders, choices are keycaps, binds are keycaps. Every setting stays reachable (keyboard, pad,
+// rebind, reduced-motion). Unique chrome: styles/settings.css.
+// Sections: Audio / Video / Gameplay / Access / Controls. Every change writes state.settings and
+// emits settings:changed {section,key,value,persist?} (audio/render/save listen + live-apply/profile-persist).
+// UI reads state.settings for display; the write to state.settings is the UI/settings
+// module's own owned subtree (§3.3 owner: ui/settings), so writing it here is in-scope.
+
+import { laneWriteSetting } from '../../core/simLaneCommands.js';
+import { injectDeckplate } from '../deckplate/index.js';
+import {
+  DEFAULTS as INPUT_DEFAULTS,
+  formatBindingCode,
+} from '../../systems/input.js';
+import {
+  findGamepadBindConflict,
+  gamepadButtonLabels,
+  resolveGamepadBindings,
+} from '../../systems/gamepad.js';
+import { massline2Flag } from '../../data/featureFlags.js';
+import { reelRebindText } from '../../systems/masslineInputGrammar.js';
+import { listUserMods, userContentDirLabel } from '../../data/userContent.js';
+import { MASSLINE_BINDING_PROFILE_SPACE } from '../../core/graphicsProfileBootstrap.js';
+import { POWER_LEGACY_ACTIONS } from '../../systems/powerVerbs.js';
+import { DEFAULT_BLOOM_STRENGTH } from '../../render/bloom.js';
+import { createGameState } from '../../core/gameState.js';
+import {
+  CANONICAL_QUALITY_PRESET_IDS,
+  DEFAULT_QUALITY_PRESET,
+  QUALITY_PRESETS,
+  applyQualityPreset,
+  createFrameCap,
+  frameCapLabel,
+  matchingQualityPreset,
+  normalizeFrameCap,
+  qualityModeForVideo,
+} from '../../render/adaptiveQuality.js';
+import { BINDINGS } from '../bindings.js';
+import { setGamepadCaptureHandler } from '../bindings.js';
+import { confirm } from '../confirm.js';
+import { ironmanChoiceChange } from '../../save/ironmanChoice.js';
+import { LANGUAGE_OPTIONS, currentGameLocale, ensureLocaleReady, localizeText, setGameLocale } from '../../localization/sourceText.js';
+import {
+  ACCESSIBILITY_STATEMENT_ID,
+  CHECKLIST_ITEMS,
+  evaluateChecklist,
+} from '../accessibilityChecklist.js';
+import { recordMotionChoice, applyTextScaleFromSettings } from '../accessibility.js';
+import { el, words, settle, cue } from '../kit/index.js';
+// ORRERY (design/frontend/ORRERY.md §6 Meta): the categories on a Ladder with the Hand, the sliders as
+// graduated Scales, and a live preview of what the focused row changes beside the list.
+import { injectOrrerySettings, dressSettingsPane, attachSpotlight } from '../orrery/settingsLayouts.js';
+import { createSettingsPreview } from '../orrery/settingsPreview.js';
+// PRO-08: the touch overlay's own vocabulary lives with the overlay, so the Settings rows and the
+// DOM builder can never disagree about what a legal scale or layout is.
+import {
+  TOUCH_LAYOUTS,
+  TOUCH_SCALE_MAX,
+  TOUCH_SCALE_MIN,
+  normalizeTouchLayout,
+  normalizeTouchScale,
+  readTouchOverlayConfig,
+} from '../../systems/touch.js';
+
+const TOUCH_LAYOUT_LABELS = Object.freeze({
+  standard: 'Right hand — gun and tether on the right; the stick appears where you touch',
+  lefty: 'Left hand — gun, tether, and powers mirrored',
+  compact: 'Compact — smaller pads, pulled in from the edges',
+});
+
+const SETTINGS_SHEET_ID = 'of-settings-css';
+
+function ensureSettingsStyles() {
+  if (typeof document === 'undefined') return;
+  if (document.getElementById(SETTINGS_SHEET_ID)) return;
+  const head = document.head || document.documentElement;
+  if (!head || typeof head.appendChild !== 'function') return;
+  const link = document.createElement('link');
+  link.id = SETTINGS_SHEET_ID;
+  link.rel = 'stylesheet';
+  try { link.href = new URL('../../../styles/settings.css', import.meta.url).href; }
+  catch { link.href = '/styles/settings.css'; }
+  head.appendChild(link);
+}
+
+function syncSwitchState(group) {
+  const on = group.querySelector('[data-action="on"]');
+  group.classList.toggle('is-on', !!(on && on.getAttribute('aria-pressed') === 'true'));
+}
+
+function dressSettingsControls(pane) {
+  if (!pane || typeof pane.querySelectorAll !== 'function') return;
+  // paneBuilder already assigned labelEl.htmlFor = id; keep those labels on the dressed rows.
+  for (const row of pane.querySelectorAll('.k-row')) row.classList.add('fh-row');
+  for (const cap of pane.querySelectorAll('.k-caps')) {
+    cap.classList.add('fh-legend');
+    if (!cap.getAttribute('data-fh-lit')) cap.setAttribute('data-fh-lit', 'on');
+  }
+  for (const btn of pane.querySelectorAll('.sf-bind-btn')) btn.classList.add('fh-key', 'fh-key--small');
+  for (const sel of pane.querySelectorAll('.k-select')) sel.classList.add('fh-input');
+  for (const note of pane.querySelectorAll('.k-sentence')) note.classList.add('fh-body');
+  for (const group of pane.querySelectorAll('.k-words--row')) {
+    const actions = [];
+    for (const b of group.querySelectorAll('.k-word')) actions.push(b.dataset.action);
+    const isToggle = actions.length === 2 && actions.includes('off') && actions.includes('on');
+    if (isToggle) {
+      group.classList.add('of-settings-switch');
+      syncSwitchState(group);
+      if (!group.dataset.fhSwitch) {
+        group.dataset.fhSwitch = '1';
+        group.addEventListener('click', () => syncSwitchState(group));
+      }
+    } else {
+      for (const b of group.querySelectorAll('.k-word')) b.classList.add('fh-key', 'fh-key--legend');
+    }
+  }
+  for (const child of pane.children || []) {
+    if (!child.classList || !child.classList.contains('k-words')) continue;
+    for (const b of child.querySelectorAll('.k-word')) b.classList.add('fh-key', 'fh-key--secondary');
+  }
+}
+
+function getManager(ctx) {
+  if (ctx && ctx.screenManager) return ctx.screenManager;
+  if (ctx && ctx.screens && ctx.screens.pushScreen) return ctx.screens;
+  const ui = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('ui');
+  if (ui && ui.screenManager) return ui.screenManager;
+  if (ui && ui.manager) return ui.manager;
+  return null;
+}
+function nav(ctx, method, arg) {
+  const mgr = getManager(ctx);
+  if (mgr && typeof mgr[method] === 'function') { mgr[method](arg); return; }
+  ctx.bus.emit('ui:' + method, { id: arg });
+}
+
+const TABS = ['Audio', 'Video', 'Gameplay', 'Access', 'Controls'];
+export { TABS as SETTINGS_TABS };
+
+/**
+ * PRO-15: one settings key, ONE editable row.
+ *
+ * Motion effects and UI scale each had an independent editor on BOTH the Video and the Access
+ * tab, writing the same key from two places, so a pilot who set one had no way to know a second
+ * control existed. Access is the home — its own accessibility statement says "reduced motion,
+ * text scale ... are listed below", CHECKLIST_ITEMS names Access, and the Ceres five-minute
+ * acceptance actor drives the Access row. Video keeps a read-only labelled mirror.
+ *
+ * Both rows come from the shared factories below, so the two homes cannot drift again, and the
+ * mirror is `build.shortcut`: no label/for, no control, no write path — the shape the ORRERY
+ * preview already reads.
+ */
+export const SETTINGS_ROW_OWNERS = Object.freeze({
+  'accessibility.motionPreference': Object.freeze({ home: 'Access', mirror: 'Video', label: 'Motion effects' }),
+  uiScale: Object.freeze({ home: 'Access', mirror: 'Video', label: 'UI scale' }),
+});
+export const MIRROR_NOTE = 'Set in Access';
+
+const MOTION_WORDS = Object.freeze({ system: 'Follow system', reduce: 'Reduced', full: 'Full' });
+const MOTION_CHOICES = Object.freeze([
+  ['system', MOTION_WORDS.system], ['reduce', MOTION_WORDS.reduce], ['full', MOTION_WORDS.full],
+]);
+
+/** A corrupt profile must render a usable number, not 'NaNx' or a '0.00x' from a null. */
+export function fmtUiScale(value) {
+  if (value == null || value === '') return '1.00x';
+  const n = Number(value);
+  return (Number.isFinite(n) ? n : 1).toFixed(2) + 'x';
+}
+
+function motionPreferenceOf(settings) {
+  const chosen = (settings.accessibility || {}).motionPreference;
+  if (chosen && MOTION_WORDS[chosen]) return chosen;
+  return (settings.video || {}).motionReduce ? 'reduce' : 'full';
+}
+
+/** The Access home for motion effects, or the Video mirror. `editable` picks which. */
+export function motionEffectsRow(build, settings, editable) {
+  if (!editable) {
+    return build.shortcut('Motion effects', MOTION_WORDS[motionPreferenceOf(settings)], MIRROR_NOTE);
+  }
+  return build.select('Motion effects', () => motionPreferenceOf(settings),
+    MOTION_CHOICES.map(pair => pair.slice()),
+    (value) => {
+      recordMotionChoice(settings, value);
+      settingsScreen._set(currentCtx, 'accessibility', 'motionPreference', value);
+    });
+}
+
+/** The Access home for UI scale, or the Video mirror. */
+export function uiScaleRow(build, settings, editable, setValue) {
+  if (!editable) return build.shortcut('UI scale', fmtUiScale(settings.uiScale), MIRROR_NOTE);
+  return build.slider('UI scale', () => settings.uiScale, 0.75, 2, 0.05, fmtUiScale, (value, persist) => {
+    setValue(null, 'uiScale', value, persist);
+    const root = document.getElementById('ui-root');
+    if (root) root.style.setProperty('--ui-scale', value);
+  });
+}
+
+// The row builders above need the live screen to reach `_set`, but they are also pure data helpers
+// the focused test drives directly. One indirection point instead of threading ctx through.
+let currentCtx = null;
+
+/** Controls-tab Deck/trackpad sentence. */
+export const STEAM_DECK_HEADER = 'Steam Deck';
+export const STEAM_DECK_NOTE = 'Verified at 1280×800. Trackpad controls cursor and aiming (middle-tap optional); pinch or scroll zooms camera; keyboard or gamepad controls flight.';
+
+// The locale the picker shows: the player's choice when set, otherwise the live runtime locale.
+function chosenLocale(settings) {
+  const chosen = settings && settings.locale;
+  return chosen || currentGameLocale() || 'en-US';
+}
+
+let refs = null;
+// One frame-cap controller for the whole screen. It resolves the effective cap (honouring VSync)
+// and publishes it to state.render.frameCap; it never rewrites settings.video, so the persisted
+// request and the live value stay separate. TODO(renderer): the render-frame scheduler is outside
+// this leaf's write set and does not yet consume state.render.frameCap.
+let frameCapController = null;
+
+function publishFrameCap(ctx) {
+  const state = ctx && ctx.state;
+  if (!state) return null;
+  if (!state.render) state.render = {};
+  const vd = (state.settings && state.settings.video) || {};
+  if (!frameCapController) {
+    frameCapController = createFrameCap({
+      vsync: vd.vsync !== false,
+      apply: (cap) => { state.render.frameCap = cap; },
+    });
+  }
+  frameCapController.setVsync(vd.vsync !== false);
+  return frameCapController.setCap(vd.frameCap);
+}
+// --- Key rebinding (V2 §12) ---
+// input.js owns the binding tables; the settings UI mirrors the active control scheme and overlays
+// saved custom keys so "reset to defaults" means the defaults for the selected scheme.
+const DEFAULT_BINDINGS = INPUT_DEFAULTS.BINDINGS;
+// Flight actions the player may rebind. Mouse buttons stay out of the grid; Space is the
+// new-profile Massline primary and F remains its permanent alias.
+export const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'boost', 'autoFire',
+  'brake', 'siteBeam', 'tether',
+  // The five powers (owner 2026-10-22, src/systems/powerVerbs.js), in number-row order.
+  'pull', 'shove', 'pin', 'bomb', 'rig', 'cycleBomb',
+  'scanPulse', 'cruise', 'reelIn', 'reelOut', 'bulletTime', 'cloak', 'travelBurn',
+  // The rest of the live bound verbs: rebindable in data (input.js VERB_BINDINGS; countermeasure
+  // sits in the scheme tables) but until now with no row here — "rebindable in data but no row
+  // is not rebindable to a player" (below).
+  'countermeasure', 'deployBeacon', 'jettisonLot', 'gyreSnare', 'deployShieldPylon'];
+export const REBIND_LABELS = {
+  forward: 'Throttle up',
+  reverse: 'Throttle down (reverse)',
+  yawLeft: 'Steer left (Classic scheme)',
+  yawRight: 'Steer right (Classic scheme)',
+  strafeLeft: 'Lateral thrust left',
+  strafeRight: 'Lateral thrust right',
+  boost: 'Boost / dash',
+  autoFire: 'Toggle auto-target / draw-to-fly',
+  brake: 'Brake (0; S / Down also reverse)',
+  siteBeam: 'World Site beam (selected target)',
+  tether: 'Massline: tap latch/cut; hold line control',
+  pull: 'Pull: gravity well at your aim',
+  shove: 'Shove: outward blast + set off armed ordnance',
+  pin: 'Pin: anchor seed for the Line',
+  bomb: 'Bomb: sticky charge, or the chosen drift bomb',
+  rig: 'Rig: clearing cone / skim scoop',
+  scanPulse: 'Scanner pulse',
+  cruise: 'Cruise drive (charge/drop)',
+  reelIn: 'Tether winch in',
+  reelOut: 'Tether winch out',
+  bulletTime: 'Bullet time (hold)',
+  cloak: 'Cloak toggle',
+  // W1-5. A latch that is rebindable in data but has no row here is not rebindable to a player.
+  travelBurn: 'Travel drive (burn latch)',
+  // The Gyre Snare is a held verb: grip to beam/hold, release to bowl the clump.
+  gyreSnare: 'Gyre Snare: hold to lash, release to bowl',
+  deployShieldPylon: 'Shield pylons: place, link, or recall (needs a Pylon Projector)',
+  cycleBomb: 'Ordnance: cycle (sticky charge, then bombs)',
+  // Labels mirror the pad grid's names for the same verbs (one verb, one name across devices).
+  countermeasure: 'Countermeasure',
+  deployBeacon: 'Nav beacon: deploy',
+  jettisonLot: 'Cargo: jettison lot',
+};
+
+// PQ-164.01 pad remap. Every gamepad action is rebindable; labels describe the verb, not the
+// default button (the live resolved map prints the button on the right of each row). FB-003 adds
+// the chord layer: every keyboard flight verb has a pad route, and capture accepts a held
+// modifier + a tapped key as a 'mod+key' chord.
+export const GAMEPAD_REBINDABLE = [
+  'accept', 'cancel', 'massline', 'dock', 'shove', 'fire', 'mine', 'boost', 'brake', 'cycleTarget', 'autoTarget',
+  'map', 'codex', 'pause', 'countermeasure', 'travelBurn', 'bomb', 'cycleBomb', 'tabPrev', 'tabNext',
+  'scanPulse', 'cruise', 'bulletTime', 'cloak', 'siteBeam', 'pin', 'pull',
+  'rig', 'deployBeacon', 'jettisonLot', 'gyreSnare', 'steeringView', 'deployShieldPylon',
+];
+export const GAMEPAD_REBIND_LABELS = {
+  accept: 'Accept',
+  dock: 'Dock (when prompted)',
+  shove: 'Shove: outward blast + set off armed ordnance',
+  cancel: 'Back / cancel',
+  massline: 'Massline: tap latch/cut; hold line control',
+  fire: 'Fire',
+  mine: 'Mine beam (analog trigger)',
+  boost: 'Boost',
+  brake: 'Brake / reverse thrust',
+  cycleTarget: 'Cycle target',
+  autoTarget: 'Auto-target / draw-to-fly toggle',
+  map: 'Star map',
+  steeringView: 'Chase / overhead camera',
+  codex: 'Codex / journal',
+  pause: 'Pause menu',
+  countermeasure: 'Countermeasure',
+  travelBurn: 'Travel drive (burn latch)',
+  tabPrev: 'Station tab: previous',
+  tabNext: 'Station tab: next',
+  bomb: 'Bomb: sticky charge, or the chosen drift bomb',
+  cycleBomb: 'Ordnance: cycle (sticky charge, then bombs)',
+  // FB-003 chord layer — stock seats live on LB (survey/deploy) and RB (combat-state) chords.
+  scanPulse: 'Scanner pulse',
+  cruise: 'Cruise drive (charge/drop)',
+  bulletTime: 'Bullet time (hold)',
+  cloak: 'Cloak toggle',
+  siteBeam: 'World Site beam (selected target)',
+  pin: 'Pin: anchor seed for the Line',
+  pull: 'Pull: gravity well at your aim',
+  rig: 'Rig: clearing cone / skim scoop',
+  deployBeacon: 'Nav beacon: deploy',
+  jettisonLot: 'Cargo: jettison lot',
+  gyreSnare: 'Gyre Snare: hold to lash, release to bowl',
+  deployShieldPylon: 'Shield pylons: place, link, or recall',
+};
+
+function controlSchemeFor(settings) {
+  const scheme = settings && settings.gameplay && settings.gameplay.controlScheme || 'pilot';
+  const schemes = INPUT_DEFAULTS.SCHEMES || {};
+  return schemes[scheme] ? scheme : 'pilot';
+}
+
+function schemeBindingsFor(settings) {
+  const schemes = INPUT_DEFAULTS.SCHEMES || {};
+  return schemes[controlSchemeFor(settings)] || DEFAULT_BINDINGS;
+}
+
+function mergedBindingsFor(settings) {
+  const base = schemeBindingsFor(settings);
+  const live = {};
+  const keys = new Set([...Object.keys(DEFAULT_BINDINGS || {}), ...Object.keys(base || {})]);
+  for (const action of keys) live[action] = ((base && base[action]) || DEFAULT_BINDINGS[action] || []).slice();
+  const custom = settings && settings.controls && settings.controls.bindings;
+  if (custom) for (const action in custom) live[action] = (custom[action] || []).slice();
+  return { base, live };
+}
+
+// Fixed interface keys from the live BINDINGS registry (not rebindable flight codes).
+// Pause is Esc/P (UI-owned, not in BINDINGS). Mission Log is BINDINGS.missionLog on keyboard/touch;
+// gamepad has no direct Mission Log button — Start opens Pause, then choose Mission Log.
+/** PRO-05 — one key the localizer can translate. en-US renders the old concatenation. */
+
+// NXI-003 — the Controls surface reports the input owner's ACCEPTED flight source
+// (resolveMovementOwner → host.movementSource), never a hover, a connectivity guess, or a
+// local device tally. The row is a static display retexted in place by refresh(), so one
+// deliberate device switch flips it once while pointer traffic over this screen cannot move
+// the in-flight source at all (UI targets never count as flight pointer activity — see
+// noteFlightPointer in systems/input.js).
+export const CONTROL_FAMILY_LABELS = Object.freeze({
+  keyboard: 'Keyboard & mouse',
+  gamepad: 'Gamepad',
+  touch: 'Touch',
+});
+
+/**
+ * The accepted control family, or null when no deliberate source has claimed the helm yet.
+ * `ctx.registry.get('input')` is the same seam worldObjectInteraction uses to reach the sim
+ * input system; hosts without it (lab, bench) render '—' rather than guessing from which
+ * devices happen to be connected.
+ */
+export function activeControlFamily(ctx) {
+  const registry = ctx && ctx.registry;
+  const sys = registry && typeof registry.get === 'function' ? registry.get('input') : null;
+  const source = sys && typeof sys.movementSource === 'string' ? sys.movementSource : null;
+  return CONTROL_FAMILY_LABELS[source] ? source : null;
+}
+
+/** Display text for an accepted family (or '—' while none has been accepted). */
+export function controlFamilyLabel(family) {
+  return CONTROL_FAMILY_LABELS[family] || '—';
+}
+
+/**
+ * Retext the mounted Active-input value element only when the accepted family changed —
+ * the whole point of the "once" is that a deliberate source switch writes exactly one new
+ * label, and everything else (hover, repeat refreshes, pad noise) writes nothing.
+ */
+export function syncActiveControlFamily(ctx, valueEl) {
+  const label = controlFamilyLabel(activeControlFamily(ctx));
+  if (valueEl && valueEl.textContent !== label) valueEl.textContent = label;
+  return label;
+}
+export function settingsInUseLabel(action) {
+  return localizeText('In use: {action}', { action: action == null ? '' : action });
+}
+
+let bindingConflictSequence = 0;
+/** The conflict is a description, not only the button's new name. */
+export function announceBindingConflict(button, label) {
+  if (!button || typeof button.setAttribute !== 'function') return label;
+  const sentence = label || 'That key is already in use.';
+  const row = button.closest ? (button.closest('.k-row') || button.closest('li')) : null;
+  const host = row || button.parentNode;
+  let note = host && host.querySelector ? host.querySelector('[data-bind-conflict]') : null;
+  if (!note && host && typeof host.appendChild === 'function' && typeof document !== 'undefined') {
+    note = document.createElement('span');
+    note.dataset.bindConflict = '1';
+    note.className = 'k-row__sub';
+    host.appendChild(note);
+  }
+  if (note) {
+    if (!button.id) button.id = 'sf-bind-live-' + (++bindingConflictSequence);
+    note.id = button.id + '-conflict';
+    note.textContent = sentence;
+    note.setAttribute('role', 'status');
+    button.setAttribute('aria-describedby', note.id);
+    if (host && host !== button && host.setAttribute) host.setAttribute('aria-describedby', note.id);
+  } else {
+    button.setAttribute('aria-description', sentence);
+  }
+  return sentence;
+}
+
+export function settingsQualityKeepsNote(keeps, substitutes) {
+  return localizeText('Keeps {keeps}. Substitutes: {substitutes}.', {
+    keeps: keeps == null ? '' : keeps,
+    substitutes: substitutes == null ? '' : substitutes,
+  });
+}
+
+export function settingsPackRestartNote(modsDir) {
+  if (modsDir) {
+    return localizeText('No content packs installed. Drop a pack folder into {dir} and restart.', { dir: modsDir });
+  }
+  return localizeText('No content packs installed.');
+}
+
+export function settingsWorkshopSubscribedNote(count) {
+  // words-ship-sheet-counts: whole singular/plural sentences, never "item(s)".
+  return Number(count) === 1
+    ? localizeText('Steam Workshop: 1 subscribed item. Sync mirrors it into the content directory; a restart loads it.')
+    : localizeText('Steam Workshop: {count} subscribed items. Sync mirrors them into the content directory; a restart loads them.', { count });
+}
+
+export function settingsWorkshopSyncedNote(count) {
+  return Number(count) === 1
+    ? localizeText('Workshop sync mirrored 1 pack — restart to load')
+    : localizeText('Workshop sync mirrored {count} packs — restart to load', { count });
+}
+
+export const CONTROL_SHORTCUTS = Object.freeze([
+  { label: 'Dock / interact', key: BINDINGS.dock.label, note: 'when prompted' },
+  { label: 'Mission Log', key: BINDINGS.missionLog.label, note: 'active + completed contracts; gamepad: Start → Pause → Mission Log' },
+  { label: 'Local Map', key: BINDINGS.localmap.label, note: 'same-sector contacts/objectives' },
+  { label: 'Star Map', key: BINDINGS.starmap.label, note: 'jump routes and sector objectives' },
+  { label: 'Codex', key: BINDINGS.codex.label, note: 'reference and unlocked journal' },
+  { label: 'Tech Tree', key: BINDINGS.techTree.label, note: 'unlock path and blockers' },
+  { label: 'Cargo Hold', key: BINDINGS.cargo.label, note: 'cargo value and capacity' },
+  { label: 'Comms Log', key: BINDINGS.comms.label, note: 'messages and contacts' },
+  { label: 'Drill / asteroid base', key: BINDINGS.drill.label, note: 'target asteroid first' },
+  { label: 'Claim / open base', key: BINDINGS.claimBase.label, note: 'near claimable body/base' },
+  { label: 'Pause', key: 'Esc / P', note: 'pause menu: resume, settings, save/load, map review' },
+]);
+
+// --- Reserved interface codes (F-CONTROLS-01) ---------------------------------------------------
+// The UI key router (src/ui/input.js) owns these codes in flight whether or not a flight verb
+// wants them. The three contextual bindings stay OUT: dock (E), claim-base (U) and drill (B)
+// share their code with a stock flight verb on purpose — the router claims the key only inside
+// its context and lets it fall through to flight everywhere else. Every other interface code is
+// an exclusive claim: overlay/instant keys call preventDefault() only, and the window-level
+// flight adapter never inspects defaultPrevented (src/systems/input.js domKeyEvent), so a shared
+// code would fire BOTH verbs; modal-opener keys flip ui-modal-open before the same press reaches
+// flight, so the verb would silently never fire. A flight binding on a reserved code is always a
+// defect — refuse it and name the interface owner.
+const CONTEXTUAL_UI_CODES = new Set([BINDINGS.dock.code, BINDINGS.claimBase.code, BINDINGS.drill.code]);
+
+// Player-facing verb names for the BINDINGS entries the router claims unconditionally. Codes are
+// read live off BINDINGS so a future re-lettering cannot desync the refusal from the handler.
+const RESERVED_VERB_BY_BINDING = Object.freeze({
+  localmap: 'Local Map',
+  starmap: 'Star Map',
+  techTree: 'Tech Tree',
+  missionLog: 'Mission Log',
+  codex: 'Codex',
+  cargo: 'Cargo Hold',
+  comms: 'Comms Log',
+  band: 'Overview pin / Band',
+  fleetCommand: 'Fleet Command',
+  recallObjective: 'Recall objective',
+  find: 'Find',
+  dismissVoice: 'Dismiss voice',
+  voiceDismiss: 'Dismiss voice',
+  steeringView: 'Camera view',
+  photo: 'Pause menu',
+});
+
+// Router literals that never went through BINDINGS: pause/help/screens, save slots, the target
+// keys, and the camera-zoom passthrough (Equal/Minus are consumed in the switch's default case).
+const RESERVED_LITERAL_CODES = Object.freeze({
+  Escape: 'Pause menu',
+  KeyP: 'Pause menu',
+  F1: 'Help',
+  KeyH: 'Help',
+  Tab: 'Cycle target',
+  Backspace: 'Clear target',
+  F2: 'Ship',
+  F3: 'Footprint',
+  F4: 'Range',
+  F5: 'Quick save',
+  F7: 'Debug overlay',
+  F9: 'Quick load',
+  Equal: 'Camera zoom',
+  NumpadAdd: 'Camera zoom',
+  Minus: 'Camera zoom',
+  NumpadSubtract: 'Camera zoom',
+});
+
+/** code -> interface verb name, or absent when the code may carry a flight verb. */
+export const INTERFACE_KEY_OWNERS = (() => {
+  const owners = new Map();
+  for (const [name, verb] of Object.entries(RESERVED_VERB_BY_BINDING)) {
+    const b = BINDINGS[name];
+    if (b && b.code && !CONTEXTUAL_UI_CODES.has(b.code)) owners.set(b.code, verb);
+  }
+  for (const [code, verb] of Object.entries(RESERVED_LITERAL_CODES)) owners.set(code, verb);
+  return owners;
+})();
+
+// --- Reset this page ---------------------------------------------------------------------------
+// One word at the foot of Audio, Video, Gameplay and Access returns that page to how the game
+// shipped. The shipped values are createGameState(0).settings (the single owner of defaults); each
+// changed key goes through `_set`, so the renderer/audio live-apply, the profile persists and the
+// worker lane mirrors it exactly as if the player had moved the row by hand.
+//
+// What a reset never touches, because it is not that page's preference to give back:
+//  - Audio: the default-mute migration stamp.
+//  - Video: motionReduce (the mirror of the motion choice made under Access) and the shadows
+//    migration stamp. The Video picture goes back through applyQualityPreset, not key by key, so the
+//    pinned keys stay consistent and the Quality mode lamp lights.
+//  - Gameplay: the build-contract backends, the control scheme (a Controls row) and, while Ironman
+//    is chosen, difficulty (leaving Ironman has its own confirm). Key bindings are never touched.
+//  - Access: the recorded motion choice (an explicit Reduce is kept; motion is asked, never assumed)
+//    and the language.
+const RESET_SKIP = Object.freeze({
+  audio: Object.freeze(['defaultMuteVersion']),
+  video: Object.freeze(['motionReduce', 'shadowsDefaultVersion']),
+  gameplay: Object.freeze(['physicsBackend', 'aiBackend', 'flightBackend', 'runtimeProfile', 'controlScheme', 'controlSchemeV2']),
+  accessibility: Object.freeze(['motionPreference', 'motionAsked', 'motionPrompted', 'motionDefaultVersion']),
+});
+// Keys a page's rows read through a fallback while the shipped defaults leave them out. Writing the
+// fallback explicitly is what returns a stored profile to it (a profile merge cannot delete a key).
+const RESET_FALLBACKS = Object.freeze({
+  gameplay: Object.freeze({
+    steeringView: 'overhead', racingDistance: 58, racingHeight: 22, racingLookAhead: 36,
+    velocityVectoring: true, damageNumbers: true, powerFire: 'hold',
+  }),
+  accessibility: Object.freeze({ textScale: 1 }),
+});
+const RESET_PAGES = Object.freeze({
+  Audio: Object.freeze({ sections: ['audio'] }),
+  Video: Object.freeze({ sections: ['video'], preset: true }),
+  Gameplay: Object.freeze({ sections: ['gameplay'], extras: [['controls', 'flightMode']] }),
+  Access: Object.freeze({ sections: ['accessibility'], extras: [[null, 'uiScale']] }),
+});
+export const SETTINGS_RESET_PAGES = Object.freeze(Object.keys(RESET_PAGES));
+
+export const SETTINGS_RESET_COPY = Object.freeze({
+  Audio: 'Every volume and mute switch on this page returns to how the game shipped.',
+  Video: 'The picture returns to Automatic with Balanced effects and every video row to how the game shipped. Motion effects are set under Access and stay as they are.',
+  Gameplay: 'Assists, cameras, autosave and hints return to how the game shipped. Difficulty returns to Standard unless you are on Ironman. Key bindings are not touched.',
+  Access: 'Contrast, text size, captions and the rest return to how the game shipped. Your motion choice and your language stay as you set them.',
+});
+
+function sameSettingValue(a, b) {
+  if (a === b) return true;
+  if (a && b && typeof a === 'object' && typeof b === 'object') {
+    try { return JSON.stringify(a) === JSON.stringify(b); } catch (e) { return false; }
+  }
+  return false;
+}
+
+function cloneSettingValue(value) {
+  return value && typeof value === 'object' ? JSON.parse(JSON.stringify(value)) : value;
+}
+
+/**
+ * The writes that return one page to its shipped values: `[{ section, key, value }]`, in the order
+ * the page lists them. Pure: `defaults` is `createGameState(0).settings`. Video lists only the keys
+ * the quality preset does not pin; `settingsScreen._resetPage` applies the preset first. Items with
+ * `fallback: true` are keys the shipped defaults omit and the rows read through a fallback.
+ */
+export function settingsPageResetPlan(page, defaults) {
+  const spec = RESET_PAGES[page];
+  if (!spec || !defaults) return [];
+  const plan = [];
+  for (const section of spec.sections) {
+    const shipped = defaults[section] || {};
+    const skip = RESET_SKIP[section] || [];
+    for (const key of Object.keys(shipped)) {
+      if (!skip.includes(key)) plan.push({ section, key, value: cloneSettingValue(shipped[key]) });
+    }
+    const fallbacks = RESET_FALLBACKS[section] || {};
+    for (const key of Object.keys(fallbacks)) {
+      if (!(key in shipped)) plan.push({ section, key, value: fallbacks[key], fallback: true });
+    }
+  }
+  for (const [section, key] of spec.extras || []) {
+    const shipped = section ? (defaults[section] || {}) : defaults;
+    if (key in shipped) plan.push({ section, key, value: cloneSettingValue(shipped[key]) });
+  }
+  return plan;
+}
+
+/**
+ * The pane's row builders (Task B §1.3). Rows are `k-row k-row--static` in a `k-rows` list: the label
+ * at body size 62 % on the left, the control on the right. A section header is a `k-caps` row; a note
+ * is a sentence between lists.
+ */
+
+export const settingsScreen = {
+  id: 'settings',
+
+  mount(rootEl, ctx) {
+    injectDeckplate();
+    ensureSettingsStyles();
+    injectOrrerySettings();
+    rootEl.innerHTML = '';
+    rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-narrow');
+    rootEl.classList.add('k-screen', 'of-settings', 'orr-settings');
+    rootEl.dataset.kReady = '0';
+    rootEl.setAttribute('data-fh-register', 'bench');
+    rootEl.setAttribute('aria-label', 'Settings');
+
+    const title = el('header', 'k-title');
+    title.appendChild(el('h1', 'k-display k-t-title fh-title', 'Settings'));
+    rootEl.appendChild(title);
+
+    // Section keys down the left. `dom.words` owns the arrow-key roving; the list is the
+    // tablist and each key a tab (`.sf-tabbar` / `.sf-tab` kept as hooks).
+    const pane = el('div', 'k-stage k-stage--scroll sf-settings-pane fh-plate fh-plate--sunk');
+    pane.id = 'sf-settings-pane';
+    pane.setAttribute('role', 'tabpanel');
+    const hang = el('div', 'k-hang');
+    const rail = el('div', 'of-settings-rail fh-rail');
+    rail.setAttribute('aria-hidden', 'true');
+    hang.appendChild(rail);
+    const bar = words(TABS.map((t) => ({ action: 'tab:' + t, label: t, current: t === 'Audio' })), {
+      size: 'menu', ariaLabel: 'Settings categories', followLayout: true,
+      onPick: (action) => this._select(ctx, action.slice('tab:'.length)),
+    });
+    bar.classList.add('sf-tabbar');
+    bar.setAttribute('role', 'tablist');
+    const tabBtns = {};
+    for (const b of bar.querySelectorAll('.k-word')) {
+      const t = b.dataset.action.slice('tab:'.length);
+      b.classList.add('sf-tab', 'fh-key', 'fh-key--legend');
+      b.id = `sf-settings-tab-${t.toLowerCase()}`;
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-controls', pane.id);
+      b.parentElement.setAttribute('role', 'presentation');
+      tabBtns[t] = b;
+    }
+    hang.appendChild(bar);
+    rootEl.appendChild(hang);
+    rootEl.appendChild(pane);
+    // Scroll cue (UI polish #301): the pane hides its scrollbar, so a tab longer than the stage
+    // (Video, Controls at 720p) gave no hint that rows continue below. A quiet "More" chip sits on
+    // the stage's bottom edge while there is more to read; clicking it pages the pane down.
+    const more = el('button', 'orr-set-more', 'More');
+    more.type = 'button';
+    more.tabIndex = -1;
+    more.setAttribute('aria-hidden', 'true');
+    rootEl.appendChild(more);
+    const syncMore = () => {
+      const left = (Number(pane.scrollHeight) || 0) - (Number(pane.scrollTop) || 0) - (Number(pane.clientHeight) || 0);
+      more.classList.toggle('is-on', left > 36);
+      pane.classList.toggle('has-more', left > 36);
+    };
+    if (typeof pane.addEventListener === 'function') {
+      pane.addEventListener('scroll', syncMore, { passive: true });
+      more.addEventListener('click', () => { pane.scrollBy({ top: Math.max(120, pane.clientHeight * 0.8), behavior: 'smooth' }); });
+      if (typeof ResizeObserver === 'function') { const ro = new ResizeObserver(syncMore); ro.observe(pane); }
+      if (typeof MutationObserver === 'function') { new MutationObserver(() => requestAnimationFrame(syncMore)).observe(pane, { childList: true }); }
+    }
+
+    const foot = el('footer', 'k-foot');
+    const back = el('button', 'k-word k-word--emph sf-back', 'Back');
+    back.type = 'button'; back.dataset.action = 'back';
+    back.addEventListener('click', () => { cue('confirm'); nav(ctx, 'popScreen'); });
+    foot.appendChild(back);
+    rootEl.appendChild(foot);
+
+    // The live preview beside the list (ORRERY §6 Meta). Decoration for sighted players: inert and
+    // aria-hidden; it stands down on a document without SVG, and never costs a control.
+    let preview = null;
+    try { preview = createSettingsPreview(); } catch (e) { preview = null; }
+    if (preview) rootEl.insertBefore(preview.el, foot);
+    refs = { root: rootEl, title, hang, pane, foot, tabBtns, active: 'Audio', preview, arrive: false, spot: null };
+    try { refs.spot = attachSpotlight(rootEl); } catch (e) { refs.spot = null; }
+    if (preview && typeof pane.addEventListener === 'function') {
+      const rowOf = (target) => (target && typeof target.closest === 'function' ? target.closest('.k-row') : null);
+      const later = (fn) => { if (typeof queueMicrotask === 'function') queueMicrotask(fn); else Promise.resolve().then(fn); };
+      pane.addEventListener('focusin', (ev) => { const row = rowOf(ev.target); if (row) preview.focusRow(row); });
+      pane.addEventListener('pointerover', (ev) => { const row = rowOf(ev.target); if (row) preview.focusRow(row); });
+      const refresh = (ev) => { const row = rowOf(ev.target); if (row) later(() => preview.refreshRow(row)); };
+      pane.addEventListener('input', refresh);
+      pane.addEventListener('change', refresh);
+      pane.addEventListener('click', (ev) => { if (ev.target && ev.target.closest && ev.target.closest('.k-words--row .k-word')) refresh(ev); });
+    }
+    this._select(ctx, 'Audio', { silent: true });
+  },
+
+  _select(ctx, tab, { silent = false } = {}) {
+    if (!refs || !TABS.includes(tab)) return;
+    refs.active = tab;
+    Object.entries(refs.tabBtns).forEach(([t, b]) => {
+      const active = t === tab;
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-current', String(active));
+      b.setAttribute('aria-selected', String(active));
+      b.tabIndex = active ? 0 : -1;
+    });
+    refs.pane.setAttribute('aria-labelledby', refs.tabBtns[tab].id);
+    refs.arrive = true;
+    this._render(ctx);
+    try { if (refs.preview) refs.preview.show(tab, ctx.state.settings); } catch (e) { /* the preview is cosmetic */ }
+    if (!silent) {
+      try { settle(refs.pane, { from: 'left', state: 'settings:' + tab }); } catch (e) { /* motion is cosmetic */ }
+    }
+  },
+
+  _set(ctx, section, key, value, persist = true) {
+    const s = ctx.state.settings;
+    if (section && s[section] && typeof s[section] === 'object') s[section][key] = value;
+    else s[key] = value;
+    const payload = { section, key, value };
+    if (persist === false) payload.persist = false;
+    // Worker-lane parity: the same write must land on the sim-owned settings
+    // subtree (sink-only on the main lane — falls through to applyLaneSetting).
+    laneWriteSetting(ctx.state, 'settings.' + (section ? section + '.' : '') + key, value);
+    ctx.bus.emit('settings:changed', payload);
+    try { if (refs && refs.preview) refs.preview.changed(section, key, s); } catch (e) { /* the preview is cosmetic */ }
+  },
+
+  // Apply a High performance / Balanced / High quality mode (or a hardware bundle). `applyQualityPreset`
+  // writes only presentation keys, then we publish each changed key so the renderer live-applies
+  // exactly what moved, and keep the live frame-cap mirror in step with the carried request
+  // (Integrated GPU caps at 30).
+  _applyPreset(ctx, presetId) {
+    const applied = applyQualityPreset(ctx.state.settings, presetId);
+    if (!applied) return;
+    const video = ctx.state.settings.video;
+    for (const key of applied.changed) {
+      if (key === 'qualityPreset') this._set(ctx, 'video', 'qualityPreset', applied.preset);
+      else this._set(ctx, 'video', key, video[key]);
+    }
+    publishFrameCap(ctx);
+    this._render(ctx);
+  },
+
+  // The foot of Audio / Video / Gameplay / Access: one word, behind the kit confirm, so a single
+  // misclick can never wipe a page of settings.
+  _resetFoot(ctx, build, page) {
+    build.break();
+    build.word('Reset this page', () => { this._askReset(ctx, page); }, 'Returns this page to how the game shipped.');
+  },
+
+  // The seam the focused test replaces; the shipped route is the kit confirm.
+  _confirmReset(opts) { return confirm(opts); },
+
+  _askReset(ctx, page) {
+    if (!RESET_PAGES[page]) return Promise.resolve(false);
+    return Promise.resolve(this._confirmReset({
+      title: 'Reset this page?',
+      body: SETTINGS_RESET_COPY[page],
+      confirmLabel: 'Reset',
+      cancelLabel: 'Keep',
+    })).then((ok) => {
+      if (ok) this._resetPage(ctx, page);
+      return !!ok;
+    });
+  },
+
+  // Return `page` to its shipped values (see the notes above RESET_SKIP). Returns how many keys
+  // moved; each one published `settings:changed` once through `_set`.
+  _resetPage(ctx, page) {
+    const spec = RESET_PAGES[page];
+    if (!spec || !ctx || !ctx.state || !ctx.state.settings) return 0;
+    const s = ctx.state.settings;
+    const defaults = createGameState(0).settings;
+    let moved = 0;
+    const write = (section, key, value, fallback) => {
+      if (section && (!s[section] || typeof s[section] !== 'object')) s[section] = {};
+      const current = section ? s[section][key] : s[key];
+      if (sameSettingValue(current, value)) return;
+      // An absent fallback key already reads as the shipped value; writing it would only add noise.
+      if (fallback && current == null) return;
+      // Leaving Ironman has its own confirm and its own locks; a page reset never decides it.
+      if (section === 'gameplay' && key === 'difficulty') {
+        const decision = ironmanChoiceChange(ctx.state, value);
+        if (!decision.ok || decision.needsConfirm) return;
+      }
+      this._set(ctx, section, key, cloneSettingValue(value));
+      moved++;
+    };
+    // The picture first: the live default is the Balanced preset (a detected integrated GPU only
+    // ever gets a suggestion toast), applied through the same contract the Quality mode row uses
+    // so every pinned key moves together; the rest of the page follows key by key.
+    if (spec.preset) {
+      const previousQualityMode = s.video && s.video.qualityMode;
+      const applied = applyQualityPreset(s, DEFAULT_QUALITY_PRESET);
+      if (applied) {
+        if (applied.changed.includes('qualityMode')) {
+          s.video.qualityMode = defaults.video.qualityMode;
+          if (previousQualityMode !== defaults.video.qualityMode) {
+            this._set(ctx, 'video', 'qualityMode', defaults.video.qualityMode);
+            moved++;
+          }
+        }
+        for (const key of applied.changed) {
+          // Reset selects the shipped Auto policy below; do not transiently publish the preset's
+          // ordinary Manual mode while the same reset is still applying page defaults.
+          if (key === 'qualityMode') continue;
+          this._set(ctx, 'video', key, s.video[key]);
+          moved++;
+        }
+      }
+    }
+    for (const item of settingsPageResetPlan(page, defaults)) write(item.section, item.key, item.value, item.fallback === true);
+    if (page === 'Video') publishFrameCap(ctx);
+    if (page === 'Access') {
+      applyTextScaleFromSettings(s);
+      try {
+        const root = typeof document !== 'undefined' ? document.getElementById('ui-root') : null;
+        if (root && root.style) root.style.setProperty('--ui-scale', String(s.uiScale));
+      } catch (e) { /* the CSS variable is cosmetic; the setting is already written */ }
+    }
+    this._render(ctx);
+    cue('confirm');
+    return moved;
+  },
+
+  _render(ctx) {
+    if (!refs) return;
+    const pane = refs.pane;
+    pane.innerHTML = '';
+    refs.familyValue = null;
+    const s = ctx.state.settings;
+    const build = paneBuilder(pane);
+    currentCtx = ctx;
+
+    const rowSlider = (label, get, min, max, step, fmt, onInput) => build.slider(label, get, min, max, step, fmt, onInput);
+    const rowToggle = (label, get, onChange) => build.toggle(label, get, onChange);
+    const rowSelect = (label, get, options, onChange) => build.select(label, get, options, onChange);
+
+    const pct = (v) => Math.round(v * 100) + '%';
+
+    if (refs.active === 'Audio') {
+      const a = s.audio;
+      // First control: Mute all, so silence is always one press away.
+      rowToggle('Mute all', () => a.muted, (v) => this._set(ctx, 'audio', 'muted', v));
+      rowToggle('Mute when the window loses focus', () => a.muteOnFocusLoss === true, (v) => this._set(ctx, 'audio', 'muteOnFocusLoss', v));
+      rowToggle('Mono audio', () => a.mono === true, (v) => this._set(ctx, 'audio', 'mono', v));
+      rowToggle('Night mode', () => a.nightMode === true, (v) => this._set(ctx, 'audio', 'nightMode', v));
+      rowSlider('Master', () => a.master, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'master', v, persist));
+      rowSlider('SFX', () => a.sfx, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'sfx', v, persist));
+      rowSlider('Music', () => a.music, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'music', v, persist));
+      rowSlider('Engine', () => a.engine == null ? 0.7 : a.engine, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'engine', v, persist));
+      rowSlider('Ambient', () => a.ambient == null ? 0.7 : a.ambient, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'ambient', v, persist));
+      rowSlider('Combat', () => a.combat == null ? 0.7 : a.combat, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'combat', v, persist));
+      rowSlider('UI', () => a.ui == null ? 0.7 : a.ui, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'ui', v, persist));
+      rowSlider('Comms', () => a.comms == null ? 0.7 : a.comms, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'comms', v, persist));
+      // Voice = the bark/speech gate (barkDirector reads `audio.voice !== 0`): a slider keeps
+      // parity with the bus rows and 0 silences spoken comms without touching their text.
+      rowSlider('Voice', () => a.voice == null ? 1 : a.voice, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'voice', v, persist));
+    } else if (refs.active === 'Video') {
+      const vd = s.video;
+      const shell = typeof window !== 'undefined' ? window.spacefaceShell : null;
+      if (shell && typeof shell.getWindowMode === 'function' && typeof shell.setWindowMode === 'function') {
+        if (!refs.windowMode) refs.windowMode = 'windowed';
+        rowSelect('Window', () => refs.windowMode, [
+          ['windowed', 'Windowed'],
+          ['maximized', 'Maximized'],
+          ['fullscreen', 'Fullscreen'],
+        ], (value) => {
+          const mounted = refs;
+          const previous = refs.windowMode;
+          const request = (refs.windowModeRequest || 0) + 1;
+          refs.windowModeRequest = request;
+          refs.windowMode = value;
+          Promise.resolve(shell.setWindowMode(value)).then((res) => {
+            if (refs !== mounted || refs.windowModeRequest !== request) return;
+            if (!res || !res.ok) throw new Error('Window mode could not be changed');
+            if (res.mode) refs.windowMode = res.mode;
+            this._render(ctx);
+          }).catch(() => {
+            if (refs !== mounted || refs.windowModeRequest !== request) return;
+            refs.windowMode = previous;
+            ctx.bus.emit('toast', { text: 'Window mode could not be changed.', kind: 'warn', ttl: 3 });
+            this._render(ctx);
+          });
+        });
+        if (!refs.windowModeRead) {
+          const mounted = refs;
+          const request = refs.windowModeRequest || 0;
+          refs.windowModeRead = true;
+          Promise.resolve(shell.getWindowMode()).then((res) => {
+            if (refs !== mounted || (refs.windowModeRequest || 0) !== request || !res || !res.ok || !res.mode || refs.windowMode === res.mode) return;
+            refs.windowMode = res.mode;
+            this._render(ctx);
+          }).catch(() => {});
+        }
+      }
+      // Auto is the shipped policy. Named picture choices are explicit manual overrides; the
+      // adaptive controller only changes internal render resolution and never simulation content.
+      const matched = matchingQualityPreset(vd);
+      const isModePreset = CANONICAL_QUALITY_PRESET_IDS.includes(matched);
+      const qualityMode = qualityModeForVideo(vd);
+      build.choice('Quality mode',
+        [['auto', 'Automatic'], ['low', 'High performance'], ['medium', 'Balanced'], ['high', 'High quality']],
+        () => (qualityMode === 'auto' ? 'auto' : (isModePreset ? matched : '')),
+        (value) => {
+          if (value === 'auto') {
+            this._set(ctx, 'video', 'qualityMode', 'auto');
+            this._render(ctx);
+          } else this._applyPreset(ctx, value);
+        });
+      if (qualityMode === 'auto') {
+        build.note('Automatic trials resolution bands during visible flight to fit this display’s frame budget, restoring resolution when a lower band does not help. Game content stays in place.');
+        if (vd.renderGraph === true) {
+          build.note('Automatic uses adaptive bloom. Choose a manual quality mode to use render-graph ambient occlusion.');
+        }
+      } else if (isModePreset) {
+        const chosen = QUALITY_PRESETS.find((preset) => preset.id === matched);
+        if (chosen && Array.isArray(chosen.stays) && Array.isArray(chosen.substitutes)) {
+          build.note(settingsQualityKeepsNote(chosen.stays.join(', '), chosen.substitutes.join(', ')));
+        }
+      } else if (matched) {
+        build.note('Hardware preset in effect — pick a quality mode to return to the three pictures.');
+      } else {
+        build.note('Modified — the video rows differ from every preset. Pick a quality mode to re-pin them.');
+      }
+      // The hardware bundles keep their own row: named pictures for a known machine class,
+      // applied by the same applyQualityPreset contract. To leave one, pick a quality mode.
+      rowSelect('Hardware preset',
+        () => (vd.qualityPreset === 'igpu60' || vd.qualityPreset === 'integrated' ? vd.qualityPreset : 'none'),
+        [['none', 'None'], ['igpu60', 'iGPU 60'], ['integrated', 'Integrated GPU']],
+        (value) => { if (value !== 'none') this._applyPreset(ctx, value); });
+      rowToggle('Bloom', () => vd.bloom, (v) => this._set(ctx, 'video', 'bloom', v));
+      // Shadows are a sun-depth pass of nearby ships/rocks/stations so they darken each other.
+      // Empty space does not receive them. Off skips that extra pass — now the shipped default
+      // (the pooled contact shadow carries grounding); on is an opt-in at a denser map.
+      // Live-applied.
+      rowToggle('Sun shadows (ships/rocks/stations)', () => vd.shadows !== false, (v) => this._set(ctx, 'video', 'shadows', v));
+      rowToggle('Cinematic lighting', () => vd.nocturne !== false, (v) => this._set(ctx, 'video', 'nocturne', v));
+      rowToggle('Local light shadows', () => vd.nocturneShadows !== false, (v) => this._set(ctx, 'video', 'nocturneShadows', v));
+      rowToggle('Volumetric atmosphere', () => vd.nocturneAtmosphere !== false, (v) => this._set(ctx, 'video', 'nocturneAtmosphere', v));
+      rowSelect('Lighting quality', () => vd.nocturneQuality || 'auto',
+        [['auto', 'Automatic'], ['integrated', 'Performance'], ['balanced', 'Balanced'], ['high', 'High quality']],
+        (v) => this._set(ctx, 'video', 'nocturneQuality', v));
+      rowSlider('Bloom strength', () => {
+        let v = vd.bloomStrength != null ? vd.bloomStrength : DEFAULT_BLOOM_STRENGTH;
+        if (v > 1) v *= 0.5;
+        return Math.max(0, Math.min(1, v));
+      }, 0, 1, 0.02, pct, (v, persist) => this._set(ctx, 'video', 'bloomStrength', v, persist));
+      // HDR energy materials (spec §14.5): shader-driven thruster plume + Massline ribbon that write
+      // HDR radiance into the bloom target. On by default for the beautiful flight look.
+      if (vd.energyMaterials == null) vd.energyMaterials = true;
+      rowToggle('HDR energy materials', () => !!vd.energyMaterials, (v) => this._set(ctx, 'video', 'energyMaterials', v));
+      // Modern render graph (spec §14.6 / INTEGRATION_MAP §8.1): GTAO-lite contact depth + multiscale
+      // bloom + ACES/grade composite. Replaces the bloom path when on; falls back on low-end GPUs.
+      if (vd.renderGraph == null) vd.renderGraph = false;
+      rowToggle('Render graph (GTAO + bloom)', () => !!vd.renderGraph, (v) => this._set(ctx, 'video', 'renderGraph', v));
+      rowSlider('Render scale', () => vd.renderScale, 0.5, 2, 0.05, (x) => x.toFixed(2) + 'x', (v, persist) => this._set(ctx, 'video', 'renderScale', v, persist));
+      if (qualityMode === 'auto') {
+        rowToggle('Adaptive resolution', () => true, (enabled) => {
+          if (enabled) this._set(ctx, 'video', 'qualityMode', 'auto');
+          else {
+            this._set(ctx, 'video', 'qualityMode', 'manual');
+            this._set(ctx, 'video', 'dynamicResolution', false);
+          }
+        });
+      } else {
+        if (vd.dynamicResolution == null) vd.dynamicResolution = false;
+        rowToggle('Adaptive resolution', () => vd.dynamicResolution === true,
+          (enabled) => this._set(ctx, 'video', 'dynamicResolution', enabled));
+      }
+      rowSlider('FOV', () => vd.fov, 35, 90, 1, (x) => Math.round(x) + '°', (v, persist) => this._set(ctx, 'video', 'fov', v, persist));
+      rowSelect('Particle quality', () => vd.particleQuality, [['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], (v) => this._set(ctx, 'video', 'particleQuality', v));
+      rowToggle('Engine trails', () => vd.engineTrails !== false, (v) => this._set(ctx, 'video', 'engineTrails', v));
+      rowToggle('VSync', () => vd.vsync, (v) => { this._set(ctx, 'video', 'vsync', v); publishFrameCap(ctx); });
+      // Frame cap 30 / 60 / 120 / off. The effective cap is the request clamped to the display
+      // refresh when VSync is on; off means the display refresh (VSync) or uncapped (VSync off).
+      rowSelect('Frame cap', () => String(normalizeFrameCap(vd.frameCap)), [0, 30, 60, 120].map((cap) => [String(cap), frameCapLabel(cap)]),
+        (value) => {
+          vd.frameCap = normalizeFrameCap(value);
+          this._set(ctx, 'video', 'frameCap', vd.frameCap);
+          publishFrameCap(ctx);
+        });
+      // Accessibility (V2 §9/§12): vestibular-sensitive players get hit feedback (numbers, audio,
+      // smoke) with the camera shake / FOV punch / hit-stop freeze suppressed. Live-applied: the
+      // feel module reads settings.video.motionReduce every trigger, so the preference takes effect now.
+      // PRO-15: this used to be a SECOND editor for accessibility.motionPreference, duplicating the
+      // Access row below. It is now a read-only mirror pointing at the home.
+      motionEffectsRow(build, s, false);
+      rowSlider('Screen Shake', () => vd.screenShake != null ? vd.screenShake : 100, 0, 100, 1, (x) => Math.round(x) + '%', (v, persist) => this._set(ctx, 'video', 'screenShake', v, persist));
+      // SWARM-02: the Swarm arcade layer's own volume. Reduced keeps the words (kills, chains,
+      // boss calls) and drops the motion and hit-stop; Off drops the layer. Reduced motion and
+      // reduced flash already read it down to Reduced for whoever set those.
+      rowSelect('Arcade effects (Swarm)', () => vd.arcadeEffects || 'full',
+        [['full', 'Full'], ['reduced', 'Reduced'], ['off', 'Off']],
+        (v) => this._set(ctx, 'video', 'arcadeEffects', v));
+      // FB-100 parity rows — keys that already drive the picture/mix but had no control, plus
+      // the HUD's own scale/opacity (consumed by #hud as --sf-hud-scale/--sf-hud-opacity,
+      // applied on the root so they compose with UI scale and survive Continue).
+      rowSlider('HUD scale', () => vd.hudScale == null ? 1 : vd.hudScale, 0.75, 1.5, 0.05, pct, (v, persist) => this._set(ctx, 'video', 'hudScale', v, persist));
+      rowSlider('HUD opacity', () => vd.hudOpacity == null ? 1 : vd.hudOpacity, 0.3, 1, 0.05, pct, (v, persist) => this._set(ctx, 'video', 'hudOpacity', v, persist));
+      build.note('Advanced video');
+      rowToggle('Tighter chase camera', () => vd.chaseClose === true, (v) => this._set(ctx, 'video', 'chaseClose', v));
+      rowToggle('Post-processing', () => vd.postFx !== false, (v) => this._set(ctx, 'video', 'postFx', v));
+      rowToggle('Sharpen', () => vd.sharpen === true, (v) => this._set(ctx, 'video', 'sharpen', v));
+      rowSelect('Bloom depth', () => String(vd.bloomLevels == null ? 2 : vd.bloomLevels), [['1', 'Tight'], ['2', 'Full']], (v) => this._set(ctx, 'video', 'bloomLevels', Number(v)));
+      rowSlider('Bloom threshold', () => vd.bloomThreshold == null ? 1 : vd.bloomThreshold, 0.2, 2, 0.05, (x) => x.toFixed(2), (v, persist) => this._set(ctx, 'video', 'bloomThreshold', v, persist));
+      rowSlider('Pixel ratio cap', () => vd.pixelRatioCap == null ? 2 : vd.pixelRatioCap, 0.5, 4, 0.25, (x) => x.toFixed(2) + 'x', (v, persist) => this._set(ctx, 'video', 'pixelRatioCap', v, persist));
+      uiScaleRow(build, s, false);
+    } else if (refs.active === 'Gameplay') {
+      const g = s.gameplay;
+      if (!s.controls) s.controls = { bindings: null, flightMode: 'assisted' };
+      if (!s.controls.flightMode) s.controls.flightMode = 'assisted';
+      g.physicsBackend = 'rapier-dynamic';
+      g.aiBackend = 'sg06-tactical';
+      g.flightBackend = 'v3';
+      rowSelect('Difficulty', () => g.difficulty, [['casual', 'Casual'], ['standard', 'Standard'], ['veteran', 'Veteran'], ['ironman', 'Ironman']], (v) => {
+        const decision = ironmanChoiceChange(ctx.state, v);
+        if (!decision.ok) {
+          if (ctx.bus) ctx.bus.emit('toast', { text: decision.text, kind: 'error', ttl: 4 });
+          this._render(ctx);
+          return;
+        }
+        if (!decision.needsConfirm) {
+          this._set(ctx, 'gameplay', 'difficulty', v);
+          return;
+        }
+        confirm({
+          title: decision.title,
+          body: decision.body,
+          confirmLabel: v === 'ironman' ? 'Play Ironman' : 'Leave Ironman',
+          danger: v === 'ironman',
+        }).then((ok) => {
+          if (!ok) { this._render(ctx); return; }
+          this._set(ctx, 'gameplay', 'difficulty', v);
+        });
+      });
+      rowToggle('Pause when the window loses focus', () => g.pauseOnFocusLoss !== false, (v) => this._set(ctx, 'gameplay', 'pauseOnFocusLoss', v));
+      rowSelect('Stunt moments', () => g.stuntMoments || 'cinematic', [['cinematic', 'Cinematic · brief slowdown'], ['flow', 'Flow · continuous play']], (v) => this._set(ctx, 'gameplay', 'stuntMoments', v));
+      rowSelect('Game speed', () => String(g.gameSpeed ?? 1), [['1', '100% · full speed'], ['0.9', '90%'], ['0.8', '80%'], ['0.7', '70% · assisted']], (v) => this._set(ctx, 'gameplay', 'gameSpeed', Number(v)));
+      rowSelect('Flight model', () => s.controls.flightMode || 'assisted', [['assisted', 'Assisted'], ['drift', 'Drift'], ['newtonian', 'Newtonian']], (v) => this._set(ctx, 'controls', 'flightMode', v));
+      rowSelect('Massline orbit assist', () => g.orbitAssistStrength || 'standard', [
+        ['full', 'Full'],
+        ['standard', 'Standard'],
+        ['light', 'Light'],
+        ['off', 'Off'],
+      ], (v) => this._set(ctx, 'gameplay', 'orbitAssistStrength', v));
+      // FB-001: the pursuit-slot chase assist. Off by default — an opt-in flight option that
+      // holds a bearing/range slot off a locked moving target; it composes with, and sits
+      // beside, the orbit-assist row above.
+      rowToggle('Pursuit slot assist', () => g.pursuitSlotAssist === true, (v) => this._set(ctx, 'gameplay', 'pursuitSlotAssist', v));
+      rowSelect('Steering view', () => g.steeringView || 'overhead', [
+        ['overhead', 'Overhead'],
+        ['racing', 'Racing — stern camera'],
+        ['auto', 'Auto — stern on any race'],
+      ], (v) => this._set(ctx, 'gameplay', 'steeringView', v));
+      build.note('Backslash toggles chase / overhead during flight; LB + View does the same on a controller and can be rebound under Controls. The View button works on touch. Mission camera locks release automatically. Reduced motion keeps the horizon steady.');
+      rowSlider('Racing camera distance', () => g.racingDistance == null ? 58 : g.racingDistance, 24, 140, 1, (x) => Math.round(x) + '', (v, persist) => this._set(ctx, 'gameplay', 'racingDistance', v, persist));
+      rowSlider('Racing camera height', () => g.racingHeight == null ? 22 : g.racingHeight, 6, 64, 1, (x) => Math.round(x) + '', (v, persist) => this._set(ctx, 'gameplay', 'racingHeight', v, persist));
+      rowSlider('Racing look-ahead', () => g.racingLookAhead == null ? 36 : g.racingLookAhead, 0, 120, 1, (x) => Math.round(x) + '', (v, persist) => this._set(ctx, 'gameplay', 'racingLookAhead', v, persist));
+      rowSelect('Auto-target assist', () => g.targetAssistStrength || 'full', [
+        ['full', 'Full'],
+        ['standard', 'Standard'],
+        ['light', 'Light'],
+        ['off', 'Off'],
+      ], (v) => this._set(ctx, 'gameplay', 'targetAssistStrength', v));
+      // Row 493: the five powers preview while held. Absent = hold (the shipped default);
+      // powerVerbs.powersFireOnPress reads only 'press'.
+      rowSelect('Powers', () => (g.powerFire === 'press' ? 'press' : 'hold'), [
+        ['hold', 'Hold to preview'],
+        ['press', 'Use on press'],
+      ], (v) => this._set(ctx, 'gameplay', 'powerFire', v));
+      build.note('Hold to preview: while you hold a power key (1–5), every body it will move is outlined with where it will go, and letting go uses it; a quick tap still uses it at once.');
+      rowToggle('Velocity vectoring assist', () => g.velocityVectoring !== false, (v) => this._set(ctx, 'gameplay', 'velocityVectoring', v));
+      build.note('Turn your drift toward the nose while thrusting. Off leaves momentum unassisted.');
+      const masslineFamilyOn = massline2Flag('enabled');
+      const releaseRow = rowSelect('Massline release assist', () => g.masslineReleaseAssist || 'arm', [
+        ['arm', 'Auto-release on solution (default)'],
+        ['snap', 'Snap window on manual release'],
+        ['off', 'Off — raw physics'],
+      ], (v) => { if (masslineFamilyOn) this._set(ctx, 'gameplay', 'masslineReleaseAssist', v); });
+      if (!masslineFamilyOn) {
+        const releaseSelect = releaseRow.querySelector ? releaseRow.querySelector('select') : null;
+        if (releaseSelect) {
+          releaseSelect.disabled = true;
+          releaseSelect.setAttribute('aria-disabled', 'true');
+        }
+        build.note('Massline release assist is unavailable because the Massline family is off.');
+      } else {
+        build.note('The release marker reads RELEASE when the timing window opens; motion and color are optional reinforcement.');
+      }
+      rowSelect('Autosave', () => String(g.autosaveIntervalS), [['0', 'Off'], ['60', '60s'], ['120', '120s'], ['300', '300s']], (v) => this._set(ctx, 'gameplay', 'autosaveIntervalS', parseInt(v, 10)));
+      rowToggle('Tutorial hints', () => g.tutorialHints, (v) => this._set(ctx, 'gameplay', 'tutorialHints', v));
+      // `!== false`, not `!!`: gameplay.damageNumbers is ABSENT from the shipped defaults (gameState.js
+      // carries root showDamageNumbers, which nothing reads), and floatingText suppresses numbers
+      // only on `=== false`. So the old `!!` read showed Off on a fresh profile while damage
+      // numbers were on — the toggle contradicted the game.
+      rowToggle('Damage numbers', () => g.damageNumbers !== false, (v) => this._set(ctx, 'gameplay', 'damageNumbers', v));
+      // Installed content packs (PQ-172.00): JSON the loader validated at boot. Content is
+      // read-only here — mods are installed by dropping files into the content directory.
+      const mods = listUserMods();
+      const modsDir = userContentDirLabel();
+      build.header('Mods');
+      if (!mods.length) {
+        build.note(settingsPackRestartNote(modsDir));
+      } else {
+        if (modsDir) build.note(`Content packs load from ${modsDir}. Restart to pick up changes.`);
+        for (const mod of mods) {
+          const counts = ['weapons', 'modules', 'encounters', 'places']
+            .map((k) => (mod.counts[k] ? `${mod.counts[k]} ${k}` : null))
+            .filter(Boolean).join(' · ');
+          const detail = [mod.description || null, counts || null]
+            .filter(Boolean).join(' — ')
+            + (mod.errors.length ? ` — errors: ${mod.errors.join('; ')}` : '')
+            + (mod.rejected.length ? ` — refused: ${mod.rejected.join('; ')}` : '');
+          const label = mod.origin === 'workshop' && mod.workshopItemId
+            ? `${mod.version || ''} WORKSHOP ${mod.workshopItemId} · ${mod.status}`.trim()
+            : `${mod.version || ''} ${mod.status}`.trim();
+          build.shortcut(mod.name, label, detail || null);
+        }
+      }
+      // Steam Workshop (PQ-172.01): Electron shell only — the bridge is absent in the browser.
+      // Publish words stay hidden until status proves availability, so a direct build or a
+      // signed-out Steam client never shows a dead control.
+      const shell = typeof window !== 'undefined' ? window.spacefaceShell : null;
+      if (shell && typeof shell.workshopStatus === 'function') {
+        const wsNote = build.note('Steam Workshop: checking…');
+        const workshopReady = shell.workshopStatus().then((s) => {
+          wsNote.textContent = s && s.available
+            ? settingsWorkshopSubscribedNote(s.items.length)
+            : `Steam Workshop unavailable (${(s && s.reason) || 'unknown'}) — publish and sync need the Steam build.`;
+          return !!(s && s.available);
+        }).catch(() => {
+          wsNote.textContent = 'Steam Workshop unavailable.';
+          return false;
+        });
+        const wsWord = (label, fn, note) => {
+          const btn = build.word(label, fn, note);
+          // .k-word's `all: unset` beats the UA [hidden] rule — hide the wrap with inline style.
+          const wrap = btn.parentElement;
+          if (wrap) wrap.style.display = 'none';
+          workshopReady.then((ok) => { if (wrap) wrap.style.display = ok ? '' : 'none'; });
+          return btn;
+        };
+        wsWord('Sync subscribed Workshop items', () => {
+          shell.workshopSync().then((res) => {
+            const n = res && Array.isArray(res.synced) ? res.synced.length : 0;
+            ctx.bus.emit('toast', {
+              text: res && res.ok === false
+                ? `Workshop sync failed: ${res.error || res.reason || 'unknown'}`
+                : settingsWorkshopSyncedNote(n),
+              kind: 'info', ttl: 5,
+            });
+          }).catch(() => {});
+        }, 'Copies subscribed items into the content directory.');
+        for (const mod of mods) {
+          if (mod.origin === 'workshop' || mod.status === 'invalid') continue;
+          wsWord(`Publish ${mod.name} to Workshop`, () => {
+            shell.workshopPublish(mod.id).then((res) => {
+              ctx.bus.emit('toast', {
+                text: res && res.ok
+                  ? `Published ${mod.name} — Workshop item ${res.itemId}`
+                  : `Publish failed: ${(res && (res.error || res.reason)) || 'unknown'}`,
+                kind: 'info', ttl: 5,
+              });
+            }).catch(() => {});
+          });
+        }
+      }
+    } else if (refs.active === 'Access') {
+      const ac = s.accessibility || (s.accessibility = { colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false,
+        motionPreference: 'full', motionAsked: false, captions: true, audioCues: true, captionSize: 'medium', captionBackground: true });
+      // Language: the default route is English; choosing here switches the live locale and re-renders
+      // every mounted screen through the shared document bridge (no reload).
+      rowSelect('Language', () => chosenLocale(s), LANGUAGE_OPTIONS.map((option) => [option.id, option.label]),
+        async (value) => {
+          const request = this._localeRequest = (this._localeRequest || 0) + 1;
+          const owner = refs;
+          try {
+            await ensureLocaleReady(value);
+            if (!refs || refs !== owner || this._localeRequest !== request) return;
+            setGameLocale(value);
+            this._set(ctx, null, 'locale', value);
+            this._render(ctx);
+          } catch (error) {
+            if (!refs || refs !== owner || this._localeRequest !== request) return;
+            ctx.bus?.emit?.('toast', { kind: 'warn', text: 'Language could not be loaded. Please try again.' });
+            this._render(ctx);
+          }
+        });
+      rowSelect('Colorblind palette', () => ac.colorblindMode || 'none',
+        [['none', 'Off'], ['protanopia', 'Protanopia (red-weak)'], ['deuteranopia', 'Deuteranopia (green-weak)'], ['tritanopia', 'Tritanopia (blue-weak)']],
+        (v) => this._set(ctx, 'accessibility', 'colorblindMode', v));
+      rowToggle('High contrast', () => !!ac.highContrast, (v) => this._set(ctx, 'accessibility', 'highContrast', v));
+      rowToggle('Reduce flashing', () => !!ac.flashReduce, (v) => this._set(ctx, 'accessibility', 'flashReduce', v));
+      rowToggle('Readable font', () => !!ac.dyslexiaFont, (v) => this._set(ctx, 'accessibility', 'dyslexiaFont', v));
+      motionEffectsRow(build, s, true);
+      build.slider('Text scale', () => (Number(ac.textScale) > 0 ? Number(ac.textScale) : 1), 0.85, 1.5, 0.05,
+        (value) => Math.round(value * 100) + '%',
+        (value, persist) => {
+          this._set(ctx, 'accessibility', 'textScale', value, persist);
+          applyTextScaleFromSettings(s);
+        });
+      // FB-005: rumble has its own axis — it is haptic substitution, not motion. A calmer screen
+      // often wants MORE rumble, so this never follows the reduce-motion choice.
+      rowSelect('Controller rumble', () => ac.haptics || 'full',
+        [['off', 'Off'], ['low', 'Low'], ['full', 'Full']],
+        (v) => this._set(ctx, 'accessibility', 'haptics', v));
+      // FB-113: press-to-toggle latches for the hold verbs — a hand that cannot hold a button
+      // still flies the whole ship. Defaults stay off; each verb opts in on its own row.
+      build.header('Hold-to-toggle (press once to hold)');
+      const HOLD_TOGGLE_ROWS = [
+        ['boost', 'Boost / dash'],
+        ['brake', 'Brake / reverse'],
+        ['bulletTime', 'Bullet time'],
+        ['gyreSnare', 'Gyre Snare lash'],
+        ['massline', 'Massline hold'],
+        ['reelIn', 'Tether reel in'],
+        ['reelOut', 'Tether reel out'],
+      ];
+      if (!ac.holdToToggle || typeof ac.holdToToggle !== 'object') ac.holdToToggle = {};
+      for (const [verb, label] of HOLD_TOGGLE_ROWS) {
+        rowToggle(label, () => ac.holdToToggle[verb] === true,
+          (v) => this._set(ctx, 'accessibility', 'holdToToggle', { ...ac.holdToToggle, [verb]: v }));
+      }
+      rowToggle('Gameplay captions', () => ac.captions !== false, (v) => this._set(ctx, 'accessibility', 'captions', v));
+      rowToggle('Audio cues', () => ac.audioCues !== false, (v) => this._set(ctx, 'accessibility', 'audioCues', v));
+      const statement = build.note('Accessibility statement: contrast, motion, remapping, text size, assists and captions are all below. Voiced lines are captioned when Gameplay captions is on.');
+      statement.id = ACCESSIBILITY_STATEMENT_ID;
+      const checklist = evaluateChecklist(s);
+      build.header('Accessibility checklist');
+      for (const row of CHECKLIST_ITEMS) {
+        const live = checklist.rows.find((item) => item.id === row.id);
+        build.checklistRow(row.label, !!(live && live.ok));
+      }
+      rowSelect('Caption size', () => ac.captionSize || 'medium',
+        [['small', 'Small'], ['medium', 'Medium'], ['large', 'Large']],
+        (v) => this._set(ctx, 'accessibility', 'captionSize', v));
+      rowToggle('Solid caption backing', () => ac.captionBackground !== false, (v) => this._set(ctx, 'accessibility', 'captionBackground', v));
+      uiScaleRow(build, s, true, (section, key, value, persist) => this._set(ctx, section, key, value, persist));
+      build.note('Colorblind mode also recolors radar blips and adds redundant shapes.');
+    } else if (refs.active === 'Controls') {
+      rowSelect('Control Scheme', () => s.gameplay.controlScheme || 'pilot',
+        [['pilot', 'Pilot (keyboard steers, mouse aims)'], ['helm-assist', 'Helm Assist (mouse steering)'], ['classic', 'Classic Throttle']],
+        (v) => {
+          this._set(ctx, 'gameplay', 'controlScheme', v);
+          // Explicit choice: stop the one-time pilot migration (saveSystem) from overriding it.
+          this._set(ctx, 'gameplay', 'controlSchemeV2', true);
+          this._render(ctx);
+        });
+      // NXI-003: which family actually owns the flight controls right now — the input owner's
+      // accepted source, displayed once per deliberate switch. refresh() retexts this row in
+      // place; it is not a control and carries no write path.
+      const familyRow = build.shortcut('Active input', controlFamilyLabel(activeControlFamily(ctx)),
+        'Whichever device you used last.');
+      refs.familyValue = (familyRow && typeof familyRow.querySelector === 'function'
+        ? familyRow.querySelector('.k-t-emph')
+        : null) || (familyRow && familyRow.lastElementChild) || null;
+      build.note('Click a key, then press its new key. Fixed shortcuts are listed below.');
+      // Each section builds its own lists in order; the pane is one column.
+      this._renderControlsRebind(ctx, pane);
+      this._renderFixedShortcuts(pane);
+      this._renderGamepadSettings(ctx, pane);
+    }
+    // Controls has its own, narrower reset (key bindings, below the grid); the other pages share this.
+    if (RESET_PAGES[refs.active]) this._resetFoot(ctx, build, refs.active);
+    dressSettingsControls(pane);
+    // a category arrives row by row when it is opened; a rebuild after a change does not replay it
+    dressSettingsPane(pane, { arrive: !!refs.arrive });
+    refs.arrive = false;
+  },
+
+  _renderGamepadSettings(ctx, pane, build = paneBuilder(pane)) {
+    build.break();
+    build.header('Gamepad');
+    const s = ctx.state.settings;
+    if (!s.controls) s.controls = { bindings: null, flightMode: 'assisted' };
+    if (!s.controls.gamepad) s.controls.gamepad = { enabled: true, deadzone: 0.12, invertY: false };
+    const gp = () => s.controls.gamepad;
+
+    build.toggle('Gamepad enabled', () => !!gp().enabled, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), enabled: v }));
+    build.slider('Stick deadzone', () => gp().deadzone, 0, 0.5, 0.01, (x) => Math.round(x * 100) + '%', (v, persist) => this._set(ctx, 'controls', 'gamepad', { ...gp(), deadzone: v }, persist));
+    build.toggle('Invert right-stick Y', () => !!gp().invertY, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), invertY: v }));
+    // PQ-164.04: the twin-stick scheme — left stick drives in screen space, right stick aims
+    // and steers the nose. 'Drive' keeps the wheel map (left stick yaw + throttle).
+    build.select('Flight scheme', () => gp().scheme === 'twinstick' ? 'twinstick' : 'drive',
+      [['drive', 'Drive — left stick steers and throttles'], ['twinstick', 'Twin-stick — left stick drives, right stick aims']],
+      (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), scheme: v }));
+    // FB-004: response tuning. The right stick's deadzone is its own axis — aim jitter should
+    // never force the fly hand wider. 'Expo' softens the stick's center while the edge still
+    // reaches full deflection; the sensitivities scale derived intent, never the raw axes.
+    build.slider('Aim deadzone (right stick)', () => gp().deadzoneRight ?? gp().deadzone,
+      0, 0.5, 0.01, (x) => Math.round(x * 100) + '%',
+      (v, persist) => this._set(ctx, 'controls', 'gamepad', { ...gp(), deadzoneRight: v }, persist));
+    build.select('Stick response curve', () => gp().curve === 'expo' ? 'expo' : 'linear',
+      [['linear', 'Linear — shipped feel'], ['expo', 'Expo — soft center, full edge']],
+      (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), curve: v }));
+    build.slider('Flight stick sensitivity', () => gp().sensitivityFly ?? 1,
+      0.25, 3, 0.05, (x) => `${Math.round(x * 100)}%`,
+      (v, persist) => this._set(ctx, 'controls', 'gamepad', { ...gp(), sensitivityFly: v }, persist));
+    build.slider('Aim stick sensitivity', () => gp().sensitivityAim ?? 1,
+      0.25, 3, 0.05, (x) => `${Math.round(x * 100)}%`,
+      (v, persist) => this._set(ctx, 'controls', 'gamepad', { ...gp(), sensitivityAim: v }, persist));
+    // FB-002/B117: the face-button register prompts and speech print — the same set the
+    // rebind rows below render, so a switch re-labels both at once.
+    build.select('Button glyphs', () => {
+      const v = gp().glyphSet;
+      return (v === 'ds' || v === 'fh') ? v : 'xb';
+    },
+      [['xb', 'Xbox — A B X Y'], ['ds', 'DualShock — ✕ ◯ □ △'], ['fh', 'Field Hardware — Ⓐ Ⓑ Ⓧ Ⓨ']],
+      (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), glyphSet: v }));
+    // FB-004: pointer aim gets the same two axes — a sensitivity multiplier on the derived
+    // cursor channel and a Y inversion, both independent of the sticks.
+    if (!s.controls.mouse || typeof s.controls.mouse !== 'object') {
+      s.controls.mouse = { sensitivity: 1, invertY: false };
+    }
+    const mo = () => s.controls.mouse;
+    build.slider('Mouse aim sensitivity', () => mo().sensitivity ?? 1,
+      0.25, 3, 0.05, (x) => `${Math.round(x * 100)}%`,
+      (v, persist) => this._set(ctx, 'controls', 'mouse', { ...mo(), sensitivity: v }, persist));
+    build.toggle('Invert mouse Y (aim)', () => !!mo().invertY,
+      (v) => this._set(ctx, 'controls', 'mouse', { ...mo(), invertY: v }));
+    // Matches src/systems/gamepad.js ACTION_MAP + UI route: Start/menu → pause only;
+    // Mission Log is chosen from the Pause menu (no direct gamepad missionLog action).
+    // LB is the survey/deploy chord layer, RB the combat-state layer — every row below shows
+    // the live seat, including 'LB + D-Pad Up' style chords.
+    build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, Y shove, R3 countermeasure, A/Cross Massline, B dock when prompted, X/Square target, D-pad up auto-target, D-pad right bomb, D-pad left cycle bombs, View star map, Start → Pause → Mission Log. Hold LB or RB and tap a second button for scanner, fields, cloak and cruise.');
+
+    // PQ-164.01 pad remap: capture-on-press rows, same grammar as the flight keys above — press
+    // a word, then press the pad button. Conflict detection honours the designed context shares
+    // (A/Cross accept+Massline, LB brake+tab, RB boost+tab); same-context doubles are denied.
+    build.header('Gamepad Buttons');
+    const padMap = resolveGamepadBindings(s);
+    GAMEPAD_REBINDABLE.forEach((action) => {
+      // Chord names render both halves ('LB + D-Pad Up') through the same label vocabulary the
+      // Help sheet uses — the row must never print a raw 'l1+dUp' at a player.
+      const keyText = gamepadButtonLabels(action, padMap, { glyphSet: gp().glyphSet }).join(' / ') || '—';
+      build.key(GAMEPAD_REBIND_LABELS[action] || action, keyText,
+        (btn) => this._capturePad(ctx, btn, action, padMap));
+    });
+    build.word('Reset pad layout', () => {
+      this._set(ctx, 'controls', 'gamepad', { ...gp(), bindings: null });
+      this._render(ctx);
+    }, 'Press a row to rebind; Backspace restores one row.');
+    if (gp().bindings) build.note('Custom pad layout active — the rows above are your live map, not the defaults.');
+
+    // Touch (P1-12): virtual dual-stick + buttons for touchscreens. Auto-detects on touch devices;
+    // this tri-state lets the player force-enable (e.g. a touchscreen laptop), force-disable, or
+    // return to automatic detection.
+    build.header('Touch');
+    if (!s.controls.touch) s.controls.touch = { enabled: null }; // null = auto-detect
+    const touchMode = () => {
+      const cfg = s.controls.touch || {};
+      return cfg.enabled == null ? 'auto' : (cfg.enabled ? 'on' : 'off');
+    };
+    const commitTouchValue = (next) => {
+      const tp = ctx.touch;
+      if (tp && typeof tp.persistEnabled === 'function') {
+        tp.persistEnabled(next);
+      } else {
+        this._set(ctx, 'controls', 'touch', { ...(s.controls.touch || {}), enabled: next });
+      }
+    };
+    build.choice('Touch controls', [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']], touchMode,
+      (mode) => commitTouchValue(mode === 'auto' ? null : mode === 'on'));
+    // PRO-08: size and thumb placement. Both write into the same `controls.touch` object as the
+    // tri-state above and re-apply to a live overlay, so a phone can grow the sticks mid-flight.
+    const commitTouchOverlay = (patch) => {
+      const next = { ...(s.controls.touch || {}), ...patch };
+      const tp = ctx.touch;
+      if (tp && typeof tp.applyOverlayConfig === 'function') {
+        // applyOverlayConfig reads state.settings, so write first and then let the overlay re-read.
+        s.controls.touch = next;
+        tp.applyOverlayConfig();
+      } else {
+        s.controls.touch = next;
+      }
+      ctx.bus.emit('settings:changed', { section: 'controls', key: 'touch', value: next });
+    };
+    build.slider('Touch overlay size',
+      () => readTouchOverlayConfig(s).scale,
+      TOUCH_SCALE_MIN, TOUCH_SCALE_MAX, 0.05,
+      (x) => Math.round(x * 100) + '%',
+      (value) => commitTouchOverlay({ scale: normalizeTouchScale(value) }));
+    build.choice('Touch layout',
+      TOUCH_LAYOUTS.map((id) => [id, TOUCH_LAYOUT_LABELS[id]]),
+      () => readTouchOverlayConfig(s).layout,
+      (mode) => commitTouchOverlay({ layout: normalizeTouchLayout(mode) }));
+    // The phone deck is a floating stick plus gun, tether, and the powers wheel.
+    build.note('Touch empty space and drag to fly. Gun and tether sit under one thumb; swipe the powers handle for the rest. Auto-enabled on touch devices.');
+    // PQ-164.02: one Deck/trackpad row. Gestures write the existing Massline key seams
+    // (Space latch, W/S reel, Y throw, G-stroke) — they do not add a second grammar.
+    const deckHeader = build.header(STEAM_DECK_HEADER);
+    if (deckHeader && typeof deckHeader.setAttribute === 'function') {
+      deckHeader.setAttribute('data-sf-deck', 'header');
+    }
+    const deckNote = build.note(STEAM_DECK_NOTE);
+    if (deckNote && typeof deckNote.setAttribute === 'function') {
+      deckNote.setAttribute('data-sf-deck', 'note');
+    }
+  },
+
+  _renderFixedShortcuts(pane, build = paneBuilder(pane)) {
+    build.break();
+    const header = build.header('Ship/System Shortcuts');
+    header.parentElement.classList.add('sf-controls-fixed-shortcuts');
+    CONTROL_SHORTCUTS.forEach((shortcut) => {
+      build.shortcut(shortcut.label, shortcut.key, shortcut.note);
+    });
+    build.note('Flight keys above can be rebound here. These interface shortcuts are for reference.');
+  },
+
+  // Live rebind UI for flight actions. Reads defaults from input.js + any saved overrides in
+  // settings.controls.bindings. Capture-on-press: a pressed word enters "listening" mode and the
+  // next keydown sets the binding (with conflict detection — can't bind the same key to two actions
+  // in the movement cluster). Escape cancels capture, Backspace clears the binding to default.
+  _renderControlsRebind(ctx, pane, build = paneBuilder(pane)) {
+    const s = ctx.state.settings;
+    if (!s.controls) s.controls = { bindings: null };
+    const { base, live } = mergedBindingsFor(s);
+
+    build.break();
+    REBINDABLE.forEach((action) => {
+      const codes = live[action] || [];
+      const keyText = reelRebindText(action, codes)
+        || codes.map((code) => formatBindingCode(code) || '—').join(' / ') || '—';
+      // `.sf-bind-btn--digit` marks a bare digit key (a hook kept from the legacy chip styling).
+      build.key(REBIND_LABELS[action] || action, keyText,
+        (btn) => this._capture(ctx, btn, action, live, base),
+        { digit: /^\d$/.test(keyText) });
+    });
+
+    // reset word
+    build.word('Reset key bindings', () => {
+      s.controls.bindings = null;
+      s.controls.masslineBindingProfile = MASSLINE_BINDING_PROFILE_SPACE;
+      laneWriteSetting(ctx.state, 'settings.controls.bindings', null);
+      laneWriteSetting(ctx.state, 'settings.controls.masslineBindingProfile', MASSLINE_BINDING_PROFILE_SPACE);
+      ctx.bus.emit('settings:changed', { section: 'controls', key: 'bindings', value: null });
+      this._render(ctx);
+    }, 'Arrow keys always also work for movement.');
+  },
+
+  // Capture the next keydown as the new binding for `action`. Only ONE code per action in the UI
+  // (we keep arrow-cluster compatibility by leaving movement's secondary arrow code alone if the
+  // primary is being rebound — simplest mental model: "set the WASD key").
+  _capture(ctx, btn, action, live, base) {
+    if (this._capturing) return;
+    this._capturing = true;
+    const prev = btn.textContent;
+    btn.textContent = 'Press a key…';
+    btn.classList.add('sf-bind-btn--capture');
+    btn.setAttribute('aria-pressed', 'true'); // the kit lights a pressed word: this one is listening
+    const preview = refs && refs.preview;
+    try { if (preview) preview.listen(true, btn.closest ? btn.closest('.k-row') : null); } catch (e) { /* cosmetic */ }
+
+    const done = (commit) => {
+      // A stale close (the conflict label's 900 ms timer, a second Escape) must never touch a
+      // newer capture's button or handle: only the capture that owns the slot may close it (J5).
+      if (this._activeCapture !== done) return;
+      try { if (preview) preview.listen(false); } catch (e) { /* cosmetic */ }
+      this._capturing = false;
+      btn.classList.remove('sf-bind-btn--capture');
+      btn.removeAttribute('aria-pressed');
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('mousedown', onClickAway, true);
+      this._activeCapture = null;
+      if (!commit) btn.textContent = prev;
+    };
+    const onKey = (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      // Escape cancels; Backspace resets this action to default.
+      if (ev.code === 'Escape') { done(false); return; }
+      if (ev.code === 'Backspace' || ev.code === 'Delete') {
+        // J4: restoring the default must pass the same conflict rule as an ordinary rebind —
+        // a key the player deliberately gave another verb keeps its owner; the reset names it.
+        // F-CONTROLS-01: "another verb" includes the interface — a default that lands on a
+        // reserved code (stock travelBurn ships KeyH while Help owns h/H) is refused rather
+        // than silently reinstalling a dead or double-firing seat.
+        const def = (base && base[action]) || DEFAULT_BINDINGS[action] || [];
+        const ownerOf = (code) => INTERFACE_KEY_OWNERS.get(code)
+          || (() => {
+            const owner = REBINDABLE.find((other) => other !== action && (live[other] || []).includes(code));
+            return owner && (REBIND_LABELS[owner] || owner);
+          })();
+        const clashOwner = def.map(ownerOf).find(Boolean);
+        if (clashOwner) {
+          const conflict = settingsInUseLabel(clashOwner);
+          btn.textContent = conflict;
+          announceBindingConflict(btn, conflict);
+          cue('deny');
+          setTimeout(() => done(false), 900);
+          return;
+        }
+        this._commitBind(ctx, action, null, live, base);
+        done(true);
+        return;
+      }
+      // Conflict check: the same code must not appear ANYWHERE in another action's binding —
+      // checking only index 0 let a rebind collide with a secondary (e.g. binding an action to
+      // ArrowUp while movement still keeps ArrowUp as its secondary), so one key fired two verbs.
+      // Interface keys first (F-CONTROLS-01): the UI router claims these codes unconditionally —
+      // overlay keys only preventDefault(), which the window-level flight adapter ignores, and
+      // modal keys flip ui-modal-open under the same press — so the interface owner is the
+      // terminal claim even when a rebindable row also holds the code.
+      const interfaceVerb = INTERFACE_KEY_OWNERS.get(ev.code);
+      if (interfaceVerb) {
+        const conflict = settingsInUseLabel(interfaceVerb);
+        btn.textContent = conflict;
+        announceBindingConflict(btn, conflict);
+        cue('deny');
+        setTimeout(() => done(false), 900);
+        return;
+      }
+      for (const other of REBINDABLE) {
+        if (other === action) continue;
+        if ((live[other] || []).includes(ev.code)) {
+          const conflict = settingsInUseLabel(REBIND_LABELS[other] || other);
+          btn.textContent = conflict;
+          announceBindingConflict(btn, conflict);
+          cue('deny');
+          setTimeout(() => done(false), 900);
+          return;
+        }
+      }
+      this._commitBind(ctx, action, ev.code, live, base);
+      done(true);
+    };
+    const onClickAway = (ev) => { if (ev.target !== btn) done(false); };
+    // Registered before any close path can arm: the guard in `done` compares against this slot.
+    this._activeCapture = done;
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('mousedown', onClickAway, true);
+  },
+
+  // Persist a new primary binding for `action` into settings.controls.bindings. We preserve any
+  // secondary code (e.g. ArrowUp alongside KeyW) so arrow players keep working after a rebind.
+  _commitBind(ctx, action, code, live, base) {
+    const s = ctx.state.settings;
+    if (!s.controls) s.controls = {};
+    if (!s.controls.bindings) s.controls.bindings = {};
+    const schemeBase = base || schemeBindingsFor(s);
+    const def = (schemeBase && schemeBase[action]) || DEFAULT_BINDINGS[action] || [];
+    if (code == null) {
+      delete s.controls.bindings[action]; // reset to default
+      live[action] = def.slice();
+    } else {
+      // keep the arrow-cluster secondary if the default had one and it's not the code being set
+      const secondary = def.length > 1 ? def[1] : null;
+      const arr = (secondary && secondary !== code) ? [code, secondary] : [code];
+      s.controls.bindings[action] = arr;
+      live[action] = arr;
+    }
+    // A power row owns its old verb names (five powers, 2026-10-22): a key saved under deployWell
+    // before the merge would otherwise come back through the alias the moment this row is reset.
+    for (const old of POWER_LEGACY_ACTIONS[action] || []) delete s.controls.bindings[old];
+    // Ship the whole binding map: the delete-to-default path removes the key
+    // entirely, which a leaf write cannot express. Spread — the envelope must
+    // not carry a live reference (the map keeps mutating per bind).
+    laneWriteSetting(ctx.state, 'settings.controls.bindings', { ...s.controls.bindings });
+    ctx.bus.emit('settings:changed', { section: 'controls', key: action, value: s.controls.bindings[action] });
+    this._render(ctx); // refresh the rows to show the new label
+  },
+
+  // --- Gamepad rebinding (PQ-164.01) ---
+  // Capture the next pad button press as the new binding for `action`. Pad buttons are not DOM
+  // events: the press edge is recorded by src/systems/gamepad.js and forwarded by the UI input
+  // tick (src/ui/input.js) to the capture handler registered on the binding registry. While the
+  // handler is registered the pad's actions are inert (captureMode), so the press cannot also
+  // fire its current verb. Escape cancels, Backspace restores the default, a 30 s timeout or a
+  // click away ends the listen so a pad-only player is never trapped in capture.
+  _capturePad(ctx, btn, action, liveMap) {
+    if (this._capturing) return;
+    this._capturing = true;
+    // Take effect immediately — don't wait a frame for the UI tick to mirror the handler.
+    if (ctx.gamepad) ctx.gamepad.captureMode = true;
+    const prev = btn.textContent;
+    btn.textContent = 'Press a pad button…';
+    btn.classList.add('sf-bind-btn--capture');
+    btn.setAttribute('aria-pressed', 'true'); // listening
+    const preview = refs && refs.preview;
+    try { if (preview) preview.listen(true, btn.closest ? btn.closest('.k-row') : null); } catch (e) { /* cosmetic */ }
+
+    const done = (commit) => {
+      // Same ownership guard as the keyboard capture: a stale conflict timer must never close a
+      // newer pad capture's listen (J5).
+      if (this._activeCapture !== done) return;
+      try { if (preview) preview.listen(false); } catch (e) { /* cosmetic */ }
+      this._capturing = false;
+      btn.classList.remove('sf-bind-btn--capture');
+      btn.removeAttribute('aria-pressed');
+      setGamepadCaptureHandler(null);
+      clearTimeout(timer);
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('mousedown', onClickAway, true);
+      this._activeCapture = null;
+      if (!commit) btn.textContent = prev;
+    };
+    const timer = setTimeout(() => done(false), 30000);
+    const onKey = (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      if (ev.code === 'Escape') { done(false); return; }
+      if (ev.code === 'Backspace' || ev.code === 'Delete') {
+        this._commitPadBind(ctx, action, null);
+        done(true);
+        return;
+      }
+      // Any other key is not a pad button — keep listening.
+    };
+    setGamepadCaptureHandler((stdName) => {
+      // Conflict check: the row being rebound cannot conflict with itself; test the candidate
+      // button against every other action's claim under the live resolved map.
+      const others = { ...liveMap, [action]: [] };
+      const conflict = findGamepadBindConflict(others, action, stdName);
+      if (conflict) {
+        const conflictLabel = settingsInUseLabel(GAMEPAD_REBIND_LABELS[conflict] || conflict);
+        btn.textContent = conflictLabel;
+        announceBindingConflict(btn, conflictLabel);
+        cue('deny');
+        setTimeout(() => done(false), 900);
+        return;
+      }
+      this._commitPadBind(ctx, action, stdName);
+      done(true);
+    });
+    const onClickAway = (ev) => { if (ev.target !== btn) done(false); };
+    // Registered before any close path can arm: the guard in `done` compares against this slot.
+    this._activeCapture = done;
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('mousedown', onClickAway, true);
+  },
+
+  // Persist a pad override into settings.controls.gamepad.bindings — a sparse action ->
+  // [std button name] map layered over the default layout by resolveGamepadBindings. The whole
+  // controls subtree rides the settings profile, so the remap survives boot and old saves.
+  _commitPadBind(ctx, action, stdName) {
+    const s = ctx.state.settings;
+    if (!s.controls) s.controls = {};
+    if (!s.controls.gamepad) s.controls.gamepad = { enabled: true, deadzone: 0.12, invertY: false };
+    const overrides = { ...(s.controls.gamepad.bindings || {}) };
+    if (stdName == null) delete overrides[action];
+    else overrides[action] = [stdName];
+    // Same ownership on the pad: an old verb's saved button never outlives its power's own row.
+    for (const old of POWER_LEGACY_ACTIONS[action] || []) delete overrides[old];
+    const bindings = Object.keys(overrides).length ? overrides : null;
+    this._set(ctx, 'controls', 'gamepad', { ...s.controls.gamepad, bindings });
+    this._render(ctx); // refresh the rows to show the new glyph
+  },
+
+  onShow(ctx) {
+    if (!refs) return;
+    refs.windowModeRead = false;
+    cue('open');
+    refs.arrive = true;
+    this._render(ctx);
+    try { if (refs.preview) refs.preview.show(refs.active, ctx.state.settings); } catch (e) { /* the preview is cosmetic */ }
+    rootReady(refs.root);
+    try {
+      settle(refs.title, { from: 'top', state: 'settings:open' });
+      settle(refs.hang, { from: 'left', state: 'settings:open' });
+      settle(refs.pane, { from: 'right', state: 'settings:open' });
+      settle(refs.foot, { from: 'bottom', state: 'settings:open' });
+    } catch (e) { /* motion is cosmetic */ }
+    try { refs.tabBtns[refs.active].focus(); } catch (e) {}
+  },
+  // If the screen closes mid key-capture, bail out so the global keydown/mousedown listeners
+  // don't leak / swallow keys after the player navigates away.
+  onHide() {
+    this._localeRequest = (this._localeRequest || 0) + 1;
+    cue('close');
+    if (this._capturing && this._activeCapture) this._activeCapture(false);
+  },
+  // IMPORTANT: must never rebuild the DOM. uiRoot.frame() calls screenManager.refreshTop() every
+  // ~0.3s for any open screen; a rebuild would destroy a slider/select mid-drag (the "can't drag
+  // below 3% / have to keep the mouse on the line" bug). The pane is event-driven — its own
+  // controls update their own labels — so the only refresh is the Active-input row's one
+  // textContent, which changes exactly once per deliberate source switch (NXI-003).
+  refresh(ctx) {
+    syncActiveControlFamily(ctx, refs && refs.familyValue);
+  },
+  dispose() {
+    this._localeRequest = (this._localeRequest || 0) + 1;
+    try { if (refs && refs.preview) refs.preview.dispose(); } catch (e) { /* cosmetic */ }
+    try { if (refs && refs.spot) refs.spot.dispose(); } catch (e) { /* cosmetic */ }
+    refs = null;
+  },
+};
+
+/** A screen with no 3D mount is "ready" as soon as it shows (the capture seam's photograph-me signal). */
+function rootReady(rootEl) {
+  if (rootEl) rootEl.dataset.kReady = '1';
+}

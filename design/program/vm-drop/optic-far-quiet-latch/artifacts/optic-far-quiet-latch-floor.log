@@ -1,0 +1,16 @@
+rebench1: median 21.338 min 13.865
+rebench2: median 21.348 min 18.802
+rebench3: median 20.593 min 12.757
+rebench4: median 21.455 min 19.203
+rebench5: median 21.168 min 13.284
+file:///workspace/spaceface-scratch/hillclimb-20260924h/[eval1]:30
+const primary = JSON.parse(require("fs").readFileSync("artifacts/optic-far-quiet-latch-microbench.json","utf8"));
+                     ^
+
+ReferenceError: require is not defined in ES module scope, you can use import instead
+    at file:///workspace/spaceface-scratch/hillclimb-20260924h/[eval1]:30:22
+    at ModuleJob.run (node:internal/modules/esm/module_job:263:25)
+    at async ModuleLoader.eval (node:internal/modules/esm/loader:217:24)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+
+Node.js v20.19.2

@@ -1,0 +1,1154 @@
+import { validateNativeAttestationTables } from './nativeAttestationTables.js';
+import { fnv1a } from './checksum.js';
+
+const encodeSessions = new Map();
+const validationSessions = new Map();
+
+// A begin whose finish never arrives abandons its assembled payload for the worker's
+// life — cap both maps so orphaned sessions can't accrete save-sized graphs (W138 F5).
+// An evicted orphan's next part fails missing_session and the caller falls back.
+const MAX_WORKER_SESSIONS = 4;
+function capWorkerSessions(map) {
+  while (map.size >= MAX_WORKER_SESSIONS) map.delete(map.keys().next().value);
+}
+
+// FB-093 — write-side bound mirrors the import limit object: same byte ceiling, one law.
+export const SAVE_WRITE_MAX_BYTES = 12 * 1024 * 1024;
+export const SAVE_GZIP_FORMAT = 'spaceface-save-gz';
+
+// The storage/import ceiling is UTF-8 bytes, even when the envelope is later compressed.
+// Stop at the ceiling without allocating another multi-MB encoded buffer.
+function saveTextByteLength(value) {
+  let bytes = 0;
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i);
+    if (code <= 0x7f) bytes++;
+    else if (code <= 0x7ff) bytes += 2;
+    else if (code >= 0xd800 && code <= 0xdbff && i + 1 < value.length
+      && value.charCodeAt(i + 1) >= 0xdc00 && value.charCodeAt(i + 1) <= 0xdfff) {
+      bytes += 4;
+      i++;
+    } else bytes += 3;
+    if (bytes > SAVE_WRITE_MAX_BYTES) return SAVE_WRITE_MAX_BYTES + 1;
+  }
+  return bytes;
+}
+
+export function encodeSavePayload({ descriptor, data } = {}) {
+  const dataJson = JSON.stringify(data);
+  const checksum = fnv1a(dataJson);
+  const envelope = { ...(descriptor || {}), checksum, data };
+  return { json: JSON.stringify(envelope), checksum };
+}
+
+// A stored string can be a legacy plain envelope or a gzip wrapper — the wrapper keeps
+// fmt/version/savedAt/checksum top-level so slot cards and quota reads stay synchronous;
+// only `data` lives inside the compressed payload. Detection needs no decode.
+export function isGzippedSaveText(raw) {
+  if (typeof raw !== 'string' || raw.length < 16 || raw.charCodeAt(0) !== 123) return false;
+  // The wrapper writes fmt first — gate on the head of the string so multi-MB legacy
+  // saves never pay a full scan. The decode path re-parses authoritatively.
+  return raw.slice(0, 96).indexOf('"' + SAVE_GZIP_FORMAT + '"') !== -1;
+}
+
+function bytesToBase64(bytes) {
+  let binary = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+function base64ToBytes(text) {
+  const binary = atob(text);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function gzipText(json) {
+  const stream = new Blob([json]).stream()
+    .pipeThrough(new CompressionStream('gzip'));
+  const buffer = await new Response(stream).arrayBuffer();
+  return bytesToBase64(new Uint8Array(buffer));
+}
+
+async function gunzipText(payload) {
+  const bytes = base64ToBytes(payload);
+  const stream = new Blob([bytes]).stream()
+    .pipeThrough(new DecompressionStream('gzip'));
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  const parts = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > SAVE_WRITE_MAX_BYTES) {
+        try { await reader.cancel(); } catch { /* the size failure remains authoritative */ }
+        const error = new Error('Decoded save exceeds the import byte ceiling');
+        error.reason = 'import_too_large';
+        throw error;
+      }
+      parts.push(decoder.decode(value, { stream: true }));
+    }
+    parts.push(decoder.decode());
+    return parts.join('');
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+export function saveGzipAvailable() {
+  return typeof CompressionStream === 'function'
+    && typeof DecompressionStream === 'function'
+    && typeof Blob === 'function' && typeof btoa === 'function' && typeof atob === 'function';
+}
+
+// Wrap an encoded envelope JSON string into the stored gzip form. The wrapper is itself JSON:
+// compression markers and card metadata stay legible without a decode pass.
+export async function gzipEnvelopeJson(json) {
+  const env = JSON.parse(json);
+  const payload = await gzipText(json);
+  return JSON.stringify({
+    fmt: SAVE_GZIP_FORMAT,
+    gz: 1,
+    version: env.version,
+    savedAt: env.savedAt || null,
+    checksum: env.checksum || null,
+    payload,
+  });
+}
+
+// Decode a stored string to the inner envelope JSON text (identity for legacy plain saves).
+// FB-104 — an export bundle may carry the profile side bags as a `profile` sibling on the outer
+// wrapper (the compressed payload stays the plain envelope); the field passes through untouched
+// so the import lane can merge it after the envelope validates.
+export async function decodeSaveEnvelopeText(raw) {
+  if (!isGzippedSaveText(raw)) return { ok: true, text: raw };
+  let outer;
+  try { outer = JSON.parse(raw); } catch (error) { return { ok: false, reason: 'parse_failed' }; }
+  if (!outer || outer.fmt !== SAVE_GZIP_FORMAT || typeof outer.payload !== 'string') {
+    return { ok: false, reason: 'bad_format' };
+  }
+  if (!saveGzipAvailable()) return { ok: false, reason: 'gz_unsupported' };
+  try {
+    const text = await gunzipText(outer.payload);
+    return outer.profile != null ? { ok: true, text, profile: outer.profile } : { ok: true, text };
+  } catch (error) {
+    return { ok: false, reason: error.reason || 'gz_decode_failed' };
+  }
+}
+
+function readSaveVersion(version, currentVersion) {
+  if (!Number.isFinite(version)) return { ok: false, reason: 'bad_format' };
+  if (Number.isFinite(currentVersion) && version > currentVersion) return { ok: false, reason: 'newer_version' };
+  const ver = version | 0;
+  if (ver < 1 || ver !== version) return { ok: false, reason: 'bad_format' };
+  return { ok: true, version: ver };
+}
+
+export function validateSaveJson(raw, currentVersion) {
+  if (!raw) return { ok: false, reason: 'no_save' };
+  let envelope;
+  try { envelope = JSON.parse(raw); }
+  catch (error) { return { ok: false, reason: 'parse_failed' }; }
+  if (!envelope || envelope.fmt !== 'spaceface-save') return { ok: false, reason: 'bad_format' };
+  const versionRead = readSaveVersion(envelope.version, currentVersion);
+  if (!versionRead.ok) return versionRead;
+  const version = versionRead.version;
+  if (!envelope.data || typeof envelope.data !== 'object') return { ok: false, reason: 'no_data' };
+  if (envelope.checksum && fnv1a(JSON.stringify(envelope.data)) !== envelope.checksum) {
+    return { ok: false, reason: 'checksum' };
+  }
+  const player = envelope.data.entities && envelope.data.entities.player;
+  if (!player || typeof player !== 'object') return { ok: false, reason: 'no_player' };
+  if (player.type && player.type !== 'ship') return { ok: false, reason: 'invalid_player' };
+  return {
+    ok: true,
+    version,
+    savedAt: envelope.savedAt || null,
+    checksum: envelope.checksum || null,
+  };
+}
+
+// Gzip-aware twin: stored compressed envelopes decode inside the worker first. The sync
+// validateSaveJson above stays for callers that only ever see plain text.
+export async function validateSaveJsonAsync(raw, currentVersion) {
+  const decoded = await decodeSaveEnvelopeText(raw);
+  if (!decoded.ok) return { ok: false, reason: decoded.reason };
+  return validateSaveJson(decoded.text, currentVersion);
+}
+
+// Write-side encode with the import limit object applied pre-write and gzip inside the
+// worker when the platform supports it. Over-limit saves fail with the preflight reason —
+// never a silent truncated write.
+export async function encodeSavePayloadFinal({ descriptor, data } = {}) {
+  const encoded = encodeSavePayload({ descriptor, data });
+  const preflight = preflightSaveImport(JSON.parse(encoded.json));
+  if (!preflight.ok) return { ok: false, reason: preflight.reason, limit: preflight.limit, actual: preflight.actual };
+  const bytes = saveTextByteLength(encoded.json);
+  if (bytes > SAVE_WRITE_MAX_BYTES) {
+    return { ok: false, reason: 'save_size_limit', limit: SAVE_WRITE_MAX_BYTES, actual: bytes };
+  }
+  if (saveGzipAvailable()) {
+    try {
+      return { ok: true, json: await gzipEnvelopeJson(encoded.json), checksum: encoded.checksum, gz: true };
+    } catch (error) { /* fall through to the legacy plain write */ }
+  }
+  return { ok: true, json: encoded.json, checksum: encoded.checksum, gz: false };
+}
+
+/**
+ * Full load-lane prepare in the worker: parse, format/version check, checksum, and the player
+ * sanity reads a title Continue used to run synchronously on the main thread. The returned
+ * envelope crosses postMessage as a fresh structured clone — the main thread's clonePlain step
+ * is redundant on this path and intentionally skipped.
+ */
+export function restorePrepareSaveJson(raw, currentVersion) {
+  if (!raw) return { ok: false, reason: 'no_save' };
+  let envelope;
+  try { envelope = JSON.parse(raw); }
+  catch (error) { return { ok: false, reason: 'parse_failed' }; }
+  if (!envelope || envelope.fmt !== 'spaceface-save') return { ok: false, reason: 'bad_format' };
+  const versionRead = readSaveVersion(envelope.version, currentVersion);
+  if (!versionRead.ok) return versionRead;
+  if (!envelope.data || typeof envelope.data !== 'object') return { ok: false, reason: 'no_data' };
+  if (envelope.checksum && fnv1a(JSON.stringify(envelope.data)) !== envelope.checksum) {
+    return { ok: false, reason: 'checksum' };
+  }
+  const player = envelope.data.entities && envelope.data.entities.player;
+  if (!player || typeof player !== 'object') return { ok: false, reason: 'no_player' };
+  if (player.type && player.type !== 'ship') return { ok: false, reason: 'invalid_player' };
+  const preflight = preflightSaveImport(envelope);
+  if (!preflight.ok) return preflight;
+  return { ok: true, version: versionRead.version, env: envelope, preflighted: true };
+}
+
+// Gzip-aware twin for the painted Continue lane: compressed envelopes decode inside the
+// worker, then take the identical prepare path.
+export async function restorePrepareSaveJsonAsync(raw, currentVersion) {
+  const decoded = await decodeSaveEnvelopeText(raw);
+  if (!decoded.ok) return { ok: false, reason: decoded.reason };
+  const prepared = restorePrepareSaveJson(decoded.text, currentVersion);
+  // FB-104 — a compressed export bundle carries its profile side bags on the outer wrapper;
+  // attach them to the prepared envelope so the main-thread merge runs the same way a plain
+  // import does (the field crosses postMessage inside the env clone).
+  if (prepared.ok && decoded.profile != null && prepared.env && typeof prepared.env === 'object') {
+    prepared.env.profile = decoded.profile;
+  }
+  return prepared;
+}
+
+// Full-envelope graph bound in the worker so the multi-MB walk never reaches the main thread.
+// Import-free twin of saveSystem's preflightSaveImport — identical limits, reasons, and order.
+const PREFLIGHT_MAX_DEPTH = 64;
+const PREFLIGHT_MAX_NODES = 500_000;
+const PREFLIGHT_MAX_COLLECTION_ITEMS = 50_000;
+const PREFLIGHT_MAX_PERSISTENT_ENTITIES = 2_048;
+export function preflightSaveImport(value) {
+  const dataDescriptor = value && typeof value === 'object' ? Object.getOwnPropertyDescriptor(value, 'data') : null;
+  if (dataDescriptor && !('value' in dataDescriptor)) return { ok: false, reason: 'native_attestation_accessor' };
+  const dataValue = dataDescriptor && dataDescriptor.value;
+  const physicsDescriptor = dataValue && typeof dataValue === 'object' ? Object.getOwnPropertyDescriptor(dataValue, 'physics') : null;
+  if (physicsDescriptor && !('value' in physicsDescriptor)) return { ok: false, reason: 'native_attestation_accessor' };
+  const nativeVerdict = validateNativeAttestationTables(physicsDescriptor && physicsDescriptor.value);
+  if (!nativeVerdict.ok) return nativeVerdict;
+
+  const persistent = value && typeof value === 'object'
+    && value.data && typeof value.data === 'object'
+    && value.data.entities && typeof value.data.entities === 'object'
+    ? value.data.entities.persistent
+    : null;
+  if (Array.isArray(persistent) && persistent.length > PREFLIGHT_MAX_PERSISTENT_ENTITIES) {
+    return { ok: false, reason: 'import_persistent_entity_limit',
+      limit: PREFLIGHT_MAX_PERSISTENT_ENTITIES, actual: persistent.length };
+  }
+  const active = new WeakSet();
+  const stack = [{ value, depth: 0, exit: false }];
+  let nodes = 0;
+  while (stack.length) {
+    const frame = stack.pop();
+    const current = frame.value;
+    if (frame.exit) {
+      active.delete(current);
+      continue;
+    }
+    if (frame.depth > PREFLIGHT_MAX_DEPTH) {
+      return { ok: false, reason: 'import_depth_limit', limit: PREFLIGHT_MAX_DEPTH, actual: frame.depth };
+    }
+    nodes++;
+    if (nodes > PREFLIGHT_MAX_NODES) {
+      return { ok: false, reason: 'import_node_limit', limit: PREFLIGHT_MAX_NODES, actual: nodes };
+    }
+    if (current === null || typeof current !== 'object') continue;
+    if (active.has(current)) {
+      return { ok: false, reason: 'import_cycle', limit: PREFLIGHT_MAX_DEPTH, actual: frame.depth };
+    }
+    active.add(current);
+    stack.push({ value: current, depth: frame.depth, exit: true });
+    if (Array.isArray(current)) {
+      if (current.length > PREFLIGHT_MAX_COLLECTION_ITEMS) {
+        return { ok: false, reason: 'import_collection_limit',
+          limit: PREFLIGHT_MAX_COLLECTION_ITEMS, actual: current.length };
+      }
+      for (let i = current.length - 1; i >= 0; i--) {
+        stack.push({ value: current[i], depth: frame.depth + 1, exit: false });
+      }
+      continue;
+    }
+    const keys = Object.keys(current);
+    if (keys.length > PREFLIGHT_MAX_COLLECTION_ITEMS) {
+      return { ok: false, reason: 'import_collection_limit',
+        limit: PREFLIGHT_MAX_COLLECTION_ITEMS, actual: keys.length };
+    }
+    for (let i = keys.length - 1; i >= 0; i--) {
+      stack.push({ value: current[keys[i]], depth: frame.depth + 1, exit: false });
+    }
+  }
+  return { ok: true, nodes };
+}
+
+// Portrait-data projection for the Save/Load screen's lazy fill: everything
+// buildSavePortrait + slotShipId read out of unwrapSaveData(env) — the heavy env.data
+// fields nobody's card consumes (world tables, thumbnail) stay off postMessage, and the
+// multi-MB JSON.parse happens on the worker instead of the settle task.
+export function cardDataFromEnvelope(env) {
+  const source = env && typeof env === 'object'
+    ? (env.data && typeof env.data === 'object' && !Array.isArray(env.data) ? env.data : env)
+    : null;
+  if (!source || typeof source !== 'object') return null;
+  if (!source.player && !source.missions && !source.story && !source.aceMemory) return null;
+  return {
+    player: source.player,
+    story: source.story,
+    missions: source.missions,
+    aceMemory: source.aceMemory,
+    meta: source.meta,
+  };
+}
+
+// JSON.parse + project only — no version/migration/normalize chain: the card reads the
+// stored shape verbatim (the slot fill's own contract — migrations belong to load()).
+export function peekCardDataJson(raw) {
+  if (!raw || typeof raw !== 'string') return { ok: false, reason: 'no_save' };
+  let env;
+  try { env = JSON.parse(raw); } catch (error) {
+    return { ok: false, reason: 'parse_failed' };
+  }
+  const cardData = cardDataFromEnvelope(env);
+  return cardData ? { ok: true, cardData } : { ok: false, reason: 'bad_format' };
+}
+
+// Stored/exported slots may wrap that same envelope in gzip. Reuse the bounded
+// public decoder; portrait projection still reads the stored shape without migration.
+export async function peekCardDataJsonAsync(raw) {
+  const decoded = await decodeSaveEnvelopeText(raw);
+  return decoded.ok ? peekCardDataJson(decoded.text) : decoded;
+}
+
+export function handleSaveWorkerRequest(message) {
+  const request = message || {};
+  return handleSaveWorkerRequestCore(request, { asyncFinal: false });
+}
+
+// Async protocol twin of handleSaveWorkerRequest: bounded+compressed encodes and gzip-aware
+// validates/prepares. The sync export stays for harnesses that simulate the worker inline.
+export function handleSaveWorkerRequestAsync(message) {
+  const request = message || {};
+  return handleSaveWorkerRequestCore(request, { asyncFinal: true });
+}
+
+function handleSaveWorkerRequestCore(request, { asyncFinal } = {}) {
+  if (request.type === 'restore_prepare') {
+    const started = workerNow();
+    const done = (result) => ({ id: request.id, type: 'restored_prepare', result, workerCpuMs: workerNow() - started });
+    if (asyncFinal) {
+      return Promise.resolve().then(() => restorePrepareSaveJsonAsync(
+        request.payload && request.payload.raw,
+        request.payload && request.payload.currentVersion,
+      )).then(done, () => done({ ok: false, reason: 'load_failed' }));
+    }
+    let result;
+    try {
+      result = restorePrepareSaveJson(
+        request.payload && request.payload.raw,
+        request.payload && request.payload.currentVersion,
+      );
+    } catch (error) {
+      result = { ok: false, reason: 'load_failed' };
+    }
+    return done(result);
+  }
+  if (request.type === 'restore_prepare_meta') {
+    const started = workerNow();
+    let result;
+    try {
+      result = restorePrepareSaveJson(
+        request.payload && request.payload.raw,
+        request.payload && request.payload.currentVersion,
+      );
+    } catch (error) {
+      result = { ok: false, reason: 'load_failed' };
+    }
+    // Meta lane: the caller only wants the verdict — the multi-MB envelope clone must not
+    // cross postMessage for a slot nobody will load. The ~1 KB cardEnv projection still
+    // crosses so the index consult builds the display card without re-parsing the blob.
+    if (result && typeof result === 'object' && 'env' in result) {
+      const cardEnv = cardEnvFromEnvelope(result.env);
+      const { env: _env, ...meta } = result;
+      void _env;
+      result = cardEnv ? Object.assign(meta, { cardEnv }) : meta;
+    }
+    return { id: request.id, type: 'restored_prepare', result, workerCpuMs: workerNow() - started };
+  }
+  if (request.type === 'peek_card_data') {
+    const started = workerNow();
+    const done = (result) => ({ id: request.id, type: 'peeked_card_data', result, workerCpuMs: workerNow() - started });
+    if (asyncFinal) {
+      return peekCardDataJsonAsync(request.payload && request.payload.raw)
+        .then(done, () => done({ ok: false, reason: 'parse_failed' }));
+    }
+    let result;
+    try {
+      result = peekCardDataJson(request.payload && request.payload.raw);
+    } catch (error) {
+      result = { ok: false, reason: 'parse_failed' };
+    }
+    return done(result);
+  }
+  if (request.type === 'validate_begin') {
+    capWorkerSessions(validationSessions);
+    validationSessions.set(request.id, {
+      currentVersion: request.payload && request.payload.currentVersion,
+      chunks: [],
+    });
+    return null;
+  }
+  if (request.type === 'validate_part') {
+    const session = validationSessions.get(request.id);
+    if (!session) return { id: request.id, type: 'error', reason: 'missing_validate_session' };
+    session.chunks.push(String(request.payload && request.payload.chunk || ''));
+    return null;
+  }
+  if (request.type === 'validate_finish') {
+    const session = validationSessions.get(request.id);
+    validationSessions.delete(request.id);
+    if (!session) return { id: request.id, type: 'error', reason: 'missing_validate_session' };
+    const started = workerNow();
+    const done = (result) => ({ id: request.id, type: 'validated', result, workerCpuMs: workerNow() - started });
+    if (asyncFinal) {
+      return validateSaveJsonAsync(session.chunks.join(''), session.currentVersion).then(done);
+    }
+    return done(validateSaveJson(session.chunks.join(''), session.currentVersion));
+  }
+  if (request.type === 'encode_begin') {
+    capWorkerSessions(encodeSessions);
+    encodeSessions.set(request.id, { descriptor: request.payload && request.payload.descriptor || {}, data: {} });
+    return null;
+  }
+  if (request.type === 'encode_part') {
+    const session = encodeSessions.get(request.id);
+    if (!session) return { id: request.id, type: 'error', reason: 'missing_encode_session' };
+    session.data[request.payload && request.payload.key] = request.payload && request.payload.value;
+    return null;
+  }
+  if (request.type === 'encode_finish') {
+    const session = encodeSessions.get(request.id);
+    encodeSessions.delete(request.id);
+    if (!session) return { id: request.id, type: 'error', reason: 'missing_encode_session' };
+    const started = workerNow();
+    const done = (encoded) => ({ id: request.id, type: 'encoded', ...encoded, workerCpuMs: workerNow() - started });
+    if (asyncFinal) return encodeSavePayloadFinal(session).then(done);
+    return done(encodeSavePayload(session));
+  }
+  if (request.type === 'encode') {
+    const started = workerNow();
+    const done = (encoded) => ({ id: request.id, type: 'encoded', ...encoded, workerCpuMs: workerNow() - started });
+    if (asyncFinal) return encodeSavePayloadFinal(request.payload).then(done);
+    return done(encodeSavePayload(request.payload));
+  }
+  if (request.type === 'validate') {
+    const started = workerNow();
+    const done = (result) => ({ id: request.id, type: 'validated', result, workerCpuMs: workerNow() - started });
+    if (asyncFinal) {
+      return validateSaveJsonAsync(
+        request.payload && request.payload.raw,
+        request.payload && request.payload.currentVersion,
+      ).then(done);
+    }
+    return done(validateSaveJson(request.payload && request.payload.raw, request.payload && request.payload.currentVersion));
+  }
+  return { id: request.id, type: 'error', reason: 'unknown_request' };
+}
+
+function workerNow() {
+  // This is synchronous worker-task elapsed time, not CPU accounting. Node's Windows CPU clocks
+  // advance in scheduler-sized (~15 ms) quanta and therefore report 0 for normal save payloads.
+  // performance.now() matches the browser/Electron worker clock and keeps sub-millisecond work
+  // observable; main-thread blocking is reported independently by saveSystem.
+  return typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now() : Date.now();
+}
+
+// Card-lane projection of a prepared envelope: exactly the fields slotCardFromEnvelopeData
+// reads — fmt/version/savedAt/playtimeS/label/thumbnail plus the player ship pick, the current
+// sector's name row, and meta/missions/story/nav — minus the multi-MB remainder (entities, the
+// other world.sectors rows). Posted with the meta verdict so the slot-index consult builds its
+// display card off the worker's parse instead of re-parsing the blob on the main thread.
+export function cardEnvFromEnvelope(env) {
+  const data = env && env.data;
+  if (!env || typeof env !== 'object' || !data || typeof data !== 'object') return null;
+  const player = data.player && typeof data.player === 'object' ? data.player : {};
+  const ships = Array.isArray(player.ownedShips) ? player.ownedShips : [];
+  const world = data.world && typeof data.world === 'object' ? data.world : {};
+  const sectorId = typeof world.currentSectorId === 'string' ? world.currentSectorId : '';
+  const sector = sectorId && world.sectors && typeof world.sectors === 'object'
+    ? world.sectors[sectorId] : null;
+  const liteSectors = {};
+  if (sectorId && sector && typeof sector === 'object') {
+    liteSectors[sectorId] = { name: sector.name, id: sector.id };
+  }
+  return {
+    fmt: env.fmt,
+    version: env.version,
+    savedAt: env.savedAt,
+    playtimeS: env.playtimeS,
+    label: env.label,
+    thumbnail: env.thumbnail,
+    data: {
+      player: {
+        credits: player.credits,
+        activeShipIndex: player.activeShipIndex,
+        heat: player.heat,
+        bounty: player.bounty,
+        livingHull: player.livingHull,
+        // Full ship records — the slot portrait reads fittings/livingHull off the active
+        // ship, so a defId-only projection degrades the card (W140-G2). Still KB-scale.
+        ownedShips: ships,
+      },
+      world: { currentSectorId: sectorId, sectors: liteSectors },
+      meta: data.meta,
+      missions: data.missions,
+      story: data.story,
+      nav: data.nav,
+      aceMemory: data.aceMemory,
+    },
+  };
+}
+
+// Blob-backed source keeps browser, minified bundle, and Electron on one path. This literal is
+// intentionally self-contained: Function#toString output is not closure-safe after minification.
+export const SAVE_WORKER_SOURCE = String.raw`
+'use strict';
+function validateNativeAttestationTables(payload, validateLegacy = false) {
+  const fail = reason => ({ ok: false, reason: 'native_attestation_' + reason });
+  const own = (o, k) => Object.getOwnPropertyDescriptor(o, k);
+  if (payload == null) return { ok: true, legacy: true };
+  if (typeof payload !== 'object' || Array.isArray(payload)) return fail('shape');
+  const schema = own(payload, 'schema');
+  if (schema && !('value' in schema)) return fail('accessor');
+  if (schema?.value !== 4) {
+    if (own(payload, 'attestations')) return fail('mixed_format');
+    if (!validateLegacy) return { ok: true, legacy: true };
+  }
+  const MAX_NODES = 200000, MAX_BYTES = 12 * 1024 * 1024;
+  function stringBytes(s) {
+    let n = 2;
+    for (let i = 0; i < s.length; i++) {
+      const c = s.charCodeAt(i);
+      if (c === 34 || c === 92 || c === 8 || c === 9 || c === 10 || c === 12 || c === 13) n += 2;
+      else if (c < 32) n += 6;
+      else if (c < 128) n++;
+      else if (c < 2048) n += 2;
+      else if (c >= 0xd800 && c <= 0xdbff && i + 1 < s.length && s.charCodeAt(i + 1) >= 0xdc00 && s.charCodeAt(i + 1) <= 0xdfff) { n += 4; i++; }
+      else if (c >= 0xd800 && c <= 0xdfff) n += 6;
+      else n += 3;
+      if (n > MAX_BYTES) throw Error('bytes');
+    }
+    return n;
+  }
+  function measure(root) {
+    const active = new Set(); let nodes = 0, bytes = 0, maxDepth = 0;
+    function visit(v, depth) {
+      if (++nodes > MAX_NODES) throw Error('nodes');
+      if (depth > 62) throw Error('depth');
+      maxDepth = Math.max(depth, maxDepth);
+      if (v === null) bytes += 4;
+      else if (typeof v === 'string') bytes += stringBytes(v);
+      else if (typeof v === 'boolean') bytes += v ? 4 : 5;
+      else if (typeof v === 'number' && Number.isFinite(v)) bytes += String(Object.is(v, -0) ? 0 : v).length;
+      else if (typeof v === 'object') {
+        if (active.has(v)) throw Error('cycle');
+        const array = Array.isArray(v), proto = Object.getPrototypeOf(v);
+        if (array ? proto !== Array.prototype : proto !== Object.prototype && proto !== null) throw Error('prototype');
+        const keys = Reflect.ownKeys(v);
+        if (keys.some(k => typeof k !== 'string')) throw Error('symbol');
+        const entries = [];
+        if (array) {
+          if (v.length > 50000 || keys.length !== v.length + 1) throw Error('collection');
+          for (let i = 0; i < v.length; i++) { const d = own(v, String(i)); if (!d || !('value' in d) || !d.enumerable) throw Error('descriptor'); entries.push(d.value); }
+        } else {
+          if (keys.length > 50000) throw Error('collection');
+          for (const k of keys) { const d = own(v, k); if (!d || !('value' in d) || !d.enumerable || k === '__proto__' || k === 'constructor' || k === 'prototype') throw Error('descriptor'); entries.push([k, d.value]); }
+        }
+        active.add(v); bytes += 2 + Math.max(0, entries.length - 1);
+        for (const entry of entries) { if (array) visit(entry, depth + 1); else { bytes += stringBytes(entry[0]) + 1; visit(entry[1], depth + 1); } if (bytes > MAX_BYTES) throw Error('bytes'); }
+        active.delete(v);
+      } else throw Error('type');
+      if (bytes > MAX_BYTES) throw Error('bytes');
+    }
+    visit(root, 0); return { nodes, bytes, maxDepth };
+  }
+  try {
+    const compact = measure(payload);
+    if (schema?.value !== 4) return { ok: true, legacy: true, expandedNodes: compact.nodes, expandedBytes: compact.bytes };
+    const tables = payload.attestations, bodies = payload.bodies;
+    if (!tables || Array.isArray(tables) || Object.keys(tables).sort().join(',') !== 'contracts,native,schema' || tables.schema !== 1
+      || !Array.isArray(tables.contracts) || !Array.isArray(tables.native)
+      || !bodies || Array.isArray(bodies)) return fail('shape');
+    const ids = Object.keys(bodies);
+    if (ids.length > 2048 || tables.contracts.length > ids.length || tables.native.length > ids.length) return fail('count');
+    const order = payload.bodyOrder;
+    if (!Array.isArray(order) || order.length !== ids.length || new Set(order).size !== ids.length || order.some(id => typeof id !== 'string' || !own(bodies, id))) return fail('body_order');
+    const allowed = 'bodyResponseInertiaScale,bodyResponseMassScale,contactEpisode,contractRef,createdCanSleep,effectiveInertiaY,effectiveMass,forcesDirty,handle,identity,nativeRef,sleepAllowed,sourceLife,state,tumbleMaterial';
+    const used = [new Set(), new Set()];
+    const base = { ...payload, bodies: {} }; delete base.attestations;
+    let expanded = measure(base);
+    // Replace the empty bodies object's two braces with the equivalent per-body members.
+    for (let index = 0; index < order.length; index++) {
+      const id = order[index], row = bodies[id];
+      if (!row || Array.isArray(row) || Object.keys(row).sort().join(',') !== allowed) return fail('body_shape');
+      const refs = [row.contractRef, row.nativeRef], lists = [tables.contracts, tables.native];
+      for (let k = 0; k < 2; k++) {
+        const ref = refs[k];
+        if (!Number.isSafeInteger(ref) || ref < 0 || ref >= lists[k].length) return fail('reference');
+        if (!used[k].has(ref)) { if (ref !== used[k].size) return fail('reference_order'); used[k].add(ref); }
+      }
+      const material = {};
+      for (const key of Object.keys(row)) {
+        if (key === 'contractRef') material.contract = tables.contracts[row.contractRef];
+        else if (key === 'nativeRef') material.native = tables.native[row.nativeRef];
+        else material[key] = row[key];
+      }
+      const cost = measure(material);
+      if (cost.maxDepth + 2 > 62) return fail('depth');
+      expanded.nodes += cost.nodes; expanded.bytes += stringBytes(id) + 1 + cost.bytes + (index ? 1 : 0);
+      if (expanded.nodes > MAX_NODES) return fail('expanded_nodes');
+      if (expanded.bytes > MAX_BYTES) return fail('expanded_bytes');
+    }
+    for (const [i, list] of [tables.contracts, tables.native].entries()) {
+      if (used[i].size !== list.length) return fail('unused');
+      const seen = new Set();
+      for (const row of list) {
+        if (!row || typeof row !== 'object' || Array.isArray(row)) return fail('table_shape');
+        const expected = i === 0 ? 'canSleep,collisionGroups,manifest,material,proportions,proxyScale,spec' : 'angularDamping,centerOfMass,colliders,enabled,inertia,inverseMass,linearDamping,mass,type';
+        if (Object.keys(row).sort().join(',') !== expected) return fail('table_shape');
+        if (i === 1 && (!['angularDamping','linearDamping','mass','type'].every(k => Number.isFinite(row[k])) || typeof row.enabled !== 'boolean' || !Array.isArray(row.colliders))) return fail('table_type');
+        if (i === 0 && (typeof row.canSleep !== 'boolean' || !Number.isSafeInteger(row.collisionGroups) || !row.spec || typeof row.spec !== 'object')) return fail('table_type');
+        const key = JSON.stringify(row); if (seen.has(key)) return fail('duplicate'); seen.add(key);
+      }
+    }
+    return { ok: true, legacy: false, compactNodes: compact.nodes, expandedNodes: expanded.nodes, expandedBytes: expanded.bytes };
+  } catch (error) { return fail(error.message || 'invalid'); }
+}
+
+function fnv1a(value) {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index++) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+function encodeSavePayload(input) {
+  const descriptor = input && input.descriptor;
+  const data = input && input.data;
+  const dataJson = JSON.stringify(data);
+  const checksum = fnv1a(dataJson);
+  return { json: JSON.stringify(Object.assign({}, descriptor || {}, { checksum, data })), checksum };
+}
+var SAVE_WRITE_MAX_BYTES = ${SAVE_WRITE_MAX_BYTES};
+function saveTextByteLength(value) {
+  var bytes = 0;
+  for (var i = 0; i < value.length; i++) {
+    var code = value.charCodeAt(i);
+    if (code <= 0x7f) bytes++;
+    else if (code <= 0x7ff) bytes += 2;
+    else if (code >= 0xd800 && code <= 0xdbff && i + 1 < value.length
+      && value.charCodeAt(i + 1) >= 0xdc00 && value.charCodeAt(i + 1) <= 0xdfff) {
+      bytes += 4;
+      i++;
+    } else bytes += 3;
+    if (bytes > SAVE_WRITE_MAX_BYTES) return SAVE_WRITE_MAX_BYTES + 1;
+  }
+  return bytes;
+}
+var SAVE_GZIP_FORMAT = 'spaceface-save-gz';
+function saveGzipAvailable() {
+  return typeof CompressionStream === 'function'
+    && typeof DecompressionStream === 'function'
+    && typeof Blob === 'function' && typeof btoa === 'function' && typeof atob === 'function';
+}
+function bytesToBase64(bytes) {
+  var binary = '';
+  var CHUNK = 0x8000;
+  for (var i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+function base64ToBytes(text) {
+  var binary = atob(text);
+  var bytes = new Uint8Array(binary.length);
+  for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+function gzipText(json) {
+  var stream = new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'));
+  return new Response(stream).arrayBuffer().then(function (buffer) {
+    return bytesToBase64(new Uint8Array(buffer));
+  });
+}
+function gunzipText(payload) {
+  var stream = new Blob([base64ToBytes(payload)]).stream().pipeThrough(new DecompressionStream('gzip'));
+  var reader = stream.getReader();
+  var decoder = new TextDecoder();
+  var parts = [];
+  var totalBytes = 0;
+  function readNext() {
+    return reader.read().then(function (chunk) {
+      if (chunk.done) {
+        parts.push(decoder.decode());
+        return parts.join('');
+      }
+      totalBytes += chunk.value.byteLength;
+      if (totalBytes > SAVE_WRITE_MAX_BYTES) {
+        var error = new Error('Decoded save exceeds the import byte ceiling');
+        error.reason = 'import_too_large';
+        return reader.cancel().catch(function () {}).then(function () { throw error; });
+      }
+      parts.push(decoder.decode(chunk.value, { stream: true }));
+      return readNext();
+    });
+  }
+  return readNext().finally(function () { reader.releaseLock(); });
+}
+function isGzippedSaveText(raw) {
+  return typeof raw === 'string' && raw.length >= 16 && raw.charCodeAt(0) === 123
+    && raw.slice(0, 96).indexOf('"spaceface-save-gz"') !== -1;
+}
+function gzipEnvelopeJson(json) {
+  var env = JSON.parse(json);
+  return gzipText(json).then(function (payload) {
+    return JSON.stringify({
+      fmt: SAVE_GZIP_FORMAT, gz: 1, version: env.version,
+      savedAt: env.savedAt || null, checksum: env.checksum || null, payload: payload,
+    });
+  });
+}
+function decodeSaveEnvelopeText(raw) {
+  if (!isGzippedSaveText(raw)) return Promise.resolve({ ok: true, text: raw });
+  var outer;
+  try { outer = JSON.parse(raw); } catch (error) { return Promise.resolve({ ok: false, reason: 'parse_failed' }); }
+  if (!outer || outer.fmt !== SAVE_GZIP_FORMAT || typeof outer.payload !== 'string') {
+    return Promise.resolve({ ok: false, reason: 'bad_format' });
+  }
+  if (!saveGzipAvailable()) return Promise.resolve({ ok: false, reason: 'gz_unsupported' });
+  return gunzipText(outer.payload).then(function (text) {
+    // FB-104 — profile side bags ride on the outer wrapper of a compressed export bundle.
+    return outer.profile != null ? { ok: true, text: text, profile: outer.profile } : { ok: true, text: text };
+  }, function (error) {
+    return { ok: false, reason: error.reason || 'gz_decode_failed' };
+  });
+}
+// FB-093 — bounded, worker-side compressed encode: the import limit object applies pre-write;
+// over-limit saves fail with a named reason, never a silent truncated write. Plain JSON stays
+// the fallback when the platform lacks CompressionStream.
+function encodeSavePayloadFinal(input) {
+  var encoded;
+  try { encoded = encodeSavePayload(input); }
+  catch (error) { return Promise.resolve({ ok: false, reason: 'stringify_failed' }); }
+  var envelope;
+  try { envelope = JSON.parse(encoded.json); } catch (error) { return Promise.resolve({ ok: false, reason: 'stringify_failed' }); }
+  var bound = preflightSaveImport(envelope);
+  if (!bound.ok) return Promise.resolve({ ok: false, reason: bound.reason, limit: bound.limit, actual: bound.actual });
+  var bytes = saveTextByteLength(encoded.json);
+  if (bytes > SAVE_WRITE_MAX_BYTES) {
+    return Promise.resolve({ ok: false, reason: 'save_size_limit', limit: SAVE_WRITE_MAX_BYTES, actual: bytes });
+  }
+  if (!saveGzipAvailable()) {
+    return Promise.resolve({ ok: true, json: encoded.json, checksum: encoded.checksum, gz: false });
+  }
+  return gzipEnvelopeJson(encoded.json).then(function (json) {
+    return { ok: true, json: json, checksum: encoded.checksum, gz: true };
+  }, function () {
+    return { ok: true, json: encoded.json, checksum: encoded.checksum, gz: false };
+  });
+}
+function readSaveVersion(version, currentVersion) {
+  if (!Number.isFinite(version)) return { ok: false, reason: 'bad_format' };
+  if (Number.isFinite(currentVersion) && version > currentVersion) return { ok: false, reason: 'newer_version' };
+  const ver = version | 0;
+  if (ver < 1 || ver !== version) return { ok: false, reason: 'bad_format' };
+  return { ok: true, version: ver };
+}
+function validateSaveJson(raw, currentVersion) {
+  if (!raw) return { ok: false, reason: 'no_save' };
+  let envelope;
+  try { envelope = JSON.parse(raw); } catch (error) { return { ok: false, reason: 'parse_failed' }; }
+  if (!envelope || envelope.fmt !== 'spaceface-save') return { ok: false, reason: 'bad_format' };
+  const versionRead = readSaveVersion(envelope.version, currentVersion);
+  if (!versionRead.ok) return versionRead;
+  const version = versionRead.version;
+  if (!envelope.data || typeof envelope.data !== 'object') return { ok: false, reason: 'no_data' };
+  if (envelope.checksum && fnv1a(JSON.stringify(envelope.data)) !== envelope.checksum) {
+    return { ok: false, reason: 'checksum' };
+  }
+  const player = envelope.data.entities && envelope.data.entities.player;
+  if (!player || typeof player !== 'object') return { ok: false, reason: 'no_player' };
+  if (player.type && player.type !== 'ship') return { ok: false, reason: 'invalid_player' };
+  return { ok: true, version, savedAt: envelope.savedAt || null, checksum: envelope.checksum || null };
+}
+function restorePrepareSaveJson(raw, currentVersion) {
+  if (!raw) return { ok: false, reason: 'no_save' };
+  var envelope;
+  try { envelope = JSON.parse(raw); } catch (error) { return { ok: false, reason: 'parse_failed' }; }
+  if (!envelope || envelope.fmt !== 'spaceface-save') return { ok: false, reason: 'bad_format' };
+  var versionRead = readSaveVersion(envelope.version, currentVersion);
+  if (!versionRead.ok) return versionRead;
+  if (!envelope.data || typeof envelope.data !== 'object') return { ok: false, reason: 'no_data' };
+  if (envelope.checksum && fnv1a(JSON.stringify(envelope.data)) !== envelope.checksum) {
+    return { ok: false, reason: 'checksum' };
+  }
+  var player = envelope.data.entities && envelope.data.entities.player;
+  if (!player || typeof player !== 'object') return { ok: false, reason: 'no_player' };
+  if (player.type && player.type !== 'ship') return { ok: false, reason: 'invalid_player' };
+  var preflight = preflightSaveImport(envelope);
+  if (!preflight.ok) return preflight;
+  return { ok: true, version: versionRead.version, env: envelope, preflighted: true };
+}
+// Gzip-aware twins: stored compressed envelopes decode inside the worker first, then run the
+// identical validate/prepare path on the inner plain JSON.
+function validateSaveJsonAsync(raw, currentVersion) {
+  return decodeSaveEnvelopeText(raw).then(function (decoded) {
+    if (!decoded.ok) return { ok: false, reason: decoded.reason };
+    return validateSaveJson(decoded.text, currentVersion);
+  });
+}
+function restorePrepareSaveJsonAsync(raw, currentVersion) {
+  return decodeSaveEnvelopeText(raw).then(function (decoded) {
+    if (!decoded.ok) return { ok: false, reason: decoded.reason };
+    var prepared = restorePrepareSaveJson(decoded.text, currentVersion);
+    // FB-104 — surface the bundle's profile side bags on the prepared envelope so the main
+    // thread merges them after validation, the same as a plain-text import.
+    if (prepared.ok && decoded.profile != null && prepared.env && typeof prepared.env === 'object') {
+      prepared.env.profile = decoded.profile;
+    }
+    return prepared;
+  });
+}
+var PREFLIGHT_MAX_DEPTH = 64;
+var PREFLIGHT_MAX_NODES = 500000;
+var PREFLIGHT_MAX_COLLECTION_ITEMS = 50000;
+var PREFLIGHT_MAX_PERSISTENT_ENTITIES = 2048;
+// Import-free twin of saveSystem's preflightSaveImport — identical limits, reasons, and order.
+function preflightSaveImport(value) {
+  const dataDescriptor = value && typeof value === 'object' ? Object.getOwnPropertyDescriptor(value, 'data') : null;
+  if (dataDescriptor && !('value' in dataDescriptor)) return { ok: false, reason: 'native_attestation_accessor' };
+  const dataValue = dataDescriptor && dataDescriptor.value;
+  const physicsDescriptor = dataValue && typeof dataValue === 'object' ? Object.getOwnPropertyDescriptor(dataValue, 'physics') : null;
+  if (physicsDescriptor && !('value' in physicsDescriptor)) return { ok: false, reason: 'native_attestation_accessor' };
+  const nativeVerdict = validateNativeAttestationTables(physicsDescriptor && physicsDescriptor.value);
+  if (!nativeVerdict.ok) return nativeVerdict;
+
+  var persistent = value && typeof value === 'object'
+    && value.data && typeof value.data === 'object'
+    && value.data.entities && typeof value.data.entities === 'object'
+    ? value.data.entities.persistent
+    : null;
+  if (Array.isArray(persistent) && persistent.length > PREFLIGHT_MAX_PERSISTENT_ENTITIES) {
+    return { ok: false, reason: 'import_persistent_entity_limit',
+      limit: PREFLIGHT_MAX_PERSISTENT_ENTITIES, actual: persistent.length };
+  }
+  var active = new WeakSet();
+  var stack = [{ value: value, depth: 0, exit: false }];
+  var nodes = 0;
+  while (stack.length) {
+    var frame = stack.pop();
+    var current = frame.value;
+    if (frame.exit) {
+      active.delete(current);
+      continue;
+    }
+    if (frame.depth > PREFLIGHT_MAX_DEPTH) {
+      return { ok: false, reason: 'import_depth_limit', limit: PREFLIGHT_MAX_DEPTH, actual: frame.depth };
+    }
+    nodes++;
+    if (nodes > PREFLIGHT_MAX_NODES) {
+      return { ok: false, reason: 'import_node_limit', limit: PREFLIGHT_MAX_NODES, actual: nodes };
+    }
+    if (current === null || typeof current !== 'object') continue;
+    if (active.has(current)) {
+      return { ok: false, reason: 'import_cycle', limit: PREFLIGHT_MAX_DEPTH, actual: frame.depth };
+    }
+    active.add(current);
+    stack.push({ value: current, depth: frame.depth, exit: true });
+    if (Array.isArray(current)) {
+      if (current.length > PREFLIGHT_MAX_COLLECTION_ITEMS) {
+        return { ok: false, reason: 'import_collection_limit',
+          limit: PREFLIGHT_MAX_COLLECTION_ITEMS, actual: current.length };
+      }
+      for (var i = current.length - 1; i >= 0; i--) {
+        stack.push({ value: current[i], depth: frame.depth + 1, exit: false });
+      }
+      continue;
+    }
+    var keys = Object.keys(current);
+    if (keys.length > PREFLIGHT_MAX_COLLECTION_ITEMS) {
+      return { ok: false, reason: 'import_collection_limit',
+        limit: PREFLIGHT_MAX_COLLECTION_ITEMS, actual: keys.length };
+    }
+    for (var j = keys.length - 1; j >= 0; j--) {
+      stack.push({ value: current[keys[j]], depth: frame.depth + 1, exit: false });
+    }
+  }
+  return { ok: true, nodes: nodes };
+}
+function now() {
+  // Synchronous worker-task elapsed time. Do not use process/thread CPU clocks here: on Windows
+  // their scheduler-quantized readings hide ordinary sub-15 ms encodes as zero.
+  return typeof performance !== 'undefined' ? performance.now() : Date.now();
+}
+// Import-free twin of the host-side cardEnvFromEnvelope: exactly the envelope fields the slot
+// card builder reads, posted with the meta verdict so the index consult builds its card off
+// this parse instead of re-parsing the blob on the main thread.
+function cardEnvFromEnvelope(env) {
+  var data = env && env.data;
+  if (!env || typeof env !== 'object' || !data || typeof data !== 'object') return null;
+  var player = data.player && typeof data.player === 'object' ? data.player : {};
+  var ships = Array.isArray(player.ownedShips) ? player.ownedShips : [];
+  var world = data.world && typeof data.world === 'object' ? data.world : {};
+  var sectorId = typeof world.currentSectorId === 'string' ? world.currentSectorId : '';
+  var sector = sectorId && world.sectors && typeof world.sectors === 'object'
+    ? world.sectors[sectorId] : null;
+  var liteSectors = {};
+  if (sectorId && sector && typeof sector === 'object') {
+    liteSectors[sectorId] = { name: sector.name, id: sector.id };
+  }
+  return {
+    fmt: env.fmt,
+    version: env.version,
+    savedAt: env.savedAt,
+    playtimeS: env.playtimeS,
+    label: env.label,
+    thumbnail: env.thumbnail,
+    data: {
+      player: {
+        credits: player.credits,
+        activeShipIndex: player.activeShipIndex,
+        heat: player.heat,
+        bounty: player.bounty,
+        livingHull: player.livingHull,
+        // Full ship records — the slot portrait reads fittings/livingHull off the active
+        // ship, so a defId-only projection degrades the card (W140-G2). Still KB-scale.
+        ownedShips: ships,
+      },
+      world: { currentSectorId: sectorId, sectors: liteSectors },
+      meta: data.meta,
+      missions: data.missions,
+      story: data.story,
+      nav: data.nav,
+      aceMemory: data.aceMemory,
+    },
+  };
+}
+// Portrait-data projection for the Save/Load screen's lazy fill — the heavy env.data
+// fields nobody's card consumes (world tables, thumbnail) stay off postMessage.
+function cardDataFromEnvelope(env) {
+  var source = env && typeof env === 'object'
+    ? (env.data && typeof env.data === 'object' && !Array.isArray(env.data) ? env.data : env)
+    : null;
+  if (!source || typeof source !== 'object') return null;
+  if (!source.player && !source.missions && !source.story && !source.aceMemory) return null;
+  return {
+    player: source.player,
+    story: source.story,
+    missions: source.missions,
+    aceMemory: source.aceMemory,
+    meta: source.meta,
+  };
+}
+function peekCardDataJson(raw) {
+  if (!raw || typeof raw !== 'string') return { ok: false, reason: 'no_save' };
+  var env;
+  try { env = JSON.parse(raw); } catch (error) {
+    return { ok: false, reason: 'parse_failed' };
+  }
+  var cardData = cardDataFromEnvelope(env);
+  return cardData ? { ok: true, cardData: cardData } : { ok: false, reason: 'bad_format' };
+}
+function peekCardDataJsonAsync(raw) {
+  return decodeSaveEnvelopeText(raw).then(function (decoded) {
+    return decoded.ok ? peekCardDataJson(decoded.text) : decoded;
+  });
+}
+self.addEventListener('message', function (event) {
+  const request = event.data || {};
+  try {
+    self.__saveEncodeSessions = self.__saveEncodeSessions || new Map();
+    self.__saveValidationSessions = self.__saveValidationSessions || new Map();
+    // Same orphan bound as the module sessions — a begin without finish must not pin
+    // its assembled payload in the worker forever (W138 F5).
+    if (!self.__capWorkerSessions) {
+      self.__capWorkerSessions = function (map) {
+        while (map.size >= 4) map.delete(map.keys().next().value);
+      };
+    }
+    if (request.type === 'validate_begin') {
+      self.__capWorkerSessions(self.__saveValidationSessions);
+      self.__saveValidationSessions.set(request.id, {
+        currentVersion: request.payload && request.payload.currentVersion,
+        chunks: [],
+      });
+      return;
+    }
+    if (request.type === 'validate_part') {
+      const session = self.__saveValidationSessions.get(request.id);
+      if (!session) throw new Error('missing_validate_session');
+      session.chunks.push(String(request.payload && request.payload.chunk || ''));
+      return;
+    }
+    if (request.type === 'validate_finish') {
+      const session = self.__saveValidationSessions.get(request.id);
+      self.__saveValidationSessions.delete(request.id);
+      if (!session) throw new Error('missing_validate_session');
+      const started = now();
+      validateSaveJsonAsync(session.chunks.join(''), session.currentVersion).then(function (result) {
+        self.postMessage({
+          id: request.id,
+          type: 'validated',
+          result: result,
+          workerCpuMs: now() - started,
+        });
+      });
+      return;
+    }
+    if (request.type === 'encode_begin') {
+      self.__capWorkerSessions(self.__saveEncodeSessions);
+      self.__saveEncodeSessions.set(request.id, { descriptor: request.payload && request.payload.descriptor || {}, data: {} });
+      return;
+    }
+    if (request.type === 'encode_part') {
+      const session = self.__saveEncodeSessions.get(request.id);
+      if (!session) throw new Error('missing_encode_session');
+      session.data[request.payload && request.payload.key] = request.payload && request.payload.value;
+      return;
+    }
+    if (request.type === 'encode_finish') {
+      const session = self.__saveEncodeSessions.get(request.id);
+      self.__saveEncodeSessions.delete(request.id);
+      if (!session) throw new Error('missing_encode_session');
+      const started = now();
+      encodeSavePayloadFinal(session).then(function (encoded) {
+        self.postMessage(Object.assign({ id: request.id, type: 'encoded' }, encoded, {
+          workerCpuMs: now() - started,
+        }));
+      });
+      return;
+    }
+    if (request.type === 'peek_card_data') {
+      var startedPeek = now();
+      var postPeek = function (peekResult) {
+        self.postMessage({
+          id: request.id,
+          type: 'peeked_card_data',
+          result: peekResult,
+          workerCpuMs: now() - startedPeek,
+        });
+      };
+      peekCardDataJsonAsync(request.payload && request.payload.raw).then(postPeek, function () {
+        postPeek({ ok: false, reason: 'parse_failed' });
+      });
+      return;
+    }
+    if (request.type === 'restore_prepare' || request.type === 'restore_prepare_meta') {
+      var startedPrepare = now();
+      restorePrepareSaveJsonAsync(
+        request.payload && request.payload.raw,
+        request.payload && request.payload.currentVersion,
+      ).then(function (prepared) {
+        var result = prepared;
+        // Meta lane: verdict only — the multi-MB envelope clone must not cross postMessage for a
+        // slot nobody will load. The ~1 KB cardEnv projection still crosses so the consult
+        // builds the display card without re-parsing the blob on the main thread.
+        if (request.type === 'restore_prepare_meta'
+            && prepared && typeof prepared === 'object' && prepared.env !== undefined) {
+          var meta = {};
+          for (var mk in prepared) {
+            if (mk !== 'env') meta[mk] = prepared[mk];
+          }
+          var cardEnv = cardEnvFromEnvelope(prepared.env);
+          result = cardEnv ? Object.assign(meta, { cardEnv: cardEnv }) : meta;
+        }
+        self.postMessage({
+          id: request.id,
+          type: 'restored_prepare',
+          result: result,
+          workerCpuMs: now() - startedPrepare,
+        });
+      }, function () {
+        self.postMessage({
+          id: request.id,
+          type: 'restored_prepare',
+          result: { ok: false, reason: 'load_failed' },
+          workerCpuMs: now() - startedPrepare,
+        });
+      });
+      return;
+    }
+    const started = now();
+    if (request.type === 'encode') {
+      encodeSavePayloadFinal(request.payload).then(function (encoded) {
+        self.postMessage(Object.assign({ id: request.id, type: 'encoded' }, encoded, {
+          workerCpuMs: now() - started,
+        }));
+      });
+      return;
+    }
+    if (request.type === 'validate') {
+      validateSaveJsonAsync(request.payload && request.payload.raw, request.payload && request.payload.currentVersion).then(function (result) {
+        self.postMessage({
+          id: request.id,
+          type: 'validated',
+          result: result,
+          workerCpuMs: now() - started,
+        });
+      });
+      return;
+    }
+    self.postMessage({ id: request.id, type: 'error', reason: 'unknown_request' });
+  } catch (error) {
+    self.postMessage({ id: request.id, type: 'error', reason: 'worker_failed' });
+  }
+});`;
+
+if (typeof WorkerGlobalScope !== 'undefined'
+  && typeof self !== 'undefined'
+  && self instanceof WorkerGlobalScope) {
+  self.addEventListener('message', (event) => {
+    try {
+      Promise.resolve(handleSaveWorkerRequestAsync(event.data)).then((response) => {
+        if (response) self.postMessage(response);
+      }).catch(() => {
+        self.postMessage({ id: event.data && event.data.id, type: 'error', reason: 'worker_failed' });
+      });
+    }
+    catch (error) {
+      self.postMessage({ id: event.data && event.data.id, type: 'error', reason: 'worker_failed' });
+    }
+  });
+}

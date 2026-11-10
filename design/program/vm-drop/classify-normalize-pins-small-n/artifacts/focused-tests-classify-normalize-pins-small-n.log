@@ -1,0 +1,185 @@
+TAP version 13
+# Subtest: player and glass visibility pin exact simulation
+ok 1 - player and glass visibility pin exact simulation
+  ---
+  duration_ms: 1.618534
+  ...
+# Subtest: off-screen pursuer can be exact while not drawn
+ok 2 - off-screen pursuer can be exact while not drawn
+  ---
+  duration_ms: 0.186422
+  ...
+# Subtest: far itinerary traffic is abstract not deleted
+ok 3 - far itinerary traffic is abstract not deleted
+  ---
+  duration_ms: 0.163357
+  ...
+# Subtest: after grace, inside exit radius stays near
+ok 4 - after grace, inside exit radius stays near
+  ---
+  duration_ms: 0.134301
+  ...
+# Subtest: beyond the exit radius the classifier is dormant; grace lives on the stamp
+ok 5 - beyond the exit radius the classifier is dormant; grace lives on the stamp
+  ---
+  duration_ms: 0.202409
+  ...
+# Subtest: mission pin is explicit data not a guessed radius
+ok 6 - mission pin is explicit data not a guessed radius
+  ---
+  duration_ms: 0.123359
+  ...
+# Subtest: a lawful ship answering an incident is pinned exact, far or near
+ok 7 - a lawful ship answering an incident is pinned exact, far or near
+  ---
+  duration_ms: 0.162037
+  ...
+# Subtest: classifyActivity skips a second pin normalize when pins are already normalized
+ok 8 - classifyActivity skips a second pin normalize when pins are already normalized
+  ---
+  duration_ms: 0.147295
+  ...
+# Subtest: pin normalize scratch reuses the same buffers without changing reasons
+ok 9 - pin normalize scratch reuses the same buffers without changing reasons
+  ---
+  duration_ms: 1.463119
+  ...
+# Subtest: tether flag on the entity is an explicit pin
+ok 10 - tether flag on the entity is an explicit pin
+  ---
+  duration_ms: 0.27107
+  ...
+# Subtest: pin normalize small-n fast path matches Set+sort semantics
+ok 11 - pin normalize small-n fast path matches Set+sort semantics
+  ---
+  duration_ms: 0.229798
+  ...
+# Subtest: physics reach uses look-ahead not camera size alone
+ok 12 - physics reach uses look-ahead not camera size alone
+  ---
+  duration_ms: 0.182406
+  ...
+# Subtest: presentation runway is independent of exact sim
+ok 13 - presentation runway is independent of exact sim
+  ---
+  duration_ms: 0.191702
+  ...
+# Subtest: far rocks and haulers leave the Rapier set without being deleted
+ok 14 - far rocks and haulers leave the Rapier set without being deleted
+  ---
+  duration_ms: 4.434002
+  ...
+# Subtest: later ticks do not reclassify the full live list
+ok 15 - later ticks do not reclassify the full live list
+  ---
+  duration_ms: 2.017605
+  ...
+# Subtest: stable entity-index membership skips the fat unstamped rescan
+ok 16 - stable entity-index membership skips the fat unstamped rescan
+  ---
+  duration_ms: 2.946311
+  ...
+# Subtest: same-tick projectile spawns append without reclassifying the world
+ok 17 - same-tick projectile spawns append without reclassifying the world
+  ---
+  duration_ms: 0.902354
+  ...
+# Subtest: off-glass pursuer stays exact and in physics
+ok 18 - off-glass pursuer stays exact and in physics
+  ---
+  duration_ms: 0.722334
+  ...
+# Subtest: tethered payload stays exact after leaving the glass
+ok 19 - tethered payload stays exact after leaving the glass
+  ---
+  duration_ms: 2.637813
+  ...
+# Subtest: job-pinned far actor stays exact
+ok 20 - job-pinned far actor stays exact
+  ---
+  duration_ms: 0.479886
+  ...
+# Subtest: mined rock keeps remaining ore after leaving and returning
+ok 21 - mined rock keeps remaining ore after leaving and returning
+  ---
+  duration_ms: 0.913207
+  ...
+# Subtest: destroyed records are not the same as dematerialized far actors
+ok 22 - destroyed records are not the same as dematerialized far actors
+  ---
+  duration_ms: 0.48118
+  ...
+# Subtest: stamped dormant owners never think; unstamped hostiles still do
+ok 23 - stamped dormant owners never think; unstamped hostiles still do
+  ---
+  duration_ms: 0.576132
+  ...
+# Subtest: consecutive ticks demote a far hauler after grace instead of restarting it
+ok 24 - consecutive ticks demote a far hauler after grace instead of restarting it
+  ---
+  duration_ms: 2.793749
+  ...
+# Subtest: mining lock and authored activity slots stay exact off the table
+ok 25 - mining lock and authored activity slots stay exact off the table
+  ---
+  duration_ms: 0.361283
+  ...
+# Subtest: SG-06 pursuit activity pins a far hostile
+ok 26 - SG-06 pursuit activity pins a far hostile
+  ---
+  duration_ms: 0.356983
+  ...
+# Subtest: demoting a durable hauler writes the world ledger without deleting it
+ok 27 - demoting a durable hauler writes the world ledger without deleting it
+  ---
+  duration_ms: 4.248796
+  ...
+# Subtest: spatial hash membership is the Rapier active set, not the whole sector
+ok 28 - spatial hash membership is the Rapier active set, not the whole sector
+  ---
+  duration_ms: 1.347976
+  ...
+# Subtest: production physics, AI, and traffic call the activity runtime
+ok 29 - production physics, AI, and traffic call the activity runtime
+  ---
+  duration_ms: 15.883606
+  ...
+# Subtest: S1 near actors think on a reduced cadence, not every tick
+ok 30 - S1 near actors think on a reduced cadence, not every tick
+  ---
+  duration_ms: 0.54787
+  ...
+# Subtest: generic unobserved far ships become aggregate population, not 60 Hz bodies
+ok 31 - generic unobserved far ships become aggregate population, not 60 Hz bodies
+  ---
+  duration_ms: 0.494762
+  ...
+# Subtest: activity manager publishes glass and exact sets from the live classifier
+ok 32 - activity manager publishes glass and exact sets from the live classifier
+  ---
+  duration_ms: 0.693894
+  ...
+# Subtest: incremental classify revisits fast non-physics movers the hash cannot see
+ok 33 - incremental classify revisits fast non-physics movers the hash cannot see
+  ---
+  duration_ms: 1.37328
+  ...
+# Subtest: signature prune skips when entity-index membership is unchanged
+ok 34 - signature prune skips when entity-index membership is unchanged
+  ---
+  duration_ms: 0.713795
+  ...
+# Subtest: incremental classify closed-form catch-up uses entity-index lane when ready
+ok 35 - incremental classify closed-form catch-up uses entity-index lane when ready
+  ---
+  duration_ms: 1.609009
+  ...
+1..35
+# tests 35
+# suites 0
+# pass 35
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 265.663251

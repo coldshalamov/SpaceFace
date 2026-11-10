@@ -1,0 +1,1 @@
+**boot-stage-profile:** cold boot → first control ×3 on idle VM @ master `0612d2b9f`. Wall times **24.03 s / 26.1 s / 22.91 s**. Longest stage every run: **`loading:entering-flight` → `first-playable`** (8540 ms / 7746 ms / 7315 ms). GPU **software** (Playwright SwiftShader). Harness: outbox-local `measure-boot-times.mjs`. Report only — loader untouched.

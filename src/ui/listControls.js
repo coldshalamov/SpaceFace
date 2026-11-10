@@ -1,0 +1,172 @@
+// Shared list controls (UX-3): a search box + filter-chips + sortable-column header used to make
+// the game's long lists (market table, shipyard hulls, outfitting shop, mission log, help codex)
+// sortable, filterable, and searchable. Every screen shares the same controls so the affordance is
+// consistent — once you've sorted the market you expect to sort the shipyard the same way.
+//
+// This is a pure helper: it returns DOM elements + a `getFilters()` accessor and emits no events.
+// Each screen owns its own filter/sort state and its own list render; this just standardizes the UI.
+//
+// USAGE (sort + search):
+//   const ctrls = createListControls({
+//     search: true,
+//     placeholder: 'Search commodities…',
+//     onSearch: (q) => { filterState.q = q; render(); },
+//   });
+//   wrap.appendChild(ctrls.el);
+//
+// USAGE (sortable header cell):
+//   buildSortHeader({ key:'price', label:'Price', activeKey: sort.key, dir: sort.dir, onSort: (k) => { ... } })
+
+let _styleInjected = false;
+function injectStyle() {
+  if (_styleInjected || typeof document === 'undefined') return;
+  _styleInjected = true;
+  const s = document.createElement('style');
+  s.id = 'sf-listcontrols-style';
+  // Deckplate-first with legacy fallbacks: where the system is injected these read --dp-*; anywhere
+  // else they render the legacy values. Colours obey the ORRERY law (design/frontend/ORRERY.md §3.3):
+  // warm bone is the rest light and the focus light of a field; amber is the Hand (never a focus
+  // ring, a chip selection or a sort state), and no blue literals.
+  // The field is the library's dp-field answer (deckplate/layout.js §4): NO box and NO pill — a
+  // hairline rail under the word that becomes the lamp on focus. Chips join the scale-line answer:
+  // bare etched words, the selection lit by ink and a bone underline.
+  s.textContent = `
+  .sf-lc { display:flex; align-items:center; gap:var(--dp-gap, var(--sp-2)); flex-wrap:wrap; margin-bottom:var(--dp-pad, var(--sp-3)); }
+  .sf-lc__search { flex:1; min-width:160px; max-width:340px; font-family:inherit;
+    color:var(--dp-ink, var(--ink)); border:0; border-radius:0;
+    background:linear-gradient(0deg, var(--dp-rule-hi, var(--panel-edge)) 2px, transparent 0);
+    padding:var(--dp-gap, var(--sp-2)) var(--dp-pad, var(--sp-3)); font-size:var(--dp-fs-data, var(--t-sm));
+    pointer-events:auto; transition:box-shadow var(--dp-d-cut, var(--dur)) var(--dp-ease-lamp, var(--ease)); }
+  /* Hover authored (P6): the rail anticipates focus — above rest, below the lamp. */
+  .sf-lc__search:hover:not(:focus) { background:linear-gradient(0deg, color-mix(in srgb, var(--dp-ink, var(--ink)) 45%, transparent) 2px, transparent 0); }
+  .sf-lc__search:focus { outline:none;
+    background:linear-gradient(0deg, var(--dp-lamp, #f2b950) 2px, transparent 0);
+    box-shadow:0 8px 12px -10px var(--dp-lamp-bloom, rgb(242 185 80 / .5)); }
+  /* Authored placeholder tint — the browser default gray reads low-contrast on the dark face. */
+  .sf-lc__search::placeholder { color:var(--dp-ink-mute, var(--ink-mute)); opacity:1; }
+  .sf-lc__chips { display:flex; gap:calc(var(--dp-u, 4px) * 1); flex-wrap:wrap; }
+  .sf-lc__chip { font-family:inherit; cursor:pointer; pointer-events:auto; border:0; border-radius:0;
+    padding:calc(var(--dp-u, 4px) * .75) calc(var(--dp-u, 4px) * 1.75); font-size:var(--dp-fs-etch, var(--t-xs)); letter-spacing:.04em;
+    background:transparent; color:var(--dp-ink-dim, var(--ink-dim));
+    transition:color var(--dp-d-cut, var(--dur)) var(--dp-ease-lamp, var(--ease)), box-shadow var(--dp-d-cut, var(--dur)) var(--dp-ease-lamp, var(--ease)); }
+  .sf-lc__chip:hover { color:var(--dp-ink, var(--ink)); }
+  /* Active chip is a selection: full ink word on a bone underline — no box, no pill. */
+  .sf-lc__chip.active { color:var(--dp-ink, var(--ink));
+    box-shadow:inset 0 -2px 0 0 color-mix(in srgb, var(--dp-ink, var(--ink)) 55%, transparent); }
+  /* Sortable header cell — used inside existing .st-row-head style grids */
+  .sf-sort { cursor:pointer; pointer-events:auto; user-select:none; display:inline-flex;
+    align-items:center; gap:3px; transition:color var(--dp-d-cut, var(--dur)) var(--dp-ease-lamp, var(--ease));
+    background:transparent; border:0; padding:0; color:inherit; font:inherit;
+    letter-spacing:inherit; text-transform:inherit; }
+  .sf-sort:hover { color:var(--dp-ink, var(--ink)); }
+  .sf-sort:focus-visible { outline:2px solid var(--dp-ink, var(--ink)); outline-offset:2px; }
+  .sf-sort.active { color:var(--dp-ink, var(--ink)); }
+  .sf-sort__arrow { font-size:max(12px, .7em); opacity:.55; }
+  .sf-sort.active .sf-sort__arrow { opacity:1; }
+  `;
+  document.head.appendChild(s);
+}
+
+/**
+ * Build a search box + optional filter chips row. Returns { el, getQuery, setQuery, setChips }.
+ * @param {object} opts
+ * @param {boolean} [opts.search=true]
+ * @param {string} [opts.placeholder='Search…']
+ * @param {function(string)} [opts.onSearch]  - called (debounced) on input
+ * @param {Array<{key,label,active}>} [opts.chips] - initial chip set; clicking toggles
+ * @param {function(string)} [opts.onChip]
+ */
+export function createListControls(opts) {
+  opts = opts || {};
+  injectStyle();
+  const wrap = document.createElement('div');
+  wrap.className = 'sf-lc';
+
+  let query = '';
+  let searchTimer = null;
+  const onSearch = typeof opts.onSearch === 'function' ? opts.onSearch : () => {};
+
+  if (opts.search !== false) {
+    const input = document.createElement('input');
+    input.type = 'search';
+    input.className = 'sf-lc__search';
+    input.placeholder = opts.placeholder || 'Search…';
+    input.setAttribute('aria-label', input.placeholder);
+    input.value = '';
+    input.addEventListener('input', () => {
+      query = input.value.trim().toLowerCase();
+      // debounce so typing a long query doesn't re-render the whole list per keystroke
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => onSearch(query), 110);
+    });
+    wrap.appendChild(input);
+  }
+
+  let chipEls = [];
+  let chips = [];
+  const onChip = typeof opts.onChip === 'function' ? opts.onChip : () => {};
+  if (Array.isArray(opts.chips) && opts.chips.length) {
+    const chipWrap = document.createElement('div');
+    chipWrap.className = 'sf-lc__chips';
+    chips = opts.chips.slice();
+    for (const c of chips) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'sf-lc__chip' + (c.active ? ' active' : '');
+      // Toggle chip: .active alone is style-only — without aria-pressed the on/off state is
+      // invisible to assistive tech (the sort header beside it already declares its state).
+      b.setAttribute('aria-pressed', c.active ? 'true' : 'false');
+      b.textContent = c.label;
+      b.addEventListener('click', () => {
+        c.active = !c.active;
+        b.classList.toggle('active', c.active);
+        b.setAttribute('aria-pressed', c.active ? 'true' : 'false');
+        onChip(c.key, c.active);
+      });
+      chipWrap.appendChild(b);
+      chipEls.push({ key: c.key, el: b });
+    }
+    wrap.appendChild(chipWrap);
+  }
+
+  return {
+    el: wrap,
+    getQuery: () => query,
+    setQuery: (q) => { query = (q || '').toLowerCase(); const i = wrap.querySelector('.sf-lc__search'); if (i) i.value = q || ''; },
+  };
+}
+
+/**
+ * Build a sortable column-header label. Clicking toggles asc/desc/active for that key.
+ * @param {object} opts
+ * @param {string} opts.key        - the sort key this header represents
+ * @param {string} opts.label      - the visible label
+ * @param {string} opts.activeKey  - the currently-active sort key (or '')
+ * @param {'asc'|'desc'} opts.dir  - current direction
+ * @param {function(string)} opts.onSort - called with the key when clicked
+ * @returns {HTMLElement}
+ */
+export function buildSortHeader({ key, label, activeKey, dir, onSort }) {
+  const active = activeKey === key;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'sf-sort' + (active ? ' active' : '');
+  btn.setAttribute('data-sk', key);
+  btn.setAttribute('data-label', label);
+  btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  btn.setAttribute('aria-label', sortHeaderAria(label, active, dir));
+  btn.textContent = label;
+  const arrow = document.createElement('span');
+  arrow.className = 'sf-sort__arrow';
+  arrow.setAttribute('aria-hidden', 'true');
+  arrow.textContent = active ? (dir === 'asc' ? '▲' : '▼') : '↕';
+  btn.appendChild(arrow);
+  btn.addEventListener('click', () => { if (typeof onSort === 'function') onSort(key); });
+  return btn;
+}
+
+export function sortHeaderAria(label, active, dir) {
+  const current = active ? `currently sorted ${dir === 'asc' ? 'ascending' : 'descending'}` : 'not sorted';
+  const next = active && dir === 'asc' ? 'descending' : 'ascending';
+  return `${label}, ${current}. Activate to sort ${next}.`;
+}

@@ -1,0 +1,10 @@
+{
+  "windowMs": 45000,
+  "timerCadenceMs": 500,
+  "readsPerRefresh": 3,
+  "legacyReads": 270,
+  "modernSettledReads": 3,
+  "modernAfterOneResizeReads": 6,
+  "layoutReadReduction": "45× settled-edge (270→6 with one resize; 270→3 with none)",
+  "note": "Primary KPI is sync layout read elimination, not Node wall time."
+}

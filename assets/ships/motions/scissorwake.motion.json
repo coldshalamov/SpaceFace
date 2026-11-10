@@ -1,0 +1,154 @@
+{
+  "schema": "spaceface.rigidMotionBank.v1",
+  "rigId": "scissorwake_controls",
+  "sourceAssetId": "SF_SHIP_SCISSORWAKE",
+  "sourceGlbSha256": "f9527ddefe6b05f341c1e4d02ed8eee89be2f093748f5e42dfb529bd0c4ddc3c",
+  "fps": 60,
+  "bindings": [
+    {
+      "id": "scissorwake_blade_port",
+      "node": "MOTION_SCISSORWAKE_BLADE_PORT",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          0,
+          0.4000000059604645,
+          -2.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "scissorwake_blade_starboard",
+      "node": "MOTION_SCISSORWAKE_BLADE_STARBOARD",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          0,
+          0.4000000059604645,
+          2.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "scissorwake_spool",
+      "node": "MOTION_SCISSORWAKE_SPOOL",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -3,
+          2.5,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "clips": [
+    {
+      "name": "source_rest_pose",
+      "durationS": 0.016666666666666666,
+      "loop": false,
+      "endMode": "hold",
+      "channels": [
+        {
+          "group": "scissorwake_blade_port",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "scissorwake_blade_starboard",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "scissorwake_spool",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    }
+  ]
+}

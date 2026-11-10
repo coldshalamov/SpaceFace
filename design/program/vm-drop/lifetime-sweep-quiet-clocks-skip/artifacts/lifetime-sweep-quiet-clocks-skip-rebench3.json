@@ -1,0 +1,73 @@
+{
+  "label": "lifetime-sweep-quiet-clocks-skip",
+  "primary": "quiet-short-lived-lanes-empty-clocks-skip",
+  "iters": 80000,
+  "npc": 36,
+  "rocks": 48,
+  "medianSpeedup": 1.987,
+  "minSpeedup": 1.65,
+  "maxSpeedup": 2.319,
+  "pairs": [
+    {
+      "beforeMs": 365.636,
+      "afterMs": 176.852,
+      "speedup": 2.067
+    },
+    {
+      "beforeMs": 397.026,
+      "afterMs": 171.221,
+      "speedup": 2.319
+    },
+    {
+      "beforeMs": 327.519,
+      "afterMs": 165.981,
+      "speedup": 1.973
+    },
+    {
+      "beforeMs": 335.76,
+      "afterMs": 203.51,
+      "speedup": 1.65
+    },
+    {
+      "beforeMs": 338.023,
+      "afterMs": 170.57,
+      "speedup": 1.982
+    },
+    {
+      "beforeMs": 339.932,
+      "afterMs": 172.67,
+      "speedup": 1.969
+    },
+    {
+      "beforeMs": 343.769,
+      "afterMs": 163.428,
+      "speedup": 2.103
+    },
+    {
+      "beforeMs": 337.55,
+      "afterMs": 161.663,
+      "speedup": 2.088
+    },
+    {
+      "beforeMs": 359.611,
+      "afterMs": 161.578,
+      "speedup": 2.226
+    },
+    {
+      "beforeMs": 335.085,
+      "afterMs": 168.612,
+      "speedup": 1.987
+    },
+    {
+      "beforeMs": 332.795,
+      "afterMs": 190.629,
+      "speedup": 1.746
+    }
+  ],
+  "dirtyWake": {
+    "ok": true,
+    "ttlExpired": true,
+    "despawnOk": true
+  },
+  "note": "Picture unchanged: preStep still owns POSE; skip only redundant Infinity-ttl clock walk."
+}

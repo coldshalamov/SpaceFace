@@ -1,0 +1,13 @@
+{
+  "median": 6.70525627821503,
+  "minSpeedup": 6.0816024137241955,
+  "max": 7.8071897664971655,
+  "dirtyWake": {
+    "ok": true,
+    "quietOk": true,
+    "woke": true,
+    "relatch": true,
+    "published": 3,
+    "skipped": 4
+  }
+}

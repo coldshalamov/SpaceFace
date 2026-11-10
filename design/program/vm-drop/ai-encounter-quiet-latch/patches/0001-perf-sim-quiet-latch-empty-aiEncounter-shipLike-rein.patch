@@ -1,0 +1,335 @@
+From cc826f4873b2205ffa2977a4eea9acd65807e33c Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 16:11:21 -0400
+Subject: [PATCH] =?UTF-8?q?perf(sim):=20quiet-latch=20empty=20aiEncounter?=
+ =?UTF-8?q?=20shipLike=20reinforcement=20scans=20(~4=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet open flight still walked shipLike every tick for authored reinforcement
+callers even when no unrecalled packages existed. Quiet-latch skips that scan
+(and ensure*) while empty; wakes on membership / combat·spawn·save·sector /
+command·pending churn / 0.5 s rescan. Soft-GPU fps not claimed.
+---
+ src/systems/aiEncounter.js             | 127 +++++++++++++++++++++-
+ test/ai-encounter-quiet-latch.test.mjs | 139 +++++++++++++++++++++++++
+ 2 files changed, 265 insertions(+), 1 deletion(-)
+ create mode 100644 test/ai-encounter-quiet-latch.test.mjs
+
+diff --git a/src/systems/aiEncounter.js b/src/systems/aiEncounter.js
+index 2ec8bf85e..8f2ad87fe 100644
+--- a/src/systems/aiEncounter.js
++++ b/src/systems/aiEncounter.js
+@@ -2,7 +2,28 @@ import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
+ import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
+ import { hash32 } from '../core/rng.js';
+ import { makeEnemySpawnSpec } from './combat.js';
+-import { indexedShipLikeScan } from '../world/livingWorldViews.js';
++import { indexedShipLikeScan, entityIndexVersion } from '../world/livingWorldViews.js';
++
++
++/** Bench A/B: production default ON. Quiet latch skips shipLike reinforcement-author
++ * scans when no unrecalled reinforcement packages remain and no pending spawn/command
++ * work is live. Soft-GPU fps not claimed. Fresh registry.step residual (#161). */
++let AI_ENCOUNTER_QUIET_LATCH = true;
++export function setAiEncounterQuietLatchForBench(enabled) {
++  AI_ENCOUNTER_QUIET_LATCH = enabled !== false;
++}
++export function getAiEncounterQuietLatchForBench() {
++  return AI_ENCOUNTER_QUIET_LATCH !== false;
++}
++
++/** Membership rescan while latched (0.5 s @ 60 Hz). */
++const AI_ENCOUNTER_QUIET_RESCAN_TICKS = 30;
++
++function publishAiEncounterQuiet(state, latched) {
++  if (!state) return;
++  const rt = state.aiEncounterRuntime || (state.aiEncounterRuntime = {});
++  rt.quietLatched = !!latched;
++}
+ 
+ const HISTORY_CAPACITY = 128;
+ 
+@@ -60,13 +81,62 @@ export const aiEncounter = {
+     this.state = ctx.state;
+     this.bus = ctx.bus || null;
+     this.helpers = ctx.helpers || (ctx.helpers = {});
++    this._aiEncounterQuiet = null;
++    this._aiEncounterWakeSeq = 0;
++    this._unsubs = [];
+     ensureOwnerState(this.state);
+     this.helpers.inspectAIEncounter = () => this.inspect();
++    if (this.bus && typeof this.bus.on === 'function') {
++      this._unsubs = [
++        this.bus.on('entity:spawned', () => this._wakeAiEncounterQuiet()),
++        this.bus.on('entity:destroyed', () => this._wakeAiEncounterQuiet()),
++        this.bus.on('combat:damage', () => this._wakeAiEncounterQuiet()),
++        this.bus.on('save:loaded', () => this._wakeAiEncounterQuiet()),
++        this.bus.on('sector:enter', () => this._wakeAiEncounterQuiet()),
++        this.bus.on('game:new', () => this._wakeAiEncounterQuiet()),
++      ].filter(Boolean);
++    }
+   },
+ 
+   update(_dt, state) {
++    // Quiet open flight: every tick walked shipLike for authored reinforcement callers even
++    // when no unrecalled packages existed and no pending spawn/command work was live.
++    // Quiet latch short-circuits that scan (and ensure*); wakes on membership,
++    // combat/spawn/save/sector, command/pending churn, or 0.5 s rescan. Soft-GPU fps not claimed.
++    if (AI_ENCOUNTER_QUIET_LATCH !== false) {
++      const quiet = this._aiEncounterQuiet;
++      if (quiet) {
++        const membership = entityIndexVersion(state);
++        const tick = state.tick | 0;
++        const wakeSeq = this._aiEncounterWakeSeq | 0;
++        const enc = state.aiEncounter;
++        const owner = enc && enc.owner;
++        const cmdLen = enc && Array.isArray(enc.commands) ? enc.commands.length : 0;
++        const pendingLen = owner && Array.isArray(owner.pendingReinforcements)
++          ? owner.pendingReinforcements.length : 0;
++        const nextSeq = enc ? (enc.nextSeq | 0) : 0;
++        const lastApplied = owner ? (owner.lastAppliedSeq | 0) : 0;
++        if (membership != null
++          && quiet.membership === membership
++          && quiet.wakeSeq === wakeSeq
++          && quiet.cmdLen === cmdLen
++          && quiet.pendingLen === pendingLen
++          && quiet.nextSeq === nextSeq
++          && quiet.lastApplied === lastApplied
++          && pendingLen === 0
++          && lastApplied >= (nextSeq - 1)
++          && ((tick - (quiet.armedTick | 0)) < AI_ENCOUNTER_QUIET_RESCAN_TICKS)) {
++          publishAiEncounterQuiet(state, true);
++          return;
++        }
++      }
++    } else if (this._aiEncounterQuiet) {
++      this._aiEncounterQuiet = null;
++    }
++
+     const encounter = ensureEncounterState(state);
+     const owner = ensureOwnerState(state);
++
+     this._queueAuthoredReinforcements(encounter, state);
+     const commands = Array.isArray(encounter.commands) ? encounter.commands : [];
+     if (commandsOutOfOrder(commands)) commands.sort((a, b) => finiteInt(a && a.seq) - finiteInt(b && b.seq));
+@@ -77,6 +147,58 @@ export const aiEncounter = {
+       owner.lastAppliedSeq = Math.max(owner.lastAppliedSeq, seq);
+     }
+     this._spawnDue(owner, state);
++
++    if (AI_ENCOUNTER_QUIET_LATCH !== false) {
++      const membership = entityIndexVersion(state);
++      const census = this._censusAiEncounterWork(state, encounter, owner);
++      if (membership != null && !census.busy) {
++        this._aiEncounterQuiet = {
++          membership,
++          armedTick: state.tick | 0,
++          wakeSeq: this._aiEncounterWakeSeq | 0,
++          cmdLen: census.cmdLen,
++          pendingLen: census.pendingLen,
++          nextSeq: census.nextSeq,
++          lastApplied: census.lastApplied,
++        };
++        publishAiEncounterQuiet(state, true);
++      } else {
++        this._aiEncounterQuiet = null;
++        publishAiEncounterQuiet(state, false);
++      }
++    }
++  },
++
++  _wakeAiEncounterQuiet() {
++    this._aiEncounterWakeSeq = (this._aiEncounterWakeSeq | 0) + 1;
++    this._aiEncounterQuiet = null;
++  },
++
++  /** Count unrecalled reinforcement authors + pending spawn/command work. */
++  _censusAiEncounterWork(state, encounter, owner) {
++    let authors = 0;
++    for (const entity of indexedShipLikeScan(state)) {
++      if (!entity || entity.alive === false || entity.type !== 'ship') continue;
++      const data = entity.data;
++      const authored = data && data.reinforcements;
++      if (!authored || !authored.packageId) continue;
++      const ai = data.ai;
++      if (ai && ai._calledReinforcements === true) continue;
++      authors++;
++    }
++    const cmdLen = Array.isArray(encounter.commands) ? encounter.commands.length : 0;
++    const pendingLen = Array.isArray(owner.pendingReinforcements) ? owner.pendingReinforcements.length : 0;
++    const nextSeq = encounter.nextSeq | 0;
++    const lastApplied = owner.lastAppliedSeq | 0;
++    const unapplied = nextSeq - 1 > lastApplied;
++    return {
++      authors,
++      cmdLen,
++      pendingLen,
++      nextSeq,
++      lastApplied,
++      busy: authors > 0 || pendingLen > 0 || unapplied,
++    };
+   },
+ 
+   inspect() {
+@@ -92,8 +214,11 @@ export const aiEncounter = {
+   },
+ 
+   newGame() {
++    this._aiEncounterQuiet = null;
++    this._aiEncounterWakeSeq = 0;
+     this.state.aiEncounter = { schemaVersion: AI_CONTRACT_VERSION, nextSeq: 1, commands: [] };
+     ensureOwnerState(this.state);
++    publishAiEncounterQuiet(this.state, false);
+   },
+ 
+   _queueAuthoredReinforcements(encounter, state) {
+diff --git a/test/ai-encounter-quiet-latch.test.mjs b/test/ai-encounter-quiet-latch.test.mjs
+new file mode 100644
+index 000000000..d1b0355d4
+--- /dev/null
++++ b/test/ai-encounter-quiet-latch.test.mjs
+@@ -0,0 +1,139 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createGameState } from '../src/core/gameState.js';
++import { createBus } from '../src/core/eventBus.js';
++import { core } from '../src/core/coreSystem.js';
++import {
++  aiEncounter,
++  setAiEncounterQuietLatchForBench,
++  getAiEncounterQuietLatchForBench,
++} from '../src/systems/aiEncounter.js';
++
++function boot() {
++  const state = createGameState(1615);
++  state.mode = 'flight';
++  state.tick = 0;
++  state.simTime = 0;
++  state.runtime = { profileId: 'production' };
++  state.meta = { seed: 1615 };
++  state.world = { currentSectorId: 'sector_ceres_belt' };
++  state.sector = { id: 'sector_ceres_belt' };
++  const bus = createBus();
++  const helpers = {};
++  core.init({ state, bus, helpers, registry: null });
++  const player = helpers.spawnEntity({
++    type: 'ship', pos: { x: 0, z: 0 }, vel: { x: 40, z: 0 }, rot: 0,
++    radius: 8, mass: 12, hull: 100, hullMax: 100, collides: true, team: 0,
++    data: { ai: { passive: true } },
++  });
++  state.playerId = player.id;
++  player.isPlayer = true;
++  const ships = [player];
++  for (let i = 0; i < 24; i++) {
++    ships.push(helpers.spawnEntity({
++      type: 'ship',
++      pos: { x: 400 + i * 40, z: (i % 5) * 30 },
++      vel: { x: 0, z: 0 }, rot: 0,
++      radius: 8, mass: 12, hull: 80, hullMax: 80, collides: true, team: 0,
++      physicsSleeping: true,
++      data: { ai: { passive: true } },
++    }));
++  }
++  if (state.entityIndex) {
++    state.entityIndex.ready = true;
++    state.entityIndex.__spacefaceEntityIndexV1 = true;
++    state.entityIndex.ships = ships;
++    state.entityIndex.shipLike = ships;
++    state.entityIndex.version = 1;
++  }
++  aiEncounter.init({ state, bus, helpers, registry: null });
++  return { state, bus, helpers, ships, player };
++}
++
++function bumpIndex(state) {
++  if (state.entityIndex) {
++    state.entityIndex.version = (state.entityIndex.version | 0) + 1;
++  }
++}
++
++function tick(state, n = 1) {
++  for (let i = 0; i < n; i++) {
++    state.tick++;
++    state.simTime += 1 / 60;
++    aiEncounter.update(1 / 60, state);
++  }
++}
++
++test('aiEncounter quiet latch arms and skips empty shipLike work', () => {
++  assert.equal(getAiEncounterQuietLatchForBench(), true);
++  setAiEncounterQuietLatchForBench(true);
++  const { state } = boot();
++  tick(state, 5);
++  assert.equal(state.aiEncounterRuntime?.quietLatched, true);
++  assert.ok(aiEncounter._aiEncounterQuiet);
++  const armedTick = aiEncounter._aiEncounterQuiet.armedTick;
++  tick(state, 10);
++  assert.equal(state.aiEncounterRuntime?.quietLatched, true);
++  assert.equal(aiEncounter._aiEncounterQuiet.armedTick, armedTick);
++});
++
++test('aiEncounter quiet latch wakes on reinforcement-author spawn', () => {
++  setAiEncounterQuietLatchForBench(true);
++  const { state, helpers, ships } = boot();
++  tick(state, 4);
++  assert.equal(state.aiEncounterRuntime?.quietLatched, true);
++
++  const boss = helpers.spawnEntity({
++    type: 'ship',
++    pos: { x: 120, z: 80 },
++    vel: { x: 0, z: 0 }, rot: 0,
++    radius: 14, mass: 80, hull: 200, hullMax: 200, collides: true, team: 1,
++    data: {
++      ai: { passive: false },
++      reinforcements: { packageId: 'vael_wing_pair', hullThreshold: 0.3 },
++      name: 'TEST BOSS',
++    },
++  });
++  ships.push(boss);
++  state.entityIndex.ships = ships;
++  state.entityIndex.shipLike = ships;
++  bumpIndex(state);
++  // Mimic bus spawn notification
++  aiEncounter._wakeAiEncounterQuiet();
++
++  tick(state, 2);
++  assert.equal(state.aiEncounterRuntime?.quietLatched, false);
++  assert.equal(aiEncounter._aiEncounterQuiet, null);
++
++  // Drop hull below threshold → reinforcement command should queue + apply
++  boss.hull = 40; // 20% of 200
++  tick(state, 3);
++  assert.equal(boss.data.ai._calledReinforcements, true);
++  const owner = state.aiEncounter.owner;
++  assert.ok(owner.scheduled.length >= 1 || owner.pendingReinforcements.length >= 1 || owner.spawned.length >= 1);
++});
++
++test('aiEncounter quiet latch wakes on combat:damage bus', () => {
++  setAiEncounterQuietLatchForBench(true);
++  const { state, bus } = boot();
++  tick(state, 4);
++  assert.equal(state.aiEncounterRuntime?.quietLatched, true);
++  const armed = aiEncounter._aiEncounterQuiet.armedTick;
++  bus.emit('combat:damage', { amount: 1 });
++  tick(state, 1);
++  // Wake clears latch; re-arms on next quiet census
++  assert.ok(
++    aiEncounter._aiEncounterQuiet == null
++      || aiEncounter._aiEncounterQuiet.armedTick !== armed
++      || state.aiEncounterRuntime?.quietLatched === true,
++  );
++});
++
++test('aiEncounter quiet latch off restores always-scan', () => {
++  setAiEncounterQuietLatchForBench(false);
++  const { state } = boot();
++  tick(state, 5);
++  assert.equal(state.aiEncounterRuntime?.quietLatched, undefined);
++  assert.equal(aiEncounter._aiEncounterQuiet, null);
++  setAiEncounterQuietLatchForBench(true);
++});
+-- 
+2.47.3
+

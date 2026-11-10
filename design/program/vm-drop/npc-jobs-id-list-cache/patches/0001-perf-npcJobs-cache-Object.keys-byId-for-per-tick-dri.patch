@@ -1,0 +1,121 @@
+From c34e1072fd8d133cdf084fc256ed94def3c38c1a Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Wed, 23 Sep 2026 00:58:44 -0400
+Subject: [PATCH] perf(npcJobs): cache Object.keys(byId) for per-tick drive
+
+Rebuild the job-id list only when the bag is dirtied by assign/release/
+deserialize/wipe or the byId object identity changes. Settled flight
+keeps a stable bag for many ticks; Object.keys was paid every update.
+---
+ src/systems/npcJobsRuntime.js | 32 +++++++++++++++++++++++++++++---
+ 1 file changed, 29 insertions(+), 3 deletions(-)
+
+diff --git a/src/systems/npcJobsRuntime.js b/src/systems/npcJobsRuntime.js
+index f727ad196..8b9d1d5c1 100644
+--- a/src/systems/npcJobsRuntime.js
++++ b/src/systems/npcJobsRuntime.js
+@@ -663,6 +663,11 @@ export const npcJobsRuntime = {
+     this._threatQueryState = this.state;
+     this._lastThreatQueryTick = null;
+     this._threatQueryDirty = true;
++    // Cached Object.keys(byId) for the per-tick drive. Job bags are stable for many ticks;
++    // rebuild only when the bag object changes or a write/delete dirties the list.
++    this._jobIds = null;
++    this._jobIdsById = null;
++    this._jobIdsDirty = true;
+ 
+     // Runtime bridge for intents: every kernel intent is surfaced on the bus under its own event
+     // name (npcjobs:transit / :work / :cycle / :hold / :complete / …). Cargo/economy owners MAY
+@@ -774,7 +779,10 @@ export const npcJobsRuntime = {
+   _ensureState() {
+     const state = this.state;
+     if (!state.npcJobs || typeof state.npcJobs !== 'object') state.npcJobs = { byId: {}, siteCouriers: {} };
+-    if (!state.npcJobs.byId || typeof state.npcJobs.byId !== 'object') state.npcJobs.byId = {};
++    if (!state.npcJobs.byId || typeof state.npcJobs.byId !== 'object') {
++      state.npcJobs.byId = {};
++      this._invalidateJobIds();
++    }
+     if (!state.npcJobs.siteCouriers || typeof state.npcJobs.siteCouriers !== 'object'
+       || Array.isArray(state.npcJobs.siteCouriers)) {
+       state.npcJobs.siteCouriers = {};
+@@ -790,6 +798,19 @@ export const npcJobsRuntime = {
+   },
+   _byId() { return this._ensureState().byId; },
+   _lots() { return this._ensureState().lots; },
++  _invalidateJobIds() { this._jobIdsDirty = true; },
++  _jobIdList() {
++    const byId = this._byId();
++    if (this._jobIdsDirty !== true
++      && this._jobIdsById === byId
++      && Array.isArray(this._jobIds)) {
++      return this._jobIds;
++    }
++    this._jobIdsById = byId;
++    this._jobIds = Object.keys(byId);
++    this._jobIdsDirty = false;
++    return this._jobIds;
++  },
+ 
+   /**
+    * INF-071: complete the miner→hauler handoff with one shared cargo identity. A miner's
+@@ -1662,6 +1683,7 @@ export const npcJobsRuntime = {
+ 
+   newGame() {
+     this.state.npcJobs = { byId: {}, siteCouriers: {}, lots: {} };
++    this._invalidateJobIds();
+     this._pendingMinerFieldRetargets = new Map();
+     this._heaveToLease = null;
+     this._fieldRetargetScanAccum = 0;
+@@ -1829,6 +1851,7 @@ export const npcJobsRuntime = {
+       || job.materialized !== true || sectorId !== CERES_ACTIVITY_SECTOR_ID
+       || !this._isCanonicalCeresRealTargetRoute(realTargetActor, job.route, job.speed))) return null;
+     byId[jobId] = entry;
++    this._invalidateJobIds();
+     entity.data.jobId = jobId;
+     this._threatQueryDirty = true;
+     if (formationSlot) this._bindCeresFormationSlot(formationSlot, entry, entity);
+@@ -1937,6 +1960,7 @@ export const npcJobsRuntime = {
+       towNextScanSimT: 0,
+     };
+     this._byId()[jobId] = entry;
++    this._invalidateJobIds();
+     this._threatQueryDirty = true;
+     return entry;
+   },
+@@ -2454,6 +2478,7 @@ export const npcJobsRuntime = {
+     if (realTargetJobBinding) this._clearCeresRealTargetsForJob(jobId, true);
+     else this._clearCeresRealTargetsForEntry(entry, true);
+     delete byId[jobId];
++    this._invalidateJobIds();
+     return true;
+   },
+ 
+@@ -2874,7 +2899,7 @@ export const npcJobsRuntime = {
+       this._stampCeresPirateInterceptCues();
+     }
+     const byId = this._byId();
+-    const ids = Object.keys(byId);
++    const ids = this._jobIdList();
+     const step = Math.max(0, finite(dt, 0));
+     const simT = finite(this.state.simTime, 0);
+     this._expireHeaveToLease(simT);
+@@ -2947,7 +2972,7 @@ export const npcJobsRuntime = {
+       }
+ 
+       const entry = byId[jobId];
+-      if (!entry || !entry.job) { delete byId[jobId]; continue; }
++      if (!entry || !entry.job) { delete byId[jobId]; this._invalidateJobIds(); continue; }
+ 
+       if (entry.entityId == null) {
+         // Virtualized: try to re-link if its hull has rematerialized in the current sector.
+@@ -3917,6 +3942,7 @@ export const npcJobsRuntime = {
+       };
+     }
+     this.state.npcJobs = { byId, siteCouriers: {}, lots: {} };
++    this._invalidateJobIds();
+     if (data && data.siteCouriers && typeof data.siteCouriers === 'object' && !Array.isArray(data.siteCouriers)) {
+       this.state.npcJobs.siteCouriers = JSON.parse(JSON.stringify(data.siteCouriers));
+     }
+-- 
+2.47.3
+

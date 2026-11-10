@@ -1,0 +1,96 @@
+{
+  "schema": "spaceface.goldenFrigateSurface.recipeSpec.v2",
+  "recipeId": "golden-frigate-surface-v2",
+  "assetId": "hull_frigate",
+  "input": {
+    "path": "assets/ships/parts/hulls/hull_frigate.glb",
+    "bytes": 3087004,
+    "sha256": "56B43F087E3D08859A5C3E31A27C2C5803ED4828D750EC91A7033D1D9ADC7044"
+  },
+  "coordinateContract": {
+    "source": "glTF right-handed +X forward, +Y up, +Z starboard, metres",
+    "blender": "+X forward, +Z up, -Y starboard after Blender glTF import",
+    "pivot": "HULL_FRIGATE_ROOT remains at the origin",
+    "boundsPolicy": "New surface construction stays inside the source LOD0 silhouette bounds."
+  },
+  "manufacturer": {
+    "name": "Varden Naval Works",
+    "family": "Aegis command hull",
+    "marking": "VARDEN 07",
+    "language": "split-chevron Varden identity, four-stage overlapping command armor, protected service spine, radiator-root cadence, and accessible segmented thermal shoulders"
+  },
+  "lodPolicy": {
+    "lod0": "macro, meso and restrained micro construction",
+    "lod1": "three silhouette-safe macro material cues",
+    "lod2": "role-split silhouette plus a low-cost command spine, aft thermal mass and manufacturer bars"
+  },
+  "materialProfiles": {
+    "coated_armor": {
+      "baseRgb": [0.18, 0.24, 0.30],
+      "secondaryRgb": [0.32, 0.38, 0.42],
+      "roughnessRange": [0.28, 0.63],
+      "metallicRange": [0.0, 0.035],
+      "aoRange": [0.78, 0.99],
+      "pattern": "painted_panels",
+      "normalStrength": 0.62,
+      "coatWeight": 0.14,
+      "coatRoughness": 0.34
+    },
+    "exposed_alloy": {
+      "baseRgb": [0.18, 0.21, 0.23],
+      "secondaryRgb": [0.31, 0.34, 0.35],
+      "roughnessRange": [0.19, 0.51],
+      "metallicRange": [0.82, 0.96],
+      "aoRange": [0.80, 0.99],
+      "pattern": "brushed_alloy",
+      "normalStrength": 0.43,
+      "anisotropy": 0.42
+    },
+    "dark_composite": {
+      "baseRgb": [0.027, 0.038, 0.05],
+      "secondaryRgb": [0.062, 0.074, 0.082],
+      "roughnessRange": [0.53, 0.79],
+      "metallicRange": [0.0, 0.025],
+      "aoRange": [0.73, 0.96],
+      "pattern": "composite_laminate",
+      "normalStrength": 0.40
+    },
+    "recessed_machinery": {
+      "baseRgb": [0.045, 0.05, 0.052],
+      "secondaryRgb": [0.10, 0.085, 0.065],
+      "roughnessRange": [0.42, 0.72],
+      "metallicRange": [0.48, 0.78],
+      "aoRange": [0.55, 0.90],
+      "pattern": "machinery_channels",
+      "normalStrength": 0.65
+    },
+    "heat_affected_alloy": {
+      "baseRgb": [0.09, 0.105, 0.12],
+      "secondaryRgb": [0.22, 0.15, 0.095],
+      "roughnessRange": [0.24, 0.72],
+      "metallicRange": [0.76, 0.94],
+      "aoRange": [0.68, 0.95],
+      "pattern": "thermal_bands",
+      "normalStrength": 0.55,
+      "anisotropy": 0.22
+    },
+    "docking_contact": {
+      "baseRgb": [0.22, 0.205, 0.17],
+      "secondaryRgb": [0.38, 0.34, 0.25],
+      "roughnessRange": [0.34, 0.69],
+      "metallicRange": [0.52, 0.84],
+      "aoRange": [0.71, 0.96],
+      "pattern": "contact_scuff",
+      "normalStrength": 0.47
+    },
+    "identity_marking": {
+      "baseRgb": [0.30, 0.18, 0.045],
+      "secondaryRgb": [0.76, 0.49, 0.12],
+      "roughnessRange": [0.40, 0.66],
+      "metallicRange": [0.0, 0.018],
+      "aoRange": [0.86, 1.0],
+      "pattern": "worn_marking",
+      "normalStrength": 0.23
+    }
+  }
+}

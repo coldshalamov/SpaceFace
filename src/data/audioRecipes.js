@@ -1,0 +1,4282 @@
+// src/data/audioRecipes.js – audio synthesis recipes and music stem definitions.
+// RECIPES: SFX synthesis parameter sets for runtime AudioContext nodes.
+// MUSIC_STEMS: adaptive music stem layer definitions.
+// Pure data, no three/DOM deps.
+//
+// Distortion: a recipe that sets distortionAmount must also set distortionCurve.
+//   'softclip' — pre-QoL cheap clip (amounts authored against that formula)
+//   'tanh'     — analog saturation (amounts authored against the QoL curve)
+// Amounts are not interchangeable across curves.
+
+import { MORROW_AUDIO_RECIPES } from './morrow.js';
+import { VESPER_AUDIO_RECIPES } from './vesper.js';
+import { BRACKET_AUDIO_RECIPES } from './bracket.js';
+import { RAVEL_AUDIO_RECIPES } from './ravel.js';
+import { SOLSTICE_AUDIO_RECIPES } from './solstice.js';
+import { RUBRIC_AUDIO_RECIPES } from './rubric.js';
+import { RUCKUS_AUDIO_RECIPES } from './ruckus.js';
+import { RUUD_AUDIO_RECIPES } from './ruud.js';
+import { DOCKET_AUDIO_RECIPES } from './docket.js';
+import { BOLUS_AUDIO_RECIPES } from './bolusAudio.js';
+import { SECOND_RINSE_AUDIO_RECIPES } from './secondRinseAudio.js';
+import { DISCOVERY_AUDIO_RECIPES } from './discoveryAudio.js';
+import { STATION_LIFE_AUDIO_RECIPES } from './stationLifeAudio.js';
+import { IRON_KRAKEN_AUDIO_RECIPES } from './ironKrakenAudio.js';
+
+export const RECIPES = [
+  ...IRON_KRAKEN_AUDIO_RECIPES,
+  ...STATION_LIFE_AUDIO_RECIPES,
+  ...DISCOVERY_AUDIO_RECIPES,
+  ...MORROW_AUDIO_RECIPES,
+  ...VESPER_AUDIO_RECIPES,
+  ...BRACKET_AUDIO_RECIPES,
+  ...RAVEL_AUDIO_RECIPES,
+  ...SOLSTICE_AUDIO_RECIPES,
+  ...RUBRIC_AUDIO_RECIPES,
+  ...RUCKUS_AUDIO_RECIPES,
+  ...RUUD_AUDIO_RECIPES,
+  ...DOCKET_AUDIO_RECIPES,
+  ...BOLUS_AUDIO_RECIPES,
+  ...SECOND_RINSE_AUDIO_RECIPES,
+  // --- Engine SFX ---
+  {
+    id: 'sfx_engine_idle',
+    category: 'engine',
+    type: 'oscillator',
+    baseFreq: 80, freqMod: 0.05,
+    gainEnvelope: { attack: 0.3, sustain: 0.8, release: 0.5 },
+    filterType: 'lowpass', filterFreq: 400, filterQ: 1.2,
+    lfoRate: 4.5, lfoDepth: 0.08,
+  },
+  {
+    id: 'sfx_engine_thrust',
+    category: 'engine',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.1, sustain: 1.0, release: 0.3 },
+    filterType: 'bandpass', filterFreq: 320, filterQ: 0.8,
+    pitchRange: [0.85, 1.15],
+  },
+  {
+    id: 'sfx_engine_boost',
+    category: 'engine',
+    type: 'layered',
+    layers: ['sfx_engine_thrust'],
+    gainMult: 1.8, filterFreqMult: 1.6,
+    gainEnvelope: { attack: 0.05, sustain: 1.0, release: 0.4 },
+  },
+
+  // --- Weapon SFX ---
+  {
+    id: 'sfx_wpn_pulse_laser',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 520, freqSweep: [520, 110], sweepTimeS: 0.13,
+    gainEnvelope: { attack: 0.003, sustain: 0.0, release: 0.14 },
+    filterType: 'lowpass', filterFreq: 1400, filterQ: 1.6,
+    distortionAmount: 0.35, distortionCurve: 'tanh',
+    subBass: { startFreq: 120, endFreq: 42, dur: 0.14, gain: 0.7 },
+    transientClick: { gain: 0.5 },
+    pitchRange: [0.92, 1.08],
+  },
+  {
+    id: 'sfx_wpn_autocannon',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.002, decay: 0.05, sustain: 0.0, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 650, filterQ: 1.2,
+    distortionAmount: 0.5, distortionCurve: 'tanh',
+    subBass: { startFreq: 150, endFreq: 45, dur: 0.12, gain: 0.95 },
+    transientClick: { gain: 0.8 },
+    pitchRange: [0.85, 1.15],
+  },
+  {
+    id: 'sfx_wpn_railgun',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_wpn_autocannon'],
+    gainEnvelope: { attack: 0.001, decay: 0.1, sustain: 0.0, release: 0.45 },
+    filterType: 'lowpass', filterFreq: 2400,
+    distortionAmount: 0.75, distortionCurve: 'tanh',
+    subBass: { startFreq: 220, endFreq: 28, dur: 0.5, gain: 1.0 },
+    transientClick: { gain: 1.0 },
+  },
+  {
+    // Flak / point-defence turret (INST-33). A flak gun is not an autocannon that happens to be
+    // small: it is a rapid, light, high-cacked shell thrown at incoming missiles — 8 rps against
+    // the autocannon's 2.2, and 5 momentum a hit against 28. It must read as a fast mechanical
+    // buzz of dry mid-band cracks, not the autocannon's low sub-heavy thump; sharing that recipe
+    // made two very different mounts indistinguishable in the mix.
+    id: 'sfx_wpn_flak',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, decay: 0.032, sustain: 0.0, release: 0.09 },
+    filterType: 'bandpass', filterFreq: 2350, filterQ: 1.1,
+    distortionAmount: 0.35, distortionCurve: 'tanh',
+    transientClick: { gain: 0.9 },
+    pitchRange: [0.93, 1.09],
+  },
+  {
+    id: 'sfx_wpn_beam_laser',
+    category: 'weapon',
+    type: 'continuous_oscillator',
+    baseFreq: 440, freqMod: 0.02,
+    gainEnvelope: { attack: 0.08, sustain: 1.0, release: 0.1 },
+    filterType: 'bandpass', filterFreq: 880, filterQ: 2.0,
+    distortionAmount: 0.4, distortionCurve: 'softclip',
+  },
+  // Heavy beam (INST-34) — the capital L-slot emitter must not be the M-slot beam laser's twin.
+  // The beam laser is a clean surgical cut at 440 Hz; the heavy beam is the same sustained-cut
+  // BEHAVIOR an octave-and-a-third down, with a sub-bass body under it so a 160-200 dps capital
+  // weapon lands with weight instead of sounding like a bigger budget for the same laser.
+  // Continuous by type so the sustained loop path in _onFire/_startBeam keeps owning the drone.
+  {
+    id: 'sfx_wpn_heavy_beam',
+    category: 'weapon',
+    type: 'continuous_oscillator',
+    baseFreq: 160, freqMod: 0.035,
+    gainEnvelope: { attack: 0.13, sustain: 1.0, release: 0.16 },
+    filterType: 'bandpass', filterFreq: 420, filterQ: 1.5,
+    distortionAmount: 0.5, distortionCurve: 'tanh',
+    subBass: { startFreq: 62, endFreq: 44, dur: 0.9, gain: 0.85 },
+    pitchRange: [0.97, 1.03],
+  },
+  {
+    id: 'sfx_wpn_missile',
+    category: 'weapon',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.05, sustain: 1.0, release: 0.2 },
+    filterType: 'highpass', filterFreq: 200,
+    pitchRange: [0.95, 1.05],
+    dopplerEnabled: true,
+  },
+  // Family-less fallback (INST-08). A weapon id the classifier cannot place must not borrow the
+  // starter pulse's descending saw — two unrelated mounts would sound identical, and an unknown gun
+  // would masquerade as the player's first weapon. This blunt, dry energy thump is its own voice: a
+  // tight bandpassed noise body with a short low-end drop, so it reads "unclassified mount", never
+  // "pulse" or "cannon". Pure synthesis — no new sample bank (the catalog forbids one).
+  {
+    id: 'sfx_wpn_unclassified',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.003, decay: 0.075, sustain: 0.0, release: 0.16 },
+    filterType: 'bandpass', filterFreq: 1180, filterQ: 3.4,
+    distortionAmount: 0.3, distortionCurve: 'tanh',
+    subBass: { startFreq: 110, endFreq: 40, dur: 0.11, gain: 0.4 },
+    transientClick: { gain: 0.3 },
+    pitchRange: [0.9, 1.12],
+  },
+
+  // --- Physics-weapon families (CV-EAR slice 2) — the physics tools stop borrowing the
+  // autocannon and generic discharge: concussion/plasma/gravitic/disruptor/charge each read
+  // their own one-shot, classified from weapon data in recipeForWeapon.
+  {
+    // Concussion cannon / seismic gong: a compressed deep thoom — the shove guns.
+    id: 'sfx_wpn_concussion',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 90, freqSweep: [90, 40], sweepTimeS: 0.18,
+    gainEnvelope: { attack: 0.003, decay: 0.1, sustain: 0.0, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 260,
+    distortionAmount: 0.55, distortionCurve: 'tanh',
+    subBass: { startFreq: 95, endFreq: 34, dur: 0.3, gain: 1.0 },
+    transientClick: { gain: 0.5 },
+    pitchRange: [0.94, 1.06],
+  },
+  {
+    // Plasma cannon: a thick bubbling bolt.
+    id: 'sfx_wpn_plasma',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 220, freqSweep: [220, 120], sweepTimeS: 0.18,
+    freqMod: 0.12,
+    gainEnvelope: { attack: 0.004, sustain: 0.04, release: 0.25 },
+    filterType: 'bandpass', filterFreq: 600, filterQ: 1.8,
+    // Plasma cannon: a thick bubbling bolt. tanh (the QoL curve) — this is not one of the two
+    // recipes grandfathered onto the pre-QoL soft-clip, so it must name the curve it rides.
+    distortionAmount: 0.45, distortionCurve: 'tanh',
+    subBass: { startFreq: 140, endFreq: 70, dur: 0.2, gain: 0.5 },
+    pitchRange: [0.93, 1.07],
+  },
+  {
+    // Gravity / inertia / field tools: a low warbling sub sweep — the fight folding.
+    id: 'sfx_wpn_gravitic',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 70, freqSweep: [70, 35], sweepTimeS: 0.38,
+    freqMod: 0.18,
+    gainEnvelope: { attack: 0.05, sustain: 0.06, release: 0.5 },
+    filterType: 'lowpass', filterFreq: 220,
+    subBass: { startFreq: 80, endFreq: 30, dur: 0.5, gain: 0.8 },
+    pitchRange: [0.95, 1.05],
+  },
+  {
+    // EMP / RCS disruptor / hijack / primer tools: a crackling burst.
+    id: 'sfx_wpn_disruptor',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 900, freqSweep: [900, 300], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.2 },
+    filterType: 'bandpass', filterFreq: 1500, filterQ: 4.0,
+    distortionAmount: 0.5, distortionCurve: 'tanh',
+    transientClick: { gain: 0.6 },
+    pitchRange: [0.9, 1.1],
+  },
+  {
+    // Placed charges (vector mine, sticky detonator): a hard magnetic click-thunk on the throw.
+    id: 'sfx_wpn_charge',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 260, freqSweep: [260, 140], sweepTimeS: 0.07,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.14 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 2.2,
+    distortionAmount: 0.4, distortionCurve: 'tanh',
+    subBass: { startFreq: 130, endFreq: 55, dur: 0.1, gain: 0.6 },
+    transientClick: { gain: 0.7 },
+    pitchRange: [0.95, 1.05],
+  },
+
+  // --- Combat doctrine signatures ---------------------------------------------------------
+  // These are short telegraphs, never loops. One squad cue is enough to teach the ear whether the
+  // incoming actor will fly through, seize with a line, or hold range and charge a shot.
+  {
+    id: 'sfx_doctrine_flyby',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 740, freqSweep: [520, 1480], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.006, sustain: 0.0, release: 0.12 },
+    filterType: 'highpass', filterFreq: 680, filterQ: 0.8,
+  },
+  {
+    id: 'sfx_doctrine_tether_spool',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.008, sustain: 0.0, release: 0.14 },
+    filterType: 'bandpass', filterFreq: 310, filterQ: 2.8,
+    repeatCount: 1, repeatIntervalS: 0.09,
+  },
+  {
+    id: 'sfx_doctrine_ranged_charge',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 260, freqSweep: [260, 1120], sweepTimeS: 0.24,
+    gainEnvelope: { attack: 0.012, sustain: 0.0, release: 0.18 },
+    filterType: 'bandpass', filterFreq: 760, filterQ: 1.8,
+  },
+  // Shared fallbacks keep static SG-08 resolution total; runtime presentation selects the
+  // doctrine-specific family below from deterministic cue tags.
+  {
+    id: 'sfx_doctrine_break', category: 'weapon', type: 'oscillator', wave: 'triangle',
+    baseFreq: 165, freqSweep: [165, 110], sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.22 },
+    filterType: 'lowpass', filterFreq: 520, filterQ: 1.0,
+  },
+  {
+    id: 'sfx_doctrine_withdraw', category: 'weapon', type: 'noise_burst', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.008, sustain: 0.015, release: 0.32 },
+    filterType: 'bandpass', filterFreq: 280, filterQ: 0.8,
+  },
+  // Interceptor: air and Doppler — rise on the pass, hard vector break, receding wash.
+  {
+    id: 'sfx_doctrine_flyby_break', category: 'weapon', type: 'oscillator', wave: 'sawtooth',
+    baseFreq: 980, freqSweep: [980, 330], sweepTimeS: 0.24,
+    gainEnvelope: { attack: 0.003, sustain: 0.02, release: 0.26 },
+    filterType: 'highpass', filterFreq: 260, filterQ: 0.9,
+  },
+  {
+    id: 'sfx_doctrine_flyby_withdraw', category: 'weapon', type: 'noise_filtered', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.01, sustain: 0.02, release: 0.42 },
+    filterType: 'highpass', filterFreq: 560, filterQ: 0.55,
+  },
+  // Brawler commit: heavy hull pressure — low square growl, thudding break, low rumble withdraw.
+  // Deliberately not a flyby twin: no high sawtooth Doppler pass language.
+  {
+    id: 'sfx_doctrine_brawler_commit',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 110, freqSweep: [90, 220], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.02, sustain: 0.04, release: 0.34 },
+    filterType: 'lowpass', filterFreq: 380, filterQ: 1.2,
+  },
+  {
+    id: 'sfx_doctrine_brawler_break', category: 'weapon', type: 'oscillator', wave: 'triangle',
+    baseFreq: 140, freqSweep: [140, 55], sweepTimeS: 0.32,
+    gainEnvelope: { attack: 0.006, sustain: 0.03, release: 0.36 },
+    filterType: 'lowpass', filterFreq: 280, filterQ: 1.4,
+  },
+  {
+    id: 'sfx_doctrine_brawler_withdraw', category: 'weapon', type: 'noise_filtered', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.015, sustain: 0.03, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 220, filterQ: 0.9,
+  },
+  // Escort screen: an even, unhurried defensive phrase — a guarding cadence, not a hunter's.
+  {
+    id: 'sfx_doctrine_escort_screen',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 220, freqSweep: [220, 300], sweepTimeS: 0.22,
+    gainEnvelope: { attack: 0.02, sustain: 0.03, release: 0.3 },
+    filterType: 'bandpass', filterFreq: 520, filterQ: 1.1,
+  },
+  // Capital broadside: two immense, separated battery reports. The low sawtooth sweep stays
+  // distinct from the brawler's continuous square growl and from ordinary projectile fire.
+  {
+    id: 'sfx_doctrine_capital_broadside',
+    category: 'weapon', type: 'oscillator', wave: 'sawtooth',
+    baseFreq: 72, freqSweep: [72, 138], sweepTimeS: 0.36,
+    gainEnvelope: { attack: 0.016, sustain: 0.06, release: 0.42 },
+    filterType: 'lowpass', filterFreq: 310, filterQ: 1.1,
+    repeatCount: 2, repeatIntervalS: 0.22,
+  },
+  // Tether raider: mechanical spool/clamp language, distinct from the massline's player rewards.
+  {
+    id: 'sfx_doctrine_tether_break', category: 'weapon', type: 'oscillator', wave: 'triangle',
+    baseFreq: 180, freqSweep: [180, 72], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.003, sustain: 0.025, release: 0.3 },
+    filterType: 'bandpass', filterFreq: 260, filterQ: 2.4,
+  },
+  {
+    id: 'sfx_doctrine_tether_withdraw', category: 'weapon', type: 'noise_filtered', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.012, sustain: 0.02, release: 0.38 },
+    filterType: 'lowpass', filterFreq: 300, filterQ: 1.6,
+  },
+  // Ranged disengager: capacitor pitch language — charge, clipped discharge, reset, cool standoff.
+  {
+    id: 'sfx_doctrine_ranged_break', category: 'weapon', type: 'oscillator', wave: 'triangle',
+    baseFreq: 620, freqSweep: [620, 240], sweepTimeS: 0.22,
+    gainEnvelope: { attack: 0.004, sustain: 0.018, release: 0.24 },
+    filterType: 'bandpass', filterFreq: 500, filterQ: 1.5,
+  },
+  {
+    id: 'sfx_doctrine_ranged_withdraw', category: 'weapon', type: 'oscillator', wave: 'sine',
+    baseFreq: 260, freqSweep: [260, 190], sweepTimeS: 0.26,
+    gainEnvelope: { attack: 0.008, sustain: 0.02, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 420, filterQ: 0.8,
+  },
+  {
+    id: 'sfx_encounter_escalation',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 82, freqSweep: [82, 61], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.025, sustain: 0.0, release: 0.32 },
+    filterType: 'lowpass', filterFreq: 220, filterQ: 0.7,
+  },
+
+  // --- Explosion SFX ---
+  {
+    id: 'sfx_explosion_small',
+    category: 'explosion',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.002, decay: 0.08, sustain: 0.0, release: 0.55 },
+    filterType: 'lowpass', filterFreq: 550, filterQ: 0.8,
+    distortionAmount: 0.45, distortionCurve: 'tanh',
+    subBass: { startFreq: 140, endFreq: 30, dur: 0.5, gain: 0.9 },
+    transientClick: { gain: 0.6 },
+    reverbMix: 0.5, reverbDecay: 1.2,
+  },
+  {
+    id: 'sfx_explosion_large',
+    category: 'explosion',
+    type: 'layered',
+    layers: ['sfx_explosion_small'],
+    gainMult: 2.2, filterFreqMult: 0.7,
+    gainEnvelope: { attack: 0.001, decay: 0.15, sustain: 0.0, release: 1.4 },
+    distortionAmount: 0.65, distortionCurve: 'tanh',
+    subBass: { startFreq: 170, endFreq: 22, dur: 1.2, gain: 1.0 },
+    transientClick: { gain: 0.9 },
+    reverbMix: 0.7, reverbDecay: 3.0,
+  },
+  // SF-09 vector mine detonation: a directional impulse ring, not a generic spherical blast. A
+  // band-limited noise crack with a SHORT but audible metallic ringing tail (nonzero sustain so the
+  // release decays from signal, not from silence) and a tighter bandpass than chaff, so it reads as
+  // "kinetic shunt" rather than "thing blew up" and stays distinct from both sfx_explosion_small
+  // (lowpassed boom) and sfx_cm_chaff (highpassed 2 kHz crack). Only synth-supported fields are used.
+  {
+    id: 'sfx_vector_mine',
+    category: 'explosion',
+    type: 'noise_filtered',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.22, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 1700, filterQ: 1.6,
+    pitchRange: [0.85, 1.2],
+  },
+
+  // --- Mining SFX ---
+  {
+    id: 'sfx_mining_beam',
+    category: 'mining',
+    type: 'continuous_noise',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.15, sustain: 1.0, release: 0.2 },
+    filterType: 'bandpass', filterFreq: 1200, filterQ: 4.0,
+  },
+  {
+    id: 'sfx_mining_impact',
+    category: 'mining',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.005, sustain: 0.0, release: 0.15 },
+    filterType: 'bandpass', filterFreq: 600, filterQ: 0.8,
+    pitchRange: [0.7, 1.3],
+  },
+  // --- Mining / scanner semantic family ---
+  // Survey tones use a restrained low fifth so information reads without sounding like combat.
+  {
+    id: 'sfx_mining_scan_root',
+    category: 'mining', type: 'oscillator', wave: 'sine',
+    baseFreq: 92, freqSweep: [92, 184], sweepTimeS: 0.34,
+    gainEnvelope: { attack: 0.008, sustain: 0.04, release: 0.34 },
+    filterType: 'lowpass', filterFreq: 520, filterQ: 0.7,
+  },
+  {
+    id: 'sfx_mining_scan_air',
+    category: 'mining', type: 'noise_burst', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.003, sustain: 0.0, release: 0.28 },
+    filterType: 'bandpass', filterFreq: 1450, filterQ: 0.45,
+  },
+  {
+    id: 'sfx_mining_scan_pulse',
+    category: 'mining', type: 'layered',
+    layers: ['sfx_mining_scan_root', 'sfx_mining_scan_air'], gainMult: 0.68,
+  },
+  {
+    id: 'sfx_mining_scan_return',
+    category: 'mining', type: 'oscillator', wave: 'sine',
+    baseFreq: 184, freqSweep: [184, 276], sweepTimeS: 0.22,
+    gainEnvelope: { attack: 0.006, sustain: 0.025, release: 0.26 },
+    filterType: 'lowpass', filterFreq: 650, filterQ: 0.8,
+  },
+  {
+    id: 'sfx_mining_scan_classified',
+    category: 'mining', type: 'oscillator', wave: 'triangle',
+    baseFreq: 147, freqSweep: [147, 220.5], sweepTimeS: 0.3,
+    gainEnvelope: { attack: 0.008, sustain: 0.04, release: 0.32 },
+    filterType: 'lowpass', filterFreq: 760, filterQ: 1.0,
+  },
+  {
+    id: 'sfx_mining_scan_tracked',
+    category: 'mining', type: 'oscillator', wave: 'sine',
+    baseFreq: 110, freqSweep: [110, 165], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.005, sustain: 0.02, release: 0.2 },
+    filterType: 'lowpass', filterFreq: 520, filterQ: 0.7,
+  },
+  {
+    id: 'sfx_mining_scan_investigated',
+    category: 'mining', type: 'oscillator', wave: 'triangle',
+    baseFreq: 165, freqSweep: [165, 247.5], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.008, sustain: 0.04, release: 0.34 },
+    filterType: 'lowpass', filterFreq: 720, filterQ: 0.8,
+  },
+  {
+    // FB-131 — the ghost that slipped the net: the one scan-family voice that falls instead
+    // of rising, so "contact lost" reads as loss in the ear, not another success ping.
+    id: 'sfx_mining_scan_escaped',
+    category: 'mining', type: 'oscillator', wave: 'triangle',
+    baseFreq: 233, freqSweep: [233, 116.5], sweepTimeS: 0.44,
+    gainEnvelope: { attack: 0.01, sustain: 0.05, release: 0.42 },
+    filterType: 'lowpass', filterFreq: 560, filterQ: 1.0,
+  },
+  {
+    id: 'sfx_mining_cutter_lock',
+    category: 'mining', type: 'noise_burst', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 820, filterQ: 1.8,
+  },
+  {
+    id: 'sfx_mining_hardness',
+    category: 'mining', type: 'noise_burst', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.16 },
+    filterType: 'bandpass', filterFreq: 520, filterQ: 2.1,
+  },
+  {
+    id: 'sfx_mining_seam_reward',
+    category: 'mining', type: 'layered',
+    layers: ['sfx_mining_impact', 'sfx_core_bell'], gainMult: 0.64,
+  },
+  {
+    id: 'sfx_mining_fracture_warning',
+    category: 'mining', type: 'oscillator', wave: 'triangle',
+    baseFreq: 82.5, freqSweep: [82.5, 73.5], sweepTimeS: 0.42,
+    gainEnvelope: { attack: 0.015, sustain: 0.08, release: 0.38 },
+    filterType: 'lowpass', filterFreq: 330, filterQ: 1.6,
+  },
+  {
+    id: 'sfx_mining_fracture_sub',
+    category: 'mining', type: 'oscillator', wave: 'sine',
+    baseFreq: 55, freqSweep: [55, 38], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.002, sustain: 0.03, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 160, filterQ: 0.7,
+  },
+  {
+    id: 'sfx_mining_fracture_noise',
+    category: 'mining', type: 'noise_burst', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.42 },
+    filterType: 'bandpass', filterFreq: 430, filterQ: 0.55,
+  },
+  {
+    id: 'sfx_mining_fracture_break',
+    category: 'mining', type: 'layered',
+    layers: ['sfx_mining_fracture_sub', 'sfx_mining_fracture_noise'], gainMult: 0.82,
+  },
+  // Ore-body depletion: the crisp resonant POP of the last seam giving way — a hard crack up
+  // front, a low rock ring underneath, and a softened remnant of the boom for body. Reads as
+  // brittle fracture, not combustion.
+  {
+    id: 'sfx_asteroid_depleted',
+    category: 'explosion', type: 'layered',
+    layers: ['sfx_mining_fracture_break', 'sfx_explosion_small'], gainMult: 0.9,
+  },
+  {
+    id: 'sfx_mining_core_exposed',
+    category: 'mining', type: 'oscillator', wave: 'sine',
+    baseFreq: 196, freqSweep: [196, 392], sweepTimeS: 0.38,
+    gainEnvelope: { attack: 0.006, sustain: 0.05, release: 0.42 },
+    filterType: 'highpass', filterFreq: 150, filterQ: 0.7,
+  },
+  {
+    id: 'sfx_mining_core_charge',
+    category: 'mining', type: 'oscillator', wave: 'triangle',
+    baseFreq: 73.5, freqSweep: [73.5, 294], sweepTimeS: 0.9,
+    gainEnvelope: { attack: 0.025, sustain: 0.62, release: 0.28 },
+    filterType: 'lowpass', filterFreq: 720, filterQ: 1.4,
+  },
+  // Cargo scoop magnet-latch: the pod thunking home into the belly (soft mechanical seat + a
+  // short servo whir) and the combo chime the audio layer pitch-steps per consecutive pickup.
+  {
+    id: 'sfx_cargo_seat',
+    category: 'mining', type: 'layered',
+    layers: ['sfx_cargo_seat_thunk', 'sfx_cargo_seat_whir'], gainMult: 0.9,
+  },
+  {
+    id: 'sfx_cargo_seat_thunk',
+    category: 'mining', type: 'noise_burst', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.11 },
+    filterType: 'lowpass', filterFreq: 340, filterQ: 1.1,
+    transientClick: { gain: 0.4 },
+  },
+  {
+    id: 'sfx_cargo_seat_whir',
+    category: 'mining', type: 'oscillator', wave: 'sawtooth',
+    baseFreq: 210, freqSweep: [210, 340], sweepTimeS: 0.09,
+    gainEnvelope: { attack: 0.006, sustain: 0.02, release: 0.12 },
+    filterType: 'lowpass', filterFreq: 1400, filterQ: 2.4,
+  },
+  {
+    id: 'sfx_pickup_chime',
+    category: 'mining', type: 'oscillator', wave: 'triangle',
+    baseFreq: 660,
+    gainEnvelope: { attack: 0.003, sustain: 0.015, release: 0.3 },
+    filterType: 'highpass', filterFreq: 300, filterQ: 0.8,
+    reverbMix: 0.16, reverbDecay: 0.5,
+  },
+  // Salvage plate release: a hydraulic hiss (the clamps letting go) under a panel clunk.
+  {
+    id: 'sfx_salvage_plate',
+    category: 'mining', type: 'layered',
+    layers: ['sfx_salvage_hydraulic', 'sfx_cargo_seat_thunk'], gainMult: 1.0,
+  },
+  {
+    id: 'sfx_salvage_hydraulic',
+    category: 'mining', type: 'noise_filtered', noiseColor: 'white',
+    gainEnvelope: { attack: 0.004, sustain: 0.06, release: 0.4 },
+    filterType: 'bandpass', filterFreq: 2400, filterQ: 1.2,
+    reverbMix: 0.14, reverbDecay: 0.5,
+  },
+  {
+    id: 'sfx_mining_yield',
+    category: 'mining', type: 'oscillator', wave: 'sine',
+    baseFreq: 330, freqSweep: [330, 495], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.22 },
+    filterType: 'highpass', filterFreq: 180, filterQ: 0.7,
+  },
+  {
+    id: 'sfx_mining_core_reward',
+    category: 'mining', type: 'layered',
+    layers: ['sfx_mining_core_exposed', 'sfx_mining_yield'], gainMult: 0.78,
+  },
+  {
+    id: 'sfx_mining_mass_required',
+    category: 'mining', type: 'oscillator', wave: 'sine',
+    baseFreq: 65, freqSweep: [65, 58], sweepTimeS: 0.3,
+    gainEnvelope: { attack: 0.01, sustain: 0.04, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 220, filterQ: 0.9,
+  },
+  {
+    id: 'sfx_mining_mass_engaged',
+    category: 'mining', type: 'noise_burst', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.18 },
+    filterType: 'bandpass', filterFreq: 280, filterQ: 1.4,
+  },
+  {
+    id: 'sfx_mining_cargo_settle',
+    category: 'mining', type: 'oscillator', wave: 'sine',
+    baseFreq: 72, freqSweep: [72, 60], sweepTimeS: 0.22,
+    gainEnvelope: { attack: 0.004, sustain: 0.025, release: 0.24 },
+    filterType: 'lowpass', filterFreq: 190, filterQ: 0.8,
+  },
+  {
+    // Holds-full refusal: a dead low thock — the hopper says "no room", not "registered".
+    // Distinct from the cargo-settle thunk and from the UI deny fall it replaced.
+    id: 'sfx_mining_cargo_full',
+    category: 'mining', type: 'oscillator', wave: 'triangle',
+    baseFreq: 226, freqSweep: [226, 168], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.002, sustain: 0.02, release: 0.2 },
+    filterType: 'bandpass', filterFreq: 420, filterQ: 2.6,
+    transientClick: { gain: 0.35 },
+  },
+  {
+    id: 'sfx_mining_field_settle',
+    category: 'mining', type: 'noise_burst', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.012, sustain: 0.02, release: 0.38 },
+    filterType: 'lowpass', filterFreq: 260, filterQ: 0.6,
+  },
+  {
+    id: 'sfx_mining_heat_warning',
+    category: 'mining', type: 'oscillator', wave: 'sawtooth',
+    baseFreq: 147, freqSweep: [147, 196], sweepTimeS: 0.34,
+    gainEnvelope: { attack: 0.005, sustain: 0.06, release: 0.32 },
+    filterType: 'bandpass', filterFreq: 420, filterQ: 2.0,
+  },
+  {
+    id: 'sfx_mining_seismic_pulse',
+    category: 'mining', type: 'oscillator', wave: 'sine',
+    baseFreq: 46, freqSweep: [46, 92], sweepTimeS: 0.48,
+    gainEnvelope: { attack: 0.006, sustain: 0.08, release: 0.5 },
+    filterType: 'lowpass', filterFreq: 210, filterQ: 1.1,
+  },
+  {
+    id: 'sfx_mining_drill_contact',
+    category: 'mining', type: 'noise_burst', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.13 },
+    filterType: 'bandpass', filterFreq: 680, filterQ: 2.3,
+  },
+  {
+    id: 'sfx_mining_drill_grind',
+    category: 'mining', type: 'continuous_noise', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.045, sustain: 0.46, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 560, filterQ: 1.45,
+    lfoRate: 7.5, lfoDepth: 0.08,
+    gainMult: 0.48,
+  },
+  {
+    id: 'sfx_mining_drill_break',
+    category: 'mining', type: 'noise_burst', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.24 },
+    filterType: 'bandpass', filterFreq: 360, filterQ: 0.9,
+  },
+  {
+    id: 'sfx_mining_drill_yield',
+    category: 'mining', type: 'oscillator', wave: 'sine',
+    baseFreq: 440, freqSweep: [440, 660], sweepTimeS: 0.14,
+    gainEnvelope: { attack: 0.003, sustain: 0.018, release: 0.2 },
+    filterType: 'highpass', filterFreq: 240, filterQ: 0.7,
+  },
+  {
+    id: 'sfx_mining_gas_hazard',
+    category: 'mining', type: 'noise_burst', noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.04, release: 0.5 },
+    filterType: 'bandpass', filterFreq: 240, filterQ: 1.7,
+  },
+  {
+    id: 'sfx_mining_drill_abort',
+    category: 'mining', type: 'oscillator', wave: 'triangle',
+    baseFreq: 147, freqSweep: [147, 92], sweepTimeS: 0.24,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.25 },
+    filterType: 'lowpass', filterFreq: 440, filterQ: 0.8,
+  },
+  {
+    id: 'sfx_mining_drill_retry',
+    category: 'mining', type: 'oscillator', wave: 'sine',
+    baseFreq: 92, freqSweep: [92, 138], sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.24 },
+    filterType: 'lowpass', filterFreq: 480, filterQ: 0.7,
+  },
+
+  // --- UI SFX ---
+  {
+    id: 'sfx_ui_click',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 880, freqSweep: [880, 660], sweepTimeS: 0.06,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.06 },
+    filterType: 'highpass', filterFreq: 440,
+  },
+  // --- Switch detent: short mechanical notch for slot presses/fit toggles. ---
+  {
+    id: 'sfx_ui_switch_detent',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 760, freqSweep: [760, 520], sweepTimeS: 0.035,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.05 },
+    filterType: 'bandpass', filterFreq: 980, filterQ: 1.8,
+    gainMult: 0.62,
+  },
+  // --- Drawer latch: muted close thump when the module drawer parks shut. ---
+  {
+    id: 'sfx_ui_drawer_latch',
+    category: 'ui',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.07 },
+    filterType: 'bandpass', filterFreq: 340, filterQ: 1.5,
+    gainMult: 0.58,
+  },
+  {
+    // Kit "confirm" (design/frontend/direction/DIRECTION_SHEET.md §8): one clear tone, no sweep,
+    // ≤ 300 ms (attack 5 + decay 40 + release 200).
+    id: 'sfx_ui_confirm',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 440, freqSweep: [440, 440], sweepTimeS: 0.01,
+    gainEnvelope: { attack: 0.005, sustain: 0.0, release: 0.2 },
+    filterType: 'lowpass', filterFreq: 3000,
+  },
+  {
+    id: 'sfx_ui_alert',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 440, freqMod: 0.5,
+    gainEnvelope: { attack: 0.01, sustain: 0.3, release: 0.1 },
+    filterType: 'bandpass', filterFreq: 440, filterQ: 3.0,
+    repeatCount: 2, repeatIntervalS: 0.4,
+  },
+  // Missile / homing lock acquired — a crisp two-note ascending blip (the classic targeting cue).
+  // Higher + faster than confirm so it reads as "weapons locked", distinct from a UI confirm.
+  {
+    id: 'sfx_lock_acquired',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 990, freqSweep: [990, 1320], sweepTimeS: 0.05,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.05 },
+    repeatCount: 2, repeatIntervalS: 0.07,
+    gainMult: 0.8,
+  },
+  // Mission accepted — a bright ascending triad (anticipation / commitment). Distinct from confirm
+  // so accepting a contract feels like a meaningful story beat, not a button click.
+  {
+    id: 'sfx_mission_accept',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 523, freqSweep: [523, 659], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.008, sustain: 0.0, release: 0.16 },
+    repeatCount: 2, repeatIntervalS: 0.09,
+    gainMult: 0.7,
+  },
+  // Mission complete — the same synth voice, resolving downward (a fifth falling home).
+  {
+    id: 'sfx_mission_complete',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 784, freqSweep: [784, 523], sweepTimeS: 0.26,
+    gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.24 },
+    repeatCount: 2, repeatIntervalS: 0.12,
+    gainMult: 0.75,
+  },
+  // Achievement fanfare — a proud rising fifth repeated three times, brighter than the mission
+  // resolve. An unlocked deed is rarer than a finished contract and should sound like it.
+  {
+    id: 'sfx_achievement_fanfare',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 523, freqSweep: [523, 784], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.008, sustain: 0.0, release: 0.2 },
+    repeatCount: 3, repeatIntervalS: 0.13,
+    gainMult: 0.62,
+  },
+  // Career promotion — a warm two-step ascent on the triangle voice. Rank is earned over hours,
+  // so the chord lands slower and lower than the mission stingers: acknowledgment, not a blip.
+  {
+    id: 'sfx_promotion_chord',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 392, freqSweep: [392, 587], sweepTimeS: 0.22,
+    gainEnvelope: { attack: 0.02, sustain: 0.04, release: 0.35 },
+    repeatCount: 2, repeatIntervalS: 0.18,
+    gainMult: 0.65,
+  },
+  // Tech researched — two quick high ascents, the lab-report read. Distinct from lock_acquired
+  // (shorter, softer, no combat urgency) so research paying out has its own small voice.
+  {
+    id: 'sfx_tech_researched',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 880, freqSweep: [880, 1175], sweepTimeS: 0.07,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.12 },
+    repeatCount: 2, repeatIntervalS: 0.1,
+    gainMult: 0.55,
+  },
+  // Ship purchased — a low warm swell on the hull voice. The biggest credit sink in the game
+  // should sound like heavy machinery settling into your berth, not a menu confirm.
+  {
+    id: 'sfx_ship_purchased',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 196, freqSweep: [196, 262], sweepTimeS: 0.3,
+    gainEnvelope: { attack: 0.03, sustain: 0.08, release: 0.4 },
+    filterType: 'lowpass', filterFreq: 900, filterQ: 0.8,
+    gainMult: 0.7,
+  },
+  // PQ-146 moment stinger — one material/force accent, 0.45–0.70 s: a low pressure swell that
+  // resolves upward a fifth. It follows the physical impact rather than shouting over it, ducks
+  // music briefly through cue importance, and never escalates the mix.
+  {
+    id: 'sfx_moment_stinger',
+    category: 'combat',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 110, freqSweep: [110, 165], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.03, sustain: 0.12, release: 0.42 },
+    filterType: 'lowpass', filterFreq: 720, filterQ: 1.1,
+    gainMult: 0.7,
+    reverbMix: 0.18, reverbDecay: 0.9,
+  },
+  // --- Swarm moments (swarmJuice cue table) -------------------------------------------------
+  // The round slam's impact: one low sine drop with a dull click on the front, no tail worth
+  // naming. The stinger swells in just behind it; played at rate 0.72 it is the boss-round
+  // weight. Pure synth, no sample.
+  {
+    id: 'sfx_swarm_slam_thud',
+    category: 'combat',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 96, freqSweep: [96, 38], sweepTimeS: 0.22,
+    gainEnvelope: { attack: 0.004, sustain: 0.04, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 380, filterQ: 0.8,
+    transientClick: { gain: 0.3 },
+  },
+  // A broken chain: a short highpassed noise crack with a glassy tail. Bright where the slam is
+  // dark, and nothing like the soft warning tick, so a loss never sounds like a reward.
+  {
+    id: 'sfx_swarm_chain_shatter',
+    category: 'combat',
+    type: 'noise_filtered',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.05, release: 0.32 },
+    filterType: 'highpass', filterFreq: 2800, filterQ: 0.9,
+    transientClick: { gain: 0.5 },
+    reverbMix: 0.22, reverbDecay: 0.8,
+  },
+  // The chain's last-second warning: a soft falling double tick on a low sine. Falling and dull,
+  // where the tier chord rises and rings. 'alert' stays in the id so the tick still cuts through
+  // a speech squelch the way the beep it replaced did.
+  {
+    id: 'sfx_swarm_alert_tick',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 330, freqSweep: [330, 262], sweepTimeS: 0.06,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.09 },
+    filterType: 'lowpass', filterFreq: 1400, filterQ: 0.7,
+    repeatCount: 2, repeatIntervalS: 0.11,
+  },
+  // Discovery plate chime (feature 20): one soft glass note — the handler plays it three times at
+  // staggered offsets and rising rates for the restrained 3-note motif. Quieter than the reveal.
+  {
+    id: 'sfx_discovery_plate_note',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 523,
+    gainEnvelope: { attack: 0.008, sustain: 0.03, release: 0.5 },
+    filterType: 'lowpass', filterFreq: 2400, filterQ: 0.6,
+    gainMult: 0.55,
+    reverbMix: 0.22, reverbDecay: 0.7,
+  },
+  // Discovery resolve — a slow, glassy upward fifth. It sits below mission-complete in tempo and
+  // gain so finding a place reads as wonder rather than another contract payout.
+  {
+    id: 'sfx_discovery_reveal',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 392, freqSweep: [392, 587], sweepTimeS: 0.34,
+    gainEnvelope: { attack: 0.018, sustain: 0.04, release: 0.38 },
+    repeatCount: 2, repeatIntervalS: 0.16,
+    gainMult: 0.62,
+    reverbMix: 0.2, reverbDecay: 1.1,
+  },
+
+  // WANTED heat escalation — the law's attention has a voice. A dissonant rising alarm,
+  // urgent and mechanical, distinct from the generic UI alert so a heat climb is never mistaken
+  // for menu feedback. The call site scales rate/gain with the heat band (1..5).
+  // Kit "wanted" (design/frontend/direction/DIRECTION_SHEET.md §8): one sustained cold tone, slow
+  // attack, held, ≤ 1.2 s (attack 250 + decay 40 + release 850). No alarm sweep, no repeat.
+  {
+    id: 'sfx_wanted_alert',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 196, freqSweep: [196, 196], sweepTimeS: 0.01,
+    gainEnvelope: { attack: 0.25, sustain: 0.85, release: 0.85 },
+    filterType: 'lowpass', filterFreq: 800,
+    gainMult: 0.8,
+  },
+  // Search called off — a soft falling resolution when WANTED drops clean. The mirror of the
+  // escalation alarm: relief, not reward, so escaping the heat radius reads as an event.
+  {
+    id: 'sfx_wanted_clear',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 523, freqSweep: [523, 349], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.014, sustain: 0.05, release: 0.3 },
+    gainMult: 0.6,
+  },
+
+  // First-hour curtain-raiser — the splash is no longer 2.5 s of silent black. One low pressure
+  // swell that rises a fourth and breathes out under the mood line, then hands the ear to the
+  // instructor. Owns its shape: never reused for UI or combat.
+  {
+    id: 'sfx_firsthour_coldopen',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 42, freqSweep: [42, 56], sweepTimeS: 1.7,
+    gainEnvelope: { attack: 0.5, sustain: 0.35, release: 2.2 },
+    filterType: 'lowpass', filterFreq: 240, filterQ: 0.9,
+    gainMult: 0.8,
+    reverbMix: 0.45, reverbDecay: 2.4,
+  },
+
+  // --- UI hover (soft tick, higher than click) ---
+  {
+    id: 'sfx_ui_hover',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 1200, freqSweep: [1200, 1000], sweepTimeS: 0.03,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.03 },
+    filterType: 'highpass', filterFreq: 800,
+  },
+
+  // --- Panel open: soft rising two-tone (a surface appears). Quieter than confirm. ---
+  {
+    // Kit "open" (design/frontend/direction/DIRECTION_SHEET.md §8): a soft low thud, ≤ 250 ms
+    // (attack 4 + decay 40 + release 180).
+    id: 'sfx_ui_open',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 110, freqSweep: [110, 100], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.18 },
+    filterType: 'lowpass', filterFreq: 500,
+    gainMult: 0.75,
+  },
+  // --- Kit "close": the same thud, lower. ≤ 250 ms. ---
+  {
+    id: 'sfx_ui_back',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 82, freqSweep: [82, 74], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.18 },
+    filterType: 'lowpass', filterFreq: 420,
+    gainMult: 0.7,
+  },
+  // --- Kit "move" (focus): a barely-there tick, ≤ 60 ms (attack 1 + decay 40 + release 15). ---
+  {
+    id: 'sfx_ui_tab',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 660, freqSweep: [660, 640], sweepTimeS: 0.02,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.015 },
+    filterType: 'lowpass', filterFreq: 2400,
+    gainMult: 0.55,
+  },
+  // --- Kit "deny": a dull two-note fall over 120 ms, ≤ 300 ms (attack 3 + decay 40 + release 200). ---
+  {
+    id: 'sfx_ui_error',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 330, freqSweep: [330, 247], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.003, sustain: 0.04, release: 0.2 },
+    filterType: 'lowpass', filterFreq: 900,
+    gainMult: 0.85,
+  },
+  // G2: Massline refusal. A short dull tick, not the menu fall and not the cable snap.
+  {
+    id: 'sfx_massline_deny',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 186, freqSweep: [186, 124], sweepTimeS: 0.045,
+    gainEnvelope: { attack: 0.002, sustain: 0, release: 0.05 },
+    filterType: 'lowpass', filterFreq: 640,
+    gainMult: 0.62,
+  },
+  // SF-235 — empty chamber: a dry mechanical click, shorter and duller than the generic deny.
+  {
+    id: 'sfx_refusal_empty',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0, release: 0.035 },
+    filterType: 'bandpass', filterFreq: 1400, filterQ: 1.4,
+    gainMult: 0.5,
+  },
+  // SF-235 — invalid target: a hollow two-note drop, not the empty click and not the menu fall.
+  {
+    id: 'sfx_refusal_target',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 420, freqSweep: [420, 210], sweepTimeS: 0.09,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 700, filterQ: 2.4,
+    gainMult: 0.55,
+  },
+  // --- Brake bite: a short traction chirp on the brake's rising edge (U7: an onset, not a bed). ---
+  {
+    id: 'sfx_rcs_hiss',
+    category: 'engine',
+    type: 'continuous_noise',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.05, sustain: 1.0, release: 0.14 },
+    filterType: 'highpass', filterFreq: 1800, filterQ: 0.65,
+    lfoRate: 11, lfoDepth: 0.22,
+    gainMult: 0.22,
+  },
+  {
+    id: 'sfx_hull_scrape',
+    category: 'impact',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.01, decay: 0.09, sustain: 0.12, release: 0.32 },
+    filterType: 'bandpass', filterFreq: 780, filterQ: 2.4,
+    distortionAmount: 0.42, distortionCurve: 'tanh',
+    gainMult: 0.62,
+  },
+  {
+    id: 'sfx_brake_bite',
+    category: 'engine',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.07 },
+    filterType: 'bandpass', filterFreq: 1400, filterQ: 1.2,
+    subBass: { startFreq: 220, endFreq: 110, dur: 0.08, gain: 0.5 },
+    transientClick: { gain: 0.5 },
+    gainMult: 0.55,
+  },
+  // --- Loot collected: a bright ascending pickup chime (positive reward feedback). ---
+  {
+    id: 'sfx_loot_collect',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 780, freqSweep: [780, 1170], sweepTimeS: 0.08,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.09 },
+    repeatCount: 2, repeatIntervalS: 0.06,
+    gainMult: 0.7,
+  },
+  // --- Mining core fizzle: a descending warble when a drill node collapses/misfires (hazard warn). ---
+  {
+    id: 'sfx_mining_core_fizzle',
+    category: 'mining',
+    type: 'oscillator',
+    baseFreq: 420, freqSweep: [420, 120], sweepTimeS: 0.3,
+    gainEnvelope: { attack: 0.004, sustain: 0.05, release: 0.28 },
+    filterType: 'lowpass', filterFreq: 900, filterQ: 1.4,
+    gainMult: 0.7,
+  },
+
+  // --- Kit "dock" (design/frontend/direction/DIRECTION_SHEET.md §8): a low swell, slow attack,
+  //     ≤ 900 ms (attack 180 + decay 40 + release 650). ---
+  {
+    id: 'sfx_dock_clunk',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 48, freqSweep: [48, 62], sweepTimeS: 0.5,
+    gainEnvelope: { attack: 0.18, sustain: 0.6, release: 0.65 },
+    filterType: 'lowpass', filterFreq: 600,
+  },
+
+  // Lantern Ward: short mechanical contacts, dispatched only by committed local work.
+  // The quiet after the family relay closes is intentional; there is no ambient loop.
+  {
+    id: 'sfx_lantern_jaws', category: 'engine', type: 'oscillator', wave: 'triangle',
+    baseFreq: 135, freqSweep: [135, 62], sweepTimeS: 0.11,
+    gainEnvelope: { attack: 0.004, sustain: 0.015, release: 0.14 },
+    filterType: 'lowpass', filterFreq: 920, gainMult: 0.45,
+    repeatCount: 2, repeatIntervalS: 0.12,
+  },
+  {
+    id: 'sfx_lantern_relay', category: 'engine', type: 'oscillator', wave: 'sine',
+    baseFreq: 330, freqSweep: [330, 440], sweepTimeS: 0.09,
+    gainEnvelope: { attack: 0.018, sustain: 0.025, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 1200, gainMult: 0.25,
+  },
+
+  // --- Station ambient hum (low continuous hum when docked) ---
+  {
+    id: 'sfx_station_hum',
+    category: 'engine',
+    type: 'continuous_oscillator',
+    baseFreq: 60, freqMod: 0.01,
+    gainEnvelope: { attack: 1.0, sustain: 1.0, release: 1.5 },
+    filterType: 'lowpass', filterFreq: 180, filterQ: 0.8,
+    lfoRate: 0.3, lfoDepth: 0.03,
+  },
+
+  // --- Jump/warp charge (rising energy buildup) ---
+  {
+    id: 'sfx_jump_charge',
+    category: 'engine',
+    type: 'oscillator',
+    baseFreq: 80, freqSweep: [80, 800], sweepTimeS: 1.5,
+    wave: 'sawtooth',
+    gainEnvelope: { attack: 0.1, sustain: 0.8, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 600, filterQ: 3.0,
+    lfoRate: 12, lfoDepth: 0.15,
+  },
+
+  // --- Jump/warp arrival (decompression whoosh + shimmer) ---
+  {
+    id: 'sfx_jump_arrive',
+    category: 'engine',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.005, sustain: 0.0, release: 0.6 },
+    filterType: 'bandpass', filterFreq: 1200, filterQ: 0.6,
+    reverbMix: 0.6, reverbDecay: 1.5,
+  },
+
+  // --- Player death explosion (heavy, rumbling, dramatic) ---
+  {
+    id: 'sfx_player_death',
+    category: 'explosion',
+    type: 'layered',
+    layers: ['sfx_explosion_large'],
+    gainMult: 3.0, filterFreqMult: 0.4,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 2.0 },
+    reverbMix: 0.8, reverbDecay: 4.0,
+  },
+
+  // --- Player respawn chime (ascending bright tones — revival) ---
+  {
+    id: 'sfx_respawn_chime',
+    category: 'ui',
+    type: 'oscillator',
+    baseFreq: 440, freqSweep: [440, 1320], sweepTimeS: 0.4,
+    gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.5 },
+    filterType: 'highpass', filterFreq: 300,
+    reverbMix: 0.6, reverbDecay: 1.5,
+  },
+
+  // --- Boost activation whoosh (distinct from explosion — breathy/airy) ---
+  {
+    id: 'sfx_boost_whoosh',
+    category: 'engine',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.02, sustain: 0.0, release: 0.3 },
+    filterType: 'bandpass', filterFreq: 500, filterQ: 0.4,
+    pitchRange: [1.0, 1.5],
+  },
+
+  // Veil Step — a low rip and a short blip, not the thruster whoosh.
+  {
+    id: 'sfx_phase_rift_body',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 78,
+    freqSweep: [96, 34],
+    sweepTimeS: 0.32,
+    gainEnvelope: { attack: 0.006, sustain: 0.08, release: 0.36 },
+    filterType: 'lowpass', filterFreq: 320, filterQ: 0.7,
+    subBass: { startFreq: 58, endFreq: 26, dur: 0.34, gain: 0.95 },
+    distortionAmount: 0.18, distortionCurve: 'tanh',
+  },
+  {
+    id: 'sfx_phase_rift_blip',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 740,
+    freqSweep: [880, 210],
+    sweepTimeS: 0.09,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 1400, filterQ: 1.6,
+  },
+  {
+    id: 'sfx_phase_rift_air',
+    category: 'engine',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.26 },
+    filterType: 'bandpass', filterFreq: 380, filterQ: 1.5,
+  },
+  {
+    id: 'sfx_phase_rift',
+    category: 'engine',
+    type: 'layered',
+    layers: ['sfx_phase_rift_body', 'sfx_phase_rift_blip', 'sfx_phase_rift_air'],
+    gainMult: 1.05,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.38 },
+  },
+
+  // --- Countermeasures (P1-7): chaff = bright metallic burst; ECM = descending electronic whine ---
+  {
+    id: 'sfx_cm_chaff',
+    category: 'weapon',
+    type: 'noise_filtered',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.005, sustain: 0.0, release: 0.25 },
+    filterType: 'highpass', filterFreq: 2000, filterQ: 0.8,
+    pitchRange: [0.9, 1.3],
+  },
+  {
+    // ECM burst: a descending electronic whine. Converted from the unsupported `type:'osc'` shape
+    // (oscType/freqStart/freqEnd — the synth renders none of these, so it was silent) to the supported
+    // `type:'oscillator'` vocabulary (wave/baseFreq/freqSweep/sweepTimeS). Same character, now audible.
+    id: 'sfx_cm_ecm',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 1200,
+    freqSweep: [1200, 200],
+    sweepTimeS: 0.36,
+    gainEnvelope: { attack: 0.01, sustain: 0.3, release: 0.4 },
+    filterType: 'lowpass', filterFreq: 3000, filterQ: 2,
+    pitchRange: [0.95, 1.1],
+  },
+  // SF-10 RCS disruptor hit: an ion "authority stripped" zap — a fast falling square-wave pulse
+  // band-limited through a lowpass so it reads electrical, not percussive. Pairs with the `ion` vfx
+  // material. Uses the synth's supported `type:'oscillator'` vocabulary (baseFreq/freqSweep/sweepTimeS/
+  // wave) — NOT `type:'osc'`, which the synth does not render and would produce a silent voice. The
+  // nonzero sustain holds the zap audibly through its decay so it is not just a click.
+  {
+    id: 'sfx_rcs_disrupt',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 880,
+    freqSweep: [880, 240],
+    sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.004, sustain: 0.18, release: 0.14 },
+    filterType: 'lowpass', filterFreq: 1800, filterQ: 1.4,
+    pitchRange: [0.9, 1.15],
+  },
+
+  // --- SPEC2/07 Juice Table SFX (1:1 bindings) ---
+  {
+    id: 'sfx.shieldHit',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 780,
+    freqSweep: [780, 420],
+    sweepTimeS: 0.07,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.08 },
+    filterType: 'bandpass', filterFreq: 850, filterQ: 1.8,
+    distortionAmount: 0.2, distortionCurve: 'tanh',
+    transientClick: { gain: 0.4 },
+  },
+  {
+    // A glassy falling harmonic makes shield collapse unmistakably electrical. The massline snap
+    // owns the low mechanical twang; keeping this receipt high prevents the two breaks blurring.
+    id: 'sfx_shield_break_crystal',
+    category: 'explosion',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 1568,
+    freqSweep: [1568, 784],
+    sweepTimeS: 0.22,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.22 },
+    filterType: 'bandpass', filterFreq: 1750, filterQ: 2.8,
+  },
+  {
+    id: 'sfx_shield_break_crack',
+    category: 'explosion',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.18 },
+    filterType: 'bandpass', filterFreq: 2200, filterQ: 3.6,
+  },
+  {
+    id: 'sfx.shieldBreak',
+    category: 'explosion',
+    type: 'layered',
+    layers: ['sfx_shield_break_crystal', 'sfx_shield_break_crack'],
+    gainMult: 1.0,
+  },
+  {
+    // Electrical blowout pop for player shield collapse: sharp capacitive discharge + violent snap
+    id: 'sfx_shield_blowout_pop',
+    category: 'explosion',
+    type: 'layered',
+    layers: ['sfx_shield_blowout_discharge', 'sfx_shield_break_crack'],
+    gainMult: 1.25,
+  },
+  {
+    id: 'sfx_shield_blowout_discharge',
+    category: 'explosion',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 880,
+    freqSweep: [880, 60],
+    sweepTimeS: 0.15,
+    gainEnvelope: { attack: 0.001, sustain: 0.05, release: 0.18 },
+    filterType: 'bandpass',
+    filterFreq: 1400,
+    filterQ: 2.2,
+    distortionAmount: 0.6, distortionCurve: 'tanh',
+    subBass: { startFreq: 180, endFreq: 40, dur: 0.16, gain: 0.8 },
+  },
+  {
+    // Audible warning alarm pulse for player shield blowout
+    id: 'sfx_shield_blowout_alarm',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 880,
+    freqSweep: [880, 660],
+    sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.005, sustain: 0.3, release: 0.08 },
+    filterType: 'bandpass',
+    filterFreq: 1200,
+    filterQ: 2.0,
+    repeatCount: 1,
+    repeatIntervalS: 0.14,
+    gainMult: 0.75,
+  },
+  {
+    // Shield back online after depletion: a rising energized shimmer — the inverse of the
+    // collapse's falling crackle. Soft and short so recovery reads as relief, not alarm.
+    id: 'sfx_shield_restore',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 660,
+    freqSweep: [660, 1320],
+    sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.012, sustain: 0.04, release: 0.3 },
+    filterType: 'bandpass', filterFreq: 1400, filterQ: 1.6,
+  },
+  {
+    id: 'sfx.armorHit',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.14 },
+    filterType: 'bandpass', filterFreq: 520, filterQ: 2.4,
+    distortionAmount: 0.45, distortionCurve: 'tanh',
+    subBass: { startFreq: 160, endFreq: 60, dur: 0.12, gain: 0.8 },
+    transientClick: { gain: 0.7 },
+  },
+  {
+    id: 'sfx_subsystem_disabled',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.002, sustain: 0.015, release: 0.24 },
+    filterType: 'bandpass', filterFreq: 420, filterQ: 2.2,
+  },
+  {
+    // Propulsion authority winding down: low, mechanical, and clearly unlike a hull impact.
+    id: 'sfx_subsystem_drive_disabled',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 210, freqSweep: [210, 58], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.003, sustain: 0.02, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 520, filterQ: 1.4,
+  },
+  {
+    // Sensor/comms collapse: a clipped data tone dropping out, not another generic warning beep.
+    id: 'sfx_subsystem_sensor_disabled',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 1180, freqSweep: [1180, 310], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.002, sustain: 0.01, release: 0.18 },
+    filterType: 'bandpass', filterFreq: 760, filterQ: 2.8,
+  },
+  {
+    // Weapon bus trip: a short capacitor snap with no sustained alarm tail.
+    id: 'sfx_subsystem_weapon_disabled',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.16 },
+    filterType: 'highpass', filterFreq: 980, filterQ: 1.1,
+  },
+  {
+    // The 47-A mass discrepancy: a clean rising return tied to the evidence spindle in world space.
+    id: 'sfx_scenario_signal',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 380, freqSweep: [380, 1380], sweepTimeS: 0.24,
+    gainEnvelope: { attack: 0.004, sustain: 0.015, release: 0.28 },
+    filterType: 'bandpass', filterFreq: 880, filterQ: 1.8,
+    repeatCount: 1, repeatIntervalS: 0.18,
+  },
+  {
+    // Kessler's channel: warm, narrow-band analog squelch before the readable comms text.
+    id: 'sfx_comms_kessler',
+    category: 'ui',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.003, sustain: 0.02, release: 0.16 },
+    filterType: 'bandpass', filterFreq: 1180, filterQ: 2.0,
+  },
+  {
+    // Official denial: colder, clipped carrier signature, distinct from Kessler without extra volume.
+    id: 'sfx_comms_denial',
+    category: 'ui',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.002, sustain: 0.01, release: 0.13 },
+    filterType: 'highpass', filterFreq: 1750, filterQ: 1.0,
+    repeatCount: 1, repeatIntervalS: 0.11,
+  },
+  {
+    // A two-beat descending distress pattern for the civilian/evidence priority conflict.
+    id: 'sfx_objective_priority_split',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 760, freqSweep: [760, 420], sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.004, sustain: 0.015, release: 0.22 },
+    filterType: 'bandpass', filterFreq: 620, filterQ: 1.5,
+    repeatCount: 1, repeatIntervalS: 0.2,
+  },
+  {
+    // Branch closure is acknowledgement, not celebration: a restrained rising interval at evidence.
+    id: 'sfx_branch_resolved',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 250, freqSweep: [250, 500], sweepTimeS: 0.3,
+    gainEnvelope: { attack: 0.008, sustain: 0.025, release: 0.36 },
+    filterType: 'lowpass', filterFreq: 900, filterQ: 0.8,
+  },
+  {
+    id: 'sfx.hullHit',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 95,
+    freqSweep: [95, 38],
+    sweepTimeS: 0.18,
+    gainEnvelope: { attack: 0.003, sustain: 0.0, release: 0.24 },
+    filterType: 'lowpass', filterFreq: 280, filterQ: 1.2,
+    distortionAmount: 0.5, distortionCurve: 'tanh',
+    subBass: { startFreq: 110, endFreq: 28, dur: 0.28, gain: 1.0 },
+    transientClick: { gain: 0.6 },
+  },
+  {
+    // A short lateral air-cut for a projectile that genuinely crossed the player's near-miss tube.
+    // World positioning supplies direction/distance; the high-pass keeps it clear of impact weight.
+    id: 'sfx_combat_near_miss',
+    category: 'weapon',
+    type: 'noise_filtered',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.14 },
+    filterType: 'highpass', filterFreq: 1450, filterQ: 0.7,
+    pitchRange: [0.96, 1.08],
+    dopplerEnabled: true,
+  },
+
+  // --- Optic lattice contact cues (build_map §24 "the picture and the sound") ---
+  // One voice per response so the ear can call the material before the eye finishes the glance:
+  // stone (and a darkened prism) eats the bolt as a dull thud, metal throws it back as a ping,
+  // and a live diamond answers with a bright crack and ring of splinters. All ride the combat
+  // bus as positional one-shots; the audio system collapses same-kind repeats inside a tick so
+  // a lattice burst speaks once per response, not once per cell.
+  {
+    // The bolt dies inside the rock: a low, closed noise body with a short sub drop. No
+    // transient click and no top end — absorbed means the energy went nowhere.
+    id: 'sfx_optic_absorb',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.002, decay: 0.05, sustain: 0.0, release: 0.16 },
+    filterType: 'lowpass', filterFreq: 300, filterQ: 1.1,
+    distortionAmount: 0.45, distortionCurve: 'tanh',
+    subBass: { startFreq: 105, endFreq: 34, dur: 0.16, gain: 0.9 },
+  },
+  {
+    // Bolt off a mirror: a struck-bar ping — fast attack, narrow high band, a short ring tail.
+    // The pitch wobble keeps consecutive ricochets from phasing into one note.
+    id: 'sfx_optic_reflect',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 1568, freqSweep: [1568, 1175], sweepTimeS: 0.07,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.22 },
+    filterType: 'bandpass', filterFreq: 1900, filterQ: 4.0,
+    transientClick: { gain: 0.35 },
+    pitchRange: [0.95, 1.07],
+  },
+  {
+    // Prism discharge layers a hard white crack under a rising crystal ring — the ring IS the
+    // eight splinters leaving the lattice, so it climbs instead of dying flat.
+    id: 'sfx_optic_split_ring',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 2093, freqSweep: [2093, 2794], sweepTimeS: 0.11,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.32 },
+    filterType: 'bandpass', filterFreq: 2900, filterQ: 2.6,
+  },
+  {
+    id: 'sfx_optic_split_crack',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.11 },
+    filterType: 'highpass', filterFreq: 2400, filterQ: 0.9,
+  },
+  {
+    id: 'sfx_optic_split',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_optic_split_ring', 'sfx_optic_split_crack'],
+    gainMult: 1.0,
+  },
+  {
+    // A spent prism healing back to live crystal: a soft rising shimmer, deliberately under the
+    // contact cues — a field recovering off to the side is a whisper, not a hit.
+    id: 'sfx_optic_rekindle',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 880, freqSweep: [880, 1760], sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.012, sustain: 0.02, release: 0.3 },
+    filterType: 'bandpass', filterFreq: 1600, filterQ: 1.8,
+  },
+
+  {
+    id: 'sfx_kill_sine',
+    category: 'explosion',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 60,
+    gainEnvelope: { attack: 0.005, sustain: 0.0, release: 0.15 },
+  },
+  {
+    id: 'sfx_kill_noise',
+    category: 'explosion',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.40 },
+    filterType: 'lowpass', filterFreq: 300,
+  },
+  {
+    id: 'sfx.killSmall',
+    category: 'explosion',
+    type: 'layered',
+    layers: ['sfx_kill_sine', 'sfx_kill_noise'],
+    gainMult: 1.0,
+  },
+  {
+    // Reward confirmation is a brief rising telemetry interval above the physical 60 Hz crump.
+    // It is only routed when killerId is the player; NPC-vs-NPC deaths retain the crump alone.
+    id: 'sfx_kill_confirm',
+    category: 'explosion',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 740,
+    freqSweep: [740, 1110],
+    sweepTimeS: 0.14,
+    gainEnvelope: { attack: 0.003, sustain: 0.0, release: 0.16 },
+    filterType: 'bandpass', filterFreq: 1050, filterQ: 2.2,
+  },
+  {
+    id: 'sfx.killConfirmed',
+    category: 'explosion',
+    type: 'layered',
+    layers: ['sfx_kill_sine', 'sfx_kill_noise', 'sfx_kill_confirm'],
+    gainMult: 1.0,
+  },
+  {
+    id: 'sfx_kill_capital_sub',
+    category: 'explosion',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 45,
+    gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.8 },
+  },
+  {
+    id: 'sfx_kill_capital_noise',
+    category: 'explosion',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.05, sustain: 0.2, release: 1.2 },
+    filterType: 'lowpass', filterFreq: 150,
+  },
+  {
+    id: 'sfx.killCapital',
+    category: 'explosion',
+    type: 'layered',
+    layers: ['sfx_kill_capital_sub', 'sfx_kill_capital_noise'],
+    gainMult: 1.6,
+  },
+  // Reactor-overload tell (feature 13): a rising whine under a stressed shudder, ~0.4 s, that
+  // resolves into the delayed boom. Same window the audio kill path already holds for capitals.
+  {
+    id: 'sfx_reactor_overload_whine',
+    category: 'explosion',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 220,
+    freqSweep: [220, 920],
+    sweepTimeS: 0.38,
+    gainEnvelope: { attack: 0.03, sustain: 0.18, release: 0.1 },
+    filterType: 'bandpass', filterFreq: 1100, filterQ: 3.2,
+  },
+  {
+    // Low stressed body under the whine; the whine's sweep drags across its harmonics, which is
+    // where the "machinery running away" beating comes from.
+    id: 'sfx_reactor_overload_shudder',
+    category: 'explosion',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 55,
+    freqSweep: [55, 96],
+    sweepTimeS: 0.36,
+    gainEnvelope: { attack: 0.02, sustain: 0.12, release: 0.12 },
+    filterType: 'lowpass', filterFreq: 240, filterQ: 1.1,
+  },
+  {
+    id: 'sfx_reactor_overload',
+    category: 'explosion',
+    type: 'layered',
+    layers: ['sfx_reactor_overload_whine', 'sfx_reactor_overload_shudder'],
+    gainMult: 0.8,
+  },
+  // Docking cradle capture (feature 14): the magnetic guide takes hold — a short servo seat under
+  // a soft confirm blip. Quieter than the final dock clunk; this is the approach, not the latch.
+  {
+    id: 'sfx_dock_capture',
+    category: 'ui',
+    type: 'layered',
+    layers: ['sfx_cargo_seat_whir', 'sfx_dock_capture_blip'],
+    gainMult: 0.55,
+  },
+  {
+    id: 'sfx_dock_capture_blip',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 540,
+    freqSweep: [540, 810],
+    sweepTimeS: 0.1,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.16 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 1.6,
+  },
+  // Hauler foghorn (feature 18): a deep two-tone industrial ship horn. Low fundamental swells
+  // slowly with a fifth above and a breathy noise edge — reads as mass passing, not a UI beep.
+  // Played positionally at the hauler when the transponder chirp lands.
+  {
+    id: 'sfx_hauler_horn_fund',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 68,
+    freqSweep: [68, 64],
+    sweepTimeS: 1.4,
+    gainEnvelope: { attack: 0.28, sustain: 0.55, release: 1.1 },
+    filterType: 'lowpass', filterFreq: 320, filterQ: 0.9,
+  },
+  {
+    id: 'sfx_hauler_horn_fifth',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 102,
+    freqSweep: [102, 97],
+    sweepTimeS: 1.4,
+    gainEnvelope: { attack: 0.34, sustain: 0.4, release: 1.0 },
+    filterType: 'lowpass', filterFreq: 420, filterQ: 0.8,
+  },
+  {
+    id: 'sfx_hauler_horn_breath',
+    category: 'ambient',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.3, sustain: 0.3, release: 0.9 },
+    filterType: 'bandpass', filterFreq: 240, filterQ: 1.4,
+  },
+  {
+    id: 'sfx_hauler_foghorn',
+    category: 'ambient',
+    type: 'layered',
+    layers: ['sfx_hauler_horn_fund', 'sfx_hauler_horn_fifth', 'sfx_hauler_horn_breath'],
+    gainMult: 0.9,
+  },
+  // Market ka-ching (feature 16): the vintage register — drawer clunk, bell strike, then the
+  // spring ring-out. Plays on the settled sale, never the intent click.
+  {
+    id: 'sfx_cash_register_clunk',
+    category: 'ui',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.09 },
+    filterType: 'lowpass', filterFreq: 900, filterQ: 1.2,
+    transientClick: { gain: 0.5 },
+  },
+  {
+    id: 'sfx_cash_register_bell',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 1568,
+    freqSweep: [1568, 1560],
+    sweepTimeS: 0.5,
+    gainEnvelope: { attack: 0.001, sustain: 0.05, release: 0.62 },
+    filterType: 'highpass', filterFreq: 900, filterQ: 0.7,
+    reverbMix: 0.2, reverbDecay: 0.4,
+  },
+  {
+    id: 'sfx_cash_register',
+    category: 'ui',
+    type: 'layered',
+    layers: ['sfx_cash_register_clunk', 'sfx_cash_register_bell'],
+    gainMult: 0.8,
+  },
+  {
+    id: 'sfx.playerDamage',
+    category: 'weapon',
+    type: 'oscillator',
+    baseFreq: 220,
+    gainEnvelope: { attack: 0.005, sustain: 0.0, release: 0.15 },
+    filterType: 'lowpass', filterFreq: 300,
+  },
+  {
+    id: 'sfx_tether_latch_lock',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 196,
+    freqSweep: [196, 98],
+    sweepTimeS: 0.03,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.03 },
+    repeatCount: 1,
+    repeatIntervalS: 0.04,
+  },
+  // Hitch latch is a softer triangle cousin of the massline lock, not a copy of it.
+  {
+    id: 'sfx_hitch_latch',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 262,
+    freqSweep: [262, 174],
+    sweepTimeS: 0.09,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.14 },
+  },
+  {
+    id: 'sfx_tether_latch_body',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.055 },
+    filterType: 'bandpass', filterFreq: 360, filterQ: 2.8,
+  },
+  // Latch kinetic wave: the resonant TWANG-hum of a heavy line going taut — a short bright saw
+  // pitch-falls into a low ring and sits under the thud/lock transient. Layered only on the
+  // Massline latch so the generic attach.lock cue keeps its leaner signature.
+  {
+    id: 'sfx_tether_latch_wave',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 156,
+    freqSweep: [156, 46],
+    sweepTimeS: 0.46,
+    gainEnvelope: { attack: 0.004, sustain: 0.08, release: 0.5 },
+    filterType: 'lowpass', filterFreq: 1400, filterQ: 4,
+    subBass: { gain: 0.5 },
+    transientClick: { gain: 0.15 },
+    reverbMix: 0.22, reverbDecay: 0.9,
+  },
+  {
+    id: 'sfx.tetherLatch',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_tether_latch_body', 'sfx_tether_latch_lock', 'sfx_tether_latch_wave'],
+    gainMult: 1.0,
+  },
+  {
+    id: 'sfx_tether_strain_creak',
+    category: 'weapon',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.015, sustain: 0.0, release: 0.22 },
+    filterType: 'bandpass', filterFreq: 460, filterQ: 5.2,
+  },
+  {
+    id: 'sfx_tether_crack',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.04 },
+    filterType: 'highpass', filterFreq: 1200,
+  },
+  {
+    id: 'sfx_tether_twang',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 180,
+    freqSweep: [180, 60],
+    sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.2 },
+    filterType: 'lowpass', filterFreq: 400,
+    pitchRange: [0.9, 1.1],
+  },
+  {
+    id: 'sfx.tetherSnap',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_tether_crack', 'sfx_tether_twang'],
+    gainMult: 1.2,
+  },
+  {
+    id: 'sfx.chargeDetonate',
+    category: 'explosion',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 45,
+    gainEnvelope: { attack: 0.005, sustain: 0.0, release: 0.35 },
+  },
+
+  // --- Dash & Cruise SFX ---
+  // Slingshot apex release: the Doppler whoosh of the swing crest let go — air rushing past the
+  // hull plus the falling pitch of the departing arc. Distinct from the sling's launch thump.
+  {
+    id: 'sfx_massline_apex_air',
+    category: 'engine',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.02, sustain: 0.12, release: 0.5 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 1.4,
+    reverbMix: 0.2, reverbDecay: 0.7,
+  },
+  {
+    id: 'sfx_massline_apex_tone',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 780,
+    freqSweep: [780, 210],
+    sweepTimeS: 0.55,
+    gainEnvelope: { attack: 0.015, sustain: 0.05, release: 0.4 },
+    filterType: 'lowpass', filterFreq: 2200,
+    reverbMix: 0.18, reverbDecay: 0.7,
+  },
+  {
+    id: 'sfx_massline_apex',
+    category: 'engine',
+    type: 'layered',
+    layers: ['sfx_massline_apex_air', 'sfx_massline_apex_tone'],
+    gainMult: 1.1,
+  },
+  {
+    id: 'sfx_dash_whoosh',
+    category: 'engine',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.08 },
+    filterType: 'bandpass', filterFreq: 600,
+  },
+  {
+    id: 'sfx_dash_thump',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 55,
+    gainEnvelope: { attack: 0.005, sustain: 0.0, release: 0.08 },
+  },
+  {
+    id: 'sfx.shipDash',
+    category: 'engine',
+    type: 'layered',
+    layers: ['sfx_dash_whoosh', 'sfx_dash_thump'],
+    gainMult: 1.2,
+  },
+
+  // Combat action lifecycle (authored cue IDs from combatDefs). Only the scored lock /
+  // release / snap / denial / dash-in / burst-fire moments have recipes; start, end, and
+  // reel.tick stay silent on purpose.
+  {
+    id: 'combat.action.dash.active',
+    category: 'engine',
+    type: 'layered',
+    layers: ['sfx_dash_whoosh', 'sfx_dash_thump'],
+    gainMult: 1.05,
+  },
+  {
+    id: 'combat.action.attach.lock',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_tether_latch_body', 'sfx_tether_latch_lock'],
+    gainMult: 1.0,
+  },
+  {
+    id: 'combat.action.sling.release',
+    category: 'engine',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.02, sustain: 0.08, release: 0.28 },
+    filterType: 'bandpass', filterFreq: 300, filterQ: 1.1,
+  },
+  {
+    id: 'combat.action.cut.snap',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_tether_crack', 'sfx_tether_twang'],
+    gainMult: 1.15,
+  },
+  {
+    id: 'combat.action.burst.fire',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_wpn_pulse_laser'],
+    gainMult: 1.05,
+  },
+  {
+    id: 'combat.action.cancel',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 220, freqSweep: [220, 90], sweepTimeS: 0.1,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.12 },
+    filterType: 'lowpass', filterFreq: 520,
+    gainMult: 0.7,
+  },
+  {
+    id: 'combat.action.reject',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 310, freqSweep: [330, 196], sweepTimeS: 0.11,
+    gainEnvelope: { attack: 0.003, sustain: 0.03, release: 0.16 },
+    filterType: 'lowpass', filterFreq: 800,
+    gainMult: 0.8,
+  },
+  {
+    id: 'sfx_cruise_charge_root',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 110,
+    freqSweep: [110, 440],
+    sweepTimeS: 2.7,
+    gainEnvelope: { attack: 0.02, sustain: 2.65, release: 0.33 },
+    filterType: 'lowpass', filterFreq: 760, filterQ: 1.0,
+  },
+  {
+    id: 'sfx_cruise_charge_fifth',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 165,
+    freqSweep: [165, 660],
+    sweepTimeS: 2.7,
+    gainEnvelope: { attack: 0.035, sustain: 2.6, release: 0.36 },
+    filterType: 'lowpass', filterFreq: 980, filterQ: 0.8,
+  },
+  {
+    id: 'sfx.cruiseCharging',
+    category: 'engine',
+    type: 'layered',
+    layers: ['sfx_cruise_charge_root', 'sfx_cruise_charge_fifth'],
+    gainMult: 0.62,
+  },
+  {
+    id: 'sfx.cruiseEngaged',
+    category: 'engine',
+    type: 'continuous_oscillator',
+    baseFreq: 65,
+    gainEnvelope: { attack: 0.4, sustain: 1.0, release: 0.3 },
+  },
+  {
+    id: 'sfx.cruiseSnared',
+    category: 'engine',
+    type: 'oscillator',
+    baseFreq: 110,
+    freqSweep: [110, 55],
+    sweepTimeS: 0.3,
+    gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.3 },
+  },
+
+  // --- Comms & Mining Reward SFX ---
+  // The rescue delivery (survivorPod station handoff): the berth takes someone in. A warm
+  // struck bell with an answering fifth partial — the place's own receiving voice, below the
+  // PA desk chime's register and nothing like the player hull's dock clunk thud.
+  {
+    id: 'sfx_rescue_delivery_strike',
+    category: 'comms',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 392,
+    freqSweep: [392, 386],
+    sweepTimeS: 0.9,
+    gainEnvelope: { attack: 0.004, sustain: 0.1, release: 1.1 },
+    filterType: 'lowpass', filterFreq: 1200, filterQ: 0.8,
+    distortionAmount: 0.12, distortionCurve: 'tanh',
+    transientClick: { gain: 0.35 },
+    reverbMix: 0.3, reverbDecay: 1.1,
+  },
+  {
+    id: 'sfx_rescue_delivery_answer',
+    category: 'comms',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 587.3,
+    freqSweep: [587.3, 584],
+    sweepTimeS: 0.8,
+    gainEnvelope: { attack: 0.02, sustain: 0.0, release: 0.9 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 1.4,
+    reverbMix: 0.35, reverbDecay: 1.0,
+  },
+  {
+    id: 'sfx_rescue_delivery_chime',
+    category: 'comms',
+    type: 'layered',
+    layers: ['sfx_rescue_delivery_strike', 'sfx_rescue_delivery_answer'],
+    gainMult: 1.0,
+  },
+  {
+    id: 'sfx_vent_chime',
+    category: 'mining',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 880,
+    gainEnvelope: { attack: 0.005, sustain: 0.0, release: 0.12 },
+    filterType: 'highpass', filterFreq: 600,
+  },
+  {
+    id: 'sfx_core_bell',
+    category: 'mining',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 660,
+    freqSweep: [660, 1320],
+    sweepTimeS: 0.18,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.32 },
+    filterType: 'highpass', filterFreq: 480,
+  },
+  // The Eighth Bell (the_eighth_bell encounter): a cathedral bell, not a UI chime — a low
+  // struck fundamental with a long ring-out and a sub-bass swing, under the high hum
+  // partial that makes it read as bronze across a whole sector.
+  {
+    id: 'sfx_eighth_bell_strike',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 147,
+    freqSweep: [147, 139],
+    sweepTimeS: 1.8,
+    gainEnvelope: { attack: 0.004, sustain: 0.12, release: 2.6 },
+    filterType: 'lowpass', filterFreq: 900, filterQ: 0.8,
+    distortionAmount: 0.25, distortionCurve: 'tanh',
+    subBass: { startFreq: 74, endFreq: 49, dur: 1.6, gain: 0.9 },
+    transientClick: { gain: 0.7 },
+    reverbMix: 0.45, reverbDecay: 1.6,
+  },
+  {
+    id: 'sfx_eighth_bell_hum',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 1175,
+    freqSweep: [1175, 1156],
+    sweepTimeS: 1.1,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 1.4 },
+    filterType: 'bandpass', filterFreq: 1400, filterQ: 2.0,
+    reverbMix: 0.5, reverbDecay: 1.2,
+  },
+  {
+    id: 'sfx_eighth_bell_toll',
+    category: 'ambient',
+    type: 'layered',
+    layers: ['sfx_eighth_bell_strike', 'sfx_eighth_bell_hum'],
+    gainMult: 1.1,
+  },
+  {
+    id: 'sfx_squelch_story',
+    category: 'comms',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 330,
+    gainEnvelope: { attack: 0.01, sustain: 0.8, release: 0.02 },
+  },
+  {
+    id: 'sfx_squelch_ambient',
+    category: 'comms',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.02 },
+    filterType: 'highpass', filterFreq: 3000,
+  },
+  {
+    id: 'sfx_squelch_danger',
+    category: 'comms',
+    type: 'noise_filtered',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.005, sustain: 0.8, release: 0.02 },
+    filterType: 'bandpass', filterFreq: 800, filterQ: 3.0,
+    distortionAmount: 0.6, distortionCurve: 'softclip',
+  },
+
+  // --- Place one-shots (palette pads; sparse, silence-disciplined) ---
+  // category 'mining' is the ambient peak tier (0.3); getBusForRecipe routes id tokens to ambient bus.
+  {
+    id: 'sfx_fringe_tick',
+    category: 'mining',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.04 },
+    filterType: 'bandpass', filterFreq: 2800, filterQ: 4.0,
+  },
+  {
+    id: 'sfx_anomaly_swell',
+    category: 'mining',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 55,
+    freqSweep: [55, 148],
+    sweepTimeS: 0.9,
+    gainEnvelope: { attack: 0.12, sustain: 0.0, release: 0.7 },
+    filterType: 'lowpass', filterFreq: 420,
+    reverbMix: 0.45, reverbDecay: 1.8,
+  },
+  // FB-135 — reserve bed: a low held tone on the ambient bus. Not a menu beep.
+  {
+    id: 'sfx_fuel_reserve',
+    category: 'mining',
+    type: 'continuous_oscillator',
+    wave: 'sine',
+    baseFreq: 55,
+    gainEnvelope: { attack: 0.35, sustain: 1, release: 0.4 },
+    filterType: 'lowpass', filterFreq: 180, filterQ: 0.7,
+    gainMult: 0.45,
+  },
+  // FB-135 — empty sting: one falling body, once. Distinct from sfx_ui_alert.
+  {
+    id: 'sfx_fuel_empty',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 196, freqSweep: [196, 73], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.008, sustain: 0.04, release: 0.42 },
+    filterType: 'lowpass', filterFreq: 640, filterQ: 0.8,
+    gainMult: 0.8,
+  },
+
+  // --- Field deploy voices (CV-EAR) — every field power gets its own one-shot; no more
+  // borrowed anomaly swell on the Well and no UI confirm click on force powers. Combat bus.
+  {
+    // WELL — the Intake: a sucking drop, energy falling inward.
+    id: 'sfx_field_deploy_well',
+    category: 'weapon', type: 'oscillator', wave: 'sine',
+    baseFreq: 140, freqSweep: [140, 46], sweepTimeS: 0.42,
+    gainEnvelope: { attack: 0.08, sustain: 0.04, release: 0.7 },
+    filterType: 'lowpass', filterFreq: 300, filterQ: 0.8,
+  },
+  {
+    // REPULSOR — the Plow: a push thump, energy thrown outward.
+    id: 'sfx_field_deploy_repulsor',
+    category: 'weapon', type: 'oscillator', wave: 'sine',
+    baseFreq: 55, freqSweep: [55, 170], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.003, sustain: 0.02, release: 0.4 },
+    filterType: 'lowpass', filterFreq: 600, filterQ: 0.9,
+    transientClick: { gain: 0.3 },
+  },
+  {
+    // CONE — the Sluice: a directional gust opened ahead of the nose.
+    id: 'sfx_field_deploy_cone',
+    category: 'weapon', type: 'noise_burst', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.006, sustain: 0.03, release: 0.35 },
+    filterType: 'bandpass', filterFreq: 1200, filterQ: 1.2,
+  },
+  {
+    // SKIM — the scoop sheet: a high shimmer as the sheet opens.
+    id: 'sfx_field_deploy_skim',
+    category: 'weapon', type: 'oscillator', wave: 'triangle',
+    baseFreq: 480, freqSweep: [480, 640], sweepTimeS: 0.15,
+    gainEnvelope: { attack: 0.01, sustain: 0.04, release: 0.3 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 3.0,
+  },
+  {
+    // SEED — the lock-ring: a short mechanical clack as the ring locks.
+    id: 'sfx_field_deploy_seed',
+    category: 'weapon', type: 'oscillator', wave: 'square',
+    baseFreq: 320, freqSweep: [320, 190], sweepTimeS: 0.06,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.18 },
+    filterType: 'bandpass', filterFreq: 700, filterQ: 2.0,
+    transientClick: { gain: 0.4 },
+  },
+
+  // --- Field sustain loops (SF-230) — while a field is live it is heard from the source its
+  // force leans toward. Continuous voices; gain/pitch ride the kernel's lifecycle envelope.
+  {
+    // WELL — sustained inward pull: the deploy drop's landing tone held, warbling.
+    id: 'sfx_field_loop_well',
+    category: 'weapon', type: 'continuous_oscillator', wave: 'sine',
+    baseFreq: 46, freqSweep: [46, 40], sweepTimeS: 3.0,
+    gainEnvelope: { attack: 0.25, sustain: 1.0, release: 0.4, peak: 0.3 },
+    filterType: 'lowpass', filterFreq: 220, filterQ: 0.8,
+    lfoRate: 0.7, lfoDepth: 0.16,
+  },
+  {
+    // REPULSOR — sustained outward press: a low filtered pressure bed.
+    id: 'sfx_field_loop_repulsor',
+    category: 'weapon', type: 'continuous_noise', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.2, sustain: 1.0, release: 0.35, peak: 0.26 },
+    filterType: 'bandpass', filterFreq: 480, filterQ: 0.9,
+  },
+  {
+    // CONE — the Sluice held open: the deploy gust sustained as a forward shear.
+    id: 'sfx_field_loop_cone',
+    category: 'weapon', type: 'continuous_noise', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.15, sustain: 1.0, release: 0.3, peak: 0.2 },
+    filterType: 'bandpass', filterFreq: 1200, filterQ: 1.2,
+  },
+  {
+    // SHEET — the scoop sheet sustained: a high thin shimmer along the flight line.
+    id: 'sfx_field_loop_sheet',
+    category: 'weapon', type: 'continuous_oscillator', wave: 'triangle',
+    baseFreq: 480, freqSweep: [480, 520], sweepTimeS: 2.2,
+    gainEnvelope: { attack: 0.2, sustain: 1.0, release: 0.35, peak: 0.18 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 3.0,
+    lfoRate: 0.5, lfoDepth: 0.1,
+  },
+
+  // --- Stunt chain voices (CV-EAR slice 3) — the combo the ear can follow.
+  {
+    // Chain link: a short bright pluck; the combo's own link count pitches it up a pentatonic
+    // ladder via the `rate` option (see STUNT_CHAIN_RATES in audioSystem).
+    id: 'sfx_stunt_link',
+    category: 'weapon', type: 'oscillator', wave: 'triangle',
+    baseFreq: 880, freqSweep: [880, 840], sweepTimeS: 0.05,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 2000, filterQ: 1.4,
+    transientClick: { gain: 0.15 },
+  },
+  {
+    // Style banked: the cash-out — a main voice rising a fifth over a second voice a fifth
+    // below, so the bank reads as a two-note interval rather than another pluck.
+    id: 'sfx_stunt_bank',
+    category: 'weapon', type: 'oscillator', wave: 'sine',
+    baseFreq: 660, freqSweep: [660, 990], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.008, sustain: 0.1, release: 0.4 },
+    filterType: 'lowpass', filterFreq: 2400,
+    subBass: { startFreq: 440, endFreq: 660, dur: 0.4, gain: 0.5 },
+  },
+
+  // --- First-hour identity motifs (procedural, exclusive roles) ---
+  // Accel step: idle→thrust / thrust→boost — short sub + air, never reused for UI.
+  {
+    id: 'sfx_accel_transition',
+    category: 'engine',
+    type: 'layered',
+    layers: ['sfx_dash_thump', 'sfx_boost_whoosh'],
+    gainMult: 0.55,
+    gainEnvelope: { attack: 0.008, sustain: 0.0, release: 0.18 },
+  },
+  // Kit "undock" (design/frontend/direction/DIRECTION_SHEET.md §8): the dock swell reversed,
+  // faster, ≤ 600 ms (attack 60 + decay 40 + release 450).
+  {
+    id: 'sfx_undock_release',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 62, freqSweep: [62, 48], sweepTimeS: 0.35,
+    gainEnvelope: { attack: 0.06, sustain: 0.5, release: 0.45 },
+    filterType: 'lowpass', filterFreq: 500,
+  },
+  // Scan pulse / Focus transition — soft ascending fifth pair (distinct from lock_acquired).
+  {
+    id: 'sfx_scan_pulse',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 392,
+    freqSweep: [392, 588],
+    sweepTimeS: 0.14,
+    gainEnvelope: { attack: 0.008, sustain: 0.0, release: 0.22 },
+    filterType: 'highpass', filterFreq: 280,
+  },
+  // Travel arc stinger (jump charge peak / cruise engage) — clean two-tone rise, not UI confirm.
+  {
+    id: 'sfx_travel_motif',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 98,
+    freqSweep: [98, 196],
+    sweepTimeS: 0.55,
+    gainEnvelope: { attack: 0.04, sustain: 0.15, release: 0.35 },
+    filterType: 'lowpass', filterFreq: 900, filterQ: 1.2,
+  },
+  // Journey family: a restrained A/E harmonic language. Every recipe is finite; the sustained
+  // cruise bed remains exclusively owned by the engine-hum cruise tier.
+  {
+    id: 'sfx_travel_lane_lock',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 98, freqSweep: [98, 147], sweepTimeS: 0.24,
+    gainEnvelope: { attack: 0.015, sustain: 0.04, release: 0.24 },
+    filterType: 'lowpass', filterFreq: 760, filterQ: 1.0,
+  },
+  {
+    id: 'sfx_travel_gate_approach',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 147, freqSweep: [147, 196], sweepTimeS: 0.32,
+    gainEnvelope: { attack: 0.02, sustain: 0.05, release: 0.28 },
+    filterType: 'lowpass', filterFreq: 680, filterQ: 1.4,
+  },
+  {
+    id: 'sfx_travel_gate_align',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 73.5, freqSweep: [73.5, 294], sweepTimeS: 1.2,
+    gainEnvelope: { attack: 0.04, sustain: 0.88, release: 0.32 },
+    filterType: 'lowpass', filterFreq: 820, filterQ: 1.8,
+  },
+  {
+    id: 'sfx_travel_commit_window',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 196, freqSweep: [196, 294], sweepTimeS: 0.22,
+    gainEnvelope: { attack: 0.008, sustain: 0.03, release: 0.22 },
+    filterType: 'bandpass', filterFreq: 520, filterQ: 1.6,
+  },
+  // --- Massline Physics Identity (Wave M2): throw/sling/tumble/bullet-time/cloak semantics. ---
+  // Throw release: a taut snap that whip-cracks upward — the "let fly" moment.
+  {
+    id: 'sfx_massline_throw',
+    category: 'weapon',
+    type: 'oscillator',
+    baseFreq: 240, freqSweep: [240, 860], sweepTimeS: 0.1,
+    gainEnvelope: { attack: 0.003, sustain: 0.02, release: 0.16 },
+    filterType: 'highpass', filterFreq: 220,
+    pitchRange: [0.95, 1.05],
+  },
+  // Solution lock: one clean rising blip when the release window first opens (indicator goes hot).
+  {
+    id: 'sfx_massline_solution',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 660, freqSweep: [660, 990], sweepTimeS: 0.06,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.08 },
+    gainMult: 0.65,
+  },
+  // Self-sling: a deep swelling whoosh as the anchor flings the ship out.
+  // (type was 'noise', which the synth does not render — corrected to 'noise_filtered' so the
+  // bandpass actually applies and the voice is audible. Intent unchanged.)
+  {
+    id: 'sfx_massline_sling',
+    category: 'engine',
+    type: 'noise_filtered',
+    baseFreq: 140,
+    gainEnvelope: { attack: 0.03, sustain: 0.1, release: 0.34 },
+    filterType: 'bandpass', filterFreq: 320, filterQ: 1.1,
+  },
+  // Tumble: an unstable descending wobble — attitude control losing the argument.
+  {
+    id: 'sfx_massline_tumble',
+    category: 'combat',
+    type: 'oscillator',
+    baseFreq: 320, freqSweep: [320, 120], sweepTimeS: 0.4,
+    gainEnvelope: { attack: 0.01, sustain: 0.08, release: 0.3 },
+    repeatCount: 3, repeatIntervalS: 0.11,
+    filterType: 'lowpass', filterFreq: 900,
+    gainMult: 0.8,
+  },
+  // Bullet time in/out: sub dive on entry, mirrored rise on exit.
+  {
+    id: 'sfx_massline_bt_in',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 420, freqSweep: [420, 130], sweepTimeS: 0.18,
+    gainEnvelope: { attack: 0.005, sustain: 0.04, release: 0.2 },
+    gainMult: 0.7,
+  },
+  {
+    id: 'sfx_massline_bt_out',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 130, freqSweep: [130, 420], sweepTimeS: 0.14,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.14 },
+    gainMult: 0.6,
+  },
+  // Cloak on/off: airy shimmer down into silence; the off cue is shorter and duller.
+  // (type was 'noise' — corrected to 'noise_filtered' so the synth renders it; intent unchanged.)
+  {
+    id: 'sfx_massline_cloak_on',
+    category: 'ui',
+    type: 'noise_filtered',
+    baseFreq: 900,
+    gainEnvelope: { attack: 0.02, sustain: 0.05, release: 0.4 },
+    filterType: 'highpass', filterFreq: 1400,
+    gainMult: 0.55,
+  },
+  {
+    id: 'sfx_cloak_fade',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 520,
+    freqSweep: [520, 220],
+    sweepTimeS: 0.42,
+    gainEnvelope: { attack: 0.04, sustain: 0.08, release: 0.55 },
+    gainMult: 0.28,
+  },
+  {
+    id: 'sfx_massline_cloak_off',
+    category: 'ui',
+    type: 'noise_filtered',
+    baseFreq: 500,
+    gainEnvelope: { attack: 0.005, sustain: 0.02, release: 0.16 },
+    filterType: 'bandpass', filterFreq: 700, filterQ: 1.4,
+    gainMult: 0.55,
+  },
+  // Jettison kick: a blunt rear-quarter thud (reaction mass leaving the hold).
+  // (type was 'noise' — corrected to 'noise_filtered'; intent unchanged.)
+  {
+    id: 'sfx_massline_jettison',
+    category: 'engine',
+    type: 'noise_filtered',
+    baseFreq: 90,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.18 },
+    filterType: 'lowpass', filterFreq: 420,
+    gainMult: 0.75,
+  },
+  // FB-073 — cargo jettison: pods leaving the hold. Same blunt rear-quarter thud register as the
+  // massline kick (its dash_punch sample binding is shared at rate 0.8), a touch lower and longer
+  // so the read is "mass leaving" rather than "line kicked".
+  {
+    id: 'sfx_cargo_jettison',
+    category: 'engine',
+    type: 'noise_filtered',
+    baseFreq: 84,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.22 },
+    filterType: 'lowpass', filterFreq: 400,
+    gainMult: 0.75,
+  },
+  // FB-142 — the planet band verbs. Collector intake: a breath of band-passed air opening on the
+  // skim band — a mouth, not a chime; the off register is the same voice pitched down.
+  {
+    id: 'sfx_planet_collector',
+    category: 'engine',
+    type: 'noise_filtered',
+    baseFreq: 480,
+    gainEnvelope: { attack: 0.025, sustain: 0.06, release: 0.38 },
+    filterType: 'bandpass', filterFreq: 780, filterQ: 1.7,
+    gainMult: 0.6,
+  },
+  // The plunge ring advancing: a low heat growl — atmosphere pressing in, not combustion. The
+  // audio route steps rate/gain per stage, so commit/breakup/descent climb and 'clear' releases.
+  {
+    id: 'sfx_planet_plunge',
+    category: 'engine',
+    type: 'noise_filtered',
+    baseFreq: 130,
+    gainEnvelope: { attack: 0.02, sustain: 0.1, release: 0.5 },
+    filterType: 'lowpass', filterFreq: 460,
+    gainMult: 0.75,
+  },
+  // The recovery burn: a sustained outward shove in the jettison-thud register, longer — burning
+  // out of the well, not kicking a pod.
+  {
+    id: 'sfx_planet_recovery_burn',
+    category: 'engine',
+    type: 'noise_filtered',
+    baseFreq: 105,
+    gainEnvelope: { attack: 0.012, sustain: 0.14, release: 0.42 },
+    filterType: 'lowpass', filterFreq: 440,
+    gainMult: 0.8,
+  },
+  // Aft rack ejector: short mechanical clack + filtered breath, distinct from detonation.
+  // (type was 'noise' — corrected to 'noise_filtered'; intent unchanged.)
+  {
+    id: 'sfx_massline_bomb_drop',
+    category: 'engine',
+    type: 'noise_filtered',
+    baseFreq: 150,
+    gainEnvelope: { attack: 0.002, sustain: 0.015, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 520, filterQ: 1.8,
+    gainMult: 0.58,
+  },
+  // Massline threat warning (Rung 10): a low wobbling growl — something heavy leaning on a live
+  // line. Deliberately NOT the latch's lock transient or the strain creak's mid-band scrape:
+  // register sits an octave lower, swells in, and wobbles instead of cracking.
+  {
+    id: 'sfx_massline_threat_growl',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 74, freqSweep: [82, 46], sweepTimeS: 0.7,
+    gainEnvelope: { attack: 0.04, sustain: 0.05, release: 0.5 },
+    filterType: 'lowpass', filterFreq: 320, filterQ: 1.2,
+    lfoRate: 7, lfoDepth: 0.12,
+    // Header law: an authored distortionAmount names the curve it was authored against.
+    // This growl predates the tagging pass and was riding the implicit softclip default;
+    // tanh is the QoL curve every other current weapon/massline voice rides.
+    distortionAmount: 0.3, distortionCurve: 'tanh',
+  },
+  {
+    id: 'sfx_massline_threat_rumble',
+    category: 'weapon',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.06, sustain: 0.04, release: 0.55 },
+    filterType: 'lowpass', filterFreq: 190, filterQ: 0.9,
+  },
+  {
+    id: 'sfx_massline_threat',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_massline_threat_growl', 'sfx_massline_threat_rumble'],
+    gainMult: 0.85,
+  },
+  {
+    id: 'sfx_travel_commit_sub',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 49, freqSweep: [49, 98], sweepTimeS: 0.44,
+    gainEnvelope: { attack: 0.005, sustain: 0.08, release: 0.4 },
+    filterType: 'lowpass', filterFreq: 180, filterQ: 0.8,
+  },
+  {
+    id: 'sfx_travel_transit',
+    category: 'engine',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.025, sustain: 0.05, release: 0.62 },
+    filterType: 'bandpass', filterFreq: 920, filterQ: 0.55,
+  },
+  {
+    id: 'sfx_travel_commit',
+    category: 'engine',
+    type: 'layered',
+    layers: ['sfx_travel_commit_sub', 'sfx_travel_transit'],
+    gainMult: 0.9,
+  },
+  {
+    id: 'sfx_travel_arrival_tone',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 294, freqSweep: [294, 98], sweepTimeS: 0.5,
+    gainEnvelope: { attack: 0.015, sustain: 0.04, release: 0.48 },
+    filterType: 'lowpass', filterFreq: 720, filterQ: 1.1,
+  },
+  // Arrival bass drop (feature 19): the resonant sub landing into the new sector — a 55→28 Hz
+  // sine drop under a low rumble swell. Sits under the existing arrival tone.
+  {
+    id: 'sfx_travel_bass_drop',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 55, freqSweep: [55, 28], sweepTimeS: 0.9,
+    gainEnvelope: { attack: 0.01, sustain: 0.18, release: 1.15 },
+    filterType: 'lowpass', filterFreq: 140, filterQ: 1.0,
+  },
+  {
+    id: 'sfx_travel_arrival',
+    category: 'engine',
+    type: 'layered',
+    // The jump whoosh stays its own recipe. Nesting it here never attaches the
+    // jump_arrive sample, so the decompression body was stranded inside the chord.
+    layers: ['sfx_travel_arrival_tone', 'sfx_travel_bass_drop'],
+    gainMult: 0.75,
+  },
+  {
+    id: 'sfx_travel_sector_identity',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 196, freqSweep: [196, 147], sweepTimeS: 0.3,
+    gainEnvelope: { attack: 0.025, sustain: 0.02, release: 0.36 },
+    filterType: 'lowpass', filterFreq: 600, filterQ: 0.7,
+  },
+
+  // --- Sector arrival identities (WF-13) -------------------------------------------------
+  // The old sector identity cue was one shared voice for every sector on the map — the game's one
+  // deliberate "you have arrived somewhere" beat sounded identical over Ceres, Helios and the
+  // Ashfall Reach, and its sample body was the lane-lock recording pitched down. These ten voices
+  // give every live sector its own arrival chord, each rooted on that sector's bed tone
+  // (SECTOR_BEDS hzA/hzB in src/audio/themeMatrix.js) so the stinger melts into the bed that is
+  // already playing when it lands. The palette class carries the manner: core doors open (rising
+  // fifth), belt works acknowledge you (struck metal settling), fringe nods thinly (fourth down,
+  // dry), anomaly is not right (detuned pair under a long tail). Bound 1:1 with the designed
+  // 'arrival' samples in SAMPLE_BINDINGS; SECTOR_ARRIVAL_CUES (bottom of this file) is the
+  // sectorId -> voice table the presentation adapter reads.
+  {
+    // Helios Prime (core, E): the front door — a warm rising fifth with a civil shimmer.
+    id: 'sfx_arrival_helios_prime',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 82.4, freqSweep: [82.4, 123.6], sweepTimeS: 0.24,
+    gainEnvelope: { attack: 0.012, sustain: 0.1, release: 0.55 },
+    filterType: 'lowpass', filterFreq: 1100, filterQ: 0.8,
+    subBass: { startFreq: 164.8, endFreq: 164.8, dur: 0.4, gain: 0.2 },
+    pitchRange: [0.99, 1.01],
+  },
+  {
+    // Tethys Junction (core, A): same civil door, a third brighter — the junction hums higher.
+    id: 'sfx_arrival_tethys_junction',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 110, freqSweep: [110, 165], sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.01, sustain: 0.09, release: 0.5 },
+    filterType: 'lowpass', filterFreq: 1500, filterQ: 0.9,
+    subBass: { startFreq: 220, endFreq: 220, dur: 0.34, gain: 0.18 },
+    pitchRange: [0.99, 1.01],
+  },
+  {
+    // Ceres Belt (belt, D): struck ore-car metal settling onto the root — the works acknowledge you.
+    id: 'sfx_arrival_ceres_belt',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 146, freqSweep: [146, 73], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.003, sustain: 0.02, release: 0.38 },
+    filterType: 'bandpass', filterFreq: 620, filterQ: 1.3,
+    distortionAmount: 0.4, distortionCurve: 'tanh',
+    subBass: { startFreq: 73, endFreq: 49, dur: 0.34, gain: 0.85 },
+    transientClick: { gain: 0.55 },
+    pitchRange: [0.98, 1.02],
+  },
+  {
+    // Vesta Forge (belt, A): the forge answers — heavier clang, deeper settle than Ceres.
+    id: 'sfx_arrival_vesta_forge',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 110, freqSweep: [110, 55], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.003, sustain: 0.03, release: 0.46 },
+    filterType: 'bandpass', filterFreq: 480, filterQ: 1.1,
+    distortionAmount: 0.5, distortionCurve: 'tanh',
+    subBass: { startFreq: 110, endFreq: 34, dur: 0.42, gain: 0.95 },
+    transientClick: { gain: 0.65 },
+    pitchRange: [0.98, 1.02],
+  },
+  {
+    // Charon Expanse (belt, G): the deep works — a long low settle, almost a bell underwater.
+    id: 'sfx_arrival_charon_expanse',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 73.5, freqSweep: [73.5, 49], sweepTimeS: 0.3,
+    gainEnvelope: { attack: 0.02, sustain: 0.08, release: 0.7 },
+    filterType: 'lowpass', filterFreq: 320, filterQ: 0.9,
+    subBass: { startFreq: 36.8, endFreq: 24.5, dur: 0.7, gain: 0.9 },
+    pitchRange: [0.98, 1.02],
+  },
+  {
+    // Pallas Drift (fringe, G): someone far away nods — a thin descending fourth, dry, no body.
+    id: 'sfx_arrival_pallas_drift',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 98, freqSweep: [98, 73.5], sweepTimeS: 0.26,
+    gainEnvelope: { attack: 0.03, sustain: 0.02, release: 0.42 },
+    filterType: 'highpass', filterFreq: 180, filterQ: 0.7,
+    pitchRange: [0.97, 1.03],
+  },
+  {
+    // Io Reach (fringe, C): the radiation belt's own nod — hollow square, gritty, narrow.
+    id: 'sfx_arrival_io_reach',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 65, freqSweep: [65, 48.8], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.02, sustain: 0.02, release: 0.4 },
+    filterType: 'bandpass', filterFreq: 420, filterQ: 2.2,
+    distortionAmount: 0.3, distortionCurve: 'tanh',
+    pitchRange: [0.97, 1.03],
+  },
+  {
+    // Sker Haven (fringe, C): the haven's thin vigil light — a fluttering fourth down, tighter.
+    id: 'sfx_arrival_sker_haven',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 72, freqSweep: [72, 54], sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.015, sustain: 0.02, release: 0.36 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 3.0,
+    lfoRate: 7, lfoDepth: 0.15,
+    transientClick: { gain: 0.3 },
+    pitchRange: [0.97, 1.03],
+  },
+  {
+    // Veil Nebula (anomaly, B): the place is not right — a detuned pair beating under a long tail.
+    id: 'sfx_arrival_veil_nebula',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 61.8, freqSweep: [61.8, 63.4], sweepTimeS: 1.1,
+    gainEnvelope: { attack: 0.3, sustain: 0.22, release: 0.9 },
+    filterType: 'lowpass', filterFreq: 420, filterQ: 0.8,
+    subBass: { startFreq: 123.6, endFreq: 126.8, dur: 1.1, gain: 0.5 },
+  },
+  {
+    // Ashfall Reach (anomaly, F): the deepest wrong note — a grinding detuned swell, slow and dark.
+    id: 'sfx_arrival_ashfall_reach',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 44, freqSweep: [44, 46.2], sweepTimeS: 1.2,
+    gainEnvelope: { attack: 0.35, sustain: 0.2, release: 1.1 },
+    filterType: 'lowpass', filterFreq: 200, filterQ: 0.8,
+    lfoRate: 1.3, lfoDepth: 0.2,
+    subBass: { startFreq: 88, endFreq: 92.4, dur: 1.2, gain: 0.4 },
+  },
+
+  // Frontier sectors — same class grammar, built not hand-copied: each voice is rooted on the
+  // sector's own RUNTIME bed root. resolveSectorBed (src/audio/themeMatrix.js) derives an unknown
+  // sector's bed tone from a deterministic FNV hash of the sector id; this inline derivation
+  // mirrors it (audioRecipes.js stays import-free), so arrival chord and bed share a root and the
+  // focused test asserts the match against resolveSectorBed itself. Palette class per sector:
+  // fringe nods thinly, belts clang, anomalies swell detuned, the one frontier core door opens.
+  ...[
+    ['sector_nyx_march', 'fringe'], ['sector_hyperion_cut', 'belt'], ['sector_kepler_scar', 'fringe'],
+    ['sector_orcus_shadow', 'anomaly'], ['sector_rhea_cinder', 'belt'], ['sector_haumea_rift', 'fringe'],
+    ['sector_eris_margin', 'fringe'], ['sector_phoebe_echo', 'anomaly'], ['sector_nereid_shoal', 'fringe'],
+    ['sector_proteus_well', 'fringe'], ['sector_triton_wake', 'anomaly'], ['sector_eunomia_gulf', 'fringe'],
+    ['sector_sedna_dark', 'anomaly'], ['sector_dione_lane', 'core'],
+    ['sector_the_bolus', 'anomaly'],
+  ].map(([sectorId, paletteClass]) => {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < sectorId.length; i++) h = Math.imul(h ^ sectorId.charCodeAt(i), 0x01000193) >>> 0;
+    const root = 48 + (h % 80);
+    const id = `sfx_arrival_${sectorId.slice('sector_'.length)}`;
+    if (paletteClass === 'fringe') {
+      return {
+        id, category: 'engine', type: 'oscillator',
+        wave: (h >>> 3) & 1 ? 'sine' : 'triangle',
+        baseFreq: root, freqSweep: [root, root * 0.75], sweepTimeS: 0.26,
+        gainEnvelope: { attack: 0.03, sustain: 0.02, release: 0.4 },
+        filterType: 'highpass', filterFreq: 160, filterQ: 0.7,
+        pitchRange: [0.97, 1.03],
+      };
+    }
+    if (paletteClass === 'belt') {
+      return {
+        id, category: 'engine', type: 'oscillator',
+        wave: 'triangle',
+        baseFreq: root * 2, freqSweep: [root * 2, root], sweepTimeS: 0.14,
+        gainEnvelope: { attack: 0.003, sustain: 0.02, release: 0.42 },
+        filterType: 'bandpass', filterFreq: root * 9, filterQ: 1.2,
+        distortionAmount: 0.45, distortionCurve: 'tanh',
+        subBass: { startFreq: root, endFreq: root * 0.66, dur: 0.34, gain: 0.85 },
+        transientClick: { gain: 0.55 },
+        pitchRange: [0.98, 1.02],
+      };
+    }
+    if (paletteClass === 'anomaly') {
+      return {
+        id, category: 'engine', type: 'oscillator',
+        wave: 'sine',
+        baseFreq: root, freqSweep: [root, root * 1.03], sweepTimeS: 1.1,
+        gainEnvelope: { attack: 0.3, sustain: 0.22, release: 0.9 },
+        filterType: 'lowpass', filterFreq: root * 4 + 140, filterQ: 0.8,
+        subBass: { startFreq: root * 2, endFreq: root * 2.05, dur: 1.1, gain: 0.45 },
+      };
+    }
+    return {
+      id, category: 'engine', type: 'oscillator',
+      wave: 'sine',
+      baseFreq: root, freqSweep: [root, root * 1.5], sweepTimeS: 0.2,
+      gainEnvelope: { attack: 0.012, sustain: 0.09, release: 0.5 },
+      filterType: 'lowpass', filterFreq: 1300, filterQ: 0.8,
+      subBass: { startFreq: root * 2, endFreq: root * 2, dur: 0.34, gain: 0.18 },
+      pitchRange: [0.99, 1.01],
+    };
+  }),
+  {
+    id: 'sfx_travel_cancel',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 147, freqSweep: [147, 98], sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.005, sustain: 0.02, release: 0.2 },
+    filterType: 'lowpass', filterFreq: 560, filterQ: 1.0,
+  },
+  {
+    id: 'sfx_travel_fail_tone',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 147, freqSweep: [147, 55], sweepTimeS: 0.36,
+    gainEnvelope: { attack: 0.008, sustain: 0.04, release: 0.34 },
+    filterType: 'lowpass', filterFreq: 420, filterQ: 1.8,
+  },
+  {
+    id: 'sfx_travel_fail_noise',
+    category: 'engine',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.28 },
+    filterType: 'bandpass', filterFreq: 260, filterQ: 1.3,
+  },
+  {
+    id: 'sfx_travel_fail',
+    category: 'engine',
+    type: 'layered',
+    layers: ['sfx_travel_fail_tone', 'sfx_travel_fail_noise'],
+    gainMult: 0.8,
+  },
+  {
+    id: 'sfx_travel_interdiction',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 110, freqSweep: [110, 103.8], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.004, sustain: 0.08, release: 0.32 },
+    filterType: 'bandpass', filterFreq: 330, filterQ: 2.2,
+  },
+  {
+    id: 'sfx_travel_recovery',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 98, freqSweep: [98, 147], sweepTimeS: 0.42,
+    gainEnvelope: { attack: 0.025, sustain: 0.05, release: 0.34 },
+    filterType: 'lowpass', filterFreq: 620, filterQ: 0.8,
+  },
+  {
+    id: 'sfx_travel_settle',
+    category: 'engine',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 147, freqSweep: [147, 98], sweepTimeS: 0.36,
+    gainEnvelope: { attack: 0.02, sustain: 0.02, release: 0.38 },
+    filterType: 'lowpass', filterFreq: 480, filterQ: 0.7,
+  },
+  // Restrained station machinery tick (docked only; sparse).
+  {
+    id: 'sfx_station_machinery',
+    category: 'mining',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.08 },
+    filterType: 'bandpass', filterFreq: 180, filterQ: 2.5,
+  },
+  // SF-232 — a machine that is actually working: slow motor, not the player's mining beam.
+  {
+    id: 'sfx_work_motor',
+    category: 'mining',
+    type: 'continuous_noise',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.2, sustain: 1, release: 0.25 },
+    filterType: 'bandpass', filterFreq: 160, filterQ: 1.6,
+    lfoRate: 2.4, lfoDepth: 0.18,
+    gainMult: 0.4,
+  },
+  // SF-232 — jam / power loss: the motor stalls into a broken pulse.
+  {
+    id: 'sfx_work_jam',
+    category: 'mining',
+    type: 'continuous_oscillator',
+    wave: 'square',
+    baseFreq: 48,
+    gainEnvelope: { attack: 0.04, sustain: 1, release: 0.12 },
+    filterType: 'lowpass', filterFreq: 240, filterQ: 0.8,
+    lfoRate: 6.5, lfoDepth: 0.55,
+    gainMult: 0.32,
+  },
+  // Distant traffic context (Helios calm flight only; very quiet).
+  {
+    id: 'sfx_traffic_blip',
+    category: 'mining',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 520,
+    freqSweep: [520, 410],
+    sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.18 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 1.5,
+  },
+  // The seam rock announcing itself before it splits — a slow, deep flex with enough harmonic
+  // content (triangle, not sine) to survive small speakers. Not a weapon sound.
+  {
+    id: 'sfx_ambient_rock_groan',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 46, freqSweep: [38, 52], sweepTimeS: 1.6,
+    gainEnvelope: { attack: 0.45, sustain: 0.9, release: 1.1 },
+    filterType: 'lowpass', filterFreq: 220, filterQ: 0.9,
+    lfoRate: 2.2, lfoDepth: 0.14,
+  },
+  // The split: a muffled band-limited crack with a short tail — mass parting, not an explosion.
+  // (The synth has one shared white-noise buffer; noiseColor is not consumed, so it stays off.)
+  {
+    id: 'sfx_ambient_rock_calve',
+    category: 'ambient',
+    type: 'noise_burst',
+    gainEnvelope: { attack: 0.004, sustain: 0.05, release: 0.6 },
+    filterType: 'bandpass', filterFreq: 420, filterQ: 0.9,
+  },
+  // inf-wreck-cooling-voice (WF-13): a fresh wreck sounds its cooling — hull conduction, not a
+  // fire roar. The tick is a struck plate's ring: two inharmonic partials (~1.47 ratio, the
+  // upper dying first) over a hairline transient. The knock is the hot frame flexing, duller and
+  // lower. The groan is the hull settling — a resonant sawtooth creak, higher and faster-wobbling
+  // than the seam rock's stone groan so metal and stone never read alike. Played positionally at
+  // the hulk by audioSystem._updateWreckCooling on the wreck's own burn/cool clock.
+  {
+    id: 'sfx_ambient_wreck_tick_ring',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 1650, freqSweep: [1665, 1610], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.17 },
+    filterType: 'bandpass', filterFreq: 1800, filterQ: 2.2,
+    transientClick: { gain: 0.3 },
+  },
+  {
+    id: 'sfx_ambient_wreck_tick_partial',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 2430, freqSweep: [2440, 2390], sweepTimeS: 0.09,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.09 },
+    filterType: 'bandpass', filterFreq: 2500, filterQ: 2.6,
+  },
+  {
+    id: 'sfx_ambient_wreck_tick',
+    category: 'ambient',
+    type: 'layered',
+    layers: ['sfx_ambient_wreck_tick_ring', 'sfx_ambient_wreck_tick_partial'],
+    gainMult: 0.6,
+  },
+  {
+    id: 'sfx_ambient_wreck_knock',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 380, freqSweep: [430, 330], sweepTimeS: 0.07,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.15 },
+    filterType: 'lowpass', filterFreq: 950, filterQ: 1.4,
+    transientClick: { gain: 0.22 },
+    gainMult: 0.7,
+  },
+  {
+    id: 'sfx_ambient_wreck_groan',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 64, freqSweep: [72, 55], sweepTimeS: 1.5,
+    gainEnvelope: { attack: 0.3, decay: 0.6, sustain: 0.65, release: 0.9 },
+    filterType: 'lowpass', filterFreq: 340, filterQ: 3.2,
+    lfoRate: 5.5, lfoDepth: 0.045,
+    distortionAmount: 0.15, distortionCurve: 'tanh',
+    gainMult: 0.75,
+  },
+  // PQ-158.02 — Massline instrument: reel whine, release (distinct from break), bridle chord.
+  {
+    id: 'sfx_massline_reel_whine',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 420,
+    freqSweep: [320, 640],
+    sweepTimeS: 0.22,
+    gainEnvelope: { attack: 0.04, sustain: 0.35, release: 0.18 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 6.5,
+    lfoRate: 18, lfoDepth: 0.12,
+  },
+  {
+    id: 'sfx_massline_release',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 310,
+    freqSweep: [310, 620],
+    sweepTimeS: 0.07,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.16 },
+    filterType: 'highpass', filterFreq: 240,
+  },
+  {
+    id: 'sfx_massline_bridle_chord',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_massline_bridle_low', 'sfx_massline_bridle_high'],
+    gainMult: 0.95,
+  },
+  {
+    id: 'sfx_massline_bridle_low',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 196,
+    gainEnvelope: { attack: 0.008, sustain: 0.12, release: 0.28 },
+    filterType: 'lowpass', filterFreq: 720, filterQ: 1.4,
+  },
+  {
+    id: 'sfx_massline_bridle_high',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 294,
+    gainEnvelope: { attack: 0.01, sustain: 0.1, release: 0.32 },
+    filterType: 'lowpass', filterFreq: 1100, filterQ: 1.8,
+  },
+  // FB-010 — the transverse snare and the mass seed have voices. Synth recipes on the existing
+  // oscillator/noise families; no samples, no new UI countdown (the seed HUD exists). The seed's
+  // warning-then-collapse is the pair that matters most: it is a timer the player stands on.
+  {
+    // Snare arm: one small mechanical tick as the cross-line's anchors arm.
+    id: 'sfx_snare_arm_tick',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 620,
+    freqSweep: [620, 500],
+    sweepTimeS: 0.03,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.07 },
+    filterType: 'bandpass', filterFreq: 820, filterQ: 2.6,
+  },
+  {
+    // Snare cut: the tether twang's brighter, tighter cousin for the cross-line's release.
+    id: 'sfx_snare_cut',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 340,
+    freqSweep: [340, 120],
+    sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.14 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 3.2,
+    pitchRange: [0.94, 1.06],
+  },
+  {
+    // Seed deploy: the throw's soft falling whistle as the seed travels out.
+    id: 'sfx_massseed_deploy',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 480,
+    freqSweep: [480, 300],
+    sweepTimeS: 0.22,
+    gainEnvelope: { attack: 0.008, sustain: 0.02, release: 0.2 },
+    filterType: 'bandpass', filterFreq: 760, filterQ: 2.2,
+  },
+  {
+    // Seed locking rise: the first half of the lock figure, a tone climbing while the ring seats.
+    id: 'sfx_massseed_lock_rise',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 196,
+    freqSweep: [196, 392],
+    sweepTimeS: 0.4,
+    gainEnvelope: { attack: 0.02, sustain: 0.24, release: 0.1 },
+    filterType: 'lowpass', filterFreq: 1200, filterQ: 1.6,
+  },
+  {
+    // Seed lock chord, low voice: the ring lands with the root under the rise's octave.
+    id: 'sfx_massseed_chord_low',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 196,
+    gainEnvelope: { attack: 0.006, sustain: 0.1, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 760, filterQ: 1.4,
+  },
+  {
+    // Seed lock chord, high voice: the fifth above, so landing reads as resolution not click.
+    id: 'sfx_massseed_chord_high',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 294,
+    gainEnvelope: { attack: 0.008, sustain: 0.08, release: 0.34 },
+    filterType: 'lowpass', filterFreq: 1100, filterQ: 1.8,
+  },
+  {
+    id: 'sfx_massseed_lock_chord',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_massseed_chord_low', 'sfx_massseed_chord_high'],
+    gainMult: 0.95,
+  },
+  // Pocket beat wake (WF-13): the staged world answers audibly. When a causal-chain beat starts
+  // within earshot — the surveyor laying its line, the convoy forming at the pod — the pocket's
+  // work lights come on as sound: one low work-bell falling a third (work, not alarm) over a
+  // soft hull-vent breath. Positioned on the beat's primary hull, so the tabletop distance model
+  // carries the "somewhere over there" read; rate varies inside authored bounds per (sector,
+  // event, cycle) so a repeated watch never loops the same chirp.
+  {
+    id: 'sfx_pocket_beat_bell',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 392,
+    freqSweep: [392, 311],
+    sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.005, sustain: 0.0, release: 0.55 },
+    filterType: 'lowpass', filterFreq: 900, filterQ: 1.1,
+  },
+  {
+    id: 'sfx_pocket_beat_breath',
+    category: 'ambient',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.07, sustain: 0.0, release: 0.7 },
+    filterType: 'lowpass', filterFreq: 420, filterQ: 0.9,
+  },
+  {
+    id: 'sfx_pocket_beat_wake',
+    category: 'ambient',
+    type: 'layered',
+    layers: ['sfx_pocket_beat_bell', 'sfx_pocket_beat_breath'],
+    gainMult: 1.0,
+  },
+  {
+    // Seed warning pulse that quickens: a narrow alarm tone under a fast tremolo with a rising
+    // figure — reads as a countdown the ear can follow, never a menu beep.
+    id: 'sfx_massseed_warning',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 392,
+    freqSweep: [392, 523],
+    sweepTimeS: 0.6,
+    gainEnvelope: { attack: 0.01, sustain: 0.5, release: 0.16 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 2.4,
+    lfoRate: 8, lfoDepth: 0.72,
+  },
+  {
+    // Seed collapse drop: the floor falls away under the anchored mass — one low drop, then
+    // silence (the despawn is bookkeeping and stays silent).
+    id: 'sfx_massseed_collapse',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 220,
+    freqSweep: [220, 40],
+    sweepTimeS: 0.5,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.45 },
+    subBass: { gain: 0.5 },
+    reverbMix: 0.2, reverbDecay: 0.8,
+  },
+  // PQ-158.04 — directed synthetic radio voice (sample body + radio recipe).
+  {
+    id: 'sfx_bark_radio',
+    category: 'comms',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.02, sustain: 0.4, release: 0.18 },
+    filterType: 'bandpass', filterFreq: 1400, filterQ: 1.6,
+  },
+
+  // --- Psychoacoustic drama layer --------------------------------------------
+  // Supersonic whip-crack: a hostile round crossed the player's near-miss tube. Two layers —
+  // the crack (air split by something supersonic: high noise snap + falling saw screech) and a
+  // short pressure thud under it. The wide presentation near_miss voice stays the "whoosh" body;
+  // this recipe is the terrifying transient on top.
+  {
+    id: 'sfx_whip_snap',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.04 },
+    filterType: 'highpass', filterFreq: 2400, filterQ: 0.8,
+    transientClick: { gain: 1.0 },
+  },
+  {
+    id: 'sfx_whip_body',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 3200, freqSweep: [3200, 640], sweepTimeS: 0.075,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.09 },
+    filterType: 'lowpass', filterFreq: 3800, filterQ: 0.9,
+    subBass: { startFreq: 150, endFreq: 38, dur: 0.1, gain: 0.55 },
+  },
+  {
+    id: 'sfx_wpn_whip_crack',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_whip_snap', 'sfx_whip_body'],
+    gainMult: 1.0,
+    pitchRange: [0.96, 1.1],
+  },
+  // --- Gyre Snare (held-verb katamari lash) ---------------------------------
+  // Snag: a crystalline "grip" — a rising glassy fifth into a sub bite, the lash
+  // locking onto mass. Distinct from lock_acquired (UI) and masslineLatch (rope):
+  // this is the gravity tool taking hold.
+  {
+    id: 'sfx_gyre_snag',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_gyre_snag_glass', 'sfx_gyre_snag_bite'],
+    gainMult: 0.9,
+    pitchRange: [0.97, 1.06],
+  },
+  {
+    id: 'sfx_gyre_snag_glass',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 620, freqSweep: [620, 1240], sweepTimeS: 0.09,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.16 },
+    filterType: 'bandpass', filterFreq: 1400, filterQ: 1.8,
+  },
+  {
+    id: 'sfx_gyre_snag_bite',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.05 },
+    filterType: 'lowpass', filterFreq: 900, filterQ: 0.9,
+    subBass: { startFreq: 110, endFreq: 46, dur: 0.12, gain: 0.6 },
+  },
+  // Absorb: the small glassy tick of a swallowed mass clicking into the clump.
+  // Quiet on purpose — it can fire several times a second while the maw feeds.
+  {
+    id: 'sfx_gyre_absorb',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 480, freqSweep: [480, 900], sweepTimeS: 0.05,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.07 },
+    filterType: 'bandpass', filterFreq: 1700, filterQ: 2.2,
+    // Random band must stay narrower than the graded-rate arc (~-0.5 to +0.3):
+    // a ±20% scatter let two similar meals audibly read out of growth order.
+    pitchRange: [0.97, 1.05],
+  },
+  // First catch: the net's empty -> occupied edge — a soft low tick sibling of the
+  // absorb gulp, quiet enough to sit under the beam shimmer without promising a meal.
+  {
+    id: 'sfx_gyre_catch',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 320, freqSweep: [320, 480], sweepTimeS: 0.04,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.06 },
+    filterType: 'bandpass', filterFreq: 1100, filterQ: 2.4,
+    // Narrow scatter: the +N appetite ratchet reuses this voice at
+    // rate 1.3+0.05·n — a ±10% per-voice pitch scatter can invert the graded
+    // ordering between consecutive ticks (same fix absorb/windup already carry).
+    pitchRange: [0.98, 1.02],
+  },
+  // Launch: the bowling-ball release — a whip-crack transient over a big falling
+  // sub whoosh. The single loudest voice in the weapon's vocabulary.
+  {
+    id: 'sfx_gyre_launch',
+    category: 'weapon',
+    type: 'layered',
+    // The flight whoosh is its own emit (gyre_snare_whoosh) — a layer shares one
+    // rate across the stack, but the tail's shape must grade by payload alone.
+    layers: ['sfx_gyre_launch_crack', 'sfx_gyre_launch_body'],
+    gainMult: 1.0,
+    pitchRange: [0.92, 1.05],
+  },
+  {
+    id: 'sfx_gyre_launch_crack',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.05 },
+    filterType: 'highpass', filterFreq: 1800, filterQ: 0.8,
+    transientClick: { gain: 0.85 },
+  },
+  {
+    id: 'sfx_gyre_launch_body',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 520, freqSweep: [520, 90], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.3 },
+    filterType: 'lowpass', filterFreq: 2400, filterQ: 0.7,
+    subBass: { startFreq: 170, endFreq: 34, dur: 0.32, gain: 0.7 },
+  },
+  // Ball flight: a soft airy whoosh tailing the launch transient — the katamari mass reads
+  // at distance instead of going silent the moment it leaves the maw. Emits as its own
+  // gyre_snare_whoosh cue beside the launch stack so its playback rate (and therefore the
+  // tail's length + darkness) can grade by payload alone.
+  {
+    id: 'sfx_gyre_ball_whoosh',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    // Attack sits past the launch crack's ~0.3 s transient — the flight voice
+    // swells after the launch body's sub clears instead of both peaking together.
+    gainEnvelope: { attack: 0.28, sustain: 0.35, release: 1.4 },
+    filterType: 'bandpass', filterFreq: 720, filterQ: 0.9,
+  },
+  // Windup: the ~100 ms coil's voice (launchWindupTicks=6 @60Hz) — a thin rising glass
+  // draw for the slingshot's pull-back, shorter and reedier than the strain rise.
+  {
+    id: 'sfx_gyre_windup',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 430, freqSweep: [430, 960], sweepTimeS: 0.11,
+    gainEnvelope: { attack: 0.008, sustain: 0.0, release: 0.15 },
+    filterType: 'bandpass', filterFreq: 1250, filterQ: 1.7,
+    // Tight band: the per-tick coil emits ramp ~4%/tick — a ±4.5% jitter would let
+    // adjacent voices invert the crescendo the ramp is for (absorb pins tight too).
+    pitchRange: [0.98, 1.02],
+  },
+  // Ball death: the clump's quiet grave — a muffled glass shatter for a ball expiring in
+  // open space (impacts already sing through collision audio; this covers the silent TTL).
+  // A bright clink leads the dust poof so it reads as breaking glass, not a cough.
+  {
+    id: 'sfx_gyre_ball_death',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_gyre_ball_death_clink', 'sfx_gyre_ball_death_dust'],
+    gainMult: 0.85,
+    pitchRange: [0.94, 1.05],
+  },
+  {
+    id: 'sfx_gyre_ball_death_clink',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 880, freqSweep: [880, 1760], sweepTimeS: 0.05,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.22 },
+    filterType: 'bandpass', filterFreq: 1800, filterQ: 2.0,
+  },
+  {
+    id: 'sfx_gyre_ball_death_dust',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.01, sustain: 0.05, release: 0.7 },
+    filterType: 'bandpass', filterFreq: 950, filterQ: 1.2,
+  },
+  // Strain break: the lash's biggest loss beat — ball-death's bright clink over a harsher
+  // white dust burst, so the TEAR reads chromatic vs a polite release's descending fizzle
+  // (sfx_gyre_drop) and the thrown ball's muffled grave (sfx_gyre_ball_death). The clink
+  // layer is shared: the clump's glass shatter is the same object either way.
+  {
+    id: 'sfx_gyre_tear',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_gyre_ball_death_clink', 'sfx_gyre_tear_dust'],
+    gainMult: 0.9,
+    pitchRange: [0.9, 1.0],
+  },
+  {
+    id: 'sfx_gyre_tear_dust',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.004, sustain: 0.06, release: 0.45 },
+    filterType: 'bandpass', filterFreq: 2400, filterQ: 0.8,
+  },
+  // Strain: rising glass tension when the tethered clump nears the slip point — the beam's
+  // shimmer sibling stretched slower and higher so "about to lose it" has its own voice.
+  {
+    id: 'sfx_gyre_strain',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 520, freqSweep: [520, 1420], sweepTimeS: 0.42,
+    gainEnvelope: { attack: 0.05, sustain: 0.0, release: 0.55 },
+    filterType: 'bandpass', filterFreq: 1600, filterQ: 1.8,
+    // Re-ticks land 0.85–1.2 rate already; ±6% recipe wobble on top doubled the
+    // effective spread and swam the climb — ±2% keeps the arc's headroom.
+    pitchRange: [0.98, 1.02],
+  },
+  // Lash loop: the beam's sustained glassy hum while it's live — a quiet presence voice
+  // beside the field loops; envelope rides strain01 so a straining clump tightens it.
+  {
+    id: 'sfx_field_loop_gyre',
+    category: 'weapon', type: 'continuous_oscillator', wave: 'sine',
+    baseFreq: 300, freqSweep: [300, 336], sweepTimeS: 4.5,
+    gainEnvelope: { attack: 0.3, sustain: 1.0, release: 0.4, peak: 0.2 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 1.1,
+    lfoRate: 0.9, lfoDepth: 0.12,
+  },
+  // Ball rumble: the thrown clump's flight voice — a low bandpassed groan tracking the
+  // body so the destructive arc reads at range until the grave burst. Envelope rides
+  // the thrown mass.
+  {
+    id: 'sfx_field_loop_gyre_ball',
+    category: 'weapon', type: 'continuous_oscillator', wave: 'sine',
+    baseFreq: 82, freqSweep: [82, 96], sweepTimeS: 3.2,
+    gainEnvelope: { attack: 0.15, sustain: 1.0, release: 0.5, peak: 0.24 },
+    filterType: 'bandpass', filterFreq: 260, filterQ: 1.0,
+    lfoRate: 0.7, lfoDepth: 0.15,
+  },
+  // Saturation: one bright glass chime over a sub thump when the clump first crosses the
+  // mass cap — the FULL flag lands through the ear, not just the HUD.
+  {
+    id: 'sfx_gyre_full',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 660, freqSweep: [660, 990], sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.01, sustain: 0.3, release: 0.5 },
+    filterType: 'bandpass', filterFreq: 1400, filterQ: 1.2,
+    pitchRange: [0.97, 1.03],
+  },
+  // Fuse-low: the capacitor's dying gasp — a low falling thrum, latched once per hold
+  // ~3 s before the dry auto-bowl so the lash firing itself lands attributed.
+  {
+    id: 'sfx_gyre_fuse_low',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 210, freqSweep: [210, 130], sweepTimeS: 0.5,
+    gainEnvelope: { attack: 0.04, sustain: 0.15, release: 0.5 },
+    filterType: 'lowpass', filterFreq: 700, filterQ: 1.0,
+    pitchRange: [0.98, 1.02],
+  },
+  // Beam wake: a soft rising glass shimmer as the cone ignites — lighter than the snag bite
+  // (which is the grip landing). The lash switching on, not the catch.
+  {
+    id: 'sfx_gyre_beam',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 340, freqSweep: [340, 980], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.02, sustain: 0.0, release: 0.24 },
+    filterType: 'bandpass', filterFreq: 1100, filterQ: 1.4,
+    pitchRange: [0.96, 1.08],
+  },
+  // Pre-snag escalation riser: a thinner, higher shimmer than the beam-on wake
+  // voice (340->980) so the per-tick climb can't read as the lash re-igniting —
+  // the ignition stays singular. Emitted ~5-tick gated with an explicit rate
+  // ramp; pitchRange stays narrow so the ramp can't invert itself.
+  {
+    id: 'sfx_gyre_riser',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 1200, freqSweep: [1200, 2200], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 2400, filterQ: 2.0,
+    pitchRange: [0.98, 1.02],
+  },
+  // Lash release: the beam letting go without a launch — a short descending glass fizzle
+  // over a quick sub exhale. Fired at low gain for an empty-beam close and fuller when a
+  // clump slips the beam (strain break / forced drop).
+  {
+    id: 'sfx_gyre_drop',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_gyre_drop_glass', 'sfx_gyre_drop_tail'],
+    gainMult: 0.8,
+    pitchRange: [0.94, 1.07],
+  },
+  {
+    id: 'sfx_gyre_drop_glass',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 980, freqSweep: [980, 260], sweepTimeS: 0.14,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.18 },
+    filterType: 'bandpass', filterFreq: 1300, filterQ: 1.6,
+  },
+  {
+    id: 'sfx_gyre_drop_tail',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 220, freqSweep: [220, 70], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.16 },
+    filterType: 'lowpass', filterFreq: 800, filterQ: 0.7,
+    subBass: { startFreq: 90, endFreq: 40, dur: 0.14, gain: 0.45 },
+  },
+  // Beam power-down: the quiet tail for releasing an empty beam (or losing the pilot) — a
+  // single falling tone, no bite. Distinct id so the HUD can tell "nothing held" apart from
+  // "the ball escaped".
+  {
+    id: 'sfx_gyre_off',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 620, freqSweep: [620, 180], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.14 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 1.2,
+    pitchRange: [0.96, 1.06],
+  },
+  // Capacitor spool: the rising whine a spinal railgun / siege lance makes while its capacitors
+  // recharge for the next shot. Heard on the cooldown tail so the released round feels charged.
+  {
+    id: 'sfx_wpn_capacitor_charge',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 150, freqSweep: [150, 2500], sweepTimeS: 0.62,
+    gainEnvelope: { attack: 0.06, sustain: 0.0, release: 0.2 },
+    filterType: 'bandpass', filterFreq: 950, filterQ: 1.3,
+    lfoRate: 11, lfoDepth: 0.018,
+  },
+  {
+    // A tiny metallic "capacitors topped off" tick the moment the heavy mount is ready again.
+    id: 'sfx_wpn_capacitor_ready',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 1480, freqSweep: [1480, 2150], sweepTimeS: 0.035,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.08 },
+    filterType: 'bandpass', filterFreq: 2000, filterQ: 2.6,
+  },
+  // Dead trigger: the solenoid clack of a fire-control group that cannot release a round —
+  // empty capacitor, overheated mount, venting, or no fitted gun. Two-stage clack: strike then
+  // the spring return.
+  {
+    id: 'sfx_wpn_dry_fire',
+    category: 'ui',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.03 },
+    filterType: 'bandpass', filterFreq: 2300, filterQ: 3.4,
+    transientClick: { gain: 0.7 },
+    repeatCount: 1, repeatIntervalS: 0.085,
+  },
+  // Radio punctuation. Key-in is the mic solenoid engaging; the squelch tail is the carrier
+  // collapsing when the transmission lets go.
+  {
+    id: 'sfx_comms_key_click',
+    category: 'comms',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.03 },
+    filterType: 'bandpass', filterFreq: 1950, filterQ: 3.6,
+    transientClick: { gain: 0.55 },
+  },
+  {
+    id: 'sfx_comms_squelch_tail',
+    category: 'comms',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.07 },
+    filterType: 'bandpass', filterFreq: 1150, filterQ: 1.7,
+    transientClick: { gain: 0.35 },
+  },
+  // Hull-breach interior family. These are cockpit-side sounds (conducted / pressurized-air), so
+  // they ride the ui bus and are NOT swallowed by the breach low-pass that mutes the world.
+  {
+    // Pressure leaving the cabin: a fast air hiss that dies into the vacuum plus a drop-thump.
+    id: 'sfx_hull_decompress',
+    category: 'ui',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.008, sustain: 0.12, release: 0.5 },
+    filterType: 'highpass', filterFreq: 650,
+    subBass: { startFreq: 95, endFreq: 26, dur: 0.42, gain: 0.85 },
+  },
+  {
+    // Hull sealed / pressure returning: a soft hiss that swells and dies.
+    id: 'sfx_hull_repressurize',
+    category: 'ui',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.22, sustain: 0.1, release: 0.55 },
+    filterType: 'bandpass', filterFreq: 950, filterQ: 0.9,
+  },
+  {
+    // The frame arguing with the vacuum — a slow metallic groan while the ship stays breached.
+    id: 'sfx_hull_stress_groan',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 92, freqSweep: [92, 54], sweepTimeS: 0.7,
+    gainEnvelope: { attack: 0.16, sustain: 0.0, release: 0.85 },
+    filterType: 'lowpass', filterFreq: 320, filterQ: 1.5,
+    lfoRate: 2.1, lfoDepth: 0.05,
+  },
+
+  // --- Drift-bomb bay (PQ-205.01) ---
+  // Eight payload voices. None of these may collapse to sfx_ui_click or share one generic boom.
+  // Concussion is heavier, not louder. The slug inhale is a bounded, source-following loop
+  // whose envelope is the live field; collapse is a separate snap. Tar is a damp rupture. EMP
+  // is a dry electrical cutoff. Thermite ignites short, then the burn loop rides status_burning.
+  {
+    id: 'sfx_bomb_frag_burst',
+    category: 'explosion',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, decay: 0.05, sustain: 0.0, release: 0.38, peak: 0.78 },
+    filterType: 'bandpass', filterFreq: 1450, filterQ: 1.15,
+    distortionAmount: 0.4, distortionCurve: 'tanh',
+    subBass: { startFreq: 130, endFreq: 36, dur: 0.28, gain: 0.55 },
+    transientClick: { gain: 0.7 },
+  },
+  {
+    id: 'sfx_bomb_concussion_shove',
+    category: 'explosion',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.004, decay: 0.12, sustain: 0.08, release: 0.55, peak: 0.48 },
+    filterType: 'lowpass', filterFreq: 220, filterQ: 0.7,
+    distortionAmount: 0.35, distortionCurve: 'tanh',
+    subBass: { startFreq: 70, endFreq: 22, dur: 0.7, gain: 1.15 },
+  },
+  {
+    id: 'sfx_bomb_slug_inhale',
+    category: 'explosion',
+    type: 'continuous_oscillator',
+    wave: 'sine',
+    baseFreq: 86, freqSweep: [86, 38], sweepTimeS: 2.8,
+    gainEnvelope: { attack: 0.12, sustain: 1.0, release: 0.18, peak: 0.42 },
+    filterType: 'lowpass', filterFreq: 240, filterQ: 0.9,
+    lfoRate: 0.55, lfoDepth: 0.12,
+  },
+  {
+    id: 'sfx_bomb_slug_collapse',
+    category: 'explosion',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 210, freqSweep: [210, 48], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.22, peak: 0.62 },
+    filterType: 'bandpass', filterFreq: 380, filterQ: 1.4,
+    subBass: { startFreq: 110, endFreq: 28, dur: 0.22, gain: 0.8 },
+    transientClick: { gain: 0.45 },
+  },
+  {
+    id: 'sfx_bomb_goo_burst',
+    category: 'explosion',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.012, decay: 0.1, sustain: 0.04, release: 0.42, peak: 0.5 },
+    filterType: 'lowpass', filterFreq: 280, filterQ: 0.55,
+    distortionAmount: 0.22, distortionCurve: 'tanh',
+  },
+  {
+    id: 'sfx_bomb_emp_pulse',
+    category: 'explosion',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 1480, freqSweep: [1480, 920], sweepTimeS: 0.07,
+    gainEnvelope: { attack: 0.001, sustain: 0.06, release: 0.045, peak: 0.58 },
+    filterType: 'highpass', filterFreq: 780, filterQ: 0.7,
+  },
+  {
+    id: 'sfx_bomb_thermite_ignite',
+    category: 'explosion',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.003, decay: 0.04, sustain: 0.0, release: 0.16, peak: 0.55 },
+    filterType: 'bandpass', filterFreq: 2100, filterQ: 1.3,
+    transientClick: { gain: 0.35 },
+  },
+  {
+    id: 'sfx_bomb_thermite_burn',
+    category: 'explosion',
+    type: 'continuous_noise',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.08, sustain: 1.0, release: 0.12, peak: 0.32 },
+    filterType: 'bandpass', filterFreq: 620, filterQ: 1.1,
+    lfoRate: 7.5, lfoDepth: 0.06,
+  },
+  {
+    id: 'sfx_bomb_scrambler_spin',
+    category: 'explosion',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 340, freqSweep: [220, 640], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.006, sustain: 0.0, release: 0.24, peak: 0.52 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 1.8,
+    lfoRate: 18, lfoDepth: 0.2,
+  },
+  {
+    id: 'sfx_bomb_anchor_settle',
+    category: 'explosion',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 48, freqSweep: [72, 28], sweepTimeS: 0.34,
+    gainEnvelope: { attack: 0.01, sustain: 0.05, release: 0.5, peak: 0.56 },
+    filterType: 'lowpass', filterFreq: 140, filterQ: 0.8,
+    subBass: { startFreq: 62, endFreq: 18, dur: 0.55, gain: 1.05 },
+  },
+  {
+    id: 'sfx_bomb_goo_residue',
+    category: 'explosion',
+    type: 'continuous_noise',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.14, sustain: 1.0, release: 0.2, peak: 0.22 },
+    filterType: 'lowpass', filterFreq: 190, filterQ: 0.6,
+  },
+  // VERB-23: Crisp mechanical ratchet/click for cycling active bomb bay slot
+  {
+    id: 'sfx_bomb_rack_cycle',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, decay: 0.03, sustain: 0.0, release: 0.03 },
+    filterType: 'bandpass',
+    filterFreq: 1850,
+    filterQ: 3.5,
+    pitchRange: [0.98, 1.02],
+  },
+  // VERB-23: Heavy mechanical latch click when bomb rack composition changes
+  {
+    id: 'sfx_bomb_rack_change',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.002, decay: 0.05, sustain: 0.0, release: 0.04 },
+    filterType: 'bandpass',
+    filterFreq: 1200,
+    filterQ: 2.2,
+    pitchRange: [0.96, 1.04],
+  },
+  // inf-lane-horn (CH-12): the lane's horns. A buzzed civilian answers in its own class. The dyad
+  // family is a bright two-reed car-horn third (330 / 415 Hz) through a nasal bandpass, pitched per
+  // class by playback rate (light bright, work gruff); the heavy family is the hauler foghorn's
+  // fundamental and fifth with a hard attack — a blast, not the greeting's slow swell. Each family
+  // climbs the same ladder a repeat climbs: tap → double → held lean. Played positionally at the
+  // buzzed hull by the bark director on `traffic:nearMiss`.
+  {
+    id: 'sfx_lane_horn_reed_low',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 330,
+    gainEnvelope: { attack: 0.008, decay: 0.05, sustain: 0.7, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 1050, filterQ: 1.2,
+  },
+  {
+    id: 'sfx_lane_horn_reed_high',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 415,
+    gainEnvelope: { attack: 0.008, decay: 0.05, sustain: 0.6, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 1300, filterQ: 1.4,
+    gainMult: 0.7,
+  },
+  {
+    id: 'sfx_lane_horn_tap',
+    category: 'ambient',
+    type: 'layered',
+    layers: ['sfx_lane_horn_reed_low', 'sfx_lane_horn_reed_high'],
+    gainEnvelope: { attack: 0.008, decay: 0.09, sustain: 0.75, release: 0.1 },
+    gainMult: 0.8,
+  },
+  {
+    id: 'sfx_lane_horn_double',
+    category: 'ambient',
+    type: 'layered',
+    layers: ['sfx_lane_horn_reed_low', 'sfx_lane_horn_reed_high'],
+    gainEnvelope: { attack: 0.008, decay: 0.08, sustain: 0.75, release: 0.08 },
+    repeatCount: 1, repeatIntervalS: 0.22,
+    gainMult: 0.85,
+  },
+  {
+    id: 'sfx_lane_horn_lean',
+    category: 'ambient',
+    type: 'layered',
+    layers: ['sfx_lane_horn_reed_low', 'sfx_lane_horn_reed_high'],
+    // The decay ramp is the held lean: peak to 0.85 over a full second, then let go.
+    gainEnvelope: { attack: 0.01, decay: 1.05, sustain: 0.85, release: 0.22 },
+    gainMult: 0.9,
+  },
+  {
+    id: 'sfx_hauler_blast_fund',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 70,
+    freqSweep: [70, 66],
+    sweepTimeS: 0.9,
+    gainEnvelope: { attack: 0.05, decay: 0.2, sustain: 0.7, release: 0.45 },
+    filterType: 'lowpass', filterFreq: 380, filterQ: 0.9,
+  },
+  {
+    id: 'sfx_hauler_blast_fifth',
+    category: 'ambient',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 105,
+    freqSweep: [105, 99],
+    sweepTimeS: 0.9,
+    gainEnvelope: { attack: 0.06, decay: 0.2, sustain: 0.6, release: 0.4 },
+    filterType: 'lowpass', filterFreq: 460, filterQ: 0.8,
+    gainMult: 0.6,
+  },
+  {
+    id: 'sfx_hauler_blast',
+    category: 'ambient',
+    type: 'layered',
+    layers: ['sfx_hauler_blast_fund', 'sfx_hauler_blast_fifth', 'sfx_hauler_horn_breath'],
+    gainEnvelope: { attack: 0.05, decay: 0.25, sustain: 0.7, release: 0.4 },
+    gainMult: 0.9,
+  },
+  {
+    id: 'sfx_hauler_blast_double',
+    category: 'ambient',
+    type: 'layered',
+    layers: ['sfx_hauler_blast_fund', 'sfx_hauler_blast_fifth', 'sfx_hauler_horn_breath'],
+    gainEnvelope: { attack: 0.05, decay: 0.18, sustain: 0.7, release: 0.28 },
+    repeatCount: 1, repeatIntervalS: 0.5,
+    gainMult: 0.9,
+  },
+  {
+    id: 'sfx_hauler_blast_lean',
+    category: 'ambient',
+    type: 'layered',
+    layers: ['sfx_hauler_blast_fund', 'sfx_hauler_blast_fifth', 'sfx_hauler_horn_breath'],
+    // A loaded hull leaning on its horn: the blast holds near full for a second and a half.
+    gainEnvelope: { attack: 0.05, decay: 1.5, sustain: 0.88, release: 0.6 },
+    gainMult: 0.95,
+  },
+];
+
+// PQ-158.00 — the sample-library hybrid bindings.
+//
+// A bound recipe plays as a sample+synth HYBRID: `id` names a designed sample in
+// src/audio/sampleLibrary.js SAMPLE_MANIFEST (authored offline by assets/audio/generate-samples.mjs),
+// `share` is the fraction of the cue's peak the designed body carries while the live synth layer
+// keeps the remainder (pitch/mass coupling, endless variation, and the no-sample fallback), and
+// `gain`/`rate` shape the sample inside the cue. Bindings are data only: the synth fields above
+// stay the authoritative voice of every recipe, so a missing/undecoded sample degrades to exactly
+// the pre-158 sound with no gap and no pop.
+export const SAMPLE_BINDINGS = {
+  // weapons
+  sfx_wpn_pulse_laser: { id: 'wpn_pulse', share: 0.62 },
+  sfx_wpn_autocannon: { id: 'wpn_cannon', share: 0.62 },
+  // Flak borrows the cannon RECORDING at a higher rate (the shell is light and fast, not heavy)
+  // and hands most of the peak back to the synth, so the voice is its own, not a pitched autocannon.
+  sfx_wpn_flak: { id: 'wpn_cannon', share: 0.4, rate: 1.38 },
+  sfx_wpn_railgun: { id: 'wpn_rail', share: 0.65 },
+  sfx_wpn_beam_laser: { id: 'wpn_beam_loop', share: 0.55 },
+  // The heavy beam is the same beam-loop RECORDING pitched down to the lower register the recipe
+  // authors — INST-34's "lower-register beam" is literal: same designed body, rate < 1.
+  sfx_wpn_heavy_beam: { id: 'wpn_beam_loop', share: 0.55, rate: 0.7 },
+  sfx_wpn_missile: { id: 'wpn_missile_loop', share: 0.6 },
+  sfx_combat_near_miss: { id: 'near_miss', share: 0.6 },
+
+  // doctrine telegraphs
+  sfx_doctrine_flyby: { id: 'doctrine_flyby', share: 0.6 },
+  sfx_doctrine_flyby_break: { id: 'doctrine_flyby', share: 0.5, rate: 0.8 },
+  sfx_doctrine_flyby_withdraw: { id: 'near_miss', share: 0.45, rate: 0.7 },
+  sfx_doctrine_tether_spool: { id: 'doctrine_spool', share: 0.6 },
+  sfx_doctrine_tether_break: { id: 'tether_snap', share: 0.5, rate: 0.85 },
+  sfx_doctrine_tether_withdraw: { id: 'doctrine_spool', share: 0.45, rate: 0.7 },
+  sfx_doctrine_ranged_charge: { id: 'doctrine_charge', share: 0.6 },
+  sfx_doctrine_ranged_break: { id: 'rcs_disrupt', share: 0.5 },
+  sfx_doctrine_ranged_withdraw: { id: 'travel_lock', share: 0.4, rate: 0.8 },
+  sfx_doctrine_brawler_commit: { id: 'doctrine_growl', share: 0.6 },
+  sfx_doctrine_brawler_break: { id: 'doctrine_growl', share: 0.55, rate: 0.72 },
+  sfx_doctrine_brawler_withdraw: { id: 'doctrine_spool', share: 0.4, rate: 0.6 },
+  sfx_doctrine_escort_screen: { id: 'doctrine_escort', share: 0.6 },
+  sfx_doctrine_capital_broadside: { id: 'doctrine_broadside', share: 0.65 },
+  sfx_doctrine_break: { id: 'doctrine_growl', share: 0.45 },
+  sfx_doctrine_withdraw: { id: 'doctrine_spool', share: 0.4, rate: 0.8 },
+  sfx_encounter_escalation: { id: 'escalation_sub', share: 0.6 },
+
+  // impacts (the mass ladder feeds PQ-158.01's 3x3 grid)
+  'sfx.hullHit': { id: 'impact_hull', share: 0.62 },
+  'sfx.armorHit': { id: 'impact_armor', share: 0.62 },
+  'sfx.playerDamage': { id: 'impact_hull', share: 0.55, rate: 1.15 },
+  sfx_dock_clunk: { id: 'ui_dock', share: 0.6 },
+  sfx_mining_mass_required: { id: 'mine_impact', share: 0.55, rate: 0.8 },
+  sfx_mining_mass_engaged: { id: 'impact_kiss', share: 0.55 },
+  sfx_travel_settle: { id: 'impact_kiss', share: 0.45, rate: 0.6 },
+
+  // explosions
+  sfx_explosion_small: { id: 'exp_small', share: 0.65 },
+  sfx_explosion_large: { id: 'exp_large', share: 0.65 },
+  sfx_kill_capital_sub: { id: 'escalation_sub', share: 0.5, rate: 0.6 },
+  sfx_kill_capital_noise: { id: 'exp_large', share: 0.5, rate: 0.8 },
+  'sfx.killCapital': { id: 'exp_capital', share: 0.62 },
+  'sfx.killSmall': { id: 'exp_small', share: 0.62 },
+  sfx_kill_sine: { id: 'escalation_sub', share: 0.5, rate: 0.8 },
+  sfx_kill_noise: { id: 'exp_small', share: 0.5, rate: 0.7 },
+  'sfx.killConfirmed': { id: 'kill_confirm_chime', share: 0.6 },
+  sfx_kill_confirm: { id: 'kill_confirm_chime', share: 0.6 },
+  sfx_vector_mine: { id: 'vector_mine', share: 0.6 },
+  'sfx.chargeDetonate': { id: 'exp_large', share: 0.6, rate: 1.3 },
+  sfx_player_death: { id: 'player_death', share: 0.65 },
+
+  // shields
+  // The synth tick is the shield hit. share 0 keeps shield_break for the collapse only.
+  'sfx.shieldHit': { id: 'shield_break', share: 0 },
+  sfx_shield_break_crystal: { id: 'shield_break', share: 0.6 },
+  sfx_shield_break_crack: { id: 'shield_blowout', share: 0.45, rate: 1.4 },
+  'sfx.shieldBreak': { id: 'shield_break', share: 0.62 },
+  sfx_shield_blowout_pop: { id: 'shield_blowout', share: 0.62 },
+  sfx_shield_blowout_discharge: { id: 'shield_blowout', share: 0.5 },
+  sfx_shield_blowout_alarm: { id: 'ui_alert', share: 0.55, rate: 1.2 },
+
+  // subsystems / countermeasures
+  sfx_subsystem_disabled: { id: 'subsystem_pop', share: 0.6 },
+  sfx_subsystem_drive_disabled: { id: 'doctrine_growl', share: 0.5, rate: 0.8 },
+  sfx_subsystem_sensor_disabled: { id: 'subsystem_pop', share: 0.5, rate: 1.4 },
+  sfx_subsystem_weapon_disabled: { id: 'subsystem_pop', share: 0.5, rate: 0.8 },
+  sfx_cm_chaff: { id: 'cm_chaff', share: 0.6 },
+  sfx_cm_ecm: { id: 'cm_ecm', share: 0.6 },
+  sfx_rcs_disrupt: { id: 'rcs_disrupt', share: 0.6 },
+
+  // mining
+  sfx_mining_beam: { id: 'mine_beam_loop', share: 0.55 },
+  sfx_mining_impact: { id: 'impact_rock', share: 0.6 },
+  sfx_mining_drill_grind: { id: 'mine_drill', share: 0.55 },
+  sfx_mining_drill_contact: { id: 'mine_drill', share: 0.5, rate: 1.2 },
+  sfx_mining_drill_break: { id: 'mine_gravel', share: 0.6, rate: 0.8 },
+  sfx_mining_drill_yield: { id: 'ore_tick', share: 0.55, rate: 1.2 },
+  sfx_mining_drill_abort: { id: 'mine_abort', share: 0.55 },
+  sfx_mining_drill_retry: { id: 'mine_scan', share: 0.45, rate: 0.7 },
+  sfx_mining_hardness: { id: 'mine_gravel', share: 0.5 },
+  sfx_mining_cutter_lock: { id: 'tether_latch', share: 0.5 },
+  sfx_mining_seam_reward: { id: 'mine_seam', share: 0.6 },
+  sfx_mining_fracture_sub: { id: 'mine_fracture', share: 0.55, rate: 0.8 },
+  sfx_mining_fracture_noise: { id: 'mine_gravel', share: 0.55 },
+  sfx_mining_fracture_break: { id: 'mine_fracture', share: 0.65 },
+  sfx_mining_fracture_warning: { id: 'rock_groan', share: 0.45, rate: 2.2 },
+  sfx_mining_core_exposed: { id: 'mine_core', share: 0.55 },
+  sfx_mining_core_charge: { id: 'mine_core', share: 0.5, rate: 1.6 },
+  sfx_mining_core_reward: { id: 'mine_core', share: 0.65 },
+  sfx_mining_core_fizzle: { id: 'mine_abort', share: 0.5, rate: 1.3 },
+  sfx_mining_yield: { id: 'ore_tick', share: 0.5, rate: 1.3 },
+  sfx_mining_cargo_settle: { id: 'hopper_thock', share: 0.55 },
+  sfx_mining_cargo_full: { id: 'hopper_thock', share: 0.62, rate: 0.78 },
+  sfx_mining_field_settle: { id: 'mine_gravel', share: 0.45, rate: 0.7 },
+  sfx_mining_heat_warning: { id: 'mine_vent', share: 0.45, rate: 1.0 },
+  sfx_mining_seismic_pulse: { id: 'mine_fracture', share: 0.5, rate: 0.6 },
+  sfx_mining_gas_hazard: { id: 'mine_gas', share: 0.6 },
+  sfx_core_bell: { id: 'mine_core', share: 0.6 },
+  sfx_vent_chime: { id: 'mine_vent', share: 0.5, rate: 2.4 },
+
+  // scanner family
+  sfx_mining_scan_root: { id: 'mine_scan', share: 0.5, rate: 0.5 },
+  sfx_mining_scan_air: { id: 'squelch_ambient', share: 0.4 },
+  sfx_mining_scan_pulse: { id: 'mine_scan', share: 0.5, rate: 0.75 },
+  sfx_mining_scan_return: { id: 'mine_scan', share: 0.55, rate: 1.1 },
+  sfx_mining_scan_classified: { id: 'mine_scan', share: 0.5, rate: 0.8 },
+  sfx_mining_scan_tracked: { id: 'mine_scan', share: 0.5, rate: 0.62 },
+  sfx_mining_scan_investigated: { id: 'mine_scan', share: 0.5, rate: 0.9 },
+  // FB-131: the escape tone borrows the same scan recording, pitched low — one family, one loss.
+  sfx_mining_scan_escaped: { id: 'mine_scan', share: 0.5, rate: 0.5 },
+  sfx_scan_pulse: { id: 'mine_scan', share: 0.5, rate: 0.9 },
+  sfx_scenario_signal: { id: 'mine_scan', share: 0.5, rate: 1.5 },
+
+  // UI kit
+  sfx_ui_click: { id: 'ui_click', share: 0.6 },
+  // TOOL-02: hover and tab are different recordings (Kenney tick_002 / select_002 promoted to
+  // assets/audio/ui/), not the same click pitch-shifted — hover is a 23ms tick, tab a 43ms blip.
+  sfx_ui_hover: { id: 'ui_hover', share: 0.5 },
+  sfx_ui_tab: { id: 'ui_tab', share: 0.5 },
+  sfx_ui_switch_detent: { id: 'ui_detent', share: 0.6 },
+  sfx_ui_drawer_latch: { id: 'ui_detent', share: 0.5, rate: 0.7 },
+  sfx_ui_confirm: { id: 'ui_confirm', share: 0.6 },
+  sfx_ui_error: { id: 'ui_deny', share: 0.6 },
+  // TOOL-01: a denied latch is a short mechanical tick (Kenney tick_001 promoted to
+  // assets/audio/massline/massline_deny.wav), not the menu error — the successful latch keeps
+  // its own tether_latch body.
+  sfx_massline_deny: { id: 'massline_deny', share: 0.62 },
+  sfx_ui_open: { id: 'ui_open', share: 0.6 },
+  sfx_ui_back: { id: 'ui_open', share: 0.6, rate: 0.8 },
+  sfx_ui_alert: { id: 'ui_alert', share: 0.55 },
+  sfx_lock_acquired: { id: 'ui_lock', share: 0.6 },
+  sfx_mission_accept: { id: 'ui_mission', share: 0.6 },
+  sfx_mission_complete: { id: 'ui_mission', share: 0.6, rate: 0.92 },
+  sfx_discovery_reveal: { id: 'ui_respawn', share: 0.5, rate: 1.1 },
+  sfx_moment_stinger: { id: 'ui_mission', share: 0.45, rate: 0.7 },
+  sfx_loot_collect: { id: 'ui_loot', share: 0.6 },
+  sfx_respawn_chime: { id: 'ui_respawn', share: 0.55 },
+  sfx_undock_release: { id: 'ui_undock', share: 0.6 },
+  sfx_branch_resolved: { id: 'ui_confirm', share: 0.45, rate: 0.8 },
+  sfx_objective_priority_split: { id: 'ui_lock', share: 0.45, rate: 0.7 },
+
+  // wanted / heat
+  sfx_wanted_alert: { id: 'wanted_alert', share: 0.6 },
+  sfx_wanted_clear: { id: 'wanted_clear', share: 0.6 },
+
+  // engine / dash / cruise / jump
+  sfx_engine_thrust: { id: 'engine_thrust_loop', share: 0.55 },
+  sfx_engine_boost: { id: 'engine_thrust_loop', share: 0.5, rate: 1.25 },
+  sfx_boost_whoosh: { id: 'boost_whoosh', share: 0.6 },
+  sfx_dash_whoosh: { id: 'boost_whoosh', share: 0.5, rate: 1.3 },
+  sfx_dash_thump: { id: 'dash_punch', share: 0.6 },
+  'sfx.shipDash': { id: 'dash_punch', share: 0.62 },
+  'combat.action.dash.active': { id: 'dash_punch', share: 0.6 },
+  sfx_accel_transition: { id: 'dash_punch', share: 0.45, rate: 1.15 },
+  sfx_cruise_charge_root: { id: 'travel_gate', share: 0.5, rate: 0.7 },
+  sfx_cruise_charge_fifth: { id: 'travel_gate', share: 0.45, rate: 1.05 },
+  'sfx.cruiseCharging': { id: 'travel_gate', share: 0.55 },
+  'sfx.cruiseEngaged': { id: 'engine_thrust_loop', share: 0.55 },
+  'sfx.cruiseSnared': { id: 'travel_fail', share: 0.55 },
+  sfx_jump_charge: { id: 'jump_charge', share: 0.55 },
+  sfx_jump_arrive: { id: 'jump_arrive', share: 0.6 },
+
+  // travel family
+  sfx_travel_motif: { id: 'travel_lock', share: 0.5, rate: 0.8 },
+  sfx_travel_lane_lock: { id: 'travel_lock', share: 0.6 },
+  sfx_travel_gate_approach: { id: 'travel_gate', share: 0.5, rate: 1.2 },
+  sfx_travel_gate_align: { id: 'travel_gate', share: 0.55 },
+  sfx_travel_commit_window: { id: 'travel_lock', share: 0.5, rate: 1.4 },
+  sfx_travel_commit_sub: { id: 'travel_commit', share: 0.55, rate: 0.9 },
+  sfx_travel_transit: { id: 'boost_whoosh', share: 0.5, rate: 0.8 },
+  sfx_travel_commit: { id: 'travel_commit', share: 0.62 },
+  sfx_travel_arrival_tone: { id: 'travel_arrival', share: 0.55 },
+  sfx_travel_arrival: { id: 'travel_arrival', share: 0.62 },
+  sfx_travel_sector_identity: { id: 'travel_lock', share: 0.45, rate: 0.75 },
+  sfx_travel_cancel: { id: 'mine_abort', share: 0.5, rate: 0.9 },
+  sfx_travel_fail_tone: { id: 'travel_fail', share: 0.55 },
+  sfx_travel_fail_noise: { id: 'mine_gravel', share: 0.45, rate: 0.6 },
+  sfx_travel_fail: { id: 'travel_fail', share: 0.62 },
+  sfx_travel_interdiction: { id: 'travel_interdict', share: 0.6 },
+  sfx_travel_recovery: { id: 'travel_lock', share: 0.5, rate: 1.2 },
+
+  // comms / squelch
+  sfx_squelch_story: { id: 'squelch_story', share: 0.6 },
+  sfx_squelch_ambient: { id: 'squelch_ambient', share: 0.6 },
+  sfx_squelch_danger: { id: 'squelch_danger', share: 0.6 },
+  sfx_comms_kessler: { id: 'squelch_story', share: 0.5, rate: 1.1 },
+  sfx_comms_denial: { id: 'squelch_ambient', share: 0.5, rate: 0.8 },
+
+  // massline / tether
+  sfx_massline_throw: { id: 'massline_throw', share: 0.62 },
+  sfx_massline_solution: { id: 'ui_lock', share: 0.5, rate: 0.9 },
+  sfx_massline_sling: { id: 'massline_sling', share: 0.62 },
+  sfx_massline_tumble: { id: 'massline_tumble', share: 0.6 },
+  sfx_massline_bt_in: { id: 'massline_bt', share: 0.6 },
+  sfx_massline_bt_out: { id: 'massline_bt', share: 0.6, rate: 1.35 },
+  sfx_massline_cloak_on: { id: 'massline_cloak', share: 0.6 },
+  sfx_massline_cloak_off: { id: 'massline_cloak', share: 0.6, rate: 1.4 },
+  sfx_massline_jettison: { id: 'dash_punch', share: 0.5, rate: 0.8 },
+  // FB-073: the cargo jettison voice shares the massline kick's punch recording at the same rate.
+  sfx_cargo_jettison: { id: 'dash_punch', share: 0.5, rate: 0.8 },
+  // Aft rack ejector: the massline release recording a register down — ordnance
+  // hardware letting go, never a menu detent.
+  sfx_massline_bomb_drop: { id: 'massline_release', share: 0.55, rate: 0.8 },
+  'combat.action.attach.lock': { id: 'tether_latch', share: 0.62 },
+  'combat.action.sling.release': { id: 'massline_sling', share: 0.6 },
+  'combat.action.cut.snap': { id: 'tether_snap', share: 0.62 },
+  'combat.action.burst.fire': { id: 'wpn_pulse', share: 0.6, rate: 0.95 },
+  'combat.action.cancel': { id: 'mine_abort', share: 0.5, rate: 1.3 },
+  'combat.action.reject': { id: 'ui_deny', share: 0.5, rate: 1.1 },
+  sfx_tether_latch_lock: { id: 'tether_latch', share: 0.55, rate: 1.2 },
+  sfx_tether_latch_body: { id: 'tether_latch', share: 0.6, rate: 0.9 },
+  'sfx.tetherLatch': { id: 'tether_latch', share: 0.62 },
+  sfx_tether_strain_creak: { id: 'tether_strain', share: 0.6 },
+  sfx_tether_crack: { id: 'tether_snap', share: 0.55, rate: 1.4 },
+  sfx_tether_twang: { id: 'tether_snap', share: 0.6, rate: 0.7 },
+  'sfx.tetherSnap': { id: 'tether_snap', share: 0.62 },
+  sfx_massline_reel_whine: { id: 'massline_reel', share: 0.6 },
+  sfx_massline_release: { id: 'massline_release', share: 0.62 },
+  sfx_massline_bridle_low: { id: 'massline_bridle', share: 0.5, rate: 0.85 },
+  sfx_massline_bridle_high: { id: 'massline_bridle', share: 0.5, rate: 1.15 },
+  sfx_massline_bridle_chord: { id: 'massline_bridle', share: 0.62 },
+  sfx_bark_radio: { id: 'squelch_story', share: 0.55 },
+
+  // station / world context
+  sfx_station_hum: { id: 'station_hum_loop', share: 0.5 },
+  sfx_station_machinery: { id: 'station_tick', share: 0.55 },
+  sfx_traffic_blip: { id: 'traffic_blip', share: 0.55 },
+  sfx_fringe_tick: { id: 'fringe_tick', share: 0.6 },
+  sfx_anomaly_swell: { id: 'ambient_swell', share: 0.55 },
+  sfx_ambient_rock_groan: { id: 'rock_groan', share: 0.6 },
+  sfx_ambient_rock_calve: { id: 'rock_calve', share: 0.6 },
+
+  // sector arrival identities (WF-13): each sector's arrival chord carries its own designed body,
+  // rooted on the sector bed tone (see the recipe block above and SECTOR_ARRIVAL_CUES below).
+  sfx_arrival_helios_prime: { id: 'arrival_helios_prime', share: 0.58 },
+  sfx_arrival_tethys_junction: { id: 'arrival_tethys_junction', share: 0.58 },
+  sfx_arrival_ceres_belt: { id: 'arrival_ceres_belt', share: 0.6 },
+  sfx_arrival_vesta_forge: { id: 'arrival_vesta_forge', share: 0.6 },
+  sfx_arrival_charon_expanse: { id: 'arrival_charon_expanse', share: 0.6 },
+  sfx_arrival_pallas_drift: { id: 'arrival_pallas_drift', share: 0.55 },
+  sfx_arrival_io_reach: { id: 'arrival_io_reach', share: 0.55 },
+  sfx_arrival_sker_haven: { id: 'arrival_sker_haven', share: 0.55 },
+  sfx_arrival_veil_nebula: { id: 'arrival_veil_nebula', share: 0.58 },
+  sfx_arrival_ashfall_reach: { id: 'arrival_ashfall_reach', share: 0.58 },
+  sfx_arrival_nyx_march: { id: 'arrival_nyx_march', share: 0.55 },
+  sfx_arrival_hyperion_cut: { id: 'arrival_hyperion_cut', share: 0.6 },
+  sfx_arrival_kepler_scar: { id: 'arrival_kepler_scar', share: 0.55 },
+  sfx_arrival_orcus_shadow: { id: 'arrival_orcus_shadow', share: 0.58 },
+  sfx_arrival_rhea_cinder: { id: 'arrival_rhea_cinder', share: 0.6 },
+  sfx_arrival_haumea_rift: { id: 'arrival_haumea_rift', share: 0.55 },
+  sfx_arrival_eris_margin: { id: 'arrival_eris_margin', share: 0.55 },
+  sfx_arrival_phoebe_echo: { id: 'arrival_phoebe_echo', share: 0.58 },
+  sfx_arrival_nereid_shoal: { id: 'arrival_nereid_shoal', share: 0.55 },
+  sfx_arrival_proteus_well: { id: 'arrival_proteus_well', share: 0.55 },
+  sfx_arrival_triton_wake: { id: 'arrival_triton_wake', share: 0.58 },
+  sfx_arrival_eunomia_gulf: { id: 'arrival_eunomia_gulf', share: 0.55 },
+  sfx_arrival_sedna_dark: { id: 'arrival_sedna_dark', share: 0.58 },
+  sfx_arrival_dione_lane: { id: 'arrival_dione_lane', share: 0.58 },
+  sfx_arrival_the_bolus: { id: 'arrival_the_bolus', share: 0.58 },
+};
+
+// WF-13 — sector arrival identity table. The presentation adapter reads this when the
+// 'travel.arrival.sector_identity' cue arrives: cue.targetId is the sector id, and the mapped
+// recipe (a live RECIPES id, so it resolves directly through AUDIO_RECIPE_BY_ID without touching
+// the audio system's cue map) plays instead of the one shared identity voice. An unknown sector
+// falls back to the original static mapping — the shared voice stays the honest default.
+// Every key must be a live sector id (src/data/sectors.js) with a bed (SECTOR_BEDS).
+export const SECTOR_ARRIVAL_CUES = Object.freeze({
+  sector_helios_prime: 'sfx_arrival_helios_prime',
+  sector_tethys_junction: 'sfx_arrival_tethys_junction',
+  sector_ceres_belt: 'sfx_arrival_ceres_belt',
+  sector_vesta_forge: 'sfx_arrival_vesta_forge',
+  sector_charon_expanse: 'sfx_arrival_charon_expanse',
+  sector_pallas_drift: 'sfx_arrival_pallas_drift',
+  sector_io_reach: 'sfx_arrival_io_reach',
+  sector_sker_haven: 'sfx_arrival_sker_haven',
+  sector_veil_nebula: 'sfx_arrival_veil_nebula',
+  sector_ashfall_reach: 'sfx_arrival_ashfall_reach',
+  sector_nyx_march: 'sfx_arrival_nyx_march',
+  sector_hyperion_cut: 'sfx_arrival_hyperion_cut',
+  sector_kepler_scar: 'sfx_arrival_kepler_scar',
+  sector_orcus_shadow: 'sfx_arrival_orcus_shadow',
+  sector_rhea_cinder: 'sfx_arrival_rhea_cinder',
+  sector_haumea_rift: 'sfx_arrival_haumea_rift',
+  sector_eris_margin: 'sfx_arrival_eris_margin',
+  sector_phoebe_echo: 'sfx_arrival_phoebe_echo',
+  sector_nereid_shoal: 'sfx_arrival_nereid_shoal',
+  sector_proteus_well: 'sfx_arrival_proteus_well',
+  sector_triton_wake: 'sfx_arrival_triton_wake',
+  sector_eunomia_gulf: 'sfx_arrival_eunomia_gulf',
+  sector_sedna_dark: 'sfx_arrival_sedna_dark',
+  sector_dione_lane: 'sfx_arrival_dione_lane',
+  sector_the_bolus: 'sfx_arrival_the_bolus',
+});
+
+// PQ-158.01 — the impact ladder: material (hull/rock/station) x force (light/medium/heavy).
+// A collision keeps its PQ-139.01 recipe and pitch/gain law; the ladder only decides WHICH
+// designed sample carries the body. Each cell names one layered transient/body/tail sample from
+// SAMPLE_MANIFEST (authored by assets/audio/generate-samples.mjs). Resolved by
+// resolveLadderBinding in src/audio/sampleLibrary.js; an unknown cell degrades to the recipe's
+// own default binding. Data only — no synth re-tuning, no new recipes.
+export const COLLISION_LADDER = Object.freeze({
+  ladder_hull_light: { id: 'ladder_hull_light', share: 0.72 },
+  ladder_hull_medium: { id: 'ladder_hull_medium', share: 0.72 },
+  ladder_hull_heavy: { id: 'ladder_hull_heavy', share: 0.72 },
+  ladder_rock_light: { id: 'ladder_rock_light', share: 0.72 },
+  ladder_rock_medium: { id: 'ladder_rock_medium', share: 0.72 },
+  ladder_rock_heavy: { id: 'ladder_rock_heavy', share: 0.72 },
+  ladder_station_light: { id: 'ladder_station_light', share: 0.72 },
+  ladder_station_medium: { id: 'ladder_station_medium', share: 0.72 },
+  ladder_station_heavy: { id: 'ladder_station_heavy', share: 0.72 },
+});
+
+// 4 adaptive music stems (A=ambient/safe, B=tension, C=combat, D=boss).
+// X4 #5 — `bpm` here is the ONE tempo for the state: `src/audio/themeMatrix.js` reads it for the
+// motif and the runtime sequencer reads it for the phrase grid. Do not hard-code a second tempo.
+export const MUSIC_STEMS = [
+  {
+    id: 'stem_a',
+    label: 'Ambient',
+    themeState: 'travel',
+    motif: 'A C E A',
+    authoredSampleId: 'theme_travel',
+    triggerCondition: 'enemyDensityNear < 0.1 && !inCombat',
+    bpm: 80,
+    key: 'Am',
+    loopBars: 8,
+    layers: [
+      { instrument: 'pad',    gainBase: 0.6, gainRange: [0.4, 0.8] },
+      { instrument: 'bass',   gainBase: 0.3, gainRange: [0.2, 0.5] },
+      { instrument: 'space_fx', gainBase: 0.4, gainRange: [0.2, 0.6] },
+    ],
+    crossfadeS: 3.0,
+  },
+  {
+    id: 'stem_b',
+    label: 'Tension',
+    themeState: 'wanted',
+    motif: 'A Bb A E',
+    authoredSampleId: 'theme_wanted',
+    triggerCondition: 'enemyDensityNear >= 0.1 && !inCombat',
+    bpm: 95,
+    key: 'Am',
+    loopBars: 8,
+    layers: [
+      { instrument: 'pad',    gainBase: 0.5, gainRange: [0.3, 0.7] },
+      { instrument: 'bass',   gainBase: 0.5, gainRange: [0.3, 0.7] },
+      { instrument: 'perc',   gainBase: 0.3, gainRange: [0.1, 0.5] },
+      { instrument: 'strings', gainBase: 0.4, gainRange: [0.2, 0.6] },
+    ],
+    crossfadeS: 2.0,
+  },
+  {
+    id: 'stem_c',
+    label: 'Combat',
+    themeState: 'combat',
+    motif: 'A E A C',
+    authoredSampleId: 'theme_combat',
+    triggerCondition: 'inCombat && !bossActive',
+    bpm: 130,
+    key: 'Am',
+    loopBars: 4,
+    layers: [
+      { instrument: 'drums',   gainBase: 0.8, gainRange: [0.6, 1.0] },
+      { instrument: 'bass',    gainBase: 0.6, gainRange: [0.4, 0.8] },
+      { instrument: 'synth',   gainBase: 0.5, gainRange: [0.3, 0.7] },
+      { instrument: 'brass',   gainBase: 0.4, gainRange: [0.2, 0.6] },
+    ],
+    crossfadeS: 0.5,
+  },
+  {
+    id: 'stem_d',
+    label: 'Station',
+    themeState: 'station',
+    motif: 'C E G B',
+    authoredSampleId: 'theme_station',
+    triggerCondition: 'docked && !bossActive',
+    bpm: 72,
+    key: 'C',
+    loopBars: 8,
+    layers: [
+      { instrument: 'pad',      gainBase: 0.6, gainRange: [0.4, 0.8] },
+      { instrument: 'bass',     gainBase: 0.3, gainRange: [0.2, 0.5] },
+      { instrument: 'space_fx', gainBase: 0.4, gainRange: [0.2, 0.6] },
+      { instrument: 'strings',  gainBase: 0.25, gainRange: [0.15, 0.4] },
+    ],
+    crossfadeS: 2.0,
+  },
+  {
+    id: 'stem_e',
+    label: 'Boss',
+    themeState: 'boss',
+    motif: 'A D A F#',
+    authoredSampleId: 'theme_boss',
+    triggerCondition: 'bossActive',
+    bpm: 100,
+    key: 'Am',
+    loopBars: 4,
+    layers: [
+      { instrument: 'drums',   gainBase: 1.0, gainRange: [0.8, 1.0] },
+      { instrument: 'bass',    gainBase: 0.85, gainRange: [0.6, 1.0] },
+      { instrument: 'synth',   gainBase: 0.7, gainRange: [0.5, 0.9] },
+      { instrument: 'brass',   gainBase: 0.6, gainRange: [0.4, 0.8] },
+      { instrument: 'choir',   gainBase: 0.55, gainRange: [0.3, 0.7] },
+      { instrument: 'strings', gainBase: 0.5, gainRange: [0.3, 0.7] },
+    ],
+    crossfadeS: 0.25,
+  },
+];

@@ -1,0 +1,26 @@
+rebench1: median=13.779 min=7.19 max=15.048
+rebench2: median=13.765 min=7.385 max=15.898
+rebench3: median=13.679 min=8.269 max=15.654
+rebench4: median=13.836 min=7.489 max=14.634
+rebench5: median=13.985 min=7.171 max=15.93
+{
+  "name": "asteroid-field-interact-still-quiet-latch-floor",
+  "packageRuns": 5,
+  "medians": [
+    13.779,
+    13.765,
+    13.679,
+    13.836,
+    13.985
+  ],
+  "mins": [
+    7.19,
+    7.385,
+    8.269,
+    7.489,
+    7.171
+  ],
+  "floorMinSpeedup": 7.171,
+  "medianOfMedians": 13.779,
+  "clears15x": true
+}

@@ -1,0 +1,48 @@
+{
+  "schema": "spaceface.simScenario.v1",
+  "id": "production.fixture.canary",
+  "version": 1,
+  "title": "Node-safe production manifest canary",
+  "description": "Minimal detached canary that executes the Node-safe production manifest without a focused systems list.",
+  "evidenceClass": "production-fixture",
+  "runtimeProfile": "production",
+  "seed": 47,
+  "ticks": 2,
+  "world": {
+    "fixtureProfile": "empty-flight",
+    "sectorId": "sector_helios_prime",
+    "mode": "flight",
+    "physicsBackend": "rapier-dynamic",
+    "flightBackend": "v3",
+    "aiBackend": "legacy",
+    "credits": 5000
+  },
+  "entities": [
+    {
+      "alias": "player",
+      "profile": "ship.starter",
+      "role": "player",
+      "team": 0,
+      "factionId": "faction_free",
+      "isPlayer": true,
+      "pos": { "x": 0, "z": 0 },
+      "vel": { "x": 0, "z": 0 },
+      "heading": 1.5707963267948966,
+      "persistent": true
+    }
+  ],
+  "frames": [
+    { "tick": 0, "input": { "moveX": 0, "moveZ": 0, "turnIntent": 0, "boost": false } }
+  ],
+  "metrics": [
+    { "name": "invariant.finiteState", "version": 1, "threshold": { "op": "==", "value": 1 } },
+    { "name": "invariant.noNegativeResources", "version": 1, "threshold": { "op": "==", "value": 1 } }
+  ],
+  "assertions": [
+    { "kind": "metric", "metric": "invariant.finiteState", "op": "==", "value": 1 },
+    { "kind": "metric", "metric": "invariant.noNegativeResources", "op": "==", "value": 1 }
+  ],
+  "trace": { "signals": ["playerX", "playerZ", "playerVelX", "playerVelZ"], "sampleEvery": 1 },
+  "fixtureExceptions": [],
+  "observer": { "enabled": false }
+}

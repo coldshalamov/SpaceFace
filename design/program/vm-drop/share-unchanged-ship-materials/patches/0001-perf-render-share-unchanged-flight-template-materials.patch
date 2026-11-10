@@ -1,0 +1,416 @@
+From 889e44f4922513bf0cdaeb4e2dad2a2fe864ff80 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 00:18:03 -0400
+Subject: [PATCH] perf(render): share unchanged flight-template materials
+ across ship copies
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Clone only per-ship mutables (plume opacity, nav/sensor emissive, shield
+uniforms, drive-glow). Hull/armor/canopy/secondary keep the template
+material identity so later copies skip Material.clone / cloneUniforms and
+reuse the warm program. Portable census ~1.96× fewer unique materials
+(48 copies); mutable isolation preserved. No dummy prewarm; picture
+contract unchanged.
+---
+ src/render/partsLibrary.js               | 290 +++++++++++++++++++++--
+ test/fallback-materials-lazy.test.mjs    |   2 +-
+ test/flight-root-template-cache.test.mjs |  17 +-
+ 3 files changed, 293 insertions(+), 16 deletions(-)
+
+diff --git a/src/render/partsLibrary.js b/src/render/partsLibrary.js
+index ca8fff91b..baf3d0876 100644
+--- a/src/render/partsLibrary.js
++++ b/src/render/partsLibrary.js
+@@ -6834,19 +6834,54 @@ function cloneFlightTemplateMaterials(material, materials) {
+   return cloned;
+ }
+ 
+-function cloneFlightInstanceMaterials(material, materials) {
+-  if (Array.isArray(material)) return material.map((entry) => cloneFlightInstanceMaterials(entry, materials));
++/**
++ * PERF backlog #6 / new-ship hitch: share unchanged materials across flight-template
++ * instances. Clone only surfaces that mutate per ship (drive plume opacity, nav/sensor
++ * emissive, shield-bubble uniforms, fitted drive-glow). Hull/armor/canopy/secondary keep
++ * the template material identity so later copies skip cloneUniforms and reuse the warm
++ * program. Must not share anything damage/drive/shield write every frame.
++ */
++let __forceFlightInstanceMaterialCloneAll = false;
++
++function flightInstanceMaterialNeedsClone(object, material) {
++  if (__forceFlightInstanceMaterialCloneAll) return true;
++  if (!material) return false;
++  const tags = (object && object.userData && object.userData.spacefaceTags) || {};
++  if (materialNeedsShipLocalMutation(tags)) return true;
++  if (tags.vfxRole === 'shieldBubble') return true;
++  if (material.userData && material.userData.spacefaceDriveGlowTint === true) return true;
++  // Shader shields carry per-ship uFlash/uBase; never alias those uniforms across hulls.
++  if (material.isShaderMaterial && material.uniforms
++    && (material.uniforms.uFlash || material.uniforms.uBase)) return true;
++  return false;
++}
++
++function cloneFlightInstanceMaterials(material, materials, object = null) {
++  if (Array.isArray(material)) {
++    return material.map((entry) => cloneFlightInstanceMaterials(entry, materials, object));
++  }
+   if (!material || typeof material.clone !== 'function') return material;
+-  let cloned = materials.get(material);
+-  if (!cloned) {
+-    cloned = material.clone();
+-    cloned.userData = {
+-      ...(cloned.userData || {}),
+-      spacefaceFlightTemplateInstanceMaterial: true,
+-      spacefaceSharedAsset: false,
++  let resolved = materials.get(material);
++  if (resolved) return resolved;
++  if (!flightInstanceMaterialNeedsClone(object, material)) {
++    // Share the template material. Mark shared so instance disposal skips it; the template
++    // refcount still owns lifetime.
++    material.userData = {
++      ...(material.userData || {}),
++      spacefaceSharedAsset: true,
++      spacefaceFlightTemplateSharedMaterial: true,
+     };
+-    materials.set(material, cloned);
++    materials.set(material, material);
++    return material;
+   }
++  const cloned = material.clone();
++  cloned.userData = {
++    ...(cloned.userData || {}),
++    spacefaceFlightTemplateInstanceMaterial: true,
++    spacefaceFlightTemplateSharedMaterial: false,
++    spacefaceSharedAsset: false,
++  };
++  materials.set(material, cloned);
+   return cloned;
+ }
+ 
+@@ -7123,7 +7158,11 @@ function instantiateFlightRootTemplate(
+     const objectMaterials = object.material
+       ? (Array.isArray(object.material) ? object.material : [object.material])
+       : EMPTY_ARRAY;
+-    for (const material of objectMaterials) if (material) ownerLocalMaterials.add(material);
++    for (const material of objectMaterials) {
++      // Shared template / role materials outlive this instance; only dispose true locals.
++      if (!material || material.userData?.spacefaceSharedAsset === true) continue;
++      ownerLocalMaterials.add(material);
++    }
+     const instance = object.userData?.renderPackageInstance;
+     if (instance && typeof instance.dispose === 'function') renderPackageInstances.push(instance);
+   });
+@@ -7164,7 +7203,9 @@ function createFlightTemplateRootInstance(templateRoot) {
+     object.onBeforeRender = THREE.Object3D.prototype.onBeforeRender;
+     object.onAfterRender = THREE.Object3D.prototype.onAfterRender;
+     object.userData = sanitizeFlightTemplateUserData(object.userData);
+-    if (object.material) object.material = cloneFlightInstanceMaterials(object.material, materials);
++    if (object.material) {
++      object.material = cloneFlightInstanceMaterials(object.material, materials, object);
++    }
+   });
+   return root;
+ }
+@@ -7318,7 +7359,8 @@ function finalizeFlightRootTemplateIfUnused(entry) {
+   return true;
+ }
+ 
+-/** Focused seam probe: template hits share immutable geometry but own mutable materials and hooks. */
++/** Focused seam probe: template hits share immutable geometry + unchanged materials; clone only
++ * surfaces that mutate per ship; rebind per-instance hooks. */
+ export function runFlightRootTemplateCacheProbe() {
+   const source = new THREE.Group();
+   source.name = 'FlightRootTemplateProbe';
+@@ -7364,7 +7406,9 @@ export function runFlightRootTemplateCacheProbe() {
+   const result = {
+     distinctRoots: !!first && !!second && first.root !== second.root,
+     sharedGeometry: !!firstMesh && !!secondMesh && firstMesh.geometry === secondMesh.geometry,
+-    distinctMaterials: !!firstMesh && !!secondMesh && firstMesh.material !== secondMesh.material,
++    // Immutable hull materials stay shared across template hits (PERF backlog #6).
++    sharedImmutableMaterials: !!firstMesh && !!secondMesh && firstMesh.material === secondMesh.material
++      && firstMesh.material?.userData?.spacefaceFlightTemplateSharedMaterial === true,
+     reboundHooks: !!first && typeof first.root.userData.updateLod === 'function'
+       && typeof first.root.userData.updateDamageState === 'function',
+   };
+@@ -7389,6 +7433,224 @@ export function runFlightRootTemplateCacheProbe() {
+   return result;
+ }
+ 
++/**
++ * Portable microbench / census for share-unchanged flight materials.
++ * Builds a multi-role template (hull + plume + nav + shield), instantiates N copies, and
++ * reports unique materials, clones, and wall time. No GPU / soft-GPU fps.
++ */
++export function runFlightInstanceMaterialShareBench(options = {}) {
++  const copies = Math.max(2, Number(options.copies) || 24);
++  const source = new THREE.Group();
++  source.name = 'FlightMaterialShareBench';
++  source.userData = {
++    kind: 'ship',
++    assetId: 'share-bench-source',
++    hull: null,
++    renderContract: { version: 1, proceduralFallbackParts: [] },
++  };
++  const hull = new THREE.Group();
++  hull.name = 'FlightMaterialShareBench_Hull';
++  source.add(hull);
++  source.userData.hull = hull;
++
++  const mk = (name, tags, color) => {
++    const mesh = new THREE.Mesh(
++      new THREE.BoxGeometry(0.4, 0.4, 0.4),
++      new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.8 }),
++    );
++    mesh.name = name;
++    mesh.userData.spacefaceTags = Object.freeze({ ...tags });
++    hull.add(mesh);
++    return mesh;
++  };
++  // Crowded hull: many meshes on a few immutable roles so Material.clone (legacy) dominates
++  // Object3D.clone noise. Mutable roles stay few and must remain distinct.
++  const panelCount = Math.max(8, Number(options.panelCount) || 48);
++  // Attach maps so Material.clone pays cloneUniforms the way live hulls do.
++  const mkMap = (seed) => {
++    const data = new Uint8Array(64 * 64 * 4);
++    for (let i = 0; i < data.length; i++) data[i] = (seed * 17 + i) & 255;
++    const tex = new THREE.DataTexture(data, 64, 64);
++    tex.needsUpdate = true;
++    return tex;
++  };
++  const hullMat = new THREE.MeshStandardMaterial({
++    color: 0x6688aa, roughness: 0.55, metalness: 0.25,
++    map: mkMap(1), normalMap: mkMap(2), roughnessMap: mkMap(3), metalnessMap: mkMap(4), aoMap: mkMap(5),
++  });
++  const secondaryMat = new THREE.MeshStandardMaterial({
++    color: 0x445566, roughness: 0.7, metalness: 0.4,
++    map: mkMap(6), normalMap: mkMap(7), roughnessMap: mkMap(8), metalnessMap: mkMap(9),
++  });
++  for (let i = 0; i < panelCount; i++) {
++    const mesh = new THREE.Mesh(
++      new THREE.BoxGeometry(0.2, 0.2, 0.2),
++      i % 3 === 0 ? secondaryMat : hullMat,
++    );
++    mesh.name = i % 3 === 0 ? `Bench_Secondary_${i}` : `Bench_Hull_${i}`;
++    mesh.userData.spacefaceTags = Object.freeze({
++      lod: i % 3 === 0 ? 'lod1' : 'lod0',
++      damageRole: i % 3 === 0 ? 'secondary' : 'armor',
++    });
++    hull.add(mesh);
++  }
++  mk('Bench_Hull', { lod: 'lod0', damageRole: 'armor' }, 0x6688aa);
++  mk('Bench_Secondary', { lod: 'lod1', damageRole: 'secondary' }, 0x445566);
++  mk('Bench_Plume', { lod: 'lod0', drive: 'plume' }, 0xffaa44);
++  mk('Bench_Nav', { lod: 'lod0', damageRole: 'navLight' }, 0x44ff88);
++  mk('Bench_Sensor', { lod: 'lod0', damageRole: 'sensor' }, 0x88aaff);
++  const shield = kit.createShieldBubble('#5fd0ff', 2);
++  source.add(shield);
++  source.userData.shieldBubble = shield;
++
++  const bindings = createBindings();
++  source.traverse((object) => {
++    const tags = object.userData?.spacefaceTags;
++    if (tags) registerBinding(object, tags, bindings);
++  });
++
++  const entry = createFlightRootTemplateEntry({
++    root: source,
++    bindings,
++    authoredHullLevels: new Set(['lod0', 'lod1']),
++    wholeShip: false,
++    loadoutFingerprint: 'share-bench',
++    authoredParts: ['bench'],
++    authoredSlots: {},
++  });
++  const entity = { radius: 1, data: { defId: 'share-bench' } };
++
++  const t0 = performance.now();
++  const instances = [];
++  for (let i = 0; i < copies; i++) {
++    instances.push(instantiateFlightRootTemplate(entry, entity, `share-bench-${i}`, 'share-bench', i + 1));
++  }
++  const wallMs = performance.now() - t0;
++
++  const uniqueMaterials = new Set();
++  const sharedHits = [];
++  const clonedHits = [];
++  let sharedMaterialCount = 0;
++  let clonedMaterialCount = 0;
++  for (const inst of instances) {
++    inst?.root?.traverse?.((object) => {
++      const list = object.material
++        ? (Array.isArray(object.material) ? object.material : [object.material])
++        : EMPTY_ARRAY;
++      for (const material of list) {
++        if (!material) continue;
++        uniqueMaterials.add(material);
++        if (material.userData?.spacefaceFlightTemplateSharedMaterial === true) {
++          sharedMaterialCount += 1;
++          sharedHits.push(object.name);
++        }
++        if (material.userData?.spacefaceFlightTemplateInstanceMaterial === true) {
++          clonedMaterialCount += 1;
++          clonedHits.push(object.name);
++        }
++      }
++    });
++  }
++
++  const firstHull = instances[0]?.root?.getObjectByName('Bench_Hull');
++  const secondHull = instances[1]?.root?.getObjectByName('Bench_Hull');
++  const firstPlume = instances[0]?.root?.getObjectByName('Bench_Plume');
++  const secondPlume = instances[1]?.root?.getObjectByName('Bench_Plume');
++  const firstNav = instances[0]?.root?.getObjectByName('Bench_Nav');
++  const secondNav = instances[1]?.root?.getObjectByName('Bench_Nav');
++  const firstSensor = instances[0]?.root?.getObjectByName('Bench_Sensor');
++  const secondSensor = instances[1]?.root?.getObjectByName('Bench_Sensor');
++  const firstShield = instances[0]?.root?.userData?.shieldBubble
++    || instances[0]?.root?.getObjectByName('Ship_Shield_Bubble');
++  const secondShield = instances[1]?.root?.userData?.shieldBubble
++    || instances[1]?.root?.getObjectByName('Ship_Shield_Bubble');
++
++  let meshCount = 0;
++  instances[0]?.root?.traverse?.((object) => { if (object.isMesh) meshCount += 1; });
++
++  const census = {
++    copies,
++    panelCount,
++    meshCount,
++    wallMs: Number(wallMs.toFixed(3)),
++    uniqueMaterials: uniqueMaterials.size,
++    sharedMaterialBindings: sharedMaterialCount,
++    clonedMaterialBindings: clonedMaterialCount,
++    hullShared: !!firstHull && !!secondHull && firstHull.material === secondHull.material,
++    plumeDistinct: !!firstPlume && !!secondPlume && firstPlume.material !== secondPlume.material,
++    navDistinct: !!firstNav && !!secondNav && firstNav.material !== secondNav.material,
++    sensorDistinct: !!firstSensor && !!secondSensor && firstSensor.material !== secondSensor.material,
++    shieldDistinct: !!firstShield && !!secondShield && firstShield.material !== secondShield.material,
++    // Legacy clones every mesh material per copy. Shared keeps immutable roles at 1 identity.
++    naiveUniqueIfAllCloned: meshCount * copies,
++  };
++
++  for (const inst of instances) inst?.releaseFlightTemplate?.('share-bench-release');
++  const probeKey = '__spaceface-flight-material-share-bench__';
++  storeFlightRootTemplate(probeKey, entry);
++  removeFlightRootTemplate(probeKey);
++  const disposeSet = new Set();
++  for (const root of [source, ...instances.map((i) => i?.root)]) {
++    root?.traverse?.((object) => {
++      if (object.geometry && !object.geometry.userData?.spacefaceSharedAsset) {
++        disposeSet.add(object.geometry);
++      }
++      const list = object.material
++        ? (Array.isArray(object.material) ? object.material : [object.material])
++        : EMPTY_ARRAY;
++      for (const material of list) {
++        if (material && material.userData?.spacefaceSharedAsset !== true) disposeSet.add(material);
++      }
++    });
++    root?.clear?.();
++  }
++  for (const resource of disposeSet) {
++    try { resource.dispose?.(); } catch (_) { /* bench cleanup */ }
++  }
++  return census;
++}
++
++
++/** Paired A/B: always-clone (legacy) vs share-unchanged. Portable; no GPU. */
++export function runFlightInstanceMaterialShareAb(options = {}) {
++  const copies = Math.max(2, Number(options.copies) || 48);
++  const rounds = Math.max(1, Number(options.rounds) || 5);
++  const run = (forceAll) => {
++    __forceFlightInstanceMaterialCloneAll = forceAll;
++    try {
++      const samples = [];
++      for (let i = 0; i < rounds; i++) samples.push(runFlightInstanceMaterialShareBench({ copies }));
++      samples.sort((a, b) => a.wallMs - b.wallMs);
++      return samples[Math.floor(samples.length / 2)];
++    } finally {
++      __forceFlightInstanceMaterialCloneAll = false;
++    }
++  };
++  // Warm both paths once so JIT noise does not favor the second leg.
++  run(true);
++  run(false);
++  const alwaysClone = run(true);
++  const shared = run(false);
++  return {
++    copies,
++    rounds,
++    alwaysClone: {
++      wallMs: alwaysClone.wallMs,
++      uniqueMaterials: alwaysClone.uniqueMaterials,
++    },
++    shared: {
++      wallMs: shared.wallMs,
++      uniqueMaterials: shared.uniqueMaterials,
++      hullShared: shared.hullShared,
++      plumeDistinct: shared.plumeDistinct,
++      navDistinct: shared.navDistinct,
++      shieldDistinct: shared.shieldDistinct,
++    },
++    uniqueMaterialReduction: Number((alwaysClone.uniqueMaterials / shared.uniqueMaterials).toFixed(2)),
++    wallSpeedup: Number((alwaysClone.wallMs / Math.max(1e-6, shared.wallMs)).toFixed(2)),
++  };
++}
++
+ /** Focused production-seam probe: a whole-ship Kestrel package is built once, then rebuilt for a
+  * different entity id. The second build must rehydrate the package API and hit the visual template,
+  * while the package and template ownership counters still close exactly once. */
+diff --git a/test/fallback-materials-lazy.test.mjs b/test/fallback-materials-lazy.test.mjs
+index 56e69e1d5..9ac97faf0 100644
+--- a/test/fallback-materials-lazy.test.mjs
++++ b/test/fallback-materials-lazy.test.mjs
+@@ -63,7 +63,7 @@ test('an authored whole-ship composition paints no procedural hull textures', ()
+   assert.deepEqual(runFlightRootTemplateCacheProbe(), {
+     distinctRoots: true,
+     sharedGeometry: true,
+-    distinctMaterials: true,
++    sharedImmutableMaterials: true,
+     reboundHooks: true,
+     geometryDisposedOnce: true,
+   }, 'the composition itself must still build, instance and dispose correctly');
+diff --git a/test/flight-root-template-cache.test.mjs b/test/flight-root-template-cache.test.mjs
+index f34f1a513..f98569110 100644
+--- a/test/flight-root-template-cache.test.mjs
++++ b/test/flight-root-template-cache.test.mjs
+@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
+ import test from 'node:test';
+ 
+ import {
++  runFlightInstanceMaterialShareBench,
+   runFlightKestrelTemplatePackageProbe,
+   runFlightRootTemplateCacheProbe,
+ } from '../src/render/partsLibrary.js';
+@@ -22,12 +23,26 @@ test('flight root template hits reuse geometry but rebind per-instance state', (
+   assert.deepEqual(runFlightRootTemplateCacheProbe(), {
+     distinctRoots: true,
+     sharedGeometry: true,
+-    distinctMaterials: true,
++    sharedImmutableMaterials: true,
+     reboundHooks: true,
+     geometryDisposedOnce: true,
+   });
+ });
+ 
++test('flight template instances share unchanged materials and clone only mutable roles', () => {
++  const census = runFlightInstanceMaterialShareBench({ copies: 16, panelCount: 48 });
++  assert.equal(census.hullShared, true, 'immutable hull materials stay shared');
++  assert.equal(census.plumeDistinct, true, 'plume opacity stays per-ship');
++  assert.equal(census.navDistinct, true, 'nav emissive stays per-ship');
++  assert.equal(census.sensorDistinct, true, 'sensor emissive stays per-ship');
++  assert.equal(census.shieldDistinct, true, 'shield uniforms stay per-ship');
++  assert.ok(census.uniqueMaterials < census.naiveUniqueIfAllCloned,
++    `unique materials ${census.uniqueMaterials} should beat naive ${census.naiveUniqueIfAllCloned}`);
++  const reduction = census.naiveUniqueIfAllCloned / census.uniqueMaterials;
++  assert.ok(reduction >= 1.5,
++    `material identity reduction ${reduction.toFixed(2)}× should be ≥1.5×`);
++});
++
+ test('Kestrel package-path template hits rehydrate bindings and close ownership', () => {
+   assert.deepEqual(runFlightKestrelTemplatePackageProbe(), {
+     firstBuilt: true,
+-- 
+2.47.3
+

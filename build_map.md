@@ -1,0 +1,7048 @@
+<!-- LIFETIME: STABLE -->
+# SpaceFace Build Map
+
+> **Dispatch is closed (owner, 2026-11-06).** The current program is the master plan in
+> [`design/program/finish/MASTER_PLAN.md`](design/program/finish/MASTER_PLAN.md); lane dispatch and
+> path collisions are in [`MASTER_LANES.md`](design/program/finish/MASTER_LANES.md), and live outcome
+> state is in [`EXECUTION_STATUS_2026-11-06.md`](design/program/finish/EXECUTION_STATUS_2026-11-06.md).
+> The rows below are **specification and history**, not a queue. Do not run `program-dispatch --next`
+> or start a row here as a new assignment.
+
+> **Earlier routing (owner, 2026-10-28):** the Finish Program in
+> [`design/program/finish/`](design/program/finish/README.md) is the outcome detail for the work the
+> master plan names. Its three boards name the open rows below; the rows here remain the detailed
+> spec for those names.
+
+<!-- strategic-chaos-foundations:start -->
+The owner-directed [Strategic Chaos program](design/program/strategic-chaos/README.md)
+connects strategic command, readable physics, multi-party operations and lasting consequences.
+Its [thirteen implementation commissions](design/program/strategic-chaos/PROGRAM.md) extend
+existing rows; SC labels are document labels, not new queue IDs or completion claims.
+Use `node scripts/strategic-chaos.mjs brief SC-01` for a complete agent assignment, and the
+[foundation checks and proof adapter](design/program/strategic-chaos/FOUNDATIONS.md) for evidence.
+Current claims, ordinary-route acceptance, INFERENCE and the existing single-writer owners remain authoritative.
+<!-- strategic-chaos-foundations:end -->
+
+The owner-requested [Maturity and cloud implementation pack](design/archive/program/maturity-cloud-2026-10-20/README.md)
+expands the existing first-hour, physics/Swarm, living-world, economy and discovery rows into
+bounded workflows and ten cloud-sized slices. This is supporting detail, not a second queue;
+existing row identities, current claims and acceptance remain authoritative.
+
+The owner-directed longform world-experience treatment is [WORLD_EXPERIENCE_TREATMENT.md](design/archive/program/world-experience-2026-10-23/WORLD_EXPERIENCE_TREATMENT.md), with its companion [WORLD_BUILD_REQUESTS.md](design/archive/program/world-experience-2026-10-23/WORLD_BUILD_REQUESTS.md) translating the direction into bounded set-piece asks. These are supporting direction and handoff documents for the existing original SF20 scope; they add no competing queue or change board ownership or status.
+
+This is the repository's implementation front door. It routes an agent to the smallest authoritative packet and the live owners it must respect. It deliberately contains no current queue snapshot, branch name, lease, test transcript, or completion history.
+
+The owner-commissioned [BLACK FLAG integration](docs/BLACK_FLAG.md) maps ship custody,
+physical control transfer, registry and chop-shop owners. Its acceptance gaps remain explicit;
+this supporting crosswalk adds no second queue or completion claim.
+
+The owner-directed weapons and powers audit is [Arsenal experience](design/program/ARSENAL_EXPERIENCE.md):
+the complete built-kit lifecycle matrix and implementation plan for physical world effects,
+distinct attack/target presentation, custom SVG identities and usable controls.
+
+The asset experience plan is [Asset experience program](design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md).
+Its 16 October [complete asset stocktake](design/program/asset-experience/ASSET_STOCKTAKE.md) and
+Luna workflows in §8 connect current release assets to authored player moments, motion and missions.
+Cloud integration intentions and resulting behavior are recorded in the PR-maturation closure
+row of `build_map_done.md` (2026-10-12; the dated record file was retired 2026-10-15).
+
+The owner-directed whole-game research and repair campaign is
+[Maturity, 15 October](design/program/MATURITY_2026_10_15.md). It applies §1.8 across the existing
+finish lanes, with Sol research, Luna repairs, cloud PR integration and full-matrix verification.
+
+The 2026-10-19 studio audit — verdict, consolidation into parallel pods, and the A-list expansion
+campaigns — is [§31](#31-the-a-list-finish--studio-audit-consolidation-and-expansion-2026-10-19);
+its dispatchable rows are §1C §N (rows 390–481) on the seams added that day. The director's vision,
+the Bronze/Silver/Gold ladder, the whole-game report card and the self-refilling plan engine are
+[§32](#32-the-gold-game--the-directors-vision-and-the-engine-that-keeps-the-plan-full-2026-10-19)
+([`PLAN_ENGINE.md`](design/program/PLAN_ENGINE.md), [`REPORT_CARD.md`](design/program/REPORT_CARD.md)).
+
+Completed work moves to [build_map_done.md](./build_map_done.md): strike the entry from the live board, land the record there with its commit and receipt, and reviews read it there.
+
+For the owner-directed production-quality and physics-playground planning pass, use
+[`PRODUCTION_QUALITY_COMPOUNDING.md`](./design/program/PRODUCTION_QUALITY_COMPOUNDING.md).
+It groups existing obligations into finite deliveries and resolves a first wave; it does not replace
+this board, change task statuses, or launch implementation automatically.
+
+For chase flight, authored circuits and their complementary expansion builds, use
+[`RACING_FLIGHT_PROGRAM.md`](./design/program/RACING_FLIGHT_PROGRAM.md). Its eight finite packets
+cover hull-aware handling/camera, raceable terrain, adventure mission sections, ghosts, actual
+rivals, earned-speed mechanics, career/rewards, and accessibility/runtime quality. Start with
+RF-01 → RF-02 → one RF-03 mission; RF-08 runs across every packet. These extend the existing
+mission/flight/render owners rather than creating a separate racing engine.
+
+## 1. Start here — the one procedure (no scope words needed)
+
+**The goal, in the owner's words (2026-09-03):** *a super-fun space adventure game with fast-paced, physics-centric, arcade-style combat that plays optimally in swarm mode, and is super interesting and
+mentally stimulating in adventure mode because of its advanced customization and economic features, as well as the storyline; with a frontend polished massively, everything brought into the newest
+version and optimized.* Product intent: [`design/VISION.md`](./design/VISION.md).
+Expansion alignment is retained in the non-dispatching [`EXPANSION_MASTER_BLUEPRINT.md`](./design/program/roadmap/active/EXPANSION_MASTER_BLUEPRINT.md)
+and the story/place concept companion [`EXPANSION_STORY_AND_PLACES.md`](./design/spec3/EXPANSION_STORY_AND_PLACES.md).
+Current original-concept source handoff: [8 October checkpoint](design/archive/program/world-depth-2026-10-02/EXECUTION_STATUS.md#source-checkpoint-for-cloud-work---8-october-2026). Inactive sources and failed route checks remain explicitly unfinished.
+Those syntheses do not add queue IDs or replace packet ownership. Existing owners stay compactly mapped here:
+kinetic combat and the Massline → `PQ-137`, `PQ-026`–`PQ-031`, `PQ-140`, `PQ-146`; readable swarms and
+world reactions → `PQ-140`, `PQ-174`, `PQ-175`, `PQ-138`, `PQ-143`, `PQ-151`, `PQ-144`; readable trade
+and progression → `PQ-177`, `PQ-155`, `PQ-148`, `PQ-151`; visual hierarchy and impact presentation →
+`PQ-190`, `PQ-134`, `PQ-023`, `PQ-144`. Bars:
+[`design/FEEL_CONTRACT.md`](./design/FEEL_CONTRACT.md). The finish line: §15–§19 below.
+
+**Two kinds of agent (owner, 2026-09-22).** A strong agent is given a feeling and invents a better
+foundation than a planner would write. A grunt pass is given a specific change and does that change.
+The build map's open work for the strong pass is [§23](#23-superpower-campaigns--admitted-2026-09-22).
+The specific work for the grunt pass is
+[`design/program/INFERENCE_IDEAS.md`](./design/program/INFERENCE_IDEAS.md).
+[§22](#22-the-gap-between-the-description-and-the-build--admitted-2026-09-21) stays the measured gap
+list: a known number, a fixture, a file list. Do not hand a strong agent a G-row and call it a
+campaign. Do not hand a grunt pass a feeling and ask it to invent the system.
+
+**You do not need to be told what to work on.** A named unit, "next", or "go" follows the queue.
+The queue is the plan, its order is the project manager's order, and every packet says exactly what
+to build, which number proves it, and the specific ways to get it wrong. An A-list pass with no
+packet follows §23. An INFERENCE pass follows the catalog. "Make it better" when the ship feels
+wrong still starts at the fun loop (§1.7), then returns here.
+
+### 1.1 The procedure
+
+1. Glance at `git status --short` and [`design/program/NOW.md`](./design/program/NOW.md) so you do
+   not collide with another agent's live, exact paths. A dirty foreign hunk is protected.
+   **The frontend redesign is owned by the ORRERY lane (owner, 2026-09-26; nuanced 2026-09-27).**
+   The lane owns the redesign sessions and the superseded briefs stay dead (§11, §18, §20, §22.5
+   C1–C4, the §22.9 HUD rows, §25 Phase 4, §27 THE INSTRUMENT) — but **frontend files are not a
+   no-go zone**: when your task needs a file under `src/ui/**` or `styles/**`, edit it — minimal, consistent with the ORRERY direction, verified, landed by pathspec; the lane reads the diff and
+   works it in when it returns. A cosmetic frontend impulse your task does not need is one ledger
+   row (§7 of `AGENTS.md`), never a second designer. Authority:
+   [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md`](design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md).
+2. **Maturity first (owner, 2026-10-04):** debugging and polish are planned production work,
+   including in areas whose feature rows say `done`. For "fix the bugs", "make it solid",
+   "polish" or "demo ready", use [§1.8](#18-production-maturity-debugging-and-polish).
+   For unnamed next work, fix an available confirmed player-facing defect before adding a
+   feature; if the selected area has no current maturity coverage, do its bounded discovery
+   pass first. Exact-path ownership still applies. Otherwise, if this sitting is a finishing
+   or A-list pass with no named packet — "make it better", "finish
+   the game", "polish", a long build session — take a lane from
+   [§27](#27-the-finish-in-lanes--admitted-2026-09-24) / [`FINISH_LANES.md`](./design/program/FINISH_LANES.md):
+   the first lane whose files are free, worked in order. A lane is an open-ended area assignment —
+   you own the named work still open there **and** the review and tuning of that area to the
+   A-list bar; the queue units inside it are its checklist, not a script. The A2 actualize lane
+   (§23.4) is committed and closed. If the owner said INFERENCE, take catalog lines
+   ([`INFERENCE_LANES.md`](./design/program/INFERENCE_LANES.md)). Otherwise read the seam table
+   in [§1C](#1c-the-board--every-dispatchable-unit-numbered-refreshed-2026-09-27) and
+   `node scripts/board-chunks.mjs`. Claim a `free` seam and do its open rows. `program-dispatch
+   --next` still returns an old packet when one is actually ready; a drained result is this
+   board, not an empty game and not the inference catalog. Do not shop `--ready` for a smaller
+   packet. The seam you claimed is the plan.
+3. On a queue unit, read the packet's **How agents get this wrong** section before touching code.
+   Then its Leaves row: the done-when is the definition of done, in player units. If a done-when is
+   missing, unclear, or could be satisfied by something the owner would call thin, write the missing
+   number into the packet first (one line), then build to it. A §23 campaign has no leaf: invent the
+   mechanism, ship a slice the player can feel, and leave the campaign open until the feeling is
+   ordinary. A catalog line's done sentence is the whole job.
+4. If the unit is feel or combat (packets `PQ-137`, `PQ-139`, `PQ-140`, `PQ-146`, `PQ-173`, `PQ-174`, `PQ-175`, `PQ-176`, `PQ-186` and any leaf whose done-when names a `FEEL_CONTRACT` bar), run the
+   Fun Convergence Loop: [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md).
+   Fixed seeds, one hypothesis, before/after numbers.
+ 5. Build it, then **iterate on the affected player outcome.** Use the smallest check that observes
+    the claim (§1.9); inspect the actual rendered result when appearance is the claim. Fix what is
+    unfinished or broken. One independent, combined product/engineering critique belongs at a
+    coherent cross-system, subjective-design or high-risk boundary, not after every small leaf.
+    Give it the candidate and existing evidence; re-review only the material issue a fix changes.
+    Do not write review files or store unused stills. Run the checks that catch this change's real
+    failure modes (§7 and the packet's relevant checks). If other agents are
+   live in the tree, leave a checkpoint row (`node scripts/agent-checkpoint.mjs start`) and release
+   it when you stop; otherwise skip the ceremony. Commit your files by pathspec.
+6. Set the unit's queue state. A short note for the next engineer only if you learned something
+   they could not see from the code. Write the report in §1.4's format. Then go to step 2 and take
+   the next unit. Do not stop because a check is green, because one leaf is done, or because the
+   context is long. Stop only for §1.5.
+
+Broad, unnamed quality work still goes through the Central Brain manager loop
+([`design/program/CENTRAL_BRAIN.md`](./design/program/CENTRAL_BRAIN.md); ranked selector in
+`tools/agentic/select_next_work.py`, campaign slate in `tools/agentic/manager_cycle.py`). It ranks
+inside the same queue; it never admits, mutates queue truth, or replaces this procedure.
+
+### 1.2 The order (why `--next` returns what it returns)
+
+**The maturity priority in [§1.8](#18-production-maturity-debugging-and-polish) precedes this
+feature sequence.** A broken existing workflow is production work now, even when its packet
+is closed or release packaging is parked. Queue order does not require building on a broken game.
+
+Dispatch order is kind first (build before proof), then unit priority. The units of the finishing
+program carry priorities that encode this sequence, and their dependencies name the exact units they
+wait for, so content cannot be handed out before the ship handles.| Phase | Gate it serves (§15.1) | Packets, in order |
+|---|---|---|
+| **0 · The playable demo** (first; owner, 2026-09-20) | DEMO | `PQ-210` smooth, solid, answering, hardware: `.00` Crucible roster prewarm · `.01` a fight fits the frame · `.02` the first 20 seconds · `.03` nothing on screen unloads · `.04` every hit answers, with sound · `.05` the demo HUD · `.06` a quiet machine · `.07` ask once about motion · `.08` the fifteen-minute demo. Target, evidence and bars: [`DEMO_READINESS_2026-09-20.md`](./design/program/DEMO_READINESS_2026-09-20.md) |
+| **A · The toy works** (now) | ALPHA | `PQ-173` the fun-loop instrument · `PQ-167` useful local telemetry · `PQ-137` the guts (`.03`–`.11`) · `PQ-189` **correct the compass** (controls contract, stale diagnoses retired) · `PQ-174` the swarm fun contract (with `.08` earned breathing room) · `PQ-139` impacts answer · `PQ-158.06` minimal action audio · `PQ-165.03` reduced motion keeps information · `PQ-138` the world reacts · `PQ-140` roster as physical problems · `PQ-146` stunt grammar · `PQ-186` the regression fortress · `PQ-180` the frontend grammar matrix · `PQ-144.01` the production baseline · `PQ-163` the first ten minutes · `PQ-141` **the 60-second proof (gate)** |
+| **A2 · Picture, light, ear** | BETA | In order, [§23.4](#234-actualize-the-tools): `AQ-CAS` · `AQ-LOD` · `AQ-LIGHT` · `AQ-SURFACE` · `AQ-VOICE` · `AQ-HIT`. Each waits until the one before it is committed. This lane is how the outside tools become the picture. |
+| **B · The swarm and the world** | BETA | `PQ-190` **the style slice** (stylized industrial energy, approved at the shipping camera before any fleet pass) · `PQ-193` **the 3D picture never looks broken** (complete bodies, opening flyby, tubes, shelf, places) · `PQ-175` swarm content at craft · `PQ-029` `PQ-030` `PQ-031` `PQ-026` heads and coupling · `PQ-147` field toys · `PQ-027` `PQ-028` machinery and infrastructure · `PQ-148` cargo is physics · `PQ-149` the storyteller · `PQ-150` people who remember · `PQ-151` the wanted loop · `PQ-154` wrecks as terrain · `PQ-161` readable at zoom · `PQ-169` Crucible as replay surface |
+| **C · Adventure depth** | BETA | `PQ-177.06`/`.07` cargo custody and visible industrial limits · `PQ-145.01` the first durable site loop · `PQ-176` customization with consequences · `PQ-155` the verb curve · `PQ-156` three starters · `PQ-142` progression and my ship · `PQ-177` an economy you can read · `PQ-178` the story pipeline · `PQ-032` the linear spine · `PQ-152` set pieces from verbs · `PQ-153` six sectors · `PQ-143` ordinary life · `PQ-145` industry authorship · `PQ-171` content grammar · `PQ-195` the Third Shift finished |
+| **D · Frontend to the newest version** — **CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane; do not dispatch** | BETA | `PQ-162` the station redesign · `PQ-168` the chart finished · `PQ-181` the meta shell · `PQ-182` Crucible screens · `PQ-183` everything is a link · `PQ-184` UI performance · `PQ-185` Asteroid Works accepted (with the live `PQ-130` / `PQ-131`) |
+| **E · It ships** | RELEASE | `PQ-158` audio direction · `PQ-159` camera and photo mode · `PQ-160` replay and clips · `PQ-164` input truth · `PQ-165` accessibility and options · `PQ-166` five languages · `PQ-144` density and perf guard · `PQ-033` the release closeout |
+| **F · After** | POST | `PQ-170` endgame pulls · `PQ-172` mods |
+
+**§25 is the A-list demo program (owner, 2026-09-23): *see the body*.** Nearly every Phase 0 and
+finish leaf reads `done`, and the live frame still fails a stranger: your own hull is a speck, the
+kill is invisible, and the sky, the arena and the HUD out-shout the fight. §25 sequences CV-GLASS,
+CV-PAINT, CV-HAND/CV-AMMO, CV-KIT (ORRERY) and `PQ-210.08` into seven phases with the bars nobody
+had written down. A long "make it A-list / finish the demo" session starts there.
+
+Residual packets minted from program sweeps — `PQ-191` (the deferred independent passover),
+`PQ-204` (deterministic smoothness algorithms), `PQ-205`–`PQ-209` (ordnance, combat-variety,
+people-who-remember, build-identity and actual-game-defect residuals) — carry no phase row; they
+dispatch through `--next` / `--id` like any unit.
+
+**Pre-release preparation is not game development (owner, 2026-09-27).** The goal is a finished,
+polished game to play; no release is being prepared. Quiet-machine acceptance sampling, the demo
+sign-off leaf (`PQ-210.08`, parked `blocked` in the queue), §25 Phase 7 (the demo package, crash
+reporting, store shots, trailer, funnel) and the §27 THE RELEASE lane are **pre-release
+preparation**: parked until there is a release to prepare, and never the dispatch head. Performance
+work stays in scope only as a development instrument — finding and fixing what makes the game worse
+on a real, busy machine — not as a gate that waits on a quiet host. Until pre-release opens, game
+development runs through §27's lanes (THE MACHINE's development half, THE HAND, THE FIGHT, THE
+WORLD, THE LONG GAME, THE PICTURE, THE EAR); **a drained queue means claim a free seam on the
+board (§1C) and do its open rows — never stop, and never switch to the inference catalog.**
+
+**§23 is the superpower front (owner, 2026-09-22).** The sequential lane is **A2** in the table
+above: [§23.4](#234-actualize-the-tools), `AQ-CAS` then `AQ-LOD` then `AQ-LIGHT` then `AQ-SURFACE`
+then `AQ-VOICE` then `AQ-HIT`. Take the first of those that is not yet committed. Do not start a
+later one while an earlier one is open. A campaign in
+[§23](#23-superpower-campaigns--admitted-2026-09-22) names the feeling for the task you are on.
+You invent the mechanism. A better foundation than the paragraph is the point. That outranks a
+soak, a capture, a closeout unit, and a §22 micro-row.
+
+**§22 is the measured gap list (owner, 2026-09-21).** Take a row there when the job is a known
+number, a fixture, and a file list. Wave G is grunt-shaped: small, already specified. `--next`
+still returns the queue. Neither section cancels it. Grunt-sized work that is not already a §22
+row lives in [`design/program/INFERENCE_IDEAS.md`](./design/program/INFERENCE_IDEAS.md). Do not
+promote a catalog line into a campaign. Do not shrink a campaign into a catalog line and call the
+feeling done.
+
+Live campaigns owned by other threads (`PQ-129` hitch, `PQ-130`/`PQ-131` Asteroid Works, `PQ-050`
+fleet remaster, `PQ-045` Ceres slice, `PQ-136` fielding, `PQ-193` 3D picture) keep their own doors
+in §1B and their own units in the queue; `--next` interleaves them by kind and priority. Do not take
+a unit whose paths a live row names. The remaster machine does not take §22 rows or §23 campaigns; it fills
+[`design/program/vm-drop/`](./design/program/vm-drop/README.md) under [`VM_LANES.md`](./design/program/VM_LANES.md).
+
+### 1.3 The craft (floors, not a script)
+
+1. **Numbers or it did not happen.** A unit closes on its done-when measured in player units (screen
+   depths, seconds, hull lengths, fraction kept or lost, verbs per minute), before and after, on a
+   fixed seed. "It works", "it follows the path", "check is green" are not numbers.
+2. **Numbers and the live owner — not a capture campaign.** Player-felt claims close on numeric
+   measurements printed by the deterministic scenario or bench on a fixed seed, plus reading the
+   code path that produces them (the listener, the bind, the spawn). A headed still is **not** the
+   review method and **not** a close gate (owner, 2026-09-16). Use a still only when the claim is
+   purely visual (silhouette, material, “one game”) and no structural check can falsify it; look
+   in-session and delete it. Headed recordings happen only on the owner's explicit request.
+   Timed-out Chromium, a missing GPU, or a capture-harness red never blocks `implemented`. Packet
+   prose that says “scenario + capture” means the scenario; the capture is optional. Art remaster
+   KEEP/REVISE is the exception because that claim is the picture.
+3. **Consequences or it is thin.** A new player-facing action or feature produces at least two further
+   things (a motion, a reaction, a receipt someone consumes). One thing once is content, not a feature.
+   A control, a confirmation, a selection, a brake or an instrument is exempt: it must do exactly its
+   one thing well, and demanding noisy secondary events from it is the wrong law (audit 2026-09-05).
+4. **Never answer feel with content.** More enemies, ships, stations or missions never close a feel
+   unit. Camera shake and particles never close an event.
+5. **Never add drag.** Never clamp given momentum. Never give an NPC a gyro, a transform write, or
+   instant counter-thrust. Mass and momentum decide; hit points never scale.
+6. **Never edit a test or a golden to pass.** A test assertion quotes the vision sentence it serves. A
+   golden moves only with the causal record (`docs/COMMON_BUGS.md` §8/§10d).
+7. **Fixed seeds.** Every scenario, bench and capture names its seed and tape. Randomness in a bench is
+   how agents lose the ability to test.
+8. **Crucible first.** Combat and flight feel converge in the Crucible bench; adventure inherits the
+   numbers, never a copy of the system.
+9. **Surface before invent.** List what already computes the thing (the packet's *What exists*) and
+   connect it before writing anything new. Three of the biggest gaps in this game were missing
+   listeners, not missing systems.
+10. **One architecture.** Browser, Electron, Sandbox, Crucible, the lab: one game path. No flag-only
+    features, no parallel registries, no second physics.
+11. **The default route is the only route.** A feature the player cannot reach on the default route
+    without a flag, a URL or a debug key is not done.
+12. **Grammar before pixels.** Every 2D surface obeys `design/frontend/INSTRUMENT_GRAMMAR.md` and is
+    measured by the matrix (`PQ-180`); a screen that looks fine and fails the matrix is not done.
+13. **Finish the unit.** Half a unit looks identical to a finished one and never gets finished. If part
+    is blocked, finish every other part and say the exact blocker in one sentence.
+14. **Never ask the owner to adjudicate technical risk, and never ask in jargon.** Decide it. If a
+    product judgment is genuinely theirs, ask in plain words with a default.
+15. **Report in the owner's words** (§1.4). No file paths, hashes or check names in the summary.
+16. **Iterate like a developer.** The done-when is the floor, not the target. Play your own work,
+    judge it, and fix what you would not ship before closing. Ship the second or third attempt, not
+    the first blind one that happened to go green.
+17. **Judgment over litany.** These laws are floors and honest-work defaults, not a script to
+    execute. Run the checks and measurements that would catch your change's real failure modes and
+    skip the rest; nothing here replaces looking at the work and using taste.
+18. **Use the named outside resources.** The ones that would make this game better are listed in
+    [`docs/OPEN_SOURCE_INTAKE.md`](./docs/OPEN_SOURCE_INTAKE.md) §0. Use the one that matches the
+    job. Do not open a search for a substitute, and do not copy Unreal Engine code. A catalog line
+    still stays inside its files.
+
+### 1.4 The report (the only thing the owner reads)
+
+```text
+DONE / NOT DONE  <unit id> — <one plain sentence naming the outcome>
+WHAT I FOUND     one sentence, plain words (the fundamental, if this was feel work)
+WHAT I CHANGED   one sentence, no file names
+WHAT YOU WILL FEEL   two sentences: what is different when you play; what still is not
+THE NUMBERS      bar | before | after | target   (only the bars this unit moved)
+THE FEEL         one sentence on whether it plays better; committed capture strips are never required
+NEXT             the next unit --next will return
+```
+
+### 1.5 Stop conditions (the only reasons to stop)
+
+- A required owner seam is missing or its contract unknown → `BLOCKED` with the exact shared-change
+  request, after finishing every other leaf.
+- The unit's paths collide with a live `NOW.md` row → take the next unit.
+- Two failed repair cycles with the same causal model → record the falsified model, narrow the
+  scenario, choose another model; after three models, escalate in plain words.
+- The owner said stop.
+
+### 1.6 Before you call it done
+
+There is no standing integrator gate and no approval step. These are the questions a good developer
+asks themselves before closing; use judgment, and iterate until the answers are yes:
+
+- Would you ship this? If it is thin, ugly, half-wired, or only green because a check passed, fix it
+  and play it again — that iteration is the job, not overhead.
+- Is the outcome measured in the done-when's player units, on a fixed seed? "It works" and a green
+  check are not numbers.
+- Is it reachable on the default route, with no flag, URL or debug key?
+- Did you add content, shake, particles, drag, a clamp on given momentum, an NPC gyro, hit-point
+  scaling, or a dialogue tree where the packet asked for feel? Take it back out.
+- Did a test or a golden change without the vision sentence or the causal record? Then find the cause.
+- Does the report say what moved and what it plays like now, in the owner's words?
+
+A second pair of eyes for unfinished work, bugs, and cheap bits is how you catch a lazy first try.
+It is a look at the actual work, then a fix — not a JSON wave, not a stored still, not a receipt
+novel. When the owner asks for a taste pass, do the same (§1.7).
+
+### 1.7 If the owner names a symptom
+
+The procedure above needs no scope. When the owner names one, route it and then continue the
+procedure:
+
+| The owner says | Start here |
+|---|---|
+| "it's super buggy", "fix all the bugs", "make it solid", "debug and polish", "text overflows", "models don't load", "too much off-screen loading", "demo ready" | **[§1.8](#18-production-maturity-debugging-and-polish)** — own discovery and repair of ordinary player workflows through the existing lanes and ONE defect ledger. The owner supplies the symptom, not a technical diagnosis |
+| "Here is a taste review / an outside audit; fold it in" | Grade every recommendation in §15.9 (adopt / adopt with a guard / decline, with the ruling it agrees or conflicts with); admit each adopted item as a leaf of the packet that already owns the surface, or a new packet only when no packet does; store the review under `docs/archive/handoffs/` as HISTORICAL evidence with a pointer back to the grade. Never a second queue, never verbatim orders |
+| "review what just landed", "second pair of eyes", "taste passover before those units are finished" | Play the named surfaces yourself or hand them to one agent, **fix** what is real (taste and bugs), and report in §1.4 words. Incoming written audits grade through the row above and §15.9. There is no standing review queue |
+| "it's not fun", "make it better", "it sucks", "wonky", "no control" | **§27** → [`FINISH_LANES.md`](./design/program/FINISH_LANES.md) lane **THE HAND**; the loop method is [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md) |
+| "finish the game", "what's next for release", "the professional bar", "batch the work into lanes" | **§27** → [`FINISH_LANES.md`](./design/program/FINISH_LANES.md) — take the first lane whose files are free and own that area to its bar |
+| "do the next N tasks", "next 10", countable parallel work, `--next` reports queue drained | **§1C** — the numbered board; take the N lowest OPEN rows whose paths are free, one row per agent. When only §M ADMIT rows remain, they count like any other row |
+| "swarm mode should be more fun" | §16 — the arcade-expansion revision is §16.4 (board rows 263–273); the survival engine stays `--id PQ-174` |
+| "adventure is boring / thin" | §17 → `--id PQ-176`, `PQ-177`, `PQ-178` |
+| "the screens look cheap", "polish the frontend", "bring the UI up to date", "A-list / bold / expressive frontend" | **§20.15** (admitted 2026-09-10: [`FIELD_HARDWARE_PROGRAM.md`](design/archive/frontend-direction/FIELD_HARDWARE_PROGRAM.md)) → `--id PQ-194` (style frames → asset kits → the stage → the title live as the veto point → surfaces). §20.14 / `PQ-187` is superseded. `PQ-180` is the floor, not the gate |
+| "the ship jigs / jitters / doesn't know where it is", "it's not smooth" | **§21** → run `npm run probe:smooth-flight` and read `SHIP LOST ITS PLACE` (must be 0) before anything else. The loop has ONE order — simulate, then present (`check:baseline` → `smooth-flight`). Never reintroduce a draw-first frame, a pose hold against a running sim, or a sim step cap on slow frames |
+| "the attacks are limp / frozen / a swirl that doesn't spin" | **§21** → first read `state.settings.video.motionReduce`: on 2026-09-20 the owner's Windows "Animation effects: off" had silently stripped every combat effect. Then `--id PQ-210.04` (four channels, with sound) |
+| "things pop out of existence", "asteroids vanish", "it doesn't load in time" | **§21** → `--id PQ-210.03` when it is the known retired asteroid buffer; read `state.render.asteroidInstancePool.variants[].retiredOwners` and the console for `[asteroid-pool]`. A class of pop — ships, wrecks, stations, empty locks, the glass lying — is campaign **CV-GLASS** in §23, not another prefetch constant |
+| "zero to hero", "make the demo A-list", "I can't see my ship", "the fight is unreadable", "long build session" | **§25** → [`ZERO_TO_HERO_2026-09-23.md`](./design/program/ZERO_TO_HERO_2026-09-23.md). Take the first phase without a visible slice; close the affected outcome under §1.9, with actual visual inspection when claimed |
+| "unify the picture", "one art direction", "graphics aren't one game", "convergence", "creative campaigns", "superpower pass", "make it A-list" | **§27** → the lane that owns the area (the §23 campaigns are absorbed into the lanes); §23 stays the detailed wording. §22 is the measured list, not this door |
+| "it's hitching / stuttering" | **§21** → `npm run probe:smooth-flight:crucible` names each freeze and what paid for it, with the whole-machine CPU line; then `--id PQ-210.00`–`.02`. §8.4 / `PQ-129` holds the earlier campaign; measure first, never cut quality |
+| "the mining board is unreadable / ugly" | `--id PQ-130` (board law) and `PQ-131` (authored objects); `PQ-185` accepts |
+| "the ships / objects look like toys" | **§13D** → ships: `PQ-050` (Forge, `tools/blender/forge/FORGE.md`); places: `--id PQ-193`; unused packs stay `PQ-136` |
+| "NPC ships look like another game / floating parts / reverse jets are needles" | **§13D** → `--id PQ-193` leaves `.01` / `.02`. Law: [`design/program/VISUAL_WORLD_CLEANUP.md`](./design/program/VISUAL_WORLD_CLEANUP.md). Hitch stays frozen. |
+| "ships don't render / pieces missing / empty targeting lock" | **§13D** → `--id PQ-193` leaf `.00`. Complete packaged body, not a procedural fallback. Do not unhide a box while waiting. Process: [`design/program/DYNAMIC_GRAPHICS_INVESTIGATION.md`](./design/program/DYNAMIC_GRAPHICS_INVESTIGATION.md). |
+| "the world feels dead / nobody reacts" | §13C `PQ-138`, then §15 `PQ-149`–`PQ-151` |
+| "I can't tell what anything is" | `PQ-161` readable at zoom, `PQ-153` sectors, `PQ-162` station |
+| "the sound is bad / there's no music" | `PQ-158` (after the ALPHA gate) |
+| "it crashed / my save is gone / it won't start" | integrity first: §7, `PQ-033`, the save checks |
+
+Do not sweep `design/`, `.campaign/`, assets, transcripts, or screenshots for an ordinary unit.
+
+### 1.8 Production maturity: debugging and polish
+
+**Owner direction, 2026-10-04:** mature the existing game into a dependable, polished experience.
+Feature expansion alone is not progress when ordinary play is buggy. Agents own finding,
+reproducing and fixing failures; the owner does not need jargon or a bug-by-bug briefing.
+This is an active production priority across §27's existing lanes, not a second queue or an audit
+deliverable. The ONE open-defect ledger remains
+[`DEMO_READINESS_2026-09-20.md` §6](./design/program/DEMO_READINESS_2026-09-20.md#6-the-demo-defect-ledger--everything-a-demo-player-will-hit-live-opened-2026-09-22).
+
+**Copy-ready assignment:** "Debug and polish SpaceFace using build_map §1.8. Own discovery
+and repair of the assigned area; for a whole-game campaign cover every workflow in the table.
+Fix production causes, verify ordinary play and recovery, and report what now works and any
+remaining defects in plain player language. You own finding the bugs, not just checking a list."
+
+**Choose repairs before expansion.** First: crashes, lost progress, failed launch/Continue,
+softlocks and unusable controls. Then: repeatable hitches, missing bodies, broken transactions,
+unreadable or unreachable UI and incorrect gameplay feedback. Then: visual, audio and interaction
+polish. Rank by severity, frequency and reach, not by how easy the task is to count. Fix an
+available defect in the selected area before extending it; unaffected work can continue in disjoint
+paths. `done` on a feature or `free` on a seam says nothing about current product quality.
+
+**Discover by player workflow.** A maturity assignment covers an ordinary workflow and its
+failure/recovery edges, not just the happy path or a named function. Use the following coverage
+to select area-sized repair work. Across a finishing campaign, cover every row; a single fix
+checks only the affected row and adjacent transitions. Reuse current results when the relevant
+owners have not changed. These are assignments and completion bars, not new status IDs.
+
+| Player problem / coverage | Existing owner and concrete repair assignment | The result the player should get |
+|---|---|---|
+| **Start, stop and resume** | THE MACHINE + THE LONG GAME: cold New Game → Launch → control; save → title/restart → Continue; death → retry; failed/invalid load → recover. Cover Browser and Electron's shared route and any affected shell boundary. | No crash, endless spinner, invisible world, lost progress, duplicate rewards or dead end. A failed operation explains itself and leaves a usable route back. |
+| **Controls and everyday play** | THE HAND + THE FIGHT: ordinary flight, targeting, mining, towing, fighting and camera/zoom; pause/settings/modal → resume; held/released inputs, rebinding and focus changes. | Input answers once, the camera and body agree, and closing a screen never leaves stuck controls, accidental actions or an unusable ship. |
+| **Menus, HUD and text** | The workflow owner repairs functional UI within ORRERY: exercise title/new game/load/settings/pause, map, station/market/outfitting, jobs and Swarm draft/refit/results. Check narrow/default/wide layouts, long names/numbers, +40% pseudo-localized copy, populated/empty/error states, scrolling and focus. | No overflow, overlap, cropped meaning, off-screen action, unreadable feedback or dead control. Needed information and controls remain reachable by the supported input methods; motion/accessibility settings preserve meaning. |
+| **The visible world loads and stays there** | THE PICTURE + THE MACHINE: camera approach/turn/zoom, fast travel, sector arrival/exit, combat spawns and save/load. Repair the actual asset resolution, fetch/decode/compose/compile/admission/residency owner that fails. | Ships, stations, rocks, wrecks and effects appear as authored bodies when needed; nothing usable is an empty lock, invisible collider, missing part or disappearing on-screen model. Loading failure is recoverable and cannot silently count as readiness. |
+| **Off-screen work and loading pressure** | THE MACHINE with THE PICTURE/WORLD: bound predictive admission, decode/compile queues, draw submission, distant queries, texture/model residency and retirement. Check rapid direction reversals, arrivals and repeated sector revisits. Separate render cost from simulation authority. | Nearby and imminent content wins priority; distant content does not flood expensive queues or remain resident without need. Culling/residency does not pop visible bodies, discard imminent arrivals, erase NPC consequences or change default visual quality. |
+| **Hitches and long-session stability** | THE MACHINE: repair identified main-thread stalls, allocation/GC churn, repeated setup, unbounded scans, resource/event/timer leaks and stale async callbacks through dock/undock/jump/fight/save/load cycles. | Stable frame pacing and bounded resources over ordinary transitions. Use existing demo/min-spec budgets; report frame tails and missing-body evidence as well as averages. A smoother empty scene does not pass. |
+| **Transactions, jobs and progression** | THE WORLD + THE LONG GAME: accept → do → settle/abandon/fail → reload; trade, buy/fit/use, cargo custody, credits, law and unlocks. Include invalid/stale selections and repeated clicks. | Displayed price, eligibility, inventory, physical result and saved result agree. Settlement happens once; cancellation/failure leaves coherent play and useful feedback. |
+| **Visual and audio finish** | THE PICTURE + THE EAR + the affected workflow owner: broken transforms/materials/lighting, clipping/z-fighting, stuck/floating effects, unreadable cues, missing/duplicated sound and effects surviving their owner. | The authored picture and feedback remain coherent at the gameplay camera, dense moments and supported accessibility settings. Repair defects within the existing art direction. |
+
+**Run a finite find → fix → verify loop.**
+
+1. Pick the highest-impact available ledger defect, or one workflow above lacking current
+   coverage. Check the live owner and exact dirty paths. State the player-visible outcome in
+   one sentence. A closed packet is a lead, not a reason to dismiss a current failure.
+2. Exercise the real workflow with representative existing content. Include the relevant
+   interruption, repeated action or recovery edge. Existing fixtures, DOM/layout checks and
+   fixed-seed routes are the default; do not create a universal crawler or another census.
+   A full campaign rotates through the table rather than repeating the same easy opening.
+3. Reproduce a found failure at the cheapest relevant layer and fix the production cause.
+   If a missing lifecycle owner, loading policy, cancellation path, resource budget or shared
+   layout primitive is necessary, build that specific structure and wire it into the default
+   route. Prefer that shared repair over scattered symptom patches; no speculative rewrite.
+4. Verify the affected workflow and its failure/recovery edge after the fix. Add a focused
+   regression when recurrence or a meaningful boundary warrants it; do not write tests that
+   merely mirror the code. Run affected existing checks once; broaden only for a real failure
+   or a change that crosses more owners. Green tests cannot prove a visual or timing claim
+   they do not observe.
+5. Commit the owned repair by exact paths, removing its ledger row in the fixing commit.
+   Out-of-area defects follow root `AGENTS.md` §7: fix small ones, delegate medium ones,
+   otherwise one ledger row with what the player sees, the route/actions, expected/actual
+   behavior, frequency/seed if known and the cheapest repro. Never substitute a report for
+   an assigned repair or silently discard a defect because its cause is unknown.
+6. A bounded assignment ends when its outcome works, direct verification passes and no
+   unresolved defect materially changes that outcome. A broader maturity campaign continues
+   through uncovered workflows and remaining repairs until its agreed scope is complete.
+   Report coverage and any material remaining defect plainly; do not call a whole game
+   flawless because one fixture or one route passed. No repeated confidence-only review.
+
+**Demo-ready is a product condition, separate from publishing.** The existing demo path
+(§21/§25: launch, fight, results/retry, Adventure job, purchase/fit/use an upgrade, save/Continue)
+must work with the real picture and reachable UI, without known crashes, lost progress, softlocks,
+visible-body failures, obstructed controls/text or repeatable player-disrupting hitches in that
+scope. The table above covers ordinary play beyond that showcase; a narrow demo pass does not
+close the whole maturity program. Packaging/store work keeps its existing release authorization.
+Maturity fixes remain active while THE RELEASE is parked.
+
+**Use the right host without stalling repairs.** Clean-machine captures, absolute performance
+readings and soaks belong only to [`QUIET_HOST_PROGRAM.md`](./design/program/QUIET_HOST_PROGRAM.md).
+On the shared dev box, fix known causes with source inspection and focused functional/layout/
+resource checks; do not produce captures, hunt historical freezes, or claim a hardware speedup
+from contended timings. Consume the quiet-host receipt for the broader timing/visual verdict
+and route real failures back to these repair owners. Human play or approval is not a repair gate.
+
+### 1.9 Agentic production — short learning loops, complete outcomes
+
+**Owner direction, 2026-10-11:** development is entirely agentic. Consolidate work around useful
+player outcomes; spend iteration time improving the game. This section supersedes older routine
+capture, human-playtest, multi-reviewer and full-boot prescriptions. It preserves technical
+contracts, direct verification and meaningful visual inspection. External publishing keeps its
+existing authorization; a human gameplay opinion is never an execution gate.
+
+**Two boards, one delivery.** Strong agents take cross-system design, physical behavior, spatial
+encounter composition, tuning and integration here. The first bounded experience is
+[§29](#29-professional-experience--the-complete-starter-region); the existing six
+[compounding bundles](./design/program/PRODUCTION_QUALITY_COMPOUNDING.md#3-consolidation-without-losing-breadth)
+remain the whole-game grouping. Their inherited PQ/NXB/SF obligations survive; do not create a
+parallel plan for the same outcome. Smaller-model work belongs in
+[`INFERENCE_IDEAS.md`](./design/program/INFERENCE_IDEAS.md) only after the parent resolves its design
+and names an exact owner, change, constraint and direct done check. A speculative idea or unresolved
+architecture choice stays with the strong agent. Do not populate the catalog with invented defects.
+
+**Use the existing row as a small kanban.** Ready (OPEN/free/ready) → Working (claimed plus exact
+mutation paths) → Review/fix (candidate, still unfinished) → Done (the existing done/SHIPPED record
+with its actual evidence scope). These are phases mapped to existing board/queue states, not new
+parser values, review queues, dossiers or acceptance files. Already-built work is reused; one
+material finding reopens only its affected outcome. An implementer owns resolution through landing.
+
+**One useful feedback loop:** name the player problem → enter the affected situation cheaply →
+change the production cause → inspect the relevant result → fix or retain → land. Batch small
+leaves of the same resolved cause/owner family so setup, adjacent checks and one integration review
+are shared. Preserve each requested outcome and honest production-unit counting; batching is not
+permission to combine foreign hunks or count support edits as game development.
+
+| Claim being changed | Smallest useful check | Escalate when |
+|---|---|---|
+| Docs, routing, harmless mechanical work | Changed links, dispatch integrity, diff/import check as applicable | A real route or executable owner changed; no automatic game boot for prose |
+| Physics, AI, economy, job or lifecycle behavior | Existing production owner in one seeded, short fixture/input tape; print the causal event and the relevant seconds, distances, velocities or resources | A failing/conflicting check, save boundary, determinism risk, or interaction outside the fixture can change the result |
+| Input/UI/launch/save-return integration | The affected public control and transition, using the ordinary route | At the coherent integration boundary, or after a relevant failure; reuse unchanged-owner evidence instead of booting every leaf |
+| Appearance, camera motion, sound or on-screen loading | Inspect the actual affected rendered/audible sequence | A still/short strip is useful only if opened, diagnosed and used to revise that unit; structural source pins cannot certify appearance |
+| Session shape a short fixture cannot express | One targeted, capped affected window, one archetype and seed | Longer diagnostic work only for a named unresolved question; no routine 20-minute boot/capture battery or human wait |
+
+Reuse `sf lab`, Motion Lab, focused real-path verb modules and the existing live-route bridge;
+[the validation router](./docs/VALIDATION_WORKFLOW.md#fast-setup-and-useful-agent-readouts-already-exist)
+names their limits. Quick setup may skip unrelated travel, but may not bypass the action being
+tested. A docking API does not check docking controls; an installed flag does not demonstrate a
+new maneuver. Synthetic scenario results must be labeled and cannot close production behavior.
+Add a missing adapter inside the existing owner only when the current outcome needs it.
+
+**Critique must change work.** Low-risk bounded leaves need implementer checks; a coherent design
+or high-risk slice gets one independent critique of the actual changed path and its evidence.
+Challenge the weakest material assumption: fixture shortcuts, an unreadable event, a lost
+consequence, an impossible purchase, or an interruption. Repair findings in that slice or put an
+out-of-area defect in the existing demo ledger. Do not require fresh graders, repeated agreement,
+historic-audit reproduction, all seeds or all benchmarks without a named risk. Metrics explain
+behavior and constrain tuning; they do not certify enjoyment or replace observing a visual claim.
+
+Release qualification, long-session resource diagnosis and absolute performance remain their
+own authorized/quiet-host work. A local functional pass is not a min-spec or hardware verdict.
+Stop the unit when its outcome exists, direct verification passes, and no material issue remains.
+
+## 1A. Central Brain quality-convergence layer
+
+For the architecture behind broad autonomous development, read
+[`docs/agentic-development/FLEET_COMMAND_STRUCTURE.md`](./docs/agentic-development/FLEET_COMMAND_STRUCTURE.md)
+and [performance governance](./docs/agentic-development/PERFORMANCE_GOVERNANCE.md); the superseded
+focused plans (OS, observability, scorecard, convergence, content factory, INFERENCE protocol,
+visual/VFX, roadmap) were retired to git history in the 2026-10-15 token-reduction pass.
+
+The manager loop is `observe -> reduce -> rank -> assign -> implement -> replay -> compare -> keep/revert`.
+It consumes the **existing** PQ graph. It never replaces `program-queue.json`, active packets, receipts,
+or user priority. Use screenshots for appearance, deterministic/lifecycle telemetry for temporal truth,
+and one cold reviewer only where subjective judgment adds information. Unknown evidence is not a green
+quality claim. Fixed pass/reviewer counts are not universal quality gates.
+
+For broad unnamed development, start at
+[`design/program/CENTRAL_BRAIN.md`](./design/program/CENTRAL_BRAIN.md); the ranked selector over the
+existing dependency-ready PQ graph is
+`python tools/agentic/select_next_work.py --format prompt` (one unit) or
+`python tools/agentic/manager_cycle.py --refresh --limit 3` (a campaign slate). It ranks; it does not
+admit, mutate queue truth, or replace the routing doors in this map.
+
+## 1B. Named campaigns and their laws (reference; not the default door)
+
+These campaigns are live or resumable and keep their own laws. `--next` already interleaves their
+units; open the door below only when the owner names the campaign.
+
+- **Hitching / stuttering** → §8.4, [`design/archive/perf/PERF_HITCH_CAMPAIGN.md`](design/archive/perf/PERF_HITCH_CAMPAIGN.md),
+  `--id PQ-129`. Measure with `npm run probe:runtime-witness` first. Never cut quality or delete
+  off-screen actors.
+- **3D objects look like toys next to real ships** → **§13D** `--id PQ-193` leaves `.03`–`.05`. Bar and
+  hitch-collision law: [`design/program/GRAPHICS_3D_CAMPAIGN.md`](./design/program/GRAPHICS_3D_CAMPAIGN.md)
+  (operator [`GRAPHICS_3D_GOAL.txt`](./design/program/GRAPHICS_3D_GOAL.txt)). Not `PQ-129`, not a quality cut.
+- **Make it feel real / attention to detail everywhere** → **§1O** — the attention
+  program: law [`design/program/ATTENTION_PROGRAM.md`](./design/program/ATTENTION_PROGRAM.md),
+  units [`design/program/ATTENTION_LEDGER.md`](./design/program/ATTENTION_LEDGER.md).
+  Claim by ledger row; every gate needs 3 consecutive approvals.
+- **Asteroid Works unreadable / undrivable / ugly** → [`design/ASTEROID_WORKS_DESIGN_LAW.md`](./design/ASTEROID_WORKS_DESIGN_LAW.md),
+  [`ASTEROID_WORKS_PLAYFIELD.md`](./design/program/ASTEROID_WORKS_PLAYFIELD.md), `--id PQ-130`; the
+  procedural stand-ins → [`ASTEROID_WORKS_ART_CAMPAIGN.md`](./design/program/ASTEROID_WORKS_ART_CAMPAIGN.md),
+  `--id PQ-131`. The board is the game. `PQ-185` wraps acceptance.
+- **Any 2D / HUD / menu / screen work** → §18 and [`design/frontend/INSTRUMENT_GRAMMAR.md`](./design/frontend/INSTRUMENT_GRAMMAR.md)
+  before designing or building anything; §11 records the sixteen jobs that already landed.
+- **Crucible / swarm / combat lab / arenas / attack modifiers** → §12 (`PQ-133`, engineering complete),
+  §16 (`PQ-174`, `PQ-175`, fun and content), §13 (`PQ-134` VFX pool).
+- **`INFERENCE`** (no spec) → copy [`INFERENCE_GOAL.txt`](./design/program/INFERENCE_GOAL.txt);
+  law [`INFERENCE_LANES.md`](./design/program/INFERENCE_LANES.md). Five units: look at play,
+  infer a real weakness, complete it, rotate to a different kind. Detect is an optional
+  count hint, not the assignment. `INFERENCE <N> [scope]` is the same loop with a named
+  count or domain. Thin rows do not count. That door does not run the fleet remaster and
+  does not replace §1.1. When the deficit is a busy sim with no designed moment, also
+  [`INFERENCE_INTENTIONAL_FUN.md`](./design/program/INFERENCE_INTENTIONAL_FUN.md)
+  (prompt [`INFERENCE_INTENTIONAL_FUN_GOAL.txt`](./design/program/INFERENCE_INTENTIONAL_FUN_GOAL.txt)).
+- **Jules / cloud agents** → [`design/program/jules/README.md`](./design/program/jules/README.md);
+  a directed candidate bank, not the live queue. Validate with `node scripts/jules-dispatch.mjs --validate`;
+  select or render exact work with `node scripts/jules-dispatch.mjs --next` or `--id JULES-XXXX --format prompt`.
+  One task per cloud branch or PR; a stronger local integrator reviews, rebases, proves and merges. Jules tasks
+  never edit the bank, the queue, the NOW board, root authority, or expected telemetry envelopes.
+- **Campaign / overnight / "do all of it"** → the procedure in §1.1 with no stop after one unit; the
+  order in §1.2; acceptance leaves that need a headed machine you do not have are recorded `unproven`
+  and skipped, never stalled on.
+- **Non-Hitch flyable fleet remaster** → `--id PQ-050` and its packet
+  [`PQ-050.md`](design/archive/program/roadmap/retired/PQ-050.md), which owns the chase-camera law, the
+  technique contract, the review workflow and the one-ship-at-a-time rule. Hitch stays frozen.
+  A factory loft with boxes, a zoomed gray crop, or a seat nobody can see from the chase camera
+  does not close a ship.
+- **The 3D picture never looks broken** → **§13D** `--id PQ-193`. Complete bodies, opening flyby,
+  tubes, shelf hulls, places. Flyable remaster stays `--id PQ-050`. Hitch stays frozen.
+- **Audit every 3D model / plan A-list quality from the shelf we already have** → copy
+  [`MODEL_STOCKTAKE_GOAL.txt`](./design/program/MODEL_STOCKTAKE_GOAL.txt). Law:
+  [`MODEL_STOCKTAKE.md`](./design/program/MODEL_STOCKTAKE.md). Research and a plan only. Folds
+  into §13D / `PQ-193`. Do not model. Do not open a second queue.
+- **Live-route visual cleanup (mixed-game NPCs, floating parts, needle retros)** →
+  `--id PQ-193` leaves `.01` / `.02`. Law: [`design/program/VISUAL_WORLD_CLEANUP.md`](./design/program/VISUAL_WORLD_CLEANUP.md).
+  Taste-led. Do not pre-solve the look. Hitch stays frozen. `PQ-190` remains the style-slice owner.
+
+
+## 1C. The board — every dispatchable unit, numbered (refreshed 2026-09-27)
+
+The old packet queue (`program-dispatch --next`) is drained. **That is not an empty plan.**
+For debugging/polish work, [§1.8](#18-production-maturity-debugging-and-polish) takes priority:
+repair existing ledger defects and discover failures in the selected ordinary workflow even when
+its seam has no OPEN feature rows. Preserve row statuses; this does not mint a parallel catalog.
+An empty script result is this board. It is not permission to switch to
+`INFERENCE_IDEAS.md`. The inference catalog is the small wiring inside a seam you already
+claimed, and it is the whole job only when the owner said INFERENCE.
+
+**This map is the whole build plan.** Every plan about building this game — the SFQ pack, the
+Fable bank, the Swarm phases, the depth roll-up, the vm-drop outbox — is *on* this board: either
+as a row below, or as an admitted remainder owned by the **§M admission rows**. There is no plan
+that lives outside this file. When the counted rows drain, the work is not done — §M is the
+work: admitting the next slice of reservoir scope into real numbered rows.
+
+**"Do 10 tasks" means 10 open rows inside seams you claimed** — and the §M admission rows count.
+A row is already a chunk: a planbank batch, a next-wave build, a fable batch, or one admission
+slice. Do not split it into captions, and do not count a catalog line as one of the ten.
+
+**The front door (2026-10-18):** `node scripts/program-dispatch.mjs --next` is the one command an
+agent runs to know its job. It walks a fixed precedence chain — §6 demo defect ledger → stale
+`NOW.md` rows (adoption) → landed reviews → ready queue units → ready legacy packets → ledger
+change-loops → free §1C seams → §M reservoir-admission rows → finished vm-drop jobs → the
+inference catalog (gated: only with `--lane=inference` under an owner INFERENCE instruction).
+Eight or more open landed reviews jump ahead of the defect ledger. It returns one real,
+actionable unit. It never errors and never dead-ends while any surface is open: a drained queue
+advances the chain instead of reporting emptiness, and an unreadable surface is skipped with its
+error recorded. `--status` prints every surface's count on one screen — the honest answer to
+"hundreds of plans or drained". The law that makes this work:
+
+- **A plan is real only as a row on a sanctioned surface**: this board (§1C rows + §M admission
+  rows), the packet queue (`design/program/roadmap/program-queue.json`), the §6 demo defect
+  ledger, the landed-review list ([`design/program/LANDED_REVIEW.md`](./design/program/LANDED_REVIEW.md)),
+  `NOW.md` mutation rows, and the reservoir catalogs the §M rows admit from. Anything
+  else is a note, not a plan.
+- **Plans move between surfaces only by admission.** A catalog candidate becomes a numbered row —
+  or closes with evidence — through its §M row. A plan list is retired only by migrating its open
+  rows onto a sanctioned surface first; deleting a list deletes nothing.
+- **The dispatcher never lies.** If `--next` ever errors, or returns all-closed while `--status`
+  shows open surfaces, that is a defect: fix it in the same sitting (total-fix mode).
+  `check:plan-integrity` in the fast gate fails the build when the front door cannot answer.
+
+### The whole remaining count — read this first (refreshed 2026-10-18)
+
+Everything unfinished, on one screen. A drained queue or a column of `done` seams is **not** a
+finished plan — the board is finished only when every number in this table is zero.
+
+| Surface | Remaining |
+|---|---|
+| Demo defect ledger (`DEMO_READINESS_2026-09-20.md` §6) | **8 open defects** — D188, D191, D199, D225, D198, D130, D227, D231 — plus standing import guard D175 and watch-only D229 (D226 landed c8eec27a272 2026-10-19; live count: `program-dispatch --status`) |
+| Landed review (`design/program/LANDED_REVIEW.md`) | **4 open** — R-cc46e17, R-48e411f, R-183df8f, R-0df2ec6. A second look at a pushed build-map or dispatched unit. The author pushes first and files the row; a later agent deletes it by reviewing. `--status` is the live count. Eight or more jump ahead of every other surface |
+| Numbered board rows (§A–§P tables below) | **95 open, plus 69 added 2026-10-21, plus 16 unfinished added 2026-10-24 — §1O 551–558 attention ledger rows, §1P 559–567 experience journey rows, claimed per-row via program law (ATTENTION_PROGRAM.md, EXPERIENCE_PROGRAM.md)** (§33 rows 482–497, the swarm-physics core and fight craft; §34 rows 498–550, THE WEIGHT expansion; seams `rock-core`, `fight-read`, `glass-tiers`, `line-progression`, `bloom`, `world-pressure`, `faction-art`, `faction-law-trade`, `faction-strange`, `campaign`, `places-people`, `cadence`, `audit-50`) — §N rows 390–481 (the 2026-10-19 A-list audit, vision and report card: 77 BUILD, 2 ART, 5 FIX, 8 SEED; §31, §32); Swarm phase C row 270 (unparked 2026-10-19: phases A and B shipped as rows 263–269); quiet-host session 284; render-animation brief 384 (precursor machine deployment; claimed by devin-graphics). Rows 381–383 and 385–389 landed 2026-10-18 (383's row deleted by agentic-run-oct18 bookkeeping). Plus 9 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 271–273 (Swarm phases D–F) |
+| Admission (§M) | **complete 2026-10-17** — every SFQ candidate, mission brief and model brief is dispositioned in [`ADMIT-DISPOSITIONS-2026-10-17.md`](design/archive/program/roadmap/receipts/ADMIT-DISPOSITIONS-2026-10-17.md); the real remainder is rows 383–384 and the four INFERENCE lines still OPEN (WORLD-48, FIGHT-14, FIGHT-15 and the model-view lines SFQ-I070 and SFQ-I071) |
+| Lanes (§F) | **5 open** — L-MACHINE, L-HAND, L-FIGHTWORLD, L-LONGGAME, L-EAR; claimed: L-PICTURE (devin-graphics), L-INSTRUMENT (ORRERY); parked: L-RELEASE (pre-release) |
+| Inference catalog (`INFERENCE_IDEAS.md`) | **55 OPEN lines** — section A-LIST (AL-HF-01…15, AL-LG-01…16, AL-PR-01…16), each already owned by a §N row and taken inside it, plus section PULSE (PULSE-01…08, volume fill for the living world, §31.6) and section REPORT CARD (RC-01…50, the audited small parts of rows 456–481, §32.7) — 105 OPEN in all; every earlier catalog line SHIPPED; INFERENCE work is look-then-rotate mode (INFERENCE_GOAL.txt) under an owner INFERENCE instruction |
+| vm-drop | code stack drained; only HOLDs and 9 chase REVISEs remain, waiting on the remote machine |
+
+**Public beta (2026-10-23):** the maturity report, the one direction and the beta task set (29 board-sourced, 43 found) live in [`BETA_PLAN_2026-10-23.md`](./design/program/BETA_PLAN_2026-10-23.md) — thread `claude-beta-oct23`.
+
+### Seams — what is free, and what another agent has
+
+One seam is one set of files. Five agents take five different seams. Read the Claim cell
+and `node scripts/board-chunks.mjs` before you pick. `free` means nobody has it. A thread
+name means it is in flight — take a different seam. `done` means its rows are finished.
+
+1. Pick a seam that says `free` and whose files are not in a live `NOW.md` row or a dirty
+   foreign hunk.
+2. In the same edit as your NOW row, replace `free` with your thread name.
+3. Do the seam's still-OPEN rows in the order listed, up to the count you were given
+   (ten, unless the owner named another number). Skip a row whose status is no longer OPEN.
+4. If the seam runs out before your count, claim another `free` seam whose files do not
+   overlap the one you have. When every seam reads `done`, the **§M reservoir-admission rows**
+   are the remaining plan — take one like any other row.
+5. When you stop, set the cell back to `free` if any of its rows are still OPEN, or `done`
+   if none are. Delete a detail row only in the commit that finishes it.
+6. If two agents edit the same files, keep both changes and merge them. Do not revert the
+   other agent. A `PARKED` row waits for the blocker named on that row.
+7. Lanes `L-MACHINE`, `L-HAND`, `L-FIGHTWORLD`, `L-LONGGAME`, and `L-EAR` are area
+   ownership, not one of the ten rows. Claiming a lane claims the matching seam too.
+
+OPEN catalog lines whose files sit in your seam are part of the row you are already doing.
+Ship them or mark them already true inside that row. They are not an alternate queue.
+
+| Seam | Claim | Files — one agent | Rows, in order |
+|---|---|---|---|
+| picture | done (devin-oct3-40) | renderer, admission, residency | - |
+| camera | done | camera, tabletop, hull readability | - |
+| boot | done (devin-oct3-40) | boot time, hitch leaves, not the renderer seam | - |
+| audio | done | audio system, combat verb cues | - |
+| save | done (devin-oct2-batch) | save system | - |
+| economy | done (devin-sweep-oct2) | economy, contracts, station services | - |
+| effects | done | vfx, profiles, cues | - |
+| swarm | devin-fleet-oct20 | swarm planner, survival waves, arenas, swarm wallet/Hangar, swarm HUD presenters | 456, 270, 453, 481, 271, 272, 273 |
+| fight | done | enemies, bombs, countermeasures, squads | - |
+| fields | done | fields | - |
+| law | done (devin-oct2-batch) | law, claims, custody consequences | - |
+| discovery | done | scanner, scan reveal | - |
+| industry | done | world sites, machinery, mining commitment | - |
+| people | done (devin-sweep-oct2) | jobs, aftermath, convoys | - |
+| ship | done (devin-oct2-batch) | ships, modules, shipworks, tech ladder | - |
+| hand | done (claude-oct18) | flight, tether, massline, onboarding | - |
+| missions | done (claude-oct18) | missions | - |
+| world | done (claude-oct18) | sectors, traffic, factions, news | - |
+| story | done (devin-oct2-batch) | story | - |
+| input | done (devin-oct2-batch) | gamepad, input, settings behavior | - |
+| ui-sim | done (devin-sweep-oct2) | sim halves of screens and the map; no visual redesign | - |
+| physics | done (devin-oct2-batch) | physics clocks, manifest | - |
+| accept | free | judge work that is already built; quiet-host session produce/land | 284 |
+| imports | done (devin-sweep-oct2) | doc imports only, after code seams | - |
+| art | free | one visible asset defect; skip if the graphics lane is live | 384 |
+| admit-systems | done (claude-oct17) | admit SFQ-P01–P08 family candidates (truth/hand/massline/weapons/adversaries/crucible/adventure/mission-craft) — ~80 build + ~32 inference | - |
+| admit-world | done (claude-oct17) | admit SFQ-P10–P17 family candidates (mining/regions/people/alien/xenotech/machines/precursor/discovery) — ~80 build + ~32 inference | - |
+| admit-craft | done (claude-oct17) | admit SFQ-P18/P19/P21–P24 family candidates (models/VFX/ORRERY/perf/save/finish) — ~60 build + ~24 inference | - |
+| admit-content | done (claude-oct17) | admit mission briefs M01–M36, model briefs A01–A36, and the Depth roll-up — mints rows for missions/models/depth | - |
+| rope-world | devin-lanea | `tetherGameplay.js` obstruction/wrap seam, `combat/attachments.js`, `world/asteroidField.js`, `masslineThrow.js`, `combat/masslineTargetScoring.js`, cable render, `cameraDirector.js` throw framing (§31 THE HAND) | 390 |
+| hostile-hands | devin-lanea | `src/ai/` doctrine/maneuver/reflexes/fireDiscipline/temperament/squad, `aiPorts.js`, `engagementAuthority.js`, `combat/damage.js` friendly-fire flag, weapons splash path, `lawSecurity.js` retaliation, `collisionConsequences.js`, capacitor in `combat.js` (§31 THE FIGHT) | 393 |
+| racing | devin-lanea | `racing*` systems/ui/render, `ai/racingDriver.js`, `missions/racing*`, `raceLevels.js`, `raceCourses.js`, `world/racingCorridor.js`, `raceBoard.js` (§31 THE FIGHT) | 394, 395, 472 |
+| world-answers-2 | done (devin-25-oct22) | ending application in `story.js`, `postEndingReplay.js`, `sectorSim.js` readers, faction territory-flip embodiment, `traffic.js` pickets/identity, `npcJobsRuntime.js`, `stationContacts.js`, standing-order offers (§31 THE WORLD) | - |
+| run-memory | devin-fleet-oct20 | `worldOneOffs.js`, `scanReveal.js`, `shipCapabilities.js`, `story/campaign47a/embodiedMissions.js`, B7 board hunk of `missions.js`, `story/endings/lifeLedger.js` (§31 THE LONG GAME) | 399, 400 |
+| attention | free — claim per row via §1O/§1P law | `design/archive/program/attention/`, `design/archive/program/experience/`, ledger surfaces | 551, 552, 553, 554, 555, 556, 557, 558, 559, 560, 561, 562, 563, 564, 565, 566, 567 |
+| hull-commit | devin-fleet-oct20 | `data/ships.js`, `systems/ships.js` refit/resale, `data/modules.js`, `techVerbLadder.js`, `shipLedger.js` (§31 THE LONG GAME) | 401, 469 |
+| works | devin-fleet-oct20 | `data/automation.js`, `automation.js`, `alphabet.js`, `claims.js`, `data/sites.js`, `siteProduction.js`, `crafting.js`, automation-panel composer (§31 THE LONG GAME) | 402, 466, 403 |
+| chain-ear | done (devin-25-oct22) | `audio/audioSystem.js` stunt/stinger handlers, `scoreDirector.js`, `themeMatrix.js`, `themeCompose.js`, `bandBeds.js` (§31 THE EAR) | - |
+| theater | done (devin-25-oct22) | `killReplay.js`, `sim/killcamTape.js`, `killcamStage.js`, `presentation/momentMachine/`, `flightFootage.js`, `footageVideoCodec.js`, `clipExport.js`, `replay.js`, `clips.js`, `gameOver.js`; the master-bus tap hunk of `audioSystem.js` serial with `chain-ear` (§31 THE SHOW) | - |
+| front-door | done (devin-25-oct22) | `src/sim/titleAttract*.js`, `render/titleAttractStage.js`, `scripts/bake-title-attract.mjs` (§31 THE SHOW) | - |
+| sentences | devin-fleet-oct20 | `ui/captions.js`, `masslineInstrument.js` captions, `src/localization/` overlays and glossary, `settings.js` game speed, `core/timeEffects.js` (§31 THE SHOW) | 409, 410 |
+| rumor-chart | done (devin-agentic-oct18) | `data/frontierRumors.js`, `ui/sim/discoveryKnowledge.js`, `pirateRumor.js`, chart rumor layer (§31 THE SHOW) | 411 |
+| monoliths | free | `render/renderer.js`, `systems/missions.js`, `systems/traffic.js` — behaviour-preserving splits, one file at a time, only while no claimed seam lists the file (§31 THE MACHINE) | 412, 413 |
+| toolchain | free | `package.json`, `package-lock.json`, three/Rapier/Electron adapters, `scripts/AGENTS.md` script tiers (§31 THE MACHINE) | 414, 415 |
+| rope-scale | devin-lanea | `masslineTelemetry.js` tension read-out, `cargoCustody.js` declared-vs-true mass, customs prompt hunk of `lawSecurity.js`, contract templates in `economyContracts.js`; for row 444: pin/link board hunks of `systems/shipLedger.js` (serial with `hull-commit`), `ui/shipLedgerPanel.js` interaction and `ui/station/screens/ledger.js` mount, evidence-link/Vale-resolution hunks of `systems/story.js` (serial with `campaign`) (§31.5, §32.4) | 423, 444 |
+| hull-ghost | devin-fleet-oct20 | `data/barks.js` contact voices, `audio/barkVoice.js`, voice arbiter, comms surface portrait hunk, `data/portraits.js`, `data/stationContacts.js` (contact-voice hunk; serial with `world-answers-2`) (§31.5) | 425 |
+| first-look | free | the clean-flight-plane guard, camera distance review, passable near-field dust, hero-hull art — coordinate with L-PICTURE (§31.5, §31.6) | 427, 428 |
+| stranger-hud | devin-fleet-oct20 | minimal leak/overlap fixes in HUD/station presenters, ORRERY-consistent; station arrival backdrop and barkeep greeting (§31.5) | 429, 457 |
+| set-pieces | codex-bm30-oct23 | staging data for existing vignettes and set pieces (`setPieceMissionOffers.js`, vignette runtimes; `worldOneOffs.js` hunks serial with `run-memory`), camera/music beat hooks, retained Clips/Theater windows (§31.5) | 430 |
+| pulse-voice | devin-fleet-oct20 | `data/flavor/040-band.js` format, `systems/bandRadio.js`, `systems/stationBroadcast.js`, traffic hail/chatter data, ship identity data, station PA cues (serial with `hull-ghost` on `barks.js`/`barkVoice.js`) (§31.6) | 432, 434, 436 |
+| pulse-print | free | `data/newsTemplates.js` wiring, billboard/bay-screen presenters, inbox data and surface, codex data (ORRERY-consistent screen edits) (§31.6) | 433, 435, 437 |
+| pulse-world | free | far-plane depth layers and far-actor feed, station shift/calendar data, `050-roaming-events.js` + event runtimes, memorial/graffiti-about-you, hull trinkets via `livingHull` presentation — coordinate with L-PICTURE on render layers (§31.6) | 438, 439, 440, 441 |
+| vignettes | devin-fleet-oct20 | `scripts/build-lived-vignettes.mjs` and the generated lived-vignette encounter files, `vignetteInterpreter.js`, `livedWorldDirector.js` (§32.7) | 459 |
+| docket | devin-fleet-oct20 | `lossInvestigation.js`, `data/wreckCourt/`, `wreckCourt.js` offers, `custodyConsequences.js`, witness/sweep/sponsor hunks of `lawSecurity.js`/`heat.js`/`bountyHunt.js` (serial with `rope-scale` on customs), inspector career branch (§32.4, §32.7) | 461, 462, 452 |
+| boss-read | devin-lanea | `capitalBossPresentation.js`, boss-warning adapter, the Swarm-only boss-bar gate in `swarmJuice.js` (serial with `swarm`), `ai/counterplay/adventure.js` toast, act retry hunk of `missions.js`, `encounters/capital-boss/` plates (§32.4, §32.7) | — |
+| sector-identity | free | `data/frontierRegions/*.js`, `data/sectorVisualProfiles.js`, `environmentalMachinery` placements, interdiction hunk of `world.js`, arrival-cluster hunk of `traffic.js` (serial with `world-answers-2`), sector wonders — coordinate with L-PICTURE (§32.4, §32.7) | 464, 450 |
+| market-why | devin-fleet-oct20 | `ui/marketDriverPresenter.js`, `ui/market/tradeLogic.js`, `ui/station/screens/market.js`, `story/mechanicVoice.js`, bar event-tag hunk of `barContacts.js`, `stationDepartureModel.js`, then convoy shares/slips in `economy.js`/`freightCausality.js` (§32.7) | 465, 480 |
+| mission-craft | devin-fleet-oct20 | `data/bountyMarks.js`, `heistFacilities`, `contractClauses.js`, accept/retry/payday hunks of `missions.js` (serial with `run-memory`) (§32.7) | 467 |
+| discovery-shown | free | anatomy hunk of `ui/targetPanel.js`, `data/alienFauna.js` taxonomy, `alienEcology.js` toasts, `ui/comms.js` styling, codex species pages (serial with `pulse-print`), fauna/machine recipes in `audioRecipes.js`, Helios tease placement, `precursorMachines.js` clause decode (§32.7) | 468 |
+| records | free | `ui/screens/statistics.js`, photo Look in `pause.js`/`camera.js`, achievements screen, empty Replay/Clips copy (serial with `theater`), today's board in `survivalRecords.js`/crucible door, Range Licence in `range.js` (§32.7) | 471 |
+| front-door-speed | devin-fleet-oct20 | `ui/loadingPresenter.js`, `loadingTerminalArt.js`, `core/newGameBoot.js` (inside the L-MACHINE shader-admission work), first-light preset in `accessibility.js`/`mainMenu.js`, `orrery/settingsLayouts.js`, `saveLoad.js`/`saveNotices.js` (§32.7) | 473 |
+| glass | done | `hud.js` attention hunks, `hudAttention.js`, glass presets in `settings.js`, `masslineHud.js`, `orrery/hullRing.js`, `dockArrival.js`, `check-type-floor.mjs` SVG report (§32.7) | - |
+| feel | devin-fleet-oct20 | `systems/gamepad.js`, `ui/stuntCallout.js`, `combat/stuntEvidence.js`/`stuntRecognition.js`, trick book screen, `data/survivalArenas.js` signature tricks (serial with `swarm`), vent hunk of `weapons.js` (serial with `hostile-hands`), match burn in `flightV3.js` (§32.7) | 475 |
+| travel | done (devin-25-oct22) | `travelLanes.js`, `routePlanner.js`, stale-intel hunk of `galaxyMap.js`, `cruise.js` interdiction wrestle, toll hunk of `world.js` (serial with `sector-identity`), drift-vector presenter (§32.7) | - |
+| npc-read | devin-thirty-oct22 | `ai/factionBehavior.js`, contact-list job phases, grudge hails in `factionPresence.js`/`barks.js` (serial with `hull-ghost`), haulers-to-price hunk of `traffic.js` (serial with `world-answers-2`) (§32.7) | 477 |
+| station-stage | devin-25-oct22 | `ui/station/screens/bar.js`, `barContacts.js` (serial with `market-why`), ledger appeal, codex redactions, Manifest card game screen + data, logbook from `chronicler/` (§32.4, §32.7) | 478, 447 |
+| screens-true | devin-fleet-oct20 | `ui/screens/missionLog.js`, station shell scroll padding, `gameOver` bench fixture and fallback copy, map destination strip in `galaxyMap.js`, `orrery/settingsPreview.js`, ledger/factions empty states (§32.7) | 479 |
+| home-crew | free | the Long Berth (`worldOneOffs.js` hunk serial with `run-memory`; `claims.js` hunk serial with `works`), trophy yard persistence, crew data + perk hook through the ships derived-stat writer (serial with `hull-commit`) (§32.4) | 445, 446 |
+| weather | done (devin-25-oct22) | weather kinds via `fields`/`sectorSim` hazards, forecast hunk of `bandRadio.js` (serial with `pulse-voice`), seasonal schedule beside row 439 (§32.4) | - |
+| m1-first-hour | claude-beta-oct23 | integration lane for the first hour — claims exact paths per sitting only (§32.4, §32.5) | 454 |
+| engine | done | `scripts/program-dispatch.mjs`, `scripts/check-plan-integrity.mjs`, `design/program/PLAN_ENGINE.md` (§32.6) | - |
+| seed-a | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 416, 417 |
+| seed-b | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 418, 419 |
+| seed-c | free | appends under its own heading in `INFERENCE_IDEAS.md` only; reads anywhere (§31 Writers' room) | 420, 421, 422, 442 |
+| rock-core | devin-thirty-oct22 | impact-kill path in `combat/damage.js`, `systems/hullBurst.js`, `systems/hullFracture.js`, `data/physicsMaterials.js` substance layer, hit-stop in `render/feel.js`, swarm wave composition and arena-scale hunk of `data/swarmMode.js` (serial with `swarm`) (§33 core, §34) | 488, 482, 483, 485, 484, 541 |
+| fight-read | free | attack-cycle hunk of `ai/maneuver.js`, `ai/reflexes.js` consolidation (serial with `hostile-hands`), enemy silhouette and engine-colour reads, `render/masslineCableSurface.js`, `masslineReleaseArc.js`, `masslinePresentation.js` at chase distance (serial with `rope-world`), `render/camera.js` framing | 545 |
+| glass-tiers | devin-thirty-oct22 | `ui/hud.js` tier hunks (serial with `glass` row 474), `ui/powerRail.js`, `ui/orrery/flightCluster.js`, `ui/stuntCallout.js` (LOG feed), `ui/screens/newGame.js` copy, `systems/onboarding.js` situation hunk; edits minimal and ORRERY-consistent with bench shots and `--walk` (owner 2026-09-27) | 496, 502, 546, 493 |
+| line-progression | devin-thirty-oct22 | Line Class and strain hunk of `systems/tetherGameplay.js` (serial with `rope-world`), `masslineTelemetry.js` (serial with `rope-scale`), class hull states, Line heads in `data/modules.js` and `systems/ships.js` (serial with `hull-commit`), provenance rarity, `economy.js` pacing (§34) | 498, 499, 501, 489, 500, 550, 544 |
+| bloom | devin-thirty-oct22 | `data/swarmBrood.js`, `systems/swarmBrood.js`, swarm group-behaviour hunk of `systems/survivalSwarm.js`, `systems/alienEcology.js`, `regionalEcology.js`, coupling-filament VFX (§34.2) | 503, 507, 504, 508 |
+| world-pressure | devin-thirty-oct22 | `systems/sectorSim.js` tide and gate readers (serial with `world-answers-2`), gate-closure hunk of `travelLanes.js` and `routePlanner.js` (serial with `travel`), chart layer of `ui/galaxyMap.js`, Meridian ticker in `economyCycles.js`, receipt caps and save migrations (§34.6) | 520, 521, 522, 523, 549 |
+| faction-art | free | Forge faction hull kits, the Overgrowth and junk kits, station dressing kits, the 24-body rock family, portraits; skip a body the graphics lane L-PICTURE has claimed (§34) | 514, 512, 495, 543 |
+| faction-law-trade | free | `systems/lawSecurity.js` scans and weirs (serial with `rope-scale`), convoy and spine hunk of `systems/traffic.js` (serial with `monoliths`), `systems/aiEncounter.js`, `systems/encounterScripts.js`, Concord, Meridian, Helix, Quiet, Drift and Reach data in `data/factions/` (§34.5) | 515, 513, 516, 526, 525, 530, 531 |
+| faction-strange | free | Understory gardens, Fulfillment routes, the Pitborn Cull and Yardmaster, Vael liens, Archive redaction, Choir bells, Verge court, Frontier homesteads: each as its own system file plus its `data/factions/*.js` row; one faction per sitting (§34.5) | 517, 518, 519, 524, 527, 528, 529, 532 |
+| campaign | free | `systems/story.js`, `story/campaign47a/`, Book hunks of `systems/missions.js` (serial with `run-memory` for the B7 hunk), `data/narrative.js`, `systems/capitalBossRuntime.js` Colossus parts (§34.7) | 533, 534, 535, 536, 537, 538, 539, 547 |
+| places-people | free | one-off census tool, new Orphaned Shift encounter owners (one per sitting, on the Morrow and Rubric pattern), `data/sectorWayOfLife.js` readers, canon cast hooks in their owners (§34.3, §34.8) | 505, 540, 542, 506 |
+| cadence | devin-thirty-oct22 | `systems/encounterDirector.js` cooldowns and rhythm phases, `systems/tensionDirector.js`, adventure swarm-pocket shape (§33 row 497) | 497 |
+| audit-50 | claude-beta-oct23 | reads anywhere; writes only fixes inside the owning seam's files, or one demo-ledger row (§34 row 548) | 548 |
+| swarm-fight | SWARM lane F (2026-11-05) | SWARM Lane F file list in `design/program/finish/swarm/LANES.md` (feel profile, character sheet, arenas, waves, staples, bosses — sim side) (§36) | 568, 569, 570, 571, 572, 573, 574, 575, 576, 577 |
+| swarm-show | SWARM lane S (2026-11-05) | SWARM Lane S file list in `design/program/finish/swarm/LANES.md` (glass, credit, title button, controls, horde readability, shop, payoff, VFX, combo cards — presentation side) (§36) | 578, 579, 580, 581, 582, 583, 584, 585, 586, 587, 588 |
+| pipeline | master Lane 1 (2026-11-06) | sim↔render transport, frame loop, platform shells, boot/loading — `presentationRunner.js`, `simLaneMain.js`, `wholeSimBrowserWorker.js`, `electron/`, `vercel.json`, loaders (§36) | 589, 590, 591, 592 |
+| sim-core | master Lane 2 (2026-11-06) | simulation systems, physics usage, entity store, scheduler — not SWARM F files until F lands S1/S7 (§36) | 593, 594, 595 |
+| renderer-rebuild | master Lane 3 (2026-11-06) | renderer, residency, materials, shaders, batching — coordinate with Codex perf files in flight (§36) | 596, 597 |
+| ship-sheet | master Lane 4 (2026-11-06) | ship screens, stat model, parts content, progression — not `crucible.js`/`crucibleDraft.js` (§36) | 598, 599, 600 |
+| journey | master Lane 5 (2026-11-06) | story, missions, encounters, sectors, contacts, onboarding (§36) | 601, 602, 603, 604, 605 |
+| look-sound | master Lane 6 (2026-11-06) | art direction, asset production, audio/music, Adventure HUD, controls — HUD files after SWARM S lands S2/S5 (§36) | 606, 607, 608, 609, 610 |
+| quality-verdicts | master Lane 7 (2026-11-06) | census, review gate, test tiers, route walks, razor, native-engine verdict — edits other files only with the owning lane (§36) | 611, 612, 613, 614, 615, 616 |
+| chaos-weight | free | collision consequences/crumple, heavy-hull ram identity, station breakables, volatile chains, wrecks, rock fracture, `shipjack.js`, cargo trains — see `design/program/finish/chaos/LANES.md` C1 (§36) | 617, 618, 619, 620, 621, 622, 623, 624, 625, 626, 627 |
+| chaos-react | free | traffic behaviour, personalities, panic, law/heat/police, witnesses, factions, barks, station reactions, NPC states, persistence — see `chaos/LANES.md` C2 (§36) | 628, 629, 630, 631, 632, 633, 634, 635, 636, 637, 638, 639, 640, 641, 642, 643, 644, 645, 646 |
+| chaos-play | free | chaos director, activities, chaos economy/notoriety, respawn, context prompts, radial, opportunity map, control feel, Adventure camera (after SWARM S6) — see `chaos/LANES.md` C3 (§36) | 647, 648, 649, 650, 651, 652, 653, 654, 655, 656 |
+| hotspots | free | Hotspot specs `design/program/finish/hotspots/`, placement, crowds, activities hosted through existing owners — prompt in `DIRECTION.md` §10; Helios first (§36) | 657, 658, 659, 660, 661, 662, 663, 664, 665, 666, 667, 668, 669, 670, 671, 672 |
+| kit | free | KIT catalog, socket vocabulary, runtime mounter, variant factory, livery/wear layers, breakable parts, place kit — Forge route only; prompt in `KIT.md` §6 (§36) | 673, 674, 675, 676, 677, 678, 679, 680, 681 |
+| light | free | `src/render/bloom.js` composite (agree with master Lane 3), `src/data/lookMoods.js`, look-bench, light pool, haze/shaft layers — prompt in `bible/LANES.md` (§36) | 682, 683, 684, 685, 686, 687, 688 |
+| feel-layer | free | presentation cues reading sim state: hull pose, RCS/retro/ignition VFX, camera weight, strain/impact/damage audio — `feel.js`/camera after SWARM S; prompt in `bible/LANES.md` (§36) | 689, 690, 691, 692, 693, 694 |
+| refinery | free | asset refinery scripts and release stage (never authored GLBs), census, manifests via the Forge publish route — prompt in `bible/LANES.md` (§36) | 695, 696, 697, 698, 699, 700, 701, 702, 703, 704, 705, 706 |
+
+**Research-to-production intake:** [bounded repair briefs](design/archive/program/research-2026-10-02/ADMITTED_REPAIRS.md)
+are attached to their canonical rows below; the linked [discussion list](design/archive/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
+is not dispatchable. The [golden standard](design/archive/program/research-2026-10-02/SPACEFACE_GOLDEN_STANDARD.md)
+and [evidence atlas](design/archive/program/research-2026-10-02/RESEARCH_EVIDENCE.md) are supporting references,
+not a parallel queue, visual direction or mandatory scoring gate. Batch checks by affected route;
+finishing a research subcheck alone does not finish the original parent assignment.
+
+`node scripts/board-chunks.mjs` prints which of those rows are still open, which seams are
+claimed, and any open row that is not in a seam. `--check` fails when the table and the
+detail rows drift.
+
+How to finish a row:
+
+1. Add your `NOW.md` row for the exact files before the first edit.
+2. On landing, **delete the detail row** in the landing commit — this board lists open work
+   only; receipts live in git and `01_VERIFIED_DONE.md`.
+3. A defect row also deletes its ledger row in the fixing commit (ledger law, AGENTS §7).
+4. New dispatchable work is appended at the bottom of its kind-group with the next number,
+   and its number is added to the seam that owns its files.
+5. Commit the exact paths and push `origin master` by name in the same sitting (AGENTS.md §3).
+   A review does not delay the push. Cloud agents are reading the remote.
+6. Add one OPEN row to [`design/program/LANDED_REVIEW.md`](./design/program/LANDED_REVIEW.md)
+   in that same push: `R-` plus the commit's first 7 characters, the task, and the claim a
+   later agent should re-check. Do not review it yourself. The next agent deletes the row by
+   doing the second look. Closing a review does not add another row.
+
+Kind: **ADOPT** stranded-but-written work · **FIX** defect · **IMPORT** vm-drop package batch ·
+**BUILD** code/content · **ART** assets · **ACCEPT** measurement/review/promotion ·
+**LANE** open-ended area ownership (detail in `FINISH_LANES.md`) ·
+**ADMIT** turn admitted-but-undecomposed reservoir scope into real rows (§M) ·
+**SEED** research that ends in audited `INFERENCE_IDEAS.md` lines (§31 Writers' room; support work, never a production unit).
+
+### Handoff — landed-row ledgers (consolidated 2026-10-15)
+
+Three landed-row ledgers (2026-09-29 "thirty landed rows", 2026-10-03 campaign-oct3, 2026-10-06
+stock take) were consolidated into git history in the 2026-10-15 token-reduction pass; per-row
+commit and receipt evidence stays in `design/program/roadmap/receipts/` and git history. Standing
+guards from those sittings: do not retake SHIPPED/DONE rows or landed inference lines; **do not
+retune mass, thrust, weapon numbers, dock-assist, or camera governors**; do not edit Hitch's mesh,
+`test/*.expected.json`, or `design/program/vm-drop/`. The published line is GitHub `master`; this
+checkout syncs by merging `origin/master` into it, never by reset or rebase.
+### A. Recover — finished work stranded in the tree
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+
+### B. Defect ledger — open rows (ledger: `DEMO_READINESS_2026-09-20.md` §6)
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 16 | D24 | Renderer resource residency — fix landed `4365769c6`; 40-cycle uncontended soak owed | FIX | PARKED needs quiet host |
+| 17 | D54 | Hero landmarks: dark-freighter place model, Anvil well-edge, ×30 Wreck Cathedral draw scale | ART | CLAIMED devin-graphics |
+| 18 | D72 | Pelican starter hull is blockout-grade | ART | CLAIMED devin-graphics |
+
+### C. vm-drop imports — code stack drained 2026-10-03 (`VM_LANES.md`, `IMPORT_DIGEST/report.md`)
+
+The full-folder audit (2026-10-03) closed the code stack: 31 folders applied byte-exact, ~139 landed
+with drifted context, the last genuinely-unlanded pairs imported 2026-10-03. Remaining folders: HOLDs
+and the 9 `*-chase` REVISEs only — do not take them (HOLDs are listed in the digest; the chase stills
+await new remote candidates). Importing = apply one folder's `patches/`, run the check the folder
+names, pathspec-commit, update `IMPORT_DIGEST` — take folders in digest order, ≤10 per sitting.
+Row 30 (VM-REPORTS, doc/still packages) is DONE — the wholesale vm-drop sync verified every named
+package; the four no-DONE folders are unfinished remote jobs, not pending imports.
+
+
+### D. Build — measured-gap rows (§22 wave D), campaign remainders (§23/§24/§30), seams
+
+Rows 31–35, 37–59 (D2/D3/D5/D7/D8, HAND-FIELDS-GUARD, CV-GLASS-1/CV-THROW-1/CV-AMMO-1/CV-MOTION-1,
+CR-CHAIN-1/CR-WEIR-1/CR-CHOIR-1/CR-ANVIL-1/CR-HOLLOW-1/CR-TEXTURE-1, OPTIC-OFFENSE, SEAM-BASE,
+SEAM-UI, WORLD-ANSWERS, WORLD-REMEMBERS, PQ-129.11–.17): all SHIPPED/DONE/CLOSED with receipts in
+`roadmap/receipts/` (per-row narratives consolidated to git history 2026-10-15 — do not retake).
+Standing outcomes that stay law: no hull-batching build is warranted (draws are not the pole;
+`_opaqueBatchEnabled` stays OFF; `bloomScene`/post stays the named suspect — PQ-052/PQ-197/PQ-202);
+`ui:heliosBay7Scan` is a dead alias whose real emitter is ORRERY's call, not a sim gap; collision
+C9 lives at `PQ-137.08`; WORLD-ANSWERS/WORLD-REMEMBERS are landed (receipts
+`WORLD-ANSWERS-2026-10-10.md`, `WORLD-REMEMBERS-2026-10-11.md`).
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 36 | C7 | Per-hull chase-pass imports — all 9 `*-chase` drops are REVISE vs Hitch; needs new remote candidates | BUILD | PARKED needs new vm drops |
+
+
+### E. Acceptance — implemented things awaiting their bar (queue + §25)
+
+Rows 60 (PQ-050.01–.22 fleet remaster — 22/22 KEEP), 63 (PQ-161.00 role silhouettes — 9/9), 64
+(ZH-STRANGER stranger passes — all PASS) closed 2026-10-03 with receipts; narratives in git history.
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 61 | PQ-038/041 | Native acceptances: PERF-04 dense PresentationWorld + PERF-07 exact-package Electron pair — never run | ACCEPT | CONSOLIDATED — quiet-host session QH-4 ([`QUIET_HOST_PROGRAM.md`](./design/program/QUIET_HOST_PROGRAM.md)); closes with the pair receipt and opens row 65 |
+| 62 | PQ-022.h3 | Corridor-asset perf envelope — harness on master; the ~50-min capture was never executed | ACCEPT | CONSOLIDATED — quiet-host session QH-5 (same program) |
+| 65 | PQ-042 | Branch selection — `ready` but dep-gated on PERF native acceptances (row 61) | BUILD | PARKED gated on row 61 |
+| 66 | PQ-210.08 | Fifteen-minute demo end-to-end — parked per owner pre-release ruling; reframed 2026-10-04 as play-and-fix | ACCEPT | CONSOLIDATED — quiet-host session QH-6 |
+| 284 | QH-1 | Consolidated quiet-host session — D24 soak verdict, D85 timing datum, boot-media confirm, PQ-038/041 native pair, PQ-022.h3 envelope, PQ-210.08 play-and-fix, general playtest block, D130 baselines. **Produce** on the dedicated clean machine only (`SPACEFACE_QUIET_HOST=1 node scripts/quiet-host-session.mjs --push` — the runner refuses any other host); **land** anywhere from the pushed receipt (`LAND-QUIET-HOST`: apply the row closures it names). Every capture has a named consumer (owner 2026-10-04) | ACCEPT | OPEN — produce: needs the owner's clean machine; land: claimable once a receipt lands. Program `design/program/QUIET_HOST_PROGRAM.md` |
+
+
+### F. Lanes — open-ended ownership (detail: `FINISH_LANES.md`; bar: "a stranger calls it done")
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 67 | L-MACHINE | Own THE MACHINE's development half — boot, hitches, admission, residency. Rows 2, 4–16, 19–34 are its counted surface. | LANE | OPEN — writer muse-polish-oct7 (sitting 1): demo-route machine slices BM-16..18 only; disjoint from codex render/snapshotFence + sweep-oct3 soak paths |
+| 68 | L-HAND | Own THE HAND — flight, tether, fields, verbs, input. Rows 37–38, 42 are its counted surface. | LANE | OPEN — writer muse-polish-oct7 (sitting 1): hand safe slices BM-19..20 only (no input.js/flightV3/physics/tetherGameplay/maneuver) |
+| 69 | L-FIGHTWORLD | Own THE FIGHT + THE WORLD — swarm, arenas, sectors, NPC jobs, law, consequences. Rows 1, 43–55 are its counted surface. [First-fight cohesion](design/archive/program/world-depth-2026-10-02/COHESION.md#first-fight) extends existing PQ-140 route acceptance: expose and transfer distinct physical choices; preserve shipped tactical variety and the approved Swarm expansion. [World expansion target](design/archive/program/world-depth-2026-10-02/README.md): complete a selected inhabited/physical slice with genuinely missing assets; Anvil Stormshift is the worked first candidate, not a second queue | LANE | OPEN — writer devin-oct10-pipeline (sitting 2026-10-10): NPC-jobs slice landed (on-call yard tenders + scavengers outside Ceres); prior muse-polish-oct7 claim was stale |
+| 70 | L-LONGGAME | Own THE LONG GAME — progression, economy depth, story spine, persistent ship identity. Counted surface: rows 278–283 (§L). | LANE | OPEN — writer lonngame-oct4 (sitting 1) |
+| 71 | L-EAR | Own THE EAR — audio identity and feedback. Row 41 is its counted surface. | LANE | OPEN — writer muse-polish-oct7 (sitting 1): ear units BM-01..07 + audio INF rotates; row-41 surface + demo-route audio identity |
+| — | L-PICTURE | THE PICTURE — Forge backlog GFX-1, 3–14 | LANE | CLAIMED devin-graphics (live) |
+| — | L-INSTRUMENT | THE INSTRUMENT — all UI | LANE | CLAIMED ORRERY — do not take |
+| — | L-RELEASE | THE RELEASE — demo path, packaging, store | LANE | PARKED pre-release (owner) |
+
+### G. Planbank — prepared packets (`design/planbank/SpaceFace_Planbank_300/`) — DRAINED
+
+The 300-packet bank was audited against master 2026-09-28 and drained: all 53 PB rows
+DONE/SHIPPED/CLOSED; the three PARKED rows closed 2026-10-15 (PB-ECO expansion stays an opt-in
+`§M` call; PB-LANE-GRAPHICS/PB-LANE-ORRERY routed to lanes that have since run — L-PICTURE and
+ORRERY own those write-sets now). Packet-level verdicts live in
+[`TRIAGE_2026-09-28.md`](./design/planbank/SpaceFace_Planbank_300/TRIAGE_2026-09-28.md); the
+packets themselves are in git history (removed 2026-10-15). Standing law from the bank: a packet
+already satisfied on master closes as already-satisfied — record it, never rebuild it; a CHECK
+packet reproduces the boundary before building; rows sharing a seam tag are serial inside that
+seam.
+
+Not on the board as countable rows: **deferred review/capture ceremonies** (retired by owner 2026-09-10 — `PQ-018/.019/.020/.045` H1+review pairs, `PQ-191`, `PQ-167.01`), **vm-drop HOLDs** and the REVISE chase stills, **remote in-flight jobs** (`bloom-cost`, `hold-prefetch-inbound`, `a-list-convergence` — the remote machine owns them), **never-foldered VM jobs** (`residency-budget`, `jump-arrival-spread`, steady-state CPU/GPU, `long-soak-witness`, `moonshot-assessment`, `npc-kit-stills` — remote owns; VM_LANES.md is their door), and **ORRERY-claimed queue units** (`PQ-180.03`, `PQ-181`, `PQ-182`, `PQ-185`, `PQ-187`, `PQ-194`, `PQ-025` calib, `PQ-040` native). The Depth roll-up and Alpha M-rows in `02_REMAINING_WORK.md` are admitted scope — their path onto this board is §M row 291.
+
+
+### H. Next Wave 300 — directed build and INFERENCE work (2026-09-28) — DRAINED
+
+All 44 counted rows closed 2026-10-04: every BUILD packet SHIPPED/DONE (children closed as
+already-true with the parent's evidence) and the INFERENCE lines are marked SHIPPED in
+`design/program/INFERENCE_IDEAS.md`. The pack (300 packet files + catalog) was removed to git
+history in the 2026-10-15 token-reduction pass; the reader script was retired with it. Standing law
+from the wave: one live board (this one) — an empty legacy `program-dispatch` result means claim a
+free `§1C` seam or a `§M` admission row, never brainstorm; NXB/NXI/SFQ/FB IDs are not PQ IDs and
+never go to `program-dispatch --id`; reuse rather than duplicate (map by outcome against the prior
+owner before building; `node scripts/board-chunks.mjs` lists free seams).
+
+
+### I. Finish & Expansion Pack — loops-first finishing + the alien/machine extension (2026-09-29)
+
+Owner-delivered third reservoir, LIVE: landed at [`design/archive/finish-expansion-2026-09/`](design/archive/finish-expansion-2026-09):
+24 programs, 240 `SFQ-B` build candidates, 96 `SFQ-I` inference candidates, 36 mission briefs, 36
+model-family briefs, 32 VFX/audio briefs, a validated prerequisite DAG. Entry:
+[`START_HERE.md`](design/archive/finish-expansion-2026-09/START_HERE.md) ·
+[machine-readable catalog](design/archive/finish-expansion-2026-09/catalog/task_catalog.json).
+
+Laws: the pack is on this board (statuses here + `INFERENCE_IDEAS.md`; its JSON/CSV are candidate
+inventories worked through `§M` admission rows — `SFQ-` IDs never go to `program-dispatch --id`);
+map by outcome before building ([admission + crosswalk](design/archive/finish-expansion-2026-09/integration/01_ADMISSION_AND_CROSSWALK.md))
+— already-true closes with the native owner's evidence, residual extends the native packet, genuinely
+new takes a row here, conflicting parks in-pack; the alien/machine layers (programs 13–17) rode PR
+#170 (merged) — never build a parallel alien system; presentation converges on ORRERY/Forge/current
+VFX direction; the 96 `SFQ-I` candidates enter `INFERENCE_IDEAS.md` after their named dependency
+lands and outcome-mapping confirms the gap (owner 2026-10-12: by program family in parallel);
+cross-source dedupe through [`TASK_SOURCE_CROSSWALK.md`](./design/program/TASK_SOURCE_CROSSWALK.md)
+is mandatory before taking any SFQ unit.
+
+First-wave rows 220–227 all landed 2026-10-02..05 (wreck-body mass, starter verbs, tow lifecycle,
+wake socket, courier custody, opening picture, save-boundary seal, alien M4 proofs) — receipts in
+`roadmap/receipts/`, narratives in git history (consolidated 2026-10-15). The pack's open surface
+is `§M` rows 348–380 — one numbered row per program family or brief batch (~150 SFQ-B candidates
+undispositioned across 22 families, ~84 SFQ-I, 34 mission briefs, 36 model briefs; P09 and P20 are
+done). A finding outside the chosen scope uses the
+`DEMO_READINESS_2026-09-20.md` §6 ledger, not a new defect list.
+
+
+### J. Fable bank — the in-repo creative completion pass (2026-09-29) — DRAINED
+
+Fourth reservoir (142 `FB-001…142` packets, 141 catalog lines), produced in-repo; its audit verified
+path existence, ID continuation, symbol grounding and near-duplicate freedom against all prior
+banks. All 28 dispatch rows SHIPPED/DONE/CLOSED by 2026-10-08 (`ADMIT-FABLE` closed; disposition
+note under `§M`); the bank's files were removed to git history in the 2026-10-15 token-reduction
+pass. The bank's signature finding stays true and load-bearing: the game's signature verb and long
+game were full of dead seams — events computed and emitted that no eye, ear, or pad ever receives —
+so its batches were wire-the-truth packets, not new systems. Standing law: map by outcome against
+prior owners before building; cross-source dedupe through
+[`TASK_SOURCE_CROSSWALK.md`](./design/program/TASK_SOURCE_CROSSWALK.md).
+
+
+### J. Swarm — the arcade attraction (owner direction 2026-10-02)
+
+Owner-directed expansion turning Swarm from Adventure's showcase into its own arcade attraction.
+Detail and the owner's rulings live in [`SWARM_PROGRAM.md`](./design/swarm/SWARM_PROGRAM.md),
+[`SWARM_ARCADE.md`](./design/swarm/SWARM_ARCADE.md) and
+[`SWARM_EXPANSION.md`](./design/swarm/SWARM_EXPANSION.md); the revision to §16's contract is
+§16.4. Rows run in the owner's phase order; PARKED rows wait for the phase named on them, not for
+permission. Rows 263–269 (bank+Hangar, juice, physics UX, curated ladder, screens, depth/crossover,
+Brood tier+biomes+champions) all SHIPPED/DONE 2026-10-03..05 — receipts and per-wave narratives in
+git history (consolidated 2026-10-15).
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 270 | SWARM-08 | The journey: the Circuit route map and alternate objectives; the arcade arsenal with levels, evolutions, legendaries and abilities — SWARM_EXPANSION B5, B7 | BUILD | OPEN — Circuit journey landed (fleet oct20): 16-round run, 4 stages + champions, authored route gates with room/law, survival boundaries, finish/overtime choice, settlement and worker telemetry; remaining: arcade arsenal breadth (levels, evolutions, legendaries, abilities expansion) |
+| 271 | SWARM-09 | The show: the broadcast layer (host, crowd, sponsors, rivals), eight pilots, the Machine faction, the remaining biomes and bosses, Adventure incursions — SWARM_EXPANSION B8, B9, §5 | BUILD | PARKED — phase D |
+| 272 | SWARM-10 | Fortify: arena construction, the Hold the Line mode, the Engineer pilot — SWARM_EXPANSION B13 | BUILD | PARKED — phase E; deliberately last, additive once the arcade core is strong (owner) |
+| 273 | SWARM-11 | Sharing: the arena editor and global boards — SWARM_EXPANSION B12 | BUILD | PARKED — phase F |
+
+
+### K. Bounded research residuals — new owners only where no exact open assignment exists
+
+[Repair briefs](design/archive/program/research-2026-10-02/ADMITTED_REPAIRS.md) carry the evidence,
+preservation constraints and tests. Rows 274–277 (CRAFT-INTEGRITY, RELEASE-TRUTH, MAP-INTENT,
+CONTRACT-IDENTITY) are all DONE 2026-10-03 — narratives in git history (consolidated 2026-10-15).
+Research residuals named on still-open rows (e.g. row 241's J2/J3) stay on those rows. All remaining
+research proposals stay outside this dispatch table pending discussion.
+
+
+### L. THE LONG GAME — first decomposition (lane L-LONGGAME sitting 1, 2026-10-04)
+
+Lane checklist: FINISH_LANES.md §8 (PQ-032/142/152/155/156/170/172/176–178/195, PQ-208 verb keys, PQ-209.02) against §17 bars M1–M6. Each row is one seam's write set with a done-when in player units. Prior owner named per row. The first six rows are landed; the lane's next decomposition is its own continuing work.
+
+### M. The rest of the plan — reservoirs that are this board
+
+2026-10-13 bounded production batches (codex-batch20-oct13 a/b/c): thirty NEW build residuals
+(rows 292–295, 306–310, 311–315, 325–329, 330–347) and thirty INFERENCE repairs (INF-OCT13-* a/b/c
+lists) all SHIPPED with focused regressions, three review/improvement passes each, and save-schema
+v15 green; per-row commits and receipts are in git history and the landing commits (consolidated
+2026-10-15). Adventure player-truth for the batch reached INCOMPLETE (opaque visual-class + quiet-
+host timing unmeasured); swarm gate preparation never reached play (local ledger row D195 records
+the stall). These are implemented production outcomes, not full acceptance or FPS certification.
+
+2026-10-17 admission push (claude-oct17; workers Gemini 4 Argon, Gemini 3.8 Flash, Muse Spark 1.3 and Grok 4.7, reviewed adversarially by GPT 6.1 Sol): 31 production changes from the board
+families — D210 plus SFQ-B024/B030/B036/B042/B050/B055/B058/B069/B072/B080/B097/B099/B100/B123/B134/B135/B138/B150/B155/B158/B169 and M03, and the inference candidates
+SFQ-I013/I016/I017/I049/I059/I060/I061/I068 — and 10 catalog INFERENCE lines (VERB-37, PIC-33, PRO-21, FIGHT-11, TEACH-11, WORLD-46, TEACH-13, WORLD-47, PIC-34, PRO-20), each with a
+focused regression on seed 4242. The three reviews found 14 real defects in those commits (a salvage duplication exploit, a stun-chain cap reset, features that passed their tests but were
+unreachable on the default worker route); all were fixed in follow-up commits except SFQ-I008, which was reverted (ledger D214), and the B138 calcite-props fix, which was reverted because it raised the Ceres boot census from 41 to 53 entities (row 388). 13 catalog lines that earlier sittings had shipped were found
+still marked OPEN and are now SHIPPED, and 30 stale tests were re-pinned to the real contracts (the five real behavior reds that remain are ledger D213). Not landed: FIGHT-14 and WORLD-48
+(attempts rejected, lines stay OPEN with the reason), M17 (needs two missing capabilities, row 382), SFQ-B208 (routed to ORRERY).
+
+
+**ADMIT** work closed 2026-10-17: every one of rows 291 and 348-380 was dispositioned against live code (240 SFQ-B and 96 SFQ-I candidates, 36 mission briefs,
+36 model briefs, the Depth roll-up). About 85% of the pack was already true in code or already landed; the evidence per candidate is in
+[`design/archive/program/roadmap/receipts/ADMIT-DISPOSITIONS-2026-10-17.md`](design/archive/program/roadmap/receipts/ADMIT-DISPOSITIONS-2026-10-17.md). What was a real gap was built
+the same day (see below) or minted as rows 381-387 and as INFERENCE lines. An ADMIT row leaves the board when every candidate it names is dispositioned,
+so there are none left; a future reservoir drop re-opens the process by minting new ADMIT rows.
+
+Owner ruling, 2026-10-12: **admission is parallel.** The serial pacing rules — one DAG level per
+sitting, one inference line at a time — are retired. The four `admit-*` seams above are the
+parallel lanes; claim a `free` one, then claim your family slug in your NOW.md row. The prereq
+graph orders candidates *within* a family, and a prereq whose outcome already exists in code
+satisfies itself without waiting. A candidate is blocked only by a real missing capability, never
+by another lane's sitting. Families 13–17 reconcile against merged PR-170 reality inside their own
+row. Minted rows take the lane's band — the next free block of 14 above the current max §1C row —
+recorded in the lane's NOW row before minting.
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 384 | SFQ-B176 | Precursor machines visibly deploy their scanner arm or tool spindle while processing work (`src/render/machineVisuals.js`); judged at the gameplay camera | ART | DONE devin-ten-oct23 |
+
+(The landed-candidate notes below are history: the ADMIT rows they refer to were closed on 2026-10-17, see above.)
+
+SFQ-B119 landed 2026-10-15: after a fight the field offers rescue, salvage, pursuit, and escape from what is actually there, and choosing does not pause physics (`test/sfq-b119-aftermath-choices.test.mjs`). Row 293 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+SFQ-B120 landed 2026-10-15: a named restitution returns only the standing its own cause took. A second payment does not charge, and heat and other hostility stay (`test/sfq-b120-restitution-standing.test.mjs`). Row 294 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+SFQ-B122 landed 2026-10-15: the same approach reads as feeding, alarm, defense, or retreat, and a quiet watch does not turn the animal aggressive (`test/sfq-b122-fauna-motion.test.mjs`). Row 295 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+SFQ-B124 landed 2026-10-15: a predator, a grazer, and a scavenger share one finite pasture. Removing the predator lets the grazer eat and leaves the scavenger with nothing, and neither pile grows without a bound (`test/sfq-b124-food-web.test.mjs`). Row 296 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+SFQ-B126 landed 2026-10-15: a dumb animal repeats one recorded docking lane and does not learn a new route. A precursor tone still drives it off that lane, and the lane never grows (`test/sfq-b126-route-echo.test.mjs`). Row 297 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+SFQ-B146 landed 2026-10-15: presenting the named specimen inside the ossuary volume satisfies the order. The same specimen outside that volume, or a different lot inside it, is refused, and the refusal says which miss it was (`test/sfq-b146-present-directive.test.mjs`). Row 298 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+SFQ-B151 landed 2026-10-15: a finite disk damps only the speed into its face, relative to that face's own motion, and leaves sideways speed alone. Outside the disk the same motion is untouched (`test/sfq-b151-velocity-plane.test.mjs`). Row 299 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+SFQ-B152 landed 2026-10-15: the star marker disk slows hulls and lets cargo pass. A crate inside that disk is not shoved, and the notice says which is which (`test/sfq-b152-plane-selectivity.test.mjs`). Row 300 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+SFQ-B153 landed 2026-10-15: one disk winds loose mass sideways around its center and does not pull it in. Outside the disk the same motion is untouched (`test/sfq-b153-curl-disk.test.mjs`). Row 301 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+SFQ-B154 landed 2026-10-15: an authored lane transfers momentum in a fixed direction with a visible entry and exit (`test/sfq-b154-lane-conveyor.test.mjs`). Row 302 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+SFQ-B157 landed 2026-10-15: a physical human object, a goo-coated hull and a passive organism encounter one boundary (`test/sfq-b157-boundary-materials.test.mjs`). Row 303 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+SFQ-B161 landed 2026-10-15: a player can test whether an organism responds to heat rather than proximity (`test/sfq-b161-heat-proximity.test.mjs`). Row 304 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+SFQ-B162 landed 2026-10-15: a repeated route can be compared to an old human record and followed to a place (`test/sfq-b162-route-chart.test.mjs`). Row 305 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+SFQ-B163 landed 2026-10-16: a suppressed living site never reads eradicated merely because its relay quieted (`test/sfq-b163-site-life.test.mjs`). Row 306 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+SFQ-B164 landed 2026-10-16: a wreck progresses through a small authored sequence after meaningful events. Leave, return and reload yield the same stage, and the player can intervene before a clearly telegraphed threshold (`test/sfq-b164-wreck-succession.test.mjs`). Row 307 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+SFQ-B165 landed 2026-10-16: a site changes one service or route because of a visible local biological event (`test/sfq-b165-collar-service.test.mjs`). Row 308 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+SFQ-B166 landed 2026-10-16: an ancient waste-heat or suppression mechanism unintentionally supports a habitat (`test/sfq-b166-waste-heat.test.mjs`). Row 309 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+SFQ-B167 landed 2026-10-16: one validated observation leads to a recipe and a practical field trial (`test/sfq-b167-heat-lure.test.mjs`). Row 310 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+SFQ-B168 landed 2026-10-16: survey data can be shared or sold without erasing the player's memory (`test/sfq-b168-survey-copy.test.mjs`). Row 311 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+
+SFQ-B111 landed 2026-10-15: a collision is classed direct, indirect, accidental, or stale, and the law card says which (`test/sfq-b111-impact-class.test.mjs`). Row 292 carried that outcome and was deleted on landing. Row 285 stays OPEN.
+
+ADMIT-SFQ-B, DAG level L0 dispositioned 2026-10-12 (wf-oct12-r285; row 285 stays OPEN — next level L1, 122 nodes). Kahn layering over `catalog/dependency_graph.json` re-computed this sitting: 336 nodes (240 build + 96 inference), 507 edges, zero cycles; layer-0 build candidates are exactly SFQ-B001/B004/B006/B007/B009, all program SFQ-P01 process scope. All five close as already-true; no rows minted, none parked. **B001** (reconcile without a second queue): §1C "The old packet queue (`program-dispatch --next`) is drained. That is not an empty plan" is live law; the pack declares `is_native_queue: false` (`catalog/task_catalog.json`, `catalog/README.md` "No native queue mutation"); and `node scripts/program-dispatch.mjs --next` still exits 0 with its JSON notice — verified this sitting after a checkout-local repair: this box was missing the `archive/pre-squash-2026-09-08` tag that the control-plane validation resolves recorded integrated commits against (they read "unavailable" without it, failing the run), and the tag was re-fetched from origin, where it lives; with it present the run is clean, no unavailable warnings. Residual retired in place: `design/PLAN_REGISTRY.md` still crowned `frontend/direction/FIELD_HARDWARE_PROGRAM.md` "ACTIVE AUTHORITY — outranks every other frontend document on aesthetics" with `direction/approved/` frames outranking it — superseded by the ORRERY direction (owner 2026-09-22 late, root `AGENTS.md` §1; `build_map.md` §20 "CLAIMED 2026-09-26" banner) and the owner ruling of 2026-09-18 that nothing under `direction/approved/` carries owner authority; that registry row now reads HISTORY (registry law: "when it disagrees … fix the registry in the same pass"). **B004** (retire false work from stale diagnoses) — audited: no active instruction sends default-flight fixes into the legacy controllers. Root `AGENTS.md` §5 names `flightV3` + `src/core/flight/` live and `flight.js`/`flightDynamics.js` compatibility-only ("do not edit them for default gameplay fixes"); `docs/MODULE_MAP.md` marks them legacy/default-off and "not the default controllers" (lines 52, 56, 259); `docs/COMMON_BUGS.md:47-53` labels the same; `docs/TASK_ROUTER.md` routes feel work to §13C → FEEL_CONTRACT, not legacy files; the tuning work list itself routes into `propulsionKernel.js` + `flightV3.js` (`docs/TUNING_JOBS.md` row 1, INTEGRATED). The "old cruise" chip-harassment defect is fixed in live code — `src/systems/cruise.js:2-9` ("Drops on meaningful damage… Chip harassment … no longer drops the tier") with `STUMBLE_REARM_S` at :21 and `_isMeaningfulHit` at :145. One stale claim remains: `docs/TUNING_JOBS.md` row 2 still marks that fixed defect `open` — outside this lane's write set, and it is exactly SFQ-I002's brief ("the work list stops claiming the old bug without evidence"): one outcome, one owner — row 286 admits I002 to retire that status cell against the `cruise.js` receipt. **B006** (adopt remote work without regressions): the native adoption contract is live — root `AGENTS.md` §3 (take the remote `design/program/vm-drop/` tree wholesale, `IMPORT_DIGEST/` as the pending-import ledger, per-folder imports on purpose, never write under it locally) + `design/program/VM_LANES.md`; the no-regressions clause has a standing guard in ledger row D175 (drop dead-location hunks on any future `classify-*` import). **B007** (unify the weakness ledger): root `AGENTS.md` §7 names `DEMO_READINESS_2026-09-20.md` §6 the ONE defect list ("Never open a second bug list elsewhere") with rows leaving only by being fixed in the fixing commit; §6's open rows (D185–D190) each name symptom, repro, demo step and evidence — the acceptance's exact shape, verified live this sitting. **B009** (done means playable): the progression B009 says to keep is the live `stateContract` in `design/program/roadmap/program-queue.json` (planned → implemented → focused_green → route_accepted → integrated; `integrationRequires` integratedCommit + acceptanceRef + receipt); route-level truth is the binding player-truth gate (root `AGENTS.md` §9 — FAIL blocks landing, UNKNOWN counts as FAIL); the evidence discipline is §1.6 (player units on a fixed seed, default route, owner's words). All five verdicts cite live-tree files read this sitting; no `src/**` was edited (the pack's `src/core/registry.js` candidate path stays code-outcome-as-row, never inline).
+ADMIT-SFQ-B, DAG level L0 dispositioned 2026-10-12: layer-0 candidates SFQ-B001/B004/B006/B007/B009
+all close already-true (native-queue reconciliation, stale-diagnosis retirement, remote-adoption
+contract, unified weakness ledger, done-means-playable progression state — full evidence essays in
+git history). One residual handoff: `docs/TUNING_JOBS.md` row 2 still marks the fixed cruise
+chip-harassment defect `open` — admitted to row 286 as SFQ-I002 (one outcome, one owner).
+
+ADMIT-SFQ-I, first four inference candidates dispositioned 2026-10-12 (row 286 stays OPEN — 92
+remain, admitted per program family): SFQ-I001 already-true (MODULE_MAP default-backend guidance
+current); SFQ-I002 minted INFERENCE_IDEAS PRO-16 (TUNING_JOBS stale open row); SFQ-I003 minted
+PRO-17 (alien-ecology README merged-reality label); SFQ-I004 minted PRO-18 (PQ-046/PQ-048
+ordinary-route acceptance unclaimed). Full evidence essays in git history.
+
+ADMIT-SFQ-B, family 20-audio dispositioned 2026-10-12: 12 of 14 candidates close already-true
+(contact-weight tiers, massline four voices, weapon-family recipes, coast silence, priority duck,
+positional work presence, relay pulse, score director — pinned by the named test files in git
+history). Two residuals: SFQ-B199 mints row 301 (audio output-device change has no owner anywhere
+in src/ or electron/); SFQ-B200 routes to L-EAR (the hearing judgment over cold start/combat/
+station/work/alien/late-dense). I077–I080 close already-true.
+
+ADMIT-SFQ-B, family 09-economy dispositioned 2026-10-12: 13 of 14 candidates close already-true
+(relief runs, career cohorts, handling forecasts, classified salvage, zero-capital guarantees,
+shortage re-quoting, xenotech market, settlement invariants, bounded passive income — pinned by the
+named test files in git history). One residual: SFQ-B081 mints row 321 (the reputation price
+component is applied by `commodityStandingMultipliers` but never worded in any UI quote).
+I033–I036 close already-true.
+
+ADMIT-FABLE closed 2026-10-08. Row 290 is deleted; this note is not an open row.
+
+ADMIT-SFQ-FX closed 2026-10-08 on `feat/world-feel`. Row 289 is deleted; this note is not an open row. Scope was the 32 effect/audio briefs (F01–F32) plus the three programs that feed them: SFQ-P10 mining work, SFQ-P19 force VFX, SFQ-P20 mechanical sound. Seed 4242.
+
+Heard or seen, and pinned: F01 nozzle versus flight history (`test/plasma-stream-thruster.test.mjs`); F03 Massline load (`test/sfq-b192-massline-four-voices.test.mjs`); F04/F06/F07 starter gun, beam, and disruptor already use different family recipes (`test/sfq-b193-sonic-verbs.test.mjs`, `test/cv-ear-weapon-voices.test.mjs`); F05 concussion shove is not the gun, and a signed impulse already draws one way (`test/sfq-b183-impulse-throw-read.test.mjs`); F15 material destruction (`test/explosion-rupture.test.mjs`); F16 volatile warming, critical, and venting (`test/worldfeel-unfelt-seams.test.mjs`); F17 fracture sheets were already drawn and survey, cut, and collect now are too (`test/sfq-b091-extraction-phases.test.mjs`); F20 a relay pulse is not a motor (`test/sfq-b197-relay-pulse.test.mjs`); F11 a running yard machine sits on its rock (`test/sfq-b196-yard-position.test.mjs`); contact weight envelopes (`test/sfq-b191-contact-envelopes.test.mjs`, `test/audio-collision-weight.test.mjs`). A developed rock's refused beam, a hull skim, and those volatile stages are the three seams that had emitters and no ear.
+
+Parked, not built: F09 and F28 — there is no elastic-bridge weapon and no pressure-sac weapon (`test/sfq-b193-sonic-verbs.test.mjs`). SFQ-B194: a fast coast stays silent on purpose; a hum tied to world speed would violate that (`test/sfq-b194-coast-silence.test.mjs`). Boost and the brake bite already have their own voices. `mining:podSplit` stays silent bookkeeping.
+
+Routed, not taken on this branch: F05's shove-versus-autocannon picture and F13's Tarburst basin live outside `src/render/vfx*.js` (discharge pool, bomb presentation) — L-PICTURE. F08 caustic coating, F12 repair-as-operation, F18 the full failure chain, F19 biospectral read, F21 fauna bodies, F22 purge, F23 assembly, F24 inspection, F25 suppression corridor, F26 velocity plane, F27 enforcement, F29 work-completion stem, F30 contact recognition, and F32 deep-domain events are campaigns on picture, ear, industry, or law, not a cue swap. F31 crucible rhythm stays with the first-hour lane. SFQ-B092 through B100 (rock geometry, freight doctrine, salvage structure, repair economy, construction kit, manipulable hazards, NPC crews, upgrade technique, a whole district) stay on the industry, hand, and AI seams — this lane does not edit those systems. SFQ-B182, B184's remaining basin, B185 shield-conforming break, B187 transfer processes, and B188–B190 lifecycle budgets stay L-PICTURE. SFQ-B195 ducking through a live explosion, B198 recovery music, B199 output-device changes, and B200 mix-by-weakest-route stay L-EAR.
+
+Closed with evidence on the instrument lane: FB-028 the named results sheet (`test/fb-results-sheet-rows.test.mjs`); FB-055 one industry readout (`test/fb-industry-one-readout.test.mjs`); FB-110 a restored save says so (`test/fb-repaired-save-notice.test.mjs`); FB-130 a slot name and a bounded still (`test/fb-save-slot-label-still.test.mjs`); FB-112 settings announce values, conflicts, and a separate text scale (`test/fb-settings-a11y.test.mjs`); FB-102 career counters already lived in `careerStats` and FB-103 the Pause Statistics screen reads them (`test/fb-statistics-screen.test.mjs`); FB-106 the shell's window mode is the Settings toggle (`test/fb-electron-window-state.test.mjs`); FB-107 machine locales already wear "(machine preview)" until the 0.95 reviewed-coverage gate (`test/fb-locale-readiness-gate.test.mjs`).
+
+Instrument lane 2026-10-08, SFQ-P21 / SFQ-P23 slice only (not the whole ADMIT-SFQ-B reservoir). Already true: SFQ-B201 continue-with-no-save is not a dial word (`src/ui/screens/mainMenu.js`); SFQ-B205 a market fill cannot double-commit (`tradeBusy` + `marketGoDecision` in `src/ui/station/screens/market.js`); SFQ-B206 the yard readout stays on the station refresh and `station:yardChanged` is not a focus steal; SFQ-B207 delete, overwrite, and load already confirm (`src/ui/screens/saveLoad.js`); SFQ-B209 cluster arrival already finishes under `html.sf-reduce-motion`; SFQ-B222 old saves already take additive defaults in `src/save/migrations.js` (no wipe-to-fix found); SFQ-B223 overlapping new/load is row 226 (`test/sfq-b223-overlapping-transition.test.mjs`); SFQ-B224 a dropped controller already toasts and returns to keyboard and mouse (`src/systems/gamepad.js`); SFQ-B226 and SFQ-B227 stay the existing settings and locale pins; SFQ-B228 errors already leave an exit (`test/sfq-b228-error-exits.test.mjs`); the chart inspector already leads with navigation cost. Landed residuals: SFQ-B202 the next flight decision (`test/sfq-b202-next-decision.test.mjs`); SFQ-B203 a refused bearing on the tuner (`test/sfq-b203-bearing-refusal.test.mjs`); SFQ-B204 a refused build says why on its preset (`test/sfq-b204-preset-rejection.test.mjs`). Inference wirings, not new truth: `band:bearingUnavailable` on the tuner, `ship:loadoutPresetApplyRejected` on the preset, `ship:nameChanged` on the ring (`test/sfq-ship-name-ring.test.mjs`). Parked: SFQ-B221 tether and material resume would write simulation systems; SFQ-B224 rebind tables stay on the bindings lane; SFQ-B229 packaged media provenance and SFQ-B230 session-interruption packaging were not opened.
+Toy lane (`feat/toy-hand-line`), outcome-mapped, not minted as rows. SFQ-B022 residual-built: an attached line's load pill says PAYLOAD, EVEN, or ANCHOR from the two masses the constraint couples (`latchCouplingRead`, the existing 3× ratio). The pre-latch CAN mark stays a shape. Pin: `test/sfq-b022-coupling-readout.test.mjs`, seed 4242. SFQ-B023 residual-built: an overload snap on the player's own line, or on the bridle they are holding, paints LINE BROKE (integrity-failure included) anchored on that body; a hostile sever paints LINE CUT; another hull's snap stays off that pill; a deliberate cut keeps its grade and a handoff reason `accepted` stays off that pill. Pin: `test/sfq-b023-release-break.test.mjs`, seed 4242. SFQ-B032 residual-built: a machine is an explicit refusal (no damage, shove, status, or fuze) and the class matrix names wreck, pickup, fauna, craft, and station. Pin: `test/sfq-b032-ordnance-coverage.test.mjs`, seed 4242. SFQ-B033 residual-built: pinned, unmoored, burning, goo, and scrambled say their payoff on the player's callout (scrambled says NO LOCK; tumbling stays quiet because the player hull never keeps it). A bomb the player primed says PRIMED plus the trigger. NPC statuses stay quiet. The combinations themselves were already the status service (row 221). Pin: `test/sfq-b033-status-payoff.test.mjs`, seed 4242. SFQ-B034 already-true: a drop copies the owner's velocity on both axes and is laid behind the hull, not spawned at rest. Proximity and fuze already detonate once in `test/bombs.test.mjs`; command returns 1 then 0 in `test/bomb-choreography.test.mjs`. Pin: `test/sfq-b034-inherited-velocity-4242.test.mjs`, seed 4242, velocity (42, -24). SFQ-B011 already-true: the G combat stick recenters without restoring absolute-radius numbers. Evidence: `test/sfq-b011-gstick-seed-4242.test.mjs` and `test/sfq-b011-gstick-verification.test.mjs`. Not rebuilt. SFQ-B012 already-true: steer, latch, release, and fire are keyboard-first in the default scheme, and the scroll wheel drives no flight input. Evidence: the B012 cases in `test/sfq-b011-gstick-verification.test.mjs`. Not rebuilt. SFQ-B013 conflict: keeping earned speed across a sling, shove, collision, or well is the propulsion owner. This lane does not retune drag or thrust and does not restore absolute-radius stick numbers. SFQ-B016 conflict: chase framing that anticipates travel without stealing the stick is the camera. This lane does not write `src/render/**`. SFQ-B020 conflict: learning drift, brake, and release inside a job is the first-hour teach surface. This lane does not write onboarding or missions. SFQ-B021 already-true: what looks latchable is the body the latch actually takes. Evidence: board row 220, `test/hand-220-latch-eligibility.test.mjs`, `test/row220-fresh-wreck-body.test.mjs`. Not rebuilt. SFQ-B026 already-true: the load pill shows the break-envelope estimate, so a pilot can release, reel, or ease before the snap. Evidence: `scripts/check-massline-tension-estimate.mjs` and the HUD `tensionEstimate` read. Not rebuilt. SFQ-B029 already-true: a specialist waits one response window and warns once on `ai:counterTether` instead of erasing the line. Evidence: `test/massline-counter-tether-response.test.mjs`. The AI owner was not edited. SFQ-B031 already-true: the starters already differ as gun, shove, rope, and bomb. Evidence: board row 221, `test/sfq-b031-b033-starter-verbs.test.mjs`. Not rebuilt. SFQ-B035 already-true: a flank blast signs the opposite side from a nose blast, and fauna in the blast take damage without the craft status riders. Evidence: `test/sfq-b035-directional-impulse.test.mjs`. Not rebuilt.
+
+Pipeline sitting 2026-10-10 (devin-oct10-pipeline), outcome-mapped and built: SFQ-B045 residual-built: a wreck, rock, pod or whipped ship thrown at an NPC is now seen coming — an alert pilot sometimes sidesteps it after a human beat, a surprised or rear-arc pilot still gets hit, nobody dodges through a rock, and capitals never dodge. Pin: `test/sfq-b045-thrown-body-dodge.test.mjs`, seed 4242. M10 False bloom built: in a derelict field a salvage hand says traffic shut the drift on a bloom report; you can prove it a planted lamp by scanning the quarantined hulk, a clean reference hulk and the clamped emitter up close, or by Massline-dragging the light emitter 180 WU clear so the bloom rides with it, which brings two hostile claim-jumpers while the hand files for 380 cr (520 with both scans) and smashing the emitter first destroys the proof. Pin: `test/m10-false-bloom.test.mjs`, seed 4242. SFQ-B043 residual-built: a formation member shoved or released from a tumble beyond its bound now shakes it off for ~0.7 s (brake, face the slot, no boost), regroups at patrol pace so the gap stays open, and breaks formation if it is not back within 8 s. Pin: test/sfq-b043-formation-break.test.mjs, seed 4242. SFQ-B064 residual-built: the first verb-changing fit (Veil Step, Swing Drive, Gravity Bumper, charge rack, cannons and the rest of the early verb-changers) now speaks one felt line on the live bound key at the next undock, once per module per profile, and a module no owned hull can berth is labelled instead of offered as an inventory buy. Pin: test/sfq-b064-fit-felt.test.mjs, seed 4242. M16 Build your own escape built: in an outlaw pocket a watched dead-drop cache, one loose 180 t slag hulk (an ANCHOR read for a starter hull yet towable) and a broker at the rendezvous let the player tow the only anchor into the escape lane before taking the cache, then run or swing out from three Reach raiders, with a 150 cr preparation bonus and an honest bait outcome. Pin: test/m16-build-your-own-escape.test.mjs, seed 4242.
+
+Routed, not taken here: FB-006..FB-014 stay with the hand/massline lane (FB-008 and FB-011 stay named on row 262; their ORRERY presentation stays ORRERY-routed). FB-084..FB-087 stay with the ear/kill lane.
+
+Already-rowed parked work is the rest of the remainder and stays visible where it is: rows 155
+(Charon Bloom opt-in), 156 (graphics packets), 157 (ORRERY packets), 36 (chase stills awaiting
+remote candidates), 271–273 (Swarm phases D–F on the owner's phase order; phase C row 270 is OPEN since 2026-10-19), 284 (the quiet-host
+session), and the §F lanes. A PARKED row's gate is named on the row; it is still on this map.
+
+### N. The A-list finish — studio audit rows (2026-10-19; design record §31, §31.5, §31.6, §32)
+
+Milestone tags (M1 First Hour Gold … M6 release candidate, §32.5) in the Status cell rank rows: a row tagged to the
+current milestone outranks an untagged row of the same kind. When open counted rows fall below the PLAN_ENGINE
+threshold, the next free agent runs the due engine cycle ([`PLAN_ENGINE.md`](./design/program/PLAN_ENGINE.md)).
+
+One row is one coherent player outcome, worked inside its seam (the seam table above). The
+`AL-*` lines in `INFERENCE_IDEAS.md` § A-LIST are taken *inside* the row whose files they touch.
+Each done-when is §31.3's, on seed 4242. Hard edges: 392 after AL-HF-06; 393 after 391+392; 403
+after 402; 407 after 406. SEED rows write catalog lines only — they are support work, never
+production units, and never build what they write.
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 390 | AL-HAND-1 | The Line touches the world — obstruction provider (AL-HF-08), terrain wrap pivots only during a deliberate swing (owner 2026-10-19: towing never snags), unwrap on reversal, no tunnelling (§31.3) | BUILD |OPEN — obstruction slice landed 124c2b3efb+provider (11/11 test green); remaining: visible+physical wrap pivots ≥24 WU, ≥1.3× release speed, unwrap-on-reversal, swept no-tunnelling, wrapped-line invalidation in throw solver, deliberate-swing-only admission (deferred by plan §3 — sg02DynamicBodyOwner outside §1C boundary) |
+| 393 | AL-FIGHT-3 | Verbs feed verbs — mass kills spill latchable charge cells; guns-only tape runs dry (§31.3) | BUILD | DONE — e82cd26689 devin-lanea |
+| 394 | AL-RACE-1 | The line is contested — RF-05 second slice: rivals take anchors, takedowns, medal times, instant restart; AL-HF-03/04/09/10/12 inside (§31.3) | BUILD | DONE — slices landed 96b52bec50 + 2be2a71907 + swing geometry 1003a5d381 (anchored laps test ≥0.8 s faster on all three courses; Veil +1.16 s mean via per-anchor rivalLine authoring) + receipt surface/AL-HF-04 HUD Restart adopted 1da2393289 + contactRecovery bounds 80753fecb8 (≥2 s floor / ≤6 s expiry; real-shove leg in al-race-1-contested-line-4242, edge suite row394-recovery-bounds) |
+| 395 | AL-RACE-2 | Every way of life is a course — six sector-signature circuits through the RF-02 validator (§31.3) | BUILD | DONE — eb72c80ff3 (nine-circuit catalog; six temporary Time trials on native machinery cues; RF-02 accept/reject codes; physical 600 s deterministic completions; career/board/quarantine green at seed 4242) |
+| 396 | AL-WORLD-1 | The ending rewrites the map — three flyable facts per ending; AL-LG-06/07/08/09 inside (§31.3) | BUILD | DONE devin-25-oct22 |
+| 397 | AL-WORLD-2 | The front line you can see — a territory flip embodies as picket, wreck field and customs change (verify-first hypothesis) (§31.3) | BUILD | DONE devin-25-oct22 |
+| 398 | AL-WORLD-3 | Civilians with names — bounded remembered-captain roster; rescued captain returns as a standing-order client (AL-LG-16) (§31.3) | BUILD | DONE devin-25-oct22 |
+| 399 | AL-LONG-1 | Seen at minute one, moved at hour fifteen — ≥8 `revisitNeed` one-offs, ≥3 in hours 10–25; AL-LG-01/02/03 inside (§31.3) | BUILD | OPEN |
+| 400 | AL-LONG-2 | The reckoning is built from your run — four one-fact-different saves give four B7 boards; AL-LG-04/05 inside (§31.3) | BUILD | DONE — e3711912bc; run callbacks compose the B7 board title (ASHFALL: …), optional pieces spawn/snapshot/kill-track through ordinary target+attachment owners, B2 settlement records surviving pods; al-long-2-reckoning-4242 3/3 |
+| 401 | AL-LONG-3 | Hulls you commit to — two irreversible refits per hull; ladder to hour 15; deed-priced resale; AL-LG-10/11/12 inside (§31.3) | BUILD | OPEN |
+| 402 | AL-LONG-4 | One works — one recipe per product, relay chain with per-hop receipts, outpost refinery retired with save migration; AL-LG-13/14 inside (§31.3) | BUILD | DONE — 21fbbd1c40; canonical material bills, native refinery/relay receipts, retired duplicate offer, lossless outpost conversion and paid crafting-queue continuation |
+| 403 | AL-LONG-5 | Write the drone — ≤6-step composed loops with refusal reasons; AL-LG-15 inside (§31.3) | BUILD | DONE — 36df7712ba7 + 6bc24f069f9 devin-lanea (drone composer ≤6-step loops with refusal reasons, warm flight restore bit-identical through programMotion, reaction slot survives save/load; AL-LG-15 verified SHIPPED devin-inf5c) |
+| 404 | AL-EAR-1 | The chain sings — CV-EAR next slice; AL-PR-01…06 inside (§31.3) | BUILD | DONE devin-25-oct22 |
+| 405 | AL-EAR-2 | Twenty-five sectors, twenty-five beds — composed beds from the existing score identities (§31.3) | BUILD | DONE devin-25-oct22 |
+| 406 | AL-SHOW-1 | The rope on tape — adventure tape records tether/field; adventure death kill-cam; AL-PR-09/10 inside (§31.3) | BUILD | DONE devin-25-oct22 |
+| 407 | AL-SHOW-2 | Theater — re-render from tape with the planned camera, scrub, photo cam, export ≥30 fps with sound; AL-PR-11/12 inside (§31.3) | BUILD | DONE devin-25-oct22 |
+| 408 | AL-SHOW-3 | The front door shows the verb — attract tape v2 with catch→swing→release→impact; AL-PR-07/08 inside; no title music (owner question) (§31.3) | BUILD | DONE devin-25-oct22 |
+| 409 | AL-SHOW-4 | Every sound is a sentence — written first-hour captions, bearings, translatable accessibility captions, game speed; AL-PR-13…16 inside (§31.3) | BUILD | DONE — dadfda4b3f completes the caption inventory (ambient fauna/machine/station sentences + bearing template on the extractor surface); AL-PR-13 no id-built captions, AL-PR-14 extractor parity, AL-PR-15 clock bearings and AL-PR-16 100/90/80/70% landed earlier; inf50-al-pr-13/14 2/2 |
+| 410 | AL-SHOW-5 | Languages a native speaker signs off — reviewed first-hour overlays in four locales + glossary (§31.3) | BUILD | DONE — afd3bca234; FIRST_HOUR_OVERLAY covers all 97 capture-inventory captions + boot plate copy in es-ES/fr-FR/de-DE/pt-BR (whole-string, placeholder parity held); per-locale glossary files landed at src/localization/glossary/ and drive the machine pass; strings outside the set stay unreviewed (all four keep preview:true, reviewed 100→208 each); al-show-5-locales-4242 6/6 |
+| 411 | AL-SHOW-6 | The chart draws the arrows — rumor corroboration fields and converging chart arrows, no position leak (§31.3) | BUILD | DONE b7f1bd7ba |
+| 412 | AL-MACH-1 | Split `renderer.js` below 8k LOC, byte-identical digests/boot census (§31.3) | BUILD | OPEN — only while no claimed seam lists the file |
+| 413 | AL-MACH-2 | Split `missions.js` and `traffic.js` below 8k LOC, byte-identical digests (§31.3) | BUILD | DONE devin-ten-oct23 — missions 6,298 / traffic 4,599; method blocks moved verbatim into 11 sibling ops modules, spread back so `this` binds identically; blocks verified byte-for-byte vs HEAD |
+| 414 | AL-MACH-3 | Newest versions — three, Electron, Rapier, electron-builder on ≥7-day-old releases, digest-gated (§31.3) | BUILD | DONE devin-ten-oct23 |
+| 415 | AL-MACH-4 | A toolchain a newcomer can read — tier the 662 npm scripts, retire zero-reference aliases (§31.3) | BUILD | DONE devin-ten-oct23 |
+| 416 | SEED-HAND-FIGHT | Seed ≥12 audited lines: rope/terrain residuals, enemy physical tells, the eight capital bosses as machines you take apart (§31.3 Writers' room) | SEED | DONE devin-ten-oct22 (21452bddf9) |
+| 417 | SEED-WORLD-LONG | Seed ≥12 audited lines: readers for written-and-unread flags, hour 10–25 career beats, standing-order clients (§31.3) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
+| 418 | SEED-SHOW-EAR | Seed ≥12 audited lines: caption gaps by recipe id, off-grid stingers, replay/photo gaps (§31.3) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
+| 419 | SEED-SECTORS | The 25-sector postcard pass — each sector's identity as verb, job, sound and picture within 2 min of arrival; each miss is one line (§31.3) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
+| 420 | SEED-SWARM | Seed Swarm phase C residual lines only, after row 270's design read (§31.3) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
+| 421 | SEED-META | Seed feat-based achievements/titles from the 16 witnessed tricks; no grind counters (§31.3) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
+| 422 | SEED-STRANGER | Seed TEACH/PRO lines from a recorded first-30-minute stranger route (§29 bundles, player-truth actor) (§31.3) | SEED | DONE devin-ten-oct22 (21452bddf9) |
+| 423 | AL-STORY-1 | The rope is a scale — towing reveals true mass against the declared manifest, so a mass discrepancy is a clue, contraband or a frame (generalises 47-A's evidence spindle) (§31.5) | BUILD | DONE — 2cdffcedf0 devin-lanea |
+| 424 | AL-STORY-2 | The hull ghost — Captain Maera Vols speaks in flight about real events: stunts, near-misses, sectors she remembers, the story (§31.5) | BUILD | DONE devin-25-oct22 |
+| 425 | AL-STORY-3 | Faces on the radio — in-flight transmissions show the speaker's portrait with a voiced bark, for the cast and for station locals (§31.5) | BUILD | OPEN — after 424; owner ruling needed: `src/ui/AGENTS.md` bans pilot portraits in the flight HUD, so until ruled the portrait shows on the station comms screen and the in-flight line carries name, voice and caption only |
+| 426 | AL-STORY-4 | Coldburn Rey, a rival with a face — a recurring rival hauler who bids on your contracts, races your deliveries, and can be robbed or rescued; he remembers (§31.5) | BUILD | DONE devin-25-oct22 |
+| 427 | AL-LOOK-1 | Fill the frame without filling the path — readable hull scale, passable near-field dust, depth layers above/below the flight plane, yielding traffic; no new obstacles (clean-flight-plane law §31.6; guarded by 443) (§31.5) | ART | DONE devin-ten-oct23 — above-plane drift sheet (64 grains), far/near bands doubled, yielding lane silhouettes; all render-only, zero new obstacles |
+| 428 | AL-LOOK-2 | Hero hulls first — the five hulls a player meets in the first two hours raised to hero craft before any other hull (§31.5; includes D72) | ART | OPEN — coordinate with L-PICTURE (D72 is claimed there) |
+| 429 | AL-HUD-1 | A HUD a stranger can read — fix the visible leaks (internal ids such as `ZONE_CERES_DERELICT`, the Overhead/Circuits buttons overlapping the target card, overlapping shipworks list text); hand the rest to ORRERY as one list (§31.5) | FIX | OPEN |
+| 430 | AL-SET-1 | Ten trailer moments — ten existing set pieces, each reachable in the first three hours, staged with a camera beat and a music beat (§31.5) | BUILD | DONE — 5da188cfe0; Clips collector seals real 30 s windows, authored places replay as their production props in Theater/killcam, all ten moments carry keyed score phrases; al-set-1 tests 8/8 |
+| 431 | AL-STATION-1 | Arriving somewhere — docking feels like arrival: a live bay behind the station screen, a voiced barkeep greeting, regulars with faces (§31.5) | BUILD | DONE devin-25-oct22 |
+| 432 | PULSE-RADIO | Radio that's about this galaxy — ≥2 h per channel before a repeat, live-fact segments, The Margin as a show; FILL lines after (§31.6) | BUILD | OPEN |
+| 433 | PULSE-SIGNS | Screens and signs that talk back — billboards, bay screens, news crawls, wanted posters with the player's hull (§31.6) | BUILD | DONE devin-thirty-oct22 |
+| 434 | PULSE-CHATTER | Every ship is somebody — name, registry, captain, cargo, destination, mood; ≥3,000 hail/chatter lines; manifests feed 423 (§31.6) | BUILD | OPEN |
+| 435 | PULSE-MAIL | Mail — event-triggered inbox: cast, offers, spam, fan/hate mail, bills, Maera's lost crew; ≥120 letters (§31.6) | BUILD | DONE devin-thirty-oct22 |
+| 436 | PULSE-STATION | Stations breathe — PA, berth calls, shift bells, crowd tone, scheduled bay traffic (§31.6) | BUILD | DONE — bfea03251b; per-station life profile drives crowd/murmur/shift-bell cues, PA + berth calls on the receipt channel, and a scheduled bay on the real berth stage; pulse-station-436 8/8 |
+| 437 | PULSE-CODEX | Everything has a page — codex for every commodity, hull, module, weapon, faction, sector, species and character (§31.6) | BUILD | DONE devin-thirty-oct22 |
+| 438 | PULSE-HORIZON | The horizon is busy — sim-driven far-plane life above/below the flight plane, zero collision (§31.6) | BUILD | DONE devin-ten-oct23 — farPlaneLife.js: counter-flowing hull streams above/below, real-miner beam mirror (1 Hz scan), combat:hit/fire flashes at real far-fight positions |
+| 439 | PULSE-TIME | The world keeps time — station shifts, market days, ≥6 festivals, storm seasons (§31.6) | BUILD | DONE devin-thirty-oct22 |
+| 440 | PULSE-HISTORY | Your ship and the world wear your history — trinkets, decals, memorial names of the sim's real dead, graffiti about you (§31.6) | BUILD | DONE 2026-10-23 — deed-driven keepsakes + earned decal through the ship/appearance writers, memorial array of filed loss-ledger dead, known-sector airlock graffiti; deedRecord registered (was lookup-only, never initialized) |
+| 441 | PULSE-STORIES | Small stories in passing — roaming moving stories 2 → ≥30, each across hail/band/trade/news (§31.6) | BUILD | DONE devin-thirty-oct22 |
+| 442 | SEED-PULSE-COMPARE | The comparison sweep — life details of ten major space games checked against live code; one PULSE line per miss (§31.6) | SEED | DONE devin-ten-oct22 (5798a29ba2) |
+| 444 | GOLD-LEDGER | The Ledger — a diegetic case board where physically found evidence pins and links; the Vale thread is solvable there (§32.4) | BUILD | DONE devin-lanea be058df565 (devin-ten-bm22 packet adopted; board pins/links, named refusals, Verge chain revokes Vale once; gold-ledger-444 15/15) |
+| 445 | GOLD-HOME | The Long Berth — tow and restore the abandoned yard tug as a home; towed trophies persist in its yard (§32.4) | DONE devin-ten-oct23 — claim gated on real tether history + parked proximity; 3 paid stages charge cargo/credits single writers; non-colliding station marker docks through stock dock:range; towed bodies released in the lit yard persist as trophies; dock card shows hull/crew/yard via buildDockArrival |
+| 446 | GOLD-CREW | Crew aboard — up to 4 crew from the local pool and cast, one real perk each, banter about real events, loyalty jobs (§32.4) | DONE | roster of 8 pool candidates hails near home stations once berth stage 3 lands; efficiencyMods perks (shield/energy/cargo/jump-cd) recompute through the ships writer; banter on real events; per-role loyalty jobs; injured on hull-down, lost on the next — test/crew-446.test.mjs 7/7 |
+| 447 | GOLD-MANIFEST | Manifest — the bar card game in the house voice, against regulars and cast (§32.4) | BUILD | DONE — 321483d434; seeded three-manifest matches, five contact policies, deed-earned cards, economy-owned stakes/payouts, real bar entry and ORRERY table; full UI match and forfeit checked |
+| 448 | GOLD-COLOSSI | Colossi — capital bosses get rope-detachable plates, exposed weak points and readable phase changes (§32.4) | BUILD | DONE — 33114dad3d devin-lanea |
+| 449 | GOLD-WEATHER | Weather is physics — ion storm, solar wind and meteor shower, forecast on the band, sector-seasonal (§32.4) | BUILD | DONE devin-25-oct22 |
+| 450 | GOLD-WONDERS | One wonder per sector — the first six missing signature landmarks, each a place with a verb (§32.4; list from 419) | BUILD | DONE — d13289ff70; six schema-4 world sites with real industrial verb chains and finite towable payloads; securing one retires its sector's law machine; sector-wonders-4242 7/7 |
+| 451 | GOLD-LOGBOOK | The pilot's logbook — automatic house-voice journal with Moment Machine stills and a "previously" recap (§32.4) | BUILD | DONE devin-25-oct22 |
+| 452 | GOLD-INSPECTOR | The inspector's shift — weigh and rule on traffic at a Concord checkpoint; a fourth career branch (§32.4) | BUILD | OPEN — after 423 and 462 |
+| 453 | GOLD-CABINET | The cabinet — Swarm attract, initials, daily seed up front, shareable run card; presentation only (§32.4) | BUILD | DONE — all four pieces verified live on the existing door/results surfaces: recorded-tape attract loop armed 8 s idle on the cabinet canvas w/ reduced-motion midpoint frame (`createCabinetAttract` + `SWARM_CABINET_ATTRACT_TAPE`, crucible.js:2387), 3-char initials entry → `submitCabinetInitials` → localStorage w/ board re-render (`createCabinetEntryBand`, crucible.js:3632), Local board on door + results (`renderCabinetBoard`, crucible.js:2177), "Today's challenge <dateKey> · seed <seed>" + locked seed field, "Save run card" SVG + reversible run code (`buildShareBand`); `test/gold-453-cabinet.test.mjs` 11/11 |
+| 454 | GOLD-M1 | M1 First Hour Gold — integration lane: play-capture-fix the first hour until every first-hour system is Gold or names its blocker (§32.4, §32.5) | BUILD | OPEN — M1; claims exact paths per sitting |
+| 456 | RC-SWARM-CLEAN | Swarm runs clean — aftermath card gated in survival, round-1 resolution diagnosed, round-10 Iron Maw script, wording fixes (§32.7) | FIX | DONE — the three remaining items closed: (1) round-10 Iron Maw script verified authored via capital_boss_hulk score path (`swarmMode.js` rotation, landed earlier); `rc-02` 4/4 (telegraphs → commits → resolves → kill = victory) + `fb-027` green; (2) clipped ROUND label fixed — `.sf-sj__slam`/`.sf-sj__bossdown` now anchor `left:50%` + `translateX(-50%)` intrinsic-width (matching the `sf-sj-slam` keyframes) instead of a full-width box that rode −50vw; real-browser layout probe: `ROUND 02` spans 363.7–916.3 px centred 640/1280, `BOSS DOWN · IRON MAW` centred; contract pinned in rc-456 test; (3) swarm gate (`npm run player-truth -- --mode=swarm --gate --headed`, tag gate456): active pass **route/round_resolution (72.2 s)/round_transitions (0/2 broken)/rounds_reached=3/crucible_realm (0/268 Adventure frames — no FIELD STILL LIVE)/player_control/sim_stalled all PASS**; overall verdict FAIL comes from `vfx_coverage` threats-hidden p95 86% on the dirty tree's in-flight render diff (demo-ledger D253, not reachable by this fix) + frame_time/readability UNKNOWNs on the contended host + a chrome-crash idle pass; also repaired pre-existing reds in the seam: mass-scaled hit-stop re-clamps its chain base to ≤80 ms docstring (`swarmJuice.js`), stinger test re-pinned to the authored link grace note; 65/65 seam tests |
+| 457 | RC-FIRST-MINUTES | The clean first two minutes — drive key vs Help, ticker gate, markers off instruments, Hitch naming, in-world names, captioned hook (§32.7) | FIX | OPEN — M1. Captioned 47-A hook, Hitch naming, and the tutorial-owned ticker landed (fleet oct20); remaining: drive key vs Help, markers off instruments |
+| 459 | RC-VIGNETTES | Lived vignettes worth meeting — regenerate from the generator, charge/await verbs, first-hour prop preference, trim (§32.7) | BUILD | OPEN — M1 |
+| 460 | RC-CAST-MEMORY | A cast that remembers — wire 12 dormant contact counters, band glyphs, spoken leads, Last Call reads them (§32.7) | BUILD | DONE devin-25-oct22 |
+| 461 | RC-DOCKET | The docket opens — caseForLoss table, reachability test, settlement range, hull-scaled restitution (§32.7) | BUILD | DONE — landed d7af4322e8 + 04fe464f23 (status flip devin-lanea: 11/11 focused suite green — catalog-priced restitution, real-yard labor, partial bills survive save, promoted communicator carries the case) |
+| 462 | RC-CHASE | Crime is a chase — Witness Run, the Sweep, the Sponsor (§32.7) | BUILD | DONE — acfa6c43cc devin-lanea: civilian-only kills queue courier testimony (files at a lawful berth's 60-WU chord, dies with the carrier, save/load durable, cap 16); bounty tier posts two lawful sweep ships — seen by both then 2 s of broken observation (or a seen sector jump) drops the tier via heat's own listener, zone clock stays fallback; warrants name a station sponsor paid through law:sponsorPay -> sponsorSettled. rc-chase-witness-run-462 11/11 |
+| 463 | RC-BOSS-READ | Bosses you can read — move plate, name/act cards, Adventure boss bar, show-don't-toast, elite intent, retry act (§32.7) | BUILD | DONE devin-lanea — 0fdb1d77ea; slice 254f7607ae + retry act/elite intent |
+| 464 | RC-SECTOR-LAWS | Every sector has a law — 10 name-only sectors get a physical rule; warned interdiction; arrival freighters; landmark in background (§32.7) | BUILD | DONE — d13289ff70 (codex-bm30-oct23 work, adopted and landed per the 2026-10-23 coordination note); ten law machines on the approach, warned interdiction bearing on the flight instrument, arrival-greeting traffic and way-of-life landmark already at HEAD; rc-sector-laws-4242 3/3 |
+| 465 | RC-MARKET-WHY | The market explains itself — name the mover, lane risk, one voice per hull, local news (§32.7) | BUILD | OPEN — M1. Player-trade mover, lane-risk words, dented-plate mechanic line and station-local bar news landed (fleet oct20); remaining: a freighter as named mover (needs the 480 sim record), one voice per hull beyond Clean plate |
+| 466 | RC-INDUSTRY-TRUE | Industry tells the truth — capped earnings on drone cards, Deed Names, next-step copy, distressed-drone rescue (§32.7) | FIX | DONE — 9ee5b8bb0b + 21fbbd1c40 complete the remaining next-step and recipe clauses; existing capped income, named rocks and real tow rescue checked; empty960px view legible |
+| 467 | RC-MISSION-VOICE | Missions with a voice — bounty memory and lines, unique heist methods and casing, payday receipt, retry changes the room, Clause Gambit (§32.7) | DONE | sector-fit mark factions + 26 hail lines; methods + Case File on every Tethys row, cased → third method; voiced PAYDAY receipt; retryWatch pickets change the room; Clause Gambit landed earlier — test/mission-voice-467.test.mjs 10/10 |
+| 468 | RC-DISCOVERY-SHOWN | Discovery you can see and hear — Field Notes, taxonomy, comms styling, discovery toasts, creature/machine sound, Helios tease, Suhl's Clauses (§32.7) | BUILD | DONE — 8cc088fff0 + 3d142ed04b; earned pages, seven families, clauses, memorial, 22 sound recipes and Helios tease. Settled comms layout remains a second-look claim; browser readiness timed out before interaction |
+| 469 | RC-FIT-VISIBLE | The fit shows on the hull — verb modules drawn, earned livery, felt synergies, research screen fixes (§32.7) | BUILD | OPEN — after 401 in the seam |
+| 470 | RC-VOICES | Voices and space in the mix — per-line barks, threat ear, room presets, heat in the score, idents, mono, night mode (§32.7) | BUILD | DONE devin-25-oct22 |
+| 471 | RC-RECORDS | Records that tell stories — Records Wall, working photo Look, empty-state copy, Today's board, Pact dial, Range Licence (§32.7) | BUILD | DONE — e373959aa5 + 18d02b327e; named chronicle wall, honest photo controls, footage guidance, reachable daily ranks, shared Pact terms, legacy preview and persistent Range medals; populated 960px board viewed |
+| 472 | RC-VENUES | Toys out of the drawer — venue/race event cards, minigames from the world, Ring-Out, Toll Threading, Hot Tow, Wreck Strip, Spill Catch (§32.7) | BUILD | OPEN — after 395 in the seam; board slice landed 50b7433885 (event cards + one START); remaining: venues, world minigames, Ring-Out/Toll Threading/Hot Tow/Wreck Strip/Spill Catch |
+| 473 | RC-FRONT-DOOR | A fast, kind front door — interactive title ≤10 s, mm:ss clock, destination slate, first-light preset, settings density (§32.7) | BUILD | OPEN — M1; coordinate with L-MACHINE shader admission |
+| 475 | RC-FELT | Every verb is felt — callout rarity, haptics, Around the World, Trick Book, arena bounties, Prize Run, Perfect Vent, Match Burn (§32.7) | BUILD | PARTIAL — pad slice fc3552a234; callout rarity shipped (stuntCallout data-rarity); Around the World + Trick Book 2febc0c2bad; Arena Law Bounties c1004bf45bd; remaining: Prize Run, Perfect Vent, Match Burn (under-specified in §32.7 — need authored definitions) |
+| 476 | RC-TRAVEL | Travel is a choice — Freight Spine, stale chart, Two Roads, Interdiction Wrestle, drift vector (§32.7) | BUILD | DONE devin-25-oct22 |
+| 477 | RC-NPC-READ | NPCs you can read — job phases, grudge hails, faction flight styles, robbed haulers move prices (§32.7) | BUILD | DONE devin-thirty-oct22-b (187daf8f) — job phases already had `livingWorkStatusText`; this row puts it on the contacts-roster detail line; grudge hails (`aceHailOpener`, `patrolGrievanceHail`) and robbed-hauler price moves (`accountFreightDiversion` → `freight:loss` → `economy:applyTradePressure` at the bound station) pre-existed and are claimed here |
+| 478 | RC-STATION-STAGE | The station is a stage — bar reactions, Regulars, Appeals Window, Clearance Pending, The Tab, the Fine at Helios (§32.7) | BUILD | OPEN — M3 |
+| 479 | RC-SCREENS-TRUE | No screen admits it is unfinished — mission log, tab-rail clipping, game over, map strip, voice ring, empty states (§32.7) | FIX | OPEN — M1 |
+| 480 | RC-MARKET-PLAY | Markets you can play — Convoy Shares, Forward Slip, Auditor Penn, Dump Chute, Cold Chain, Labor Stoppage (§32.7) | BUILD | OPEN — after 465 |
+| 481 | RC-CRUCIBLE-DOOR | The Crucible door opens both ways — Run What Killed You, Call the Champion, Wreck Ballast, Case Files, Grudge Ledger (§32.7; phase-order check first) | BUILD | DONE 6b359aae98d — all six pieces land (verified 27/27 green: rc-481 door + arena kill words + mutator consumers) |
+| 482 | ROCK-GUN | The rock is the gun — impact kills ≥60 % in swarm waves 1–10; a guns-only tape is 2× slower (§33.1) | BUILD | DONE devin-25-oct22 |
+| 483 | ROCK-KATAMARI | The Katamari line — in-run line rating in tonnes, newly movable class lit in the Line colour, a visible winch (§33.1) | BUILD | DONE devin-25-oct22 |
+| 484 | ROCK-FLAIL | The flail — chained wrecks on the Line as the endgame weapon; 5 links stable at 60 fps on the iGPU (§33.1) | BUILD | DONE devin-25-oct22 |
+| 485 | ROCK-ARENAS | Arenas that scale with the rating; the camera opens with it (§33.1) | BUILD | DONE devin-25-oct22 |
+| 488 | ROCK-BUDGET | The physics budget, measured — wave 15 at p95 ≤ 20 ms on the iGPU, quiet host (§33.1) | BUILD | OPEN — first in rock-core |
+| 489 | ROCK-HEADS | Line heads worth chasing — meta unlocks between runs; rarity allowed (§33.1) | BUILD | OPEN — after 501 |
+| 490 | CRAFT-READ | Enemies you read without rings — silhouette and engine colour per role (§33.2) | BUILD | DONE devin-thirty-oct22 (579d9e31) |
+| 491 | CRAFT-INTENT | Enemies with intent — attack cycles, cruise ≥70 % of the player's, ≤0.4 reversals/s (measured 50 vs 117, 0.8/s) (§33.2) | BUILD | DONE devin-thirty-oct22 (579d9e31) |
+| 492 | CRAFT-LINE | The Line you can see — strain thickness and glow, a rim-lit latch, the release arc at the chase camera (§33.2) | BUILD | DONE devin-thirty-oct22 (579d9e31) |
+| 493 | CRAFT-POWERS | Fewer powers, each distinct and previewed — the owner picks the merge set (`design/expansion/05_ASSET_ROSTER.md` §7.2) (§33.2) | BUILD | DONE (94dca2f4c6) — hold a power key to preview, let go to use it: every body the release moves is outlined in the power's colour with its predicted path, built from the owners' own placement and force rules and read-only; a tap still fires at once; Settings → Gameplay → Powers "Use on press" keeps the old way. First cut 187daf8f (devin-thirty-oct22-b) |
+| 495 | CRAFT-ROCKS | Rocks are the hero art (§33.2) | ART | PARTIAL devin-fart 2026-10-26 — the 24-body family (3 sizes × 8 substances, `rock_family.py`) is published and worn by arena debris, field heroes and claim sites; still open: the instanced field-rock pool stays procedural (render-lane reroute), with 509 |
+| 496 | CRAFT-WORDS | Words a player understands — plain verbs on the flight HUD and the power labels (§33.2) | FIX | DONE devin-thirty-oct22-b (187daf8f) — TOP SPEED / LIMIT / AT TOP SPEED / DRIVE SPINNING UP / OUT OF POWER on the velocity tape; RELEASE SPEED on the cadence readout |
+| 497 | CRAFT-CADENCE | Something happens every minute — first contact ≤2 min, then every 3–5; cohort travel ≤50 % (§33.3) | BUILD | DONE devin-25-oct22 |
+| 498 | W-TONNAGE | Tonnage Logged and Line Class I–VIII, shown on the hull (§34.1) | BUILD | DONE — 5f0aad109c lands the hull-side class display (authored drum + anchor pads per class, cable width/colour scale) on top of the 7086bceaa4 tonnage/class bag; w-498 tests green |
+| 499 | W-STRAIN | The honest strain — over-class towing, a hot cable, a snap event, record stamps (§34.1) | BUILD | DONE — 5f0aad109c lands the hot-cable visual readout (overheat lerp + widened sheath coverage) and the ship-following strain instrument on top of the 7086bceaa4 strain contract; w-499 tests green |
+| 500 | W-PROVENANCE | Provenance rarity — Stock, Worked, Named, Storied, Relic, plus Backordered; behaviours, not stats (§34.1) | BUILD | OPEN |
+| 501 | W-HEADS | The 14 Line heads, P0 first: Coupler, Breaker, Barb, Weld, Magnet, Override (§34.1) | BUILD | OPEN |
+| 502 | W-LOG | LOG — the physics narrator (EXP-12 fills its copy) (§34.1) | BUILD | DONE devin-thirty-oct22-b (187daf8f) — cause-aware one-line register (`src/data/physicsLog.js`) riding the stunt-callout lane's ~3 s fade; silent in terminal zones |
+| 503 | W-COUPLING | Coupling you can see — filaments; panic, aggression and grief cascades (§34.2) | BUILD | OPEN |
+| 504 | W-PATHOLOGY | Pain loop, route-memory, host-shadow Husks (§34.2) | BUILD | OPEN — after 503 |
+| 505 | W-ONEOFFS | The ~35 one-offs mapped to a sector, a Book and the chart; a census test (§34.3) | BUILD | DONE devin-ten-oct22 (32918b94f6) |
+| 506 | W-SHIFT | The Orphaned Shift — twelve new machine-people, one per sitting (§34.3) | BUILD | DONE 2026-10-24 — all 12 shipped: DOCKET / PX-14 (0a59973d4e + latch fix 11d0e3731c) Io Reach parcel delivery; BOUNCER / DR-0 (e2c7fbc2f8) Sker no-weapons ring; RECEIPT / PR-8 (a993fc3fde) Kepler kill-feed printer; MOP / CL-5 (ad52bdc13b) Nyx evidence sweep; TALLYHO / CN-2 (ca65bf9fdb) Rhea kill-rating board + crowd; TARE / WG-2 (4da1fe38dc) Dione scale deck — weighed-fragment Line-trial pay; LAMPLIGHTER / LL-6 (21b4968ec8) Sedna rim relight — tow dead buoys in, lit path persists; SHEPHERD-12 (1428552f58 + fix) Orcus tide flock count — push strays home, weighed-fragment pay; QUILL / AR-3 (2317035b28) Triton tithe rim — copies scanned wrecks, sealed pages open one per log; HOLDFAST / AN-1 (099d2ed3a8) Haumea fissure lip — tow ice spires into clamps before the crack runs, weighed-fragment pay; BELLHOP / CB-9 (08d6056a7b) Phoebe chime floor — strike crystals in order to play the broken song, tuning-fee pay; GRAVEDIGGER / UG-4 (a022dea196) Eunomia gulf floor — races you for wrecks, buries them into a persistent garden, then teaches the paying compost verb |
+| 507 | W-BLOOM-LOW | Bloom ladder T0–T2 — spore drift, Lantern cyst, Glassback, Wake eel, Bellows (§34.2) | BUILD | OPEN — landed-note 2026-10-23 (75e483cf01): roster + engine laws binding — massOnly/blastOnly/swells kill gates, wake-eel steering, hazard slow, cyst prime/burst, shard splash, per-family silhouettes; still open: telegraphs, counter lines, death throwables, wake-eel whip-when-held |
+| 508 | W-BLOOM-HIGH | Bloom ladder T3–T6 — Bristle ram, Furnace maw, Husks, Blind shepherd, Hive-hulk, Veil ray, Anchor beast, the Long Field (§34.2) | BUILD | OPEN — after 507 |
+| 512 | W-STATIONS | Fourteen faction station kits (§34.4) | ART | DONE devin-fart sweep-landed e562b1c9e40 — 14 faction kits wired to 7 archetypes (visual proof rides R-e562b1c) |
+| 513 | W-STEALTH | Mass-signature stealth — sweep rings, mass shadows, cold coasting, Hush, decoys (§34.4) | BUILD | DONE devin-thirty-oct22 (HEAD~ law-trade) |
+| 514 | W-KITS | Faction hull kits plus the Overgrowth and junk kits (§34.5) | ART | PARTIAL devin-fart 2026-10-26 — all six uncovered factions now field authored kits on their dominant live hulls (8 forge variants: helix/archive drifters, fulfillment/pitborn mules, archive/verge rangers, understory kestrel-Overgrowth, pitborn ironback junk; landed b2e766b27a); still open: off-kit hulls inside those factions (security Wasps, loss-ledger hulls of any class, choir pilgrim transports) keep production paint |
+| 515 | W-CONCORD | Concord — commanders, Clamp Tender, Scale Barge, the Weighing (§34.5) | BUILD | DONE devin-thirty-oct22 — after 513 for the Weighing |
+| 516 | W-MERIDIAN | Meridian — cargo spines, couplers, hull tickers, Spine Break (§34.5) | BUILD | DONE devin-thirty-oct22 (HEAD~ law-trade) |
+| 517 | W-UNDERSTORY | Understory — five-stage gardens, the Compost Run, tide pushback (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
+| 518 | W-FULFILLMENT | Fulfillment — route trains, hitchhike, derail spill, boarding, Order #0000001 (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
+| 519 | W-PITBORN | Pitborn — Cull dressing, Ma Sprocket, Yardmaster, Ballast (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
+| 520 | W-TIDE | The Bloom tide — per-sector infestation on the chart, persisted (§34.6) | BUILD | DONE devin-25-oct22 |
+| 521 | W-AUDITS | The Gate Audits — one gate per Book behind a wreckable scaffold; never strands a sector (§34.6) | BUILD | DONE devin-25-oct22 |
+| 522 | W-GRAY | The Slow Gray clock on the ticker; it never recovers (§34.6) | BUILD | DONE devin-25-oct22 |
+| 523 | W-CHART | The chart keeps the receipt (§34.6) | BUILD | DONE devin-25-oct22 |
+| 524 | W-VAEL | Vael — Override Tender, the transferable Lien Anchor, Page Nine (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
+| 525 | W-QUIET | Quiet — juggling runners, The Swap, sold routes (§34.5) | BUILD | DONE devin-thirty-oct22 (HEAD~ law-trade) |
+| 526 | W-HELIX | Helix — too-perfect false flags, Lien drones, Gate Audit platforms, Adjudicator 44-C (§34.5) | BUILD | DONE devin-thirty-oct22 (HEAD~ law-trade) |
+| 527 | W-ARCHIVE | Archive — Redaction, reading rooms, page drones, Index Head (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
+| 528 | W-CHOIR | Choir — Bells, resonance, the Carried Relic (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
+| 529 | W-VERGE | Verge-Layers — machine bodies, flyable directives, the Appeal, the Sleeping Jury, the Line trial (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
+| 530 | W-DRIFT | Drift — claim pylons, the Claim Jump, the Breaker Derby (§34.5) | BUILD | DONE devin-thirty-oct22 (HEAD~ law-trade) |
+| 531 | W-REACH | Reach — the Nest Carrier, the Trophy Wall, chained gate camps (§34.5) | BUILD | DONE devin-thirty-oct22 (HEAD~ law-trade) |
+| 532 | W-FRONTIER | Frontier — homestead modules, Barn Raising, Weld Head (§34.5) | BUILD | DONE devin-thirty-oct22 (04fe464f) |
+| 533 | W-BOOKS-0-2 | Books 0–2 play per `design/expansion/06_CAMPAIGN_SCRIPT.md` (§34.7) | BUILD | DONE devin-w533 (b212aefc40) |
+| 534 | W-BOOKS-3-4 | Books 3–4 play — VARIANCE ADJUSTMENT, the three doors, the doubled contract (§34.7) | BUILD | DONE devin-w534 (5cbccc3f3f) |
+| 535 | W-BOOKS-5-7 | Books 5–7 play — heists, the Empire Seed, the Iron Maw dismantle, the Witness (§34.7) | BUILD | OPEN — after 534 |
+| 536 | W-DOORS | The Five Doors, each with one playable act (§34.7) | BUILD | OPEN — after 535 |
+| 537 | W-CANON | Interludes as quiet scenes; PROPOSED CANON folded into `docs/worldbuilding/` or rejected in one sentence (§34.7) | BUILD | DONE devin-w537 (f65046d4) |
+| 538 | W-ARCS | Fourteen faction arcs, three missions each (§34.7) | BUILD | OPEN — each arc after its faction row |
+| 539 | W-CULL | The Cull ladder — ten leagues, Ma Sprocket, Clatter (§34.7) | BUILD | OPEN — after 519 and 541 |
+| 540 | W-THIN-SECTORS | The thin sectors get a throwable, hazard, resident, wonder and set piece (§34.8; coordinates with rows 464 and 450) | BUILD | DONE devin-ten-oct22 (0749dfe36e) |
+| 541 | W-ARENAS | The ten-arena Cull ladder by scale step (§34.8) | BUILD | DONE devin-25-oct22 |
+| 542 | W-CAST-HANDS | The canon cast gets physical hooks (§34.8) | BUILD | DONE — 7/7 wired: Wex ticket (72b4a4f84b), Drift moisture (afce9e08c5), Rook booth (37043e0e0d), Kessler scale (e4d6921764), Gate 3 weir Hale+Dree (3a6c76b334), Slate column (25aecdb578) |
+| 543 | W-FACES | Canon, new and culture portrait pools (§34.8) | ART | OPEN |
+| 544 | W-ECONOMY | Economy re-pace — travel ≤50 %, a play-changing purchase every 15–25 minutes, pay by the tonne (§34.9) | BUILD | OPEN |
+| 545 | W-CAMERA | The camera follows the weight (§34.9) | BUILD | OPEN |
+| 546 | W-TEACH | Teach by situation; First Light keeps its offer with Play as the primary action (§34.9) | BUILD | OPEN |
+| 547 | W-COLOSSI | The Colossus roster on row 448's framework; the bar is the parts (§34.9) | BUILD | DONE devin-w547 |
+| 548 | W-AUDIT | The fifty-point A-list audit, repeated after each phase (§34.9) | FIX | OPEN |
+| 549 | W-RECEIPTS | Receipts within a budget; save migrations; flat save growth (§34.9) | BUILD | DONE devin-25-oct22 |
+| 550 | W-ARSENAL | The arsenal: keep, merge or move ~20 physics tools (`design/expansion/05_ASSET_ROSTER.md` §7.3) (§34.9) | BUILD | OPEN — story-mode table applied 2026-10-22 (7 tools + the concussion bomb carry `retiredInto`, off the shop and research, owned copies keep working; final homes in 05 §7.3); remaining: the Crucible draft (swarm seam) and the Line-head moves (wait on §7.1 heads) |
+
+### O. The attention program — 50x detail pass (owner direction 2026-10-24)
+
+Law: [`design/program/ATTENTION_PROGRAM.md`](design/program/ATTENTION_PROGRAM.md). Units:
+[`design/program/ATTENTION_LEDGER.md`](design/program/ATTENTION_LEDGER.md) — one row per
+player-reachable surface. Each unit runs catalog → three persona drafts → tribunal →
+implement, and every artifact needs three consecutive subagent approvals (the 3× rule).
+Claim rows by editing the ledger, not this table.
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 551 | ATT-SEED | Attention program scaffolding: program law + coverage ledger + dossier phase | PLAN | DONE — this section |
+| 552 | ATT-DOSSIER-A | Four evidence dossiers (first hour, audio/feel, world memory, economy/failure) → `design/archive/program/attention/` | ANALYZE | IN PROGRESS — first-hour landed; three running |
+| 553 | ATT-E01 | Onboarding rail + first hour (minutes 0-60): rail texture, tier-0 life, ambient traffic (directions 1-3 joint with §1P X-01; guided beat joint with §1P X-04; raid beat joint with §1P X-02) | BUILD | DONE 2026-10-25 — ledger E-01 slice shipped 9b1a6664d7 (TOURIST + first-hour bark texture, 3x-approved); all §1P joints landed by devin-lanea: X-01 (6ab0d2eb2e), X-02 (acc83ababd+dbfe5da7c5+f175abc66d), X-04 (6e0aa21444) |
+| 554 | ATT-V01 | Comms/bark density: per-sector bark banks so ambient life registers outside the rail (joint with §1P X-06) | BUILD | DONE 2026-10-24 — SECTOR_GREETING_BARKS banked all 25 sectors (4 voice-neutral lines each) and the deterministic even-index share of patrol-greeting hails now speaks local through the same _speak budget (tribunal: `design/archive/program/attention/v-01-plan.md`); X-06's §1P half stays open for its own claim |
+| 555 | ATT-T02 | Station life: named regulars, rumors, overheard plots on the most-docked stations | BUILD | PARTIAL — barkeep/regulars bark bank shipped 9b1a6664d7 (ledger T-02); named-regular arcs + overheard plots remain |
+| 556 | ATT-S13 | Wreck/debris fields: named dead, salvage notes, kill-marks across the wreck surfaces | BUILD | DONE 2026-10-24 — eight memorial-marker find-sites landed beside the unplated frontier wrecks (tribunal: `design/archive/program/attention/s-13-plan.md`); catalog's ten shrank to eight — the two core wrecks already carried plates |
+| 557 | ATT-H01/H02 | Hull markings: stencils and wear on starter hulls; kill tallies and owner names on traffic variants | ART | PARTIAL — hull names/swatches + kill-tally/owner bark banks shipped 9b1a6664d7 (ledger H-01/H-02); visual stencil/wear ART remains |
+| 558 | ATT-E04 | Secrets layer: easter eggs, coded barks, ritual sights that reward poking | BUILD | PARTIAL — rare roaming-event lines shipped 9b1a6664d7 (ledger E-04); coded barks + ritual sights remain |
+
+### P. The experience program — the journey, first boot to mastery (owner direction 2026-10-24)
+
+Law: [`design/program/EXPERIENCE_PROGRAM.md`](design/program/EXPERIENCE_PROGRAM.md). The
+player's path is a spine of seven phases (P0 boot→play, P1 rail, P2 first hour, P3 first
+session, P4 early arc, P5 mid arc, P6 late arc); each phase has a bar it must hit by
+evidence. Units follow the same catalog → personas → tribunal → 3×-gate → implement
+pipeline as the attention program (the two interleave: experience rows set the sequence,
+attention rows fill the surfaces).
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 559 | X-01 | P2 first-hour life — tier-0 encounter deck, one real fight, loop-closure beat (joint with ledger E-01; direction-1 rail staging is X-02's) | BUILD | landed 6ab0d2eb2e devin-lanea (audit✓3 plan✓3 impl✓3 — 3 successive clean reviews) |
+| 560 | X-02 | P1 raid beat teeth — staged hostile that shoots and flees at ≤30% hull (raid beat joint with ledger E-01; direction-1 split — rail staging here, hour-1 outcome is X-01's) | BUILD | landed acc83ababd+dbfe5da7c5+f175abc66d devin-lanea (audit✓3 plan✓3 impl✓3 — v4 gates + v5 acquisition: authoritative 'onboarding_raid:' ATTACK_RUN outranks the poisoned squad vote, honest DISENGAGE/'withdrawn' exit, sanctuary/egress/far-shelf/recycled-id gates; live-fire x02-raid-wing-live-fire-4242 active green — wing fires, hits only the player, no law case; 16 review rounds, 3 successive clean) |
+| 561 | X-03 | First purchase staged — a sub-5k module that changes a verb | BUILD | landed ecb17f9a96 devin-lanea (audit✓3 plan✓3 impl✓3 — 3 successive clean reviews) |
+| 562 | X-04 | Guided gate jump beat — first jump + return, toll math lands (joint with ledger E-01) | BUILD | landed 6e0aa21444 devin-lanea (audit✓3 plan✓3 impl✓3 — 3 successive clean reviews) |
+| 563 | X-05 | Law/consequence persists past the rail — heat, wanted, witnesses in sandbox | BUILD | landed e417abde7c devin-lanea (audit✓3 plan✓3 impl✓3 — 3 successive clean reviews) |
+| 564 | X-06 | Per-sector bark banks so ambient comms register outside the rail (joint with ledger V-01) | BUILD | landed 1705814158 devin-lanea (audit✓3 plan✓3 impl✓3 — 3 successive clean reviews) |
+| 565 | X-07 | Mining payoff surface — seam/overheat skill variance | BUILD | landed f903289329 devin-lanea (audit✓3 plan✓3 impl✓3 — 3 successive clean reviews) |
+| 566 | X-08 | Sling income verb — authored thrown-mass kill payoff | BUILD | landed 414d4ea94b devin-lanea (audit✓3 plan✓3 impl✓3 — 3 successive clean reviews) |
+| 567 | X-09 | Per-cause death lessons beyond massline-snap (joint with ledger V-04) | BUILD | landed 94909073cd + v3 ab3bab5eba devin-lanea (audit✓3 plan✓3 impl✓3 — 3 successive clean reviews) |
+
+### Q. The November programs — SWARM, master plan, CHAOS, Hotspots, KIT, bible (owner direction 2026-11-05/06)
+
+The current priority. Design record: [§36](#36-the-november-programs--swarm-the-master-plan-chaos-the-bible-owner-direction-2026-11-0506).
+Each row names its spec; read the spec's taste bar ([`bible/QUALITY.md`](design/program/finish/bible/QUALITY.md))
+before starting. Rows marked *in flight* belong to a running lane agent — take a `free` seam instead.
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 568 | S1 | Swarm feel profile — bowling-pin contacts, gravity yank, shove punch, instant small kills, fodder melts (design/program/finish/swarm/PLANS.md S1) | BUILD | OPEN — in flight: SWARM lane F (launched 2026-11-05) |
+| 569 | S7 | Enemy character — the character sheet as data, distinct silhouettes/hues/abilities/tells, debut rule (design/program/finish/swarm/PLANS.md S7; bible/BESTIARY.md) | BUILD | OPEN — in flight: SWARM lane F (launched 2026-11-05) |
+| 570 | S8-sim | Heavy break-up into throwable chunks + shockwave impulse (design/program/finish/swarm/PLANS.md S8, sim half) | BUILD | OPEN — in flight: SWARM lane F (launched 2026-11-05) |
+| 571 | S9 | Arenas are friend and foe — one signature hazard each, round matches menu art (design/program/finish/swarm/PLANS.md S9; bible/ARENAS.md) | BUILD | OPEN — in flight: SWARM lane F (launched 2026-11-05) |
+| 572 | S10 | Shape of a round — visible gate arrivals, last three come to you, 60–90 s rounds (design/program/finish/swarm/PLANS.md S10) | BUILD | OPEN — in flight: SWARM lane F (launched 2026-11-05) |
+| 573 | S12 | Zombies staples with ceremony — drops, call-ins, special rounds, perks, Fortify (design/program/finish/swarm/PLANS.md S12) | BUILD | OPEN — in flight: SWARM lane F (launched 2026-11-05) |
+| 574 | S14 | Bosses — first boss at wave 5, readable phases, death into ammunition (design/program/finish/swarm/PLANS.md S14; bible/BESTIARY.md Part 4) | BUILD | OPEN — in flight: SWARM lane F (launched 2026-11-05) |
+| 575 | S17 | In-arena depots (Zombies wall-buys) — after S16 (design/program/finish/swarm/PLANS.md S17) | BUILD | OPEN — in flight: SWARM lane F (launched 2026-11-05) |
+| 576 | S18 | Named wave recipes, gates and lanes — after S16 (design/program/finish/swarm/PLANS.md S18; bible/ARENAS.md recipe book) | BUILD | OPEN — in flight: SWARM lane F (launched 2026-11-05) |
+| 577 | S19 | The arena escalates at waves 10 and 15 — after S16 (design/program/finish/swarm/PLANS.md S19; bible/ARENAS.md) | BUILD | OPEN — in flight: SWARM lane F (launched 2026-11-05) |
+| 578 | S2 | Quiet glass — no chatter/jargon in a Swarm round, ≤ 3 callouts of ≤ 3 words (design/program/finish/swarm/PLANS.md S2) | BUILD | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 579 | S3 | Fair credit — chain and callouts only for what the player caused (design/program/finish/swarm/PLANS.md S3) | FIX | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 580 | S4 | One press to the fight — SWARM on the title, prompts once per machine (design/program/finish/swarm/PLANS.md S4) | BUILD | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 581 | S5 | Swarm controls — compact set, powers stay on 1–5, icon power bar (design/program/finish/swarm/PLANS.md S5) | BUILD | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 582 | S6 | A readable horde — Brood size/colour/death pop, enemy hues, throwable outlines, spectator camera (design/program/finish/swarm/PLANS.md S6) | BUILD | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 583 | S8-look | Explosions and deaths — instant kill bursts, break-up fire/rings/light, global flash cap (design/program/finish/swarm/PLANS.md S8, look half) | BUILD | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 584 | S11 | Pick one of three cards between rounds; catalog behind Browse all (design/program/finish/swarm/PLANS.md S11) | BUILD | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 585 | S13 | Payoff ladder and the sound of Swarm (design/program/finish/swarm/PLANS.md S13) | BUILD | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 586 | S14-UI | Boss name card and victory screen (design/program/finish/swarm/PLANS.md S14) | BUILD | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 587 | S15 | Combo cards — evolutions from existing parts (design/program/finish/swarm/PLANS.md S15) | BUILD | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 588 | S16 | Full-run rehearsal until one recorded run has no findings (design/program/finish/swarm/PLANS.md S16) | BUILD | OPEN — in flight: SWARM lane S (launched 2026-11-05) |
+| 589 | E10 | Frame-truth dashboard + JSON trace (design/program/finish/MASTER_PLAN.md E10) | BUILD | OPEN — in flight: master-plan Lane 1 (launched 2026-11-06) |
+| 590 | E1 | Playout buffer — the ship can never freeze or blip (design/program/finish/MASTER_PLAN.md E1; bible/ENGINE.md) | BUILD | OPEN — in flight: master-plan Lane 1 (launched 2026-11-06) |
+| 591 | E5 | Shared memory everywhere, Electron-first (design/program/finish/MASTER_PLAN.md E5) | BUILD | OPEN — in flight: master-plan Lane 1 (launched 2026-11-06) |
+| 592 | E9 | Load in seconds (design/program/finish/MASTER_PLAN.md E9) | BUILD | OPEN — in flight: master-plan Lane 1 (launched 2026-11-06) |
+| 593 | E3 | Mode-scoped simulation + simulation LOD (design/program/finish/MASTER_PLAN.md E3) | BUILD | OPEN — in flight: master-plan Lane 2 (launched 2026-11-06) |
+| 594 | E2 | Diagnose-and-replace the sim hot path: worker step p95 ≤ 8 ms (design/program/finish/MASTER_PLAN.md E2) | BUILD | OPEN — in flight: master-plan Lane 2 (launched 2026-11-06) |
+| 595 | E4 | Data-oriented core — SoA entity store, facade, Rust/WASM gate (design/program/finish/MASTER_PLAN.md E4; bible/ENGINE.md §2) | BUILD | OPEN — in flight: master-plan Lane 2 (launched 2026-11-06) |
+| 596 | E6 | Nothing appears before it's ready — residency manager, no pop-in (design/program/finish/MASTER_PLAN.md E6) | BUILD | OPEN — in flight: master-plan Lane 3 (launched 2026-11-06) |
+| 597 | E7 | The renderer that knows its world + WebGPU / render-worker spikes (design/program/finish/MASTER_PLAN.md E7; bible/ENGINE.md §1) | BUILD | OPEN — in flight: master-plan Lane 3 (launched 2026-11-06) |
+| 598 | P1 | The Ship Sheet — six plain stats, deltas on hover, build identity (design/program/finish/MASTER_PLAN.md P1; bible/SHIPS.md) | BUILD | OPEN — in flight: master-plan Lane 4 (launched 2026-11-06) |
+| 599 | P2 | Parts that explain themselves (design/program/finish/MASTER_PLAN.md P2) | BUILD | OPEN — in flight: master-plan Lane 4 (launched 2026-11-06) |
+| 600 | P3 | One pilot, one progression — design doc for owner approval first (design/program/finish/MASTER_PLAN.md P3) | BUILD | OPEN — in flight: master-plan Lane 4 (launched 2026-11-06) |
+| 601 | W1 | The Journey — arrange the game into acts; owner approves the doc (design/program/finish/MASTER_PLAN.md W1; bible/WORLD.md §3) | BUILD | OPEN — in flight: master-plan Lane 5 (launched 2026-11-06) |
+| 602 | W5 | The first hour, Gold (design/program/finish/MASTER_PLAN.md W5) | BUILD | OPEN — in flight: master-plan Lane 5 (launched 2026-11-06) |
+| 603 | W2 | Levels with shape — forty hand-crafted missions as situations (CH-40) (design/program/finish/MASTER_PLAN.md W2) | BUILD | OPEN — in flight: master-plan Lane 5 (launched 2026-11-06) |
+| 604 | W3 | Sectors with identity (design/program/finish/MASTER_PLAN.md W3; bible/WORLD.md §1) | BUILD | OPEN — in flight: master-plan Lane 5 (launched 2026-11-06) |
+| 605 | W4 | Characters who remember you (design/program/finish/MASTER_PLAN.md W4) | BUILD | OPEN — in flight: master-plan Lane 5 (launched 2026-11-06) |
+| 606 | X1 | One art direction — style bible + lineup; owner approves (design/program/finish/MASTER_PLAN.md X1) | ART | OPEN — in flight: master-plan Lane 6 (launched 2026-11-06) |
+| 607 | X2 | Asset production campaign — image-verified (design/program/finish/MASTER_PLAN.md X2; DIRECTION.md §8) | ART | OPEN — in flight: master-plan Lane 6 (launched 2026-11-06) |
+| 608 | X4 | Sound and music — adaptive score, impact sound by mass (design/program/finish/MASTER_PLAN.md X4) | BUILD | OPEN — in flight: master-plan Lane 6 (launched 2026-11-06) |
+| 609 | X3 | Adventure glass — carry the Swarm glass policy (design/program/finish/MASTER_PLAN.md X3) | BUILD | OPEN — in flight: master-plan Lane 6 (launched 2026-11-06) |
+| 610 | X5 | Controls and input contexts (design/program/finish/MASTER_PLAN.md X5) | BUILD | OPEN — in flight: master-plan Lane 6 (launched 2026-11-06) |
+| 611 | Q1 | Switched-off and placeholder census, decided and executed (design/program/finish/MASTER_PLAN.md Q1) | FIX | OPEN — in flight: master-plan Lane 7 (launched 2026-11-06) |
+| 612 | Q3 | The taste gate — one rubric and review habit (design/program/finish/MASTER_PLAN.md Q3; bible/QUALITY.md) | BUILD | OPEN — in flight: master-plan Lane 7 (launched 2026-11-06) |
+| 613 | Q5 | Tests that protect the game — tiers, reference versioning tool (design/program/finish/MASTER_PLAN.md Q5) | BUILD | OPEN — in flight: master-plan Lane 7 (launched 2026-11-06) |
+| 614 | Q2 | Route walkers — every journey walked, defects filed; keeps bible/MOMENTS.md status (design/program/finish/MASTER_PLAN.md Q2) | BUILD | OPEN — in flight: master-plan Lane 7 (launched 2026-11-06) |
+| 615 | Q4 | The razor — fewer, deeper systems (design/program/finish/MASTER_PLAN.md Q4) | FIX | OPEN — in flight: master-plan Lane 7 (launched 2026-11-06) |
+| 616 | E8 | Native-engine verdict — Swarm slice with fixed kill criteria, after E1/E2 (design/program/finish/MASTER_PLAN.md E8) | BUILD | OPEN — in flight: master-plan Lane 7 (launched 2026-11-06) |
+| 617 | CH-02 | Ram damage for everyone by closing speed and mass ratio (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 618 | CH-01 | Juggernaut handling — the tank fantasy (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 619 | CH-07 | Domino docking queues (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 620 | CH-04 | Chain reactions — volatile cargo and fuel tanks (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 621 | CH-03 | Breakable stations with consequences (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 622 | CH-05 | Wreckage that stays and matters (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 623 | CH-06 | Rocks that break into throwable pieces (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 624 | CH-30 | Hijack anything, anytime (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 625 | CH-31 | Ships with one signature verb each (design/program/finish/chaos/IDEAS.md; bible/SHIPS.md) | BUILD | OPEN |
+| 626 | CH-32 | Cargo trains you can cut and steal (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 627 | CH-33 | Call your ship (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 628 | CH-10 | The reaction matrix — create chaos/MATRIX_STATUS.md and fill every cell (design/program/finish/chaos/IDEAS.md; chaos/README.md §3) | BUILD | OPEN |
+| 629 | CH-61 | Pilots with personality (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 630 | CH-12 | Horns and near-misses (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 631 | CH-11 | Panic that spreads (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 632 | CH-13 | Road rage (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 633 | CH-14 | Vultures on spilled cargo (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 634 | CH-16 | Visible witnesses you can stop (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 635 | CH-20 | The heat ladder, everywhere (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 636 | CH-21 | Losing the heat — search cones, hiding (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 637 | CH-22 | Police with physics — tow, box, ram, mines, blockades (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 638 | CH-23 | Getting caught isn't game over (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 639 | CH-24 | Hunters with names who adapt (design/program/finish/chaos/IDEAS.md; bible/BESTIARY.md Part 3) | BUILD | OPEN |
+| 640 | CH-15 | Have-a-go heroes (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 641 | CH-17 | Light the fuse on a turf war (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 642 | CH-18 | The station reacts (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 643 | CH-62 | Barks that fit the moment; wire unused voice lines (design/program/finish/chaos/IDEAS.md; bible/WORLD.md §4) | BUILD | OPEN |
+| 644 | CH-64 | Every ship tells you what it's doing (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 645 | CH-63 | Stations as places with routines (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 646 | CH-65 | Consequences that persist across save/continue (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 647 | CH-53 | Fail fast — death to control ≤ 8 s (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 648 | CH-51 | Context prompts at the target (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 649 | CH-54 | One radial for everything quick (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 650 | CH-52 | A map that shows opportunity + route line (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 651 | CH-42 | Things happening on the road — the chaos director, with the CH-60 life count (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 652 | CH-41 | Activities with physics (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 653 | CH-43 | Chaos pays — gains and costs ledger (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 654 | CH-44 | Notoriety — outlaw ↔ hero (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 655 | CH-56 | Controls that feel arcade-right (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 656 | CH-50 | A camera for chaos (design/program/finish/chaos/IDEAS.md) | BUILD | OPEN |
+| 657 | HS-01 | The Big Dig — Helios (design/program/finish/bible/HOTSPOTS.md #1) | BUILD | OPEN |
+| 658 | HS-02 | Helios Station rush hour (design/program/finish/bible/HOTSPOTS.md #2) | BUILD | OPEN |
+| 659 | HS-03 | The Ring Circuit — Helios (design/program/finish/bible/HOTSPOTS.md #3) | BUILD | OPEN |
+| 660 | HS-04 | The Shipbreaker — Ceres (design/program/finish/bible/HOTSPOTS.md #4) | BUILD | OPEN |
+| 661 | HS-05 | The Throughline — Ceres (design/program/finish/bible/HOTSPOTS.md #5) | BUILD | OPEN |
+| 662 | HS-06 | Junction Market — Tethys (design/program/finish/bible/HOTSPOTS.md #6) | BUILD | OPEN |
+| 663 | HS-07 | The Split Station — Tethys (design/program/finish/bible/HOTSPOTS.md #7) | BUILD | OPEN |
+| 664 | HS-08 | The Forge — Vesta (design/program/finish/bible/HOTSPOTS.md #8) | BUILD | OPEN |
+| 665 | HS-09 | Red Cable Yard — Vesta (design/program/finish/bible/HOTSPOTS.md #9) | BUILD | OPEN |
+| 666 | HS-10 | The Drift Derby — Pallas (design/program/finish/bible/HOTSPOTS.md #10) | BUILD | OPEN |
+| 667 | HS-11 | The Shepherd's Ring — Io (design/program/finish/bible/HOTSPOTS.md #11) | BUILD | OPEN |
+| 668 | HS-12 | The Hull Garden — Charon (design/program/finish/bible/HOTSPOTS.md #12) | BUILD | OPEN |
+| 669 | HS-13 | The Pirate Citadel — Sker Haven (design/program/finish/bible/HOTSPOTS.md #13) | BUILD | OPEN |
+| 670 | HS-14 | The Lighthouse — Veil (design/program/finish/bible/HOTSPOTS.md #14) | BUILD | OPEN |
+| 671 | HS-15 | The Towed Moonlet — Ashfall (design/program/finish/bible/HOTSPOTS.md #15) | BUILD | OPEN |
+| 672 | HS-16 | The Gladiator Pit — Ashfall (design/program/finish/bible/HOTSPOTS.md #16) | BUILD | OPEN |
+| 673 | K1 | Part census with parallel vision tagging (design/program/finish/KIT.md K1) | ART | OPEN |
+| 674 | K2 | The mount standard — sockets on every hull, a visual for every fitting (design/program/finish/KIT.md K2) | BUILD | OPEN |
+| 675 | K3 | Visible loadout — the Freelancer moment; muzzles are real (design/program/finish/KIT.md K3; replaces master P4) | BUILD | OPEN |
+| 676 | K5 | Livery and wear layers; earned paint (design/program/finish/KIT.md K5) | ART | OPEN |
+| 677 | K4 | The variant factory — ≥ 3 variants per role per faction (design/program/finish/KIT.md K4) | BUILD | OPEN |
+| 678 | K6 | Parts that break off (design/program/finish/KIT.md K6) | BUILD | OPEN |
+| 679 | K7 | Places from parts — station/Hotspot module kit (design/program/finish/KIT.md K7) | ART | OPEN |
+| 680 | K9 | Fill the real gaps after the census (design/program/finish/KIT.md K9; DIRECTION.md §8) | ART | OPEN |
+| 681 | K8 | Vision QA swarm — standing two-review gate on every asset (design/program/finish/KIT.md K8) | ART | OPEN |
+| 682 | LT-1 | Golden frames (12) + look-values probe + squint test — capture the BEFORE set (design/program/finish/bible/LOOK.md §3, §6) | BUILD | OPEN |
+| 683 | LT-2 | Tone-mapping A/B: ACES vs AgX vs Khronos Neutral (design/program/finish/bible/LOOK.md §4.1) | BUILD | OPEN |
+| 684 | LT-3 | Energy-conserving mip-chain bloom with final mix — glow without blur, ≤ 1.5 ms (design/program/finish/bible/LOOK.md §4.2) | BUILD | OPEN |
+| 685 | LT-4 | Exposure adaptation with a glow budget (design/program/finish/bible/LOOK.md §4.3) | BUILD | OPEN |
+| 686 | LT-5 | Light that lands — engine/weapon light pools, explosion flash lights, light cards (design/program/finish/bible/LOOK.md §4.4) | BUILD | OPEN |
+| 687 | LT-6 | Air that holds light — haze, dust motes, authored light shafts, heat shimmer (design/program/finish/bible/LOOK.md §4.5) | BUILD | OPEN |
+| 688 | LT-7 | Per-sector grades and key/fill lights (design/program/finish/bible/LOOK.md §4.7; bible/WORLD.md §1) | BUILD | OPEN |
+| 689 | FL-1 | Engine set — redline shake, RCS puffs, retro burn, ignition (design/program/finish/bible/FEEL.md §2) | BUILD | OPEN |
+| 690 | FL-2 | Mass set — pitch on thrust, settle, heavy inertia lag, mass-scaled camera (design/program/finish/bible/FEEL.md §1, §6) | BUILD | OPEN |
+| 691 | FL-3 | Strain set — rope creak, hull groan, winch whine (design/program/finish/bible/FEEL.md §3) | BUILD | OPEN |
+| 692 | FL-4 | Impact set — scrape, crumple, impact framing, tuned hit-stop/trauma by mass (design/program/finish/bible/FEEL.md §4) | BUILD | OPEN |
+| 693 | FL-5 | Damage set — wobble, creak (design/program/finish/bible/FEEL.md §5) | BUILD | OPEN |
+| 694 | FL-6 | Sound weight — class voices, Doppler, occlusion, haptics (design/program/finish/bible/FEEL.md §7) | BUILD | OPEN |
+| 695 | RF-0 | Asset census + dashboard (design/program/finish/bible/ASSETS.md §2) | ART | OPEN |
+| 696 | RF-A1 | Hidden geometry removal by visibility bake (design/program/finish/bible/ASSETS.md A1) | ART | OPEN |
+| 697 | RF-A2 | Joint cleanup at part overlaps (design/program/finish/bible/ASSETS.md A2) | ART | OPEN |
+| 698 | RF-A3 | Merge by material, keep swappable/breakable parts (design/program/finish/bible/ASSETS.md A3) | ART | OPEN |
+| 699 | RF-A4 | Shared family materials and trim sheets (design/program/finish/bible/ASSETS.md A4) | ART | OPEN |
+| 700 | RF-A5 | LOD chains and impostors (design/program/finish/bible/ASSETS.md A5) | ART | OPEN |
+| 701 | RF-A6 | Textures — KTX2, texel density, bakes (design/program/finish/bible/ASSETS.md A6) | ART | OPEN |
+| 702 | RF-A10 | Collision proxies per part (design/program/finish/bible/ASSETS.md A10) | ART | OPEN |
+| 703 | RF-A9 | Scale normalisation (design/program/finish/bible/ASSETS.md A9) | ART | OPEN |
+| 704 | RF-A7 | Emissive pass — light strips, windows, cores on every asset (design/program/finish/bible/ASSETS.md A7; design/program/finish/bible/LOOK.md §4.3) | ART | OPEN |
+| 705 | RF-A8 | Value and colour pass — no near-black hulls (design/program/finish/bible/ASSETS.md A8; design/program/finish/bible/LOOK.md §3) | ART | OPEN |
+| 706 | RF-A11 | Style punch-up for weak silhouettes (design/program/finish/bible/ASSETS.md A11; bible/SHIPS.md) | ART | OPEN |
+
+### Landed rows index (consolidated 2026-10-15)
+
+One line per landed board row whose narrative table was consolidated to git history in the
+2026-10-15 token-reduction pass. Status words: DONE = shipped with receipts; SHIPPED = landed on
+the player route; CLOSED = closed without build (already-true, superseded, or withdrawn). The
+seam table above still names these rows; this index keeps the board self-consistent.
+
+| # | ID | Work | Kind | Status |
+|---|---|---|---|---|
+| 30 | VM-REPORTS | — narrative in git history | — | DONE |
+| 57 | PQ-129.11–.17 | — narrative in git history | — | DONE |
+| 60 | PQ-050.01–.22 | — narrative in git history | — | DONE |
+| 63 | PQ-161.00 | — narrative in git history | — | DONE |
+| 64 | ZH-STRANGER | — narrative in git history | — | DONE |
+| 74 | PB-ECON-A | — narrative in git history | — | DONE |
+| 83 | PB-MIS-B | — narrative in git history | — | DONE |
+| 84 | PB-MIS-C | — narrative in git history | — | DONE |
+| 85 | PB-MIS-D | — narrative in git history | — | DONE |
+| 86 | PB-MIS-E | — narrative in git history | — | DONE |
+| 100 | PB-SWARM-D | — narrative in git history | — | DONE |
+| 101 | PB-SWARM-E | — narrative in git history | — | DONE |
+| 106 | PB-HAND-B | — narrative in git history | — | DONE |
+| 107 | PB-ECON-B | — narrative in git history | — | DONE |
+| 108 | PB-ECON-C | — narrative in git history | — | DONE |
+| 109 | PB-ECON-D | — narrative in git history | — | DONE |
+| 110 | PB-ECON-E | — narrative in git history | — | DONE |
+| 117 | PB-BUILD-A | — narrative in git history | — | DONE |
+| 118 | PB-BUILD-B | — narrative in git history | — | DONE |
+| 119 | PB-BUILD-C | — narrative in git history | — | DONE |
+| 120 | PB-CONS-A | — narrative in git history | — | DONE |
+| 122 | PB-CONS-C | — narrative in git history | — | DONE |
+| 123 | PB-CONS-D | — narrative in git history | — | DONE |
+| 124 | PB-CONS-E | — narrative in git history | — | DONE |
+| 140 | PB-PERF-C | — narrative in git history | — | DONE |
+| 141 | PB-PERF-D | — narrative in git history | — | DONE |
+| 143 | PB-AUD-A | — narrative in git history | — | DONE |
+| 150 | PB-CONT-A | — narrative in git history | — | DONE |
+| 151 | PB-CONT-B | — narrative in git history | — | DONE |
+| 152 | PB-CONT-C | — narrative in git history | — | DONE |
+| 153 | PB-CONT-D | — narrative in git history | — | DONE |
+| 154 | PB-CONT-E | — narrative in git history | — | DONE |
+| 162 | BUILD | — narrative in git history | — | DONE |
+| 163 | BUILD | — narrative in git history | — | DONE |
+| 165 | BUILD | — narrative in git history | — | DONE |
+| 167 | BUILD | — narrative in git history | — | DONE |
+| 176 | BUILD | — narrative in git history | — | DONE |
+| 178 | BUILD | — narrative in git history | — | DONE |
+| 179 | BUILD | — narrative in git history | — | DONE |
+| 180 | BUILD | — narrative in git history | — | DONE |
+| 181 | BUILD | — narrative in git history | — | DONE |
+| 183 | BUILD | — narrative in git history | — | DONE |
+| 184 | BUILD | — narrative in git history | — | DONE |
+| 185 | BUILD | — narrative in git history | — | DONE |
+| 186 | BUILD | — narrative in git history | — | DONE |
+| 188 | BUILD | — narrative in git history | — | DONE |
+| 189 | BUILD | — narrative in git history | — | DONE |
+| 191 | BUILD | — narrative in git history | — | DONE |
+| 192 | BUILD | — narrative in git history | — | DONE |
+| 194 | BUILD | — narrative in git history | — | DONE |
+| 196 | BUILD | — narrative in git history | — | DONE |
+| 197 | BUILD | — narrative in git history | — | DONE |
+| 200 | BUILD | — narrative in git history | — | DONE |
+| 201 | BUILD | — narrative in git history | — | DONE |
+| 202 | BUILD | — narrative in git history | — | DONE |
+| 203 | BUILD | — narrative in git history | — | DONE |
+| 204 | BUILD | — narrative in git history | — | DONE |
+| 206 | BUILD | — narrative in git history | — | DONE |
+| 208 | BUILD | — narrative in git history | — | DONE |
+| 209 | BUILD | — narrative in git history | — | DONE |
+| 210 | BUILD | — narrative in git history | — | DONE |
+| 211 | BUILD | — narrative in git history | — | DONE |
+| 212 | BUILD | — narrative in git history | — | DONE |
+| 213 | BUILD | — narrative in git history | — | DONE |
+| 214 | BUILD | — narrative in git history | — | DONE |
+| 215 | BUILD | — narrative in git history | — | DONE |
+| 216 | BUILD | — narrative in git history | — | DONE |
+| 218 | BUILD | — narrative in git history | — | DONE |
+| 220 | BUILD | — narrative in git history | — | DONE |
+| 222 | BUILD | — narrative in git history | — | DONE |
+| 223 | ART | — narrative in git history | — | DONE |
+| 226 | BUILD | — narrative in git history | — | DONE |
+| 228 | FB-070+FB-080 | — narrative in git history | — | DONE |
+| 230 | FB-071+FB-021 | — narrative in git history | — | DONE |
+| 232 | FB-023+FB-024+FB-120+FB-027 | — narrative in git history | — | DONE |
+| 233 | FB-025+FB-026 | — narrative in git history | — | DONE |
+| 237 | FB-003+FB-004+FB-005+FB-113 | — narrative in git history | — | DONE |
+| 238 | FB-002+FB-116+FB-117+FB-118+FB-136 | — narrative in git history | — | DONE |
+| 240 | FB-015+FB-114+FB-093+FB-094+FB-109 | — narrative in git history | — | DONE |
+| 241 | FB-104+FB-108+FB-115+FB-110+FB-130 | — narrative in git history | — | DONE |
+| 243 | FB-030 | — narrative in git history | — | DONE |
+| 244 | FB-033+FB-125+FB-038 | — narrative in git history | — | DONE |
+| 245 | FB-034+FB-036+FB-042+FB-045+FB-051+FB-052+FB-140 | — narrative in git history | — | DONE |
+| 246 | FB-035+FB-037+FB-131 | — narrative in git history | — | DONE |
+| 247 | FB-039+FB-040+FB-119+FB-041 | — narrative in git history | — | DONE |
+| 248 | FB-043+FB-044 | — narrative in git history | — | DONE |
+| 249 | FB-046+FB-047+FB-048+FB-050 | — narrative in git history | — | DONE |
+| 250 | FB-049+FB-124+FB-101+FB-111 | — narrative in git history | — | DONE |
+| 252 | FB-057+FB-058+FB-060+FB-061+FB-062 | — narrative in git history | — | DONE |
+| 253 | FB-063+FB-064+FB-129+FB-127 | — narrative in git history | — | DONE |
+| 254 | FB-065+FB-066+FB-067+FB-068+FB-137+FB-069 | — narrative in git history | — | DONE |
+| 255 | FB-072+FB-074+FB-077+FB-073+FB-075+FB-076+FB-142 | — narrative in git history | — | DONE |
+| 258 | FB-088+FB-089+FB-090+FB-095 | — narrative in git history | — | DONE |
+| 259 | FB-091+FB-092+FB-096+FB-097+FB-098+FB-141 | — narrative in git history | — | DONE |
+| 262 | FB-134+FB-138+FB-139+FB-011+FB-008 | — narrative in git history | — | DONE |
+| 263 | SWARM-01 | — narrative in git history | — | DONE |
+| 264 | SWARM-02 | — narrative in git history | — | DONE |
+| 265 | SWARM-03 | — narrative in git history | — | DONE |
+| 266 | SWARM-04 | — narrative in git history | — | DONE |
+| 267 | SWARM-05 | — narrative in git history | — | DONE |
+| 268 | SWARM-06 | — narrative in git history | — | DONE |
+| 269 | SWARM-07 | — narrative in git history | — | DONE |
+| 274 | CRAFT-INTEGRITY | — narrative in git history | — | DONE |
+| 275 | RELEASE-TRUTH | — narrative in git history | — | DONE |
+| 276 | MAP-INTENT | — narrative in git history | — | DONE |
+| 277 | CONTRACT-IDENTITY | — narrative in git history | — | DONE |
+
+## 2. Product north star
+
+SpaceFace is an open-source systemic space game with the legible economic and navigational base of games such as Endless Sky, but its distinctive play is physical. Gravity, inertia, collision, Massline attachment, boost, payload mass, fields, recoil, orbital geometry, and improvised physical tricks should produce tactics that are visible, learnable, and surprising.
+
+A strong implementation therefore does all of the following:
+
+- creates a meaningful player decision rather than merely another data row;
+- lets existing physical systems interact instead of scripting a decorative imitation;
+- keeps cause and consequence readable at the normal game camera;
+- preserves deterministic simulation, single-writer state ownership, save/Continue, and Browser/Electron parity;
+- treats ambitious graphics as part of the feature, not a luxury to suppress;
+- pays for new spectacle through structural performance work—LOD/HLOD, batching, instancing, culling, cadence, admission, compression, pooling, and bounded queries—not through silent quality cuts;
+- leaves one coherent game path rather than a second implementation for probes, Electron, or a special mission.
+
+When a plan and live evidence disagree, preserve the intended player outcome and repair the execution path. Do not preserve a stale technique merely because prose once named it.
+
+For cross-system game-direction expansion, start at
+[`design/vision/GAME_DIRECTION_EXPANSION.md`](./design/vision/GAME_DIRECTION_EXPANSION.md). It owns
+durable portfolio axes and player-story coherence, never priority, leases, implementation, status, or
+acceptance. Shape one bounded slice, then return to §1 and admit it through the normal program route;
+graphics-only work still follows the standing graphics route above.
+The optional
+[`design/vision/INFERENCE_CONVERGENCE_METHOD.md`](./design/vision/INFERENCE_CONVERGENCE_METHOD.md)
+captures the useful PR #92/ChatGPT research loop for comparing alternatives and cutting weak ideas;
+it supplies no task, ownership, gate, quota, or acceptance authority.
+
+## 3. Authority and truth
+
+**The plan-family index is [`design/PLAN_REGISTRY.md`](./design/PLAN_REGISTRY.md).** It names which
+plan family owns what, and which are ACTIVE, FUTURE or subordinate evidence. It correctly points at
+THIS file as the agent front door, but nothing here pointed back at it — so an agent entering
+through the front door could not find the index. That gap is closed here. If you are looking for a
+plan and it is not in this document, look there before assuming it does not exist.
+
+
+Use this order when sources disagree:
+
+1. the user's current direction;
+2. [`ARCHITECTURE.md`](./ARCHITECTURE.md) for technical invariants and owner boundaries;
+3. [`design/VISION.md`](./design/VISION.md) for the owner's fantasy and UVP — wins on product emphasis;
+4. [`design/GDD_2_0.md`](./design/GDD_2_0.md) for product intent;
+5. `design/program/` for admitted work, live status, and acceptance;
+6. the selected active packet or activated spec;
+7. supporting plans and references;
+8. historical handoffs and archives, for archaeology only.
+
+A lower source cannot impose a palette, layout recipe, asset ceiling, implementation technique, process quota, permanent ownership lane, or gameplay prohibition that contradicts a higher source.
+
+Live code, current checks, and player-route evidence determine whether descriptive claims and packet
+seam maps are true. They do not overrule a higher architectural or product contract merely because a
+buggy implementation is current.
+
+## 4. The five control surfaces
+
+| Surface | Lifetime | Owns | Must not own |
+|---|---|---|---|
+| [`NOW.md`](./design/program/NOW.md) + local checkpoints | volatile | threads actually mutating now, exact dirty hunks, brief publication windows, per-task todo progress, and up-to-five-task lookahead intent | history, task-long ownership, subsystem lanes, dependencies, completion, test transcripts, heartbeats, permanent queue claims |
+| `scripts/program-dispatch.mjs` + [`program-queue.json`](./design/program/roadmap/program-queue.json) | compact read view + durable machine index | exact dispatch units, parent identity, integration dependencies, broad checks/evidence, coarse parent state | active mutation windows, implementation prose, acceptance transcripts |
+| [`active/`](./design/program/roadmap/active/README.md) | active packet | executable outcome, live seams, phases, write budget, proof budget, stop conditions | global status, unrelated backlog, permanent architecture |
+| `receipts/` and acceptance pages | evidence | exact-revision proof and honest residuals | future requirements or dispatch state |
+| module/event/system maps | generated or maintained reference | low-context code navigation | product priority or completion claims |
+
+Status is two-dimensional:
+
+- **Lifecycle:** `planned → ready → claimed → implemented → integrated`, with `deferred` and
+  `historical` as explicit dispositions. The legacy `blocked` enum remains only for schema
+  compatibility. Human/owner-verdict wording is legacy: use an independent agent review against the
+  named evidence; only an explicit user-requested external action may remain `deferred`. Internal
+  dependencies, another thread, dirty files, tools, reviews, or hardware never become blockers.
+- **Acceptance:** `unproven → focused_green → route_accepted → milestone_accepted`.
+
+These axes do not imply each other. Integrated code may still lack route acceptance; a source asset may be implemented but not runtime-wired; a focused-green packet is not automatically fun, readable, or complete.
+
+The existing queue's `state` field is transitional and can contain legacy acceptance labels. Treat it only as a coarse index value. The active packet and exact-revision receipts own the separate lifecycle and acceptance claims until the queue schema is migrated.
+
+## 5. Selecting and shaping work
+
+Choose the first dependency-front dispatch unit, or an exact unit named by the user, and reduce it to
+the smallest coherent slice that can reach its declared terminal state. `--ready` is the preferred
+integration order, not a list of the only work that exists. `program-dispatch --next` skips fresh
+lookahead reservations and `--ready` annotates them; those reservations cover at most the current
+unit plus four next units and are not queue lifecycle claims. `NOW.md` prevents one dirty hunk from
+being overwritten: if that exact hunk is actively changing, continue the task's disjoint work or take
+the next unreserved unit. If a future reservation is stale or another agent has taken it, re-plan the
+remaining horizon; never contest or revert the other agent. Never turn the overlap into a blocked
+packet, subsystem, or roadmap.
+
+An executable packet must name:
+
+- one player outcome and one normal route;
+- current owner modules and the events/APIs they expose;
+- integration dependencies and any exact live handoff needed at mutation time;
+- exact or bounded write surfaces;
+- explicit non-goals;
+- deterministic/save/single-writer invariants;
+- graphics and accessibility semantics;
+- expected entity, query, allocation, draw, texture, and residency growth;
+- a focused test ladder and an expensive-probe launch budget;
+- review convergence rules;
+- checkoff and receipt updates;
+- conditions that require stopping and returning a shared-change request.
+
+If the packet still needs several unrelated owners, several visual families, or several independently releasable player outcomes, split it. Queue rows such as a graphics overhaul may remain portfolio containers; agents implement leaf packets, not the umbrella in one heroic blur.
+
+## 6. Implementation posture
+
+Prefer owner reuse and new narrow seams over parallel authorities. Characterize the current behavior before changing it. Write a failing seconds-scale regression before debugging through a browser route. Keep public behavior and state transitions deterministic; wall time and callback order may observe or present state, never decide simulation truth.
+
+For physics-heavy work, ask four questions early:
+
+1. What physical state is authoritative?
+2. Which existing systems can couple to it without a special case?
+3. What counterplay or failure mode keeps it from becoming a button that wins?
+4. What cue makes mass, force, risk, and ownership legible without requiring hidden telemetry?
+
+For visual work, do not instruct agents to make less. Require the exact authored identity, stable transforms and sockets, appropriate LOD/HLOD, bounded residency, normal-camera review, and one measured route. Placeholder clay is diagnostic only; it is not a shipping style.
+
+## 7. Verification that converges
+
+**A check that runs a `node:test` file with `await import()` CANNOT FAIL.** Found 2026-08-23 in a
+brand-new check whose own header promised "a `count > 0` rule is expressly rejected". Importing a
+`node:test` module registers its tests and the runner executes them, but a failing assertion is
+reported to the REPORTER — it does not reject the import. The block had a `try`/`catch`, an error
+message and a failure counter, and still exited **0** with a deliberately failing test injected.
+
+Run the suite as a child process and honour its exit code:
+
+```js
+const suite = spawnSync(process.execPath, ['--test', join(ROOT, 'test/x.test.mjs')], { cwd: ROOT });
+if (suite.status !== 0) { /* fail */ }
+```
+
+This is the §11.10a rule in its sharpest form: **reading that block would never have revealed it —
+mutating it took one minute.** A check that cannot fail is worse than no check, because it converts
+"unverified" into "verified" in everyone's mind. Before trusting any new gate, inject a failure and
+watch it go red.
+
+
+Choose the proof layer through [`docs/VALIDATION_WORKFLOW.md`](./docs/VALIDATION_WORKFLOW.md). The
+finite review and validation state machine lives in
+[`00_EXECUTION_PROTOCOL.md`](./design/program/roadmap/00_EXECUTION_PROTOCOL.md). Its essential rules
+are:
+
+- focused deterministic checks precede broad or live probes;
+- every packet names its lab scenario and executor before L3, or records why the claim is not
+  representable headlessly and what smallest lab/schema gap prevents it;
+- a broker manifest uses `requiresScenario` when an eligible lab scenario already exists, binding
+  that scenario's fresh pass to the current candidate before a Browser/Electron claim is minted;
+- each predeclared acceptance cell receives at most one attempt per candidate digest, while a campaign
+  claim may contain several distinct cells;
+- a product, harness, or nondeterminism failure must be reduced to a seconds-scale regression before
+  another affected acceptance attempt;
+- retain unchanged failure fingerprints as evidence; change the candidate or approach instead of rerunning them;
+- evidence review closes with discovery, repair, and a causal re-review rather than a succession of
+  open-ended fresh audits; use a separate reviewer when one exists, but the finishing agent may issue
+  the verdict from retained evidence and must disclose that it is a self-review;
+- unrelated new ideas become follow-ups, not reasons to reopen the packet indefinitely;
+- every execution ends `PASS`, `FAIL`, `UNPROVEN`, or `DEFERRED` with an exact-revision receipt,
+  then reports plain `DONE` or `NOT DONE` to the user.
+
+Certification remains fail-fast. A diagnostic route may collect several independent recoverable
+failures in one run, but it must abort when boot, navigation, or observation authority is lost and
+its aggregate report cannot promote acceptance.
+
+The repository already contains a validation broker. New expensive routes should add a manifest and
+use it instead of inventing another retry loop.
+
+## 8. Performance is part of design
+
+Every packet that can add per-frame work, entities, colliders, DOM, particles, materials, textures, asset admission, save payload, or queries must declare a cost model before implementation and report matched before/after evidence at acceptance.
+
+Use [`design/archive/perf/PERF_BUDGET.md`](design/archive/perf/PERF_BUDGET.md). Preserve the target and floor profiles. Optimize invisible work first. Do not pass by lowering default render scale, effects, shadows, particles, asset detail, or content density. The durable multi-approach tradeoff board lives in [`design/archive/perf/PERFORMANCE_OPTIMIZATION_CONSTELLATION.md`](design/archive/perf/PERFORMANCE_OPTIMIZATION_CONSTELLATION.md). The exhaustive same-picture option space — including investigations, scaffolding, tabletop-correct cuts, and large Worker/WASM/WebGPU/native/Rust jobs — lives in [`design/archive/perf/PERF_OPTION_SPACE.md`](design/archive/perf/PERF_OPTION_SPACE.md) and is reserved as §8.2.
+
+Feature code should be naturally bounded:
+
+- no unbounded per-frame scans or append-only journals;
+- no unmeasured or avoidable per-frame allocation in hot paths;
+- no hidden screen continuing expensive render or DOM work;
+- no duplicated asset loads or material programs for equivalent roles;
+- no gameplay entity published before its authored identity and interaction envelope are ready;
+- no save serializer whose cost grows without an explicit cap and evidence.
+
+### 8.1 Later performance PQ sequence
+
+The existing modernization series remains authoritative for its current scopes:
+`PQ-038` dense `PresentationWorld`, `PQ-040` dirty GPU ranges, `PQ-041` Electron modernization,
+`PQ-042` evidence-selected GPU correction, `PQ-043` the conditional simulation Worker, and
+`PQ-044` the conditional WebGPU/TSL vertical slice. Do not duplicate those packets or treat their
+implementation state as player-route acceptance.
+
+The following later PQ identities are reserved by the owner for the remaining smoothness program.
+They are durable plan routes, not current leases or a queue snapshot. Before implementation, admit
+the exact parent and its smallest executable leaves into `program-queue.json`, create its active
+packet, refresh live code and ownership, and keep the outcome inside the scope below. A packet closes
+on the direct player result, not on counters, reports, test volume, or lower default quality.
+
+| Later plan | Player outcome | Production scope | Direct done condition and dependencies |
+|---|---|---|---|
+| **`PQ-051` / `PERF-11-FRAME-LIVENESS`** | Continue and ordinary flight never leave a permanently frozen 3D picture behind a still-moving HTML HUD. | Repair the actual renderer/presentation latch on the real player path: authoritative entity identity, frame/draw exceptions, WebGL context recovery, presentation scheduling, and canvas present. Promote the bounded runtime witness only as the failure classifier needed to fix the owner. Never clear/catch/skip work merely to keep the HUD alive. | On the owner's real save in Browser and Electron: leave loading, fly for 30+ seconds, and observe simulation, movement, renderer frames, and canvas pixels continuing together with no repeating frame error or unrecovered context loss. This is the release-blocking prerequisite for every later performance claim. |
+| **`PQ-052` / `PERF-12-RIGID-OPAQUE-BATCHING`** | Crowded fleets keep their authored appearance while materially reducing GPU submission cost. | Adopt, repair, or reject the existing material-keyed heterogeneous `THREE.BatchedMesh` candidate. Pool only rigid opaque render-package surfaces behind exact material identity; preserve owner release, LOD, damage, semantic proxies, pipeline/residency admission, context recovery, and bounded geometry capacity. Keep canopies, plumes, fans, nav lights, decals, animated surfaces, and transparency-sorted work out of this lane. **2026-09-15:** a retained-slot rewrite (stable instance ids, dirty matrix/color only) exists and is covered by leaf tests; shipping `_opaqueBatchEnabled` stays **false** until `PQ-197` / `PQ-202` name draw-count as the pole. Do not re-enable the old per-frame repack (Intel bloomScene 11 ms → 114 ms). | A clean same-scene before/after shows a material GPU-frame reduction and fewer opaque submissions/chunks with identical geometry, materials, transforms, animation, damage, and visible pixels. Depends on `PQ-051`, the `PQ-034` measurement seam, `PQ-197`/`PQ-202` census, and current render-package authority; do not wire the older generic batcher merely because it exists. |
+| **`PQ-053` / `PERF-13-LIVE-LOD-HLOD-IMPOSTORS`** | Near ships and places retain full authored quality. Distant contacts may hide fasteners only. | **Paper row, not a queue id. Do not dispatch as a hull-swap or impostor campaign.** Live `hlod.js` already hides tagged flourishes at a speck and forbids a silhouette proxy. Whole-GLB swap bails unless the sibling is packaged-live; Hitch/player stay LOD0. After Wave A (`PQ-193.00`), the only allowed shave is garnish hide a stranger cannot name. Far impostors, cheaper species of ship, and Hitch dump are banned. Process: [`DYNAMIC_GRAPHICS_INVESTIGATION.md`](./design/program/DYNAMIC_GRAPHICS_INVESTIGATION.md). | Same picture at chase size; specks may lose a fastener; no blank lock, no box-then-ship, no identity drift. Depends on `PQ-193.00` being true first. |
+| **`PQ-054` / `PERF-14-BOUNDED-GPU-ADMISSION`** | Continue, New Game, sector entry, and first combat no longer move the same unbounded shader/upload stall between loading and flight. | **Paper row, not a live queue id.** Opening cohort is already finite (`openingAdmission.js`). Leftover *hitch* work was rejected as `PQ-129.09` (zero admission-owned hitches). Leftover *picture* (blank lock, late pop, kitbash stand-in) is `PQ-193.00` / `.01`. Do not reopen this as a cheaper-hull or “show a box while loading” leaf. Process: [`DYNAMIC_GRAPHICS_INVESTIGATION.md`](./design/program/DYNAMIC_GRAPHICS_INVESTIGATION.md). | Changing playable canvas; blocking slices stay inside the budget; late roots cannot grow the opening watermark; first visible identity is the authored complete body, not a substrate or modular junk. |
+| **`PQ-055` / `PERF-15-IMMUTABLE-ASSET-TRANSPORT`** | Boot, Continue, hub opening, and sector entry stop repeatedly transferring, hashing, decoding, and shipping the same large asset bytes. | Give immutable release assets content-derived cache identity and headers; retain no-cache only for mutable documents and saves. Remove duplicate package/source encodings from the retail bundle where the package is canonical, split the largest places into opening shell plus independently resident detail, and add validators/range or packaged-file transport only where a boot trace justifies them. Keep KTX2 and meshopt; use Brotli for code/text rather than recompressing already-compressed GLBs. | Warm launch and repeat-sector entry reuse immutable bytes; cold entry presents the bounded shell first; installed/runtime bytes fall without missing fallback/dev sources or visual drift; the largest package no longer has to decode as one monolith before useful presentation. Depends on `PQ-037` and coordinates with `PQ-053`/`PQ-054`. |
+| **`PQ-056` / `PERF-16-PRESENTATION-AND-AA-CONSOLIDATION`** | The default image pays once for anti-aliasing and presentation while retaining bloom, grade, grain, vignette, exposure, shadows, and authored detail. | After `PQ-042` selects the real GPU owner, maintain one default present path; prove whether canvas MSAA is dead work behind the single-sampled HDR/fullscreen-composite route, integrate one quality-preserving post-AA solution when needed, and perform only the selected shadow, transparency, opaque-order, depth, or post fusion. Do not promote the optional render graph, add a global depth prepass, or clamp supersampling without a net same-image win. | Same-camera image/temporal parity holds at default settings and the selected GPU scope plus aggregate frame time improves on Browser and Electron. Depends on terminal `PQ-042`; if its evidence selects another owner, this plan narrows to that result or closes with no product mutation. |
+| **`PQ-057` / `PERF-17-DETERMINISTIC-ACTIVITY-SCHEDULER`** | World density can grow without every registered system, AI cohort, query owner, and physics body paying 60 Hz work while inactive. | Remeasure after the civilian-threat cadence change, then add deterministic tick-quantized schedules and active-owner wake/sleep rules. Keep input, flight, weapons, collisions, and required physics authority at 60 Hz; cadence or sleep slow AI perception, traffic planning, remote economy/story, inactive world owners, and eligible Rapier bodies. Reuse the spatial hash and dirty journals rather than replacing working indices. | Fixed-seed/save parity remains exact; player response and combat authority remain 60 Hz; simulation p95 meets its 5 ms budget in crowded flight and query/candidate work scales with active cohorts rather than total registered systems. Depends on `PQ-039`; completion decides whether existing `PQ-043` is still causally necessary. |
+| **`PQ-058` / `PERF-18-LONG-SESSION-RESOURCE-GOVERNOR`** | Repeated sector travel and long sessions do not accumulate RAM, GPU resources, decoder state, render targets, or stale pools until the game hitches or loses its context. | Extend the existing ref-counted asset residency and context-resource lifecycle only where a bounded travel/restore trace shows retained growth. Add explicit CPU/GPU byte and owner budgets, deterministic eviction priority, previous-sector warmth, pooled-resource retirement, and context-rebuild accounting without evict/reload thrash. | A bounded multi-sector/Continue/context-restore soak reaches a stable memory/resource plateau, releases unowned generations, keeps the next required shell resident, and introduces no recurring decode/upload hitch. Depends on `PQ-054`/`PQ-055`; if the trace is already flat, close with the retained evidence and no new governor. |
+| **`PQ-059` / `PERF-19-WEBGPU-GPU-DRIVEN-SCALEOUT`** | A larger fleet or place scene gains substantial headroom from GPU-owned visibility and submission without becoming a visually different game. | Execute only if `PQ-044` adopts WebGPU. Move one representative RenderWorld slice from CPU draw enumeration to stable render bundles, compute visibility/instance compaction, indirect draws, texture-array material families, and offline cluster/meshlet LOD while retaining the WebGL2 rollback path. | At least the backend-decision gain floor holds over the required representative frames with zero visual/gameplay parity regressions, improved p99/hitches, and bounded pipeline/device recovery. A failed or marginal `PQ-044` ends this route without implementation. |
+| **`PQ-060` / `PERF-20-NATIVE-RENDERER-TRIGGER`** | The project has an evidence-based final platform decision if browser/Electron rendering still cannot meet the low-end floor after structural work. | Apply the existing backend trigger only after batching, LOD/HLOD, admission, asset transport, scheduling, and the WebGPU slice are exhausted. If triggered, produce one narrow native presentation vertical slice against the same RenderWorld/input/save contracts before authorizing a port; otherwise retain the browser/Electron architecture. | Native work begins only when repeated quiet-machine p99 remains beyond the declared ceiling, the work families are actually exhausted, and the representative slice beats the supported web path without product divergence. Otherwise this PQ closes `not-triggered`; it is never a reward for skipping unfinished optimizations. |
+
+Execution order is outcome-driven, not merely numeric: `PQ-051` first; then `PQ-052` through
+`PQ-055` where their exact paths are free; `PQ-042` selects the scope that permits `PQ-056`;
+`PQ-057` determines whether existing `PQ-043` should run; `PQ-044` determines whether `PQ-059`
+exists as implementation; and `PQ-060` remains the final conditional boundary. Use one clean matched
+player-route comparison per candidate and pivot on a repeated failure fingerprint instead of turning
+the sequence into an audit or capture campaign.
+
+### 8.2 Full same-picture option space (`PQ-061`–`PQ-128`)
+
+SpaceFace is a tilted top-down table. Later work must optimize **the glass plus a short approach
+runway**, not a horizon. Huge jobs stay listed. A plan is legal only if the player-facing game is
+unchanged. Full protocols, investigation scaffolds, and implement-after-census rules:
+[`design/archive/perf/PERF_OPTION_SPACE.md`](design/archive/perf/PERF_OPTION_SPACE.md).
+
+These identities are reserved, not admitted. Admit a parent and its smallest leaves into
+`program-queue.json` before implementation. `PQ-094` may mint new reserved leaves when a sweep
+finds a pole this table does not name. `PQ-196`–`PQ-203` were minted 2026-09-15 from the
+table-authority leftover sweep (shader-family collapse outside `partsLibrary`, retained-slot
+batch still shipping-off, fat-list walks that must stay).
+
+| Plan | Horizon | Player outcome |
+|---|---|---|
+| **`PQ-061` / `PERF-21-TABLETOP-CENSUS`** | Near INV | Glass vs fake-visible vs resident vs sim counts on a fixed-seed fly. |
+| **`PQ-062` / `PERF-22-HITCH-CLASSIFIER`** | Near INV | Every >32 ms frame named (compile, upload, compose, shadow, GC, save, …). |
+| **`PQ-063` / `PERF-23-PHASE-TIMERS`** | Near INV | Honest sim / prep / submit / present / UI / VFX clocks on the bloom path. |
+| **`PQ-064` / `PERF-24-SHADER-VARIANT-CENSUS`** | Near INV | Live program keys vs precompile keep-alives. |
+| **`PQ-065` / `PERF-25-ALLOC-GC-SOAK`** | Near INV | Long-session heap/GPU retainers named or declared flat. |
+| **`PQ-066` / `PERF-26-DETERMINISM-LAB`** | Near INV | Cadence/Worker/WASM candidates rejected if hashes move. |
+| **`PQ-067` / `PERF-27-PLATFORM-SPIKE-MATRIX`** | Mid INV | Worker, WASM, WebGPU, native spikes; keep/reject each with picture parity. |
+| **`PQ-068` / `PERF-28-GLASS-BOX-SUBMIT`** | Near IMPL | Off-glass ships not drawn; on-glass picture identical. |
+| **`PQ-069` / `PERF-29-APPROACH-RESIDENCY`** | Near IMPL | Meshes exist just before they can enter the glass. Loading compose uses glass + the immediate authored runway, not a leftover 2400 WU ship horizon. The Helios starting hub is still an exact exception. |
+| **`PQ-070` / `PERF-30-OFFSTAGE-WORK-FREEZE`** | Near IMPL | LOD, shadows, closures, pools do not run for unsubmitted roots. |
+| **`PQ-071` / `PERF-31-OFFGLASS-LANDMARKS`** | Mid IMPL | Far stations are map facts until approach, not live 3D residents. |
+| **`PQ-072` / `PERF-32-EXACT-KEY-PREWARM`** | Mid IMPL | First sight of a live shader key is not one display callback. |
+| **`PQ-073` / `PERF-33-COMPOSE-PART-SLICE`** | Mid IMPL | Building a ship cannot drop a 40–250 ms present brick. |
+| **`PQ-074` / `PERF-34-UPLOAD-AFTER-PRESENT`** | Mid IMPL | First texture/buffer upload does not share the present beat. |
+| **`PQ-075` / `PERF-35-NEXT-CONTACT-WARM`** | Mid IMPL | Only hulls about to enter the glass are warmed. |
+| **`PQ-076` / `PERF-36-ONGLASS-LANES`** | Mid IMPL | Shared-program canopy/plume/transparent lanes collapse on-glass. |
+| **`PQ-077` / `PERF-37-SHADOW-GLASS-SET`** | Near IMPL | Only casters that can fall on the visible table pay a depth pass. Live radius is `tableShadowCastRadius` (tilted glass + skirt); 280 is the no-camera fallback. |
+| **`PQ-078` / `PERF-38-PRESENT-FUSION`** | Mid IMPL | One bloom/HDR present; extra AA only if present is the pole. |
+| **`PQ-079` / `PERF-39-BUFFER-POLICY`** | Mid IMPL | Instance/batch buffers do not hitch-grow or leak VRAM. |
+| **`PQ-080` / `PERF-40-TABLE-CADENCE`** | Mid IMPL | 60 Hz is the table and the fight; off-table owners sleep. Traffic/bark use `tableSimAuthorityWuFromState` (requested zoom + settings FOV + fixed 48:9, not liveZoom/viewport). Hostiles stay awake. |
+| **`PQ-081` / `PERF-41-SNAPSHOT-FENCE`** | Mid IMPL | Present reads a dense snapshot, not live entity objects. |
+| **`PQ-082` / `PERF-42-SIM-WORKER`** | Long IMPL | Sim tick on another core; implements `PQ-043` when sim is the pole. |
+| **`PQ-083` / `PERF-43-WASM-SIM-ISLAND`** | Long IMPL | One hot CPU island in Rust/WASM; snapshot in/out; not Three.js. |
+| **`PQ-084` / `PERF-44-PHYSICS-SLEEP`** | Mid IMPL | Far Rapier bodies sleep; table collisions stay authoritative. |
+| **`PQ-085` / `PERF-45-PLACE-SHELL`** | Mid IMPL | Large places decode a table-visible shell first. |
+| **`PQ-086` / `PERF-46-TEXTURE-RESIDENCY`** | Mid IMPL | Off-glass maps evict; on-glass maps never thrash. |
+| **`PQ-087` / `PERF-47-AUTOSAVE-HITCH`** | Mid IMPL | Autosave cannot occupy a display callback. |
+| **`PQ-088` / `PERF-48-HUD-AUDIO-CADENCE`** | Mid IMPL | HUD/audio do not full-tick hidden or off-glass work. |
+| **`PQ-089` / `PERF-49-WEBGPU-BACKEND`** | Long IMPL | Same game on WebGPU with WebGL rollback. |
+| **`PQ-090` / `PERF-50-NATIVE-PRESENT`** | Long IMPL | Native present slice on the same snapshot/input/save. |
+| **`PQ-091` / `PERF-51-RUST-ISLANDS`** | Long IMPL | Further Rust/WASM islands; full engine rewrite only as a `PQ-090` successor. |
+| **`PQ-092` / `PERF-52-ELECTRON-PRESENT`** | Mid IMPL | Electron hitch/p95 matches the browser on the same save. |
+| **`PQ-093` / `PERF-53-SHARED-ARRAY-SNAPSHOT`** | Long IMPL | Worker/WASM publish through SharedArrayBuffer. |
+| **`PQ-094` / `PERF-54-POLE-SWEEP`** | Standing | Recurring census; mint new reserved leaves when a pole has no plan. |
+| **`PQ-095` / `PERF-55-SKY-ON-A-TABLE`** | Near INV→IMPL | Sky/parallax/deep-field cost what a tabletop uses. |
+| **`PQ-096` / `PERF-56-EVENT-LIGHT-CARDINALITY`** | Mid INV→IMPL | Event lights do not bake extra program variants. |
+| **`PQ-097` / `PERF-57-BLOOM-RESOLVE`** | Mid INV→IMPL | Cheaper bloom/HDR at the same halo. |
+| **`PQ-098` / `PERF-58-SPEEDLINE-OFFTHREAD`** | Mid INV→IMPL | Boost lines do not hitch the 3D present. |
+| **`PQ-099` / `PERF-59-SCENE-GRAPH-FLATTEN`** | Mid INV→IMPL | Matrix/child walks do not scale with off-glass graphs. |
+| **`PQ-100` / `PERF-60-ORIGIN-REBASE-HITCH`** | Mid INV→IMPL | Floating-origin rebase is not a hitch. |
+| **`PQ-101` / `PERF-61-CATCHUP-SPIRAL`** | Near INV→IMPL | One late frame does not cascade extra sim steps. |
+| **`PQ-102` / `PERF-62-MENU-WORLD-UNLOAD`** | Mid INV→IMPL | Station/map/pause do not keep submitting the flight world. |
+| **`PQ-103` / `PERF-63-DECODE-WORKER`** | Mid INV→IMPL | GLB/KTX2/Basis decode is off the present thread. |
+| **`PQ-104` / `PERF-64-BINARY-SHADER-CACHE`** | Mid INV→IMPL | Repeat boots reuse driver program binaries. |
+| **`PQ-105` / `PERF-65-AUDIO-TABLE-CULL`** | Near INV→IMPL | Audio follows the table, not a 900 WU horizon. |
+| **`PQ-106` / `PERF-66-HOT-ALLOC-SHAPES`** | Mid INV→IMPL | Per-frame allocation is not the hitch owner. |
+| **`PQ-107` / `PERF-67-STATE-CHANGE-SORT`** | Mid INV→IMPL | On-glass draws minimize program binds. |
+| **`PQ-108` / `PERF-68-TINY-ONGLASS-LOD`** | Mid INV→IMPL | 30-pixel on-glass fighters are cheap; close ships stay full. |
+| **`PQ-109` / `PERF-69-GL-CONTEXT-FLAGS`** | Near INV→IMPL | Canvas/GL flags add no hidden copy. |
+| **`PQ-110` / `PERF-70-ANGLE-BACKEND`** | Mid INV→IMPL | Fastest legal ANGLE backend on this GPU. |
+| **`PQ-111` / `PERF-71-PIXEL-PARITY-GATE`** | Near INV | Glass still-diff for every same-picture A/B. |
+| **`PQ-112` / `PERF-72-THERMAL-NOISE`** | Standing | Noisy A/B pairs cannot pass a leaf. |
+| **`PQ-113` / `PERF-73-PROD-PROBES-OFF`** | Near INV→IMPL | Production default pays no debug-probe tax. |
+| **`PQ-114` / `PERF-74-IDLE-ADMISSION`** | Mid INV→IMPL | Next-contact compile in true idle, never stacked on rAF. |
+| **`PQ-115` / `PERF-75-VFX-ONGLASS`** | Near IMPL | Trails/lights/flipbooks follow the table. Station-side, seam, NPC job-signature, loot-magnet, and NPC engine-trail draw use `tableVfxDrawWuFromState` (live glass), not a 1500/640/300/580/2200/3600 WU horizon. Loot-magnet trails keep a separate 580 WU player-centered tractor cap. Station-side, seam, NPC, loot-magnet, and NPC engine-trail glass culls use `tableLookAtDelta` (frame-local focus + frameOrigin). Station side-event planning anchors on `tableSimAuthorityWuFromState` plus that station type's farthest eligible mover path, not a 1400 WU horizon. Player and current-target trails stay full. |
+| **`PQ-116` / `PERF-76-HDR-BUFFER-FORMAT`** | Mid INV→IMPL | Cheapest HDR target that keeps the default halo. |
+| **`PQ-117` / `PERF-77-HIDDEN-SYSTEM-SKIP`** | Near INV→IMPL | Registry systems do not full-tick when 3D is hidden. |
+| **`PQ-118` / `PERF-78-REPLAY-PERF-BISECT`** | Mid INV | A hitch is reproducible from input+seed. |
+| **`PQ-119` / `PERF-79-TABLE-MAP-SPEC`** | Near IMPL | Off-table contacts stay map/radar facts, never live 3D. |
+| **`PQ-120` / `PERF-80-TABLE-READABLE-REMASTER`** | Near INV→IMPL | Remaster budget goes to mid-scale openings that read at default zoom, not micro-greeble stacks. |
+| **`PQ-121` / `PERF-81-VFX-FOCUS-ORIGIN`** | Near IMPL | Cosmetic VFX cull from the live look-at, not only the player pin, so a combat/tether camera shove does not drop on-glass lights. Seams, station lamps, NPC signatures, and loot-magnet glass checks share `tableLookAtDelta`. Tractor cap stays player-centered. Sim traffic/bark still use requested zoom. |
+| **`PQ-122` / `PERF-82-TABLE-ASPECT-CLAMP`** | Near INV | If a live window is wider than three 16:9 panes, either letterbox the camera to that bound or accept that far side-edge civilians sleep. Do not grow sim authority back into a horizon. |
+| **`PQ-123` / `PERF-83-INSTANCE-FAR-CULL`** | Near IMPL | Instance far cull follows the live camera table (`tableInstanceFarCullWu`), not a leftover 9000 WU horizon. Default covers the supported 90° / 330 WU 16:9 table as 3D camera distance. The 420 WU owner-sphere pad stays so a large on-glass station cannot vanish. Submit still drops off-table roots first. |
+| **`PQ-124` / `PERF-84-HAIL-HUD-HORIZON`** | Near INV | Leftover `CONTACT_HAIL_RANGE` / scanner / HUD-overview `5200` is hail and radar range, not a 3D submit box. Do not shrink who the player can hail. The 5 Hz overview hypot is cheap. Only admit a leaf if a census names that list as a hitch; then keep hail gameplay and cull only 3D/VFX work. |
+| **`PQ-125` / `PERF-85-REGION-CROSSFADE`** | Near INV | `REGION_CROSSFADE_WU = 1500` is the authored sector-boundary sky/ambient fade, not leftover mesh tax. Shrinking it would change when the next region reads. Do not touch unless a census names the fade math as a hitch. |
+| **`PQ-126` / `PERF-86-NPC-TRAIL-TABLE`** | Near IMPL | NPC engine trails follow `tableNpcTrailTier` (live look-at + `tableVfxDrawWuFromState`). Leftover 2200/3600/2800 player-camera horizons are retired. Player and current-target ribbons stay full. Off-glass NPC ribbons are map facts. |
+| **`PQ-127` / `PERF-87-NON-SUBMIT-HORIZONS`** | Near INV | Leftover large numbers that are **not** 3D submit: camera shake 1200, director threat compose 600, pair-frame 280, planet/sun sky dressing at 2800–6000 with parallax below the horizon, and the unused 300 NPC-signature comment. Live signature draw already uses the table. GPU timers and hitch rings stay default-off. Do not shrink these as a cull. |
+| **`PQ-128` / `PERF-88-HEADLESS-VFX-TABLE`** | Near IMPL | Headless/no-camera VFX “on-screen” fallbacks follow `TABLE_HEARING_FAR_WU`, not a leftover 900 WU pin. Live play already projects to the camera. Doctrine-tell cues near the player still fire; off-table headless cues stay map facts. Do not shrink hail, missile-threat, or faction gameplay 900s. |
+| **`PQ-196` / `PERF-90-PACKED-ORM-FAMILY-KEY`** | Near INV | First sight of a painted hull does not mint a unique GPU program from leftover `onBeforeCompile` source. Family-key canonicalize already drops compile-source fragments and UUID tokens outside `partsLibrary`. Investigate whether the in-file packed-ORM concatenation still wins the first compile when PQ-193.09 / PQ-193.12 release that file. Dummy prewarm stays illegal. |
+| **`PQ-197` / `PERF-91-RETAINED-SLOT-CROWDED-CENSUS`** | Near INV | Crowded Intel bloom stays ~11 ms, not 114 ms, while drawing fewer unique plates. Retained-slot BatchedMesh (stable ids, dirty matrix/color only) is written and shipping OFF. Headed crowded fly must name draw-count as the pole before enabling. Do not re-enable the old per-frame repack. |
+| **`PQ-198` / `PERF-92-FIRST-SIGHT-LINKPROGRAM`** | Near INV | A new NPC entering the glass is not a 40+ ms `linkProgram` brick. Empty admission slots still compose in flight. Census live program keys vs family stamps after authored upgrade. Route leftover keys through after-present compile, never dummy meshes. |
+| **`PQ-199` / `PERF-93-FAT-LIST-MUST-STAY`** | Near INV | Typed indexes never drop a real interaction. Keep the fat list for world despawn indexes, fields save rebuild, claim-sling NPC boost, scanner distress beacons, hangar occupancy (dormant spawn-obstacle rocks). Investigate only walks that still allocate on the 60 Hz table after those exceptions. |
+| **`PQ-200` / `PERF-94-FX-BEACON-BUCKET`** | Near INV | Journal / chart leftover `fx` and `beacon` walks cost table size, not the historic 408-body list. Quiet Ceres is 56 live / 279 field rocks. A type bucket for `fx`/`beacon` is legal only if membership stays 56 and dressing rows stay off the combat list. |
+| **`PQ-201` / `PERF-95-SECTOR-PREWARM-PLACEFILE`** | Near INV | Sector prewarm does not miss a place-bearing body, and does not scan the fat list when the index is ready. `placeFile` can sit on `massSeed` / `fieldEmitter` / `fx`. Typed census must cover those types or stay on the fat list. Hitch path, not 60 Hz. |
+| **`PQ-202` / `PERF-96-INTEL-BLOOM-BATCH-AB`** | Near INV | Same crowded still, bloom on, shadows on: prove whether draw-count or bloom resolve is the missed-vsync tax. Pair `PQ-197` with `PQ-097`. If bloomScene p95 is the pole with batching off, do not enable batches. If draw-count is the pole and retained-slot keeps bloomScene, admit `PQ-052`. |
+| **`PQ-203` / `PERF-97-QUIET-CERES-FIVE-MS`** | Standing | Quiet Ceres warm-sim p50 stays ≤ 5 ms on this host. Membership island is 56 live. Do not weaken the gate. Re-census after any calendar→table clock move or after re-enabling opaque batch. |
+
+Every leaf uses the investigate → invalidate → implement loop in
+`PERF_OPTION_SPACE.md` §3. Default order when no campaign is named: `PQ-061` → `PQ-062` → `PQ-063`
+→ then §7 of that file. Long platform leaves wait until that table points at them, unless the owner
+starts that campaign.
+
+**Investigate next (2026-09-15 leftover sweep):** `PQ-196` packed-ORM family key once
+`partsLibrary` is free; `PQ-197`+`PQ-202` headed crowded draw-count vs bloom A/B before
+enabling retained-slot batches; `PQ-198` first-sight `linkProgram`; `PQ-199`–`PQ-201`
+fat-list exceptions vs leftover typed scans; `PQ-203` keep the quiet Ceres 5 ms gate.
+
+### 8.3 Exhaustive same-picture technique inventory
+
+This is the full list of performance optimizations that may later be investigated or implemented.
+Each line is a legal leaf under the parent in parentheses. Admit via `PQ-094` minting if it has no
+row yet. Size of the job is not a reason to omit it. **Illegal** as a win: default quality cuts,
+emptying the glass, camera-facing soft cards for fly-past objects, or editing sim goldens.
+
+**Loop for every line:** measure the live pole → census glass / runway / beyond → **invalidate**
+if it is not the pole, A/B worsens, pixels change, the stall moves, or copy costs more than it
+
+The full inventory itself (technique families and their parents, per-category leaves) lives in
+[`design/archive/perf/PERF_OPTION_SPACE.md`](design/archive/perf/PERF_OPTION_SPACE.md) — the canonical copy. This section
+was consolidated to that pointer in the 2026-10-15 token-reduction pass; nothing was removed from
+the option space, only from this file.
+
+### 8.4 Hitch campaign (`PQ-129`) — admitted execution order
+
+`PQ-051`–`PQ-128` remain reserved catalog identities. They do not dispatch until a campaign
+admits them. **`PQ-129` is that campaign** for the owner-visible hitching problem.
+
+Law: [`design/archive/perf/PERF_HITCH_CAMPAIGN.md`](design/archive/perf/PERF_HITCH_CAMPAIGN.md).
+Packet: [`design/program/roadmap/active/PQ-129.md`](./design/program/roadmap/active/PQ-129.md).
+Dispatch: `node scripts/program-dispatch.mjs --id PQ-129`. `--next` still returns `PQ-050`.
+
+Campaign status: leaves .15/.16/.17 shipped with receipts; the .14 LOD mechanism is live (138/286
+packages; the wasp hull LOD asset is Forge work); .11–.13 are legally deferred on the headed-census
+gate; row 57 closed the unit DONE 2026-10-03. The 2026-08-20→24 measurement saga (witness
+readings, the rejected-fix A/B table, brick-cause narrative, Wave-C no-op dispositions) was
+consolidated to git history in the 2026-10-15 token-reduction pass.
+
+**Instrument limits, stated so the next reader does not over-trust this:** no GPU timestamp queries,
+so compilation, upload and driver stalls cannot be separated precisely; 35 hitches remain unowned;
+the crowd was synthetic, not an organic playthrough; the 30-pixel fighter case was never exercised;
+and the authored-settlement gate would not complete, so this reflects the live fallback/admission
+state rather than a fully settled fleet.
+
+Illegal here: default quality cuts, headless hitch-budget as acceptance, replaying the rejected
+BatchedMesh candidate, starting Worker/WebGPU because Wave B is hard, shrinking hail 5200 as a
+cull.
+
+### 8.5 Open defect — a valid ship asset is rejected at load and NOTHING is drawn
+
+**2026-08-23. `check:playable` passes 15/15 while warning that a ship renders as nothing.**
+
+```
+[partsLibrary] authored composition failed; no substitute visual published
+Error: release mode requires .../wholeships/ashline_rig.glb for ship_wasp;
+       it did not pass the live authored-asset loader
+```
+
+"No substitute visual published" means an **invisible enemy**. It is player-visible and was
+untracked; no asset check flags it, and `check:playable` reports it as a WARNING and still passes —
+the exact "a green check is not proof" pattern this document warns about.
+
+Already ruled out, so nobody redoes it: the file is **not missing** (7,867,164 bytes, tracked) and
+**not corrupt** (valid GLB, version 2, declared length == actual, JSON 55696 + BIN 7811440). It is in
+`PACKAGED_LIVE_WHOLE_SHIP_FILES` and in `release_manifest.json` with the same entry count as its
+sibling `ashline_dart.glb`, which loads fine. **The rejection is a live-loader policy, not the file.**
+
+**The mapping lead was chased and DISPROVEN — do not repeat it.** `wholeShipVisualForEntity`
+always takes the file and the assetId from the SAME map, so no cross-map mismatch is possible. The
+four hostile ids that use `ashline_rig.glb` (`reaver_pirate`, `mine_layer_jackal`, `corsair_raider`,
+`tether_control_raider`) all resolve to `SF_WHOLESHIP_ASHLINE_RIG`, and every one of the 12 hostile
+file entries has a matching assetId — zero missing.
+
+**So the record is simply not in `records` at lookup time.** `resolveRequiredWholeShipRecord`
+(`partsLibrary.js:1365`) throws when no loaded record ends with the wanted file. The asset is
+listed in `spawnableShipArchetypePrewarmUrls()`, so the sector prewarm is supposed to cover it —
+which makes this a **prefetch/timing** defect, not a data-mapping one. The next step is to capture
+the untruncated error, whose tail lists the whole-ships that DID load; that list is the evidence.
+
+The fix must also add a check that **FAILS** when a whole-ship required by a live entity does not
+load and no substitute is published. This class currently reports as a passing warning, which is
+precisely why it survived.
+
+## 9. Documentation and instruction hygiene
+
+Documentation has a declared lifetime:
+
+- `STABLE` files route and define durable contracts; they contain no live snapshots.
+- `DURABLE` files preserve long-lived research, evidence, or rationale. They may inform planning,
+  but never grant a lease, dispatch authority, acceptance, or priority over an admitted packet.
+- `VOLATILE` files contain current mutation/status facts, a refresh base, and an expiry condition.
+- `ACTIVE_PACKET` files guide one admitted packet and retire into evidence when done.
+- `GENERATED` files are rebuilt from code.
+- `HISTORICAL` files can explain a decision but cannot direct implementation unless explicitly reactivated.
+
+An agent's preference is not a repository rule. New automatic instructions or checks are admitted only when they protect determinism, save compatibility, state ownership, security, accessibility, licensing/provenance, a measured performance invariant, or a demonstrated player-facing contract. Do not fossilize taste through CSS-property bans, palette allowlists, fixed technique counts, arbitrary geometry ceilings, source-string scans, or “never do X” prose that lacks an observed failure.
+
+Run `node scripts/check-program-docs.mjs` after changing the program control surfaces.
+
+## 10. Checkoff
+
+The agent that finishes a unit updates that unit's packet checklist, receipt, queue row, and shared
+status in the same bounded transaction after verifying the exact candidate revision. No separate
+coordinator is required. A named human or independent-review gate remains a separate task only when
+the packet explicitly requires that evidence.
+
+A receipt must say what changed, what passed, what route was observed, what performance profile was measured, what remains unproven, and which follow-ups were deliberately excluded. “Tests pass” is not a substitute for those facts; neither is a screenshot a substitute for simulation truth.
+
+## 11. The frontend is the strategic half of the game
+
+> **CLAIMED 2026-09-26 — the ORRERY frontend overhaul lane (owner-directed 2026-09-25).** The whole section — the surface manifest, the Power Bar, the J01–J16 jobs and their order. Do not take, execute or "finish" any of it. The authority is [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md`](design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md); everything in this section is **superseded wherever it differs** and stays only as history (earlier frontend passes built from these instructions and the owner judged the result cheap and generic). Live status: [`design/frontend/ORRERY_HANDOFF.md`](./design/frontend/ORRERY_HANDOFF.md) §2. Found a frontend defect? One row in [`DEMO_READINESS_2026-09-20.md`](./design/program/DEMO_READINESS_2026-09-20.md) §6 for the lane — never a parallel implementation.
+
+The screens and the HUD are not connective tissue between the fun parts. They are where the player
+understands the world, understands their ship, and decides what to do next. Owner direction,
+2026-08-15:
+
+> "The frontend screens and HUD **ARE** the gameplay… the home of the strategic experience that's
+> symbiotic with the fast combat and spaceflight and keeps it grounded and understood. The map,
+> menus, everything… The player needs to be able to understand the systems of the game through these
+> screens, and understand the world outside the immediate view by the map, their ship by the ship
+> menu."
+
+> "I keep having agents working on the frontend and it's very cheap and uninspired… the moment to
+> moment experience is weak right now partially because of the frontend and menu experiences."
+
+**Design authority for every 2D surface is [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md).**
+Read [`INSTRUMENT_GRAMMAR.md`](./design/frontend/INSTRUMENT_GRAMMAR.md) before designing or building
+any screen; it is binding.
+
+### 11.1–11.5 The failure diagnosis, the sizing audit, the surface manifest, the Power Bar, sequencing
+
+These subsections were consolidated to git history in the 2026-10-15 token-reduction pass (the
+2026-08 sizing audit was a point-in-time diagnosis — verify before acting on any row; the Power
+Bar landed as J06/J07; the sequencing phases executed). The §11 claim banner above governs:
+ORRERY is the authority wherever anything here differs.
+
+### 11.5a Asteroid Works is a playable inset, not a HUD with a tiny board
+
+Owner playtest 2026-08-20 failed the live mining screen, and the same-day owner
+design session replaced the old console with a **ground-up design**:
+[`design/ASTEROID_WORKS_DESIGN_LAW.md`](./design/ASTEROID_WORKS_DESIGN_LAW.md) —
+the game reduced to four visible laws (mine-once/farm-forever, machines feed
+through faces, geology is the tech tree, tunnels are streets + rock is the
+radiator), a perfect axis-aligned chess grid, **fog of war removed**, a warm
+"field equipment at dusk" art direction replacing the gray/tracked-caps console
+voice (owner: "gray, bleak, and vibe-coded, harsh fonts"), events on the board
+with sound instead of a text tape, and instruments that mount only when they
+first have data. Defects and bans stay in
+[`design/program/ASTEROID_WORKS_PLAYFIELD.md`](./design/program/ASTEROID_WORKS_PLAYFIELD.md);
+chrome idea in [`design/frontend/SCREENS_E_ASTEROID_WORKS.md`](./design/frontend/SCREENS_E_ASTEROID_WORKS.md);
+execution is `PQ-130` (leaves `.01`–`.10`; deeper sim laws — seam scaling, the
+parked thermal model, gas-tap power, import complements, the economy curve,
+drones/field — are future packets listed in the law's §12).
+
+**Art (2026-08-21 owner review): `PQ-130` is implemented, not accepted.** Every object in
+the mine is a procedural stand-in — "the rover is like this 8-bit NES model inside this 3d
+world … you're intentionally cutting corners." The authored-asset campaign is
+[`design/program/ASTEROID_WORKS_ART_CAMPAIGN.md`](./design/program/ASTEROID_WORKS_ART_CAMPAIGN.md)
+(`PQ-131`: a works-context release loader + works camera first, then rover, Core, extractor,
+refinery, derrick, conduit kit, gas tap, fabricator, port/crates/pod, inclusions — each
+reference-first, Blender, PBR, LOD, KTX2 via the canonical builder, three reviews at play size
+beside a flight still). `PQ-130`'s acceptance is blocked on its units `.00`–`.06`.
+
+The cutaway is the STAGE. The verb is **BORE**. Manifest tape, site-systems trivia,
+and hover paragraphs are deleted per the law's §10, their jobs relocated onto the
+board and into drawers. `SCREENS_D` B.10 (“leave the drill screen alone
+and use it as the bar”) is void — owner playtest outranks it.
+
+Do not fold this into Phase 5 HUD work or into Asteroid Ops Waves 1–4.
+
+**Out of scope by owner ruling: progression rebalancing.** The pacing defects are real and recorded
+(start 5,000 cr vs cheapest node 6,000; the Massline's top tier behind a 2,500,000 cr capital node;
+research points have exactly one writer) but the numbers are not changed under this program —
+presentation only.
+
+### 11.6 Verification
+
+Standard UI suite plus a **capture matrix**, not a single screenshot: every new surface captured in
+**default · reduced-motion · `forced-colors` · pseudo-localized**, at **2560×1080 · 1920×1080 · 1280×720**.
+Pseudo-loc and ultrawide are where this design is most likely to silently degrade, and both harnesses
+already exist. Reference frames are diffed in CI (§11.7 item 13) — otherwise "a green check is not
+proof" stays permanently true. A screen is not done until its silhouette is distinguishable from every other screen with
+the text removed, its APRON holds at least one verb, and it has been *looked at* in a captured frame.
+
+**A green check is not proof, demonstrated three times here:** the clipped Mission Log card passes
+every check in the suite; `check:ui-frame-sleep` inspects `rAF` and cannot see compositor-side
+`infinite` CSS keyframes; and `src/ui/screens/techTree.js` renders in browser-default 10 px sans on
+every frame because Canvas 2D silently ignores `var()` in `ctx.font` — with nothing reporting it.
+
+### 11.7 A-list standards — properties every screen must have
+
+Beyond the per-screen designs, a top-tier frontend is defined by the screens that **do not fall over**
+in conditions the author was not thinking about (the full gap list was retired to git history in the
+2026-10-15 pass; the ORRERY lane owns the current surface backlog). The four that will visibly
+break this build if ignored:
+
+| # | Standard | Status | The rule |
+|---|---|---|---|
+| 1 | **Text expansion** | **missing from every spec** | The game has a live localization system and a pseudo-loc capture harness — every `.devshots/alpha/m6-*` frame is pseudo-localized. No spec mentions it, while the specs are full of fixed widths and `nowrap`. **No fixed-width text container; design against +40 %; never concatenate a sentence; capture in pseudo-loc, not just English.** |
+| 2 | **Empty / loading / error / denied states** | unspecified | A correct-but-blank screen reads as broken (the Chart's Economy tab returning empty until you have priced two stations is the live symptom). Every pane defines all four, each naming *what would fill it* and carrying a verb. |
+| 3 | **Screen state memory** | **verified missing** | `galaxyMap.js` persists no layer toggle, commodity, zoom or tab — every open is a fresh open. Every instrument restores the state the player last chose, per save. Invisible when present, infuriating when absent. |
+| 4 | **Responsive strategy** | **verified missing** | Exactly one breakpoint exists (`max-width:900px`). Ultrawide must **clamp the HUD to a centred safe box** rather than stretch to unreadable corners; 4K scales by `--ui-scale`; handheld gets a reduced-density variant. Capture at 2560×1080 / 1920×1080 / 1280×720. |
+
+Tier-2 and tier-3 standards in the same document cover: skill-tree needs an A-list tree has and this
+plan lacks (search, "what leads to this?", a planned path, preview-before-commit, branch comparison,
+and an explicit respec decision); Chart gaps (measurement, route comparison, authored fog-of-war,
+layer presets); data-presentation conventions; list virtualization and a UI frame budget;
+destructive-action policy; key-rebinding conflict display; a notification priority ladder across all
+transient channels; returning-player re-establishment; **visual regression testing** (the only real
+answer to "a green check is not proof"); text scaling; and the three absent meta screens — credits,
+lifetime statistics, and photo mode.
+
+### 11.8–11.13 Candidates, scheduling, status, reviews, inhibitors, jobs
+
+These subsections (candidate additions — absorbed by PQ-183/J13; the Phase-0 scheduling law —
+Phase 0 landed; the J01–J16 implementation table — complete; the reviews stub; the dated 2026-08
+inhibitors audit — most rows since fixed) were consolidated to git history in the 2026-10-15
+token-reduction pass. The §11 claim banner governs everything here.
+
+## 12. Crucible — Survival, Combat Lab, and arcade-physics convergence (`PQ-133`)
+
+**Source:** [`design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md`](./design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md)
+(**updated to v2 on 2026-08-24: 6,875 → 9,299 lines**; §30 is the phase roadmap, §31 the 69 provisional
+packets `CRU-000`–`CRU-068`, Appendix A the schemas, Appendix E the owner map, Appendix F the open
+product decisions with recommendations).
+
+**What that file IS, in its own words (§32.1): a DURABLE DESIGN PROPOSAL / EXPERIMENT BANK — NOT
+ADMITTED WORK.** It "does not establish queue order, status, implementation, or acceptance", and must
+not be called active scope unless the owner admits the whole program. Its labels separate **CORE**
+(durable decision) from **FIRST SLICE** (narrow candidate, still needs admission) from **EXPERIMENT**
+/ **CONTENT BANK** / **FAR FUTURE**. Its own agent contract warns: *"Never turn this file into a
+giant checklist whose unchecked boxes imply a blocked game."* Read it as a quarry; admit work through
+a queue ID and an active packet, as `PQ-133` was.
+
+### 12.0 The v2 delta — a CORE CORRECTION that reorders the program
+
+The entire v2 addition is **one new section, §21A "Flight, formation, and enemy-motion convergence"**
+(2,095 lines, 30 subsections). Everything else is unchanged. It carries a **CORE CORRECTION dated
+2026-08-23**, and it is directional for anything touching flight or enemy motion:
+
+> Crucible cannot deliver the intended experience if the ships themselves remain mushy, indecisive,
+> or visually incoherent. Survival is a forcing function for combat density, and **density magnifies
+> every flaw in flight control and enemy movement.** The movement layer therefore becomes a
+> **prerequisite shared program, not post-launch Survival polish.**
+
+Its one-line target: **"Every ship should look like it meant to do what it just did."** Not faster —
+*intentional*. Speed without intention is pinball noise.
+
+The dependency order it asserts:
+
+```text
+Motion Lab → player handling convergence → hull-relative enemy actuator
+→ virtual formation + attack choreography → cheap coherent swarm motion
+→ ten-wave Survival shell → attack/modifier expansion → arena and boss breadth
+```
+
+**This reframes what "PQ-133 done" means.** The leaves below shipped their SYSTEMS and are correctly
+stamped; §21A adds a gate they were never measured against — *"no Survival vertical slice should be
+called representative until the motion-convergence gate passes."* That is a NEW bar from a newer
+document, not a defect in the delivered work, and it is not admitted work until the owner says so.
+
+Its named first slice (§21A.28) is deliberately small and is the obvious admission candidate: player
+Hitch and Wasp selectable; ONE four-ship wing that enters in wedge, widens to fan, sends two ships
+down distinct crossing lanes while two screen, extends without instant turn-back, and reforms through
+merge corridors; ONE twelve-body fodder cohort that reads as a river and stays physically throwable;
+ONE heavy brawler with a pressure corridor and a clean breakaway. Proof is deterministic scenarios
+M1/M4/M6/M8/M11 plus capture at the shipping camera — with **no new direct position/velocity writes,
+no campaign AI fork, and no performance regression hidden by cutting entity count or quality.**
+
+§21A explicitly does not prescribe permanent tuning values: every number in it is a candidate
+experiment band until an admitted packet promotes it.
+**Admitted 2026-08-21 as `PQ-133`.** Packet: [`design/program/roadmap/active/PQ-133.md`](./design/program/roadmap/active/PQ-133.md).
+Dispatch: `node scripts/program-dispatch.mjs --id PQ-133`.
+
+The thesis in one line: *Crucible discovers what is fun. Adventure makes it matter. Combat Lab explains why
+it worked or failed.* The central move is a **shared attack algebra** (emitter · trajectory · propagation ·
+payload · trigger · constraint) so one Pulse Laser can become a bank shot, a chain primer, a returning
+cutter, or a clean gun without a bespoke code path for each.
+
+**Binding architecture rulings from the plan (§27), restated because every leaf below depends on them:**
+
+- `state.mode` stays `'flight'`. Survival is an **orthogonal** `state.run` envelope (`kind:'survival'`),
+  never a mode value that stops flight systems updating.
+- A run starts from **fresh ephemeral state through the real New Game path**. It never mutates the live
+  Adventure save, shares campaign credits, shares inventory by reference, or writes run modifiers into
+  persistent fittings. `A.8` campaign-contamination test is mandatory from Phase 2 onward.
+- Phases are **explicit and validated** (`inactive → loadout → arena_intro → wave_intro → active →
+  cleanup → draft → … → refit → … → victory | ended`). No UI infers phase from whether enemies exist.
+- The wave planner is a **pure function** (`planWave({seed, arenaId, wave, act, difficulty, mutators,
+  buildSummary})` → intent). Runtime owners materialize it through `spawnBudget` and the canonical
+  materializer. No cap bypass; `DEFAULT_MAX = 24`, `HARD_MAX = 40` are re-audited, not overridden.
+- Attack modifiers compile into an **immutable `AttackSpec`** with lineage (root/descendant, generation,
+  visited targets) and a **shared proc budget**. Containment invariants (§9.7) are tests, not prose.
+- Crucible **consumes** Physics-as-Spectacle (contact provenance, kill receipts, priority-aware VFX) and
+  never closes that program's gates by using its code.
+- One game path: Browser, Electron, Sandbox, Crucible and the deterministic Lab share registry, input,
+  data, physics, combat, rendering, settings, assets. Wrappers select setup and rules; they never fork.
+
+### 12.1 Phases → dispatch leaves
+
+Phases 0–12 are complete (leaf status stamps consolidated to git history 2026-10-15); `.13`
+remains the owner's call. The binding architecture rulings live in §12.0 above; the packet files
+under `design/program/roadmap/active/PQ-133*.md` remain the per-leaf detail of record.
+
+### 12.2 Product decisions adopted (Appendix F recommendations, binding until the owner overrides)
+
+Umbrella **Crucible**, scored ruleset **Survival**, experiment surface **Combat Lab**, existing surface
+**Sandbox**. Direct main-menu entry, fiction later. Manual aim default; auto-fire only as accessibility.
+Full pause during drafts. Hull changes only at ten-wave refits. Physical collisions and arena hazards hurt
+enemies; ordinary enemy projectile friendly fire stays limited. No mid-run save in the first slices.
+Seeded offers and waves, deterministic build-code reproduction, a draftless control ruleset. Meta
+progression unlocks possibility, never permanent stats. Victory at wave 30; endless optional. No campaign
+material reward in v1. Five authored arenas before any generation. No architectural distortion for
+hypothetical network play.
+
+### 12.3 Anti-patterns that fail a leaf on sight (§33)
+
+Generic bullet-heaven drift (passive auras that clear screens), a second-game architecture (parallel
+combat registry, alternate physics), modifier soup (stat-only drafts), proc explosion (unbounded
+descendants), visual soup, HP inflation as difficulty, hard-counter director, physics as garnish (no
+causal participation) or as chaos (unreadable), campaign contamination, debug divergence (Lab path that
+is not the game path), harness treadmill (validation machinery instead of a better playable game),
+content-before-foundation, boss immunity theater.
+
+## 13. Arcade VFX foundation (`PQ-134`)
+
+The orphan branch `feat/arcade-vfx-foundation` (one commit, `20216c9c`) was pulled to master as
+`ce340812`: [`src/render/combat/arcadeStructuralFx.js`](./src/render/combat/arcadeStructuralFx.js) — a
+pooled, instanced structural-FX primitive set (**blades** 128, **broken arcs** 48, **shards** 64) with
+priority-aware slot admission, no camera-facing sprites, no radial alpha fields, no full shock rings. It
+had **zero consumers** when this was written and no longer does (see the leaf table). `PQ-134`
+wires it and becomes the VFX half of Crucible's causal grammar
+(`CRU-051`): family / generation / material / status must read under saturation.
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `PQ-134.00` | File on master, lint/import green | **DONE `ce340812`** |
+| `PQ-134.01` | `ArcadeStructuralFx` mounted in the presentation adapter behind `cueArbitration`; kill, hard-collision, and bank-shot cues request blades/arcs/shards with priority; capacity never grows on the present beat | **DONE** — mounted in `src/render/vfx.js`, admitted through `admitStructuralFxCue`, and driven by four live cue paths (`entity:killed`, `combat:collisionConsequence`, the bank-shot cue, and `presentation:vfxCue`). 16 tests green across `arcade-structural-fx-mount` and `vfx-arcade-structural-fx`, with a live probe wired as `check:arcade-structural-fx` |
+| `PQ-134.02` **[DONE - accepted by capture]** | Causal VFX/audio grammar (`CRU-051`): direct, bank, chain, collision, terrain, tether, field, reaction each own a readable family/colour/shape; hero events survive saturation; reduced-motion and forced-colors variants | Four-way capture (Crucible wave 8, Foundry boss, Adventure fight, reduced-motion) reviewed at play size |
+
+**2026-08-23 — the grammar is now actually fed (`357eb134`).** `.02` was accepted by capture, but
+three of the eight families could not fire in ordinary play: `projectile:hit` carried no causal
+information, so `chain`, `field` and `reaction` only appeared when a receipt already happened to
+carry the flag. The hit path now stamps `causalTags` using the SAME tokens
+`causalKindsFromAttackSpec` produces — one frozen array per spec in a WeakMap, so a hit allocates
+nothing — plus `hops`/`chain`, `hasBounced`, and `family` for field and reaction payloads. Real
+emitted payloads were fed to `classifyCausalVfxFamily` and route to `chain`, `field` and `reaction`.
+Both 47-A goldens hold: this adds information to an event and does not move the simulation.
+
+### 13.1 Effect quality improvements — owner-directed, 2026-09-09
+
+The purpose of `PQ-190.01` is a better visual language for physical play, not preservation of the
+current implementation. Its eight classes are construction routes, not eight effects to stamp onto
+everything. The [technique standard](./docs/visual-assets/VFX_TECHNIQUE_STANDARD.md) owns the recipes
+once. This is the execution plan for improving them; it does not reopen the accepted `.00` slice.
+
+**Order: causal clarity → material character → richer atmosphere.** Select one bounded row through
+its existing packet owner, preserve current dirty work, and carry that row's outcome into the exact
+queue leaf before mutation. Already implemented work is reviewed/adopted, never rebuilt in parallel.
+No new post pipeline, palette law, HUD redesign or fleet remaster is implied.
+
+| Work / existing packet owner | Why it would be more fun and beautiful | Concrete implementation and owned seam | Done condition / deliberate spend |
+|---|---|---|---|
+| **One stream, a long bright flight snake** — `PQ-190` / live visual-world cleanup | The owner wants long, bright snake-like history as a distinctive signature, but says the individually attractive jet and history feel disconnected. Unify that handoff first; fast nimble turns should draw one satisfying stream. Length, brightness and crossing the sky are intentional. | Inspect current `src/render/thruster/recipes/plasmaStreamRecipe.js`, `src/render/thruster/ribbon/plasmaRibbons.js`, `src/render/thruster/ribbon/contrailTrail.js`, `src/render/thruster/ribbon/driveEnvelope.js` and `src/render/thruster/systems/plasmaStream.js`. Define a shared visual handoff from jet to history: matching cross-section/width, continuous colour-temperature and radiance progression, compatible flow speed and fold/strand structure, with a short complementary overlap rather than two additive full-strength heads. Keep separate objects and true world-space history samples: blend appearance, never fabricate a path or drag old samples with the nozzle. Then improve tight bends and self-crossing readability. | Seed 190001, coast/burn/boost/brake, S-turn and figure-eight: no gap, width step, brightness spike or contradictory flow at the seam; the generous bright trace matches the flown curve and old bends remain after rotation. At rest the jet may flow but no false full-length history appears. Keep actionable bodies legible through local structure/depth, not global trail dimming or shortening. Spend shared appearance parameters and bounded interpolation/art work, never weaker force, a dimmer/shorter signature or lower quality. |
+| **A hit points to the body it moves** — `PQ-023` with the existing `PQ-134` causal family owner | The .00 combat critique could identify engagement but not who fired or was struck. Better contact provenance makes ricochets, shoves and chain reactions satisfying to learn instead of anonymous fireworks. | Keep `src/render/vfx.js` event provenance and `src/render/combat/arcadeStructuralFx.js` admission. Author a brief contact-facing compression shape, material spall and a separating aftermath around the actual struck surface; let the body's real displacement finish the event. Use existing `src/render/vfxProfiles.js` and weapon presenters to distinguish launch, travel and contact within the heavy-impact class. No invented force direction from an unsigned axis, no duplicate all-purpose ring. | Seed 4242 `shove_light`, then a fixed-seed bank/chain case at combat density: a reviewer follows source → contact → displaced body from chronological shipping-camera stills without diagnostic labels. Repeat with reduced motion/flash and retain that information. Spend contrast and a short event-priority window, not more screen shake or particles hiding the motion. |
+| **Shield, field and work signal have different silhouettes** — `PQ-023`, guided by `PQ-190` | All route through “shield response” today, but a protective contact, a volume that changes motion and a machine's work lamp promise different player actions. One glowing-bubble recipe would erase those decisions. | Keep the eight matrix classes but use three explicit subrecipes: surface contact follows the hull and decays; field extent follows its actual influence geometry and exhibits affected trajectories; a work signal belongs to an aperture/tool. Use `src/render/weapons/shieldContacts.js`, shield materials, `src/render/momentumSinkVfx.js` and the existing field/job controllers. Adapt each live owner rather than building a universal aura renderer. | In a fixed-seed frame containing a shielded body, a field and a working machine, the reviewer distinguishes protection, influence and work without relying on hue alone; endpoints/target bodies remain visible. Shield-00/03/07 supplies the approved panel-recovery reference, not approval for every field. Spend authored local structure and separate envelopes; keep the protected body legible throughout. |
+| **Aftermath tells you what was struck** — `PQ-023`, then regional work under `PQ-153` | Metal, ice and dusty rock should leave different useful-looking traces. Cooling fragments and dispersing matter make violence feel physical and leave space for the next action. | First inspect the pending migration in `src/render/combat/instancedSpritePool.js` and any live `src/render/vfx/quarksSystem.js` consumer; adopt working pieces. Use the existing material/provenance hooks for opaque tumbling spall, colder brittle chips and lobed dusty dispersal. Prototype authored/simulated texture detail on shaped surfaces or volumes where it improves the result. Keep material identity through LOD and reuse current sector structure profiles instead of recolouring the entire sky. | Show metal/ice/rock impacts side by side at the shipping scale on a fixed seed: each material is distinguishable by breakup/motion/form, contact stays visible, smoke does not expose a rotating square or blanket adjacent targets. .00 has no accepted smoke study: this row must earn its own visual pass. Spend varied art and bounded residency, paid for through pooling/batching; no blanket quality reduction. |
+
+For each row, take the smallest before/after witness that can reveal its cost; no new top frame-time
+bucket. Record the intended improvement and what it spent. A method name, green inventory scan or
+procedural sophistication is not the visual outcome. Fresh `.01` observations may refine the row's
+first candidate; the .00 images provide references and limitations, not a claim that old defects are
+still live.
+
+**Concrete field starting point:** `field_skim` exists in `src/data/fields.js` but the inspected live
+VFX field branches have no dedicated skim geometry. Start the shield/field differentiation row here:
+surface the existing influence as a directional sheet matching its actual support, with entry/exit
+edges and affected motion readable; do not reuse a spherical well fallback. The live `well`, `seed`,
+`anchor_snare` and `field_cone` remain separate recipes. This is a presentation gap, not authority to
+change field forces, ranges or counterplay.
+
+**Concrete jet/history starting point:** the live owner constructs `ContrailTrail` with empty
+options, while the plume reads its own ribbon recipe. The older recipe's `snake` layer is hidden;
+tuning it will not repair the visible history. Start in `PlasmaStream` with one small appearance
+handoff for the plume exit and the youngest history segment: radius/width, radiance progression and
+structural motif. Read the actual history tangent through `headAftDirection()` when choosing the
+local join orientation. Never rotate old world samples to the current exhaust axis. If needed, apply
+a head-local factor that is stored at birth and ages out of the short handoff; changing a global
+history uniform with today's throttle would repaint yesterday's path. Compare before/after at the
+seam, including sideways drift: match visual continuity, not two arbitrary numeric radiance values.
+A jet without two history samples at rest is legitimate; do not fabricate history merely to make
+the effects appear together. Preserve the current trail duration and bright tail as explicit controls.
+
+## 13A. Flight and movement convergence (`PQ-135`) — ADMITTED 2026-08-24
+
+**Source:** [`design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md`](./design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md)
+§21A, the v2 addition. **Admitted here by the owner on 2026-08-24** after playtest.
+
+The source file calls itself an experiment bank and asks not to be treated as a checklist. That
+caution is about not turning 9,299 lines of brainstorm into 9,299 blocked boxes — it is **not** a
+reason to leave real work out of the plans. The concrete, owner-confirmed slices are admitted below
+with stable IDs. Everything NOT listed here stays a quarry.
+
+### Why it is admitted: the owner played it
+
+> "it's not possible to fly in this game in a way that's nimble, every ship is heavy like underwater
+> or something and the auto-target flight system just kind of lazily inches along the line like a
+> Waymo in a school-zone which isn't useful in combat either"
+
+§21A independently reaches the same verdict — ships that are *"mushy, indecisive"* — and sets the
+target: **"Every ship should look like it meant to do what it just did."** Not faster. *Intentional.*
+Speed without intention is pinball noise.
+
+§21A's dependency order, which this section adopts:
+
+```text
+Motion Lab → player handling convergence → hull-relative enemy actuator
+→ virtual formation + attack choreography → cheap coherent swarm motion
+```
+
+### The leaves
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| **`PQ-135.00`** **[DONE]** | **The draw-to-fly speed governor stops crawling.** MEASURED DEFECT: ships cruise at **112-133 WU/s**; `PATH_CORNER_FLOOR_SPEED` is **14**, about one eighth. `worstCurvatureAhead` takes the MAX curvature over the lookahead, and a hand stroke sampled every 8 screen px reads its own jitter as a hairpin — so a gentle curve pins the hull to the floor for the whole stroke. | A drawn stroke is flown at a speed a player would choose, AND still tracked. **The existing tracking test measures cross-track and never measures SPEED — it would pass at 1 WU/s.** Add the speed bar to it. |
+| **`PQ-135.01`** **[DONE]** | **Player flight feel: crisp low-speed response, honest momentum, strong brake/yaw settle, and a hull you can FEEL the difference between.** (§21A.5) | A repeatable slalom and reversal course, Hitch vs Wasp visibly different, no loss of honest momentum. |
+| **`PQ-135.02`** **[DONE]** | Motion Lab: deterministic movement scenarios and motion telemetry, so feel is measured rather than argued. (§21A.23-.25) | Scenarios M1, M4, M6, M8, M11 run deterministically and produce comparable numbers. |
+| **`PQ-135.03`** **[DONE]** | Hull-relative enemy capability envelopes and desired-state trajectory control. (§21A.6-.7) | Enemy motion derives from the hull it is flying, not a shared constant. |
+| **`PQ-135.04`** **[DONE]** | **One four-ship wing with real choreography**: enters in wedge, widens to fan, two ships take distinct crossing lanes while two screen, attackers extend without instant turn-back, and the wing reforms through merge corridors. (§21A.9-.13) | A player impulse can break the sequence, and disrupted members do not instantly snap back. |
+| **`PQ-135.05`** **[DONE]** | **One twelve-body fodder cohort that reads as a river or crescent and stays physically throwable.** (§21A.14) | It flows as a shoal rather than a dozen independent seekers jittering at the same point. |
+
+### Binding constraints (§21A.28, §21A.30)
+
+- **No new direct position/velocity writes.** Motion comes through the canonical physical control
+  path or it does not ship.
+- **No campaign AI fork.** One game path.
+- **No performance regression hidden by cutting entity count or quality.**
+- Proof is normal-speed capture at the SHIPPING camera plus deterministic scenarios — not a clip
+  recorded at a flattering angle.
+- Every tuning number in §21A is a candidate experiment band, not law, until a leaf promotes it.
+
+### Sequencing note
+
+`PQ-135.00` is small, contained, and immediately felt — do it first. `.01` and `.02` are the real
+"nimble" work and belong together, because feel that is not measured is feel that regresses.
+`.03`-`.05` are the enemy half and depend on `.01` landing first, per §21A's own order.
+
+## 13B. Field the authored assets we already own (`PQ-136`) — ADMITTED 2026-08-24
+
+**Owner, 2026-08-24, after playtest:** *"if there was ever restarted or abandoned graphics work,
+there should not be abandoned and unused files like that... we already have a dearth of variety in
+this game for most things so we need to have everything utilized if we can."*
+
+### The measurement
+
+`check:asset-reachability` reports **276 referenced runtime assets** routed correctly — the runtime
+wiring is healthy. The problem is not broken routing, it is **authored work that was never routed at
+all.** Counted 2026-08-24:
+
+| Pack | Models | Referenced by `src/` | Unused |
+|---|---|---|---|
+| `assets/incubator/wreck_aftermath_pack` | 44 | **0** | **44 — the entire pack** |
+| `assets/incubator/everyday_space_kit` | 62 | 32 | 30 |
+| `assets/incubator/npc_activity_pack` | 15 | 9 | 6 |
+
+**Eighty authored models the player never sees.** The wreck pack is hero wreck hulls plus component
+and fragment kits built to an authored-fracture grammar (truss versus plated); the space kit is
+infrastructure props; the activity pack is occupational craft.
+
+**Do not measure this with a filename grep.** A first pass reported "852 of 1,412 models unused" and
+was WRONG — models resolve through manifests and LOD families, not literal paths, so most of those
+were LODs, source files, and third-party kits. `check:asset-reachability` is the instrument.
+
+### The leaves
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| **`PQ-136.00`** **[DONE]** | **The wreck pack reaches the player.** 44 models, currently zero. Wrecks are the cheapest variety in the game — they need no AI, no balance pass, and no new systems; they need routing and placement. | A player flying an ordinary sector encounters authored wreck hulls and fragments that are not the same three shapes. |
+| **`PQ-136.01`** **[DONE]** | The 30 unused `everyday_space_kit` props are placed where infrastructure belongs — stations, lanes, work sites. | Sectors read as inhabited rather than decorated with the same prop repeated. |
+| **`PQ-136.02`** **[DONE — 4 fielded, 3 held for still review]** | The 6 unused `npc_activity_pack` craft become fielded NPCs with a job, reusing the existing traffic and jobs systems. | New occupational craft appear in traffic without a new AI path. |
+| **`PQ-136.03`** **[DONE]** | **Half-finished or superseded hulls are triaged, not abandoned.** For each: field it, alter it into a variant (a different faction, a damaged version, a wreck), or record why it genuinely cannot be used. Deleting is the last option, not the first. | Every authored hull has a disposition on the record. |
+
+### Rules
+
+- **Reuse before authoring.** No new model is commissioned for a slot an existing unused asset can
+  fill; that is the whole point of this plan.
+- Runtime visual-continuity defects (ships publishing partially, sky/debris jumping across
+  floating-origin rebases) are NOT this plan: they belong to
+  [`design/program/FLEET_VISUAL_INTEGRITY.md`](./design/program/FLEET_VISUAL_INTEGRITY.md)
+  (landed with PR #102, 2026-08-24), which defers model production to `PQ-050` and
+  orphan/variant fielding back here.
+- A variant (repaint, damage pass, faction kit, wreck conversion) counts as fielding.
+- The asset pipeline contract and reachability checks stay green — this adds routing, not exceptions.
+- **Preserve valuable future work** (`PLAN_REGISTRY.md` rule 6): mark `FUTURE` or `PARTIAL` rather
+  than deleting because no implementation exists yet.
+
+## 13C. The box of dangerous toys — feel and consequence convergence (`PQ-137` … `PQ-145`) — ADMITTED 2026-09-03
+
+**Source:** [`design/VISION.md`](./design/VISION.md) Part II (the owner's full statement of what
+the game is supposed to feel like, 2026-09-03) and
+[`design/FEEL_CONTRACT.md`](./design/FEEL_CONTRACT.md) (the same-day audit of the live route plus
+the measurable bars). **Admitted by the owner on 2026-09-03** after playtest.
+
+### Why it is admitted: the owner played it, again
+
+> "the gameplay is wonky, it's not fun to play, the physics weapons blast things really slow and
+> cumbersome, when I blast enemies away it makes stupid vfx and just barely does anything, I don't
+> feel like I'm in control of anything that's going on in this game really … agents always just
+> keep expanding the turd instead of fixing the turd"
+
+The audit agreed with the owner's own guess ("a bad configuration or something … not enough
+attention on the guts of the physics"). **Seven rules, each added by a different agent for a locally
+sane reason, stacked into "nothing I do sticks"**: the default flight mode braked every speed the
+pilot earned (pressing *forward* after a slingshot slowed the ship); the physics layer deleted every
+shove that pushed an NPC past its own top speed; terrain was defined as never taking the helm; the
+per-contact momentum bound made a 150 WU/s rock slam a 40 WU/s scratch; thrust authority against
+fighting speed against screen depth gave the ship a 7–20-screen turn radius while it crossed the
+screen in under a second; the starter gun's shove was 0.5 momentum and the one real shove weapon was
+tech-gated; and the tests pinned all of it green. Full table: `FEEL_CONTRACT.md` §A.
+
+**Three of the seven were fixed the same day** (earned speed kept in the default mode; given
+momentum survives the NPC cap; hard slams take the helm). The rest, and everything the vision asks
+of the world around the physics, is this program.
+
+### The door
+
+**"The game isn't fun / combat and flight feel wonky / agents keep adding content instead of fixing
+the feel"** → this section → `design/FEEL_CONTRACT.md` → `node scripts/program-dispatch.mjs --id
+PQ-137`. Do not answer that complaint with more enemies, more ships, more stations, or camera
+shake. Answer it with a bar from the contract and the number that moved.
+
+### The rule that makes this program different
+
+Every packet below closes on **numbers in units an agent cannot tune away** — screen depths,
+seconds, hull lengths, fraction of hull lost, fraction of speed kept — measured on the default route
+at the shipping camera, before and after. "It follows the path" is not a number; PQ-135.00's own
+done-when admits its tracking test never measured speed, and that is the pattern this program ends.
+A test that pins behaviour `VISION.md` forbids is a defect: rewrite it with the vision's sentence in
+the assertion message (`FEEL_CONTRACT.md` §D).
+
+### Order
+
+```text
+PQ-137 the guts (feel contract)  ──┬─> PQ-139 impacts answer (weight you hear and feel)
+                                   ├─> PQ-138 the world reacts (three missing listeners first)
+                                   └─> PQ-140 roster as physical problems
+PQ-138 + PQ-139 + PQ-140 ─────────────> PQ-141 THE 60-SECOND PROOF (program acceptance gate)
+second wave, in parallel after PQ-137: PQ-142 progression + my ship · PQ-143 places + ordinary life
+                                        PQ-144 density layers + perf guard · PQ-145 industry → authorship
+```
+
+### The packets
+
+| Packet | Outcome | The bar it moves |
+|---|---|---|
+| **`PQ-137`** **The guts** — [`active/PQ-137.md`](./design/program/roadmap/active/PQ-137.md) | Two speeds in one default mode; shoves throw; hitstun is one law for guns, throws, flings and collisions; terrain is lethal; the rope is a rope; draw-to-fly rips; chains go off; every bar measured on the route. `.00`–`.02` **[DONE 2026-09-03]**. | B1–B8, B11 |
+| **`PQ-138`** **The world reacts** — [`active/PQ-138.md`](./design/program/roadmap/active/PQ-138.md) | The patrol chooses stay-or-chase; spilled cargo attracts NPCs; civilians flee gunfire; wrecks drift and tumble; failure mutates the mission; one site keeps evidence. Audit: all nine consequence beats are registered systems already — three events have zero listeners. Connection, not construction. | B10 |
+| **`PQ-139`** **Impacts answer** — [`active/PQ-139.md`](./design/program/roadmap/active/PQ-139.md) | Collisions get hitstop and trauma by momentum; collision audio by mass; the Massline release snaps; deaths sized to mass; impulse hits are cones not spheres; tumbling trails corkscrew; wells bend space. Audit: the feel layer never subscribed to collisions; audio ignores the momentum physics hands it; release is hard-coded to never snap. | B9 |
+| **`PQ-140`** **Roster as physical problems** — [`active/PQ-140.md`](./design/program/roadmap/active/PQ-140.md) | Interceptor = positioning problem; heavy = moving terrain; four specialists that each break a plan; fodder is ammunition. | B5/B6/B11 in the Crucible |
+| **`PQ-141`** **The 60-second proof** — [`active/PQ-141.md`](./design/program/roadmap/active/PQ-141.md) | The VISION sequence happens naturally and repeatedly at the reference site: deterministic scenario (≥ 9 of 11 beats) + headed capture + "every actor has a sentence." **The acceptance gate for the whole program.** | B12 |
+| `PQ-142` Progression = "what can I do now" + my ship — [`active/PQ-142.md`](./design/program/roadmap/active/PQ-142.md) | Capabilities as verbs (tow class, slam survival, line load, field deploy); scars, repairs, recognition by hull. | — |
+| `PQ-143` Places with a way of life + ordinary life — [`active/PQ-143.md`](./design/program/roadmap/active/PQ-143.md) | Helios/Ceres recognisable from 30 s of activity; routine work visible between incidents; six texture one-offs. | — |
+| `PQ-144` Density layers + perf guard — [`active/PQ-144.md`](./design/program/roadmap/active/PQ-144.md) | Foreground real / midground coherent / background implied, as a budget table; runtime witness before and after every packet here. | §8 |
+| `PQ-145` Industry becomes authorship — [`active/PQ-145.md`](./design/program/roadmap/active/PQ-145.md) | A player-built depot creates persistent NPC traffic and the crime that follows it. | — |
+
+### Binding constraints (in addition to §13A's)
+
+- **Never add drag.** Control comes from thrust authority, assist that lets go above the cap, and
+  camera — never from velocity decay.
+- **Never clamp given momentum.** A speed cap bounds a body's own drive; shoves, throws, flings and
+  contacts survive every cap.
+- **NPCs obey the player's physics.** No gyros, no transform writes, no instant counter-thrust.
+- **Do not scale knockback with victim HP.** It would reintroduce the HP grind by the back door.
+- **Make existing features collide before adding one.** `PQ-138` is three listeners, not three
+  systems.
+- Proof is a normal-speed capture at the shipping camera plus the deterministic scenario — never a
+  clip at a flattering angle, never "the check is green."
+
+### Outside opinions, graded (2026-09-03)
+
+Gemini 3.8 Flash (`agy`) and Kimi K3 (`opencode`, clinepass) were asked the flight and combat
+questions with the live numbers. They agreed with the audit on the load-bearing points — delete the
+NPC velocity clamp, never add drag, blend the auto-brake to zero above the cap, hitstun as one law of
+ΔV/cruise and mass ratio, terrain damage from pre-solve closing speed, corridor-based corner cutting
+for draw-to-fly — and each contributed one guard worth keeping: Kimi's *"keep a 1–3 s intent-to-
+velocity lag or 'drift when I choose to' stops meaning anything"* and *"do not scale knockback with
+HP %"*; Gemini's *"no cheating gyros."* Their numbers are recorded as experiment bands in
+`FEEL_CONTRACT.md` §C, not as law.
+
+## 13D. The 3D picture never looks broken (`PQ-193`) — ADMITTED 2026-09-09
+
+**Owner, 2026-09-09:** what models have missing pieces, what does not meet the bar, what sits unused,
+why ships sometimes do not render, and the ordered work so the world never looks broken.
+
+Packet: [`PQ-193.md`](./design/program/roadmap/active/PQ-193.md). Dispatch:
+`node scripts/program-dispatch.mjs --id PQ-193` and take the first ready leaf (`.00` first). Flyable
+remaster stays `PQ-050`. Unused-pack fielding stays `PQ-136` (`.00`–`.03` done). Liner G7 stays
+`PQ-049.05`. Hitch stays frozen. Stocktake tables:
+[`MODEL_STOCKTAKE_MANIFEST.md`](./design/program/MODEL_STOCKTAKE_MANIFEST.md). Order:
+[`MODEL_STOCKTAKE_PLAN.md`](./design/program/MODEL_STOCKTAKE_PLAN.md). Admission / runway / LOD
+process (blank lock, box-then-ship, “shave a little”):
+[`DYNAMIC_GRAPHICS_INVESTIGATION.md`](./design/program/DYNAMIC_GRAPHICS_INVESTIGATION.md).
+
+### The bar
+
+1. **One game.** A stranger shown Hitch and the nearest NPC does not ask which title each is from.
+2. **Complete hulls.** No floating engine, wing, socket, or glow blob. An empty targeting lock is a
+   defect, not a style.
+3. **Jets are jets.** Reverse/brake is force leaving a nozzle, the same family as the main drive.
+4. **A valid file is not accepted art.** Packaged and wired is not Hitch-plus.
+
+Hitch is rebuilt in Forge from the owner's design (2026-09-27); the Forge bar, not Hitch, is the
+floor. Graphics workflows and the open backlog: [`GRAPHICS_PROGRAM.md`](./design/program/GRAPHICS_PROGRAM.md) (Wave GFX below). Do not paste Hitch panels onto NPCs. Chase camera only. No seats.
+
+### What is true now (live census 2026-09-09)
+
+Three different failures get mixed together. Treat them as three queues, not one "graphics" pile.
+
+| Failure | What the player sees | Cause | First leaf |
+|---|---|---|---|
+| **Invisible** | Targeting locks empty space | Live slot asked for a body the loader will not admit (no package, or not on the empty-admission allowlist). Hitch and Wasp are the only *required* whole-ships. Pelican, Mule, Drifter, the nine factory hulls, and the liner have packages and maps but are **not required** and are omitted from that allowlist — they do not publish on the player path. | `PQ-193.00` |
+| **Falls apart** | Engine / wing / glow hanging in space | Accessory-only file, or modular kit with no meeting hull. Legacy Pelican/Wasp wholeships are blocked forever. Default New Game parks 47-A ships far; the opening kitbash is modular **smuggler / pirate** traffic. The official **recovery tug** is modular Mule when it arrives. | `PQ-193.01` |
+| **Wrong game / plastic** | Draws, but toy, unpainted, or another title | Factory player hulls (Hornet→Leviathan) are mapped, not published. They have not closed Hitch-plus. Hornet burned dozens of cycles and still failed (fragmentary form; maps ~30 px/m where the bar wants hundreds). Reverse still reads as two needles even though a volumetric retro path exists. | `PQ-193.01` / `.02`, then `PQ-050` |
+
+Also true:
+
+- All 13 roster ships have dedicated models and render packages. Only Wasp is `accepted`. Mapped
+  factory hulls are not published until `PQ-193.00` requires them.
+- Code-built cans, drone *entities*, mines, generic wrecks, and mass seeds have **no model file**
+  ([`WORLD_VISUAL_CENSUS.md`](./design/program/WORLD_VISUAL_CENSUS.md) A). **Gates have**
+  `place_gate_jump_ring.glb`. The hoop is leftover fallback.
+- Factory remasters of already-live Ashline / Helios / work boats sit on disk. An earlier remap
+  onto them made traffic invisible. **Do not remap** until that exact body is packaged and beats live.
+- Corsair still shares the pirate Rig. Arclight has no route. Tanker and inspection cutter are held.
+  **Yard tug is live.** Faction kits exist; nothing reads them. Dock / hulk / debris remaster is
+  stuck at live presentation. Station fallback is still a fat cylinder plus hoops.
+- Distant cheap LODs exist for every player hull and are never switched in. That is Wave F
+  below, not Waves A–E. Zoom-out does not swap hulls today. Do not show a box
+  or modular kit while a body decodes. Garnish hide at a speck is the ceiling — not a cheaper
+  species of ship, not an impostor. See the dynamic-graphics investigation.
+- `needed-assets.md` is stale (still calls Hitch / Pelican / Wasp blocked). Do not dispatch from it.
+
+### The order (law)
+
+Wave C (the Forge fleet) runs in parallel with the others: a forged body replaces the live one in
+the same slot, so it never opens a blank lock. Never commission a new hull for a slot an unused
+authored body already fills.
+
+### Wave A — opening flyby never broken
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| **`PQ-193.00`** | **Every ship the player can lock publishes a packaged complete body.** Put all 13 roster hulls and the liner on the empty-admission allowlist **and require them**. Accessory-only modular junk (smuggler / pirate included) never substitutes. | Default-route targeting never sits on blank space for those hulls. `check:live-whole-ship-admission` and `test/live-ship-visual-package-coverage.test.mjs` cover them. Hitch freeze untouched. |
+| **`PQ-193.01`** | **Opening NPCs belong in Hitch's world.** No floating parts on the Helios / Kessler flyby. Includes modular smuggler / pirate and the official 47-A recovery tug. Taste-led ([`VISUAL_WORLD_CLEANUP.md`](./design/program/VISUAL_WORLD_CLEANUP.md)). | A stranger shown Hitch and the nearest NPC says they are the same game. Nothing structural floats. Hitch frozen. |
+| **`PQ-193.02`** | **Reverse / brake is a jet.** One honest path from the existing volumetric retro; delete or stop the leftover needle trail. | A stranger can tell, HUD hidden, that the player is braking. Same family as the main drive. No second needle stacked on a failed volume. |
+
+### Wave B — tubes next to ships
+
+Bar and hitch-collision law: [`GRAPHICS_3D_CAMPAIGN.md`](./design/program/GRAPHICS_3D_CAMPAIGN.md).
+Upgrade the existing object. Do not invent a parallel prop.
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| **`PQ-193.03`** | Lane buoy, lane beacon, and cargo pod look manufactured at chase size. | Same-slot replace. Stranger can name the job at 144 WU. Not a tube-plus-ring next to Hitch. |
+| **`PQ-193.04`** | 47-A spindle, rescue capsule, Kessler beacon, Bourse wreck, and the generic TOW can are designed objects. | Code-built family gone from that mission slot. Model first if hitch still owns the 47-A wiring file. |
+| **`PQ-193.05`** | Mining-drone entity, jump gate, disc mine, generic wreck, and mass seed stop being primitives. Gate: upgrade live `place_gate_jump_ring.glb`. Drone entity: point at `place_mining_drone.glb` after it looks like hardware. | Default route no longer shows those census-A shapes as cylinder stacks. |
+
+### Wave C — the whole fleet in Forge (owner, 2026-09-27) — LIVE
+
+The owner lifted the Hitch freeze and asked for every hull to meet one bar. Every flyable body is
+built in [`tools/blender/forge/FORGE.md`](./tools/blender/forge/FORGE.md). That means one kit, one
+surface set and one publish command, and review means looking at the live renderer
+(`scripts/fleet-look.mjs`, `scripts/flight-look.mjs`). Registry: `tools/blender/forge/fleet.json`.
+
+**Live (2026-09-27):**
+- All 47 ship bodies. That is the 14 player hulls, Ashline, Helios civil, the work fleet, the faction variants and the Massline liner.
+- Stations: refinery, mining rig, fab yard, military bastion, research array, black-market warren, jump gate.
+- Props: cargo pod, lane beacon, nav buoy, mining drone, worklight tower, container rack, sensor mast.
+- Interface art: HUD silhouettes and hull posters regenerated from the forged hulls.
+
+Workflows, rules and budgets: [`design/program/GRAPHICS_PROGRAM.md`](./design/program/GRAPHICS_PROGRAM.md).
+The open work is Wave GFX below.
+
+### Wave GFX — the graphics backlog after Forge (2026-09-27) — DONE 2026-09-28
+
+Full rows, "done when" and order: [`GRAPHICS_PROGRAM.md` §4](./design/program/GRAPHICS_PROGRAM.md).
+Agent brief templates: [`tools/blender/forge/briefs/`](./tools/blender/forge/briefs/). Delete a row
+here and there in the fixing commit.
+
+| Row | Outcome |
+|---|---|
+
+### Wave GFX-2 — the graphics assessment, implemented (2026-09-28/29) — IN PROGRESS, handoff
+
+Source of every row: [`GRAPHICS_ASSESSMENT_2026-09-28.md`](./design/program/GRAPHICS_ASSESSMENT_2026-09-28.md)
+(evidence sheets under `.devshots/assess/`). Owner asked for all of it. Packets run in order A→F;
+delete a row in the commit that finishes it.
+
+**Landed and pushed:**
+- **A — visual bugs** (`cbce4123a`): dynamic resolution no longer draws into the bottom-left corner
+  (D97 deleted); the purple disc under ships was the contact-shadow ink (now black); Wreck Cathedral
+  draws at authored size (D54 keeps only the Anvil item); sector-jump prewarm treats superseded
+  entries as withdrawal (6 jumps, 0 fallbacks); Pelican posters re-rendered (D72 deleted).
+- **B — runtime lighting + composition** (`52008a734`): per-sector rigs with key-colour moods (Vesta
+  hot, Pallas cold, Sker sodium, Ceres dusty) inside the colour standard; `fleet-look --sector=`;
+  per-sector sky bodies + desaturated painted sky; `src/render/cameraOccluders.js` dips bodies out
+  of the camera→player corridor. Shadows stay opt-in (owner ruling 2026-09-21); 2048 texel-snapped
+  map for the opt-in. Render graph (GTAO) stays opt-in: same picture, 1.4–1.9× cost.
+
+**C — kit surface + motion + fleet republish: UNCOMMITTED in the tree, interrupted before its checks.**
+What is in the working tree (verify, then commit by pathspec — foreign dirty files sit beside it):
+- C1 baked per-body AO: `tools/blender/forge/forge_export.py` (second UV + Cycles AO bake → glTF
+  occlusionTexture texCoord 1), forge-v1 material path applies AO to direct light
+  (`src/render/illustratedSurface.js`, `src/render/authoredMaterialProfiles.js`).
+- C2 panel grid broken up: `tools/blender/forge/forge_textures.py` + regenerated
+  `tools/blender/forge/textures/*.png`; UV rotation/offset jitter in `forge.py`.
+- C3 window/beacon emission for places: state unknown — check `forge.py` FINISHES and a hub z330 still.
+- C4 motion: `s.anim(...)` in `forge.py`/`forge_export.py` (ANIM_ nodes), 29 ship/place sources
+  tagged, ANIM_ driver in `src/render/infrastructureMotion.js` (+ place branch in `renderer.js`),
+  ANIM_ lane allowed in flight-static packages (`scripts/build-render-package-pilots.mjs`, `publish.mjs`).
+- C5 republish ran over 67 wholeship + 66 place GLBs (+ release mirrors, 447 render-package files,
+  manifests, census). `check-parts-manifest`: 5766 ok / 0 fail. The parts-manifest text corruption
+  from the Windows publish ("â€”") is repaired; confirm its writer is UTF-8-explicit before the next publish.
+- NOT yet run: `check-render-package-pilots`, `check-graphics-asset-receipts`,
+  `node --test test/model-truth-census.test.mjs test/render-package-pilots.test.mjs test/live-ship-visual-package-coverage.test.mjs`,
+  the ANIM/AO focused tests, `check:baseline`, and before/after sheets (partial captures in
+  `.devshots/c5-after-ships/`). Next session: run those, open the sheets (AO must darken recesses
+  without muddying; hub dock lights must chase), fix, then commit C.
+
+**Not started (in order):**
+- **E — models:** rebuild the 29 blockout "everyday space kit" props in Forge (same slots, pack
+  pipeline like the wreck pack); wreck fragments (floating pieces, too-clean "fresh", plank-like
+  cable/pipe); optic crystals as faceted glass not white cards; claim outposts heavier; transponder
+  gate not a sliver; rocks less lumpy; distinct grit/military dock interiors; Wreck Cathedral rebuild
+  to the 40–100k landmark budget; Quiessence freighters to ~15–20k; faction variants of Span/Wasp get
+  silhouette changes (not recolours); spread the civilian ivory-and-orange palette.
+- **F — effects at chase zoom:** record a real fight and prove flash/tracer/impact/death burst read at
+  144 WU; mining beam with body + contact spray + heat on the rock; white-hot Massline core; sector
+  arrival wake/flash; visible retro jet.
+- Also from the assessment: Sker Haven's purple soft-sphere crystals read as blobs (part of E).
+
+### Wave ANI — premium Blender-authored model motion — owner-requested, reference-first
+
+**Outcome:** the models visibly operate, take damage and break into useful physical mass; not another
+nav-blink, particle or camera-shake pass. The owner asked for 10–20 researched animation ideas,
+model-matched Grok reference movies, and agents iterating actual Blender animations against those
+movies. Three independent combat/world/pipeline brainstorms and a debate produced 15 ideas;
+visual review selected **13 reference-backed animation tasks**, plus the shared foundation.
+
+Build contract, exact source/model locators, event/state wiring, rig/export/playback decisions and
+per-task failure cases: [ANIMATION_REFERENCE_PROGRAM.md](./design/program/ANIMATION_REFERENCE_PROGRAM.md).
+Lead-authored generation jobs: [ANIMATION_REFERENCE_JOBS.json](./design/program/ANIMATION_REFERENCE_JOBS.json).
+Curated movie/model-image provenance and reference-review state:
+[animation reference manifest](./assets/animation-references/manifest.json). Browse the movies in the
+[reference library](./assets/animation-references/index.html).
+A generated reference is **not** an implemented/accepted game animation. A task may use only its
+reviewed reference; rejected drafts and frame sheets stay local. No runtime animations were shipped
+by the reference-collection task.
+
+**Start `ANI-00`.** The current Forge exporter welds ordinary parts and disables GLB clips; the part
+loader rejects clips/skins/morphs, and the flight-static package lane flattens moving hierarchies.
+Build the shared pivot-preserving **Blender-authored rigid motion-bank** path, retaining those GLB
+validation guarantees. Prove a scanner action and an articulated place on the default route before
+opening the dependent rows. Do not hand-code a sine wave instead of the Blender action, or turn the
+reference movie into in-game footage. Shared Forge/package/runtime work has one owner; Kestrel rows
+and the two fab-yard rows serialize their shared model/builder/publish mutations.
+
+| Task | Player-visible animation | Models / build focus |
+|---|---|---|
+| **ANI-00** | Shared real Blender-action export, dynamic group preservation, state-driven playback and lifecycle | Forge rigid pivot groups + hash-bound 60-sample/s motion bank + package binding; scanner/place proofs |
+| **ANI-01** | Scanner dish deploys, aims, pulses and parks | Kestrel dorsal sensor; the long roof spine stays rigid |
+| **ANI-02** | Mining head releases, advances, bites and stows | Kestrel chin cutter; the beam still joins its validated emitter |
+| **ANI-03** | Massline winch pays out, catches load, reels and releases | Yard tug winch/fairlead, then host-reviewed liner/player adapters; one real tether |
+| **ANI-05** | Boost drive iris and linked actuators engage and lock | New compact iris inside Kestrel's existing bell; parent gimbal/core keep their own writers |
+| **ANI-06** | Repair pod opens and a linked service arm performs a weld pass | Kestrel green pod; actual repair miner/target, not proximity idle |
+| **ANI-07** | Struck armour hinges, peels and settles, with truthful tear-off | Kestrel armour hook first; replace instant damage pops, preserve root heading |
+| **ANI-08** | Wasp seam rupture and fresh fragment/plate motion | Hull-matched Wasp pieces; immediate kill and physics-owned debris trajectories |
+| **ANI-09** | Salvage-cutter hydraulic jaws bite, hold, shred and release | Existing paired jaws, rams and throat roller; verified salvor work phase |
+| **ANI-10** | Mining-drone cutter engages, grinds and coasts down | Existing orange drum/teeth/spike assembly; active drones and place views |
+| **ANI-11** | Worked cargo-pod bars unlock and doors breach open | Teal pod end frame plus real door leaves/interior; exactly one actual salvage spill |
+| **ANI-13** | Linked fabrication arm aligns, welds a seam and parks | Fab yard's existing shoulder/elbow/wrist; station-keyed manufacturing queue |
+| **ANI-14** | Heavy hull plate is hoisted, traversed, fitted and parked | Fab bridge crane 0, paired hoists and hanging plate; not the workshop jib |
+| **ANI-15** | Jump-gate emitters index, lock, energise and reset | Small existing emitter carriages; outer frame and flyable aperture stay fixed/open |
+
+**Retained, not dispatched:** ANI-04 radiator louvers and ANI-12 harbour clamps. Their generated
+references failed geometry review (growing replacement fins / floating off-style linkage). They have
+no approved movies; the program preserves those ideas for a future source-pose pass. The 13 rows
+above, not the rejected drafts, are the selected reference-backed build assignments.
+
+**Iteration law:** render the Blender candidate at **60 FPS**, compare against **every native reference
+frame** and full-size key poses in matched framing, and inspect the real 60°/144-WU shipping view.
+Do not invent high-FPS reference evidence by frame duplication or optical flow. When the author
+thinks it is ready, spawn an **independent read-only, vision-capable reviewer** with frozen video/model hashes,
+phase alignment, whole-model and mechanism views, and the lead-authored rubric in the program §5.
+It must score **at least 80/100**, satisfy the rubric's category floors, cite frame/time evidence and
+have no hard failure. Fix the concrete defects and repeat; move to the next animation only after
+that gate, focused lifecycle/ownership checks, the actual live-route picture, and owned publication
+are complete. No self-awarded grade, camera trick, hidden feature, fake physics handoff or new input
+latency can close a row.
+
+### CI stabilization campaign — IN PROGRESS, handoff (2026-09-29)
+
+Ledger truth lives in `DEMO_READINESS_2026-09-20.md` D90; this is the working state.
+
+**Goal:** get `.github/workflows/check.yml` (groups: static×3, sim, feel, browser×3) green on a quiet
+head. Runs cancel in-flight on every push (`concurrency.cancel-in-progress`), so the proof is one
+full green run, not a permanently green history.
+
+**Landed and pushed — real defects fixed (six waves, ~40 commits):**
+- Infra: browser sharded 2→3 (`71d21ea41`), blobless full-history checkouts (`7e9d5d638`).
+- Sim/harness: miningHud DOM guard (`a6e831ba5`), sf.mjs JSON stdout drain (`9f2cb70d5`), clientless
+  mission expiry (`3d1c3054e`), depth-program re-pins (`b339de8c7`), env-machinery crash (`d9ba5c266`).
+- Assets/tooling: place KTX2 role encodings re-published (`34e8a05f9`), forge root-node
+  `spacefaceAsset` stamp (`f50b45ee3`), cross-platform Chrome discovery (`5f3c898d3`), native
+  `title=` → `data-why` (`b6d7447ce`), texture-dedupe detached-payload guard (`c4ee3bd01`).
+- Browser boot: serial-GL-route queue pacing — `gpuQueuePace.js` wired into bloom/opening admission/
+  renderer/residency (`c48d13648`); signal cue lane-critical (`5a06e86ce`); dock pointer rAF+timer
+  backstop (`def5cd899`); ORRERY glyph aria-label hold (`1a249e88a`); bar nav budget (`7c479fed6`);
+  headed-capture anti-occlusion flags (`a7694369d`); `@elemaudio/core` importmap + vendored deps
+  (`f35d15203`).
+- Wave 4–6: sector-arrival headless-on-CI (`42760041c`), whole-ship LOD hysteresis across family
+  swaps — real thrash fix (`13e8b7966`), probe scores ships by the renderer's own admission policy
+  (`3a91603d3`), input gamepad-boost helm claim (`8516173bd`), sg06 port whitelist (`280e15718`),
+  K1 committed-corridor fire-window hold (`e2c4199f2`), probe resolve-window + menu budgets
+  (`160036aff`), save-index card assertions (`a64c6676b`).
+
+**OPEN — the blocking cluster (CI run 36594590047 @ `48c4def72`):**
+The Slice-A physics packages (`954a0ab8c` dynamic compound colliders, `b7b499263` non-landmark
+solids dynamic, `604d19831`, `41e035b11`, `30cb519bd`) drifted the sim hard. Failing now:
+`check-sim-v3`, `check-sim`, `check-sim-dynamic`, `check-sim-compare`, `check-sim-v3-compare`,
+`check-sim-profile`, `check-replay` (all telemetry-envelope hash drift — re-derive if the new
+physics is sanctioned, name the landing commits), `sg02-coincident-spawn-test`,
+`check-phase0-slice-contract` (4 vs 7), `check-sg06-formation` (interceptor separation 122.652),
+`check-pq146-stunt-proofs`, `check-shipworks-dock-composition`, `check-47a-tactics` +
+`check-47a-live-branch` (`surrender_evidence` never fires — behavioral, not a pin), `check-k1`
+re-fail, `check-station-tabs` (market pointer response absent), `check-sector-arrival-admission`,
+`probe-ship-visual-stability`. Adjudicate per-check: sanctioned drift → re-derive fixture; real
+regression → production fix.
+
+**OPEN — `check-ui-budgets` baseline treadmill:**
+`baseline:stale` fails static-2 whenever any lane commits to `src/ui`/`styles`/`src/core`/`src/render`
+(the digest roots). Fix per cycle: headed re-shoot —
+`node scripts/capture-ui-matrix.mjs --headed --mode=default --viewport=1920x1080 --budgets-out=test/ui-frame-references/budgets.json`
+on a CLEAN tree at the pushed head (~30-40 min). A race loop doing exactly this runs locally:
+`scratch/budget-loop.ps1` in `.worktrees/budget-shoot`, polls origin/master every 60 s and
+re-shoots the newest head, restarts on digest drift; wins → `scratch/budget-loop.done`. When it
+lands, copy `budgets.json` to main, commit, push immediately. Headed is a hard integrity gate —
+headless numbers are not evidence.
+
+#### Checkpoint 2 — cluster bisected, disk recovered (2026-09-29, late)
+
+**Environment — RESOLVED:** host disk hit 6.7 GB free (100%), which broke `sim-golden-diff`'s
+reference-tree tar export. Recovered to ~83 GB by removing 15 dead worktrees (46 GB under
+`.worktrees/` plus stale detached checkouts under `Documents/GitHub/` and `%TEMP%`). Dirty
+dead-worktree diffs salvaged to `scratch/salvage/*.patch` before removal (`skin-scope-fix`,
+`sf-clean-check`, `sf-head-verify`, `sf-d75-preperf`, `sf-sparse`). Preserved live worktrees:
+`budget-shoot` (race loop), `ci-repro`, `adjudicate-phys`, `dock-probe` — the last two had
+writes minutes old at checkpoint; do not touch.
+
+**Landed and pushed this checkpoint:**
+- `099214d4c` — probe teardown: bounded `browser.close()`/`server.close()` (10 s race) +
+  connection teardown + explicit exit in `probe-sector-arrival-admission.mjs` and the shared
+  `visualProbeCleanup` finalizer. A printed PASS can no longer hang into SIGKILL. Verified:
+  probe exits cleanly on PASS now.
+- `2b6ee9a4e` — B11 re-quote: `test/hitstun-curve.test.mjs` quotes the contract's
+  owner-ruling sentence verbatim (4/4 PASS).
+
+**Physics-drift cluster — bisected and adjudicated (do not re-bisect):**
+- `check-sg06-formation`: culprit isolated to Package D `1639c221e` (tunnelling/overlap
+  prevention). Separation 140.716 pre-package and identical through Package C `954a0ab8c`
+  (innocent) → 122.652 at Package D, stable through Package F. Qualitative contract intact:
+  no ram authorization, hull contact ~46 — **sanctioned drift, not a logic break**. The
+  physics lane's in-tree fix derives floor 80 from the hull+clearance contract with a
+  scatter sweep (86–141 across builds); that hunk is theirs and uncommitted — leave it.
+- `test/sg02-coincident-spawn`: a blind +2.5 ladder nudge placed pods on the wreck capsule's
+  spine axis → degenerate ~10⁶-unit Rapier manifold → 2.69-M-WU teleport. Root guard
+  `cc93d8461` (Sep 26) plus Package F's spine-aware ladder already fix the teleport;
+  remaining fails were stale expectations (+2.5 → +7.5, the first rung clearing the ±6.6
+  spine window) and a ghost test written before Package-D collision groups (pickups ghost
+  vs craft but intentionally pair vs debris/solids). The physics lane's dirty-tree version
+  supersedes — leave their hunk.
+- `check-47a-tactics` `surrender_evidence`: **BEHAVIORAL, not drift.** Instrumented with an
+  env-gated clause dump (`SF_PRED_DEBUG`, exists only in `ci-repro`, not committed): reel
+  fires, tether intact, no sling/cut — the failing clause is `actorDistance`.
+  `official_recovery_tug` approaches (500,-100 → 815,95) then stalls at 313 WU from the
+  spindle vs the required 180. The tug's `tether_control_raider` doctrine hold-short
+  equilibrium moved under the stiffer contacts. **Owned by a wave agent** — fix the tug's
+  approach behavior, never the predicate. **RESOLVED `f9edb3597` (2026-10-01)** — the
+  scripted ferries were retuned to `eb1869826`'s solid-contact drift (measured 90–142 WU
+  across the resolution window; the 180/160 WU predicates untouched). `check-47a-tactics`
+  (all four tactics) + `check-47a-live-branch-predicate` green at HEAD.
+- `sling_evidence` fails on the same `actorDistance` clause family — same root suspect.
+  **RESOLVED** by the same `f9edb3597` ferry retune; green at HEAD.
+
+**Open items — each owned by a dispatched wave agent (fresh worktree writes at checkpoint):**
+- soak encounters `got 0` — **RESOLVED `493e9da95` (2026-10-04)**: two honest defects. The
+  planner's nominal-spacing pass clamped an `earlyDelayS`-pinned beat to its window hi and
+  left a <45 s pair anyway (helios d0 s47: trader_run→raid 36.4 s); the contiguous
+  unwindowed run now yields earlier, preserving order and ≥45 s gaps, and a truly impossible
+  calendar surfaces as the residual pair rather than a silently moved promise. The
+  one-voice soak's seed-23 schedule starved to 1 fire on legitimately `storyBeatMin`-gated
+  items — reseeded 23→43 (5 fired, 2 proximity-gated; floor unchanged, the fixture's
+  documented maintenance pattern). `check-encounter-director` + `check-encounter-one-voice`
+  6/6 green.
+- `first layered sync should import fixed bodies once` (spawn path) — **GREEN at HEAD**:
+  `check-sg02-dynamic-body-owner` passes; `syncStaticEntities=1` verified on owner +
+  physicsAuthority versions back to Package E `b7b499263` — the checkpoint red was the
+  in-flight Package-D/E/F working state, not a committed regression. Restore-path
+  `_staticLayerVersion` bookkeeping completed by `2402a0d13`.
+- 47-A telemetry envelope re-record: **owner action after sim-moving fixes land** — re-record
+  hash + moved-field counts + a notes entry citing Package D/E/F evidence (`f70aac37f`,
+  `1639c221e`, `b7b499263`, `954a0ab8c`). Do NOT pin-update without that ruling.
+
+**Foreign in-flight in the main tree — do not sweep into commits:**
+- Forge-fleet rebuild: every `tools/blender/forge/ships/place_*.py` + `parts_manifest` +
+  place GLBs dirty (graphics/dock-probe lane).
+- `helios-trade-hub` render package has `dynamicGroups` — `check-sector-arrival-admission`
+  fails on THIS dirty tree (`station id 215` unpublished) but passes on the clean CI tree;
+  it is the graphics lane's uncommitted Packet C, not a regression.
+- `assets/incubator/wreck_aftermath_pack/` dirty — graphics lane.
+
+**Baseline treadmill:** race loop alive at attempt 11 (`82698b7d9`); digest drift from live
+lanes keeps killing attempts ~5 min in. Wins whenever a ~40-min quiet gap opens.
+
+#### Checkpoint 3 — repository consolidated (2026-09-29, late)
+
+Owner directed: all agents stopped; consolidate scattered work to master, park unmergeable
+in-flight work on one branch, delete orphan worktrees and process artifacts.
+
+**Worktree census — was 4 registered + ~15 stale, now 2:**
+- `SpaceFace/` (main, clean on master), `.worktrees/consolidated` (parked branch).
+- Removed: `adjudicate-phys`, `ci-repro`, `dock-probe`, `pq040-*`, `pq033-floor-v2`,
+  `skin-scope-fix`, `ci-b7d859ada`, plus detached checkouts `sf-clean-check`, `sf-hash-check`,
+  `sf-head-verify`, `sf-headcheck`, `sf-attr-check2`, `SpaceFace-f15check`,
+  `SpaceFace-verify`, `sf-d75-preperf`, `sf-sparse`, `sf-verify-head`, `scratch/assets-wt`.
+- `.worktrees/budget-shoot` stays while the baseline race loop runs; retire it with the loop.
+
+**Parked — `consolidated/inflight-2026-09-29` (pushed to origin, worktree `.worktrees/consolidated`):**
+- `0d93c19a5` — the ~950-file dirty snapshot of the shared tree: forge-fleet rebuild,
+  physics-lane adjudication hunks, ui/render/economy in-flight edits, untracked probes/tests,
+  process logs. Parked, not reviewed.
+- `6fe0255f6` — layer 2: 5 redock-stall diagnostic scripts (from `pq033-verify-evidence` tip)
+  + muse pre-cloud-merge park (sector chart webp art, deckplate token tools).
+- Pre-park dirty-worktree diffs also salvaged to `scratch/salvage/*.patch` (dead checkouts).
+- To resume parked work: check out the worktree, diff `consolidated/inflight-2026-09-29`
+  against master, and take hunks by file — treat the whole branch as WIP, not truth.
+
+**Merged to master tonight:**
+- PR #178 flying-saucer (`bde3dbe17`), PR #179 swarm crucible (`cc2334f4f`) — both were
+  conflict-free; their UNSTABLE checks are the same broken-CI group, not merge regressions.
+- `devin/pq033-floor-v2` (`16614ae4e`) — 5 §22 closures; 9 conflicts, all resolved to HEAD
+  (master strictly newer: salvage-bay cargo, quiet-latch barks, ORRERY market); branch tests
+  20/20 after merge.
+- `fleet-toys` (`eaf329eff`) — machined ordnance mine bodies survived merge (3/3 census).
+- `pq040-native` (`6d271c274`) — 65-commit dirty-range/residency campaign; 6 conflicts all
+  resolved to HEAD (extracted `materialClone.js` is master's superset of the branch's inline
+  clones; per-callsite clone stamps preserved); DEMO_READINESS union-merged — branch-unique
+  rows D38, D40–D44, D47, D48 spliced in id order.
+- Salvaged verified physics hunks (`e76c08de6`): sg06 floor 80 (hull envelope + authored
+  clearance; scatter sweep 86–141 made the old 130 pin over-tight) and the spine-aware
+  sg02 test upgrade — both green on master.
+
+**Deliberately NOT merged — preserved on origin instead:**
+- `pq033-verify-evidence` (81 commits): Sep-22/23 residency-upload work superseded by today's
+  landed PQ-040 refactor of the same subsystem; wholesale merge would regress it. Diagnostic
+  scripts already parked (above).
+- `muse/wip-park-backup-20260926`: stash-park; unique content parked (above).
+- PR #180 (intro visualizer): DRAFT — left open by design.
+
+**Artifact cleanup:** 44 uncited `.devshots` dirs deleted (~2.5 GB of superseded
+merge-check/g-*/preD/d_*/gfx11/vfx-catalog captures); all ledger/build-map-cited evidence
+kept (`scratch/cited-devshots.txt` is the citation census). `scratch/` is 35 MB;
+`check-ci-report` kept (cited by D46). Disk 6.7 GB → 103 GB free. Local branches pruned to
+`master` + `consolidated/inflight-2026-09-29`; everything else lives on origin.
+
+**Still open (unchanged):** the physics-drift cluster items above (surrender tug stall,
+envelope re-record, soak=0, save-lineage, dock clip, phase0 rows, k1, station tabs) and the
+baseline treadmill. Verified pre-existing, not merge-caused: `sim`/`sim-v3` envelope drift,
+`massline-elastic-whip-head` (43.775), `pq020-ceres-topology` structuralCostDigest.
+*Update 2026-10-04: surrender tug stall closed `f9edb3597`; soak=0 closed `493e9da95` —
+both green at HEAD.*
+
+**Machine quiesced (2026-09-29, late):** owner directed all dev processes stopped. Killed the
+baseline race loop (`scratch/budget-loop.ps1` kept as the restart recipe), its capture+server
+children, all playwright probe chromes, 3-day-hung crucible/fun-bench nodes, orphaned
+`serve.mjs :4310`, the chrome-devtools-mcp stack, and stale agent daemons. `.worktrees/budget-shoot`
+removed with it — down to **2 worktrees**: main checkout + `.worktrees/consolidated`. One
+22 MB playwright storage stub (PID 34688) is kernel-stuck post-kill: 0 CPU, harmless, clears
+on reboot. To resume the treadmill: re-add a worktree and run `scratch/budget-loop.ps1`.
+
+**Tree fully pushed (2026-09-29, late):** 0 uncommitted changes and 0 unpushed commits anywhere —
+master = `af8d32b0c` = origin/master; parked `consolidated/inflight-2026-09-29` tip `6fe0255f6`
+= its origin branch. Consolidated worktree's own tree is clean too. Deleted ~75 MB of ignored
+scratch litter (`.tmp-*` lane dirs, `.genie-packets`/`.genie-returns` extracts, `*TEMP*`/`nul`
+root files, `.spaceface-*`/`.massline-*`/`.capital-boss` patch backups). `.devshots/` kept — it
+holds evidence referenced by open ledger rows.
+
+**Launcher repaired (2026-09-29, late):** `SpaceFace-Desktop.bat` was failing at its `npm install`
+step — `node_modules` was an empty dir (the old junction target was gone) and the npm cache was
+corrupted during the disk-full episode (`stat _cacache` ENOENT). Fix: removed the empty dir,
+`npm cache clean --force`, `npm install` (643 packages), then `node node_modules/electron/install.js`
+for the deferred runtime binary — `electron.exe` 43.2.0 present, `node scripts/launch-electron.mjs`
+exits 0, real window titled "SpaceFace" confirmed open. One game process is left running for the
+owner to play; nothing else.
+
+**Collision tear-off landed (2026-09-29, late):** the satisfying-collision audit found the ladder
+was ~80% built — physics receipts, momentum feel (`feel.js`), pooled contact VFX, particle debris,
+and lethal-ram seam fracture (pending-slam → `spawnFracturePieces` in mining) all already live. The
+genuine gap was the sub-lethal rung, now closed: a hard hit whose kernel `debrisCount` crosses the
+rung (≥10 of the authored 18) sheds real plating bodies — `wreck`-type entities with inherited
+victim velocity + bounded contact-axis fling (rng-symmetric side, since solver normals are unsigned
+axes), real colliders (material `debris`, so shards can crumple a third hull), scrap salvage, and
+`homeSectorId` cleanup ownership — `spawnCollisionTearOff` in `hullFracture.js`, admission gate in
+`collisionConsequences._maybeTearOffPlating` (applied damage on a surviving NPC hull only; kills
+stay with the fracture path; the player is exempt from collision damage by contract). Budgets:
+per-victim 120-tick cooldown, global live cap 20 reaped in `update()`, transient state reset on the
+existing load/flag boundary; deterministic via `state.rng`. Presentation: new `collision:tearOff`
+receipt → darker chip/streak burst in `vfx.js` (accessibility-scaled) + `sfx_hull_scrape` cue;
+`combat:collisionDebris` now carries `exchangedMomentum`. Tests: `test/collision-tearoff.test.mjs`
+4/4 (momentum inheritance, suppression rules, cooldown, cap + reap, seeded determinism); 85/85 on
+the consequence/fracture/feel neighbor suite. Flag note: the whole path rides
+`weaponImpulseConsequences` (production ON, legacy47a OFF — tests seed it). Next checkpoint: manual
+playtest read — ram a pirate at cruise and confirm plating visibly tears off and tumbles;
+heavy-vs-light hull feel tuning (`TEAROFF_*` constants in `collisionConsequences.js`) is the dial.
+
+### Solid World Lane — COMPLETE (Packages A through F) — handoff (2026-09-29)
+
+Every object is a real, physical, correctly-sized thing true to its model, and the predictive camera never touches any of them:
+
+- **Package A & B: Measured Truth Scoreboard (`check-solid-truth.mjs --strict`)**
+  - Scoreboard: **196/196 rows clean**, 0 findings (`node scripts/check-solid-truth.mjs --strict` exits 0).
+  - Craft colliders match measured silhouettes. Decoupled craft collision proportions from `visuals.proportions` via `CRAFT_COLLISION_PROPORTIONS` in `src/core/sg02DynamicBodyOwner.js`, protecting physical hitboxes against visual tuning (resolves D99).
+  - 10 COARSE/NOSKIN rows resolved with truthful skins and collider kinds.
+- **Package C: Dynamic Compound Colliders (`test/dynamic-compound-colliders-determinism.test.mjs`)**
+  - Compound skins enabled on dynamic bodies (capital ships, dreadnought, heavy wrecks) behind bit-for-bit determinism proof (`test/dynamic-compound-colliders-determinism.test.mjs` PASS). Identical sim hash with/without save-reload, CCD active, primitive count <= 32.
+- **Package D: Zero Overlap & Tunnelling (`scripts/probe-solid-overlap.mjs`)**
+  - Swept headless probe: **480/480 test scenarios PASS**, **0 tunnelling**, worst penetration depth 5.67 WU (all within census row tolerances).
+  - Tested body pairs across speeds 30, 150, 400, 550 WU/s across multiple approach bearings.
+  - Isolated pickup sensor triggers from physical craft knock reactions; capsule spine degenerate window solver ladder added for coincident spawns (`test/sg02-coincident-spawn.test.mjs` 10/10 PASS).
+- **Package E: Universal Dynamics for Solids <= 90 WU (`src/core/physicsAuthority.js`)**
+  - Authoritative physics threshold: structures > 90 WU remain fixed landmarks (stations, jump gates, giant rock cathedrals); non-landmark rocks, wrecks, pods, props, payloads, and buoys are dynamic with volume-proportional mass table.
+- **Package F: Predictive Camera Clearance (`src/render/cameraGlide.js`, `src/render/camera.js`, `src/render/renderer.js`)**
+  - Large moving hulls (capital ships) added to `CAMERA_CLEARANCE_KINDS` with height gate and defId/silhouette/radius filtering.
+  - Reactive clearance paths (`keepOut`, floor easing in `camera.js`) removed; predictive glide is the sole authority.
+  - Headless structure sweep (`scripts/probe-camera-clearance-sweep.mjs`): **7,320 scenarios evaluated** across 122 structural models x 4 zooms [45, 58, 144, 330] x 3 speeds [40, 195, 400 WU/s] x 5 approach bearings: **0 inside frames everywhere**, **4 hard clamp frames total** (~0.0005/scenario), peak vertical acceleration gentle, returns smoothly to zoom.
+  - Camera test suite: **94/94 PASS** (`test/camera-*.test.mjs`).
+- **Ledger Total-Fixes:**
+  - D97 fixed: `BINDINGS.claimBase.label` restored in `src/ui/screens/base.js` (`scripts/check-ui-screen-imports.mjs` 56/56 PASS).
+  - D98 fixed: `maxContactDv` clamped by closing $\Delta v$ in `src/core/sg02DynamicBodyOwner.js` (`test/tumble-fling-bounce.test.mjs` 6/6 PASS); Hitch cruise base speed aligned in `test/pq-029-00-tractor-throw.test.mjs` (10/10 PASS).
+  - D99 fixed: Craft collision dimensions decoupled from `visuals.proportions` via `CRAFT_COLLISION_PROPORTIONS`.
+  - Rows D97, D98, D99 deleted from `design/program/DEMO_READINESS_2026-09-20.md` per §7 total-fix rule.
+
+### Wave D — shelf that beats live
+
+Reuse before authoring. A variant counts.
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| **`PQ-193.06`** | Corsair raiders no longer share the pirate Rig. | Distinct Corsair body on the live corsair slot. Existing foundry kit if it beats live. |
+| **`PQ-193.07`** | Helios Arclight appears as a rare heavy. | Player can find it. Does not steal Span or Atlas. |
+| **`PQ-193.08`** | Volatiles tanker and inspection cutter spawn only after they read as ships. | Chase stills pass; then the existing roles roll. Tug is already live. |
+| **`PQ-193.09`** | Live Span and Wasp carry faction kits; the three trade-hub overlays on disk are readable. | Faction-distinct stations/traffic without a new faction system. |
+
+### Wave E — places
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| **`PQ-193.10`** | Opening dock, dead hulk, and debris chunk pass **in the game**, not only in Blender. | G5–G7 of [`REMASTER_HANDOFF_dock_hulk_debris.md`](./assets/ships/parts/places/REMASTER_HANDOFF_dock_hulk_debris.md). Military/grit dock variants were never in that slice; name a follow-up rather than pretending they closed. |
+| **`PQ-193.11`** | The four Helios lane marks wired 2026-09-09 hold at chase camera. | No cube foot/deck on tally, claim, ash pin, whistle. |
+| **`PQ-193.12`** | The fat-cylinder station fallback never appears on the default route. | Every station the player can reach loads its authored body. |
+
+### Wave F — every stand-in and every distant body is the same ship (owner, 2026-09-24) — PLANNED
+
+**Owner, 2026-09-24:** "things will load but they'll just be LOD so it'll load some box — not a
+weaker ship or the same ship at fewer polygons, literally a box — and it'll turn into a ship and back
+into a box." The same day's fix made the world stop *thrashing* (an entity the player flew away from
+and came back to was never re-admitted: no collider, no glass membership, so its mesh was evicted,
+rebuilt, and passed through the stand-in again — `test/activity-runtime.test.mjs` "rediscovers a
+station and a rock", `npm run probe:frame-solid`). What remains is the stand-in itself: whenever a
+body is legitimately still decoding, or a far LOD file is the right choice, what the player sees
+must read as that ship. This is a large asset + integration job; cut it into a packet before
+dispatch. Law: [`DYNAMIC_GRAPHICS_INVESTIGATION.md`](./design/program/DYNAMIC_GRAPHICS_INVESTIGATION.md)
+(no box, no cheaper species, no blank lock).
+
+**Direction (owner, 2026-09-24, same day):** this is a top-down chase camera — a body is either in
+the picture or it is not, and on-screen hulls all sit in a narrow size band. Distance LOD swapping
+buys little here and costs a second load per hull. So LOD files serve one job: **an instant
+stand-in** that is that same ship while the full body loads; once the full body is resident it
+stays. Measured the same day (`probe:frame-solid --census`, 8 resident NPC hulls): the whole-ship
+LOD swap controller was installed on none of them and zero on-screen LOD swaps occurred — the "box"
+the owner saw was the pending-body resolving marker, not a LOD file. F4 below is therefore parked,
+not queued.
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| **F1 — inventory** | One table of every stand-in the live route can draw: the authored-admission resolving marker (`visualOverrides.js`), `partsLibrary.js` procedural fallbacks, modular-kit identities, station fat-cylinder fallback, and each whole-ship `_lod1`/`_lod2` file (Colossus, Ironback and Leviathan LOD1/LOD2 carry the identical triangle count — ~4–5k against a ~43–57k LOD0 — so LOD2 is not a distinct step). | Each row names where it draws, how often on a 10-minute default flight (`probe:frame-solid` offender log), and whether it reads as its ship at chase and 330 WU zoom-out. |
+| **F2 — honest LOD bodies** | Every `_lod1`/`_lod2` file is the same silhouette, paint and damage language as its LOD0 at the distance it serves; equal-count LOD1/LOD2 pairs get a real LOD1 step between. Blender material-truth preflight applies. | Matched stills at the switch distance: a stranger cannot name which is the LOD. Only then may a family join the live LOD allowlist. |
+| **F3 — no box while decoding** | The pending-body stand-in is a low-cost version of *that* hull (its own LOD2, preloaded with the sector), not a generic marker or kit. | On a cold New Game, no on-screen hull ever shows a shape that is not its own ship; `probe:frame-solid` regressions/rootSwaps stay 0. |
+| **F4 — distance swap (PARKED)** | Only if a measured zoom-out battle shows triangle/draw cost is the bottleneck: LOD1/LOD2 switching for families that closed F2, with hysteresis and no swap on the chase frame's hero band. | Not dispatched without that measurement. Would need: CPU/GPU frame time down, zero visible identity changes, zero blink/root-swap counters. |
+
+### Later — not this packet
+
+- Distant cheap LODs: now Wave F above.
+- Massline liner independent G7: `PQ-049.05`.
+- Hitch remaster: frozen.
+- New hull commissions while a shelf body can fill the slot.
+
+### How agents get this wrong
+
+Wiring an unpackaged factory remaster and calling the blank lock a renderer bug. Starting Corsair
+or Arclight while the opening NPC is still a kitbash. Hornet interiors. Lowering texture size to
+dodge a Blender crash. Dispatching from `needed-assets.md`. Filename-grep "unused" counts. A glow
+blob or a second needle trail. Building a ship outside Forge. Cutting default quality.
+
+## 14. Fleet orchestration law for the 2026-08-21 final run
+
+Who does what, recorded so a later session does not reinvent it.
+
+| Role | Surface | Invocation that works (verified 2026-08-21) |
+|---|---|---|
+| **Primary implementer** | `cursor-agent` with Grok 4.6 | `cursor-agent -p --force --trust --output-format text --model cursor-grok-4.6-xhigh --workspace <repo> "<packet>"` |
+| **Primary implementer (alt)** | `grok` CLI 1.0.4, grok-4.6 | `grok --model grok-4.6 --reasoning-effort xhigh --prompt-file <packet.md> --output-format plain --max-turns N --no-plan --no-memory --disable-web-search --permission-mode auto --cwd <repo>` |
+| **Reviewer / auditor** | `codex` npm build (0.149.0 as of 2026-08-23), GPT-5.6 Sol xhigh | `C:\Users\93rob\AppData\Roaming\npm\codex.cmd exec --ignore-user-config -m gpt-5.6-sol -c 'model_reasoning_effort="xhigh"' -s read-only -C <repo> - < packet.md` (the app-managed 0.130 build on PATH is too old; `-s workspace-write` for audits that write one file) |
+| **Frontend implementer** | `opencode` 1.18.18, GLM 5.3 Max (Z.ai coding plan) | `opencode run --dir <repo> --model zai-coding-plan/glm-5.3 --variant max --format json "<packet>"` — **GLM has no vision**; never accept its visual output on mechanical checks |
+| **Frontend visual reviewer** | `opencode` Kimi K3 xhigh (clinepass); `kimi` CLI k3-256k for small reviews | `opencode run --dir <repo> --model cline-pass/cline-pass/kimi-k3 --variant xhigh --format json "<packet>"`. Slow, silent first token; never kill on stdout silence |
+| **Fallback for frontend when every lane is out of quota** | Claude Opus 5 subagents | Agent tool, `model: opus` |
+| **Lane orchestrators** | Claude Opus 5 subagents | One per lane; they dispatch the CLIs above, diff-gate, and report. They are given exact file partitions and NO-GO lists |
+| **Master orchestrator + final reviewer** | Claude Fable 5 (this session) | Judges every deliverable beside real evidence; never accepts prose as proof |
+
+Rules: usage renews every five hours — a lane that dies on quota is retried a few tasks later, not
+abandoned. Implementers and reviewers are always different models. Every lane partitions writes by
+**file**; two agents never hold the same file. Every leaf commits immediately after review, scoped to
+its exact paths. `npm run check:playable` is run before any "done".
+
+## 15. Finishing SpaceFace — the A-list program (`PQ-146` … `PQ-173`, plus eight reactivated packets; §16–§20 extend it to `PQ-188`) — ADMITTED 2026-09-03
+
+**Source:** the owner's direction of 2026-09-03 (*"plan out the finish of this game … creative,
+fun, fast-paced, nuanced, and performant"*), [`design/VISION.md`](./design/VISION.md) Parts I and II,
+[`design/FEEL_CONTRACT.md`](./design/FEEL_CONTRACT.md), a same-day read-only audit of audio, meta,
+progression, story, and surfaces, and two outside brainstorms graded in §15.9. This section is the
+**finish line**: it sequences every existing program into three release milestones with measurable
+gates, reactivates the eight deferred packets that already own parts of the finish, and adds only the
+plans that no existing source owns. It does not restate §8, §11, §12, §13, §13A–§13C, the depth
+program, SPEC3, or the Alpha rows; it points at them.
+
+### 15.0 What "finished" means
+
+A stranger buys it, plays twenty-five hours, and tells someone a story that starts with "so then".
+Everything below is in service of that sentence. The three properties the owner named — the world is
+**alive enough to surprise**, **solid enough to understand**, **permissive enough to abuse** — are the
+three columns of the release gate table in §15.1, and every packet in §15.2 names which column it
+moves.
+
+**Historical diagnosis (2026-09-03), not a current defect inventory.** Reuse the live owners and
+current row evidence before acting; many foundations below have since landed. §29 names the
+remaining starter connections and §1.9 the current agentic loop. Measured against the games this one is compared to (Hades, Deep Rock
+Galactic, Everspace 2, Rebel Galaxy Outlaw, Sea of Thieves, Just Cause, Rocket League, Noita, Spelunky,
+Starsector, Endless Sky, Star Control 2, Highfleet, Hardspace: Shipbreaker, Subnautica), this build has
+**more simulation than most of them and less *answer* than any of them**: ~160 sim systems, a wired
+job loop, an economy with price pressure, factions with wars and named aces, law with witnesses, a
+deterministic replayable sim, five endings with post-ending chains — and impacts that make no sound by
+weight, a world that does not flinch at violence, a first hour that never teaches boost, the path
+autopilot or the fields and never points at its own playground, a starter gun that cannot shove, and an
+ending gated at four percent of the money curve behind an empire-stake paywall. The finish is therefore mostly **surfacing, connecting, and tuning what exists**, plus a short
+list of genuinely missing things (audio content, the first ten minutes as a power fantasy, a campaign spine
+re-cut around the toys, replay/clips, the wanted loop as a game, six sectors with a way of life). §11.11's through-line
+— *"this is a surfacing problem, not a content problem"* — holds for the whole game, not only the UI.
+
+### 15.1 The release gates (the finish line, in numbers)
+
+Three integration milestones; these are not per-leaf checklists. Preserve the inherited technical
+bars and supported-route contracts, inspect the actual affected picture, and use §1.9's cheapest
+claim-relevant checks. The exact release matrix runs only for an authorized release candidate;
+absolute timing/resource qualification belongs to the quiet host. Reuse unchanged-owner evidence.
+Human completion/retention percentages cannot be inferred from bots or traces and are not gates.
+
+| Milestone | Alive enough to surprise | Solid enough to understand | Permissive enough to abuse | Evidence |
+|---|---|---|---|---|
+| **ALPHA — "The Toy Works"** | The 60-second proof (`PQ-141`, B12) reaches its inherited causal-beat/seed contract; the `PQ-138.00–.02` world reactions fire through real owners. | The starter route makes swing/release, shove, grab/run and their consequences reachable through public controls; one actionable instruction, useful refusal and recovery (`PQ-163`, §29). Preserve B1–B8/B11 physical bars. | B2/B3 handling, B4 shove, B6 terrain lethality, B9 impact answer and B11 hitstun hold; real stunt grammar (`PQ-146`). | Relevant Motion Lab/scenario numbers, one affected integrated public route, actual visual/audio inspection where claimed; no owner-verdict or capture quota |
+| **BETA — "The World Works"** | Six sectors have distinct readable activity (`PQ-153`); existing directors preserve work, escalation and aftermath (`PQ-149`); aces/law give physical responses and escape (`PQ-150/151`). | Keep the authored campaign/endings, set pieces, first-upgrade and verb-income curve (`PQ-032/152/155/156`); ORRERY owns station/chart direction. Save/Continue preserves actual jobs, resources and consequences without dead ends. | Existing Massline heads/fields/machinery, physical cargo, wreck terrain and Crucible replay obligations remain in `PQ-026–031/147/148/154/169`. | Production-owner fixtures and derived economy curve; relevant save/recovery boundaries; one capped session window only if a fixture cannot express the shape. No mandatory 90-minute/full-phase walk or 200-cycle gate per unit |
+| **RELEASE — "It Ships"** | Impact/audio hierarchy, score/radio, camera and replay/export meet their existing delivered scope (`PQ-158/159/160`). | Active control/accessibility/save/localization-defect repairs stay in their gameplay lanes; final `PQ-164–167` package/device/language qualification is separate. Useful local telemetry supports diagnosis, not a weekly human ritual. | Preserve `PQ-033` min-spec frame/boot/resource/crash budgets, Browser/Electron compatibility, Steam/cloud-save/achievement and store-asset obligations for the selected authorized release. | Affected checks plus the existing final release matrix/quiet-host runs at release scope; external publication authorization remains separate from gameplay judgment |
+
+Post-launch is a fourth row, not a gate: mods and data-driven content (`PQ-172`), Crucible seasons,
+territory wars (`PQ-170` second half).
+
+### 15.2 The order
+
+```text
+ALPHA   PQ-137 guts ─┬─> PQ-139 impacts answer ──┐
+                     ├─> PQ-138 world reacts ─────┼─> PQ-141 60-SECOND PROOF (gate)
+                     ├─> PQ-140 roster ───────────┘
+                     ├─> PQ-146 stunt grammar ──> PQ-160 replay/clips (Release)
+                     └─> PQ-163 first ten minutes (needs 137.03–.05)
+BETA    PQ-138 ──> PQ-149 storyteller ──> PQ-150 people who remember ──> PQ-151 wanted loop
+        PQ-137 ──> PQ-029/030/031/026 heads & coupling ──> PQ-147 field toys ──> PQ-027/028 machinery & infrastructure
+        PQ-138 ──> PQ-148 cargo is physics ──> PQ-154 wrecks as terrain
+        PQ-143 ──> PQ-153 six sectors ──> PQ-032 + PQ-152 campaign & set pieces ──> PQ-170 endgame pulls
+        PQ-142 ──> PQ-155 the curve ──> PQ-156 three starters
+        PQ-133 ──> PQ-169 Crucible as replay surface
+        §11 ───> PQ-162 the station redesign · PQ-168 the Chart finished · PQ-161 readable at zoom
+        always:    PQ-171 content grammar (anti-repetition budget), PQ-144 density/perf guard
+RELEASE PQ-158 audio ─┐
+        PQ-159 camera ├─> PQ-033 release matrix ──> PQ-167 Steam/telemetry/playtest ──> ship
+        PQ-164/165/166┘
+POST    PQ-172 mods; Crucible seasons; PQ-170 territory wars
+```
+
+Three rules of order. **Crucible first**: combat and flight feel converge in the Crucible bench and adventure inherits the numbers (the owner: *"if you get the crucible mode to be optimally fun, then it would make the goals for adventure combat more obvious"*); the operational loop is [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md) and its prompt is `MAKE IT BETTER`. **Feel before content**: nothing in BETA starts a sector, a set piece, or a toy
+until `PQ-137.03–.05` are met, because content built on a ship that cannot turn is content that will
+be rebuilt. **Surface before invent**: every BETA packet first lists what already computes the thing
+it needs (the audit tables in each packet) and connects it before writing a new system.
+
+### 15.3 The packets (twenty-seven new, eight reactivated)
+
+Every row is a queue task with dispatch units; `node scripts/program-dispatch.mjs --id <ID>` returns it. Reactivated packets (`PQ-026`–`PQ-033`) were deferred one-line briefs; they now carry leaves and packet files. Wave = the milestone whose gate the packet moves. The queue rows AND their dispatch units carry the dependencies of §1.2/§15.2, so `--ready` cannot hand out content before the ship handles.
+
+| Packet | Pillar | One line | Wave |
+|---|---|---|---|
+| **`PQ-146`** Stunt grammar and the trick economy — [`active/PQ-146.md`](./design/program/roadmap/active/PQ-146.md) | A · The toys | Named tricks detected from physics receipts, a combo meter, style titles, and the moment detector that feeds clips and slow-mo. | ALPHA |
+| **`PQ-029`** Practical Massline heads as toys: tractor, elastic whip, frame coupler — [`active/PQ-029.md`](./design/program/roadmap/active/PQ-029.md) | A · The toys | Reactivated. The three practical heads already in the data become unlockable toys with a Range drill, a sentence, and NPC use. | BETA |
+| **`PQ-030`** Advanced Massline combat heads: monofilament sweep, transverse snare — [`active/PQ-030.md`](./design/program/roadmap/active/PQ-030.md) | A · The toys | Reactivated. The two combat heads become late-game toys with counterplay and a specialist enemy that carries them. | BETA |
+| **`PQ-031`** Twin Bridle: the bolas and tether-two — [`active/PQ-031.md`](./design/program/roadmap/active/PQ-031.md) | A · The toys | Reactivated. Object-to-object tether as the signature abuse: tie two enemies together and watch physics finish the fight. | BETA |
+| **`PQ-026`** Mass-coupling tactics: inertial shunt, gravity mark, momentum sink — [`active/PQ-026.md`](./design/program/roadmap/active/PQ-026.md) | A · The toys | Reactivated. The three mass tools in the data become readable tactics with the momentum-bungee joust as the showcase. | BETA |
+| **`PQ-147`** The field toy chest and the Power Bar filled — [`active/PQ-147.md`](./design/program/roadmap/active/PQ-147.md) | A · The toys | All five number-key powers become real, physical, legible toys with NPC counterplay; the Power Bar is the progression display. | BETA |
+| **`PQ-027`** Environment as weapon: machinery and timed hazards that participate — [`active/PQ-027.md`](./design/program/roadmap/active/PQ-027.md) | A · The toys | Reactivated. Crushers, furnaces, conveyors, mass drivers, debris currents, storms and timed access become physical actors the player can feed enemies into. | BETA |
+| **`PQ-028`** Manufactured travel and physics infrastructure you can ride — [`active/PQ-028.md`](./design/program/roadmap/active/PQ-028.md) | A · The toys | Reactivated. One sling ring or mass driver per region that launches ships (and thrown enemies) — the anchor-ski and catapult toys. | BETA |
+| **`PQ-148`** Cargo is physics: pods with mass, volatility and a story — [`active/PQ-148.md`](./design/program/roadmap/active/PQ-148.md) | A · The toys | Spilled cargo is real mass on the field: shield, projectile, prize; volatile cargo detonates, corrodes or drags; smuggling is a physics problem. | BETA |
+| **`PQ-149`** The storyteller: a session-rhythm director over the directors that exist — [`active/PQ-149.md`](./design/program/roadmap/active/PQ-149.md) | B · The world and its people | One pacing owner sustains work→travel→curiosity→tension→violence→aftermath→quiet and seeds 'so then' escalations on a budget. | BETA |
+| **`PQ-150`** People who remember: aces, rivals, the mechanic, the radio — [`active/PQ-150.md`](./design/program/roadmap/active/PQ-150.md) | B · The world and its people | Named aces hunt you with counter-loadouts and taunts, rivals escalate, a mechanic narrates your scars, and the radio talks about what you did. | BETA |
+| **`PQ-151`** Crime is a game: the WANTED loop with a physical escape at every tier — [`active/PQ-151.md`](./design/program/roadmap/active/PQ-151.md) | B · The world and its people | Four tiers (fine → bounty → hunters → impound), patrol nets and checkpoints, corrupt ports, laundering, insurance and restitution, impound recovery as play. | BETA |
+| **`PQ-032`** Campaign spine: one linear story that builds to an ending you earned with the toys — [`active/PQ-032.md`](./design/program/roadmap/active/PQ-032.md) | B · The world and its people | Reactivated. One building story, no branch investment: beats 1–3 stop being errands, the ending gate moves to where the toys are, NG+ carries a legacy. | BETA |
+| **`PQ-152`** Set pieces built from verbs: ten missions whose headline is physical — [`active/PQ-152.md`](./design/program/roadmap/active/PQ-152.md) | B · The world and its people | Tow, sling, demolish, rescue, jam, siege: mission TYPES, not contract clauses. The Massline becomes a job. | BETA |
+| **`PQ-153`** Six sectors with a way of life: Helios Prime, Ceres Belt, Tethys Junction, Vesta Forge, Pallas Drift, Sker Haven — [`active/PQ-153.md`](./design/program/roadmap/active/PQ-153.md) | B · The world and its people | Six of the ten authored core sectors get a verb, a rhythm, a law, a hazard geometry, a landmark and a signature toy (the owner named the first three; the next three are proposed by tier spread and existing content); the frontier stays texture. | BETA |
+| **`PQ-154`** Wrecks as terrain and the death economy — [`active/PQ-154.md`](./design/program/roadmap/active/PQ-154.md) | B · The world and its people | Dead capital hulls become arenas with ambush ecology; hulls fracture along authored seams on extreme impact; dying seeds your wreck, pod and reputation. | BETA |
+| **`PQ-155`** Money means toys: the economy tuned as a verb curve — [`active/PQ-155.md`](./design/program/roadmap/active/PQ-155.md) | C · Economy, progression, identity | First upgrade in 15 minutes, a new verb every hour for ten hours, the ending at the heavy-verb tier, sinks and faucets balanced by a deterministic ten-hour economy simulation. | BETA |
+| **`PQ-156`** Three starters, three verbs, and a save-file identity — [`active/PQ-156.md`](./design/program/roadmap/active/PQ-156.md) | C · Economy, progression, identity | Brawler, skater, tug as starting hulls that are three ways to play, and a load screen that shows your ship, scars, rap sheet and grudges. | BETA |
+| **`PQ-161`** Readable at max zoom: silhouettes, telegraphs, force colours — [`active/PQ-161.md`](./design/program/roadmap/active/PQ-161.md) | D · Presentation | Role-readable hulls and liveries, danger telegraphs you die to on purpose, a colourblind-safe force palette, and a teaching-only trajectory overlay. | BETA |
+| **`PQ-162`** The station as a place: the redesign the flatten was waiting for — [`active/PQ-162.md`](./design/program/roadmap/active/PQ-162.md) | D · Presentation | Seven station screens adopt the instrument grammar skeleton and data states for real; the owner review findings close; docking reads as arriving somewhere. | BETA |
+| **`PQ-168`** The Chart finished: traffic layer, hierarchy, one answer per question — [`active/PQ-168.md`](./design/program/roadmap/active/PQ-168.md) | D · Presentation | The strategic centrepiece stops reading as an admin screen: the deferred traffic layer lands, duplicated navigation answers merge, tabs get a hierarchy, heat and contracts pin. | BETA |
+| **`PQ-158`** Audio direction: the game that sounds heavy — [`active/PQ-158.md`](./design/program/roadmap/active/PQ-158.md) | D · Presentation | Authored samples replace the oscillator stack, an impact ladder by mass and speed, the Massline as an instrument, composed adaptive themes, voice for the 271-line script, a reverb bus, and a weight-first mix. | RELEASE |
+| **`PQ-159`** Camera as art direction, and a photo mode — [`active/PQ-159.md`](./design/program/roadmap/active/PQ-159.md) | D · Presentation | Speed opens the frame, impacts kick by delta-V, two-body moments auto-frame as tension diagrams, signature kills get a beat, and a photo mode sells the game. | RELEASE |
+| **`PQ-160`** Replay, clips and sharing — [`active/PQ-160.md`](./design/program/roadmap/active/PQ-160.md) | D · Presentation | The deterministic sim replays the last thirty seconds in-game; rated moments become clips; GIF/MP4 export; Crucible seeds and ghosts share. | RELEASE |
+| **`PQ-163`** The first ten minutes: the power fantasy, honest — [`active/PQ-163.md`](./design/program/roadmap/active/PQ-163.md) | E · First hour, UX, platform | A stranger performs a swing-release, a shove and a grab-and-run in minute five without reading a wall; boost, draw-to-fly and wells are taught by doing; the 47-A opener stays the climax. | ALPHA |
+| **`PQ-167`** Useful local telemetry and causal diagnosis — [`active/PQ-167.md`](./design/program/roadmap/active/PQ-167.md) | E · First hour, UX, platform | Agent-readable causal traces from existing telemetry; supplied feedback becomes targeted production repair. Weekly human/capture ritual retired; no inferred audience percentages. | ALPHA |
+| **`PQ-173`** The fun-loop instrument: bench, measure, critic, report, translator — [`active/PQ-173.md`](./design/program/roadmap/active/PQ-173.md) | E · First hour, UX, platform | The tooling that makes "MAKE IT BETTER" executable: a fixed-seed Crucible and verb bench, a bar-and-fun-metrics printer, frame strips for a vision critic with the ten-question rubric, the one-page owner report, and the verdict-to-bar translator protocol. | ALPHA |
+| **`PQ-164`** Input truth: controller, Deck, trackpad, haptics — [`active/PQ-164.md`](./design/program/roadmap/active/PQ-164.md) | E · First hour, UX, platform | Full gamepad in every screen with device-aware glyphs and remapping, Steam Deck verified, trackpad gestures honest, haptics by line tension. | RELEASE |
+| **`PQ-165`** Accessibility and options depth — [`active/PQ-165.md`](./design/program/roadmap/active/PQ-165.md) | E · First hour, UX, platform | Graphics presets and a frame cap, subtitles for every voice line, audio cues for visual events, assist options, and the accessibility checklist green. | RELEASE |
+| **`PQ-166`** Localization at launch: five languages and the growth test — [`active/PQ-166.md`](./design/program/roadmap/active/PQ-166.md) | E · First hour, UX, platform | The existing 9,530-key runtime carries five launch languages; every screen survives +40 % growth; fonts fall back. | RELEASE |
+| **`PQ-033`** Final platform, save, performance, accessibility, legal and store closeout — [`active/PQ-033.md`](./design/program/roadmap/active/PQ-033.md) | E · First hour, UX, platform | Reactivated. The release matrix: legal and credits (the only hard blocker today), crash reporting, auto-update, version string, min-spec floors, soaks, Browser/Electron parity, store readiness. | RELEASE |
+| **`PQ-169`** Crucible as the replay surface: daily seed, ghosts, mutators, cosmetics home — [`active/PQ-169.md`](./design/program/roadmap/active/PQ-169.md) | F · Modes and replayability | A daily seed with a leaderboard and ghosts, weekly mutators (gravity slalom), stunt scoring; the Crucible is the combat lab that adventure inherits from. | BETA |
+| **`PQ-171`** Content grammar and the anti-repetition budget — [`active/PQ-171.md`](./design/program/roadmap/active/PQ-171.md) | F · Modes and replayability | A written grammar for encounters, microevents and contracts so twenty-five hours do not repeat, and a check that measures repetition. | BETA |
+| **`PQ-170`** Endgame pulls: territory, mega-heists, capital bosses, legendary lines, station growth — [`active/PQ-170.md`](./design/program/roadmap/active/PQ-170.md) | F · Modes and replayability | After the ending: territory wars you tilt, two mega-heists, capital boss set-pieces, the Ace's trophy line, a station that expands and a faction that depends on you. | POST |
+| **`PQ-172`** Mods and data-driven content — [`active/PQ-172.md`](./design/program/roadmap/active/PQ-172.md) | F · Modes and replayability | Content directories loadable as JSON (weapons, ships, encounters, sectors) with validation; Workshop later. | POST |
+
+### 15.4 The plans, in detail
+
+Each block is the packet file in brief: the gap it closes, what the audit found already exists, the write surfaces, the leaves with their done-when bars, and the ways agents get it wrong. The packet files under `design/program/roadmap/active/` carry the same text plus entry conditions, work breakdown, budgets, review questions, stop conditions and checkoff.
+
+#### Pillar A · The toys
+
+**`PQ-146` — Stunt grammar and the trick economy** · *ALPHA* · after `PQ-137`
+
+The game names what the player just did. A rope release already grades itself razor/clean/good/messy; the same receipt stream can recognise a bolas, a wrecking-ball kill, a clothesline, a collateral chain, a near-miss, a tow-kill and a rock discovery. A combo meter scores them in the Crucible, the ledger and titles record them in adventure, and a moment detector fires the slow-mo and the clip. This is the missing DEMAND for physics play: nothing in the build today asks the player to compose a chain. Per the Crucible-first law, the scoring lands in the Crucible bench before adventure inherits the ledger and titles.
+
+- **Gap:** Tony Hawk, Rocket League and Bulletstorm made a physics toy legible by naming the tricks; the audit found every link of the 60-second chain exists and nothing rewards composing them. **Reference:** Tony Hawk's Pro Skater, Rocket League, Bulletstorm skillshots, Just Cause.
+- **Exists:** `tether:releaseRated` (razor/clean/good/messy) in `src/systems/tetherGameplay.js`; `combat:collisionConsequence` receipts with exchangedMomentum/deltaV; `massline:throw`, `tether:whipImpact`, `combat:collisionDebris`; `src/systems/titles.js`, `shipLedger.js` (240 entries), `survivalRecords.js`, `bulletTime.js`; `src/combat/impulseKernel.js` provenance history per entity.
+- **Routes through:** GDX-A04 combat causality; §12 Crucible scoring.
+- **Writes:** `src/combat/`, `src/systems/titles.js`, `src/systems/shipLedger.js`, `src/systems/survivalRun.js`, `src/systems/survivalResults.js`, `src/systems/bulletTime.js`, `src/render/feel.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Trick taxonomy and detectors.** One pure module turns the receipt stream into named tricks with a cause chain (who threw, what hit, what it hit next): bolas, wrecking ball, clothesline, collateral ×N, near-miss, tow-kill, rock discovery, well golf, dead man's mass, razor release. | ≥ 12 tricks detected deterministically in scenarios; false-positive rate < 5 % on ordinary flight tapes. |
+| `.01` | **Combo meter and scoring in the Crucible.** Chain window, multiplier by trick rarity and mass ratio, banked on quiet; scoring feeds survivalRecords and the results screen. | A physics run outscores a gun run of equal kills by ≥ 2×; the free Pulse cannot top the board. |
+| `.02` | **Titles and ledger entries in adventure.** Tricks write ledger lines and earn titles NPCs use in barks; the rap sheet cites them. | A witnessed bolas kill produces a ledger line and a bark within one session; save round-trips. |
+| `.03` (after PQ-139.00) | **The moment detector.** A rated 'holy shit' event (rarity × momentum × collateral) exposed on the bus for slow-mo (bulletTime), camera, audio stingers and the clip recorder. | Fires on ≥ 3 distinct moments in the 60-second proof scenario and never on ordinary traffic. |
+
+- **Not:** No score popups in adventure flight (the HUD attention pass stands); no trick that requires a new input.
+- **How agents get this wrong:** Detecting tricks from what the player pressed instead of what the physics produced: receipts only; Popping score text in adventure flight: the HUD attention pass stands; tricks go to the ledger and titles; Rewarding a trick nobody saw: a trick without a consequence chain is not a trick.
+
+**`PQ-029` — Practical Massline heads as toys: tractor, elastic whip, frame coupler** · *BETA* · after `PQ-137`
+
+Each head answers 'what can I do now?' in one sentence the fitting screen shows: the tractor picks things up and throws them; the elastic whip stores energy and snaps; the frame coupler locks two frames so a tow feels rigid. Each has a Range drill, a counterplay, and at least one NPC occupation that uses it in the world (a tug couples, a scavenger tractors).
+
+- **Gap:** Seven heads exist as ordinary purchasable modules with no arc; a player can finish the campaign using the rope as a tractor beam only. **Reference:** Just Cause tether upgrades, Bionic Commando, Hardspace: Shipbreaker tools.
+- **Exists:** `src/data/modules.js:115-141` seven heads; runtime flags `masslineHeadTractor`, `masslineHeadElasticWhip`, `masslineHeadFrameCoupler` (ON in production); `src/core/sg02DynamicBodyOwner.js` spring modes incl. `frame_coupler`; `src/ui/screens/range.js` three drills.
+- **Routes through:** SPEC3-17 tether & momentum verbs; GDX-A02.
+- **Writes:** `src/data/modules.js`, `src/systems/tetherGameplay.js`, `src/core/sg02DynamicBodyOwner.js`, `src/ui/screens/range.js`, `src/systems/npcJobsRuntime.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Tractor head as a throw toy.** Pick up, spin, throw with the release rating; works on cargo, debris, drones, light hulls. | A Range drill teaches it in ≤ 60 s; throw speed ≥ 1.2× cruise on a light payload. |
+| `.01` | **Elastic whip as stored energy.** Stretch stores energy, release snaps the payload or the player; readable strain glow; break by load. | A whip snap moves a light hostile ≥ 40 % of its cruise; the drill exists. |
+| `.02` | **Frame coupler as the tow you can trust.** Rigid tow for the long haul; the coupled pair reads as one body in the physics and the camera. | A 200-mass tow holds through a 180° turn at 60 % cruise without oscillation. |
+| `.03` | **NPCs use the heads.** Tugs couple, scavengers tractor, patrols net; the player sees the verbs in the world before buying them. | Each head is seen in ordinary traffic within 10 minutes at the reference site. |
+
+- **Not:** No new head models until PQ-050 fielding rules are met; no head that needs a second input scheme.
+- **How agents get this wrong:** A head that is a stat bonus: each head is a verb with a Range drill and an NPC user.
+
+**`PQ-030` — Advanced Massline combat heads: monofilament sweep, transverse snare** · *BETA* · after `PQ-137`, `PQ-140`
+
+The sweep cuts lines and clips light hulls in a swing arc; the snare catches a ship crossing the line and yanks it. Both are late unlocks, both have a specialist NPC (the tether-cutter of PQ-140) so the player meets the counter before owning the verb.
+
+- **Gap:** Combat heads exist in data with no arc, no enemy use, no drill. **Reference:** Just Cause 3 tether combat, Worms ninja rope.
+- **Exists:** `modules.js` monofilament_sweep, transverse_snare; flags ON; `src/systems/masslineThreats.js`, `masslineSnares.js` seams.
+- **Routes through:** SPEC3-17; PQ-140.02 specialists.
+- **Writes:** `src/data/modules.js`, `src/systems/tetherGameplay.js`, `src/systems/masslineThreats.js`, `src/systems/masslineSnares.js`, `src/ui/screens/range.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Monofilament sweep.** Swing arc cuts lines and staggers lights; visible blade-line; costs line integrity. | Cuts an NPC tether in one pass; scenario + capture. |
+| `.01` | **Transverse snare.** A line across a lane catches the first crosser and yanks it into the anchor; the clothesline toy. | A pursuer at full burn is caught and tumbled (B11) in the scenario. |
+| `.02` | **The counter arrives first.** The tether-cutter specialist uses the sweep against the player two hours before the head unlocks. | Blind reviewer names the specialist's threat from silhouette and behaviour. |
+
+- **Not:** No head that trivialises heavies; heavies are terrain.
+- **How agents get this wrong:** Shipping the head before its counter exists: the specialist arrives first.
+
+**`PQ-031` — Twin Bridle: the bolas and tether-two** · *BETA* · after `PQ-137`
+
+Fire a bridle that couples two bodies. Two light pirates orbit each other and lawn-dart into a rock; two haulers jackknife; a pirate hitched to a passing freighter loses its engines. The pair shares helm loss and inertia (PQ-137.09). This is toy T1 and T4 of §15.5.
+
+- **Gap:** Twin Bridle exists behind a flag with setup time and no gameplay arc; the most-requested verb in the vision ('tether them together so they yank each other') is unreachable in practice. **Reference:** Just Cause 2 tether, Bolo physics.
+- **Exists:** `TWIN_BRIDLE_HEAD_ID`, `TWIN_BRIDLE_SETUP_S = 10` in `src/systems/tetherGameplay.js`; `attachments.listControlledBy`; `masslineHeadTwinBridle` flag ON.
+- **Routes through:** SPEC3-17; PQ-137.09 chains.
+- **Writes:** `src/systems/tetherGameplay.js`, `src/core/sg02DynamicBodyOwner.js`, `src/systems/tumbleStates.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Bolas throw in one input.** Setup time drops to a throw: latch A, latch B, the bridle exists; setup ≤ 2 s at combat range. | Two lights bridled within 3 s of the first latch in a scenario; the pair tumbles (B11). |
+| `.01` | **Coupled-pair physics.** Shared inertia, shared helm loss, bounded line load, break by load rating; the pair reads as one system in the camera. | Pair orbits and impacts terrain in ≥ 4 of 5 seeds. |
+| `.02` | **NPC counterplay.** Aces cut bridles; heavies ignore them; the specialist carries a line-cutter. | Scenario shows one cut and one ignore. |
+
+- **Not:** No bridling of stations or planets as a cheese; large bodies stay anchors only.
+- **How agents get this wrong:** A ten-second setup: the bolas is a throw.
+
+**`PQ-026` — Mass-coupling tactics: inertial shunt, gravity mark, momentum sink** · *BETA* · after `PQ-137`
+
+The gravity marker makes a target heavier to fields; the momentum sink stores and returns momentum (plant it on a rock, burn away, release, slingshot back through the pursuer); the inertial shunt trades your momentum for theirs on contact. Each is a decision, each is legible, each has an NPC user.
+
+- **Gap:** `wpn_gravity_marker_s` and `wpn_momentum_sink_s` exist in weapons data with status effects and no play arc. **Reference:** Highfleet burner tricks, Rocket League demo timing.
+- **Exists:** `src/data/weapons.js` gravity_marker_s / momentum_sink_s; `src/render/momentumSinkVfx.js`; statuses in `src/data/combatDefs.js`.
+- **Routes through:** SPEC3-17; GDX-A03.
+- **Writes:** `src/data/weapons.js`, `src/data/combatDefs.js`, `src/systems/weapons.js`, `src/render/momentumSinkVfx.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Momentum sink as the bungee.** Plant, tension, release: the player exits at ≥ 2× cruise (earned speed kept, B1). | Scenario measures exit speed ≥ 2× cruise; capture. |
+| `.01` | **Gravity mark as a field multiplier.** A marked target is pulled 3× harder by wells and sinks; marked heavies bend toward wells they would ignore. | Well golf on a marked medium works in the scenario. |
+| `.02` | **Inertial shunt.** On contact, swap momentum with the target (bounded by mass ratio); the ram that stops you and launches them. | A shunt ram on a light hostile sends it ≥ 1 screen; the player stops within 20 WU. |
+
+- **Not:** No stat-only status effects; every effect must be visible as motion.
+- **How agents get this wrong:** Status effects without visible motion: every mass tool changes a trajectory the player can see.
+
+**`PQ-147` — The field toy chest and the Power Bar filled** · *BETA* · after `PQ-137`, `PQ-139`
+
+Well (pull), Repulsor (shove), Clearing Cone, Skim Collector and Mass Seed are the five powers already bound to keys 4–8; two have zero UI references. Each becomes a field that visibly bends motion, has a counter (fly out, cut, mark), and is used by at least one enemy role. Well golf, gravity bowling and cluster-and-detonate are the showcases.
+
+- **Gap:** The Power Bar (§11.4) is half-built at the input layer; the powers themselves are uneven and unteachable. **Reference:** Noita wand synergies, Spelunky item interactions, Magicka.
+- **Exists:** `src/data/fields.js` Well/Repulsor/Cone (`deployRange 520`); `src/systems/fields.js`, `src/core/fields/fieldKernel.js`; `src/systems/input.js` VERB_BINDINGS Digit4–8; `src/ui/powerRail.js`.
+- **Routes through:** §11.4 Power Bar; GDX-A03; PQ-139.05 well distortion.
+- **Writes:** `src/data/fields.js`, `src/systems/fields.js`, `src/core/fields/`, `src/ui/powerRail.js`, `src/ui/screens/range.js`, `src/ai/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Five powers, five sentences, five drills.** Each power gets its fitting-screen sentence, a Range drill, and a legible field volume (cone/ring/sheet, never a sphere). | All five appear on the rail with real state; drills exist; VFX grammar test covers them. |
+| `.01` | **Fields participate in physics for everyone.** NPCs, cargo, debris and wrecks obey fields; NPCs deploy them (an anchor specialist wells, a scavenger cones). | A well bends ≥ 5 bodies in the scenario; one NPC role deploys a field in ordinary traffic. |
+| `.02` | **Counterplay.** Fly out, cut the emitter, mark it, or out-mass it; the player is never trapped without a verb. | Each field has one deterministic escape in a scenario. |
+| `.03` (after PQ-137.09) | **Cluster and detonate.** A well plus a primed light (PQ-137.09) produces the chain; the moment detector rates it. | ≥ 3 secondary consequences from one action in 4 of 5 seeds. |
+
+- **Not:** No passive auras; no field that clears the screen without a player decision (§12.3).
+- **How agents get this wrong:** Shipping a field as a damage volume or an aura: every field bends motion visibly and has a counter; Rendering a field as a glowing sphere: cone, ring or sheet by the VFX standard; Letting NPC fields trap the player without a verb: the counterplay leaf is not optional.
+
+**`PQ-027` — Environment as weapon: machinery and timed hazards that participate** · *BETA* · after `PQ-137`, `PQ-147`
+
+Industrial machinery finishes what the player started: the ore-crusher trap, the station-door jam, the debris reef that pinballs mines, the furnace that melts a shield, the storm that bends shots. Machinery is on a schedule (the ordinary-life rhythm), so timing is part of the trick.
+
+- **Gap:** `environmentalMachinery.js` exists as a system with dressing; nothing in it takes a hull. **Reference:** Just Cause chaos objects, Hardspace: Shipbreaker hazards, Outer Wilds mechanisms.
+- **Exists:** `src/systems/environmentalMachinery.js`, `src/data/environmentalMachinery.js`; `src/data/everydaySpaceKitDressing.js`; `src/systems/terrainAnchors.js`; `src/data/hazardLanguage.js`.
+- **Routes through:** GDX-A06 encounter geometry; SPEC3-31 anomalies; PQ-136 fielded props.
+- **Writes:** `src/systems/environmentalMachinery.js`, `src/data/environmentalMachinery.js`, `src/data/hazardLanguage.js`, `src/systems/terrainAnchors.js`, `src/systems/world.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Three machines that kill.** Excavator jaws, refinery furnace mouth, mass-driver breech: each a legible danger volume with a schedule and a slam-law payoff (PQ-137.06). | A shoved light dies in each; a capture per machine. |
+| `.01` | **Debris currents and reefs.** Authored flows that carry loose mass; mines and pods ride them; the reef pinball. | Mine pinball cascades in a scenario. |
+| `.02` | **Weather that shapes fights.** One storm and one radiation belt per affected sector: shots bend, sensors shrink, fields amplify; ordinary traffic avoids them. | Blind reviewer names the hazard from motion alone. |
+| `.03` | **Timed access.** Gates, locks and doors on schedules; the station-door jam. | A jammed aperture holds reinforcements for ≥ 20 s in the scenario. |
+
+- **Not:** No hazard that is only a damage volume; every hazard moves mass.
+- **How agents get this wrong:** Hazards that are damage volumes: every hazard moves mass; Machines with no schedule: the rhythm makes timing part of the trick.
+
+**`PQ-028` — Manufactured travel and physics infrastructure you can ride** · *BETA* · after `PQ-137`, `PQ-145`
+
+A manufactured acceleration structure the world uses for freight and the player uses for stunts: ride it for free speed (earned, kept), throw an enemy into its breech, or hitch a convoy through it. It does not replace Atlas travel; it is a local toy with a schedule.
+
+- **Gap:** Travel between sectors is Atlas; nothing in a sector launches mass. **Reference:** Kerbal launch structures, Sonic loops, Just Cause 3 wingsuit rings.
+- **Exists:** `src/systems/travelLanes.js`, `cruise.js`, `orbitNodeRuntime.js`; `mod_throughline_sling` in base modules (`src/ui/screens/base.js`).
+- **Routes through:** SPEC3-16 travel grammar; PQ-145 authorship (player-built sling).
+- **Writes:** `src/systems/travelLanes.js`, `src/systems/orbitNodeRuntime.js`, `src/ui/screens/base.js`, `src/systems/claims.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **One authored sling ring.** A ring on the reference site's route that accelerates aligned bodies; NPC haulers use it on schedule. | Player exit speed ≥ 2× cruise and kept (B1); haulers ride it in ordinary traffic. |
+| `.01` | **Throw something into it.** Bodies entering off-axis are flung; a thrown enemy becomes a long-range projectile. | Scenario: a thrown light exits the ring at ≥ 3× cruise and slams terrain (B6). |
+| `.02` | **The player-built sling.** `mod_throughline_sling` becomes this structure at a claim, creating NPC traffic (PQ-145). | A built sling is used by ≥ 1 NPC route within one session. |
+
+- **Not:** No rebuild of sector-to-sector travel.
+- **How agents get this wrong:** Rebuilding sector-to-sector travel: this is a local toy with a schedule.
+
+**`PQ-148` — Cargo is physics: pods with mass, volatility and a story** · *BETA* · after `PQ-137`, `PQ-138`
+
+A cargo pod is a body: it shields, it can be shoved as a shotgun shell, it is a prize NPCs race for. Volatile classes (explosive, corrosive, superdense) change what a throw does. Contraband hides in blind spots and is smuggled by momentum through customs cones. The freighter that breaks up spills pods that keep its velocity.
+
+- **Gap:** Cargo spills exist as TTL pickups that NPCs ignore; mass on the field is inventory. **Reference:** Deep Rock Galactic canisters, Noita liquids, Hardspace hazards.
+- **Exists:** `src/systems/cargo.js`, `fragileCargo.js`, `jettisonImpulse.js`, `lootShards.js` (payload pods), `src/data/commodities.js`, `commodityMoralTags.js`; `freight:cargoSpilled` producer.
+- **Routes through:** PQ-138.01 spilled cargo noticed; GDX-A14 hauling; SPEC3-12 black markets.
+- **Writes:** `src/systems/cargo.js`, `src/systems/fragileCargo.js`, `src/systems/jettisonImpulse.js`, `src/systems/lootShards.js`, `src/data/commodities.js`, `src/systems/lawSecurity.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Pods are bodies.** Every spilled/jettisoned pod is a dynamic body with mass by contents, inherits velocity, collides, can be tethered and shoved. | Ore shotgun: a shoved pod moves a light hostile ≥ 30 % cruise; pods persist across save. |
+| `.01` | **Volatile classes.** Explosive (radial impulse on slam), corrosive (hull tick on contact), superdense (pull on fields, cannot be thrown far). | Three scenarios, three distinct outcomes, readable by silhouette/lamp. |
+| `.02` | **Smuggling physics.** Customs scan cones; contraband hidden in a hauler's blind spot or drop-kicked at cruise through a cone into an outlaw catch net. | A drop-kick through a cone succeeds in the scenario; a scanned pod raises heat (PQ-151). |
+| `.03` | **Cargo with a name.** Pods carry origin/destination/owner; a spilled pod's owner reacts (restitution, bounty, thanks). | Ledger and bark cite the owner after a spill. |
+
+- **Not:** No inventory Tetris; cargo mass is felt in flight (already true) and seen on the field.
+- **How agents get this wrong:** Keeping pods as pickups with a timer: a pod is a body with mass that collides and can be tethered; Inventory Tetris: cargo mass is felt in flight and seen on the field, never managed in a grid; Smuggling as a dice roll: the scan is a cone; the run is physics.
+
+#### Pillar B · The world and its people
+
+**`PQ-149` — The storyteller: a session-rhythm director over the directors that exist** · *BETA* · after `PQ-138`
+
+The game breathes. Ordinary life is guaranteed between incidents, tension is telegraphed, violence has aftermath and quiet, and escalations ('the patrol you fled now has your name') are seeded by a budget, not by chance. The player never sits in a dead sector and never drowns in noise. A story-so-far ledger reads it back.
+
+- **Gap:** Three directors exist (encounter, campaign pressure decks, station side events) with no owner of rhythm; ambient tier exists but nothing guarantees quiet or seeds escalation. **Reference:** RimWorld storytellers, Left 4 Dead director, Sea of Thieves world events.
+- **Exists:** `src/systems/encounterDirector.js` (ambient tier, MAX_AMBIENT_PER_DAY), Campaign Director 2.0 (two-deck pressure, phases, receipts), `stationSideEventDirector.js`, `src/ai/director.js`, `barkDirector.js`, microevent library (58), `shipLedger.js`.
+- **Routes through:** SPEC3-21/29 directors; GDX-S04 consequence loop; PQ-138.
+- **Writes:** `src/systems/encounterDirector.js`, `src/ai/director.js`, `src/systems/stationSideEventDirector.js`, `src/systems/shipLedger.js`, `src/systems/telemetry.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **The rhythm model.** Existing phase machine, dwell budgets and telegraphs read by the existing directors. | Focused production-clock cases verify the affected phase/gate and inherited dwell limits, including ongoing-combat→aftermath→respite. One capped affected route window only when session shape cannot be expressed by that fixture; no mandatory 90-minute/all-phase walk. |
+| `.01` | **Escalation seeds.** Consequence tokens from PQ-138 (witness, spill, flee) become a bounty, ace, shortage or rumor with delay and place. | A relevant seeded causal case traces the changed escalation from actual player/world event to later result, preserving source identity, delay and place. Use the existing ledger; no session-wide event quota as proof of good pacing. |
+| `.02` | **Guaranteed ordinary life.** Quiet phases permit inspections, transfers, repair, waiting and tug work at the camera. | Actual existing job owners continue the affected routine behaviors while director gates protect quiet. Inspect that sequence if its visible performance changes; no five-minute capture or decorative NPC count as closure. |
+| `.03` | **Story so far.** The ledger renders activities, choices and consequences with their causes. | The relevant live sequence and saved ledger agree on actor, action, outcome and causal identity; its readout exposes a useful next action. One combined critique of meaningful presentation changes; no separate blind-reader ceremony. |
+
+- **Not:** No scripted spawns at the player; no hard-counter director (§12.3).
+- **How agents get this wrong:** Spawning at the player to keep things interesting: escalations arrive from a place with a delay and a cause; A hard-counter director that punishes the player's build: forbidden by §12.3; Filling quiet phases with combat: quiet is guaranteed, not tolerated.
+
+**`PQ-150` — People who remember: aces, rivals, the mechanic, the radio** · *BETA* · after `PQ-138`, `PQ-149`
+
+The universe is audible and it knows you. Twelve named aces escalate their kit against your habits (line-cutters after your third fling-kill), rivals hold grudges across sectors, haulers whine and pirates negotiate on comms, and a mechanic at your berth reads the hull's history back to you. The 271-line bark corpus is the script; this packet gives it delivery and memory.
+
+- **Gap:** Aces and memory exist; nothing escalates against the player's style, no character lives anywhere, and barks are text after a squelch. **Reference:** Shadow of Mordor (lite), Hades Olympians, Rebel Galaxy Outlaw radio, Mount & Blade lords.
+- **Exists:** `src/data/namedAces.js` (12), `aceMemory.js`, `moralMemory.js`, `pirateRumor.js`, `barkDirector.js` + `src/data/barks.js` (271 lines, 8 factions × 8 situations), `bandRadio.js`, depth program V1 fifteen NPCs, `shipLedger.js`, `livingHull.js`.
+- **Routes through:** Depth V1/V2, ADD-1 The Band, ADD-2 Ledger, ADD-3 Living Hull; SPEC3-22 named enemies.
+- **Writes:** `src/data/namedAces.js`, `src/systems/aceMemory.js`, `src/systems/barkDirector.js`, `src/data/barks.js`, `src/systems/bandRadio.js`, `src/ui/station/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Aces escalate against your style.** Ace memory reads the stunt grammar: fling-kills bring line-cutters and sinks, gun-kills bring armour, rock-kills bring rock-avoiders; they taunt the specific act. | Third same-style kill changes the ace's next loadout deterministically; bark names the act. |
+| `.01` | **The mechanic.** A named voice at the home berth who reads scars, repairs, and rap sheet back as one line each; the ship becomes 'my fucking ship' through them. | Every scar class has a line; the berth screen shows the mechanic with the hull. |
+| `.02` | **Radio that reacts.** The Band and comms chatter keyed to world events and player acts: haulers whine, pirates negotiate, patrols threaten, stations report. | ≥ 8 distinct reactive chatter classes audible in a session; captions on. |
+| `.03` | **Fifteen people, placed.** The depth program's named NPCs live at places, with a sentence and a reaction set. | All fifteen reachable on the route with ≥ 1 reaction each. |
+
+- **Not:** No dialogue trees; a bark is one line and a consequence.
+- **How agents get this wrong:** Dialogue trees or menus: a bark is one line and a consequence; forbidden by ruling; Aces that escalate by stats: they escalate by kit and behaviour against the player's habits; A mechanic who narrates nothing real: every line reads a scar, a repair or a rap-sheet entry.
+
+**`PQ-151` — Crime is a game: the WANTED loop with a physical escape at every tier** · *BETA* · after `PQ-138`, `PQ-149`
+
+Being wanted is a game with verbs, not a number. Tier one is a fine and a scan cone to slip; tier two posts a bounty and hunters with your name; tier three brings tether-net checkpoints and patrol wedges you must break physically; tier four impounds and the recovery is a heist. Corrupt ports launder cargo and heat for a price; insurance and restitution make 'oh fuck, I did that' recoverable.
+
+- **Gap:** Heat is a decaying scalar; incidents chase always; custody/surrender/recovery systems (54 KB) are rich but unadvertised; no tiers, no nets, no laundering. **Reference:** Elite Dangerous crime, GTA wanted stars, Watch Dogs escapes.
+- **Exists:** `src/systems/lawSecurity.js`, `heat.js`, `custodyConsequences.js`, `surrenderRecovery.js`, `recoveryEncounter.js`, `pirateDisguise.js`, `bountyHunters.js` data, `dockDeny.js`, `contraband:scanned`.
+- **Routes through:** GDX-A07 collateral and law; PQ-138.00 witness choice; SPEC3-12.
+- **Writes:** `src/systems/lawSecurity.js`, `src/systems/heat.js`, `src/systems/custodyConsequences.js`, `src/systems/surrenderRecovery.js`, `src/systems/pirateDisguise.js`, `src/data/bountyHunters.js`, `src/ui/galaxyMap.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Four tiers with a verb each.** Fine/scan, bounty/hunters, nets/wedges, impound/heist; heat shown on the chart; each tier's escape is physical. | Scenario per tier with a deterministic escape; blind reviewer names the tier from the world. |
+| `.01` | **Patrol nets and checkpoints.** Tether-net roadblocks and scan cones on lanes; break them by mass, speed, or a thrown decoy. | Three break methods verified in scenarios. |
+| `.02` | **Corrupt ports and laundering.** Outlaw stations launder cargo and heat for a cut; reputation pays the cut down. | A laundered pod clears a scan; the ledger records the cut. |
+| `.03` | **Insurance, restitution, impound recovery.** Collateral has a bill; paying, working it off, or stealing the ship back are all play. | Each path completes in a scenario; save round-trips mid-path. |
+
+- **Not:** No instant-teleport police; every responder flies from somewhere.
+- **How agents get this wrong:** Police that teleport or spawn on the player: responders fly from somewhere; A tier without a physical escape: every tier's escape is a verb, never a purchase; Heat as a hidden number: the tier is visible on the chart and in the world.
+
+**`PQ-032` — Campaign spine: one linear story that builds to an ending you earned with the toys** · *BETA* · after `PQ-137`, `PQ-143`, `PQ-152`
+
+The 47-A opener is the best twelve minutes in the game; the next three beats are inventory errands and the ending fires at ~4 % of the money curve behind an empire-stake paywall. The owner ruled: no dialogue trees, one linear story that builds, and replay value is not a goal. This packet re-cuts the spine as ONE through-line: each beat is a set piece built from verbs (PQ-152), the ending gate sits where the player has heavy-class verbs, the empire stake accepts a combat stake, and NG+ carries the ship's history. The five endings and five post-ending chains that already exist stay as they are; no new branching work is admitted.
+
+- **Gap:** Authored content ~10–14 h; sharpest cliff at minute 12; ending at 100k cr vs 4.5M hulls. **Reference:** Freelancer campaign gating, Hades run narrative, Outer Wilds discovery.
+- **Exists:** 8 beats `src/data/missions.js:1001-1016`; `src/story/campaign47a/`; 5 endings `src/story/endings/endingDefs.js`; `postEndingReplayChains.js`; `newGamePlus.js`; eligibility gates `eligibility.js:152-168`.
+- **Routes through:** WB-B0-B7, WB-WORLD-AFTER, RV-STORY, SPEC3-32; depth P2 story-beat embodiment; retired plan superseded by this packet: design/archive/program/roadmap/retired/PQ-032.md.
+- **Writes:** `src/data/missions.js`, `src/story/`, `src/core/newGamePlus.js`, `src/data/postEndingReplayChains.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Beats 1–3 become set pieces.** honest_work → the wrecking-ball contract; first_blood → pod rescue under fire; bigger_boat → the long tow. | Each beat is a PQ-152 set piece with a physical headline verb. |
+| `.01` | **The gate moves and widens.** Ending eligibility at the heavy-verb tier (tow class ≥ medium, one field, one ace beaten) with a combat stake alternative to the empire stake; the linear spine reaches it without a branch choice. | A combat-only run reaches an ending; a builder run reaches one; both in ≤ 25 h by telemetry. |
+| `.02` | **The climax is a toy.** Each ending's final set piece requires the verbs of the branch (siege by wrecking ball, evidence tow, blockade run). | Owner plays each ending's climax; verdict recorded. |
+| `.03` | **NG+ carries a legacy.** Ship scars, titles, ace grudges, one head, and the ending's world facts carry; everything else resets. | Save migration test; the mechanic names the carried history. |
+
+- **Concept companion:** Candidate B0–B7 beat treatments remain in [`EXPANSION_STORY_AND_PLACES.md`](./design/spec3/EXPANSION_STORY_AND_PLACES.md#1-campaign-spine-candidate-beats). They fill the existing spine and route through `.00`–`.02`; they do not add beats, branches, endings, numeric gates, or asset acceptance.
+
+- **Not:** No new endings, no new branches, no dialogue trees; existing endings stay untouched.
+- **How agents get this wrong:** Adding a branch or a choice menu: one linear story, by ruling; Moving the ending gate without a combat stake: a combat-only run must reach an ending.
+
+**`PQ-152` — Set pieces built from verbs: ten missions whose headline is physical** · *BETA* · after `PQ-137`, `PQ-138`
+
+Ten authored set pieces and three new procedural mission types whose headline verb is physical: the wrecking-ball demolition, pod rescue under fire, the long tow, convoy defence with real cargo, the station-door jam, the prison-break (impound recovery), the ace duel, the capital boss with sub-systems, the reef clearance, the heist that goes loud. Each is a puzzle made of momentum with two solutions.
+
+- **Gap:** Ten procedural verbs, eight are fly-there; physical play lives only in optional clauses (`no_slack` applies to bulk_haul only). **Reference:** Hitman set pieces, Just Cause missions, Star Control 2 melee bosses.
+- **Exists:** `missions.js` OFFER_MIX and 5 SET_PIECE_MISSIONS; `missionConditions.js` 13 terms; `heistMission.js`, `landmarkMissions.js`, `setPieceMissionOffers.js`; depth SP1; SPEC3-22 bosses.
+- **Routes through:** Depth SP1, P4 set-piece types; SPEC3-22; GDX-A19.
+- **Writes:** `src/data/missions.js`, `src/data/missionConditions.js`, `src/systems/missions.js`, `src/systems/heistFacilities.js`, `src/data/encounters/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Three physical procedural types.** tow_recovery, demolition, rescue_under_fire join the OFFER_MIX with station-type weights. | Each appears on boards on the route; each completes in a scenario by two methods. |
+| `.01` | **Ten authored set pieces.** Authored once each with actors, a place, a twist clause and two solutions; the 47-A craft level. | Ten playable on the route; relevant direct checks and one combined critique per coherent set-piece delivery, with actual presentation inspected. |
+| `.02` | **The capital boss.** A heavy with sub-systems (thrusters, bays, turrets) vulnerable to thrown mass; no immunity theatre. | Killable by physics alone in a scenario; the tumble law applies to its sub-systems. |
+| `.03` | **Clauses that twist.** Contract terms that fire mid-mission (the escort turns, the cargo is volatile, the buyer is the law). | ≥ 5 twist clauses live; each mutates rather than fails (PQ-138.04). |
+
+- **Concept companion:** Candidate briefs `SM-01`–`SM-08` in [`EXPANSION_STORY_AND_PLACES.md`](./design/spec3/EXPANSION_STORY_AND_PLACES.md#2-eight-candidate-briefs-for-existing-set-piece-slots) are proposals for eight of the ten existing `.01` slots. They add no missions or leaves; mass, timing, survivability, and outcomes remain packet-owned, and no brief promises a forced fatal collision.
+
+- **Not:** No mission that is 'fly there and hold fire'.
+- **How agents get this wrong:** A mission whose headline is 'fly there and hold fire': the headline verb is physical or the mission is not admitted; One solution per set piece: two solutions, both reachable on a trackpad; A boss with immunity phases: physics is the fast way, guns the slow way, immunity never.
+
+**`PQ-153` — Six sectors with a way of life: Helios Prime, Ceres Belt, Tethys Junction, Vesta Forge, Pallas Drift, Sker Haven** · *BETA* · after `PQ-137`, `PQ-143`
+
+A player recognises each of six sectors from thirty seconds of unlabeled activity: Helios (the tutorial harbour), Ceres (the working belt), Tethys, plus three chosen from the ten by what they can physically offer — an ice-shear field, a debris reef, a foundry. Each has hazard geometry that changes fights, a landmark you screenshot, and one toy that is best there. The frontier fourteen carry stations and rumours, not story.
+
+- **Gap:** 24 sectors exist (10 authored + 14 frontier); identity is palette; the frontier has no beats. **Reference:** Subnautica biomes, Hollow Knight areas, Starsector systems.
+- **Exists:** `src/data/sectors.js` (10 core), `src/data/frontierRegions/` (14), `authoredPlaces.js`, `regionalEcology.js`, world-identity `SECTOR_STYLE_INDEX.md`, depth landmarks H1a–H1h, W1/W2 planet states, `PLACE_REGISTRATION.md`.
+- **Routes through:** PQ-143 identity tables; WI-SECTOR-FAMILIES; SPEC3-30; depth H1/W1/W2; PQ-136 props.
+- **Writes:** `src/data/sectors.js`, `src/data/frontierRegions/`, `src/data/authoredPlaces.js`, `src/systems/regionalEcology.js`, `design/world-identity/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Confirm the six and their sentences.** Proposed: Helios Prime (the harbour: law, tutorial, calm), Ceres Belt (the working belt: mining, haulers, the Cathedral), Tethys Junction (the trade hub: traffic, customs, the black market), Vesta Forge (the foundry: furnace hazards, industry), Pallas Drift (the debris reef: wrecks, scavengers, reef pinball), Sker Haven (the outlaw port: the wanted loop's home, corrupt docks). A table per sector: verb, rhythm, law, crime, ships, structures, hazard geometry, landmark, signature toy. | Table committed; the owner may swap any of the last three by name. |
+| `.01` | **Hazard geometry per sector.** Ice shear, debris reef, foundry heat, storm lane, gravity knot, wreck field: each an authored physical situation (PQ-027 hazards). | Blind reviewer names the sector from a 30 s capture with labels hidden, 5 of 6. |
+| `.02` | **Landmarks fielded.** The depth program's hero landmarks placed where the six need them; screenshot composition checked at the shipping camera. | Six landmarks reachable; still review passes. |
+| `.03` | **The frontier as texture.** Fourteen frontier sectors get rumours, one texture one-off each, and no story promise; the stale 'not wired' comment corrected. | Atlas integrity green; each frontier sector has one memorable object. |
+
+- **Not:** No new sectors; no palette-swap identity.
+- **How agents get this wrong:** New sectors: six of the ten, then the frontier as texture; no new sectors; Identity by colour grade: a way of life is verbs, rhythm, law, crime, ships, structures and hazards.
+
+**`PQ-154` — Wrecks as terrain and the death economy** · *BETA* · after `PQ-138`
+
+A wreck is a place: cover, anchor, loot, and an ecology (scavengers, a squatter, a trap). Extreme impacts fracture hulls along a few authored seams, so the aftermath of a wrecking-ball hit is pieces, not a swap. Your own death leaves your wreck and pod in the world; the surrender/custody systems already make it a story.
+
+- **Gap:** Wrecks spawn flat and static; fracture is a swap; unique wrecks exist as one-shots. **Reference:** Everspace 2 wreck fields, Hardspace: Shipbreaker, Hades death economy.
+- **Exists:** `aftermathWrecks.js` (persistent markers), `uniqueWrecks.js` (12 reservations), `salvage.js`, `survivorPod.js`, `surrenderRecovery.js`, wreck pack (44 models, PQ-136.00 fielded), `PQ-138.03` drift/tumble.
+- **Routes through:** PQ-138.03; depth R1/R2 unique wrecks; GDX-A08/A13.
+- **Writes:** `src/systems/aftermathWrecks.js`, `src/systems/uniqueWrecks.js`, `src/systems/salvage.js`, `src/systems/survivorPod.js`, `src/render/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Authored fracture seams.** Three to five seams per hull class; a slam above a threshold splits along one; pieces inherit motion and mass. | A wrecking-ball hit on a medium produces ≥ 2 pieces in the scenario; frame budget unchanged. |
+| `.01` | **Wreck ecology.** Persistent wrecks attract scavengers (PQ-138.01), squatters, and traps; the field is an encounter place. | A wreck field older than one day has ≥ 2 inhabitants on the route. |
+| `.02` | **Your own wreck.** Death leaves your hull and pod; recovery, surrender and custody paths reach them; NG+ can find them. | Save round-trip of the player wreck; one encounter references it. |
+
+- **Not:** No general destruction solver; seams are authored.
+- **How agents get this wrong:** A general fracture solver: seams are authored, few, and pooled; Wrecks that respawn scavengers forever: ecology has a budget and decays.
+
+#### Pillar C · Economy, progression, identity
+
+**`PQ-155` — Money means toys: the economy tuned as a verb curve** · *BETA* · after `PQ-137`, `PQ-142`
+
+The curve is designed, not accreted: start-to-first-upgrade ≤ 15 min; hour by hour a new physical verb (tow class, head, field, slam survival); the Massline's ceiling is not behind a 2.5 M capital-hull tech; sinks (repairs, fines, insurance, restitution) and faucets (salvage, contracts, industry, stunts) balance; a headless ten-hour simulation prints the curve and the check gates it.
+
+- **Gap:** Start 5,000 cr vs cheapest tech 6,000; spool ceiling behind 2.5 M; ending at 100 k of a 4.5 M curve; the 100 k → 4.5 M canyon is 40+ hours of repetition. **Reference:** Subnautica pacing, Endless Sky, Slay the Spire unlock cadence.
+- **Exists:** `src/data/tech.js` (32 nodes), `ships.js` (14 hulls), `modules.js` (72), `economy.js`, `economyCycles.js`, `killRewards.js`, `careerContracts.js`, telemetry aggregates.
+- **Routes through:** S2-05 long ladder; SPEC3-F1; GDX-A15/A17; PQ-142 verbs.
+- **Writes:** `src/data/tech.js`, `src/data/modules.js`, `src/data/ships.js`, `src/data/killRewards.js`, `src/systems/economy.js`, `scripts/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **The verb ladder.** A table of hour → verb → cost → gate; every tech node either unlocks a verb or is folded. | Table committed; ≤ 12 stat-only nodes remain, each justified. |
+| `.01` | **The ten-hour simulation.** Headless economy sim with three player archetypes prints net worth, verbs unlocked and sinks per hour; a check asserts the ladder. | `check:economy:curve` green for all three archetypes. |
+| `.02` | **Sinks that tell stories.** Repairs, fines, insurance, restitution, impound: each a receipt with a cause. | Each sink appears in a session ledger with its cause. |
+| `.03` | **Stunts pay.** Trick receipts pay in reputation and salvage rights, never in raw credits (no grind-by-stunt). | A physics run earns ≥ the reputation of a gun run; credits equal. |
+| `.04` | **Mining is a skilled verb.** The in-flight loop — pulse-scan, seams, the vent rhythm, magnet collect, tether-haul — reads and pays like the other verbs, with a measurable gradient (the Asteroid Works board is `PQ-130`'s separate surface). | A fixed-seed run shows ore-per-minute separates a clean pass from a sloppy one ≥ 2× on the same seam; a blind read names the vent bonus. |
+
+- **Not:** No premium currency; no loot rarity.
+- **How agents get this wrong:** Tuning credits by feel: the ten-hour deterministic simulation prints the curve and the check gates it; Paying stunts in credits: stunts pay reputation and salvage rights, never raw money (no grind-by-stunt).
+
+**`PQ-156` — Three starters, three verbs, and a save-file identity** · *BETA* · after `PQ-137`, `PQ-142`
+
+Confirmed by the owner 2026-09-03. New Game offers three starters that are verbs: the brawler (ram plate, shove gun), the skater (light, fast, the best swinger), the tug (heavy line, tow class, slow). Each has a distinct first ten minutes. The load screen is a portrait of the save: hull with scars, titles, rap sheet, the ace who hates you.
+
+- **Gap:** One starter; the load screen is a list. **Reference:** Slay the Spire characters, Mount & Blade save cards.
+- **Exists:** `src/data/newGameDefaults.js`, `ships.js` (Hitch/Wasp/Pelican), `src/ui/screens/newGame.js`, `saveLoad.js`, `livingHull.js`, `titles.js`.
+- **Routes through:** PQ-142; GDX-A16.
+- **Writes:** `src/data/newGameDefaults.js`, `src/data/ships.js`, `src/ui/screens/newGame.js`, `src/ui/screens/saveLoad.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Three starters.** Hitch (skater), a tug variant of Pelican, a brawler variant of Wasp; each with a kit and a sentence. | Three New Game routes complete the first ten minutes with distinct verbs; telemetry shows distinct funnels. |
+| `.01` | **The save portrait.** Load screen renders hull + scars + titles + rap sheet + grudge. | Capture; save round-trip. |
+
+- **Not:** No classes with locked abilities; any hull can buy any verb later.
+- **How agents get this wrong:** Locking verbs to a starter: any hull can buy any verb later; starters are starting points; A load screen that lists files: it renders the ship's portrait and history.
+
+#### Pillar D · Presentation
+
+**`PQ-161` — Readable at max zoom: silhouettes, telegraphs, force colours** · *BETA* · after `PQ-137`, `PQ-140`
+
+At the shipping camera and at max zoom-out, a miner looks like it mines, a customs ship looks official, a heavy communicates mass; danger is telegraphed (heat shimmer on guns, engine pitch on pursuers, a taut line glows); force colours (rope, wells, impulses) are distinct for every colour-vision type; a trajectory/force overlay exists only in the Range and the draw-to-fly preview.
+
+- **Gap:** Silhouette identity routes through asset programs; telegraphs and force palette have no owner. **Reference:** Overwatch silhouettes, Hades telegraphs, Everspace 2 exhaust readability.
+- **Exists:** PQ-050 fleet remaster, depth L1 livery, `src/data/palettes.js`, `factionPaletteClaims.js`, `SEMANTIC_PALETTE`, `threatHalo.js`, `intentGlyphs.js`.
+- **Routes through:** PQ-050, depth L1/K1, GDX-A24, PQ-140.02 specialists.
+- **Writes:** `src/data/palettes.js`, `src/data/factionPaletteClaims.js`, `src/ui/threatHalo.js`, `src/render/`, `src/ui/screens/range.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Role silhouettes.** Nine occupational roles with distinct silhouette rules checked at the shipping camera; livery per faction. | Blind reviewer names 8 of 9 roles from stills. |
+| `.01` | **Telegraphs.** Every lethal thing announces itself 0.5–1 s ahead in motion, light or sound. | Death-cause telemetry shows ≥ 90 % of deaths preceded by a telegraph. |
+| `.02` | **Force palette.** Rope, wells, repulsors, impulses, shields: five hues distinct under deuteranopia/protanopia/tritanopia; brightness order preserved. | Contrast check green under all three simulations. |
+| `.03` | **Teaching overlay.** Trajectory and force ribbons in the Range and the stroke preview only. | Never rendered in ordinary flight (test). |
+
+- **Not:** No floating labels as identity.
+- **How agents get this wrong:** Solving identity with labels or recolours: silhouettes and behaviour; Showing the trajectory overlay in ordinary flight: Range and stroke preview only.
+
+**`PQ-162` — The station as a place: the redesign the flatten was waiting for** · *BETA* · after `PQ-137`
+
+The docked station is the second most used surface and the only one an owner-commissioned review called cheap screen by screen. Phase 6 flattened the stylesheet and borrowed tokens; the CREST/STAGE/APRON/DRAWER skeleton and the data-state and entity-link contracts have zero adoption across all seven screens. This packet is the redesign: one grammar, one hierarchy, the bar with a transcript, the industry tiers legible, orange doing one job, and docking that feels like arriving at a place with people (the mechanic of PQ-150 lives here).
+
+- **Gap:** Flatten happened, redesign did not; zero skeleton adoption; review findings unverified (orange doing four jobs, bar transcript void, italic flavour outranking data). **Reference:** Hades hub, Hardspace: Shipbreaker hab, Starsector colony screens.
+- **Exists:** src/ui/station/ (7 screens via stationApp.js), styles/station-workbench.css (34 --sf-* refs, 12 px floor), design/frontend/INSTRUMENT_GRAMMAR.md, design/frontend/reviews/STATION-TASTE-KIMI-2026-08-23.md, src/ui/entityResolver.js, screenMemory.js, whyReveal.js (17 adopters).
+- **Routes through:** §11 Phase 6/7; RV-COMMAND-DECK (extract one interaction only); S2-06.
+- **Writes:** `src/ui/station/`, `styles/station-workbench.css`, `src/ui/screens/stationHub.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Skeleton and data states adopted.** All seven station screens render through CREST/STAGE/APRON/DRAWER with the four data states and entity links; the legacy stationHub helpers are lifted out (Phase 7 as a refactor). | check:data-states and check:entity-links cover the station; zero legacy imports from stationHub.js. |
+| `.01` | **Hierarchy and colour discipline.** One primary per screen, orange means one thing, italics never outrank data, the bar has a transcript, industry tiers read. | A cold reviewer verdict per screen; the Kimi findings closed one by one in the receipt. |
+| `.02` | **Arriving somewhere.** Docking is a place: the berth with your hull, the mechanic, ambient work, one line of local news; screens open from the place, not from a tab strip. | Blind reviewer names the station from the docked view; capture. |
+
+- **Concept companion:** Four nonbinding place briefs for the existing station route are retained in [`EXPANSION_STORY_AND_PLACES.md`](./design/spec3/EXPANSION_STORY_AND_PLACES.md#3-four-candidate-place-briefs). They inform `.02`'s sense of arrival without adding station types, approving assets, or redesigning the flight HUD.
+
+- **Not:** No new station types; no redesign of the flight HUD.
+- **How agents get this wrong:** Repainting the station again: the skeleton and the data-state and entity-link contracts must be adopted, measured by the checks; Redesigning the flight HUD on the way: out of scope; the attention pass stands; Deleting legacy modules before the live station stops importing them.
+
+**`PQ-168` — The Chart finished: traffic layer, hierarchy, one answer per question** · *BETA* · after `PQ-137`, `PQ-151`
+
+The Chart already answers routes, risk, prices, pressure, dossiers and route comparison. It still renders the same four navigation answers twice, gives nine tabs one size, keeps ~80 sub-12 px nodes, and has no traffic layer, so the living world the map is supposed to show is invisible on it. This packet finishes it: traffic density and convoys as a layer, heat (PQ-151) and contract pins as layers, one hierarchy, one inspector.
+
+- **Gap:** J12b traffic layer deferred; duplication; single tab size; sub-12 px nodes; the strategic reviewer called it cheap admin. **Reference:** Starsector map, Endless Sky map, Highfleet strategic layer.
+- **Exists:** src/ui/galaxyMap.js (routes, waypoints, risk, prices, layers, dossiers, comparison), src/ui/map/mapNavContext.js, mapAuthority.js, design/frontend/reviews/CHART_POLISH_REVIEW_2026-08-23.md, state.traffic (350 KB read by 0 UI files).
+- **Routes through:** §11 J12/J12b; RV-MAP; WI-NAV-PLACES; GDX-A10/A27.
+- **Writes:** `src/ui/galaxyMap.js`, `src/ui/map/`, `src/ui/mapAuthority.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Traffic and heat layers.** Convoys, traffic density and patrol presence from state.traffic; heat tiers from PQ-151; contract pins as a layer. | Toggling layers shows live traffic; layer state persists (screen memory). |
+| `.01` | **One answer per question.** Merge mapNavContext and the Overview inspector; nine tabs get primary/secondary tiers; sub-12 px nodes to the floor by layout. | Zero duplicated answers; smallest text 12 px; cold review verdict. |
+
+- **Not:** No second map; no fog-of-war rewrite.
+- **How agents get this wrong:** A second map: one chart, one inspector; Adding layers without memory: layer state persists per save.
+
+**`PQ-158` — Audio direction: the game that sounds heavy** · *RELEASE* · after `PQ-141`, `PQ-139`
+
+The game currently ships muted by default because every sound is synthesised and the team knew it. The bus topology, adaptive-music matrix, ducking, voice cap and determinism isolation are already A-list; this packet supplies the content: a recorded/designed sample library for every cue family, an impact ladder (hull/rock/station × light/medium/heavy), the Massline as an instrument (tension to pitch, release snap, reel whine), boost stop, composed themes for the four states plus per-sector and per-faction identity through the Band, directed synthetic voice for the barks (eight faction registers; agents produce it, no recorded actors), a convolver reverb bus so a hangar and a void differ, and a mix that ducks music under weight.
+
+- **Gap:** Zero authored audio files; 167 synth recipes share one timbre; no reverb; one collision sound; boostStop empty; Massline reel/release silent; barks are text. **Reference:** Hades, Deep Rock Galactic, Everspace 2, Rebel Galaxy Outlaw, Sea of Thieves mix.
+- **Exists:** `src/audio/audioSystem.js` (8 buses, limiter, 68 subscriptions, 4-state stem matrix), `cuePriorityBus.js`, `audioActiveSet.js`, `bandBeds.js`, `src/data/audioRecipes.js` (171), `barks.js` (271 lines), settings 8 sliders; dead `reverbMix` params.
+- **Routes through:** S2-07 audio identity; SPEC3-39 procedural audio; GDX-A26; PQ-139.01 sound by mass.
+- **Writes:** `src/audio/`, `src/data/audioRecipes.js`, `assets/audio/`, `src/ui/screens/settings.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **The sample library pipeline.** A licensed/authored sample library (recorded or designed offline) per cue family, encoded and residency-gated like assets; recipes become sample+synth hybrids. | ≥ 120 cues sample-backed; default unmute; frame-sleep counters unchanged. |
+| `.01` (after PQ-139.01) | **The impact ladder, sample-backed.** Extends PQ-139.01 (which chooses pitch and gain from dp and mass on the synth path): the same 3×3 ladder (hull/rock/station × light/medium/heavy) gets layered transient/body/tail samples; scout-on-rock vs freighter-on-station stays ≥ 1 octave and ≥ 12 dB apart. | B9b table test; A/B capture. |
+| `.02` | **The Massline as an instrument.** Tension to pitch, strain to grit, reel whine, release snap distinct from break, bridle chord. | All massline events audible and distinct; captions name them. |
+| `.03` | **Composed themes.** Four state themes with motifs, per-sector beds, faction stings via the Band; the adaptive matrix drives authored stems. | A stranger hums the travel theme; per-sector bed identified blind. |
+| `.04` | **Voice for the barks (directed synthetic voice; no recorded actors).** Eight faction registers produced by a directed text-to-speech pipeline agents can run (design/production/09 generated-media rules), radio-processed, with captions; the mechanic's voice the same way. No recorded actors are assumed anywhere in the plan. | All 271 lines delivered through the agentic pipeline; subtitles; determinism untouched; a stranger identifies the eight registers blind. |
+| `.05` | **Space and mix.** Convolver reverb bus per environment class; weight-first ducking; audio cues for visual events (accessibility). | Hangar vs void audibly different; ducking table test. |
+
+- **Not:** No audio in the sim; no cue without a cause.
+- **How agents get this wrong:** Assuming recorded actors or a composer: directed synthetic voice and agent-produced samples; the pipeline must be runnable by agents; Adding audio to the sim: audio is presentation; determinism is untouched; Leaving the default mute in place after samples land: the unmute is part of done.
+
+**`PQ-159` — Camera as art direction, and a photo mode** · *RELEASE* · after `PQ-141`, `PQ-139`
+
+The camera is part of the art direction. Exceptional speed opens it toward 3× (B3); impacts kick in proportion to delta-V, not damage; a taut line between two bodies frames both; a rated moment gets a 150 ms beat and a bass drop; death gets a cam; photo mode with free camera, filters off by default and the composition ramp tuned so every screenshot sells the game.
+
+- **Gap:** Speed zoom tops out at 1.55×; kicks are damage-driven; no auto-framing for two-body moments; no photo mode. **Reference:** Rocket League replay cam, Just Cause, Hades death cam, Everspace 2 photo mode.
+- **Exists:** `src/render/camera.js`, `cameraDirector.js`, `velocityLanguage.js`, `feel.js` (FOV punch, trauma), `masslineReleaseArc.js`, `bulletTime.js`.
+- **Routes through:** SPEC3-18 camera & juice; S2-02; PQ-139.00; PQ-146.03 moment detector.
+- **Writes:** `src/render/camera.js`, `src/render/cameraDirector.js`, `src/render/feel.js`, `src/ui/screens/pause.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` (after PQ-137.03) | **Impacts kick and reduced motion holds.** Extends PQ-137.03 (which owns the speed-opens zoom curve): kick and trauma from exchanged momentum rather than damage, rate-limited, honouring reduce-motion; the zoom curve is not re-tuned here. | Kick magnitude table by momentum; reduce-motion capture shows none. |
+| `.01` | **Two-body framing.** When a line is taut or a bridle exists, frame both bodies with the line as the diagonal. | Capture of a swing shows both bodies ≥ 90 % of the time. |
+| `.02` | **The beat.** Rated moments get a 150 ms time dip, a camera hold, and a stinger; death gets a cam. | Fires on the moment detector only; headless sims unchanged. |
+| `.03` | **Photo mode.** Pause, free camera, hide HUD, exposure, no filters by default; a capture path for store assets. | Reachable from pause; captures are used for the store page. |
+
+- **Not:** No shake as feel; no cinematic camera in ordinary flight.
+- **How agents get this wrong:** Re-tuning the speed-zoom curve here: PQ-137.03 owns it; this packet owns kicks, framing, the beat and photo mode; Shaking the camera on hits: kicks scale with momentum and honour reduce-motion.
+
+**`PQ-160` — Replay, clips and sharing** · *RELEASE* · after `PQ-141`, `PQ-146`
+
+Because the sim is deterministic, the last thirty seconds can be replayed from the input tape with a free camera. Rated moments (PQ-146) become clips automatically; the player exports a GIF or MP4; Crucible runs share a seed code and a ghost. This is the marketing engine and the community engine, and it costs little because determinism is already paid for.
+
+- **Gap:** Replay exists only in the lab; no photo, clip or share surface. **Reference:** Rocket League, Halo theatre, Trackmania ghosts.
+- **Exists:** `src/testing/lab/differentialReplay.js`, `src/core/simSnapshot.js`, input command snapshot, `survivalRecords.js` build codes, Electron packaging.
+- **Routes through:** GDX-A30 determinism; §12 Crucible.
+- **Writes:** `src/core/simSnapshot.js`, `src/core/inputCommandSnapshot.js`, `src/testing/lab/differentialReplay.js`, `src/ui/screens/`, `electron/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Ring buffer and replay.** Keep 30 s of snapshots + inputs; replay in-game with the photo-mode camera. | Replay matches live to the hash; UI reachable from pause. |
+| `.01` | **Auto-clip.** Moment detector marks a window; the clip list shows it; export GIF/MP4 via the packaged host. | A bolas kill produces an exportable clip in Electron and a downloadable one in browser. |
+| `.02` | **Seeds and ghosts.** Crucible runs export a seed/build code; a ghost of a shared run renders as a translucent hull. | Two machines reproduce the same run from the code. |
+
+- **Not:** No cloud service; sharing is files and codes.
+- **How agents get this wrong:** Recording video instead of replaying the sim: the sim is deterministic; replay the tape; A cloud service: sharing is files and codes.
+
+#### Pillar E · First hour, UX, platform
+
+**`PQ-163` — The first ten minutes: the power fantasy, honest** · *ALPHA* · after `PQ-137`
+
+The onboarding rail already teaches thrust, brake, latch, winch, cut and dock in-world with a verb-then-silence rhythm; it never teaches boost, draw-to-fly or wells, and the first shove is impossible with the starter gun. This packet re-cuts the opening around the store-page sentence — light ships are ammunition, swing a rock, keep the speed — as a scripted-but-honest rescue: you are a tow rig, a scout is chasing a tug, you swing a rock into a derelict for scrap, fling the scout into an asteroid, grab the pod and run. Then the 47-A scene plays as the climax it already is.
+
+- **Gap:** Boost/draw-to-fly/wells untaught; starter gun cannot shove; the quality cliff after 47-A. **Reference:** Portal, Half-Life, Doom (2016) intro, Subnautica.
+- **Exists:** `src/onboarding/flightDrill.js`, `src/systems/onboarding.js`, `src/ui/hudAttention.js` hints, `src/ui/screens/range.js`, `scripts/check-first-15-runtime.mjs`, 47-A scenario.
+- **Routes through:** S2-03 first hour; M3-CAREERS/M3-NAV-HUD; GDX-S03/A28; PQ-137.05 starter force.
+- **Writes:** `src/onboarding/`, `src/systems/onboarding.js`, `src/ui/hudAttention.js`, `src/ui/screens/range.js`, `src/data/scenarios/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` (after PQ-137.05) | **The rescue.** A tow-rig opening at the reference site with one swing-release, one shove, one grab-and-run, in play, no walls. | The intended physical choices work through public controls, produce readable consequences, and remain refusable/recoverable. Use relevant fixed-seed owners and an affected opening route; do not infer human completion rates. |
+| `.01` | **The Range is the door.** Onboarding points at the Range (F4) after the first latch; the SWING, DO NOT PULL rung is the first drill; the empty Power Rail slots explain themselves. | The Range is reachable through its actual bound control, gives the intended useful drill, and returns safely to play. Verify the changed control/transition; player uptake remains audience evidence. |
+| `.02` | **Teach the missing three.** Boost, draw-to-fly and the well enter the rail in the first hour, each as a verb-then-silence beat with a Range fallback. | Each available taught verb has an honest useful situation, one contextual instruction and its working Range fallback; relevant input/physical results and refusal remain coherent. Unprompted human learning rates remain unknown. |
+| `.03` | **The sentence, made playable.** The premise is shown once and its physical choices are reachable in the opening. | The ordinary route presents the promised actions, understandable causal consequences and useful refusal; verify those controls/events and inspect affected presentation. No invented player-comprehension percentage. |
+| `.04` | **The cliff.** Beat 1 after 47-A is a set piece (PQ-152), never an errand. | Completing/refusing the preceding work exposes a reachable, materially different next situation; Continue preserves it. Retention is audience research, not a bot-computable development gate. |
+
+- **Not:** No mentor dialogue; no tutorial text longer than one line.
+- **How agents get this wrong:** Teaching with text: every verb is taught by doing with silence after; the Range is the fallback; A mentor with dialogue: the rescue is fiction, the teaching is play; Leaving an available verb unexplained because the rail 'works': connect its contextual teaching, useful situation and fallback; bot traces cannot prove unprompted human learning.
+
+**`PQ-167` — Useful local telemetry and causal diagnosis** · *ALPHA* · after nothing
+
+Reuse existing onboarding, combat, trade and motion aggregates to answer the selected development
+question: what action, owner transition or missing consequence made this sequence fail? Export a
+compact relevant timeline/readout when needed; do not build a report factory around every iteration.
+Human feedback can inform work when supplied and never gates it. §1.9 owns the loop.
+
+- **Gap:** Find the specific inaccessible or misleading readout in the affected live owner; source presence/old prose cannot establish that it is still missing. No missing playtest ritual is production work.
+- **Exists:** `src/systems/telemetry.js`, `src/observability/sessionObserver.js` (unwired), `motionTelemetry.js`, receipts machinery.
+- **Routes through:** SPEC3-41; PROD-OBS-CAP; §1A observability.
+- **Writes:** `src/systems/telemetry.js`, `src/observability/`, `scripts/`, `design/program/roadmap/receipts/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Useful local readout.** Reuse/export the relevant existing aggregates and causal trace for a chosen scenario/session. | An agent can identify the affected input/event, actor, transition reason, result and violated expectation. A persisted session remains queryable where the existing product requires it; no mandatory JSON+Markdown pair per run. |
+| `.01` | **Weekly owner playtest — RETIRED as an execution task** (matches the board's retirement). | Supplied owner feedback is translated into a narrow reproduction and fix. No waiting, four-week receipt series or automatic capture. |
+| `.02` | **Honest gates from data.** Compare the actual inherited mechanical/pacing contracts against their relevant readouts. | A violated production contract is exposed; unsupported human comprehension/retention/completion statistics remain unknown. No synthetic percentage closes §15.1. |
+
+- **Not:** No PII, no network without opt-in.
+- **How agents get this wrong:** Uploading anything by default; collecting unused traces/captures; treating elapsed playtime, bot completion or a report as enjoyment; rerunning unchanged evidence. Keep it local, opt-in, causal and used to change the game.
+
+**`PQ-173` — Useful scenario feedback for the production loop** · *ALPHA* · after nothing
+
+Reuse the deterministic lab, selected real-path verb cases, Motion Lab and existing causal telemetry
+for one hypothesis. Agents need quick state/input setup, the reason a transition happened, and
+meaningful player-unit deltas. A missing readout/adapter is built only for the production claim
+that needs it; the instrument is not a separate universal acceptance campaign. §1.9 and §29 SR-08
+own the current scope; the existing Fun Convergence Loop remains the feel-specific entrypoint.
+
+- **Exists:** `src/testing/lab/`, `src/testing/motionScenarios.js`, `src/testing/motionTelemetry.js`,
+  production verb modules, `tools/agentic/scenarios.json`, `scripts/check-crucible-route.mjs`,
+  `src/systems/motionTelemetry.js`, `src/systems/telemetry.js`.
+- **Routes through:** `design/program/FUN_CONVERGENCE_LOOP.md`, `PQ-167`, §1.9.
+- **Writes:** the affected existing scenario/readout adapter and production owner; no new grader
+  service, per-run report archive or all-game capture pipeline.
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Quick, truthful setup.** Select one affected scenario/seed/fit/input tape and required production owners. | Setup and repeated inputs reproduce the relevant state; reject/labeled synthetic fallbacks cannot masquerade as production coverage. Whole bench matrices stay diagnostic choices, not every-cycle gates. |
+| `.01` | **Actionable readout.** Existing traces/metrics expose the action, transition reason, consequence, first bad tick and affected physical/resource quantity. | An agent can find and repair the selected defect using that readout, then observe the changed result; no requirement to print every reachable bar or write paired JSON/Markdown receipts. |
+| `.02` | **Material critique.** One independent combined product/engineering look at a coherent design/high-risk slice and its current evidence. | The critic names a reproducible defect, unsupported shortcut or unresolved significant risk, or finds no material issue. Appearance uses actual inspected output. No fixed reviewer count, historic-audit replay or mandatory frame indices when frames were unnecessary. |
+| `.03` | **Feedback becomes a fix.** Translate supplied owner/agent observations into the smallest causal reproduction and production change. | One actual defect/tuning outcome improves and its direct check supports the claim; a short report states limits plainly. No weekly owner wait, pre-code dossier, report commit or stored capture requirement. |
+
+- **Not:** no new game authority; no metric/count/reviewer promoted into a fun certificate;
+  no synthetic result accepted for an actual physics, job, UI or audiovisual claim.
+- **How agents get this wrong:** spending the slice on tool breadth, collecting unused frames,
+  using API success as public-action proof, measuring stand-ins, or retesting the unchanged candidate.
+  The feedback exists to improve the production outcome and stops once it has done so.
+**`PQ-164` — Input truth: controller, Deck, trackpad, haptics** · *RELEASE* · after `PQ-141`
+
+Every player verb and every screen works on gamepad with glyphs that follow the active device; remapping persists; Steam Deck is verified at its resolution; the trackpad (the owner's stated hand) has honest gestures for the Massline and draw-to-fly; haptics carry line tension and slams.
+
+- **Gap:** Fixed pad map, no remap, keyboard-only glyphs, menu coverage unverified per screen, no Deck work. **Reference:** Hades controller parity, Steam Deck Verified.
+- **Exists:** `src/systems/gamepad.js`, `touch.js`, `src/ui/input.js` roving focus, `bindings.js` promptLabel, settings 24-action rebind.
+- **Routes through:** GDX-A28; S2-08 input completeness.
+- **Writes:** `src/systems/gamepad.js`, `src/systems/touch.js`, `src/ui/input.js`, `src/ui/bindings.js`, `src/ui/screens/settings.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Every screen on a pad.** Per-screen verified navigation for all 27 screens and the station; a check walks them. | `check:gamepad:screens` green. |
+| `.01` | **Glyphs and remap.** Device-aware prompt glyphs; gamepad remapping with conflict detection; persists through save/profile. | Settings-profile check green; capture on both devices. |
+| `.02` | **Deck and trackpad.** Deck resolution/scale verified; trackpad gestures for latch/reel/throw and stroke. | Deck capture at 1280×800; trackpad route completes the first ten minutes. |
+| `.03` | **Haptics.** Line tension, slams and boost on gamepad rumble/triggers; off by default in reduce-motion. | Table test of intensity by momentum. |
+| `.04` | **The twin-stick scheme.** Top-down twin-stick is this game's natural home: left stick drives, right stick aims — a controller-first pass over flight, rope and fire, not only menus. | The 60-second proof scenario completes on twin-stick alone; the scheme is selectable and suggested on pad connect. |
+
+- **Not:** No touch-only UI path.
+- **How agents get this wrong:** Verifying gamepad on the HUD only: every screen in the manifest, walked by a check; Keyboard glyphs on a pad: glyphs follow the active device.
+
+**`PQ-165` — Accessibility and options depth** · *RELEASE* · after `PQ-141`
+
+One-click Low/Medium/High presets and a frame cap join the existing per-toggle settings; every voice line has captions; visual events have audio cues; assists (auto-aim as accessibility, release assist, orbit assist) are discoverable; colourblind, motion, flash, dyslexia and UI-scale options already exist and are verified on every screen.
+
+- **Gap:** No presets or frame cap; no subtitles for audio; no audio cues for visual events; gamepad remap missing (PQ-164). **Reference:** Celeste assist mode, Hades accessibility, Xbox Accessibility Guidelines.
+- **Exists:** `src/ui/screens/settings.js` (5 tabs, colourblind/contrast/flash/dyslexia/captions/UI-scale), `adaptiveQuality.js`, `check-wcag-contrast.mjs`, `check-ui-a11y.mjs`.
+- **Routes through:** GDX-A29; RV-POLISH; S2-06.
+- **Writes:** `src/ui/screens/settings.js`, `src/render/adaptiveQuality.js`, `src/audio/audioSystem.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Presets and frame cap.** Low/Medium/High map to the adaptive-quality tiers; frame cap 30/60/120/off; VSync honoured. | Preset switch captured; frame cap measured. |
+| `.01` | **Captions and audio cues.** Captions for all voice; audio cues for wells, tethers taut, telegraphs when 'audio cues' is on. | Every voiced bark captioned; cue table test. |
+| `.02` | **The checklist.** An accessibility statement in-app and the checklist (contrast, motion, remap, text scale, assists, captions) verified per screen. | Checklist green; statement reachable from settings. |
+| `.03` | **Reduced motion keeps the information** (phase A). With reduce-motion on, every directional cue, state transition and readable timing survives without FOV punch, shake or time distortion. | A strip pair (motion on / reduce-motion) of the same seed at the shipping camera; a critic names the same events from both. |
+
+- **Not:** No universal visual style; accessibility does not flatten the art.
+- **How agents get this wrong:** Presets that cut content: presets map to the adaptive-quality tiers, never to fewer actors; Captions for some voice: all of it.
+
+**`PQ-166` — Localization at launch: five languages and the growth test** · *RELEASE* · after `PQ-141`
+
+Localization is ahead of a typical indie already: a real runtime, a generated catalog and a pseudo-locale in CI. This packet ships it: five languages (EN, FR, DE, ES, PT-BR or per market data), a language setting, font fallback for the display face, and a +40 % growth pass that clips nothing.
+
+- **Gap:** Locale only via URL; default route English-only by assertion; no language setting; growth unverified on the station. **Reference:** Standard Steam launch matrix.
+- **Exists:** `src/localization/gameLocalization.js`, pseudo-locale, placeholder-parity tests, `test/localization-reachability.test.mjs`.
+- **Routes through:** §11.11 #9.
+- **Writes:** `src/localization/`, `src/ui/screens/settings.js`, `test/localization-reachability.test.mjs`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Language setting and default-route bridge.** Settings language picker; the DOM bridge installs for any locale; the reachability test flips to 'default stays English unless chosen'. | Switching language live re-renders every screen. |
+| `.01` | **Growth pass.** Pseudo-locale at +40 % on every screen and the HUD; fix clipping by layout. | Zero clipped strings in the capture sweep. |
+| `.02` | **Five languages.** Translation pipeline (machine first, human review for the bark corpus and store copy); fonts. | Five catalogs ship; store page in five languages. |
+
+- **Not:** No VO localization at launch; captions only.
+- **How agents get this wrong:** Machine-translating the bark corpus without review: registers need a human-quality pass by an agent with the register sheet; Testing growth in English: +40 % pseudo-locale on every screen.
+
+**`PQ-033` — Final platform, save, performance, accessibility, legal and store closeout** · *RELEASE* · after `PQ-141`, `PQ-158`, `PQ-164`, `PQ-165`, `PQ-166`
+
+The game ships. There is a LICENSE, third-party notices and a credits screen (three.js and Rapier notices are required; asset licenses exist on disk but are not packaged); the Electron build reports crashes, updates itself, and shows its version; min-spec floors are met (60 fps median, ≤ 1 hitch > 50 ms per minute, boot ≤ 10 s, heap growth < 30 MB / 30 min); a two-hour crash-free soak passes on both hosts; save/continue never dead-ends over 200 cycles; store page, trailer and screenshots exist.
+
+- **Gap:** No root LICENSE/NOTICE/credits; no crashReporter; no auto-updater; no version in UI; presets/frame cap missing (PQ-165). **Reference:** spec2/08 release readiness; Steam launch checklist.
+- **Exists:** electron-builder targets, `build/web/spaceface-release-build.json` (unread), save system (5 slots, checksum, migration, rollback), `check:all`, runtime witness, adaptive quality.
+- **Routes through:** S2-08; M6-PERFORMANCE/M6-RELEASE; §8; PQ-144; retired plan superseded by this packet: design/archive/program/roadmap/retired/PQ-033.md.
+- **Writes:** `electron/`, `package.json`, `build/`, `src/ui/screens/mainMenu.js`, `src/ui/screens/pause.js`, `LICENSE`, `NOTICE`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Legal and credits.** Root LICENSE, third-party NOTICE bundled into the packaged files list, an in-app credits screen, privacy and accessibility statements. | Packaged build contains every required notice; credits reachable from the title. |
+| `.01` | **Crash reporting, auto-update, version.** Electron crashReporter to a store or file, electron-updater, version/build string in the title and pause screens. | A forced crash produces a report with the build hash; an update applies. |
+| `.02` | **Min-spec floors and soak.** Named min-spec GPU; floors measured; two-hour soak on both hosts; 200 save/load cycles. | Floors green on min-spec; soak logs attached. |
+| `.03` | **Store readiness.** Steam build, cloud saves, achievements (from telemetry aggregates and survivalRecords), store page assets from PQ-159/160. | Store page live in test; achievements unlock in a session. |
+
+- **Not:** No feature work inside the gate; a measured blocker is repaired, never hidden.
+- **How agents get this wrong:** Feature work inside the release gate; Hiding a measured blocker or lowering default quality to pass a floor.
+
+#### Pillar F · Modes and replayability
+
+**`PQ-169` — Crucible as the replay surface: daily seed, ghosts, mutators, cosmetics home** · *BETA* · after `PQ-133`, `PQ-146`
+
+The Crucible becomes the one-more-run surface: a daily seed everyone plays, local and Steam leaderboards, ghost replays of shared runs, weekly mutators (three wells bend the arena; heavy-only; no guns), stunt scoring from PQ-146, and, only if it earns its place, cosmetics that carry home under §12.2's rule (crossover is optional, not a goal).
+
+- **Gap:** Records and build codes exist; no daily, no board, no ghosts, no stunt score. **Reference:** Spelunky daily, Slay the Spire, Vampire Survivors, Trackmania.
+- **Exists:** `survivalRecords.js`, `survivalMutators.js`, `survivalDraft.js`, `survivalSwarm.js`, `survivalUnlocks.js`, build codes.
+- **Routes through:** §12 PQ-133; PQ-135; PQ-146; PQ-160 ghosts.
+- **Writes:** `src/systems/survivalRecords.js`, `src/systems/survivalMutators.js`, `src/systems/survivalDraft.js`, `src/systems/survivalUnlocks.js`, `src/ui/screens/crucible.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Daily seed and board.** Date-seeded run; local board; Steam board when PQ-033 lands. | Two machines get the same daily; board persists. |
+| `.01` | **Ghosts.** A shared run's input tape renders as a translucent ghost hull in your run. | Ghost matches the shared hash. |
+| `.02` | **Weekly mutators.** Gravity slalom, heavies only, weapons cold, reef arena; rotate by week. | Four mutators live; each changes the top strategy (telemetry). |
+| `.03` | **The hangar feed (optional; cosmetics only).** If it earns its place: draft unlocks carry cosmetics into adventure and adventure titles show in the Crucible. The owner ruled crossover optional, not a goal; §12.2 stands (unlocks carry no power). | Either one cosmetic round-trips, or the leaf is closed as not needed with the owner's word. |
+
+- **Not:** No online multiplayer; asynchronous only.
+- **How agents get this wrong:** Feeding stats into adventure: cosmetics only unless the owner overrides §12.2; Network play: asynchronous only.
+
+**`PQ-171` — Content grammar and the anti-repetition budget** · *BETA* · after `PQ-138`
+
+Depth from combination, not count: an encounter grammar (situation × place × twist × actor) with variation axes, the 58-microevent catalogue and eight chance encounters scheduled by the storyteller, and a repetition meter over telemetry that flags any encounter shape seen more than N times per hour. The warehouse-of-features guard is a check.
+
+- **Gap:** Ten verbs and 65 one-shots; nothing measures repetition. **Reference:** Spelunky level grammar, Hades encounter variety, Sea of Thieves world events.
+- **Exists:** microevent library (58), `encounterScripts.js`, `encounters/` (48), `chanceEncounters` (8), `ambushSignatures.js`, `attackTraits.js`.
+- **Routes through:** GDX-A23; depth E1; SPEC3-29.
+- **Writes:** `src/data/encounters/`, `src/systems/encounterScripts.js`, `design/incubator/microevent_library/`, `scripts/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **The grammar.** Document + data: axes and constraints; every encounter declares its shape. | All encounter files carry a shape; validator green. |
+| `.01` | **The repetition meter.** Telemetry counts shapes per hour; a check fails when any shape exceeds its budget over a 10-hour sim. | `check:content:repetition` green. |
+
+- **Not:** No procedural sprawl.
+- **How agents get this wrong:** Measuring variety by count: the meter counts shapes per hour against a budget; Procedural sprawl to 'add variety'.
+
+**`PQ-170` — Endgame pulls: territory, mega-heists, capital bosses, legendary lines, station growth** · *POST* · after `PQ-033`
+
+The post-ending sandbox has pulls that are verbs: territory wars where your wrecking-ball and blockade skills tilt fronts; two mega-heists at the campaign's craft level; capital bosses as physics puzzles; legendary Massline heads with a lineage; and the two vision promises with no system yet — a station that visibly expands because of you, and a faction that depends on something you built.
+
+- **Gap:** No faction endgame; no station growth; no faction dependency; post-ending chains reuse ten verbs. **Reference:** Starsector late game, Mount & Blade wars, Hades heat.
+- **Exists:** `factions.js` wars without the player, `conflictReactions.js` (2 sets), `claims.js` convoys, `postEndingReplayChains.js`, SPEC3-F6 territory, SPEC3-22 bosses, unique wrecks.
+- **Routes through:** S3-F6-BASES; RV-BASES; WB-WORLD-AFTER; PQ-145.
+- **Writes:** `src/systems/factions.js`, `src/data/conflictReactions.js`, `src/systems/claims.js`, `src/data/postEndingReplayChains.js`, `src/data/sectors.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **Fronts you can tilt.** War fronts as physical situations (blockade lanes, siege a bastion by wrecking ball) with visible ownership change. | A player action flips one sector's owner in a scenario; reactions for 8 factions (not 2). |
+| `.01` | **Station growth and dependency.** A station gains a module because of player-supplied throughput; a faction's patrols depend on your depot. | Both visible on the route within one session of play; save round-trip. |
+| `.02` | **Two mega-heists and two capital bosses.** Authored at 47-A craft; physics-solvable. | Owner verdict per piece. |
+| `.03` | **Legendary lines.** Ace trophy heads with lineage and recognition. | One trophy head per ace tier; NPCs bark about it. |
+
+- **Not:** No empire spreadsheet; numbers measure, never replace.
+- **How agents get this wrong:** An empire spreadsheet: fronts are physical situations the player tilts with verbs; Reusing the ten procedural verbs for the endgame: heists and bosses at 47-A craft.
+
+**`PQ-172` — Mods and data-driven content** · *POST* · after `PQ-033`
+
+The community can add a ship, a weapon, an encounter or a sector by dropping JSON that the same validators check; determinism and save schema are protected by the loader. Workshop integration follows the Steam build.
+
+- **Gap:** All content is compiled ES modules; one JSON scenario. **Reference:** Starsector, RimWorld modding.
+- **Exists:** `src/data/` (135 modules), `47a.scenario.json`, data validators (`check-data.mjs`, `check-data-refs.mjs`).
+- **Routes through:** GDX-A23; S3-F9.
+- **Writes:** `src/data/`, `scripts/check-data.mjs`, `src/main.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **JSON content loader.** Weapons, modules, encounters and places load from a user content directory through the existing validators; mods are listed in-app. | A sample mod adds a weapon and an encounter; determinism hash unaffected without the mod. |
+| `.01` | **Workshop.** Steam Workshop publish/subscribe for the same directory. | One mod round-trips through Workshop. |
+
+- **Not:** No script mods at launch.
+- **How agents get this wrong:** A loader that bypasses the validators or the save schema; Script mods at launch.
+
+### 15.5 The toy chest — the funnest things this premise can do that it does not do yet
+
+Each toy is a combination of verbs that already exist or are in `PQ-137`; none needs a new system.
+The physics that makes it work and the story it produces are the acceptance test: if a toy cannot be
+described as "I did X and Y happened, so then Z", it is content, not a toy. Owner of each is named.
+**Status 2026-10-11 (WORLD-ANSWERS, `receipts/WORLD-ANSWERS-2026-10-10.md`):** the "so then Z"
+half is REAL for T1, T6, T8, T9, T10, T11, T12, T13 (test files `test/world-answers-t*.test.mjs`).
+T2/T3/T4/T5/T7/T14/T15 still stop at their physics — the next toy-chest sitting starts there.
+
+| # | Toy | The physics | The story it produces | Owner |
+|---|---|---|---|---|
+| T1 | **The bolas** | Twin Bridle ties two light hostiles; their coupled inertia makes them orbit each other; the pair lawn-darts into the nearest rock. | "I solved a three-on-one with one throw." | `PQ-031` |
+| T2 | **The wrecking ball** | Rope a house-sized rock, two orbits of spin-up (reel in to speed up), release into a pirate outpost or a capital's flank. | The belt's favourite tall tale; a scripted contract and an emergent habit. | `PQ-137.07`, `PQ-152` |
+| T3 | **The clothesline** | Anchor a line across a seam chokepoint (anchor bolt head); a pursuer at full burn clotheslines it. | Geometry as a weapon, zero ammo spent. | `PQ-029`, `PQ-027` |
+| T4 | **Anchor ski / convoy parasite** | Latch a heavy hauler, kill thrust, ride through its escort screen; release into a slingshot attack; or tether two haulers so their autopilots fight the coupling and the convoy jackknifes. | Hitchhiker piracy without firing a shot. | `PQ-137.09`, `PQ-031` |
+| T5 | **Well golf / gravity bowling** | Drop a well behind a fleeing target so its escape vector curves into your minefield; or shove an asteroid into a well's centre so it accelerates through a cluster. | "He escaped straight into my trap." | `PQ-147`, `PQ-137.09` |
+| T6 | **Ore shotgun / cargo as ammunition** | Concussion-shove a full cargo pod; its mass makes it a scattergun shell. Volatile cargo detonates, corrodes, or drags. | The cargo you were hired to protect is what killed the pirates. | `PQ-148` |
+| T7 | **The ore-crusher trap / station-door jam** | Pull a latched target backward into an excavator's jaws; shove a burning hull into a station's hangar aperture to jam reinforcements. | Industrial machinery finishes what you started. | `PQ-027` |
+| T8 | **Momentum-bungee joust / ram-plate duels** | Momentum sink on a rock, burn away until the line is critical, release: you slingshot back through the pursuer at triple engine speed; named aces answer with head-on ram passes. | A duel the radio talks about for days. | `PQ-026`, `PQ-150` |
+| T9 | **Dead man's mass** | Wrecks keep momentum; shove a fresh kill's hulk into its own reinforcements. | "His own wingman finished him." | `PQ-138.03`, `PQ-154` |
+| T10 | **Pod rescue under fire** | Survivor pods drift through a live firefight; tow them out while their inertia betrays you; rescue the faction that wants you and watch heat decay. | The save you brag about. | `PQ-138`, `PQ-151` |
+| T11 | **The long tow** | Haul a derelict capital hulk across two sectors for salvage rights; its mass attracts pirates the whole way. | The slowest, tensest hour in the game. | `PQ-152`, `PQ-154` |
+| T12 | **Mine pinball** | Radial mines chained in a debris reef; one detonation cascades the reef into a kill-box. | "Twenty minutes to set up and worth it." | `PQ-137.09`, `PQ-027` |
+| T13 | **Ace's trophy line** | Beat a named ace and salvage their reinforced Massline head; it holds heavier loads and NPCs recognise it. | Your rope has a lineage. | `PQ-150`, `PQ-142` |
+| T14 | **Draw-path ambush** | Sketch a loop around a rock, release the autopilot, man the guns while the ship flies the trick; towing a rock while doing it makes the rock a moving shield. | You choreograph the kill; the sim performs it. | `PQ-137.08` |
+| T15 | **Decoy pod / contraband drop-kick** | Jettison a pod packed with an impulse mine for a greedy ace; or decouple contraband at cruise and ram-plate it through a customs cone into an outlaw station's catch net. | Smuggling as physics. | `PQ-148`, `PQ-151` |
+
+### 15.6 The collisions — existing systems that should talk (the cheapest depth in the game)
+
+`PQ-138` owns the first three (audited zero-listener events). The rest are assigned below; each is a
+listener and a rule, never a new system. The trigger and the consequence are the acceptance test.
+**Status 2026-10-11 (WORLD-ANSWERS):** C3, C5, C6, C7, C8, C10, C11, C12 are REAL with tests
+(`test/world-answers-c*.test.mjs`); C1/C2/C4 are partial (listener live, consequence thin); C9 is
+the one unbuilt collision (`PQ-137.08`). The chart names the player-made causes (`ore_flood`,
+`dock_slam`, `lane_disruption`) through `dangerModel.classifyDrivers` → `causePhrases`.
+
+| # | Collision | Trigger → consequence | Owner |
+|---|---|---|---|
+| C1 | Law × spilled cargo | A hauler breaks up in a firefight → the patrol prioritises securing the spill over chasing you; an escape vector opens. | `PQ-138.00/.01` |
+| C2 | Wreck × scavenger | A wreck appears → scavenger jobs dispatch on the event; mines on a wreck become an emergent ambush. | `PQ-138.01`, `PQ-154` |
+| C3 | Violence × civilians | Gunfire within 300 WU → haulers flee/re-route, workers hold, a tug keeps its tow. | `PQ-138.02` |
+| C4 | Ace memory × tether abuse | Your third fling-kill of a faction → its ace spawns with line-cutters and a momentum sink, and says so. | `PQ-150` |
+| C5 | Well × route hauler | A well on a lane pulls a heavy off-axis → escort pile-up → the station's trade volume dips for a day. | `PQ-147`, `PQ-155` |
+| C6 | Mass slam × station | A shoved wreck through a docking ring → dock fines, repair services down ten minutes, insurance premium up. | `PQ-151`, `PQ-138.05` |
+| C7 | Pods × pirate hunt | Damaged pirates break off to capture ejected pods for ransom → sacrificing a pod drops aggro. | `PQ-150`, `PQ-138` |
+| C8 | Economy × seam smashing | Shatter a platinum seam with a slam → local ore floods, metal prices drop, haulers reroute. | `PQ-155` |
+| C9 | Draw-path × towing | Sketch while towing → the follower accounts for the coupled mass; the rock becomes a perimeter shield. | `PQ-137.08` |
+| C10 | Tumble × faction battle line | Tumble a destroyer → its point defence rakes its own fleet for the duration. | `PQ-140.01`, `PQ-137.04` |
+| C11 | Heat × contracts | WANTED → the board offers double-pay deniable jobs with ambush clauses. | `PQ-151`, `PQ-138.04` |
+| C12 | Mining × pirates | A depleted seam's output drops → ambush frequency on that route rises with scarcity. | `PQ-149`, `PQ-155` |
+
+### 15.7 What this game will NOT build (ruled by the owner, 2026-09-03; binding on every packet)
+
+The owner answered the proposed list in plain words. The rulings, in the owner's terms:
+
+- **No multiplayer.** Asynchronous sharing only: daily seeds, ghosts, clips.
+- **No walking around and no ship interiors.** The ship is the character.
+- **The view stays top-down.** The ships already tumble in 3D on screen; the flying stays on the plane.
+- **Random or procedural content is neither wanted nor banned.** What is banned is anything agents
+  cannot test: every bench and every scenario uses fixed seeds (`FUN_CONVERGENCE_LOOP.md` §2).
+- **Wingmen stay small.** The Z wheel that exists is enough; no bigger fleet layer. The "fleet
+  command" wording the owner sees on the regular UI is a candidate for the surface passes (`PQ-162`,
+  `PQ-168`).
+- **The owner's own ship is never knocked around.** Bumps and scrapes must not shove or spin the
+  player's hull; only a deliberate big event may, and it must be legible (`FEEL_CONTRACT.md` B13,
+  `PQ-137.11`).
+- **Enemies do not become damage sponges,** and hits never scale with a level. Mass and momentum decide.
+- **Loot rarity is allowed** if it ever earns its place; a crafting grind is not a goal either way.
+- **No dialogue trees. One linear story that builds.** Branching and "replay value" are not goals; the
+  endings that exist stay, and no new branch work is admitted (`PQ-032`).
+- **Camera shake is not a fix** and never was the point; the problems are fundamental. Spectacle is
+  never a substitute for the event underneath.
+- **One architecture for every mode.** Crucible, sandbox, campaign: one game path.
+
+### 15.8 Session shape (what pulls the player forward, by hour)
+
+| Window | What happens | The pull |
+|---|---|---|
+| **0–10 min** | Wake in a tow rig with a Massline. A scripted-but-honest rescue makes you swing a rock into a derelict, grab the scrap, and fling a pursuing scout into an asteroid. Credits land; the hangar opens. No exposition. (`PQ-163`) | "The rope is real and I want more." |
+| **10–60 min** | Three verbs mastered (line, shove, tow); first paid contract; first accidental heat; first scar on the hull; the map opens; the rap sheet begins. (`PQ-163`, `PQ-155`, `PQ-151`) | The map and the rap sheet. |
+| **1–10 h** | Hull two; two sector biomes; first ace rivalry; first capital tow; the Crucible unlocks at hour three as the one-more-run slot; stronger lines, heavier ram plates, deployable wells — never "+10 %". (`PQ-153`, `PQ-150`, `PQ-142`, `PQ-169`) | Rivalry and gear lineage. |
+| **10–25 h** | Heavy-class verbs (moving terrain, fields), faction wars you tilt, a campaign climax built from the toys, an ending that changes the sandbox's facts. (`PQ-032`, `PQ-152`, `PQ-170`) | Legacy and mastery. |
+| **After** | The post-ending sandbox with your scarred hull and notoriety; Crucible seasons; territory. (`WB-WORLD-AFTER`, `PQ-170`, `PQ-172`) | "So then…" |
+
+Three modes, one save identity: the campaign ends with a set piece you built toward and unlocks the
+post-war sandbox state rather than replacing it; Crucible drafts feed the hangar with possibility, never
+stats (§12.2 stands).
+
+### 15.9 Outside opinions, graded (2026-09-03)
+
+Gemini 3.8 Flash and Kimi K3 were asked, independently, what an A-list version of this game has that
+this build lacks, the funnest toys, the collisions, the session shape, and what not to build.
+
+- **Agreement with the audit (adopted):** hitstop and an impact-sound ladder by mass are the highest-
+  ROI presentation fixes (both #1/#2); the world must flinch (patrol chooses, civilians scatter,
+  scavengers swarm spills); cargo as physics; aces as recurring rivals with counter-loadouts; six dense
+  authored sectors over procedural sprawl; a first ten minutes that hands the player a Massline kill;
+  wrecks as terrain; a death economy that seeds your wreck, pod, and reputation; readable telegraphs;
+  the refusals list. Both graded **strong**.
+- **Adopted with a guard:** Gemini's trajectory/force-vector ghost ribbons — only as a Range/teaching
+  overlay and the draw-to-fly preview, never a permanent HUD layer (`VISION`: if you cannot see the
+  state it does not exist, but a diagram is not the state). Gemini's DualSense haptics — after
+  controller parity, not before. Kimi's "Crucible drafts feed the hangar" — cosmetics and possibility
+  only, §12.2's "never permanent stats" holds.
+- **Declined:** Gemini's "pressurised hull vs void sound dampening" (there is no interior); Gemini's
+  procedural multi-part fracture as a system (wrecks fracture along a few authored seams in
+  `PQ-154`, not a solver); Kimi's mentor-character tutorial as a dialogue vehicle (the rescue is
+  fiction, the teaching stays in play).
+- **The one thing they both said that the map had not:** the game needs a **12-word fantasy the store
+  page promises and hour one proves** — "light ships are ammunition; swing a rock; keep the speed" —
+  and `PQ-163`'s done-when is that sentence, verified by a stranger.
+
+### 15.9b The Studio Recovery Audit (2026-09-05), graded
+
+Moved to [build_map_done.md](./build_map_done.md) — completed/historical, kept verbatim for review. Does not dispatch work.
+
+### 15.10 Dispatch
+
+- **Numbering:** `PQ-157` is deliberately unassigned (its draft, player bases and territory, folded into `PQ-170` and the existing `S3-F6-BASES` / `RV-BASES` rows). Do not fill it.
+- **Door, feel:** "make it better" / "it sucks" / "it's not fun" → [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md) → copy [`FUN_CONVERGENCE_GOAL.txt`](./design/program/FUN_CONVERGENCE_GOAL.txt) → `PQ-173` builds the instrument; the loop answers with a bar and a number, never with content.
+- **Door:** "finish the game / what's next for release / professional bar" → this section →
+  `node scripts/program-dispatch.mjs --id PQ-146` (or any ID in §15.2). The eight reactivated packets
+  (`PQ-026`–`PQ-033`) are `ready` with fresh leaves; their old one-line briefs are superseded by their
+  packet files.
+- Every packet here closes on the same law as §13C: **numbers in player units, measured at the
+  shipping camera, before and after.** A packet that adds content without naming the gate row it
+  moves is not admitted.
+- Feel before content; surface before invent; collide before add.
+
+
+## 16. Swarm mode: the arcade survival showcase — OWNER REVISION 2026-09-10, expanded 2026-10-02 (§16.4)
+
+**Owner-directed arcade revision — 2026-09-10.** The complete design is
+[Crucible master plan](./design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md), especially its opening
+owner revision. This is authorized implementation, not a request to produce another admission pack.
+
+The default door promises an immediate arcade survival run: fly fast, bank gunfire off rock, stitch
+enemies together, leave an armed repulsion trap in a choke point, and use the resulting collisions
+to escape the pack. Clear a finite round, collect its cash, buy/refit or save, then launch again.
+Death is frequent and retry is quick; the main record is the farthest round reached. Adventure
+earns the same advanced toys over a longer acquisition arc and then lets you use them everywhere.
+
+### 16.1 Required pieces and implementation order
+
+| Piece | Plans and owners | Player outcome |
+|---|---|---|
+| Flight and forced motion | PQ-135 motion work; PQ-137; physical play grammar/build plan; flightV3, propulsionKernel, Rapier and impulseKernel | Immediate steering response, deliberate drift/braking, retained boost/slingshot speed, useful shove and honest collision consequences. |
+| Trick arsenal and combinations | PQ-133 attack algebra/status/lineage; PQ-137.09; PQ-146; PQ-147; weapons, attachments, fields, impulseCharges | Strong guns alongside bank, web, trap, well, ram, release, cryo/heat and chain builds. The environment amplifies their combinations. |
+| Round pressure and enemies | PQ-174.01/.03/.07/.08; PQ-140; survivalWave, planner, fodderCohort and tacticalAI | Finite cohorts, growing pressure, earned gaps, readable entry lanes, specialist counters, no wave-number HP inflation. |
+| Arenas and champions | PQ-175.00/.01/.03; PQ-174.04/.05; survivalArena and the four law owners | Five usable arenas, useful terrain from round one, evolving machinery, champions with commitment and several answers, mutators that change decisions. |
+| Fast experimentation | PQ-174; PQ-175.02; PQ-182; survivalDraft, ships, runSession | Cash shop and refit every clear; multiple purchases or saving; known prices; no accidental launch; run funds bank into a persistent Swarm wallet and unlocks cross to Adventure (§16.4); currency still never enters Adventure's economy. |
+| Visual and audio response | PQ-139; PQ-161; physical-play presentation; shared VFX/feel/audio owners | Bright shaped projectiles, directional hit flashes, actual cables and traps, readable damage totals, mass-scaled explosions and force cues. Keep the flight window clear. |
+| Door, combat HUD and death | PQ-182; survivalHud, powerRail, Crucible screens | Distinct starter strategies and arena descriptions, current bindings/resources, honest fatal cause, useful results, same-seed and fresh-run retry. |
+| Breadth and transfer | PQ-133 retained content; Gauntlet/circuit/endless/records; Adventure fitting owners | Keep thirty-wave Gauntlet, five laws, challenge/replay systems and advanced acquisition; Swarm is their fast showcase, not a separate combat implementation. |
+
+### 16.2 How to judge the game
+
+Enter the ordinary Crucible route with a starter. The first encounter must already let the player
+shoot, maneuver and use a signature trick. Complete a round, buy or save, refit, launch, die and
+retry. Play the bank runner and web controller against a chase, then inspect an advanced combination
+and an arena/champion change. Test the real force/attachment and wallet seams where errors matter.
+Inspect motion for motion claims and pictures for visual claims. Improve the observed weak point.
+
+Do not substitute a quota of screenshots, input verbs, rated moments, required deaths at minute N,
+artificial physics-to-gun score ratios or unmeasurable retention figures for this outcome. Initial
+timing targets remain tuning guides: quick first contact, a useful early purchase, short cleanup,
+fast retry. A player can finish a round unusually fast or survive unusually long without failing
+the design. A boring but statistically compliant run fails it.
+
+### 16.3 Completion and preservation
+
+PQ-174 owns the integrated survival experience; PQ-175 retains the full content breadth; PQ-182
+owns its visible route. Shared physics, weapons and presentation dependencies above are part of
+this campaign, even if a ready-queue row is missing. Existing implementation is reused and checked
+in play; no blanket rebuild. Capture only when it resolves a real visual/temporal question. Keep
+focused deterministic, save-isolation, fitting and runtime checks. An unrelated baseline failure
+is recorded and bounded, not a reason to abandon the arcade work or rewrite golden snapshots.
+
+The September 3 descriptions and unmeasured tables were a historical tuning proposal. This section
+replaces their one-menu-in-five rule, forced physics ranking, compulsory verb counts, fifteen-minute
+session target and capture-per-leaf bureaucracy. It preserves product scope and increases emphasis
+on meaningful player choice, readable force and rapid experimentation.
+
+### 16.4 The arcade attraction — OWNER REVISION 2026-10-02
+
+Swarm stops being Adventure's fast showcase and becomes a standalone arcade attraction in its own
+right. Authority: [`design/swarm/SWARM_PROGRAM.md`](./design/swarm/SWARM_PROGRAM.md) (umbrella),
+[`design/swarm/SWARM_ARCADE.md`](./design/swarm/SWARM_ARCADE.md) (the additive loop: bank, Hangar,
+juice, curated ladder, screens, crossover — including the test-law reversals in its §1.1) and
+[`design/swarm/SWARM_EXPANSION.md`](./design/swarm/SWARM_EXPANSION.md) (the wide expansion:
+comparative analysis, new factions/biomes/bosses, the Circuit, the Show, Fortify, sharing). All
+owner answers are recorded in SWARM_EXPANSION §9 and SWARM_ARCADE §11.
+
+Owner rulings that change this section's contract:
+
+- **Money carries.** A run banks into a persistent Swarm wallet — half of the take on death, all
+  of it on a chosen cash-out. §16.1's "all run funds and gear isolated from Adventure" is amended:
+  Swarm funds persist between runs and unlocks cross to Adventure; currency itself still never
+  enters Adventure's economy.
+- **The account grows stronger** — clearly (~30–40 %) when fully upgraded, never invincible;
+  opt-in Threat tiers keep the top end hard.
+- **In-flight it is loud by design** — mass-confirmed callouts, multi-kill stingers, bonus
+  tallies, boss intros — under one Full/Reduced/Off effects setting; menus stay on the ORRERY
+  grammar.
+- **The Saucer is earned in Swarm only** (its Adventure research route is retired) and becomes
+  buyable at Adventure shipyards once earned. Arena unlocks cross the same way.
+- **New factions, biomes and bosses are authorized** beyond §16.1's five-arena frame: the Brood
+  headlines, the Machine follows; nine new biomes and ten handcrafted bosses are planned.
+- **Fortify (arena construction, tower defense) is deliberately the last build phase** — additive
+  once the arcade core is strong, not an immediate build.
+
+Build order is §J rows 263–273: **A** additive + loud → **B** a real swarm (Brood) → **C** the
+journey → **D** the show/world → **E** Fortify → **F** sharing. Phase E–F rows stay PARKED until
+the earlier phases land. The physics-combat UX verdict (the rail, kill attribution, wave clumps,
+the rope question) is SWARM_EXPANSION §10; its first fix — the opening lesson releasing its held
+pack ~3 s after the lesson hull falls instead of holding 45 s — landed 2026-10-02 and is covered
+by `test/opening-lesson.test.mjs`.
+
+## 17. Adventure mode: interesting and mentally stimulating (`PQ-176`–`PQ-178`) — ADMITTED 2026-09-03
+
+**Source:** the owner, 2026-09-03: *"super interesting and mentally stimulating in adventure mode
+because of its advanced customization and economic features, as well as the storyline."* The audit
+found the material already computed and rarely surfaced: thirty-five derived ship fields with six
+shown, a production graph and price forecasts that are never drawn, a 271-line script with no
+delivery, and five endings gated at four percent of the money curve. Adventure depth here is three
+systems made legible and consequential — the fit, the market, the story — plus the packets in §15
+that give the world reasons to be interesting (`PQ-149`–`PQ-155`).
+
+### 17.1 What "mentally stimulating" means, in numbers
+
+| Bar | Statement |
+|---|---|
+| M1 Decisions | ≥ 6 interesting decisions per hour on the reference route (≥ 2 viable options, a visible tradeoff), counted by the fun-loop measurer. |
+| M2 Predictable fit | A player predicts handling (turn radius, reversal time, top speed, tow class) from the fit screen and is right within 20 % on the bench. |
+| M3 Felt builds | Two builds of one hull differ in reversal time by ≥ 25 %; a fast-clumsy and a nimble-slow build are both viable in the Crucible. |
+| M4 Readable economy | A player who reads the forecast cone out-earns one who does not by ≥ 30 % over a seeded hour; every ticker line traces to a sim event. |
+| M5 Story that builds | One linear spine, 20–25 hours, every beat with a physical headline verb, the ending reachable by a combat-only run and by a builder run; no dialogue trees. |
+| M6 A ship that is mine | Scars, repairs, titles and a grudge on the load screen; the mechanic reads them back. |
+
+### 17.2 The rulings that shape this section
+
+No dialogue trees; one linear story that builds; replay value is not a goal; rarity loot is allowed
+if it earns its place; crafting grind is not a goal; everything is produced by agents.
+
+### 17.3 The packets
+
+| Packet | Pillar | One line | Wave |
+|---|---|---|---|
+| **`PQ-176`** Customization with consequences: a fit you can feel and predict — [`active/PQ-176.md`](./design/program/roadmap/active/PQ-176.md) | A · Adventure depth | Mass is the law, budgets have shape, drives and thrusters split, mounts gate by size, every module is visible and has a sentence, and the fit screen predicts handling before you commit. | BETA |
+| **`PQ-177`** An economy you can read and play: ticker, charts, forecasts, contracts that twist, a black market — [`active/PQ-177.md`](./design/program/roadmap/active/PQ-177.md) | A · Adventure depth | The living economy becomes a strategy surface: a one-line ticker of real events, per-commodity charts with a forecast cone, supply-chain glyphs, event cards on arrival, profit felt on sale, contracts whose clauses twist, and a black market reached by smuggling physics. | BETA |
+| **`PQ-178`** The story pipeline: one linear spine, produced by agents at 47-A craft — [`active/PQ-178.md`](./design/program/roadmap/active/PQ-178.md) | A · Adventure depth | How agents write, voice and stage the linear story: canon sheets, faction registers, one-line barks, set-piece scripts with physical headline verbs, synthetic voice, and a craft bar equal to the 47-A opener. | BETA |
+| **`PQ-195`** The Third Shift: a recovery you can see, sell out, and lose — [`active/PQ-195.md`](./design/program/roadmap/active/PQ-195.md) | A · Adventure depth | The physical recovery job is live and pays; it still has no art, no choice of destination, no pressure, no visible local consequence and no player who has played it. | BETA |
+
+### 17.4 The plans, in detail
+
+#### Pillar A · Adventure depth
+
+**`PQ-176` — Customization with consequences: a fit you can feel and predict** · *BETA* · after `PQ-137`, `PQ-142`
+
+Building a ship is a mental game with a physical answer. Nested capacity budgets give each hull a shape (the scout's engine pool is fat, the hauler's gun pool is thin); every module's mass feeds the flight model so a gun boat flies like one; drive and manoeuvring thrusters are separate parts so fast-but-clumsy and nimble-but-slow are real builds; mounts gate weapons by size and type; energy and heat are flows the fit screen shows as a sustained-fire margin; any module worth fifteen percent of the budget is visible on the hull; presets switch play styles; and the fit screen shows the handling deltas (turn radius, reversal time, top speed, tow class) before the player pays.
+
+- **Gap:** Six-type slot grid; module mass barely matters; nothing makes a max-gun build feel different in the hands; the ship screen shows six of thirty-five derived fields; the signature mechanic's ceiling sits behind a 2.5 M tech. **Reference:** Endless Sky outfit space, Starsector OP and mounts, X4 engine/thruster split, FTL power routing.
+- **Exists:** SPEC3-23/24 (designs written), `src/data/ships.js` (outfitSpace/weaponCapacity/engineCapacity fields), `modules.js` (72), `weapons.js` (25), `src/systems/ships.js` getDerivedStats (~35 fields), `src/ui/ship/shipScreen.js` + loadout presets (J13 done), `src/ui/screens/outfitting.js`, `livingHullPresentation.js`, parts hot-swap in `partsLibrary.js`.
+- **Routes through:** S3-F5-OUTFITTING, RV-OUTFITTING, PQ-142, PQ-155, PQ-156, §11.4 Power Bar.
+- **Writes:** `src/data/ships.js`, `src/data/modules.js`, `src/data/weapons.js`, `src/systems/ships.js`, `src/ui/screens/outfitting.js`, `src/ui/ship/`, `src/render/partsLibrary.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` (after PQ-137.03) | **Nested budgets and mass as the law.** Master pool plus weapon and engine sub-pools per hull; ship mass = hull + modules + current cargo, fed to the propulsion profile; a migration check proves every current default fit still fits. | A full-gun fit and a full-cargo fit of the same hull differ in reversal time by ≥ 25 % on the flight bench; migration check green. |
+| `.01` | **Drive and thruster split.** Drive owns forward thrust and top speed; manoeuvring thrusters own turn torque, strafe and brake; each hull gets a default thruster part. | Two builds of one hull: fast-clumsy and nimble-slow, both viable on the Crucible bench; numbers printed. |
+| `.02` | **Mounts gate by size and type; fixed vs turret.** S/M/L mounts with type classes; fixed hardpoints get more output than turrets so aim skill is paid. | Fit screen refuses illegal mounts with a sentence; a fixed-mount build out-damages its turret twin by the authored margin. |
+| `.03` | **Flows on the fit screen.** Energy draw, heat and cooling as sustained-fire margin; the screen predicts turn radius, reversal time, top speed and tow class before commit; every module has a one-line sentence. | Blind test: a player predicts handling from the screen and is right within 20 % on the bench. |
+| `.04` | **Visible builds.** Any module ≥ 15 % of the budget is visible on the hull (parts hot-swap); drives change nacelle glow; big guns bristle. | Stills at the shipping camera show the build; the asset reachability check stays green. |
+
+- **Not:** No rarity tiers; no set bonuses; no crafting grind; nothing that makes the fit screen a spreadsheet without a prediction.
+- **How agents get this wrong:** Adding budgets as UI-only numbers that the flight model never reads: leaf .00's bar is a flight-bench number, not a screen; Letting mass changes bypass the propulsion profile (writing to velocity or drag): mass enters only through the kernel's body mass; Hiding the prediction behind a tooltip: the handling deltas are the screen's primary content.
+
+**`PQ-177` — An economy you can read and play: ticker, charts, forecasts, contracts that twist, a black market** · *BETA* · after `PQ-138`, `PQ-155`
+
+The player learns the economy is real by watching it move and profits by understanding it: a rotating ticker of real events, a market chart with the last ten minutes and a forecast cone, supply-chain glyphs that teach what feeds what, an event card when docking under a shortage or blockade, a profit readout on sale, contracts whose clauses fire mid-mission, and a black market whose entrance is a smuggling run. Six interesting decisions an hour is the bar.
+
+- **Gap:** Price cycles are computed but chartless; events fire silently; the production graph exists only as data; forecasts exist and are never drawn; contract twists exist only as static clauses. **Reference:** Endless Sky trade, Starsector markets, FTL event beats, X4 supply chains, Escape Velocity news.
+- **Exists:** SPEC3-10/11/12 (designs written), `src/systems/economy.js` (predictPriceCurve, regimeLabel, price pressure), `economyCycles.js`, `economyContracts.js`, `src/data/commodities.js` (33, producedBy/consumedBy), `newsTemplates.js`, `contractClauses.js`, `src/ui/screens/market.js`, `galaxyMap.js` pressure layer, `pirateDisguise.js`, `dockDeny.js`.
+- **Routes through:** S3-F1-ECONOMY, RV-ECONOMY, PQ-155 curve, PQ-148 cargo, PQ-151 wanted loop, PQ-168 chart.
+- **Writes:** `src/systems/economy.js`, `src/systems/economyCycles.js`, `src/data/newsTemplates.js`, `src/ui/screens/market.js`, `src/ui/hud.js`, `src/data/contractClauses.js`, `src/systems/missions.js`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **The ticker and event cards.** One-line rotating feed from real events (blockade, shortage, war tension, flips, hunter sightings) at the arbiter's chatter tier; a single card on docking under an event. | Every ticker line traces to a sim event; capture of a blockade line and its card. |
+| `.01` | **Charts with a forecast cone.** Per-commodity sparkline of the last ten minutes plus the forecast band and regime label; profit readout on sale from cost basis. | A player who reads the cone beats one who does not by ≥ 30 % profit over a seeded hour (telemetry archetypes). |
+| `.02` | **Supply-chain glyphs.** Each commodity shows producedBy → consumedBy station glyphs; hovering a station explains what it buys and sells and why. | Blind test: a player names where to sell ore and why after one screen. |
+| `.03` (after PQ-138.04) | **Contracts that twist.** Clauses fire mid-mission (the escort turns, the buyer is the law, the cargo is volatile); every twist mutates rather than fails (PQ-138.04). | ≥ 5 twist clauses live on boards; each has a scenario. |
+| `.04` (after PQ-148.02, PQ-151.02) | **The black market.** Reached by a smuggling run (PQ-148.02 physics), sells what stations refuse, launders heat for a cut (PQ-151.02); prices move with your own supply. | A seeded smuggling loop completes; laundering shows in the ledger. |
+| `.05` (after PQ-173.01) | **Interesting decisions per hour.** Telemetry counts decisions with ≥ 2 viable options and a visible tradeoff; the bar is ≥ 6 per hour in adventure. | Metric printed by the fun-loop measurer; ≥ 6 on the reference route. |
+
+- **Not:** No spreadsheet screens; no economy rewrite; every feature reads existing events and caches.
+- **How agents get this wrong:** Inventing news that is not a sim event: every ticker line must cite the event it came from; Drawing a forecast that the sim does not compute: use predictPriceCurve; never fake a trend; Making the black market a menu: its door is a physical smuggling run.
+
+**`PQ-178` — The story pipeline: one linear spine, produced by agents at 47-A craft** · *BETA* · after `PQ-152`
+
+Every story beat is produced the same way and to the same bar as the twelve minutes that already work: a canon sheet says who wants what; a register sheet says how each faction talks; a set-piece script names the place, the actors, the physical headline verb, the twist clause and two solutions; barks are one line each; voice is directed synthetic; the beat is played on a fixed seed and captured before it ships; the story ledger reads the session back. No dialogue trees, no branching, one story that builds.
+
+- **Gap:** 47-A is bespoke and everything after it is thinner; there is no written standard for how an agent produces a beat, so quality falls off a cliff at minute twelve. **Reference:** Hades bark discipline, Freelancer campaign staging, Half-Life scripted sequences without cutscenes.
+- **Exists:** `src/data/scenarios/47a.scenario.json` (the bar), `src/story/campaign47a/`, `src/data/narrative.js`, `barks.js` (271 lines), `docs/worldbuilding/` canon (sheets, STORY-STRUCTURE B0–B7), `src/data/encounters/` (48), `postEndingReplayChains.js`, `shipLedger.js`.
+- **Routes through:** PQ-032 spine, PQ-152 set pieces, PQ-150 people, PQ-158 voice, WB-B0-B7, depth P2/V1/V2.
+- **Writes:** `docs/worldbuilding/`, `src/data/scenarios/`, `src/data/narrative.js`, `src/data/barks.js`, `src/story/`, `design/program/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **The beat standard.** A written standard and a template: canon sheet, register sheet, set-piece script (place, actors, headline verb, twist, two solutions, the frame that proves it), bark rules (one line, one consequence), voice direction notes; a validator checks the template. | Standard committed; the 47-A opener re-expressed in the template without loss. |
+| `.01` (after PQ-152.01) | **Beats 1–3 re-cut in the standard.** The wrecking-ball contract, pod rescue under fire, the long tow — written, staged, seeded, captured (PQ-152). | Three connected beats at 47-A density; affected direct checks and one combined critique at the authored-sequence boundary. |
+| `.02` (after PQ-158.04) | **Registers and voice.** Eight faction registers as writing rules with examples; the synthetic-voice direction sheet per register (PQ-158.04). | A blind reader assigns a bark to its faction 7 of 8 times. |
+| `.03` | **The story ledger.** The session and the campaign read back as 'I was doing X, then Y, so I Z', from receipts, with the mechanic's voice at the berth. | Blind reader retells the campaign so far from the ledger alone. |
+
+- **Not:** No dialogue trees, no branch choices, no new endings, no cutscenes that take the stick away.
+- **How agents get this wrong:** Writing a beat as text the player reads: a beat is a place, actors and a physical verb, or it is not a beat; Adding a choice menu to 'give agency': agency is in the physics; the story is linear by ruling; Shipping a beat that was never played on a fixed seed and captured.
+
+
+**`PQ-195` — The Third Shift: a recovery you can see, sell out, and lose** · *BETA* · after `PQ-019` (integrated), `PQ-022.heist-receivers-promote`
+
+A voice says Berth Three is down a flywheel and the replacement is in transit. You can see it: a caged spindle off the catcher line, a receiving machine with its rails open, and a queue of work that cannot proceed. You tow it, shove it or fight over it; you bring it through the fork and watch the machine arrest a moving mass; or you take it to the Quiet and leave the legitimate operation waiting. Berth Three either starts working or does not, and that is visible the next time you fly past.
+
+- **Gap:** The delivery works and nothing around it does. The assembly is drawn as a 6 WU cargo pod inside a 16 WU collision body, the fork has no visual and no rail colliders, there is no instrument, no fence choice, no pressure, no consequence, no recovery after loss, no suspension on sector exit, no transport clamp, and no player has played it. **Reference:** the packet's own specification under [`active/PQ-195-design/`](./design/program/roadmap/active/PQ-195-design/01_FEATURE_SPEC.md).
+- **Exists:** `src/systems/heistFacilities.js` (schedules, capture fork, two-phase handoff, custody proof), `src/missions/heistMissionRuntime.js` (arbiter, cues, save reconciliation), `src/physicalCargo/breakaway/` (capture kernel, payload math, settlement gate), `src/data/heistFacilities.js`, `src/data/heistMission.js`, `src/systems/missions.js`; unwired art candidates in `assets/ships/breakaway_v1/source_candidates/`.
+- **Routes through:** PQ-019 surface heist loop (integrated); PQ-022 the catcher and fence bodies; PQ-148 cargo is physics; PQ-151 the wanted loop; PQ-194 Field Hardware frames.
+- **Writes:** `src/systems/heistFacilities.js`, `src/missions/heistMissionRuntime.js`, `src/data/heistFacilities.js`, `src/data/heistMission.js`, `src/systems/missions.js`, `src/physicalCargo/breakaway/`, `src/ui/` (contextual EDGE surface only), `assets/ships/breakaway_v1/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **The assembly and the fork are objects you can read.** Authored bodies through the material-truth preflight, wired on the ordinary route. | A fresh reviewer at the chase camera finds the load, its tow point and the receiver entrance unaided; the silhouette fills its 16 WU body instead of the 6 WU pod it wears today. |
+| `.01` | **The rails are solid.** The two rails and the rear arrestor are colliders. | A 155 WU/s entry is deflected by real colliders, the load stays recoverable, and the player is never knocked around. |
+| `.02` | **The instrument says what the machine is doing.** Approach speed, alignment and settle on the contextual EDGE surface. | A player aborts a too-fast approach because the instrument said so in words; no fourth HUD anchor. |
+| `.03` | **Two destinations for one body.** Lawful receiver or fence over one object and one mechanical receiver. | Both complete on the route from one contract; never paid twice by relabelling; latching alone never raises WANTED. |
+| `.04` | **One visible local consequence.** The lawful receipt restarts the stalled work once; the fence leaves it unresolved. | Three outcomes, three visible states at Berth Three; bound to the receipt; survives save/load. |
+| `.05` | **Someone else wants it.** At most two light hulls and one optional specialist on the ordinary spawn budget. | A raider commits to an intelligible run, can be crossed with the spindle, and abandons a bad attack. |
+| `.06` | **Losing it leaves something to do.** One bounded reduced-value recovery through existing aftermath ownership. | Offered once per destruction; a reload never duplicates it; never a second full reward. |
+| `.07` | **Leaving suspends the job instead of ending it.** | Leaving and returning resumes the same run with the same body. Facility state is not in the save plan: raise the key, do not add a second writer. |
+| `.08` | **The breakaway.** An authored transport clamp on a moving carrier releases a real body when disabled. | The release keeps the motion that was already there and adds no cinematic impulse; ordinary Masslines stay unbreakable. |
+| `.09` | **A player has actually played it.** | Three distinct completions unaided on the route; frame time named with hardware, seed and commit; a fresh player finishes it without being taught. |
+
+- **Not:** No second physics for the fork; no rebuild of the Capsule Run; no new mission framework; no galactic consequence simulation.
+- **How agents get this wrong:** Wiring the small cargo pod stretched to 16 WU; a glowing goal circle instead of a machine that arrests a mass; touch-to-delete custody; secretly slowing a fast body so the capture test passes; paying twice for one assembly by relabelling its destination; answering the pressure leaf with more enemies or the consequence leaf with a bigger reward; importing the packet's lab runtime into the game.
+
+
+
+## 18. Frontend: every surface to the newest version, optimized (`PQ-180`–`PQ-185`) — ADMITTED 2026-09-03
+
+> **CLAIMED 2026-09-26 — the ORRERY frontend overhaul lane (owner-directed 2026-09-25).** The whole section — `PQ-180`–`PQ-185` and their plans. Do not take, execute or "finish" any of it. The authority is [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md`](design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md); everything in this section is **superseded wherever it differs** and stays only as history (earlier frontend passes built from these instructions and the owner judged the result cheap and generic). Live status: [`design/frontend/ORRERY_HANDOFF.md`](./design/frontend/ORRERY_HANDOFF.md) §2. Found a frontend defect? One row in [`DEMO_READINESS_2026-09-20.md`](./design/program/DEMO_READINESS_2026-09-20.md) §6 for the lane — never a parallel implementation.
+
+Historical note: the 2026-09-05 direction override (PQ-187/188 re-gating PQ-162/168/181/182/185
+on the owner's contact-sheet yes) applied while this section was live; the surface matrix and
+per-surface plans were consolidated to git history in the 2026-10-15 token-reduction pass.
+
+## 19. How agents get SpaceFace wrong — the catalogue, and the rule that stops each — and the regression fortress (`PQ-186`)
+
+Every packet's *How agents get this wrong* section cites entries here. These are the ways the work
+actually goes wrong — judge your own work against them before closing. Where a check exists, its
+name is given; where none exists, `PQ-186` builds
+it.
+
+| # | The failure | What it looks like | The rule | The check |
+|---|---|---|---|---|
+| W1 | **Literal satisfaction** | "See, it follows the path" at walking speed; the test measured cross-track and never speed. | Done-when in player units; speed is the pass criterion, track the constraint. | bar checks (`PQ-186.00`) |
+| W2 | **Content instead of feel** | Answering "not fun" with more enemies, ships, stations, missions. | §1.3 rule 4; the Fun Loop's forbidden moves. | self-review (§1.6) |
+| W3 | **Camera shake as the fix** | Trauma and particles on a boring event. | Spectacle never substitutes for the event underneath. | self-review (§1.6) |
+| W4 | **Stacked clamps** | Each agent adds a local safety rule (governor brake, neutral brake, velocity clamp, contact bound) until nothing the player does sticks. | Never add drag; never clamp given momentum; every clamp names the bar it serves. | `PQ-186.01` guards |
+| W5 | **Test-to-pass** | Rewriting an assertion or re-recording a golden because it went red. | Assertions quote the vision sentence; goldens move only with the causal record. | anti-vision assertion lint (`PQ-186.02`), §8/§10d |
+| W6 | **Prose as proof** | "Verified", "works", a green check, a flattering still. | Numbers, frames, consequences. | self-review (§1.6) |
+| W7 | **Half-finished** | A leaf that looks done and is not; a feature behind a flag; a screen wired but unreachable. | Finish the unit; default route only; wired-feature policy. | `check:gate-reachability`, the matrix |
+| W8 | **Jargon questions to the owner** | "Should I use a spring or a distance constraint?" | Decide it; ask only product judgments, in plain words, with a default. | — |
+| W9 | **Random seeds** | Tuning on a run nobody can reproduce. | Fixed seeds or it did not happen. | bench refuses unseeded runs |
+| W10 | **Second architecture** | A parallel combat registry, alternate physics, a mode-only path. | One game path. | `check:sg02`, registry order constraints |
+| W11 | **Stand-in visuals** | A glowing sphere, a soft disc, a billboard for a designed object. | VFX technique standard; cones, sheets, rings, ribbons. | `check:vfx-techniques` |
+| W12 | **HP as difficulty** | Enemies that take longer to kill on later waves. | Mass, count, anchors, hazards and angles; never hull values. | `PQ-174.07` no-inflation assertion |
+| W13 | **Hidden NPC advantages** | Gyros, transform writes, instant counter-thrust, perfect aim. | NPCs obey the player's physics. | `PQ-186.01` guards |
+| W14 | **Menus between fights** | A draft after every wave; a pause for thinking placed in the middle of doing. | Swarm menus at most every fifth wave; the radial for doing, pause for thinking. | S4 |
+| W15 | **Dialogue trees** | "Give the player agency" with a choice menu. | No dialogue trees; one linear story; agency is in the physics. | `PQ-186.01` data-shape guard |
+| W16 | **Spreadsheet depth** | A fit screen or economy screen full of numbers with no prediction and no decision. | Every figure predicts or decides something; M1–M4. | the matrix, M-bars |
+| W17 | **Repainting instead of redesigning** | Tokens sprinkled on an old screen; skeleton and data states unadopted. | Grammar matrix columns; structural checks. | `check:ui:grammar-matrix` |
+| W18 | **Optimising by removing** | Fewer actors, lower default quality, deleted effects to meet a budget. | Structure only; never default-quality reduction. | §8, runtime witness |
+| W19 | **A check that cannot fail** | A gate that imports a `node:test` file and exits 0. | Run suites as child processes; inject a failure and watch it go red. | §7 |
+| W20 | **Cheating the golden hash** | Repinning on a moved motion field without a cause. | `sim-golden-diff` verdict before any repin. | §10d |
+| W21 | **Feature flags as done** | A flag OFF in production with the feature "implemented". | Production profile is the route; flags-off features are not done. | `runtimeProfiles.js` audit |
+| W22 | **Ignoring the wrong-way list** | Building the packet without reading its *How agents get this wrong*. | Step 3 of the procedure. | self-review (§1.6) |
+| W23 | **Scope creep as rescue** | A unit that could not close its bar closes something else instead. | New findings become ranked debt, never scope. | self-review (§1.6) |
+| W24 | **Asking the owner to test** | "Please check if it feels better." | The bench, the critic, the report; the owner plays weekly on their own terms. | — |
+| W25 | **Teaching with text** | A tutorial wall; a hint longer than one line. | Verb-then-silence; the Range is the fallback. | `PQ-163` funnel |
+| W26 | **Anecdotal balance** | "The physics kit felt strong." | Twenty seeded runs per kit; the balance dashboard. | `PQ-174.02` |
+| W27 | **Humans in the pipeline** | A plan that assumes a voice actor, a composer, a human tuner. | Directed synthetic voice; agent-run media pipelines; the owner's weekly play is the only human step. | — |
+| W28 | **Deleting to tidy** | Removing an unwired module, a legacy screen or a retired plan because it looks unused. | Retain valuable future work; refactor before delete; the import check decides. | `check:ui-screen-imports`, `PLAN_REGISTRY` rule 6 |
+| W29 | **Tree-wide git operations** | `checkout -- .`, `reset --hard`, `stash` in a shared checkout. | Pathspec-only; `git add -N` new files; never tree-wide. | `docs/AGENT_OPERATIONS.md` |
+| W30 | **Stopping** | Ending the turn after one leaf, a green check, or a long context. | Take the next unit; stop only for §1.5. | — |
+
+### 19.1 The packet
+
+| Packet | Pillar | One line | Wave |
+|---|---|---|---|
+| **`PQ-186`** The regression fortress: every bar, every ruling and every refusal becomes a check — [`active/PQ-186.md`](./design/program/roadmap/active/PQ-186.md) | Q · Quality | Every feel bar, owner ruling and refusal in this map is encoded as a deterministic check with the vision sentence in its assertion, so a future agent cannot quietly undo the game. | ALPHA |
+
+### 19.2 The plan, in detail
+
+#### Pillar Q · Quality
+
+**`PQ-186` — The regression fortress: every bar, every ruling and every refusal becomes a check** · *ALPHA* · after nothing
+
+The game cannot regress silently. Each FEEL_CONTRACT bar has a scenario check; each owner ruling (no drag, no clamp on given momentum, no NPC gyros, no HP scaling, no dialogue trees, the player never knocked around) has a static or runtime check whose message quotes the ruling; and the refusals in §15.7 have grep-level guards where a grep can catch them.
+
+- **Gap:** The 2026-09-03 audit found anti-vision behaviour pinned green by tests; nothing prevents it happening again. **Reference:** The repo's own §7 rule: inject a failure and watch the check go red.
+- **Exists:** `test/flightV3.spec.mjs`, `test/travel-drive.test.mjs` (rewritten with vision sentences), `check:baseline`, the Motion Lab, `check:sim` goldens, `scripts/check-*.mjs` pattern.
+- **Routes through:** FEEL_CONTRACT §D/§E, §7 verification, PQ-137.10 scenarios, PQ-173 bench.
+- **Writes:** `test/`, `scripts/`, `src/testing/lab/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` (after PQ-137.10) | **Bars as checks.** One check per FEEL_CONTRACT bar the lab can reach, assertion message = the bar's sentence; wired into check:all:smoke. | Every reachable bar has a check; injecting the old governor brake turns B1 red. |
+| `.01` | **Rulings as guards.** Static guards: no linear damping calls in sim, no velocity writes outside the physics owner, no `Math.random`/`Date.now` in sim, no HP-scaled knockback, no dialogue-tree data shapes; runtime guards: player knock budget, NPC no-gyro invariant. | Each guard has a fixture that fails it; all green on master. |
+
+- **Not:** No fixed pass/reviewer counts as gates; no check that cannot fail (§7).
+- **How agents get this wrong:** Writing a check that imports a node:test file and cannot fail (§7): run suites as child processes and honour exit codes; Encoding a bar with a tolerance so wide it never fails: inject the old defect and watch it go red before committing.
+
+## 20. The frontend direction — the A-list plan (`PQ-187`, `PQ-188`; re-gates `PQ-162`, `PQ-168`, `PQ-181`, `PQ-182`, `PQ-185`) — ADMITTED 2026-09-05
+
+> **CLAIMED 2026-09-26 — the ORRERY frontend overhaul lane (owner-directed 2026-09-25).** The whole section — the 2026-09-05 direction, `PQ-187`/`PQ-188`, the 2026-09-06 task series and §20.15 Field Hardware (`PQ-194`), whose aesthetics the owner has since replaced. Do not take, execute or "finish" any of it. The authority is [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md`](design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md); everything in this section is **superseded wherever it differs** and stays only as history (earlier frontend passes built from these instructions and the owner judged the result cheap and generic). Live status: [`design/frontend/ORRERY_HANDOFF.md`](./design/frontend/ORRERY_HANDOFF.md) §2. Found a frontend defect? One row in [`DEMO_READINESS_2026-09-20.md`](./design/program/DEMO_READINESS_2026-09-20.md) §6 for the lane — never a parallel implementation.
+
+The owner's 2026-09-05 ruling that admitted this section survives in intent: the earlier frontend
+instructions were written by less design-oriented agents and "will keep reverting the frontend
+back to cheap if you rely on them as an authority" — never treat a prior frontend pass's notes as
+aesthetic authority. The section body (the direction file phase tables, the 2026-09-06 task series
+§20.14, Field Hardware §20.15) was consolidated to git history in the 2026-10-15 token-reduction
+pass; `design/archive/FRONTEND_DIRECTION.md` remains the routed direction record.
+
+## 21. The playable demo — smooth, solid, answering, hardware (`PQ-210`) — ADMITTED 2026-09-20
+
+Owner, 2026-09-20: *"it's almost ready to demo I think, but it's not quite playable … the ship must
+fly smooth and the player have complete control over what's happening."* This is the front of the
+queue until the owner signs the five demo bars. Target, evidence, bars and the wider A-list list:
+[`design/program/DEMO_READINESS_2026-09-20.md`](./design/program/DEMO_READINESS_2026-09-20.md).
+Packet: [`PQ-210`](./design/program/roadmap/active/PQ-210.md).
+
+### 21.1 What the session of 2026-09-20 established (do not re-derive)
+
+| The owner felt | The cause, now fixed | Guard |
+|---|---|---|
+| The ship jigging back and forth | The frame loop drew first on any frame over 33.3 ms (one frame at 30 fps) and redrew an old moment: 14 % of presents at 45 fps, 26 % at 30 fps, each followed by a ~5 WU snap | `check:baseline` → `smooth-flight`; live counter `duplicateMomentPresents` |
+| Sluggish on a slow GPU | Sim step caps on slow frames ran the game at 63–83 % speed | same; game speed is 100 % down to 15 fps |
+| A jig on every heavy hit in swarm | The kinetic crunch held poses for two frames while the sim ran, then snapped | `test/feel-kinetic-crunch.test.mjs`; the beat is a hit-stop |
+| Limp, frozen effects | Windows "Animation effects: off" → `prefers-reduced-motion` → the silent `system` default stripped hit-stop, trauma, lights, haze, bolt time and field motion | Motion defaults to Full; one versioned profile migration; `test/graphics-profile-bootstrap.test.mjs` |
+| Asteroids vanishing | A retired rock batch drew nothing for the rest of the session | `test/asteroid-pool-retired-owner.test.mjs` |
+| Objects popping out on screen | Residency trusted the requested-zoom classifier over the live screen; evict sat inside prefetch while zooming | `test/presentation-residency.test.mjs` |
+
+### 21.2 The law this adds
+
+1. **The pilot lives in the frame.** A feel claim about motion closes on the frame — the
+   smooth-flight witness on the owner's GPU — never on the sim alone.
+2. **One loop order.** Simulate the time that passed, then present that moment. Only a restore
+   frame presents without advancing. No presentation path holds poses while the sim runs; weight
+   is a time dip.
+3. **A slow frame rate is not a hitch.** Steady frames keep the full catch-up ceiling (real time
+   down to 15 fps). Only a callback over 4.5 ticks late sheds, to two steps.
+4. **The live screen outranks every classifier.** Nothing on the live glass loses its mesh, waits
+   out a hold, or blanks with its batch.
+5. **Nothing follows the operating system silently.** Motion is Full unless the player chose.
+6. **Every perf number carries the machine's load beside it.** The same build read 59 fps and
+   40 fps minutes apart while other lanes ran batteries. Harnesses that run over two minutes lower
+   their own OS priority.
+7. **A test that pins what the owner forbids is the defect.** Three of the six rows above were
+   held in place by green tests. New feel tests quote the owner sentence they serve.
+
+### 21.3 The review's NEW items, admitted
+
+The five items the 2026-09-20 review marked NEW have owners: the front-of-house daily seed, ghost
+and share code, plus the five-second skippable kill replay, are §22-B9; the muzzle-discharge flow
+wired to zero is §22-A7; the physics lab toy is §22-B11; the art-directed iGPU-60 preset is
+§22-E8; the controller-first pass rides `PQ-164` (twin-stick admitted as `.04`).
+
+### 21.4 Hitch, low FPS and late loading are one mechanism (owner, 2026-09-25)
+
+Owner's plan: loading anything costs three kinds of main-thread work — shader preparation (up to
+~0.5 s each on Intel/ANGLE), GPU upload, and model assembly. Hiding a body until that work is done
+trades the hitch for pop-in; showing it sooner trades it back. The trade-off cannot be tuned away.
+The work has to get cheaper, earlier, or move off the frame. Ten systems, biggest win first.
+
+**Guard rail (system 9, landed 2026-09-25).** `node scripts/probe-frame-solid.mjs` flies away from
+and back to a station and reports longest frame, frame p99, time-to-appear, blinks, every in-flight
+shader link (named, diffed against the nearest existing program), admission lane depths, and
+per-job composition time. Each run writes `.devshots/frame-solid/<stamp>.json`;
+`--compare=<baseline.json>` fails any change that raises a count. Compare every change in this
+section against a baseline taken back to back on the same machine.
+
+**Baseline, owner's laptop (Core Ultra 7 155U, Intel Graphics, CPU 85–95 % busy from other
+agents), 2026-09-25:** frame p50 44–78 ms, longest 0.5–3.4 s; 54–74 % of bodies drawn the frame
+they enter the screen, late ones 1–8 s; 9–19 shader links per 60 s flight, all behind the hide
+latch (pop-in, not in-frame hitch). Long pole: the serial authored composition lane (ledger D38).
+
+**End of 2026-09-25, same laptop (CPU 99 % busy from other agents):** in-flight shader links 19 →
+4–8, links inside a drawn frame 0 in every run since fe6dfd778 (the first-thrust freeze), on-time
+appearance 0.58–0.87 with 0 late arrivals in the best runs, buffer uploads ~242 → ~21 KB per frame.
+Frame times on this host swing ±50 % run to run and are not evidence either way; a 1.8–2.8 s frame
+with zero in-frame links still occurs — next: `--cpu-profile` on a quieter host to name it. Other
+next cuts named by the profile: `_publishAssetResidencyDiagnostics` → `canonicalDiagnostics`
+(~0.8 s per flight, rebuilt every 0.25 s poll — memoize on a residency mutation epoch).
+
+**GFX-10 Forge performance pass, 2026-09-29 (same laptop, SwiftShader GL path, host heavily
+contended by other agents; measured as an INTERLEAVED A/B, not before/after blocks).** Two
+changes measured together: image-source dedupe across the live GLB decode paths
+(`src/render/imageSourceDedupe.js` — SHA-256 via `crypto.subtle`, memoised per GLB buffer, over
+embedded bufferView bytes + byteLength + mimeType; FNV-1a fallback when `crypto.subtle` is
+absent; documents share one `THREE.Source` via texture clones and keep their own
+colorSpace/sampler/flipY; an entry survives until its last tracked texture disposes) and the
+GFX-12 resolving stand-in (pending ships show their own lod2 silhouette sharing the resident
+record's geometry plus cached opaque Standard materials, instead of the translucent octahedron;
+the per-frame marker retry is throttled to 200 ms per substrate). The probe reports a
+scene-traversal texture-memory estimate and the dedupe ledger (`hashedBytes`, `hashMs`) at the
+end of the route. A = `SpaceFace-verify` worktree at origin/master `9a30ffc00` (no packet), B =
+this tree; A, B, A, B back to back, same probe command.
+
+| Run | Arm | Result | frame p50 | p95 | p99 | longest | info.memory.textures | geometries | uniqueSources | est. texture MB | rootSwaps | regressions | shader links | in-frame links | stuckMissing |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `2026-09-29T03-19-08-998Z` | A master | FAIL (stuck) | 158.0 | 473.5 | 1380.5 | 2264.6 | 183 | 717 | 113 | 92.7 | 0 | 0 | 15 | 4 | 83 |
+| `2026-09-29T03-23-22-447Z` | B packet | FAIL (stuck) | 741.4 | 1856.7 | 3893.6 | 4612.6 | 74 | 430 | 45 | 50.2 | 0 | 0 | 22 | 5 | 11 |
+| `2026-09-29T03-28-01-574Z` | A master | FAIL (stuck) | 190.8 | 366.3 | 899.5 | 1981.6 | 133 | 475 | 95 | 81.5 | 0 | 0 | 15 | 6 | 228 |
+| `2026-09-29T03-31-31-245Z` | B packet | PASS | 198.2 | 531.0 | 1180.1 | 1567.9 | 73 | 685 | 45 | 50.2 | 0 | 0 | 25 | 6 | 0 |
+
+Honest read: the memory numbers are stable and real — unique texture sources 113/95 → 45/45
+(−56 %), estimated texture memory 92.7/81.5 → 50.2/50.2 MB (−42 %), live Texture objects
+133–183 → 73–74 — the embedded atlas copies shared across hull GLBs and render packages now
+upload once. Frame p50 is NOT consistently worse on B: pair 2 is a wash (190.8 vs 198.2) and
+pair 1's B run hit the worst host-contention window of the session (only 149 frames in the same
+route that produced 463–489 on the other runs — the whole host stalled, not just the renderer).
+Dedupe cost is bounded and off the frame's hot path: 4.8 / 5.6 MB hashed per route in 133 / 426
+ms of `crypto.subtle` wall time spread across the flight's decodes (<0.5 % of route time; the
+digest itself runs on the platform's thread, not in a JS byte loop). `stuckMissing` reads better
+on B in both pairs (83/228 → 11/0). `resolvingMarkerFallbacks` 4–11 at census: the census samples
+a window while a few pending ships' decode records are not yet settled — they upgrade to their
+own lod2 stand-in when the record lands (verified live: `AuthoredResolvingStandIn` substrates
+visible for mule/atlas/drifter). Steady-state target for that counter is 0; the residual is the
+decode-settle window, not a missing hull. Reports:
+`.devshots/frame-solid/A1-master-2026-09-29T03-19-08-998Z.json`,
+`2026-09-29T03-23-22-447Z.json`, `A2-master-2026-09-29T03-28-01-574Z.json`,
+`2026-09-29T03-31-31-245Z.json` (A reports copied in from the verify worktree's `.devshots`).
+
+| # | System | What exists | Gap | Next |
+|---|---|---|---|---|
+| 1 | Fixed shader catalogue, prepared at startup | Material ABI metadata (`materialAbi.js`, `sharedMaterialRoles.js`); boot precompile; in-session program-binary cache; the desktop app's Chromium GPU shader disk cache is live (verified 2026-09-25: 11 MB in `%APPDATA%/spaceface/GPUCache`), so repeat launches reuse prepared shaders | Program identity still varies per material: measured in-flight links differ from an existing program by one parameter — dithering, one texture slot present/absent, side (Front vs Double), clearcoat, alphaTest | LANDED 2026-09-25 (`programCanon.js`): authored PBR materials get neutral 1×1 textures in empty slots and dithering on before admission; A/B in-flight links 17→13 and 13→11, on-time 62→81 % and 47→78 %. Residual variants: side (Front vs Double), clearcoat, alphaTest, instancing — PERF CALLED 2026-09-26 (frame-solid job phase split, D38): instancing is the big one — 5 of 8 in-flight links were pool programs one instancing bit away from an already-linked program (`8421457` vs `8421456`), because a shared material's direct (non-instanced) draw links first and the ship's pool admission re-links it instanced inside the same first-sight job; that twin is roughly half of a ship job's GPU gate. One draw path per material family closes it. Then a check that fails on a new in-flight program |
+| 2 | Baked, ready-to-use model packages | 267 render packages with collisions, LODs, HLODs, clusters; off-thread digest worker | Composition runs per instance on the main thread | PROFILED 2026-09-25 (`probe:frame-solid --cpu-profile`): 79 % of `buildComposedShip` was `attachRetroMounts` brute-force raycasting the hull skin 28× per ship. LANDED: one analytic pass (`retroSkinSeat.js`), bit-identical seats; 1993 → 506 ms per 60 s flight. CONFIRMED CHEAP 2026-09-26 (per-job phase instrument): compose is 10–96 ms of a ship admission job — composition is no longer the D38 long pole; the job's cost is 100 % its GPU gate (see system 1 / D38). Seat baking into the package stays optional polish, not the bottleneck |
+| 1b | No shader ever prepares inside a drawn frame | Unready-drawable guard hides still-linking programs | Its scene walk exits once all programs are ready, so a never-compiled material drawn mid-flight linked in the frame: the first-thrust 1.4–2.4 s freeze (engine-bell heat skin cloned with `Material.clone()`, dropping shader hooks) | LANDED 2026-09-25: bell heat skins keep hooks (`materialClone.js`); draw-time net skips + admits any never-compiled authored material. Three probes: 0 in-frame links |
+| 3 | Load by ship type per sector | Every sector prefetch decodes all spawnable combat/traffic hulls (`spawnableShipArchetypePrewarmUrls`); Crucible warms its roster | Decode only; exemplar compile warm was measured an iGPU regression and stays unwired | Revisit after 1 shrinks the catalogue |
+| 4 | One predictive loading director | Time-to-glass runways (`tabletopPolicy.js`), on-glass urgent lanes, wave-plan hull decode | Composition is FIFO-serial behind a 20 s first-flight hold; known future spawns feed decode, not composition | After D38: one deadline-sorted queue across composition, compile and upload |
+| 5 | Strict per-frame budget | `admissionSliceBudget.js` (3 ms target, 8 ms hard), heavy-admission present gate, one compile per present | Composition in flight is serial through its GPU gate. Overlapping it was tried twice 2026-09-25 (before and after the 4× cheaper assembly): throughput up, on-time appearance flat (0.56 → 0.54), parked (`.devshots/parked/flight-compose-overlap-2026-09-25-v2.patch`) | The wait is per-body GPU prep, not queue order — the answer is system 6 (a stand-in on screen while it prepares). Per-frame scans: `kickDecodeRunwayAssets` 422 → 90 ms per flight (linear pick); hold-exempt glass test hoist proposed |
+| 6 | Always something correct on screen | Each hull has LOD1/LOD2 files; pending bodies stay hidden | No instant stand-in; §13D Wave F3 is planned | §13D F2 then F3 |
+| 7 | Draw less | Package instance pools, asteroid instance pool, static batch cache, shadow present cadence | MEASURED 2026-09-25 (probe `gpu submission` / `draw census`): ~155–167 draws, ~100 program switches, ~390 texture binds per frame; 135 programs, 1174 geometries. Draw count is modest; per-object CPU bookkeeping is not: `updateMatrixWorld` 2.2 s per 64 s flight, 96 % of its auto-updating nodes never move | In progress: bounded warm roots stay parked in flight (was 51 % of those nodes). Then freeze static authored-boundary interiors except animated bells/fans/gimbals |
+| 8 | Simulation off the drawing thread | Fixed-step sim with flat state, decoupled from render | MEASURED 2026-09-25: the fixed-step sim is ~24 % of the main thread on the laptop (15 s of a 64 s flight: physics 3.5 s, flight 2.0 s, AI 1.6 s). Design exists: `design/archive/perf/PERFORMANCE_OPTIMIZATION_CONSTELLATION.md` L4 (three-thread), with M9 coarse read-only worker slices and M4 packed physics membranes as the incremental path | First slice after 6: an M9 read-only AI-scoring or physics membrane worker, with a synchronous deterministic fallback |
+| 9 | Measurement guard rail | `probe:frame-solid` above; `probe:shader-timeline`, `probe:runtime-witness`, smooth-flight | An idle-machine run is still owed | Run on a quiet machine and save that baseline |
+| 10 | WebGPU | `webgpuPresent.js` gate, off | Needs 1–7 first | Later |
+
+## 22. The gap between the description and the build — ADMITTED 2026-09-21
+
+The owner asked for the work that turns the live game into the game the docs describe, and for a
+backend that stays smooth on an ordinary machine. This section is that measured list: a number, a
+fixture, a file list. It is ahead of soak and closeout. It does not add a second queue.
+
+A strong agent making the game A-list does not start here. The open feelings are §23. Take a row
+below when the job is one of these known gaps, or when you are clearing little quality. Wave G is
+grunt-shaped.
+
+**Read the live code before starting a row.** If the done-when is already true on seeds 4242 and
+8008, skip the row and say so. If the files are already dirty, finish that diff. Do not start a
+parallel copy.
+
+### 22.0 What the description promises, and what A-list games make obvious
+
+[`design/VISION.md`](./design/VISION.md) promises a fast physics sandbox where a miner, a hauler, a
+pirate, a rock, a patrol, and a rope are one situation, and a simple action keeps producing a
+bigger story. Compared with the games this finish line already names:
+
+| The other game makes this obvious | This build's own promise | Where the live game is thinner |
+|---|---|---|
+| Just Cause, the grapple | The Massline is the signature, and it stays on | The throw can kill. The opening still does not hand you a body worth throwing. |
+| Rocket League, one readable verb at 60 | The fight is on the glass and the frame never lies | Guns still reach ~520–680 while the chase view is ~130 deep. The 60 Hz list is still fat. |
+| Deep Rock / Hardspace Shipbreaker, the job is already happening | You arrive in the middle of someone else's day | The systems exist. The first minutes do not yet show the chain without a test. |
+| Hades / Spelunky, the run is the toy | Swarm is fling, wreck, fling again | Stunts are detected. The wreck is not yet the next answer you can see. |
+| Starsector / Rebel Galaxy, the world keeps the receipt | Failure becomes salvage, a price, a person | Heat and witnesses exist. A stranger still cannot fly back to one consequence. |
+| Everspace 2, the picture and the instruments are one game | Hardware over a living picture | Flight HUD was repainted. Station, map, and pause, and several hulls, still read as a kit. |
+
+The sim is ahead of the session. Polishing means connecting what already simulates. Adding means
+the few things that are still absent as play, listed below as **build**. A new lock, an overheat
+that stops the starter beam, ammo starvation, or a tool that quits after a second is not a row.
+
+### 22.1 Already at the bar — do not rebuild
+
+Cruise in under a second. Earned speed kept. Ordinary bumps do not steal the helm. Terrain kills a
+light hull and spares a heavy one. A taut throw can be a killing crash. A shove puts a light hull
+about a screen off its line and keeps it from firing through that coast. Hits answer with a dip, a
+light, moved mass, and a sound. Sound is on. The starter beam does not lock. Swing Drive is on the
+Helios shop at a first-haul price. The first two minutes keep one instruction. The ship no longer
+jigs, and a slow GPU no longer runs the game in slow motion. Shadows are not redrawn every frame.
+Physics is cheap. Do not reopen these to "improve" them with a limitation.
+
+### 22.2 How a row closes
+
+A row closes when its player outcome works, the relevant direct check passes, and the change is
+committed by pathspec. Use the seeds the changed contract needs: 4242 for a local reproducible
+case; 8008 or the inherited seed set when placement/randomness can change the result or the named
+fixture explicitly requires it. A visual row needs inspection of its actual affected picture;
+grammar/structure tests support contracts, not appearance. There is no human playtest/signature,
+automatic capture series or whole-game boot per row. A perf claim uses the quiet-host evidence
+named in its row. Preserve foreign diffs; reuse an already-fulfilled outcome without rebuilding it.
+§1.9 owns proportional checks and review; §29 joins the starter rows into one complete experience.
+
+Take the first open row in the wave you are in. Rows in the same wave run together when their file
+lists do not overlap. The remaster machine does not take these rows. It fills `vm-drop/` from
+[`VM_LANES.md`](./design/program/VM_LANES.md). Local agents import a drop only after `DONE.md`.
+
+Starter tools stay on. A row that adds an overheat lock, ammo starvation, or a tool that quits is
+a failed row. Delete that change.
+
+### 22.3 Wave A — the opening is the game
+
+This is the vertical slice. Ship it before Wave B content.
+
+| Id | The player gets | Done when | Files |
+|---|---|---|---|
+| **A1** | A hauler is already under attack within three minutes of a new game, inside about two screen-depths. A camper comes into grab range or a patrol arrives in view. The camper does not despawn and does not lose health by fiat. | One fixture, seeds 4242 and 8008, asserts spawn range, time, and the commitment event. DONE 2026-10-04 — already true, pinned green at HEAD: `test/opening-hauler-raid-and-pursuit.test.mjs` + `test/opening-hauler-raid-timeout-ships-remain.test.mjs`. | `src/systems/encounterDirector.js`, `src/data/pirateDoctrines.js`, `src/data/encounters/`. Finish `015-opening-hauler-raid.js` if it is already in the tree. |
+| **A2** | A cargo-ship kill becomes salvage, a sale, and one new job. | Fixture: kill → salvage pickup → commodity sale → one new contract or price move. Not a fine. Not a failed mission. DONE 2026-10-04 — already true, pinned green at HEAD: `test/cargo-kill-salvage-sale-opportunity.test.mjs`. | `src/systems/economy.js`, `src/systems/missions.js`. |
+| **A3** | The next rocks are a few minutes of cruise past a used-up starter field, with rocks between. | Fixture asserts distance ≤ a few minutes at cruise and at least one field on the way. Beam rate, hold size, and tax unchanged. DONE 2026-10-04 — already true, pinned green at HEAD: `test/used-up-field-opportunity.test.mjs`. | `src/systems/fieldDepletion.js`, `src/systems/world.js`. |
+| **A4** | A witnessed kill puts one responder on the wreck and one chaser inside the composed frame within 10 seconds. | Fixture, both seeds, asserts frame membership and the stay-versus-chase split. No new heat formula. DONE 2026-10-04 — already true, pinned green at HEAD: `test/wave-a4-witness-frame.test.mjs`. | `src/systems/lawSecurity.js`. |
+| **A5** | Small and medium shots are born inside the composed frame and live ≥ 0.7 s on screen. | Fixture prints range and time-to-exit. Damage, rate of fire, and impulse byte-compare equal except range and projectile life. DONE 2026-10-04 — already true, pinned green at HEAD (re-run this sitting): `test/wave-a5-shot-life.test.mjs`. | `src/data/weapons.js`. |
+| **A6** | The default route runs the slice: raid, a throw or a shove that kills, cargo or a wreck, patrol in frame, dock, Swing Drive purchased from the first-haul offer, undock and use that module. | Existing simulation fixture `test/wave-a6-opening-slice.test.mjs` (+ `tools/agentic/a6OpeningSlice.mjs`) covers mechanics with tutorial/API-dock shortcuts. Earned purchase is OPEN under D183 / §29 SR-01; SR-04 owns actual upgraded use and §29.4 the tutorial-on public route. No debug grant, weakened assertion or fixture-only completion. Reuse A1–A5. | Existing gameplay owners in §29; `tools/agentic/` only for a demonstrated driver defect. |
+| **A7** | Default-kit muzzles move. | Discharge flow for the starter weapons is non-zero for the life of the shot. No new particle family. DONE 2026-10-04 — already true, pinned: `test/wave-a7-muzzle-discharge.test.mjs` 3/3 drives the real spawn/update path (pulse 7 frames, autocannon 5, flow > 0 to the last frame; `DISCHARGE_FLOW` census unchanged). | `src/render/forceLanguage/weaponDischargePool.js`. |
+| **A8** | A swarm kill by shove, throw, slam, or field prints that stunt's name on the results. | Fixture reads the results model and asserts the name. No timer that clears the name. DONE 2026-10-04 — already true, pinned green at HEAD (re-run this sitting): `test/wave-a8-stunt-names.test.mjs`. | `src/ui/screens/crucible.js`, `src/systems/survivalResults.js`. |
+
+### 22.4 Wave B — the world keeps going, and the toy has a ceiling
+
+A studio ships the slice, then the systems that make hour ten different from hour one, and the
+combat toys the description already names. Build these. Do not wait for a person to play Wave A.
+
+| Id | The player gets | Done when | Files |
+|---|---|---|---|
+| **B1** | Hours 1 through 10 still pay. Income is a curve. Encounters still spawn after hour 4. | A derived-model fixture, not a ten-hour battery: income in a post-hour-1 window is > 0, and encounter supply in hours 5–9 is > 0 on both seeds. Hour-5 supply already landed once; re-assert it, do not retune the pilot. DONE 2026-10-04 — already true, pinned green at HEAD (re-run this sitting): `test/b1-hours-income-encounter-supply.test.mjs`. | `src/systems/economy.js`, `src/systems/encounterDirector.js` only if the fixture is red. |
+| **B2** | One pirate who escapes is back in the same sector later, with a line, and is a body you can fight. | Fixture: escape event, advance sim time, same identity spawns, bark or comms payload is non-empty. No stat debuff on the player. DONE 2026-10-04 — already true, pinned green at HEAD: `test/b2-escaped-pirate-returns.test.mjs`. | `src/systems/aceMemory.js`, `src/data/namedAces.js`, `src/systems/barkDirector.js`. |
+| **B3** | A wreck you made in swarm is a grabbable body in the next round. | Fixture: kill leaves a durable wreck id; the next round's Massline can latch it; latch survives the shop transition. DONE 2026-10-04 — already true, pinned green at HEAD: `test/crucible-wreck-body.test.mjs`. | `src/systems/aftermathWrecks.js`, `src/systems/survivalRun.js`. |
+| **B4** | The four specialist problems each break one plan: tether cut, field disrupt, anchor, cargo screen. | Four Crucible cells, seed 4242. Each specialist negates exactly its plan and does not also negate the other three. DONE 2026-10-04 — already true, pinned green at HEAD: `test/wave-b4-specialist-plans.test.mjs`. | `src/systems/tacticalAI.js`, `src/ai/`. |
+| **B5** | A 150-unit-per-second slam is not the same answer as an 8-unit nudge. | Fixture: hit-stop and trauma are strictly increasing across three closing speeds, using pre-solve closing speed. Audio pitch differs by ≥ 1 octave between the light kiss and the heavy slam. DONE 2026-10-04 — already true, pinned green at HEAD: `test/b5-slam-vs-nudge.test.mjs`. | `src/render/feel.js`, `src/audio/`. |
+| **B6** | Six sectors each run one job chain with nobody accepting a mission, and each has one physical number that is not Helios's. | Per sector, a fixture: miner or hauler or patrol completes one handoff, and one of {rock mass, patrol response time, gravity, traffic speed} differs from Helios by a named ratio. DONE 2026-10-04 — already true, pinned green at HEAD: `test/wave-b6-sector-physical.test.mjs`. | `src/data/` sector profiles, `src/systems/traffic.js`. One sector per agent. |
+| **B7** | Three set pieces, each a situation the sandbox verbs already solve: a convoy loss that becomes salvage, a heist that becomes an escape, a disabled ship that becomes a tow. | Three scenarios. Each ends in a new entity or contract, never in a fail-and-reload flag. DONE 2026-10-04 — already true, pinned green at HEAD: `test/set-piece-follow-on.test.mjs`. | `src/data/encounters/`, `src/systems/missions.js`. |
+| **B8** | A new verb every hour of the first ten hours of the tech curve, and the first one is Swing Drive inside the first haul. | `check:progression:verbs` stays green. A curve fixture lists ten purchases, each adding a verb key that has a live consumer, prices summing inside the income curve from B1. DONE 2026-10-04 — the counted audit is green again: its consumer pin had gone stale on FB-054's fitted-flag move; the pin now reads the `tractorWholeWrecks` flag (3903d4466), `check:progression-verb-audit` OK (24 verb keys verified / 0 declared-only), wave-b8 + pq208 drift guard + fb-module-dead-fields 15/15. | `src/data/modules.js`, `src/data/tech.js`. |
+| **B9** | Crucible's first screen offers the daily seed, the ghost, and the share code. Round end can replay the last kill for five seconds from the sim seed and can be skipped. | Fixture: those three controls exist on the entry model; the replay resim matches the kill's positions at t+5 s within a hull length; skip leaves the results model intact. DONE 2026-10-04 — already true, pinned green at HEAD: `test/wave-b9-kill-replay.test.mjs`. | `src/ui/screens/crucible.js`, `src/systems/survivalResults.js`. |
+| **B10** | The rope's combat result is the same class of outcome on both seeds. | The throw fixture from the landed taut-release work passes on 4242 and 8008 with a kill, not a 1-versus-45 split. If it already does, skip. DONE 2026-10-04 — it does. At HEAD both seeds kill: 4242 throw_kill t=143.1 (via=mid_swing), 8008 t=173.2 (via=meeting), plus 3200 t=106.0 — bit-identical across repeat runs, trio green 18/18. The earlier DIAGNOSED finding (33bfdcd19) was an artifact of measuring a transient multi-lane dirty tree, not any commit: base→HEAD touched zero sim-route files, the named suspects (02a846590, b969523c2/01c12238b) exonerated by hunk read, and the diag's own 4242 record differs from HEAD's. Both cases now assert kill, unskipped. | `src/systems/masslineThrow.js`, `src/systems/tetherGameplay.js`. |
+| **B11** | A physics lab on the front door: the sandbox ships as a toy — spawn bodies, grab and throw them with the rope, slow time — for streamers and the curious. | Fixture on the default route, no dev flag: spawn → latch → throw → time-scale all work from the lab controls, and the input tape replays the same positions. DONE 2026-10-04 — already true, pinned green at HEAD: `test/wave-b11-physics-lab.test.mjs`. | `src/ui/screens/sandbox.js` (today dev-only), `src/ui/screens/crucibleLabControls.js`, `src/testing/lab/`. |
+
+### 22.5 Wave C — presentation a studio would not ship without
+
+Every screen in the surface manifest, the sound of every verb, the sky, and the fleet. Close on
+tests and on the chase loop. Do not close on an opinion.
+
+> **Rows C1–C4 are CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane** — do not take them. Their
+> "machined bezels / one structural kit" wording is the superseded Field Hardware direction; the
+> authority is [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md`](design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md). C5–C8 (sound, skies, hulls, wrecks) are not frontend and stay open.
+
+| Id | The player gets | Done when | Files |
+|---|---|---|---|
+| **C1** | Station uses the same structural kit as the flight HUD: one accent, machined bezels, no second card language. | A test of the same shape as the flight-HUD pin: bezel present, one accent variable, no raw default button chrome. Every control has a label from the binding map. | `src/ui/station/`, `styles/station-workbench.css`, `src/ui/screens/stationHub.js`. |
+| **C2** | The map, same kit, same label law. | Same class of test. Route engage is reachable from the keyboard and the pad. | `src/ui/galaxyMap.js`, `src/ui/map/`. |
+| **C3** | Pause, same kit. The return-after-absence block stays. | Same class of test. Resume, save, and settings are in the tab order. | `src/ui/screens/pause.js`. |
+| **C4** | Every remaining screen in §11.3 passes the same structural pin and the control-label check. | One screen per agent. The pin fails if a second accent or a default browser button is the primary control. | That screen only. |
+| **C5** | Every combat verb has a sound. The list is fire, hit, shield, hull, shove, throw release, latch, break, slam, kill, dock, undock. | A table test: each verb id maps to a recipe, and the hit-answer harness counts a `play` for that recipe. Missing recipe fails the test. | `src/audio/`, `src/data/`. |
+| **C6** | Six skies. Luminance of the sky plate is below the muzzle and the engine in a fixture of the profile numbers. Exactly one profile uses a galaxy plate. | The numbers are in `sectorVisualProfiles`. Art files come from `vm-drop/sector-skies/` when `DONE.md` is there; until then the row sets the luminance multipliers and the single-galaxy flag. | `src/data/sectorVisualProfiles.js`. |
+| **C7** | Each remaining player hull in the PQ-050 order reaches the same chase-camera pass Drifter closed: three stills, three reviews, Hitch does not win on mass or skin. | The other machine writes the candidate to `vm-drop/<ship>-chase/`. The local row imports one ship when `DONE.md` exists and the review file says the chase pass holds. Hitch and Kestrel are not rows. | That ship's package only. |
+| **C8** | The untextured wreck pieces and the missing mining-barge wreck are materials, then placed on the two Ceres wreck slots. | Drop folders `wreck-piece-textures` and `mining-barge-wreck` have `DONE.md`. The local row references seven pieces plus the barge in the existing place slots. No new wreck system. | Place data for those two slots. |
+
+### 22.6 Wave D — the machine holds 60 with the picture on
+
+Bar, on a quiet machine, default picture, bloom and shadows on, ten hostiles: 60 fps, at most one
+frame over 50 ms per minute, zero frames over 100 ms, sim p95 ≤ 5 ms, boot to first control ≤ 10 s,
+first 20 s of flight ≤ 5 % of frames over 33 ms. The quiet machine writes the probes into `vm-drop/`.
+A local row changes code only to move a red number. Picture stays.
+
+| Id | Work | Done when |
+|---|---|---|
+| **D1** | Only the glass and a short runway tick at 60 Hz. Dormant rocks, far traffic, and far wrecks are ledger rows and wake on approach, still there when you return. Plan: [`design/perf/TABLE_AUTHORITY_PLAN.md`](./design/perf/TABLE_AUTHORITY_PLAN.md). | Crowded-flight sim p95 ≤ 5 ms. Entity count on the 60 Hz list is the glass set, asserted by a counter. Picture flags unchanged. |
+| **D2** | A new hull does not link a shader on the frame it appears. Share programs. Do not prewarm dummy meshes. | Probe prints zero new program links across the first draw of each hull in the Crucible roster. |
+| **D3** | Same-material hulls batch. | Only if D1 is green and the probe names draw count as the pole. One mixed mega-batch is forbidden. |
+| **D4** | The picture reads a packed snapshot, not live entity objects. | A counter proves present does not walk `entityList`. This row is the door to a sim thread. Do not start the thread in this row. |
+| **D5** | Opening admission finishes before first control. | First-20 s frames over 33 ms ≤ 5 % on the quiet probe. |
+| **D6** | Save bytes stop growing in a fixed cluster. | Fixture or the quiet two-hour report: bytes at 120 min ≤ bytes at 60 min plus a named ceiling. |
+| **D7** | Boot to first control. | Three quiet runs, each ≤ 10 s. The row edits only the stage the report names as the longest. |
+| **D8** | Crucible fight budget. | Quiet `probe:smooth-flight:crucible`, seed 4242: the bar in the paragraph above. |
+
+Forbidden as a performance row: bloom off, shader-prewarm retries, a low preset, a Rust port, a
+WebGPU swap, a sim worker before D1 and D4 are green.
+
+**vm-drop import ledger (2026-09-24).** Imported to master: #166 zero-copy render-package digest,
+#167 single-copy embedded KTX2, #168 in-place GLB body + its after-#167 companion, #169 readiness
+polling without `isProgram`, #170 retail vendored-GLTFLoader alias. Still packaged and pending in
+`design/program/vm-drop/*/patches/`: the quiet-latch series #31–#165 (~135 folders; each folder's
+`IMPORT.md` gives apply order and `DONE.md` is the gate). Twelve unvetted VM scratch candidates the
+VM never packaged were archived to `design/program/vm-work-archived/` when `vm-work/*` was deleted.
+Owner calls open: (a) whether retail aliases the whole vendored `three` so the two dev-only
+`three.module.js` SpaceFace fixes (empty shadow-sampler depth texture; destroyed-program readiness)
+reach players — the #170 alias map would carry it; (b) the Rapier call-frequency experiment the VM
+shelved at ~1.1–1.2×. `origin/vm-drop` is permanent; `vm-work/*` scratch is gone.
+
+### 22.7 Wave E — the rest of a ship
+
+A studio does not leave input, language, accessibility, or the front door unscheduled. These close
+on checks.
+
+| Id | The player gets | Done when | Files |
+|---|---|---|---|
+| **E1** | Pad: thrust, brake, rope, shove, fire, dock. No chord required for those six. | A binding-map test lists the six on the default pad layout with unique buttons. The flight fixture drives them through `state.input` the same way the keyboard fixture does. | `src/systems/gamepad.js`, the bindings screen. |
+| **E2** | Reduced motion keeps every gameplay fact. Juice may drop. Hit direction, objective, law change, and stunt name stay. | The existing reduced-motion information test covers those four. Extend it if a channel is missing. | `src/ui/`, `src/render/feel.js` only for the juice gate. |
+| **E3** | Strings survive a 40 % longer pseudo-locale with nothing clipped in the structural layout test. | The loc check fails on overflow. One screen family per agent. | That screen's strings and layout. |
+| **E4** | Five launch languages ship from the catalogs. | The catalog check is green for all five, and a boot fixture in each language renders the title and the first objective from the catalog, not from a hardcoded fallback. | `src/localization/`. |
+| **E5** | Browser and Electron read and write the same save. | The existing paired save fixture is green. If it is already green, skip. | `src/save/`. |
+| **E6** | A content repetition budget: the same encounter shape cannot be the only combat offer for three hours. | Fixture over the director's hour buckets: at least three shape ids in hours 0–3 and in hours 5–9. | `src/systems/encounterDirector.js`, encounter data. |
+| **E7** | Mods can add a weapon and a module by dropping data, without editing `src/`. | A fixture loads one extra weapon JSON and one extra module JSON from the user-content path and fires the weapon once. | The existing user-content loader. |
+| **E8** | An "iGPU 60" preset art-directed for integrated graphics — which effects stay and which substitute is a designed list, not "everything low"; the owner's machine is min-spec. Rides `PQ-165`'s preset table. | The quiet-machine probe at iGPU-class hardware holds 60 fps median on the demo route with authored content intact; the substitution list is named in settings. | `src/render/adaptiveQuality.js`, `src/ui/screens/settings.js`. |
+
+### 22.8 Wave F — the signature minute, made readable
+
+Admitted with the rest of §22. These are the extra toys on top of Waves A–E. Each one makes a
+verb the game already has easier to aim, or gives that verb another body. None of them add a
+meter that runs out. Close on the fixture named in the row. Skip the row if that fixture already
+passes.
+
+Do not take a Wave F row whose files are in a live dirty diff or in an open Wave A–E row. The
+collisions that matter: F3 and F11 share the encounter director with A1. F5 shares barks with B2.
+F8 shares law with A4. F9 shares feel with B5. F2 and F6 share audio or the rope with B5 and B10.
+
+#### F1 — The release ghost
+
+**What.** While the player's rope is taut on a lighter body, draw the path that body will take if
+they release this instant: a short arc along the current tangent, long enough to see the next rock
+or hull it will meet, gone the moment the rope goes slack. It is a prediction from the live
+velocity, not a guided shot. The player still chooses the instant.
+
+**Why it's fun.** The throw already kills, and it feels like luck until you can see the cut. A
+ghost turns "I mashed the button" into "I waited until the line crossed his wingman." That is the
+whole Massline fantasy: a complicated outcome from a simple, visible rule. Rocket League's ball
+line and a grappling game's swing arc are the same kindness.
+
+**Done when.** A fixture latches a light hull, swings to a known tangent, and asserts the ghost's
+first segment matches the post-release velocity within a small angle. Releasing clears the ghost
+on that tick. The ghost does not add speed and does not steer the body.
+
+**Mistakes.** Steering the victim onto the ghost after release. Drawing a homing line that bends
+toward a target the player did not create. Showing the ghost for heavy anchors, where the player
+is the one who moves. Leaving it up after the cut. Drawing it in screen space so it lies at the
+wrong depth. Using it as an autopilot.
+
+**Files.** The Massline presentation and the throw solver's read-only exit velocity. Do not change
+release impulse.
+
+#### F2 — The rope sings
+
+**What.** A continuous tone while a line is taut. Pitch and loudness follow load: slack is quiet
+and low, a hard swing climbs, the cut is the snap that already exists. One voice. It ducks under
+weapons, it does not stack a second melody.
+
+**Why it's fun.** The eye is on the body you are about to throw. The ear should say "now." A
+rising tone is how you learn a swing without staring at a number. The snap on release is the
+joke landing.
+
+**Done when.** A fixture drives three loads and asserts the playing cue's pitch is strictly
+increasing, and that silence returns within a tick of release. The snap cue still fires.
+
+**Mistakes.** A numeric load label instead of the tone. A loop that ignores load and just hums.
+Restarting the sample every tick so it crackles. Playing it for every NPC tether in a swarm until
+the mix is a chord. Cutting the tone when the Windows motion setting is on; this is information,
+and it stays under reduced motion as a quieter tone, not as silence.
+
+**Files.** `src/audio/` and the tether load value it already publishes. Do not retune the rope's
+break point. There is no break point to add.
+
+#### F3 — The opening trio fits in one well
+
+**What.** The first pirate group in the opening raid spawns inside one gravity-well diameter of
+each other, and inside the composed frame from A5. They are still three ships with mass. They are
+not a stacked spawn on one point.
+
+**Why it's fun.** A well, a shove, and a throw are jokes about neighbors. Three ships at gun range
+but hundreds of units apart are three duels. Three ships who can be gathered are one trick. This
+is the difference between a shooter encounter and a SpaceFace encounter.
+
+**Done when.** The A1 fixture, once it exists, also asserts the pairwise distance of the opening
+raiders is below the starter well's diameter and above a hull length. If A1 is not in yet, this
+row waits. Do not invent a second opening encounter.
+
+**Mistakes.** Spawning them on the same coordinate so they explode apart. Spawning them "in a
+well" by secretly pulling them together after spawn. Shrinking the well until only this one group
+fits and every later fight breaks. Moving the player to the group instead of the group to the
+player's neighborhood.
+
+**Files.** The opening encounter authored for A1. No change to well force, well radius, or weapon
+damage.
+
+#### F4 — The pod is the color of what is inside it
+
+**What.** A loose cargo pod's body color comes from its commodity: one readable hue per cargo
+family (ore, food, contraband, and the rest of the live families). The hue is on the pod, stable
+for the life of that pod, and the same hue the station uses for that commodity.
+
+**Why it's fun.** Stealing is a decision only if you can see the prize. A white crate is a
+pickup. A green food pod next to a hot contraband pod is a choice, and a choice you can make at
+speed. It also makes a spilled hold readable after a crash: the wreck tells you what was lost.
+
+**Done when.** A fixture spills two commodities and asserts the pod presentation ids differ and
+match the commodity table. A third pod of the same commodity matches the first.
+
+**Mistakes.** Tinting the whole ship. Randomizing color per spawn so the code lies. Encoding
+price in the color. Adding a floating text label and calling the color done. Using red versus
+green as the only pair.
+
+**Files.** Cargo pod presentation and the commodity color table. Do not change prices or pod mass.
+
+#### F5 — A near miss talks
+
+**What.** When a thrown or shoved body passes within a short distance of a civilian or a patrol
+and does not hit them, that witness emits one bark. One bark per pass, not per frame. The bark
+names the danger in plain words.
+
+**Why it's fun.** The fantasy includes "oh no, almost." A silent near miss is a geometry event.
+A shout makes the player grin and sets up the real hit, which A4 and the law already know how to
+punish. The world feels awake without taking the shot for you.
+
+**Done when.** A fixture throws a light hull past a civilian inside the bark radius and asserts
+exactly one bark. A second pass after the cooldown may bark again. A hit does not also fire the
+near-miss bark.
+
+**Mistakes.** Barking every tick of a long fly-by. Barking for the player's own hull just flying
+through traffic. Using the bark as a tutorial popup with a button. Applying heat or a fine on the
+miss. Sharing B2's files in the same breath; if `barkDirector.js` is already being edited, wait.
+
+**Files.** `src/systems/barkDirector.js` and the throw/shove receipt. Do not edit law heat.
+
+#### F6 — Credit chips can be thrown
+
+**What.** The credit chips that already tumble out of a kill are Massline-latchable bodies for a
+short life. Latch, swing, release. They still pay out when collected. They are light.
+
+**Why it's fun.** Money that is also a projectile is the game's joke about greed. You can bat a
+chip into a scrap field, or tow a fat chip out of a fight you do not want to stay in. It makes
+the kill's reward part of the physics instead of a vacuum animation.
+
+**Done when.** A fixture kills a light hostile, latches one chip, releases it, and asserts the
+chip's speed changed and the credit amount is unchanged until collection.
+
+**Mistakes.** Letting the chip duplicate credits when latched. Making chips heavy enough to swing
+the player. Auto-collecting the moment the rope touches them so the throw is impossible. Persisting
+every chip in the save.
+
+**Files.** The chip body and the Massline target filter. Do not change kill-reward amounts.
+
+#### F7 — A hot arrival spills the bay
+
+**What.** Docking always works. If the player's speed at the dock threshold is above a published
+cruise fraction, one or two pods from the hold appear as loose bodies in the bay. Below that
+speed, the hold stays shut. The pods are the F4 bodies. The player can rope them back or sell
+them if they pick them up.
+
+**Why it's fun.** Coming in hot is a story, not a failure screen. The bay becomes a tiny physics
+puzzle you made yourself. Clean flying is rewarded with convenience. Reckless flying is rewarded
+with a mess you can still profit from. Both are success.
+
+**Done when.** A fixture docks above the threshold and asserts a pod spawned and the hold count
+dropped by that amount. A fixture docks below the threshold and asserts the hold is unchanged.
+Neither fixture sets a fail flag.
+
+**Mistakes.** Refusing the dock. Damaging the hull for speed. Spilling the entire hold. Spilling
+pods outside the station where they delete. Adding a "docking grade" letter. Applying this to
+NPC docks.
+
+**Files.** The dock transition and cargo spill. Do not add a minigame or a timer.
+
+#### F8 — The search is a volume
+
+**What.** When the player is WANTED, the search is a radius already in the heat system, drawn as
+patrol lights or a faint ring in the world, centered on the last witnessed crime or the searching
+patrol. Flying outside it and staying out drops a tier by the rule heat already uses. The HUD
+meter may remain. The volume is the truth.
+
+**Why it's fun.** Escaping a number is homework. Escaping a ring of lights you can see is a
+flight. Players will skim the edge on purpose, which is a skill, and they will understand why a
+patrol turned around.
+
+**Done when.** A fixture sets heat above the wanted line, asserts a search volume exists at the
+authored radius, moves the player outside it for the existing clear time, and asserts the tier
+dropped. No new heat math.
+
+**Mistakes.** A second heat system. A wall at the radius. Damage for being inside. Hiding the
+volume in a menu. Drawing the ring in HUD pixels so it does not match the patrol's actual range.
+Editing A4's chase assignment in the same change.
+
+**Files.** Heat's existing radius, and the presentation that reads it. `lawSecurity.js` only if
+the volume has no reader and A4's editor is done.
+
+#### F9 — A chain holds a beat
+
+**What.** When a player shove or throw causes a third body to be hit within a short window, the
+existing hit-stop dips once more, long enough to see the chain, then time resumes. It fires once
+per chain. It is not a resource.
+
+**Why it's fun.** The best moment in this game is three bodies agreeing. If time does not
+acknowledge it, the player finds out from a log line. A single dip is the game pointing at the
+joke they just made. Hades and Rocket League both freeze the frame on the event that mattered.
+
+**Done when.** A fixture causes a three-body contact from one player release and asserts exactly
+one extra hit-stop. A two-body hit does not get the extra dip. A second chain later does.
+
+**Mistakes.** A combo meter that decays. A player-charged bullet-time pool. Stacking the dip on
+every subsequent contact so a scrap field freezes the game. Applying it to NPC-only collisions.
+Doing this in the same edit as B5's slam curve.
+
+**Files.** `src/render/feel.js` and the collision receipt. Wait until B5 is committed.
+
+#### F10 — The three starters are jobs
+
+**What.** New game offers the three starter hulls that already exist in `newGameDefaults`. Each
+card says what the hull is for in the air: the one that anchors, the one that throws, the one
+that lives on the line. The stats on the card are mass, thrust, and line load in words, matching
+the live derived numbers.
+
+**Why it's fun.** A starter is a playstyle. "Interceptor" is nothing. "This one can swing a
+hauler" is a reason to pick it and a reason to learn the rope. The player feels the choice in
+the first minute because the hull actually differs.
+
+**Done when.** A fixture reads the three new-game offers and asserts three different hull ids,
+three non-empty verb sentences, and that each sentence's mass or line number matches that hull's
+derived stats. Selecting one equips that hull on the default route.
+
+**Mistakes.** Adding a fourth hull. Rewriting handling. Locking two of them behind credits.
+Describing them with DPS. Changing the 47-A default hull used by goldens.
+
+**Files.** `src/data/newGameDefaults.js` and the new-game screen. Do not edit `ships.js` handling.
+
+#### F11 — The winner flies off with the pod
+
+**What.** If the opening raiders take the hauler's cargo and the player does not stop them, the
+raider that holds the pod flies a real route to a fence or a drop point in-sector. The pod is on
+that ship. Catching or killing them spills it. They do not despawn at a timer while the pod is
+unrecovered.
+
+**Why it's fun.** A raid you ignored should still change the sky. Chasing a thief who has your
+prize is a second scene with the same verbs: catch, tether, spill, run. It is the "so then" the
+description asks for. A raid that deletes itself when you look away is a cutscene.
+
+**Done when.** A fixture lets the raid resolve in the pirates' favor and asserts the pod's host
+id is the fleeing raider, the raider's destination is a finite in-sector point, and destroying
+that raider spills the pod. A second fixture where the player spills the pod first asserts the
+raiders do not grow a new pod.
+
+**Mistakes.** A mission-fail flag. Despawning the raider at the map edge with the loot. A
+scripted cutscene of the getaway. Making the raider immortal until a trigger. Spawning this on
+top of a half-finished A1 encounter; extend A1, do not add encounter number 016 for the same beat.
+
+**Files.** The A1 encounter and the cargo-custody handoff. Start only after A1 is committed.
+
+#### F12 — The mining beam opens a pod
+
+**What.** The starter beam never locks, which is already law. Aimed at a cargo pod, the same beam
+splits that pod and spills its commodity as F4 bodies. Aimed at a rock, it mines, as now. It does
+not consume ammo and it does not overheat into a lock.
+
+**Why it's fun.** One tool, two crimes. The player who already learned "hold the beam on the
+shiny thing" can open a stolen pod without a new button. The rope remains how you throw the pod.
+The beam is how you open it. That split is easy to teach and hard to forget.
+
+**Done when.** A fixture aims the beam at a pod for a bounded time and asserts the pod is gone
+and its commodity exists as loose bodies. A fixture aims at a rock and asserts ore still arrives
+and the rock path did not gain a lockout.
+
+**Mistakes.** A second fire mode. A heat lock "just for pods." Instantly vaporizing the pod with
+no spill. Letting the beam open stations, ships, or wrecks in this row. Changing mining yield.
+
+**Files.** `src/systems/mining.js` and the pod split. Do not edit the rope.
+
+#### F13 — One machine in the first field
+
+**What.** The starter field contains one authored machine: a cracker, a furnace mouth, or a mass
+driver. It is a body with a mouth. A ship or a pod that enters the mouth is thrown or broken by
+the machine's existing force, and the result is loot or a fast exit vector. It runs whether or
+not the player is on a mission.
+
+**Why it's fun.** The first place you mine should also be the first place you can feed an enemy
+to the scenery. That is the description's "environment is a weapon," delivered once, beautifully,
+instead of as a list of later hazards. Players will convoy a pirate into it on purpose.
+
+**Done when.** A fixture pushes a light hull into the mouth and asserts a velocity change or a
+break, plus a loot or debris receipt. The machine's position is inside the starter field's
+radius. It does not target the player by itself.
+
+**Mistakes.** A damage volume with no visible mouth. A scripted instant-kill on enter. A turret.
+Building a new hazard system when a placed force volume will do. Putting it a sector away from
+the starter rocks.
+
+**Files.** Starter-field placement and the existing force or crusher path. Do not build PQ-027's
+whole catalog in this row.
+
+#### F14 — One hauler is worth catching
+
+**What.** Hitchhiking is already on in the production profile and off on the legacy 47-A profile.
+Leave 47-A alone. In the opening, one live hauler is heavier than the player, has a destination,
+and can be latched. While latched, the player is towed. On release, the player keeps the speed
+they had, which earned-speed already does. A single cue, the F2 tone or a one-word comms, marks
+the tow. No new force.
+
+**Why it's fun.** Catching a ride is the rope used for travel, which is half of why the rope
+exists. A hauler going somewhere interesting turns the map into a moving train you can grab.
+Players who learn it cross the sector faster than anyone who only holds thrust, and they feel
+clever.
+
+**Done when.** A production-profile fixture latches that hauler, asserts the player's speed rises
+toward the hauler's without the player's thrust, and asserts speed after release stays at the
+earned-speed rule. The 47-A feature pin stays `hitchhiking: false`.
+
+**Mistakes.** Flipping the 47-A flag and re-recording goldens. A second tow mode. A speed boost
+that ignores mass. Auto-latch when you fly near traffic. Killing the player's control for the
+duration of the tow.
+
+**Files.** Opening traffic composition and the existing hitchhiking path. Do not edit
+`runtimeProfiles.js` legacy pins.
+
+#### F15 — A few wrecks are still there tomorrow
+
+**What.** Each sector remembers a capped list of the player's significant wrecks: position, hull
+family, and commodity hint. Cap is small and constant. Loading the sector respawns those wrecks
+as the durable wrecks the game already has. Older wrecks past the cap drop off. This is the same
+cap spirit as D6.
+
+**Why it's fun.** A world that forgets your explosion forgets your story. Coming back to the
+hauler you cracked, still lying on the lane, is how the game becomes "my sector." The cap keeps
+it a memory, not a junkyard that costs a frame.
+
+**Done when.** A fixture destroys two ships, saves, loads, and asserts both wrecks exist near
+their death positions. A fixture past the cap asserts the count equals the cap and the save's
+wreck bytes do not grow on a third, fourth, and fifth kill.
+
+**Mistakes.** Unbounded history. Restoring wrecks as live hostile ships. Restoring them inside
+the player. A new wreck system beside `aftermathWrecks`. Skipping the cap because "it's just a
+few."
+
+**Files.** `src/systems/aftermathWrecks.js` and the save slice that sector already owns. Do not
+raise the far-actor cap.
+
+#### F16 — The route is a ribbon
+
+**What.** When the player has a flight destination, a faint ribbon exists in the world along the
+path the autopilot already uses. It is dimmer than engines and muzzles. Flying along it is
+ordinary flight. Releasing a hitchhike or a swing while on the ribbon does not snap you onto it.
+
+**Why it's fun.** A HUD marker is a hint. A line in space is a piece of track you can play with:
+sling along it, cut across it, watch a hauler follow it. The map and the sky agree, which is how
+a place becomes understandable at speed.
+
+**Done when.** A fixture sets a destination and asserts a ribbon polyline exists in world space
+from the player toward that point, with a max brightness below the engine plume's authored
+intensity. Clearing the destination removes the ribbon. The ribbon applies no force.
+
+**Mistakes.** A rail the ship sticks to. A bright ribbon that hides targets. Drawing it only on
+the map UI and claiming the world has it. Rebuilding pathfinding. Making it mandatory to follow.
+
+**Files.** Route presentation. Do not edit the autopilot's steering.
+
+#### F17 — Repair is staying attached
+
+**What.** A disabled friendly or a derelict the player is allowed to help repairs while the
+player's rope stays taut on it, or while a live tender stays taut on it. Hull ticks back up only
+during the latch. Break the latch and progress stops where it is. Finishing the repair frees the
+ship. No reload, no fail timer.
+
+**Why it's fun.** Rescue becomes a flight problem: hold the line, drag them out of the rocks,
+don't get hit. Letting go is a choice with a visible cost, not a game over. The tender in the
+description finally does its job as a body.
+
+**Done when.** A fixture latches a disabled hull, advances time, and asserts hull increased. A
+fixture that releases early asserts hull froze at the partial value and the ship is still
+disabled. A fixture that holds to full asserts the ship can thrust again.
+
+**Mistakes.** A repair bar in a menu. A timer that fails the mission. Healing any enemy you
+tether. Healing the player for free by tethering a rock. Instant full repair on contact.
+
+**Files.** The tether latch receipt and the disabled-ship state. Do not add a med-beam.
+
+### 22.9 Wave G — little quality
+
+These are the small jobs. One row is one agent and one sitting. Take any row whose files are not
+dirty and not listed on an open Wave A–F row. Do not widen the row. Close on the fixture. If the
+fixture already passes, skip.
+
+> **Rows G1, G3, G5, G7, G8, G12, G13 and G14 (what the flight HUD and the screens show) are CLAIMED
+> 2026-09-26 by the ORRERY frontend overhaul lane** — do not take them; the lane lands them in the
+> HUD pass ([`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md`](design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md)).
+>
+> **The non-ORRERY G-rows are verified landed (2026-10-04)** — each exists in code with a green
+> fixture: G2 `tether:latchDenied` routes to the `sfx_massline_deny` voice (combatVerbCues →
+> minimalActionAudio; `wave-g2-latch-deny-cue`); G4 `offscreenShooterMarker` (`src/ui/threatHalo.js:315`)
+> drives the offscreen `sf-tell` directional chip — a screen-edge *marker*, not an arc: edge arcs are
+> rejected by the non-diegetic HUD law (`hud.js:1913`; `wave-g4-offscreen-threat`); G6 impulse impacts
+> pick cone/sheet families off the hit axis with shield-vs-hull shape ids (`vfx.js` `hitRead.shapeId`;
+> `vfx-impulse-cone`); G9 `recallObjective` is bound and live (`bindings.js:42` → `input.js:359` →
+> `hud.js:1851` → `objectiveRecall.js`; `wave-g9-objective-recall`); G10 CV-EAR-1 engine voices answer
+> throttle inside the authored windows (`throttleAnswer.js` + `audioSystem.js`; `wave-g10-throttle-answer`,
+> `cv-ear-1-elementary-voices`); G11 `fb-module-dead-fields` walks advertised card stats against live
+> consumers; G15 prompts resolve the live binding (`promptLabel` `bindings.js:141`, `shelfVerbLine`
+> `hudAttention.js:302`; `help-gamepad-rebind`). Wave G has no open non-ORRERY rows.
+
+`PQ-155.04` already owns in-flight mining skill. A clean aim pays more ore than a sloppy aim, at
+least 2× on the same rock. That gradient is yield. The starter beam still never locks. A vent
+bonus may pay extra. A pegged gauge must not shut the tool off. Do not take G-rows in
+`src/systems/mining.js` while that leaf is in progress.
+
+| Id | What the player gets | Why it is fun | Done when | Mistakes that fail the row | Files |
+|---|---|---|---|---|---|
+| **G1** | The Massline bracket says one state: CAN, OUT OF RANGE, or DENIED, plus a three-word reason when denied. The words sit on the bracket, never on the player's hull. | You learn the rope by looking at the thing you want, not by reading a paragraph under your ship. | Fixture cycles range, a valid target, and a denied target. The three strings are distinct. No bracket node overlaps the player hull's screen rect. | A sentence. A tutorial modal. A state that lies (CAN while the latch will fail). Drawing it in world units that drift off the target. | Massline HUD only. Not the throw solver. |
+| **G2** | A denied latch has its own short sound, different from the taut tone and the release snap. | A silent refusal feels like the button is broken. A dull tick feels like the world said no. | Fixture: denied attempt fires one cue id; a successful latch fires a different id; neither fires on hover. | Reusing the hit sound. Playing it every frame while you hold the button on a bad target. | `src/audio/` cue table and the deny receipt. Not F2's continuous tone in the same edit. |
+| **G3** | A shield hit, a hull hit, a shove, and a dock do not appear as sentences on screen. | The picture and the sound already happened. A caption in the middle of the fight is the game talking over itself. | Fixture emits those four events and asserts the toast list gained nothing. Law and objectives may still use text. | Deleting the objective line. Routing the ban through a hidden log the player still sees. | The toast router. Not `hudAttention.js` if another row has it. |
+| **G4** | A hostile that can shoot the player and is outside the frame gets one directional marker on the screen edge. It dies with the hostile. | Off-screen damage feels like a bug. An edge mark makes it a bearing. | Fixture places an attacker outside the composed frame and asserts one marker whose side matches the attacker's quadrant. An in-frame attacker gets none. | A marker per projectile. A marker that covers the center. A second radar. | HUD threat marker. Not `weapons.js` (that is A5). |
+| **G5** | Primary labels are fully visible: title continue line, pilot name, dock status, station mission title, map route control. | Clipped words are how a game looks unfinished in the first five screens. | A layout fixture at 1280×720 and 1920×1080 asserts each named node's text is fully inside its box (`scrollWidth` ≤ client width, no mid-word ellipsis on those nodes). | Shrinking the font until it passes and becomes unreadable. Hiding the label. | The one screen that fails. One screen per agent. |
+| **G6** | An impulse hit reads as a cone along the hit direction. A shield tick and a hull hit are different shapes. | You can tell what you did to the target without a damage number. Direction is the skill. | Fixture: the impact descriptor's axis matches the impulse vector within a small angle, and shield versus hull select different shape ids. | A camera-facing soft disc. A sphere burst for both. More particles instead of a different shape. | `src/render/vfx.js` or the impact presenter. Not a new family. |
+| **G7** | The contacts list stays hidden until the player locks something. | A list of names during the first minute is homework. The lock is when the list becomes useful. | Fixture: before any lock, the list is not in the flight HUD tree; after a lock, it is. | Removing target lock. Showing the list at half opacity and calling it hidden. | Flight HUD contacts only. |
+| **G8** | Sector law is a single badge until the law changes, then one line, then the badge again. | Three sentences of law during a fight are a poster. A badge you already understand is enough, and the change is the moment that matters. | Fixture: steady law renders one badge node; a law-change event reveals one line for a bounded time; the line retires. | Deleting the law. Leaving the full panel up. A modal that must be clicked. | Law HUD presenter. Not `lawSecurity.js` if A4 has it. |
+| **G9** | The current objective can be brought back with one key after it has left the screen. | Players dismiss text and then feel lost. One key is the whole recovery. | Fixture dismisses the objective and asserts the bound key restores the same string. | A new tutorial. A key that opens the whole mission log on top of flight. | Objective HUD and the binding map. |
+| **G10** | Thrust audio and the plume follow the throttle. Zero throttle is silence and a dark engine within a quarter second. Full throttle is the loud cue and a grown plume within 120 ms. | The ship should answer the hand on the same breath. A plume that lags, or a engine that moans at idle, makes the hull feel like a recording. | Fixture steps throttle 0 → 1 → 0 and asserts cue gain and plume parameter cross the authored thresholds inside those windows. | A looping engine at idle. A plume that only changes color. Restarting the sample every tick. | Thruster audio and plume parameter. Not flight thrust curves. |
+| **G11** | The module card and the fitting screen show no number the sim does not read. | A dead stat is a lie, and players build around lies. | Fixture walks advertised numeric fields on the starter cards and asserts each has a live consumer in the derived-stat or verb audit. A planted dead field fails. | Deleting real stats to go green. Hiding the whole card. | Outfitting presentation. Not `modules.js` balance. |
+| **G12** | The dock prompt, the speed readout, and the weapon name do not occupy the same pixels. | Overlapping instruments look like a web page that failed to load. Each number needs a place. | Fixture at both resolutions asserts the three nodes' boxes are disjoint. | Moving them off-screen. Combining them into one cramped string. | Dock HUD layout only. |
+| **G13** | The player's own hull is not a caption surface. No payload, route, or law string is anchored to the ship sprite. | The hull is the thing you steer. Text on it hides the turn and the shot. | Fixture asserts no HUD string node is parented to the player billboard or placed within a hull-length of the player screen point, except the bracket from G1. | Removing the bracket too. Pinning the text to the nose "just above" so it still covers the ship at zoom. | HUD anchors. |
+| **G14** | A selected target's bracket is on that target. Friendly, hostile, and cargo use three shapes, not three sentences. | You should know what you are about to rope before you press the button. Shape is faster than a word. | Fixture locks a hostile, a civilian, and a pod, and asserts three bracket shape ids at those entities' positions. | Color-only distinction. A floating name as the only difference. | Target bracket. Shares no file with G1 if both are in progress; otherwise one agent may take G1 and G14 together. |
+| **G15** | Help text for a verb shows the key the player actually bound. | A prompt that says the wrong key is a defect, not flavor. | Fixture rebinds rope and shove and asserts the flight prompt strings contain the new labels and not the old defaults. | Hardcoding the new keys. Only fixing one screen. | Binding-label helper and the flight prompts. Not the pad map (E1 / `PQ-164.04`). |
+
+### 22.10 Order
+
+Wave A first, and its rows in parallel where the file lists differ. Wave D in parallel with Wave A
+on the quiet machine and on the perf files, which do not include economy, encounters, or weapons.
+Wave B starts when A6's scenario is committed, and its rows run in parallel by the file lists.
+Wave C and Wave E start as soon as their files are free; they do not wait on a person. C7 waits
+on the drop folder, not on a play session.
+
+Wave F starts when the row's files are free. F3 waits on A1. F11 waits on A1. F9 waits on B5.
+F14 does not touch the legacy 47-A profile. Otherwise Wave F does not wait on a play session.
+
+Wave G is the little-quality pile. Any G row may be taken immediately when its files are free.
+One row per agent. G6 waits if B5 holds `feel.js`. G2 waits if C5 or F2 holds `src/audio/`.
+Mining skill is `PQ-155.04`, not a G row, and it must not lock the beam. Twin-stick flight is
+`PQ-164.04`. The physics lab is B11. The integrated-graphics preset is E8.
+
+### 22.11 Not scheduled
+
+A scarred personal ship. An empire management screen. A starter-tool limit. A second renderer.
+Those are refusals, not deferred rows.
+
+**Owner ruling, 2026-10-21:** loot rarity and a dialogue campaign are *allowed* — they serve a
+purpose nothing else serves easily, and their earlier refusal was an agent rule, not the owner's.
+Enemies that tether, throw, or reshape the environment stay *rare and carefully authored* (one
+specialist at a time, telegraphed): a common enemy with physics weapons is a chaos vector — the
+screen fills with flying bodies and things break.
+
+## 23. Superpower campaigns — ADMITTED 2026-09-22
+
+This is the work that needs taste, world knowledge, or a system the planner should not finish.
+Each campaign is a feeling. The implementation is yours. A better foundation than this section is
+the success, not a miss.
+
+**Since 2026-09-24 these campaigns live inside the §27 lanes** — each lane brief names which
+campaigns it absorbs, and the campaign text below remains the detailed wording for that part of
+the lane. A lane session takes the campaign's spirit over its exact letter: the feeling is the
+assignment; the lane's open-ended review is how you find the rest of it.
+
+The game already simulates more than the session shows. Convergence campaigns make that simulation
+feel like one finished game. Creative campaigns invent a new situation out of bodies and verbs
+that already exist. Both are aimed at the fantasy in [`design/VISION.md`](./design/VISION.md):
+a fast, colorful, physical sandbox where a simple action keeps becoming a bigger story, inside a
+world that was already working when you arrived.
+
+### 23.0 How to take one
+
+1. Read the feeling. Then read the live owners it names, and the ordinary route a stranger hits.
+   If the feeling is already true there, skip the campaign and say so.
+2. Invent the mechanism. Do not split the feeling into a new packet, a fixture list, or a catalog
+   line before a stranger can feel the first slice.
+3. One campaign at a time. One slice is a commit the player can perceive. The campaign stays open
+   until the feeling is ordinary on the default route.
+4. Skip a campaign whose owners a live `NOW.md` row is already editing.
+5. A grunt-sized lie you trip over can be fixed on the way, or written into
+   [`design/program/INFERENCE_IDEAS.md`](./design/program/INFERENCE_IDEAS.md) as a specific line.
+   It is not a reason to abandon the feeling.
+6. The remaster machine does not take these. It fills `vm-drop/`. You may art-direct the live
+   picture without waiting for a drop.
+7. Feel guts still obey [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md).
+   A campaign that answers "the ship ignores you" with content has failed.
+8. Laws that every campaign inherits: one game path; no second physics, cargo, heat, or AI; no
+   drag, no momentum clamp, no NPC gyro; starter tools stay on; no overheat lock, no ammo
+   starvation, no tool that quits; no camera-facing soft card as a designed object; nothing on
+   the live glass loses its mesh; do not buy a frame by turning the picture off; reduced motion
+   keeps the facts; failure mutates the situation instead of reloading it.
+9. Outside resources are already in the tree. Actualize them with the tasks in §23.4.
+   Do not open a search for a substitute. Unreal source stays out.
+
+A thin version is a label, a tint, a toast, a new meter, or a second system beside the one that
+already computes the thing. Connect the listener. Then make it beautiful. A private system that
+duplicates a better library is the same kind of thin.
+
+**Order.** If the complaint is the picture, start at CV-GLASS or CV-PAINT. If the complaint is
+the session, start at CV-THROW or CV-DAY. Creative campaigns start when you can point at a place
+that already has bodies and the feeling is still a rumor. Take the first open campaign in that
+spirit whose owners are free.
+
+### 23.1 Convergence — the game that is already here, made one thing
+
+These converge on the polished game. They do not add a genre.
+
+#### CV-GLASS — The picture arrives with you
+
+**The feeling.** Whatever is on the glass is the real object, at the quality of the thing next
+to it, and it was ready before it crossed into view. Flying away, the world stays solid in the
+head even while the machine lets go of what it no longer has to draw. Nothing pops into being
+on screen. Nothing winks out while you are still looking at it. A lock is never sitting on
+empty air. Far traffic may be quieter. It may not become a cheaper species, a box, or a blank.
+
+**What is lying.** Residency, submit, and the asteroid pools already try to follow the table.
+The historical failures are still the right fear: rocks vanishing for the session, bodies
+popping because the picture and the budget disagreed about what "on screen" meant, a dock or
+a lock with nothing in it, a wreck you just made sitting invisible while the opening hold
+parks work. Off-screen cost and on-screen lateness have not been one calibrated story.
+
+**You invent.** The system that makes identity, residency, and the live camera agree — including
+how far work stays cheap without ever showing that cheapness on the glass. Radii in the current
+policy are evidence, not the design. The outside piece for a far hull is `meshoptimizer` simplify,
+already in the repo, with a small error so the result is still that ship. The outside piece for a
+frame rendered under resolution is FidelityFX CAS, on the canvas only. Both are named in
+[`docs/OPEN_SOURCE_INTAKE.md`](./docs/OPEN_SOURCE_INTAKE.md) §0. A bounds library does not fix a pop.
+
+**Read.** `src/render/tabletopPolicy.js`, `src/render/entityMeshVisibility.js`,
+`src/render/authoredAdmissionPolicy.js`, `src/render/assetResidency.js`,
+`src/render/asteroidInstancePool.js`, `src/render/renderer.js`, `docs/COMMON_BUGS.md` on
+pop-in and unpackaged hulls. The known retired-buffer bug stays a §21 / `PQ-210.03` fix if
+that is the only hole. This campaign is the class of hole.
+
+**Thin.** Another prefetch constant. A fade that hides a missing mesh. A silhouette proxy that
+swaps the body. Cutting bloom, shadows, or draw distance and calling the pop fixed.
+
+#### CV-PAINT — Industrial machinery at arcade energy
+
+**The feeling.** One still frame, paused, and a stranger can name the job of the thing they
+are looking at. The world is dark so the action can explode. Hulls are painted working
+vessels, not toy plastic, not children's animation, not gray sci-fi, not a tasteful navy kit
+with a cyan rim. Ceramics, rubber, glass, paint, and exposed mechanism stay different
+substances. Weapons and thrust are the brightest events. Faction is posture and theft and
+silhouette, not a recolor of the same hull. From the chase camera — overhead, not a beauty
+orbit — occupation reads as light, motion, and shape. Detail the camera cannot see does not
+count.
+
+**What is lying.** The player, the Massline, and some Helios places are authored. NPC plumes,
+the mining beam, wreck fallbacks, common rocks, and several hulls still read as a different
+product. Some sectors are a tint on the same sky. The standard already says "think painted
+working vessels under warm starlight." The live picture does not yet obey it as one culture.
+
+**You invent.** The art direction that makes every family — hull, rock, station, wreck, tool,
+sky, impact — look like the same game without chasing hyperreal materials. Hyperreal is not
+the goal. Beautiful, readable, and physical is. The source maps and the lighting environment to
+start from are named in [`docs/OPEN_SOURCE_INTAKE.md`](./docs/OPEN_SOURCE_INTAKE.md) §0: the
+foundry HDRI as light, not as the sky, and the painted-metal, rubber, and tile sets graded into
+the illustrated families. A raw photo on a hull is a failed slice.
+
+**Read.** `design/VISION.md` (the visual fantasy), `docs/visual-assets/ILLUSTRATED_GRAPHICS_STANDARD.md`,
+`docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`, `src/render/illustratedSurface.js`,
+`src/render/materialLibrary.js`, `src/render/thruster/`, `src/data/sectorVisualProfiles.js`.
+Fleet remaster stays `PQ-050` / `PQ-193` and the other computer. You unify what the chase
+camera already shows.
+
+**Thin.** A global color grade. Scratch noise on a bland object. Glow instead of a substance.
+A caption that says "miner." Recoloring one GLB and calling the faction done.
+
+#### CV-HAND — The hull answers the hand
+
+**The feeling.** Throttle, plume, brake, rope, shove, and fire are one breath. The picture,
+the sound, and the instrument agree inside a fraction of a second. Zero is silence and a dark
+engine. A hard swing is a rising voice. A denied latch feels like the world said no, not like
+a dead button. A hit has a direction you can see. Nothing in that breath is a menu click.
+
+**What is lying.** Pieces of this exist — plumes, hit-stop, brackets, some recipes — and they
+do not share a clock. Several weapons still look frozen at the muzzle. Several cues collapse
+to the starter gun or to a UI tick. The hand moves and the ship answers late, or answers with
+the wrong species of effect.
+
+**You invent.** The attention system: which channel carries the verb, how the others duck, how
+reduced motion keeps the fact when the juice drops. §22 Wave G names some of the lies one at
+a time. This campaign is the breath they belong to. The rope and the engine, because they follow
+a live number, are Elementary Audio. One-shots that are simply missing come from the Sonniss
+picks or a single Kenney file, as named in
+[`docs/OPEN_SOURCE_INTAKE.md`](./docs/OPEN_SOURCE_INTAKE.md) §0.
+
+**Read.** `src/render/feel.js`, `src/render/shipMicroMotion.js`, `src/render/forceLanguage/`,
+`src/audio/audioSystem.js`, `src/ui/hudBrackets.js`. Do not retune thrust curves to fake the
+answer.
+
+**Thin.** More particles. A caption. Camera shake with no moved mass. A loop that hums at idle.
+
+#### CV-THROW — A throw is a decision you made
+
+**The feeling.** You understand the line, you wait, you cut, and the body goes where your cut
+sent it. Afterward it looks complicated. In the moment it was a few honest rules. The game
+does not secretly fly the cool move. A light hull is something you can turn into a projectile.
+A heavy hull is something you swing around. Missing is allowed, and missing is readable.
+
+**What is lying.** Fixed: the solver no longer steers the victim — the release is ballistic,
+the prediction only predicts, and a miss lands as a miss. What remains is learnability: the
+release read names the swing (`tether:releaseRated`) and the preview arc draws the solver's
+predicted ray, but nothing yet teaches a new hand *why* one cut was a razor and the next a
+tow.
+
+**You invent.** How a player learns the cut — by eye, by ear, by the body — without a homing
+aid and without a tutorial modal. Prediction is welcome if it never becomes steering.
+
+**Read.** `design/VISION.md` on the Massline, `src/systems/masslineThrow.js`,
+`src/systems/tetherGameplay.js`, `src/ui/masslineHud.js`. Release impulse is not yours to
+nerf. There is no break point to add.
+
+**Thin.** A guided shot. A damage buff on release. A diamond that auto-scores. Teaching it
+with a paragraph.
+
+#### CV-AMMO — Lights are ammunition, heavies are terrain
+
+**The feeling.** A small ship is a positioning problem you can end with a shove, a well, or a
+throw. A medium ship asks for commitment. A heavy ship changes the room. A specialist ruins
+one plan — the tether, the field, the anchor, the cargo — and does not also ruin the other
+three by having more health. You grin because you got to be unfair in a way you earned.
+Swarm and the adventure opening are the same toy at two densities.
+
+**What is lying.** The verbs exist. The opening still spreads bodies out to gun range and
+then deletes them. Fields are on the keyboard and untaught. The roster's physical problems
+live in data more than in the first fights you actually get.
+
+**You invent.** How a fight becomes a cluster of bodies the sandbox can abuse, in adventure
+and in the Crucible, without adding hit points or a combo meter. Detection of stunts is not
+the feeling. The wreck you can still use is.
+
+**Read.** `src/systems/fields.js`, `src/systems/stuntGrammar.js`, `src/ai/specialistPlans.js`,
+`src/systems/survivalSwarm.js`, the opening encounter. Do not answer this with more enemy types.
+
+**Thin.** A combo counter. More wasps at the same spacing. A specialist that is only a DPS skin.
+
+#### CV-DAY — You arrived in the middle of their day
+
+**The feeling.** A miner is on a seam. Material is coming off it. A hauler is coming or
+going. Someone wants that cargo. A patrol has a route. You did not press accept to make
+this true. You can interfere anywhere in the chain, or you can watch it, and the chain
+continues either way. The first hour and the tenth hour are both somebody's shift.
+
+**What is lying.** The chain is real in the sim, and it is choreographed where the player
+is not standing yet. The harbour you start in is calm water: beacons, passive traffic, a
+raid that can wait for a prompt and then despawn. Ceres already knows how a pocket works.
+Helios does not yet feel like a job in progress.
+
+**You invent.** How the opening neighbourhood shows one living chain — without a mission
+accept, without a new director, and without cloning the whole Ceres catalog onto the
+starter field. Later sectors should differ by what the job *is*, not by a density slider.
+
+**Read.** `design/VISION.md` ("the world is not scenery"), `src/systems/traffic.js`,
+`src/systems/npcJobs.js`, `src/data/sectorActivityPockets.js`, `src/data/sectors.js`,
+`src/systems/encounterDirector.js`. §22 A1 is the measured raid. This is the shift around it.
+
+**Thin.** Decorative ships in orbit. A briefing. A second pocket system. Raising
+`trafficPerMin` and calling the place alive.
+
+#### CV-SO — Failure leaves a body with a job
+
+**The feeling.** You can tell the story in "so then." The convoy died, so there is salvage.
+The pod spilled, so someone wants it. The pirate got away, so that person can be back. You
+docked too hot, or you missed, or you hit the wrong hull, and the sky changed. Nobody
+reloaded the mission. The wreck, the price, the patrol, and the name are still out there
+when you come back, inside a cap the machine can hold.
+
+**What is lying.** Heat, witnesses, wrecks, chronicles, and prices all exist. A stranger
+still cannot fly back to one consequence and find it doing something. Timeouts delete the
+scene. A wreck is often a kit, not the ship you killed.
+
+**You invent.** How one failure becomes the next situation the same verbs can solve, and
+how the sector remembers a few of those situations without becoming a junkyard. §22 already
+measures several single beats (salvage into a sale, a search volume, wrecks tomorrow). This
+campaign is the habit: the world keeps going.
+
+**Read.** `src/systems/aftermathWrecks.js`, `src/systems/lawSecurity.js`,
+`src/systems/economy.js`, `src/systems/aceMemory.js`, `src/systems/custodyConsequences.js`.
+No new heat formula. No mission-fail flag.
+
+**Thin.** A fine. A reload. A log line. An unbounded graveyard of every kill forever.
+
+#### CV-KIT — One temperature on the glass
+
+**The feeling.** Flight, dock, map, pause, prompt, and the Crucible door are the same ship.
+Manufactured plates, one accent, smoked glass, legends you can read at a glance. Not a
+cockpit. Not a webpage. Not a second product that appears when you open the map. The live
+picture of the world stays the bright thing; the instrument sits on it and does not shout
+over it. Cheap is the current failure. Consistent, detailed, and specific is the bar.
+
+**What is lying.** Title, pause, station, and map have been pulled toward one kit, and the
+flight frame still mixes cyan glass, a warm lamp, aerospace chrome, and pill cards. Prompts
+and a few benches still look like a different game. The owner rejected a fake-approved
+folder; the picture you open is the evidence.
+
+**You invent.** The register that can survive every surface, including the ones that have a
+right to look different (a mine, a bay, a wanted state) without breaking the family. Then
+retire the registers that lose.
+
+**Read.** `docs/UI_VISUAL_ITERATION.md`, `design/archive/frontend-direction/FIELD_HARDWARE_PROGRAM.md`,
+`styles/kit.css`, `src/ui/views/hudStyles.js`, `styles/hud.css`, `styles/prompt-deck.css`.
+Shoot the real screen, open it, fix what you see, and walk the controls. A structural pin
+that is green while the screen looks cheap is not the feeling.
+
+**Thin.** A token rename. A new font. A screenshot left for later. Restoring a wood HUD or
+treating `design/archive/frontend-direction/approved/` as law.
+
+#### CV-EAR — The ear has a signature
+
+**The feeling.** You can tell the rope from the gun from the dock from the station with your
+eyes shut. A crowded fight has a mix: something can drown, something can vanish, and there
+is a silence before the thing that matters. The chain you just made is audible. The station
+is a room, not a mute menu. Reduced motion may thin the picture; it does not delete the cue
+that is information.
+
+**What is lying.** Many recipes exist. Unknown guns, doctrine phases, cargo-full, and some
+deaths collapse onto one sting or onto a menu click. The station has a room tone that never
+starts. Shove, well, and cone are visible force with a borrowed explosion.
+
+**You invent.** The mix and the identities. Not a longer sample list for its own sake. A
+stranger should learn a verb by ear the way they learn weight by hand. Continuous voices are
+Elementary. The few recordings worth keeping are the Sonniss picks in
+[`docs/OPEN_SOURCE_INTAKE.md`](./docs/OPEN_SOURCE_INTAKE.md) §0, committed as part of the game,
+not as a sound library.
+
+**Read.** `src/audio/audioSystem.js`, `src/data/audioRecipes.js`, `src/render/vfx.js`. §22 C5
+is the table of verbs that must have a cue. This is the reason those cues must not sound
+like each other.
+
+**Thin.** One new looping music track. Reusing the UI click at a different pitch and calling
+it a weapon. A caption that says what the ear should have said.
+
+#### CV-MOTION — The world is alive when nothing is exploding
+
+**The feeling.** Motion is part of the art direction. A station ring, a wreck's drift, a
+pod's tumble, a nozzle's kick, a rock being worked, a patrol's lamps: the place looks
+occupied at the chase camera before anyone shoots. When something huge happens, time and
+the camera acknowledge it once, then give you the stick back. The graphics get more
+impressive when the scene moves, not less.
+
+**What is lying.** Micro-motion, infrastructure, pickups, hit-stop, and the camera director
+are separate clocks. Some of them follow the sim. Some follow the wall clock. A silent OS
+setting has already proven it can freeze the show. Distant traffic can look dead because
+its motion was the first thing discarded, which is correct for cost and wrong for identity
+if the glass still shows that ship.
+
+**You invent.** One living-machine score: what stays in motion on the glass, what may sleep
+off it, and how a chain or a slam earns a single beat without a bullet-time pool.
+
+**Read.** `src/render/shipMicroMotion.js`, `src/render/infrastructureMotion.js`,
+`src/render/flightOverheadPresentation.js`, `src/render/feel.js`, `src/render/cameraDirector.js`.
+Do not add a player-charged slow-motion meter.
+
+**Thin.** A fan that spins for its own sake. Shake with no contact. Freezing a scrap field
+because every contact wants a close-up.
+
+#### CV-QUIET — Ordinary life, so the disruption means something
+
+**The feeling.** The game breathes. Work, travel, a weird thing on the way, a quiet wreck,
+a liner that is actually going somewhere, a patrol that is not yet angry. Then something
+goes wrong and you can see what changed. Without the ordinary minutes, every event is
+noise. Without the danger, the ordinary minutes are wallpaper. The three minutes between
+jobs should be a place, not a loading corridor.
+
+**What is lying.** Roles, lane contacts, side events, and broadcasts exist. The flight
+between them is still mostly empty glass and a marker. High-security and frontier sectors
+can both read as the same dead apron for opposite reasons.
+
+**You invent.** What a detour is worth in this universe — a body, a signal, a job already
+underway, a joke the physics tells — repeated often enough that travel has texture, rare
+enough that it stays specific. Not every oddity needs seven systems. Some of them just need
+to be memorable. See also the creative campaigns; this one is the rhythm.
+
+**Read.** `design/VISION.md` ("the game needs ordinary life", "not everything needs to be
+systemically important"), `src/systems/traffic.js`, `src/data/laneContacts.js`,
+`src/data/stationSideEvents.js`. Do not fill the gap with hostile spawns in a harbour whose
+law is that it is calm.
+
+**Thin.** Random barks on a timer. A minimap full of icons. Copy-paste ambushes on every lane.
+
+### 23.2 Creative — new situations the premise still has room for
+
+These are not a content quota. Each one is a fantasy the current world almost supports and
+does not yet play. Invent the form. Extend the owners. If the idea needs a new genre or an
+empire screen, it is the wrong idea — keep the fantasy and change the mechanism. (Loot rarity
+and dialogue are allowed — owner ruling 2026-10-21, §22.11.)
+
+The weak variation, so you do not invent a sixth copy of the same shape: early play recycles
+ambush, patrol, and convoy; trade, yard, archive, and escort are almost unique; six factions
+have a voice and no place you can return to; kill machines and weather exist and the opening
+neighbourhood never meets them; most "places" in the first sector are beacons. New work
+should be a kind the player has not already been served.
+
+#### CR-CHAIN — Verbs that braid
+
+**The feeling.** Two or three things the player can already do combine into a story they did
+not accept. Latch, shove, well, spill, hitch, jettison, tow, dock hot, feed a mouth, swing
+a planet. The anecdote writes itself: I was doing X, then Y, so I tried Z. The chain is
+visible on the glass. It can go wrong. Going wrong is still a story.
+
+**You invent.** The next chain the measured list did not already specify. §22 Wave F and B7
+already name several single toys (a ghost line, a hot dock, a thief with a pod, three set
+pieces). Do not rebuild those. Pick a braid that is still only a rumor — a volatile pod as
+a moving mine, a hitch on a working miner, a wreck towed through a search, a clothesline
+on rocks that are already there, a planet well and a field well as one curve — and make
+that braid a situation with people in it.
+
+**Read.** `src/systems/tetherGameplay.js`, `src/systems/fields.js`, `src/systems/lootShards.js`,
+`src/systems/impulseCharges.js`, `src/systems/planetRuntime.js`. No new button if an old
+button will do. No meter that runs out.
+
+**Thin.** A mission that says "hold E." A combo UI. Three more pirates on the same rock.
+
+#### CR-FEED — The scenery wants a body
+
+**The feeling.** Industry is a verb. A mouth, a breech, a sluice, a furnace, a mass driver:
+it is already working, it has a cycle you can learn, and a hull or a pod that enters it
+becomes loot, a throw, or a problem. You discover this by being curious, not by reading a
+hazard label. The first field deserves one. The rest of the map deserves ones that are not
+copies of the first.
+
+**You invent.** The next machine-as-toy, in a place that already has a job, with a visible
+mouth and a force the field kernel already understands. The single starter-field machine is
+the measured row F13. If that row is open, you may make it the first slice of this feeling.
+You do not place every Ceres jaw into Helios and call the campaign done.
+
+**Read.** `src/data/environmentalMachinery.js`, `src/systems/environmentalMachinery.js`,
+`src/systems/fields.js`, `src/data/sectorActivityPockets.js`.
+
+**Thin.** A damage sphere. A turret. A scripted instant kill. A new hazard system.
+
+#### CR-CHOIR — A neighbour, not a rumor
+
+**The feeling.** Someone in licensed space is not Concord, not a pirate, and not a shop.
+They leave wrecks, they tend the hurt, they have a place you can go back to, and they
+remember what you did with their dead. The tragedy in the core is a site, not a news item
+you cannot fly to.
+
+**You invent.** How a living congregation uses the hull and the faith that are already in
+the data. Not a new faction screen. Not a sermon. A place, a person, a physical choice.
+
+**Read.** `src/data/factions/` Choir, `src/data/uniqueWrecks.js` (`wreck_choir_tender`),
+the Helios rumor, `station_depot3`. The depot selling only fuel is a grunt line, not this
+campaign. This is the neighbour.
+
+**Thin.** A refuel pump with a new logo. A dialogue tree. A second unique-loot table.
+
+#### CR-WEIR — Law you can fly
+
+**The feeling.** Customs is geography. A corridor, a cone, a gate, a weir of lights. You
+can run it, tow through it, bribe it with a body rather than a menu, or stay inside it and
+be seen. Escaping a number is homework. Escaping a volume you can see is a flight. The
+same idea should not be copied as a toast in every sector; Helios and the Tethys gate are
+enough to prove it, and they should not feel like the same disc.
+
+**You invent.** The physical weir, using the scan and the heat radius that already exist.
+§22 F8 is the search ring for WANTED. This campaign is customs as a place, including the
+named corridor that is currently an empty disc far from where you start.
+
+**Read.** `src/systems/lawSecurity.js`, `src/systems/heat.js`, Helios customs zone,
+`station_customs`, the customs encounters. No second heat system. No wall. No damage for
+standing in the volume.
+
+**Thin.** A modal puzzle. A fine popup. A HUD ring that does not match where the patrol
+actually looks.
+
+#### CR-BERTH — Factions you can return to
+
+**The feeling.** A faction with a voice has an address. You leave, you do something that
+touches them, you come back, and the berth is different — a ship, a price, a closed door,
+a person who was not there. Archive, Pitborn, Fulfillment, Understory, Helix, and the
+layers that currently exist as one-shot encounters are the opportunity. They do not all
+need capitals. They need somewhere the memory can stand.
+
+**You invent.** One berth, completely: why it is there, who works it, what you can
+physically do, what changes if you interfere. Then it is a place in the chart, not a
+codex entry. Do not build six capitals in one slice. One honest address teaches the pattern.
+
+**Read.** `src/data/factions/`, the K1 encounter band, `src/systems/factions.js`,
+`src/data/stationContacts.js`. §22.11 still refuses an empire screen (a dialogue
+campaign is allowed since 2026-10-21). Receipts and bodies, not a relationship web UI.
+
+**Thin.** A new faction. A reputation number with no door. An encounter that despawns
+the address when the timer ends.
+
+#### CR-ANVIL — A world that is a toy
+
+**The feeling.** A planet, a well, a storm, a slag field: it is not a map stain. You can
+sling it, wait it out, harvest it, hide in it, or feed it a ship. Haulers already know
+the cycle. You learn it by joining them. Weather belongs to a job the way a sluice belongs
+to a tide. A gravity well is a curve you can play, not a disc you avoid.
+
+**You invent.** How one of the existing big places — the Tethys mass, a Vesta belt, a Veil
+lane — becomes a toy the rope and the fields already know how to use. Teach it with bodies
+that are waiting, not with a tooltip.
+
+**Read.** `src/data/authoredPlaces.js`, `src/data/planets.js`, `src/systems/planetRuntime.js`,
+weather volumes in `src/data/environmentalMachinery.js`, Cinder Sluice staging in traffic.
+Do not add a third renderer for the surface. Do not put a damage cone in the starter
+harbour and call it weather.
+
+**Thin.** A tinted fog volume. A minimap icon. A gravity number that never moves a hull.
+
+#### CR-HOLLOW — Two kinds of empty
+
+**The feeling.** A lawless bazaar and a quiet observatory must not both be a bare apron.
+Busy-illegal means ships that should not be together, docked anyway, with something to
+steal or join. Occupied-quiet means work that is hushed: dishes, tenders, a wreck nobody
+is hurrying. The player can tell which emptiness they entered before anyone shoots.
+
+**You invent.** The occupation. Who is there, what they are doing with their hands, what
+happens if you touch it. Density is the last knob, not the first.
+
+**Read.** `src/data/sectors.js` traffic and hazard scalars, `src/data/regionalEcology.js`,
+Sker, Veil, Ashfall, and any station whose services are a single verb. Do not raise
+`enemyDensity` in a harbour that is calm by law. Do not spawn a combat encounter to
+fill the silence.
+
+**Thin.** `trafficPerMin` bumped and nothing else. The same courier mesh painted a new color.
+
+#### CR-TEXTURE — A sector should be able to surprise you once
+
+**The feeling.** Not every interesting thing is a system. A tug spinning by a refinery. A
+courier going absurdly fast through traffic. A shrine welded to a machine. A memorial that
+is a destination, with sightseers and a thief who is quiet. A tanker whose only job is to
+make your ship feel small. A cleaner who is paid to un-find a wreck you just found. You
+remember the place because it was specific.
+
+**You invent.** One such thing, in a sector that already has a name, wired so a stranger
+can fly to it from a rumor or a skyline. It may touch cargo, heat, or a person. It does
+not have to touch all three. Humor comes from the physics, not from joke dialogue.
+
+**Read.** `design/VISION.md` ("not everything needs to be systemically important",
+"humor without becoming a comedy"), `src/data/worldOneOffs.js`, `src/data/uniqueWrecks.js`,
+Helios memorial and the Silver-Draft pair. Joining a rumor to a wreck that already exists
+can be the whole slice if the join is a situation and not a map pin.
+
+**Thin.** A beacon with flavor text. A prop scatter. A joke line with nobody standing there.
+
+### 23.3 What these campaigns refuse
+
+A scarred personal ship as a character creator. An empire screen. A second renderer. A starter-tool limit. Hyperreal materials as the
+definition of beauty. A cheaper hull on the live glass. Content as the cure for feel.
+
+When a campaign's feeling is ordinary on the default route, say so in the §1.4 report and
+leave the heading here with one line: the feeling, and the commit that made it ordinary.
+
+#### 23.3.1 Authored-units annex — BATCH-20 rung-4 rows (2026-10-05)
+
+Rows authored this sitting from the open-ended direction, each landed with its pin:
+
+- **G-LOC answers the hull you fly** — the sustained-turn vignette reads the hull's own derived
+  yaw ceiling (0.75 of ceiling; 0.48 boosting; unknown ceiling fails closed) instead of absolute
+  2.2/1.4 rad/s that a hauler could never reach and a scout cleared at cruise. Second instance
+  of the e8d94e38e reader-orphaned-by-absolute-yaw class. DONE 7f0eaed08 —
+  `test/hud-g-lag.test.mjs` 16/16 with live-route frame() pins both ways.
+- **The off-screen objective arrow contract, pinned** — the seam had zero test references and
+  already burned once (the D135 north-up regression). DONE 44bd5799f —
+  `test/objective-edge-arrow.test.mjs` 4/4 through the real createHud/frame() path: diamond
+  in-camera, correct-edge seat with the tracker's own label, the D135 south-flight regression,
+  and a 72-bearing boundary sweep.
+- **Vesta Forge: the feedstock day** — sector_vesta_forge's zone copy promised a working day
+  nobody could see; four authored pockets (feedstock seam, forge haul + lawful patrol, derelict
+  scavenger drift, slag relay) now deliver it through the generic spawn path. DONE dd0438962 —
+  `test/vesta-activity-pocket-chain.test.mjs` 5/5, helios re-counted 5/5, pocket families 25/25.
+- **Tethys Junction: the checkpoint day** — the border material existed with no pockets; four
+  authored pockets now work it (checkpoint toll queue, Io-gate lane patrol, the Quiet Cache
+  runner sliding past the checkpoint, customs-log relay) — law and outlaw sharing the same
+  water, nobody arriving hostile. DONE 502861969 — `test/tethys-activity-pocket-chain.test.mjs`
+  registry/laws/chain/runtime/bearing pins, named run 25/26 (one pre-existing foreign red).
+- **Pallas Drift: the drift day, pinned — and its hub tender given work** — the pin found the
+  hub tender authored outside the runtime's job-kind gate, materializing as a named hull with no
+  work; re-authored on the Vesta relay pattern and the pin asserts all eight actors fly real
+  jobs. DONE 4f86339ff — `test/pallas-activity-pocket-chain.test.mjs` 5/5.
+- **Dione Lane: the toll funnel** — the CR-WEIR named corridor that was still an empty
+  disc. `zone_dione_customs` (720-radius Lane Customs with a patrol wedge, Concord reads
+  inbound cargo per its own reason text) had no weir. Third silhouette: a trapezoid
+  funnel bracketing the gate→checkpoint bearing — 460-wide mouth, 140 toll gap at the
+  booth — riding the generic weir contract (seen/read/bolt/pod-bust all work through
+  `pointInsideCustomsWeir` + `customsWeirSegments`; smuggling lanes into Dione now name
+  the weir in the risk note for free). DONE a23c85be5 —
+  `test/customs-weir.test.mjs` 17/17, law/customs surface 67/67.
+- **Charon Expanse: the Afterwake Slip** — second faction berth, a different memory. Where
+  the Pitborn line cuts what you sell, the Understory slip off Expanse Refinery digests
+  it: a proved wreck_buy appraisal (one the loss ledger names) writes the keyed
+  `berthFeed:` receipt, and the generic berth spawn lays a real ropeable wreck into an
+  organic crib drawn from the procedural `alien_growth_*` kit — no GLB ask. An
+  empty-ledger appraisal feeds nothing; the redeem_rights consignment writer is pinned
+  to its own `berthConsign:` key contract so a foreign payout cannot mint the slip's
+  hulk. DONE 38162edf9 + review resolution 15b0e90d2 (feed gate keys on `shipDefId`,
+  count = distinct fed hulls, authored `wreckClass` honored on berth bodies —
+  `consigned_hulk` is now a real class row) —
+  `test/understory-afterwake-slip.test.mjs` 7/7, berth/desk/world/save/weir surface
+  54/54, wreck-provenance surface 59/59.
+- **CR-HOLLOW-4: every sector opens on a shift (wide push, 2026-10-13)** — 18 of the 25 sectors
+  had no authored activity pocket: arriving meant anonymous ambient scatter, and the six hollow
+  rims (Veil, Ashfall, Orcus, Phoebe, Triton, the Bolus) were empty. Measured from the live
+  registry (`ACTIVITY_POCKET_SECTOR_IDS`: 7 of 25), closed by a data-driven factory over the
+  Ceres helpers — all 18 now cast two pockets of two hulls from their own zone ledgers (research
+  tenders and dishes, black-market fences and pickets, ore yards, salvage plates, the Collective's
+  thin escort, lawful toll patrols only where the sector keeps law). Every route is authored from
+  a true bearing to a named place and swept to a clean 15-degree class; the seven pocket objects
+  sit under the mark that names them; the six chain tests no longer pin the registry total to a
+  hand-added sum. DONE caebc16533 + 8c1c6b2ac6 — `test/lived-frontier-pockets.test.mjs` 26/26
+  (registry, laws, 72 aims, live seed-4242 casts for all 18 sectors, determinism, "no sector is
+  left to scatter"); 784-test pocket/traffic/sector regression subset: the same 9 pre-existing
+  reds with or without this change (Ceres census entity count 114 vs "tens", bombs recipe
+  census, model-truth census drift, etc. — foreign, listed in the sitting report).
+- **Red-HEAD sweep beside CR-HOLLOW-4 (2026-10-13)** — the pocket regression run surfaced nine reds
+  that were red with or without the pockets; seven were real small defects, now fixed: the Variance
+  Pier's Tally Three prop resolved no model (invisible prop; `partsLibrary.placeFileForEntity`
+  now admits an authored placement that names it), Orcus Shadow's Archive faction missing from the
+  west-frontier vocabulary, `poi_triton_field_lab` with no anchor row (a scannable platform with no
+  body), the Scissorwake doctrine shipping without an audio voice, the bomb row of the verb census
+  pointing at an actionVfx recipe that the transported-material rewrite replaced, and a stale
+  model-truth census hash. Two stay open as ledger rows D191 (Ceres pocket 114 entities, sim tick
+  12 ms) and D192 (procedural primitives before admission). Boot shell: D185 hardened (reload once,
+  then name the failing import on screen) and the modulepreload registry regenerated.
+- **ECON-PRICE-CAUSE (row 321) — the reputation component of a quote is named (2026-10-13)** — the
+  economy already applied standing to every quote (`priceModForState` → `commodityStandingMultipliers`,
+  `standingPriceMultiplier`/`stationSurchargeWaived` on the payload) with no UI consumer. The market
+  driver presenter now adds one `standing` row on the selected instrument, worded from the same
+  multipliers in percent against a stranger's quote ("Allied −3.1%"; "Surcharge waived" under a
+  commission), absent for a pilot treated as a stranger and never on a commodity card. The
+  selected counter passes the reputation multipliers `quote()` actually applied (conditions
+  excluded), so a rounded book cannot disagree with the price about to be paid. DONE —
+  `test/econ-price-cause-standing.test.mjs`; market quote and the standing row agree on seed 4242.
+- **AUDIO-DEVICE-FOLLOW (row 301) — the mix follows an output-device change (2026-10-13)** — nothing in
+  `src/` or `electron/` handled `devicechange`. `src/audio/outputDeviceFollow.js` listens on
+  `navigator.mediaDevices`, settles a burst into one call, and resumes a context that RAN and stopped
+  through the one lifecycle resume owner; a context that never ran stays locked (no silent launch),
+  a hidden page resumes with the page, and the context is never rebuilt (no doubled loops). A
+  context that is already running is retargeted onto the OS default with `setSinkId('')` on that
+  same context, so a headset that just left does not keep the mix. Muted, closed, and
+  never-started contexts do not open hardware. DONE —
+  `test/audio-output-device-follow.test.mjs`.
+- **CONTROL-BOUNDARY-STICK (SFQ-B014) — a map or a lost window drops a combat-stick shove (2026-10-13)** —
+  clearing the keys left the G-mode knob where the pilot had pushed it, so closing the map or
+  coming back to the window resumed that shove. The knob and the vector it already published
+  now go to neutral. The combat-stick mode stays on, the gun does not keep firing, and the
+  next real shove still steers. DONE — `test/input-modal-release-boundary.test.mjs`.
+Do not delete the heading; the next agent needs to know it is no longer the hole.
+
+### 23.4 Actualize the tools
+
+Lane **A2** in §1.2. The order below is the sequence. `AQ-LOD` starts when `AQ-CAS` is
+committed. `AQ-LIGHT` starts when `AQ-LOD` is committed. `AQ-SURFACE` starts when
+`AQ-LIGHT` is committed. `AQ-VOICE` starts when `AQ-SURFACE` is committed. `AQ-HIT` starts
+when `AQ-VOICE` is committed. One agent, one task. If that task's files are dirty, wait or
+take a queue unit. Do not jump ahead.
+
+The feeling in §23.1 decides taste: `AQ-CAS` and `AQ-LOD` and `AQ-HIT` serve CV-GLASS,
+`AQ-LIGHT` and `AQ-SURFACE` serve CV-PAINT, `AQ-VOICE` serves CV-HAND and CV-EAR. A catalog
+line may polish a result only after the task it names is committed. It does not do the wiring.
+
+Import map entries, already on the game page: `three-mesh-bvh`, `@elemaudio/web-renderer`.
+
+| Id | The player gets | Use | Done when | Do not |
+|---|---|---|---|---|
+| **AQ-CAS** | A frame drawn below the display resolution stays sharp. Full resolution is left alone | `vendor/fidelityfx-cas/` after the composite in `src/render/bloom.js`. Read that folder's README. Sharpen the canvas only | A below-res frame runs `CasFilter`. A full-res frame does not. The DOM HUD is unchanged. Authored content is still in the picture | Rewrite the filter. Sharpen twice. Use it as an excuse to drop bloom, shadows, or draw distance |
+| **AQ-LOD** | A far ship is that ship, with the fasteners gone | `meshoptimizer` through `@gltf-transform` `weld` then `simplify`. Small error, borders locked. The existing whole-ship LOD path | One non-player hull has a simplified LOD that still reads as that hull at the chase camera, and the player hull stays full detail | `meshopt_simplifySloppy`. A box, an impostor, or a different mesh. Hiding an on-screen hull to save a draw |
+| **AQ-LIGHT** | Paint, rubber, and bare metal separate under one industrial light, while the sky you see stays the painted plate | `assets/reference/cc0/polyhaven/industrial_workshop_foundry/industrial_workshop_foundry_2k.hdr` as image-based light | Metals pick up the foundry light. `scene.background` is still the sector plate, not this HDRI | Replace the sky. Crank the light until it outshines muzzles and engines |
+| **AQ-SURFACE** | The three substances are different materials, graded from the scans, not photographs stuck on the hull | `rusty_painted_metal`, `ambientcg/Rubber004`, `ambientcg/Tiles132C`. OpenGL normals only. Families already named in `src/render/industrialMaterialFamilies.js`: painted shell, `matte_seal`, `thermal_ceramic` | Each of those three families shows a graded use of its scan (roughness, normal, or a tuned match to the scan). A stranger can tell seal from paint from ceramic at the chase camera | Assign the color photo as the hull albedo. Add a second material system |
+| **AQ-VOICE** | The rope's pitch follows the load, and the engine follows the throttle, as one continuous voice each | `@elemaudio/web-renderer`, driven by the tether load and the throttle the sim already publishes | Three loads give three rising pitches. Throttle 0 is silent within a quarter second. Throttle 1 is the voice within 120 ms. Weapons duck both | Restart a sample every tick. Move hits, UI, or dock into Elementary. A second audio clock |
+| **AQ-HIT** | A lock, a beam, or a camera clearance against a big mesh tests the triangles that are there | `three-mesh-bvh` on the query that currently walks those triangles | The same hit, on a fixed seed, lands on the same body, and the walk is no longer the cost the probe named | Use the BVH to hide an on-screen mesh. Build one for every rock in the sector if the probe did not name that cost |
+
+Sonniss stays a local download for a signature recording the Kenney set cannot carry
+(a capital death, a room tone). Do not commit the bundle. Kenney is the audition set
+already in `assets/reference/cc0/kenney/`. Small uses of it are inference lines, not
+these tasks.
+
+## 24. Optic asteroids — follow-on plans
+
+Live now: an energy bolt that hits a tagged asteroid is absorbed (dull stone), reflected
+(bright metal), or split into eight splinters (pale diamond). A diamond fires once per shot,
+so a line of them burns like a fuse and a block of them opens as one blast. Stone on the
+neighbor cells eats the splinters that would otherwise leave. The bodies are a lattice, not
+hand-placed pebbles: `src/data/opticStructures.js` expands a recipe, `src/combat/opticField.js`
+resolves the hit, and `src/systems/world.js` spawns the live colliders when that sector is
+fully resident. The first stamp is the Prism Gallery in the Ceres belt
+(`zone_ceres_prism_gallery`, sector-local centre 1968, -2100). The starter pulse laser is
+enough. Mining does not eat these rocks. Kinetic rounds and missiles ignore the grammar.
+
+These rows are plans. They are not queue packets and `--next` does not dispatch them.
+Place new structures by adding a recipe to `OPTIC_STRUCTURES`. Do not copy forty
+coordinates into a sector table.
+
+| Plan | What the player gets | Where it should land | Done when |
+|---|---|---|---|
+| **More stamps, same compiler** | Fuses, closed fields, and bank mouths at places people already fight | Gate mouths, wreck sites, ambush zones, and belt pockets. One recipe id and a sector-local origin per site. Ceres stays the reference layout | A stranger can fly to two more sectors and find a different arrangement, each built by `wickCells` / `murderFieldCells` / `stoneRingCells` |
+| **Seeded scatter** | Ordinary belts grow a few small lattices from the sector seed, so authorship is not required for every field | The field spawner, after the existing rock draw, without consuming that draw's RNG | The same seed always grows the same lattices. A field with no recipe still gets a short fuse or a three-crystal cluster, not a hand-authored list |
+| **Beams and missiles** | A mining beam and a missile join the same three responses | Beam impact in `src/systems/mining.js` stays ore-only. Weapon beams and missiles get their own contact in the optic owner | An energy beam on a diamond throws the ring. A missile on stone dies without splitting. Ore rocks are unchanged |
+| **The picture and the sound** | Stone, metal, and diamond read as those things at the chase camera, and each response has its own hit | The three tints in `OPTIC_MATERIALS` are the stand-in. A real pass replaces the tint with a matte rock, a mirror, and a clear prism, plus three cues on `optic:contact` | At the gallery, a stranger can name the three kinds before firing, and can hear which response happened |
+| **Spent crystals** | A field that has burned goes dark and will not burn again until it recovers | A sim-time recharge on the diamond, saved with the sector, not a permanent mute | The same diamond eats the second shot, then splits again after the authored recovery. A save in the middle restores the dark or the live state |
+| **Enemies use the room** | Pilots and hostile ships treat the lattice as terrain, not scenery | Doctrine near an optic structure: kite a pursuer across a fuse, refuse to shoot a diamond at point-blank, bank a shot off metal | On a fixed seed, an enemy shot into the Ceres fuse reaches a target that was not on the original line, or the enemy breaks off instead of lighting the field in its own face |
+| **Arenas** | Live swarm rooms each carry one lattice (`compileSwarmOptic` in `swarmArena`, not the Ceres gallery). Helios: a fuse on the rear lane. Lagrange: two mirrors for the kinetic bank gun. Cinder: a stone pocket with a door. Cryo: a short east fuse. Storm: a closed 2×2 prism box | Further arena recipes only. Do not add these to `OPTIC_STRUCTURES` | A swarm wave-1 stamp matches `compileSwarmOptic(arenaId)` and a second wave does not double it |
+| **Your own grenade** | A prism you light can hit you | Friendly-fire rule for splinters only, called out before the gallery teaches it | A fixed-seed shot into a surrounding field damages the shooter. A shot down the Ceres fuse does not, because the stone wall holds the ring |
+| **Focus and shelter** | Metal banks several shots into one cell. A stone shell with one gap protects the inside | New recipes next to the wick: a mirror lane and a closed ring with a one-cell door | Rays into the mirror lane arrive at one diamond. Rays into the shell die in stone except through the door |
+| **Collider cost** | More galleries do not become a hitch | Measure before the seeded-scatter row stamps every belt. The Ceres set is 42 live bodies | A Ceres entry trace names the optic bodies' cost. Scatter stays off until that cost fits the frame |
+
+The lattice spacing is 64. Splinters leave on the eight compass headings, so a cell that is not on that grid will not chain. New recipes stay on the grid. Stone radius overlaps its neighbors so a bolt cannot slip between the wall.
+
+## 25. Zero to hero — the A-list demo program — ADMITTED 2026-09-23
+
+The plan, the evidence and the bars: [`design/program/ZERO_TO_HERO_2026-09-23.md`](./design/program/ZERO_TO_HERO_2026-09-23.md).
+
+**The diagnosis.** SpaceFace simulates bodies better than almost any game in its class and then
+does not show them. On the owner's iGPU at the shipping camera the player's hull is ~15–20 px long
+in a Crucible fight and lost at the head of its own plume at cruise; hostiles are specks; 400 ms
+after a kill nothing visible has happened; one Crucible frame holds a galaxy, a ringed gas giant, a
+blue planet, a nebula and arena ribbons across a third of the glass; the HUD carries a permanent
+sentence card, a seven-line target card and cut-off labels. No bar anywhere measured any of this.
+
+**The feel: see the body.** Visual weight on the glass runs: your hull → the body you are acting
+on → the consequence → the threat → the world → the instrument → the sky. A frame where a lower
+rank out-shouts a higher one fails, whatever the numbers say.
+
+| Phase | Springboards | Closes on |
+|---|---|---|
+| **1 · The body** — camera and hull presentation | CV-GLASS, `PQ-159`, §22 G4, B3b | `probe:body-scale`: player hull p10 ≥ 48 px calm / 36 px fight / 28 px top speed; plume never covers the hull; B3b still holds |
+| **2 · The frame** — one sky, arena lines at rest, substances | CV-PAINT, `AQ-LIGHT`, `AQ-SURFACE`, §22 C6, `PQ-190.01` | ≤ 1 hero celestial body per profile; sky below muzzle and engine |
+| **3 · The hit you can see** | CV-HAND, CV-AMMO, `PQ-210.04`, §22 A7, B3, B5, B9, F1, F5 | A kill leaves ≥ 2 moving, lit wreck bodies within 250 ms at readable size |
+| **4 · The instrument** — **CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane** | ORRERY Phases 1 and 3, CV-KIT, §22 G1/G3/G5/G7/G8/G13/G14, ledger D14 | 0 persistent sentence cards in flight; no truncated primary label; results is replay + stunts + Again |
+| **5 · The demo path** — demo flag, live title, round zero, load, end card (mostly NEW) | `PQ-160`, `PQ-163`, `PQ-210.08` | Crucible launch → control ≤ 15 s quiet; the fifteen-minute path plays |
+| **6 · The world on the way** | CV-DAY, CV-QUIET, §22 A1–A6, ORRERY Phase 4 (hub, market) | A6 slice scenario |
+| **7 · Ship the demo** | `PQ-033.02`, `PQ-033.03`, §22 E1, E8, `PQ-167` | Electron demo package, photo-mode store shots, a replay-cut trailer |
+
+Each phase verifies its changed player outcome at the relevant layer (§1.9). Inspect an actual
+affected visual sequence when appearance changes; one combined independent critique belongs at
+the coherent experience boundary. No automatic full path, capture series or new stranger per phase.
+**What is still open, in order, is the program file's §7**; its existing §8 retains progress.
+
+## 26. Use what we already have
+
+A full second checkout of this repo is not a way to work. If one is left behind, keep any commits
+that are not already on master by leaving them on their branch, then remove the checkout. Do not
+merge that branch into master just to retire the checkout, and do not merge it while master has
+someone else's uncommitted work. A checkout touched since 2026-09-22 stays until that work lands
+or goes quiet. The record of which branches were kept, and why they were not merged, is
+[`design/program/UTILIZATION.md`](./design/program/UTILIZATION.md).
+
+**Models.** The buyable roster is the live list in `src/data/ships.js`. Hitch stays frozen. Every
+other authored hull already has a disposition: field it, turn it into a faction kit or a wreck, or
+record why it cannot be used. That record is the hull triage and the stocktake plan, and the order
+is still §13B (`PQ-136`) and §13D (`PQ-193`), with flyable remasters on `PQ-050`. A byte-for-byte
+copy of a live release, with no source role and no plan, is the case for deletion. A filename
+search is not that test. `check:asset-reachability` is. Do not commission a new hull while a shelf
+body can fill the slot.
+
+**One picture, at the current settings.** Hulls stay Lacquer & Starlight. The glass stays the
+Orrery. The next work is already ordered, and it is not a new art direction:
+
+1. `PQ-193.00` — every ship the player can lock on the opening flyby is a complete packaged body.
+2. `PQ-193.01` — the opening smuggler, pirate, and recovery tug belong in Hitch's world.
+3. `PQ-193.02` — reverse thrust is one jet, not a leftover needle.
+4. §25 phase 2 — common rocks and the remaining sky join that same illustrated world.
+5. `PQ-193.03` — the lane buoy, beacon, and cargo pod are recognizable at chase distance.
+
+Corsair, Arclight, the Span and Wasp faction kits, and the tanker are the variety we already paid
+for. They wait until that flyby is one world. Shelf bodies that are only a repaint of a live hull
+do not get a second production pass. Captures, tool caches, and old checkouts are not the game.
+
+## 27. The finish in lanes — ADMITTED 2026-09-24
+
+**Maturity update, owner 2026-10-04:** every lane also owns the debugging and polish assignments
+in [§1.8](#18-production-maturity-debugging-and-polish). Repair broken existing workflows before
+expansion; a lane with closed feature rows and a buggy player experience remains unfinished.
+
+Owner direction, 2026-09-24: batch the granular plans into a few logical lanes, with open-ended
+instructions — the agent owns an *area*, lands the named work still open there, and reviews and
+tunes that area to the A-list bar while already working in it. **The game is finished when the
+lanes are finished** — features, polish and fun are one lane, not three passes. The full program:
+[`design/program/FINISH_LANES.md`](./design/program/FINISH_LANES.md).
+
+| Lane | The area | Absorbs |
+|---|---|---|
+| **THE MACHINE** | boots fast, holds 60 with the picture on, never hitches or leaks, nothing pops | PQ-129, PQ-204, §22 Wave D, vm-drop imports, §8.4 |
+| **THE HAND** | the ship answers the hand — flight, rope, fields, verbs, input | PQ-135–137/139/141/146/147/163/189, PQ-026–031, §22 feel rows, CV-HAND/CV-THROW |
+| **THE FIGHT** | swarm is the showcase — waves, arenas, the draft, the kill you can see | PQ-133/140/160/169/174/175/205/206, §22 combat rows, CV-AMMO, §16 |
+| **THE WORLD** | you arrived in the middle of their day — sectors, jobs, consequences | PQ-138/143/145/148–151/153/154/171, §22 world rows, CV-DAY/CV-SO/CV-QUIET + all CR-*, §24 |
+| **THE LONG GAME** | the fit, the market, the story — decisions an hour, a spine to an ending | PQ-032/142/152/155/156/170/172/176–178/195, §22 economy rows, §17 |
+| **THE PICTURE** | one game on the glass — hulls, rocks, skies, residency, the camera | PQ-049/050/134/136/159/161/190/193, §22 art rows, CV-GLASS/CV-PAINT/CV-MOTION, §13B/§13D |
+| **THE INSTRUMENT** — **CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane; do not take** | every 2D surface is the same instrument of light — ORRERY (authority: `design/frontend/ORRERY.md` + `OVERHAUL_PLAN_2026-09-25.md`; the Asteroid Works world-art units `PQ-130`/`PQ-131` stay with their own campaign) | PQ-130–132/162/168/180–185/187/188/192/194, §22 screen rows, CV-KIT, §11/§18/§20 |
+| **THE EAR** | a signature by ear — verb voices, the mix, room tone | PQ-158, §22 audio rows, CV-EAR |
+| **THE RELEASE** | final package/device/language/store qualification — **pre-release prep, parked (owner, 2026-09-27; see §1.2)**. Gameplay input, accessibility, save/recovery and clipped/unreachable text repairs remain active in their affected HAND/INSTRUMENT/MACHINE/LONG GAME lanes under §1.8. | Final qualification residuals of PQ-033/164–167/191/210, §22 E2/E4/E5/E7, §25 Phases 5/7; no blanket parking of product repairs |
+
+A finishing session takes a lane, not a leaf: play the area first, work the absorbed checklist in
+any order, and fix whatever else in the area falls short — the open-ended review is part of the
+lane, not a phase after it. Acceptance batches at the area level. The queue still owns unit
+truth; grunt-sized sittings still take `--next` or an INFERENCE line; §22 and §23 remain the
+lanes' detailed wording. Lane order, briefs, gates and the coverage map live in the program file.
+
+## 28. Morrow / R-07 — owner-requested character (2026-10-02)
+
+A recurring, nonhostile rescue machine beside the Helios starter corridor: original articulated
+geometry, scanner greeting, opt-in physical momentum return, persistent acquaintance and small
+social rituals. Implementation and contracts: [`design/characters/MORROW.md`](design/characters/MORROW.md).
+Production owner `morrow` runs before physics; this is not a review-bench-only actor. The packet
+contains focused simulation/model/real-Rapier proof and explicitly records its GPU acceptance
+limits. Preserve the character instead of rebuilding it in response to a generic polish prompt.
+MORROW-01…03 at the end of that document are **retained optional expansion briefs**, not claims
+that those missions are already implemented or new entries in the active finish-lane queue.
+
+## 29. Professional experience — the complete starter region
+
+**Owner-directed plan, 2026-10-11.** Mature one complete ordinary Adventure experience before
+expanding another catalog. The reference is the default **Hitch (`ship_kestrel`) in Helios Prime**,
+with tutorials on, the normal fit/credits, real cargo, public controls and authored visuals.
+Aim for a satisfying first circuit of roughly 20–30 minutes; this is a design envelope, not a
+mandatory real-time test, forced itinerary or timer on the player. Pelican/Wasp keep their normal
+routes and capabilities; check their affected shared boundaries, not three full opening batteries.
+
+This is the first integrated delivery across §27's existing HAND, WORLD, LONG GAME, EAR, PICTURE
+and MACHINE owners, using the six compounding bundles in §1.9. It absorbs the relevant residuals
+of `PQ-138/141/143/148/149/151/155/156/158/163/173/177`, §22 A1–A6/B5/B8/F15, and
+CV-DAY/CV-SO/CV-QUIET/CV-HAND/CV-EAR. These IDs keep their other obligations and current lifecycle;
+do not resurrect completed implementations or open a second backlog of the same tasks.
+
+### 29.1 The experience to deliver
+
+1. Control arrives, and the player can understand and use the Massline without a wall of controls.
+2. A real mining/freight operation is already working along the starter corridor: cutting, cargo,
+   a handoff, movement, and somebody with an interest in that cargo.
+3. A readable physical situation gives the player choices: help, manipulate bodies/terrain,
+   take something, or fly on. The world continues through refusal and imperfect execution.
+4. Its aftermath presents a new decision: salvage, rescue/recovery, law/escape, repair or next work.
+   Cause, ownership and consequence are understandable from the live event and existing instruments.
+5. At Helios, a plausible earned haul supports a useful, compatible fitting decision. The player
+   can depart and actually exercise the new capability in the local world.
+6. A return visit reveals a recognizable result of the earlier action. Save → title/restart →
+   Continue preserves that result and the player's chosen work. A next job gives a direction.
+
+The current recommended **Helios → Ceres Fuel Cells delivery** remains available. Taking it is
+a legitimate departure from the local circuit, not a prerequisite for appreciating the first fit
+or choosing local work. Refusing the raid, theft, tutorial or upgrade must leave useful ongoing play.
+This sequence is a set of connected affordances, not a cutscene, mission-failure rail or scripted
+success. Do not add hidden damage, free credits, debug cargo or encounter despawns to make it pass.
+
+### 29.2 Reuse the built seams; know what the checks observe
+
+Read these owners when taking a row. This source map identifies existing machinery, not a claim
+that the complete experience is already accepted. Current concurrent diffs stay protected.
+
+| Built foundation | Source and existing check | Remaining connection or evidence limit |
+|---|---|---|
+| Default start and three real starter fits | [`newGameDefaults.js`](./src/data/newGameDefaults.js), `test/pq-156-00-three-starters.test.mjs` | Hitch starts with 5,000 CR and a drill amp in its small utility bay; a new fit can change which starter jobs are eligible. Preserve that truth. |
+| Thesis-first tutorial and refusable claimed salvage | [`onboarding.js`](./src/systems/onboarding.js), `test/pq-163-opening-choice-pacing.test.mjs`, `test/opening-waypoint-ownership.test.mjs` | The dock beat currently waits for the recommended Ceres delivery before the final job choice. The rail can defer fit-felt speech until it releases the voice. Driven-clock fixtures do not establish human completion rates or normal-control timing. |
+| Living Helios pockets, miner/hauler jobs and freight custody | [`sectorActivityPockets.js`](./src/data/sectorActivityPockets.js), `src/systems/npcJobsRuntime.js`, `test/helios-activity-pocket-chain.test.mjs`, `test/freight-cargo-custody.test.mjs` | Preserve the existing extraction/handoff implementation. Make the starter intervention act on those useful bodies and receipts; catalog placement or an isolated job transition cannot prove a complete moving physical loop. |
+| Physical opening raid and alternative outcomes | [`344-opening-hauler-raid.js`](./src/data/encounters/344-opening-hauler-raid.js), `test/opening-hauler-raid-and-pursuit.test.mjs`, `test/first-hour-opening-choice.test.mjs` | Onboarding also stages a raid tableau. Give their overlapping opening windows an explicit ownership/cue rule and preserve real surviving actors on refusal. Do not assume two producers constitute one causal experience. |
+| Durable wreck identity, salvage, law and world memory | [`aftermathWrecks.js`](./src/systems/aftermathWrecks.js), `src/systems/chronicler.js`, `test/immediate-aftermath-wreck-identity.test.mjs` | Persistence already exists. Connect one first-session consequence to a reachable, recognizable return visit and useful next action; news text alone does not supply the physical aftermath. |
+| Compatible early Swing Drive and truthful fitted-verb teaching | [`modules.js`](./src/data/modules.js), `src/onboarding/fitFeel.js`, `src/ui/station/outfittingGuidance.js`, `test/sfq-b064-fit-felt.test.mjs` | The Hitch-compatible offer is **Swing Drive S, 7,400 CR**, not the M offer. Teaching speaks the live fit/key; demonstrate the actual maneuver after an earned purchase. Resolve the A6 affordability failure below before claiming the loop closed. |
+| Pacing, presentation arbitration and adaptive audio | [`encounterDirector.js`](./src/systems/encounterDirector.js), `src/systems/tensionDirector.js`, `src/systems/difficultyDirector.js`, `src/systems/presentationOrchestrator.js`, `src/audio/audioSystem.js` | Tune their combined behavior during work, a first fight, a transaction and aftermath. Reuse their existing gates, voice budgets and mix; do not add another director or cue authority. |
+| Input/modal recovery and save continuity | `test/input-modal-release-boundary.test.mjs`, `test/input-pointer-lock-recovery.test.mjs`, `test/pb-cont-c-save-continuity.test.mjs` | Focused boundaries exist. Join the relevant interruptions to this circuit, with the chosen job, cargo custody, fit, heat and durable aftermath still coherent. |
+
+**A6 is a useful simulation fixture, not the whole reference route.**
+[`a6OpeningSlice.mjs`](./tools/agentic/a6OpeningSlice.mjs) turns tutorials off, sets docking UI and
+emits dock events, sells through the economy service, and stops after `derived.swingDrive` becomes
+true. Preserve its mechanics coverage; do not label those shortcuts as tutorial-on public-UI or
+upgraded-maneuver acceptance. Its current purchase failure is tracked once in the
+[demo defect ledger](./design/program/DEMO_READINESS_2026-09-20.md#6-the-demo-defect-ledger--everything-a-demo-player-will-hit-live-opened-2026-09-22)
+as **D183**, owned by SR-01. It establishes failure of that pilot's earn→buy sequence; the normal
+player route and whether the cause is the pilot, reward/cargo connection or balance remain distinct.
+
+### 29.3 Finite implementation bundles
+
+Each row is a strong-agent delivery across its named existing owners. Resolve design and production
+connections here; extract only genuinely bounded children to INFERENCE. Check current code first,
+reuse a fulfilled part, and repair the remaining outcome. Do not reopen an entire subsystem from
+one failed leg. Land coherent units by exact paths; another lane's file label blocks only its live
+foreign hunk. No row closes on a report, new harness, counter, reviewer agreement or candidate alone.
+
+| Row / order | Production work and exact likely owners | Done when / smallest direct check |
+|---|---|---|
+| **SR-01 · Earn → buy → fit** — first; LONG GAME, builds/spending | Resolve D183 at the actual failed boundary. Compare the intended local earn/sell path with what A6 really collects; fix the pilot only if it omits an already available step, or repair the production income/cargo/offer connection if that step is missing. Owners: `src/systems/economy.js`, `src/systems/cargo.js`, `src/systems/salvage.js`, `src/systems/ships.js`, `src/data/modules.js`, `src/ui/station/outfittingGuidance.js`; A6 only for its genuine driver defect. Preview replacing the drill amp and resulting job eligibility. Give an unaffordable player a truthful shortfall and usable earning direction; no forced purchase. | One intended legal local haul plus normal starting resources can buy a compatible useful first fit at its quoted price; inventory, fit, derived capability and credits agree, settlement happens once, refusal remains viable. Observe actual cargo/reward→sale→purchase→fit owners. Recheck A6 once after the relevant change; keep public-UI acceptance separate. SR-04 supplies actual upgraded use. |
+| **SR-02 · The first dock yields to the player's plan** — with SR-01; HAND/WORLD/LONG GAME, careers/consequences | Change the dock/choice handoff so local fitting and next-job choice do not wait for a Ceres completion. Reuse the authored trade offer and current alternate-job yield, objective ownership and deferred fit voice. Owners: `src/systems/onboarding.js`, `src/systems/missions.js`, `src/systems/economyContracts.js`, `src/data/economyContractTemplates.js`, `src/ui/screens/missionLog.js` only if the task needs it. Preserve Ceres terms and actual accepted-job tracking. | Sell/fit, decline, or accept the selected next work through ordinary controls without stale tutorial objectives or repeated offers. Fit-felt feedback drains at the relevant departure/handoff. An accepted Ceres delivery owns navigation; ignoring it permits local play. Extend the affected first-trade/choice/waypoint fixture, then check the changed public station controls once. |
+| **SR-03 · One working operation becomes one physical situation** — WORLD, work/cargo/place | Connect the existing Helios extraction/handoff and cargo interests to the introductory intervention. Resolve the teacher-tableau versus encounter raid ownership while keeping ambient civilian work alive. Make approach/alignment, transfer, departure, obstruction, distress and resumed work readable and physically achievable. Owners: `src/data/sectorActivityPockets.js`, `src/systems/npcJobsRuntime.js`, `src/systems/traffic.js`, `src/economy/freightCausality.js`, `src/data/encounters/344-opening-hauler-raid.js`, `src/systems/onboarding.js`, `src/systems/encounterDirector.js`. | A normal arrival can encounter a real cut→cargo→handoff→departure chain without accepting a mission. Intervention changes that chain through existing cargo/law/job receipts; help, theft/collateral and flying on leave coherent actors/outcomes. One short production-system fixture observes moving bodies and custody, not manually emitted completion. Inspect only the relevant rendered work/interruption sequence for readability. |
+| **SR-04 · Space, controls and the new fit make interesting moves** — after SR-01/SR-03; HAND/FIGHT/PICTURE, physical consistency | Compose existing rocks, anchors, hauler lanes, movable bodies and escape space at actual speeds. Tune acquisition, camera anticipation/framing, swing/release, recoil and collision recovery together; include a convenient local opportunity to try the new fitted verb. Owners: `src/data/sectorActivityPockets.js`, `src/data/sectorZones.js`, `src/systems/tetherGameplay.js`, `src/systems/masslineThrow.js`, `src/core/flight/`, `src/render/camera.js`. Preserve native ordinary-flight cursor, assisted settle-to-rest, earned momentum and shared Rapier authority. | A simple set of public inputs can make a deliberate tether/release/terrain outcome and recover controllably; the earned fit enables a physically distinguishable maneuver on existing nearby bodies. Read trajectory, timing, distances and interruption reason in a relevant Motion Lab/real-path case; inspect motion/framing where it matters. Add a second seed only for a changed seed-sensitive placement/throw claim. Misses stay honest; no auto-success, hidden impulse or camera-only imitation. |
+| **SR-05 · The aftermath is a place you can return to** — after SR-03; WORLD/LONG GAME, careers/consequences | Bind one chosen starter outcome to durable physical identity and one next action. Reuse wreck markers/custody, witness/law, rescue or named-contact memory and the existing journal/nav/offer surfaces. Keep teacher-prop cleanup separate from economic aftermath. Owners: `src/systems/aftermathWrecks.js`, `src/systems/custodyConsequences.js`, `src/systems/lawSecurity.js`, `src/systems/chronicler.js`, `src/systems/aceMemory.js`, `src/systems/missions.js`, `src/world/`; UI only at the needed readout. | Fly away and return: the same recognizable wreck/damaged operation/contact or its legitimate settled state remains, with the cause and available next action clear. Pickup/repair/settlement is once-only; exhausted salvage stays exhausted, rescued/escaped people retain identity, refusal does not conjure a loss. Extend the existing immediate-aftermath/Continue fixture and check one relevant in-world return; do not build a second memory engine. |
+| **SR-06 · The session breathes and events read together** — across SR-02–05; EAR/HAND/WORLD, readable/dependable product | Coordinate existing tension/encounter/difficulty gates and presentation/audio priority through arrival, work, threat, impact, aftermath, first dock and return. Give NPC preparation/commitment/recovery distinct motion/sound, distinguish ordinary release from break and nudge from slam, and retire stale cues on target loss/modal/load. Owners: `src/systems/tensionDirector.js`, `src/systems/encounterDirector.js`, `src/systems/difficultyDirector.js`, `src/systems/presentationOrchestrator.js`, `src/systems/presentationAdapters.js`, `src/presentation/`, `src/audio/`, needed ORRERY readouts. | The relevant threat/opportunity/cause can be understood while controlling the ship; warnings outrank payoffs, cues match their physical event, and an ongoing fight can finish before respite is consumed. Work/transaction/aftermath windows remain usable, with no queued burst immediately after the rail releases. Focused director/voice/cue tests verify causality and cancellation; inspect/listen to the affected dense sequence. Preserve reduced-motion/flash and accessibility equivalents. No mandatory all-phase 90-minute session or quiet capture. |
+| **SR-07 · Interruptions preserve the same world and chosen work** — with each changed boundary; MACHINE/WORLD/LONG GAME, completed-activity edges | Join the circuit to save/Continue, pause/settings/focus loss, target retirement, transaction cancellation/repeated click and death/retry. Reuse save normalization, stable IDs, input fences and asynchronous owner cancellation. Owners: `src/save/saveSystem.js`, `src/save/sharedPlayerStore.js`, `src/systems/input.js`, `src/systems/onboarding.js`, `src/systems/missions.js`, `src/systems/ships.js`, `src/systems/cargo.js`, relevant runtime/presentation owner. | At the affected mid-work/aftermath/dock/job boundary, reload or interrupt without lost cargo/fit/earned money, ghost tether/target, duplicate payment, repeated opening cast or stale objectives. A failed write keeps the previous slot and a usable route; death/retry leaves coherent recovery and no stale controls. Use the existing save/input/death fixtures for the changed state and one affected public save→title→Continue transition. Browser tests unmount the shared real drawer; shell-specific claims use the affected shell. |
+| **SR-08 · Fast feedback that exercises the actual game** — folded into the owning row; existing `PQ-173`/§1A support | Use selected `sf lab`/Motion Lab/verb scenarios and existing causal traces to enter the affected setup quickly, replay input and compare the first bad tick, transition reason, trajectory and resources. Port the active synthetic `feel.gravity_well` and `world.cargo_spill` fallbacks in `scripts/lib/bench/verbBench.mjs` to the real production owners/modules, or retire their acceptance use explicitly; current module override is by matching scenario ID. Reuse `world.reaction_trio` for real reactions. Extend `src/testing/lab/liveRouteBridge.js` setup only if the selected public-control claim needs its currently unsupported NPC/attachment setup. | A readout identifies what action/owner/transition caused the result; relevant checks fail when the production consequence fails, not when a stand-in formula changes. No fabricated salvor timing/event, detached orbit model, omitted tutorial or installed-flag shortcut closes the claimed behavior. This is support inside a gameplay delivery, not a new platform, universal grader, separate observatory queue or production-unit credit. |
+
+**Dispatch order:** resolve SR-01's failed earn/buy leg and SR-02's local handoff first. SR-03's
+existing-operation connection can proceed on disjoint paths; SR-04 and SR-05 use its real bodies
+and receipts. SR-06/SR-07 are part of each affected delivery, not cleanup postponed to the end.
+SR-08 repairs only the misleading/missing feedback the selected delivery needs. A lane conflict
+changes the safe path split; it does not create a second implementation or stop the whole plan.
+
+### 29.4 Close the experience, then reuse what improved
+
+At a coherent integration boundary, exercise **one tutorial-on starter circuit** using public
+controls on the ordinary route. Quick setup may resume at a relevant saved state for an edge;
+it cannot inject the success under test. Observe the actual upgraded maneuver and one recognizable
+return consequence. Use one targeted session only for the remaining shape question; end at the
+named outcome rather than waiting out 30 minutes. Check the affected Browser/Electron entry or
+save-return seam where a shell-specific failure can change the claim; do not duplicate a complete
+circuit just to increase evidence volume.
+
+One independent combined critique asks: can the action/cause/result be understood, is there a
+real choice and useful next action, did the production world follow through, and did the relevant
+interruption preserve it? Fix material findings; stop when the agreed sequence works. Counts of
+events, time spent, screenshots and model agreement cannot independently establish that it is fun.
+No owner playtest, weekly ritual, reel, new kanban service or stored review dossier is required.
+
+Successful mechanisms then improve the existing six bundles: spatial situation recipes; physical
+NPC action/interrupt behavior; consequence identity and return affordances; fitted-capability
+experiments; cue/director coordination; interruption-safe transactions. Extract resolved small
+leaves into the existing INFERENCE catalog only when an actual remaining change is named. Keep
+other careers, authored world variety, accessibility, long-game progression and release obligations
+in their existing parents; the starter circuit does not certify or replace the whole game.
+
+**Developer precedent, adapted for agents.** Valve describes short gameplay slices and the
+smallest increment that teaches something about the player experience
+([Half-Life 2 process](https://cdn.akamai.steamstatic.com/apps/valve/2006/GDC2006_HL2DesignProcess.pdf)).
+Its [L4D AI account](https://cdn.fastly.steamstatic.com/apps/valve/2009/ai_systems_of_l4d_mike_booth.pdf)
+separates fluid actor behavior, useful transition reasons, accelerated bot diagnosis and dramatic
+pacing. [Factorio's development account](https://www.factorio.com/blog/post/fff-417) shows connective
+progression work around otherwise functional content;
+[Guerrilla's quest ownership](https://www.guerrilla-games.com/read/guerrilla-spotlight-Idris-Grey-MacChruiteir)
+joins beats, AI, systemic interaction and presentation. Those sources inform the production
+priorities; the agent workflow here is our adaptation, not a claim that bots or LLMs certify enjoyment.
+
+## 30. The world answers back — rope, rock, and witness follow-on plans (2026-10-15)
+
+These rows came out of a full read of the bespoke vignettes (`eighthBellRuntime.js`,
+`veilRayNursery.js`, `theBolus.js`, `secondRinse.js`, `tallyThree.js`), the drilled-rock owners
+(`drill.js`, `asteroidSites.js`, `siteThermalModel.js`, `siteSignatureModel.js`), the five-primitive
+automation alphabet, `wreckCourt.js`, and `bandRadio.js`. Every row extends seams that already
+exist; none adds a genre, an empire screen, or a new resource. §23.3's refusals apply in full.
+
+These rows are plans. They are not queue packets and `--next` does not dispatch them. Taking one
+means writing its packet with the done-when first (§1.1 step 3). Single-writer law holds on every
+row — heat stays `heat.js`, cargo stays cargo, standing stays factions — and every verb stays
+deterministic on `state.rng` / `state.simTime` and reachable on the default route.
+
+### 30.1 The rope fights back — braced recoil, lures, arc-wire, quenching
+
+**The feeling.** The Massline is the game's hand, and in a fight that hand only ever reaches
+forward — throw, clothesline, bridle. Held backward it is a stance: the same tool turns a light
+hull into a gun platform, a decoy handler, a trap-setter, or a cooling rig. No new button if the
+old button will do.
+
+| Plan | What the player gets | Seams it extends | Done when |
+|---|---|---|---|
+| **RW-01 Winch-braced recoil ("anchor siege")** | Latch to a rock, station frame, or Mass Seed *behind* you and lock the reel taut: weapon recoil routes into line tension instead of hull knockback. A skiff holds a siege beam on aim until the line snaps | `src/data/massSeed.js`, `src/systems/tetherGameplay.js`, `src/combat/attachments.js`, the weapon recoil impulse path | Fixed seed: a braced light hull holds its aim point through an overcharged volley that shoves the unbraced same hull measurably off; tension peaks and the snap threshold are authored numbers; unlocking the reel restores ordinary recoil. Recoil is *routed*, never deleted; the anchor can always snap |
+| **RW-02 Towed lure (choir-bell decoy)** | Clamp a hot, noisy payload to a long line: pirates, missiles, and blind swarmers track the towed signature instead of your cold-drifting hull. Whip it around a rock and the pursuers meet the rock | `src/data/ambushSignatures.js` targeting weights, `eighthBellRuntime.js` peal/heat emission, `theHiveArena.js` acquisition, missile seeker selection | Fixed seed: a seeker re-acquires the lure once its signature crosses the authored threshold and ignores the cold hull; the lure is severable and consumable; the decoy reads on the glass as a signature, not an invisible aggro switch |
+| **RW-03 Arc-wire (energized tether chord)** | Fire a beam into a pinned tether-web node: the chord carries charge for a few seconds, and a hull crossing it eats shield strip plus Cryo Lock / Thermal Shock. The scissorwake rush becomes the trap | `src/combat/tetherWebs.js`, `src/systems/masslineSnares.js`, `src/combat/opticField.js` contact routing, `src/combat/cryoLock.js`, `src/combat/statuses.js` | Fixed seed: a hull crossing the energized chord takes the authored status and a hull beside the same web does not; charge decays on sim time and spends per crossing as authored; the energizing shot is visible on the chord itself |
+| **RW-04 Slag quench (towed heat-sink)** | Overheated mid-fight, harpoon a cryo asteroid with the Frame Coupler and dump weapon/reactor heat into the rock — visibly steaming and cracking it while your capacitor recovers | `src/systems/heat.js` (stays the only writer of ship heat), `attachments.js` `frame_coupler`, `src/data/environmentMaterials.js` / `cryoDriftArena` material, site/world dressing for the steam | Fixed seed: a coupled overheated hull sheds heat at the authored rate only while contact holds; the same coupling to ordinary rock does nothing; the rock's changed thermal state persists with the site |
+
+**Thin.** A damage buff while tethered. A taunt button. A permanent damage fence. An instant
+cooldown with no contact requirement. Any of the four as a consumable inventory item.
+
+### 30.2 The rock is a building — drilled-interior follow-ons
+
+**The feeling.** `siteThermalModel.js` already made rock-contact rings sacred: heat was the first
+axis of the interior engineering puzzle. These rows add the second axis (structure) and the third
+(concealment), and put a price on the free one (radiators make you visible).
+
+| Plan | What the player gets | Seams it extends | Done when |
+|---|---|---|---|
+| **BORE-01 Harmonic stress** | Heavy crushers and refineries run side-by-side with no solid pillar between rooms build vibration stress: ceiling tiles fracture, a bore collapses, or a sealed vein wakes `alienEcology` larvae | A structural/vibration twin of `src/systems/siteThermalModel.js` (same cadence, separate state), `src/systems/asteroidSites.js` tile layout, `src/data/alienEcology.js` | Fixed layout: adjacent heavies with no pillar fracture on sim schedule; the same layout with a pillar does not; a fracture is a physical event — a falling body, a blocked bore — announced by an audible rumble, never a surprise stat penalty or a dice roll |
+| **BORE-02 Dead-drop bores** | Fit a disguised false-cap hatch at the bore mouth and a hollowed room becomes a physical contraband cache: patrol scans cannot see inside the rock unless a witness saw you enter | `asteroidSites.js` persistence (PQ-145.01), `src/presentation/customsWeir.js` scan volumes and the witness path, cargo (single writer) | Cargo stowed in a sealed bore survives a lawful scan that flags the same cargo on the hull; a witnessed entry voids the concealment; the cache is a place you can fly back to, saved with the site. No UI stash panel |
+| **BORE-03 Radiator fins** | Weld external vanes onto the site's skin to solve an interior heat bottleneck for free — but the fins glow bright on the signature model, draw Reach raiders, and can be sheared off in an exterior fight | `siteThermalModel.js` (a new sink leg), `src/systems/worldSiteRuntime.js` components, `src/systems/siteSignatureModel.js`, ordinary combat hit resolution on the fin body | Fixed site: an overheated interior stabilizes with fins and not without; the site's signature class rises measurably; destroying the fin restores the bottleneck. A fin is a body that can be shot, not a build-menu upgrade |
+
+**Thin.** A random cave-in roll. A smuggling stat. Concealment that works while witnessed. Free
+cooling with no signature cost.
+
+### 30.3 One more bell — vignettes in the Eighth Bell register
+
+**The feeling.** The bespoke vignettes work because each is one physical job, one skill gate, one
+person with a voice. These are three more in that register — each a CR-TEXTURE slice, none a
+content farm.
+
+| Plan | What the player gets | Seams it extends | Done when |
+|---|---|---|---|
+| **VIG-01 The Blind Welder** | A sensor-dead repair barge in a hazard zone hails on `bandRadio`: tow and rotate its nose so its fixed welder arc traces three cracked seams on a station strut, holding relative speed under the gate. Payment: free repair of `livingHull` scars and a weld-seam livery on your bow | `src/combat/industrialBeam.js`, `bandRadio.js`, `src/core/livingHull.js`, a `tallyThree.js`-register speed gate, `src/data/worldOneOffs.js` | Fixed seed: the job completes only by towing inside the speed/alignment gate; refusing or botching leaves the barge adrift and reachable later; the reward writes a real scar-repair receipt. The welder never auto-completes while you park |
+| **VIG-02 The Runaway Kiln** | An unmanned kilnback-mass crucible drifts ballistically toward a habitat ring; shooting it detonates the molten load. The only save is Mass Seed anchors or a Twin Bridle slinging counterweights across its bow to bleed the vector down | `src/data/kilnback.js` mass/thermal recipe, `massSeed.js`, `attachments.js` `twin_bridle`, the impulse kernel, habitat dressing | Fixed seed: the crucible's approach against the ring responds to applied tether impulse and to nothing else; a shot is a real detonation ending; a successful bleed is readable as a slowing trajectory on the glass — no timer HUD, no scripted stop at N metres |
+| **VIG-03 The Drift Auction** | A salvage scow in a lawless pocket with three tethered mystery containers and circling NPC scavengers. No menu: flash your scanner pulse to bid, scan-peek a crate's true mass/thermal decay to bait a rival into a dud — or cut the tether and run the crossfire | The existing scanner pulse verb, `npcJobs` circling behavior, cargo custody, tether sever, the lawless pocket (no law response) | Bidding, outbidding, peeking, and theft all work through physical verbs; rivals answer the peek and the theft through their existing job/hostility owners; a dud crate's true contents are deterministic per seed. NPCs are allowed to win |
+
+**Thin.** A cutscene repair. A dialogue tree. A mission that fails for arriving one tick late. An
+auction UI.
+
+### 30.4 The court, the tow, the lot — crime and its paper trail
+
+**The feeling.** `wreckCourt.js` already trusts physics over testimony. That trust is exploitable,
+and the exploit is the game. And a ship with a past should be buyable, with the past included.
+
+| Plan | What the player gets | Seams it extends | Done when |
+|---|---|---|---|
+| **CRT-01 Planted ballistics** | Stage the scene: tow a pirate wreck into a rival's line of fire, or scorch a hull with a salvaged faction weapon before it cools, then file the claim — insurance pays you and `warrantHunterWaves` go after *them* | `src/systems/wreckCourt.js` (`ballisticFit`, `temperatureFromAge`, `ejectionFit`), faction weapon damage signatures, `src/systems/deedRecord.js`, warrant hunters via `lawSecurity`, the economy payout | A well-staged scene passes the same reconstruction an honest wreck passes and routes consequences to the framed party; a badly staged one — wrong temperature for its age, an impossible ballistic fit — is caught by the existing fits and backfires on the filer. The physics that convict also acquit |
+| **CRT-02 Towline contests** | Rival bounty hunters or the prisoner's wingmen latch *their* Massline onto the far end of your surrendered prize: a literal two-ship tug-of-war you win by breaking line-of-sight, whipping them into a rock, or severing their cable | `src/systems/surrenderRecovery.js`, `attachments.js` hostile-capable latch, `src/systems/bountyHunt.js`, the `memorialThief.js` contest precedent | Fixed seed: a contested tow resolves by physics — relative thrust, mass, line snap thresholds — never a dice roll or an escort meter; severing is available to both sides; custody follows the single custody writer; the player can always abandon the prize |
+| **CRT-03 The Impound Lot** | Stations sell cheap pre-owned hulls pulled from the loss ledger and surrender recoveries — each with preexisting `livingHull` scars, a real quirk (an over-bored thruster, a grudging nemesis who thinks the old owner still flies it), and a `deedRecord` rap sheet | `src/core/livingHull.js` (scars / repairPatches / graffitiLine / renown), `src/systems/lossLedger.js`, `surrenderRecovery.js`, `deedRecord.js`, the `ships.js` purchase flow, ace/nemesis memory | A bought impound hull arrives with exactly the scars and deed its listing showed; its quirk is a real derived-stat modifier, not flavor text; the history is readable before purchase and survives save/Continue. Not a discount catalog clone |
+
+**Thin.** A dialogue option that says "frame X." Framing that always works. Generated history text
+with no state behind it. A rap sheet that never reaches `lawSecurity`.
+
+### 30.5 The fleet learns a word — alphabet interrupts and the wingman brace
+
+| Plan | What the player gets | Seams it extends | Done when |
+|---|---|---|---|
+| **FLT-01 Reaction slot for the alphabet** | One conditional token per drone program — "ON threat-near → FLEE to station", "ON cargo-full → drop beacon and hail" — earned through the precursor machine protocol. Resilient logistics without a spreadsheet | `src/systems/alphabet.js` (WAIT already waits on conditions; the slot is the interrupt half), drone program data, `src/data/alienEcology.js` `machineProtocol` gate | Fixed seed: a program with the slot interrupts its loop on the trigger and resumes or exits per the token; a program without the slot behaves byte-identically to today; the unlock is earned in the world, not a settings toggle. One slot per program in the first slice; the five primitives stay five |
+| **FLT-02 Wingman brace** | One contextual order — "Anchor / brace target": your wingman tethers an enemy heavy still, or swings it toward you, so your Clothesline, One-Two, or Industrial Beam cut lands. A witnessed shared stunt spikes their morale and earns them a callsign | `src/systems/wingmen.js` orders, `attachments.js` latch, `src/systems/wingMorale.js`, the existing stunt/renown witness path, `tacticalAI` for holding the brace | The order is issuable and executable on the default route; fixed seed: a braced heavy's motion measurably serves the player's follow-up; the morale spike and callsign write to the wingman's persistent identity — a callsign is not only a string |
+
+**Thin.** A full scripting UI. A second pet-AI engine. A wingman tugging at scripted strength.
+
+### 30.6 The airwaves remember — ghost wrecks and numbers stations
+
+| Plan | What the player gets | Seams it extends | Done when |
+|---|---|---|---|
+| **AIR-01 Cross-run ghost wrecks** | Die in Ironman/Survival (or export a `runShareCode`) and your dead ship enters the importing galaxy as a physical `uniqueWreck` at the exact coordinates where you died — your `livingHull` scars, your fitted modules, and the 5-second `killReplay` tape playable from the black box | `src/core/runShareCode.js` payload schema (versioned), `src/data/uniqueWrecks.js`, `src/systems/killReplay.js`, `src/core/newGamePlus.js` seeding, save migrations | A code from run A deterministically places the wreck in run B with the same coordinates, scars, and fit; the black box replays the recorded tape; importing the same code twice does not duplicate the wreck; a foreign or absent code changes nothing |
+| **AIR-02 Numbers stations** | Certain anomaly POIs and precursor machines broadcast an encrypted cadence that only decodes cleanly while your hull sits inside the radar shadow of a specific `solidDressing` landmark or `opticField` crystal ring — radio tuning as a spatial positioning puzzle | `bandRadio.js` (`bandSignalStrength`, `resolveLandmarkBleed`), `src/world/solidDressing.js` occlusion, `opticField.js` structures, anomaly POI data, the existing decode/reward writer | Fixed seed: the same channel is noise outside the shadow and clean inside it, with the boundary driven by actual occlusion geometry, not a radius; the reward is a physical place or fact, solvable from in-world cues alone — no cipher minigame UI |
+
+**Thin.** A leaderboard. Strangers' saves arriving as a live invasion. A signal that is clean
+everywhere within radius N.
+
+### 30.7 Order and refusals
+
+Taste, not law: **RW-01** and **RW-04** are the cheapest rows and teach the rope-as-stance pattern
+the other combat rows reuse; **CRT-03** and **AIR-01** are the cheapest persistence rows. The three
+vignettes stand alone — take one when a CR-TEXTURE slice is wanted. **BORE-01** is the largest; take
+it only when the drilled-rock lane is otherwise quiet, and build it as the thermal model's twin, not
+as a third site system. **CRT-01** should land before or beside CRT-02/CRT-03 only if the wreck-court
+owners are free; the row lives or dies on the existing fits staying honest.
+
+Every row refuses the same things §23.3 refuses, plus: a mission that says "hold E near the thing,"
+a modal where a physical verb was named, a meter that runs out, and a second writer of heat, cargo,
+or standing.
+
+### 30.8 Landed first slices (2026-10-15 and 2026-10-18)
+
+Every §30 plan row now has a landed first slice on `master`: RW-01, RW-04 and VIG-02 (2026-10-15); RW-02 (hot towed payload steals homing missiles; pursuers are still follow-up), RW-03, BORE-01, BORE-02, BORE-03,
+VIG-01, VIG-03, CRT-01, CRT-02, CRT-03, FLT-01, FLT-02, AIR-01 (the death record rides the share code into a ghost wreck; the black-box replay is the second slice) and AIR-02 (2026-10-18). The plans stay above as the
+design record; what remains is each row's "second slice", not the row. Visible cables for non-player Masslines (CRT-02's hunter line, FLT-02's brace) shipped with NPC cables the same day.
+Second slices shipped since: AIR-01 black-box tape plays from the imported ghost wreck (2026-10-18); RW-02 pursuers — hostiles prosecuting the towing hull claim the hot bell through their ordinary combat/doctrine target and the brood steers at the signature outright, released when it cools, severs, or is eaten (2026-10-18); CRT-03 nemesis — a bought lot hull whose papers name the dead owner carries `impoundShadow`: while the player flies it, a named grudge drops in on approach, hails the OLD callsign on comms, and opens fire; killed, it resurfaces later with the papers remembering each death, and selling or swapping the hull ends the haunting (2026-10-18); CRT-02 squad rescue — while the player holds a surrendered hull, a still-free ship of its own squad peels off, latches the far end through the same kernel, and hauls it out: cut their line and the rescue ends, lose yours and six seconds of their pull frees the prisoner to run with its wingmates (2026-10-18).
+
+## 31. The A-list finish — studio audit, consolidation and expansion (2026-10-19)
+
+Owner request, 2026-10-19: audit the build map and plans against the live code, consolidate them so
+agents can run them in parallel, and expand them toward the game the repository is reaching for. The
+plan should cover big build-map plans, small grunt and hygiene work, and seed passes that fill the
+INFERENCE catalog. The owner described the target as: *a super-fun space adventure with fast,
+physics-centric arcade combat that plays best in Swarm, and an Adventure mode that is mentally
+stimulating because of its customization, economy and story — with a massively polished frontend,
+everything on the newest versions, and optimized.*
+
+This section is the design record. Its dispatchable rows are §1C **§N (rows 390–481)**. Each row
+belongs to one seam in the §1C seam table, so `board-chunks` and `program-dispatch --next` can route
+it. Every row extends owners that already exist. §23.3's refusals and the single-writer law apply in
+full. Every done-when is measured on seed 4242 unless the row says otherwise. Counts below come from
+importing the data modules on 2026-10-19 (census: 25 sectors, 35 stations, 15 hulls, 124 modules,
+41 weapons, 26 enemy types, 328 authored encounters, 195 lived-world vignettes, 66 commodities, 14
+factions, 26 named characters, 8 story beats, 5 endings + sandbox). Recount before quoting any of
+them in a later plan.
+
+### 31.0 The verdict — breadth of a ten-year live game, connective tissue of a vertical slice
+
+Every §1C seam reads `done` and the catalog has 0 OPEN lines. The source tree is about 1.1 M LOC with
+about 4,000 test files and 662 npm scripts. That is not a finished game; the planning units ran out
+before the experience did. Four independent read-only audits (progression/economy, combat/physics,
+presentation, content census) found the same five faults from different directions:
+
+1. **Recorded is not felt.** The game writes consequences well and then mostly prints them. Ending
+   flags `aux_missions` and `routing_active` are written and never read. `postEndingReplay`
+   `run.worldFlags` is read nowhere else. Replay finales emit a `sectorsim:impulse` that decays back
+   to baseline. Ship history feeds barks, impound and the ledger, but resale is a flat 50% of base.
+   *Rule from now on: no new fact lands without a simulation reader the player can fly into.*
+2. **The physics only works for the player.** AI dodges thrown bodies but never throws one: grep
+   `aiThrow|enemyThrow|launchBody|bodyAsWeapon` finds no AI path. Weapon fire never sets
+   `ignoreFriendlyFire`, so NPC bolts cannot hurt NPCs, and `_retaliate` is only reached when the
+   attacker is the player. Racing rivals never take the Massline anchors the courses author. Fields
+   are read only by light enemies, and only wells. The Line never touches terrain: `tetherGameplay`
+   reads `isMasslineObstructed`, and nothing provides it.
+3. **Stand-ins are counted as done.** The replay players see is a silent 10 fps, 640×360 pixel
+   ring, while pose tapes and the Moment Machine's `planShot` sit unused. Most captions are built
+   from sound IDs. Four of five locales are machine-filled. The "live" title attract is a baked,
+   silent NPC dogfight with no Massline: it advertises the HP-bar dogfight VISION rejects.
+4. **The long game stops at hour ten.** `techVerbLadder` loops `hour <= 10`. Nothing costs more than
+   credits, so no choice closes a door. The heaviest movable one-off is 260 t, and the code reads
+   `revisitNeed` without any data row setting it. The B7 climax reads only `(elroyOutcome,
+   branch)`. Hours 10–25 are the weakest window, and the PQ-155 canyon is still open.
+5. **Systems grew sideways instead of together.** Four industry producers carry three conflicting
+   alloy recipes (`data/automation.js`, `claims.js`, `sites.js`). The automation alphabet has five
+   primitives but only three fixed templates and no composer. There are 15 hulls, one per role, so
+   a player cannot choose *within* a role. Racing has 3 circuits for 8 contracts. Swarm has no
+   pilot roster, although its phase C (journey) has been unblocked since phases A and B shipped
+   (rows 263–269).
+
+Two facts about the plans themselves:
+
+- **The prose is stale in both directions.** Some plan text lists landed features as gaps (death
+  cam, photo mode and the replay screen in PQ-159/160), and some quoted counts are out of date.
+  Grep the code before filing anything.
+- **The board drained because rows were scoped as "wire the seam", not "a stranger feels X".**
+  §31's rows are scoped by feeling, and each has a stranger-visible done-when.
+
+### 31.1 Consolidation — the studio, in parallel pods on the existing lanes
+
+No new lane system is introduced. The finish lanes (§27, `FINISH_LANES.md`) stay the areas. §31
+adds **seams**: disjoint file sets inside those lanes, each worked by one agent, so up to sixteen
+agents can work at once without touching each other's files.
+
+| Pod (lane) | Seams (§1C) | What the pod finishes | Existing plans it absorbs (do not duplicate) |
+|---|---|---|---|
+| THE HAND (L-HAND) | `rope-world` | The Line touches the world | §23.1 CV-THROW/CV-GLASS remainders, `ARSENAL_EXPERIENCE.md` toy rows |
+| THE FIGHT (L-FIGHTWORLD) | `hostile-hands`, `racing`, `swarm` | Enemies and rivals play by the player's physics; Swarm phase C | §16.4, `SWARM_EXPANSION.md` B5/B7, `RACING_FLIGHT_PROGRAM.md` RF-05/RF-07 |
+| THE WORLD (L-FIGHTWORLD) | `world-answers-2` | Endings, front lines and civilians change places you can fly to | `06_RETAINED_FUTURE_BACKLOG.md` WB-WORLD-AFTER, §30.4, PQ-170 (kept clear) |
+| THE LONG GAME (L-LONGGAME) | `run-memory`, `hull-commit`, `works` | Hours 10–25: revisits, commitments, a climax built from the run, one industry | §15.8, §17 M1–M6, §L rows, PQ-155/PQ-176–178, §30.5 FLT-01 |
+| THE EAR (L-EAR) | `chain-ear` | Stunt chains sing in key; 25 sectors, 25 beds | §23.1 CV-EAR (these rows *are* CV-EAR's next slices) |
+| THE SHOW (L-INSTRUMENT edges, not the redesign) | `theater`, `front-door`, `sentences`, `rumor-chart` | Replay, title, captions, languages and the reasoning chart | PQ-159/160/165/166/169; screen edits stay minimal and ORRERY-consistent per root `AGENTS.md` §1 |
+| THE MACHINE (L-MACHINE) | `monoliths`, `toolchain` | Agent-parallel source, newest versions, a legible toolchain | §8, §21.4 |
+| THE WRITERS' ROOM (any) | `seed-a`, `seed-b`, `seed-c` | Turn every campaign's residuals into audited INFERENCE lines | `INFERENCE_LANES.md` §0.1, this catalog's line format |
+
+**Batching law for §31 rows.**
+- **A row is a coherent player outcome.** Its catalog lines (`INFERENCE_IDEAS.md`, section
+  A-LIST) are taken inside it, as §1C already says for OPEN lines in a claimed seam.
+- **Checks are batched by changed claim:** a focused test per outcome, one 4242 lab scenario per
+  row, and a shipping-camera capture for anything visual.
+- **Rows inside one seam are serial; seams run in parallel.** Where two seams touch one large file
+  (`traffic.js`, `missions.js`, `audioSystem.js`, `weapons.js`), the row names the shared hunk. The
+  later agent merges by content and never reverts.
+- **`monoliths` runs file by file**, only while no other claimed seam lists that file.
+- **Every landing files one `LANDED_REVIEW.md` row**, as §1C requires.
+
+### 31.2 Director's calls (made under the owner's 2026-10-19 delegation; the owner may overrule)
+
+1. **Irreversible refits: yes.** Each hull gets two mutually exclusive, permanent refits. Each
+   refit adds one capability sentence and removes another. This is how 15 hulls become 45 builds
+   without 30 new GLBs, and it is the first cost in the game that is not credits.
+2. **Enemies use mass, but readable first.** No enemy may launch a body at the player until the
+   incoming-mass cue (catalog AL-HF-06) ships. A hit the player could not read is a defect.
+3. **Crossfire is temperament-gated.** Reach and pirate packs can hit each other and hold
+   12-second grudges. Concord and lawful hulls never do. NPC-on-NPC damage never gives the player
+   heat.
+4. **One recipe per product.** Industry is unified before anything new is added. The outpost
+   refinery retires with a save migration.
+5. **Swarm phase C is open now.** Phases A (rows 263–266) and B (rows 267–269) shipped. Row 270
+   moves from PARKED to OPEN. Phases D–F keep the owner's order.
+6. **The menu stays silent (owner ruling at `audioSystem.js`).** The title-attract row ships the
+   picture. A title theme waits for an explicit owner yes; it is listed as the one open question.
+7. **Replay re-renders the simulation; it never records video.** The pixel ring stays only as the
+   fallback (PQ-160's own words).
+8. **Dependency currency is part of the A-list bar.** On 2026-10-19 the repo pins three 0.184,
+   Electron 43.2, Rapier compat 0.19.3 and electron-builder ^24, while the registry offers 0.186,
+   44.9, 0.21 and 26.x. The row picks versions published at least 7 days earlier and is gated on
+   byte-identical simulation digests.
+
+### 31.3 The campaigns
+
+Format: **feeling** · thread (the games whose deeper mechanism this borrows) · owners extended ·
+done when (seed 4242) · refuse. The first slice is the §1C row; later slices are the same row
+continued, or SEED-minted lines.
+
+#### THE HAND
+
+**AL-HAND-1 The Line touches the world** (row 390).
+- *Feeling:* "I wrapped the line round a rock and whipped the Wasp off it twice as fast."
+- *Thread:* the Worms ninja rope and Just Cause 2's tether: terrain corners become pivots and raise
+  the skill ceiling.
+- *Owners:* the `isMasslineObstructed` provider via `src/world/asteroidField.js`;
+  `src/combat/attachments.js`; `src/core/sg02DynamicBodyOwner.js`; the `tetherGameplay.js` seam;
+  `masslineThrow.js`; `render/masslineCableSurface.js`.
+- *Done when:*
+  - A Wasp behind a rock cannot be latched, and a 30 WU side-step can latch it (AL-HF-08).
+  - Orbiting a rock ≥24 WU makes a visible pivot, and the swing radius shortens at it.
+  - The whip releases ≥1.3× faster than the same input without the wrap.
+  - The line unwraps when the swing reverses and never tunnels through the rock at 60 Hz.
+  - The throw solver reports invalid while the line is wrapped.
+  - Lines that are already live are never auto-cut.
+  - **Owner ruling 2026-10-19:** the line wraps only during a deliberate swing or whip. Plain
+    towing and hauling through a rock field never snag. Orbiting the body you latched is unchanged,
+    because a line that ends on a rock has nothing to wrap around.
+- *Refuse:* a cable that only looks bent in render; auto-cutting; text in place of physics.
+
+#### THE FIGHT
+
+**AL-FIGHT-1 Crossfire** (row 391).
+- *Feeling:* "I parked between them; they shredded each other, then started fighting."
+- *Thread:* Doom (1993) infighting. Enemy-on-enemy damage plus a retaliation rule turns your
+  position into a weapon.
+- *Owners:* `src/ai/fireDiscipline.js` (gate the ally-in-lane check by temperament);
+  `temperament.js`; a narrowly scoped flag at `combat/damage.js`; the splash path in `weapons.js`;
+  `lawSecurity.js` `_handleDamage`; `engagementAuthority.js`; `squad.js`;
+  `collisionConsequences.js`.
+- *Done when:*
+  - Holding position between two Reach Reavers for 3 s produces ≥1 Reaver-on-Reaver hit and a
+    retaliation pair within 1 s.
+  - A Concord patrol in the same geometry lands 0 hits on its own side.
+  - Grudges expire within 12 s.
+  - NPC-on-NPC damage adds 0 player heat.
+  - Catalog lines AL-HF-01, -02, -14 and -15 ship inside the row.
+- *Refuse:* a confusion status; a random infighting roll; flipping teams.
+
+**AL-FIGHT-2 They have hands too** (row 392; AL-HF-06 first, then AL-HF-13).
+*Owner ruling 2026-10-21:* body-throwing stays with rare, authored specialists (today only the Mirrorjaw Foreman and Forge Regent qualify, through their concussion mounts). Do not widen it to common enemies; that is a chaos vector (§22.11).
+- *Feeling:* "The Reaver kicked a wreck at me; I sidestepped, caught it, and sent it back."
+- *Thread:* Half-Life 2. Enemies use the same props the player does, so the sandbox teaches its
+  rules by doing them to you.
+- *Owners:* `src/ai/combatDoctrine.js`; `specialistPlans.js`; `maneuver.js`; `reflexes.js`
+  (closing-speed and ETA maths); `systems/aiPorts.js`; `tacticalAI.js`; `engagementAuthority.js`
+  (a launch is a fire act); `combat/stuntProjectileEvidence.js`.
+- *Done when* (Crucible Act I plus a Helios raid, 3 × 5 min):
+  - Enemies launch ≥2 bodies per fight, each telegraphed ≥0.8 s at the shipping camera.
+  - A sidestep input tape takes 0 hits.
+  - A catch-and-return tape credits the kill to the player.
+  - There are 0 untelegraphed shoves on the player's hull.
+  - Corsairs and aces steer around player wells (AL-HF-11).
+- *Refuse:* a new rock-thrower enemy row; debris that only deals damage; hitscan.
+
+**AL-FIGHT-3 Verbs feed verbs** (row 393; after 391–392, because its economy needs their kills).
+- *Feeling:* "I run dry until I throw something; that kill spills a charge cell, and I'm back on
+  the guns."
+- *Thread:* Doom Eternal's resource rotation. Each verb refills what another verb spends.
+- *Owners:* `combat.js` (capacitor regen; death and loot); `weapons.js` (capacitor spend); kill
+  attribution in `masslineThrow.js`.
+- *Done when* (Crucible waves 4–6):
+  - A guns-only tape empties the capacitor ≥3 times in 90 s.
+  - A tape alternating guns and throws empties it ≤1 time.
+  - Every mass kill spills a latchable cell within 250 ms.
+  - Gun kills spill nothing.
+  - The cells are physical bodies that can be thrown.
+- *Refuse:* an invisible refund on stunt detection; a combo meter; a damage buff; health pickups.
+
+**AL-RACE-1 The line is contested** (row 394; this is RF-05's second slice, not a new racing plan).
+- *Feeling:* "Mira took the Quarry Hook before me, so I learned it, then shoved her into the
+  shutter."
+- *Thread:* Burnout 3 takedowns and Mario Kart's readable rivals. The pack uses your verbs, and a
+  crash is content.
+- *Owners:* `src/ai/racingDriver.js`; `missions/racingOpponents.js`; `missions/racingSetPieces.js`;
+  `data/racingSetPieces.js`; `racingCareer.js`; `racingGhosts.js`; `ui/racingRecognition.js`;
+  `raceLevels.js`; `raceBoard.js`; `racingControls.js`.
+- *Done when* (all 3 courses, Hard):
+  - Every rival visibly uses ≥1 anchor or set-piece window per lap.
+  - An anchored rival lap is ≥0.8 s faster than an unanchored one.
+  - A player shove into a set piece costs the rival ≥2 s, and the rival is back on its line within
+    6 s.
+  - Medal times are derived from rival lines.
+  - Catalog lines AL-HF-03, -04, -09, -10 and -12 ship inside the row.
+- *Refuse:* rubber-banding; hidden speed boosts; scripted crashes.
+
+**AL-RACE-2 Every way of life is a course** (row 395).
+- *Feeling:* "the Pallas reef race is pinball; the Vesta race is a furnace you time."
+- *Thread:* Forza Horizon festival routes and Trackmania's identity-per-track. A course is a place's
+  physics, not dots over rocks.
+- *Owners:* `data/raceLevels.js`; `data/raceCourses.js`; `world/racingCorridor.js`; the RF-02
+  authoring validator; `data/racingSetPieces.js`.
+- *Done when:*
+  - Six more circuits exist (Pallas Drift, Vesta Forge, Ceres Belt, Haumea Rift, Kepler Scar,
+    Sker Haven).
+  - Each circuit's set piece is that sector's `SECTOR_WAY_OF_LIFE` hazard.
+  - Each circuit passes the RF-02 validator and has rival lines from row 394.
+  - There are 9 circuits for 8 contracts, and every contract names a real course.
+- *Refuse:* recoloured copies of the three circuits; a separate racing engine; new hull tuning.
+
+**SWARM-08 The journey** (row 270, unparked — `SWARM_EXPANSION.md` B5, B7). This is the owner's
+phase C, as written. §31 adds nothing to it except the reminder that the pilot roster is phase D
+(row 271).
+
+#### THE WORLD
+
+**AL-WORLD-1 The ending rewrites the map** (row 396; activates `WB-WORLD-AFTER`).
+- *Feeling:* "Helios changed because of what I signed."
+- *Thread:* Fallout: New Vegas end-states made walkable, and Kenshi's world that stays changed.
+- *Owners:* `story.js` ending application; `postEndingReplay.js`; `sectorSim.js` (stays the danger
+  writer); `traffic.js`; `newGamePlus.js`.
+- *Done when:*
+  - Each ending sets three facts the player can fly to within 10 minutes (a traffic presence, a law
+    or price change, and who stands where), and they survive reload.
+  - Ending A posts a Concord picket on the Ash Cache approach (AL-LG-08).
+  - Ending B leaves Syndicate beacons on quiet routes (AL-LG-09).
+  - A finished replay chain leaves a standing board line and danger that stays ≥ base + δ ten days
+    later (AL-LG-06, -07).
+- *Refuse:* slides; news lines; reputation numbers as the effect. Stay clear of PQ-170's write-set.
+
+**AL-WORLD-2 The front line you can see** (row 397).
+- *Feeling:* "the border moved while I was hauling, and I can see where."
+- *Thread:* X4's contested sectors and Mount & Blade sieges seen from the road. A territory change
+  is a place, not a number.
+- *Owners:* the factions territory-flip single writer (fed today by `sectorSim`
+  `addOffscreenTension`); `traffic.js` patrol and picket spawning; `gateControlDirector.js`;
+  `aftermathWrecks.js`; economy price pressure intents.
+- *Hypothesis to verify first:* flips are mostly numeric today. If a flip already embodies, close
+  the row as already-true with the evidence.
+- *Done when:*
+  - A forced flip on seed 4242 produces, within one sector visit, a changed picket at the gate, a
+    wreck field from the fight that caused it, and a changed customs verdict.
+  - All three survive reload and decay only through the simulation.
+- *Refuse:* a war screen; a meter; a news ticker as the effect.
+
+**AL-WORLD-3 Civilians with names** (row 398).
+- *Feeling:* "I pulled Dessa's hauler out of that raid; three days later she's on the Tethys board
+  asking for me."
+- *Thread:* Shadow of Mordor's nemesis system pointed at ordinary people, and RimWorld's colonists
+  who remember. Persistence makes the traffic matter.
+- *Owners:* `npcJobsRuntime.js`; `traffic.js` spawn identity; `stationContacts.js`; `missions.js`
+  offers (the `fenceDesk.js` standing-order pattern); `chronicler`.
+- *Hypothesis to verify first:* aces, nemeses and named story captains persist, but job NPCs do
+  not (grep finds no `npcIdentity|captainRoster`).
+- *Done when:*
+  - Rescuing, robbing or killing a hauler captain writes a persistent record.
+  - A rescued captain reappears as a client offering a standing order (AL-LG-16).
+  - A robbed captain's routes change.
+  - All of this survives reload, with a bounded roster of at most 24 remembered captains.
+- *Refuse:* procedural biographies with no state; dialogue trees; an unbounded roster.
+
+#### THE LONG GAME
+
+**AL-LONG-1 Seen at minute one, moved at hour fifteen** (row 399).
+- *Feeling:* "wait — can I move that now?"
+- *Thread:* Outer Wilds' knowledge gates, Metroid's capability gates and Subnautica's depth gates.
+  The world shows you the lock before you hold the key.
+- *Owners:* `data/worldOneOffs.js`; `scanReveal.js` (its `revisitNeed` reader already exists);
+  `shipCapabilities.js`.
+- *Done when:*
+  - ≥8 one-offs set `revisitNeed` across tow, slam, line and field.
+  - Each one reads "not yet" on the starter fit and opens after the door it names.
+  - ≥3 of them land in hours 10–25, including the Great Tanker as a capital-tow target.
+  - Catalog lines AL-LG-01, -02 and -03 ship inside the row.
+- *Refuse:* level-number locks; hiding the object until it is ready.
+
+**AL-LONG-2 The reckoning is built from your run** (row 400).
+- *Feeling:* "everything I did showed up for the last fight."
+- *Thread:* Mass Effect 2's suicide mission and Into the Breach's readable boards. Earlier choices
+  are the final fight's pieces.
+- *Owners:* `story/campaign47a/embodiedMissions.js`; the B7 board in `missions.js`; `story/endings/lifeLedger.js`;
+  `storySpine.js` (read-only).
+- *Done when:*
+  - Four saves differing in one earlier fact (B1 method, B2 pods, B3 tow, B6 asset) produce four
+    different B7 boards, each named in ≤12 words.
+  - A run with no callbacks can still win.
+  - Catalog lines AL-LG-04 and -05 ship inside the row.
+- *Refuse:* dialogue-only callbacks; "+X% per good deed"; writing spine flags.
+
+**AL-LONG-3 Hulls you commit to** (row 401; director's call 1).
+- *Feeling:* "I chose what she is."
+- *Thread:* Starsector's built-in hullmods, Slay the Spire's deck thinning and Rogue Legacy's traits.
+  Commitment is the content.
+- *Owners:* `data/ships.js`; `systems/ships.js`; `shipCapabilities.js`; `techVerbLadder.js`;
+  `shipLedger.js`; `data/modules.js`.
+- *Done when:*
+  - Every hull offers two irreversible refits, each adding one capability sentence and removing
+    another.
+  - The verb ladder gets rows for hours 11–15 (AL-LG-12).
+  - Resale names the hull's deeds (AL-LG-10).
+  - A history-gated scarred module ships (AL-LG-11).
+  - Both refits of three hulls prove viable in a Crucible run.
+- *Refuse:* stat tiers; buy-backs; +% nodes.
+
+**AL-LONG-4 One works** (row 402; unify first).
+- *Feeling:* "my mine feeds my refinery feeds that station."
+- *Thread:* Factorio and Satisfactory chains, and X4 stations that trade without you.
+- *Owners:* `data/automation.js`; `claims.js`; `data/sites.js`; `siteProduction.js`; `crafting.js`;
+  `automation.js`.
+- *Done when:*
+  - Each product has one recipe (AL-LG-13, -14).
+  - Site output reaches a station through a claim relay with no player hold, and each hop leaves a
+    receipt.
+  - The outpost refinery is retired with a save migration.
+- *Refuse:* another readout (FB-055 did that); a fifth producer.
+
+**AL-LONG-5 Write the drone** (row 403; after 402; reactions stay FLT-01's).
+- *Feeling:* "my machine does what I meant."
+- *Thread:* Opus Magnum, Factorio and FFXII gambits. A short program the player writes beats a menu
+  of templates.
+- *Owners:* `systems/alphabet.js`; `automation.js` `assignProgram`; `claims.js`; a minimal composer
+  surface in the automation panel (ORRERY-consistent, root `AGENTS.md` §1).
+- *Done when:*
+  - The player composes ≥3 non-template loops of ≤6 steps (AL-LG-15).
+  - Bad steps are refused with a reason.
+  - One loop solves a haul no template can.
+  - Runs replay identically after reload.
+- *Refuse:* more dropdown templates; conditionals beyond FLT-01's one slot.
+
+#### THE EAR
+
+**AL-EAR-1 The chain sings** (row 404; CV-EAR's next slice).
+- *Feeling:* "my stunt chain is a riff in the sector's key, and the bank is a cadence."
+- *Thread:* Rez and Sayonara Wild Hearts (actions quantized into the score), and Tony Hawk's rising
+  combo tension.
+- *Owners:* `audio/audioSystem.js` stunt handlers; `scoreDirector.js` (`scoreNoteHz`,
+  `scaleChord`); `themeMatrix.js`; `systems/stuntCombo.js` (read-only).
+- *Done when:* AL-PR-01 through AL-PR-06 ship:
+  - links play in-mode in two sectors with different modes;
+  - links 7+ keep climbing;
+  - banking has three cadence tiers;
+  - the fuse is audible in the last second;
+  - a 5-act stunt chain lifts the stem like a 5-kill swarm chain;
+  - the rated stinger lands in key within 70 ms.
+- *Refuse:* new recipes for each link; delaying impact sounds; merging sim counters.
+
+**AL-EAR-2 Twenty-five sectors, twenty-five beds** (row 405).
+- *Feeling:* "I know Sker Haven with my eyes shut."
+- *Thread:* Hades and No Man's Sky's procedural-plus-authored score. Identity carries over long
+  hours.
+- *Owners:* `scoreDirector.js` (25 identities already exist); `themeCompose.js`; `themeMatrix.js`;
+  `bandBeds.js`; `assets/audio/music/` (14 files today: 10 sector beds and 4 state themes).
+- *Done when:*
+  - Every sector without an authored bed gets a composed bed from its identity (mode, root, tempo)
+    and its faction colour.
+  - A blind A/B of any two neighbouring sectors is distinguishable on a listening sheet.
+  - There are no new samples beyond `OPEN_SOURCE_INTAKE` rules.
+- *Refuse:* one loop retuned 15 times; a title theme (owner question).
+
+#### THE SHOW
+
+**AL-SHOW-1 The rope on tape** (row 406).
+- *Feeling:* "I died, and the game showed me the throw that did it."
+- *Owners:* `systems/killReplay.js` (adds tether endpoints, tension and field pulses: AL-PR-09);
+  the survival-only gate in `sim/killcamTape.js`; `ui/screens/gameOver.js`; `uiStage.js` (AL-PR-10).
+- *Done when:*
+  - A recorded throw round-trips through the tape.
+  - The sim hash and `check-replay` are unchanged.
+  - Adventure death plays the kill-cam once and holds the final frame.
+  - Reduced motion shows a still instead.
+  - A missing tape falls back to the plain plate.
+- *Refuse:* recording video; lifting the gate without a memory bound.
+
+**AL-SHOW-2 Theater: re-render, don't record** (row 407; after 406).
+- *Feeling:* "watch that again" — at full frame rate, from the angle a director would pick, with a
+  camera I can grab.
+- *Thread:* Halo Theater, Rocket League replays, and Forza's photo mode inside replays.
+- *Owners:* `src/presentation/momentMachine/` (`planShot`, `createOfflineCameraLease`); `killcamStage.js`;
+  `replay.js`; `clips.js`; `clipExport.js`; photo mode; `flightFootage.js` stays as the fallback.
+- *Done when:*
+  - A Moment-Machine-picked Massline kill replays from tape poses at display rate with the planned
+    camera.
+  - It can be scrubbed, and photo-mode free camera works at any frame.
+  - Export is ≥30 fps at 1280×720 with sound (AL-PR-11), with captions in the player's language
+    (AL-PR-12).
+  - The sim hash is unchanged.
+- *Refuse:* a higher-fps pixel ring; filters on the 10 fps video; a restyled Clips screen.
+
+**AL-SHOW-3 The front door shows the verb** (row 408).
+- *Feeling:* within 20 s of an idle title, a stranger sees a hull caught on the line, swung and
+  thrown into something.
+- *Thread:* the attract modes of Rocket League and Forza.
+- *Owners:* `src/sim/titleAttract*.js`; `render/titleAttractStage.js`;
+  `scripts/bake-title-attract.mjs` (tape v2 recorded offline from a `testing/lab` scenario).
+- *Done when:*
+  - Every 60 s idle loop shows ≥1 catch → swing → release → impact and one field redirection, and
+    the rope reads at shipping resolution.
+  - Bolts use the weapon-family look (AL-PR-08).
+  - Flash reduction is respected (AL-PR-07).
+  - `check:title-attract` stays byte-stable for the new tape.
+- *Refuse:* re-seeding the dogfight; a pre-rendered video; non-sim choreography; title music
+  (owner question).
+
+**AL-SHOW-4 Every sound is a sentence** (row 409).
+- *Feeling:* a deaf player playing in German knows what made a sound, how urgent it is, and where
+  it came from.
+- *Thread:* The Last of Us Part II's accessibility suite and Fortnite's sound visualization.
+- *Owners:* `ui/captions.js`; `audio/masslineInstrument.js` captions; the localization extractor;
+  `settings.js`; `core/timeEffects.js`; Crucible scoring (which flags assisted runs).
+- *Done when:*
+  - A 15-minute first-hour capture shows zero ID-built captions (AL-PR-13).
+  - Accessibility captions are in the inventory (AL-PR-14).
+  - Every positional threat caption carries a bearing (AL-PR-15).
+  - Game speed 100/90/80/70% works without changing the 60 Hz step (AL-PR-16).
+- *Refuse:* a smarter ID regex; machine-translated fallback captions; a radar widget.
+
+**AL-SHOW-5 Languages a native speaker signs off** (row 410).
+- *Feeling:* the first hour in es-ES, fr-FR, de-DE and pt-BR reads as written, not converted.
+- *Owners:* `src/localization/` pipeline and reviewed overlays; the deferred catalogs; a per-locale
+  glossary file beside the overlays.
+- *Done when:*
+  - Every string that fires in the first hour (from the row-409 capture inventory) has a reviewed
+    overlay in all four locales.
+  - Placeholder parity holds and the glossary is applied.
+  - Machine-filled strings outside that set stay marked unreviewed.
+- *Refuse:* marking machine output as reviewed; editing `en-US.generated.js` by hand.
+
+**AL-SHOW-6 The chart draws the arrows** (row 411).
+- *Feeling:* what I learned points somewhere, and the map shows the reasoning.
+- *Thread:* Outer Wilds' rumor mode and Hollow Knight's map you earn.
+- *Owners:* `data/frontierRumors.js` (adds `leadsTo` / corroboration fields); `ui/sim/
+  discoveryKnowledge.js`; `pirateRumor.js`; `uniqueWrecks.js`; the existing chart layers (ORRERY
+  chart primitives).
+- *Done when:*
+  - On a fresh save, three rumors heard in different places draw ≥2 arrows converging on one
+    bearing region.
+  - Confirming the site resolves them.
+  - A field-whitelist test proves no exact position leaks.
+- *Refuse:* a new Ship Log screen (§ "no second map"); a journal list of rumor text.
+
+#### THE MACHINE
+
+**AL-MACH-1 Split `renderer.js`** (row 412) and **AL-MACH-2 Split `missions.js` and `traffic.js`**
+(row 413).
+- *Feeling (agent-facing, player-invisible):* five agents can work on rendering or missions without
+  queueing on one 36,444-line file.
+- *Owners:* those files and new sibling modules in the same folders.
+- *Done when:*
+  - No non-data source file is above 8,000 LOC among the three.
+  - Simulation digests, `check-replay`, boot census and the fast gate are byte-identical before and
+    after.
+  - Generated indexes are rebuilt (`npm run build:indexes`).
+  - Each extraction is one behaviour-preserving commit.
+- *Refuse:* renaming public events; logic changes riding along; splitting while another claimed
+  seam lists the file.
+
+**AL-MACH-3 Newest versions** (row 414; director's call 8).
+- *Owners:* `package.json`; `package-lock.json`; Rapier and three adapters in `src/core/` and
+  `src/render/`; Electron main and preload.
+- *Done when:*
+  - three, Electron, Rapier and electron-builder are on releases ≥7 days old.
+  - Simulation digests are identical on the 4242 lab set (if Rapier changes a digest, the Rapier
+    bump parks with the measured diff and the rest land).
+  - Browser and Electron boot to flight.
+  - The fast gate is green.
+- *Refuse:* floating ranges; editing goldens to pass.
+
+**AL-MACH-4 A toolchain a newcomer can read** (row 415; after 414, same `package.json`).
+- *Done when:*
+  - The 662 npm scripts are inventoried into public, check, probe and retired tiers.
+  - Retired aliases with zero references in docs, CI and scripts are removed.
+  - `scripts/AGENTS.md` names the public tier.
+- *Refuse:* removing a script any doc or CI job references; touching check semantics.
+
+#### THE WRITERS' ROOM — seed passes that fill the INFERENCE catalog
+
+A SEED row is research that ends in catalog lines. It reads live code, outcome-maps each candidate
+against prior owners (`TASK_SOURCE_CROSSWALK.md`), and appends only lines that have a player-visible
+change, exact paths, a direct done check, a "do not" and evidence of absence. Each SEED appends under
+its own heading in `INFERENCE_IDEAS.md`, so the three seed seams never collide. Each row's target is
+**≥12 lines that survive outcome-mapping**; fewer is fine if the gap is not there, and the row
+records the already-true count. Seeding is support work: it never counts as a production unit, and
+it never builds the lines it writes.
+
+| Row | Seed | Read | Produces lines for |
+|---|---|---|---|
+| 416 | SEED-HAND-FIGHT | `tetherGameplay`, `masslineThrow`, `stuntWitnesses`, `src/ai/`, capital bosses | Rope/terrain residuals after 390; enemy physical tells; every boss as a machine you take apart (8 authored capital bosses checked for a physical weak point, a mass-based kill, and a readable phase change) |
+| 417 | SEED-WORLD-LONG | `sectorSim`, `factions`, `traffic`, `npcJobsRuntime`, `careers/`, `techVerbLadder` | Persistence readers for every written-and-unread flag; career-ladder hour 10–25 beats; standing-order clients |
+| 418 | SEED-SHOW-EAR | `captions`, `momentMachine`, `scoreDirector`, `vfxAccessibility` | First-hour caption gaps by recipe id; stingers that ignore the grid; replay and photo gaps |
+| 419 | SEED-SECTORS | `SECTOR_WAY_OF_LIFE_BY_ID`, `sectorVisualProfiles`, `scoreDirector` identities, `livedWorld/roster` | **The 25-sector postcard pass.** For each sector: does its one-line identity show up as a verb, a job, a sound and a picture within 2 minutes of arrival? Each miss becomes one line in that sector's owner |
+| 420 | SEED-SWARM | `SWARM_EXPANSION.md` B5/B7 against live `survival*`/`swarm*` | Phase C residual lines only. Phase D–F ideas are recorded in `SWARM_EXPANSION.md`, never in the catalog |
+| 421 | SEED-META | `data/achievements.js` (22), `data/titles.js` (4), `stuntWitnesses.js` (16 tricks), `chronicler/` | Feats worth bragging about: achievements and titles earned by physical feats the witnesses already detect. No grind counters |
+| 422 | SEED-STRANGER | The default route, first 30 minutes (`onboarding.js`, §29 bundles), recorded with the existing player-truth actor | Every confusing beat a stranger hits becomes a TEACH or PRO line with its owner; no new tutorial system |
+
+### 31.4 Order, and what this section refuses
+
+- **Start anywhere a seam is free.** Within a pod, the order is the row order. Across pods there
+  are four hard edges:
+  - 392 waits on AL-HF-06 (readability before threat);
+  - 393 waits on 391 and 392;
+  - 403 waits on 402;
+  - 407 waits on 406.
+- **Soft edges:** 412 and 413 take only quiet files; 415 follows 414; 395 reuses 394's rival lines.
+- **The cheapest high-value first slices:** AL-HF-08 (the obstruction provider), AL-LG-06–09
+  (endings become places), AL-PR-07/12/14 (isolated accessibility and language fixes), AL-LG-13
+  (one alloy recipe).
+
+§31 refuses everything §23.3 and §30.7 refuse, plus:
+- grading the same verbs harder instead of creating new causes;
+- any fact without a simulation reader;
+- any stand-in counted as done;
+- any new screen where a chart, a place or a sound was named;
+- any second writer of heat, cargo, standing, credits or law;
+- any content volume used to fix a feel problem.
+
+### 31.5 The stranger's first minute — what separates SpaceFace from an A-list game (2026-10-19)
+
+The owner asked whether a stranger would take this for a modern A-list game or a cheap web game,
+why, and how to close the gap. This section answers from the real frames on disk (the
+`.devshots/asteroid-appear` flight captures of 2026-10-19, `fleet-look` hull renders, `ui-bench`
+station and Crucible screens) and from the cast and asset data. It does not answer from plan prose.
+
+**The verdict.** A stranger's first minute reads as *an ambitious indie web game*. The interface
+pieces built through ORRERY (the Crucible door and the station header) already look professional.
+Four things give the rest away:
+
+1. **The frame is mostly empty black.** In the opening flight capture the hull covers roughly 7% of
+   the frame width. One low-poly rock and one nebula smudge make up the world. A-list space games
+   fill the glass with near-field dust and debris parallax, traffic and lit hulls (Everspace 2,
+   Rebel Galaxy Outlaw).
+2. **The hulls are blockout-grade next to photoreal faces.** The Towline Mara render is flat boxes
+   with a tiled panel texture, while the 24 cast portraits and 65 local portraits are photographic.
+   The two art registers fight, and the hulls lose.
+3. **The HUD leaks the workshop.** An internal zone id reaches the target card
+   (`WING ZONE_CERES_DERELICT · FLANK`), and so do `VULN E K X` and `+46 · 9 WRECKS · 37 OTHERS`.
+   The Overhead/Circuits buttons overlap the target card, the shipworks list overlaps its own rows,
+   and three news lines run during the first tutorial step.
+4. **The cast lives in menus.** A strong cast exists, but the player meets it as text and bar
+   portraits. In flight, where the game happens, nobody speaks to you.
+
+**What is genuinely great, and must be the face of the game:**
+- **The Massline.** A physical rope in an arcade shooter is the edge nobody else has.
+- **The premise.** This is blue-collar logistics noir: weight-discrepancy clerks, customs filers,
+  manifest re-routers, a bounty double-biller, a derelict administrator in Ashfall, and Director
+  Vale signing discrepancies closed. Characters such as "Dustwife" Senna (keeper of names), the
+  Latch-Child (a feral salvage automaton), The Question, and Captain Maera Vols (the previous
+  captain, a ghost in your hull) are the stuff players quote.
+- **The places.** The Wreck Cathedral; The Bolus ("a colonized carrier, one line, no answer"); the
+  Eighth Bell, the Runaway Kiln, the Blind Welder.
+- **The world simulation underneath:** haulers, miners, patrols, wreck succession, and a court that
+  reconstructs ballistics.
+
+**The thematic key nobody has turned yet.** The game's verb is *mass* and its conspiracy is *mass
+discrepancies*. The opening already contains the bridge: the 47-A evidence spindle declares 480 kg
+on its manifest and actually masses 960 kg, and the rope's overload is the clue. That is an
+isolated exception today. Generalised, **the rope becomes a scale**: towing is how a pilot weighs
+the truth. This one idea joins the combat toy, the economy and the story into a single game.
+
+**How the gap closes — rows 423–431 (§1C §N):**
+
+| Row | Plan | The thread it borrows | Done when (stranger-visible) | Refuse |
+|---|---|---|---|---|
+| 423 | **The rope is a scale** | Papers, Please (the document lies, so you inspect) plus Return of the Obra Dinn (deduce from physical evidence) | ≥3 contract kinds and one story beat in which a declared-versus-true mass gap is found only by towing; rope strain shows the gap on the glass; customs, fences and frames react to what you found | A number popup; a scanner that reveals it for free; a second cargo writer |
+| 424 | **The hull ghost** | Bastion's narrator, Portal's GLaDOS and Destiny's Ghost: one voice that notices what you did | Over a 30-minute first route Maera Vols speaks ≥8 lines tied to real events (a stunt, a near-miss, a sector she remembers, a story beat); no repeats in a session; quiet at combat peaks except warnings; captioned | Random barks on a timer; a talking tutorial; lines with no event behind them |
+| 425 | **Faces on the radio** | Star Fox and Rebel Galaxy Outlaw comms windows | Every voiced in-flight transmission shows the speaker's portrait on the comms surface (allowed by `assets/portraits/AGENTS.md`); locals use their pooled faces. **Owner ruling needed:** `src/ui/AGENTS.md` bans pilot portraits in the flight HUD; until ruled, faces appear on the station comms screen and the flight line carries name, voice and caption | Portraits in the flight HUD frame; a generic face for a named character |
+| 426 | **Coldburn Rey, a rival with a face** | Shadow of Mordor's nemesis pointed at the cast; Burnout's named rivals | Rey bids on the player's contracts, races deliveries in the world, can be robbed or rescued, and remembers each outcome across reloads | A scripted rival who always loses; dialogue-only rivalry |
+| 427 | **Fill the frame, not the path** | Everspace 2 and Hades framing: the world fills the frame without hiding the action | Stills of the first five minutes at the shipping camera show the hull readable at a glance, ≥3 moving things on glass in Helios, and no frame more than ~60% empty black — all of it passable dust, depth layers off the flight plane, or yielding traffic; row 443 shows bumps unchanged (owner 2026-10-19: never flood the screen with things to crash into) | Fog over everything; a closer camera that kills look-ahead; cutting the look for frame rate |
+| 428 | **Hero hulls first** | Every A-list launch: the first two hours get the best art | The five hulls met in the first two hours read as hero craft at the chase camera and in shipworks before any other hull is touched | Uniform mediocre passes over all 15 hulls; procedural stand-ins |
+| 429 | **A HUD a stranger can read** | Dead Space's and Hades' restraint: information when it matters | No internal id reaches the screen; no overlapping elements on flight, target or shipworks at 1280×720 and 1920×1080; one news line at a time during the tutorial; the rest goes to ORRERY as one list | A redesign outside ORRERY; hiding information players need |
+| 430 | **Ten trailer moments** | Uncharted's set-piece discipline on top of systemic play (Breath of the Wild shrines) | Ten existing set pieces (Wreck Cathedral, Runaway Kiln, Bolus throat, Eighth Bell and others) are reachable in the first three hours, each with a camera beat and a music beat, and each reads to a stranger in a 30-second Theater clip with the UI hidden | New set pieces before these ten land; cutscenes that take the controls away |
+| 431 | **Arriving somewhere** | Mass Effect's Citadel and Cowboy Bebop's bars: docking is coming home | Docking shows a live bay behind the station screen, a voiced barkeep greeting by name, and regulars with faces who change with your standing | A static backdrop; a menu that only lists services |
+
+**The art-direction question (the owner's to answer).** Rows 427 and 428 need one ruling: lift the
+hulls toward the photographic portraits, or move the whole game toward the illustrated look the
+graphics lane is already building (`illustratedStencils`, `illustratedSurface`), with portraits
+treated to match. Studio taste says *illustrated*: a premium stylised look is reachable, while
+photoreal hulls at this camera distance are not. The rows proceed with that assumption unless the
+owner rules otherwise.
+
+### 31.6 The pulse — a living world made of minutiae (owner direction, 2026-10-19)
+
+**The owner's correction.** The A-list gap is not a linear list of a few hero fixes. It is the
+*scope of small life*. GTA is impressive because the TV in a flat plays a show that runs for hours
+without repeating. Hundreds of details like that add up to immersion. No single one has to be great;
+the volume and the fit do the work. This is the work an agent fleet is best at. A second owner
+caution: do not flood the screen with things the player bumps into.
+
+**What the code shows.** The frameworks for small life exist, and the content inside them is a
+handful:
+
+| Framework that exists | What is in it today (2026-10-19) |
+|---|---|
+| Band radio (`data/flavor/040-band.js`, `systems/bandRadio.js`) | 8 channels, about a screen of copy each |
+| Dock ad board (`020-ad-board.js`) | 48 notices |
+| Graffiti (`030-graffiti.js`) | 54 tags |
+| Wreck rumors (`010-wreck-rumors.js`) | 12 |
+| Roaming moving stories (`050-roaming-events.js`) | 2 (the insolvent convoy is the model: one story told across hail, band, trade and news) |
+| News headlines (`data/newsTemplates.js`) | 8 headline kinds × ~5 templates; commodity flavor for 7 of 66 commodities |
+| Landmark / rim POI lore (`080`, `100`) | 19 and 8 entries |
+
+The house voice in those files ("bureaucratic horror", e.g. *CLAIMS BEGIN AFTER IMPACT. COVERAGE
+BEGINS AFTER REGISTRATION.*) is already excellent. The task is volume, variety and wiring, not a new
+voice.
+
+**The clean-flight-plane law (the owner's caution, made a rule).** Ambient life never becomes an
+obstacle. It lives in six places, and none of them is in your way:
+
+1. **Sound**: radio, chatter, station PA, room tone.
+2. **Words**: mail, news, billboards, manifests, codex, hail replies.
+3. **Depth**: layers above and below the flight plane (the game is top-down 2.5D, so the floor
+   under the play plane is free real estate). Distant lanes, fleets, battles, construction and
+   wildlife live there, and none of it has collision.
+4. **Traffic that yields**: NPC ships keep to lanes and steer around the player.
+5. **Passable near-field dust and motes**: you fly through it, and it tells you speed and direction.
+6. **Places you visit on purpose**: station bays, bars and landmarks.
+
+Anything solid in the player's path is gameplay, never decoration. Row 443 measures this, and every
+§31.6 row must leave unwanted bumps on the default route no higher than before.
+
+**The quality bar for minutiae:** *good enough, never repeats, true to this world.* Every stream
+reads live simulation facts where it can: your deeds, prices, wrecks, faction flips, the dead.
+That is the GTA trick. The radio is about *this* city, so it feels alive instead of looped.
+
+**The rows (432–443).** Each BUILD row makes its stream a lasting factory. It extends the format if
+needed, wires the stream to the sim, and seeds a first batch. It then leaves finite FILL lines in
+`INFERENCE_IDEAS.md` § PULSE so small agents can keep adding volume. FILL lines for the formats that
+already exist (PULSE-01…08) are minted now.
+
+| Row | Stream | The bar a player notices | Done when |
+|---|---|---|---|
+| 432 | **Radio that's about this galaxy** | GTA's radio and talk shows; Rebel Galaxy Outlaw's stations | Each of the 8 channels runs ≥2 hours of programming before a segment repeats: host segments, call-ins, ads, weather/hazard reports, sports from the kinetic league, and Lira Vonn's *The Margin* as a real show. ≥1 segment in 5 cites a live fact (a recent wreck, a price shock, the player's last big deed by callsign). Every line is captioned; voicing uses the existing voice pipeline where licensed, otherwise radio-filtered beds plus captions |
+| 433 | **Screens and signs that talk back** | GTA billboards; Cyberpunk's ad screens | Station billboards, bay screens and news crawls draw from the ad board, the news and faction propaganda. A wanted poster shows the player's own hull and callsign while heat is high. Feat headlines name the player. Nothing repeats within one docking session |
+| 434 | **Every ship is somebody** | Elite and X4: target anything, hail anything | Every NPC ship has a name, registry, captain, cargo, destination and mood. A hail returns a line that fits job, faction, situation and mood (≥3,000 lines across the matrix). Overheard ship-to-ship and traffic-control chatter plays near lanes and stations. A scanned manifest is the truth or a lie (feeds row 423) |
+| 435 | **Mail** | Mass Effect and Deus Ex e-mail; Cyberpunk's texts | An inbox gets cast letters, job offers, spam in the house voice, fan and hate mail after feats, bills, and letters for Maera Vols's lost crew. ≥120 letters, each triggered by a real event or a time window; nothing arrives untriggered |
+| 436 | **Stations breathe** | Mass Effect's Citadel PA; Starfield's spaceport bustle | Docking plays PA announcements, berth calls, shift-change bells and crowd tone, and a bay where ships arrive and leave on a schedule you can watch. The sound reads the station's type, faction, standing and time of shift |
+| 437 | **Everything has a page** | Mass Effect's codex; Elite's Galnet | Codex entries for all 66 commodities, 15 hulls, 124 modules, 41 weapons, 14 factions, 25 sectors, 56 species and 26 characters, unlocked by discovery and written in-world (who makes it, who smuggles it, who died for it) |
+| 438 | **The horizon is busy** | Freelancer's trade lanes; Homeworld's backgrounds; Everspace 2's capital ships passing | Depth layers below and above the flight plane carry sim-driven life: lane streams, capital fleets transiting, distant battles as flashes that match real off-screen fights, mining beams on far rocks, and megaprojects that visibly progress over days. **Zero collision.** Every capture of the default route shows ≥3 moving far-plane things with no change in bumps |
+| 439 | **The world keeps time** | Animal Crossing and Stardew calendars; GTA's day cycle | Stations run shifts (lighting, traffic rush hours, the bar fills at shift end). Weekly market days change prices. ≥6 festivals and holidays (fireworks at Helios on Founders' Day, a miners' strike at Ceres, a Choir vigil) and solar-storm seasons each change something you can see or hear |
+| 440 | **Your ship and the world wear your history** | Mass Effect's cabin trophies; Dark Souls bloodstains | Deeds add cockpit trinkets, hull decals and tallies. Memorial arrays list NPCs who actually died in the sim, including the ones you killed. Graffiti appears about your deeds in sectors where you are known |
+| 441 | **Small stories in passing** | Red Dead's random encounters; Elite's signal sources | Roaming moving stories go from 2 to ≥30, each told across hail, band, trade and news like the insolvent convoy: a wedding convoy, a drifting lifepod playing its log, a cargo pallet with a cat, a tour barge lost on purpose. Low stakes; each uses only existing verbs; none parks an obstacle in a lane |
+| 442 | **SEED — the comparison sweep** | — | Write the life-detail inventory of ten major space games (Elite Dangerous, X4, Everspace 2, No Man's Sky, Starfield, Freelancer, Rebel Galaxy Outlaw, FTL, Star Citizen, EVE). Check each detail against live code, and mint one PULSE line per real miss with owner paths |
+| 443 | **The clean flight plane guard** | — | A deterministic route measurement of unwanted contacts and path obstruction per minute on the default Helios→Ceres route, before and after; any §31.6 row that raises it is fixed before landing |
+
+**Refuse:**
+- decoration with collision;
+- clutter in lanes;
+- repeated loops passed off as programming;
+- generated text with no fact or trigger behind it;
+- a new voice that breaks the house voice;
+- any stream that writes credits, cargo, heat or standing;
+- hand-editing `en-US.generated.js` (new copy goes through the extractor).
+
+## 32. The gold game — the director's vision, and the engine that keeps the plan full (2026-10-19)
+
+Owner direction, 2026-10-19: *inject your own opinion; plan the best game; part of the premise is
+finding out how good a game agents can build themselves, so plan the development workflows that keep
+the plans saturated for later agents.* This section is that opinion. §31 is the audit; §32 is the
+destination and the machine that gets there. The engine itself lives in
+[`design/program/PLAN_ENGINE.md`](./design/program/PLAN_ENGINE.md). The whole-game grades it
+maintains live in [`design/program/REPORT_CARD.md`](./design/program/REPORT_CARD.md).
+
+### 32.0 The game, in one breath
+
+**SpaceFace is the working stiff's space game. You are a hauler in a galaxy run on paperwork, and
+your one tool is a rope that can move anything. Everything has weight, and weight is the truth.
+The paperwork lies, the galaxy keeps working without you, and it talks about you behind your back.**
+
+The deeper threads it pulls from:
+- the curiosity of *Outer Wilds*;
+- the physics comedy of *Rocket League* and *Just Cause*;
+- the paranoia of *Papers, Please*;
+- the living radio of *GTA*;
+- the run-based arcade of *Hades* and *Vampire Survivors* (Swarm);
+- a ship that is a home and a crew that is a family, from *Mass Effect* and *FTL*.
+
+No other game is "a noir about weight with a grappling rope". That sentence is the identity: every
+system either serves it or gets cut to fit it.
+
+### 32.1 Five pillars (the test every plan passes)
+
+1. **The rope can move anything.** Combat, hauling, racing, puzzles, bosses and detection all run
+   through mass and the Massline. If a feature has no physical verb, it gets one or it waits.
+2. **Weight is the truth; paperwork lies.** The conspiracy (Director Vale signing weight
+   discrepancies closed) is solved with physical evidence: weighing, towing, witnessing, matching
+   ballistics. The bureaucracy is both the comedy and the threat.
+3. **The galaxy works without you, and talks about you.** Traffic, prices, fronts, weather, radio,
+   mail and graffiti, all true to the simulation (§31.6). It never clutters the flight plane.
+4. **Your ship is your story.** Scars, irreversible refits, trophies, a ghost captain, a crew and a
+   home berth. Nothing you did disappears.
+5. **Swarm is the arcade cabinet.** Ten-minute runs, a daily seed, a host, a crowd and initials on a
+   board. It is the same physics, distilled.
+
+### 32.2 The journey a player should have
+
+- **0–1 minute.** The title attracts with a real rope throw (row 408). One button flies.
+- **First 10 minutes (47-A).** You tow the evidence spindle and the rope strains: it weighs twice
+  its manifest. *The whole plot is in your hands in the first mission.* Maera Vols speaks for the
+  first time: "I left the engines warm."
+- **Hour 1.**
+  - your first customs check, which you pass or bluff;
+  - your first raid, ending in a rope-throw kill;
+  - your first "the paperwork lies" find, pinned to the Ledger (row 444);
+  - the radio mentions you by callsign.
+- **Hours 1–5.** Three careers (hauler, hunter, prospector) are three roads into the conspiracy.
+  You restore the Long Berth into your home (row 445), hire your first crew member (row 446), and
+  lose a card game to a barkeep (row 447).
+- **Hours 5–15.** Factions pull at you. You commit to refits that close doors. The heists (Wreck
+  Cathedral) begin. A rival with a face shows up (Coldburn Rey). Your drones run loops you wrote,
+  and you take a colossus apart plate by plate (row 448).
+- **Hours 15–25.** The reckoning is built from your run (row 400), and the ending rewrites the map
+  (row 396).
+- **Forever.** Swarm cabinet runs, the racing league, ironman runs, ghost wrecks shared by code,
+  and a galaxy that keeps time.
+
+### 32.3 My calls as director (the owner may overrule any of them)
+
+1. **First Hour Gold before breadth.** A stranger judges the first hour, so it reaches Gold
+   (§32.5) before any new region or system expands. Milestone M1 (row 454) outranks every other
+   §31/§32 BUILD row except defects and reviews.
+2. **Fewer, deeper heroes.** Five hero hulls beat fifteen average ones. Ten trailer moments beat
+   forty forgettable encounters. One wonder per sector beats three props each.
+3. **Volume where volume is cheap, craft where craft is seen.** Agents mass-produce words, sound
+   and small stories (§31.6). Humans and strong agents spend craft on hulls, the first hour, and
+   bosses.
+4. **The cast moves into flight.** Every named character must be met, heard or fought in the
+   cockpit, not only in a menu: comms faces, the hull ghost, crew banter, the rival.
+5. **The Ledger is the story UI.** No quest log of text bullets. The conspiracy is a board of
+   physical evidence you assemble.
+6. **No co-op, no live service, and no lootbox loops,** ever. Replayability comes from runs,
+   seeds, endings and the cabinet.
+7. **Illustrated art direction** (pending the owner's ruling in §31.5). It is premium, stylised,
+   and reachable by agents.
+
+### 32.4 New pieces only this vision adds (rows 444–455)
+
+| Row | Piece | Feeling | Borrowed thread | Done when (stranger-visible, seed 4242) | Refuse |
+|---|---|---|---|---|---|
+| 444 | **The Ledger** — the case board | "I pinned the weight slip next to the intercepted call, and Vale's signature lit up." | Return of the Obra Dinn; Shadows of Doubt; Disco Elysium's thought cabinet | A diegetic board where evidence pins and links: weighed cargo (row 423), contradicted manifests (`scanClues.js` already records them), witnessed crimes, intercepted band traffic, and court reconstructions. Linking a valid chain unlocks an accusation or a story beat. The B-spine's Vale thread is provably solvable here, and wrong links are refused with a reason | A text quest log; auto-solving; evidence that was never physically found |
+| 445 | **The Long Berth** — a home | "I towed my first trophy home." | Hades' House; the Normandy; Starfield's Lodge; Animal Crossing's house | The abandoned yard tug "The Long Berth" (`worldOneOffs.js`) can be towed to a claim and restored in three stages. Trophies you physically towed home (a boss plate, the spindle, a famous wreck) sit in its yard and survive reload. Docking there shows your ship, your crew and your trophies | A menu-only base; a second claims system (extend `claims.js`); decoration with collision in lanes |
+| 446 | **Crew aboard** | "Tamsin called the missile before I saw it." | Mass Effect squad; FTL crew stations; Starfield crew | Up to 4 crew hired from the station-local pool (65 portraits) and from the cast. Each mans a role (engineer, quartermaster, gunner, navigator) with one small, real derived-stat perk through the ship stats single writer. They banter on comms about real events, have one loyalty job each, and can be injured or lost. Distinct from wingmen, which are ships | Stat sticks with faces; dialogue trees; more than one perk per crew member |
+| 447 | **Manifest** — the bar card game | "One more hand before undock." | The Witcher 3's Gwent; Fallout: New Vegas's Caravan; KOTOR's Pazaak | A card game in the house voice: cargo, permits, bribes and audits. Played against regulars and cast with distinct styles; cards won from deeds; stakes in credits through the credits writer. One ORRERY-consistent screen | A gacha deck; real-money anything; pay-to-win cards |
+| 448 | **Colossi** — bosses you take apart | "I ripped the Tollman's armour off with the rope and threw it back at him." | Shadow of the Colossus; Monster Hunter part-breaks; Furi | The 8 authored capital bosses get rope-detachable plates. Weak points open only when a plate is gone, and a detached plate is a throwable body. Each boss has a physical phase change a stranger can read. SEED row 416 supplies the per-boss lines | HP-sponge phases; invulnerable timers; a new boss engine |
+| 449 | **Weather is physics** | "The ion storm blacked out my scope, so I flew by the radio." | Subnautica's depth dread; Death Stranding's timefall; FTL's hazards | Three weather kinds are forecast on the band: an ion storm (sensor and HUD blackout, so you fly by sound), solar wind (a field that pushes everything, including towed cargo), and a meteor shower (hazard plus mining bonanza). Each is deterministic and sector-seasonal (row 439) | Clutter in the flight plane; random damage ticks; weather as a filter only |
+| 450 | **One wonder per sector** | "That's the place with the cathedral." | Breath of the Wild's landmarks; No Man's Sky's vistas; Elite's tourist beacons | Every sector has one signature landmark readable at the gameplay camera, and the postcard pass (row 419) lists which are missing. This row builds the first six missing wonders as places with a verb, not props | Props without a verb; landmarks in lanes |
+| 451 | **The pilot's logbook** | "Previously, on my run…" | Hades' codex; Mass Effect's journal; Destiny's lore cards | A logbook written automatically in the house voice from the chronicler, illustrated with Moment Machine stills. A returning player gets a 20-second "previously" recap on load | Stat dumps; an empty journal screen |
+| 452 | **The inspector's shift** | "I weighed his cargo and he offered me a bribe." | Papers, Please; Contraband Police | An optional shift at a Concord checkpoint: you scan and weigh passing traffic (row 423), then wave it through, fine it or impound it. Quotas, bribes and smugglers who remember you; results feed law standing through the law writer. A fourth career branch through the careers library | A minigame detached from the sim; a second law system |
+| 453 | **The cabinet** | "Enter your initials." | Arcade attract loops; Neon White's run summary; Balatro's run cards | Presentation only, with no phase D content: a Swarm attract loop, initials on a local board, the daily seed front and centre, and a shareable run card | A pilot roster or broadcast host (those are phase D, row 271); online boards (phase F) |
+| 454 | **M1 — First Hour Gold** | "I'd show this to a friend." | Every A-list vertical slice | Integration lane for the first hour against the §32.5 ladder: play-capture, fix, recapture until every first-hour system reaches Gold or names its blocker. Claims exact paths per sitting | Calling it Gold from a test; skipping the capture |
+| 455 | **ENGINE-0 — the plan refills itself** | "The board is never empty." | — | `program-dispatch --next` returns the next PLAN_ENGINE cycle when open counted rows fall below the engine threshold, and `check-plan-integrity` reports the cycle state | A second queue; cycles that count as production units |
+
+### 32.5 The Bronze / Silver / Gold ladder (how every system is graded)
+
+| Tier | Meaning | The bar |
+|---|---|---|
+| **Bronze — works** | Reachable on the default route, no open defects, saves and loads | A stranger can use it without a guide |
+| **Silver — feels good** | Every action answers in sound, picture and timing; no cheap tells (§31.5); content does not repeat within one hour; it reads in 2 seconds | A stranger keeps using it without being asked |
+| **Gold — WOW** | It has a signature moment, it touches at least three other systems, content does not repeat within five hours, and a capture of it is something people share | A stranger shows it to someone else |
+
+Milestones, in order:
+1. **M1 — First Hour Gold** (row 454).
+2. **M2 — Swarm Cabinet Gold** (phases C–D plus row 453).
+3. **M3 — Act One Gold**: hours 1–5.
+4. **M4 — Silver Everywhere**: every system in `REPORT_CARD.md` at Silver or above.
+5. **M5 — The Long Game Gold**: hours 5–25 and the endings.
+6. **M6 — Release candidate**: the quiet-host and release lanes.
+
+A row tagged to the current milestone outranks an untagged row of the same kind.
+
+### 32.6 The engine — why this plan never runs dry
+
+The board drained once (§31.0) because only humans refilled it. From now on agents refill it on a
+rule. The full contract is [`design/program/PLAN_ENGINE.md`](./design/program/PLAN_ENGINE.md); in
+brief:
+
+- **The trigger.** When fewer than 25 counted BUILD/ART/FIX rows are open, or fewer than 30
+  INFERENCE lines are OPEN, the next agent whose dispatch is not a defect or a review runs the next
+  engine cycle in the rotation. Row 455 teaches `program-dispatch` to say so.
+- **The cycles.** Eight, in rotation:
+  - Report Card (grade, then mint);
+  - Stranger Pass (play-capture, then list the cheap tells);
+  - Reference Diff (one 2020s game per cycle);
+  - Harvest (built but unwired);
+  - Factory Tiering (raise PULSE volume targets);
+  - Dream (new campaigns for the creative director);
+  - Integration Walk (play the milestone route);
+  - Prune (merge duplicates and retire stale rows).
+- **The output law.** Every cycle ends in numbered §1C rows on seams and/or OPEN catalog lines,
+  each with owners, a player-visible done-when, a refusal and evidence. Cycles are support work:
+  they never count as production units, and they never build what they mint.
+- **The caps.** The engine keeps the plan *saturated, not bloated*: at most 120 open counted rows
+  and 200 OPEN catalog lines. Above that, the Prune cycle runs instead.
+
+### 32.7 The report card's rows — improve the worst, polish the best (rows 456–481)
+
+The first C1 pass graded 21 systems (see [`design/program/REPORT_CARD.md`](./design/program/REPORT_CARD.md)).
+Its finding is one sentence: **deep simulation, quiet surface.** These rows surface what exists,
+fix what lies, and only then attach new pieces. Each row bundles one seam's worth of fixes.
+Its small, self-contained parts are also catalog lines (`INFERENCE_IDEAS.md` § REPORT CARD) so
+small agents can take them. Evidence for every claim is in the researcher findings summarised in
+`REPORT_CARD.md`. Seed 4242 throughout.
+
+| Row | Outcome | What it bundles | Done when |
+|---|---|---|---|
+| 456 | **Swarm runs clean** (M2; before row 270) | Gate the aftermath card in a live survival run (`combatOutcome.js` never checks for one), which returns keys 1–2; diagnose why the player-truth swarm baseline never leaves round 1; give the round-10 boss its Iron Maw script (`swarmMode.js:364–371`); fix "One hostiles", "+10 Item" and the clipped ROUND label; hide the remaining Adventure instruments in a run | `npm run player-truth -- --mode=swarm-active --gate` passes round resolution and transitions; the contact sheet shows no "FIELD STILL LIVE"; the round-10 capture shows the script's moves |
+| 457 | **The clean first two minutes** (M1) | The drive fallback key H also opens Help (`systems/input.js:322` versus `ui/input.js:523`); the ticker is gated while the tutorial runs; threat markers stay off the instruments; "Kestrel" becomes "Hitch" in the tutorial and chronicle; "Training Derelict" and "trainer" get in-world names; the three `visual:false` premise and hint lines are captioned in the tracker; the Range uses WU not m/s; the key label prefers a non-lock key | A muted stranger on seed 4242 reads the hook within 60 s, presses the key the rail shows to drive, and sees no news, no "Kestrel" and no training vocabulary in the first two minutes |
+| 459 | **Lived vignettes worth meeting** (M1/M3) | Regenerate from `scripts/build-lived-vignettes.mjs`: remove the two filler lines, give the toll a real cost, use a reward table by situation, capitalise place names, cut the orbit wait to ≤10 s. Add `charge` and physical `await` verbs to `vignetteInterpreter.js`. Prefer prop vignettes in the first hour. Then trim to the physically distinct ones (target ≤60 in rotation) | A seeded two-hour run repeats no line; every choice is a real trade-off; ≥30 vignettes resolve only by a physical action; IDs and phase IDs are unchanged for saves |
+| 460 | **A cast that remembers** (after 424 in the seam) | Wire the 12 dormant counters to the events they are named after (Yune ← clean Helios freight, Mara ← delivered pods, Suhl ← `machine:appealAccepted`, Senna ← `uniqueWreck:resolved`, Zell ← contraband installs…); a band glyph on contact cards; bar leads spoken by the offering contact; Last Call has the finale read the counters | Two saves differing in one deed show different contact openers and different Last Call lines for ≥6 contacts; `stationContacts` stays the only writer |
+| 461 | **The docket opens** | A pure `caseForLoss(record)` table makes the 11 lab-only Wreck Court cases reachable; a reachability test; a settlement range on the court card instead of "0 cr"; restitution scales with hull value; "work the bill" requires a physical step | A 3-hour lab run surfaces ≥5 distinct cases; the contract card shows a settlement range; a Mule and an Ironback are quoted differently |
+| 462 | **Crime is a chase** (after 461) | The Witness Run: heat posts only when the witness docks. The Sweep: visible law ships, and breaking contact clears heat, with the clock as fallback. The Sponsor: a named station sponsor behind each bounty warrant | A witness towed away before docking posts no heat; clearing the bounty tier means breaking contact with ≥2 visible sweep ships; paying the sponsor stops the hunter waves |
+| 463 | **Bosses you can read** | A move plate showing the authored title and counter ≥1 s before each attack; name and act cards; the boss bar in Adventure (remove the Swarm-only gate); teaching by showing instead of the 8 s toast; intent symbols on elites; "Retry act" | In a Tollman lab capture all 5 moves show title and counter in time; Adventure shows a boss name and bar; elite symbols appear ≥400 ms before fire |
+| 464 | **Every sector has a law** | One physical rule for each of the 10 name-only sectors, built from `environmentalMachinery`; dead visual-profile keys and the Bolus profile; interdiction warned (rolled at `jump:start`, pull and bearing shown); first freighters cluster at the arrival point; the way-of-life landmark feeds the background | Within 60 s of arrival a stranger can name each sector's rule, and it changes the line they fly; a forced interdiction shows its bearing before the first shot |
+| 465 | **The market explains itself** | "Name the mover": the last move cites a freighter, your sale or a mined-out belt before the cycle name; a lane-risk word on route cards; the mechanic's "Clean plate" contradiction; local-only bar news; the right empty-hold hint inside the market; a read-only depletion helper | Selling 20 iron at Helios names your sale; two equal-profit routes read "secure lane" versus "lawless lane"; a hull at 86/100 never hears "Clean plate" |
+| 466 | **Industry tells the truth** (after 402) | Drone cards show capped earnings (113, not 672); rocks get Deed Names instead of "AST-355"; "No output on record" names the next step; a `automation:droneDistressed` event and the Stranded Drone tow rescue; Throttle is hidden on unbought drones; the hull-plate and refined-metal conflicts are added to row 402's unification | The starter drone card reads ~113 labelled as capped; no "AST-" in the default capture; a distressed drone drops a beacon that a tow restores |
+| 467 | **Missions with a voice** | Bounty marks never resurrect killed names, take factions that fit the sector, and have ≥24 opening lines; each heist gets one unique method plus "Case File" casing; a payday receipt line; a retry changes the room; Clause Gambit (edit one contract clause) | A killed mark never returns in 500 rolls; a cased heist offers a third method; adding "cargo intact" raises pay and is enforced |
+| 468 | **Discovery you can see and hear** | Field Notes: anatomy on the target panel after the scan earns it, a real taxonomy (≥5 families), species codex pages. Machine and ecology comms styling; ecology toasts in a discovery style instead of `warn`; 8 fauna-role and per-machine-family sound recipes; a Helios tease; Suhl's Clauses decode one clause per accepted appeal; Names for the Dead | Scanning a Veil-Ray opens a behaviour page; a new save meets one unexplained machine within 20 min; creatures and machines are audible; nothing shows before the scan earns it |
+| 469 | **The fit shows on the hull** (after 401 in the seam) | Verb-granting modules always drawn, with a distinct head per verb; earned livery through an `earnedBy` field; two synergies with felt rules; research-screen fixes; the verb as the unlock headline; "fit it now" | From normal-camera stills a reviewer tells tug, rammer, miner and survey fits of one hull apart; three rescues unlock a visible rescue mark; `check:assets:live` is green |
+| 470 | **Voices and space in the mix** (after 404/405 in the seam) | Per-line bark rendering through the existing `renderBarkUtterancePcm` (with a small cache) and pitch jitter; a threat ear (distance and behind filtering, 3D for ≤6 hostiles); two room presets; heat audible in the score; wave-clear cadences; station idents; a mono toggle; night mode | Two lines from one faction sound different; 4 of 5 blind testers point within 45° to a hostile behind them; a WANTED tier change is audible within one bar |
+| 471 | **Records that tell stories** | Statistics becomes a Records Wall from chronicle facts; the photo Look works on default settings or is hidden; achievement label overlaps fixed; empty Replay and Clips say how to get footage; Today's board (local daily rank); a Pact dial (stacked mutators carried in the share code); a legacy preview; Range Licence medals | After one hour, ≥5 named records with place and time; on default settings Look changes the PNG; the Crucible door ranks today's runs |
+| 472 | **Toys out of the drawer** (racing seam; after 395) | Physics Venues and the race board become event cards drawn from the arena data; minigames start from the world (the BRACKET court); the Asteroid Works empty panel; new league sports Ring-Out and Toll Threading; the Hot Tow race mode; Wreck Strip and Spill Catch | The bench shows cards with drawn courses and one START; no confirm dialog on launch from the menu; kl-13 exists and a seeded replay wins it |
+| 473 | **A fast, kind front door** | An interactive title within 10 s on the VM profile, with first control measured separately, inside the existing shader-admission work; a mm:ss loading clock; a destination slate on loading; a first-light accessibility preset; settings density with readouts next to sliders; an empty save slot says "empty" once | Title usable ≤10 s on the VM profile; ≥6 settings rows at 1280×720 with readouts within 24 px; first launch offers the preset once |
+| 474 | **Glass that breathes** | Danger-quiet (non-critical instruments dim at low hull); glass presets Clean / Hauler / Fighter; a release-read receipt; a sortie tally on dock; a bingo-fuel line; tether load and strain on the hull ring; the release diamond drawn above markers; an SVG type-floor report | At 20% hull the tape and tracker dim and return at ≥30%; the preset survives reload; latching the derelict shows tonnage and strain on the ring |
+| 475 | **Every verb is felt** | Rarity-weighted stunt callouts; a big-moment pulse; dash, combat and weapon-family haptics (respecting the 83 ms gap and the `off` setting); Around the World (swing-angle evidence without bumping `EVIDENCE_REVISION`); a Trick Book listing the 17 tricks; arena signature tricks and Arena Law Bounties; a Prize Run round; Perfect Vent; Match Burn | A legendary callout outweighs a common one; three weapon families are distinguishable on a pad; a 360° swing prints AROUND THE WORLD; the Trick Book shows 17 entries |
+| 476 | **Travel is a choice** | The Freight Spine (a `lane:slingPass` event, receipts, planner routes); stale chart medallions that fade with age; Two Roads (a tolled route versus a dark lane, both flyable); an Interdiction Wrestle in cruise; a drift-vector tick-line in drift and newtonian modes | A clean 3-ring chain posts a receipt; a 10-day-old price shows faded; a snare during cruise opens a 1.5 s escape arc |
+| 477 | **NPCs you can read** | Job phases in the contact list ("HAULER · LOADING"); grudge hails that name the incident; factions you can tell apart by how they fly; robbing haulers bound for a station moves that station's price | Shown five unlabelled clips, a stranger names four factions; robbing 3 Tethys-bound haulers moves Tethys at the next day boundary |
+| 478 | **The station is a stage** | Bar reaction crop and memory preview; The Regulars (contacts keep shifts); Word Gets Around; the Appeals Window (a clause puzzle that voids a fine through the law owner); Clearance Pending (codex redactions lift on story flags); The Tab; The Fine at Helios | A contact is present only on her shift; after taking claimed salvage the Helios ledger offers APPEAL, and winning voids the fine |
+| 479 | **No screen admits it is unfinished** | Mission Log shows the opening contract's real terms; station scroll areas pad for the tab rail; game over gets a populated bench state and an in-world fallback line; the race-board key help moves to a chip; the map strip shows the tracked goal; Voice gets its live-mix ring; the ledger empty state and the clipped factions list | Bench shots of mission log, market, bar, industry, game over and chart-local show no fallback text, clipping or "No destination set" beside GOAL |
+| 480 | **Markets you can play** (after 465) | Convoy Shares (stake a real freighter's arrival); Forward Slip (lock a price for a delivery window); Auditor Halvard Penn (dumping raises scan odds); the Dump Chute (sling pods into an intake); Cold Chain spoilage; a visible Labor Stoppage event | A share pays only on a named freighter's real arrival; 5 slung pods pay the discounted price and move the market |
+| 481 | **The Crucible door opens both ways** (swarm seam; check phase order first) | Run What Killed You (a seeded drill of your last Adventure death); Call the Champion early; Wreck Ballast; Case Files of beaten champions; a Grudge Ledger of top causes of death; per-arena kill words | Each piece is checked against `SWARM_EXPANSION.md`: anything belonging to phase D or later waits for it. Run What Killed You offers a seeded drill with no reward carried back |
+
+## 33. The rock is the gun — swarm physics as the core, and the craft a fight needs (owner direction, 2026-10-21)
+
+**Owner, 2026-10-21:** *"I think the gameplay would be fun if it was more swarm gameplay and physics
+was the main weapon. It almost has a Katamari Damacy hook to it, where the environment is the game
+itself. I think that's a fun way to progress in this game, and have satisfying waves of enemies
+smashing on asteroids and things."* Also from the owner today: *"the difference between a breakthrough
+hit game and this game is … attention to detail, depth, breadth, and game systems that aren't buggy."*
+The owner plays with sound off. Starting a new game with every power is correct, so pacing unlocks is
+not the fix. Enemy physics weapons stay rare and authored (§22.11).
+
+### 33.0 The verdict — enough assets, not enough game made from them
+
+**The library is not the bottleneck.** The runtime model census binds 218 models: 15 player hulls,
+26 enemy hulls, 18 traffic hulls, 8 faction hulls, 7 stations, 65 places, 43 wrecks, plus rocks,
+pods and buoys. Around them are 41 weapons, 125 modules, 328 encounter entries, 21 mission types,
+17 set pieces, 3 capital bosses, 25 sectors, 14 factions and 66 commodities. Do not commission
+content to fix the feel (§23.3).
+
+**The player rarely meets it, and what they meet is thin.** Evidence from 2026-10-21:
+
+- **Travel.** The M3 cohort simulation (`test/fixtures/m3-career-cohorts/cohort-report.v2.json`)
+  has haulers and hunters spending **80–86 % of a 90-minute session travelling**, with hunters
+  fighting **6–7 %** of it. That model steps combat by adapter, so treat it as the shape of a
+  session, not a measurement of feel.
+- **First five minutes.** The adventure player-truth run (`.devshots/asset-experience-player-truth/adventure`)
+  put **1–2 enemies** on screen in its first 5 minutes.
+- **Encounter spacing.** Most encounter shapes cool down for **7–15 minutes**, and the director holds
+  combat back in its work, aftermath and quiet phases.
+- **The fight itself.** In the swarm fight (`.devshots/oct16-d199-swarm-current/swarm-active-d199-current`,
+  real GPU):
+  - Enemies averaged about **50 speed and topped out near 80**. The player averaged **117** and
+    topped out near **370**.
+  - Enemies reversed their turn about **0.8 times per second**. The scripted pilot reversed 0.36 times.
+  - Effects covered about **1 % of the screen** at the 95th percentile, on a script that only fired
+    and tethered.
+  - Enemies are read through red rings. The tether renders as a hairline at the chase camera.
+
+So the game is a sim-paced world with arcade presentation. Its best toy, mass and the Line, has too
+few things to hit, too slowly, and too faintly.
+
+**Direction.** Make the swarm loop the heart of the game. Physics is the main weapon. Progression
+works like Katamari: *what you can move grows*, and the arena grows with it. Adventure borrows the
+same loop as its standard fight. The rows below extend `swarmMode.js` rules 4–5 ("cover is the
+point"; Throw / Tag / Bind) and CV-AMMO ("lights are ammunition, heavies are terrain"). They do not
+start a new mode.
+
+### 33.1 The swarm core (rows 482–489)
+
+| Row | Name | Feeling | Done when (stranger-visible, measured on a fixed seed) |
+|---|---|---|---|
+| 482 | **The rock is the gun** | "I stopped shooting; I just throw things." | Guns become the nudge and finisher; mass impacts are the main way to kill. Across swarm waves 1–10, ≥60 % of kills come from impacts (thrown body, enemy into rock, enemy into enemy). A guns-only tape clears wave 5 at least 2× slower than a throw tape. No health inflation (swarm rule 1) |
+| 483 | **The Katamari line — you grow what you can move** | "Last round I couldn't budge that boulder; now I swing it." | An in-run **line rating** in tonnes grows with impact kills. Target curve: about 20 t at wave 1 (pebbles and light fighters), about 2,000 t by wave 10 (boulders, bruisers) and about 50,000 t by wave 20 (a hauler, a station chunk), tuned by playtest number. Each threshold lights the newly movable class in the arena with a Line-colour outline ("now you can move this"), and ≥3 new throwables appear per tier. The rating also shows on the hull: the winch head and cable visibly thicken. A flat damage buff is refused |
+| 484 | **The flail — your junk is your weapon** | "My chain of wrecks is longer than the station." | Killed hulls and captured rocks can be chained onto the Line, building on `masslineChainReadout`. The chain grows into a flail that is the endgame weapon, Katamari's ball. Every link counts toward the rating. A 5-link chain swings stable and readable at 60 fps on the play machine's integrated GPU. A link breaks only for a cause you can see |
+| 485 | **Arenas that scale with you** | "The rocks got bigger as I did." | Arena sets climb from pebble field to boulder belt to giant-rock graveyard to derelict-station yard, so the screen always holds something you can *just barely* move. The camera opens with the rating. Each scale step reuses existing bodies (rocks, the 43 wrecks, places). No new hull commissions |
+| 486 | **Waves built to be smashed** | "One rock, four kills." | Lights fly tight formations and attack runs *through* cover, so packing them together is the design (CV-AMMO). By wave 8, ≥30 % of thrown bodies hit ≥2 enemies. Formations re-form after a scatter, so the next throw has a target |
+| 487 | **Impacts that land** | "That one I felt in my hands." | Every mass kill gets: hit-stop scaled by mass; the hull crumpling into chunks that are themselves throwable; a spark burst sized to the energy; and a shove that moves neighbouring bodies. Peak effects cover ≥10 % of the screen in wave 8 (measured 1 % today) while threats stay readable (player-truth `vfx_coverage` limits still hold). All of it reads with sound off |
+| 488 | **The physics budget, measured** | — | A fixed-seed wave-15 arena holds p95 frame time ≤ 20 ms on the play machine's integrated GPU, measured on a quiet host (QUIET_HOST_PROGRAM). Distant bodies sleep or drop to cheaper simulation, and the closer the player gets, the more truthful the world. This is the main technical risk of §33; measure it before 484 and 486 scale up |
+| 489 | **Line heads worth chasing** | "I finally rolled a Magnet Head." | Meta progression between runs unlocks Line heads (multi-latch, cluster grapple, magnet line, wrecking anchor), starting rating and arenas. Loot rarity is allowed (§22.11): a rare head has its own silhouette and its own cable colour. Each head changes *what you can do*, not a percentage |
+
+### 33.2 The fight craft (rows 490–496) — any fight, swarm or adventure
+
+Each row names the acclaimed game whose mechanism it borrows. No claims are made here about other
+games' numbers.
+
+| Row | Name | Borrowed mechanism | Done when |
+|---|---|---|---|
+| 490 | **Enemies you read without rings** | GALAK-Z and Nova Drift: role is read from silhouette and colour | Each everyday enemy role has one bold silhouette and its own engine-glow colour, and the chase camera frames fighters large enough to read. Red rings appear only for off-screen threats. A stranger names the role in 3 of 4 stills |
+| 491 | **Enemies with intent** | Starsector and Hades: approach, telegraphed wind-up, committed attack, exposed recovery | Every role flies a visible cycle. Enemy cruise speed is ≥70 % of the player's (measured 50 vs 117 today), so a pass is possible. Turn reversals stay ≤0.4 per second outside one rare, telegraphed dodge (measured 0.8 today). The reflex stack in `src/ai/reflexes.js` is consolidated rather than extended |
+| 492 | **The Line you can see** | Just Cause's tether; Half-Life 2's held-object glow | At the shipping chase camera the cable thickens and glows hotter with strain, and the latched body is rim-lit in the Line colour. While the Line is held, the release arc is always drawn. The cable surface and release-arc code already exist (`masslineCableSurface.js`, `masslineReleaseArc.js`); this row makes them read at play distance, measured in shots from frames 0042 and 0379 |
+| 493 | **Fewer powers, each distinct and previewed** | Breath of the Wild runes: one colour each, a highlight of what will be affected, a different outcome each | The merge LANDED 2026-10-22: the owner chose five powers — Pull (amber, 1), Shove (red, 2/R), Pin (blue, 3), Bomb (orange, 4/Y), Rig (white, 5) — replacing Charge, Blast, Well, Repulsor, Seed, Cone, Skim and the bomb drop; the rail and Cluster name each power by itself with its own tint (05 §7.2). Hold-to-preview LANDED (94dca2f4c6): holding a power's key outlines every body the release will move with its predicted path and draws the shape the power makes; letting go uses it |
+| 494 | **Glass in three tiers** | Hades: the HUD lives on the character and stays at the edges | *Always:* hull and shield as an arc at the ship, with cooldown pips on the hull. *When it matters:* one plain line about the aimed target. *Never in flight:* the colour legend, authority receipts, jurisdiction notes, and debug strings such as "Reach·Fighter·L1 … VULN E— K— X—". Closes demo-ledger D240 (rail labels drawn over the ship; the aftermath card covering the target card and taking keys 1/2) |
+| 495 | **Rocks are the hero art** | Hades and GALAK-Z: one rendering language | Asteroids are now the ammunition, so they get the first art pass, inside the existing look direction (`LOOK.md`, Lacquer & Starlight). They become the most detailed bodies on screen, with no faceted grey placeholders. One frame must not mix four styles (painted nebula, clip-art planet, placeholder rocks, glossy hulls) |
+| 496 | **Words a player understands** | Plain verbs | A pass over the flight HUD and power labels. "Light ships are ammunition. Swing a rock. Keep the speed.", "DRIVE OFF · CAP · AT CEILING · V-MAX 252" and "LINE 5.5k wu/s" become plain sentences about what a thing does |
+
+### 33.3 Adventure gets the same fight, more often (row 497)
+
+| Row | Name | Feeling | Done when |
+|---|---|---|---|
+| 497 | **Something happens every minute** | "I can't fly two minutes without trouble, or an opportunity." | The standard adventure encounter is a swarm pocket in cover: a pirate pack in a rock field, a convoy under attack in a debris lane. Encounter cooldowns and the director's quiet phases are retuned so the first hostile contact comes within 2 minutes of New Game and contact recurs every 3–5 minutes. The M3 cohort travel share for hunters drops from about 80 % to ≤50 % in hour one. Row 476 (Travel is a choice) owns the routes, and this row owns the cadence |
+
+### 33.4 Order (director's recommendation; the owner may overrule)
+
+1. 488 first (measure the physics budget), then 482, 487, 490, 491 and 492. That is the first
+   swarm round played at A-list craft.
+2. Then 483, 485 and 486, the Katamari curve, then 484 (the flail) and 489.
+3. 493–496 in parallel. 497 once 482–492 make a pocket fight worth meeting.
+4. Until step 1 passes, §32.4's new genres stay behind this section: the card game (447), the
+   inspector's shift (452), crew (446) and the home berth (445). A warehouse of features is the
+   failure VISION names. The core loop comes first.
+
+## 34. THE WEIGHT — the expansion bible, made into rows (owner request, 2026-10-21)
+
+**Owner, 2026-10-21:** *"I need units and enemies and NPCs and objects, assets of all types …
+characters, factions, sectors, races, aliens, materials, technology … the missions and encounters
+and overall script of the game … all the game systems and polish … I need you to supply the taste
+and ideas … add the more complex tasks to the build map and the easier grunt work tasks to the
+INFERENCE board."*
+
+**The taste lives in [`design/expansion/`](./design/expansion/00_README.md)**, nine files:
+
+- tone and world;
+- the 14 factions, plus canon blocks for the six open ones;
+- the Bloom swarm ladder, peoples and machine-people;
+- the 25 sectors;
+- the asset roster;
+- the campaign script;
+- 48 encounters;
+- systems, and a 50-point polish checklist.
+
+**The work lives here.** These rows are the complex tasks. The small, exact tasks are the
+**EXP** section of `design/program/INFERENCE_IDEAS.md`.
+
+These rows sit **behind §33**: the §33 swarm core goes first, and its order holds (row 488, then
+482, 487, 490–492). §34 adds the content, identity and story that the core makes worth playing. The
+director's phase order is in `design/expansion/08_SYSTEMS_AND_POLISH.md` §13.
+
+Every row follows the bible's six laws: the Line never lies; heavy is honest; deadpan ledger, loud
+physics; connection is the catastrophe; nothing is scenery; the world keeps the receipt. Enemy
+physics weapons stay rare and authored (§22.11). Vethari stay off-frame. Story outcomes stay canon
+(`docs/worldbuilding/CREATIVE-DIRECTION.md` R1–R15). **PROPOSED CANON** in the bible is built
+against now and folded into the worldbuilding sheets by row 537.
+
+### 34.1 The Line and progression (rows 498–502)
+
+| Row | Name | Feeling | Done when (stranger-visible, fixed seed) | Bible |
+|---|---|---|---|---|
+| 498 | **Tonnage Logged and Line Class** | "I've moved enough weight that the Line got stronger." | LOG keeps lifetime true mass moved. Line Class I–VIII sets full-control mass (20 t → the Maw), opened by tonnage thresholds or trials. The winch head, cable and anchor pads visibly change per class. A save at each class shows the hull state. No damage or percentage buffs | 08 §2.1 |
+| 499 | **The honest strain** | "Almost. Not yet. NOW." | Above full-control mass the Line holds with falling reel speed, a hot glowing cable and lost turn authority. A sustained over-class tow heats the winch and can snap, which is a visible event. The strain readout sits at the ship as the hero instrument. Record holds print `N T. CORRECT.` | 08 §2.1, §7 |
+| 500 | **Provenance rarity** | "This Barb flew with the Red Wake." | Five tiers (Stock, Worked, Named, Storied, Relic) plus the Backordered flavour. Each tier above Stock changes a *behaviour*, never a stat. The rim mark shows on the module icon and the hull part. Sources: salvage, derails, Cull purses, ace drops and faction arcs | 08 §2.5 |
+| 501 | **Line heads** | "Wait, could I use the Coupler to…?" | All 14 heads in 05 §7.1 are implemented as Line attachments, each with a distinct visual on the hull. P0 first: Coupler, Breaker, Barb, Weld, Magnet, Override (reuse `tool_thruster_hijacker`, `glueMeetMassRuntime`). Each head has a fixed-seed tape showing its unique outcome | 05 §7.1 |
+| 502 | **LOG — the physics narrator** | "REAVER-2 RECLASSIFIED: PROJECTILE." | A cause-aware, one-line feed reads impact kills, throws, liens, deliveries, records and incidents in the house register. It lives in a data table (INFERENCE EXP-12 fills the copy), reads with sound off, fades in 3 s, and is silent in terminal zones. It extends or sits beside `stuntCallout`; there is no second announcer | 01 §3.2 |
+
+### 34.2 The Bloom (rows 503–504, 507–508)
+
+| Row | Name | Feeling | Done when | Bible |
+|---|---|---|---|---|
+| 503 | **Coupling you can see** | "I killed the big one and they all flinched." | Linked swarm members draw green coupling filaments. A panic cascade (mass kill above a set energy), an aggression cascade (relay or Queen hit) and a grief loop (Mother or node death) run as group behaviour with their 03 §1.2 timings. Each stages a fixed-seed tape. This replaces per-member reflex jitter in swarm AI | 03 §1.2 |
+| 504 | **Pain, memory and host-shadow** | "That Husk flew like a Concord line." | Long bodies thrash in a fixed arc when cut. A sector's next tide routes by where the last one died (persisted). Husks (colonised hulls under the Overgrowth kit) fly their old faction's pattern, and LOG reads the old transponder | 03 §1.2 |
+| 507 | **Bloom ladder T0–T2** | "Guns ping off the glassbacks, so I smash them." | New families in `swarmBrood` data plus behaviour: Spore drift (VFX hazard), Lantern cyst (heat-seeking, throwable bomb), Glassback (reflects gunfire, only mass kills it), Wake eel (trails your wake; a whip when held), Bellows (bursts into a shove). Each has a telegraph, a counter line, a death throwable and a silhouette that reads with no marker | 03 §1.3 |
+| 508 | **Bloom ladder T3–T6** | "I dismantled a hive." | Bristle ram, Furnace maw, Husk variants, Blind shepherd (relay; killing it panics linked packs), Hive-hulk (dismantle by nodes, plates and bays), Veil ray, Anchor beast, and the Long Field (Ashfall's filament sky, thinned by breaking its shepherds). The mass bands match the 03 ladder | 03 §1.3 |
+
+### 34.3 Cast and machine-people (rows 505–506)
+
+| Row | Name | Feeling | Done when | Bible |
+|---|---|---|---|---|
+| 505 | **The one-offs find a home** | "Every sector has someone in it." | The ~35 authored one-offs (Morrow, Vesper, Bracket, Ravel, Rubric, Ruckus, Solstice, the Blind Welder, the Eighth Bell…) each map to a sector, a Book window and a chart entry. A census test fails on any one-off with no sector, or on any sector with no resident | 03 §4.3 |
+| 506 | **The Orphaned Shift** | "TARE weighed my rock and paid me in fragments." | The twelve new machine-people (TARE, DOCKET, LAMPLIGHTER, SHEPHERD-12, QUILL, HOLDFAST, BOUNCER, RECEIPT, MOP, BELLHOP, GRAVEDIGGER, TALLYHO), each built as a single physical encounter on the Morrow/Rubric pattern with a persisted outcome. TARE, SHEPHERD-12 and HOLDFAST open Line Class trials (row 498). Ship one per sitting | 03 §4.3 |
+
+### 34.4 Matter and the world's physics (rows 509–513)
+
+| Row | Name | Feeling | Done when | Bible |
+|---|---|---|---|---|
+| 509 | **Substances** | "Ice shatters, slag sticks, crystal rings." | Ten substance materials (metallic ore, silicate, ice, slag, crystal, reef metal, cooked rock, Vethari bone, Bloom husk, junk) layer over the body-class materials in `physicsMaterials.js`. Each has restitution, break behaviour and an impact VFX family. 24 rock bodies (three sizes × eight substances) replace today's 5. Ice loses mass in sunlight | 05 §2 |
+| 510 | **Everything breaks down a tier** | "The arena never runs out of ammunition." | A throwable above T1 that is struck above its break energy splits into next-tier pieces that are live throwables, building on `hullBurst` and `hullFracture`. A fixed-seed wave-10 run never drops below N throwables in the play radius | 05 §1 |
+| 511 | **The Katamari ladder, placed** | "There's always something I can just barely move." | Every sector and arena carries ≥ 6 bodies per tier T0–T4 from 05 §1, and T5–T6 where the bible places them. Scale cues are on every body above T3. A census tool prints tier counts per sector | 05 §1 |
+| 512 | **Faction station kits** | "That refinery is Drift's; that one is Vael's." | Fourteen dressing kits applied to the seven station archetypes, so a stranger names the owning faction from a still in 3 of 4 cases | 05 §5 |
+| 513 | **Mass-signature stealth** | "I hid the crate in the big rock's shadow." | Sensors read mass and heat inside drawn sweep rings. Large bodies cast mass shadows. Hush Head, decoy pods and cold coasting hide mass. Lantern cysts and Furnace maws use the same heat model. The Weighing (E-04) is playable three ways | 08 §5 |
+
+### 34.5 Faction identity (rows 514–519, 524–532)
+
+Each faction row delivers its 02 roster (kit first), its signature encounter, its signature toy (a
+row 501 head), its conduct entry (`factionConduct.js`, where missing), and its persistent mark.
+**One faction per sitting.**
+
+| Row | Faction | Must ship | Bible |
+|---|---|---|---|
+| 514 | **All: kits** | hull kits for Concord, Meridian, Vael, Frontier, Choir, Helix, Fulfillment, Archive and Pitborn, plus the **Overgrowth kit** (Understory and Bloom Husks) and the **junk kit** (Pitborn). Every faction's live ship roles stop showing undressed player hulls | 05 §4 |
+| 515 | **Concord** | formations with a commander (fling it and the formation locks rigid); Picket and Commander variants; Clamp Tender (grabs *cargo* only, telegraphed); Scale Barge; **The Weighing** (E-04); Bowling Pins (E-02); Clamp Tug-of-War (E-03) | 02 §1 |
+| 516 | **Meridian** | cargo spines with breakable couplers; hull tickers that scroll live cargo value; Toll Pylon; **Spine Break** (E-05); Coupler Head | 02 §2 |
+| 517 | **Understory** | Gardens in five persisted growth stages; Gardener skiff; impacts absorbed in gardens; **the Compost Run** (E-26); a garden of stage 4 or higher pushes the local tide line (row 520); Spore Head | 02 §10 |
+| 518 | **Fulfillment** | Re-router haulers on fixed routes (they never deviate and never fire first); hitchhiking (E-25); derailment spill of backordered goods (E-24); Administrative Boarding (E-19); **Order #0000001** (E-20, Sump's broom); the oldest-open-order counter | 02 §11 |
+| 519 | **Pitborn** | Cull arena dressing (crowd, banners, scoreboard, Ma Sprocket); the Yardmaster, procedurally accreted from the 43 wreck pieces and dismantled piece by piece; ballast balls in five sizes; **Ballast** against Clatter (E-41); the Cull crowd meter (E-40); Magnet Head | 02 §13 |
+| 524 | **Vael** | Override Tender; **the Lien Anchor** (a contract clamp that adds mass, telegraphed, contract jobs only, and *transferable by throwing it*: `LIEN TRANSFERRED`); **Page Nine** (E-18); script-etched hull text; Override Head | 02 §6 |
+| 525 | **Quiet** | Runners that juggle cargo between hulls; decoy pods; **The Swap** (E-07, a mid-air catch); sold routes (a Quiet route you used is patrolled next time); Hush Head | 02 §5 |
+| 526 | **Helix** | false-flag packs that fly *too perfectly* (exact geometry and matched speed) and flip to HELIX when the pattern breaks (E-10); Lien drones; Adjudicator skin; **Gate Audit platforms** (E-32); Adjudicator 44-C boss; Seal Head via the Archive | 02 §9 |
+| 527 | **Archive** | Censor frigate; **Redaction** (engines and HUD dark; escape by swinging, E-29); reading-room interior; page drones that copy your logs; Index Head (provenance scan) | 02 §12 |
+| 528 | **Choir** | Bells whose resonance shatters crystal; ribbon VFX; **The Carried Relic** (crack the casing by impact, E-22); Bell Shatter (E-23); Bell Head | 02 §8 |
+| 529 | **Verge-Layers** | bodies for Measure Engine, Gate Auditor, Surveyor Prism and Debris Sorter (then Executor, Appeals Clerk, Witness, Sleeping Jury); directives shown as one capitalised word on the glass; **The Appeal** (weighed evidence, E-30); the Sleeping Jury (E-34); the Line-site Class trial | 02 §14, 03 §3 |
+| 530 | **Drift** | claim pylons (throwable); the **Claim Jump** set piece (E-06); the Breaker Derby (E-39); Breaker Head | 02 §3 |
+| 531 | **Reach** | the **Nest Carrier** mini-boss (E-08); the Trophy Wall at Sker Haven (your kills hang there; steal them back); gate camps of chained rock (E-42); Barb Head | 02 §4 |
+
+### 34.6 The world moves (rows 520–523)
+
+| Row | Name | Feeling | Done when | Bible |
+|---|---|---|---|---|
+| 520 | **The Bloom tide** | "The tide line moved because I cleared that lane." | A per-sector infestation level spreads along lanes with unclaimed wrecks and falls with clears and gardens. It is drawn on the chart and persisted. Fixed-seed: a cleared lane drops its level, and a neglected one rises over N cycles | 01 §2, 03 §1.4 |
+| 521 | **The Gate Audits** | "They're welding the Io gate shut, and I can see the scaffold." | One outer gate per Book (from B3) closes over several cycles behind a wreckable Helix scaffold. Closure reroutes traffic and wakes Verge law around the gate. The player can delay a closure (E-32) but not end the policy. **Invariant: a closure never makes a sector unreachable.** It lengthens routes. Every mission, ace, machine-person, save and the B7 route to Ashfall in a closed-gate sector stay reachable, and a test walks each closed gate's sector from Helios | 01 §2 |
+| 522 | **The Slow Gray clock** | "The Pit's air index fell again." | The Meridian ticker shows the Pit's air index falling every Book. It never recovers (epilogue canon). The player's violence moves prices, never the air | 01 §2 |
+| 523 | **The chart keeps the receipt** | "That's my garden. That's my station. That's where I broke the Maw." | The chart shows the tide line, gate states, the player's structures, gardens, lit paths, trophy walls and Colossus remains. Each entry is backed by a persisted fact with a reader (§31.0 fault 1) | 01 §2, 08 §11 |
+
+### 34.7 The campaign plays (rows 533–539)
+
+| Row | Name | Feeling | Done when | Bible |
+|---|---|---|---|---|
+| 532 | **Free Frontier** | six homestead modules plus a frame; **Barn Raising** (E-21); a raised homestead persists, gains traffic and asks for supply runs when stranded; Weld Head | 02 §7 |
+| 533 | **Books 0–2 play** | "B0 taught me the Line in two minutes; B2 cut to silence." | The 06 mission lists for B0–B2 are wired on the default route: the Skim's 12.4 t strain reading, Scale 4's variance object, the Infested Hauler furnace disposal, the Compost Run, the Nest, and the Elroy beat in the terminal register. Protected lines are exact (R-rulings). Player-truth adventure passes | 06 |
+| 534 | **Books 3–4 play** | "The fourth spike is real." | VARIANCE ADJUSTMENT (a Hawser-class tug with Slate's seam failing at the fourth strain spike); Feed the Maw; the Foreman; the first Gate Audit; the three doors each running their operation (Spine Break, the Weighing plus the Too-Perfect Pack, Barn Raising); the doubled contract as a player choice, with the canon wall line only if taken | 06 |
+| 535 | **Books 5–7 play** | "I took apart the Iron Maw." | The Reunion (canon dialogue), the Ninth Toll, the Reading Room and Redaction, the Locker heist; the Empire Seed built by towed modules, its first tide, Gate 3's waived fine, and Shaft 7's Hive-hulk; the Iron Maw dismantled into the Gutted Maw, the Long Field broken by shepherds, and the Witness room as terminal register | 06 |
+| 536 | **The Five Doors, playable** | "My ending was something I did." | Each door has its one short playable act (06 table). Vale's line fires for all doors on the drive charge. The epilogue is unchanged | 06 |
+| 537 | **Interludes and canon adoption** | — | Six interludes playable as quiet scenes (Unknown Vessel, The Hand, Second Client, Ticker, Drawer, Smell Ticket). Every PROPOSED CANON item in `design/expansion/` is folded into `docs/worldbuilding/` sheets, or rejected in one sentence naming its replacement | 06, 00 |
+| 538 | **Fourteen faction arcs** | "Every faction has a story I can finish." | Three missions per faction (06 side-arc table), each arc ending in its signature toy; gated by rep, not by Book | 06 |
+| 539 | **The Cull ladder** | "Pebble League to the Gutted Maw." | Ten leagues on the 04 arenas, with Ma Sprocket's broadcast, Clatter as rival, league prizes (heads, starting rating, cosmetics), and the Gutted Maw opening after B7. It is the swarm mode's career, in fiction | 06, 04 |
+
+### 34.8 Places and people (rows 540–543)
+
+| Row | Name | Feeling | Done when | Bible |
+|---|---|---|---|---|
+| 540 | **The thin sectors** | "Even Sedna Dark has something to do." | Hyperion, Rhea, Nereid, Kepler, Orcus, Phoebe, Triton, Eunomia, Sedna, Eris, Nyx and Proteus each have their 04 throwable, hazard, resident, wonder and set piece on the default route. No sector is "one hull is the whole schedule". Coordinates with row 464 (every sector has a law) and row 450 (one wonder per sector): this row owns the throwable, resident and set piece, and takes the law and wonder from those rows when they land | 04 |
+| 541 | **The arena ladder** | "The arenas got bigger as I did." | The ten Cull arenas in the 04 table, each with its signature throwable and law, ordered by scale step for §33 row 485 | 04 |
+| 542 | **The canon cast gets hands** | "Kessler's scale and my Line disagreed." | Each canon character in 03 §4.1 has their physical hook wired (Kessler's scale, Slate's column and fourth spike, Drift's moisture loss, Rook's tow-to-booth bounties, Hale's Weighing, Dree's waved weir, Wex's empty rack) | 03 §4.1 |
+| 543 | **Faces** | "The contact looks like she works here." | Portraits for the canon cast and the eleven new faces (03 §4.2), plus eight culture pools of eight faces each (03 §2), with generated 2D art allowed by owner ruling | 05 §6 |
+
+### 34.9 Systems and polish (rows 544–550)
+
+| Row | Name | Feeling | Done when | Bible |
+|---|---|---|---|---|
+| 544 | **Economy re-pace** | "Every twenty minutes I could do something new." | In the M3 cohort simulation for hour one: travel share ≤ 50 % for hauler and hunter, a play-changing purchase every 15–25 minutes, and bounties and salvage paid by tonnes moved. Pitborn sling buoys and Fulfillment hitchhiking are live shortcuts | 08 §2.4 |
+| 545 | **The camera follows the weight** | "The view opened up when I grabbed the freighter." | Framing for the largest relevant body; the camera opens with rating and speed; impact kick only at T4 and above; the ship is never under the HUD | 08 §6 |
+| 546 | **Teach by situation** | "Nobody told me; the situation showed me." | The first ten minutes place one situation per power. The power preview teaches it. "I've flown before" skips everything. First Light keeps its calm-motion offer with **Play** as the primary action | 08 §8 |
+| 547 | **The Colossus roster** | "The boss bar was its parts." | The 07 §5 bosses (Nest Carrier, Casket Worm, Furnace Maw, Yardmaster, Adjudicator 44-C, Hive-hulk, the Iron Maw, plus the existing Foreman, Regent and Spindle Mother) on row 448's framework. No HP bars. Every ripped part is ammunition | 07 §5 |
+| 548 | **The fifty-point audit** | "I'd show this to a friend." | The 08 §12 checklist is run as a pass. Each false item is fixed or filed as one demo-ledger row. The pass is repeated after each phase of 08 §13 | 08 §12 |
+| 549 | **Receipts within a budget** | "The world remembers, and the save is fine." | Every persisted receipt in §34 has a cap and a reader. Trivial receipts decay oldest-first, and meaningful ones never do. Save migrations cover each new record, and the save-growth soak stays flat | 08 §11 |
+| 550 | **The arsenal, one job each** | "I know what every tool in my bay is for." | Each physics tool in `data/weapons.js` is kept, merged into one of the five powers, or moved to a Line head per the owner's pick of `design/expansion/05_ASSET_ROSTER.md` §7.3. Applied for story mode 2026-10-22: a merged tool carries `retiredInto` and leaves the shop and research; owned copies keep working, so no save migration was needed. Remaining: the Crucible draft (swarm seam) and the Line-head moves once those heads exist. No tool's outcome is lost without the owner's call | 05 §7.3 |
+
+## 35. THE OPEN REACH — inhabited districts and a connected world (owner request, 2026-10-27)
+
+The owner asked for real areas with visible civilian work, standing armies, optional military raids
+and stealable machines, wreckyard towns, huge manufactured surfaces, hollow asteroids, infestation
+and a coherent story. **[The living-world implementation pack](design/program/living-world/README.md)**
+turns that direction into eight district designs over existing sector IDs, 24 routine specifications,
+24 opportunities, a campaign/ending treatment, 15 proposed model IDs and 19 bounded packets.
+
+**Delivery boundary:** the creative/specification pack and its read-only authoring CLI are implemented;
+the new districts, models and runtime experiences are planned. This is a source-grounded seed for
+local implementation, not evidence of a finished world. `node scripts/living-world.mjs --validate`
+checks its source references/dependencies; `--task=LW-01` prints the first complete neighborhood
+commission; `--next` lists dependency-ready briefs without claiming paths or changing this board.
+
+Use existing THE WORLD/LONG GAME/PICTURE/HAND/EAR/MACHINE lanes and current source owners. This
+extends §23 CV-DAY/CV-MOTION/CV-QUIET, §31 world convergence and §34 THE WEIGHT; it does not create
+a second runtime registry or global queue. Source/data/art workers can parallelize by exact paths.
+[Program order](design/program/living-world/05-IMPLEMENTATION-PROGRAM.md) begins with Lantern Ward
+and the four art families, then connects cities, military law, interiors, ecology and campaign.
+
+**Narrative amendment for this commission:** latest owner direction permits changing the story.
+The [story bible](design/program/living-world/02-WORLD-AND-STORY.md) retains established facts and
+existing ending IDs but supersedes the outcome constraint in §34 rows 522/536 that successful
+interventions must leave every future material condition unchanged. Historical Pit harm can remain
+irreversible; actual rescue, relief and repair must survive into visible local and ending aftermath.
+Implement source readers and save compatibility together; prose alone changes no runtime behavior.
+
+## 36. The November programs — SWARM, the master plan, CHAOS, the bible (owner direction 2026-11-05/06)
+
+**Owner, 2026-11-05/06:** Swarm is the mode to perfect ("like Zombies was to Black Ops"); the game must
+run and feel like a real professional game (no freezes, real mass, luminous light, not dark-on-dark);
+the open world should have the physics-chaos feeling of GTA; agents must stop doing minor tweaks on the
+wrong architecture; and Claude was asked to own the creative direction and fill in the blanks so agents
+know what to build and when they are finished. These rows (§1C sub-section Q, rows 568–706) are that plan.
+
+**Where the taste and specs live** (read before taking a row):
+
+- [Creative direction](design/program/finish/DIRECTION.md) — the game, three ways to fly, the 30 moments, Hotspots, asset plan.
+- [The bible](design/program/finish/bible/README.md) — QUALITY rubrics (done = ≥ 4 from an independent reviewer), MOMENTS, VERBS, SHIPS, BESTIARY, ARENAS, HOTSPOTS, WORLD, LOOK, FEEL, ASSETS, ENGINE.
+- [SWARM program](design/program/finish/swarm/README.md) — vision, configuration audit, plans S1–S19, lanes F and S.
+- [Master plan](design/program/finish/MASTER_PLAN.md) — Part 0 agent rules (diagnose before tweaking; no tunnel vision; 90%-correct-and-wonky is a defect), engine E1–E10, ship P1–P3, world W1–W5, look X1–X5, process Q1–Q5; [seven lanes](design/program/finish/MASTER_LANES.md).
+- [CHAOS](design/program/finish/chaos/README.md) — GTA-style reaction matrix, ~45 units, lanes C1–C3.
+- [KIT](design/program/finish/KIT.md) — hull + kit + fit + livery + wear; visible loadouts; vision QA.
+
+**Order law:** smoothness (pipeline, sim-core, renderer-rebuild) runs throughout; Swarm (swarm-fight,
+swarm-show) is the first mode to reach the bar; Helios Hotspots before other sectors ("one place perfect
+before ten places okay"); breadth last. **Supersedes for these areas:** row 482's "guns are the nudge"
+and "enemy physics weapons stay rare" for Swarm (see `swarm/README.md` §6); master P4 moves to KIT K3.
+
+**How a row is done:** its spec's checklist passes; captures on the ordinary route with the Browser pane
+visible; an independent reviewer scores ≥ 4 on the applicable `bible/QUALITY.md` rubrics; the moment(s)
+it enables are recorded in `bible/MOMENTS.md`. Delete the row in the landing commit (board law).

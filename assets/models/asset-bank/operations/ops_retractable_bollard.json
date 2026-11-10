@@ -1,0 +1,354 @@
+{
+  "assetId": "ops_retractable_bollard",
+  "category": "mechanisms",
+  "description": "retractable bollard",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/asset_bank_operations.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "mount",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        -1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "tie",
+      "position": [
+        0.0,
+        1.4,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion",
+      "motionGroup": "bollard_extension"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.12,
+          -0.0
+        ],
+        "size": [
+          1.3,
+          0.24,
+          1.3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.49400000000000005,
+          0.2525,
+          0.45499999999999996
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.49400000000000005,
+          0.28500000000000003,
+          0.45499999999999996
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.49400000000000005,
+          0.2525,
+          -0.45499999999999996
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          -0.49400000000000005,
+          0.28500000000000003,
+          -0.45499999999999996
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.49400000000000005,
+          0.2525,
+          0.45499999999999996
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.49400000000000005,
+          0.28500000000000003,
+          0.45499999999999996
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.49400000000000005,
+          0.2525,
+          -0.45499999999999996
+        ],
+        "size": [
+          0.154,
+          0.025000000000000022,
+          0.154
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.49400000000000005,
+          0.28500000000000003,
+          -0.45499999999999996
+        ],
+        "size": [
+          0.11,
+          0.03999999999999998,
+          0.11
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          0.37,
+          -0.0
+        ],
+        "size": [
+          0.9,
+          0.26,
+          0.9
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.0,
+          -0.0
+        ],
+        "size": [
+          0.56,
+          1.1,
+          0.56
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          1.51,
+          -0.0
+        ],
+        "size": [
+          0.92,
+          0.2200000000000002,
+          0.92
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [
+    {
+      "id": "bollard_extension",
+      "pivot": [
+        0.0,
+        0.44999998807907104,
+        -0.0
+      ],
+      "parent": null,
+      "objects": [
+        "bollard",
+        "head",
+        "warning_band",
+        "warning_band.001"
+      ],
+      "animationStatus": "rigid pivot only; no animation clip"
+    }
+  ],
+  "tags": [
+    "operations",
+    "mechanisms",
+    "forge",
+    "reusable"
+  ],
+  "bounds": {
+    "min": [
+      -0.6499999761581421,
+      0.0,
+      -0.6499999761581421
+    ],
+    "max": [
+      0.6499999761581421,
+      1.6200000047683716,
+      0.6499999761581421
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "ops_retractable_bollard_lod0.glb",
+      "triangles": 6416,
+      "draws": 5,
+      "bytes": 552644,
+      "method": "source",
+      "sha256": "6889b981766cb35bd0c5016419ab624449f1bbb87ef7b60690970e3848257532"
+    },
+    {
+      "level": 1,
+      "file": "ops_retractable_bollard_lod1.glb",
+      "triangles": 1144,
+      "draws": 4,
+      "bytes": 292444,
+      "method": "Forge-decimation",
+      "sha256": "294574a91b122eea46b0119ff17c10e57e98f43f4513bd8a2bbbce6b9f70a8dc"
+    },
+    {
+      "level": 2,
+      "file": "ops_retractable_bollard_lod2.glb",
+      "triangles": 514,
+      "draws": 4,
+      "bytes": 265356,
+      "method": "Forge-decimation",
+      "sha256": "deeaa05e8ab871f5e08146974500482b2ddfdc3507dfeea6809f8daf5ddbed6d"
+    }
+  ]
+}

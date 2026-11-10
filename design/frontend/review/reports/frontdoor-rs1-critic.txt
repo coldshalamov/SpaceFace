@@ -1,0 +1,147 @@
+FRONT-DOOR CRITIC, RE-SCORE 1: TITLE + PAUSE UNDER THE OWNER CRITERIA
+Stills (re-score set, no code changed since the letters except the station-only shell rail
+margin 10d4692b2, which does not touch these screens):
+  - rs-title-1920, rs-title-1280, rs-title-2560; rs-pause-1920, rs-pause-1280, rs-pause-2560.
+State shots driven live by this critic (motion ON in the eval bench; the rs stills are frozen):
+  - fd-rs1-thover: pointer parked on SETTINGS (Hand swings to it);
+  - fd-rs1-tfree: pointer parked on the empty dial at (150,750) (Hand does NOT follow);
+  - fd-rs1-pkeys: keyboard Down/Down/Right from RESUME (ends on MY SHIP, Hand on the SHIP row).
+Coordinates are px at 1920 unless marked. Y is Rec.709 luma of the sRGB pixel. CR is WCAG
+contrast from composited pixels (98.5th-percentile glyph pixel vs 10th-percentile local ground,
+sharp .raw()). Crops: .devshots/ui-review/crops/fdrs1-*. Scripts: /tmp/fd-measure.mjs,
+/tmp/fd-box.mjs, /tmp/fdrs1-crop.cjs (throwaway, kept out of the repo).
+
+BENCH ARTEFACTS IGNORED: frozen motion everywhere (emblem drift, arrival, Hand trail, the
+title attract); and the bench's aria-disabled verbs — in the bench every title verb except QUIT
+renders "initializing" at bone .34 (LOAD/CRUCIBLE/SETTINGS measured 2.65-2.79:1), while in
+production all rest verbs render bone .7 (QUIT in the still is the true rest state: 7.15:1).
+NEW GAME in the still is awake-but-disabled, i.e. rest light .7 (7.26:1), not the true awake
+bright (~17:1, cf. pause RESUME). Nothing below scores the .34 state.
+
+1. VERDICTS
+   TITLE: NOT PASSED. Overall 8.2 (letter 8.1). No axis under 7.0. Owner gates: (a) PASSES,
+     (b) FAILS — the planned signature (OVERHAUL_PLAN §4: "the Hand follows the pointer round
+     the dial; the rings answer with parallax") is not built. Verified live: a pointer parked
+     on the empty dial leaves the Hand on NEW GAME, and no pointermove/parallax wiring exists
+     in arcRail.js, menuFrames.js, mainMenu.js or screenLayouts.js. What exists is the generic
+     arcRail stop-to-stop swing (shared identically with Pause) plus the passive idle attract.
+   PAUSE: PASSED. Overall 8.3 (letter 8.0). No axis under 7.0. Owner gates: (a) PASSES,
+     (b) PASSES — the grid-of-stops is exactly the planned signature and works live.
+
+2. AXES (no per-axis letter scores exist — the round-3 letters recorded only the overalls)
+   TITLE:
+     Composition 8.0 [letter overall 8.1] — dial + logotype left, ship + planet right; one
+       object, generous key art. At 2560 the middle third is empty sky (verbs end x~1150,
+       ship from x~1050/y~600); acceptable, not composed.
+     Hierarchy 8.5 — SPACEFACE → awake verb → rest verbs → ARCHIVE/SANDBOX → footer. One read.
+     Legibility 8.5 — production rest .7 ≈ 7.1:1 (QUIT proxy 7.15:1); kicker 8.93:1; aside
+       6.24-6.26:1; footer 6.1-6.45:1. True awake ≈ 17:1 (pause-RESUME proxy).
+     ORRERY fidelity 8.5 — one amber Hand assembly (blade + hub disc + bead + glint + lit tick
+       + leader), bone rest light, no boxes/borders/pills; knockout breaks the dial for the name.
+     Craft/detail 8.0 — knockout clean (no stubs; §4 T-C2 tightens the rest); hub, ticks, dots
+       and bead all finished. Against: face/rail bands below the 2:1 bar (T-C1); the knockout
+       clips rim ticks mid-tick (by design, the rule breaking for its numeral).
+     Interaction clarity 8.0 — hover/focus swings the Hand with spring + glint + trail (verified
+       live, SETTINGS awake+focused, exactly one awake word); roving Tab; deny on disabled.
+   PAUSE:
+     Composition 8.0 [letter overall 8.0] — dial left, rows centre, brief right, key strip foot.
+       At 1280 the SHIP/REFERENCE rows run over the shed and hull (all ≥6:1, but busy).
+     Hierarchy 8.3 — PAUSED → RESUME → rows → brief → keys. Against: the brief name and RESUME
+       tie at 17.11:1 — two brightest elements (P-C3).
+     Legibility 8.5 — rows 5.89-7.59:1 at 1920 and 6.06-7.48:1 at 1280 over the ship; brief
+       5.86-17.11:1; key strip 8.56-9.3:1. The halo earns its keep at every size.
+     ORRERY fidelity 8.5 — grouped dial with lit legends, one Hand, leader to the lit verb;
+       ice only in the 0% reading (222,237,254); no chrome anywhere.
+     Craft/detail 8.0 — legend lights per row, halo ellipse to the longest row, halo under each
+       word. Against: the 0% ring gauge is a 1px ring (P-C1); LOCAL MAP touches the mast light
+       at 1280 (P-C2).
+     Interaction clarity 8.5 — Down/Down/Right verified live: Settings → Mission Log → MY SHIP
+       awake, Hand stepped to the SHIP row, SHIP legend lit, exactly one awake word; hover
+       shares focus so mouse and keyboard never light two words.
+
+3. PREVIOUS LIST: none under the criteria — the round-3 letters predate CRITIC_BRIEF §7, and no
+   per-item Title/Pause list survives in design/frontend/review/reports/. Nothing to close out.
+
+4. BLOCKERS
+   TITLE — structural (the one change that unblocks approval):
+     T-S1. Build the §4 signature: the Hand follows the pointer round the dial and the rings
+       answer with parallax. Concrete: while the pointer is over the dial and off the verbs,
+       track the Hand to the pointer's bearing (spring, same k/c as the stop swing); translate
+       the face/orbit/rim layers differentially (a few px, far layers least) toward the
+       pointer; on verb hover/focus, snap to the stop as now. Reduced-motion: no tracking, no
+       parallax — stops only (the spring already snaps under sf-reduce-motion). Keyboard and
+       gamepad paths unchanged. Check: fd-rs1-tfree repeated — Hand leaves NEW GAME toward the
+       pointer bearing; parallax shift visible between rim ticks and inner dots ≥2 px at 1920.
+   TITLE — craft (fewest):
+     T-C1. Face/rail band body toward the 2:1 bar. Measured: face outer band Y28 (~1.2:1) under
+       a 1.25px edge at Y80-82; rim band shoulders Y31-47 (~1.3-1.5:1) under a 2px edge at
+       Y155-157; rail band .08 similar. The bright edges + bold dots (Y115) + ticks (Y173) +
+       bodies carry (a) today (ng-r7 precedent), but the bands themselves are invisible body.
+       Change: raise band alphas until the face outer band reads ≥Y70 on glass ~10 at rest.
+       Check: row y=333 x58-67 peaks ≥Y70 across ≥6 px.
+     T-C2. Lift the sun's rays tier. The hub's ray ring reads Y46-53 (1.69:1) — the dimmest tier
+       of the face, nearly lost at 1280. Change: rays to bone .38 (≈ the tether's .34→Y60+).
+       Check: box 268,268-302,302 p98 ≥Y75.
+   PAUSE — structural: none. It passes.
+   PAUSE — craft (polish, non-blocking):
+     P-C1. Give the 0% ring gauge the weight treatment: 2px ring + bead at the value, matching
+       the dial language (now a 1px ring at ~Y91 inside 1370,250-1410,290).
+     P-C2. At 1280 LOCAL MAP's L touches the ship's mast light (752,347). Nudge the SHIP row's
+       words 6 px left at ≤1280 wide, or extend the word halo 4 px. Still 6.38:1 — cosmetic.
+     P-C3. Break the 17.11:1 tie between the brief name and RESUME: brief name to bone .92.
+       Check: BRIEF.title CR ≤14 while NEXT/SAVED stay ≥7.
+
+5. LANDMARKS (@1920)
+   Title: pivot (333,333), re 300; rim ring r304 (left edge x28-29: 2px core Y155-157,
+     shoulders Y31-47); rim ticks r309 (majors Y140 over ~8px, e.g. x14-23); face bands
+     r270/198/156/72, dot orbits r234/114 (dots Y115); bodies (501,228) r10 rim Y150,
+     (253,~) r7, (174,~) r6; sun core r22.5 + rays r51; hub r16 bone rim, amber disc r8
+     (242,185,80); verbs NEW GAME 677,223-901,262 / LOAD 688,302 / CRUCIBLE 682,380 /
+     SETTINGS 658,458 / QUIT 609,536-701,573; aside ARCHIVE 519,623-600,643 /
+     SANDBOX 622,623-709,643; footer SPACEFACE V0.1.0 72,999-179,1013, CREDITS 200,996,
+     ACHIEVEMENTS 284,996; kicker 60,76-320,94; blade at x550: y283-287, peak
+     (250,223,165) Y225. Amber audit: 500 amber px, all inside the Hand assembly boxes;
+     engine box 0 (world glow below threshold); foot/brief/menu 0 outside the Hand.
+   Pause: pivot (107,605), re 356; rim ring r360 (row y=605: edge Y94 at x470-476,
+     shoulders Y30-55); orbit edge Y174 at x431-440; RESUME 444,395-665,440 (17.11:1);
+     GAME row y463 (SETTINGS 543 / SAVE 709 / LOAD 806); SHIP row y524 (MISSION LOG 548 /
+     MY SHIP 719 / OPERATIONS 833 / LOCAL MAP 1001-1135); REFERENCE row y582 (HELP 618 /
+     CODEX 842 / ACHIEVEMENTS 943-1115); MEDIA row y640; DEV row y699; EXIT row y755
+     (MAIN MENU 508 / QUIT GAME 695); brief box 1370,137-1855,396 (FLIGHT BRIEF y137,
+     TRACKED y171, name y193-241, 0% 1420,256-1461,284 at 16.33:1, 15M LEFT 1471,262,
+     Next y306-348, Saved y368-396); keys ESC 64,980 / RESUME 106,985 / F5 184,980 /
+     QUICK SAVE 215,985 / F9 315,980 / QUICK LOAD 347,985 (all 8.56-9.3:1); version
+     1749,984-1856,998. Amber audit: 446 px, all in the Hand box; no Lamp Key on either
+     screen (correct — neither has a commit verb; the Hand alone leads).
+
+6. WHAT WOULD MAKE EACH MEMORABLE: Title — the missing signature itself (T-S1): a Hand that
+   tracks the pointer with the rings breathing in parallax would be the first thing every
+   player plays with. Pause — a bead that travels along the awake row to the awake verb, so
+   left/right reads as motion along the stop rather than a word swap (the Hand holds the row).
+
+7. OWNER CRITERIA
+   (a) Weight, not wire:
+     TITLE: PASSES. The dial is a six-tier luminous instrument, not a hairline drawing: rim
+       scale with Y140-173 ticks and a Y155 edge; bold 2.6px dots at Y115; three filled
+       worlds with Y150 lit rims; sun core + halo; 8px blade with hot core and bloom; hub
+       with amber disc. The bands alone measure below the 2:1 bar (Y28-47, ~1.2-1.5:1),
+       but per the ng-r7 precedent (bands Y32-38 passed under bright edges + beads) the
+       assembly carries weight everywhere. No generic elements: no cards, boxes, pills,
+       stock sliders or buttons. T-C1/C2 lift the two faintest tiers as stretch.
+     PAUSE: PASSES. Same dial, same finding; plus rows with halo light (not boxes), legends,
+       and the brief as pure type over the world. Nothing generic; the 0% gauge is the one
+       thin element (P-C1).
+   (b) Signature interaction (reduced-motion safe, keyboard/gamepad reachable):
+     TITLE: FAILS. The §4 signature — "the Hand follows the pointer round the dial; the rings
+       answer with parallax" — is not implemented: the Hand moves only between verb stops on
+       hover/focus (verified live both ways), and no parallax wiring exists. The stop-to-stop
+       swing is the ORRERY-wide mechanism shared with Pause, not this screen's own; the idle
+       attract (live replay behind the menu after 12 s) is Title-only but passive — not what
+       the player DOES. T-S1 is the ask. What exists is reduced-motion safe (spring snaps,
+       drift/arrival/trail off) and keyboard reachable (roving focus); gamepad rides the same
+       focus path (assumed, not probed in the bench).
+     PAUSE: PASSES. "Rows as stops: the Hand steps row to row, left/right along a row" is
+       exactly what is built and was verified live (Down/Down/Right → MY SHIP, Hand on SHIP).
+       It is this screen's alone (the only grouped dial), spring-driven with glint + legend
+       light, reduced-motion safe (instant step, state preserved), keyboard reachable, hover
+       unified with focus. Strong; §6 names what would make it memorable.

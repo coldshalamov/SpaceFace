@@ -1,0 +1,402 @@
+{
+  "schema": "spaceface.strategicChaosProgram.v1",
+  "inspectedBase": "2f1078e9a3ba54f21064f8163b3fca3476d49182",
+  "authority": "build_map.md",
+  "tasks": [
+    {
+      "id": "SC-01",
+      "title": "Causal Playground",
+      "outcome": "A pilot deliberately intervenes in a working Ceres freight encounter and can understand the physical and social consequences.",
+      "acceptance": "The existing B12 owner meets its unchanged five-seed gate; a separate ordinary-route demonstration supports at least two deliberately different outcomes. Receipt coverage alone is not causality or fun.",
+      "writeBoundary": "One Ceres pocket/encounter and its focused fixtures. Shared encounter, traffic and physics owners only through exact, freshly checked hunks.",
+      "parents": [
+        "PQ-141",
+        "PQ-138",
+        "PQ-143"
+      ],
+      "ownerPaths": [
+        "src/testing/lab/proofSixtySeconds.js",
+        "src/data/sectorActivityPockets.js",
+        "src/systems/encounterDirector.js",
+        "src/systems/traffic.js"
+      ],
+      "dependsOn": [],
+      "overlapPRs": [
+        605,
+        583,
+        631
+      ],
+      "grunt": [
+        "Attach stable actor-life and originating-incident references at the one missing producer/consumer seam found by the trace.",
+        "Repair one camera-scale threat/opportunity cue through existing presentation owners.",
+        "Add a negative case in which an unrelated collision cannot count as the player-created disaster."
+      ],
+      "document": "design/program/strategic-chaos/tasks/SC-01_CAUSAL_PLAYGROUND.md"
+    },
+    {
+      "id": "SC-02",
+      "title": "Battlefield Intelligence",
+      "outcome": "At fighting speed the player can distinguish an enemy, neutral worker and ally, read an imminent threat, and identify a legitimate intervention.",
+      "acceptance": "Selection, relation, intent, action eligibility and the actual command agree in focused tests; a visual review at the ordinary camera confirms readable priority and shape-based identity.",
+      "writeBoundary": "Existing descriptor/target projection plus a minimal ORRERY presentation consumer. Coordinate shared targeting and telegraph hunks with PR605.",
+      "parents": [
+        "PQ-140",
+        "PQ-144",
+        "build_map.md §1.8"
+      ],
+      "ownerPaths": [
+        "src/systems/interactionDescriptors.js",
+        "src/systems/scanner.js",
+        "src/systems/presentationOrchestrator.js",
+        "src/ai/perception.js"
+      ],
+      "dependsOn": [],
+      "overlapPRs": [
+        605,
+        496
+      ],
+      "grunt": [
+        "Add one missing intent-to-existing-glyph mapping with a non-color discriminator.",
+        "Connect one existing owner denial to its interaction readout.",
+        "Add a stale-target, capture or relation-change regression to the exact descriptor seam."
+      ],
+      "document": "design/program/strategic-chaos/tasks/SC-02_BATTLEFIELD_INTELLIGENCE.md"
+    },
+    {
+      "id": "SC-03",
+      "title": "Tactical Command",
+      "outcome": "The pilot controls a small useful wing while still flying: holding a position, screening a specific asset, concentrating attack, and regrouping are distinct tactical decisions.",
+      "acceptance": "The same encounter supports screening a hauler, holding a choke and a focused attack with measurably different positions, protected damage and exposure. Orders are acknowledged, cancellable and durable only where intended.",
+      "writeBoundary": "Existing wing-order data, radial intent and recipient behavior. Do not rewrite automation, input binding or AI authority; take exact hunks only.",
+      "parents": [
+        "build_map.md §1.8",
+        "existing wingmen / automation command seam"
+      ],
+      "ownerPaths": [
+        "src/data/wingOrders.js",
+        "src/ui/wingmanRadial.js",
+        "src/systems/wingmen.js",
+        "src/systems/automation.js"
+      ],
+      "dependsOn": [],
+      "overlapPRs": [
+        605
+      ],
+      "grunt": [
+        "Add a truthful order acknowledgment and one actionable blocked reason.",
+        "Cover an invalid or captured attack target with regroup/fallback behavior.",
+        "Measure a guard’s leash and intercept on the real movement port."
+      ],
+      "document": "design/program/strategic-chaos/tasks/SC-03_TACTICAL_COMMAND.md"
+    },
+    {
+      "id": "SC-04",
+      "title": "Adversarial Tactics",
+      "outcome": "Enemies execute recognizable plans with exploitable commitments instead of orbiting as interchangeable damage sources.",
+      "acceptance": "A raiding squad can commit to cargo interception, cover its withdrawal and abandon an unfavorable fight. Different player interventions change the plan through observed information, not hidden knowledge.",
+      "writeBoundary": "One existing squad doctrine and its perception/action adapter; exact paths coordinated with combat convergence.",
+      "parents": [
+        "PQ-140",
+        "existing sg06-tactical / squad seam"
+      ],
+      "ownerPaths": [
+        "src/ai/squad.js",
+        "src/ai/squadFrame.js",
+        "src/ai/perception.js",
+        "src/systems/tacticalAI.js"
+      ],
+      "dependsOn": [
+        "SC-02",
+        "SC-03"
+      ],
+      "overlapPRs": [
+        605
+      ],
+      "grunt": [
+        "Add a lost-contact case that uses last-known information and then expires it.",
+        "Give one tactic a visible windup/commit/recovery cue.",
+        "Repair one target-switch oscillation with existing hysteresis rather than hard immunity."
+      ],
+      "document": "design/program/strategic-chaos/tasks/SC-04_ADVERSARIAL_TACTICS.md"
+    },
+    {
+      "id": "SC-05",
+      "title": "Signal Warfare",
+      "outcome": "Scouting and deception change what the player and opponents can reasonably know, making preparation and concealment useful.",
+      "acceptance": "An observed patrol/weakness changes a tactical opportunity; a decoy or bounded interference can mislead an eligible observer and can be countered. Hidden facts remain hidden.",
+      "writeBoundary": "One existing information producer and perception consumer, plus minimal known-world presentation. No new global sensor truth.",
+      "parents": [
+        "existing scanner / cloak / perception seam",
+        "build_map.md §1.8"
+      ],
+      "ownerPaths": [
+        "src/systems/scanner.js",
+        "src/systems/cloak.js",
+        "src/ai/perception.js",
+        "src/systems/bandRadio.js"
+      ],
+      "dependsOn": [
+        "SC-02"
+      ],
+      "overlapPRs": [
+        605
+      ],
+      "grunt": [
+        "Display age/confidence for one existing stale contact without inventing exact coordinates.",
+        "Add a legitimate reacquisition counter to one deception effect.",
+        "Test cloak break/reveal on attack, collision or scanning using actual owners."
+      ],
+      "document": "design/program/strategic-chaos/tasks/SC-05_SIGNAL_WARFARE.md"
+    },
+    {
+      "id": "SC-06",
+      "title": "Physical Infrastructure",
+      "outcome": "A working industrial place becomes cover, leverage, hazard and objective; changing a physical component changes what the place can do.",
+      "acceptance": "At one site, a handling mechanism, a sensing/control component and a bounded hazardous component produce distinct causal interventions. Sabotage, defense and rescue are possible without scripted imitation.",
+      "writeBoundary": "One existing industrial site, its authored data and narrow operation hooks. Physics writes remain behind physicsAuthority.",
+      "parents": [
+        "PQ-143",
+        "existing environmentalMachinery / worldSite seam"
+      ],
+      "ownerPaths": [
+        "src/systems/environmentalMachinery.js",
+        "src/systems/worldSiteKernel.js",
+        "src/systems/workingBattlefieldRuntime.js",
+        "src/combat/physicalEffects.js"
+      ],
+      "dependsOn": [],
+      "overlapPRs": [
+        583,
+        590
+      ],
+      "grunt": [
+        "Wire one existing damage state to actual machine throughput or availability.",
+        "Repair a collision proxy or approach clearance for the chosen interaction.",
+        "Add a destruction/recovery/Continue test for one component and finite workpiece."
+      ],
+      "document": "design/program/strategic-chaos/tasks/SC-06_PHYSICAL_INFRASTRUCTURE.md"
+    },
+    {
+      "id": "SC-07",
+      "title": "Combinatorial Combat",
+      "outcome": "The player learns a small vocabulary of reliable powers and combines it into ridiculous but intelligible physical results.",
+      "acceptance": "Three compositions work through real owner paths: collect-and-release mass, a linked shielding corridor, and displaced enemies entering useful machinery. Each has a cost, tell, vulnerability and recovery behavior.",
+      "writeBoundary": "Continue/reconcile the existing Controlled Chaos owner after its relevant hunks land; never independently recreate pylons, collection or target authority.",
+      "parents": [
+        "PQ-137",
+        "PQ-146",
+        "Arsenal experience / combat convergence"
+      ],
+      "ownerPaths": [
+        "src/systems/gyreSnare.js",
+        "src/systems/fields.js",
+        "src/systems/emergentPrimitives.js",
+        "src/combat/attackLineage.js"
+      ],
+      "dependsOn": [
+        "SC-02",
+        "SC-06"
+      ],
+      "overlapPRs": [
+        605
+      ],
+      "grunt": [
+        "Add a denied-placement preview using the actual pylon owner’s geometry/cost query.",
+        "Connect a real aggregate-release result to mass/material-scaled feedback.",
+        "Add actor-generation and relation-change regressions for one propagated attack."
+      ],
+      "document": "design/program/strategic-chaos/tasks/SC-07_COMBINATORIAL_COMBAT.md"
+    },
+    {
+      "id": "SC-08",
+      "title": "Pursuit and Escape",
+      "outcome": "Illegal or accidental interventions produce understandable searches and escapes, not an arbitrary punishment meter.",
+      "acceptance": "The player can explain who observed what, why a response escalated, and what legitimate action ends or changes the pursuit. Finite consequences survive return/Continue correctly.",
+      "writeBoundary": "One witnessed incident → existing response → existing escape/settlement path. Keep heat, law, custody and economy authority separate.",
+      "parents": [
+        "PQ-138",
+        "PQ-151"
+      ],
+      "ownerPaths": [
+        "src/systems/heat.js",
+        "src/systems/lawSecurity.js",
+        "src/systems/warrantHunterWaves.js",
+        "src/systems/shipjack.js"
+      ],
+      "dependsOn": [
+        "SC-01",
+        "SC-02"
+      ],
+      "overlapPRs": [
+        583,
+        590,
+        605
+      ],
+      "grunt": [
+        "Add a causal explanation for one genuine dispatch from its incident receipt.",
+        "Test an unwitnessed assault cannot acquire a fabricated conviction.",
+        "Repair one escape/impound route that continues to reference a dead or captured hull."
+      ],
+      "document": "design/program/strategic-chaos/tasks/SC-08_PURSUIT_AND_ESCAPE.md"
+    },
+    {
+      "id": "SC-09",
+      "title": "Supply-Line Warfare",
+      "outcome": "Controlling a local physical shipment changes useful strategic options: stock, service availability or reinforcement capacity.",
+      "acceptance": "A delivered, delayed, stolen and destroyed version of the same finite lot yield correctly different downstream outcomes with source-linked explanations and conserved value.",
+      "writeBoundary": "One existing contested route and one finite commodity/service chain. No second stock or faction-ownership writer.",
+      "parents": [
+        "PQ-143",
+        "PQ-170",
+        "existing economic freight / conflict seam"
+      ],
+      "ownerPaths": [
+        "src/systems/traffic.js",
+        "src/systems/cargoCustody.js",
+        "src/systems/economy.js",
+        "src/data/conflictZones.js"
+      ],
+      "dependsOn": [
+        "SC-06"
+      ],
+      "overlapPRs": [
+        583,
+        480
+      ],
+      "grunt": [
+        "Add one origin-lot/destination-settlement identity to an existing shipment receipt.",
+        "Explain one real shortage through the current market read model.",
+        "Add duplicate, partial-delivery and stolen-then-recovered accounting cases."
+      ],
+      "document": "design/program/strategic-chaos/tasks/SC-09_SUPPLY_LINE_WARFARE.md"
+    },
+    {
+      "id": "SC-10",
+      "title": "Personal Consequences",
+      "outcome": "A recognizable person reacts later to a real encounter with the player, changing an opportunity or behavior without inventing history.",
+      "acceptance": "A verified rescue, betrayal or humiliation changes a later decision/opportunity; death, lack of evidence and save/load cannot create false memories or replay payment.",
+      "writeBoundary": "One existing named/remembered captain and one readout or encounter consumer. Reuse current identity and memory owners.",
+      "parents": [
+        "existing captain / ace / moral memory seam",
+        "build_map.md §1.8"
+      ],
+      "ownerPaths": [
+        "src/systems/captainMemory.js",
+        "src/systems/aceMemory.js",
+        "src/systems/moralMemory.js",
+        "src/systems/chronicler.js"
+      ],
+      "dependsOn": [
+        "SC-01",
+        "SC-08"
+      ],
+      "overlapPRs": [
+        609,
+        526
+      ],
+      "grunt": [
+        "Connect one existing memory field to an available service or behavior.",
+        "Repair one stale captain reference across pod ejection and capture.",
+        "Add a negative case for an unknown/unwitnessed action and one terminal-save case."
+      ],
+      "document": "design/program/strategic-chaos/tasks/SC-10_PERSONAL_CONSEQUENCES.md"
+    },
+    {
+      "id": "SC-11",
+      "title": "Multi-Party Operations",
+      "outcome": "Three replayable operations behave like situations with competing goals, not corridors with a single required trick.",
+      "acceptance": "Convoy interception, contested salvage and an industrial defense each support three materially different strategies, an honest exit, partial success and physical aftermath.",
+      "writeBoundary": "One operation at a time under existing mission/encounter owners. New authored data modules are preferable to broad monolith edits.",
+      "parents": [
+        "existing mission-craft / encounter seam",
+        "PQ-141",
+        "build_map.md §1.8"
+      ],
+      "ownerPaths": [
+        "src/systems/missionBoardOps.js",
+        "src/systems/missionObjectiveOps.js",
+        "src/systems/encounterScripts.js",
+        "src/systems/workingBattlefieldRuntime.js"
+      ],
+      "dependsOn": [
+        "SC-03",
+        "SC-04",
+        "SC-05",
+        "SC-06",
+        "SC-07",
+        "SC-08",
+        "SC-09",
+        "SC-10"
+      ],
+      "overlapPRs": [
+        583,
+        590,
+        599
+      ],
+      "grunt": [
+        "Author one actor’s legible goal/tell and its noncombat outcome.",
+        "Add a partial-success settlement to one existing mission family.",
+        "Cover a player who leaves halfway, returns later or resolves the situation in an unexpected order."
+      ],
+      "document": "design/program/strategic-chaos/tasks/SC-11_MULTI_PARTY_OPERATIONS.md"
+    },
+    {
+      "id": "SC-12",
+      "title": "Scenario Forge and Agent Workflow",
+      "outcome": "Agents can extend one validated situation, inspect what really happened and produce a reviewable implementation without rebuilding the engine or inventing evidence.",
+      "acceptance": "The same existing lab can exercise three operation variations with stable identities, raw-input control, explicit setup exceptions and real-owner assertions. Existing certification boundaries remain intact.",
+      "writeBoundary": "Existing generic simScenario lab, scenario data and narrow authoring utilities. Narrative scenarioSchemas remains Campaign 47-A-specific.",
+      "parents": [
+        "existing deterministic gameplay lab",
+        "INFERENCE_LANES.md",
+        "build_map.md §1.8"
+      ],
+      "ownerPaths": [
+        "src/contracts/simScenarioSchema.js",
+        "src/testing/lab/proofSixtySeconds.js",
+        "scripts/agent-loop.mjs",
+        "scripts/sf-lab.mjs"
+      ],
+      "dependsOn": [],
+      "overlapPRs": [],
+      "grunt": [
+        "Turn one manual reproduction into a raw-input tape using current accepted fields.",
+        "Add a metric that reads an existing authoritative outcome without writing to it.",
+        "Shrink one agent context packet to the actual owner files, current source SHA and observed failure."
+      ],
+      "document": "design/program/strategic-chaos/tasks/SC-12_SCENARIO_FORGE.md"
+    },
+    {
+      "id": "SC-13",
+      "title": "Cinematic Causal Feedback",
+      "outcome": "Anticipation, action, impact and aftermath communicate what happened and how much it mattered, while the player retains control and tactical visibility.",
+      "acceptance": "One light-body throw, one heavy collision and one field interaction have distinctive readable responses based on real mass/material/outcome; incoming threats remain identifiable and existing performance/accessibility contracts are met.",
+      "writeBoundary": "One complete interaction’s existing presentation/audio consumers; respect NOCTURNE, current Look and ORRERY ownership.",
+      "parents": [
+        "PQ-139",
+        "PQ-144",
+        "existing Look / NOCTURNE / ORRERY lanes"
+      ],
+      "ownerPaths": [
+        "src/systems/presentationOrchestrator.js",
+        "src/combat/presentationImpact.js",
+        "src/render/vfx.js",
+        "src/audio/audioSystem.js"
+      ],
+      "dependsOn": [
+        "SC-02"
+      ],
+      "overlapPRs": [
+        554,
+        605,
+        631
+      ],
+      "grunt": [
+        "Replace one generic impact with owner-driven material/mass differentiation.",
+        "Add a cancellation/rejection response for an action that currently appears to do nothing.",
+        "Give one overload/reduced-motion case a lower-cost presentation path without changing gameplay."
+      ],
+      "document": "design/program/strategic-chaos/tasks/SC-13_CINEMATIC_FEEDBACK.md"
+    }
+  ]
+}

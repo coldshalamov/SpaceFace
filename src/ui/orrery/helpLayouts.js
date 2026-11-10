@@ -1,0 +1,682 @@
+// ORRERY composition for Help (design/frontend/ORRERY.md §6 Meta).
+//
+// The frame: HELP and its profile line; the six sections on a ladder (a ruled spine, a tick per word,
+// the notched Hand on the open one -- warm bone, because the one amber on this screen belongs to the
+// instrument on the stage); the stage; Close as a word with its key glyph. Then the grammar the tabs
+// share: a Ladder of choices (one spine, ticks, the Hand), a reading in a promise-scale hairline
+// card (its kicker, its name, a ledger of terms), and the search field as a lit rule. No table
+// rule. It styles the screen's own nodes (checks read .sf-tab, .sf-help-now, .sf-lc__search).
+import { injectOrrery } from './tokens.js';
+import { injectOrreryMobileScreens } from './mobileScreenLayouts.js';
+import { SCROLL_EXTENT_CSS } from './scrollExtent.js';
+
+const STYLE_ID = 'sf-orrery-help-layouts';
+const H = 'html body #screens > .k-screen.of-help.orr-help';
+/** Help on a desktop (not the phone shell); same weight as H plus the mobile guard. */
+const HD = 'html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-help.orr-help';
+const BONE = '236 230 216';
+const HOT = '248 244 234';
+const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase !important;';
+/** ui-polish-171: section-row edge fades that follow the row's scroll position. */
+const TAB_EDGE_MASK = 'linear-gradient(90deg, transparent, #000 var(--sf-help-tab-fl), #000 calc(100% - var(--sf-help-tab-fr)), transparent)';
+const TAB_EDGES = `-webkit-mask-image:${TAB_EDGE_MASK}; mask-image:${TAB_EDGE_MASK}; animation:sf-help-tab-edges linear both; animation-timeline:scroll(self inline);`;
+const PLAIN = 'background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; outline:none !important; border-radius:0 !important;';
+const HAND = 'clip-path:polygon(0 0, 100% 50%, 0 100%, 30% 50%) !important;';
+// WEIGHT: a spine is a 2px line over a 7px band of bone .27 (measured ~2:1 on the glass).
+const SPINE = `linear-gradient(90deg, transparent 7px, rgb(${BONE} / .55) 7px, rgb(${BONE} / .55) 9px, transparent 9px) 0 0 / 100% 100% no-repeat,
+    linear-gradient(90deg, transparent 4.5px, rgb(${BONE} / .3) 4.5px, rgb(${BONE} / .3) 11.5px, transparent 11.5px) 0 0 / 100% 100% no-repeat,
+    repeating-linear-gradient(180deg, rgb(${BONE} / .34) 0 1.5px, transparent 1.5px 8px) 2px 0 / 5px 100% no-repeat`;
+
+const CSS = `
+/* ------------------------------------------------ the frame ------------------------------------ */
+${H} { grid-template-columns:clamp(172px, 12.2vw, 300px) minmax(0, 1fr) !important; grid-template-rows:auto minmax(0, 1fr) auto !important;
+  grid-template-areas:"title title" "hang stage" "foot stage" !important;
+  padding:clamp(34px, 5.4vh, 76px) 5vw clamp(30px, 4.6vh, 64px) !important;
+  column-gap:clamp(26px, 3vw, 64px) !important; row-gap:clamp(14px, 3vh, 40px) !important; }
+${H}::before { background:radial-gradient(120% 100% at 30% 40%, rgb(5 7 10 / .9), rgb(5 7 10 / .76) 55%, rgb(5 7 10 / .58)) !important; }
+${H} > .k-title { align-self:end; margin:0 !important; padding:0 !important; border:0 !important; }
+${H} > .k-title .k-t-title { margin:0 !important; }
+${H} > .k-title > .sf-help-now { ${LABEL} margin:12px 0 0 !important; font-size:clamp(12px, .62vw, 16px) !important; letter-spacing:.26em !important; color:rgb(${BONE} / .88) !important;
+  display:flex; align-items:center; gap:14px; }
+${H}:not([data-tab="controls"]) > .k-title > .sf-help-now { visibility:hidden; }
+${H} > .k-title > .sf-help-now::after { content:""; width:72px; height:1.5px; background:linear-gradient(90deg, rgb(${BONE} / .7), rgb(${BONE} / 0)); }
+
+/* ------------------------------------------------ the section ladder --------------------------- */
+${H} > .k-hang { ${PLAIN} overflow:visible !important; padding:0 !important; margin:0 !important; align-self:start; max-height:none !important; }
+${H} .orr-help__tabs { ${PLAIN} position:relative !important; display:flex !important; flex-direction:column !important; gap:0 !important; margin:0 !important; padding:6px 0 !important;
+  background:${SPINE} !important; }
+${H} .orr-help__tabs > li { position:relative !important; width:100% !important; list-style:none !important; margin:0 !important; }
+${H} .orr-help__tabs .sf-tab { all:unset !important; box-sizing:border-box !important; position:relative !important; display:flex !important; align-items:center !important;
+  width:100% !important; min-height:clamp(38px, 4.8vh, 50px) !important; padding:0 6px 0 40px !important; cursor:pointer !important; ${LABEL} font-size:clamp(13px, .68vw, 17px) !important;
+  letter-spacing:.06em !important; color:rgb(${BONE} / .88) !important; white-space:nowrap !important; transition:color .16s linear; }
+${H} .orr-help__tabs .sf-tab::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:9px !important;
+  height:2px !important; margin:-1px 0 0 !important; translate:none !important; scale:none !important; transform:none !important; background:rgb(${BONE} / .72) !important;
+  box-shadow:none !important; border:0 !important; clip-path:none !important; border-radius:0 !important; opacity:1 !important; }
+${H} .orr-help__tabs .sf-tab::after { content:none !important; display:none !important; }
+${H} .orr-help__tabs .sf-tab:is(:hover, :focus-visible) { color:rgb(255 255 255) !important; }
+${H} .orr-help__tabs .sf-tab:focus-visible:not([aria-selected="true"])::before { left:6px !important; width:3px !important; height:20px !important; margin-top:-10px !important;
+  background:rgb(255 255 255) !important; box-shadow:0 0 8px rgb(255 250 236 / .55) !important; }
+${H} .orr-help__tabs .sf-tab[aria-selected="true"] { color:rgb(255 255 255) !important; text-shadow:0 0 16px rgb(255 250 236 / .22); }
+/* the Hand, in warm bone: a stem off the spine and a notched chevron at the word */
+${H} .orr-help__tabs .sf-tab[aria-selected="true"]::after { content:"" !important; display:block !important; position:absolute !important; left:8px !important; top:50% !important;
+  width:22px !important; height:2px !important; margin:-1px 0 0 !important; background:rgb(${HOT} / .9) !important; translate:none !important; scale:none !important;
+  transform:none !important; border:0 !important; border-radius:0 !important; clip-path:none !important; box-shadow:none !important; opacity:1 !important; }
+${H} .orr-help__tabs .sf-tab[aria-selected="true"]::before { left:29px !important; width:10px !important; height:12px !important; margin-top:-6px !important; ${HAND}
+  background:rgb(${HOT}) !important; filter:drop-shadow(0 0 6px rgb(255 250 236 / .5)); }
+/* on Controls the stage has no Hand of its own, so the open tab's Hand is the screen's one amber */
+${H}[data-tab="controls"] .orr-help__tabs .sf-tab[aria-selected="true"]::after { background:var(--dp-hand, #f2b950) !important; }
+${H}[data-tab="controls"] .orr-help__tabs .sf-tab[aria-selected="true"]::before { background:var(--dp-hand-hot, #ffd98c) !important; filter:drop-shadow(0 0 7px rgb(255 217 140 / .7)); }
+${H} .orr-help__tabs .sf-tab[aria-selected="true"]:focus-visible { text-decoration:underline 2px rgb(255 255 255 / .8); text-underline-offset:7px; }
+
+/* ------------------------------------------------ the foot: ‹ CLOSE + ESC keycap (matches settings/save-load) - */
+${H} > .k-foot { ${PLAIN} align-self:end; justify-content:flex-start; align-items:center !important; gap:0 !important; margin:0 !important; padding:0 !important; }
+${H} .orr-help__close.sf-back.k-word { all:unset !important; box-sizing:border-box !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
+  cursor:pointer !important; padding:10px 0 12px !important; min-height:44px !important;
+  ${LABEL} font-size:13.5px !important; letter-spacing:.1em !important; color:rgb(255 253 248) !important;
+  background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; }
+${H} .orr-help__close.sf-back.k-word::before { all:unset !important; content:"‹" !important; display:inline !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
+${H} .orr-help__close.sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
+  ${LABEL} font-size:12px !important; letter-spacing:.06em !important; line-height:1 !important;
+  color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
+${H} .orr-help__close-word { ${LABEL} font-size:13.5px !important; letter-spacing:.22em !important; font-stretch:112% !important; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important;
+  text-transform:uppercase !important; color:inherit !important; transition:color .16s linear; }
+${H} .orr-help__close .orr-hkey { display:none !important; }
+${H} .orr-help__close:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; }
+${H} .orr-help__close:is(:hover, :focus-visible) .orr-help__close-word { color:inherit; text-shadow:none; }
+${H} .orr-help__close:focus-visible::after { color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .45) !important; }
+
+/* ------------------------------------------------ a key glyph (the letter over a bar of light) - */
+.orr-hkey { position:relative; display:inline-flex; align-items:baseline; justify-content:center; gap:6px; flex:none; min-width:20px; padding:0 3px 8px;
+  font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 560; font-weight:560; font-size:clamp(17px, .9vw, 22px); line-height:1;
+  letter-spacing:.02em; color:rgb(${HOT}); white-space:nowrap; text-transform:none; }
+.orr-hkey::before { content:""; position:absolute; left:-3px; right:-3px; bottom:0; height:8px; border-radius:4px; background:rgb(${HOT} / .13); }
+.orr-hkey::after { content:""; position:absolute; left:0; right:0; bottom:2.5px; height:2px; border-radius:2px; background:rgb(${HOT} / .74); transition:background .16s linear, left .2s, right .2s; }
+/* word bindings at small sizes are machine code, not underlined words: the dp-kbd chip voice
+   (consoleStandard §2). The big diagram keys keep their bar-of-light glyph. */
+.orr-hkey--word, .orr-hkey--small.orr-hkey--word {
+  ${LABEL} font-size:12px !important; letter-spacing:.04em;
+  align-items:center; padding:3px 7px 4px !important; bottom:auto;
+  color:rgb(${BONE} / .92);
+  background:linear-gradient(180deg, rgb(${BONE} / .09), rgb(${BONE} / .045)), rgb(6 8 11 / .72);
+  border:1px solid rgb(${BONE} / .42); border-radius:2px;
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .4);
+}
+.orr-hkey--word::before, .orr-hkey--small.orr-hkey--word::before { content:none; }
+.orr-hkey--word::after, .orr-hkey--small.orr-hkey--word::after { content:none; }
+.orr-hkey--small { font-size:clamp(14px, .73vw, 18px); padding-bottom:7px; }
+.orr-hkey__sep { color:rgb(${BONE} / .6); font-weight:400; }
+/* a binding that is a sentence, not a key, reads as a quiet line */
+.orr-hkey--text { padding:0; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-variation-settings:normal; font-weight:500; font-size:clamp(13px, .68vw, 17px);
+  letter-spacing:0; color:rgb(${BONE} / .8); white-space:normal; text-align:right; justify-content:flex-end; }
+.orr-hkey--text::before, .orr-hkey--text::after { content:none; }
+.orr-hkey--none { color:rgb(${BONE} / .66); }
+.orr-hkey--none::before { content:none; }
+.orr-hkey--none::after { background:rgb(${BONE} / .3); left:30%; right:30%; }
+
+/* ------------------------------------------------ the stage ------------------------------------ */
+${H} > .orr-help__stage { ${PLAIN} grid-area:stage; position:relative; min-height:0 !important; height:100%; overflow:visible !important; padding:0 !important; margin:0 !important; max-width:none !important; }
+
+/* CONTROLS: the rig and the ladder of every key */
+${H} .orr-help-controls { position:relative; display:grid; grid-template-columns:minmax(0, 1fr) clamp(236px, 19vw, 430px); column-gap:clamp(20px, 2.4vw, 56px); height:100%; min-height:0; }
+${H} .orr-help-controls__rig { position:relative; min-width:0; min-height:0; }
+${H} .orr-hreg { position:relative; display:flex; flex-direction:column; min-height:0; height:100%; }
+${H} .orr-hreg__head { display:flex; flex-direction:column; gap:10px; padding:0 0 12px 0; }
+${H} .orr-hreg__title { margin:0; font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800; font-weight:800; font-size:clamp(16px, 1.25vw, 22px);
+  letter-spacing:.12em; text-transform:uppercase; color:rgb(${HOT}); }
+${H} .orr-hreg__secs { display:flex; gap:clamp(8px, 1vw, 22px); flex-wrap:nowrap; padding-bottom:14px;
+  background:linear-gradient(rgb(${BONE} / .5) 0 0) 0 calc(100% - 4px) / 100% 2px no-repeat, linear-gradient(rgb(${BONE} / .12) 0 0) 0 calc(100% - 1.5px) / 100% 7px no-repeat; }
+${H} .orr-hreg__secword { all:unset; box-sizing:border-box; cursor:pointer; position:relative; padding:3px 0 4px; ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.18em; color:rgb(${BONE} / .88); }
+${H} .orr-hreg__secword::after { content:""; position:absolute; left:50%; bottom:-12px; width:2px; height:9px; margin-left:-1px; background:rgb(${BONE} / .6); }
+${H} .orr-hreg__secword[aria-current="true"] { color:rgb(${HOT}); }
+${H} .orr-hreg__secword[aria-current="true"]::after { width:9px; height:9px; margin-left:-4.5px; bottom:-14px; border-radius:50%; background:rgb(${HOT}); box-shadow:0 0 8px rgb(255 244 222 / .55); }
+${H} .orr-hreg__secword:is(:hover, :focus-visible) { color:rgb(255 255 255); outline:none; }
+${H} .orr-hreg__secword:focus-visible::after { background:rgb(255 255 255); height:12px; }
+${H} .orr-hreg__pad { display:none; padding:6px 0 0; }
+${H} .orr-hreg__pad.is-pad { display:block; }
+${H} .orr-hreg__pad > svg { display:block; margin:0 auto; max-width:100%; height:auto; }
+/* a binding that is a sentence runs under its verb, not beside it */
+${H} .orr-hreg__row:has(> .orr-hkey--text) { grid-template-columns:minmax(0, 1fr); row-gap:3px; }
+${H} .orr-hreg__row.orr-hreg__row > .orr-hkey--text { justify-self:start; text-align:left; justify-content:flex-start; max-width:none; color:rgb(236 230 216 / .74); }
+${H} .orr-hreg__scroll { position:relative; flex:1 1 auto; min-height:0; overflow:hidden auto; scrollbar-width:none; padding:0 10px 18px 0; outline:none;
+  -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 40px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 40px), transparent); }
+${H} .orr-hreg__scroll[data-overflow="0"] { -webkit-mask-image:none; mask-image:none; }
+${H} .orr-hreg__scroll::-webkit-scrollbar { display:none; }
+${H} .orr-hreg__scroll:focus-visible .orr-hreg__list { background-color:rgb(${HOT} / .03); }
+${H} .orr-hreg__list { list-style:none; margin:0; padding:2px 0 8px; background:${SPINE}; }
+${H} .orr-hreg__sec { position:relative; margin:0; padding:18px 0 8px 30px; ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.24em; color:rgb(${HOT}); }
+${H} .orr-hreg__sec:first-child { padding-top:4px; }
+${H} .orr-hreg__sec::before { content:""; position:absolute; left:2px; bottom:14px; width:16px; height:2px; background:rgb(${HOT} / .9); }
+${H} .orr-hreg__row { position:relative; display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; column-gap:14px; padding:5px 0 5px 30px; min-height:clamp(32px, 1.7vw, 42px); box-sizing:border-box; }
+${H} .orr-hreg__row::before { content:""; position:absolute; left:4px; top:50%; width:8px; height:2px; margin-top:-1px; background:rgb(${BONE} / .55); transition:width .16s, background .16s; }
+${H} .orr-hreg__name { font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(14px, .73vw, 18px); line-height:1.3; color:rgb(${BONE} / .92); }
+${H} .orr-hreg__row .orr-hkey { justify-self:end; max-width:210px; }
+${H} .orr-hreg__row.is-echo::before { width:20px; background:rgb(255 255 255); box-shadow:0 0 8px rgb(143 203 255 / .8); }
+${H} .orr-hreg__row.is-echo .orr-hreg__name { color:rgb(255 255 255); }
+${H} .orr-hreg__row.is-echo .orr-hkey { color:rgb(255 255 255); text-shadow:0 0 12px rgb(143 203 255 / .9); }
+${H} .orr-hreg__row.is-echo .orr-hkey::after { background:rgb(255 255 255); left:-4px; right:-4px; }
+${H} .orr-hreg__row.is-echo .orr-hkey::before { background:rgb(143 203 255 / .34); }
+/* the register is a column of keycaps: letter bindings wear the same hairline chip as SHIFT and SPACE · F
+   (the dp-kbd voice) instead of half of them floating over a bar of light. The rig's big diagram keys keep the bar. */
+${H} .orr-hreg__row > .orr-hkey:not(.orr-hkey--text) { ${LABEL} font-size:12px !important; letter-spacing:.04em; line-height:1;
+  align-items:center; justify-content:center; gap:5px; min-width:24px; box-sizing:border-box; padding:4px 7px !important;
+  color:rgb(${BONE} / .92); background:linear-gradient(180deg, rgb(${BONE} / .09), rgb(${BONE} / .045)), rgb(6 8 11 / .72);
+  border:1px solid rgb(${BONE} / .42); border-radius:3px; box-shadow:inset 0 -1px 0 rgb(0 0 0 / .4); }
+${H} .orr-hreg__row > .orr-hkey:not(.orr-hkey--text)::before, ${H} .orr-hreg__row > .orr-hkey:not(.orr-hkey--text)::after { content:none; }
+${H} .orr-hreg__row > .orr-hkey--none:not(.orr-hkey--text) { color:rgb(${BONE} / .66); border-style:dashed; border-color:rgb(${BONE} / .3); background:transparent; }
+${H} .orr-hreg__row.is-echo > .orr-hkey:not(.orr-hkey--text) { color:rgb(255 255 255); text-shadow:none; border-color:rgb(255 255 255 / .85);
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .4), 0 0 0 1px rgb(143 203 255 / .35), 0 0 10px rgb(143 203 255 / .45); }
+${H} .orr-hreg__fine { margin:10px 0 0; padding-left:30px; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(12px, .6vw, 15px); line-height:1.4; color:rgb(${BONE} / .84); }
+${H} .orr-hreg .orr-extent::before { left:7px; width:2px; }
+
+/* ------------------------------------------------ the shared ladder + reading ------------------ */
+${H} .orr-help-list { position:relative; display:grid; grid-template-columns:clamp(222px, 16vw, 340px) minmax(0, 1fr); grid-template-rows:minmax(0, 1fr);
+  column-gap:clamp(24px, 3vw, 64px); height:100%; min-height:0; }
+${H} .orr-help-list__side { position:relative; display:flex; flex-direction:column; min-height:0; }
+${H} .orr-help-list__stage { position:relative; min-width:0; min-height:0; display:grid; grid-template-columns:minmax(0, 1fr) clamp(260px, 19vw, 400px);
+  column-gap:clamp(20px, 2.6vw, 56px); align-items:center; }
+${H} .orr-help-list__hero { position:relative; height:100%; min-height:0; min-width:0; }
+${H} .orr-help-loops { position:relative; height:100%; min-height:0; }
+/* ORES: the mix fills the stage; its reading runs under it as one line of terms */
+${H} .orr-help-list--ores .orr-help-list__stage { grid-template-columns:minmax(0, 1fr); grid-template-rows:minmax(0, 1fr) auto; row-gap:8px; align-items:stretch; }
+${H} .orr-help-list--ores .orr-help-reading { max-width:none; display:grid; grid-template-columns:auto minmax(0, 1fr); grid-template-rows:auto minmax(0, 1fr); column-gap:clamp(24px, 3vw, 60px); align-items:start; padding:16px 20px 16px 40px; }
+${H} .orr-help-list--ores .orr-help-reading > .orr-help-reading__kicker { grid-column:1; }
+${H} .orr-help-list--ores .orr-help-reading > .orr-help-reading__name { grid-column:1; font-size:clamp(22px, 1.7vw, 34px); }
+${H} .orr-help-list--ores .orr-help-terms { grid-column:2; grid-row:1 / span 2; margin:0; grid-template-columns:auto minmax(0, 1fr) auto minmax(0, 1fr); column-gap:18px; }
+${H} .orr-help-search.sf-lc { margin:0 0 12px !important; padding:0 !important; }
+${H} .orr-help-search .sf-lc__search { ${PLAIN} width:100% !important; max-width:none !important; min-height:38px; padding:6px 2px 12px 2px !important; box-sizing:border-box;
+  font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif !important; font-size:clamp(14px, .73vw, 18px) !important; color:rgb(${HOT}) !important;
+  background:linear-gradient(rgb(${BONE} / .7) 0 0) 0 calc(100% - 3px) / 100% 2px no-repeat,
+    repeating-linear-gradient(90deg, rgb(${BONE} / .55) 0 1.5px, transparent 1.5px 24px) 0 100% / 100% 8px no-repeat !important; }
+${H} .orr-help-search .sf-lc__search::placeholder { color:rgb(${BONE} / .78) !important; }
+${H} .orr-help-search .sf-lc__search:hover:not(:focus) { background:linear-gradient(rgb(${BONE} / .95) 0 0) 0 calc(100% - 3px) / 100% 2px no-repeat,
+  repeating-linear-gradient(90deg, rgb(${BONE} / .75) 0 1.5px, transparent 1.5px 24px) 0 100% / 100% 8px no-repeat !important; }
+${H} .orr-help-search .sf-lc__search:focus { background:linear-gradient(rgb(255 255 255) 0 0) 0 calc(100% - 3px) / 100% 2px no-repeat,
+  repeating-linear-gradient(90deg, rgb(255 255 255 / .8) 0 1.5px, transparent 1.5px 24px) 0 100% / 100% 8px no-repeat !important; }
+${H} .orr-help-search { position:relative; }
+
+${H} .orr-help-ladder { ${PLAIN} position:relative; flex:1 1 auto; min-height:0; overflow:hidden auto; scrollbar-width:none; list-style:none; margin:0; padding:2px 8px 22px 0;
+  background:${SPINE} !important; background-attachment:local !important;
+  -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 36px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 36px), transparent); }
+${H} .orr-help-ladder[data-overflow="0"] { -webkit-mask-image:none; mask-image:none; }
+${H} .orr-help-ladder::-webkit-scrollbar { display:none; }
+${H} .orr-help-ladder__head { position:relative; display:flex; align-items:center; gap:10px; padding:14px 0 6px 30px; ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.24em; color:rgb(${HOT}); }
+${H} .orr-help-ladder__head:first-child { padding-top:4px; }
+${H} .orr-help-ladder__head::before { content:""; position:absolute; left:2px; top:calc(50% + 4px); width:16px; height:2px; background:rgb(${HOT} / .9); }
+${H} .orr-help-ladder__head:first-child::before { top:calc(50%); }
+${H} .orr-help-ladder__glyph { display:inline-flex; width:18px; height:18px; color:rgb(${HOT}); }
+${H} .orr-help-ladder__glyph svg { width:18px; height:18px; }
+${H} .orr-help-ladder__rung { margin:0; list-style:none; }
+${H} .orr-help-ladder__item { all:unset; box-sizing:border-box; position:relative; display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; column-gap:12px; width:100%;
+  min-height:clamp(34px, 1.8vw, 44px); padding:5px 4px 5px 44px; cursor:pointer; }
+${H} .orr-help-ladder__item::before { content:""; position:absolute; left:4px; top:50%; width:8px; height:2px; margin-top:-1px; background:rgb(${BONE} / .55); transition:width .16s, background .16s; }
+${H} .orr-help-ladder__name { font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(14px, .73vw, 18px); line-height:1.25; color:rgb(${BONE} / .92); transition:color .16s linear; }
+${H} .orr-help-ladder__fig { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 500; font-size:clamp(13px, .68vw, 17px); font-variant-numeric:tabular-nums; color:rgb(${BONE} / .86); text-transform:none; }
+${H} .orr-help-ladder__fig.is-foe { color:#ff7a66; }
+${H} .orr-help-ladder__item:hover .orr-help-ladder__name, ${H} .orr-help-ladder__item:focus-visible .orr-help-ladder__name { color:rgb(255 255 255); }
+${H} .orr-help-ladder__item:hover::before { width:14px; background:rgb(${HOT}); }
+${H} .orr-help-ladder__item:focus-visible::before { left:6px; width:3px; height:20px; margin-top:-10px; background:rgb(255 255 255); box-shadow:0 0 8px rgb(255 250 236 / .55); }
+${H} .orr-help-ladder__item[aria-selected="true"] .orr-help-ladder__name { color:rgb(255 255 255); font-weight:600; }
+${H} .orr-help-ladder__item[aria-selected="true"] .orr-help-ladder__fig { color:rgb(${HOT}); }
+/* the Hand on the chosen rung: a stem off the spine and the notched chevron, amber (the screen's one) */
+${H} .orr-help-ladder__item[aria-selected="true"]::after { content:""; position:absolute; left:8px; top:50%; width:22px; height:2px; margin-top:-1px; background:var(--dp-hand, #f2b950); }
+${H} .orr-help-ladder__item[aria-selected="true"]::before { left:29px; width:10px; height:12px; margin-top:-6px; ${HAND} background:var(--dp-hand-hot, #ffd98c); filter:drop-shadow(0 0 6px rgb(255 217 140 / .6)); box-shadow:none; }
+${H} .orr-help-reading__vs { display:block; margin:18px 0 0; line-height:1.6; ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.18em; color:rgb(${BONE} / .88); }
+${H} .orr-help-reading__vs b { font-weight:700; color:rgb(${HOT}); white-space:nowrap; }
+${H} .orr-help-reading__vs-bead { display:inline-block; vertical-align:-1px; margin-right:10px; width:10px; height:10px; border-radius:50%; box-shadow:inset 0 0 0 2px rgb(${BONE} / .9); }
+${H} .orr-help-ladder__pin { margin-left:10px; ${LABEL} font-size:12px !important; letter-spacing:.18em; color:rgb(${BONE} / .88); }
+${H} .orr-help-ladder__pin::before { content:""; display:inline-block; width:7px; height:7px; margin-right:6px; border-radius:50%; box-shadow:inset 0 0 0 2px rgb(${BONE} / .9); vertical-align:1px; }
+/* a small verb on a reading: a word with its key, bone at rest, white where the player reaches it */
+${H} .orr-help-verb { all:unset; box-sizing:border-box; display:inline-flex; align-items:center; gap:12px; margin:18px 0 0; padding:6px 0; cursor:pointer; }
+${H} .orr-help-verb__word { ${LABEL} font-size:clamp(12px, .66vw, 16px) !important; letter-spacing:.2em; color:rgb(${HOT}); white-space:nowrap; }
+${H} .orr-help-verb__word::before { content:"›  "; color:rgb(${BONE} / .6); }
+${H} .orr-help-verb:is(:hover, :focus-visible) .orr-help-verb__word { color:rgb(255 255 255); }
+${H} .orr-help-verb:is(:hover, :focus-visible) .orr-hkey::after { background:rgb(255 255 255); left:-5px; right:-5px; }
+html.sf-gamepad-focus ${H} .orr-help-verb:focus .orr-help-verb__word { color:rgb(255 255 255); }
+${H} .orr-help-verb[aria-disabled="true"] { cursor:default; }
+${H} .orr-help-verb[aria-disabled="true"] .orr-help-verb__word { color:rgb(${BONE} / .74); }
+${H} .orr-help-verb[aria-disabled="true"] .orr-hkey { opacity:.6; }
+${H} .orr-help-empty { margin:10px 0 0 30px !important; font-size:14px !important; color:rgb(${BONE} / .9) !important; }
+${H} .orr-help-ladder ~ .orr-extent, ${H} .orr-help-ladder > .orr-extent { }
+
+/* the reading: promise-scale hairline card (was unbound Newgrounds shade pool) */
+/* ui-polish-393: .orr-help-reading wears 1px bone ~18% / radius 10 / faint fill; densify 8→6 */
+${H} .orr-help-reading { position:relative; z-index:2; max-width:clamp(420px, 26vw, 640px);
+  box-sizing:border-box; padding:20px 24px;
+  border:1px solid rgb(${BONE} / .18); border-radius:10px; background:rgb(${BONE} / .025); }
+${H} .orr-help-reading::before { content:none; display:none; }
+@media (max-height:820px) { ${H} .orr-help-reading { border-radius:8px; } }
+@media (max-height:460px) { ${H} .orr-help-reading { border-radius:8px; } }
+@media (max-height:400px) { ${H} .orr-help-reading { border-radius:6px; } }
+@media (max-width:760px) { ${H} .orr-help-reading { border-radius:8px; } }
+${H} .orr-help-reading__kicker { margin:0 0 6px; ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.24em; color:rgb(${BONE} / .88); }
+${H} .orr-help-reading__name { margin:0 0 6px; font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800; font-weight:800;
+  font-size:clamp(24px, 2.1vw, 40px); line-height:1; letter-spacing:.02em; text-transform:uppercase; color:rgb(${HOT}); }
+${H} .orr-help-reading__name.sf-entity-link { text-decoration:none !important; box-shadow:none !important; border:0 !important; color:rgb(${HOT}) !important; cursor:pointer; }
+${H} .orr-help-reading__name.sf-entity-link:is(:hover, :focus-visible) { color:rgb(255 255 255) !important; outline:none; text-shadow:0 0 22px rgb(255 250 236 / .3); }
+${H} .orr-help-reading__sub { margin:0 0 14px; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(15px, .78vw, 19px); color:rgb(${BONE} / .92); }
+${H} .orr-help-terms { margin:14px 0 0; padding:0; display:grid; grid-template-columns:auto minmax(0, 1fr); column-gap:22px; row-gap:0; }
+${H} .orr-help-terms__row { display:contents; }
+${H} .orr-help-terms dt, ${H} .orr-help-terms__k { ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.18em; color:rgb(${BONE} / .86); padding:7px 0; margin:0; }
+${H} .orr-help-terms dd { margin:0; padding:5px 0; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(15px, .78vw, 19px); line-height:1.4; color:rgb(${HOT}); font-variant-numeric:tabular-nums; }
+${H} .orr-help-terms__row.is-against dd { color:#ff7a66; }
+${H} .orr-help-reading__legal { display:flex; align-items:baseline; gap:22px; margin:8px 0 0; }
+${H} .orr-help-legal { ${LABEL} font-size:13px !important; letter-spacing:.18em; color:rgb(${HOT}); }
+${H} .orr-help-legal.is-foe { color:#ff7a66; }
+${H} .orr-help-legal.is-goal { color:rgb(${HOT}); text-decoration:underline 2px rgb(${BONE} / .5); text-underline-offset:6px; }
+${H} .orr-help-reading__body { margin:14px 0 0; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(15px, .78vw, 19px); line-height:1.5; color:rgb(${HOT}); }
+${H} .orr-help-reading__lore { margin:8px 0 0; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-style:italic; font-size:clamp(14px, .73vw, 18px); line-height:1.5; color:rgb(${BONE} / .88); }
+/* entity links on this screen read as bone, never a web underline or a second amber */
+${H} .sf-entity-link { text-decoration:none !important; box-shadow:none !important; }
+
+/* FACTIONS: the orbit beside its reading */
+${H} .orr-help-factions { position:relative; display:grid; grid-template-columns:minmax(0, 1.25fr) minmax(300px, .75fr); column-gap:clamp(20px, 3vw, 64px); align-items:center; height:100%; min-height:0; }
+${H} .orr-help-factions__orbit .orr-crest__rep { display:none !important; }
+${H} .orr-help-factions__orbit { position:relative; height:100%; min-height:0; --orr-band-a:.3; --orr-w-band:11px; --orr-edge-a:.6; }
+
+/* KEYBOARD FOCUS: the kit's bone focus box (.k-screen :focus-visible) would draw a rectangle round a rung,
+   a station or a crest. Every control on Help marks focus in its own light (a light segment on its tick,
+   its glyph's bar, its ring), so the box is dropped here. */
+${H} :focus-visible { outline:none !important; }
+/* PAD FOCUS: the pad moves focus programmatically, so the accessibility sheet draws a lamp-coloured
+   ring box round whatever holds it. On Help that would be a box and a second amber; each control shows
+   pad focus in its own light instead (the same marks as keyboard focus). */
+html.sf-gamepad-focus ${H} :is(button, a, input, select, [tabindex]):focus { outline:none !important; box-shadow:none !important; }
+html.sf-gamepad-focus ${H} .orr-help__tabs .sf-tab:focus { color:rgb(255 255 255) !important; }
+html.sf-gamepad-focus ${H} .orr-help__tabs .sf-tab:focus:not([aria-selected="true"])::before { left:6px !important; width:3px !important; height:20px !important; margin-top:-10px !important;
+  background:rgb(255 255 255) !important; box-shadow:0 0 8px rgb(255 250 236 / .55) !important; }
+html.sf-gamepad-focus ${H} .orr-help__tabs .sf-tab[aria-selected="true"]:focus { text-decoration:underline 2px rgb(255 255 255 / .8); text-underline-offset:7px; }
+html.sf-gamepad-focus ${H} .orr-help-ladder__item:focus .orr-help-ladder__name { color:rgb(255 255 255); }
+html.sf-gamepad-focus ${H} .orr-help-ladder__item:focus:not([aria-selected="true"])::before { left:6px; width:3px; height:20px; margin-top:-10px; background:rgb(255 255 255); box-shadow:0 0 8px rgb(255 250 236 / .55); }
+html.sf-gamepad-focus ${H} .orr-hrig__st:focus .orr-hrig__verb { color:rgb(255 255 255); }
+html.sf-gamepad-focus ${H} .orr-hrig__st:focus .orr-hrig__glyph::before { background:rgb(248 244 234 / .3); }
+html.sf-gamepad-focus ${H} :is(.orr-hrig__devword, .orr-hreg__secword):focus { color:rgb(255 255 255); }
+html.sf-gamepad-focus ${H} :is(.orr-hrig__devword, .orr-hreg__secword):focus::after { height:3px; background:rgb(255 255 255); }
+html.sf-gamepad-focus ${H} .orr-help__close:focus { color:var(--dp-hand-hot, #ffd98c) !important; }
+html.sf-gamepad-focus ${H} .orr-help__close:focus .orr-help__close-word { color:inherit; text-shadow:none; }
+html.sf-gamepad-focus ${H} .orr-help__close:focus::after { color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .45) !important; }
+html.sf-gamepad-focus ${H} :is(.orr-hloop__body, .orr-hmix__rock):focus::before { box-shadow:inset 0 0 0 3px rgb(255 255 255), 0 0 12px rgb(255 250 236 / .5); }
+html.sf-gamepad-focus ${H} .orr-hmix__lbl:focus .orr-hmix__lbl-name { color:rgb(255 255 255); text-decoration:underline 2px rgb(255 255 255 / .6); text-underline-offset:4px; }
+html.sf-gamepad-focus ${H} .orr-crest:focus > img, ${H} .orr-crest:focus-visible > img { opacity:.9; transform:scale(1.14); }
+html.sf-gamepad-focus ${H} .orr-crest:focus::before, ${H} .orr-crest:focus-visible::before { display:block; }
+html.sf-gamepad-focus ${H} .orr-crest:focus .orr-crest__name { color:rgb(248 244 234); }
+html.sf-gamepad-focus ${H} .orr-hscale:focus .orr-hi__edge { stroke:rgb(255 255 255); }
+html.sf-gamepad-focus ${H} .orr-hreg__scroll:focus .orr-hreg__list { background-color:rgb(248 244 234 / .03); }
+html.sf-gamepad-focus ${H} .orr-help-reading__name.sf-entity-link:focus { color:rgb(255 255 255) !important; text-shadow:0 0 22px rgb(255 250 236 / .3); }
+${H} .orr-hmix__lbl:focus-visible { outline:none; }
+/* a large screen: the crests on the orbit grow with it (the library draws them at a fixed 50px) */
+@media (min-width:2200px) {
+  ${H} .orr-help-factions__orbit .orr-crest { scale:1.3; }
+  ${H} .orr-help-factions__orbit .orr-crest__name, ${H} .orr-help-factions__orbit .orr-crest__rep { font-size:12px; }
+}
+@media (max-width:1500px) {
+  ${H} .orr-help-ladder__pin-word { display:none; }
+  ${H} .orr-hreg__secword { letter-spacing:.12em; }
+  /* ui-polish-168: at 19vw the register (236px at 960, 243px at 1280) was narrower than FLIGHT / INTERFACE /
+     PAD / TOUCH, so TOUCH ran past its rule, and "Steer right (yaw + bank)" broke over two rows. The rig has
+     room to spare here; the register takes a little of it and its four words span the rule end to end. */
+  ${H} .orr-help-controls { grid-template-columns:minmax(0, 1fr) clamp(268px, 23vw, 300px); }
+  ${H} .orr-hreg__secs { justify-content:space-between; gap:8px; }
+  ${H} .orr-help__tabs .sf-tab { padding-left:56px !important; letter-spacing:.14em !important; font-size:12px !important; }
+  ${H} .orr-help__tabs > li::before { left:32px; }
+  ${H} .orr-help__tabs .sf-tab[aria-selected="true"]::before { left:22px !important; }
+  ${H} .orr-help__tabs .sf-tab[aria-selected="true"]::after { width:16px !important; }
+  ${H} .orr-hreg__name { font-size:13px; }
+}
+/* UI polish 28: a short desktop (761–1200 wide). The six sections stood as a 172px ladder beside the stage,
+   which left the Controls rig ~400px for two callout columns and the berth; the rig's floor (a 200px berth)
+   then pushed REVERSE / MINE BEAM / STEER RIGHT / COUNTERMEASURE / BOOST over EVERY KEY. Here the sections
+   lie as one row of words on a rule beside the title (the register's own FLIGHT / INTERFACE strip grammar),
+   and the stage takes the full width. The phone (data-sf-mobile) keeps its own row. */
+@media (min-width:761px) and (max-width:1200px) {
+  ${HD} { grid-template-columns:auto minmax(0, 1fr) !important; grid-template-rows:auto minmax(0, 1fr) auto !important;
+    grid-template-areas:"title hang" "stage stage" "foot foot" !important; }
+  ${HD} > .k-hang { grid-area:hang; align-self:end; justify-self:end; -webkit-mask-image:none; mask-image:none; } /* one row: nothing scrolls, so the kit fade would only dim the rule */
+  ${HD} > .k-foot { grid-area:foot; }
+  ${HD} > .orr-help__stage { grid-area:stage; }
+  ${HD} .orr-help__tabs { flex-direction:row !important; gap:clamp(14px, 2.2vw, 26px) !important; padding:0 0 14px !important;
+    background:linear-gradient(rgb(${BONE} / .5) 0 0) 0 calc(100% - 4px) / 100% 2px no-repeat, linear-gradient(rgb(${BONE} / .12) 0 0) 0 calc(100% - 1.5px) / 100% 7px no-repeat !important; }
+  ${HD} .orr-help__tabs > li { width:auto !important; flex:none; }
+  ${HD} .orr-help__tabs > li::before { display:none; }
+  ${HD} .orr-help__tabs .sf-tab { width:auto !important; min-height:32px !important; padding:3px 0 4px !important; font-size:12px !important; letter-spacing:.16em !important; }
+  ${HD} .orr-help__tabs .sf-tab::before { left:50% !important; top:auto !important; bottom:-12px !important; width:2px !important; height:9px !important; margin:0 0 0 -1px !important; }
+  ${HD} .orr-help__tabs .sf-tab:focus-visible:not([aria-selected="true"])::before,
+  html.sf-gamepad-focus:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-help.orr-help .orr-help__tabs .sf-tab:focus:not([aria-selected="true"])::before { left:50% !important; width:2px !important; height:12px !important; margin:0 0 0 -1px !important; }
+  ${HD} .orr-help__tabs .sf-tab[aria-selected="true"]::before { left:50% !important; bottom:-14px !important; width:9px !important; height:9px !important; margin:0 0 0 -4.5px !important;
+    clip-path:none !important; border-radius:50% !important; filter:none !important; background:rgb(${HOT}) !important; box-shadow:0 0 8px rgb(255 244 222 / .55) !important; }
+  ${HD}[data-tab="controls"] .orr-help__tabs .sf-tab[aria-selected="true"]::before { background:var(--dp-hand-hot, #ffd98c) !important; box-shadow:0 0 8px rgb(255 217 140 / .7) !important; }
+  ${HD} .orr-help__tabs .sf-tab[aria-selected="true"]::after { content:none !important; display:none !important; }
+  /* the tab rule now carries the line; the profile word's trailing flourish would run into it */
+  ${HD} > .k-title > .sf-help-now::after { content:none; }
+  /* the readings (Ships, Commodities) are taller than this stage: they scroll in place under a fade instead
+     of running past the frame's foot; the hairline card keeps its chrome while the hero stands clear beside them */
+  ${HD} .orr-help-list__stage > .orr-help-reading { align-self:center; max-height:100%; min-height:0; overflow:hidden auto; scrollbar-width:none; padding-bottom:22px; box-sizing:border-box;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 22px), transparent); }
+  ${HD} .orr-help-list__stage > .orr-help-reading::-webkit-scrollbar { display:none; }
+  ${HD} .orr-help-list__stage > .orr-help-reading::before { content:none; }
+  /* ORES: no height for the mix plus a reading under it, so the reading stands beside the mix */
+  ${HD} .orr-help-list--ores { grid-template-columns:200px minmax(0, 1fr); column-gap:24px; }
+  ${HD} .orr-help-list--ores .orr-help-list__stage { grid-template-columns:minmax(0, 1fr) clamp(220px, 24vw, 280px); grid-template-rows:minmax(0, 1fr); column-gap:20px; align-items:center; }
+  ${HD} .orr-help-list--ores .orr-hmix__rock-name { letter-spacing:.1em; }
+  /* the ring is at its 80px floor here: its words keep inside the band (the rock's name and share; its tier-cap line drops) */
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre { translate:0 -14px; }
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > b { font-size:12px; letter-spacing:0; }
+  /* the 140px COMMON ROCK / 45% OF ROCKS pair ran onto the ring's inner arc at both ends; trimmed so it stands clear inside it */
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > span { letter-spacing:.08em; }
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > span ~ span { display:none; }
+  ${HD} .orr-help-list--ores .orr-help-reading { display:block; padding:16px 16px 22px 20px; }
+  ${HD} .orr-help-list--ores .orr-help-reading > .orr-help-reading__name { font-size:clamp(22px, 2.2vw, 28px); }
+  ${HD} .orr-help-list--ores .orr-help-terms { margin:14px 0 0; grid-template-columns:auto minmax(0, 1fr); column-gap:18px; }
+}
+/* ui-polish-324: at 801-1200 wide and up to 540 tall the Ores reading stands beside the stage (the ring needs more room than
+   this and sleeps), and its FOUND IN row wrapped onto a second line that ran into the stage's fading foot -- "70%" read
+   half-cut. The ledger's rows and the name's gap tighten so every term stands whole above the fade; type is unchanged. */
+@media (min-width:761px) and (max-width:1200px) and (max-height:540px) {
+  ${HD} .orr-help-list--ores .orr-help-reading > .orr-help-reading__name { margin-bottom:2px; }
+  ${HD} .orr-help-list--ores .orr-help-terms { margin-top:8px; }
+  ${HD} .orr-help-list--ores .orr-help-terms dt { padding-block:4px; }
+  ${HD} .orr-help-list--ores .orr-help-terms dd { padding-block:2px; line-height:1.3; }
+}
+/* ui-polish-330: at 761-870 wide the Ores hero is under the ring's 320px floor, so the ring sleeps and its 257px slot sat empty
+   between the list and the reading. The sleeping slot closes and the reading takes the stage's width, its ledger on the same
+   hairline-framed sheet the 1201+ readings wear, so the term values read on one line (FOUND IN no longer wraps). */
+/* ui-polish-340: same band, Ships/Commodities — both dials need ≥300px of hero width and sleep below it, leaving an empty
+   slot between the list and the reading. Close the sleeping slot; the reading takes the stage on the hairline sheet
+   (and Commodities' Legality line wears the matching frame). Ores rules above stay more specific / untouched. */
+@media (min-width:761px) and (max-width:870px) and (min-height:461px) {
+  ${HD} .orr-help-list--ores .orr-help-list__stage { grid-template-columns:minmax(0, 1fr); }
+  ${HD} .orr-help-list--ores .orr-help-list__hero { display:none; }
+  ${HD} .orr-help-list--ores .orr-help-list__stage > .orr-help-reading { justify-self:center; width:100%; max-width:440px; }
+  ${HD} .orr-help-list--ores .orr-help-terms { margin:10px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-list--ores .orr-help-terms dt { padding:4px 18px 4px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-list--ores .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-list__stage { grid-template-columns:minmax(0, 1fr); }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-list__hero { display:none; }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-list__stage > .orr-help-reading { justify-self:center; width:100%; max-width:440px; }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms { margin:10px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms dt { padding:4px 18px 4px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-reading__legal { margin:8px 0 0; padding:8px 12px; gap:20px; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  /* ui-polish-341: Factions terms at 761-870 still float bare (Factions uses .orr-help-factions, not
+     .orr-help-list). Match the Ores hairline card in this band so the ledger reads as one sheet. */
+  ${HD} .orr-help-factions .orr-help-terms { margin:10px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-factions .orr-help-terms dt { padding:4px 18px 4px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-factions .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-factions .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
+}
+/* ui-polish-335: at 871-1200 the Ores ledger still floats as bare label/value pairs while 761-870 and
+   1201+ wear the hairline-framed sheet. Box the mid-band ledger the same way so the terms read as one
+   card beside the mix; type, colours and the one-pair-per-row grid are unchanged. */
+@media (min-width:871px) and (max-width:1200px) and (min-height:461px) {
+  ${HD} .orr-help-list--ores .orr-help-terms { margin:10px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-list--ores .orr-help-terms dt { padding:4px 18px 4px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-list--ores .orr-help-terms dd { padding:2px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
+}
+/* ui-polish-338: Ores got the mid-band sheet in 335, but at 871-1200 the Ships, Commodities and Factions readings still
+   floated as bare label/value pairs between the boxed 1201+ band and the boxed Ores tab. They wear the same hairline sheet
+   (and Commodities' Legality line its frame), rows kept compact so the scrolling reading grows by only the frame.
+   The Ores rules above are more specific, so its 335 sheet is untouched. */
+@media (min-width:871px) and (max-width:1200px) and (min-height:461px) {
+  ${HD} .orr-help-terms { margin:12px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-terms dt { padding:6px 16px 6px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-terms dd { padding:4px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
+  ${HD} .orr-help-reading__legal { margin:8px 0 0; padding:8px 12px; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+}
+/* ...and on a 461-540 tall screen the Ships reading already scrolls, so its rows close up the way Ores' did in 324 */
+@media (min-width:871px) and (max-width:1200px) and (min-height:461px) and (max-height:540px) {
+  ${HD} .orr-help-terms dt { padding-block:4px; padding-right:12px; }
+  ${HD} .orr-help-terms dd { padding-block:2px; line-height:1.3; }
+}
+/* ui-polish-339: at 871-959 the Ships/Commodities hero column is ~253-295px — under both dials'
+   300px width floor — so the price/hull dial sleeps and leaves an empty slot between the list and
+   the reading (960 already wakes at ~328px). The reading flexes down toward 170px and the gap
+   tightens so the hero holds ≥340px: the price dial paints, and the hull dial clears its tight
+   overrun check; Ores keeps its own stage columns. */
+@media (min-width:871px) and (max-width:959px) and (min-height:461px) {
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-list__stage {
+    grid-template-columns:minmax(0, 1fr) clamp(170px, 19vw, 200px); column-gap:18px; }
+  /* The dial has room, but a two-column ledger left only ~25px for its values.
+     Stack each term above its value so units and slot names remain whole. */
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms { grid-template-columns:minmax(0, 1fr); }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms dt { padding:6px 0 2px; }
+  ${HD} .orr-help-list:not(.orr-help-list--ores) .orr-help-terms dd { padding:0 0 6px; border-top:0; }
+}
+
+/* ui-polish-282: the readings beside the Ships, Commodities, Ores and Factions instruments were loose
+   label/value pairs floating on the glass (≥1201 wide), so the spec read unfinished next to the framed
+   section list. The ledger now sits in one hairline-framed sheet on a faint fill, a rule between rows,
+   and the Legality line under it wears the same frame; type, colours and the row data are unchanged. */
+@media (min-width:1201px) and (min-height:461px) {
+  ${HD} .orr-help-terms { margin:16px 0 0; padding:2px 12px; column-gap:0; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+  ${HD} .orr-help-terms dt { padding:9px 18px 9px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-terms dd { padding:7px 0; border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-terms > .orr-help-terms__row:first-child > * { border-top:0; }
+  /* ORES lays two pairs to a line: the second pair opens the sheet too, and the first pair keeps its gutter */
+  ${HD} .orr-help-list--ores .orr-help-terms { margin:0; padding:2px 10px; }
+  ${HD} .orr-help-list--ores .orr-help-terms dt { padding-right:12px; }
+  ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:nth-child(2) > * { border-top:0; }
+  ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:nth-child(odd) > dd { padding-right:14px; }
+  ${HD} .orr-help-reading__legal { margin:8px 0 0; padding:8px 12px; gap:20px; border:1px solid rgb(${BONE} / .18); border-radius:6px; background:rgb(${BONE} / .025); }
+}
+/* ui-polish-331: at 1201+ wide and 461-599 tall the Ores hero (stage minus the reading under it) is 170-250px, but the mix
+   keeps its 300px min-height, so its ring spilled over the reading's ledger and the rock's name. Here the reading stands beside
+   the mix, as it does at 761-1200, so the ring has its own room and the ledger keeps its sheet and one pair per row. */
+@media (min-width:1201px) and (min-height:461px) and (max-height:599px) {
+  ${HD} .orr-help-list--ores .orr-help-list__stage { grid-template-columns:minmax(0, 1fr) clamp(240px, 20vw, 300px); grid-template-rows:minmax(0, 1fr); column-gap:20px; align-items:center; }
+  ${HD} .orr-help-list--ores .orr-hmix__rock-name { letter-spacing:.03em; }
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre { translate:0 -14px; }
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > b { font-size:12px; letter-spacing:0; }
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > span { letter-spacing:.08em; }
+  ${HD} .orr-help-list--ores .orr-hmix.is-small .orr-hmix__centre > span ~ span { display:none; }
+  ${HD} .orr-help-list--ores .orr-help-list__stage > .orr-help-reading { display:block; align-self:center; max-height:100%; min-height:0; overflow:hidden auto; scrollbar-width:none; padding:0 0 14px; box-sizing:border-box; }
+  ${HD} .orr-help-list--ores .orr-help-list__stage > .orr-help-reading::-webkit-scrollbar { display:none; }
+  ${HD} .orr-help-list--ores .orr-help-reading > .orr-help-reading__name { font-size:clamp(22px, 1.7vw, 28px); margin-bottom:2px; }
+  ${HD} .orr-help-list--ores .orr-help-terms { margin:8px 0 0; grid-template-columns:auto minmax(0, 1fr); }
+  ${HD} .orr-help-list--ores .orr-help-terms dt { padding:5px 10px 5px 0; }
+  ${HD} .orr-help-list--ores .orr-help-terms dd { padding-block:3px; line-height:1.3; }
+  ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:nth-child(2) > * { border-top:1px solid rgb(${BONE} / .09); }
+  ${HD} .orr-help-list--ores .orr-help-terms > .orr-help-terms__row:nth-child(odd) > dd { padding-right:0; }
+}
+/* UI polish 42: a short desktop (≤460 tall). The 761–1200 row of sections still sits beside the
+   title, and the Controls stage still splits the ship rig beside EVERY KEY — but under ~460px of
+   height the title row, the section ticks, the rig's "PRESS ANY KEY" echo and the register's rebound
+   footnote all share the same band (844×390, 801×440, 700×400). Stack the title over the sections,
+   sleep the rig (EVERY KEY already carries every binding), and let the register fill the stage. */
+@media (max-height:460px) {
+  /* Chrome budget at 390 tall: keep the stage ≥260px so the Loops orrery and Ships dial leave is-off
+     (helpInstruments.js floors at H < 260). 10+8 pad + ~32 title + ~28 tabs + ~30 foot + 12 gap ≈ 120 → stage ~270. */
+  ${HD} { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:auto auto minmax(0, 1fr) auto !important;
+    grid-template-areas:"title" "hang" "stage" "foot" !important;
+    padding:10px 3vw 8px !important; row-gap:4px !important; column-gap:16px !important; }
+  ${HD} > .k-title { align-self:end; }
+  ${HD} > .k-title .k-t-title { font-size:clamp(22px, 4.2vh, 34px) !important; }
+  ${HD} > .k-title > .sf-help-now { margin:2px 0 0 !important; font-size:12px !important; letter-spacing:.16em !important; gap:8px; }
+  ${HD} > .k-title > .sf-help-now::after { content:none; }
+  ${HD} > .k-hang { grid-area:hang; align-self:start; justify-self:stretch; -webkit-mask-image:none; mask-image:none; max-height:none !important; }
+  ${HD} > .k-foot { grid-area:foot; }
+  ${HD} > .orr-help__stage { grid-area:stage; min-height:0 !important; }
+  /* one row of section words on a rule (same grammar as the 761–1200 strip), even under 761 wide */
+  ${HD} .orr-help__tabs { flex-direction:row !important; gap:clamp(8px, 1.6vw, 20px) !important; padding:0 0 6px !important; overflow-x:auto !important;
+    background:linear-gradient(rgb(${BONE} / .5) 0 0) 0 calc(100% - 3px) / 100% 2px no-repeat, linear-gradient(rgb(${BONE} / .12) 0 0) 0 calc(100% - 1px) / 100% 6px no-repeat !important; }
+  ${HD} .orr-help__tabs > li { width:auto !important; flex:none; }
+  ${HD} .orr-help__tabs > li::before { display:none; }
+  ${HD} .orr-help__tabs .sf-tab { width:auto !important; min-height:24px !important; padding:1px 0 2px !important; font-size:12px !important; letter-spacing:.12em !important; }
+  ${HD} .orr-help__tabs .sf-tab::before { left:50% !important; top:auto !important; bottom:-8px !important; width:2px !important; height:7px !important; margin:0 0 0 -1px !important; }
+  ${HD} .orr-help__tabs .sf-tab:focus-visible:not([aria-selected="true"])::before,
+  html.sf-gamepad-focus:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-help.orr-help .orr-help__tabs .sf-tab:focus:not([aria-selected="true"])::before { left:50% !important; width:2px !important; height:9px !important; margin:0 0 0 -1px !important; }
+  ${HD} .orr-help__tabs .sf-tab[aria-selected="true"]::before { left:50% !important; bottom:-10px !important; width:7px !important; height:7px !important; margin:0 0 0 -3.5px !important;
+    clip-path:none !important; border-radius:50% !important; filter:none !important; background:rgb(${HOT}) !important; box-shadow:0 0 8px rgb(255 244 222 / .55) !important; }
+  ${HD}[data-tab="controls"] .orr-help__tabs .sf-tab[aria-selected="true"]::before { background:var(--dp-hand-hot, #ffd98c) !important; box-shadow:0 0 8px rgb(255 217 140 / .7) !important; }
+  ${HD} .orr-help__tabs .sf-tab[aria-selected="true"]::after { content:none !important; display:none !important; }
+  /* Controls: EVERY KEY owns the stage; the ship rig's echo was printing through CLOSE and the footnote */
+  ${HD} .orr-help-controls { grid-template-columns:minmax(0, 1fr) !important; column-gap:0 !important; height:100%; min-height:0; }
+  ${HD} .orr-help-controls__rig { display:none !important; }
+  ${HD} .orr-hreg__head { gap:4px; padding:0 0 4px 0; }
+  ${HD} .orr-hreg__title { font-size:14px; }
+  ${HD} .orr-hreg__secs { padding-bottom:8px; gap:clamp(8px, 1.4vw, 16px); }
+  ${HD} .orr-hreg__secword { font-size:12px !important; letter-spacing:.12em; }
+  ${HD} .orr-hreg__fine { margin:4px 0 0; padding-left:24px; font-size:12px; line-height:1.3; }
+  ${HD} .orr-hreg__row { min-height:26px; padding:2px 0 2px 24px; }
+  ${HD} .orr-hreg__sec { padding:8px 0 3px 24px; font-size:12px !important; }
+  ${HD} .orr-hreg__name { font-size:12.5px; }
+  ${HD} .orr-help__close.sf-back.k-word { padding:4px 0 6px !important; min-height:30px !important; }
+  /* Loops fills the stage (instrument wakes at H≥260); list tabs keep a side ladder + reading */
+  ${HD} .orr-help-loops { height:100% !important; min-height:0 !important; overflow:hidden; }
+  /* ring names sit on the east/west of a ~260px berth and collide with each other and the section rule;
+     the reading already names the open loop (LOOP 01 OF 06 + title) */
+  ${HD} .orr-hloop__name { display:none !important; }
+  ${HD} .orr-help-list { grid-template-columns:clamp(140px, 20vw, 200px) minmax(0, 1fr); column-gap:14px; height:100%; }
+  ${HD} .orr-help-list__hero { height:100%; min-height:0; }
+  ${HD} .orr-help-list__stage { grid-template-columns:minmax(0, 1fr) clamp(190px, 26vw, 260px); column-gap:14px; align-items:stretch; height:100%; }
+  ${HD} .orr-help-list__stage > .orr-help-reading { align-self:stretch; max-height:100%; min-height:0; overflow:hidden auto; scrollbar-width:none; padding-bottom:12px; box-sizing:border-box;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 14px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 14px), transparent); }
+  ${HD} .orr-help-list__stage > .orr-help-reading::-webkit-scrollbar { display:none; }
+  ${HD} .orr-help-list__stage > .orr-help-reading::before { content:none; }
+  ${HD} .orr-help-list--ores { grid-template-columns:140px minmax(0, 1fr); column-gap:14px; }
+  ${HD} .orr-help-list--ores .orr-help-list__stage { grid-template-columns:minmax(0, 1fr) clamp(170px, 24vw, 230px); grid-template-rows:minmax(0, 1fr); column-gap:12px; align-items:center; }
+  ${HD} .orr-help-list--ores .orr-help-reading { display:block; padding:0 0 12px; }
+  ${HD} .orr-help-factions { grid-template-columns:minmax(0, 1.1fr) minmax(200px, .9fr); column-gap:14px; height:100%; }
+}
+
+/* ui-polish-106: a narrow desktop window (≤760 wide, taller than 460). Nothing composed Help here, so
+   the 172px section ladder kept its column and EVERY KEY ran off the right edge, and the rig's
+   "PRESS ANY KEY" echo printed over CLOSE. One column: title, the sections as one scrolling row of
+   words on a rule (the ≤460 / 761–1200 grammar), the stage, then Close. The rig sleeps (EVERY KEY
+   carries every binding); list readings stand under their hero. The phone keeps its own flow. */
+@media (max-width:760px) and (min-height:461px) {
+  ${HD} { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:auto auto minmax(0, 1fr) auto !important;
+    grid-template-areas:"title" "hang" "stage" "foot" !important;
+    padding:max(18px, env(safe-area-inset-top)) 18px 12px !important; row-gap:12px !important; column-gap:0 !important; }
+  ${HD} > .k-title > .sf-help-now::after { content:none; }
+  ${HD} > .k-hang { grid-area:hang; align-self:start; justify-self:stretch; min-width:0; max-height:none !important;
+    -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+  ${HD} > .k-foot { grid-area:foot; }
+  ${HD} > .orr-help__stage { grid-area:stage; min-height:0 !important; min-width:0; }
+  ${HD} .orr-help__tabs { flex-direction:row !important; gap:18px !important; padding:0 28px 14px 0 !important; overflow-x:auto !important; scrollbar-width:none;
+    background:linear-gradient(rgb(${BONE} / .5) 0 0) 0 calc(100% - 4px) / 100% 2px no-repeat, linear-gradient(rgb(${BONE} / .12) 0 0) 0 calc(100% - 1.5px) / 100% 7px no-repeat !important; }
+  ${HD} .orr-help__tabs::-webkit-scrollbar { display:none; }
+  /* ui-polish-168: the kit fade sat on .k-hang, but the row scrolls inside its own box, so COMMODITIES was
+     cut at the window edge mid-word. The scroller carries a longer fade, and a 56px end pad lets FACTIONS clear it. */
+  ${HD} .orr-help__tabs { max-width:100% !important; box-sizing:border-box !important; padding-right:56px !important;
+    -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 72px), transparent); mask-image:linear-gradient(90deg, #000 calc(100% - 72px), transparent); }
+  ${HD} .orr-help__tabs > li { width:auto !important; flex:none; }
+  ${HD} .orr-help__tabs > li::before { display:none; }
+  ${HD} .orr-help__tabs .sf-tab { width:auto !important; min-height:36px !important; padding:6px 0 4px !important; font-size:12px !important; letter-spacing:.14em !important; }
+  ${HD} .orr-help__tabs .sf-tab::before { left:50% !important; top:auto !important; bottom:-12px !important; width:2px !important; height:9px !important; margin:0 0 0 -1px !important; }
+  ${HD} .orr-help__tabs .sf-tab:focus-visible:not([aria-selected="true"])::before,
+  html.sf-gamepad-focus:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-help.orr-help .orr-help__tabs .sf-tab:focus:not([aria-selected="true"])::before { left:50% !important; width:2px !important; height:12px !important; margin:0 0 0 -1px !important; }
+  ${HD} .orr-help__tabs .sf-tab[aria-selected="true"]::before { left:50% !important; bottom:-14px !important; width:9px !important; height:9px !important; margin:0 0 0 -4.5px !important;
+    clip-path:none !important; border-radius:50% !important; filter:none !important; background:rgb(${HOT}) !important; box-shadow:0 0 8px rgb(255 244 222 / .55) !important; }
+  ${HD}[data-tab="controls"] .orr-help__tabs .sf-tab[aria-selected="true"]::before { background:var(--dp-hand-hot, #ffd98c) !important; box-shadow:0 0 8px rgb(255 217 140 / .7) !important; }
+  ${HD} .orr-help__tabs .sf-tab[aria-selected="true"]::after { content:none !important; display:none !important; }
+  ${HD} .orr-help-controls { grid-template-columns:minmax(0, 1fr) !important; column-gap:0 !important; height:100%; min-height:0; }
+  ${HD} .orr-help-controls__rig { display:none !important; }
+  ${HD} .orr-hreg__secs { gap:16px; }
+  ${HD} .orr-hreg__secword { font-size:12px !important; letter-spacing:.12em; }
+  ${HD} .orr-help-loops { height:100% !important; min-height:0 !important; }
+  /* list sections are one scrolling column: the list, then its instrument at a fixed height, then the reading */
+  ${HD} .orr-help-list, ${HD} .orr-help-list--ores { display:flex !important; flex-direction:column; gap:16px; height:100%; min-height:0;
+    overflow:hidden auto; overscroll-behavior:contain; scrollbar-width:none; }
+  ${HD} .orr-help-list::-webkit-scrollbar { display:none; }
+  ${HD} .orr-help-list > * { flex:none; min-height:0; height:auto !important; max-height:none !important; }
+  ${HD} .orr-help-list__hero { overflow:visible !important; }
+  ${HD} .orr-help-list__stage, ${HD} .orr-help-list--ores .orr-help-list__stage { display:flex !important; flex-direction:column; gap:12px; }
+  ${HD} .orr-help-list__stage > :not(.orr-help-reading) { flex:none; height:320px !important; min-height:0 !important; }
+  ${HD} .orr-help-list__stage > .orr-help-reading { max-height:none; overflow:visible; padding-bottom:18px; }
+  ${HD} .orr-help-list__stage > .orr-help-reading::before { content:none; }
+  ${HD} .orr-help-factions { display:flex !important; flex-direction:column; gap:16px; height:100%; min-height:0; overflow:hidden auto; scrollbar-width:none; }
+  ${HD} .orr-help-factions > * { flex:none; }
+  ${HD} .orr-help-factions__orbit { height:380px !important; }
+}
+/* ≤560: the crest names on the ring's east and west ran off the window ("RGE-LAYERS"); only the
+   chosen, hovered or focused crest names itself (each crest keeps its aria-label, and the reading
+   under the ring names the open power) */
+@media (max-width:560px) and (min-height:461px) {
+  ${HD} .orr-help-factions__orbit .orr-crest:not(.is-chosen, :hover, :focus-visible) .orr-crest__name { visibility:hidden; }
+}
+
+/* ui-polish-357: narrow Help section row (phone / ≤480). At 390×844 COMMODITIES sat half under the
+   scroll-edge fade (solidPx 47/119; 17/119 at 360) so the first paint read as "COMMODITI" with Ores
+   and Factions off-frame. Densify gap + tracking and tuck side pad so the four leading words clear
+   the fade; Ores/Factions stay the scroll peek (still reachable at end). Type floor stays 12px. */
+@media (max-width:480px) and (min-height:461px) {
+  ${HD} { padding-left:12px !important; padding-right:12px !important; }
+  ${HD} .orr-help__tabs { gap:6px !important; }
+  ${HD} .orr-help__tabs .sf-tab { letter-spacing:.05em !important; min-height:32px !important; padding:4px 0 2px !important; }
+}
+@media (max-width:412px) and (min-height:461px) {
+  ${HD} .orr-help__tabs { gap:4px !important; }
+  ${HD} .orr-help__tabs .sf-tab { letter-spacing:.04em !important; }
+}
+@media (max-width:360px) and (min-height:461px) {
+  ${HD} { padding-left:10px !important; padding-right:10px !important; }
+  ${HD} .orr-help__tabs { gap:2px !important; }
+  ${HD} .orr-help__tabs .sf-tab { letter-spacing:.02em !important; }
+}
+
+/* ui-polish-171: the section row on a narrow window and on the phone. A fixed right fade sat over the
+   last word even once the row was scrolled to its end, and the left edge cut mid-word ("OOPS") with no
+   fade at all; the phone row cut hard on both sides. Where the row scrolls, each edge fades only while
+   there is more row past it, driven by the row's own scroll position. */
+@property --sf-help-tab-fl { syntax:"<length>"; inherits:false; initial-value:0px; }
+@property --sf-help-tab-fr { syntax:"<length>"; inherits:false; initial-value:0px; }
+@keyframes sf-help-tab-edges { 0% { --sf-help-tab-fl:0px; --sf-help-tab-fr:56px; } 12% { --sf-help-tab-fl:40px; }
+  88% { --sf-help-tab-fr:56px; } 100% { --sf-help-tab-fl:40px; --sf-help-tab-fr:0px; } }
+@supports (animation-timeline: scroll()) {
+  @media (max-width:760px) and (min-height:461px) {
+    ${HD} > .k-hang { -webkit-mask-image:none; mask-image:none; }
+    ${HD} .orr-help__tabs { padding-right:20px !important; ${TAB_EDGES} }
+  }
+  html:root[data-sf-mobile="1"] body #screens > .k-screen.of-help.orr-help .orr-help__tabs { ${TAB_EDGES} }
+}
+
+/* ui-polish-281: the side ladder (≥1201 wide) read as loose words on a ruled spine with no edge, so the
+   six sections looked unfinished beside the bordered key register. They now sit in one hairline-framed
+   list: a rule between rows, the open row on a faint fill with a 2px bar at its left edge (amber on
+   Controls, bone elsewhere), and a framed focus ring for keyboard and pad. */
+@media (min-width:1201px) and (min-height:461px) {
+  ${HD} > .k-hang { -webkit-mask-image:none !important; mask-image:none !important; } /* six rows always fit; the kit fade only ate the frame's bottom edge */
+  ${HD} .orr-help__tabs { background:rgb(${BONE} / .025) !important; border:1px solid rgb(${BONE} / .2) !important; border-radius:6px !important; padding:4px !important; gap:2px !important; }
+  ${HD} .orr-help__tabs > li::before { display:none !important; }
+  ${HD} .orr-help__tabs > li + li { border-top:1px solid rgb(${BONE} / .09) !important; padding-top:2px !important; }
+  ${HD} .orr-help__tabs .sf-tab { min-height:clamp(36px, 4.4vh, 48px) !important; padding:0 12px 0 18px !important; border-radius:4px !important; color:rgb(${BONE} / .78) !important; transition:color .16s linear, background-color .16s linear; }
+  ${HD} .orr-help__tabs .sf-tab::before, ${HD} .orr-help__tabs .sf-tab::after { content:none !important; display:none !important; }
+  ${HD} .orr-help__tabs .sf-tab:hover { background:rgb(${BONE} / .05) !important; color:rgb(255 255 255) !important; }
+  ${HD} .orr-help__tabs .sf-tab:focus-visible, html.sf-gamepad-focus${HD.slice(4)} .orr-help__tabs .sf-tab:focus { box-shadow:inset 0 0 0 1px rgb(255 255 255 / .75) !important; text-decoration:none !important; }
+  ${HD} .orr-help__tabs .sf-tab[aria-selected="true"] { background:rgb(${BONE} / .085) !important; color:rgb(255 255 255) !important; text-shadow:none; }
+  ${HD} .orr-help__tabs .sf-tab[aria-selected="true"]::after { content:"" !important; display:block !important; position:absolute !important; left:0 !important; top:8px !important; bottom:8px !important;
+    width:2px !important; height:auto !important; margin:0 !important; border-radius:2px !important; background:rgb(${HOT} / .9) !important; }
+  ${HD}[data-tab="controls"] .orr-help__tabs .sf-tab[aria-selected="true"]::after { background:var(--dp-hand, #f2b950) !important; box-shadow:0 0 8px rgb(242 185 80 / .45) !important; }
+}
+
+/* Keyboard focus remains legible at either end of the responsive tab strip. Pointer users
+   retain the scroll-edge hint; keyboard users see the complete focused word and its outline. */
+${H} .orr-help__tabs { scroll-padding-inline:12px; }
+${H} > .k-hang:focus-within, ${H} .orr-help__tabs:focus-within {
+  -webkit-mask-image:none !important; mask-image:none !important;
+}
+${H} .orr-help__tabs .sf-tab:focus-visible {
+  outline:2px solid var(--dp-hand, #f2b950) !important; outline-offset:-2px !important;
+}
+
+/* UI polish: no 1080p zoom on Help — EVERY KEY + rebound footnote tangle under 1.12; contrast/foot rail carry the pass */
+${SCROLL_EXTENT_CSS}
+@media (forced-colors: active) {
+  ${H} .orr-help__tabs .sf-tab[aria-selected="true"]::before { background:Highlight !important; }
+  .orr-hkey::after { background:CanvasText; }
+}
+`;
+
+export function injectHelpLayouts(doc = globalThis.document) {
+  injectOrreryMobileScreens(doc);
+  if (!doc || !doc.head || typeof doc.getElementById !== 'function' || doc.getElementById(STYLE_ID)) return;
+  injectOrrery(doc);
+  const style = doc.createElement('style');
+  style.id = STYLE_ID;
+  style.textContent = CSS;
+  doc.head.appendChild(style);
+}

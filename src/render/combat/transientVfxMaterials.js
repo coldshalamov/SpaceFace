@@ -1,0 +1,354 @@
+import * as THREE from 'three';
+import { DENSITY_FILM, decodeDensityFilm } from './densityVolumeData.js';
+import { EVENT_COMMON_GLSL, EVENT_VOLUME_GLSL } from '../vfx/runtime/eventMaterial.glsl.js';
+
+let decodedFilm;
+/** A texture per pool owner, shared by its two volume materials; CPU decode is reusable. */
+export function createTransientDensityTexture() {
+  if (!decodedFilm) {
+    const film = decodeDensityFilm();
+    // 2x2x3 frame cells fit below WebGL2's minimum 256-texel 3D dimension limit. A 12-deep
+    // strip would require 384 and silently fail on otherwise supported implementations.
+    decodedFilm = new Uint8Array(film.length);
+    const n = DENSITY_FILM.grid;
+    for (let f = 0; f < DENSITY_FILM.frames; f++) {
+      const cx = f % 2, cy = Math.floor(f / 2) % 2, cz = Math.floor(f / 4);
+      for (let z = 0; z < n; z++) for (let y = 0; y < n; y++) {
+        const src = ((f*n+z)*n+y)*n*2;
+        const dst = (((cz*n+z)*n*2+(cy*n+y))*n*2+cx*n)*2;
+        decodedFilm.set(film.subarray(src,src+n*2),dst);
+      }
+    }
+  }
+  const n = DENSITY_FILM.grid;
+  const texture = new THREE.Data3DTexture(decodedFilm, n * 2, n * 2, n * 3);
+  texture.name = 'SF_OfflineDensityFilm_RG8';
+  texture.format = THREE.RGFormat;
+  texture.type = THREE.UnsignedByteType;
+  texture.minFilter = texture.magFilter = THREE.LinearFilter;
+  texture.unpackAlignment = 1;
+  texture.generateMipmaps = false;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+const INSTANCE_DECLARATIONS = /* glsl */`
+  attribute vec3 aSpritePosition;
+  attribute vec2 aSpriteScale;
+  attribute float aSpriteRoll;
+  attribute vec3 aSpriteColor;
+  attribute float aSpriteOpacity;
+  attribute vec2 aSpritePhase;
+  attribute float aSpriteAxis;
+  varying vec3 vSpriteColor;
+  varying float vSpriteOpacity;
+  varying vec2 vPhase;
+  vec3 rotateHeading(vec3 p, float angle) {
+    float c = cos(angle), s = sin(angle);
+    return vec3(c*p.x-s*p.z, p.y, s*p.x+c*p.z);
+  }
+  vec3 instanceScale() {
+    return vec3(aSpriteScale.x, max(0.01, sqrt(aSpriteScale.x*aSpriteScale.y)*0.72), aSpriteScale.y);
+  }
+`;
+
+const SURFACE_VERTEX = /* glsl */`
+  ${INSTANCE_DECLARATIONS}
+  attribute vec2 aSurfaceSection;
+  varying vec2 vUv;
+  varying vec3 vWorld;
+  varying float vSection;
+  void main() {
+    vec3 p = position;
+    // A material front travels along the fold; the sheet itself opens and shears with age.
+    float time = aSpritePhase.x;
+    float phase = aSurfaceSection.x + aSpritePhase.y;
+    float rollup=uv.x*7.5-time*5.2+phase*6.28318;
+    p.y += (0.075*sin(rollup)+0.025*sin(rollup*1.7+uv.y*4.0))*aSurfaceSection.y;
+    // Independent reach, curl and cooling per sheet: repeated explosions share a material,
+    // not a stamped silhouette. Seed is fixed for the lifetime, never position-hashed.
+    p.xz *= (0.88+0.16*sin(phase*17.3))*(0.89+0.11*sin(uv.x*3.0-time*2.2+phase));
+    p.z += 0.045*sin(time*4.0+phase*9.0)*aSurfaceSection.y;
+    p = rotateHeading(p * instanceScale(), aSpriteAxis);
+    vec4 world = modelMatrix * vec4(aSpritePosition + p, 1.0);
+    vWorld = world.xyz;
+    vUv = uv;
+    vSection = aSurfaceSection.x;
+    vPhase = aSpritePhase;
+    vSpriteColor = aSpriteColor;
+    vSpriteOpacity = aSpriteOpacity;
+    gl_Position = projectionMatrix * viewMatrix * world;
+  }
+`;
+
+const SURFACE_FRAGMENT = /* glsl */`
+  uniform float uRadiance;
+  varying vec2 vUv;
+  varying vec3 vWorld;
+  varying float vSection;
+  varying vec2 vPhase;
+  varying vec3 vSpriteColor;
+  varying float vSpriteOpacity;
+  void main() {
+    vec3 n = normalize(cross(dFdx(vWorld), dFdy(vWorld)));
+    float grazing = pow(1.0-abs(dot(n, normalize(cameraPosition-vWorld))), 2.0);
+    float crossSection = vUv.y*2.0-1.0;
+    float crease=crossSection-0.28*sin(vUv.x*7.0+(vSection+vPhase.y)*6.28-vPhase.x*5.0);
+    float creaseWidth=max(0.12,fwidth(crease)*1.1);
+    float ridge = exp(-pow(crease/creaseWidth,2.0))*min(1.0,0.12/creaseWidth);
+    float lipDistance=abs(crossSection)-0.78;
+    float lipWidth=max(0.09,fwidth(lipDistance)*1.1);
+    float lip = exp(-pow(lipDistance/lipWidth,2.0))*min(1.0,0.09/lipWidth);
+    float body = 0.10 + 0.87*ridge + 0.48*lip;
+    float wave=vUv.x*11.0-vPhase.x*10.0+(vSection+vPhase.y)*6.28;
+    float transport = 0.60 + 0.40*sin(wave)*(1.0-smoothstep(.7,3.14,fwidth(wave)));
+    float tips = smoothstep(0.0,0.10,vUv.x)*(1.0-smoothstep(0.79,1.0,vUv.x));
+    float edge = 1.0-smoothstep(0.86-max(fwidth(crossSection),.01),1.0,abs(crossSection));
+    float release = 1.0-smoothstep(0.53+0.14*vSection,1.0,vPhase.x+vUv.x*0.13);
+    float alpha = vSpriteOpacity * tips * edge * release*(.08+.66*ridge+.26*lip);
+    if (alpha < 0.004) discard;
+    vec3 heat = mix(vSpriteColor*0.32, vSpriteColor, body);
+    heat += mix(vSpriteColor,vec3(max(vSpriteColor.r,max(vSpriteColor.g,vSpriteColor.b))),0.55)*1.06*ridge*transport;
+    gl_FragColor = vec4(heat*uRadiance*(body+0.32*grazing)*(0.65+0.35*transport), alpha);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }
+`;
+
+const EVENT_BUCKET_VERTEX = /* glsl */`
+  ${EVENT_COMMON_GLSL}
+  ${INSTANCE_DECLARATIONS}
+  attribute vec2 aEventSection;
+  uniform float uEventKind;
+  varying vec2 vUv;
+  varying vec3 vWorld;
+  varying float vSection;
+  varying float vKind;
+  void main() {
+    vec3 scale = instanceScale();
+    vec3 local = uEventKind > 3.5
+      ? sfEventPressureLocal(uv, aEventSection, aSpritePhase.y, aSpritePhase.x, vec3(1.0))
+      : sfEventLocal(uEventKind, uv, aEventSection, aSpritePhase.y, aSpritePhase.x, vec3(1.0));
+    vec3 p = rotateHeading(local * scale, aSpriteAxis);
+    vec4 world = modelMatrix * vec4(aSpritePosition + p, 1.0);
+    vWorld = world.xyz;
+    vUv = uv;
+    vSection = aEventSection.x;
+    vKind = uEventKind;
+    vPhase = aSpritePhase;
+    vSpriteColor = aSpriteColor;
+    vSpriteOpacity = aSpriteOpacity;
+    gl_Position = projectionMatrix * viewMatrix * world;
+  }
+`;
+
+const EVENT_BUCKET_FRAGMENT = /* glsl */`
+  ${EVENT_VOLUME_GLSL}
+  varying vec2 vUv;
+  varying vec3 vWorld;
+  varying float vSection;
+  varying float vKind;
+  varying vec2 vPhase;
+  varying vec3 vSpriteColor;
+  varying float vSpriteOpacity;
+  void main() {
+    vec4 event = sfEventSurface(vKind, vUv, vec2(vSection, vSection), vPhase.y, vPhase.x,
+      vWorld, vSpriteColor, vSpriteOpacity, 1.0);
+    if (event.a < 0.003) discard;
+    gl_FragColor = event;
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }
+`;
+
+const VOLUME_VERTEX = /* glsl */`
+  ${INSTANCE_DECLARATIONS}
+  varying vec3 vLocalPosition;
+  varying vec3 vLocalCamera;
+  varying vec3 vCenter;
+  varying vec3 vScale;
+  varying float vHeading;
+  void main() {
+    vec3 scale = instanceScale();
+    // All transient batches live in the render scene, with an identity object transform.
+    // inverse(modelMatrix) keeps this true under a translated/scaled diagnostic parent too.
+    vec3 localCamera = (inverse(modelMatrix)*vec4(cameraPosition,1.0)).xyz;
+    vLocalCamera = rotateHeading(localCamera-aSpritePosition, -aSpriteAxis)/scale;
+    vLocalPosition = position;
+    vCenter = aSpritePosition;
+    vScale = scale;
+    vHeading = aSpriteAxis;
+    vPhase = aSpritePhase;
+    vSpriteColor = aSpriteColor;
+    vSpriteOpacity = aSpriteOpacity;
+    gl_Position = projectionMatrix*modelViewMatrix*vec4(aSpritePosition+rotateHeading(position*scale,aSpriteAxis),1.0);
+  }
+`;
+
+const VOLUME_FRAGMENT = /* glsl */`
+  precision highp sampler3D;
+  uniform sampler3D uDensityFilm;
+  uniform float uRadiance;
+  uniform float uCombustion;
+  uniform mat4 uWorldToClip;
+  uniform mat4 uObjectToWorld;
+  varying vec3 vLocalPosition;
+  varying vec3 vLocalCamera;
+  varying vec3 vCenter;
+  varying vec3 vScale;
+  varying float vHeading;
+  varying vec2 vPhase;
+  varying vec3 vSpriteColor;
+  varying float vSpriteOpacity;
+  vec2 frameDensity(vec3 p, float frame) {
+    vec3 cell=vec3(mod(frame,2.0),mod(floor(frame/2.0),2.0),floor(frame/4.0));
+    vec3 uvw=(0.5+clamp(p,0.0,1.0)*${DENSITY_FILM.grid-1}.0+cell*${DENSITY_FILM.grid}.0)/vec3(${DENSITY_FILM.grid*2}.0,${DENSITY_FILM.grid*2}.0,${DENSITY_FILM.grid*3}.0);
+    vec2 d = texture(uDensityFilm,uvw).rg;
+    return d*d;
+  }
+  vec3 rotateHeading(vec3 p, float angle) {
+    float c=cos(angle), s=sin(angle);
+    return vec3(c*p.x-s*p.z,p.y,s*p.x+c*p.z);
+  }
+  void main() {
+    vec3 ray = normalize(vLocalPosition-vLocalCamera);
+    // The signed epsilon avoids division by zero without changing ray direction.
+    vec3 safeRay = mix(vec3(-1.0),vec3(1.0),step(vec3(0.0),ray))*max(abs(ray),vec3(0.00001));
+    vec3 a=(-vec3(0.5)-vLocalCamera)/safeRay, b=(vec3(0.5)-vLocalCamera)/safeRay;
+    vec3 nearV=min(a,b), farV=max(a,b);
+    float begin=max(0.0,max(nearV.x,max(nearV.y,nearV.z)));
+    float end=min(farV.x,min(farV.y,farV.z));
+    if (end<=begin) discard;
+    float film=clamp(vPhase.x,0.0,1.0)*11.0;
+    float f0=floor(film), f1=min(11.0,f0+1.0);
+    float stride=(end-begin)/28.0;
+    vec3 sum=vec3(0.0);
+    float transmittance=1.0;
+    float first=-1.0;
+    for (int i=0;i<28;i++) {
+      float distanceAlong=begin+(float(i)+0.5)*stride;
+      vec3 p=vLocalCamera+ray*distanceAlong;
+      // Roll the internal flow about its force axis, never about the camera. This changes
+      // cavity silhouettes without randomly moving the contact or inventing a new force.
+      float flowRoll=vPhase.y*6.2831853+vPhase.x*(0.18+vPhase.y*0.26);
+      vec3 filmPoint=vec3(p.x,cos(flowRoll)*p.y-sin(flowRoll)*p.z,
+        sin(flowRoll)*p.y+cos(flowRoll)*p.z);
+      // Low-frequency divergence-free shear advects the source bake. It changes lobes and
+      // cavities per event without magnifying texels, scrolling a flat mask or adding hash grain.
+      vec3 q=filmPoint;
+      float seed=vPhase.y*6.2831853;
+      filmPoint+=vec3(sin(q.y*9.0+seed+vPhase.x*2.0),
+        sin(q.z*8.0+seed*1.7-vPhase.x*1.6),sin(q.x*8.5-seed+vPhase.x*1.8))
+        *(0.018+0.018*sin(seed)*sin(seed))*sin(vPhase.x*3.14159);
+      vec2 field=mix(frameDensity(filmPoint+0.5,f0),frameDensity(filmPoint+0.5,f1),fract(film));
+      float edge=1.0-smoothstep(0.40,0.495,max(abs(p.x),max(abs(p.y),abs(p.z))));
+      float density=field.r*edge;
+      float absorb=1.0-exp(-density*stride*15.0);
+      if (first<0.0 && density>0.015) first=distanceAlong;
+      // Two samples along a fixed local key light reveal the baked lobes and cavities.
+      // This is bounded single scattering, not a flat grey opacity mask or a hot white ball.
+      vec3 key=vec3(-0.035,0.065,0.025);
+      float blocker=frameDensity(filmPoint+0.5+key,f0).r
+        +frameDensity(filmPoint+0.5+key*2.4,f0).r;
+      float light=exp(-blocker*2.2);
+      // Match hulls: rounded ink-shadow masses, a warm middle plane and a clean lit lip.
+      // Density still owns actual volume/occlusion; only illumination is illustrated.
+      float paintedLight=0.09+0.40*smoothstep(0.18,0.38,light)
+        +0.55*smoothstep(0.60,0.77,light);
+      float hot=smoothstep(0.02,0.76,field.g);
+      float ridge=clamp(density*2.1,0.0,1.0);
+      vec3 pigment=mix(vec3(0.43,0.40,0.70),vec3(1.10,0.98,0.83),smoothstep(0.26,0.65,light));
+      vec3 soot=vSpriteColor*pigment*(0.10+1.04*paintedLight)*(0.64+0.36*ridge);
+      // Cold cavities absorb; ignition lives on the hot, exposed interface and then cools.
+      // This prevents stacked lobes from turning into a featureless additive light ball.
+      float interfaceHeat=hot*(0.22+0.78*light);
+      vec3 fire=soot*.42+vSpriteColor*3.5*pow(interfaceHeat,1.35);
+      // Preserve the event's hue; only the hottest, unoccluded shoulders desaturate.
+      float peak=pow(hot,3.0)*(0.25+0.75*light);
+      float familyPeak=max(vSpriteColor.r,max(vSpriteColor.g,vSpriteColor.b));
+      fire=mix(fire,mix(vSpriteColor,vec3(familyPeak),.64)*4.75,peak*.72);
+      fire*=0.18+0.82*paintedLight;
+      sum+=transmittance*absorb*mix(soot,fire,uCombustion);
+      transmittance*=1.0-absorb;
+      if (transmittance<0.018) break;
+    }
+    float opacity=1.0-transmittance;
+    float alpha=opacity*vSpriteOpacity;
+    if (alpha<0.004 || first<0.0) discard;
+    // Test the first occupied sample, not the proxy's back face. A separate resolved scene depth
+    // is still required for soft intersections INSIDE a volume; never sample the attached target.
+    vec3 firstLocal=vLocalCamera+ray*first;
+    vec3 objectPoint=vCenter+rotateHeading(firstLocal*vScale,vHeading);
+    vec4 clip=uWorldToClip*uObjectToWorld*vec4(objectPoint,1.0);
+    gl_FragDepth=clamp(clip.z/clip.w*0.5+0.5,0.0,1.0);
+    gl_FragColor=vec4(sum/max(opacity,0.0001)*uRadiance,alpha);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }
+`;
+
+export function createTransientVfxMaterial(kind, radiance, densityTexture = null) {
+  const volume = kind === 'smoke' || kind === 'combustion';
+  const smoke = kind === 'smoke';
+  const eventKind = kind === 'ring' ? 4 : 2;
+  const material = new THREE.ShaderMaterial({
+    name: `SF_Transient_${kind}_${volume ? 'density-film' : 'closed-event-volumes'}`,
+    uniforms: {
+      uRadiance: { value: radiance },
+      ...(volume ? {
+        uDensityFilm: { value: densityTexture },
+        uCombustion: { value: smoke ? 0 : 1 },
+        uWorldToClip: { value: new THREE.Matrix4() },
+        uObjectToWorld: { value: new THREE.Matrix4() },
+      } : {
+        uEventKind: { value: eventKind },
+      }),
+    },
+    vertexShader: volume ? VOLUME_VERTEX : EVENT_BUCKET_VERTEX,
+    fragmentShader: volume ? VOLUME_FRAGMENT : EVENT_BUCKET_FRAGMENT,
+    transparent: true, depthWrite: false, depthTest: true,
+    // The old additive folded sheets could not hold a dark internal channel; closed
+    // volumes are shaded and composited normally so their cavities read as matter.
+    blending: THREE.NormalBlending,
+    side: volume ? THREE.BackSide : THREE.DoubleSide,
+    forceSinglePass: true,
+    toneMapped: smoke,
+  });
+  material.userData.spacefaceTransientTechnique = volume ? 'baked-density-film' : 'closed-folded-event-volumes';
+  return material;
+}
+
+/** The same sheet response, driven by the existing structural pool's instance matrices. */
+export function createStructuralSurfaceMaterial(name) {
+  const material = new THREE.ShaderMaterial({
+    name,
+    uniforms: { uRadiance: { value: 1 } },
+    vertexShader: /* glsl */`
+      attribute vec2 aSurfaceSection;
+      attribute vec2 aStructuralPhase;
+      varying vec2 vUv;
+      varying vec3 vWorld;
+      varying float vSection;
+      varying vec2 vPhase;
+      varying vec3 vSpriteColor;
+      varying float vSpriteOpacity;
+      void main() {
+        vec3 p=position;
+        p.y+=0.045*sin(uv.x*5.1-aStructuralPhase.x*6.5+aSurfaceSection.x*6.28318)*aSurfaceSection.y;
+        vec4 world=modelMatrix*instanceMatrix*vec4(p,1.0);
+        vWorld=world.xyz; vUv=uv; vSection=aSurfaceSection.x;
+        vPhase=aStructuralPhase;
+        vSpriteColor=instanceColor;
+        vSpriteOpacity=1.0;
+        gl_Position=projectionMatrix*viewMatrix*world;
+      }
+    `,
+    fragmentShader: SURFACE_FRAGMENT,
+    transparent: true, depthWrite: false, depthTest: true,
+    blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    forceSinglePass: true, toneMapped: false,
+  });
+  material.userData.spacefaceArcadeVfxMaterial = true;
+  material.userData.spacefaceTransientTechnique = 'swept-folded-surface';
+  return material;
+}

@@ -1,0 +1,372 @@
+From 61a53c656d884f2e91ac21e7cf4f88e1ec37f00a Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 00:02:37 -0400
+Subject: [PATCH] perf(world): keep Ceres optic lattices field-resident until
+ approach
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet Ceres was carrying ~42 Prism Gallery asteroids on entityList (~4 km
+from the refinery pocket). Stamp them into asteroidField on FULL, promote
+inside the authored decode disc, and shelve past exit — same membership
+shape as far actors. Census: entityList 96→54, live rocks 53→11.
+---
+ src/systems/world.js       |  26 ++++++----
+ src/world/asteroidField.js |  95 ++++++++++++++++++++++++++++++++--
+ test/optic-field.test.mjs  | 101 ++++++++++++++++++++++++++++---------
+ 3 files changed, 184 insertions(+), 38 deletions(-)
+
+diff --git a/src/systems/world.js b/src/systems/world.js
+index bded1ba9c..54e440546 100644
+--- a/src/systems/world.js
++++ b/src/systems/world.js
+@@ -148,6 +148,7 @@ import {
+   promoteAsteroidFieldRock,
+   queryAsteroidField,
+   shouldKeepLiveAsteroid,
++  tickOpticFieldRocks,
+ } from '../world/asteroidField.js';
+ import {
+   dropDressingSector,
+@@ -1092,8 +1093,10 @@ export const world = {
+     this.helpers.requestPresentationRebuild?.('sector-full');
+   },
+ 
+-  // Optic lattices are live colliders, spawned once per sector bag. They do not draw the
+-  // field RNG and they are not ore. REDUCED neighbors stay empty until the sector is FULL.
++  // Optic lattices are field-resident colliders, stamped once per FULL sector bag.
++  // They promote into entityList only inside the authored decode disc (tickOpticFieldRocks)
++  // so a quiet Ceres pocket does not keep ~40 combat asteroids warm for a distant gallery.
++  // They do not draw the field RNG and they are not ore. REDUCED neighbors stay empty until FULL.
+   _ensureOpticStructures(sector, active) {
+     if (!sector || !active) return;
+     // Array (even empty) means this bag already ran the stamp — do not double-spawn on promote.
+@@ -1109,18 +1112,16 @@ export const world = {
+           x: spec.origin.x + body.x,
+           z: spec.origin.z + body.z,
+         }, sector.id);
+-        // Lattice spacing is authored against entity.radius (projectile sweep uses that). Keep the
+-        // physics ball on the same radius so scaled rock colliders cannot seal the mouth shut.
+-        const ent = this.helpers.spawnEntity({
+-          type: 'asteroid',
++        // Lattice spacing is authored against entity.radius; promote keeps physicsBody on that
++        // radius so scaled rock colliders cannot seal the mouth shut.
++        const rec = insertAsteroidFieldRock(this.state, {
+           pos,
+           radius: body.radius,
+           mass: 200 + body.radius * 40,
+           angVel: 0,
+           hull: 1e6,
+           hullMax: 1e6,
+-          collides: true,
+-          physicsBody: { radius: body.radius },
++          homeSectorId: sector.id,
+           data: {
+             typeId: body.typeId,
+             tint: body.tint,
+@@ -1131,11 +1132,12 @@ export const world = {
+             size: body.radius,
+             // Not ore: skip massline latch so the mining beam cannot acquire via tether.
+             masslineTetherable: false,
++            homeSectorId: sector.id,
++            sectorId: sector.id,
+           },
+         });
+-        if (!ent) continue;
+-        this._stampHomeSector(ent, sector.id);
+-        ids.push(ent.id);
++        if (!rec) continue;
++        ids.push(rec.id);
+       }
+     }
+     active.opticStructureIds = ids;
+@@ -3220,6 +3222,8 @@ export const world = {
+     this._tickFieldRegrowth(state);
+     this._tickUsedUpFieldOpportunity(state);
+     tickFarActors(state, this.helpers, this.bus);
++    // Optic lattices: field-resident until decode-disc approach, then shelve past exit.
++    tickOpticFieldRocks(state, this.helpers);
+     // Lane C: ask Lane A helpers to rematerialize anything already inside the authored
+     // decode disc (TABLE_AUTHORED_DECODE_SECONDS × top speed). tickFarActors covers the
+     // same disc for restore; this call also stamps renderRunwayIds so a just-promoted
+diff --git a/src/world/asteroidField.js b/src/world/asteroidField.js
+index 33e4cfd17..1718043c5 100644
+--- a/src/world/asteroidField.js
++++ b/src/world/asteroidField.js
+@@ -5,6 +5,8 @@
+ import { allocateEntityId, makeEntity, clearEntityRuntime } from '../core/entity.js';
+ import { asteroidColliderRadius } from '../data/asteroidColliders.js';
+ import { initializePresentationAdmission } from '../core/presentationAdmission.js';
++import { authoredPrefetchRadius, tableTravelSpeed } from '../render/tabletopPolicy.js';
++import { NEAR_ENTER_PAD_WU, NEAR_EXIT_PAD_WU } from './activityClassification.js';
+ import { advanceResourceBody } from './worldCatchup.js';
+ 
+ export const ASTEROID_FIELD_SCHEMA = 'spaceface.asteroidField.v1';
+@@ -228,6 +230,10 @@ function catchUpFieldRock(rec, simTime) {
+   return rec;
+ }
+ 
++function isOpticRockData(data) {
++  return !!(data && typeof data.opticMaterial === 'string' && data.opticMaterial);
++}
++
+ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote') {
+   if (!state || id == null) return null;
+   const live = state.entities && typeof state.entities.get === 'function'
+@@ -248,6 +254,15 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
+   catchUpFieldRock(rec, simTime);
+   const data = rec.data && typeof rec.data === 'object' ? { ...rec.data } : {};
+   delete data.fieldResident;
++  const optic = isOpticRockData(data);
++  const hull = Number.isFinite(data.oreHP) ? data.oreHP
++    : (Number.isFinite(rec.hull) ? rec.hull : (optic ? 1e6 : undefined));
++  const hullMax = Number.isFinite(data.oreHPMax) ? data.oreHPMax
++    : (Number.isFinite(rec.hullMax) ? rec.hullMax : (optic ? 1e6 : undefined));
++  // Optic lattices are authored against entity.radius; bump colliders must not seal the mouth.
++  const bodyRadius = optic
++    ? Math.max(0.5, finite(rec.radius, 8))
++    : asteroidColliderRadius(data.typeId, rec.radius);
+   const ent = spawn({
+     id: rec.id,
+     type: 'asteroid',
+@@ -257,10 +272,10 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
+     angVel: rec.angVel,
+     radius: rec.radius,
+     mass: rec.mass,
+-    hull: data.oreHP,
+-    hullMax: data.oreHPMax,
++    hull,
++    hullMax,
+     collides: true,
+-    physicsBody: { radius: asteroidColliderRadius(data.typeId, rec.radius) },
++    physicsBody: { radius: bodyRadius },
+     data,
+   });
+   if (!ent) return null;
+@@ -275,6 +290,80 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
+   return ent;
+ }
+ 
++/** Shelve a live optic lattice body back into the compact field (far-actor style). */
++export function demoteOpticAsteroidToField(state, entity, helpers, reason = 'optic-shelve') {
++  if (!state || !entity || entity.type !== 'asteroid') return null;
++  if (!isOpticRockData(entity.data)) return null;
++  const id = entity.id;
++  const snapshot = {
++    id,
++    pos: entity.pos ? { x: finite(entity.pos.x), z: finite(entity.pos.z) } : { x: 0, z: 0 },
++    vel: entity.vel ? { x: finite(entity.vel.x), z: finite(entity.vel.z) } : { x: 0, z: 0 },
++    rot: finite(entity.rot),
++    angVel: finite(entity.angVel),
++    radius: Math.max(0.5, finite(entity.radius, 8)),
++    mass: finite(entity.mass, 400),
++    hull: Number.isFinite(entity.hull) ? entity.hull : 1e6,
++    hullMax: Number.isFinite(entity.hullMax) ? entity.hullMax : 1e6,
++    homeSectorId: entity.homeSectorId || (entity.data && entity.data.homeSectorId) || null,
++    data: entity.data && typeof entity.data === 'object' ? { ...entity.data } : {},
++  };
++  const remove = helpers && typeof helpers.removeEntity === 'function' ? helpers.removeEntity : null;
++  if (remove) remove(id, { immediate: true, reason: String(reason || 'optic-shelve') });
++  else entity.alive = false;
++  snapshot.data.opticShelveReason = String(reason || 'optic-shelve');
++  return insertAsteroidFieldRock(state, snapshot);
++}
++
++function opticTableRadii(state, player) {
++  const speed = tableTravelSpeed(state);
++  const decodeR = authoredPrefetchRadius(speed);
++  const enter = Math.max(decodeR, 1);
++  const exit = enter + (NEAR_EXIT_PAD_WU - NEAR_ENTER_PAD_WU);
++  return { enter, exit, enter2: enter * enter, exit2: exit * exit };
++}
++
++/**
++ * Optic lattices stay field-resident until the player enters the authored decode
++ * disc, then promote like far actors. Beyond exit they shelve again so a quiet
++ * Ceres pocket does not keep ~40 combat asteroids warm for a gallery kilometers away.
++ */
++export function tickOpticFieldRocks(state, helpers) {
++  if (!state || state.mode !== 'flight') return { promoted: 0, shelved: 0 };
++  const player = state.entities && typeof state.entities.get === 'function'
++    ? state.entities.get(state.playerId)
++    : null;
++  if (!player || !player.pos) return { promoted: 0, shelved: 0 };
++  const radii = opticTableRadii(state, player);
++  const px = finite(player.pos.x);
++  const pz = finite(player.pos.z);
++  let promoted = 0;
++  let shelved = 0;
++
++  const hits = queryAsteroidField(state, player.pos, radii.enter, tickOpticFieldRocks._scratch || (tickOpticFieldRocks._scratch = []));
++  for (let i = 0; i < hits.length; i++) {
++    const rec = hits[i];
++    if (!rec || !isOpticRockData(rec.data) || !rec.pos) continue;
++    const dx = rec.pos.x - px;
++    const dz = rec.pos.z - pz;
++    if (dx * dx + dz * dz > radii.enter2) continue;
++    const ent = promoteAsteroidFieldRock(state, rec.id, helpers, 'optic-approach');
++    if (ent) promoted += 1;
++  }
++
++  const list = state.entityList || [];
++  for (let i = list.length - 1; i >= 0; i--) {
++    const entity = list[i];
++    if (!entity || entity.alive === false || entity.type !== 'asteroid') continue;
++    if (!isOpticRockData(entity.data) || !entity.pos) continue;
++    const dx = entity.pos.x - px;
++    const dz = entity.pos.z - pz;
++    if (dx * dx + dz * dz <= radii.exit2) continue;
++    if (demoteOpticAsteroidToField(state, entity, helpers, 'optic-exit')) shelved += 1;
++  }
++  return { promoted, shelved };
++}
++
+ export function asteroidFieldCensus(state) {
+   const field = state && state.world && state.world.asteroidField;
+   const rocks = field && Array.isArray(field.rocks) ? field.rocks.length : 0;
+diff --git a/test/optic-field.test.mjs b/test/optic-field.test.mjs
+index 6bd7b0a32..72ed1a443 100644
+--- a/test/optic-field.test.mjs
++++ b/test/optic-field.test.mjs
+@@ -35,6 +35,21 @@ import {
+ import { RESIDENCY_TIER } from '../src/data/sectorCoordinates.js';
+ import { projectileHitPayload } from '../src/core/physics.js';
+ 
++
++function opticGalleryBodies(state, structureId = CERES_PRISM_GALLERY_ID) {
++  const live = (state.entityList || []).filter((entity) => (
++    entity && entity.alive !== false
++    && entity.data && entity.data.opticStructureId === structureId
++  ));
++  const field = state.world && state.world.asteroidField && Array.isArray(state.world.asteroidField.rocks)
++    ? state.world.asteroidField.rocks.filter((rec) => (
++      rec && rec.alive !== false && rec.liveEntityId == null
++      && rec.data && rec.data.opticStructureId === structureId
++    ))
++    : [];
++  return { live, field, total: live.length + field.length };
++}
++
+ function bootWorld(seed = 42) {
+   const state = createGameState(seed);
+   state.mode = 'flight';
+@@ -387,53 +402,91 @@ test('each live swarm room has one lattice that clears the player', () => {
+   assert.equal(lagrange.bodies.length, 2);
+ });
+ 
+-test('the Prism Gallery is live in Ceres and absent from a Helios boot', () => {
++test('the Prism Gallery is stamped on Ceres FULL (field-resident) and absent from a Helios boot', () => {
+   const { state, world } = bootWorld(42);
+   world.enterSector('sector_helios_prime');
+-  const before = state.entityList.filter((entity) => entity.data && entity.data.opticStructureId === CERES_PRISM_GALLERY_ID);
+-  assert.equal(before.length, 0);
++  const before = opticGalleryBodies(state);
++  assert.equal(before.total, 0);
+   world.enterSector('sector_ceres_belt');
+-  const live = state.entityList.filter((entity) => entity.alive && entity.data && entity.data.opticStructureId === CERES_PRISM_GALLERY_ID);
++  const stamped = opticGalleryBodies(state);
+   const expected = compileCeresPrismGallery();
+-  assert.equal(live.length, expected.length);
++  assert.equal(stamped.total, expected.length);
++  // Quiet entry stays off the combat list; lattice is field-resident until approach.
++  assert.equal(stamped.live.length, 0);
++  assert.equal(stamped.field.length, expected.length);
+   const counts = { stone: 0, metal: 0, diamond: 0 };
+-  for (const entity of live) {
+-    counts[entity.data.opticMaterial] += 1;
+-    assert.equal(entity.homeSectorId, 'sector_ceres_belt');
+-    assert.equal(entity.collides, true);
++  for (const rec of stamped.field) {
++    counts[rec.data.opticMaterial] += 1;
++    assert.equal(rec.homeSectorId, 'sector_ceres_belt');
++    assert.equal(rec.collides, true);
+   }
+   for (const body of expected) counts[body.material] -= 1;
+   assert.deepEqual(counts, { stone: 0, metal: 0, diamond: 0 });
+   world.enterSector('sector_ceres_belt');
+-  const again = state.entityList.filter((entity) => entity.alive && entity.data && entity.data.opticStructureId === CERES_PRISM_GALLERY_ID);
+-  assert.equal(again.length, expected.length);
++  const again = opticGalleryBodies(state);
++  assert.equal(again.total, expected.length);
+ });
+ 
+-test('optic lattices spawn only on FULL residency and leave on eviction', () => {
++test('optic lattices stamp only on FULL residency and leave on eviction', () => {
+   const { state, world } = bootWorld(99);
+   world._ensureSectorMaterialized('sector_ceres_belt', RESIDENCY_TIER.REDUCED);
+-  const reduced = state.entityList.filter((entity) => entity.alive && entity.data && entity.data.opticStructureId === CERES_PRISM_GALLERY_ID);
+-  assert.equal(reduced.length, 0);
++  const reduced = opticGalleryBodies(state);
++  assert.equal(reduced.total, 0);
+   assert.equal(state.world.sectorContents.sector_ceres_belt.opticStructureIds, undefined);
+ 
+   world._promoteSectorToFull('sector_ceres_belt');
+   const expected = compileCeresPrismGallery().length;
+-  const full = state.entityList.filter((entity) => entity.alive && entity.data && entity.data.opticStructureId === CERES_PRISM_GALLERY_ID);
+-  assert.equal(full.length, expected);
++  const full = opticGalleryBodies(state);
++  assert.equal(full.total, expected);
++  assert.equal(full.live.length, 0);
++  assert.equal(full.field.length, expected);
+   assert.equal(state.world.sectorContents.sector_ceres_belt.opticStructureIds.length, expected);
+-  for (const entity of full) {
+-    assert.equal(entity.homeSectorId, 'sector_ceres_belt');
+-    assert.equal(entity.physicsBody && entity.physicsBody.radius, entity.radius);
+-    assert.equal(entity.data.masslineTetherable, false);
++  for (const rec of full.field) {
++    assert.equal(rec.homeSectorId, 'sector_ceres_belt');
++    assert.equal(rec.data.masslineTetherable, false);
++    assert.equal(rec.radius, rec.data.size);
+   }
+ 
+   world._promoteSectorToFull('sector_ceres_belt');
+-  const once = state.entityList.filter((entity) => entity.alive && entity.data && entity.data.opticStructureId === CERES_PRISM_GALLERY_ID);
+-  assert.equal(once.length, expected);
++  const once = opticGalleryBodies(state);
++  assert.equal(once.total, expected);
+ 
+   world._demoteSectorToRecordOnly('sector_ceres_belt');
+-  const gone = state.entityList.filter((entity) => entity.alive && entity.data && entity.data.opticStructureId === CERES_PRISM_GALLERY_ID);
+-  assert.equal(gone.length, 0);
++  const gone = opticGalleryBodies(state);
++  assert.equal(gone.total, 0);
++});
++
++
++
++test('optic lattices promote inside the decode disc and shelve past exit', async () => {
++  const { tickOpticFieldRocks } = await import('../src/world/asteroidField.js');
++  const { state, world } = bootWorld(77);
++  world.enterSector('sector_ceres_belt');
++  const expected = compileCeresPrismGallery().length;
++  let stamped = opticGalleryBodies(state);
++  assert.equal(stamped.field.length, expected);
++  assert.equal(stamped.live.length, 0);
++
++  const sample = stamped.field[0];
++  const player = state.entities.get(state.playerId);
++  player.pos.x = sample.pos.x;
++  player.pos.z = sample.pos.z;
++  const first = tickOpticFieldRocks(state, world.helpers);
++  assert.ok(first.promoted >= 1, `expected promote near gallery, got ${first.promoted}`);
++  stamped = opticGalleryBodies(state);
++  assert.ok(stamped.live.length >= 1, 'approach must lift optic bodies onto the combat list');
++  for (const ent of stamped.live) {
++    assert.equal(ent.physicsBody && ent.physicsBody.radius, ent.radius);
++    assert.equal(ent.data.masslineTetherable, false);
++  }
++
++  player.pos.x = sample.pos.x + 20000;
++  player.pos.z = sample.pos.z + 20000;
++  const second = tickOpticFieldRocks(state, world.helpers);
++  assert.ok(second.shelved >= 1, `expected shelve far from gallery, got ${second.shelved}`);
++  stamped = opticGalleryBodies(state);
++  assert.equal(stamped.live.length, 0);
++  assert.equal(stamped.total, expected);
+ });
+ 
+ test('visited diamond keys treat number and string ids as the same surface', () => {
+-- 
+2.47.3
+

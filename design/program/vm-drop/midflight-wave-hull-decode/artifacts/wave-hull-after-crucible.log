@@ -1,0 +1,180 @@
+
+> spaceface@0.1.0 probe:smooth-flight:crucible
+> node scripts/probe-smooth-flight.mjs --crucible --seed=4242
+
+  fat event payloads:
+    bufferFullUpload@181.sourceData 0 KB
+    bufferFullUpload@181.sourceData 0 KB
+    bufferFullUpload@181.sourceData 0 KB
+    bufferFullUpload@181.sourceData 0 KB
+    bufferFullUpload@181.sourceData 0 KB
+    bufferFullUpload@181.sourceData 0 KB
+    bufferFullUpload@181.sourceData 0 KB
+    bufferFullUpload@181.sourceData 0 KB
+    bufferFullUpload@181.sourceData 0 KB
+    bufferFullUpload@181.sourceData 0 KB
+    bufferFullUpload@181.sourceData 0 KB
+    bufferFullUpload@181.sourceData 0 KB
+    bufferFullUpload@181.sourceData 0 KB
+    bufferFullUpload@181.sourceData 0 KB
+    bufferFullUpload@181.sourceData 0 KB
+    bufferFullUpload@181.sourceData 0 KB
+    bufferFullUpload@181.sourceData 0 KB
+    bufferFullUpload@181.sourceData 0 KB
+    bufferFullUpload@181.sourceData 0 KB
+    bufferFullUpload@181.sourceData 0 KB
+
+SMOOTH-FLIGHT WITNESS
+  GPU                         ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)
+  whole-machine CPU busy      71 % of 8 logical cores during the sample (the game alone is ~10-15 %)
+  route                       CRUCIBLE swarm, seed 4242, default kit; at end: 10 other ships, 3 projectiles, 95 entities, 0 draw calls, 0k triangles
+  launch to flight            11.3 s
+  sample                      after 0 s of flight: 30 s, 294 frames, 10.7 fps mean
+  frame time p50/p95/p99      83.4 / 133.3 / 266.6 ms; worst 283 ms
+  frames over 33 / 50 / 100   294 (100.0 %) / 292 (99.3 %) / 51
+  typical frame costs (ms)    callback 19.2  sim 6.5  present 12.5  render 7.6  vfx 1.2  ui 3.5  feel 0.1  admission 0.6
+  before a LONG frame (ms)    callback 19.2  sim 6.5  present 12.5  render 7.6  vfx 1.2  ui 3.5  feel 0.1  admission 0.6
+  long frames paid in JS      231 of 293 (the rest: GPU, compositor or GC outside the game's callback)
+  worst freezes (ms): interval <- callback = sim + present(render, vfx, ui) ...
+    #   7   283 <- callback   21  sim    8  present   13  (render 8, vfx 1, ui 4)  admission 0  — no wave event within 2s
+    #   8   267 <- callback   20  sim    7  present   13  (render 7, vfx 1, ui 5)  admission 1  — no wave event within 2s
+    #   6   267 <- callback   17  sim    4  present   12  (render 7, vfx 2, ui 3)  admission 1  — no wave event within 2s
+    #  77   233 <- callback   17  sim    6  present   11  (render 6, vfx 2, ui 3)  admission 0  — no wave event within 2s
+    #  54   200 <- callback   20  sim    7  present   13  (render 7, vfx 2, ui 3)  admission 0  — no wave event within 2s
+    # 168   183 <- callback   20  sim    8  present   12  (render 7, vfx 1, ui 4)  admission 0  — no wave event within 2s
+    # 120   183 <- callback   21  sim    6  present   15  (render 9, vfx 1, ui 5)  admission 1  — no wave event within 2s
+    #  32   150 <- callback   27  sim   15  present   13  (render 8, vfx 1, ui 3)  admission 22  — no wave event within 2s
+    # 281   150 <- callback   16  sim    4  present   11  (render 6, vfx 1, ui 4)  admission 3  — no wave event within 2s
+    #  11   150 <- callback   24  sim   14  present   11  (render 6, vfx 2, ui 3)  admission 0  — no wave event within 2s
+  wave events (s into sample)   -11.0s run:wavePlanned w1   -11.0s run:waveMaterialized w1 [wasp_swarmer×5]   -11.0s run:waveStarted w1   -5.7s run:waveMaterialized w1 [wasp_swarmer×5]
+  wave arrival in window      COVERED (edge) — the wave materialized on the first flight ticks just before the sample clock started; its spawn cost lands inside the window via deferred mesh builds.
+  program links / buffer uploads shaderLinks +14, bufferFullUploads +730, bufferPartialUploads +30680
+  link placement                0 frame(s) paid a draw-time link; 14 link(s) landed off-frame (async compile); novelty: 8 NOVEL, 0 RELINK, 0 unkeyed
+  admissions queued at flight   pipelines 33, residency 0
+  roster prewarm at flight      no exemplar roots mounted
+  roster catalog at flight    n/a; queues pipelines 0, residency 32
+  cook ledger                 opening.rockSurfaceLibrary 20ms resolved | opening.firstPresentAdmission 5ms resolved | opening.planWait 2235ms resolved | opening.residency 4ms resolved (subjects=57,textureRefs=64,textures=64) | opening.postResources 0ms resolved (route=bloom) | opening.capturedPipelineDrain 0ms skipped (captured=0,stillPending=0) | opening.drainWait 0ms resolved | opening.receipt 1ms resolved | wait.prepareOpeningGpuResources 2266ms resolved
+    +7.0s  [NOVEL] SF_Shared_mechanical_none_native  (physical,STANDARD,,PHYSICAL,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false,false,false,,true,false,0,,3,8,0,0,0,0,0,0,0,0,0,1,0,0,0,0,8421456,147459,srgb,spaceface-surface-breakup-v4-file-scope|spaceface-illustrated-surface-v8)  via GLTFKit_SF_PLACE_STATION_TRADE_HUB
+        owners: SF_Shared_mechanical_none_native@LOD2_HeliosGolden02_Batch_Mesh_4  SF_Shared_mechanical_none_native@LOD2_HeliosGolden02_Batch_Mesh_6  SF_Shared_none_textured_none_native@LOD2_HeliosGolden02_Batch_Mesh_9  SF_Shared_none_textured_none_native@LOD2_HeliosGolden02_Batch_Mesh_10
+    +7.0s  [NOVEL] SF_Shared_canopy_none_native  (physical,STANDARD,,PHYSICAL,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false,false,false,,true,false,0,,3,8,0,0,0,0,0,0,0,0,0,1,0,0,0,0,8421584,16387,srgb,)  via GLTFKit_SF_PLACE_STATION_TRADE_HUB
+        Δ doubleSided:on→off
+        owners: SF_Shared_canopy_none_native@LOD2_HeliosGolden02_Batch_Mesh_8  SF_Shared_canopy_none_native@HeliosGolden02_CommonBatch_Mesh_5  SF_Shared_canopy_none_native@rendersfrenderhelios-trade-hubflight-static-lane1_9  SF_Shared_canopy_none_native@rendersfrenderhelios-trade-hubflight-static-lane2_9
+    +7.1s  [NOVEL] SF_Shared_none_textured_none_native  (physical,STANDARD,,PHYSICAL,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false,false,false,,true,false,0,,3,8,0,0,0,0,0,0,0,0,0,1,0,0,0,0,8421584,147459,srgb,spaceface-illustrated-surface-v8)  via wr:world_site_helios_relay/component/safety_coupler
+        Δ doubleSided:on→off
+        owners: SF_Shared_none_textured_none_native@rendersfrenderhelios-trade-hubflight-static-lane1  SF_Shared_none_textured_none_native@rendersfrenderhelios-trade-hubflight-static-lane2
+    +7.6s  [NOVEL] ?  (physical,STANDARD,,highp,srgb-linear,306,1024,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,,true,false,0,,3,8,0,0,0,0,0,0,0,0,0,1,0,0,0,0,8388624,131075,srgb,onBeforeCompile( /* shaderobject, renderer */ ) {})  via GLTFKit_ship_wasp  [at getProgram () <- at prepareMaterial () <- at  <- at Mesh.traverse ()]
+        Δ custom:spaceface-illustrated-surface-v8→onBeforeCompile( /* shaderobject
+        owners: MeshStandardMaterial@GLTFKit_Nav_Lights_port  MeshStandardMaterial@GLTFKit_Nav_Lights_starboard
+    +13.1s  [NOVEL] SF_Shared_none_textured_none_native  (physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false,false,false,,true,false,0,,3,8,0,0,0,0,0,0,0,0,0,1,0,0,0,0,8421456,149507,srgb,spaceface-illustrated-surface-v8)  via GLTFKit_SF_PLACE_STATION_MILITARY
+        Δ custom:spaceface-surface-breakup-v4-file-scope|spaceface-illustrated-surface-v8→spaceface-illustrated-surface-v8
+        owners: SF_Shared_none_textured_none_native@LOD0_Station_Material_Warning  SF_Shared_none_textured_none_native@LOD1_Station_Material_Warning  SF_Shared_none_textured_none_native@LOD2_Station_Material_Warning  SF_Shared_none_textured_none_native@GLTFKit_StaticGroup_14_12
+    +30.7s  [NOVEL] SF_Shared_none_textured_none_native  (physical,STANDARD,,PHYSICAL,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false,false,false,,true,false,0,,3,8,0,0,0,0,0,0,0,0,0,1,0,0,0,0,8421456,149507,srgb,spaceface-illustrated-surface-v8)  via GLTFKit_place_asteroid_seamed
+        Δ custom:spaceface-surface-breakup-v4-file-scope|spaceface-illustrated-surface-v8→spaceface-illustrated-surface-v8
+        owners: SF_Shared_none_textured_none_native@LOD0_Seamed_Material_Fracture  SF_Shared_none_textured_none_native@LOD1_Seamed_Material_Fracture  SF_Shared_none_textured_none_native@LOD2_Seamed_Material_Fracture  SF_Shared_none_textured_none_native@GLTFKit_StaticGroup_5_5
+    +30.7s  [NOVEL] SF_Shared_none_textured_none_native  (physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false,false,false,,true,false,0,,3,8,0,0,0,0,0,0,0,0,0,1,0,0,0,0,8422480,149507,srgb,spaceface-illustrated-surface-v8)  via GLTFKit_place_asteroid_seamed
+        Δ custom:spaceface-surface-breakup-v4-file-scope|spaceface-illustrated-surface-v8→spaceface-illustrated-surface-v8 | vertexColors:off→on
+        owners: SF_Shared_none_textured_none_native@LOD0_Seamed_Material_Mineral  SF_Shared_none_textured_none_native@LOD1_Seamed_Material_Mineral  SF_Shared_none_textured_none_native@LOD2_Seamed_Material_Mineral  SF_Shared_none_textured_none_native@GLTFKit_StaticGroup_5_5
+    +30.7s  [NOVEL] SF_Shared_none_textured_none_native  (physical,STANDARD,,PHYSICAL,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false,false,false,,true,false,0,,3,8,0,0,0,0,0,0,0,0,0,1,0,0,0,0,8422480,149507,srgb,spaceface-illustrated-surface-v8)  via GLTFKit_place_asteroid_seamed
+        Δ custom:spaceface-surface-breakup-v4-file-scope|spaceface-illustrated-surface-v8→spaceface-illustrated-surface-v8 | vertexColors:off→on
+        owners: SF_Shared_none_textured_none_native@LOD0_Seamed_Material_Regolith  SF_Shared_none_textured_none_native@LOD1_Seamed_Material_Regolith  SF_Shared_none_textured_none_native@LOD2_Seamed_Material_Regolith  SF_Shared_none_textured_none_native@GLTFKit_StaticGroup_5_5
+  boundary census at flight   authored×11 loading×49 awaiting-authored-admission×4
+  non-terminal at start       ship_wasp(ship,loading->authored) ship_wasp(ship,loading->authored) ship_wasp(ship,loading->authored) station_helios(station,loading,never-req->authored) station_coalition(station,loading,never-req->authored) place_asteroid_seamed(asteroid,loading,never-req->authored) place_asteroid_seamed(asteroid,loading,never-req->authored) 74(station,loading,never-req->loading) 75(station,loading,never-req->loading) 76(station,loading,never-req->loading) place_memorial_array(fx,loading,never-req->loading) place_debris_chunk(fx,loading,never-req->loading) place_cold_locker(fx,loading,never-req->loading) station_ceres(station,loading,never-req->loading) station_beltout(station,loading,never-req->loading) place_asteroid_rock_a(asteroid,loading,never-req->loading) place_asteroid_seamed(asteroid,loading,never-req->loading) place_asteroid_rock_a(asteroid,loading,never-req->loading)
+  program-key drift (old -> new):
+    ship_wasp
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false, [NOT warmed — nearest Δ specularColorMapUv:false→ | specularIntensityMapUv:false→∅ | transmissionMapUv:false→∅ | thicknessMapUv:false→∅]
+    ship_wasp
+      - (no program at start)
+      + basic,highp,srgb-linear,false,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,fal [NOT warmed — nearest Δ transmissionMapUv:false→fal | thicknessMapUv:false→∅ | combine:0→∅ | fogExp2:true→∅]
+    ship_wasp
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,false,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false, [NOT warmed — nearest Δ normalMapUv:false→uv | transmissionMapUv:false→ | thicknessMapUv:false→∅ | fogExp2:true→∅]
+    ship_wasp
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,false,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false, [NOT warmed — nearest Δ normalMapUv:false→uv | transmissionMapUv:false→ | thicknessMapUv:false→∅ | fogExp2:true→∅]
+    ship_wasp
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,false,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false, [NOT warmed — nearest Δ normalMapUv:false→uv | transmissionMapUv:false→ | thicknessMapUv:false→∅ | fogExp2:true→∅]
+    ship_wasp
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,false,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false, [NOT warmed — nearest Δ normalMapUv:false→uv | transmissionMapUv:false→ | thicknessMapUv:false→∅ | fogExp2:true→∅]
+    ship_wasp
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false,fal [NOT warmed — nearest Δ aoMapUv:false→uv | normalMapUv:false→uv | transmissionMapUv:false→fal | thicknessMapUv:false→∅]
+    ship_wasp
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false,fal [NOT warmed — nearest Δ aoMapUv:false→uv | normalMapUv:false→uv | transmissionMapUv:false→fal | thicknessMapUv:false→∅]
+    ship_wasp
+      - (no program at start)
+      + physical,STANDARD,,PHYSICAL,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false [NOT warmed — nearest Δ aoMapUv:false→uv | normalMapUv:false→uv | specularIntensityMapUv:false→∅ | transmissionMapUv:false→∅]
+    ship_wasp
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false,fal [NOT warmed — nearest Δ aoMapUv:false→uv | normalMapUv:false→uv | transmissionMapUv:false→fal | thicknessMapUv:false→∅]
+    ship_wasp
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false,fal [NOT warmed — nearest Δ aoMapUv:false→uv | normalMapUv:false→uv | transmissionMapUv:false→fal | thicknessMapUv:false→∅]
+    ship_wasp
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,false,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false, [NOT warmed — nearest Δ normalMapUv:false→uv | transmissionMapUv:false→ | thicknessMapUv:false→∅ | fogExp2:true→∅]
+    ship_wasp
+      - (no program at start)
+      + physical,STANDARD,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false,false,fal [NOT warmed — nearest Δ aoMapUv:false→uv | normalMapUv:false→uv | transmissionMapUv:false→fal | thicknessMapUv:false→∅]
+    ship_wasp
+      - (no program at start)
+      + physical,STANDARD,,PHYSICAL,,highp,srgb-linear,306,1024,uv,false,false,uv,false,uv,false,false,uv,uv,false,false,false,false,false,false,false,false,false,false [NOT warmed — nearest Δ aoMapUv:false→uv | normalMapUv:false→uv | specularIntensityMapUv:false→∅ | transmissionMapUv:false→∅]
+  mesh builds in sample:
+    +16.3s  build asteroid:ast_common_rock
+    +16.3s  build asteroid:ast_common_rock
+    +16.3s  build asteroid:ast_common_rock
+    +16.3s  build asteroid:ast_common_rock
+    +16.3s  build asteroid:ast_common_rock
+    +27.8s  build asteroid:ast_common_rock
+    +27.8s  build asteroid:ast_common_rock
+    +27.8s  build asteroid:ast_common_rock
+    +27.8s  build asteroid:ast_common_rock
+    +27.8s  build asteroid:ast_common_rock
+    +27.8s  build asteroid:ast_common_rock
+    +27.8s  build asteroid:ast_common_rock
+    +27.8s  build asteroid:ast_common_rock
+    +27.8s  build asteroid:ast_common_rock
+    +27.8s  build asteroid:ast_common_rock
+    +29.9s  build asteroid:ast_common_rock
+    +31.4s  build asteroid:ast_common_rock
+  buffer uploads in sample:
+    +6s  ×1    bufferData 288B  via res:break_mount_hotfray_4,break_mount_peel_0,break_mount_pee  <- break_mount_peel_2.normal
+    +6s  ×1    bufferData 384B  via res:break_mount_hotfray_4,break_mount_peel_0,break_mount_pee  <- break_mount_peel_2.tangent
+    +6s  ×1    bufferData 168B  via res:break_mount_hotfray_4,break_mount_peel_0,break_mount_pee  <- break_mount_hotfray_4.index
+    +6s  ×1    bufferData 72B  via res:break_mount_hotfray_4,break_mount_peel_0,break_mount_pee  <- break_mount_peel_0.index
+    +6s  ×1    bufferData 72B  via res:break_mount_hotfray_4,break_mount_peel_0,break_mount_pee  <- break_mount_peel_1.index
+    +6s  ×1    bufferData 72B  via res:break_mount_hotfray_4,break_mount_peel_0,break_mount_pee  <- break_mount_peel_2.index
+    +6s  ×1    bufferData 288B  via res:break_mount_peel_3,stub_cbl_0a,stub_cbl_0b,stub_cbl_1a  <- break_mount_peel_3.position break_mount_peel_3.sfHullPosition
+    +6s  ×1    bufferData 96B  via res:break_mount_peel_3,stub_cbl_0a,stub_cbl_0b,stub_cbl_1a  <- break_mount_peel_3.uv
+    +6s  ×1    bufferData 288B  via res:break_mount_peel_3,stub_cbl_0a,stub_cbl_0b,stub_cbl_1a  <- break_mount_peel_3.normal
+    +6s  ×1    bufferData 384B  via res:break_mount_peel_3,stub_cbl_0a,stub_cbl_0b,stub_cbl_1a  <- break_mount_peel_3.tangent
+    +6s  ×1    bufferData 288B  via res:break_mount_peel_3,stub_cbl_0a,stub_cbl_0b,stub_cbl_1a  <- stub_cbl_0a.position stub_cbl_0a.sfHullPosition
+    +6s  ×1    bufferData 96B  via res:break_mount_peel_3,stub_cbl_0a,stub_cbl_0b,stub_cbl_1a  <- stub_cbl_0a.uv
+    +6s  ×1    bufferData 288B  via res:break_mount_peel_3,stub_cbl_0a,stub_cbl_0b,stub_cbl_1a  <- stub_cbl_0a.normal
+    +6s  ×1    bufferData 384B  via res:break_mount_peel_3,stub_cbl_0a,stub_cbl_0b,stub_cbl_1a  <- stub_cbl_0a.tangent
+    +6s  ×1    bufferData 288B  via res:break_mount_peel_3,stub_cbl_0a,stub_cbl_0b,stub_cbl_1a  <- stub_cbl_0b.position stub_cbl_0b.sfHullPosition
+    +6s  ×1    bufferData 96B  via res:break_mount_peel_3,stub_cbl_0a,stub_cbl_0b,stub_cbl_1a  <- stub_cbl_0b.uv
+    +6s  ×1    bufferData 288B  via res:break_mount_peel_3,stub_cbl_0a,stub_cbl_0b,stub_cbl_1a  <- stub_cbl_0b.normal
+    +6s  ×1    bufferData 384B  via res:break_mount_peel_3,stub_cbl_0a,stub_cbl_0b,stub_cbl_1a  <- stub_cbl_0b.tangent
+    +6s  ×1    bufferData 288B  via res:break_mount_peel_3,stub_cbl_0a,stub_cbl_0b,stub_cbl_1a  <- stub_cbl_1a.position stub_cbl_1a.sfHullPosition
+    +6s  ×1    bufferData 96B  via res:break_mount_peel_3,stub_cbl_0a,stub_cbl_0b,stub_cbl_1a  <- stub_cbl_1a.uv
+    +6s  ×1    bufferData 288B  via res:break_mount_peel_3,stub_cbl_0a,stub_cbl_0b,stub_cbl_1a  <- stub_cbl_1a.normal
+    +6s  ×1    bufferData 384B  via res:break_mount_peel_3,stub_cbl_0a,stub_cbl_0b,stub_cbl_1a  <- stub_cbl_1a.tangent
+    +6s  ×1    bufferData 72B  via res:break_mount_peel_3,stub_cbl_0a,stub_cbl_0b,stub_cbl_1a  <- break_mount_peel_3.index
+    +6s  ×1    bufferData 72B  via res:break_mount_peel_3,stub_cbl_0a,stub_cbl_0b,stub_cbl_1a  <- stub_cbl_0a.index
+  SHIP LOST ITS PLACE         0 presents redrew an already-drawn moment (must be 0)
+  hitch callbacks             279 of 324 (world resumed two ticks on)
+  frames that shed sim time   183
+  game speed vs real time     30.8 % (hit-stop and hitches are the only things allowed to lower it)
+  OS says reduce motion       false
+  game motion setting         full -> effects FULL
+  rock batches                1/5  3/10  2/8  2/8  2/6
+  player speed at end         153 WU/s
+  console errors              3
+    [log] [render] GPU: %s | tier: %s | pixelRatio: %s | buffer: %dx%d ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver) software 1.00 1600 900
+    [error] Failed to load resource: the server responded with a status of 404 (Not Found) (http://127.0.0.1:33373/__spaceface_player_store)
+    [warning] THREE.WebGLRenderer: KHR_parallel_shader_compile extension not supported.
+

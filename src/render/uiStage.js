@@ -1,0 +1,1475 @@
+// The UI stage — a lit world behind a screen, drawn by the MAIN renderer
+// (design/frontend/direction/packets/P20-ui-stage/PACKET.md).
+//
+// Before this module no screen in the game had a world behind it. `presentationFreeze.js` stops the
+// flight scene from submitting whenever a screen is open, so the canvas under every menu was the
+// last flight frame — or, at the title, nothing at all. The only 3D that ever appeared under a menu
+// came from `src/ui/shipPreviewMount.js`, which opens a SECOND WebGLRenderer; that context is
+// refused outright on Intel GPUs (`secondaryPreviewWebGlBlocked`) and TDR'd the live one when it
+// was not.
+//
+// The freeze exists for a good reason: a map that lets an off-screen enemy keep killing the player
+// is an ambush. That reason is kept exactly. **The simulation stays frozen; the picture does not.**
+// This module owns its own THREE.Scene and camera and hands them to the renderer the game already
+// has, so a lit world costs one draw and zero extra GL contexts.
+//
+// The seam is one-way and allocation-free on the flight path: a screen writes
+// `state.ui.stageRequest`, `renderUpdatePhase` calls `presentUiStage()` only inside the frozen
+// branch, and `uiStageResident()` is a single boolean read for everything else.
+//
+// THE BERTH PREWARM (demo ledger D67, 2026-09-30). The berth stage used to be built on the first
+// docked frame: three props and the player's hull decoded, compiled, uploaded and shadow-baked on
+// the main thread exactly when the station screen opened, and on the owner's Intel iGPU the first
+// click after docking waited 2–15 s behind it. The approach window that precedes every dock —
+// physics' `dock:range`, published by input.js as `state.ui.dockInRange` — is seconds long and the
+// hull and prop set are already known then, so the stage is now built during the approach:
+// `tickUiStagePrewarm()` starts it from the flight branch, its uploads ride the renderer's
+// present-sliced residency lane, its one warm-up draw runs inside a flight frame that the flight
+// draw then overwrites (`warmUiStagePrewarm()`, never a presented frame), and the docked request
+// adopts the warm stage in `presentUiStage()` instead of building one. A request the prewarm does
+// not match (another hull) releases it and builds as before, so the prewarm can only ever be
+// early, never wrong.
+
+import * as THREE from 'three';
+import { createStationBayTraffic } from './stationBayTraffic.js';
+import { stationLifeClockFor } from '../presentation/stationLifeClock.js';
+import { canvasIsProtectedDuringFreeze } from '../core/presentationFreeze.js';
+import { activeOwnedShip } from '../data/hullIdentity.js';
+import { loadAuthoredPart as loadAuthoredPartLive } from './assetLoader.js';
+import { getAssetResidency } from './assetResidency.js';
+import { detachStashedStaleWebGlDisposeListeners } from './contextResourceLifecycle.js';
+import { wholeShipVisualForEntity } from './partsLibrary.js';
+import { dedupWarn } from '../core/warnDedup.js';
+import { isReleaseAssetMode } from './releaseMode.js';
+import { compileScenePipelinesSafely } from './compilePipelinesSafely.js';
+import { yieldToBrowser } from './startupGpuResidency.js';
+import { buildTitleAttractStage } from './titleAttractStage.js';
+import { buildKillcamStage } from './killcamStage.js';
+import { takeKillcamTape } from '../sim/killcamTape.js';
+
+const PART_ROOT = 'assets/ships/parts/';
+const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
+
+/** Sky shell radius. Everything authored sits well inside it. */
+const SKY_RADIUS = 2600;
+
+// Scratch for the per-frame stage draw. The flight path never enters drawStage; menus do every
+// rAF, so these must not allocate.
+const _stageSize = new THREE.Vector2();
+const _stageClear = new THREE.Color();
+const _stageTarget = new THREE.Vector3();
+const _stageOffset = new THREE.Vector3();
+const _stageUp = new THREE.Vector3(0, 1, 0);
+
+/**
+ * The authored scenes.
+ *
+ * Each scene is a camera, a sky, a light rig and a prop list. Props are named by their committed
+ * part id and placed by NORMALISED size, not by the GLB's own scale: `fit` is the target largest
+ * dimension in stage metres and `at` is where the prop's footprint centre lands, with `sit`
+ * choosing whether `at[1]` means the prop's centre (`'centre'`) or the bottom of its box
+ * (`'floor'`) or the top (`'top'`). A set re-authored at a different scale therefore still composes.
+ *
+ * P16 replaces `title-field` / `berth` / `arena-foundry` with its own rendered sets; the ids and
+ * this contract are what it swaps into. `held-world` is the frozen flight picture and draws
+ * nothing — the last flight frame is already on the canvas and is the correct image for pause.
+ */
+const SCENES = Object.freeze({
+  // The approved title shot: "Field at dusk" (approved/DECISIONS.md 2026-09-10, frame-title-v2).
+  // A working hull seated on rock under a low sun, a mast and a worklight on the far claim, cargo
+  // staged on the saddle between them, and the sky going cold above the warm band.
+  'title-field': {
+    // FRONTEND_PROGRAM 2026-09-19: the dusk moved from a brown haze to deep cold space. The whole
+    // frame read one warm-brown value (the owner's "strange wood look"); now the WARM key light is
+    // reserved for the subject — hull, rock face, cargo — and the sky, fog and bounce are cold,
+    // so the lit machine pops against the void instead of dissolving into it.
+    sky: {
+      zenith: 0x080b14, horizon: 0x2c2733, ground: 0x0c0e15,
+      horizonSoftness: 0.13, stars: 0.95, starSeed: 2947,
+    },
+    fog: { color: 0x131722, density: 0.0011 },
+    lights: {
+      // The low sun sits off the camera's LEFT SHOULDER, not behind the hull. Putting it behind
+      // turned the whole composition into a silhouette: the hull is the subject, and the frame
+      // this scene is built from shows its flank and deck catching a warm raking light.
+      key: { color: 0xffb473, intensity: 3.2, dir: [-0.74, 0.22, 0.62], shadow: true },
+      // The cold sky opposite it, which is what makes a dusk read as dusk.
+      rim: { color: 0x9fb6e6, intensity: 1.15, dir: [0.66, 0.4, -0.62] },
+      hemi: { sky: 0x2a3150, ground: 0x17130f, intensity: 0.5 },
+      ambient: { color: 0x1c2131, intensity: 0.3 },
+      // The claim's own lamps: the mast head and the worklight the frame shows burning.
+      practicals: [
+        { color: 0xbfd8ff, intensity: 22, at: [-27, 10, -14], distance: 70 },
+        { color: 0xffb877, intensity: 34, at: [33, 2, -24], distance: 90 },
+      ],
+    },
+    camera: { at: [-20, 10, 76], target: [6, 2.5, -8], fov: 30 },
+    drift: { yaw: 0.044, pitch: 0.012, period: 46 },
+    // Seated, not hovering: the hull's centre sits a shade BELOW the rock cap so the gear and the
+    // keel meet the stone and the key light lays a real contact shadow across it.
+    hull: { fit: 26, at: [7, 1.1, -6], yaw: -0.5, roll: -0.05 },
+    props: [
+      { id: 'place_asteroid_rock_a', fit: 40, at: [7, -1.4, -7], sit: 'top', yaw: 0.7, casts: true },
+      { id: 'place_asteroid_rock_b', fit: 24, at: [-35, -12, -38], sit: 'top', yaw: 2.1 },
+      { id: 'place_sensor_mast', fit: 19, at: [-34, -12, -38], sit: 'floor', yaw: -0.3 },
+      { id: 'place_worklight_tower', fit: 26, at: [35, -13, -32], sit: 'floor', yaw: -1.15 },
+      { id: 'place_cargo_pod_standard', fit: 5.5, at: [-18, -15, -30], sit: 'centre', yaw: 0.15 },
+      { id: 'place_cargo_pod_standard', fit: 5.5, at: [-12.5, -16, -28], sit: 'centre', yaw: 0.1 },
+      { id: 'place_container_rack', fit: 7.5, at: [-24, -14, -33], sit: 'centre', yaw: 0.2 },
+    ],
+  },
+
+  // The berth: the player's own hull in the dock interior, seen from the bay while docked.
+  // A berth is a ROOM with a ship in it, and most of it is seen around the panels rather than behind
+  // a clear centre — so it is lit to read from any window onto it: bright bay practicals, the hull
+  // broadside across the middle distance, and the dock shell wide enough to fill the edges.
+  berth: {
+    sky: { zenith: 0x060910, horizon: 0x14203a, ground: 0x080b14, horizonSoftness: 0.4, stars: 0.4, starSeed: 6110 },
+    fog: { color: 0x0c1830, density: 0.0055 },
+    lights: {
+      key: { color: 0xffd9b0, intensity: 2.6, dir: [-0.5, 0.95, 0.62], shadow: true },
+      rim: { color: 0x69cde0, intensity: 1.5, dir: [0.78, 0.3, -0.55] },
+      hemi: { sky: 0xb9d8df, ground: 0x24170f, intensity: 0.58 },
+      ambient: { color: 0x607087, intensity: 0.44 },
+      practicals: [
+        { color: 0xf0a94d, intensity: 70, at: [-18, 8, 18], distance: 95 },
+        { color: 0x8fc7ff, intensity: 46, at: [20, 12, -14], distance: 110 },
+        { color: 0xffb26a, intensity: 34, at: [6, -4, 26], distance: 70 },
+      ],
+    },
+    camera: { at: [-30, 7, 58], target: [2, 0, -8], fov: 38 },
+    drift: { yaw: 0.03, pitch: 0.008, period: 54 },
+    hull: { fit: 34, at: [2, 0.5, -6], yaw: -0.55, roll: 0 },
+    props: [
+      { id: 'place_dock_interior', fit: 120, at: [0, -16, -10], sit: 'floor', yaw: 0 },
+      { id: 'place_maintenance_gantry', fit: 26, at: [-26, -16, 8], sit: 'floor', yaw: 0.42, casts: true },
+      { id: 'place_container_rack', fit: 11, at: [24, -16, 14], sit: 'floor', yaw: -0.5 },
+    ],
+  },
+
+  // The Crucible door: a foundry running hot, seen past the panel (frame-crucible-door).
+  'arena-foundry': {
+    // A foundry seen at DEPTH, not a red field. The hot band stays low and tight so the rigs read as
+    // silhouettes standing in it and the words above them keep a dark ground to sit on.
+    sky: { zenith: 0x110409, horizon: 0x8e2c08, ground: 0x190602, horizonSoftness: 0.075, stars: 0.18, starSeed: 4242 },
+    fog: { color: 0x4a1505, density: 0.0058 },
+    lights: {
+      key: { color: 0xff6a22, intensity: 2.3, dir: [-0.35, 0.26, 0.9], shadow: true },
+      rim: { color: 0x5f8ed8, intensity: 0.5, dir: [0.8, 0.5, -0.4] },
+      hemi: { sky: 0x8a3a14, ground: 0x140503, intensity: 0.42 },
+      ambient: { color: 0x280b03, intensity: 0.24 },
+      // The furnace itself. Two hot practicals are what makes the arena read as RUNNING, and they
+      // are the only bright things in the scene.
+      practicals: [
+        { color: 0xff8a2b, intensity: 90, at: [12, 1, -30], distance: 130 },
+        { color: 0xffd08a, intensity: 40, at: [-26, 4, -12], distance: 100 },
+        { color: 0xffa050, intensity: 26, at: [30, -3, 14], distance: 60 },
+      ],
+    },
+    camera: { at: [-6, 11, 54], target: [12, 0, -18], fov: 38 },
+    drift: { yaw: 0.036, pitch: 0.01, period: 50 },
+    hull: { fit: 20, at: [30, -3, 16], yaw: 1.15, roll: 0.14 },
+    props: [
+      { id: 'place_freight_platform', fit: 46, at: [14, -9, -26], sit: 'floor', yaw: 0.18, casts: true },
+      { id: 'place_conveyor_truss', fit: 64, at: [34, -6, -10], sit: 'centre', yaw: -0.24 },
+      { id: 'place_conveyor_truss', fit: 52, at: [-24, -7, -38], sit: 'centre', yaw: 0.5 },
+      { id: 'place_maintenance_gantry', fit: 30, at: [8, -9, -30], sit: 'floor', yaw: -0.1 },
+      { id: 'place_radiator_bank', fit: 34, at: [52, -9, -44], sit: 'floor', yaw: -0.55 },
+      { id: 'place_drill_platform', fit: 30, at: [-34, -9, -52], sit: 'floor', yaw: 0.9 },
+    ],
+    floor: { color: 0x2a0c04, roughness: 0.92, size: 900, y: -9.4 },
+  },
+
+  // LIVE TITLE (build_map.md §25 Phase 5.2): the deterministic Crucible replay tape
+  // plays behind the menu instead of the authored still. There is no authored set —
+  // the fight is the picture. The title's plate keeps covering load/failure exactly as
+  // it does for the still, so a tape or hull that cannot run fails closed to the still.
+  'title-attract': {
+    live: 'titleAttract',
+    sky: {
+      zenith: 0x060a13, horizon: 0x141d2e, ground: 0x05070c,
+      horizonSoftness: 0.5, stars: 0.9, starSeed: 2947,
+    },
+    fog: { color: 0x0a101c, density: 0.0012 },
+    lights: {
+      // Open space, no shadow pass: the fight is the subject and a shadow map over a
+      // moving arena buys nothing the key + rim do not already say.
+      key: { color: 0xcfe0ff, intensity: 1.9, dir: [-0.42, 0.78, 0.46], shadow: false },
+      rim: { color: 0x7fa8ff, intensity: 1.1, dir: [0.72, 0.3, -0.6] },
+      hemi: { sky: 0x27324e, ground: 0x0b0d13, intensity: 0.6 },
+      ambient: { color: 0x161a26, intensity: 0.4 },
+      practicals: [],
+    },
+    // The live module owns the camera (a slow orbit around the fight centroid); these
+    // values are only the first-frame seed before its update runs.
+    camera: { at: [0, 120, 170], target: [0, 0, 0], fov: 42 },
+    drift: { yaw: 0.02, pitch: 0.006, period: 70 },
+    props: [],
+  },
+
+  // THE INSTANT KILL-CAM (DEMO_READINESS_2026-09-20 §4, "The toy (swarm)"): the recorded
+  // round tail plays once behind the results plate. No authored set — the fight is the
+  // picture, seen past the ember sky of the Crucible's own foundry. A missing or
+  // malformed tape fails closed to the results plate exactly like the title attract;
+  // reduced motion never requests this scene at all.
+  'crucible-killcam': {
+    live: 'killcam',
+    sky: {
+      zenith: 0x0b0810, horizon: 0x571f08, ground: 0x080302,
+      horizonSoftness: 0.42, stars: 0.55, starSeed: 2026,
+    },
+    fog: { color: 0x1a0a06, density: 0.002 },
+    lights: {
+      // The arena's warm key over a cold rim: the same two-voice rig the attract fight
+      // reads by, shifted one step toward the foundry.
+      key: { color: 0xffcf9e, intensity: 2.0, dir: [-0.38, 0.72, 0.5], shadow: false },
+      rim: { color: 0x7fa8ff, intensity: 1.0, dir: [0.72, 0.3, -0.6] },
+      hemi: { sky: 0x3a2530, ground: 0x0d0a0c, intensity: 0.55 },
+      ambient: { color: 0x18100e, intensity: 0.42 },
+      practicals: [],
+    },
+    // First-frame seed only — the live module owns the camera (a slow orbit around the
+    // fight's death neighbourhood).
+    camera: { at: [0, 84, 120], target: [0, 0, 0], fov: 42 },
+    drift: { yaw: 0.02, pitch: 0.006, period: 70 },
+    props: [],
+  },
+
+  'adventure-killcam': {
+    live: 'killcam',
+    sky: {
+      zenith: 0x060c16, horizon: 0x14273d, ground: 0x03070d,
+      horizonSoftness: 0.42, stars: 0.55, starSeed: 4242,
+    },
+    fog: { color: 0x091422, density: 0.002 },
+    lights: {
+      key: { color: 0xffcf9e, intensity: 2.0, dir: [-0.38, 0.72, 0.5], shadow: false },
+      rim: { color: 0x7fa8ff, intensity: 1.0, dir: [0.72, 0.3, -0.6] },
+      hemi: { sky: 0x25303a, ground: 0x060a10, intensity: 0.55 },
+      ambient: { color: 0x101218, intensity: 0.42 }, practicals: [],
+    },
+    camera: { at: [0, 84, 120], target: [0, 0, 0], fov: 42 },
+    drift: { yaw: 0, pitch: 0, period: 70 }, props: [],
+  },
+  'held-world': null,
+});
+
+/** The authored hull every stage shows until a caller names another. */
+const DEFAULT_HULL = 'wholeships/kestrel.glb';
+
+/** The scene the docked station screen requests (`src/ui/station/stationScreen.js`). */
+const BERTH_SCENE = 'berth';
+
+/**
+ * The part loader, injectable so the admission ORDER can be exercised for real headlessly (the
+ * same seam `prepareSectorEntry` exposes). Production never calls the setter.
+ */
+let loadAuthoredPart = loadAuthoredPartLive;
+export function setUiStagePartLoaderForTest(loader) {
+  loadAuthoredPart = typeof loader === 'function' ? loader : loadAuthoredPartLive;
+}
+
+/**
+ * Which hull this stage seats. A screen names a ship def (the berth names the one the player flies)
+ * and the live whole-ship map answers it; anything unmapped falls back to the starter hull rather
+ * than showing nothing, because an empty berth is the failure this packet exists to remove.
+ */
+function hullFileForRequest(request) {
+  if (typeof request.hullFile === 'string' && request.hullFile) return request.hullFile;
+  const defId = typeof request.hullDefId === 'string' ? request.hullDefId : null;
+  if (defId) {
+    try {
+      const selection = wholeShipVisualForEntity({ data: { defId } });
+      if (selection && typeof selection.file === 'string' && selection.file) return selection.file;
+    } catch (error) {
+      console.warn('[uiStage] whole-ship lookup failed for', defId, error);
+    }
+  }
+  return DEFAULT_HULL;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Module state. One stage at a time; the flight path only ever reads `resident`.
+
+let resident = false;
+let stage = null;
+let lastStatus = 'idle';
+let lastScene = null;
+let lastError = null;
+let idleFrames = 0;
+
+/**
+ * The stage built ahead of a dock. Never `resident` (the flight branch releases a resident stage
+ * every frame) and never drawn as a picture: it is adopted by the docked request or released.
+ */
+let prewarm = null;
+let prewarmIdleFrames = 0;
+const contextLostRenderers = new WeakSet();
+
+/**
+ * How long a prewarm outlives the approach that started it. Lining up on a berth crosses the
+ * dock gate several times (the manifest gate is proximity AND a slow approach), and a rebuild on
+ * every crossing would churn the props' residency for nothing; ten seconds of flight covers a
+ * missed line-up without pinning the set for the whole session.
+ */
+const PREWARM_RELEASE_FRAMES = 600;
+
+/**
+ * The Scene and Camera are retained across mounts on purpose. Three keys its per-scene render
+ * state — owner of the transmissive-material render target — on the Scene identity, and the
+ * render-target slot inside that state on camera.id. A fresh pair per mount orphaned a
+ * viewport-sized MSAA target (plus its resolve buffers) on every stage rebuild, which the
+ * release soak measured as +3 leaked GL textures per dock. Reusing the shell keeps the same
+ * render-state entry alive so the target is re-uploaded, not re-allocated.
+ */
+const stageShells = new Map();
+
+function stageShellFor(id, spec) {
+  let shell = stageShells.get(id);
+  if (!shell) {
+    shell = {
+      scene: new THREE.Scene(),
+      camera: new THREE.PerspectiveCamera(spec.camera.fov, 16 / 9, 0.5, SKY_RADIUS * 1.6),
+    };
+    stageShells.set(id, shell);
+  }
+  const { scene, camera } = shell;
+  scene.clear();
+  camera.fov = spec.camera.fov;
+  camera.near = 0.5;
+  camera.far = SKY_RADIUS * 1.6;
+  camera.updateProjectionMatrix();
+  return shell;
+}
+
+/** How long a requested-nothing stage is kept alive before its GPU memory goes back. */
+const IDLE_RELEASE_FRAMES = 90;
+
+/** True when a stage scene is built or building. One property read on the flight path. */
+export function uiStageResident() {
+  return resident;
+}
+
+/**
+ * Should the frozen presentation draw a stage instead of nothing?
+ *
+ * Only an explicit screen request opens the stage. A freeze caused by a mid-cook sector shell or by
+ * the loading route is protecting a canvas that must not be drawn over, so those keep their hold.
+ */
+export function uiStageRequestFor(state) {
+  if (!state || !state.ui) return null;
+  if (canvasIsProtectedDuringFreeze(state)) return null;
+  // The opaque Continue veil owns the whole window while a restore runs underneath it — the
+  // title's stage scene draws behind it for nothing. When the veil is up there is no stage
+  // request; if the load fails, the menu re-requests through syncVisibility as usual.
+  if (typeof document !== 'undefined' && document.querySelector('.sf-continue-fade')) return null;
+  const request = state.ui.theater?.request || state.ui.stageRequest;
+  if (!request || typeof request !== 'object') return null;
+  const scene = typeof request.scene === 'string' ? request.scene : null;
+  if (!scene || (!(scene in SCENES) && scene !== 'replay-theater')) return null;
+  if (SCENES[scene] === null) return null; // held-world: the frozen picture is already correct.
+  return request;
+}
+
+/**
+ * Draw the requested stage. Called ONLY from the frozen branch of the presentation frame.
+ * Returns true when a stage frame was submitted.
+ */
+export function presentUiStage({ render, state, frameDt = 0 } = {}) {
+  const request = uiStageRequestFor(state);
+  if (!request) {
+    if (resident && ++idleFrames > IDLE_RELEASE_FRAMES) releaseUiStage('idle');
+    return false;
+  }
+  idleFrames = 0;
+
+  const renderer = rendererFrom(render, state);
+  if (!renderer || contextLostRenderers.has(renderer)) {
+    publishStatus(request, 'unavailable');
+    return false;
+  }
+
+  const sceneId = request.scene;
+  // A scene swap is not the only thing that invalidates a stage. The berth re-requests `berth` with
+  // a different hull when the player changes ship, and comparing scene ids alone would have shown
+  // whichever hull was built first for the rest of the session.
+  const hullFile = hullFileForRequest(request);
+  if (stage && stage.renderer !== renderer) releaseUiStage('renderer-swap');
+  else if (stage && stage.id !== sceneId) releaseUiStage('scene-swap');
+  else if (stage && stage.hullFile !== hullFile) releaseUiStage('hull-swap');
+  else if (stage?.live?.tape && request.tape && stage.live.tape !== request.tape) releaseUiStage('tape-swap');
+  else if (stage?.request?.control !== request.control) releaseUiStage('transport-swap');
+  if (!stage && prewarm) {
+    // The approach already built this stage. Adopt it whole — its content chain keeps running if
+    // the player docked before it finished — and only a request it cannot satisfy rebuilds.
+    if (prewarm.id === sceneId && prewarm.hullFile === hullFile && prewarm.disposed !== true) {
+      stage = prewarm;
+      prewarm = null;
+      prewarmIdleFrames = 0;
+      stage.adopted = true;
+      stage.marks.adopted = stageNow() - stage.marks.start;
+      resident = true;
+      lastScene = sceneId;
+    } else {
+      releaseUiStagePrewarm('request-mismatch');
+    }
+  }
+  if (!stage) {
+    try {
+      stage = buildStage(sceneId, renderer, request, hullFile, {
+        environment: sceneId === 'replay-theater' || SCENES[sceneId]?.live === 'killcam' || SCENES[sceneId]?.live === 'titleAttract'
+          ? state.render?.envMap || state.render?.scene?.environment || null : null,
+        isRequested: () => {
+          const current = uiStageRequestFor(state);
+          return current?.scene === sceneId && hullFileForRequest(current) === hullFile;
+        },
+      });
+      resident = true;
+      lastScene = sceneId;
+    } catch (error) {
+      console.warn('[uiStage] stage build failed; the screen keeps its authored plate', error);
+      publishStatus(request, 'unavailable');
+      return false;
+    }
+  }
+
+  stage.request = request;
+  // Replay keeps the flight scene's authored reflection light. Bare metal cannot
+  // answer a sun/rim rig without that shared environment; the stage never owns it.
+  const environment = state.render?.envMap || state.render?.scene?.environment;
+  if ((stage.spec.live === 'killcam' || stage.spec.live === 'titleAttract') && environment && stage.scene.environment !== environment) stage.scene.environment = environment;
+  if (request.control && stage.live?.ready && !request.control.renderAt) {
+    const captureOwner = stage;
+    captureOwner.capture = (width, height) => captureUiStageFrame(captureOwner, renderer, state, width, height);
+    request.control.renderAt = captureOwner.capture;
+  }
+  // Offline export owns the shared renderer until the next yielded frame. The
+  // underlying preview holds; it does not pay a second draw between encoded frames.
+  if (request.control?.exporting && stage.hullDrawn) return true;
+  const dt = Number.isFinite(frameDt) ? Math.min(0.1, Math.max(0, frameDt)) : 0;
+  stage.clock += motionAllowed(state) ? dt : 0;
+
+  try {
+    // An adopted stage the flight frame never got to warm (the player docked on the very frame it
+    // finished preparing) takes its warm-up here, under the plate — exactly where it used to be.
+    if (stage.warmupPending === true) warmupStage(stage, renderer);
+    drawStage(stage, renderer, state, dt);
+  } catch (error) {
+    dedupWarn('uiStage.stage-draw', '[uiStage] stage draw failed', error);
+    publishStatus(request, 'unavailable');
+    releaseUiStage('draw-error');
+    return false;
+  }
+
+  if (!stage.hullDrawn) publishStatus(request, stage.liveFailed ? 'unavailable' : 'loading');
+  // A drawn frame is not a SEEN frame. A host can hide the world canvas — the reference-frame
+  // capture does exactly that, and a forced-colours or reduced-transparency host may too — and a
+  // screen that faded its authored plate out for a stage nobody can see is a black screen. Report
+  // the plate instead; it is then the picture, and the screen is honestly ready to photograph.
+  else publishStatus(request, canvasIsVisible(renderer, stage) ? 'live' : 'plate');
+  return true;
+}
+
+/** Drop the stage's scene graph. Geometry and materials belong to the asset cache, not to us. */
+export function releaseUiStage(reason = 'release') {
+  if (!stage) { resident = false; return false; }
+  const dying = stage;
+  stage = null;
+  resident = false;
+  idleFrames = 0;
+  disposeBuilt(dying, reason);
+  if (dying.request) publishStatus(dying.request, 'idle');
+  lastStatus = 'idle';
+  return reason !== null;
+}
+
+/** Drop a prewarmed stage that no dock will adopt. Same disposal, no status: it was never shown. */
+export function releaseUiStagePrewarm(reason = 'release') {
+  if (!prewarm) return false;
+  const dying = prewarm;
+  prewarm = null;
+  prewarmIdleFrames = 0;
+  disposeBuilt(dying, `prewarm-${reason || 'release'}`);
+  return true;
+}
+
+/** Abandon stage GPU objects at loss so their Three dispose callbacks cannot run after restore. */
+export function retireUiStageForContextLoss(renderer) {
+  if (!renderer || (typeof renderer !== 'object' && typeof renderer !== 'function')) return 0;
+  contextLostRenderers.add(renderer);
+  let retired = 0;
+  if (stage?.renderer === renderer) {
+    const dyingStage = stage;
+    stage = null;
+    resident = false;
+    idleFrames = 0;
+    disposeBuilt(dyingStage, 'context-lost');
+    if (dyingStage.request) publishStatus(dyingStage.request, 'loading');
+    retired++;
+  }
+  if (prewarm?.renderer === renderer) {
+    const dyingPrewarm = prewarm;
+    prewarm = null;
+    prewarmIdleFrames = 0;
+    disposeBuilt(dyingPrewarm, 'prewarm-context-lost');
+    retired++;
+  }
+  return retired;
+}
+
+/** Let a fresh stage build resume only after the renderer completes context recovery. */
+export function resumeUiStageAfterContextRestore(renderer) {
+  if (!renderer || (typeof renderer !== 'object' && typeof renderer !== 'function')) return false;
+  contextLostRenderers.delete(renderer);
+  return true;
+}
+
+// ---------------------------------------------------------------------------------------------
+// The berth prewarm. Both entry points run ONLY from the flight branch of the presentation frame.
+
+/**
+ * The def the next dock will seat, resolved as the station screen resolves it (`berthSeatDefId` →
+ * `activeHullIdentity` → the active owned ship), so the docked request and the prewarm name the
+ * same whole-ship file whenever the player docks the ship they are flying. A plain read: the
+ * identity's name and registration are not needed here, and this runs every in-range flight frame.
+ */
+function approachHullDefId(state) {
+  try {
+    const owned = activeOwnedShip(state);
+    return owned && owned.defId ? String(owned.defId) : null;
+  } catch (_) {
+    return null; // a state without a fleet seats the starter hull
+  }
+}
+
+/**
+ * Start, keep, or retire the berth prewarm for this flight frame. Costs one property read when no
+ * dock is near and nothing is warm; a kept prewarm costs a def-id compare. Never draws.
+ */
+export function tickUiStagePrewarm({ render, state } = {}) {
+  if (!state || state.mode !== 'flight') {
+    if (prewarm) releaseUiStagePrewarm('left-flight');
+    return false;
+  }
+  if (canvasIsProtectedDuringFreeze(state)) return false;
+  const ui = state.ui;
+  if (!ui || ui.dockInRange !== true || ui.docked === true) {
+    if (prewarm && ++prewarmIdleFrames > PREWARM_RELEASE_FRAMES) releaseUiStagePrewarm('approach-ended');
+    return false;
+  }
+  prewarmIdleFrames = 0;
+  const renderer = rendererFrom(render, state);
+  if (!renderer || contextLostRenderers.has(renderer)) return false;
+  const hullDefId = approachHullDefId(state);
+  if (prewarm && (prewarm.id !== BERTH_SCENE || prewarm.hullDefId !== hullDefId || prewarm.disposed === true)) {
+    releaseUiStagePrewarm('hull-changed');
+  }
+  if (prewarm && prewarm.renderer !== renderer) releaseUiStagePrewarm('renderer-swap');
+  if (prewarm || stage) return false;
+  const wanted = { scene: BERTH_SCENE, hullDefId, hullFile: null };
+  try {
+    prewarm = buildStage(wanted.scene, renderer, wanted, hullFileForRequest(wanted), {
+      prewarm: true,
+      // The renderer's own present-sliced residency lane: textures AND geometry land between
+      // presents behind the flight frames instead of in twelve-texture bursts on a timer.
+      residencyLane: state.render && typeof state.render.prepareAuthoredGpuResidency === 'function'
+        ? state.render.prepareAuthoredGpuResidency
+        : null,
+    });
+  } catch (error) {
+    dedupWarn('uiStage.berth-prewarm', '[uiStage] berth prewarm failed to start; the dock builds it as before', error);
+    prewarm = null;
+    return false;
+  }
+  return true;
+}
+
+/**
+ * The prewarm's one warm-up draw, taken inside a flight frame that is about to draw the world over
+ * it: the shadow map bakes, the depth program and every residual variant link, and the frame the
+ * player sees is the flight frame. Returns true when a draw was taken.
+ */
+export function warmUiStagePrewarm({ render, state } = {}) {
+  if (!prewarm || prewarm.warmupPending !== true || prewarm.disposed === true
+      || contextLostRenderers.has(prewarm.renderer)) return false;
+  if (!state || state.mode !== 'flight' || canvasIsProtectedDuringFreeze(state)) return false;
+  const renderer = rendererFrom(render, state);
+  if (!renderer) return false;
+  warmupStage(prewarm, renderer);
+  return true;
+}
+
+function disposeLateLive(built, live) {
+  // Retired stages still release JS owners/subscriptions; only their old-context GPU events are
+  // suppressed. The disposer option keeps both halves explicit.
+  try {
+    live?.dispose?.({
+      disposeGpu: built.contextLostRetirement !== true && !contextLostRenderers.has(built.renderer),
+    });
+  } catch (error) { console.warn('[uiStage] late live content dispose failed', error); }
+}
+
+function disposeBuilt(dying, reason) {
+  const abandonGpu = contextLostRenderers.has(dying.renderer);
+  dying.disposed = true;
+  // A late asynchronous live build may settle after this renderer is restored. Preserve the
+  // retirement generation on the record so its eventual disposer cannot target the fresh GL.
+  if (abandonGpu) dying.contextLostRetirement = true;
+  if (!abandonGpu) {
+    // The stage is outside the flight scene's loss-time walk. Strip only the exact old-manager
+    // callbacks before disposing its own geometry and separately owned shadow/capture targets.
+    const resources = [dying.scene, dying.captureTarget, dying.rig?.depthMaterial];
+    for (const light of dying.rig?.lights || []) {
+      if (light?.shadow?.map) resources.push(light.shadow.map);
+    }
+    detachStashedStaleWebGlDisposeListeners(resources);
+  }
+  if (!abandonGpu) dying.captureTarget?.dispose();
+  dying.captureTarget = null;
+  if (dying.request?.control && dying.request.control.renderAt === dying.capture) dying.request.control.renderAt = null;
+  // Release the stage's residency owner first: mounted props/hull were pinned under it, so this
+  // is the moment they drop to soft-cache leases the byte budgets can reclaim. Without it the
+  // decoded stage set would stay session-pinned forever.
+  if (dying.residencyOwner) {
+    const residency = getAssetResidency(dying.renderer);
+    if (residency && typeof residency.releaseOwner === 'function') {
+      residency.releaseOwner(dying.residencyOwner, `ui-stage-${reason || 'release'}`);
+    }
+  }
+  if (dying.live && typeof dying.live.dispose === 'function') {
+    try { dying.live.dispose({ disposeGpu: !abandonGpu }); }
+    catch (error) { console.warn('[uiStage] live content dispose failed', error); }
+  }
+  dying.live = null;
+  try {
+    dying.scene.traverse((node) => {
+      // Only what this module created: the sky shell, the star field and the arena floor. Authored
+      // GLB geometry and materials are shared with the asset cache and outlive every stage.
+      if (!abandonGpu && node.userData && node.userData.uiStageOwned === true) {
+        if (node.geometry) node.geometry.dispose();
+        const materials = Array.isArray(node.material) ? node.material : [node.material];
+        for (const material of materials) if (material && material.dispose) material.dispose();
+      }
+    });
+    dying.scene.clear();
+    if (!abandonGpu && dying.rig && dying.rig.depthMaterial) dying.rig.depthMaterial.dispose();
+    if (dying.rig) dying.rig.depthMaterial = null;
+    // Shadow maps live on the light, not the scene: each mount's key light allocates a fresh
+    // WebGLRenderTarget + depth texture that scene.clear() does not free. Dispose them or every
+    // rebuild leaves a shadow-map pair orphaned on the context.
+    for (const light of (dying.rig && dying.rig.lights) || []) {
+      const shadow = light && light.shadow;
+      if (shadow && shadow.map) {
+        if (!abandonGpu) {
+          if (shadow.map.depthTexture) shadow.map.depthTexture.dispose();
+          shadow.map.dispose();
+        }
+        if (shadow.map.depthTexture) shadow.map.depthTexture = null;
+        shadow.map = null;
+      }
+    }
+    dying.scene.environment = null;
+    dying.scene.background = null;
+    dying.scene.fog = null;
+  } catch (error) {
+    console.warn('[uiStage] release failed', error);
+  }
+}
+
+/**
+ * Diagnostics for the receipt, the capture receipts and anyone asking "is that really the world?".
+ *
+ * Published on `window.__SF_UI_STAGE__` so a headed probe can tell a live scene from a plate
+ * without reading pixels — "a lit world" is a claim, and this is where it is checked.
+ */
+export function uiStageReport() {
+  return {
+    resident,
+    scene: stage ? stage.id : null,
+    hullFile: stage ? stage.hullFile : null,
+    lastScene,
+    status: lastStatus,
+    phase: stage ? stage.phase : 'none',
+    live: !!(stage && stage.live),
+    hullDrawn: !!(stage && stage.hullDrawn),
+    props: stage ? stage.propsLoaded : 0,
+    propsRequested: stage ? stage.propsRequested : 0,
+    frames: stage ? stage.frames : 0,
+    marks: stage ? stage.marks : null,
+    prepared: stage ? stage.prepared : null,
+    // True when the docked request found the stage already built by the approach.
+    adopted: !!(stage && stage.adopted === true),
+    prewarm: prewarm ? {
+      scene: prewarm.id,
+      hullFile: prewarm.hullFile,
+      phase: prewarm.phase,
+      warmupPending: prewarm.warmupPending === true,
+      prepared: prewarm.prepared,
+      marks: prewarm.marks,
+    } : null,
+    lastError: lastError ? String(lastError).slice(0, 300) : null,
+    contexts: 1,
+  };
+}
+
+if (typeof globalThis !== 'undefined') globalThis.__SF_UI_STAGE__ = uiStageReport;
+
+// ---------------------------------------------------------------------------------------------
+
+function rendererFrom(render, state) {
+  const fromSystem = render && render.renderer;
+  if (fromSystem && typeof fromSystem.render === 'function') return fromSystem;
+  const fromState = state && state.render && state.render.renderer;
+  if (fromState && typeof fromState.render === 'function') return fromState;
+  return null;
+}
+
+/**
+ * Is the renderer's canvas actually on screen? Sampled rather than read every frame: this is a
+ * layout query, and the answer changes on a stylesheet edit, not on a draw.
+ */
+const CANVAS_VISIBILITY_SAMPLE_FRAMES = 30;
+function canvasIsVisible(renderer, stage) {
+  if (stage.canvasVisibleAt !== undefined && stage.frames - stage.canvasVisibleAt < CANVAS_VISIBILITY_SAMPLE_FRAMES) {
+    return stage.canvasVisible;
+  }
+  stage.canvasVisibleAt = stage.frames;
+  stage.canvasVisible = true;
+  const canvas = renderer.domElement;
+  if (!canvas || typeof getComputedStyle !== 'function' || !canvas.isConnected) return stage.canvasVisible;
+  try {
+    const style = getComputedStyle(canvas);
+    stage.canvasVisible = style.display !== 'none'
+      && style.visibility !== 'hidden'
+      && Number(style.opacity) > 0.01;
+  } catch (_) { /* a host without layout keeps the optimistic answer */ }
+  return stage.canvasVisible;
+}
+
+function motionAllowed(state) {
+  const video = state && state.settings && state.settings.video;
+  if (video && video.motionReduce) return false;
+  if (typeof matchMedia === 'function') {
+    try { if (matchMedia('(prefers-reduced-motion: reduce)').matches) return false; } catch (_) {}
+  }
+  return true;
+}
+
+function publishStatus(request, status) {
+  if (status !== lastStatus) {
+    lastStatus = status;
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.dataset.sfStage = status;
+    }
+  }
+  const notify = request && request.onStatus;
+  if (typeof notify === 'function' && request.__lastStatus !== status) {
+    request.__lastStatus = status;
+    try { notify(status); } catch (error) { dedupWarn('uiStage.status-listener', '[uiStage] status listener failed', error); }
+  }
+}
+
+function buildStage(id, renderer, request, hullFile, options = {}) {
+  const spec = SCENES[id] || (id === 'replay-theater' ? SCENES['adventure-killcam'] : null);
+  if (!spec) throw new Error(`unknown ui stage "${id}"`);
+
+  const { scene, camera } = stageShellFor(id, spec);
+  scene.environment = options.environment || null;
+
+  const sky = buildSky(spec.sky);
+  scene.add(sky);
+  const skyRiders = [sky];
+  if (spec.sky.stars > 0) {
+    const stars = buildStars(spec.sky);
+    scene.add(stars);
+    skyRiders.push(stars);
+  }
+  if (spec.fog) scene.fog = new THREE.FogExp2(spec.fog.color, spec.fog.density);
+  if (spec.floor) scene.add(buildFloor(spec.floor));
+
+  const rig = buildLights(spec.lights);
+  for (const light of rig.lights) scene.add(light);
+
+  const built = {
+    id,
+    hullFile: hullFile || hullFileForRequest(request),
+    spec,
+    scene,
+    camera,
+    skyRiders,
+    rig,
+    request,
+    clock: 0,
+    frames: 0,
+    phase: 'building',
+    // Wall-clock milestones, so "the stage is slow" is always a number and never an impression.
+    marks: { start: stageNow(), props: 0, hull: 0, prepared: 0, warmup: 0, adopted: 0 },
+    disposed: false,
+    hullDrawn: false,
+    propsLoaded: 0,
+    propsRequested: spec.props.length,
+    prepared: false,
+    generation: (buildStage.generation = (buildStage.generation || 0) + 1),
+    renderer,
+    // Built ahead of its request (the berth during the docking approach). A prewarm takes its
+    // uploads on the renderer's present-sliced residency lane and defers its one warm-up draw to
+    // a flight frame (`warmUiStagePrewarm`) so nothing it does lands on a presented picture.
+    prewarm: options.prewarm === true,
+    isRequested: options.isRequested,
+    // The def the prewarm was asked for, so the per-frame keep/rebuild decision is one compare.
+    hullDefId: typeof request.hullDefId === 'string' ? request.hullDefId : null,
+    residencyLane: typeof options.residencyLane === 'function' ? options.residencyLane : null,
+    warmupPending: false,
+    admitted: [],
+    adopted: false,
+    // Mounted stage content is a live presentation owner, not a session pin: the authored props
+    // and hull stay accounted as live while the stage is up, and releaseUiStage drops the owner so
+    // a torn-down stage stops counting as live residency (and can be evicted under byte pressure).
+    residencyOwner: Object.freeze({ type: 'ui-stage', id }),
+  };
+
+  applyCamera(built, 0);
+  loadSceneContent(built, renderer, request).catch((error) => {
+    built.phase = 'failed';
+    lastError = error && error.message ? error.message : String(error);
+    console.warn('[uiStage] scene content failed', error);
+  });
+  return built;
+}
+
+/**
+ * Authored content arrives asynchronously and is admitted whole: every prop and the hull are
+ * decoded, compiled and uploaded BEFORE anything joins the scene, so the first stage frame that
+ * carries the hull is also the first frame that shows it. That is what `data-k-ready` reports on —
+ * not a plate's load event, and not an empty canvas.
+ */
+async function loadSceneContent(built, renderer, request) {
+  const { spec } = built;
+  built.phase = 'loading-props';
+
+  // Live scenes own no authored props or seated hull — their content module builds the
+  // world (for the title, the deterministic Crucible replay). The same discipline holds:
+  // admit the whole set into the graph invisible, compile, then reveal in one frame.
+  if (spec.live === 'titleAttract') {
+    let live = null;
+    try {
+      live = await buildTitleAttractStage(built, {
+        loadPart: (file, slot) => loadPart(file, renderer, slot, built),
+      });
+    } catch (error) {
+      lastError = error && error.message ? error.message : String(error);
+      console.warn('[uiStage] live title content failed; the plate stays', error);
+      live = null;
+    }
+    // Released while the live content was still building: the stage's traverse never sees
+    // roots that were never admitted, so the live owner must dispose its own pools here.
+    if (built.disposed) { disposeLateLive(built, live); return; }
+    built.phase = 'preparing';
+    const admitted = live && Array.isArray(live.roots) ? live.roots.filter(Boolean) : [];
+    await prepareForFirstDraw(admitted, renderer, built);
+    if (built.disposed) { disposeLateLive(built, live); return; }
+    for (const group of admitted) group.visible = true;
+    built.live = live;
+    built.marks.prepared = stageNow() - built.marks.start;
+    built.hullDrawn = !!(live && live.ready === true);
+    built.liveFailed = !built.hullDrawn;
+    built.phase = built.hullDrawn ? 'live' : 'no-hull';
+    if (!built.hullDrawn) {
+      console.warn('[uiStage] live title has nothing to show; the stage stays on its plate');
+    }
+    return;
+  }
+
+  // The instant kill-cam: same admit-whole-then-reveal discipline as the title attract.
+  // No tape or a failed build is not an error — the results plate is the designed
+  // fallback, and the screen reports ready the moment the plate is the picture.
+  if (spec.live === 'killcam') {
+    let live = null;
+    try {
+      live = await buildKillcamStage(built, {
+        loadPart: (file, slot, partOptions) => loadPart(file, renderer, slot, built, partOptions),
+      }, { tape: built.request.tape, control: built.request.control });
+    } catch (error) {
+      lastError = error && error.message ? error.message : String(error);
+      console.warn('[uiStage] kill-cam content failed; the plate stays', error);
+      live = null;
+    }
+    if (built.disposed) { disposeLateLive(built, live); return; }
+    built.phase = 'preparing';
+    const admitted = live && Array.isArray(live.roots) ? live.roots.filter(Boolean) : [];
+    await prepareForFirstDraw(admitted, renderer, built);
+    if (built.disposed) { disposeLateLive(built, live); return; }
+    for (const group of admitted) group.visible = true;
+    built.live = live;
+    built.marks.prepared = stageNow() - built.marks.start;
+    built.hullDrawn = !!(live && live.ready === true);
+    // No tape is a designed outcome, but the status machinery needs the terminal word:
+    // 'unavailable' is what turns a staged screen's k-ready on with the plate as the
+    // final picture. 'loading' forever would leave the results screen never ready.
+    built.liveFailed = !built.hullDrawn;
+    built.phase = built.hullDrawn ? 'live' : 'no-hull';
+    return;
+  }
+
+  const hullFile = built.hullFile;
+
+  const propGroups = await Promise.all(spec.props.map(async (placement, index) => {
+    const record = await loadPart(`places/${placement.id}.glb`, renderer, 'place', built);
+    if (!record) return null;
+    const group = groupFromBlueprint(record, `${placement.id}_${index}`);
+    placeByBounds(group, placement);
+    return group;
+  }));
+
+  // The caller may release this stage while its prop set is loading. The in-flight owners are
+  // aborted by disposeBuilt; do not start the hull leg after that cancellation has settled.
+  if (built.disposed) return;
+
+  built.marks.props = stageNow() - built.marks.start;
+  built.phase = 'loading-hull';
+  const hullRecord = await loadPart(hullFile, renderer, 'hull', built);
+  built.marks.hull = stageNow() - built.marks.start;
+  let hullGroup = null;
+  if (hullRecord) {
+    hullGroup = groupFromBlueprint(hullRecord, 'UiStageHull');
+    placeByBounds(hullGroup, { ...spec.hull, sit: 'centre' });
+    hullGroup.rotation.z = spec.hull.roll || 0;
+  }
+
+  if (built.disposed) return;
+
+  built.phase = 'preparing';
+  const admitted = [...propGroups.filter(Boolean), ...(hullGroup ? [hullGroup] : [])];
+  for (let i = 0; i < propGroups.length; i++) {
+    if (propGroups[i]) setShadowRoles(propGroups[i], built.rig, spec.props[i].casts === true);
+  }
+  if (hullGroup) setShadowRoles(hullGroup, built.rig, true);
+  if (built.id === 'berth') {
+    built.bayTraffic = createStationBayTraffic(hullRecord, groupFromBlueprint, placeByBounds);
+    if (built.bayTraffic) admitted.push(...built.bayTraffic.roots);
+  }
+  await prepareForFirstDraw(admitted, renderer, built);
+  if (built.disposed) return;
+  // One reveal, one frame: every prop and the hull arrive together, so the title never shows a
+  // half-built site.
+  for (const group of admitted) group.visible = true;
+  built.marks.prepared = stageNow() - built.marks.start;
+  built.propsLoaded = propGroups.filter(Boolean).length;
+  built.hullDrawn = !!hullGroup;
+  built.phase = hullGroup ? 'live' : 'no-hull';
+  if (!hullGroup) {
+    console.warn('[uiStage] the authored hull did not load; the stage stays on its plate');
+  }
+}
+
+async function loadPart(file, renderer, slot, built = null, partOptions = null) {
+  const urls = isReleaseAssetMode()
+    ? [`${PART_RELEASE_ROOT}${file}`, `${PART_ROOT}${file}`]
+    : [`${PART_ROOT}${file}`];
+  const residencyOwner = built && built.residencyOwner;
+  for (const url of urls) {
+    if (built && built.disposed) return null;
+    try {
+      const record = await loadAuthoredPart(url, {
+        renderer,
+        slot,
+        optional: true,
+        residencyOwner,
+        isResidencyOwnerActive: residencyOwner
+          ? () => built.disposed !== true
+          : undefined,
+        ...(partOptions || {}),
+      });
+      if (built && built.disposed) return null;
+      if (record) return record;
+    } catch (error) {
+      lastError = `${url}: ${error && error.message ? error.message : error}`;
+      dedupWarn('uiStage.part-load', '[uiStage] part load failed', url, error);
+      if (built && built.disposed) return null;
+    }
+  }
+  return null;
+}
+
+function groupFromBlueprint(record, name) {
+  const root = new THREE.Group();
+  root.name = name;
+  const position = new THREE.Vector3();
+  const quaternion = new THREE.Quaternion();
+  const scale = new THREE.Vector3();
+  for (const primitive of record.primitives) {
+    const mesh = new THREE.Mesh(primitive.geometry, primitive.material);
+    mesh.name = primitive.name;
+    primitive.matrix.decompose(position, quaternion, scale);
+    mesh.position.copy(position);
+    mesh.quaternion.copy(quaternion);
+    mesh.scale.copy(scale);
+    root.add(mesh);
+  }
+  return root;
+}
+
+/**
+ * Normalise an authored part to the composition instead of trusting its own metres. `fit` is the
+ * largest dimension the frame wants; `sit` says which face of the box `at[1]` refers to.
+ */
+function placeByBounds(group, placement) {
+  group.rotation.y = placement.yaw || 0;
+  group.updateWorldMatrix(true, true);
+  const box = new THREE.Box3().setFromObject(group);
+  if (box.isEmpty()) return;
+  const size = new THREE.Vector3();
+  const centre = new THREE.Vector3();
+  box.getSize(size);
+  box.getCenter(centre);
+  const span = Math.max(size.x, size.y, size.z);
+  const factor = span > 0 && Number.isFinite(placement.fit) ? placement.fit / span : 1;
+  group.scale.setScalar(factor);
+
+  const [x, y, z] = placement.at;
+  const halfHeight = (size.y * factor) * 0.5;
+  const anchor = placement.sit === 'floor' ? y + halfHeight
+    : placement.sit === 'top' ? y - halfHeight
+      : y;
+  group.position.set(
+    x - centre.x * factor,
+    anchor - centre.y * factor,
+    z - centre.z * factor,
+  );
+}
+
+function buildSky(sky) {
+  const geometry = new THREE.SphereGeometry(SKY_RADIUS, 48, 32);
+  const material = new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    depthWrite: false,
+    fog: false,
+    toneMapped: true,
+    dithering: true,
+    uniforms: {
+      uZenith: { value: new THREE.Color(sky.zenith) },
+      uHorizon: { value: new THREE.Color(sky.horizon) },
+      uGround: { value: new THREE.Color(sky.ground) },
+      uSoftness: { value: sky.horizonSoftness },
+    },
+    vertexShader: `
+      varying vec3 vDir;
+      void main() {
+        vDir = normalize(position);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    // Three stops by elevation. The band at the horizon is the whole point of the dusk reading, so
+    // it gets its own falloff rather than a straight lerp from zenith to ground.
+    fragmentShader: `
+      uniform vec3 uZenith;
+      uniform vec3 uHorizon;
+      uniform vec3 uGround;
+      uniform float uSoftness;
+      varying vec3 vDir;
+      #include <common>
+      #include <dithering_pars_fragment>
+      void main() {
+        // A camera framed on the ground only ever sees the lowest slice of the shell, so the
+        // whole dusk transition has to happen inside it: uSoftness is the elevation the warm band
+        // survives to, not a hemisphere-wide lerp. A gradient spread over 90 degrees reads as one
+        // flat wash at 30 and loses the cold sky the direction is built on.
+        float h = vDir.y;
+        float reach = max(0.04, uSoftness);
+        float up = clamp(h / reach, 0.0, 1.0);
+        float down = clamp(-h / (reach * 1.6), 0.0, 1.0);
+        vec3 base = h >= 0.0
+          ? mix(uHorizon, uZenith, up * up)
+          : mix(uHorizon, uGround, down * down);
+        gl_FragColor = vec4(base, 1.0);
+        // A raw ShaderMaterial gets none of three's output chunks, so without these two lines the
+        // sky is written in the LINEAR working space straight into an sRGB framebuffer: an authored
+        // violet zenith arrives on screen as near-black red-brown and the whole dusk reads as one
+        // flat wash. Every lit material in the scene goes through this; the sky has to as well.
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+        // The stage draws straight to the 8-bit backbuffer, bypassing the bloom composite's
+        // POST_DITHER_LSB — without this chunk the smooth dusk gradient quantizes into steps.
+        #include <dithering_fragment>
+      }
+    `,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = 'UiStageSky';
+  mesh.frustumCulled = false;
+  mesh.renderOrder = -1000;
+  // The shell rides the camera. Anchored at the origin its horizon sits at world y=0, so a camera
+  // ten metres up spends the whole frame looking at the shell's GROUND half and the dusk band never
+  // appears — the picture goes one flat orange. Riding the camera puts the horizon at eye level,
+  // which is where a horizon is.
+  mesh.userData.uiStageFollowsCamera = true;
+  mesh.userData.uiStageOwned = true;
+  return mesh;
+}
+
+/**
+ * Distant stars at sky depth: the one camera-facing point the visual standard admits, and only
+ * while tiny and bright. Seeded, so a scene composes identically on every boot.
+ */
+function buildStars(sky) {
+  const count = Math.round(900 * sky.stars);
+  const positions = new Float32Array(count * 3);
+  const random = seededRandom(sky.starSeed);
+  const radius = SKY_RADIUS * 0.94;
+  for (let i = 0; i < count; i++) {
+    // Above the horizon only; the ground half of the shell is rock and haze.
+    const elevation = Math.asin(0.04 + random() * 0.96);
+    const azimuth = random() * Math.PI * 2;
+    const cos = Math.cos(elevation);
+    positions[i * 3] = Math.cos(azimuth) * cos * radius;
+    positions[i * 3 + 1] = Math.sin(elevation) * radius;
+    positions[i * 3 + 2] = Math.sin(azimuth) * cos * radius;
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const material = new THREE.PointsMaterial({
+    color: 0xd8e4ff,
+    size: 1.6,
+    sizeAttenuation: false,
+    transparent: true,
+    opacity: 0.85,
+    depthWrite: false,
+    fog: false,
+  });
+  const points = new THREE.Points(geometry, material);
+  points.name = 'UiStageStars';
+  points.frustumCulled = false;
+  points.renderOrder = -999;
+  points.userData.uiStageFollowsCamera = true;
+  points.userData.uiStageOwned = true;
+  return points;
+}
+
+function buildFloor(floor) {
+  const geometry = new THREE.PlaneGeometry(floor.size, floor.size);
+  const material = new THREE.MeshStandardMaterial({
+    color: floor.color,
+    roughness: floor.roughness,
+    metalness: 0.05,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = 'UiStageFloor';
+  mesh.rotation.x = -Math.PI * 0.5;
+  mesh.position.y = floor.y;
+  mesh.receiveShadow = true;
+  mesh.userData.uiStageOwned = true;
+  return mesh;
+}
+
+function buildLights(spec) {
+  const lights = [];
+  const key = new THREE.DirectionalLight(spec.key.color, spec.key.intensity);
+  key.position.set(...spec.key.dir).normalize().multiplyScalar(160);
+  key.castShadow = spec.key.shadow === true;
+  if (key.castShadow) {
+    key.shadow.mapSize.set(1024, 1024);
+    const extent = 90;
+    key.shadow.camera.left = -extent;
+    key.shadow.camera.right = extent;
+    key.shadow.camera.top = extent;
+    key.shadow.camera.bottom = -extent;
+    key.shadow.camera.near = 20;
+    key.shadow.camera.far = 420;
+    key.shadow.bias = -0.0012;
+    key.shadow.normalBias = 0.05;
+    // Authored stage casters are static for the mount's lifetime — the hull and props are
+    // placed once and the light never moves — so the depth map bakes once when the content
+    // is admitted (`prepareForFirstDraw` arms needsUpdate for its warm-up render) and the
+    // light is skipped after that. Live-owned scenes keep dynamic shadows.
+    if (spec.live == null) key.shadow.autoUpdate = false;
+  }
+  lights.push(key);
+  lights.push(key.target);
+
+  const rim = new THREE.DirectionalLight(spec.rim.color, spec.rim.intensity);
+  rim.position.set(...spec.rim.dir).normalize().multiplyScalar(160);
+  lights.push(rim);
+  lights.push(new THREE.HemisphereLight(spec.hemi.sky, spec.hemi.ground, spec.hemi.intensity));
+  lights.push(new THREE.AmbientLight(spec.ambient.color, spec.ambient.intensity));
+  for (const practical of spec.practicals || []) {
+    if (!(practical.intensity > 0)) continue;
+    const point = new THREE.PointLight(practical.color, practical.intensity, practical.distance, 2);
+    point.position.set(...practical.at);
+    lights.push(point);
+  }
+  const depthMaterial = key.castShadow
+    ? new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking })
+    : null;
+  return { lights, shadows: key.castShadow, depthMaterial, shadowLight: key.castShadow ? key : null };
+}
+
+/**
+ * Who casts and who only receives.
+ *
+ * Everything casting is the expensive default: each caster needs its own depth program, and those
+ * are NOT covered by compileAsync — they link inside the first shadowed draw, which is a stall the
+ * player watches. Only the objects whose shadow the composition is actually about cast one. On the
+ * title that is the hull and the rock it stands on; the mast, the worklight and the cargo are
+ * silhouettes against the sky and lose nothing.
+ */
+function setShadowRoles(group, rig, casts) {
+  if (!rig.shadows) return;
+  group.traverse((node) => {
+    if (!node.isMesh) return;
+    node.castShadow = casts === true;
+    node.receiveShadow = true;
+    // ONE depth program for the whole shadow pass. The shadow map builds its own depth material per
+    // caster material, and those are the one thing compileAsync cannot reach: they link inside the
+    // first shadowed draw. An authored hull carries dozens of materials, so that was four seconds
+    // of frozen title. A shared custom depth material collapses it to a single program.
+    if (casts === true) node.customDepthMaterial = rig.depthMaterial;
+  });
+}
+
+/**
+ * Admit the whole set at once, IN the scene, then wait for it as a pool.
+ *
+ * Two things made this the slowest part of the packet, and both are worth naming because both look
+ * correct:
+ *
+ * 1. Compiling a leaf on its own (`compileAsync(leaf, camera, scene)`) builds the program against
+ *    the lights `leaf` can see, and a detached leaf can see none. Every program was therefore
+ *    compiled unlit and relinked inside the first real draw. The scene is added to the graph first,
+ *    invisible, and compiled as a scene so the light setup is the one the draw will use.
+ * 2. A program is keyed on the renderer's shadow flag too, so the flag is set to the draw's value
+ *    before compiling and put back afterwards.
+ *
+ * Measured at the title, both fixed: the first stage frame moved from a twelve-second main-thread
+ * stall to well under a second, and the scene goes from requested to live in about three.
+ *
+ * That "well under a second" is still the whole main thread while the station screen is opening,
+ * which is why the berth is now prepared during the approach instead (see the prewarm note at the
+ * top of the file): same admission, earlier window, uploads on the sliced lane, draw off-frame.
+ */
+async function prepareForFirstDraw(roots, renderer, built) {
+  // In the graph but not yet on screen: three compiles what a scene CONTAINS, and draws what a
+  // scene SHOWS. This is the only way to get the real light setup without showing a cold frame.
+  for (const root of roots) {
+    root.visible = false;
+    built.scene.add(root);
+  }
+
+  built.admitted = roots.slice();
+
+  const shadowsWere = renderer.shadowMap.enabled;
+  renderer.shadowMap.enabled = built.rig.shadows;
+  let programs = 0;
+  try {
+    if (typeof renderer.compileAsync === 'function') {
+      // The owned-timer wait aborts cleanly when the stage is disposed mid-link; Three's own poll
+      // throws on the disposed materials and never resolves, which is the New Game teardown case.
+      await compileScenePipelinesSafely(renderer, built.scene, built.camera, built.scene);
+    } else {
+      renderer.compile(built.scene, built.camera);
+    }
+    programs = renderer.info && renderer.info.programs ? renderer.info.programs.length : 0;
+  } finally {
+    renderer.shadowMap.enabled = shadowsWere;
+  }
+  if (built.disposed) return;
+
+  // Textures still upload one chunk at a time: an authored set carries well over a hundred, and
+  // uploading them inside the draw is the other way to lose a second of the player's attention.
+  const textures = new Set();
+  for (const root of roots) {
+    root.traverse((node) => {
+      if (!node.material) return;
+      const materials = Array.isArray(node.material) ? node.material : [node.material];
+      for (const material of materials) {
+        for (const value of Object.values(material)) {
+          if (value && value.isTexture) textures.add(value);
+        }
+      }
+    });
+  }
+  // A prewarm is built while the player is flying, where a twelve-texture burst on a timer is a
+  // hitch. The renderer's residency lane uploads textures AND geometry between presents behind
+  // the pending latch; it is the same lane every mid-flight authored root already rides. It can
+  // decline (the opening cohort still owns admission), and then the chunked upload stands.
+  let lane = 'chunked';
+  if (built.residencyLane && roots.length > 0) {
+    try {
+      const result = await built.residencyLane(roots, { isActive: () => built.disposed !== true });
+      if (result && result.skipped !== true) lane = 'residency';
+    } catch (error) {
+      if (built.disposed) return;
+      console.warn('[uiStage] residency lane declined the prewarm; uploading in chunks', error);
+    }
+    if (built.disposed) return;
+  }
+  if (lane === 'chunked') {
+    const UPLOAD_CHUNK = 12;
+    let uploaded = 0;
+    for (const texture of textures) {
+      if (built.disposed) return;
+      renderer.initTexture(texture);
+      if (++uploaded % UPLOAD_CHUNK === 0) await yieldToBrowser();
+    }
+    if (built.disposed) return;
+  }
+  built.prepared = { programs, textures: textures.size, lane };
+
+  // One draw before the reveal. With a single shared depth program the shadow pass is cheap, and
+  // it is also the moment the casters exist, so an autoUpdate-latched light bakes its only map
+  // here; the draw itself binds every buffer and links every residual variant. A stage under a
+  // plate takes it now, inside the window the plate is covering. A prewarm is flying: its draw
+  // waits for `warmUiStagePrewarm`, a flight frame that draws the world over it.
+  if (built.rig.shadows || built.prewarm) {
+    // A title can finish linking after New Game has covered it. Keep its prepared roots
+    // cached for Back, but do not pay a hidden first-use draw (and residual shader links)
+    // during the form's opening. presentUiStage drains this warm when it is requested again.
+    if (built.prewarm || (built.isRequested && !built.isRequested())) {
+      built.warmupPending = true;
+      return;
+    }
+    warmupStage(built, renderer);
+    if (built.disposed) return;
+    await yieldToBrowser();
+  }
+}
+
+/**
+ * The warm-up draw: every admitted root shown for exactly one render, the renderer's state handed
+ * back piece by piece. Under the plate the canvas is covered; inside a flight frame the flight
+ * draw follows in the same task, so neither picture is ever presented.
+ */
+function warmupStage(built, renderer) {
+  built.warmupPending = false;
+  const roots = built.admitted || [];
+  const shown = roots.map((root) => root.visible);
+  if (built.rig.shadows && built.rig.shadowLight) built.rig.shadowLight.shadow.needsUpdate = true;
+  for (const root of roots) root.visible = true;
+  const previousTarget = renderer.getRenderTarget();
+  const previousAutoClear = renderer.autoClear;
+  const previousShadows = renderer.shadowMap.enabled;
+  const previousClear = renderer.getClearColor(_stageClear);
+  const previousClearAlpha = renderer.getClearAlpha();
+  try {
+    renderer.shadowMap.enabled = built.rig.shadows;
+    renderer.setRenderTarget(null);
+    renderer.autoClear = true;
+    renderer.setClearColor(built.spec.sky.ground, 1);
+    renderer.render(built.scene, built.camera);
+  } catch (error) {
+    dedupWarn('uiStage.warm-draw', '[uiStage] warm-up draw failed; the first frame links it instead', error);
+  } finally {
+    renderer.setRenderTarget(previousTarget);
+    renderer.autoClear = previousAutoClear;
+    renderer.shadowMap.enabled = previousShadows;
+    renderer.setClearColor(previousClear, previousClearAlpha);
+  }
+  for (let i = 0; i < roots.length; i++) roots[i].visible = shown[i];
+  built.marks.warmup = stageNow() - built.marks.start;
+  if (built.prepared && typeof built.prepared === 'object') built.prepared.warm = true;
+}
+
+/**
+ * The authored camera move: a slow sway either side of the approved framing, never a turntable.
+ * The frame that was picked stays the frame; the world just breathes.
+ */
+function applyCamera(built, time) {
+  const { camera, spec } = built;
+  const period = spec.drift.period;
+  const phase = period > 0 ? (time / period) * Math.PI * 2 : 0;
+  const yaw = Math.sin(phase) * (spec.drift.yaw * Math.PI / 180) * 60;
+  const lift = Math.sin(phase * 0.6) * spec.drift.pitch * 60;
+
+  _stageTarget.fromArray(spec.camera.target);
+  _stageOffset.fromArray(spec.camera.at).sub(_stageTarget);
+  _stageOffset.applyAxisAngle(_stageUp, yaw);
+  _stageOffset.y += lift;
+  camera.position.copy(_stageTarget).add(_stageOffset);
+  camera.lookAt(_stageTarget);
+}
+
+function drawStage(built, renderer, state, dt = 0, target = null) {
+  built.bayTraffic?.update(stationLifeClockFor(built.request), stageNow(), motionAllowed(state));
+  const size = renderer.getSize(_stageSize);
+  const aspect = target ? target.width / target.height : size.y > 0 ? size.x / size.y : 16 / 9;
+  if (Math.abs(built.camera.aspect - aspect) > 1e-4) {
+    built.camera.aspect = aspect;
+    built.camera.updateProjectionMatrix();
+  }
+  // Live content poses its world first and may own the camera outright (the attract's
+  // orbit follows the fight, not the authored drift). A throwing live update must not
+  // kill the draw — the frame still renders whatever was posed last.
+  if (built.live && typeof built.live.update === 'function') {
+    try { built.live.update(built, dt, state); }
+    catch (error) {
+      if (!built.liveUpdateWarned) { built.liveUpdateWarned = true; console.warn('[uiStage] live update failed', error); }
+    }
+  }
+  if (!(built.live && built.live.controlsCamera)) applyCamera(built, built.clock);
+  for (const rider of built.skyRiders) rider.position.copy(built.camera.position);
+  if (built.rig.shadows && built.hullDrawn && built.shadowsRendered !== true) {
+    built.shadowsRendered = true;
+  }
+
+  // Borrow the live renderer for exactly one draw, then hand every piece of its state back. The
+  // flight path must find the renderer it left: a stage that leaks its render target, its clear
+  // colour or its shadow flag would change the next flight frame.
+  const previousTarget = renderer.getRenderTarget();
+  const previousAutoClear = renderer.autoClear;
+  const previousShadows = renderer.shadowMap.enabled;
+  const previousClear = renderer.getClearColor(_stageClear);
+  const previousClearAlpha = renderer.getClearAlpha();
+  try {
+    renderer.setRenderTarget(target);
+    renderer.autoClear = true;
+    renderer.shadowMap.enabled = built.rig.shadows;
+    renderer.setClearColor(built.spec.sky.ground, 1);
+    renderer.render(built.scene, built.camera);
+  } finally {
+    renderer.setRenderTarget(previousTarget);
+    renderer.autoClear = previousAutoClear;
+    renderer.shadowMap.enabled = previousShadows;
+    renderer.setClearColor(previousClear, previousClearAlpha);
+  }
+  built.frames++;
+  if (state && state.render) state.render.uiStageFrames = (state.render.uiStageFrames || 0) + 1;
+}
+
+/** A fresh tape render on the existing context; no resize or second WebGL canvas. */
+function captureUiStageFrame(built, renderer, state, width, height) {
+  if (built.disposed || !built.hullDrawn || !built.live) return null;
+  const w = Math.max(1, Math.min(1280, width | 0)), h = Math.max(1, Math.min(720, height | 0));
+  if (!built.captureTarget || built.captureTarget.width !== w || built.captureTarget.height !== h) {
+    built.captureTarget?.dispose();
+    built.captureTarget = new THREE.WebGLRenderTarget(w, h, { depthBuffer: true });
+    // Video encoders consume display RGB, matching the visible canvas. A default
+    // linear render target would bake the same scene several stops too dark.
+    built.captureTarget.texture.colorSpace = renderer.outputColorSpace || THREE.SRGBColorSpace;
+    built.captureRaw = new Uint8Array(w * h * 4);
+    built.capturePixels = new Uint8ClampedArray(w * h * 4);
+  }
+  const aspect = built.camera.aspect;
+  try {
+    drawStage(built, renderer, state, 0, built.captureTarget);
+    renderer.readRenderTargetPixels(built.captureTarget, 0, 0, w, h, built.captureRaw);
+    // WebGL rows start at the bottom. The 2D/video contract starts at the top.
+    const row = w * 4;
+    for (let y = 0; y < h; y++) built.capturePixels.set(built.captureRaw.subarray((h - 1 - y) * row, (h - y) * row), y * row);
+    return { width: w, height: h, data: built.capturePixels };
+  } finally { built.camera.aspect = aspect; built.camera.updateProjectionMatrix(); }
+}
+
+/** Presentation-side clock for the admission milestones. Never on the simulation path. */
+function stageNow() {
+  return typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : 0;
+}
+
+/** Deterministic composition: the same stars every boot, no ambient randomness. */
+function seededRandom(seed) {
+  let value = (seed >>> 0) || 1;
+  return () => {
+    value = (value * 1664525 + 1013904223) >>> 0;
+    return value / 4294967296;
+  };
+}

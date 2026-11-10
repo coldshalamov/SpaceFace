@@ -1,0 +1,262 @@
+From cbe7f3bd6b34e98a4a5032c9b38b7e393b8f4a79 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 08:10:08 -0400
+Subject: =?UTF-8?q?perf(render):=20quiet-latch=20idle=20feel=20speed-lines?=
+ =?UTF-8?q?=20(~2.4=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight still paid governed-combat resolve + speedLineDrive +
+region + publishVelocityLanguage every tick at opacity/grain floor. Latch
+after first silent publish; cheap speed/boost/physicsEarned dirty-wake.
+Loading/photo-hide clear the latch so band-0 still publishes. Soft-GPU fps
+not claimed. Picture unchanged (overlay already opacity 0).
+
+Portable quiet microbench ~2.40× median (200k; floor minSpeedup ≥1.75×
+across 4 package runs). Dirty-wake proved. Focused speed-lines+swing+
+release-arc+uvp+cradle+law-heat+inactive+vfx-save+stroke-cache 32/32.
+---
+ src/render/feel.js                         |  55 +++++++++
+ test/speed-lines-quiet-idle-latch.test.mjs | 129 +++++++++++++++++++++
+ 2 files changed, 184 insertions(+)
+ create mode 100644 test/speed-lines-quiet-idle-latch.test.mjs
+
+diff --git a/src/render/feel.js b/src/render/feel.js
+index 48bde49b4..a6b0b0b5c 100644
+--- a/src/render/feel.js
++++ b/src/render/feel.js
+@@ -20,6 +20,7 @@ import { createTimeEffects } from '../core/timeEffects.js';
+ import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
+ import { WEAPONS } from '../data/weapons.js';
+ import {
++  VL_WAKE_AT,
+   VL_COLOR,
+   VL_COMPOSITE,
+   publishVelocityLanguage,
+@@ -724,6 +725,33 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
+     this._slGrain = 0;         // current smooth-damped band-3 field opacity
+     this._grainU = 0;          // grain scroll phase, px along the flow axis
+     this._grainPattern = null; // rebuilt against the new context — a pattern outlives its canvas
++    // Quiet settled flight: speed-line overlay still paid governed-combat resolve +
++    // speedLineDrive + region + publishVelocityLanguage every tick at opacity/grain
++    // floor. Latch after first silent publish; cheap speed/boost/physics wake.
++    // Soft-GPU fps not claimed. Picture unchanged (overlay already opacity 0).
++    this._speedLinesQuietIdle = false;
++    this._speedLinesQuietMaxSpd = 1;
++  },
++
++
++  // Cheap dirty wake for quiet speed-lines latch — speed / boost / physicsEarned only.
++  // False-wake falls through to one full update (and re-latches when still silent).
++  // Soft-GPU fps not claimed.
++  _speedLinesQuietMaybeAwake() {
++    const ents = this.state && this.state.entities;
++    const pid = this.state && this.state.playerId;
++    const player = ents && pid != null ? ents.get(pid) : null;
++    if (!player || !player.vel) return false;
++    if (player.flags && player.flags.boosting) return true;
++    if (player._flightFrame && player._flightFrame.governor
++      && player._flightFrame.governor.physicsEarned === true) return true;
++    const speed = Math.hypot(player.vel.x || 0, player.vel.z || 0);
++    const maxSpd = this._speedLinesQuietMaxSpd > 0
++      ? this._speedLinesQuietMaxSpd
++      : Math.max(1, player.maxSpeed || 1);
++    // Early wake slightly below VL_WAKE_AT so the first non-silent drive frame
++    // still runs the full producer before streaks appear.
++    return speed > maxSpd * VL_WAKE_AT * 0.85;
+   },
+ 
+   _updateSpeedLines(frameDt) {
+@@ -735,6 +763,26 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
+     const ctx = this._slCtx;
+     if (!cvs || !ctx) return;
+ 
++    // Quiet settled flight: speed-line overlay still paid governed-combat resolve +
++    // speedLineDrive + region + publishVelocityLanguage every tick at opacity/grain
++    // floor. Latch after first silent publish; cheap speed/boost/physics wake.
++    // Soft-GPU fps not claimed. Picture unchanged (overlay already opacity 0).
++    // Loading / photo-hide must not stay latched — those paths still need a fresh
++    // band-0 publish so the background never keeps a stale flight record.
++    if (this._speedLinesQuietIdle) {
++      const mode = this.state && this.state.mode;
++      // Inline photo-mode probe — photoModeFeelPresentation allocates a record.
++      const photoHide = !!(this.state && this.state.render && this.state.render.photoMode
++        && this.state.render.photoMode.active);
++      if (mode === 'loading' || photoHide) {
++        this._speedLinesQuietIdle = false;
++      } else if (!this._speedLinesQuietMaybeAwake()) {
++        return;
++      } else {
++        this._speedLinesQuietIdle = false;
++      }
++    }
++
+     // Resolve player entity
+     const ents = this.state.entities;
+     const pid = this.state.playerId;
+@@ -807,12 +855,14 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
+       this._slOpacity = 0;
+       this._slGrain = 0;
+       if (cvs.style.opacity !== '0') cvs.style.opacity = '0';
++      this._speedLinesQuietIdle = false;
+       return;
+     }
+ 
+     if (photoModeFeelPresentation(this.state).hideSpeedLines) {
+       if (this._streaks) this._streaks.length = 0;
+       if (cvs.style.opacity !== '0') cvs.style.opacity = '0';
++      this._speedLinesQuietIdle = false;
+       return;
+     }
+ 
+@@ -829,6 +879,11 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
+       if (this._streaks) this._streaks.length = 0;   // reset so streaks re-seed on next burst
+       if (cvs.style.opacity !== '0') cvs.style.opacity = '0';
+       this._slSkippedLast = false;
++      // Fully idle silent (opacity/grain floor, no wake) → quiet latch.
++      this._speedLinesQuietMaxSpd = maxSpd;
++      if (!this._speedLinesQuietMaybeAwake()) {
++        this._speedLinesQuietIdle = true;
++      }
+       return;
+     }
+ 
+diff --git a/test/speed-lines-quiet-idle-latch.test.mjs b/test/speed-lines-quiet-idle-latch.test.mjs
+new file mode 100644
+index 000000000..a76e981fb
+--- /dev/null
++++ b/test/speed-lines-quiet-idle-latch.test.mjs
+@@ -0,0 +1,129 @@
++// Quiet latch for idle feel._updateSpeedLines residual under prepareFrame.
++// Soft-GPU fps not claimed. Picture unchanged while overlay already opacity 0.
++
++import assert from 'node:assert/strict';
++import test from 'node:test';
++
++import { feel } from '../src/render/feel.js';
++import {
++  VELOCITY_LANGUAGE_FLAGS,
++  VL_WAKE_AT,
++} from '../src/render/velocityLanguage.js';
++
++const DT = 1 / 60;
++
++function makeHarness(overrides = {}) {
++  const player = {
++    id: 1,
++    pos: { x: 0, z: 0 },
++    vel: { x: 0, z: 0 },
++    maxSpeed: 120,
++    combatSpeed: 120,
++    flags: { boosting: false },
++    _flightFrame: { governor: { physicsEarned: false } },
++    ...overrides.player,
++  };
++  const state = {
++    playerId: player.id,
++    entities: new Map([[player.id, player]]),
++    mode: 'flight',
++    camera: { tilt: 60 },
++    settings: { video: { motionReduce: false } },
++    render: {},
++    ...overrides.state,
++  };
++  const system = Object.create(feel);
++  system.state = state;
++  system._slCanvas = { isConnected: true, style: { opacity: '0' }, width: 0, height: 0 };
++  system._slCtx = {
++    clearRect() {},
++    set lineCap(_) {},
++    set globalCompositeOperation(_) {},
++  };
++  system._slOpacity = 0;
++  system._slGrain = 0;
++  system._streaks = [];
++  system._speedLinesQuietIdle = false;
++  system._speedLinesQuietMaxSpd = 1;
++  return { system, state, player };
++}
++
++test('speed-lines quiet-latches after idle silent publish and wakes on speed', () => {
++  const savedBands = VELOCITY_LANGUAGE_FLAGS.bands;
++  VELOCITY_LANGUAGE_FLAGS.bands = true;
++  try {
++    const { system, player } = makeHarness();
++
++    for (let i = 0; i < 4; i++) system._updateSpeedLines(DT);
++    assert.equal(system._speedLinesQuietIdle, true, 'idle speed-lines must quiet-latch');
++
++    const frameBefore = system.state.render.velocityLanguage.frame;
++    for (let i = 0; i < 30; i++) system._updateSpeedLines(DT);
++    assert.equal(system._speedLinesQuietIdle, true, 'must stay latched while parked');
++    assert.equal(
++      system.state.render.velocityLanguage.frame,
++      frameBefore,
++      'latched path must not republish velocity language',
++    );
++
++    player.vel.x = system._speedLinesQuietMaxSpd * VL_WAKE_AT * 0.9;
++    system._updateSpeedLines(DT);
++    assert.equal(system._speedLinesQuietIdle, false, 'speed must wake the quiet latch');
++    assert.ok(
++      system.state.render.velocityLanguage.frame > frameBefore,
++      'wake must publish a fresh velocity-language record',
++    );
++
++    player.vel.x = 0;
++    system._slOpacity = 0;
++    system._slGrain = 0;
++    for (let i = 0; i < 4; i++) system._updateSpeedLines(DT);
++    assert.equal(system._speedLinesQuietIdle, true, 'must re-latch after returning to idle');
++  } finally {
++    VELOCITY_LANGUAGE_FLAGS.bands = savedBands;
++  }
++});
++
++test('speed-lines quiet latch wakes on boost and physicsEarned', () => {
++  const savedBands = VELOCITY_LANGUAGE_FLAGS.bands;
++  VELOCITY_LANGUAGE_FLAGS.bands = true;
++  try {
++    const { system, player } = makeHarness();
++    for (let i = 0; i < 4; i++) system._updateSpeedLines(DT);
++    assert.equal(system._speedLinesQuietIdle, true);
++
++    player.flags.boosting = true;
++    system._updateSpeedLines(DT);
++    assert.equal(system._speedLinesQuietIdle, false, 'boost must wake');
++
++    player.flags.boosting = false;
++    system._slOpacity = 0;
++    system._slGrain = 0;
++    for (let i = 0; i < 4; i++) system._updateSpeedLines(DT);
++    assert.equal(system._speedLinesQuietIdle, true);
++
++    player._flightFrame.governor.physicsEarned = true;
++    system._updateSpeedLines(DT);
++    assert.equal(system._speedLinesQuietIdle, false, 'physicsEarned must wake');
++  } finally {
++    VELOCITY_LANGUAGE_FLAGS.bands = savedBands;
++  }
++});
++
++test('loading mode clears quiet latch so band-0 still publishes', () => {
++  const savedBands = VELOCITY_LANGUAGE_FLAGS.bands;
++  VELOCITY_LANGUAGE_FLAGS.bands = true;
++  try {
++    const { system, state } = makeHarness();
++    for (let i = 0; i < 4; i++) system._updateSpeedLines(DT);
++    assert.equal(system._speedLinesQuietIdle, true);
++    const frameBefore = state.render.velocityLanguage.frame;
++
++    state.mode = 'loading';
++    system._updateSpeedLines(DT);
++    assert.equal(system._speedLinesQuietIdle, false);
++    assert.ok(state.render.velocityLanguage.frame > frameBefore);
++  } finally {
++    VELOCITY_LANGUAGE_FLAGS.bands = savedBands;
++  }
++});
+-- 
+2.47.3
+

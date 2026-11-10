@@ -1,0 +1,823 @@
+// Bounded derived publication from authoritative entity owners to presentation.
+// Records retain stable IDs and scalars only; the simulation entity graph remains the sole authority.
+
+export const PRESENTATION_JOURNAL_KINDS = Object.freeze({
+  SPAWN: 'spawn',
+  DESTROY: 'destroy',
+  TRANSFORM: 'transform',
+  VISUAL: 'visual',
+});
+
+const DEFAULT_RECORD_CAPACITY = 16384;
+const DEFAULT_ENTITY_CAPACITY = 65536;
+const EMPTY_OBJECT = Object.freeze({});
+
+function finite(value) {
+  return Number.isFinite(value) ? value : 0;
+}
+
+function nextCounter(value) {
+  const next = (value + 1) >>> 0;
+  return next === 0 ? 1 : next;
+}
+
+export function createPresentationJournalRecord() {
+  return {
+    tick: 0,
+    sequence: 0,
+    kind: null,
+    entityId: 0,
+    generation: 0,
+    revision: 0,
+    entityType: null,
+    x: 0,
+    y: 0,
+    z: 0,
+    prevX: 0,
+    prevY: 0,
+    prevZ: 0,
+    rot: 0,
+    bank: 0,
+    pitch: 0,
+    prevRot: 0,
+    prevBank: 0,
+    prevPitch: 0,
+    visualRevision: 0,
+  };
+}
+
+function copyRecord(target, source) {
+  if (!target || typeof target !== 'object') {
+    throw new TypeError('PresentationJournal requires a caller-owned record');
+  }
+  target.tick = source.tick;
+  target.sequence = source.sequence;
+  target.kind = source.kind;
+  target.entityId = source.entityId;
+  target.generation = source.generation;
+  target.revision = source.revision;
+  target.entityType = source.entityType;
+  target.x = source.x;
+  target.y = source.y;
+  target.z = source.z;
+  target.prevX = source.prevX;
+  target.prevY = source.prevY;
+  target.prevZ = source.prevZ;
+  target.rot = source.rot;
+  target.bank = source.bank;
+  target.pitch = source.pitch;
+  target.prevRot = source.prevRot;
+  target.prevBank = source.prevBank;
+  target.prevPitch = source.prevPitch;
+  target.visualRevision = source.visualRevision;
+  return target;
+}
+
+function sourceEntityId(source) {
+  if (Number.isSafeInteger(source) && source > 0) return source;
+  return source && Number.isSafeInteger(source.id) && source.id > 0 ? source.id : 0;
+}
+
+function fillPose(record, source) {
+  const value = source && typeof source === 'object' ? source : EMPTY_OBJECT;
+  const pos = value.pos && typeof value.pos === 'object' ? value.pos : EMPTY_OBJECT;
+  const prevPos = value.prevPos && typeof value.prevPos === 'object' ? value.prevPos : pos;
+  record.entityType = typeof value.type === 'string' ? value.type : null;
+  record.x = finite(pos.x);
+  record.y = finite(pos.y);
+  record.z = finite(pos.z);
+  record.prevX = Number.isFinite(prevPos.x) ? prevPos.x : record.x;
+  record.prevY = Number.isFinite(prevPos.y) ? prevPos.y : record.y;
+  record.prevZ = Number.isFinite(prevPos.z) ? prevPos.z : record.z;
+  record.rot = finite(value.rot);
+  record.bank = finite(value.bank);
+  record.pitch = finite(value.pitch);
+  record.prevRot = Number.isFinite(value.prevRot) ? value.prevRot : record.rot;
+  record.prevBank = Number.isFinite(value.prevBank) ? value.prevBank : record.bank;
+  record.prevPitch = Number.isFinite(value.prevPitch) ? value.prevPitch : record.pitch;
+  record.visualRevision = Number.isSafeInteger(value.presentationVisualRevision)
+    && value.presentationVisualRevision >= 0
+    ? value.presentationVisualRevision
+    : 0;
+}
+
+function poseChanged(entity) {
+  if (!entity || entity.alive === false) return false;
+  const pos = entity.pos || EMPTY_OBJECT;
+  const prevPos = entity.prevPos || EMPTY_OBJECT;
+  return finite(pos.x) !== finite(prevPos.x)
+    || finite(pos.y) !== finite(prevPos.y)
+    || finite(pos.z) !== finite(prevPos.z)
+    || finite(entity.rot) !== finite(entity.prevRot)
+    || finite(entity.bank) !== finite(entity.prevBank)
+    || finite(entity.pitch) !== finite(entity.prevPitch);
+}
+
+/**
+ * Create one bounded journal. `journalStart`/`journalEnd` spans are `(start, end]` sequence ranges.
+ * Transport publishers mark copied records with `markTransferredThrough`; presentation ACKs
+ * release them with `discardThrough`. Only records beyond the transfer cursor can coalesce.
+ * Overflow never changes gameplay: retained records are discarded, a rebuild is requested, and
+ * publication resumes only after `rebuildFrom` emits a full current-entity spawn set.
+ */
+export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, options = {}) {
+  const size = Math.max(1, Math.floor(Number.isFinite(capacity)
+    ? capacity
+    : DEFAULT_RECORD_CAPACITY));
+  const initialEntityCapacity = Math.max(
+    16,
+    Math.floor(Number.isFinite(options.entityCapacity)
+      ? options.entityCapacity
+      : DEFAULT_ENTITY_CAPACITY),
+  );
+  // Writer-side eligibility: entities the rebuild collect set can never republish
+  // (e.g. mesh-less projectile lanes) must be skipped silently here, else a spawn
+  // suppressed during a pending rebuild leaves the entity permanently journaled-
+  // out — every later transform trips '*-without-spawn' → rebuild → suppress,
+  // a once-per-tick rebuild storm for the entity's remaining lifetime.
+  const isEntityJournaled = typeof options.isEntityJournaled === 'function'
+    ? options.isEntityJournaled
+    : () => true;
+  // Entities whose spawn actually recorded. Eligibility flags are mutable post-spawn
+  // (the renderer latches _noMesh after build failures), so a suppressed destroy must
+  // only apply to entities that were never journaled — a journaled entity that loses
+  // eligibility mid-life still needs its destroy to close the generation.
+  const journaledEntities = new WeakSet();
+  const records = Array.from({ length: size }, () => createPresentationJournalRecord());
+
+  let generations = new Uint32Array(initialEntityCapacity + 1);
+  let activeGenerations = new Uint32Array(initialEntityCapacity + 1);
+  let revisions = new Uint32Array(initialEntityCapacity + 1);
+  let lastTransformSequence = new Float64Array(initialEntityCapacity + 1);
+  let lastVisualSequence = new Float64Array(initialEntityCapacity + 1);
+  // Newest appended record per entity, any kind — the tail of the forward
+  // same-entity chain threaded through slot.nextEntitySeq at append time.
+  let lastAnySequence = new Float64Array(initialEntityCapacity + 1);
+  let highestEntityId = 0;
+
+  let read = 0;
+  let write = 0;
+  let count = 0;
+  let writeSequence = 0;
+  let lastRecordTick = -1;
+  let lastDiscardedSequence = 0;
+  // Transfer copies leave the writer before presentation ACK frees their retained
+  // records. A later tick must append beyond this cursor rather than mutate a pose
+  // that the next transfer range will exclude.
+  let lastTransferredSequence = 0;
+  let rebuildRequired = false;
+  // True only while a stepped rebuild is suspended between presents — a foreign write
+  // landing in that window is dropped by the same rebuildRequired early-outs it would
+  // hit in a sync rebuild, but also flags the attempt so it re-collects instead of
+  // committing a set that predates the dropped write.
+  let rebuildInProgress = false;
+  let rebuildInvalidatedDuringSteps = false;
+  // Entity ids the suspended stepped rebuild collected — a suppressed transform/visual
+  // write for one of them re-derives on that entity's next write, so only writes for
+  // entities outside the set (and destroys, which never re-write) must invalidate.
+  let rebuildSourceIds = null;
+  // …except a member whose spawn row the publish already minted: its suppressed write
+  // would never replay. The commit tail re-emits live transform+visual for every id
+  // collected here (publish progress is tracked in rebuildPublishedIds; sources in
+  // rebuildSourceEntities).
+  let rebuildSourceEntities = null;
+  let rebuildPublishedIds = null;
+  let rebuildStalePublishedIds = null;
+  // Suppressed destroys recorded while rebuildRequired holds — the only
+  // suppression class that can corrupt a collect set: a member that dies after
+  // its row was collected still gets a published spawn and never writes again.
+  // Transform/spawn suppression self-heals (publish re-reads live pose, or the
+  // next write trips *-without-spawn), so the runner only dooms on this set.
+  const suppressedDestroyIds = new Set();
+  let rebuildReason = null;
+  let rebuildGeneration = 0;
+  let lastRebuildStart = 0;
+  let lastRebuildEnd = 0;
+  let lastRebuildRecordCount = 0;
+
+  let publishedCount = 0;
+  let spawnCount = 0;
+  let destroyCount = 0;
+  let transformCount = 0;
+  let visualCount = 0;
+  let transformCoalesceCount = 0;
+  let visualCoalesceCount = 0;
+  let refreshScanCount = 0;
+  let discardCount = 0;
+  let overflowCount = 0;
+  let suppressedCount = 0;
+  let identityErrorCount = 0;
+  let orderErrorCount = 0;
+  let rebuildRequestCount = 0;
+  let rebuildCount = 0;
+  let rebuildFailureCount = 0;
+  let rebuildStaleReplayCount = 0;
+  let closed = false;
+  let closeCount = 0;
+  let pendingAtClose = 0;
+  let discardedOnClose = 0;
+
+  function assertOpen() {
+    if (closed) throw new Error('PresentationJournal is closed');
+  }
+
+  function growMetadata(entityId) {
+    if (entityId < generations.length) return;
+    let nextSize = generations.length;
+    while (nextSize <= entityId) nextSize *= 2;
+
+    const nextGenerations = new Uint32Array(nextSize);
+    const nextActive = new Uint32Array(nextSize);
+    const nextRevisions = new Uint32Array(nextSize);
+    const nextTransforms = new Float64Array(nextSize);
+    const nextVisuals = new Float64Array(nextSize);
+    const nextAny = new Float64Array(nextSize);
+    nextGenerations.set(generations);
+    nextActive.set(activeGenerations);
+    nextRevisions.set(revisions);
+    nextTransforms.set(lastTransformSequence);
+    nextVisuals.set(lastVisualSequence);
+    nextAny.set(lastAnySequence);
+    generations = nextGenerations;
+    activeGenerations = nextActive;
+    revisions = nextRevisions;
+    lastTransformSequence = nextTransforms;
+    lastVisualSequence = nextVisuals;
+    lastAnySequence = nextAny;
+  }
+
+  function ensureEntityId(source) {
+    const entityId = sourceEntityId(source);
+    if (entityId === 0) {
+      identityErrorCount++;
+      requestRebuild('invalid-entity-id');
+      return 0;
+    }
+    growMetadata(entityId);
+    if (entityId > highestEntityId) highestEntityId = entityId;
+    return entityId;
+  }
+
+  function clearRetained() {
+    read = 0;
+    write = 0;
+    count = 0;
+  }
+
+  function requestRebuild(reason = 'requested') {
+    assertOpen();
+    rebuildRequestCount++;
+    rebuildRequired = true;
+    rebuildReason = typeof reason === 'string' && reason ? reason : 'requested';
+    // A suspended stepped publish is filling the ring this call just wiped — flag it
+    // so the attempt re-collects instead of committing a truncated range.
+    if (rebuildInProgress) rebuildInvalidatedDuringSteps = true;
+    clearRetained();
+    lastRecordTick = -1;
+    return true;
+  }
+
+  function prepareRecord(tick, entityId = 0, kind = null) {
+    if (rebuildRequired) {
+      suppressedCount++;
+      if (kind === 'destroy' && entityId > 0) suppressedDestroyIds.add(entityId);
+      if (rebuildInProgress
+          && (kind === 'destroy' || entityId === 0
+            || !rebuildSourceIds || !rebuildSourceIds.has(entityId))) {
+        rebuildInvalidatedDuringSteps = true;
+      }
+      return false;
+    }
+    if (!Number.isSafeInteger(tick) || tick < 0) {
+      orderErrorCount++;
+      requestRebuild('invalid-tick');
+      return false;
+    }
+    if (lastRecordTick > tick) {
+      orderErrorCount++;
+      requestRebuild('tick-rewind');
+      return false;
+    }
+    if (count >= size) {
+      overflowCount++;
+      requestRebuild('overflow');
+      return false;
+    }
+    return true;
+  }
+
+  function retainedSlot(sequence) {
+    if (!Number.isSafeInteger(sequence) || sequence <= 0 || count <= 0) return null;
+    const oldestSequence = records[read].sequence;
+    const offset = sequence - oldestSequence;
+    if (offset < 0 || offset >= count) return null;
+    const slot = records[(read + offset) % size];
+    return slot.sequence === sequence ? slot : null;
+  }
+
+  function refreshCoalescedRecords(startSequence, tick, entityId, generation, revision, source) {
+    // Walk the same-entity chain append() threads through slot.nextEntitySeq
+    // instead of scanning every interleaved slot through the window's newest —
+    // the flat scan made dense mixed-kind ticks pay O(entities) slot visits per
+    // coalesced write (D130 journal-append leg). A hop that fails retention or
+    // identity is a stale/drained link: chain ends.
+    for (let sequence = startSequence; sequence !== 0;) {
+      const slot = retainedSlot(sequence);
+      if (!slot || slot.entityId !== entityId
+        || slot.generation !== generation) return;
+      // Coalesced writes (same-tick or cross-tick while unsent) can precede another kind for
+      // the same entity. Refresh later retained records too so sequence-order consumers never
+      // observe a revision, tick, or scalar snapshot moving backwards.
+      if (slot.tick < tick) slot.tick = tick;
+      slot.revision = revision;
+      fillPose(slot, source);
+      refreshScanCount++;
+      const next = slot.nextEntitySeq;
+      sequence = Number.isSafeInteger(next) && next > sequence ? next : 0;
+    }
+  }
+
+  function append(kind, tick, entityId, generation, revision, source) {
+    const slot = records[write];
+    writeSequence++;
+    slot.tick = tick;
+    slot.sequence = writeSequence;
+    slot.kind = kind;
+    slot.entityId = entityId;
+    slot.generation = generation;
+    slot.revision = revision;
+    fillPose(slot, source);
+    // Thread the forward same-entity link: the entity's previous retained record
+    // (when still retained) points here, and this record is the new chain tail.
+    // Writer-private — the field stays off the exported record shape.
+    slot.nextEntitySeq = 0;
+    if (entityId > 0) {
+      const previous = lastAnySequence[entityId];
+      if (previous !== 0) {
+        const previousSlot = retainedSlot(previous);
+        if (previousSlot) previousSlot.nextEntitySeq = writeSequence;
+      }
+      lastAnySequence[entityId] = writeSequence;
+    }
+    write = (write + 1) % size;
+    count++;
+    lastRecordTick = tick;
+    publishedCount++;
+    return slot.sequence;
+  }
+
+  function publishSpawn(tick, entity, rebuilding = false) {
+    const entityId = ensureEntityId(entity);
+    if (!rebuilding && !prepareRecord(tick, entityId, 'spawn')) return 0;
+    if (entityId === 0 || rebuildRequired && !rebuilding) {
+      if (rebuildInProgress) rebuildInvalidatedDuringSteps = true;
+      return 0;
+    }
+    if (activeGenerations[entityId] !== 0) {
+      identityErrorCount++;
+      requestRebuild(rebuilding ? 'rebuild-duplicate-id' : 'duplicate-spawn');
+      return 0;
+    }
+    const generation = nextCounter(generations[entityId]);
+    generations[entityId] = generation;
+    activeGenerations[entityId] = generation;
+    revisions[entityId] = 1;
+    lastTransformSequence[entityId] = 0;
+    lastVisualSequence[entityId] = 0;
+    const sequence = append(
+      PRESENTATION_JOURNAL_KINDS.SPAWN,
+      tick,
+      entityId,
+      generation,
+      1,
+      entity,
+    );
+    journaledEntities.add(entity);
+    spawnCount++;
+    return sequence;
+  }
+
+  function recordSpawn(tick, entity) {
+    assertOpen();
+    if (!isEntityJournaled(entity)) return 0;
+    return publishSpawn(tick, entity, false);
+  }
+
+  function recordDestroy(tick, source) {
+    assertOpen();
+    if (!isEntityJournaled(source) && !journaledEntities.has(source)) return 0;
+    const entityId = ensureEntityId(source);
+    if (!prepareRecord(tick, entityId, 'destroy')) return 0;
+    if (entityId === 0 || rebuildRequired) return 0;
+    const generation = activeGenerations[entityId];
+    if (generation === 0) {
+      identityErrorCount++;
+      requestRebuild('destroy-without-spawn');
+      return 0;
+    }
+    const revision = nextCounter(revisions[entityId]);
+    revisions[entityId] = revision;
+    const sequence = append(
+      PRESENTATION_JOURNAL_KINDS.DESTROY,
+      tick,
+      entityId,
+      generation,
+      revision,
+      source,
+    );
+    activeGenerations[entityId] = 0;
+    lastTransformSequence[entityId] = 0;
+    lastVisualSequence[entityId] = 0;
+    // The destroy record closes the chain: the next generation must not link
+    // forward from a slot whose refresh predicate would reject it anyway.
+    lastAnySequence[entityId] = 0;
+    destroyCount++;
+    return sequence;
+  }
+
+  function recordCoalescible(kind, tick, entity, sequenceTable) {
+    if (!isEntityJournaled(entity)) return 0;
+    if (rebuildRequired) {
+      suppressedCount++;
+      const entityId = ensureEntityId(entity);
+      if (rebuildInProgress) {
+        if (entityId === 0 || !rebuildSourceIds || !rebuildSourceIds.has(entityId)) {
+          rebuildInvalidatedDuringSteps = true;
+        } else if (rebuildPublishedIds && rebuildPublishedIds.has(entityId)) {
+          rebuildStalePublishedIds.add(entityId);
+        }
+      }
+      return 0;
+    }
+    if (!Number.isSafeInteger(tick) || tick < 0 || lastRecordTick > tick) {
+      orderErrorCount++;
+      requestRebuild(lastRecordTick > tick ? 'tick-rewind' : 'invalid-tick');
+      return 0;
+    }
+    const entityId = ensureEntityId(entity);
+    if (entityId === 0 || rebuildRequired) return 0;
+    const generation = activeGenerations[entityId];
+    if (generation === 0) {
+      identityErrorCount++;
+      requestRebuild(`${kind}-without-spawn`);
+      return 0;
+    }
+
+    const prior = retainedSlot(sequenceTable[entityId]);
+    // Coalesce across ticks while the prior record is still unsent. Soft-GPU presents
+    // slower than the sim, so same-entity transform/visual spam was the top alloc-profile
+    // site (append @ presentationJournal). One transfer only needs its latest pose/visual;
+    // already-transferred records remain immutable while waiting for presentation ACK.
+    if (prior && prior.sequence > lastTransferredSequence
+      && prior.kind === kind && prior.generation === generation && prior.tick <= tick) {
+      const revision = nextCounter(revisions[entityId]);
+      revisions[entityId] = revision;
+      prior.tick = tick;
+      refreshCoalescedRecords(
+        prior.sequence,
+        tick,
+        entityId,
+        generation,
+        revision,
+        entity,
+      );
+      if (kind === PRESENTATION_JOURNAL_KINDS.TRANSFORM) transformCoalesceCount++;
+      else visualCoalesceCount++;
+      lastRecordTick = tick;
+      return prior.sequence;
+    }
+
+    if (!prepareRecord(tick)) return 0;
+    const revision = nextCounter(revisions[entityId]);
+    revisions[entityId] = revision;
+    const sequence = append(kind, tick, entityId, generation, revision, entity);
+    sequenceTable[entityId] = sequence;
+    if (kind === PRESENTATION_JOURNAL_KINDS.TRANSFORM) transformCount++;
+    else visualCount++;
+    return sequence;
+  }
+
+  function recordTransform(tick, entity) {
+    assertOpen();
+    return recordCoalescible(
+      PRESENTATION_JOURNAL_KINDS.TRANSFORM,
+      tick,
+      entity,
+      lastTransformSequence,
+    );
+  }
+
+  function recordTransformIfChanged(tick, entity) {
+    assertOpen();
+    return poseChanged(entity) ? recordTransform(tick, entity) : 0;
+  }
+
+  function recordVisual(tick, entity) {
+    assertOpen();
+    return recordCoalescible(
+      PRESENTATION_JOURNAL_KINDS.VISUAL,
+      tick,
+      entity,
+      lastVisualSequence,
+    );
+  }
+
+  function copySequence(sequence, target) {
+    assertOpen();
+    const slot = retainedSlot(sequence);
+    if (!slot) return false;
+    copyRecord(target, slot);
+    return true;
+  }
+
+  function hasRange(startExclusive, endInclusive) {
+    assertOpen();
+    if (!Number.isSafeInteger(startExclusive) || !Number.isSafeInteger(endInclusive)
+      || startExclusive < 0 || endInclusive < startExclusive) return false;
+    if (startExclusive === endInclusive) return true;
+    if (count <= 0) return false;
+    const oldestSequence = records[read].sequence;
+    const newestSequence = records[(write - 1 + size) % size].sequence;
+    return startExclusive + 1 >= oldestSequence && endInclusive <= newestSequence;
+  }
+
+  function visitRange(startExclusive, endInclusive, target, visitor) {
+    assertOpen();
+    if (typeof visitor !== 'function') {
+      throw new TypeError('PresentationJournal visitRange requires a visitor');
+    }
+    if (!hasRange(startExclusive, endInclusive)) {
+      throw new Error(`PresentationJournal range is not retained (${startExclusive}, ${endInclusive}]`);
+    }
+    let visited = 0;
+    for (let sequence = startExclusive + 1; sequence <= endInclusive; sequence++) {
+      if (!copySequence(sequence, target)) {
+        throw new Error(`PresentationJournal record ${sequence} is not retained`);
+      }
+      visitor(target);
+      visited++;
+    }
+    return visited;
+  }
+
+  // Stepped twin — same walk, throws, and return, yielding every sliceEvery
+  // applied records so a dense retained range paces across presents instead
+  // of paying one atomic apply pass per consume.
+  function* visitRangeSteps(startExclusive, endInclusive, target, visitor, sliceEvery = 256) {
+    assertOpen();
+    if (typeof visitor !== 'function') {
+      throw new TypeError('PresentationJournal visitRange requires a visitor');
+    }
+    if (!hasRange(startExclusive, endInclusive)) {
+      throw new Error(`PresentationJournal range is not retained (${startExclusive}, ${endInclusive}]`);
+    }
+    const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
+    let visited = 0;
+    for (let sequence = startExclusive + 1; sequence <= endInclusive; sequence++) {
+      if (!copySequence(sequence, target)) {
+        throw new Error(`PresentationJournal record ${sequence} is not retained`);
+      }
+      visitor(target);
+      visited++;
+      if ((visited % every) === 0) yield;
+    }
+    return visited;
+  }
+
+  function markTransferredThrough(sequence) {
+    assertOpen();
+    if (!Number.isSafeInteger(sequence) || sequence < 0 || sequence > writeSequence) return false;
+    lastTransferredSequence = Math.max(lastTransferredSequence, sequence);
+    return true;
+  }
+
+  function discardThrough(sequence) {
+    assertOpen();
+    if (!Number.isSafeInteger(sequence) || sequence < 0) return 0;
+    let discarded = 0;
+    while (count > 0 && records[read].sequence <= sequence) {
+      lastDiscardedSequence = records[read].sequence;
+      read = (read + 1) % size;
+      count--;
+      discarded++;
+    }
+    discardCount += discarded;
+    return discarded;
+  }
+
+  // Stepped twin: the validation + reset legs stay atomic, then the publish loop yields
+  // per batch so the runner can spread a dense-sector rebuild across presents. While
+  // suspended, rebuildRequired stays set — foreign writes early-out exactly as in the
+  // sync form — and each dropped write flags rebuildInvalidatedDuringSteps so the
+  // attempt re-collects instead of committing a set that predates it.
+  function* rebuildFromSteps(entities, tick) {
+    assertOpen();
+    if (!Array.isArray(entities) || !Number.isSafeInteger(tick) || tick < 0) {
+      rebuildFailureCount++;
+      requestRebuild('invalid-rebuild-source');
+      return false;
+    }
+
+    let aliveCount = 0;
+    let maxEntityId = 0;
+    const sourceIds = new Set();
+    const sourceEntities = new Map();
+    for (const entity of entities) {
+      if (!entity || entity.alive === false) continue;
+      const entityId = sourceEntityId(entity);
+      sourceIds.add(entityId);
+      sourceEntities.set(entityId, entity);
+      if (entityId === 0) {
+        rebuildFailureCount++;
+        identityErrorCount++;
+        requestRebuild('invalid-rebuild-entity');
+        return false;
+      }
+      aliveCount++;
+      if (entityId > maxEntityId) maxEntityId = entityId;
+    }
+    if (aliveCount > size) {
+      rebuildFailureCount++;
+      requestRebuild('rebuild-capacity');
+      return false;
+    }
+
+    if (maxEntityId > 0) growMetadata(maxEntityId);
+    if (maxEntityId > highestEntityId) highestEntityId = maxEntityId;
+    if (highestEntityId > 0) activeGenerations.fill(0, 0, highestEntityId + 1);
+    clearRetained();
+    lastRecordTick = -1;
+    rebuildGeneration = nextCounter(rebuildGeneration);
+    rebuildInProgress = true;
+    rebuildInvalidatedDuringSteps = false;
+    rebuildSourceIds = sourceIds;
+    rebuildSourceEntities = sourceEntities;
+    rebuildPublishedIds = new Set();
+    rebuildStalePublishedIds = new Set();
+    lastRebuildStart = writeSequence;
+    lastRebuildRecordCount = 0;
+
+    try {
+      for (const entity of entities) {
+        if (!entity || entity.alive === false) continue;
+        if (publishSpawn(tick, entity, true) === 0) {
+          rebuildFailureCount++;
+          requestRebuild('rebuild-publication-failed');
+          return false;
+        }
+        rebuildPublishedIds.add(sourceEntityId(entity));
+        if (++lastRebuildRecordCount % 64 === 0) {
+          // A flagged attempt is doomed — bail at the slice boundary rather than
+          // finishing a publish that can never commit.
+          if (rebuildInvalidatedDuringSteps) break;
+          yield;
+        }
+      }
+      // A coalescible write suppressed after its entity's spawn already minted was
+      // dropped without invalidating the attempt — re-emit the live transform and
+      // visual here so a write-silent entity can't present publish-stale pose/flags.
+      if (!rebuildInvalidatedDuringSteps && rebuildStalePublishedIds.size > 0) {
+        if (count + rebuildStalePublishedIds.size * 2 > size) {
+          rebuildInvalidatedDuringSteps = true;
+          requestRebuild('rebuild-replay-capacity');
+        } else {
+          for (const staleId of rebuildStalePublishedIds) {
+            const source = rebuildSourceEntities.get(staleId);
+            const generation = source ? activeGenerations[staleId] : 0;
+            if (generation === 0) continue;
+            let revision = nextCounter(revisions[staleId]);
+            revisions[staleId] = revision;
+            lastTransformSequence[staleId] = append(
+              PRESENTATION_JOURNAL_KINDS.TRANSFORM, tick, staleId, generation, revision, source);
+            revision = nextCounter(revisions[staleId]);
+            revisions[staleId] = revision;
+            lastVisualSequence[staleId] = append(
+              PRESENTATION_JOURNAL_KINDS.VISUAL, tick, staleId, generation, revision, source);
+            transformCount++;
+            visualCount++;
+            rebuildStaleReplayCount++;
+          }
+        }
+      }
+    } finally {
+      rebuildInProgress = false;
+      rebuildSourceIds = null;
+      rebuildSourceEntities = null;
+      rebuildPublishedIds = null;
+      rebuildStalePublishedIds = null;
+    }
+
+    if (rebuildInvalidatedDuringSteps) {
+      rebuildInvalidatedDuringSteps = false;
+      requestRebuild('rebuild-mid-write');
+      return 'invalidated';
+    }
+    lastRecordTick = tick;
+    lastRebuildEnd = writeSequence;
+    rebuildReason = null;
+    rebuildRequired = false;
+    rebuildCount++;
+    return true;
+  }
+
+  function rebuildFrom(entities, tick) {
+    const it = rebuildFromSteps(entities, tick);
+    let step = it.next();
+    while (!step.done) step = it.next();
+    return step.value === true;
+  }
+
+  function close() {
+    if (closed) return false;
+    closed = true;
+    closeCount++;
+    pendingAtClose = count;
+    discardedOnClose += count;
+    clearRetained();
+    records.length = 0;
+    generations = new Uint32Array(0);
+    activeGenerations = new Uint32Array(0);
+    revisions = new Uint32Array(0);
+    lastTransformSequence = new Float64Array(0);
+    lastVisualSequence = new Float64Array(0);
+    lastAnySequence = new Float64Array(0);
+    highestEntityId = 0;
+    lastRecordTick = -1;
+    rebuildRequired = false;
+    rebuildReason = null;
+    suppressedDestroyIds.clear();
+    return true;
+  }
+
+  return {
+    capacity: size,
+    recordSpawn,
+    recordDestroy,
+    recordTransform,
+    recordTransformIfChanged,
+    recordVisual,
+    copySequence,
+    hasRange,
+    visitRange,
+    visitRangeSteps,
+    markTransferredThrough,
+    discardThrough,
+    requestRebuild,
+    rebuildFrom,
+    rebuildFromSteps,
+    close,
+    isClosed: () => closed,
+    needsRebuild: () => rebuildRequired,
+    getRebuildInProgress: () => rebuildInProgress,
+    getWriteSequence: () => writeSequence,
+    getOldestSequence: () => count > 0 ? records[read].sequence : 0,
+    getPendingCount: () => count,
+    getRebuildGeneration: () => rebuildGeneration,
+    getLastRebuildStart: () => lastRebuildStart,
+    getLastRebuildEnd: () => lastRebuildEnd,
+    getLastRebuildRecordCount: () => lastRebuildRecordCount,
+    getSuppressedCount: () => suppressedCount,
+    getSuppressedDestroyIds: () => suppressedDestroyIds,
+    clearSuppressedDestroyIds: () => suppressedDestroyIds.clear(),
+    getDiagnostics() {
+      return {
+        closed,
+        closeCount,
+        pendingAtClose,
+        discardedOnClose,
+        capacity: size,
+        retainedRecordCapacity: records.length,
+        entityCapacity: Math.max(0, generations.length - 1),
+        pending: count,
+        writeSequence,
+        oldestSequence: count > 0 ? records[read].sequence : 0,
+        lastDiscardedSequence,
+        lastTransferredSequence,
+        lastRecordTick,
+        publishedCount,
+        spawnCount,
+        destroyCount,
+        transformCount,
+        visualCount,
+        transformCoalesceCount,
+        visualCoalesceCount,
+        refreshScanCount,
+        discardCount,
+        overflowCount,
+        suppressedCount,
+        identityErrorCount,
+        orderErrorCount,
+        rebuildRequired,
+        rebuildReason,
+        rebuildRequestCount,
+        rebuildGeneration,
+        rebuildCount,
+        rebuildFailureCount,
+        lastRebuildStart,
+        lastRebuildEnd,
+        lastRebuildRecordCount,
+        rebuildStaleReplayCount,
+      };
+    },
+  };
+}

@@ -1,0 +1,514 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.greeble-hatches",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "9dffe5587749d48ab3d69abe56b51bd52d6ee281275f02377deab1a601a6a09a",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          2.799999952316284,
+          0.16988311523962876,
+          1.9249514788111803
+        ],
+        "min": [
+          -0.8999999761581421,
+          -0.009883109502681703,
+          -0.699951574178612
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "50a530348683646ea9bbd1e8f961aecabdab07422fe2e7167ae2c25822f1d927",
+      "id": "sf.render.greeble-hatches.mesh.greeble-hatches-material-hull-merged.primitive.0",
+      "indexCount": 972,
+      "indexed": true,
+      "materialHash": "df9bc1b1b3dc7b78856f78d05d8690ac5f0b3e1acd276105d9c363f607c16590",
+      "materialPipelineKey": "opaque",
+      "meshName": "greeble_hatches_Material_Hull_Merged",
+      "nodeId": "sf.render.greeble-hatches.mesh.greeble-hatches-material-hull-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 414
+    },
+    {
+      "bounds": {
+        "max": [
+          2.671999931335449,
+          0.2599548931903306,
+          1.873114749088451
+        ],
+        "min": [
+          -0.7239999771118164,
+          0.16004510859780874,
+          -0.5701147757913319
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "027c781118a81b2bc0b19cde561e40ea7a8c2439cadc3b4666d813892fbdbf27",
+      "id": "sf.render.greeble-hatches.mesh.greeble-hatches-material-mechanical-merged.primitive.0",
+      "indexCount": 3312,
+      "indexed": true,
+      "materialHash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "materialPipelineKey": "opaque",
+      "meshName": "greeble_hatches_Material_Mechanical_Merged",
+      "nodeId": "sf.render.greeble-hatches.mesh.greeble-hatches-material-mechanical-merged",
+      "primitiveIndex": 0,
+      "vertexCount": 666
+    },
+    {
+      "bounds": {
+        "max": [
+          1.1389813138912779,
+          0.5849999822676182,
+          1.8149999380111694
+        ],
+        "min": [
+          1.061018733792438,
+          0.05500001087784767,
+          1.284999966621399
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "35b4082dbdd3aa355148b59c0edda44bc6a5d8acc9e8898d6e0a3607f99829be",
+      "id": "sf.render.greeble-hatches.mesh.hatch-handle.primitive.0",
+      "indexCount": 576,
+      "indexed": true,
+      "materialHash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "materialPipelineKey": "opaque",
+      "meshName": "Hatch_Handle",
+      "nodeId": "sf.render.greeble-hatches.mesh.hatch-handle",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "4bbfc0af06e03d63cd7b8818a3b8950c470583988b09362a871bf437564d9cbc",
+      "id": "material:4bbfc0af06e03d63cd7b8818",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7af6f768ac4f1f4c9ee04b140ad70ed1225155447a15690ff761395a4551dcce",
+      "id": "material:7af6f768ac4f1f4c9ee04b14",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "df9bc1b1b3dc7b78856f78d05d8690ac5f0b3e1acd276105d9c363f607c16590",
+      "id": "material:df9bc1b1b3dc7b78856f78d0",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.greeble-hatches.mesh.greeble-hatches-material-hull-merged",
+      "localTransform": [
+        1.8499999642372131,
+        0,
+        0,
+        0,
+        0,
+        1.8499999642372131,
+        0,
+        0,
+        0,
+        0,
+        1.8499999642372131,
+        0,
+        0.949999988079071,
+        0.08000000286847353,
+        0.6124999523162842,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "greeble_hatches_Material_Hull_Merged",
+      "nodeName": "greeble_hatches_Material_Hull_Merged",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.greeble-hatches.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-hatches.body",
+      "worldTransform": [
+        1.8499999642372131,
+        0,
+        0,
+        0,
+        0,
+        1.8499999642372131,
+        0,
+        0,
+        0,
+        0,
+        1.8499999642372131,
+        0,
+        0.949999988079071,
+        0.08000000286847353,
+        0.6124999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.greeble-hatches.mesh.greeble-hatches-material-mechanical-merged",
+      "localTransform": [
+        1.6979999542236328,
+        0,
+        0,
+        0,
+        0,
+        1.6979999542236328,
+        0,
+        0,
+        0,
+        0,
+        1.6979999542236328,
+        0,
+        0.9739999771118164,
+        0.21000000089406967,
+        0.6514999866485596,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "greeble_hatches_Material_Mechanical_Merged",
+      "nodeName": "greeble_hatches_Material_Mechanical_Merged",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.greeble-hatches.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-hatches.body",
+      "worldTransform": [
+        1.6979999542236328,
+        0,
+        0,
+        0,
+        0,
+        1.6979999542236328,
+        0,
+        0,
+        0,
+        0,
+        1.6979999542236328,
+        0,
+        0.9739999771118164,
+        0.21000000089406967,
+        0.6514999866485596,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.greeble-hatches.mesh.hatch-handle",
+      "localTransform": [
+        0.26499998569488525,
+        0,
+        0,
+        0,
+        0,
+        0.26499998569488525,
+        0,
+        0,
+        0,
+        0,
+        0.26499998569488525,
+        0,
+        1.100000023841858,
+        0.3199999965727329,
+        1.5499999523162842,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "Hatch_Handle",
+      "nodeName": "Hatch_Handle",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.greeble-hatches.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-hatches.body",
+      "worldTransform": [
+        0.26499998569488525,
+        0,
+        0,
+        0,
+        0,
+        0.26499998569488525,
+        0,
+        0,
+        0,
+        0,
+        0.26499998569488525,
+        0,
+        1.100000023841858,
+        0.3199999965727329,
+        1.5499999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.greeble-hatches.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "greeble_hatches",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.greeble-hatches.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "b4484e8be6a9ceeb73224c0756a0c945c35b77ca73ad539dff7786b5cc69924c"
+    },
+    "sourceGlb": {
+      "bytes": 422940,
+      "sha256": "412a087c70d5b006f6cd8cbc08d577ab7d1199f2fdce212a6e2977164766eaa0",
+      "uri": "greeble_hatches.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 422448,
+    "sha256": "55629aa727e8e0c42378a2b325c3c78056ead25491c1f256531a4b93c65f6048",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.949999988079071,
+        0.28755843638246825,
+        0.6124999523162842
+      ],
+      "max": [
+        2.799999952316284,
+        0.5849999822676182,
+        1.9249514788111803
+      ],
+      "min": [
+        -0.8999999761581421,
+        -0.009883109502681703,
+        -0.699951574178612
+      ],
+      "size": [
+        3.6999999284744263,
+        0.5948830917702999,
+        2.6249030529897923
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [],
+    "materialProfileRoles": {
+      "accent": 1,
+      "hull": 1,
+      "mechanical": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 23,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.26499998569488525,
+          0,
+          0,
+          0,
+          0,
+          0.26499998569488525,
+          0,
+          0,
+          0,
+          0,
+          0.26499998569488525,
+          0,
+          1.100000023841858,
+          0.3199999965727329,
+          1.5499999523162842,
+          1
+        ],
+        "name": "Hatch_Handle",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.8499999642372131,
+          0,
+          0,
+          0,
+          0,
+          1.8499999642372131,
+          0,
+          0,
+          0,
+          0,
+          1.8499999642372131,
+          0,
+          0.949999988079071,
+          0.08000000286847353,
+          0.6124999523162842,
+          1
+        ],
+        "name": "greeble_hatches_Material_Hull_Merged",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.6979999542236328,
+          0,
+          0,
+          0,
+          0,
+          1.6979999542236328,
+          0,
+          0,
+          0,
+          0,
+          1.6979999542236328,
+          0,
+          0.9739999771118164,
+          0.21000000089406967,
+          0.6514999866485596,
+          1
+        ],
+        "name": "greeble_hatches_Material_Mechanical_Merged",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "greeble",
+    "url": "assets/ships/release/parts/greebles/greeble_hatches.glb"
+  },
+  "runtimeHash": "5f51a2d0f6a7ff4c60bef87c3ef1d9826aa759685a06885baec5e62a33bf2448",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          2.799999952316284,
+          0.5849999822676182,
+          1.9249514788111803
+        ],
+        "min": [
+          -0.8999999761581421,
+          -0.009883109502681703,
+          -0.699951574178612
+        ]
+      },
+      "id": "sf.render.greeble-hatches.body",
+      "nodeIds": [
+        "sf.render.greeble-hatches.mesh.greeble-hatches-material-hull-merged",
+        "sf.render.greeble-hatches.mesh.greeble-hatches-material-mechanical-merged",
+        "sf.render.greeble-hatches.mesh.hatch-handle",
+        "sf.render.greeble-hatches.root"
+      ]
+    }
+  ]
+}

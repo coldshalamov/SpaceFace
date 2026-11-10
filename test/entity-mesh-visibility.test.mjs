@@ -1,0 +1,260 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { readFile } from 'node:fs/promises';
+
+import {
+  applyBoundMeshVisibility,
+  applyEntityMeshVisibility,
+  retainShownCameraGlass,
+  retainShownSurvivalGlass,
+  shouldSubmitEntityMesh,
+} from '../src/render/entityMeshVisibility.js';
+
+test('player and forced roots stay submitted; only true off-screen roots drop', () => {
+  assert.equal(shouldSubmitEntityMesh({ isPlayer: true, hidden: true }), true);
+  assert.equal(shouldSubmitEntityMesh({ forceRender: true, hidden: true }), true);
+  assert.equal(shouldSubmitEntityMesh({ neverCull: true, hidden: true }), true);
+  assert.equal(shouldSubmitEntityMesh({ hidden: true }), false);
+  assert.equal(shouldSubmitEntityMesh({ hidden: false }), true);
+  // Middle band is still in the query picture. LOD1 traffic and stations that no
+  // longer cast realtime shadows must stay visible.
+  assert.equal(shouldSubmitEntityMesh({ middleBand: true }), true);
+  assert.equal(shouldSubmitEntityMesh({ middleBand: true, allowShadowCast: false, type: 'ship' }), true);
+  assert.equal(shouldSubmitEntityMesh({ middleBand: true, allowShadowCast: false, type: 'station' }), true);
+  assert.equal(shouldSubmitEntityMesh({ projectedPx: 4, type: 'ship' }), true);
+  assert.equal(shouldSubmitEntityMesh({ projectedPx: 4, type: 'station' }), true);
+  assert.equal(shouldSubmitEntityMesh({ presentationTier: 'R1_RUNWAY' }), false,
+    'runway packages stay resident but are not submitted');
+  assert.equal(shouldSubmitEntityMesh({ isPlayer: true, presentationTier: 'R1_RUNWAY' }), true);
+  assert.equal(shouldSubmitEntityMesh({ presentationTier: 'R0_GLASS' }), true);
+});
+
+test('uncompiled ordinary roots stay off the submit list; the player still submits', () => {
+  assert.equal(shouldSubmitEntityMesh({ pipelinesPending: true }), false);
+  assert.equal(shouldSubmitEntityMesh({ isPlayer: true, pipelinesPending: true }), true);
+  assert.equal(shouldSubmitEntityMesh({ forceRender: true, pipelinesPending: true }), true);
+});
+
+test('ordinary roots still decoding an authored body stay off the submit list', () => {
+  assert.equal(shouldSubmitEntityMesh({ authoredPending: true }), false);
+  assert.equal(shouldSubmitEntityMesh({ isPlayer: true, authoredPending: true }), true);
+});
+
+test('ordinary roots wait for 1x1 geometry residency before the first bloom submit', () => {
+  assert.equal(shouldSubmitEntityMesh({ geometryPending: true }), false);
+  assert.equal(shouldSubmitEntityMesh({ isPlayer: true, geometryPending: true }), true);
+});
+
+test('missing fenced poses retain protected roots but fail closed for ordinary roots', () => {
+  assert.equal(shouldSubmitEntityMesh({ isPlayer: true, snapshotMissing: true }), true);
+  assert.equal(shouldSubmitEntityMesh({ forceRender: true, snapshotMissing: true }), true);
+  assert.equal(shouldSubmitEntityMesh({ neverCull: true, snapshotMissing: true }), true);
+  assert.equal(shouldSubmitEntityMesh({ entityId: 7, snapshotMissing: true }), false);
+});
+
+test('the completed activity frame owns glass submission while runway stays resident-only', () => {
+  const activityFrame = {
+    complete: true,
+    renderGlassIds: new Set([7]),
+    renderRunwayIds: new Set([8]),
+  };
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 7 }), true);
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 8 }), false);
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 9 }), false,
+    'metadata/unloaded entities outside the frame do not keep an Object3D submitted');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 9, ledgerRow: true }), true,
+    'a far/field/dressing ledger row the frame never names still draws under distance policy');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 9, ledgerRow: true, presentationTier: 'R2_METADATA' }), false,
+    'a ledger row demoted to metadata stays unsubmitted');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 8, ledgerRow: true }), false,
+    'a ledger row on the runway keeps runway semantics');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 7, snapshotMissing: true }), false,
+    'an ordinary stale root stays hidden until the fenced snapshot contains its entity');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 7, isPlayer: true, snapshotMissing: true }), true,
+    'the player keeps its last safe visibility through a fenced-pose gap');
+});
+
+test('a root inside the live glass submits even when the sim frame still classes it runway', () => {
+  // The activity frame derives its glass at the requested zoom and a fixed aspect; a dynamically
+  // zoomed-out live camera can place a runway-classed hull on the real screen. Submission there is
+  // the live frustum's call — otherwise the hull is hidden while its HUD markers still draw.
+  const activityFrame = {
+    complete: true,
+    renderGlassIds: new Set([7]),
+    renderRunwayIds: new Set([8]),
+  };
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 8, onLiveGlass: true }), true,
+    'runway-classed but inside the live glass submits');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 9, onLiveGlass: true }), true,
+    'unlisted on a complete frame but inside the live glass submits');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 8, onLiveGlass: false }), false,
+    'off the live glass keeps runway residency semantics');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 8, onLiveGlass: true, authoredPending: true }), false,
+    'a pending authored decode still holds an on-glass root');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 8, onLiveGlass: true, pipelinesPending: true }), false,
+    'uncompiled pipelines still hold an on-glass root');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 8, onLiveGlass: true, geometryPending: true }), false,
+    'unregistered geometry still holds an on-glass root');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 8, onLiveGlass: true, snapshotMissing: true }), false,
+    'a missing fenced pose still fails closed on the live glass');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 8, onLiveGlass: true, hidden: true }), false,
+    'a root outside the query bounds entirely stays hidden');
+});
+
+test('a shown survival body stays up while the frustum still holds it', () => {
+  const shown = {
+    survival: true,
+    alreadyVisible: true,
+    onFrustum: true,
+    snapshotMissing: false,
+    alive: true,
+  };
+  assert.equal(retainShownSurvivalGlass(shown), true);
+  assert.equal(retainShownSurvivalGlass({ ...shown, survival: false }), false);
+  assert.equal(retainShownSurvivalGlass({ ...shown, alreadyVisible: false }), false,
+    'a root that has not been shown still waits on the first-submit rule');
+  assert.equal(retainShownSurvivalGlass({ ...shown, onFrustum: false }), false,
+    'off the frustum the ordinary rule releases the picture');
+  assert.equal(retainShownSurvivalGlass({ ...shown, snapshotMissing: true }), false);
+  assert.equal(retainShownSurvivalGlass({ ...shown, alive: false }), false);
+  // The pending latches still hide an ordinary root. The caller ORs the retain
+  // so an already-drawn survival body does not blank and reveal in view.
+  assert.equal(shouldSubmitEntityMesh({
+    hidden: true,
+    onLiveGlass: false,
+    pipelinesPending: true,
+    authoredPending: true,
+    geometryPending: true,
+  }), false);
+  assert.equal(retainShownSurvivalGlass(shown), true);
+});
+
+test('visibility helper only writes when the flag changes', () => {
+  const mesh = { visible: true };
+  assert.equal(applyEntityMeshVisibility(mesh, false), true);
+  assert.equal(mesh.visible, false);
+  assert.equal(applyEntityMeshVisibility(mesh, false), false);
+  assert.equal(applyEntityMeshVisibility(mesh, true), true);
+  assert.equal(mesh.visible, true);
+});
+
+test('a bind commit cannot overwrite a residency hold with the prior visible state', () => {
+  const held = { visible: false, userData: { sfResidencyHeld: true } };
+  assert.equal(applyBoundMeshVisibility(held, true, true), false,
+    'the bind restore is a no-op when the hold already hid the root');
+  assert.equal(held.visible, false, 'the held root stays hidden through the bind commit');
+  const free = { visible: false, userData: {} };
+  assert.equal(applyBoundMeshVisibility(free, true, false), true);
+  assert.equal(free.visible, true, 'an unheld rebound root restores its prior visibility');
+  assert.equal(applyBoundMeshVisibility({ visible: true }, false, false), true);
+});
+
+test('a protected root is never hidden by a residency hold in the submit pass', () => {
+  // The manager refuses to hold protected roots, but a stale hold from before the latch must
+  // not turn into a one-frame hide either: the submit verdict is protected-first.
+  for (const protection of [{ isPlayer: true }, { forceRender: true }, { neverCull: true }]) {
+    assert.equal(shouldSubmitEntityMesh({ ...protection, residencyHeld: true, hidden: true }), true);
+    const mesh = { visible: false, userData: { sfResidencyHeld: true } };
+    assert.equal(applyEntityMeshVisibility(mesh,
+      shouldSubmitEntityMesh({ ...protection, residencyHeld: true })), true);
+    assert.equal(mesh.visible, true, 'the protected root is re-shown (manager clears the hold)');
+  }
+});
+
+test('Adventure retains a shown wreck through a pending admission without revealing an unshown root', () => {
+  const shown = { alreadyVisible: true, onFrustum: true, snapshotMissing: false, alive: true };
+  const pending = { onLiveGlass: true, pipelinesPending: true, geometryPending: true };
+  const mesh = { visible: true };
+  assert.equal(shouldSubmitEntityMesh(pending), false, 'pending work still owns first admission');
+  assert.equal(applyEntityMeshVisibility(mesh,
+    retainShownCameraGlass(shown) || shouldSubmitEntityMesh(pending)), false);
+  assert.equal(mesh.visible, true, 'a published wreck does not blink during re-admission');
+  assert.equal(retainShownCameraGlass({ ...shown, alreadyVisible: false }), false);
+  assert.equal(retainShownCameraGlass({ ...shown, onFrustum: false }), false);
+  assert.equal(retainShownCameraGlass({ ...shown, snapshotMissing: true }), false);
+  assert.equal(retainShownCameraGlass({ ...shown, alive: false }), false);
+});
+
+test('the live camera owns submission in both directions, independent of sim glass membership', () => {
+  const activityFrame = {
+    complete: true,
+    renderGlassIds: new Set([7]),
+    renderRunwayIds: new Set([8]),
+  };
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 7, onLiveGlass: false }), false,
+    'the wider deterministic sim glass must not submit an off-camera body');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 9, ledgerRow: true, onLiveGlass: false }), false,
+    'an off-camera ledger root stays resident without being submitted');
+  assert.equal(shouldSubmitEntityMesh({ entityId: 8, presentationTier: 'R1_RUNWAY', onLiveGlass: true }), true,
+    'a live camera arrival draws before the next activity-frame publication');
+  assert.equal(shouldSubmitEntityMesh({ entityId: 9, presentationTier: 'R2_METADATA', onLiveGlass: true }), true,
+    'a retained ready root on the real screen does not disappear on a stale sim tier');
+  assert.equal(shouldSubmitEntityMesh({ isPlayer: true, onLiveGlass: false }), true);
+  assert.equal(shouldSubmitEntityMesh({ forceRender: true, onLiveGlass: false }), true);
+  assert.equal(shouldSubmitEntityMesh({ onLiveGlass: true, authoredPending: true }), false);
+  assert.equal(shouldSubmitEntityMesh({ onLiveGlass: true, pipelinesPending: true }), false);
+  assert.equal(shouldSubmitEntityMesh({ onLiveGlass: true, geometryPending: true }), false);
+  assert.equal(shouldSubmitEntityMesh({ onLiveGlass: true, snapshotMissing: true }), false);
+});
+
+test('authored station and place commits merge static plates before freeze', async () => {
+  const source = await readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
+  // Place-prop HLOD substrate is unique per place: safe to merge before freeze.
+  assert.match(source, /optimizeStaticBatchesForRoot\(placed\)/);
+  assert.match(source, /freezeStaticChildMatrices\(placed\)/);
+  // Station HLOD substrate shares fallback primitives across stations: merging it would fabricate
+  // non-shared geometry whose later disposal corrupts the shared set (PQ-193.12), so it freezes only.
+  assert.match(source, /freezeStaticChildMatrices\(stationed\)/);
+  assert.doesNotMatch(source, /optimizeStaticBatchesForRoot\(stationed\)/);
+  // The authored place root merges inside buildPlacePropRoot via the static batch collector before
+  // LOD/material binding; the commit freezes it. Re-batching at commit would orphan LOD bindings.
+  const builder = source.match(/function\* buildPlacePropRootSteps[\s\S]*?yield\* staticBatches\.flushSteps\(\);/);
+  assert.ok(builder, 'buildPlacePropRoot flushes the static batch collector on the authored root');
+  assert.match(source, /freezeStaticChildMatrices\(authored\.root\)/);
+  assert.doesNotMatch(source, /optimizeStaticBatchesForRoot\(authored\.root\)/);
+});
+
+test('default video settings still request full picture quality', async () => {
+  const source = await readFile(new URL('../src/core/gameState.js', import.meta.url), 'utf8');
+  assert.match(source, /renderScale:\s*1(?:\.0)?/);
+  assert.match(source, /bloom:\s*true/);
+  // Sun shadow-maps default OFF (the realtime sun pass produced the crawling miscolored clumps);
+  // grounding still comes from the always-on contact shadows. Opt-in remains under settings.
+  assert.match(source, /shadows:\s*false/);
+  assert.match(source, /pixelRatioCap:\s*2/);
+  assert.match(source, /particleQuality:\s*'medium'/);
+});
+
+test('live entity view sync hides off-runway roots through the helper', async () => {
+  const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.match(source, /const wantsVisible = retainShown \|\| \(posed && shouldSubmitEntityMesh\(_submitVisibilityOptions\)\)/);
+  assert.match(source, /const wantsVisible = retainShown \|\| shouldSubmitEntityMesh\(_submitVisibilityOptions\)/,
+    'the hidden-boundary site submits through the same scratch');
+  assert.equal((source.match(/applyEntityMeshVisibility\(mesh,\s*wantsVisible\)/g) || []).length, 2,
+    'both submit sites hand the helper the same visibility verdict');
+  assert.match(source, /applyBoundMeshVisibility\(m, old \? old\.visible : true,/,
+    'the appearance bind commit cannot restore visibility over a live residency hold');
+  assert.match(source, /mesh\.__sfResidencyProtected = true/,
+    'the submit pass latches packed-flag protected roots for the manager');
+  assert.match(source, /noteRefusedDraw\?\.\(mesh, 'submit-pending'\)/,
+    'a presented root hidden by a pending latch is counted as a draw-point refusal');
+  assert.doesNotMatch(source, /noteRefusedDraw\?\.\(mesh, 'submit-pending', true\)/,
+    'presentation is derived from the drawable, never a caller constant');
+  assert.match(source, /this\.state\.mode === 'flight' && retainShownCameraGlass\(\{/);
+  assert.match(source, /if \(!retainShown\) this\._queueHiddenSubtreeFreeze\(mesh\)/,
+    'a retained survival body stays on the live compose path');
+  assert.match(source, /_submitVisibilityOptions\.hidden\s*=\s*true/);
+  assert.match(source, /_submitVisibilityOptions\.hidden\s*=\s*false/);
+  assert.match(source, /_submitVisibilityOptions\.snapshotMissing\s*=\s*!posed/);
+  assert.match(source, /let posed = this\._hasCompletedPresentationPose\(slot,\s*entityId\)/,
+    'clean roots derive pose validity from the latest completed fence');
+  assert.match(source, /snapshotIndexOf\(snapshot,\s*entityId\)/,
+    'ordinary roots fail closed when the completed fence has no matching identity');
+  assert.match(source, /_submitVisibilityOptions\.middleBand\s*=\s*viewBand === 'middle'/);
+  assert.match(source, /_submitVisibilityOptions\.pipelinesPending\s*=\s*!!\(mesh\.userData && mesh\.userData\.pipelinesPending\)/);
+  assert.match(source, /_submitVisibilityOptions\.authoredPending\s*=\s*isAuthoredPendingStatus\(mesh\.userData && mesh\.userData\.authoredAssetState\)/);
+  assert.match(source, /onLiveGlass/,
+    'the live-glass submit override reaches the visibility rule');
+  assert.equal((source.match(/_submitVisibilityOptions\.ledgerRow\s*=\s*!!\(packedFlags & PRESENTATION_FLAGS\.LEDGER\) \|\| isPresentationLedgerRow\(entity\)/g) || []).length, 2,
+    'both submit sites tell the visibility rule which roots are far/field/dressing ledger rows');
+});

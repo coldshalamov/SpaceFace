@@ -1,0 +1,168 @@
+WAVE 3 RADIALS RE-SCORE — CRITIC REPORT r1 (2 surfaces: comms-radial, wingman-radial)
+Stills: .devshots/ui-review/view/w3c-{comms-radial,wingman-radial}-{1920,1280}.png
+Crops: .devshots/ui-review/crops/w3c-hud2-*.png (11 crops) + samplers .devshots/w3c-hud2-sample{,2}.cjs
+Method: all 4 stills opened; 11 crops read; ~60 sharp .raw() row/column/block samples.
+Luminance L is sRGB relative luminance x255; ratios (hi+12.75)/(lo+12.75).
+RESOLUTION ALERT: w3c-comms-radial-1920.png is a 1280x720 file — BOTH comms stills are 720p.
+Comms coords below are 720p px; wingman-1920 coords are 1080p px; wingman-1280 coords are 720p px.
+Bench artefacts excluded per brief (frozen motion, CYCLE clock, committed backdrops).
+PERF GATE: every fix below is static (fill/position/alpha/type) unless flagged; none needs
+backdrop-filter, blur, or per-frame repaint. One watch item: the new hail translucency and disc
+translucency MUST be static alpha/mask layers — if either was built with backdrop-filter over live
+flight it is a FAIL item; pixels cannot tell, builders to confirm in source.
+
+================================================================================
+SURFACE 4 — comms-radial (re-score, previous 4.2)
+================================================================================
+1. VERDICT: NOT PASSED, overall 5.0 (previous 4.2).
+2. AXES (score / previous / note):
+   Composition 5.0 / 4.0 : the 1280 hail docks right and clears the drive block; the 1920 twin
+     still pastes the plate bottom-center; no radial opens in either still.
+   Hierarchy 5.0 / 4.5 : 1280 reads name > sub-line > trace; no verb rank exists anywhere.
+   Legibility 8.0 / 8.0 : hail text crisp (HAULER strokes L149-174 ~7:1, FREQ L149-170 ~6.5:1,
+     bg L12-14); holds the audit's 8.0.
+   ORRERY fidelity 4.0 / 2.0 : the 1280 hail is glass + bone roundel + bare trace (instrument-
+     adjacent); the 1920 twin is still two navy boxes; no Hand, no ring, no fan in any pixel.
+   Craft/detail 5.5 / 4.0 : dissolved hail edges (~30px falloff x898-928), 46px roundel ring,
+     16px decay arc in 1280; the stale 1920 twin (flat L12 plate, sharp corners) drags the mean.
+   Interaction clarity 2.5 / 2.5 : UNCHANGED — no verb, no key, no fan in either still
+     (center-zone amber census 0.7% / 0.9% = the FLYBY + beacon diamonds only).
+3. PREVIOUS LIST (C1-C9) — judged per still; the twins show DIFFERENT builds:
+   The 1920 still is STALE (no objective tape, plain dock text, old plate — pre-fix build at the
+   wrong resolution). The 1280 still is the NEW build (tape + Lamp Key dock, docked glass hail).
+   C1 fan opens — NOT. No fan, verbs, or key chips in EITHER still (center zones x400-880/330-950
+     show only world + FLYBY/beacon diamonds; amber census <1% both). The signature is absent.
+   C2 delete the plate — HALF. DONE in 1280 (translucent glass, truss visible through at L89-145,
+     left edge feathered over ~30px, no corners); NOT in 1920 (flat L12 fill x500-780, sharp
+     90-degree corners, identical to the audit).
+   C3 grid box — HALF. DONE in 1280 (bare trace, single L122 spike at y390 on col x=1100, no grid
+     lines); NOT in 1920 (bordered grid box intact).
+   C4 dock right — HALF. DONE in 1280 on intent (hail x880-1270 y300-430, drive block y560+ fully
+     clear, COUNTERTHRUST readable); left edge x880 sits left of the x1040 line but nothing is
+     buried. NOT in 1920 (plate still bottom-center over the drive block).
+   C5 verbs/keys (builder note 1: live offer verbs e.g. ROUTE / HEAVE TO) — NOT. No verbs of ANY
+     kind are visible in either still, so the live-verb substitution is unverifiable and the
+     signature is unsatisfied on pixels. The substitution argument is reasonable (choose() rejects
+     dead controls) but a critic scores pixels, not arguments — re-shoot with the fan open.
+   C6 one label line — HALF. DONE in 1280 (HAULER x1000-1044 and FREQ x1180-1250 share row y355/357;
+     the 136px mid-gap is wide but it is one row). NOT in 1920 (stacked micro-lines intact).
+   C7 roundel (builder note 2: glyph-in-bone-ring, judged as staged) — HALF. DONE in 1280 as
+     staged: ~46px bone ring (L150-175 crossings, L24-27 interior) with centered target glyph,
+     larger and cleaner than the audit's 28px ask; no face is possible without a canonicalKey and
+     none is demanded. NOT in 1920 (tiny target mark only).
+   C8 overlay depth — DONE (direction changed, system consistent). Neither overlay dims the world
+     now (wingman W8 went the same way); consistency is achieved by no-dim on both sides rather
+     than the audit's shared dim rule. Accept — consistency is what the audit asked the system for.
+   C9 decay ring — HALF. DONE in 1280: 16px bone arc beside the roundel (L109 bright limb at
+     x963, dim L~60 far limb at x979 — a partial arc, consistent with frozen mid-countdown).
+     Absent in 1920.
+4. RANKED FIXES (coords 720p unless noted):
+   R1. The fan still never opens (both stills, center zones empty). Await one rendered frame
+     between hail create and the Alt dispatch (audit C1 mechanism); acceptance = verbs + 1-3 key
+     chips visible in the re-shoot. PERF: staging/sync, zero runtime cost.
+   R2. w3c-comms-radial-1920.png is a stale 1280x720 capture (no tape, old plate) — re-shoot at
+     true 1920x1080 from the current build; nothing about the 1920 twin is scoreable. PERF: n/a.
+   R3. No verb anywhere (C5). Open fan beside the docked hail with the LIVE offer verbs + diamond
+     key chips 1-3 (22px, per wingman W3 grammar). PERF: static until opened; Hand swing on
+     transform only.
+   R4. Stale-twin plate buries the drive block (1920 still, plate x505-775 y520-590 over
+     COUNTERTHRUST). Dies with R2; if the plate component still exists, delete it. PERF: static.
+   R5. HAULER/FREQ 136px mid-gap (x1044-1180, y355) reads as two labels drifting apart. Cap the
+     hail content width so the gap is <=64px. PERF: static.
+   R6. Hail covers the BEACON tag (EACON/57 WU ghost through glass at x880-960 y390-410).
+     Readable through the glass — accept, but nudge hail +20px right (x900+) so the tag clears
+     the glass edge. PERF: static.
+   R7. Decay arc has no label (16px ring at x963-979 y347-363, unexplained). 9px micro-label
+     "RESPOND" under the arc. PERF: static.
+   R8. Roundel glyph is the generic target mark (acceptable as staged) — when a canonicalKey
+     exists, swap in the produced portrait; until then keep the bone ring (it carries the C7
+     weight). PERF: one static img.
+   R9. Hail bottom edge (y~428-432) lands 130px above the drive block with dead space between.
+     Tighten hail height (trace y408 + 16px pad) so the glass ends crisply. PERF: static.
+   R10. Confirm hail glass is a static alpha layer, not backdrop-filter over live flight (PERF
+     GATE watch item — FAIL if filtered; pixels show translucency either way).
+5. MEMORABLE LINE: The hail as a voice you SEE arrive — bars breathing before the words, the
+   roundel resolving out of static. (Still unattempted; the audit's line stands.)
+7. OWNER CRITERIA: (a) FAIL by split — the 1280 hail passes (glass weight, custom roundel, no
+   wireframe, no web component) but the 1920 twin is still the generic navy card + bordered grid.
+   A surface that ships both builds ships the card. (b) FAIL — no interaction exists in any pixel,
+   hence no signature; the live-verb fan (R3) would create one. Screen NOT PASSED.
+
+================================================================================
+SURFACE 5 — wingman-radial (re-score, previous 6.3)
+================================================================================
+1. VERDICT: NOT PASSED, overall 7.7 (previous 6.3).
+2. AXES (score / previous / note):
+   Composition 7.5 / 6.0 : disc re-seated lower-center (center y~730), fight readable through the
+     fill; still a 340px mass over the lock zone.
+   Hierarchy 8.0 / 7.0 : amber segment + Hand > hub > side verbs reads instantly.
+   Legibility 7.5 / 8.0 : side labels/chips crisp; ATTACK TARGET text is 3.5:1 (bone L160 on
+     amber-tinted L37 fill) — under the gate, dings the axis.
+   ORRERY fidelity 7.5 / 4.5 : Hand + bead + diamond chips + tick ring + translucent fill; the
+     disc is still a dark pie (interior L24-26, heavier than the 55% glass spec).
+   Craft/detail 7.5 / 6.0 : chips, bead, amber-dim icon voice, tick ring; feather short (~14px vs
+     40px spec), dividers dim, hub 12px high.
+   Interaction clarity 8.0 / 6.5 : 4 verbs + keys + TAB wing-switch, every control afforded.
+3. PREVIOUS LIST (W1-W10):
+   W1 translucent fill + feather — HALF. Fill IS translucent now (interior L24-26 vs audit L1-3;
+     FLYBY/CHOIR-TENDER ghosts visible through the disc) but heavier than the 55% spec, and the
+     rim feather is ~14px (L111->L18 over x782-796, row y=700) vs the specified 40px.
+   W2 Hand + bead — DONE. Amber arm hub->ATTACK segment verified (col x=960 rgb 233,189,108 at
+     y600) with 4px amber bead at (960,545) rgb(238,182,81). (No bead halo — minor, see fix W-F7.)
+   W3 key chips — DONE. 22px bone-outline diamond chips behind all four digits (chip "4" verified
+     in crop; "1" chip rides the amber arm).
+   W4 TAB affordance — DONE. "TAB" chip + "SWITCH WING" micro-label in the hub (crop-verified).
+   W5 hub centering — HALF. Improved (ring 672-818, center 745; content center ~732) but content
+     still sits ~12px high: 21px gap above ALL WINGS vs 46px void below the TAB row.
+   W6 dividers — HALF. Dividers exist (L70 spike at x846, row y=855) but at ~2.7:1, dimmer than
+     the bone-35% spec; hub/rim end gaps not evident.
+   W7 disc off the fight — DONE (position). Center moved (960,562)->(960,~730), past the y700
+     ask into lower-center. Residual: the lock diamonds (975-1130, 600-640) still sit inside r170
+     — readable through the fill, but still behind glass (see fix W-F6).
+   W8 local scrim — DONE. No fullscreen dim anywhere (bright floor L200+ beside the disc, vivid
+     world in all corners); consistent with the comms no-dim direction.
+   W9 icon voice — DONE. All three side icons amber-dim (HOLD rgb 101,79,45; SCREEN 102,78,45;
+     REGROUP arrow 100,78,45) against bone labels — two voices, exactly as specified.
+   W10 1280 shrink — NOT. Disc is 275px wide at 1280 (21.5% of width) vs 340px at 1920 (17.7%)
+     — linear scale, no .8 host shrink; it still covers the drive block (readable through fill).
+4. RANKED FIXES (coords 1080p unless noted):
+   W-F1. ATTACK TARGET text 3.5:1 (brightest rgb 165,160,151 L160 on L37 fill, y608 x930-1000).
+     Raise the chosen-verb text to ink 92%+ (target L200+, >=4.5:1) or lighten the segment fill.
+     PERF: static.
+   W-F2. No 1280 shrink (720p: disc 275px wide, x505-780, covering STOP/COUNTERTHRUST text).
+     Scale the radial host .8 below 1400px width (-> ~220px). PERF: static transform.
+   W-F3. Dividers 2.7:1 (L70 spike, 2px, row y=855). 1px bone 35% + 6px gaps at hub and rim.
+     PERF: static.
+   W-F4. Fill heavier than spec (interior L24-26; ghosts faint) + feather 14px vs 40px (rim row
+     y=700 x782-796). Fill to 55%, radial alpha mask feather to 40px. PERF: one static mask
+     layer — NOT backdrop-filter (banned over live flight).
+   W-F5. Hub content 12px high (content center ~732 vs ring center 745; 46px void below TAB row
+     vs 21px above). Shift hub content +12px. PERF: static.
+   W-F6. Lock diamonds still behind glass (975-1130, 600-640 inside r170). Shrink disc r170->150
+     AND shift center y730->745 (bottom lands ~895, still clear of the drive block at y930+).
+     PERF: static.
+   W-F7. Bead has no halo (4px amber at (960,545), neighbours L45-46). 8px 25% halo twin.
+     PERF: static geometry.
+   W-F8. 1280: BEACON diamond sits behind the disc rim (720p x~745 y~390, ghost through fill).
+     Dies with W-F2; if it survives, shift disc -20px x at <=1400px. PERF: static.
+   W-F9. ATTACK segment label and key digit share one voice (bone on amber-tint). Digit "1" to
+     phos 12px numeral face; label stays. PERF: static.
+   W-F10. Confirm disc translucency is static alpha/mask, not backdrop-filter (PERF GATE watch
+     item — FAIL if filtered).
+5. MEMORABLE LINE: Orders that FLY — the chosen command visibly travelling down a beam to the
+   wing's own radar pip. (Still unattempted; the audit's line stands.)
+7. OWNER CRITERIA: (a) PASS — the filled disc, amber segment, bone chips and icon voices carry
+   real weight; nothing is hairline-only (dividers are dim but carried by the whole), nothing is
+   a generic web component. (b) PASS — radial orders + TAB wing-switch is a per-screen signature,
+   now fully afforded (W3/W4). Screen NOT PASSED on numbers alone (7.7 < 8.0, no axis below 7).
+
+================================================================================
+CROSS-SURFACE NOTES
+================================================================================
+- The w3c comms-1920 capture is unusable as evidence (stale build, wrong resolution). The bench
+  should refuse to write a still whose viewport does not match its filename, or at least log it.
+- No-dim is now the de facto cross-overlay system (comms C8 + wingman W8 converged). Record it as
+  the rule so the next audit does not re-ask for scrim.
+- Colour discipline holds: zero amber/red misuses found on either surface; the three wingman
+  icons share one amber-dim voice (rgb ~101,78,45 x3 — admirably consistent).
+- Text rendering still carries subpixel-AA color fringes (headed-capture signature, not scored).

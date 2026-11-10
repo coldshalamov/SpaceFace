@@ -1,0 +1,3803 @@
+import { solveLeadAngle } from '../combat/leadAngle.js';
+export { solveLeadAngle } from '../combat/leadAngle.js';
+import { addEnvironmentHeat } from './environmentMaterials.js';
+import { CRYO_QUENCH, environmentMaterialOf, stampEnvironmentMaterial } from '../data/environmentMaterials.js';
+import { steerAfterBounce } from '../combat/surfaceReflection.js';
+import { applyReflectedVelocity, reflectVelocity } from '../core/surfaceContact.js';
+// Weapons system (ARCHITECTURE §2.3 step 4 — runs after ai/flight, before physics.integrate).
+// Per tick: cool down + dissipate heat on every weapon instance, steer in-flight homing
+// projectiles, build/decay missile locks, then fire — for the player (state.input.fire / group 1)
+// and for each NPC ship whose ai-written intent.fire is set. Each firing weapon is gated on
+// cooldown + capacitor + heat (+ lock for missiles, +arc for turrets), spends cap, adds heat,
+// and spawns a projectile entity via helpers.spawnEntity. Continuous (beam) weapons drain cap/heat
+// while firing and push a transient ray into state.combat.beams; their DAMAGE is combat's job,
+// not ours. We emit ONLY combat:fire (+ combat:beamStop on release). Damage application and
+// projectile:hit/combat:damage are owned by physics + combat.
+import { WEAPONS } from '../data/weapons.js';
+import { occupantGenerationOf } from '../core/entity.js';
+import { DEFAULT_COMBAT_PROFILE_BY_TYPE } from '../data/combatDefs.js';
+import { swarmChainFireRateScale, swarmChainDamageScale, swarmRunOwnsLegendary } from './swarmChain.js';
+import { mothlightAllowsFire } from '../data/mothlight.js';
+import {
+  modelTruthBoltRadius,
+  modelTruthFlashOrigin,
+  modelTruthMineSensorRadius,
+  modelTruthShotOrigin,
+} from '../data/modelTruth.js';
+import { wrapAngle } from '../core/rng.js';
+import { scalarHitToDamagePacket } from '../combat/damage.js';
+import {
+  resolveWeaponImpulseForHit,
+  recordImpulseProvenance,
+  publishHitstunImpulse,
+  signedHitSide,
+} from '../combat/impulseKernel.js';
+import { isHostileToPlayer } from './scanner.js';
+import { cloakHidesEntityFrom } from './cloak.js';
+import { towedLureSignature } from '../ai/towedLure.js';
+import { lockLineageSuppressed } from './countermeasures.js';
+import { targetIdentityGeneration } from '../ai/perception.js';
+import { combatFlag, massline2Flag } from '../data/featureFlags.js';
+import {
+  aimTrueProjectileVelocity, solveTetherLeadSolution, solutionToleranceRad, orbitalConstraintState,
+  masslineOwnsGuns,
+} from '../combat/tetherFireControl.js';
+import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
+import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
+import {
+  attackSpecHasLiveHit,
+  attackSpecNeedsRuntime,
+  compileAttackSpec,
+  mergeWeaponView,
+} from '../combat/attackSpec.js';
+import { queuePhysicsImpulse, queuePhysicsTorqueImpulse, queueProjectileContinuation } from '../core/physicsAuthority.js';
+import { queryPhysicalBodies, deliverPhysicalImpulseDetailed, deliverPhysicalImpulse, deliverPhysicalAcceleration, schedulePhysicalBlast } from '../combat/physicalEffects.js';
+import { isEnvironmentalBody } from '../core/physicalResponse.js';
+import { clearEmergentRay, launchEmergent, setEmergentRay } from './emergentPrimitives.js';
+import {
+  fillInertialShuntImpulses,
+  hullCarriesInertialShunt,
+} from '../combat/inertialShunt.js';
+import {
+  GRAVITY_MARK_STATUS_ID,
+  INERTIAL_SHUNT_TUNING,
+  INERTIAL_SHUNT_WEAPON_ID,
+  MOMENTUM_SINK_BUNGEE,
+  MOMENTUM_SINK_STATUS_ID,
+  MOMENTUM_SINK_WEAPON_ID,
+} from '../data/combatDefs.js';
+import { causalKindsFromSpec, collectAttackModifiers } from '../combat/adventureAttackReaders.js';
+import { compactLineageRecord, createLineage } from '../combat/attackLineage.js';
+import { emitVolley, tryBounce } from '../combat/attackPropagation.js';
+import { resolvePayload } from '../combat/attackPayload.js';
+import { handlePayloadSectorTransition } from '../combat/industrialBeam.js';
+import { getCombatKernel } from '../combat/kernel.js';
+import {
+  armAttackContinue,
+  collectAttackCandidates,
+  requestAttackContinue,
+  resolveLiveAttackHit,
+} from '../combat/attackHit.js';
+import {
+  collectOpticSpentIds,
+  opticBeamBolt,
+  opticBookFor,
+  opticChildSpec,
+  opticFamilyIdOf,
+  opticMaterialOf,
+  opticRekindleDue,
+  opticSpendLedger,
+  settleOpticContact,
+  tickOpticRekindle,
+} from '../combat/opticField.js';
+import { registerStuntImpulseObserver } from '../combat/stuntEvidence.js';
+import { observeProjectileEmission, observeProjectileRedirect, prepareProjectileContact,
+  observeProjectileDamage, observeProjectileDeath, sampleProjectileEvidence } from '../combat/stuntProjectileEvidence.js';
+import {
+  projectileContinuationPlan,
+  projectileFlightPlan,
+  refreshFlightAfterBounce,
+  reserveProjectileCapacity,
+} from '../combat/projectileFlight.js';
+
+const RAD = Math.PI / 180;
+const TWO_PI = Math.PI * 2;
+
+// SEED-SW-22 — bodies the Debris Orbit will claim. Loose room matter only; the list stays
+// narrow so the ring can never reach out and pin a hull.
+const DEBRIS_ORBIT_ROCK_TYPES = new Set(['asteroid', 'debris', 'wreck', 'rock', 'cargo_pod']);
+
+/**
+ * SEED-SW-19/20 — a def-declared root volley rides the compiled spec's emitter. The compiler
+ * only raises rootCount through fitted traits; an armory gun whose card PROMISES a fan carries
+ * that promise on its def, and the emit loop spends the same lineage proc budget either way.
+ */
+function armoryVolleySpecView(spec, def) {
+  const volley = def && def.volley;
+  if (!spec || !volley) return spec;
+  const count = Number.isInteger(volley.count) ? volley.count : 0;
+  if (count <= 1) return spec;
+  const emitter = { ...(spec.emitter || {}), rootCount: count };
+  if (Number.isFinite(volley.spreadDeg)) emitter.spreadDeg = volley.spreadDeg;
+  return { ...spec, emitter };
+}
+const NPC_FIRE_PLAYER_RADAR_RANGE = 4000;
+
+// MissileV2 (BP-02, flag `combat.missileV2` — OFF in the golden): a missile burns fuel for a fixed
+// window, then the motor dies and it coasts ballistically ("break-and-coast"). While the motor burns,
+// its seeker only tracks a target that stays within its forward cone/range — juke behind the missile
+// and it loses the solution (real counterplay). All geometric/kinematic; draws no RNG.
+const MISSILE_FUEL_S = 6.0;              // motor burn window
+const MISSILE_SEEKER_CONE = 100 * RAD;   // seeker half-cone off the missile's heading
+const MISSILE_SEEKER_RANGE = 2000;       // wu — beyond this the seeker can't hold the solution
+const MISSILE_COAST_DRAG = 16;           // wu/s^2 gentle speed bleed after burnout
+
+// Cloak interplay (flag massline2.cloak — "cloak is a verb"): a target that goes dark cannot hold
+// what it had. A held/held-building lock bleeds out over CLOAK_LOCK_DROP_S — a short hold that
+// reads like the seeker head losing the emitter, not a snap — and an in-flight homing round loses
+// turn authority over CLOAK_SEEKER_DROP_S before adopting the chaff vocabulary (diverted + a stale
+// divertPos fix) for the rest of its run. Both share cloak.js's single perception gate, so the
+// rules are identical for a cloaked player and a cloaked NPC.
+const CLOAK_LOCK_DROP_S = 0.9;           // held lock on a dark target bleeds out over this window
+const CLOAK_SEEKER_DROP_S = 1.1;         // homing turn authority bleeds over this window
+const CLOAK_SEEKER_RESIDUAL = 0.25;      // fraction of authored turnRate left on the stale fix
+
+// Forced heat vent (Micro-Loops — "a red-bar gauge that forces a 2-second vent when it pegs").
+// When the player's guns peg heatMax they lock out for WEAPON_VENT_S seconds while heat is dumped,
+// turning sustained fire into a vent-and-resume rhythm. In a live browser, NPC mounts obey the same
+// lockout for combat fairness; only the local player emits HUD/audio receipts. The headless 47-A
+// replay remains unchanged behind the established browser-session guard.
+// Player-facing weapon recharge pacing — cap/heat recover ~15% faster than the baseline authored
+// rates so burst-and-recharge stays tactical without long dead-air waits.
+const WEAPON_RECHARGE_MULT = 1.15;
+
+/** Combat heatDissipation (overheat status is 0.35). A missing multiplier stays full rate. */
+function weaponHeatDissipScale(state, entity) {
+  const book = state && state.combat && state.combat.entities;
+  if (!book || !entity || entity.id == null) return 1;
+  const runtime = book[String(entity.id)];
+  const value = runtime && runtime.multipliers && runtime.multipliers.heatDissipation;
+  return Number.isFinite(value) ? Math.max(0, value) : 1;
+}
+const WEAPON_VENT_S = 2 / WEAPON_RECHARGE_MULT;
+const WEAPON_VENT_DUMP = 1.6 * WEAPON_RECHARGE_MULT;
+
+// RW-04 slag quench (build_map §30.1): while a Frame Coupler line holds onto cryo ice, the
+// rock is a heat sink. Every mount sheds at the authored rate, the rock's cold reserve pays
+// for it, and the heat lands on the rock through the ordinary environment material owner —
+// so a drained rock warms to its fracture heat and cracks apart like any other body. The
+// same coupling to ordinary rock does nothing; there is no quench without the cold.
+const CRYO_QUENCH_EMIT_TICKS = 10;
+const cryoQuenchLastEmit = new WeakMap();
+
+export function applyCryoQuench(state, entity, dt, hooks = {}) {
+  if (!(dt > 0) || !state || entity?.type !== 'ship' || entity.alive === false) return false;
+  const rock = cryoQuenchRockFor(state, entity);
+  if (!rock) return false;
+  const data = rock.data;
+  if (!(data.cryoReserve > 0)) return false; // spent ice is just rock
+  const ws = entity.data && entity.data.weapons;
+  if (!ws || !ws.length) return false;
+  let shed = 0;
+  for (const w of ws) {
+    if (!(w._heat > 0)) continue;
+    const take = Math.min(w._heat, CRYO_QUENCH.heatPerSecPerMount * dt);
+    w._heat -= take;
+    shed += take;
+  }
+  if (shed <= 0) return false;
+  data.cryoReserve = Math.max(0, data.cryoReserve - shed * CRYO_QUENCH.reservePerHeat);
+  addEnvironmentHeat(state, rock, shed * CRYO_QUENCH.rockHeatPerHeat, {
+    kind: 'cryo_quench', actorId: entity.id, weaponOwner: entity.id,
+  });
+  const tick = state.tick | 0;
+  if (tick - (cryoQuenchLastEmit.get(entity) ?? -Infinity) >= CRYO_QUENCH_EMIT_TICKS) {
+    cryoQuenchLastEmit.set(entity, tick);
+    // The plume reads through the ordinary thermal-field grammar — the same cold well the
+    // kilnback's coolant casks paint, at the rock, while the quench holds.
+    hooks.fields?.registerThermal?.({
+      id: `cryo_quench:${rock.id}`,
+      kind: 'well',
+      center: { x: rock.pos.x, z: rock.pos.z },
+      radius: 90,
+      durationS: 2,
+      thermal: { family: 'cryo_quench', kind: 'coolant', sourceKey: `cryo_quench:${rock.id}` },
+    });
+    hooks.emit?.('weapons:cryoQuench', {
+      actorId: entity.id, rockId: rock.id, shed, reserve: data.cryoReserve, tick,
+    });
+  }
+  return true;
+}
+
+function cryoQuenchRockFor(state, hull) {
+  const map = state.combat && state.combat.attachments && state.combat.attachments.byId;
+  if (!map) return null;
+  for (const attachment of Object.values(map)) {
+    if (attachment.state !== 'active' || attachment.defId !== 'tether_standard') continue;
+    if (attachment.tetherPolicy?.headId !== 'frame_coupler') continue;
+    const rockId = attachment.ownerId === hull.id ? attachment.targetId
+      : attachment.targetId === hull.id ? attachment.ownerId : null;
+    if (rockId == null) continue;
+    const rock = state.entities && state.entities.get ? state.entities.get(rockId) : null;
+    if (!rock || rock.alive === false || rock.type !== 'asteroid') continue;
+    if (environmentMaterialOf(rock) !== 'cryo') continue;
+    stampEnvironmentMaterial(rock, 'cryo');
+    return rock;
+  }
+  return null;
+}
+
+// SF-2b #6: a continuous beam pays the target's flat armor once per BEAM_ARMOR_PACKET_S, not once
+// per tick. The damage router deducts armorFlat once per packet and a beam emits one packet per
+// tick, so at 60 Hz a 60-dps beam lands 1-damage packets and flat 1 erased nearly all of them (Beam
+// Laser M did 1.9 dps to a Bruiser and could not kill 7 of 16 enemy types in 60 s). 0.25 s = the
+// beam reads to armor like a 4-rps gun: flat 3 still costs it 12 of its 60 dps.
+export const BEAM_ARMOR_PACKET_S = 0.25;
+
+// Enemy mount roles (authored in enemies.js as `occasional`/`defensiveOnly`, preserved by
+// combat.resolveEnemyWeapon). `occasional` opens a deterministic sim-time window — a seeded
+// phase per mount so twin racks don't volley in lockstep — and `defensiveOnly` answers only
+// while a live target is inside this fraction of the mount's own envelope. Flag-less mounts
+// and the player's battery never touch this gate.
+const OCCASIONAL_PERIOD_S = 12;
+const OCCASIONAL_WINDOW_S = 4;
+const DEFENSIVE_ENVELOPE_FRAC = 0.8;
+// Forced heat vent is AUTHORITATIVE combat behavior (lockout + heat dump). Gate on runtime features
+// / process combat flags — never `typeof window` (N1: Node/browser must not diverge by host).
+// legacy47a keeps weaponHeatVent false so 47-A goldens stay stable; production enables it.
+function isWeaponVentEnabled(state) {
+  const features = state && state.runtime && state.runtime.features;
+  return !!combatFlag('weaponHeatVent', features);
+}
+
+const DEG2 = WEAPONS; // keep import referenced even if tree-shaken oddly (no-op)
+
+// The hostile ship/drone the player's Massline currently owns the guns for, or null. One rule,
+// shared with combat/autoTargetMode via masslineOwnsGuns, so the fire path, the missile lock and the
+// reticle lead cannot end up pointing at three different ships. Module-level (not a method) so the
+// solution helpers stay callable against a minimal { helpers } host.
+function masslineGunTarget(helpers, player, state) {
+  const tether = state.player && state.player.tether;
+  if (!tether || tether.targetId == null || !helpers) return null;
+  const target = helpers.getEntity(tether.targetId);
+  if (!target) return null;
+  return masslineOwnsGuns(tether, target, isHostileToPlayer(target, player.team, state))
+    ? target
+    : null;
+}
+
+const CAUSAL_META_BY_SPEC = new WeakMap();
+const FAMILY_FIELD = 'field';
+const FAMILY_REACTION = 'reaction';
+
+function causalMetaForSpec(spec) {
+  if (!spec || typeof spec !== 'object') return null;
+  let meta = CAUSAL_META_BY_SPEC.get(spec);
+  if (meta) return meta;
+  const tags = Object.freeze(causalKindsFromSpec(spec));
+  let hasField = false;
+  for (let i = 0; i < tags.length; i++) {
+    if (tags[i] === 'ORBIT') {
+      hasField = true;
+      break;
+    }
+  }
+  const payload = spec.payload;
+  if (!hasField && Array.isArray(payload)) {
+    for (let i = 0; i < payload.length; i++) {
+      const entry = payload[i];
+      if (entry && entry.kind === 'status' && entry.statusId === GRAVITY_MARK_STATUS_ID) {
+        hasField = true;
+        break;
+      }
+    }
+  }
+  meta = { causalTags: tags, hasField };
+  CAUSAL_META_BY_SPEC.set(spec, meta);
+  return meta;
+}
+
+function stampHitCausal(payload, live, result) {
+  if (!payload || !live) return;
+  const meta = live.causalMeta || causalMetaForSpec(live.spec);
+  if (meta && meta.causalTags) payload.causalTags = meta.causalTags;
+  const hops = result && Array.isArray(result.hops) ? result.hops.length : 0;
+  const runtime = (result && result.runtime) || live.runtime;
+  const generation = runtime && Number.isInteger(runtime.generation) ? runtime.generation : 0;
+  const bounced = !!(runtime && runtime.hasBounced)
+    || !!(result && result.bounce && result.bounce.ok);
+  if (hops > 0) {
+    payload.hops = hops;
+    payload.chain = true;
+  }
+  if (generation > 0) payload.generation = generation;
+  if (bounced) payload.hasBounced = true;
+  if (hops > 0 || generation > 0 || bounced) return;
+  if (meta && meta.hasField) payload.family = FAMILY_FIELD;
+  else if (meta && meta.causalTags && meta.causalTags.indexOf('STATUS') >= 0) {
+    payload.family = FAMILY_REACTION;
+  }
+}
+
+// Full-azimuth precision belongs only to a live G-mode hostile lock. Ordinary player aim,
+// friendly selections, NPCs, missile locks and the non-G Massline gun contract keep their arcs.
+function arcadeGunTarget(e, target, state) {
+  return !!(e && target && target.alive !== false && target.pos && e.id === state.playerId
+    && state.input?.autoFire && state.input.autoAim?.targetId === target.id
+    && isHostileToPlayer(target, e.team, state));
+}
+
+
+/** Bench A/B: production default ON. Quiet NPC weapon idle latch. */
+let WEAPONS_NPC_QUIET_LATCH = true;
+export function setWeaponsNpcQuietLatchForBench(enabled) {
+  WEAPONS_NPC_QUIET_LATCH = enabled !== false;
+}
+export function getWeaponsNpcQuietLatchForBench() {
+  return WEAPONS_NPC_QUIET_LATCH !== false;
+}
+
+/** Membership / idle rescan while latched (0.5 s @ 60 Hz). */
+const WEAPONS_NPC_QUIET_RESCAN_TICKS = 30;
+
+function weaponsEntityIndexVersion(state) {
+  const index = state && state.entityIndex;
+  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
+    ? index.version
+    : null;
+}
+
+function readyProjectilesBucket(state) {
+  const index = state && state.entityIndex;
+  return !!(index && index.__spacefaceEntityIndexV1 && index.ready === true
+    && Array.isArray(index.projectiles));
+}
+
+function readyVectorMinesBucket(state) {
+  const index = state && state.entityIndex;
+  return !!(index && index.__spacefaceEntityIndexV1 && index.ready === true
+    && Array.isArray(index.vectorMines));
+}
+
+function anyIndexedProjectile(state) {
+  if (!readyProjectilesBucket(state)) return true; // refuse latch without typed lane
+  const list = state.entityIndex.projectiles;
+  // Quiet path: typed lane length is authoritative (dead rows are compacted on remove).
+  return list.length > 0;
+}
+
+function anyIndexedVectorMine(state) {
+  if (!readyVectorMinesBucket(state)) return true; // refuse latch without typed lane
+  const list = state.entityIndex.vectorMines;
+  return list.length > 0;
+}
+
+function publishWeaponsQuiet(state, latched) {
+  const rt = state.weaponRuntime || (state.weaponRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
+/**
+ * True when every non-player weapon ship is sleeping with no cooldown/heat/vent/plant/fire.
+ * Refuses (returns false) without a ready weaponShips/ships index so entityList fallback stays live.
+ */
+function npcWeaponsSubsystemQuiet(state) {
+  const index = state && state.entityIndex;
+  if (!index || !index.__spacefaceEntityIndexV1 || index.ready !== true) return false;
+  const ships = Array.isArray(index.weaponShips) ? index.weaponShips
+    : (Array.isArray(index.ships) ? index.ships : null);
+  if (!ships) return false;
+  const playerId = state.playerId;
+  for (let i = 0; i < ships.length; i++) {
+    const e = ships[i];
+    if (!e || e.alive === false || e.type !== 'ship' || e.id === playerId) continue;
+    if (e.physicsSleeping !== true) return false;
+    if (npcWeaponsNeedTick(e, state)) return false;
+    const intent = e.data && e.data.intent;
+    if (intent && intent.fire) return false;
+  }
+  return true;
+}
+
+// Overdrive shortens the player gun's cooldown only. Heat and capacitor still charge in full.
+function armedCooldown(playerGun, rof, fallback) {
+  const scale = playerGun ? swarmChainFireRateScale() : 1;
+  const effective = rof > 0 ? rof * scale : 0;
+  return effective > 0 ? 1 / effective : fallback;
+}
+
+
+export const weapons = {
+  name: 'weapons',
+
+  init(ctx) {
+    this.destroy();
+    this.ctx = ctx;
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    this.helpers = ctx.helpers;
+    this._weaponsUnsubs=[];
+    const on=(event,fn)=>{const off=ctx.bus.on(event,fn);this._weaponsUnsubs.push(typeof off==='function'?off:()=>ctx.bus.off?.(event,fn));};
+    this._weaponsUnsubs.push(registerStuntImpulseObserver(ctx.state,event=>observeProjectileRedirect(this.state,event)));
+    on('combat:damage',payload=>observeProjectileDamage(this.state,payload,this.bus));
+    on('entity:killed',payload=>observeProjectileDeath(this.state,payload,this.bus));
+
+    // Catalog lookup by weapon def id (instance fields win, def fills the gaps).
+    this._byId = new Map(WEAPONS.map((w) => [w.id, w]));
+
+    // Own deterministic stream so firing never disturbs the core sim PRNG (§0.5).
+    // H9: track seed0 + draw count on state so lab checkpoints cover this stream.
+    this._bindWeaponsRng(null);
+
+    // Track individual beam mounts so presentation can update one persistent beam per hardpoint.
+    this._beamFiring = new Set();
+    this._beamFiringPrev = new Set();
+    this._beamActiveMeta = new Map();
+    this._opticBeamSeq = 0;
+    this._diag = {
+      autoFireSpatialQueries: 0,
+      autoFireCandidates: 0,
+    };
+    this._attackSpecCache = new Map();
+    this._attackMetrics = emptyAttackMetrics();
+    this._attackLive = new Map();
+    this._attackQueryScratch = [];
+    this._weaponsQuiet = null;  // NPC-idle quiet latch
+    this._momentumSinkImpulse = { x: 0, y: 0, z: 0 };
+    this._shuntImpulseA = { x: 0, y: 0, z: 0 };
+    this._shuntImpulseB = { x: 0, y: 0, z: 0 };
+    this._shuntTorque = { x: 0, y: 0, z: 0 };
+    this._shuntCooldown = new Map();
+    this._entityGetter = (id) => {
+      if (id == null) return null;
+      if (this.helpers && typeof this.helpers.getEntity === 'function') return this.helpers.getEntity(id);
+      const state = this.state;
+      return state && state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(id)
+        : null;
+    };
+
+    on('debug:refillPlayer', () => refillLabPlayerHeat(this.state));
+    // §24: combat's beam sweep found an optic surface as the first body on a weapon ray —
+    // the optic owner settles the contact here and marks req.handled so the beam stops.
+    on('optic:beamContact', (req) => handleOpticBeamContact(this, req));
+    on('projectile:hit', (payload) => {
+      applyProjectilePhysicalContact(this, payload);
+      if (handleOpticProjectileHit(this, payload)) {
+        prepareProjectileContact(this.state, payload);
+        return;
+      }
+      prepareProjectileContact(this.state,payload);
+      const planted = tryPlantMomentumSinkFromHit(this.state, payload, this._entityGetter);
+      if (planted && this.bus) {
+        this.bus.emit('weapons:momentumSinkPlanted', {
+          ownerId: payload && payload.ownerId,
+          targetId: payload && payload.targetId,
+          weaponId: MOMENTUM_SINK_WEAPON_ID,
+        });
+      }
+      this._onAttackHit(payload);
+    });
+    // Linked shield pylons (packet 06): physics stopped a hostile round at a wall. An explosive round
+    // detonates at the accepted intercept point, on the attacker's side; the blast is then occluded
+    // by the same wall for anything behind it.
+    on('shieldPylon:intercepted', (payload) => detonateInterceptedSplash(this, payload));
+    on('physics:impact', (payload) => {
+      // Exact early-out (crowd-cost F1): when the receipt measured a relative closing under the
+      // live floor, applyInertialShuntFromImpact returns null at its own relativeClosing check —
+      // everything it skips before that line is pure reads plus expired-cooldown housekeeping
+      // that re-runs identically on the pair's next qualifying contact. A missing channel still
+      // takes the full velocity-fallback path, so the reject set is unchanged.
+      if (Number.isFinite(payload && payload.preSolveClosingSpeed)
+        && Math.max(0, payload.preSolveClosingSpeed) < INERTIAL_SHUNT_LIVE_TUNING.minClosingSpeed) return;
+      const applied = applyInertialShuntFromImpact(
+        this.state,
+        payload,
+        this._entityGetter,
+        this._shuntImpulseA,
+        this._shuntImpulseB,
+        this._shuntTorque,
+        this._shuntCooldown,
+        this.bus,
+      );
+      if (applied && this.bus) {
+        this.bus.emit('weapons:inertialShunt', applied);
+      }
+    });
+    on('sector:enter', (p) => {
+      if (!this._isCurrentSectorEnter(p)) return;
+      // Live GPU + flight + hard enter: defer into the cook's FIFO — the
+      // entity-list walks below otherwise run atomic inside the presented
+      // transition frame's emit tail. The deferred drain steps the legs under
+      // its slice clock in listener order.
+      if (deferSectorEnterMaterialization(this.state, p, () => this._onSectorEnterSteps(p))) return;
+      this._onSectorEnter(p);
+    });
+    this._playerIncomingLock = false;
+    this._opticSpent = new Set();
+    on('game:new', () => { this._playerIncomingLock = false; this._opticSpent = collectOpticSpentIds(this.state); this._weaponsQuiet = null; });
+    on('game:started', () => { this._playerIncomingLock = false; this._opticSpent = collectOpticSpentIds(this.state); this._weaponsQuiet = null; });
+    on('save:loaded', () => { this._playerIncomingLock = false; this._opticSpent = collectOpticSpentIds(this.state); this._weaponsQuiet = null; });
+  },
+
+  _isCurrentSectorEnter(payload) {
+    return Number.isSafeInteger(payload?.enterEpoch) && payload.enterEpoch > 0
+      && payload.enterEpoch === this.state.world?.enterSerial;
+  },
+
+  _onSectorEnter(payload) {
+    if (!this._isCurrentSectorEnter(payload)) return;
+    handlePayloadSectorTransition(this.state, this.helpers, payload);
+    if (!this._isCurrentSectorEnter(payload)) return;
+    clearAllMomentumSinkPlants(this.state);
+    if (this._shuntCooldown) this._shuntCooldown.clear();
+    if (this._opticFamilies) this._opticFamilies.clear();
+    // sector:enter fires after materialization, so cells the durable ledger restored dark
+    // are live entities here — pick their ids up for the rekindle watch.
+    this._opticSpent = collectOpticSpentIds(this.state);
+    // Review fix: a boundary transition can land a fresh version lineage under a
+    // latched membership — drop the quiet latch so the first tick re-evaluates.
+    this._weaponsQuiet = null;
+  },
+
+  *_onSectorEnterSteps(payload) {
+    if (!this._isCurrentSectorEnter(payload)) return;
+    handlePayloadSectorTransition(this.state, this.helpers, payload);
+    yield;
+    if (!this._isCurrentSectorEnter(payload)) return;
+    clearAllMomentumSinkPlants(this.state);
+    yield;
+    if (!this._isCurrentSectorEnter(payload)) return;
+    if (this._shuntCooldown) this._shuntCooldown.clear();
+    if (this._opticFamilies) this._opticFamilies.clear();
+    this._opticSpent = collectOpticSpentIds(this.state);
+    this._weaponsQuiet = null;
+  },
+
+  update(dt, state) {
+    if (state.mode !== 'flight') return;
+
+    // Quiet Ceres / open flight: sleeping NPCs with cold weapons still paid full
+    // weaponShips walks (_tickWeapons + NPC fire service) every tick. Latch when the
+    // typed projectile/vectorMine lanes are empty and every non-player weapon ship is
+    // sleeping with no cooldown/heat/vent/plant/fire; player service stays live.
+    // Wake on membership, live projectiles/mines, attack bag, beam owners, or 0.5 s rescan.
+    // Soft-GPU fps not claimed. Different angle from held packCombat single-dirty /
+    // sampleProjectileEvidence surface-cadence / preStep-all-sleeping.
+    if (WEAPONS_NPC_QUIET_LATCH !== false) {
+      const membership = weaponsEntityIndexVersion(state);
+      const tick = state.tick | 0;
+      const attackEmpty = !this._attackLive || this._attackLive.size === 0;
+      const beamsIdle = this._beamFiring.size === 0 && this._beamFiringPrev.size === 0;
+      const projectilesIdle = !anyIndexedProjectile(state);
+      const minesIdle = !anyIndexedVectorMine(state);
+      const quiet = this._weaponsQuiet;
+      // Tactical AI runs earlier in the registry tick and publishes quietLatched.
+      // When AI is awake, NPCs may take fire intent without membership churn — wake with it.
+      // Absent tactical runtime (fixtures) keeps membership/rescan/projectile wakes only.
+      const tacticalQuiet = !state.tacticalAiRuntime
+        || state.tacticalAiRuntime.quietLatched !== false;
+      if (quiet
+        && membership != null
+        && quiet.membership === membership
+        && attackEmpty
+        && beamsIdle
+        && projectilesIdle
+        && minesIdle
+        && tacticalQuiet
+        && ((tick - (quiet.armedTick | 0)) < WEAPONS_NPC_QUIET_RESCAN_TICKS)) {
+        this._runWeaponsNpcQuietIdle(dt, state);
+        return;
+      }
+      const tacticalQuietArm = !state.tacticalAiRuntime
+        || state.tacticalAiRuntime.quietLatched !== false;
+      if (membership != null
+        && attackEmpty
+        && beamsIdle
+        && projectilesIdle
+        && minesIdle
+        && tacticalQuietArm
+        && npcWeaponsSubsystemQuiet(state)) {
+        this._weaponsQuiet = { membership, armedTick: tick };
+        this._runWeaponsNpcQuietIdle(dt, state);
+        return;
+      }
+      this._weaponsQuiet = null;
+    } else if (this._weaponsQuiet) {
+      // Bench disable mid-latch: drop dead latch state (the flag republishes false
+      // on this tick's normal-path tail).
+      this._weaponsQuiet = null;
+    }
+
+    sampleProjectileEvidence(state,this.bus);
+    ensureWeaponRuntime(this);
+    pruneAttackLive(this, state);
+    resetWeaponDiagnostics(this._diag);
+
+    // Beams are transient per-tick rays; combat normally rebuilds state.combat.beams but may be a
+    // stub this wave, so we clear it ourselves to keep it from growing unbounded.
+    if (state.combat) {
+      if (!Array.isArray(state.combat.beams)) state.combat.beams = [];
+      else state.combat.beams.length = 0;
+    }
+    this._beamFiringPrev.clear();
+    for (const ownerId of this._beamFiring) this._beamFiringPrev.add(ownerId);
+    this._beamFiring.clear();
+
+    // 1) cool/recharge every weapon instance + steer in-flight homing projectiles.
+    this._tickWeapons(dt, state);
+    this._steerHoming(dt, state);
+    serviceOpticRekindle(this, state);
+    // SEED-SW-21/22/23 — armory behaviors that own a per-tick seam: mortar shells land and
+    // detonate, the debris ring keeps its orbit, and a glaive carves back once.
+    this._tickMortarShots(dt, state);
+    this._tickDebrisOrbit(dt, state);
+    this._tickReturnArc(dt, state);
+
+    // 2) fire — player first, then NPC ships.
+    const player = this.helpers.getEntity(state.playerId);
+    if (player && player.alive && !player.flags.docked) {
+      // Cruise charge/cruise blocks the player's own weapons (spec2/02 §1). NPC weapons keep firing.
+      const cruise = state.player && state.player.cruise;
+      const playerFireBlocked = cruise && (cruise.phase === 'charging' || cruise.phase === 'cruising');
+
+      // LMB is still the trigger. G supplies a transient hostile lock and per-mount lead,
+      // independently of the steering ribbon; the mode does not fire without a trigger.
+      // Cruise charge/cruise forces firing=false but still services the ship so beams release and
+      // cooldowns/heat tick down (spec2/02 §1).
+      let firing = false;
+      let forcedTarget = null;
+      if (!playerFireBlocked) {
+        firing = !!state.input.fire;
+        if (state.input.actions?.tetherFire) firing = false;
+      }
+      // Massline tether-lock fire control (§3.1, flag massline2.fireControl — OFF in the node
+      // golden): a line on a hostile IS the firing solution. The constrained-motion solver owns
+      // the aim (no G toggle needed, selection stays free for throw aims), and held fire only
+      // releases rounds on solution frames (gate applied per-mount in _serviceProjectileWeapon),
+      // so sustained LMB reads as the guns tracking rather than spraying.
+      let tetherGate = null;
+      if (massline2Flag('fireControl')) {
+        tetherGate = this._tetherFireSolution(player, state);
+        if (tetherGate) {
+          forcedTarget = tetherGate.target;
+        }
+      }
+      // MIXED BATTERY (auto-aim path). state.input.aimAngle can carry exactly one lead solution and
+      // it is the PRIMARY mount's — so pulse/autocannon/railgun all gimbaled to the pulse's 320
+      // intercept and two thirds of the battery knowingly fired short. Handing the auto-target down
+      // as the forced target makes each mount re-solve at its own projectile speed
+      // (_serviceProjectileWeapon below), and lets hitscan beams drop the lead entirely.
+      // `input.autoAim` is written ONLY by combat/autoTargetMode.tickAutoTarget, so a cursor aim the
+      // player set by hand is never re-led behind their back.
+      if (!forcedTarget) {
+        const autoAim = state.input && state.input.autoAim;
+        if (autoAim && autoAim.targetId != null) {
+          const autoTarget = this.helpers.getEntity(autoAim.targetId);
+          if (autoTarget && autoTarget.alive && autoTarget.pos) forcedTarget = autoTarget;
+        }
+      }
+      if (!(state.input && state.input.fire)) this._releasePlayerOrdnanceNotices(player);
+      const aimAngle = tetherGate
+        ? tetherGate.angle
+        : (Number.isFinite(state.input.aimAngle) ? state.input.aimAngle : player.rot);
+      // Transient mirror of WHAT THE GUNS ARE ACTUALLY SHOOTING AT, written by the system that owns
+      // firing (single-owner rule: HUD reads, we write). It differs from state.player.targetId
+      // exactly when the Massline has claimed the guns, which is precisely the case a target panel
+      // must not describe wrongly. Never serialized — recomputed every tick, and written only under
+      // the same flag as the rule it reports, so the key never appears in the 47-A snapshot hash.
+      if (massline2Flag('fireControl')) {
+        state.player.gunTargetId = forcedTarget && forcedTarget.id != null
+          ? forcedTarget.id
+          : (state.player.targetId != null ? state.player.targetId : null);
+      }
+      this._serviceShip(player, firing, /*isPlayer*/ true, dt, state, aimAngle, forcedTarget, tetherGate);
+    } else {
+      if (player && !(state.input && state.input.fire)) this._releasePlayerOrdnanceNotices(player);
+      if (state.player && state.player.gunTargetId != null) state.player.gunTargetId = null;
+    }
+    const ships = (state.entityIndex && (state.entityIndex.weaponShips || state.entityIndex.ships))
+      || state.entityList;
+    for (const e of ships) {
+      if (e.type !== 'ship' || !e.alive || e.id === state.playerId) continue;
+      const intent = e.data && e.data.intent;
+      const firing = !!(intent && intent.fire)
+        && presentationAllowsPlayerFacingAction(e, state)
+        && mothlightAllowsFire(state, e);
+      if (e.physicsSleeping === true && !firing) continue;
+      // NPC aim = its intent aimAngle (already a lead/intercept angle from ai.js). fall back to nose.
+      const aimAngle = (intent && intent.aimAngle != null) ? intent.aimAngle : e.rot;
+      this._serviceShip(e, firing, false, dt, state, aimAngle, null);
+    }
+
+    // 3) beam release → one precise stop receipt for each mount that stopped firing.
+    this._emitStoppedBeams();
+    // 4) physics-weapon consequences (SF-10): tick deployed vector mines (arm → proximity → radial
+    // impulse). Helm-loss and RCS disruption are owned by tumbleStates so there is one control
+    // writer. Strict no-op in the node golden — they gate on weaponImpulseConsequences, which the
+    // 47a scenario pins OFF — so they cannot perturb the frozen sim hash.
+    this._tickVectorMines(dt, state);
+    state.weaponRuntime = state.weaponRuntime || {};
+    state.weaponRuntime.diagnostics = this._diag;
+    state.weaponRuntime.attack = this._attackMetrics;
+    publishWeaponsQuiet(state, false);
+  },
+
+  /**
+   * NPC-idle quiet path: stunt evidence + player weapon tick/service only.
+   * Skips sleeping-NPC _tickWeapons walk, NPC fire loop, homing steer, and mines.
+   */
+  _runWeaponsNpcQuietIdle(dt, state) {
+    sampleProjectileEvidence(state, this.bus);
+    ensureWeaponRuntime(this);
+    // attackLive proven empty by latch predicate — skip prune walk
+    resetWeaponDiagnostics(this._diag);
+    if (state.combat) {
+      if (!Array.isArray(state.combat.beams)) state.combat.beams = [];
+      else state.combat.beams.length = 0;
+    }
+    // beamsIdle proven by latch — sets already empty; keep clears for identity
+    this._beamFiringPrev.clear();
+    this._beamFiring.clear();
+
+    this._tickPlayerWeaponsOnly(dt, state);
+    // Review fix: the quiet path must still service optic rekindle — a spent prism
+    // heals after OPTIC_SPEND_QUIET sim-seconds untouched and _opticSpent is not a
+    // latch predicate, so omitting this call kept discharged cells dark forever
+    // during sustained quiet. Empty Set makes the call near-free.
+    serviceOpticRekindle(this, state);
+
+    const player = this.helpers.getEntity(state.playerId);
+    if (player && player.alive && !player.flags.docked) {
+      const cruise = state.player && state.player.cruise;
+      const playerFireBlocked = cruise && (cruise.phase === 'charging' || cruise.phase === 'cruising');
+      let firing = false;
+      let forcedTarget = null;
+      if (!playerFireBlocked) {
+        firing = !!state.input.fire;
+        if (state.input.actions?.tetherFire) firing = false;
+      }
+      if (!(state.input && state.input.fire)) this._releasePlayerOrdnanceNotices(player);
+      let tetherGate = null;
+      const fireControl = massline2Flag('fireControl');
+      if (fireControl) {
+        tetherGate = this._tetherFireSolution(player, state);
+        if (tetherGate) forcedTarget = tetherGate.target;
+      }
+      if (!forcedTarget) {
+        const autoAim = state.input && state.input.autoAim;
+        if (autoAim && autoAim.targetId != null) {
+          const autoTarget = this.helpers.getEntity(autoAim.targetId);
+          if (autoTarget && autoTarget.alive && autoTarget.pos) forcedTarget = autoTarget;
+        }
+      }
+      // Quiet idle: no trigger / forced target / tether gate → skip mount service.
+      // Cooldown/heat already advanced in _tickPlayerWeaponsOnly.
+      if (firing || forcedTarget || tetherGate) {
+        const aimAngle = tetherGate
+          ? tetherGate.angle
+          : (Number.isFinite(state.input.aimAngle) ? state.input.aimAngle : player.rot);
+        if (fireControl) {
+          state.player.gunTargetId = forcedTarget && forcedTarget.id != null
+            ? forcedTarget.id
+            : (state.player.targetId != null ? state.player.targetId : null);
+        }
+        this._serviceShip(player, firing, /*isPlayer*/ true, dt, state, aimAngle, forcedTarget, tetherGate);
+      } else if (fireControl && state.player) {
+        // Review fix: mirror the normal path's per-tick mirror — a non-firing
+        // player holding a selected target must keep gunTargetId == targetId;
+        // nulling it blanks the target panel while latched.
+        state.player.gunTargetId = state.player.targetId != null
+          ? state.player.targetId
+          : null;
+      }
+    } else {
+      if (player && !(state.input && state.input.fire)) this._releasePlayerOrdnanceNotices(player);
+      if (state.player && state.player.gunTargetId != null) state.player.gunTargetId = null;
+    }
+
+    // beamsIdle — prev/current empty; emit is a no-op Set walk
+    this._emitStoppedBeams();
+    state.weaponRuntime = state.weaponRuntime || {};
+    state.weaponRuntime.diagnostics = this._diag;
+    state.weaponRuntime.attack = this._attackMetrics;
+    publishWeaponsQuiet(state, true);
+  },
+
+  _tickPlayerWeaponsOnly(dt, state) {
+    const player = this.helpers.getEntity(state.playerId);
+    if (player && player.alive && player.type === 'ship') {
+      const ws = player.data && player.data.weapons;
+      if (ws) {
+        for (const w of ws) {
+          const def = this._byId.get(w.defId) || {};
+          if (w._cooldown > 0) w._cooldown = Math.max(0, w._cooldown - dt);
+          const baseDissip = w.heatDissip != null ? w.heatDissip : (def.heatDissip || 0);
+          const dissip = baseDissip * WEAPON_RECHARGE_MULT * weaponHeatDissipScale(state, player);
+          if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
+        }
+        applyCryoQuench(state, player, dt, this._quenchHooks());
+        this._tickVent(player, dt, state);
+        this._tickLock(player, dt);
+      }
+      tickMomentumSinkPlant(state, player, this._momentumSinkImpulse, this._entityGetter);
+    }
+    this._publishIncomingLock(state);
+  },
+
+  // --- per-instance timers (cooldown, heat dissipation, lock decay) ---
+  _quenchHooks() {
+    const fields = this.ctx && this.ctx.registry && this.ctx.registry.get('fields');
+    const emit = (type, payload) => this.bus.emit(type, payload);
+    return { fields: fields && typeof fields.registerThermal === 'function' ? fields : null, emit };
+  },
+
+  _tickWeapons(dt, state) {
+    const ships = (state.entityIndex && (state.entityIndex.weaponShips || state.entityIndex.ships)) || state.entityList;
+    const quenchHooks = this._quenchHooks();
+    for (const e of ships) {
+      if (e.type !== 'ship' || !e.alive) continue;
+      if (e.physicsSleeping === true && !npcWeaponsNeedTick(e, state)) continue;
+      const ws = e.data && e.data.weapons;
+      if (ws) {
+        for (const w of ws) {
+          const def = this._byId.get(w.defId) || {};
+          if (w._cooldown > 0) w._cooldown = Math.max(0, w._cooldown - dt);
+          const baseDissip = w.heatDissip != null ? w.heatDissip : (def.heatDissip || 0);
+          const dissip = baseDissip * WEAPON_RECHARGE_MULT * weaponHeatDissipScale(state, e);
+          if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
+        }
+        applyCryoQuench(state, e, dt, quenchHooks);
+        // Forced-vent lockout (player only) — see WEAPON_VENT_S. Runs after the normal cooldown so a
+        // freshly-pegged gun trips the vent this tick.
+        this._tickVent(e, dt, state);
+        // Missile lock build/decay lives on the ship's combat block.
+        this._tickLock(e, dt, state);
+      }
+      tickMomentumSinkPlant(state, e, this._momentumSinkImpulse, this._entityGetter);
+    }
+    this._publishIncomingLock(state);
+  },
+
+  /**
+   * H9: rebind weapons RNG from state.weaponsEntropy after save/load restore.
+   * Call after loadEnvelope has written weaponsEntropy onto state.
+   */
+  restoreEntropyFromState() {
+    const ent = this.state && this.state.weaponsEntropy;
+    if (!ent || !Number.isFinite(ent.seed0)) return;
+    this._bindWeaponsRng({ seed0: ent.seed0 >>> 0, draws: ent.draws | 0 });
+  },
+
+  _bindWeaponsRng(continuation) {
+    const seed = (this.state && this.state.meta && this.state.meta.seed) || 1;
+    const seed0 = continuation && Number.isFinite(continuation.seed0)
+      ? (continuation.seed0 >>> 0)
+      : (this.helpers.hash32(seed, 'weapons') >>> 0);
+    const targetDraws = continuation && Number.isFinite(continuation.draws)
+      ? (continuation.draws | 0)
+      : 0;
+    const base = this.helpers.mulberry32(seed0);
+    let draws = 0;
+    while (draws < targetDraws) {
+      base();
+      draws += 1;
+    }
+    this._rngSeed0 = seed0;
+    this._rng = () => {
+      draws += 1;
+      const v = base();
+      if (this.state) {
+        this.state.weaponsEntropy = { seed0, draws, stream: 'weapons' };
+      }
+      return v;
+    };
+    if (this.state) {
+      this.state.weaponsEntropy = { seed0, draws, stream: 'weapons' };
+    }
+  },
+
+  // Forced heat vent: the instant any weapon pegs heatMax, lock every weapon out for
+  // WEAPON_VENT_S seconds and dump heat fast so the guns visibly cool, then come back online. This
+  // is the "2-second vent" rhythm beat. Live NPCs obey the same timer; player-only receipts drive HUD.
+  _tickVent(e, dt, state) {
+    if (!isWeaponVentEnabled(state || this.state)) return;
+    const ws = e.data && e.data.weapons;
+    if (!ws || !ws.length) return;
+    const data = e.data;
+    const now = state.simTime || 0;
+    const wasVenting = now < (data.weaponVentUntil || 0);
+    if (!wasVenting) {
+      let pegged = null;
+      for (const w of ws) {
+        const def = this._byId.get(w.defId) || {};
+        const heatMax = w.heatMax != null ? w.heatMax : def.heatMax;
+        if (Number.isFinite(heatMax) && heatMax > 0 && (w._heat || 0) >= heatMax) { pegged = w; break; }
+      }
+      if (pegged) {
+        this._beginVent(e, state, pegged);
+      }
+    }
+    const venting = now < (data.weaponVentUntil || 0);
+    if (venting) {
+      for (const w of ws) {
+        const def = this._byId.get(w.defId) || {};
+        const heatMax = w.heatMax != null ? w.heatMax : def.heatMax;
+        if ((w._heat || 0) > 0 && Number.isFinite(heatMax) && heatMax > 0) {
+          w._heat = Math.max(0, w._heat - (heatMax / WEAPON_VENT_S) * WEAPON_VENT_DUMP * dt);
+        }
+      }
+    } else if (data._weaponVenting && e.id === this.state.playerId) {
+      this.bus.emit('weapons:vent', {
+        ownerId: e.id,
+        phase: 'end',
+        endedAt: now,
+      });
+    }
+    data._weaponVenting = venting;
+  },
+
+  _beginVent(e, state, weapon = null) {
+    if (!isWeaponVentEnabled(state || this.state) || !e) return false;
+    const now = state.simTime || 0;
+    if (now < (e.data.weaponVentUntil || 0)) return false;
+    const def = weapon && this._byId.get(weapon.defId) || {};
+    const heatMax = weapon
+      ? (weapon.heatMax != null ? weapon.heatMax : def.heatMax)
+      : null;
+    e.data.weaponVentUntil = now + WEAPON_VENT_S;
+    e.data._weaponVenting = true;
+    if (e.id === this.state.playerId) {
+      this.bus.emit('weapons:vent', {
+        ownerId: e.id,
+        weaponId: weapon && weapon.defId || null,
+        phase: 'start',
+        startedAt: now,
+        until: e.data.weaponVentUntil,
+        heat: weapon && Number(weapon._heat) || 0,
+        heatMax: Number.isFinite(heatMax) ? heatMax : null,
+      });
+    }
+    return true;
+  },
+
+  _tickLock(e, dt, state) {
+    // A caller that forgets `state` must not produce a permanently-frozen occasional window —
+    // fall back to the system's bound state rather than evaluating simTime as 0.
+    state = state || this.state;
+    const ws = e.data && e.data.weapons;
+    const combat = e.data && e.data.combat;
+    if (!ws || !combat) return;
+    const tgt = this._resolveTarget(e);
+    // Does this ship carry any lock-requiring weapon that is open this tick? An `occasional`
+    // rack is ignored while its window is closed so the incoming-lock warning re-arms per
+    // actual launch window instead of crying wolf between volleys.
+    let needsLock = false, lockTimeS = Infinity;
+    for (const w of ws) {
+      const def = this._byId.get(w.defId) || {};
+      const tracking = w.tracking || def.tracking;
+      if (tracking === 'homing' && this._mountRoleOpen(e, w, def, state)) {
+        // A lock is a launch solution. An unreachable rack must neither warn/interdict the
+        // player nor lend its shorter observation window to a longer-range torpedo mount.
+        const range = w.range != null ? w.range : def.range;
+        if (tgt && Number.isFinite(range)) {
+          const dx = tgt.pos.x - e.pos.x, dz = tgt.pos.z - e.pos.z;
+          if (range < 0 || dx * dx + dz * dz > range * range) continue;
+        }
+        needsLock = true;
+        const lt = w.lockTimeS != null ? w.lockTimeS : def.lockTimeS;
+        if (lt != null) lockTimeS = Math.min(lockTimeS, lt);
+      }
+    }
+    // Fastest open mount governs the warn/launch cadence; the 1.2 s floor is only the default
+    // for racks that author no time — starting there silently ignored slower authored locks.
+    if (!Number.isFinite(lockTimeS)) lockTimeS = 1.2;
+    if (!needsLock) { combat.lockProgress = 0; combat.lockTarget = null; combat.lockTargetGeneration = null; return; }
+    // Cloak interplay (flag massline2.cloak): a target dark to THIS shooter cannot grow a lock and
+    // bleeds a held one over CLOAK_LOCK_DROP_S — a bounded hold, not a snap. Inside the ring (or
+    // under a scanner burn) the lock behaves exactly as before. One gate, player and NPC alike.
+    const darkened = !!tgt && cloakHidesEntityFrom(state, e, tgt);
+    if (tgt && lockLineageSuppressed(combat, tgt.id, state.simTime)) {
+      combat.lockProgress = 0;
+      combat.lockTarget = null;
+      return;
+    }
+    if (tgt && !darkened && this._inLockCone(e, tgt)) {
+      const ident = targetIdentityGeneration(tgt);
+      if (combat.lockTarget !== tgt.id || (combat.lockTargetGeneration != null && combat.lockTargetGeneration !== ident)) {
+        if (combat.lockTarget != null) combat.lockGeneration = (combat.lockGeneration | 0) + 1;
+        combat.lockProgress = 0;
+      }
+      combat.lockTarget = tgt.id;
+      combat.lockTargetGeneration = ident;
+      combat.lockProgress = Math.min(1, (combat.lockProgress || 0) + dt / Math.max(0.05, lockTimeS));
+    } else {
+      // lock decays when target leaves the cone / is gone / went dark — a darkened target bleeds
+      // on the cloak window so a completed lock holds for a beat and then drops.
+      const decayS = darkened ? CLOAK_LOCK_DROP_S : Math.max(0.05, lockTimeS);
+      combat.lockProgress = Math.max(0, (combat.lockProgress || 0) - dt / decayS);
+      if (combat.lockProgress <= 0) { combat.lockTarget = null; combat.lockTargetGeneration = null; }
+    }
+  },
+
+  /**
+   * Incoming missile lock on the player. World jump interdiction and the MISSILE LOCK alert
+   * both listen to `combat:lockChanged`; nothing used to emit it, so both stayed dead.
+   */
+  _publishIncomingLock(state) {
+    const playerId = state && state.playerId;
+    let locked = false;
+    let shooterId = null;
+    if (playerId != null) {
+      const ships = (state.entityIndex && (state.entityIndex.weaponShips || state.entityIndex.ships))
+        || state.entityList;
+      for (const e of ships) {
+        if (!e || !e.alive || e.type !== 'ship' || e.id === playerId) continue;
+        const combat = e.data && e.data.combat;
+        if (!combat) continue;
+        if (combat.lockTarget === playerId && (combat.lockProgress || 0) >= 1) {
+          locked = true;
+          shooterId = e.id;
+          break;
+        }
+      }
+    }
+    if (locked === this._playerIncomingLock) return;
+    this._playerIncomingLock = locked;
+    if (this.bus) {
+      this.bus.emit('combat:lockChanged', {
+        locked,
+        targetId: playerId,
+        shooterId,
+      });
+    }
+  },
+
+  _inLockCone(shooter, tgt) {
+    const dx = tgt.pos.x - shooter.pos.x, dz = tgt.pos.z - shooter.pos.z;
+    const ang = Math.atan2(dz, dx);
+    return Math.abs(wrapAngle(ang - shooter.rot)) <= 25 * RAD; // lockConeDeg default 25°
+  },
+
+  // --- homing projectile steering (physics.integrate only does pos += vel*dt) ---
+  _steerHoming(dt, state) {
+    const missileV2 = combatFlag('missileV2');
+    const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
+    for (const p of projectiles) {
+      if (p.type !== 'projectile' || !p.alive) continue;
+      const d = p.data;
+      if (!d || d.kind !== 'missile') continue;
+      if (!d.armed) { d.armed = true; }
+      // Cloak and ECM shape one authored seeker. Start from its unjammed rate each tick
+      // so neither a reveal nor a fading cloak can overwrite the other's authority.
+      let jammer = null;
+      const cloakDiverted = d.diverted && d._cloakTurnRate != null
+        && d._cloakSeekerLoss >= CLOAK_SEEKER_DROP_S;
+      // A completed cloak break keeps its stale-fix authority after ECM has released
+      // and removed its marker. The seeker owner reapplies that persistent consequence.
+      if (cloakDiverted) d.turnRate = d._cloakTurnRate * CLOAK_SEEKER_RESIDUAL;
+      if (d._jammedTurnRate != null) {
+        d.turnRate = cloakDiverted
+          ? d._cloakTurnRate * CLOAK_SEEKER_RESIDUAL : d._jammedTurnRate;
+        const source = this.helpers.getEntity(d._jammedBy);
+        const cm = source && source.alive !== false && source.data && source.data.cm;
+        if (cm && cm.effectT > 0 && cm.effect?.cfg?.kind === 'ecm') jammer = cm.effect.cfg;
+        else { delete d._jammedTurnRate; delete d._jammedBy; }
+      }
+      const decoy = missileDecoyAim(d);
+      // RW-02 towed lure: a hot payload on the player's Massline re-acquires seekers that
+      // are homing on the cold hull. Refresh the lure claim BEFORE the decoy read so the
+      // aim below follows the live lure while the claim holds, and the hull once released.
+      refreshTowedLureDivert(this.helpers, state, d);
+      const lureDecoy = missileDecoyAim(d);
+      let tgt = (decoy || lureDecoy)
+        ? null
+        : (d.targetId != null ? this.helpers.getEntity(d.targetId) : null);
+      // A recycled entity id is not yesterday's target. The round stays a physical body.
+      if (tgt && !guidanceAcceptsTarget(d, tgt)) tgt = null;
+      // Cloak interplay (flag massline2.cloak): a target dark to THIS seeker bleeds its tracking
+      // quality — turn authority scales down over CLOAK_SEEKER_DROP_S (ECM-style bleed on
+      // data.turnRate), then the round adopts the chaff vocabulary: diverted onto a divertPos
+      // snapshot of the last fix, residual turn authority only. No snap-off, no instant re-lock —
+      // coming back into the emitter's ring restores the authored turnRate mid-bleed. A missile
+      // that already ate a decoy keeps flying that decoy line.
+      if (!lureDecoy && !decoy && tgt && cloakHidesEntityFrom(state, p, tgt)) {
+        if (d._cloakTurnRate == null) d._cloakTurnRate = d.turnRate || 0;
+        d._cloakSeekerLoss = (d._cloakSeekerLoss || 0) + dt;
+        const fade = Math.min(1, d._cloakSeekerLoss / CLOAK_SEEKER_DROP_S);
+        d.turnRate = Math.max(0, (d._cloakTurnRate || 0) * (1 - fade));
+        if (fade >= 1) {
+          d.diverted = true;
+          d.divertPos = { x: tgt.pos.x, z: tgt.pos.z };
+          d.turnRate = (d._cloakTurnRate || 0) * CLOAK_SEEKER_RESIDUAL;
+        }
+      } else if (!lureDecoy && !decoy && d._cloakSeekerLoss > 0) {
+        // The emitter came back (entered the ring, cloak dropped, or a scan burn opened it).
+        if (d._cloakTurnRate != null) d.turnRate = d._cloakTurnRate;
+        d._cloakSeekerLoss = 0;
+        d._cloakTurnRate = null;
+      }
+      if (jammer) d.turnRate *= Math.max(0, Math.min(1, jammer.turnRateMult ?? 0));
+      const aim = lureDecoy || decoy || (tgt && tgt.pos);
+      const turnRate = d.turnRate || 0;
+      const speedMax = d.projSpeed || Math.hypot(p.vel.x, p.vel.z) || 1;
+      let cur = Math.atan2(p.vel.z, p.vel.x);
+
+      // Base guidance: a live target, or a chaff decoy point written by countermeasures. The decoy
+      // is not a real entity — looking it up used to drop guidance and fly the round straight into
+      // the ship it was already tracking.
+      let guiding = !!(aim && turnRate > 0 && (lureDecoy || decoy || (tgt && tgt.alive)));
+      let motorOn = true;
+      if (missileV2) {
+        // Fuel: burn for MISSILE_FUEL_S, then the motor dies and the missile coasts (no guidance).
+        d.fuelS = (d.fuelS || 0) + dt;
+        motorOn = d.fuelS < MISSILE_FUEL_S;
+        if (!motorOn) {
+          guiding = false;
+        } else if (guiding) {
+          // Seeker line-of-sight: hold the solution only while the target stays in the forward cone
+          // and within seeker range. Break line of sight (juke behind it) and it flies straight.
+          const toT = Math.atan2(aim.z - p.pos.z, aim.x - p.pos.x);
+          const off = Math.abs(wrapAngle(toT - cur));
+          const dx = aim.x - p.pos.x, dz = aim.z - p.pos.z;
+          const inRange = (dx * dx + dz * dz) <= MISSILE_SEEKER_RANGE * MISSILE_SEEKER_RANGE;
+          if (off > MISSILE_SEEKER_CONE || !inRange) guiding = false;
+        }
+      }
+
+      if (guiding) {
+        const desired = Math.atan2(aim.z - p.pos.z, aim.x - p.pos.x);
+        const diff = wrapAngle(desired - cur);
+        const step = Math.max(-turnRate * dt, Math.min(turnRate * dt, diff));
+        cur = wrapAngle(cur + step);
+      }
+      // A dumb round names its cause: once per player-owned round, the first tick
+      // guidance is gone, say why (burnout / cone / range / cloak / decoy) so the
+      // juke-and-cloak counterplay the solver authors wrote is readable to the shooter.
+      if (!d._guidanceLostEmitted && d.ownerId != null && state && d.ownerId === state.playerId) {
+        let lostReason = null;
+        if (lureDecoy || decoy) lostReason = (d._cloakSeekerLoss > 0) ? 'cloak' : 'decoy';
+        else if (d.diverted) lostReason = 'cloak';
+        else if (missileV2 && !motorOn) lostReason = 'burnout';
+        else if (missileV2 && !guiding && aim) lostReason = 'cone';
+        else if (missileV2 && !guiding && !aim) lostReason = 'range';
+        if (lostReason && !guiding && this.bus) {
+          d._guidanceLostEmitted = true;
+          this.bus.emit('missile:guidanceLost', {
+            missileId: p.id,
+            ownerId: d.ownerId,
+            targetId: d.targetId != null ? d.targetId : null,
+            reason: lostReason,
+            tick: Number.isInteger(state.tick) ? state.tick : 0,
+          });
+        }
+      }
+      // ramp speed up to the weapon's max projectile speed while the motor burns; after burnout
+      // (missileV2 only) bleed speed gently so the coast reads as a spent, ballistic round.
+      let sp = Math.hypot(p.vel.x, p.vel.z);
+      if (missileV2 && !motorOn) {
+        sp = Math.max(0, sp - MISSILE_COAST_DRAG * dt);
+      } else {
+        const accel = d.projAccel || 0;
+        if (accel > 0) sp = Math.min(speedMax, sp + accel * dt);
+        else sp = speedMax;
+      }
+      p.vel.x = Math.cos(cur) * sp;
+      p.vel.z = Math.sin(cur) * sp;
+      p.rot = cur;
+    }
+  },
+
+  // Massline fire control solution for the local player (flag-gated by the caller). Returns
+  // { target, targetId, angle, tolRad, constrained } when the player's tether is on a live
+  // hostile ship/drone, else null. Pure read — never writes state.player.targetId, so Tab
+  // selection stays free for throw aiming while the guns own the tethered hostile.
+  //
+  // GATE: geometry, not rope tension. This used to require phase ∈ {capture, loaded, overload} and
+  // bail otherwise — but a TIGHT ORBIT sits inside rest length, so it reports `slack`, so the
+  // circular solver written for exactly that case was switched off precisely when the player was
+  // performing the signature Massline move. A linear lead against a body on an arc misses
+  // systematically, always to the outside. orbitalConstraintState() asks the real question (is it
+  // going AROUND me, fast enough for the arc to bend inside a bullet's flight?), and a negative
+  // answer now yields a LINEAR solution rather than null — so a straight tow still keeps the guns
+  // on the hostile you are holding instead of handing them back to whatever ship is nearest.
+  _tetherFireSolution(player, state, projSpeed = null) {
+    const target = masslineGunTarget(this.helpers, player, state);
+    if (!target) return null;
+    const tetherPhase = (state.player && state.player.tether && state.player.tether.phase) || 'slack';
+    const orbit = orbitalConstraintState(player, target);
+    const speed = Number.isFinite(projSpeed) && projSpeed > 0
+      ? projSpeed : this._playerProjectileSpeed(player);
+    const sol = solveTetherLeadSolution(player, target, speed, { taut: orbit.constrained });
+    const dist = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
+    return {
+      target,
+      targetId: target.id,
+      angle: sol.angle,
+      tolRad: solutionToleranceRad(target.radius, dist),
+      constrained: sol.constrained,
+      omega: orbit.omega,
+      // Reported for receipts only — nothing branches on the rope's tension phase any more.
+      taut: tetherPhase === 'capture' || tetherPhase === 'loaded' || tetherPhase === 'overload',
+    };
+  },
+
+  // Mount-role permission for the authored enemy flags. An `occasional` mount only fires while
+  // its deterministic window is open — a hash-seeded phase per mount so a count:2 rack doesn't
+  // volley in lockstep — and a `defensiveOnly` mount only answers while a live target is inside
+  // its own close envelope (a fraction of the mount's range, so a ship kited at beam range stops
+  // cycling flak it could never land). Flag-less mounts and the player's battery return early and
+  // keep legacy behavior; cooldown/heat still tick while closed so the first open tick is ready.
+  _mountRoleOpen(e, w, def, state, forceTarget = null, fireGate = null) {
+    if (w.occasional !== true && w.defensiveOnly !== true) return true;
+    if (w.occasional === true) {
+      if (!Number.isFinite(w._occPhase)) {
+        const h = this.helpers.hash32(0, String(e.id), String(w.defId || w.id || ''), String(w.slotIndex | 0));
+        w._occPhase = (h % (OCCASIONAL_PERIOD_S * 1000)) / 1000;
+      }
+      const t = ((state && state.simTime) || 0) + w._occPhase;
+      if (((t % OCCASIONAL_PERIOD_S) + OCCASIONAL_PERIOD_S) % OCCASIONAL_PERIOD_S >= OCCASIONAL_WINDOW_S) return false;
+    }
+    if (w.defensiveOnly === true) {
+      const tgt = (fireGate && fireGate.target) || forceTarget || this._resolveTarget(e);
+      if (!tgt || !tgt.pos || tgt.alive === false) return false;
+      const range = (w.range != null ? w.range : def.range) || 0;
+      if (!(range > 0)) return false;
+      const envelope = range * DEFENSIVE_ENVELOPE_FRAC;
+      const dx = tgt.pos.x - e.pos.x, dz = tgt.pos.z - e.pos.z;
+      if (dx * dx + dz * dz > envelope * envelope) return false;
+    }
+    return true;
+  },
+
+  // --- fire all weapons on a ship if it is firing this tick ---
+  // aimAngle: the world angle to gimbal/turret toward (player mouse aim or NPC lead).
+  // forceTarget: an explicit target entity (Massline tether / missile-lock); null = selected target.
+  // fireGate: massline tether-lock solution (player only, flag-gated) — fixed mounts withhold
+  // off-solution rounds; turrets aim the constrained solution instead of the linear lead.
+  _serviceShip(e, firing, isPlayer, dt, state, aimAngle, forceTarget, fireGate = null) {
+    const ws = e.data && e.data.weapons;
+    if (!ws || !ws.length) return;
+    if (firing && !isPlayer && !npcFireTargetVisibleOnPlayerRadar(e, state)) firing = false;
+    // Forced heat vent (player): while venting, all weapons are locked out — projectiles gate on
+    // `firing`, and beams see canFire=false and cool. weaponVentUntil is only ever set for the player.
+    if (firing && (state.simTime || 0) < (e.data.weaponVentUntil || 0)) firing = false;
+    const cap = typeof e.cap === 'number' ? e.cap : (e.data.derived && e.data.derived.cap) || 0;
+    let capLeft = cap;
+    if (aimAngle == null) aimAngle = e.rot;
+    const combatRuntime = combatRuntimeOf(state, e);
+    let disabledMounts = 0;
+    let liveMounts = 0;
+    for (const w of ws) {
+      const def = this._byId.get(w.defId) || {};
+      const bank = weaponBankReadiness(w, combatRuntime);
+      if (bank.disabled) {
+        disabledMounts += 1;
+        if (def.emergentPrimitive) clearEmergentRay(state, e.id);
+        continue;
+      }
+      liveMounts += 1;
+      if (!this._mountRoleOpen(e, w, def, state, forceTarget, fireGate)) {
+        // A sustained emergent ray opened by this mount would leak into world.ray forever if the
+        // role gate simply skips its service — _serviceEmergent's !firing branch is the only
+        // clearer. No authored flagged mount is emergent today; this is insurance against one.
+        if (def.emergentPrimitive) clearEmergentRay(state, e.id);
+        continue;
+      }
+      if (def.emergentPrimitive) {
+        capLeft = this._serviceEmergent(e, w, def, firing, capLeft, state, aimAngle);
+        continue;
+      }
+      const continuous = w.continuous != null ? w.continuous : def.continuous;
+      // DEPLOY verb (SF-10 vector mine): a third fire path alongside projectile + beam. It lobs a
+      // deployable that later detonates into a radial impulse; the weapon spends cap/heat here.
+      const deploy = (w.tracking || def.tracking) === 'deploy';
+      if (continuous) {
+        capLeft = this._serviceBeam(e, w, def, firing, capLeft, dt, state, aimAngle, forceTarget, fireGate);
+      } else if (deploy) {
+        if (firing) capLeft = this._serviceDeployWeapon(e, w, def, isPlayer, capLeft, state, aimAngle);
+      } else if (firing) {
+        capLeft = this._serviceProjectileWeapon(e, w, def, isPlayer, capLeft, dt, state, aimAngle, forceTarget, fireGate);
+      }
+    }
+    // write the drained capacitor back (cap pool is ours to spend; regen is combat's, §0.6 note)
+    if (typeof e.cap === 'number') e.cap = capLeft;
+    if (isPlayer && firing && disabledMounts > 0 && liveMounts === 0) this._noteGunsOut();
+  },
+
+  // Emergent primitives spend no capacitor and no heat, so they cannot vent-lock or starve
+  // the ship's baseline guns. Cycle rate is the only spacing, and it lives on this mount.
+  _serviceEmergent(e, w, def, firing, capLeft, state, aimAngle) {
+    const aim = Number.isFinite(aimAngle) ? aimAngle : e.rot;
+    const sustained = !!(def.continuous || def.emergentPrimitive === 'thermal');
+    if (!firing) {
+      if (sustained) clearEmergentRay(state, e.id);
+      return capLeft;
+    }
+    if (sustained) {
+      setEmergentRay(state, e, def, aim);
+      return capLeft;
+    }
+    if ((w._cooldown || 0) > 0) return capLeft;
+    const rof = w.rof != null ? w.rof : def.rof || 0;
+    w._cooldown = armedCooldown(!!state && e.id === state.playerId, rof, 0.2);
+    launchEmergent(state, e, def, aim);
+    const origin = this._muzzle ? this._muzzle(e, w, aim) : { x: e.pos.x, z: e.pos.z };
+    this.bus.emit('combat:fire', {
+      ownerId: e.id, weaponId: w.defId, hardpointIdx: w.slotIndex, origin, dir: aim,
+    });
+    return capLeft;
+  },
+
+  // Continuous beam: drain cap/heat while firing, push a transient ray, emit combat:fire/beamStop.
+  // Damage application is combat's responsibility (we only mark the ray + spend resources).
+  _serviceBeam(e, w, def, firing, capLeft, dt, state, aimAngle, forceTarget = null, fireGate = null) {
+    const energyCost = w.energyCost != null ? w.energyCost : def.energyCost || 0; // cap/s
+    const heatPerSec = w.heatPerSec != null ? w.heatPerSec : def.heatPerSec || 0;
+    const heatMax = w.heatMax != null ? w.heatMax : def.heatMax || Infinity;
+    const range = w.range != null ? w.range : def.range || 0;
+    const overheated = (w._heat || 0) >= heatMax;
+    if (!overheated) w._overheatTold = false;
+    else if (firing && e.id === state.playerId) this._noteWeaponOverheat(w, state);
+    let beamAim = aimAngle;
+    const arcadeTarget = fireGate?.target || forceTarget;
+    const arcadeAim = arcadeGunTarget(e, arcadeTarget, state);
+    const pilotAim = e.id === state.playerId && state.settings?.gameplay?.controlScheme === 'pilot';
+    let solutionBlocked = false;
+    if (!fireGate && forceTarget && forceTarget.pos) {
+      // Hitscan has no travel time. A mixed battery may have computed the ship-level aim angle for
+      // a slow projectile; carrying that lead into a beam knowingly fires ahead of the target.
+      beamAim = Math.atan2(forceTarget.pos.z - e.pos.z, forceTarget.pos.x - e.pos.x);
+    } else if (fireGate && fireGate.target && fireGate.target.pos) {
+      beamAim = Math.atan2(fireGate.target.pos.z - e.pos.z, fireGate.target.pos.x - e.pos.x);
+      const bareDir = this._hardpointDir(e, w, beamAim, 0);
+      solutionBlocked = !arcadeAim && !pilotAim && Math.abs(wrapAngle(bareDir - beamAim)) > fireGate.tolRad;
+    }
+    if (arcadeAim) beamAim = this._arcadeMountAngle(e, w, arcadeTarget, 0);
+    const canFire = firing && !solutionBlocked && !overheated && capLeft >= energyCost * dt;
+    if (e.id === state.playerId && firing && !solutionBlocked && !overheated
+      && energyCost > 0 && capLeft < energyCost * dt) {
+      this._noteCapacitorEmpty();
+    }
+    if (!canFire) {
+      // Heat already dissipates once in `_tickWeapons`. A second idle pass made beams cool twice
+      // as fast as projectile mounts.
+      return capLeft;
+    }
+    capLeft -= energyCost * dt;
+    w._heat = (w._heat || 0) + heatPerSec * dt;
+    if (w._heat >= heatMax) {
+      w._heat = heatMax;
+      // SF-2b #6: trip the forced vent here, like the projectile paths do. The vent check in
+      // _tickWeapons runs after the next tick's dissipation, which always pulled a clamped beam
+      // back under heatMax first, so a beam never vented and held full damage forever.
+      this._beginVent(e, state, w);
+    }
+
+    // A continuous beam still originates from its hardpoint facing and gimbal-assists toward aim.
+    const dir = arcadeAim || pilotAim ? beamAim : this._hardpointDir(e, w, beamAim != null ? beamAim : e.rot, 0);
+    const origin = this._muzzle(e, w, dir);
+    const to = { x: origin.x + Math.cos(dir) * range, z: origin.z + Math.sin(dir) * range };
+    // RW-01: a siege-class beam pushes its firing hull backward for as long as it holds the beam.
+    // Continuous player_maneuver provenance — full strength, braceable through a taut winch line.
+    const beamRecoilPerSec = Number(def.recoilImpulsePerSec) || 0;
+    if (beamRecoilPerSec > 0) {
+      deliverPhysicalImpulseDetailed(state, e,
+        { x: -Math.cos(dir) * beamRecoilPerSec * dt, z: -Math.sin(dir) * beamRecoilPerSec * dt },
+        { tag: 'weapon_recoil', motionIntent: 'player_maneuver', weaponId: w.defId,
+          tick: state.tick, continuous: true, dt },
+        { scaleEnvironment: false });
+    }
+    const damage = (w.dmg != null ? w.dmg : def.dmg || 0) * dt
+      * (e.id === state.playerId ? swarmChainDamageScale(state) : 1);
+    const damageType = w.damageType || def.damageType || 'energy';
+    const beamKey = `${String(e.id)}:${Number.isFinite(w.slotIndex) ? w.slotIndex : 0}`;
+    const phase = this._beamFiringPrev.has(beamKey) ? 'update' : 'begin';
+    this._beamFiring.add(beamKey);
+    let beamMeta = this._beamActiveMeta.get(beamKey);
+    if (!beamMeta) {
+      beamMeta = {
+        beamKey,
+        ownerId: e.id,
+        weaponId: w.defId,
+        hardpointIdx: w.slotIndex,
+        // §24: one mount-hold is ONE optic "shot" — a diamond throws its ring on the first
+        // contact tick and every later tick of the same burst meets the spent/dark cell
+        // (and the family book's visited mark). A fresh burst draws a fresh family.
+        opticFamilyId: `optic:beam:${beamKey}:${(this._opticBeamSeq = (this._opticBeamSeq || 0) + 1)}`,
+      };
+      this._beamActiveMeta.set(beamKey, beamMeta);
+    }
+    if (state.combat && Array.isArray(state.combat.beams)) {
+      state.combat.beams.push({
+        ownerId: e.id, sourceLife: occupantGenerationOf(e), sourceTeam: e.team, factionId: e.factionId, weaponId: w.defId,
+        from: { x: origin.x, z: origin.z }, to,
+        dmgType: damageType,
+        dpsThisTick: damage,
+        damagePacket: beamDamagePacket(w, def, damage, damageType, dt),
+        beamKey,
+        opticFamilyId: beamMeta.opticFamilyId,
+      });
+    }
+    this.bus.emit('combat:fire', {
+      ownerId: e.id, weaponId: w.defId, hardpointIdx: w.slotIndex,
+      origin, from: origin, to, dir, range, damageType,
+      beamKey, continuous: true, phase,
+    });
+    return capLeft;
+  },
+
+  _emitStoppedBeams() {
+    for (const beamKey of this._beamFiringPrev) {
+      if (this._beamFiring.has(beamKey)) continue;
+      const meta = this._beamActiveMeta.get(beamKey);
+      if (meta) {
+        let ownerStillFiring = false;
+        for (const activeKey of this._beamFiring) {
+          const active = this._beamActiveMeta.get(activeKey);
+          if (active && active.ownerId === meta.ownerId) {
+            ownerStillFiring = true;
+            break;
+          }
+        }
+        this.bus.emit('combat:beamStop', { ...meta, continuous: true, phase: 'end', ownerStillFiring });
+        this._beamActiveMeta.delete(beamKey);
+      }
+    }
+  },
+
+  _noteWeaponOverheat(w, state) {
+    if (!w || w._overheatTold) return;
+    w._overheatTold = true;
+    // One announcer per vent: where the forced-vent feature is on, the weapons:vent
+    // alert already owns the beat ("WEAPONS VENTING") and the receipt lane stays quiet.
+    // Where the feature is off (legacy profile), the toast is the only voice.
+    if (isWeaponVentEnabled(state || this.state)) return;
+    if (this.bus) this.bus.emit('toast', { text: 'Weapon overheated', kind: 'warn', ttl: 1.6 });
+  },
+
+  /**
+   * One capacitor line for the whole ship, per trigger hold. A passed energy check must not
+   * re-arm it — the next mount, or the next round of the same hold, would speak again.
+   * Vent and cruise force `firing` false while the button is still down; only a real release
+   * (`state.input.fire` clear) drops the latch, including on the quiet idle skip.
+   */
+  _noteCapacitorEmpty() {
+    if (this._playerCapEmptyTold) return;
+    this._playerCapEmptyTold = true;
+    if (this.bus) this.bus.emit('toast', { text: 'Capacitor empty', kind: 'warn', ttl: 1.6 });
+  },
+
+  _noteGunsOut() {
+    if (this._playerGunsOutTold) return;
+    this._playerGunsOutTold = true;
+    if (this.bus) this.bus.emit('toast', { text: 'Guns out — the battery is dark', kind: 'warn', ttl: 1.6 });
+  },
+
+  _releasePlayerOrdnanceNotices(player) {
+    this._playerCapEmptyTold = false;
+    this._playerGunsOutTold = false;
+    const ws = player && player.data && player.data.weapons;
+    if (!ws) return;
+    for (let i = 0; i < ws.length; i++) {
+      const w = ws[i];
+      if (w) w._mineBankTold = false;
+    }
+  },
+
+  // Projectile weapon: gate on cooldown/cap/heat (+lock/+arc), spawn a projectile, emit combat:fire.
+  _serviceProjectileWeapon(e, w, def, isPlayer, capLeft, dt, state, aimAngle, forceTarget, fireGate = null) {
+    const pilotAim = isPlayer && state.settings?.gameplay?.controlScheme === 'pilot';
+    if ((w._cooldown || 0) > 0) return capLeft;
+    if (this._releaseMomentumSinkIfReady(e, w, def, state)) return capLeft;
+
+    const energyCost = w.energyCost != null ? w.energyCost : def.energyCost || 0;
+    // Prefer instance heat when authored (ships.makeWeaponRuntime copies heatPerShot → heat).
+    // Treat heatMax as inactive when there is no positive heat cost so default heatMax:100 on
+    // non-heat weapons cannot invent a false lockout path. Heat speaks before an empty capacitor:
+    // a cooked gun cannot fire even after the cap recovers.
+    const heatPerShot = (() => {
+      if (w.heat != null && Number.isFinite(w.heat) && w.heat > 0) return w.heat;
+      if (def.heatPerShot != null && Number.isFinite(def.heatPerShot)) return def.heatPerShot;
+      return 0;
+    })();
+    const heatMaxRaw = w.heatMax != null ? w.heatMax : (def.heatMax != null ? def.heatMax : Infinity);
+    const heatMax = heatPerShot > 0 && Number.isFinite(heatMaxRaw) && heatMaxRaw > 0 ? heatMaxRaw : Infinity;
+    if ((w._heat || 0) >= heatMax) {
+      if (isPlayer) this._noteWeaponOverheat(w, state);
+      return capLeft;            // overheated
+    }
+    w._overheatTold = false;
+    if (capLeft < energyCost) {
+      if (isPlayer && energyCost > 0) this._noteCapacitorEmpty();
+      return capLeft;
+    }
+
+    const tracking = w.tracking || def.tracking || 'fixed';
+    const isMissile = tracking === 'homing';
+    const isTurret = (w.facing === 'turret') || (tracking === 'auto_turret');
+    const mountProjSpeed = w.projSpeed != null ? w.projSpeed : def.projSpeed || 1;
+    // A mixed battery may carry shells, bolts, and plasma at different speeds. Re-solve for this
+    // mount instead of reusing the representative primary-gun angle; otherwise every non-primary
+    // round is knowingly released on the wrong intercept.
+    let mountGate = null;
+    if (fireGate && fireGate.target) {
+      // Carry the ship-level geometry verdict, not a hard-coded `true`. Hard-coding it made every
+      // mount solve a circle even on frames where the ship-level gate had already decided the pair
+      // was NOT arcing (a straight tow), so the withhold gate and the round it released disagreed.
+      mountGate = solveTetherLeadSolution(e, fireGate.target, mountProjSpeed, {
+        taut: !!fireGate.constrained,
+      });
+      mountGate.targetId = fireGate.targetId;
+      mountGate.tolRad = fireGate.tolRad;
+      // The round leaves this mount's real socket, not the hull centre: re-solve the same model
+      // from the muzzle so off-axis mounts land on the constrained solution — the same correction
+      // the forceTarget/arcade branches apply to their hull-centre lead below. The withhold check
+      // and the released round both use this angle so they can never disagree about the launch line.
+      const muzzle = this._muzzle(e, w, 0);
+      mountGate.muzzleAngle = solveTetherLeadSolution(
+        { pos: { x: muzzle.x, z: muzzle.z }, vel: e.vel },
+        fireGate.target,
+        mountProjSpeed,
+        { taut: !!fireGate.constrained },
+      ).angle;
+    }
+
+    // Targeting: missiles/turrets need a target (the forced auto-fire target, else the ship's selected).
+    let tgt = (isMissile || isTurret) ? (forceTarget || this._resolveTarget(e)) : null;
+    // Player turret with no selected target: synthesize a point-target along the aim direction at
+    // weapon range so manual LMB still fires the turret toward the cursor (a fixed gun would gimbal
+    // there; a turret should too). Missiles still require a real lockable target.
+    if (!tgt && isTurret && isPlayer && !isMissile) {
+      const r = (w.range != null ? w.range : def.range || 600);
+      tgt = { pos: { x: e.pos.x + Math.cos(aimAngle) * r, z: e.pos.z + Math.sin(aimAngle) * r }, vel: { x: 0, z: 0 } };
+    }
+
+    const arcadeTarget = fireGate?.target || forceTarget;
+    const arcadeAim = isPlayer && !isMissile && arcadeGunTarget(e, arcadeTarget, state);
+    let dir;
+    if (isMissile) {
+      // Missiles require a lock before launch.
+      const combat = e.data && e.data.combat;
+      const locked = combat && tgt && combat.lockTarget === tgt.id && (combat.lockProgress || 0) >= 1
+        && (combat.lockTargetGeneration == null || combat.lockTargetGeneration === targetIdentityGeneration(tgt));
+      if (!tgt || !locked) return capLeft;
+      const range = w.range != null ? w.range : def.range;
+      if (Number.isFinite(range)) {
+        const dx = tgt.pos.x - e.pos.x, dz = tgt.pos.z - e.pos.z;
+        if (range < 0 || dx * dx + dz * dz > range * range) return capLeft;
+      }
+      dir = Math.atan2(tgt.pos.z - e.pos.z, tgt.pos.x - e.pos.x);
+    } else if (isTurret) {
+      if (!tgt) return capLeft;
+      // Tether-lock (massline2.fireControl): the constrained solution replaces the linear lead
+      // when the turret is engaging the tethered hostile — one solver everywhere it matters.
+      const aim = (mountGate && tgt && tgt.id != null && String(tgt.id) === String(mountGate.targetId))
+        ? mountGate.muzzleAngle
+        : (isPlayer
+          ? this._leadAngle(e, tgt, mountProjSpeed)
+          : this._arcadeMountAngle(e, w, tgt, mountProjSpeed));
+      const arc = w.gimbalArc != null ? w.gimbalArc : (def.turretArcDeg ? def.turretArcDeg * RAD : Math.PI);
+      // turret arc is measured about the hull centre; outside it the mount can't bear.
+      if (!arcadeAim && Math.abs(wrapAngle(aim - e.rot)) > arc / 2) return capLeft;
+      dir = arcadeAim && !mountGate ? this._arcadeMountAngle(e, w, arcadeTarget, mountProjSpeed) : aim;
+    } else {
+      // Tether-lock solution gate (massline2.fireControl, player only): withhold the round unless
+      // the barrel — after gimbal clamp, before spread — can actually lie on the solution this
+      // frame. Cooldown/cap are NOT spent on withheld frames, so held fire "tracks" and every
+      // released round is a hit candidate. Tolerance is the target-size-honest solution window
+      // widened to at least the mount's own spread (a gate tighter than the spread would starve
+      // fire without improving hits).
+      if (mountGate && !arcadeAim && !pilotAim) {
+        const spreadRad = (def.spreadDeg != null ? def.spreadDeg : 0) * RAD;
+        const gateTol = Math.max(mountGate.tolRad, spreadRad + 0.5 * RAD);
+        const bareDir = this._hardpointDir(e, w, mountGate.muzzleAngle, 0);
+        if (Math.abs(wrapAngle(bareDir - mountGate.muzzleAngle)) > gateTol) return capLeft;
+      }
+      // FIXED mount: base direction = nose + hardpoint facing offset, then gimbal-assist toward the
+      // aim direction within the mount's gimbal arc. Spread is layered on last. This is the
+      // Freelancer feel — front guns track the cursor up to a cone, then fire straight.
+      let fixedAim = mountGate ? mountGate.muzzleAngle : (aimAngle != null ? aimAngle : e.rot);
+      if (!mountGate && forceTarget && forceTarget.pos) {
+        // A target-bound round leaves the real muzzle, not the hull centre. Use the same bounded
+        // muzzle + launch-model solve for NPC shots so hardpoint offsets do not move the physical
+        // line off an intercept. Player-directed fixed fire still follows its manual aim below.
+        fixedAim = this._arcadeMountAngle(e, w, forceTarget, mountProjSpeed);
+      }
+      // G trades manual barrel alignment for independent dodging. Use the same physical shot
+      // model, but no cone clamp or random aim error on this explicit hostile solution.
+      dir = arcadeAim
+        ? (mountGate ? fixedAim : this._arcadeMountAngle(e, w, arcadeTarget, mountProjSpeed))
+        // Pilot means keyboard flight plus independent mouse fire. Keep the physical muzzle,
+        // projectile travel and spread; only the obsolete nose-cone restriction is removed.
+        : pilotAim ? fixedAim + (def.spreadDeg ? this._spread(def.spreadDeg) : 0)
+          : this._hardpointDir(e, w, fixedAim, def.spreadDeg != null ? def.spreadDeg : 0);
+    }
+
+    const spec = this._attackSpecFor(w, def, state, e);
+    const heatScale = spec && spec.costs && Number.isFinite(spec.costs.heatScale) ? spec.costs.heatScale : 1;
+    const heatCost = heatPerShot * heatScale;
+
+    // --- commit: spend cap + heat, set cooldown ---
+    capLeft -= energyCost;
+    if (heatCost) {
+      // The final accepted shot visibly pegs the gauge and explicitly starts the vent. The old
+      // pre-fire `nextHeat > max` rejection silently ate trigger pulls just below the threshold,
+      // while pre-service cooling could keep the separate vent detector from ever seeing 100%.
+      w._heat = Math.min(heatMax, (w._heat || 0) + heatCost);
+      if (w._heat >= heatMax) this._beginVent(e, state, w);
+    }
+    const rof = w.rof != null ? w.rof : def.rof || 0;
+    w._cooldown = armedCooldown(isPlayer, rof, 0.1);
+
+    // consume missile lock so each missile needs a fresh lock
+    if (isMissile && e.data.combat) { e.data.combat.lockProgress = 0; }
+
+    this._emitProjectileVolley(e, w, def, dir, tgt, isMissile, state, spec);
+
+    // RW-01: heavy single shots answer on the shooter. Full strength (player_maneuver provenance
+    // bypasses the external-impulse nudge scale); a taut winch brace against a massive anchor
+    // routes the along-line component into line load instead of hull velocity.
+    const recoilImpulse = Number(def.recoilImpulse) || 0;
+    if (recoilImpulse > 0) {
+      deliverPhysicalImpulseDetailed(state, e,
+        { x: -Math.cos(dir) * recoilImpulse, z: -Math.sin(dir) * recoilImpulse },
+        { tag: 'weapon_recoil', motionIntent: 'player_maneuver', weaponId: w.defId, tick: state.tick },
+        { scaleEnvironment: false });
+    }
+
+    const origin = this._muzzle(e, w, dir);
+    this.bus.emit('combat:fire', {
+      ownerId: e.id, weaponId: w.defId, hardpointIdx: w.slotIndex, origin, dir,
+    });
+    return capLeft;
+  },
+
+  _releaseMomentumSinkIfReady(e, w, def, state) {
+    if (!isMomentumSinkWeapon(w, def)) return false;
+    const plant = e && e.data && e.data.momentumSinkPlant;
+    if (!plant || !plant.active) return false;
+    if (!(plant.storedReceding > MOMENTUM_SINK_BUNGEE.deadbandSpeed)) return false;
+    const stored = plant.storedReceding;
+    if (!queueMomentumSinkRelease(e, plant, this._momentumSinkImpulse, state)) return false;
+    const rof = w.rof != null ? w.rof : def.rof || 0;
+    w._cooldown = armedCooldown(!!state && e.id === state.playerId, rof, 0.1);
+    if (this.bus) {
+      this.bus.emit('weapons:momentumSinkReleased', {
+        ownerId: e.id,
+        weaponId: MOMENTUM_SINK_WEAPON_ID,
+        storedReceding: stored,
+      });
+    }
+    return true;
+  },
+
+  _attackSpecFor(w, def, state, entity) {
+    if (!this._attackSpecCache) this._attackSpecCache = new Map();
+    if (!this._attackMetrics) this._attackMetrics = emptyAttackMetrics();
+    const modifiers = collectAttackModifiers(state, entity, def || w);
+    const key = `${def && def.id || w.defId}|${modifiers.map((row) => `${row[0]}:${row[1]}`).join(',')}`;
+    let compiled = this._attackSpecCache.get(key);
+    if (compiled) {
+      this._attackMetrics.cacheHits += 1;
+      return armoryVolleySpecView(compiled.spec, def);
+    }
+    compiled = compileAttackSpec({ weapon: mergeWeaponView(w, def), modifiers });
+    this._attackSpecCache.set(key, compiled);
+    this._attackMetrics.specsCompiled += 1;
+    return armoryVolleySpecView(compiled && compiled.spec, def);
+  },
+
+  _emitProjectileVolley(e, w, def, dir, tgt, isMissile, state, spec) {
+    if (!spec || !attackSpecNeedsRuntime(spec)) {
+      this._spawnProjectile(e, w, def, dir, tgt, isMissile, state,
+        spec && attackSpecHasLiveHit(spec) ? { spec } : undefined);
+      return;
+    }
+    if (!this._attackMetrics) this._attackMetrics = emptyAttackMetrics();
+    const tick = state && Number.isInteger(state.tick) ? state.tick : 0;
+    const lineage = createLineage({
+      spec,
+      sourceEntityId: e.id,
+      sourceWeaponSlot: Number.isInteger(w.slotIndex) ? w.slotIndex : 0,
+      createdTick: tick,
+    });
+    const volley = emitVolley(spec, lineage);
+    const payloadScale = spec.costs && Number.isFinite(spec.costs.payloadScale) ? spec.costs.payloadScale : 1;
+    const record = compactLineageRecord(lineage);
+    this._attackMetrics.volleys += 1;
+    this._attackMetrics.rootsEmitted += volley.emitted.length;
+    this._attackMetrics.rootsSuppressed += volley.suppressed.length;
+    // SEED-SW-19 (swarmSeekers): a missile volley deals its roots across the hostile field —
+    // the locked target first, then the remaining candidates in id order, so each small
+    // missile leaves tracking a distinct hull when the room offers enough of them.
+    let seekTargets = null;
+    if (def && def.swarmSeekers === true && isMissile && volley.emitted.length > 0) {
+      const scratch = this._attackQueryScratch || (this._attackQueryScratch = []);
+      const range = w.range != null ? w.range : def.range || 600;
+      const candidates = collectAttackCandidates(state, e.pos, range, scratch, e.id, e.team)
+        .map((c) => c.id)
+        .sort();
+      seekTargets = [];
+      if (tgt && tgt.id != null) seekTargets.push(tgt.id);
+      for (const id of candidates) if (!seekTargets.includes(id)) seekTargets.push(id);
+      if (!seekTargets.length) seekTargets = null;
+    }
+    // Echo (SEED-SW-10): while the run owns the record, a fitted player gun duplicates
+    // every fifth emitted projectile — deterministic per gun (`w._echoShots`), identical
+    // trajectory, and never a second draw on heat or capacitor. Guns only: a thrown
+    // torpedo is not a "shot" and never doubles.
+    const echoOwned = e.id === state.playerId && !isMissile && swarmRunOwnsLegendary(state, 'echo');
+    for (const root of volley.emitted) {
+      const spawnOpts = {
+        payloadScale,
+        attackRuntime: record,
+        spec,
+        liveRuntime: lineage,
+      };
+      if (seekTargets) {
+        spawnOpts.seekTargetId = seekTargets[root.index % seekTargets.length];
+      }
+      this._spawnProjectile(e, w, def, dir + root.offsetRad, tgt, isMissile, state, spawnOpts);
+      if (echoOwned) {
+        w._echoShots = (w._echoShots || 0) + 1;
+        if (w._echoShots % 5 === 0) {
+          this._spawnProjectile(e, w, def, dir + root.offsetRad, tgt, isMissile, state, spawnOpts);
+        }
+      }
+    }
+  },
+
+  _spawnProjectile(e, w, def, dir, tgt, isMissile, state, opts) {
+    const projSpeed = w.projSpeed != null ? w.projSpeed : def.projSpeed || 300;
+    const projSpeedMin = w.projSpeedMin != null ? w.projSpeedMin : def.projSpeedMin;
+    const range = w.range != null ? w.range : def.range || 600;
+    const cf = Math.cos(dir), sf = Math.sin(dir);
+    const r = e.radius || 1;
+
+    // launch speed: missiles start slow and accelerate to projSpeed; bullets launch at projSpeed
+    const launchSpeed = isMissile && projSpeedMin != null ? projSpeedMin : projSpeed;
+    const muzzle = this._muzzle(e, w, dir);
+    // Bullets compensate lateral shooter velocity so the aimed line remains the collision line.
+    // Missiles keep full inertial launch; their guidance owns the post-launch correction.
+    // BP-02 momentum inheritance (flag `combat.momentumInherit`, OFF everywhere this wave): when on,
+    // bullets INHERIT the shooter's full velocity too — weighty strafing runs at the cost of aim-true
+    // fire. A deliberate feel inversion kept behind a default-off flag so the golden (and normal play)
+    // are unchanged; enable it only for playtesting.
+    const vel = isMissile
+      ? { x: cf * launchSpeed + e.vel.x, z: sf * launchSpeed + e.vel.z }
+      : launchVelocity(dir, launchSpeed, e.vel);
+
+    // Engagement range stays on maxDistance for AI, locks, and the targeting computer.
+    // The body itself keeps a long flight budget so a shot can leave the frame, hit,
+    // or bounce, and come back. The clock and the live cap are what retire it.
+    const worldSpeed = Math.hypot(vel.x, vel.z);
+    const flight = projectileFlightPlan(range, worldSpeed);
+    const ttl = flight.ttl;
+
+    const payloadScale = opts && Number.isFinite(opts.payloadScale) ? opts.payloadScale : 1;
+    // Chain Feeder: the run's legendary feeds the live kill chain into the packet.
+    // Player guns only — NPC fire never reads the player's chain.
+    const feederScale = state && e.id === state.playerId ? swarmChainDamageScale(state) : 1;
+    const damage = ((w.dmg != null ? w.dmg : def.dmg) || 0) * payloadScale * feederScale;
+    const damageType = w.damageType || def.damageType || 'kinetic';
+    const data = {
+      damage,
+      damageType,
+      damagePacket: buildWeaponDamagePacket(w, def, damage, damageType),
+      ownerId: e.id,
+      weaponId: w.defId,
+      kind: isMissile ? 'missile' : 'bullet',
+      spawnPos: { x: muzzle.x, z: muzzle.z },
+      maxDistance: range,
+      flightDistance: flight.flightDistance,
+    };
+    // Attribution: a packet the chain fed names the legendary that fed it.
+    if (feederScale > 1 && data.damagePacket) data.damagePacket.scalingSource = 'swarm_chain_feeder';
+    if (opts && opts.attackRuntime) data.attackRuntime = opts.attackRuntime;
+    // SEED-SW-18/21/23 — authored armory behaviors stamped on the round so the hit and
+    // tick seams can find them: hull ricochet (disc), timed pull-then-pop shell (mortar),
+    // and the single return arc (glaive).
+    if (def && def.hullRicochet === true) data.hullRicochet = true;
+    if (def && def.mortarShell && typeof def.mortarShell === 'object') {
+      data.mortar = { ...def.mortarShell };
+    }
+    if (def && def.returnArc && typeof def.returnArc === 'object') {
+      data.returnArc = { ...def.returnArc, phase: 'out' };
+    }
+    if (opts && opts.spec) {
+      const resolved = resolvePayload(opts.spec, {
+        generation: opts.liveRuntime && Number.isInteger(opts.liveRuntime.generation)
+          ? opts.liveRuntime.generation : 0,
+        hasBounced: !!(opts.liveRuntime && opts.liveRuntime.hasBounced),
+      });
+      if (resolved.statuses && resolved.statuses.length) {
+        const packet = data.damagePacket;
+        if (!Array.isArray(packet.statuses)) packet.statuses = [];
+        for (let i = 0; i < resolved.statuses.length; i++) {
+          const status = resolved.statuses[i];
+          packet.statuses.push({ id: status.id, stacks: status.stacks });
+        }
+      }
+    }
+    if (isMissile) {
+      const seekTarget = opts && opts.seekTargetId != null && state && state.entities
+        && typeof state.entities.get === 'function'
+        ? state.entities.get(opts.seekTargetId) : null;
+      data.targetId = seekTarget ? seekTarget.id : (tgt ? tgt.id : null);
+      data.targetGeneration = seekTarget
+        ? targetIdentityGeneration(seekTarget)
+        : (tgt ? targetIdentityGeneration(tgt) : null);
+      data.lockGeneration = e.data && e.data.combat ? (e.data.combat.lockGeneration | 0) : 0;
+      data.lockShooterId = e.id;
+      data.turnRate = w.turnRate != null ? w.turnRate : def.turnRate || 0;
+      data.projSpeed = projSpeed;
+      // accelerate from launch speed to projSpeed over the projectile's flight
+      data.projAccel = projSpeedMin != null ? Math.max(40, (projSpeed - projSpeedMin)) : 0;
+      data.armed = true;
+      // AL-HF-07 — a capital torpedo is a catchable body: the Massline may latch it and throw
+      // it, and the catch never defuses it (the warhead packet and the fuse below keep running).
+      // The authored exception covers the L torpedo alone; every other projectile class,
+      // homing or not, stays untetherable through the same transient-type gate as before.
+      if ((def && def.id) === 'wpn_torpedo_l' || w.defId === 'wpn_torpedo_l') data.masslineTetherable = true;
+      if (def.splashRadius != null) data.splashRadius = def.splashRadius;
+      const splashDmg = Number.isFinite(w.splashDmg) ? w.splashDmg : def.splashDmg;
+      if (splashDmg != null) data.splashDmg = splashDmg;
+    }
+
+    reserveProjectileCapacity(state, 1);
+    const spawned = this.helpers.spawnEntity({
+      type: 'projectile',
+      pos: muzzle,
+      vel,
+      rot: dir,
+      radius: modelTruthBoltRadius(e),
+      mass: 0.1,
+      team: e.team,
+      ownerId: e.id,
+      factionId: e.factionId,
+      ttl,
+      collides: true,
+      data,
+    });
+    if(spawned)observeProjectileEmission(state,spawned,e);
+    if (spawned && opts && opts.spec) {
+      if (!this._attackLive) this._attackLive = new Map();
+      const meta = causalMetaForSpec(opts.spec);
+      if (opts.liveRuntime) {
+        this._attackLive.set(spawned.id, {
+          spec: opts.spec,
+          runtime: opts.liveRuntime,
+          causalMeta: meta,
+        });
+        if ((opts.spec.trajectory && opts.spec.trajectory.bounces > 0)
+          || (opts.spec.propagation && opts.spec.propagation.pierce > 0)) {
+          armAttackContinue(spawned);
+        }
+      } else if (attackSpecHasLiveHit(opts.spec)) {
+        this._attackLive.set(spawned.id, {
+          spec: opts.spec,
+          runtime: null,
+          causalMeta: meta,
+        });
+      }
+    }
+  },
+
+  _onAttackHit(payload) {
+    if (!this._attackLive || this._attackLive.size === 0) return;
+    const state = this.state;
+    if (!state || !payload) return;
+    const projectile = findLiveAttackProjectile(state, this._attackLive, payload);
+    if (!projectile) return;
+    const live = this._attackLive.get(projectile.id);
+    if (!live) return;
+    if (!live.runtime) {
+      stampHitCausal(payload, live, null);
+      this._attackLive.delete(projectile.id);
+      return;
+    }
+    const target = payload.targetId != null && this.helpers && this.helpers.getEntity
+      ? this.helpers.getEntity(payload.targetId)
+      : (state.entities && state.entities.get && state.entities.get(payload.targetId));
+    const scratch = this._attackQueryScratch || (this._attackQueryScratch = []);
+    const tick = state && Number.isInteger(state.tick) ? state.tick : 0;
+    const chain = live.spec && live.spec.propagation && live.spec.propagation.chain;
+    const range = chain && Number.isFinite(chain.range) ? chain.range : 0;
+    const steer = live.spec && live.spec.trajectory && live.spec.trajectory.afterBounceSteer;
+    const steerRange = projectile.data && Number.isFinite(projectile.data.maxDistance)
+      ? projectile.data.maxDistance
+      : 600;
+    const hostiles = steer
+      ? collectAttackCandidates(state, projectile.pos, steerRange, scratch, projectile.ownerId, projectile.data?.attackSource?.team ?? projectile.team, projectile.data?.attackSource?.life ?? null)
+      : null;
+    const result = resolveLiveAttackHit({
+      state,
+      spec: live.spec,
+      runtime: live.runtime,
+      projectile,
+      target,
+      payload,
+      tick,
+      tetherAnchorId: tetherAnchorIdOf(state),
+      hostiles,
+      candidates: range > 0
+        ? (origin) => collectAttackCandidates(state, origin, range, scratch, projectile.ownerId, projectile.data?.attackSource?.team ?? projectile.team, projectile.data?.attackSource?.life ?? null)
+        : [],
+      applyHopDamage: (hop) => applyAttackHopDamage(this, projectile, live.spec, hop),
+    });
+    if (result.children && result.children.length) {
+      spawnSplitChildren(this, projectile, live.spec, result.children, payload);
+    }
+    if (result.pierce && result.pierce.applyPayload === false) {
+      suppressHitPayload(payload);
+    } else if (result.payload && Number.isFinite(result.payload.scale) && result.payload.scale !== 1) {
+      scaleHitPayload(payload, result.payload.scale);
+    }
+    // SEED-SW-18 hull ricochet: a surface target's bounce is resolved inside
+    // resolveLiveAttackHit; a ship/drone contact consumes the shot instead. A disc spends the
+    // same authored bounce budget to reflect off the hull it just hit — the contact still
+    // lands its full packet, and the blade flies on through ONE steering event per bounce
+    // (the compiled afterBounceSteer cone, not homing).
+    if (result.consume && target && projectile.data && projectile.data.hullRicochet === true
+      && live.runtime && live.runtime.remaining && live.runtime.remaining.bounces > 0) {
+      const normal = payload.normal || (payload.receipt && payload.receipt.normal) || null;
+      const incoming = payload.projectileVelocity || projectile.vel;
+      const bounced = normal && incoming ? tryBounce(live.runtime) : null;
+      if (bounced && bounced.ok) {
+        const point = payload.pos || projectile.pos;
+        const reflected = reflectVelocity({ x: incoming.x, z: incoming.z }, normal);
+        const hostiles = live.spec && live.spec.trajectory && live.spec.trajectory.afterBounceSteer
+          ? collectAttackCandidates(state, point, steerRange, scratch, projectile.ownerId, projectile.data?.attackSource?.team ?? projectile.team, projectile.data?.attackSource?.life ?? null)
+          : null;
+        // The bolt is a Rapier-owned dynamic body: a bare vel mirror dies in the post-step
+        // readback. Queue the outgoing leg through the same continuation membrane a surface
+        // ricochet uses — the entity mirror updates now, the real body turns next step.
+        const outgoing = steerAfterBounce(reflected, point, live.spec, hostiles, live.runtime.visitedTargets);
+        queueProjectileContinuation(projectile, {
+          velocity: outgoing,
+          yaw: Math.atan2(outgoing.z, outgoing.x),
+          tick: Number.isInteger(state.tick) ? state.tick : 0,
+        });
+        requestAttackContinue(projectile);
+        const owner = state.entities && projectile.ownerId != null
+          ? state.entities.get(projectile.ownerId) : null;
+        refreshFlightAfterBounce(projectile, owner && owner.pos);
+        result.consume = false;
+        result.bounce = { ok: true, velocity: { x: projectile.vel.x, z: projectile.vel.z }, hull: true };
+      }
+    }
+    if (result.consume) this._attackLive.delete(projectile.id);
+    stampHitCausal(payload, live, result);
+  },
+
+  destroy() {
+    for(const off of this._weaponsUnsubs||[])off();
+    this._weaponsUnsubs=[];
+    this._playerIncomingLock = false;
+    this._weaponsQuiet = null;
+    if (this.state) publishWeaponsQuiet(this.state, false);
+  },
+
+  // --- SF-10 DEPLOY verb: vector mine ------------------------------------------------------------
+  // Fire a vector mine: gate on cooldown/cap/heat + the per-owner active-mine cap, spend cap/heat,
+  // and lob a deployable that later detonates into a radial impulse. Deploy is meaningful only when
+  // weapon impulse consequences are live (browser); the 47a golden pins the flag OFF, so a deploy
+  // weapon can never spawn a mine there even if one were somehow fitted — keeping the sim hash frozen.
+  _serviceDeployWeapon(e, w, def, isPlayer, capLeft, state, aimAngle) {
+    void aimAngle;
+    if (!combatFlag('weaponImpulseConsequences')) return capLeft;
+    if ((w._cooldown || 0) > 0) return capLeft;
+    const energyCost = w.energyCost != null ? w.energyCost : def.energyCost || 0;
+    const heatPerShot = (w.heat != null && Number.isFinite(w.heat) && w.heat > 0) ? w.heat
+      : (Number.isFinite(def.heatPerShot) ? def.heatPerShot : 0);
+    const heatMaxRaw = w.heatMax != null ? w.heatMax : (def.heatMax != null ? def.heatMax : Infinity);
+    const heatMax = heatPerShot > 0 && Number.isFinite(heatMaxRaw) && heatMaxRaw > 0 ? heatMaxRaw : Infinity;
+    if ((w._heat || 0) >= heatMax) {
+      if (isPlayer) this._noteWeaponOverheat(w, state);
+      return capLeft;            // overheated
+    }
+    w._overheatTold = false;
+    if (capLeft < energyCost) {
+      if (isPlayer && energyCost > 0) this._noteCapacitorEmpty();
+      return capLeft;
+    }
+    // Active-mine cap: refuse to deploy past mineMaxActive (the oldest is NOT auto-culled — the pilot
+    // must let mines resolve, so placement stays deliberate rather than a spammed field).
+    const maxActive = Math.max(1, def.mineMaxActive || 3);
+    if (this._countOwnerVectorMines(state, e.id, def.deployKind || 'vector_mine') >= maxActive) {
+      if (isPlayer && !w._mineBankTold && this.bus) {
+        w._mineBankTold = true;
+        this.bus.emit('toast', { text: 'Mine bank full', kind: 'warn', ttl: 1.5 });
+      }
+      return capLeft;
+    }
+    w._mineBankTold = false;
+
+    capLeft -= energyCost;
+    if (heatPerShot) {
+      w._heat = Math.min(heatMax, (w._heat || 0) + heatPerShot);
+      if (w._heat >= heatMax) this._beginVent(e, state, w);
+    }
+    const rof = w.rof != null ? w.rof : def.rof || 0;
+    w._cooldown = armedCooldown(isPlayer, rof, 2);
+    this._spawnVectorMine(e, w, def, state);
+    return capLeft;
+  },
+
+  // Drop a stationary deployable BEHIND the ship's heading (STEP 9 "deploy behind"). It sits where
+  // dropped — the arm delay lets the deployer clear it — then arms and waits. collides:false, so
+  // like an impulse charge it is a logical trigger volume, not a physics body; its position is
+  // authored at spawn and never re-integrated (no motion writes at all).
+  //
+  // Two payloads share this spawn path: the vector mine (one radial shove on proximity) and the
+  // gravity wellhead (a sustained inward pull for its whole life, `_tickGravityWell`). The def's
+  // deployKind picks the data block; the tick loop branches on data.kind.
+  _spawnVectorMine(e, w, def, state) {
+    const dir = (e.rot || 0) + Math.PI;
+    const standoff = (e.radius || 6) + 6;
+    const pos = { x: e.pos.x + Math.cos(dir) * standoff, z: e.pos.z + Math.sin(dir) * standoff };
+    const now = state.simTime || 0;
+    const isWell = def.deployKind === 'gravity_well';
+    const mine = this.helpers.spawnEntity({
+      type: 'vectormine',
+      pos, vel: { x: 0, z: 0 }, rot: dir,
+      // This stationary proximity sensor must not enter Rapier as a solid ball. collides:false
+      // alone only disables the legacy collision path; an overlapping hull would be ejected.
+      radius: modelTruthMineSensorRadius(e), mass: 0.6, collides: false, physicsBody: false,
+      team: e.team, ownerId: e.id, factionId: e.factionId,
+      data: isWell ? {
+        kind: 'gravity_well', weaponId: w.defId, ownerId: e.id,
+        armAt: now + (def.mineArmS != null ? def.mineArmS : 1.2),
+        dieAt: now + (def.mineLifeS != null ? def.mineLifeS : 6),
+        blastRadius: def.mineBlastRadius != null ? def.mineBlastRadius : 300,
+        pull: def.mineWellPull != null ? def.mineWellPull : 60,
+        provenance: def.impulseProvenance || 'gravity_well_pull',
+        armed: false, spawnedAt: now,
+      } : {
+        kind: 'vector_mine', weaponId: w.defId, ownerId: e.id,
+        armAt: now + (def.mineArmS != null ? def.mineArmS : 1.4),
+        dieAt: now + (def.mineLifeS != null ? def.mineLifeS : 30),
+        triggerRadius: def.mineTriggerRadius != null ? def.mineTriggerRadius : 60,
+        blastRadius: def.mineBlastRadius != null ? def.mineBlastRadius : 150,
+        impulse: w.impulsePerHit != null ? w.impulsePerHit : (def.impulsePerHit || 600),
+        provenance: def.impulseProvenance || 'vector_mine_pulse',
+        armed: false, spawnedAt: now,
+      },
+    });
+    if (this.bus) {
+      this.bus.emit('combat:fire', { ownerId: e.id, weaponId: w.defId, hardpointIdx: w.slotIndex, origin: pos, dir, deploy: true });
+      this.bus.emit('weapons:mineDeployed', { ownerId: e.id, mineId: mine && mine.id, weaponId: w.defId, pos });
+      if (isWell) {
+        this.bus.emit('presentation:vfxCue', {
+          id: 'combat.gravityWell.deploy', lane: 'field', particles: 18, lights: 1,
+          magnitude: 1.2, position: pos, material: 'impulse',
+          sourceId: e.id, targetId: null, flashReduced: false,
+        });
+      }
+    }
+    return mine;
+  },
+
+  _countOwnerVectorMines(state, ownerId, kind = 'vector_mine') {
+    let n = 0;
+    const list = liveVectorMineList(state);
+    for (const ent of list) {
+      if (ent.type === 'vectormine' && ent.alive && ent.data && ent.data.ownerId === ownerId
+        && (ent.data.kind || 'vector_mine') === kind) n++;
+    }
+    return n;
+  },
+
+  // Per-tick vector-mine lifecycle: expire → arm → proximity trigger. Strict no-op in the golden
+  // (flag pinned OFF). Proximity is a linear scan of the ship index, NOT a broadphase/spatial-hash
+  // query (perf-budget constraint), and touches only mine.data — no entity motion is written here.
+  _tickVectorMines(dt, state) {
+    if (!combatFlag('weaponImpulseConsequences')) return;
+    const list = liveVectorMineList(state);
+    if (!list.length) return;
+    const now = state.simTime || 0;
+    const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList || list;
+    for (const mine of list) {
+      if (mine.type !== 'vectormine' || !mine.alive) continue;
+      const d = mine.data;
+      if (!d) { mine.alive = false; continue; }
+      if (now >= d.dieAt) {
+        mine.alive = false;
+        if (this.bus) this.bus.emit('weapons:mineExpired', { mineId: mine.id, ownerId: d.ownerId, pos: { x: mine.pos.x, z: mine.pos.z } });
+        continue;
+      }
+      if (!d.armed) {
+        if (now >= d.armAt) {
+          d.armed = true;
+          if (this.bus) this.bus.emit('weapons:mineArmed', { mineId: mine.id, ownerId: d.ownerId, pos: { x: mine.pos.x, z: mine.pos.z } });
+        }
+        continue;
+      }
+      // A gravity well does not detonate: once armed it drags until it dies. The pull is a
+      // mass-scaled impulse toward the well each tick (uniform acceleration with linear falloff —
+      // gravity does not check team tags, the owner included), routed through physics authority
+      // with provenance so a well-thrown hull meeting terrain is attributed to the owner.
+      if (d.kind === 'gravity_well') {
+        this._tickGravityWell(mine, d, state, dt);
+        continue;
+      }
+      const trigR = d.triggerRadius;
+      let triggered = false;
+      const table = state.combatTable;
+      if (table && table.count > 0) {
+        const mx = mine.pos.x;
+        const mz = mine.pos.z;
+        const n = table.count;
+        const shipFlag = COMBAT_TABLE_FLAGS.SHIP;
+        for (let i = 0; i < n; i++) {
+          if ((table.flags[i] & shipFlag) === 0) continue;
+          const rr = trigR + (table.radius[i] || 0);
+          const dx = table.x[i] - mx;
+          const dz = table.z[i] - mz;
+          if (dx * dx + dz * dz <= rr * rr) { triggered = true; break; }
+        }
+      } else {
+        for (const s of ships) {
+          if (!s.alive || (s.type !== 'ship' && s.type !== 'drone')) continue;
+          const dx = s.pos.x - mine.pos.x, dz = s.pos.z - mine.pos.z;
+          const rr = trigR + (s.radius || 0);
+          if (dx * dx + dz * dz <= rr * rr) { triggered = true; break; }
+        }
+      }
+      if (triggered) this._detonateVectorMine(mine, d, state);
+    }
+  },
+
+  // Sustained pull for one armed gravity well. Uniform acceleration (pull × linear falloff) so
+  // the well bends light hulls and heavies alike — a well is terrain you place, not a damage
+  // source; the fight is repositioned and finished with whatever else the fit carries.
+  _tickGravityWell(mine, d, state, dt) {
+    const pull = Math.max(0, Number(d.pull) || 0);
+    const radius = Math.max(1, Number(d.blastRadius) || 1);
+    if (!(pull > 0) || !(dt > 0)) return;
+    const pos = { x: mine.pos.x, z: mine.pos.z };
+    const bodies = queryPhysicalBodies(state, pos, radius, this.helpers, this._wellBodies || (this._wellBodies = []));
+    const step = Math.min(dt, 1 / 30);
+    for (const body of bodies) {
+      if (body === mine) continue;
+      const dx = pos.x - body.pos.x, dz = pos.z - body.pos.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist < 1e-4) continue;
+      const accel = pull * Math.max(0, 1 - Math.max(0, dist - (body.radius || 0)) / radius);
+      deliverPhysicalAcceleration(state, body, { x: dx / dist * accel, z: dz / dist * accel }, step,
+        { actorId: d.ownerId ?? null, weaponId: d.weaponId, tag: d.provenance, appliedTick: state.tick });
+    }
+  },
+
+  // Detonation: a mass-scaled radial impulse to every ship/drone in the blast — INCLUDING the owner
+  // (blast-yourself mobility). Zero hull damage (design Q9): no routeDamage, only the physics-authority
+  // impulse request. Provenance is recorded so a mine-thrown ship that meets terrain is attributed to
+  // the mine owner through the existing collision-consequence path. Rejected requests are skipped.
+  _detonateVectorMine(mine, d, state) {
+    const pos = { x: mine.pos.x, z: mine.pos.z };
+    const blastR = d.blastRadius;
+    const hits = [];
+    schedulePhysicalBlast(state, {
+      center: pos, radius: blastR, helpers: this.helpers, excludeId: mine.id,
+      payload: { kind: 'vector_mine', sourceId: d.ownerId, sourceLife: d.attackSource?.life ?? null, sourceTeam: d.attackSource?.team ?? mine.team, weaponId: d.weaponId, baseImpulse: d.impulse },
+      onBody: body => {
+        const dx = body.pos.x - pos.x, dz = body.pos.z - pos.z;
+        const dist = Math.hypot(dx, dz);
+        const falloff = Math.max(0, 1 - Math.max(0, dist - (body.radius || 0)) / blastR);
+        const mag = d.impulse * falloff;
+        const nx = dist > 1e-4 ? dx / dist : 0, nz = dist > 1e-4 ? dz / dist : 1;
+        if (deliverPhysicalImpulse(state, body, { x: nx * mag, z: nz * mag },
+          { actorId: d.ownerId ?? null, weaponId: d.weaponId, tag: d.provenance, appliedTick: state.tick },
+          { referenceImpulse: isEnvironmentalBody(body) ? Math.max(mag, 16 * 75 * falloff) : undefined })) hits.push(body.id);
+      },
+    });
+    mine.alive = false;
+    if (this.bus) {
+      this.bus.emit('weapons:mineDetonated', {
+        schemaVersion: 1, tick: state.tick, mineId: mine.id, ownerId: d.ownerId, weaponId: d.weaponId,
+        pos, blastRadius: blastR, hits,
+      });
+      // Directional impulse ring + scatter — NOT a generic explosion ball (graphics-checkpoint reject
+      // list). flashReduced:false lets vfxAccessibility resolve the reduced-flash variant downstream.
+      this.bus.emit('presentation:vfxCue', {
+        id: 'combat.vectorMine.detonate', lane: 'combat', particles: 30, lights: 1,
+        magnitude: Math.max(0.6, blastR / 150), position: pos, material: 'impulse',
+        sourceId: d.ownerId, targetId: null, flashReduced: false,
+      });
+      this.bus.emit('audio:cue', { id: 'sfx_vector_mine', position: pos, gain: 0.6 });
+    }
+  },
+
+  // ── SEED-SW-21 Singularity Mortar ─────────────────────────────────────────────────
+  // A mortar round is an ordinary projectile until it lands: reaching its authored range or
+  // dying early both plant the shell where it is. The landing runs a brief timed pull — the
+  // same uniform-acceleration seam the gravity wellhead uses, never a placed wellhead — then
+  // detonates once: one radial shove plus one real damage packet per body, both through the
+  // existing physics/combat seams. The pull never touches the hull that threw it.
+  _tickMortarShots(dt, state) {
+    if (!this._mortarShots) this._mortarShots = new Map();
+    const shots = this._mortarShots;
+    const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
+    for (const p of projectiles) {
+      if (!p || p.type !== 'projectile' || !p.data || !p.data.mortar) continue;
+      let rec = shots.get(p.id);
+      // A recycled entity id must not inherit a dead shell's record: the live
+      // projectile carries its own config, anything else is a stale slot.
+      if (rec && rec.cfg !== p.data.mortar) { shots.delete(p.id); rec = null; }
+      if (!rec) {
+        rec = {
+          phase: 'fly', pos: { x: p.pos.x, z: p.pos.z }, pullUntil: 0,
+          ownerId: p.ownerId, sourceLife: p.data.attackSource?.life ?? null, sourceTeam: p.data.attackSource?.team ?? p.team, weaponId: p.data.weaponId, cfg: p.data.mortar,
+        };
+        shots.set(p.id, rec);
+      }
+      if (rec.phase === 'fly' && p.alive !== false) {
+        rec.pos.x = p.pos.x;
+        rec.pos.z = p.pos.z;
+      }
+    }
+    const now = state.simTime || 0;
+    for (const [id, rec] of shots) {
+      const p = state.entities && typeof state.entities.get === 'function' ? state.entities.get(id) : null;
+      if (rec.phase === 'fly') {
+        // The landing point is the round's authored range: it plants where it is when the
+        // shot has flown its maxDistance, or at its last live position if a body ate it.
+        const dead = !p || p.alive === false;
+        const spawnPos = p && p.data && p.data.spawnPos ? p.data.spawnPos : null;
+        const maxDist = p && p.data && Number.isFinite(p.data.maxDistance) ? p.data.maxDistance : Infinity;
+        const flown = p && spawnPos ? Math.hypot(p.pos.x - spawnPos.x, p.pos.z - spawnPos.z) : 0;
+        if (dead || flown >= maxDist) {
+          this._mortarLand(rec, state, now);
+          // Range is the mortar's authored landing seam. Stop the shell here so physics cannot
+          // carry it through the well and leave a second live damaging projectile downstream.
+          if (!dead && p) p.alive = false; // core lifetime owns removal; this is not a hit receipt
+        }
+      } else if (rec.phase === 'pull') {
+        this._mortarPullTick(rec, state, dt);
+        if (now >= rec.pullUntil) this._mortarDetonate(rec, state);
+      } else {
+        shots.delete(id);
+      }
+    }
+  },
+
+  _mortarLand(rec, state, now) {
+    rec.phase = 'pull';
+    rec.pullUntil = now + Math.max(0.1, Number(rec.cfg.pullS) || 1);
+    if (this.bus) {
+      this.bus.emit('weapons:mortarLanded', {
+        ownerId: rec.ownerId, weaponId: rec.weaponId,
+        pos: { x: rec.pos.x, z: rec.pos.z },
+        pullS: rec.pullUntil - now, pullRadius: rec.cfg.pullRadius,
+      });
+    }
+  },
+
+  _mortarPullTick(rec, state, dt) {
+    const pull = Math.max(0, Number(rec.cfg.pull) || 0);
+    const radius = Math.max(1, Number(rec.cfg.pullRadius) || 1);
+    if (!(pull > 0) || !(dt > 0)) return;
+    const bodies = queryPhysicalBodies(state, rec.pos, radius, this.helpers, this._wellBodies || (this._wellBodies = []));
+    const step = Math.min(dt, 1 / 30);
+    for (const body of bodies) {
+      if (body.id === rec.ownerId || body.id === state.playerId) continue;
+      const dx = rec.pos.x - body.pos.x, dz = rec.pos.z - body.pos.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist < 1e-4) continue;
+      const accel = pull * Math.max(0, 1 - Math.max(0, dist - (body.radius || 0)) / radius);
+      deliverPhysicalAcceleration(state, body, { x: dx / dist * accel, z: dz / dist * accel }, step,
+        { actorId: rec.ownerId ?? null, weaponId: rec.weaponId, tag: 'mortar_pull', appliedTick: state.tick });
+    }
+  },
+
+  _mortarDetonate(rec, state) {
+    rec.phase = 'done';
+    const pos = { x: rec.pos.x, z: rec.pos.z };
+    const blastR = Math.max(1, Number(rec.cfg.blastRadius) || 1);
+    const dmg = Number(rec.cfg.blastDmg) || 0;
+    const baseImpulse = Number(rec.cfg.impulse) || 0;
+    const hits = [];
+    schedulePhysicalBlast(state, {
+      center: pos, radius: blastR, helpers: this.helpers,
+      excludeId: rec.ownerId,
+      payload: {
+        kind: 'mortar_shell', sourceId: rec.ownerId, sourceLife: rec.sourceLife, sourceTeam: rec.sourceTeam, weaponId: rec.weaponId,
+        baseImpulse, damage: dmg, damageType: 'explosive',
+      },
+      onBody: (body) => {
+        const dx = body.pos.x - pos.x, dz = body.pos.z - pos.z;
+        const dist = Math.hypot(dx, dz);
+        const fall = Math.max(0, 1 - Math.max(0, dist - (body.radius || 0)) / blastR);
+        const nx = dist > 1e-4 ? dx / dist : 0;
+        const nz = dist > 1e-4 ? dz / dist : 1;
+        deliverPhysicalImpulse(state, body, { x: nx * baseImpulse * fall, z: nz * baseImpulse * fall },
+          { actorId: rec.ownerId ?? null, weaponId: rec.weaponId, tag: 'mortar_blast', appliedTick: state.tick });
+        if (dmg > 0 && this.helpers && typeof this.helpers.routeCombatDamage === 'function') {
+          this.helpers.routeCombatDamage({
+            attackerId: rec.ownerId ?? null,
+            targetId: body.id,
+            packet: { ...scalarHitToDamagePacket({
+              damage: dmg * fall, damageType: 'explosive', pos,
+              source: { kind: 'weapon_splash', weaponId: rec.weaponId },
+            }), flags: { splash: true } },
+            origin: { kind: 'weapon', id: rec.weaponId },
+          });
+        }
+        hits.push(body.id);
+      },
+    });
+    if (this.bus) {
+      this.bus.emit('weapons:mortarDetonated', {
+        schemaVersion: 1, tick: state.tick, ownerId: rec.ownerId, weaponId: rec.weaponId,
+        pos, blastRadius: blastR, hits,
+      });
+      this.bus.emit('presentation:vfxCue', {
+        id: 'combat.vectorMine.detonate', lane: 'combat', particles: 30, lights: 1,
+        magnitude: Math.max(0.6, blastR / 150), position: pos, material: 'impulse',
+        sourceId: rec.ownerId, targetId: null, flashReduced: false,
+      });
+      this.bus.emit('audio:cue', { id: 'sfx_vector_mine', position: pos, gain: 0.6 });
+    }
+  },
+
+  // ── SEED-SW-22 Debris Orbit ───────────────────────────────────────────────────────
+  // While the gun is fitted, loose rocks near the ship are latched into a readable ring: the
+  // salvage clamp (the latch constraint the massline owns — source 'tether', target 'tether',
+  // max four per owner) claims real debris bodies, and a tangential nudge sends the constraint
+  // swinging them around the hull. Each ring rock is a body: it absorbs a hostile hit like
+  // any debris and can be thrown like any latched body. A spent slot refills only from the
+  // room's own loose rocks — nothing is conjured, nothing becomes a shield bar.
+  _tickDebrisOrbit(dt, state) {
+    if (!this._orbitRings) this._orbitRings = new Map();
+    const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
+    const attachments = this._attachmentsService();
+    // Held ids: the client's live latch and beam lock ride on state.player where no entity
+    // flag is ever stamped, and every active kernel attachment names a target that is already
+    // spoken for — a second clamp on a towed or held hull is theft, not salvage (the same law
+    // the mop sweep obeys). Claims minted this tick join the set so two ring ships cannot take
+    // the same rock in one pass.
+    const engaged = this._debrisOrbitEngagedIds(state);
+    for (const ship of ships) {
+      if (!ship || ship.type !== 'ship' || ship.alive === false) continue;
+      const def = this._fittedDef(ship, 'wpn_debris_orbit_s');
+      const prev = this._orbitRings.get(ship.id);
+      if (!def || !attachments || typeof attachments.create !== 'function') {
+        if (prev) this._orbitRings.delete(ship.id);
+        continue;
+      }
+      const cfg = def.debrisOrbit || {};
+      const maxRocks = Math.max(1, Number(cfg.maxRocks) || 4);
+      const captureR = Math.max(1, Number(cfg.captureRadius) || 150);
+      const ring = prev || new Map();
+      this._orbitRings.set(ship.id, ring);
+      // A spent slot reads honestly empty: dead rocks and broken latches free their slot,
+      // and only the room's own loose debris can refill it.
+      for (const [rockId, attachmentId] of ring) {
+        const rock = this._entityGetter(rockId);
+        const live = attachments.get
+          ? attachments.get(attachmentId)
+          : (state.combat && state.combat.attachments && state.combat.attachments.byId
+            ? state.combat.attachments.byId[attachmentId] : null);
+        if (!rock || rock.alive === false || !live || live.state !== 'active') ring.delete(rockId);
+      }
+      if (ring.size >= maxRocks) continue;
+      const speed = Number(cfg.rockSpeed) || 0;
+      const list = state.entityList || ships;
+      const claims = [];
+      for (const rock of list) {
+        if (ring.size >= maxRocks) break;
+        if (!rock || rock.alive === false || rock.id === ship.id) continue;
+        if (!DEBRIS_ORBIT_ROCK_TYPES.has(rock.type)) continue;
+        if (ring.has(rock.id)) continue;
+        // A body mid-hand is not loose debris: NPC job lines ride on the data flags, the
+        // client's latch/lock and every live kernel clamp ride on the engaged-id set.
+        const rd = rock.data || {};
+        const rf = rock.flags || {};
+        if (rf.tethered === true || rd.tethered === true || rd.npcMasslineLatch === true) continue;
+        if (rd.npcTowedByJobId != null) continue;
+        if (engaged.has(rock.id)) continue;
+        const dx = rock.pos.x - ship.pos.x, dz = rock.pos.z - ship.pos.z;
+        const dist = Math.hypot(dx, dz);
+        if (!(dist > 0) || dist > captureR) continue;
+        // Unprofiled loose bodies (debris/rock/cargo_pod) carry no combat profile, so the
+        // kernel finds zero tether sockets and refuses the clamp outright. The ring lends
+        // its own rocks the tether-anchor profile — the same stamp spawners use — before
+        // latching; an explicitly stamped profile is never overwritten.
+        if (rock.data && !rock.data.combatProfileId
+          && !DEFAULT_COMBAT_PROFILE_BY_TYPE[rock.type]) {
+          rock.data.combatProfileId = 'combat_profile_tether_anchor';
+        }
+        const created = attachments.create({
+          defId: 'attachment_salvage_clamp',
+          ownerId: ship.id,
+          targetId: rock.id,
+          actionInstanceId: 'debris_orbit',
+        });
+        if (!created || created.ok !== true) continue;
+        ring.set(rock.id, created.attachment.id);
+        engaged.add(rock.id);
+        // One tangential nudge: the clamp then does the orbiting — velocity is handed to the
+        // latched body through the same impulse authority every other weapon uses, once.
+        if (speed > 0) {
+          const tx = -dz / dist, tz = dx / dist;
+          deliverPhysicalImpulse(state, rock,
+            { x: tx * speed * (rock.mass || 1), z: tz * speed * (rock.mass || 1) },
+            { actorId: ship.id, weaponId: 'wpn_debris_orbit_s', tag: 'debris_orbit_claim', appliedTick: state.tick });
+        }
+        claims.push(rock.id);
+      }
+      if (claims.length && this.bus) {
+        this.bus.emit('weapons:debrisOrbitClaimed', { ownerId: ship.id, rocks: claims, ringSize: ring.size });
+      }
+    }
+  },
+
+  _attachmentsService() {
+    const kernel = getCombatKernel(this.ctx);
+    return kernel && kernel.attachments ? kernel.attachments : null;
+  },
+
+  // Ids the ring must never claim: the client's own live latch and salvage-beam lock (mirrored
+  // on state.player, never stamped on the body) plus every active kernel attachment's target —
+  // a rock already on a line belongs to that line however the line was made.
+  _debrisOrbitEngagedIds(state) {
+    const ids = new Set();
+    const player = state && state.player;
+    if (player) {
+      const tether = player.tether;
+      if (tether && tether.active && tether.targetId != null) ids.add(tether.targetId);
+      if (player.miningTargetId != null) ids.add(player.miningTargetId);
+    }
+    const byId = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+    if (byId) {
+      for (const attachment of Object.values(byId)) {
+        if (attachment && attachment.state === 'active' && attachment.targetId != null) {
+          ids.add(attachment.targetId);
+        }
+      }
+    }
+    return ids;
+  },
+
+  _fittedDef(ship, defId) {
+    const fittings = ship && ship.data
+      ? (Array.isArray(ship.data.fittings) ? ship.data.fittings : null)
+      : null;
+    if (fittings && fittings.includes(defId)) return this._byId.get(defId) || null;
+    const weapons = ship && ship.data && Array.isArray(ship.data.weapons) ? ship.data.weapons : null;
+    if (weapons && weapons.some((w) => w && w.defId === defId)) return this._byId.get(defId) || null;
+    return null;
+  },
+
+  // ── SEED-SW-23 Glaive ─────────────────────────────────────────────────────────────
+  // One redirect per bolt: the outward leg ends at its authored range and the bolt points
+  // back through the thrower's position once. After it crosses that point the arc is spent —
+  // no homing, no second turn — and the bolt expires there: nothing outlives its return.
+  // Pierce on the spec is what lets each pass land on a different body.
+  _tickReturnArc(dt, state) {
+    void dt;
+    const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
+    for (const p of projectiles) {
+      if (!p || p.type !== 'projectile' || !p.data || !p.data.returnArc) continue;
+      const arc = p.data.returnArc;
+      if (arc.phase === 'done') continue;
+      if (p.alive === false) { arc.phase = 'done'; continue; }
+      const owner = this._entityGetter(p.ownerId != null ? p.ownerId : p.data.ownerId);
+      if (!owner || owner.alive === false || !owner.pos) { arc.phase = 'done'; continue; }
+      if (arc.phase === 'out') {
+        const spawnPos = p.data.spawnPos;
+        const leg = Number(arc.legRange) || 0;
+        const flown = spawnPos ? Math.hypot(p.pos.x - spawnPos.x, p.pos.z - spawnPos.z) : 0;
+        if (flown >= leg) {
+          const dx = owner.pos.x - p.pos.x, dz = owner.pos.z - p.pos.z;
+          const dist = Math.hypot(dx, dz) || 1;
+          const speed = Math.hypot(p.vel.x, p.vel.z) || 1;
+          // The bolt is a Rapier-owned dynamic body and `bullet` kind gets no guided-velocity
+          // mirror, so a direct vel write dies in the next post-step readback — the return leg
+          // would never fly. Queue the redirect through the projectile continuation membrane
+          // the ricochet path uses: the entity mirror updates now, the real body turns at the
+          // start of the next physics step.
+          queueProjectileContinuation(p, {
+            velocity: { x: dx / dist * speed, z: dz / dist * speed },
+            yaw: Math.atan2(dz, dx),
+            tick: Number.isInteger(state.tick) ? state.tick : 0,
+          });
+          arc.phase = 'return';
+          arc.passX = owner.pos.x;
+          arc.passZ = owner.pos.z;
+          arc.dirX = dx / dist;
+          arc.dirZ = dz / dist;
+        }
+      } else if (arc.phase === 'return') {
+        const along = (p.pos.x - arc.passX) * arc.dirX + (p.pos.z - arc.passZ) * arc.dirZ;
+        if (along > (owner.radius || 0) + (p.radius || 0) + 1) {
+          // The arc is spent exactly once it has crossed back through the thrower: the bolt
+          // expires there — no lingering shot outlives its return.
+          arc.phase = 'done';
+          p.alive = false;
+        }
+      }
+    }
+  },
+
+  // --- helpers ---
+
+  // Current target for a ship: explicit combat.targetId, else the player's gun target.
+  //
+  // For the player the gun target is NOT simply state.player.targetId — a line on a hostile claims
+  // the guns (masslineOwnsGuns). Resolving it here is what keeps the missile LOCK (_tickLock) on the
+  // same ship the missile will actually launch at: the launch path uses `forceTarget` — the tethered
+  // hostile — while the lock used to build on the selection, so the player locked one ship and fired
+  // at another. state.player.targetId itself is left alone; it is the player's selection and it also
+  // aims Massline throws.
+  _resolveTarget(e) {
+    const combat = e.data && e.data.combat;
+    let id = combat && combat.targetId != null ? combat.targetId : null;
+    if (id == null && e.id === this.state.playerId) {
+      const tethered = massline2Flag('fireControl') ? masslineGunTarget(this.helpers, e, this.state) : null;
+      id = tethered ? tethered.id : this.state.player.targetId;
+    }
+    if (id == null) return null;
+    const t = this.helpers.getEntity(id);
+    return t && t.alive ? t : null;
+  },
+
+  // Iterative lead/intercept (2 passes); falls back to aim-direct if the shot can't catch up.
+  // Delegates to the module-level `solveLeadAngle` so the exact same solver feeds the player HUD lead
+  // pip (via src/ai/gunnery.js) — one solver, never two (a second would drift from the sim and lie).
+  _leadAngle(shooter, tgt, projSpeed) {
+    return solveLeadAngle(shooter, tgt, projSpeed);
+  },
+
+  // The hull centre is NOT the launch point. Resolve each battery member at its own speed
+  // and real muzzle; fixed iteration count also accounts for the radial muzzle offset changing
+  // with aim. speed=0 is hitscan and intentionally carries no projectile lead.
+  _arcadeMountAngle(e, w, target, speed) {
+    let angle = speed > 0 ? this._leadAngle(e, target, speed)
+      : Math.atan2(target.pos.z - e.pos.z, target.pos.x - e.pos.x);
+    for (let i = 0; i < 3; i++) {
+      const origin = this._muzzle(e, w, angle);
+      angle = speed > 0 ? this._leadAngle({ pos: origin, vel: e.vel }, target, speed)
+        : Math.atan2(target.pos.z - origin.z, target.pos.x - origin.x);
+    }
+    // The relative-frame lead assumes the round leaves at projSpeed relative to the shooter.
+    // The real launch (_spawnProjectile) only compensates lateral shooter velocity while that
+    // is below projSpeed; a hull sliding sideways faster than its own rounds (boost, dash) gets
+    // a round at projSpeed in WORLD space instead, and the relative solve misses by degrees.
+    // Re-solve against the round's actual world velocity until the two agree.
+    if (speed > 0) angle = refineLeadForLaunch(angle, speed, e.vel, target, (a) => this._muzzle(e, w, a));
+    return angle;
+  },
+
+  // Approx gaussian spread (sum of two uniforms) in radians, from our own deterministic stream.
+  _spread(spreadDeg) {
+    if (!spreadDeg) return 0;
+    const g = (this._rng() + this._rng() - 1); // ~[-1,1], triangular
+    return g * spreadDeg * RAD;
+  },
+
+  // ---- Phase 2: hardpoint facing + gimbal + muzzle offsets --------------------------------
+
+  // World-space fire direction for a FIXED hardpoint: base = nose + the mount's facing offset,
+  // then blend toward the requested aim angle, clamped to the mount's gimbal arc. A touch of
+  // deterministic spread is layered on last. Result is the actual projectile heading.
+  _hardpointDir(e, w, aimAngle, spreadDeg) {
+    const facingAngle = w.facingAngle || 0;
+    const base = e.rot + facingAngle;            // where the gun physically points
+    const arc = (w.gimbalArc != null ? w.gimbalArc : 0);
+    let dir = base;
+    if (arc > 0) {
+      const diff = wrapAngle(aimAngle - base);   // signed shortest delta toward the aim
+      const clamp = Math.max(-arc, Math.min(arc, diff));
+      dir = base + clamp;                        // gimbal-assist toward aim, locked to the cone
+    }
+    if (spreadDeg) dir += this._spread(spreadDeg);
+    return dir;
+  },
+
+  // The round leaves the weapon socket. Aim, spread, and lead change the heading only.
+  _muzzle(e, w, _dir) {
+    const origin = modelTruthShotOrigin(e, w);
+    if (origin) return { x: origin.x, z: origin.z, y: origin.y || 0 };
+    return {
+      x: e.pos.x,
+      z: e.pos.z,
+      y: 0,
+    };
+  },
+
+  flashOrigin(e, w) {
+    const origin = modelTruthFlashOrigin(e, w) || this._muzzle(e, w, e.rot || 0);
+    return { x: origin.x, z: origin.z, y: origin.y };
+  },
+
+  // Representative projectile speed of the player's primary weapon. Massline tether fire control
+  // uses this when a caller does not provide an explicit speed for its constrained lead solution.
+  _playerProjectileSpeed(player) {
+    const ws = player.data && player.data.weapons;
+    if (ws) {
+      for (const w of ws) {
+        const def = this._byId.get(w.defId);
+        const sp = w.projSpeed != null ? w.projSpeed : (def && def.projSpeed);
+        if (sp && sp > 0) return sp;
+      }
+    }
+    return 360;
+  },
+
+};
+
+void DEG2;
+void TWO_PI;
+
+function isLiveLabSession(state) {
+  const run = state && state.run;
+  return !!(run && run.kind === 'lab' && run.phase !== 'inactive');
+}
+
+function refillLabPlayerHeat(state) {
+  if (!isLiveLabSession(state)) return;
+  if (!state || state.playerId == null || !state.entities || typeof state.entities.get !== 'function') {
+    return;
+  }
+  const player = state.entities.get(state.playerId);
+  if (!player) return;
+  const mounts = player.data && player.data.weapons;
+  if (!Array.isArray(mounts)) return;
+  for (let i = 0; i < mounts.length; i++) {
+    const mount = mounts[i];
+    if (mount) mount._heat = 0;
+  }
+}
+
+function liveVectorMineList(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.vectorMines)) return index.vectorMines;
+  return (state && state.entityList) || [];
+}
+
+// Exact lead/intercept solver for the shipped aim-true projectile model. Flight time is solved in
+// the shooter's inertial frame, where projectile speed relative to the shooter is `projSpeed`, but
+// the returned angle points at the target's WORLD future position because spawned bullets travel on
+// that world-space line (aimTrueProjectileVelocity). Returning the relative-frame angle here made a
+// strafing player's rounds lead in the opposite direction and miss moving targets by whole hulls.
+/** World velocity of a bullet launched along `angle` (the model _spawnProjectile uses). */
+export function launchVelocity(angle, projSpeed, shooterVel) {
+  if (combatFlag('momentumInherit')) {
+    const v = shooterVel || { x: 0, z: 0 };
+    return { x: Math.cos(angle) * projSpeed + (v.x || 0), z: Math.sin(angle) * projSpeed + (v.z || 0) };
+  }
+  return aimTrueProjectileVelocity(angle, projSpeed, shooterVel);
+}
+
+/**
+ * Fixed-point refinement of a lead angle against the real launch model: solve the intercept in
+ * the world frame at the round's actual world speed (and heading offset, if momentum is
+ * inherited) from the muzzle that angle implies. Exact where the relative solve already is
+ * (lateral shooter speed below projSpeed); fixes it where the launch stops compensating.
+ */
+export function refineLeadForLaunch(angle, projSpeed, shooterVel, target, muzzleAt, iterations = 4) {
+  let a = angle;
+  for (let i = 0; i < iterations; i++) {
+    const origin = muzzleAt(a);
+    const u = launchVelocity(a, projSpeed, shooterVel);
+    const worldSpeed = Math.hypot(u.x, u.z);
+    if (!(worldSpeed > 1e-6)) break;
+    const offset = wrapAngle(Math.atan2(u.z, u.x) - a);
+    a = solveLeadAngle({ pos: origin, vel: { x: 0, z: 0 } }, target, worldSpeed) - offset;
+  }
+  return a;
+}
+
+/** A missile may finish its old solution. It may not adopt a body that reused the target id. */
+export function guidanceAcceptsTarget(data, target) {
+  if (!data || !target) return false;
+  if (data.targetGeneration == null) return true;
+  return targetIdentityGeneration(target) === data.targetGeneration;
+}
+
+export function weaponBankReadiness(mount, runtime) {
+  const subsystemId = (mount && mount.subsystemId) || 'subsystem_weapon';
+  const subsystems = runtime && runtime.subsystems;
+  const sub = subsystems && subsystems[subsystemId];
+  const disabled = runtime?.capabilities?.weapon === false
+    || !!(sub && (sub.effectiveDisabled === true || sub.destroyed === true));
+  const cooling = !!mount && (mount._cooldown || 0) > 0;
+  const heatMax = mount && Number.isFinite(mount.heatMax) && mount.heatMax > 0 ? mount.heatMax : null;
+  const hot = heatMax != null && (mount._heat || 0) >= heatMax;
+  const ready = !disabled && !cooling && !hot;
+  return {
+    subsystemId,
+    disabled,
+    ready,
+    advertised: disabled ? 'disabled' : (ready ? 'ready' : 'not_ready'),
+  };
+}
+
+function combatRuntimeOf(state, entity) {
+  const bag = state && state.combat && state.combat.entities;
+  // Numeric keys coerce inside the dictionary lookup — String(id) would allocate
+  // a boxed key per weapon-tick per ship for the same answer.
+  if (bag && entity && entity.id != null && bag[entity.id]) return bag[entity.id];
+  return (entity && entity.data && entity.data.combatRuntime) || null;
+}
+
+function missileDecoyAim(d) {
+  if (!d || d.diverted !== true || !d.divertPos) return null;
+  const x = d.divertPos.x;
+  const z = d.divertPos.z;
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
+  return d.divertPos;
+}
+
+// RW-02 towed lure (choir-bell decoy). A hot payload riding the player's Massline steals
+// seekers that are homing on the cold hull — through the SAME diverted/divertPos
+// vocabulary countermeasures owns, never a parallel steering path. The lure's heat/noise
+// signature lives on the towed body's own data (the Eighth Bell's runtime stamps it when
+// she tolls); the threshold is the authored contract on the towed_lure signature row.
+// The claim is revocable: a severed line, a consumed payload, or a cooled lure clears
+// ONLY a lure-owned divert (chaff and cloak breaks keep their authority), so acquisition
+// returns to the hull. No active player tether, or no signature at all, means this
+// function returns before touching the round — the no-lure seeker path is byte-identical.
+function refreshTowedLureDivert(helpers, state, d) {
+  if (!d || d.kind !== 'missile') return;
+  // Another owner already holds this round (chaff, decoy buoy, cloak break): the lure
+  // never fights it. Our own claim is the one exception — it needs its per-tick refresh.
+  if (d.diverted === true && d.lureDiverted !== true) return;
+  const tether = state && state.player && state.player.tether;
+  const towedId = tether && tether.active === true ? tether.targetId : null;
+  const towed = towedId != null && helpers && typeof helpers.getEntity === 'function'
+    ? helpers.getEntity(towedId)
+    : null;
+  const lure = towedLureSignature(towed);
+  // Release: the line is gone, the payload is consumed, it cooled below the authored
+  // threshold, or the round is no longer answering the hull it stole. Clear only the
+  // lure's own divert so a chaff steal or a finished cloak break survives the release.
+  if (d.lureDiverted === true) {
+    const hullId = d.lureHullId;
+    const holds = lure && lure.hot === true && d.targetId === hullId
+      && towed && towed.alive !== false && towed.id === d.lureTowedId;
+    if (!holds) {
+      const owned = d.diverted === true && d.targetId === hullId && d._cloakTurnRate == null;
+      d.lureDiverted = false;
+      d.lureHullId = null;
+      d.lureTowedId = null;
+      if (owned) {
+        d.diverted = false;
+        d.divertPos = null;
+      }
+      return;
+    }
+    // Still held: ride the live lure — a towed payload keeps moving under the tow.
+    if (towed.pos) d.divertPos = { x: towed.pos.x, z: towed.pos.z };
+    return;
+  }
+  // Acquire: only a round still homing on the towing hull answers a newly hot lure.
+  if (!lure || lure.hot !== true) return;
+  if (d.targetId !== (state && state.playerId)) return;
+  if (!towed.pos) return;
+  d.lureDiverted = true;
+  d.lureHullId = d.targetId;
+  d.lureTowedId = towed.id;
+  d.diverted = true;
+  d.divertPos = { x: towed.pos.x, z: towed.pos.z };
+}
+
+// The signature read itself is shared in src/ai/towedLure.js — the same pure function serves
+// this divert and the ship-side pursuit claim there (one read owner, one authored threshold).
+
+function npcWeaponsNeedTick(e, state) {
+  const data = e && e.data;
+  const plant = data && data.momentumSinkPlant;
+  if (plant && plant.active) return true;
+  if (data && data.weaponVentUntil && (state && state.simTime || 0) < data.weaponVentUntil) return true;
+  // A live missile lock is mid-bleed business: a darkened target's lock decays on the cloak
+  // window inside _tickLock, so the ship cannot sleep through it — and _publishIncomingLock
+  // must see the drop or the player's MISSILE LOCK warning stays lit for good.
+  const combat = data && data.combat;
+  if (combat && combat.lockTarget != null && (combat.lockProgress || 0) > 0) return true;
+  const ws = data && data.weapons;
+  if (!ws) return false;
+  for (const w of ws) {
+    if ((w._cooldown || 0) > 0 || (w._heat || 0) > 0) return true;
+  }
+  return false;
+}
+
+function npcFireTargetVisibleOnPlayerRadar(e, state) {
+  const combat = e && e.data && e.data.combat;
+  if (!state || !combat || combat.targetId !== state.playerId) return true;
+  const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+  if (!player || !player.pos || !e.pos) return true;
+  // Player sensor fittings extend observation, not the early-flight hostile engagement ring.
+  const range = NPC_FIRE_PLAYER_RADAR_RANGE;
+  const pad = (player.radius || 0) + (e.radius || 0);
+  const dx = e.pos.x - player.pos.x;
+  const dz = e.pos.z - player.pos.z;
+  return dx * dx + dz * dz <= (range + pad) * (range + pad);
+}
+
+function findLiveAttackProjectile(state, live, payload) {
+  let best = null;
+  let bestD = Infinity;
+  const px = payload && payload.pos ? payload.pos.x : 0;
+  const pz = payload && payload.pos ? payload.pos.z : 0;
+  for (const [id, rec] of live) {
+    void rec;
+    const entity = state.entities && state.entities.get && state.entities.get(id);
+    if (!entity) {
+      live.delete(id);
+      continue;
+    }
+    if (payload.ownerId != null && entity.ownerId !== payload.ownerId) continue;
+    const dx = (entity.pos && entity.pos.x || 0) - px;
+    const dz = (entity.pos && entity.pos.z || 0) - pz;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < bestD) {
+      bestD = d2;
+      best = entity;
+    }
+  }
+  return best;
+}
+
+const PHYSICAL_CONTACTS = new WeakMap();
+
+export function applyProjectilePhysicalContact(host, payload) {
+  const state = host && host.state;
+  if (!state || !payload || payload.physicalDelivered) return;
+  const projectile = state.entities?.get(payload.projectileId);
+  const target = state.entities?.get(payload.targetId);
+  if (!projectile || !target || target.alive === false) return;
+  const stamp = `${state.tick}:${target.id}`;
+  if (PHYSICAL_CONTACTS.get(projectile) === stamp) {
+    payload.physicalDelivered = true;
+    payload.impulse = null;
+    for (const key of ['damagePacket', 'packet']) if (payload[key]) payload[key] = { ...payload[key], impulse: null };
+    return;
+  }
+  PHYSICAL_CONTACTS.set(projectile, stamp);
+  const data = projectile.data || {};
+  const packet = payload.damagePacket || payload.packet || data.damagePacket;
+  const impulse = packet?.impulse || payload.impulse;
+  let ix = Number(impulse?.x), iz = Number(impulse?.z);
+  if (!Number.isFinite(ix) && !Number.isFinite(iz)) {
+    const vx = Number(payload.receipt?.velocity?.x ?? projectile.vel?.x) || 0;
+    const vz = Number(payload.receipt?.velocity?.z ?? projectile.vel?.z) || 0;
+    const length = Math.hypot(vx, vz) || 1;
+    ix = vx / length * (Number(impulse?.magnitude) || 0);
+    iz = vz / length * (Number(impulse?.magnitude) || 0);
+  }
+  const source = packet?.source || {};
+  if (Math.hypot(ix || 0, iz || 0) > 0 && (!source.impulseProvenance || combatFlag('weaponImpulseConsequences'))) {
+    const provenance = { actorId: payload.ownerId ?? projectile.ownerId, weaponId: data.weaponId, tag: source.impulseProvenance || 'weapon_hit', appliedTick: state.tick };
+    const delivery = deliverPhysicalImpulseDetailed(state, target, { x: ix || 0, z: iz || 0 },
+      { ...provenance, provenance, point: payload.pos, maxTorque: packet?.tumbleTorque },
+      // Scenery contacts obey the same authored momentum as the damage route.
+      { port: host.helpers?.combatPhysics, scaleEnvironment: false,
+        referenceImpulse: isEnvironmentalBody(target) ? source.environmentImpulse : undefined });
+    if (delivery.accepted) {
+      recordImpulseProvenance(target, { ...provenance, magnitude: Math.hypot(delivery.impulse.x, delivery.impulse.z) });
+      if (combatFlag('weaponImpulseConsequences') && target.id !== state.playerId) {
+        const owner = state.entities.get(provenance.actorId);
+        publishHitstunImpulse(host.bus, { source: 'gun', victimId: target.id, attackerId: provenance.actorId,
+          attackerMass: Number(owner?.physicsBody?.mass ?? owner?.mass) || 1,
+          victimMass: Number(target.physicsBody?.mass ?? target.mass) || 1, deltaV: delivery.deltaV,
+          dirX: ix, dirZ: iz, hitSide: signedHitSide(target, { x: ix, z: iz }, packet?.hit, target.id), provenance, tick: state.tick });
+      }
+    }
+  }
+  payload.physicalDelivered = true;
+  payload.impulse = null;
+  for (const key of ['damagePacket', 'packet']) {
+    if (payload[key]) payload[key] = { ...payload[key], impulse: null };
+  }
+  // Reflected and split contacts still transfer heat/status once through their independent owner.
+  if (opticMaterialOf(target) && packet && host.helpers?.routeCombatDamage) {
+    host.helpers.routeCombatDamage({ attackerId: payload.ownerId ?? projectile.ownerId, targetId: target.id,
+      packet: { ...packet, channels: {}, impulse: null }, origin: { kind: 'weapon', id: data.weaponId } });
+  }
+  const radius = Number(data.splashRadius) || 0;
+  if (!(radius > 0)) return;
+  const center = { x: payload.pos?.x ?? target.pos.x, z: payload.pos?.z ?? target.pos.z };
+  const damage = Number(data.splashDmg) || (Number(data.damage) || 0) * 0.5;
+  const baseImpulse = Number(impulse?.magnitude) || Math.hypot(ix || 0, iz || 0);
+  schedulePhysicalBlast(state, { center, radius, helpers: host.helpers, excludeId: target.id,
+    payload: { kind: 'weapon_splash', sourceId: payload.ownerId ?? projectile.ownerId, sourceLife: data.attackSource?.life ?? null, sourceTeam: data.attackSource?.team ?? projectile.team, weaponId: data.weaponId, baseImpulse, damage, damageType: data.damageType || 'explosive' },
+    onBody: body => {
+      const dx = body.pos.x - center.x, dz = body.pos.z - center.z;
+      const dist = Math.hypot(dx, dz);
+      const fall = Math.max(0, 1 - Math.max(0, dist - (body.radius || 0)) / radius);
+      const nx = dist > 1e-4 ? dx / dist : 0, nz = dist > 1e-4 ? dz / dist : 1;
+      deliverPhysicalImpulse(state, body, { x: nx * baseImpulse * fall, z: nz * baseImpulse * fall },
+        { actorId: payload.ownerId ?? projectile.ownerId, weaponId: data.weaponId, tag: 'weapon_splash', appliedTick: state.tick },
+        { scaleEnvironment: false });
+      host.helpers?.routeCombatDamage?.({ attackerId: payload.ownerId ?? projectile.ownerId, targetId: body.id,
+        packet: scalarHitToDamagePacket({ damage: damage * fall, damageType: data.damageType || 'explosive', pos: center, source: { kind: 'weapon_splash', weaponId: data.weaponId } }),
+        origin: { kind: 'weapon', id: data.weaponId } });
+    },
+  });
+}
+
+/**
+ * A projectile with splash that a shield pylon wall stopped (packet 06). Mirrors the splash half of
+ * applyProjectilePhysicalContact, centred just off the wall on the attacker's side; there is no
+ * struck target to exclude. Stopped plain slugs have no splash and do nothing here.
+ */
+function detonateInterceptedSplash(host, payload) {
+  const state = host && host.state;
+  if (!state || !payload) return;
+  const projectile = state.entities?.get(payload.projectileId);
+  const data = projectile && projectile.data;
+  const radius = Number(data && data.splashRadius) || 0;
+  if (!(radius > 0)) return;
+  const center = { x: payload.x + (payload.nx || 0) * 0.75, z: payload.z + (payload.nz || 0) * 0.75 };
+  const packet = data.damagePacket || data.packet;
+  const baseImpulse = Number(packet?.impulse?.magnitude) || 0;
+  const damage = Number(data.splashDmg) || (Number(data.damage) || 0) * 0.5;
+  const ownerId = payload.ownerId ?? projectile.ownerId;
+  schedulePhysicalBlast(state, { center, radius, helpers: host.helpers,
+    payload: { kind: 'weapon_splash', sourceId: ownerId, sourceLife: data.attackSource?.life ?? null, sourceTeam: data.attackSource?.team ?? projectile.team, weaponId: data.weaponId, baseImpulse, damage, damageType: data.damageType || 'explosive' },
+    onBody: body => {
+      const dx = body.pos.x - center.x, dz = body.pos.z - center.z;
+      const dist = Math.hypot(dx, dz);
+      const fall = Math.max(0, 1 - Math.max(0, dist - (body.radius || 0)) / radius);
+      const nx = dist > 1e-4 ? dx / dist : 0, nz = dist > 1e-4 ? dz / dist : 1;
+      deliverPhysicalImpulse(state, body, { x: nx * baseImpulse * fall, z: nz * baseImpulse * fall },
+        { actorId: ownerId, weaponId: data.weaponId, tag: 'weapon_splash', appliedTick: state.tick },
+        { scaleEnvironment: false });
+      host.helpers?.routeCombatDamage?.({ attackerId: ownerId, targetId: body.id,
+        packet: scalarHitToDamagePacket({ damage: damage * fall, damageType: data.damageType || 'explosive', pos: center, source: { kind: 'weapon_splash', weaponId: data.weaponId } }),
+        origin: { kind: 'weapon', id: data.weaponId } });
+    },
+  });
+}
+
+function handleOpticProjectileHit(host, payload) {
+  const state = host && host.state;
+  if (!state || !payload || payload.projectileId == null || payload.targetId == null) return false;
+  const entities = state.entities;
+  if (!entities || typeof entities.get !== 'function') return false;
+  const projectile = entities.get(payload.projectileId);
+  const target = entities.get(payload.targetId);
+  if (!projectile || projectile.type !== 'projectile' || !target) return false;
+  if (!host._opticFamilies) host._opticFamilies = new Map();
+  const book = opticBookFor(host._opticFamilies, opticFamilyIdOf(projectile));
+  const bus = host.bus;
+  const plan = settleOpticContact(projectile, target, payload, book, {
+    simTime: Number.isFinite(state.simTime) ? state.simTime : 0,
+    ledger: opticSpendLedger(state),
+    emit: bus ? (name, event) => bus.emit(name, event) : null,
+  });
+  if (!plan) return false;
+  if (plan.reason === 'material_budget' && host._attackLive?.get(projectile.id)?.runtime?.remaining?.bounces > 0) return false;
+  // A discharged prism joins the rekindle watch — the quiet clock is what it needs, not ticks.
+  if (plan.spentAt != null) {
+    if (!host._opticSpent) host._opticSpent = new Set();
+    host._opticSpent.add(target.id);
+  }
+  if (plan.kind === 'reflect') {
+    const live = host._attackLive?.get(projectile.id);
+    if (live?.spec?.trajectory?.afterBounceSteer) {
+      const nearby = collectAttackCandidates(state, projectile.pos, projectile.data?.maxDistance || 600, host._attackQueryScratch || [], projectile.ownerId, projectile.data?.attackSource?.team ?? projectile.team, projectile.data?.attackSource?.life ?? null);
+      applyReflectedVelocity(projectile, steerAfterBounce(plan.velocity, payload.pos || projectile.pos, live.spec, nearby, live.runtime?.visited));
+    }
+  }
+  addEnvironmentHeat(state, target, Number(payload.damagePacket?.channels?.thermal) || Number(payload.packet?.channels?.thermal) || 0, { actorId: projectile.ownerId });
+  // Zero the hit before combat's projectile:hit listener (registered after weapons) routes damage.
+  suppressHitPayload(payload);
+  // Prism/absorb consume the bolt: drop traited live state so splinters never inherit a parent
+  // AttackSpec resolve. Reflect keeps the same body — leave _attackLive for a later non-optic hit.
+  if (plan.kind !== 'reflect' && host._attackLive) host._attackLive.delete(projectile.id);
+  if (plan.kind === 'prism' && host.helpers && typeof host.helpers.spawnEntity === 'function') {
+    const rays = plan.rays || [];
+    for (let i = 0; i < rays.length; i++) {
+      reserveProjectileCapacity(host.state, 1);
+      host.helpers.spawnEntity(opticChildSpec(projectile, rays[i]));
+    }
+  }
+  if (host.bus) {
+    const pos = payload.pos && Number.isFinite(payload.pos.x)
+      ? { x: payload.pos.x, z: payload.pos.z }
+      : (target.pos ? { x: target.pos.x, z: target.pos.z } : null);
+    host.bus.emit('optic:contact', {
+      kind: plan.kind,
+      reason: plan.reason,
+      materialId: plan.materialId,
+      projectileId: projectile.id,
+      targetId: target.id,
+      ownerId: projectile.ownerId == null ? null : projectile.ownerId,
+      pos,
+      rays: plan.rays ? plan.rays.length : 0,
+      // Set when this contact discharged (or re-discharged) the prism — the cell reads
+      // 'spent' until its quiet stretch completes.
+      spent: plan.spentAt != null,
+    });
+  }
+  return true;
+}
+
+/**
+ * §24 "Beams and missiles": a continuous beam has no projectile body, so combat's beam sweep
+ * (which owns "the first body on the ray") hands the contact here as an 'optic:beamContact'
+ * request. The beam arrives as a bolt-shaped shim (opticBeamBolt) carrying the mount's burst
+ * family — the same settle rules apply: live diamond throws the ring once and spends, stone,
+ * spent and metal eat the ray (a beam never reflects — there is no body to send back). Sets
+ * req.handled so combat knows the surface consumed the beam.
+ */
+function handleOpticBeamContact(host, req) {
+  const state = host && host.state;
+  const beam = req && req.beam;
+  if (!state || !beam || req.targetId == null) return;
+  const entities = state.entities;
+  if (!entities || typeof entities.get !== 'function') return;
+  const target = entities.get(req.targetId);
+  if (!target || target.alive === false) return;
+  const owner = beam.ownerId != null ? entities.get(beam.ownerId) : null;
+  const pseudo = opticBeamBolt(beam, { pos: req.pos }, owner);
+  pseudo.data.attackSource = { id: beam.ownerId,
+    life: beam.sourceLife === undefined ? occupantGenerationOf(owner) : beam.sourceLife,
+    team: beam.sourceTeam ?? owner?.team ?? null };
+  if (!host._opticFamilies) host._opticFamilies = new Map();
+  const book = opticBookFor(host._opticFamilies, opticFamilyIdOf(pseudo));
+  const bus = host.bus;
+  const impulse = req.beam?.damagePacket?.impulse;
+  if (impulse && host.helpers?.routeCombatDamage) host.helpers.routeCombatDamage({ attackerId: req.beam.ownerId, targetId: target.id, packet: { ...req.beam.damagePacket, channels: {}, hit: { pos: req.pos, approach: { x: req.beam.to.x - req.beam.from.x, z: req.beam.to.z - req.beam.from.z } } }, origin: { kind: 'weapon', id: req.beam.weaponId } });
+  const plan = settleOpticContact(pseudo, target, {
+    pos: req.pos,
+    normal: req.normal,
+  }, book, {
+    simTime: Number.isFinite(state.simTime) ? state.simTime : 0,
+    ledger: opticSpendLedger(state),
+    emit: bus ? (name, event) => bus.emit(name, event) : null,
+  });
+  if (!plan) return;
+  addEnvironmentHeat(state, target, Number(beam.damagePacket?.channels?.thermal) || 0, { actorId: beam.ownerId });
+  req.handled = true;
+  // A discharged prism joins the rekindle watch — same as the bolt path.
+  if (plan.spentAt != null) {
+    if (!host._opticSpent) host._opticSpent = new Set();
+    host._opticSpent.add(target.id);
+  }
+  if (plan.kind === 'prism' && host.helpers && typeof host.helpers.spawnEntity === 'function') {
+    const rays = plan.rays || [];
+    for (let i = 0; i < rays.length; i++) {
+      reserveProjectileCapacity(host.state, 1);
+      host.helpers.spawnEntity(opticChildSpec(pseudo, rays[i]));
+    }
+  }
+  if (host.bus) {
+    host.bus.emit('optic:contact', {
+      kind: plan.kind,
+      reason: plan.reason,
+      materialId: plan.materialId,
+      projectileId: pseudo.id,
+      targetId: target.id,
+      ownerId: pseudo.ownerId == null ? null : pseudo.ownerId,
+      pos: req.pos ? { x: req.pos.x, z: req.pos.z } : (target.pos ? { x: target.pos.x, z: target.pos.z } : null),
+      rays: plan.rays ? plan.rays.length : 0,
+      spent: plan.spentAt != null,
+      via: 'beam',
+    });
+  }
+}
+
+/**
+ * Rekindle watch — a discharged prism heals after OPTIC_SPEND_QUIET sim-seconds untouched.
+ * The watch is a Set of entity ids (bounded by cells actually burned), so the common frame
+ * costs one size check, not an entity scan. Stale ids (despawned, healed by a contact) drop
+ * out as they are met.
+ */
+function serviceOpticRekindle(host, state) {
+  const watch = host._opticSpent;
+  if (!watch || !watch.size) return;
+  const now = Number.isFinite(state && state.simTime) ? state.simTime : 0;
+  const entities = state && state.entities;
+  const due = [];
+  for (const id of watch) {
+    const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
+    if (!entity || entity.alive === false || !entity.data || entity.data.opticMaterial !== 'spent') {
+      watch.delete(id);
+      continue;
+    }
+    if (opticRekindleDue(entity, now)) due.push(entity);
+  }
+  if (!due.length) return;
+  const emit = host.bus ? (name, payload) => host.bus.emit(name, payload) : null;
+  const rekindled = tickOpticRekindle(due, now, state.world && state.world.opticSpent, emit);
+  for (const record of rekindled) if (record.targetId != null) watch.delete(record.targetId);
+}
+
+function suppressHitPayload(payload) {
+  if (!payload) return;
+  payload.damage = 0;
+  payload.damagePacket = null;
+  payload.packet = null;
+  payload.statuses = [];
+  payload.heat = 0;
+  payload.impulse = null;
+}
+
+function scalePacketChannels(packet, scale) {
+  if (!packet || !(scale > 0) || scale === 1) return packet;
+  const next = { ...packet, channels: packet.channels ? { ...packet.channels } : {} };
+  const keys = Object.keys(next.channels);
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    next.channels[key] = (Number(next.channels[key]) || 0) * scale;
+  }
+  return next;
+}
+
+function scaleHitPayload(payload, scale) {
+  if (!payload || !(scale > 0) || scale === 1) return;
+  payload.damage = (Number(payload.damage) || 0) * scale;
+  if (payload.damagePacket) payload.damagePacket = scalePacketChannels(payload.damagePacket, scale);
+  if (payload.packet) payload.packet = scalePacketChannels(payload.packet, scale);
+}
+
+function cloneProjectileDataScaled(data, scale) {
+  const next = { ...(data || {}) };
+  next.damage = (Number(next.damage) || 0) * scale;
+  if (next.damagePacket) next.damagePacket = scalePacketChannels(next.damagePacket, scale);
+  return next;
+}
+
+function splitFanRad(index, count) {
+  if (count <= 1) return 0;
+  const spreadDeg = 12;
+  const denom = Math.max(1, count - 1);
+  const offsetDeg = (index - (count - 1) / 2) * (spreadDeg / denom);
+  return offsetDeg * RAD;
+}
+
+function nudgeSpawnedAlongVelocity(body) {
+  if (!body || !body.pos || !body.vel) return;
+  const speed = Math.hypot(body.vel.x || 0, body.vel.z || 0);
+  if (!(speed > 0)) return;
+  const pad = (body.radius || 0.7) + 0.05;
+  body.pos.x += (body.vel.x / speed) * pad;
+  body.pos.z += (body.vel.z / speed) * pad;
+}
+
+function spawnSplitChildren(host, parent, spec, children, payload) {
+  const helpers = host && host.helpers;
+  if (!helpers || typeof helpers.spawnEntity !== 'function' || !Array.isArray(children)) return;
+  const vx = parent.vel && parent.vel.x || 0;
+  const vz = parent.vel && parent.vel.z || 0;
+  const speed = Math.hypot(vx, vz) || 1;
+  const heading = Math.atan2(vz, vx);
+  const count = children.length;
+  const pos = (payload && payload.pos) || parent.pos || { x: 0, z: 0 };
+  if (!host._attackLive) host._attackLive = new Map();
+  for (let i = 0; i < count; i++) {
+    const child = children[i];
+    const scale = Number.isFinite(child.payloadScale) ? child.payloadScale : 0.55;
+    const dir = heading + splitFanRad(i, count);
+    const vel = { x: Math.cos(dir) * speed, z: Math.sin(dir) * speed };
+    const continued = projectileContinuationPlan(parent.data, pos, speed);
+    const data = cloneProjectileDataScaled(parent.data, scale);
+    data.spawnPos = continued.spawnPos;
+    data.flightDistance = continued.flightDistance;
+    reserveProjectileCapacity(host.state, 1);
+    const spawned = helpers.spawnEntity({
+      type: 'projectile',
+      pos: { x: pos.x, z: pos.z },
+      vel,
+      rot: dir,
+      radius: parent.radius || 0.7,
+      mass: parent.mass || 0.1,
+      team: parent.team,
+      ownerId: parent.ownerId,
+      factionId: parent.factionId,
+      ttl: continued.ttl,
+      collides: true,
+      data,
+    });
+    if (!spawned) continue;
+    nudgeSpawnedAlongVelocity(spawned);
+    host._attackLive.set(spawned.id, {
+      spec,
+      runtime: child.runtime,
+      causalMeta: causalMetaForSpec(spec),
+    });
+    const remaining = child.runtime && child.runtime.remaining;
+    if (remaining && (remaining.bounces > 0 || remaining.pierces > 0)) {
+      armAttackContinue(spawned);
+    }
+  }
+}
+
+function tetherAnchorIdOf(state) {
+  const tether = state && state.player && state.player.tether;
+  return tether && tether.targetId != null ? tether.targetId : null;
+}
+
+function applyAttackHopDamage(host, projectile, spec, hop) {
+  const helpers = host && host.helpers;
+  if (!helpers || typeof helpers.routeCombatDamage !== 'function') return;
+  const scale = hop && hop.resolved && Number.isFinite(hop.resolved.scale) ? hop.resolved.scale : 1;
+  const base = projectile && projectile.data && projectile.data.damagePacket;
+  const packet = base
+    ? { ...base, channels: base.channels ? { ...base.channels } : {} }
+    : { statuses: [], channels: {} };
+  if (scale !== 1 && packet.channels) {
+    const keys = Object.keys(packet.channels);
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      packet.channels[key] = (Number(packet.channels[key]) || 0) * scale;
+    }
+  }
+  const statuses = hop && hop.resolved && Array.isArray(hop.resolved.statuses)
+    ? hop.resolved.statuses.map((status) => ({ id: status.id, stacks: status.stacks }))
+    : [];
+  packet.statuses = statuses;
+  helpers.routeCombatDamage({
+    attackerId: projectile.ownerId,
+    targetId: hop.target.id,
+    packet,
+    origin: { kind: 'weapon', id: projectile.data && projectile.data.weaponId },
+  });
+  void spec;
+}
+
+function emptyAttackMetrics() {
+  return {
+    specsCompiled: 0,
+    cacheHits: 0,
+    volleys: 0,
+    rootsEmitted: 0,
+    rootsSuppressed: 0,
+  };
+}
+
+function ensureWeaponRuntime(host) {
+  if (!host._diag) {
+    host._diag = {
+      autoFireSpatialQueries: 0,
+      autoFireCandidates: 0,
+    };
+  }
+  if (!host._attackSpecCache) host._attackSpecCache = new Map();
+  if (!host._attackMetrics) host._attackMetrics = emptyAttackMetrics();
+  if (!host._attackLive) host._attackLive = new Map();
+  if (!host._attackQueryScratch) host._attackQueryScratch = [];
+}
+
+function pruneAttackLive(host, state) {
+  const live = host && host._attackLive;
+  if (!live || live.size === 0) return;
+  const entities = state && state.entities;
+  for (const id of live.keys()) {
+    const projectile = entities && typeof entities.get === 'function' ? entities.get(id) : null;
+    if (!projectile || projectile.alive === false || projectile.type !== 'projectile') live.delete(id);
+  }
+}
+
+function resetWeaponDiagnostics(diag) {
+  if (!diag) return;
+  diag.autoFireSpatialQueries = 0;
+  diag.autoFireCandidates = 0;
+}
+
+/** One tick of a continuous beam: the authored packet plus its share of the armor window. */
+export function beamDamagePacket(w, def, damage, damageType, dt) {
+  const packet = buildWeaponDamagePacket(w, def, damage, damageType);
+  if (dt > 0) packet.armorFlatScale = Math.min(1, dt / BEAM_ARMOR_PACKET_S);
+  return packet;
+}
+
+export function buildWeaponDamagePacket(w, def, damage, damageType, pos = null) {
+  const applicationEnabled = combatFlag('weaponImpulseConsequences');
+  const authoredStatuses = Array.isArray(w && w.statuses)
+    ? w.statuses
+    : (Array.isArray(def && def.statuses) ? def.statuses : []);
+  const effective = {
+    dmg: w.dmg != null ? w.dmg : def.dmg,
+    impulsePerHit: w.impulsePerHit != null ? w.impulsePerHit : def.impulsePerHit,
+    tumbleTorque: w.tumbleTorque != null ? w.tumbleTorque : def.tumbleTorque,
+    impulseProvenance: w.impulseProvenance || def.impulseProvenance,
+  };
+  const impulseIdentity = applicationEnabled ? resolveWeaponImpulseForHit(effective, damage) : null;
+  const packet = scalarHitToDamagePacket({
+    damage,
+    damageType,
+    pos,
+    penetration: w.armorPierce != null ? w.armorPierce : def.armorPierce,
+    // Subsystem-targeting / shield-bypass verbs (EMP disable, spec §9). Authored on the weapon def;
+    // 0/null for normal hull weapons.
+    subsystemShare: w.subsystemShare != null ? w.subsystemShare : def.subsystemShare,
+    shieldBypass: w.shieldBypass != null ? w.shieldBypass : def.shieldBypass,
+    // Status applications are authored on the fitted weapon definition and cloned into every
+    // projectile/beam packet. The damage router remains the sole status scheduler.
+    statuses: authoredStatuses.map((status) => ({ ...status })),
+    impulse: impulseIdentity ? { magnitude: impulseIdentity.magnitude } : null,
+    tumbleTorque: impulseIdentity ? impulseIdentity.tumbleTorque : 0,
+    source: {
+      kind: 'weapon',
+      weaponId: w.defId || def.id || null,
+      impulseProvenance: impulseIdentity && impulseIdentity.provenance || null,
+      ...(applicationEnabled && Number.isFinite(w.environmentImpulsePerHit ?? def.environmentImpulsePerHit)
+        ? { environmentImpulse: (w.environmentImpulsePerHit ?? def.environmentImpulsePerHit) * (effective.dmg > 0 ? damage / effective.dmg : 1) } : null),
+    },
+  });
+  // Keep the flag-OFF projectile/save shape identical to the pre-PQ-009 packet. The impulse data is
+  // application state, so it must not hitch a ride in the frozen 47-A entity graph either.
+  if (!applicationEnabled) {
+    delete packet.tumbleTorque;
+    delete packet.source.impulseProvenance;
+  }
+  return packet;
+}
+
+export const MOMENTUM_SINK_PLANT_PHASE = Object.freeze({
+  idle: 0,
+  planted: 1,
+  tension: 2,
+  released: 3,
+});
+
+export function createMomentumSinkPlantScratch() {
+  return {
+    active: false,
+    phase: MOMENTUM_SINK_PLANT_PHASE.idle,
+    anchorId: null,
+    plantedTick: 0,
+    expiresTick: 0,
+    anchorX: 0,
+    anchorZ: 0,
+    frameVx: 0,
+    frameVz: 0,
+    awayX: 1,
+    awayZ: 0,
+    storedReceding: 0,
+    cruiseSpeed: 0,
+  };
+}
+
+export function isMomentumSinkAnchor(entity, planter) {
+  if (!entity || entity.alive === false) return false;
+  const type = entity.type;
+  if (type === 'asteroid' || type === 'planet' || type === 'station') return true;
+  if (entity.flags && (entity.flags.static === true || entity.flags.anchor === true)) return true;
+  if (entity.physicsBody && entity.physicsBody.dynamic === false) return true;
+  const mass = authoredMass(entity);
+  if (type === 'ship' || type === 'drone') {
+    const planterMass = planter ? authoredMass(planter) : 1;
+    return mass >= Math.max(MOMENTUM_SINK_BUNGEE.minAnchorMass, planterMass * MOMENTUM_SINK_BUNGEE.capitalAnchorMassMult);
+  }
+  return mass >= MOMENTUM_SINK_BUNGEE.minAnchorMass;
+}
+
+export function ensureMomentumSinkPlant(planter) {
+  if (!planter || !planter.data) return null;
+  let plant = planter.data.momentumSinkPlant;
+  if (!plant) {
+    plant = createMomentumSinkPlantScratch();
+    planter.data.momentumSinkPlant = plant;
+  }
+  return plant;
+}
+
+export function plantMomentumSinkBungee(plant, planter, anchor, tick) {
+  if (!plant || !planter || !anchor) return false;
+  if (!isMomentumSinkAnchor(anchor, planter)) return false;
+  const pos = planter.pos;
+  const apos = anchor.pos;
+  if (!pos || !apos) return false;
+
+  let awayX = pos.x - apos.x;
+  let awayZ = pos.z - apos.z;
+  let length = Math.hypot(awayX, awayZ);
+  if (!(length > 1e-6)) {
+    const vel = planter.vel;
+    awayX = vel && Number.isFinite(vel.x) ? vel.x : 1;
+    awayZ = vel && Number.isFinite(vel.z) ? vel.z : 0;
+    length = Math.hypot(awayX, awayZ);
+    if (!(length > 1e-6)) {
+      awayX = 1;
+      awayZ = 0;
+      length = 1;
+    }
+  }
+  awayX /= length;
+  awayZ /= length;
+
+  const frame = anchor.vel;
+  plant.active = true;
+  plant.phase = MOMENTUM_SINK_PLANT_PHASE.planted;
+  plant.anchorId = anchor.id;
+  plant.plantedTick = tick | 0;
+  plant.expiresTick = (tick | 0) + MOMENTUM_SINK_BUNGEE.durationTicks;
+  plant.anchorX = apos.x;
+  plant.anchorZ = apos.z;
+  plant.frameVx = frame && Number.isFinite(frame.x) ? frame.x : 0;
+  plant.frameVz = frame && Number.isFinite(frame.z) ? frame.z : 0;
+  plant.awayX = awayX;
+  plant.awayZ = awayZ;
+  plant.storedReceding = 0;
+  plant.cruiseSpeed = cruiseSpeedFor(planter);
+  return true;
+}
+
+export function tensionMomentumSinkBungee(plant, planter, anchor) {
+  if (!plant || !plant.active || !planter || !planter.pos) return false;
+
+  const aposX = anchor && anchor.pos ? anchor.pos.x : plant.anchorX;
+  const aposZ = anchor && anchor.pos ? anchor.pos.z : plant.anchorZ;
+  let awayX = planter.pos.x - aposX;
+  let awayZ = planter.pos.z - aposZ;
+  const length = Math.hypot(awayX, awayZ);
+  if (length > 1e-6) {
+    awayX /= length;
+    awayZ /= length;
+    plant.awayX = awayX;
+    plant.awayZ = awayZ;
+  } else {
+    awayX = plant.awayX;
+    awayZ = plant.awayZ;
+  }
+
+  if (anchor && anchor.pos) {
+    plant.anchorX = anchor.pos.x;
+    plant.anchorZ = anchor.pos.z;
+  }
+  if (anchor && anchor.vel) {
+    if (Number.isFinite(anchor.vel.x)) plant.frameVx = anchor.vel.x;
+    if (Number.isFinite(anchor.vel.z)) plant.frameVz = anchor.vel.z;
+  }
+
+  const vel = planter.vel;
+  const relVx = (vel && Number.isFinite(vel.x) ? vel.x : 0) - plant.frameVx;
+  const relVz = (vel && Number.isFinite(vel.z) ? vel.z : 0) - plant.frameVz;
+  const receding = relVx * awayX + relVz * awayZ;
+  if (receding > MOMENTUM_SINK_BUNGEE.deadbandSpeed) {
+    plant.phase = MOMENTUM_SINK_PLANT_PHASE.tension;
+    if (receding > plant.storedReceding) plant.storedReceding = receding;
+    return true;
+  }
+  return plant.phase === MOMENTUM_SINK_PLANT_PHASE.tension;
+}
+
+export function fillMomentumSinkReleaseImpulse(out, plant, planter) {
+  if (!out) return false;
+  out.x = 0;
+  out.y = 0;
+  out.z = 0;
+  if (!plant || !plant.active || !planter) return false;
+
+  const peak = plant.storedReceding;
+  if (!(peak > MOMENTUM_SINK_BUNGEE.deadbandSpeed)) return false;
+  const awayLen = Math.hypot(plant.awayX, plant.awayZ);
+  if (!(awayLen > 1e-8)) return false;
+  const awayX = plant.awayX / awayLen;
+  const awayZ = plant.awayZ / awayLen;
+
+  const vel = planter.vel;
+  const relVx = (vel && Number.isFinite(vel.x) ? vel.x : 0) - plant.frameVx;
+  const relVz = (vel && Number.isFinite(vel.z) ? vel.z : 0) - plant.frameVz;
+  const receding = relVx * awayX + relVz * awayZ;
+  const earned = Math.max(peak, receding > 0 ? receding : 0);
+  if (!(earned > MOMENTUM_SINK_BUNGEE.deadbandSpeed)) return false;
+
+  const desiredToward = MOMENTUM_SINK_BUNGEE.releaseSpeedMult
+    * MOMENTUM_SINK_BUNGEE.releaseSpeedMargin
+    * earned;
+  const deltaVAway = (-desiredToward) - receding;
+  const mass = authoredMass(planter);
+  out.x = awayX * mass * deltaVAway;
+  out.z = awayZ * mass * deltaVAway;
+  return Number.isFinite(out.x) && Number.isFinite(out.z);
+}
+
+export function releaseMomentumSinkBungee(out, plant, planter) {
+  if (!fillMomentumSinkReleaseImpulse(out, plant, planter)) return false;
+  plant.phase = MOMENTUM_SINK_PLANT_PHASE.released;
+  plant.active = false;
+  return true;
+}
+
+export function tryPlantMomentumSinkFromHit(state, payload, getEntity) {
+  if (!state || !payload || !hitIsMomentumSink(payload)) return false;
+  const getter = resolveEntityGetter(state, getEntity);
+  const planter = getter(payload.ownerId);
+  const anchor = getter(payload.targetId);
+  if (!planter || planter.alive === false) return false;
+  const plant = ensureMomentumSinkPlant(planter);
+  if (!plant) return false;
+  return plantMomentumSinkBungee(plant, planter, anchor, state.tick || 0);
+}
+
+export function tickMomentumSinkPlant(state, planter, scratchImpulse, getEntity) {
+  const plant = planter && planter.data && planter.data.momentumSinkPlant;
+  if (!plant || !plant.active) return false;
+  const tick = state && Number.isInteger(state.tick) ? state.tick : 0;
+  const getter = resolveEntityGetter(state, getEntity);
+  const anchor = plant.anchorId != null ? getter(plant.anchorId) : null;
+  if (!anchor || anchor.alive === false) {
+    if (queueMomentumSinkRelease(planter, plant, scratchImpulse, state)) return true;
+    clearMomentumSinkPlant(plant);
+    return false;
+  }
+  tensionMomentumSinkBungee(plant, planter, anchor);
+  if (tick >= plant.expiresTick) {
+    if (queueMomentumSinkRelease(planter, plant, scratchImpulse, state)) return true;
+    clearMomentumSinkPlant(plant);
+  }
+  return false;
+}
+
+export function clearMomentumSinkPlant(plant) {
+  if (!plant) return;
+  plant.active = false;
+  plant.phase = MOMENTUM_SINK_PLANT_PHASE.idle;
+  plant.anchorId = null;
+  plant.storedReceding = 0;
+}
+
+export function clearAllMomentumSinkPlants(state) {
+  for (const entity of indexedShipLikeScan(state)) {
+    const plant = entity && entity.data && entity.data.momentumSinkPlant;
+    if (plant) clearMomentumSinkPlant(plant);
+  }
+}
+
+function queueMomentumSinkRelease(planter, plant, scratchImpulse, state) {
+  if (!fillMomentumSinkReleaseImpulse(scratchImpulse, plant, planter)) return false;
+  queuePhysicsImpulse(planter, scratchImpulse);
+  recordImpulseProvenance(planter, {
+    actorId: planter.id,
+    weaponId: MOMENTUM_SINK_WEAPON_ID,
+    tag: 'momentum_sink_release',
+    appliedTick: state && state.tick || 0,
+    magnitude: Math.hypot(scratchImpulse.x, scratchImpulse.z),
+  });
+  plant.phase = MOMENTUM_SINK_PLANT_PHASE.released;
+  plant.active = false;
+  return true;
+}
+
+function isMomentumSinkWeapon(w, def) {
+  const id = (w && w.defId) || (def && def.id);
+  return id === MOMENTUM_SINK_WEAPON_ID;
+}
+
+function hitIsMomentumSink(payload) {
+  if (!payload) return false;
+  if (payload.weaponId === MOMENTUM_SINK_WEAPON_ID) return true;
+  const packet = payload.damagePacket || payload.packet;
+  const statuses = packet && packet.statuses;
+  if (!Array.isArray(statuses)) return false;
+  for (let i = 0; i < statuses.length; i++) {
+    if (statuses[i] && statuses[i].id === MOMENTUM_SINK_STATUS_ID) return true;
+  }
+  return false;
+}
+
+function resolveEntityGetter(state, getEntity) {
+  if (typeof getEntity === 'function') return getEntity;
+  return (id) => (state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(id)
+    : null);
+}
+
+function cruiseSpeedFor(entity) {
+  const derived = entity && entity.data && entity.data.derived;
+  return positiveNumber(
+    derived && derived.combatSpeed,
+    positiveNumber(entity && entity.combatSpeed, positiveNumber(entity && entity.maxSpeed, 105)),
+  );
+}
+
+function authoredMass(entity) {
+  return positiveNumber(
+    entity && entity.physicsBody && entity.physicsBody.mass,
+    positiveNumber(entity && entity.mass, 1),
+  );
+}
+
+function positiveNumber(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : fallback;
+}
+
+const SHUNT_BODY_TYPES = new Set(['ship', 'drone', 'asteroid', 'wreck', 'cargo_pod', 'pickup', 'mine', 'payload', 'station', 'gate', 'structure']);
+const INERTIAL_SHUNT_LIVE_TUNING = Object.freeze({
+  minClosingSpeed: INERTIAL_SHUNT_TUNING.minClosingSpeed,
+  dumpVsLight: INERTIAL_SHUNT_TUNING.liveDumpVsLight,
+  refMass: INERTIAL_SHUNT_TUNING.refMass,
+  cooldownTicks: INERTIAL_SHUNT_TUNING.cooldownTicks,
+});
+
+function shuntPairKey(aId, bId) {
+  return String(aId) < String(bId) ? `${aId}|${bId}` : `${bId}|${aId}`;
+}
+
+function finiteShunt(value, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function orientShuntNormal(payload, shunter, target, shunterIsA) {
+  const rawNx = finiteShunt(payload && payload.normal && payload.normal.x);
+  const rawNz = finiteShunt(payload && payload.normal && payload.normal.z);
+  let length = Math.hypot(rawNx, rawNz);
+  if (length > 1e-6) {
+    const orientation = shunterIsA === false ? -1 : 1;
+    return { x: orientation * rawNx / length, z: orientation * rawNz / length };
+  }
+  const dx = finiteShunt(target && target.pos && target.pos.x) - finiteShunt(shunter && shunter.pos && shunter.pos.x);
+  const dz = finiteShunt(target && target.pos && target.pos.z) - finiteShunt(shunter && shunter.pos && shunter.pos.z);
+  length = Math.hypot(dx, dz);
+  if (!(length > 1e-6)) return null;
+  return { x: dx / length, z: dz / length };
+}
+
+/**
+ * Live ram-plate path. Relative closing is the ram floor. The dump is the shunter's own
+ * speed along the contact normal, fully redirected, equal-and-opposite. That is a momentum
+ * swap with the light, not a thruster and not a reverse-throw into an oncoming hull.
+ * The target response policy can reduce/refuse delivery; receipts distinguish that from the plan.
+ */
+export function applyInertialShuntFromImpact(
+  state,
+  payload,
+  getEntity,
+  shunterOut,
+  targetOut,
+  torqueOut,
+  cooldown,
+  bus,
+) {
+  if (!payload || !getEntity || !shunterOut || !targetOut) return null;
+  const getter = resolveEntityGetter(state, getEntity);
+  const a = getter(payload.aId);
+  const b = getter(payload.bId);
+  if (!a || !b || a === b || a.alive === false || b.alive === false) return null;
+  if (!SHUNT_BODY_TYPES.has(a.type) || !SHUNT_BODY_TYPES.has(b.type)) return null;
+
+  let shunter = null;
+  let target = null;
+  if (hullCarriesInertialShunt(a) && !hullCarriesInertialShunt(b)) {
+    shunter = a;
+    target = b;
+  } else if (hullCarriesInertialShunt(b) && !hullCarriesInertialShunt(a)) {
+    shunter = b;
+    target = a;
+  } else if (hullCarriesInertialShunt(a) && hullCarriesInertialShunt(b)) {
+    const playerId = state && state.playerId;
+    shunter = a.id === playerId ? a : b;
+    target = shunter === a ? b : a;
+  } else {
+    return null;
+  }
+
+  const tick = Number.isInteger(payload.tick)
+    ? payload.tick
+    : (state && Number.isInteger(state.tick) ? state.tick : 0);
+  const key = shuntPairKey(a.id, b.id);
+  if (cooldown && typeof cooldown.get === 'function') {
+    const until = cooldown.get(key);
+    if (Number.isInteger(until) && tick < until) return null;
+    if (Number.isInteger(until)) cooldown.delete(key);
+  }
+
+  const axis = orientShuntNormal(payload, shunter, target, shunter === a);
+  if (!axis) return null;
+  const relativeClosing = Number.isFinite(payload.preSolveClosingSpeed)
+    ? Math.max(0, payload.preSolveClosingSpeed)
+    : Math.max(
+      0,
+      (finiteShunt(shunter.vel && shunter.vel.x) - finiteShunt(target.vel && target.vel.x)) * axis.x
+      + (finiteShunt(shunter.vel && shunter.vel.z) - finiteShunt(target.vel && target.vel.z)) * axis.z,
+    );
+  if (!(relativeClosing >= INERTIAL_SHUNT_LIVE_TUNING.minClosingSpeed)) return null;
+
+  const shunterAlong = Math.max(
+    0,
+    finiteShunt(shunter.vel && shunter.vel.x) * axis.x
+    + finiteShunt(shunter.vel && shunter.vel.z) * axis.z,
+  );
+  const contact = {
+    normal: axis,
+    closingSpeed: shunterAlong,
+    shunterIsA: true,
+  };
+  if (!fillInertialShuntImpulses(shunterOut, targetOut, shunter, target, INERTIAL_SHUNT_LIVE_TUNING, contact)) {
+    return null;
+  }
+
+  // The planner is conservative; delivery may be reduced or refused by the target's
+  // physical-response policy. Keep recoil policy unchanged, but receipt only queued work.
+  const shunterAccepted = queuePhysicsImpulse(shunter, shunterOut);
+  const delivery = deliverPhysicalImpulseDetailed(state, target, targetOut, {
+    actorId: shunter.id, weaponId: INERTIAL_SHUNT_WEAPON_ID, tag: 'inertial_shunt', appliedTick: tick,
+  });
+  const mT = authoredMass(target);
+  const mS = authoredMass(shunter);
+  const plannedTransferred = Math.hypot(targetOut.x, targetOut.z);
+  const deliveredX = delivery.accepted ? delivery.impulse.x : 0;
+  const deliveredZ = delivery.accepted ? delivery.impulse.z : 0;
+  const transferred = Math.hypot(deliveredX, deliveredZ);
+  const recoilX = shunterAccepted ? shunterOut.x : 0;
+  const recoilZ = shunterAccepted ? shunterOut.z : 0;
+  const residual = Math.hypot(recoilX + deliveredX, recoilZ + deliveredZ);
+  const targetDeltaV = transferred / mT;
+  const shunterDeltaV = Math.hypot(recoilX, recoilZ) / mS;
+  const couple = Math.max(0.08, Math.min(1, INERTIAL_SHUNT_LIVE_TUNING.refMass / Math.max(mT, INERTIAL_SHUNT_LIVE_TUNING.refMass)));
+  let tumbled = false;
+  if (torqueOut) {
+    torqueOut.x = 0;
+    torqueOut.y = 0;
+    torqueOut.z = 0;
+    if (transferred > 0 && target.id !== state.playerId) {
+      torqueOut.y = finiteShunt(INERTIAL_SHUNT_TUNING.tumbleTorque) * couple;
+      tumbled = torqueOut.y !== 0 && queuePhysicsTorqueImpulse(target, torqueOut);
+    }
+  }
+  const provenance = {
+    actorId: shunter.id,
+    weaponId: INERTIAL_SHUNT_WEAPON_ID,
+    tag: 'inertial_shunt',
+    appliedTick: tick,
+    magnitude: transferred,
+  };
+  if (shunterAccepted) recordImpulseProvenance(shunter, {
+    ...provenance, magnitude: Math.hypot(recoilX, recoilZ),
+  });
+  if (transferred > 0) recordImpulseProvenance(target, provenance);
+  if (bus && typeof bus.emit === 'function' && transferred > 0) {
+    if (target.id !== state.playerId) publishHitstunImpulse(bus, {
+      source: 'weapon',
+      victimId: target.id,
+      attackerId: shunter.id,
+      attackerMass: mS,
+      victimMass: mT,
+      deltaV: targetDeltaV,
+      dirX: axis.x,
+      dirZ: axis.z,
+      hitSide: signedHitSide(target, delivery.impulse, null, target.id),
+      provenance,
+      tick,
+    });
+    const pos = payload.pos || target.pos || shunter.pos;
+    bus.emit('presentation:vfxCue', {
+      id: 'combat.inertialShunt.contact',
+      lane: 'combat',
+      particles: 14,
+      lights: 1,
+      magnitude: Math.min(1.6, targetDeltaV / INERTIAL_SHUNT_TUNING.screenDepthWu),
+      position: pos,
+      direction: { x: axis.x, z: axis.z },
+      material: 'impulse',
+      sourceId: shunter.id,
+      targetId: target.id,
+      flashReduced: false,
+    });
+  }
+  if (cooldown && typeof cooldown.set === 'function') {
+    const hold = Number.isInteger(INERTIAL_SHUNT_LIVE_TUNING.cooldownTicks)
+      ? INERTIAL_SHUNT_LIVE_TUNING.cooldownTicks
+      : 45;
+    cooldown.set(key, tick + hold);
+  }
+  return {
+    shunterId: shunter.id,
+    targetId: target.id,
+    targetDeltaV,
+    shunterDeltaV,
+    momentumTransferred: transferred,
+    momentumResidual: residual,
+    plannedTargetDeltaV: plannedTransferred / mT,
+    plannedMomentumTransferred: plannedTransferred,
+    targetImpulseAccepted: delivery.accepted,
+    // Difference from the plan, not a cause: protection, environmental scaling, or refusal.
+    targetMomentumAdjustment: Math.hypot(targetOut.x - deliveredX, targetOut.z - deliveredZ),
+    axisX: axis.x,
+    axisZ: axis.z,
+    tumbled,
+  };
+}

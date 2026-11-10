@@ -1,0 +1,18 @@
+{
+  "packageMedians": [
+    40.619,
+    42.08,
+    40.286,
+    40.919,
+    41.346
+  ],
+  "packageMins": [
+    7.17,
+    7.784,
+    8.024,
+    7.925,
+    7.51
+  ],
+  "floorMinSpeedup": 7.17,
+  "floorMedianOfMedians": 40.919
+}

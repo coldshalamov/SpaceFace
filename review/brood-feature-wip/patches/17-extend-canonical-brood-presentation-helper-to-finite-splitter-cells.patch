@@ -1,0 +1,72 @@
+diff --git a/src/render/broodVisuals.js b/src/render/broodVisuals.js
+index 5906fae..eaa4798 100644
+--- a/src/render/broodVisuals.js
++++ b/src/render/broodVisuals.js
+@@ -1,3 +1,4 @@
++import { isSplitterCell } from '../data/broodSplitter.js';
+ // Exact Brood anatomy and attack receipts. Presentation never owns damage, motion or targeting.
+ import { BROOD_BODY_CONTRACTS } from '../data/broodBodies.js';
+ import { BROOD_ATTACK_PROFILES } from '../data/broodAttackProfiles.js';
+@@ -21,12 +22,12 @@ export function broodPhaseDuration(role, phase) {
+ // allocation-free; callers that retain a visual copy must retain its life and locked line too.
+ export function readBroodAttack(entity, tick = entity?.data?.broodAttack?.sampledTick) {
+   const body = broodVisualBody(entity), attack = entity?.data?.broodAttack;
+-  if (!body || entity.alive === false || !attack || attack.role !== body.id
++  if (!body || entity.alive === false || !attack || attack.role !== (isSplitterCell(body.id) ? 'brood_splitter_cell' : body.id)
+     || !Number.isSafeInteger(entity.occupantGeneration) || attack.life !== entity.occupantGeneration
+     || !Number.isSafeInteger(tick) || !Number.isSafeInteger(attack.phaseStartedTick)
+     || tick < attack.phaseStartedTick) return null;
+   if (attack.phase === 'approach') return attack;
+-  const duration = broodPhaseDuration(body.id, attack.phase);
++  const duration = broodPhaseDuration(attack?.role || body.id, attack.phase);
+   if (!duration || tick >= attack.phaseStartedTick + duration) return null;
+   if (attack.phase === 'recovery') return attack;
+   const line = attack.attackLine;
+@@ -53,7 +54,7 @@ export function resolveBroodAttackCue(name, payload, state) {
+     if (payload.life !== attack.life || payload.attackId !== attack.attackId
+       || payload.phase !== attack.phase || payload.phaseStartedTick !== attack.phaseStartedTick) return null;
+   } else if (name === 'ai:telegraph') {
+-    if (attack.phase !== 'windup' || !['brood_charge', 'brood_lunge'].includes(payload.kind)
++    if (attack.phase !== 'windup' || !['brood_charge', 'brood_lunge', 'brood_split', 'brood_cell'].includes(payload.kind)
+       || payload.attackLine?.life !== attack.life
+       || payload.attackLine?.cueStartedTick !== attack.cueStartedTick) return null;
+   } else return null;
+@@ -95,29 +96,29 @@ export function broodPoseFraction(entity, reducedMotion = false) {
+     const shot = entity.data.broodShot;
+     const fired = shot?.attackId === attack.attackId && shot.life === attack.life
+       && shot.targetLife === attack.targetLife && Number.isSafeInteger(shot.tick)
+-      && shot.tick >= attack.cueStartedTick + broodPhaseDuration(body.id, 'windup')
++      && shot.tick >= attack.cueStartedTick + broodPhaseDuration(attack?.role || body.id, 'windup')
+       && shot.tick <= attack.sampledTick
+-      && shot.tick < attack.cueStartedTick + broodPhaseDuration(body.id, 'windup') + broodPhaseDuration(body.id, 'commit');
++      && shot.tick < attack.cueStartedTick + broodPhaseDuration(attack?.role || body.id, 'windup') + broodPhaseDuration(attack?.role || body.id, 'commit');
+     if (fired) {
+       const sinceShot = attack.sampledTick - shot.tick;
+-      if (reducedMotion) return poses.attack + (rest - poses.attack) * smooth(sinceShot / broodPhaseDuration(body.id, 'recovery'));
++      if (reducedMotion) return poses.attack + (rest - poses.attack) * smooth(sinceShot / broodPhaseDuration(attack?.role || body.id, 'recovery'));
+       if (sinceShot < 4) return poses.windup + (poses.attack - poses.windup) * smooth(sinceShot / 4);
+-      return poses.attack + (rest - poses.attack) * smooth((sinceShot - 4) / (broodPhaseDuration(body.id, 'recovery') - 4));
++      return poses.attack + (rest - poses.attack) * smooth((sinceShot - 4) / (broodPhaseDuration(attack?.role || body.id, 'recovery') - 4));
+     }
+     if (attack.phase === 'windup') return reducedMotion ? poses.windup
+-      : rest + (poses.windup - rest) * smooth(age / broodPhaseDuration(body.id, 'windup'));
++      : rest + (poses.windup - rest) * smooth(age / broodPhaseDuration(attack?.role || body.id, 'windup'));
+     if (attack.phase === 'commit') return poses.windup; // A phase is not proof of an emitted glob.
+-    const inflated = rest + (poses.windup - rest) * smooth((attack.phaseStartedTick - attack.cueStartedTick) / broodPhaseDuration(body.id, 'windup'));
+-    return reducedMotion ? rest : inflated + (rest - inflated) * smooth(age / broodPhaseDuration(body.id, 'recovery'));
++    const inflated = rest + (poses.windup - rest) * smooth((attack.phaseStartedTick - attack.cueStartedTick) / broodPhaseDuration(attack?.role || body.id, 'windup'));
++    return reducedMotion ? rest : inflated + (rest - inflated) * smooth(age / broodPhaseDuration(attack?.role || body.id, 'recovery'));
+   }
+   if (!attack || attack.phase === 'approach') return 0;
+   if (reducedMotion) return attack.phase === 'commit' ? poses.attack : poses[attack.phase];
+   const age = attack.sampledTick - attack.phaseStartedTick;
+-  if (attack.phase === 'windup') return poses.windup * smooth(age / broodPhaseDuration(body.id, 'windup'));
++  if (attack.phase === 'windup') return poses.windup * smooth(age / broodPhaseDuration(attack?.role || body.id, 'windup'));
+   if (attack.phase === 'commit') return poses.windup + (poses.attack - poses.windup) * smooth(age / 8);
+   // Recovery unloads the paddles, then rests; no oscillation can look like another strike.
+   if (age < 8) return poses.attack + (poses.recovery - poses.attack) * smooth(age / 8);
+-  return poses.recovery * (1 - smooth((age - 8) / (broodPhaseDuration(body.id, 'recovery') - 8)));
++  return poses.recovery * (1 - smooth((age - 8) / (broodPhaseDuration(attack?.role || body.id, 'recovery') - 8)));
+ }
+ 
+ export function createBroodMotionDriver(root, entity) {

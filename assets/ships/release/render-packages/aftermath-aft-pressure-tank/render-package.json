@@ -1,0 +1,1179 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.aftermath-aft-pressure-tank.anchor.socket-hazard-volatile",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.775679111480713,
+        -0.6885924339294434,
+        0.014800786972045898,
+        1
+      ],
+      "nodeName": "SOCKET_Hazard_Volatile",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentNodeId": "sf.render.aftermath-aft-pressure-tank.node.aft-pressure-tank",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.775679111480713,
+        -0.6885924339294434,
+        0.014800786972045898,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.aftermath-aft-pressure-tank",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "9ab52a12c99fce8242c4a6fc42c342df43d5e29608f28dbe1a5643054ff531bc",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.8031716635896102,
+          4.604622155006824,
+          5.681466395029759
+        ],
+        "min": [
+          -8.49999713897705,
+          -6.3986567329595685,
+          -5.4045634174541926
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "962dccdc1a7090600ca4aa6640af8445caa184b8fdcab6f39fce83877e701095",
+      "id": "sf.render.aftermath-aft-pressure-tank.node.tankbody.primitive.0",
+      "indexCount": 3036,
+      "indexed": true,
+      "materialHash": "6209108c9e61a392bb5d186d759f7f2d8da2c3eff23f37f259ff6d6bb2701345",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-pressure-tank.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-pressure-tank.node.tankbody",
+      "primitiveIndex": 0,
+      "vertexCount": 967
+    },
+    {
+      "bounds": {
+        "max": [
+          3.8031716635896102,
+          4.604622155006824,
+          5.677315878439536
+        ],
+        "min": [
+          1.4941874029915279,
+          -6.395543845516902,
+          -5.401450530011526
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dab1a80434423c0de63ae6b6f614f8f41d2be01d5441cb3c69a8ec85d314f24a",
+      "id": "sf.render.aftermath-aft-pressure-tank.node.tankbody.primitive.1",
+      "indexCount": 540,
+      "indexed": true,
+      "materialHash": "cdf5689d187192f2094a2dced277a61697a410f5fae3100f5d83e9ff8bde7daf",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-pressure-tank.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-pressure-tank.node.tankbody",
+      "primitiveIndex": 1,
+      "vertexCount": 331
+    },
+    {
+      "bounds": {
+        "max": [
+          8.5,
+          4.411623133561484,
+          5.442811691091972
+        ],
+        "min": [
+          2.407560460127338,
+          -6.270768940523342,
+          -5.681610399851536
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2efde737b7681aaaaa615c79fb053de3ed59809c6c2db8d56055a7c8b687d45c",
+      "id": "sf.render.aftermath-aft-pressure-tank.node.tankbody.primitive.2",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "db70268674a0278ee7d18d708afdfd33debc2ea63287de6656f5221c513ab7a0",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-pressure-tank.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-pressure-tank.node.tankbody",
+      "primitiveIndex": 2,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.9585386764564086,
+          6.398942358417332,
+          0.7231555134353593
+        ],
+        "min": [
+          -4.376199499304237,
+          4.143655406205252,
+          -0.69424590212558
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "efdc1be0904782b37b1379081f56a05a99446b43eedb0fdf4285f0695041a619",
+      "id": "sf.render.aftermath-aft-pressure-tank.node.tankbody.primitive.3",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "7d510e7f0ceb53b63faf01bf79412d9d8ce6620ffc2f72292bc4b03ef333fa7e",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.aftermath-aft-pressure-tank.flight-static-lane.1",
+      "nodeId": "sf.render.aftermath-aft-pressure-tank.node.tankbody",
+      "primitiveIndex": 3,
+      "vertexCount": 192
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "6209108c9e61a392bb5d186d759f7f2d8da2c3eff23f37f259ff6d6bb2701345",
+      "id": "material:6209108c9e61a392bb5d186d",
+      "name": "Forge_massline_express_liner_ceramic",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "7d510e7f0ceb53b63faf01bf79412d9d8ce6620ffc2f72292bc4b03ef333fa7e",
+      "id": "material:7d510e7f0ceb53b63faf01bf",
+      "name": "Forge_massline_express_liner_gunmetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cdf5689d187192f2094a2dced277a61697a410f5fae3100f5d83e9ff8bde7daf",
+      "id": "material:cdf5689d187192f2094a2dce",
+      "name": "Forge_massline_express_liner_wk_scorch",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "db70268674a0278ee7d18d708afdfd33debc2ea63287de6656f5221c513ab7a0",
+      "id": "material:db70268674a0278ee7d18d70",
+      "name": "Forge_massline_express_liner_wk_torn",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-aft-pressure-tank.node.aft-pressure-tank",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "aft_pressure_tank",
+      "nodeName": "aft_pressure_tank",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-pressure-tank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-pressure-tank.node.socket-hazard-volatile",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.775679111480713,
+        -0.6885924339294434,
+        0.014800786972045898,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Hazard_Volatile",
+      "nodeName": "SOCKET_Hazard_Volatile",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-aft-pressure-tank.node.aft-pressure-tank",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-pressure-tank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.775679111480713,
+        -0.6885924339294434,
+        0.014800786972045898,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-pressure-tank.node.tankbody",
+      "localTransform": [
+        8.499998569488525,
+        0,
+        0,
+        0,
+        0,
+        8.499998569488525,
+        0,
+        0,
+        0,
+        0,
+        8.499998569488525,
+        0,
+        0.000001430511474609375,
+        0.00014281272888183594,
+        -0.00007200241088867188,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "TankBody",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-aft-pressure-tank.node.aft-pressure-tank",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-pressure-tank.body",
+      "worldTransform": [
+        8.499998569488525,
+        0,
+        0,
+        0,
+        0,
+        8.499998569488525,
+        0,
+        0,
+        0,
+        0,
+        8.499998569488525,
+        0,
+        0.000001430511474609375,
+        0.00014281272888183594,
+        -0.00007200241088867188,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-pressure-tank.node.tankdome0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "TankDome0",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-aft-pressure-tank.node.aft-pressure-tank",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-pressure-tank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "tankPetals_tear0",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-aft-pressure-tank.node.aft-pressure-tank",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-pressure-tank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "tankPetals_tear1",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-aft-pressure-tank.node.aft-pressure-tank",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-pressure-tank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "tankPetals_tear2",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.aftermath-aft-pressure-tank.node.aft-pressure-tank",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-pressure-tank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "tankPetals_tear3",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.aftermath-aft-pressure-tank.node.aft-pressure-tank",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-pressure-tank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "tankPetals_tear4",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.aftermath-aft-pressure-tank.node.aft-pressure-tank",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-pressure-tank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "tankPetals_tear5",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.aftermath-aft-pressure-tank.node.aft-pressure-tank",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-pressure-tank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "tankPetals_tear6",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.aftermath-aft-pressure-tank.node.aft-pressure-tank",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-pressure-tank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-aft-pressure-tank.node.tankvalve",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "TankValve",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.aftermath-aft-pressure-tank.node.aft-pressure-tank",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-aft-pressure-tank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "9df156b11f5d05d8b6622e5ecd189f0bf5edb4b804b55889896401583094b83c"
+    },
+    "sourceGlb": {
+      "bytes": 152904,
+      "sha256": "9c2026c4dcc47ad4924eb2276194938d8ae48bc2cd85e4ba78a23348b9665aa7",
+      "uri": "place_aftermath_aft_pressure_tank.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 40596,
+    "resources": [
+      {
+        "bytes": 29332,
+        "mimeType": "image/ktx2",
+        "sha256": "1f399eb85acd5548c35aef3c0525443cf838c59954c327fe95b7f105f391347d",
+        "uri": "../_shared/images/1f399eb85acd5548c35aef3c0525443cf838c59954c327fe95b7f105f391347d.ktx2"
+      },
+      {
+        "bytes": 10835,
+        "mimeType": "image/ktx2",
+        "sha256": "26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9",
+        "uri": "../_shared/images/26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9.ktx2"
+      },
+      {
+        "bytes": 5381,
+        "mimeType": "image/ktx2",
+        "sha256": "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
+        "uri": "../_shared/images/4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e.ktx2"
+      },
+      {
+        "bytes": 22990,
+        "mimeType": "image/ktx2",
+        "sha256": "56ec2f38df0a78756ca9f379026eb1c9f367d908df537147096bdf4e7d02277a",
+        "uri": "../_shared/images/56ec2f38df0a78756ca9f379026eb1c9f367d908df537147096bdf4e7d02277a.ktx2"
+      },
+      {
+        "bytes": 13407,
+        "mimeType": "image/ktx2",
+        "sha256": "622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0",
+        "uri": "../_shared/images/622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0.ktx2"
+      },
+      {
+        "bytes": 21717,
+        "mimeType": "image/ktx2",
+        "sha256": "6920431fb8ec4fe7b0acc3ad2e96b869f9d5a7aa0b72b00c85e1f5ee18d4f444",
+        "uri": "../_shared/images/6920431fb8ec4fe7b0acc3ad2e96b869f9d5a7aa0b72b00c85e1f5ee18d4f444.ktx2"
+      }
+    ],
+    "sha256": "aa6dc6cd96952546a0564db5fa63aac4bd71a84781733bc33bcaf44a466052cd",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.000001430511474609375,
+        0.00014281272888183594,
+        -0.00007200241088867188
+      ],
+      "max": [
+        8.5,
+        6.398942358417332,
+        5.681466395029759
+      ],
+      "min": [
+        -8.49999713897705,
+        -6.3986567329595685,
+        -5.681610399851536
+      ],
+      "size": [
+        16.99999713897705,
+        12.7975990913769,
+        11.363076794881295
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2.775679111480713,
+          -0.6885924339294434,
+          0.014800786972045898,
+          1
+        ],
+        "name": "SOCKET_Hazard_Volatile",
+        "planIndex": 2,
+        "tags": {
+          "lod": "lod0",
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Hazard_Volatile",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Hazard_Volatile",
+            "recordIds": [
+              "sf.render.aftermath-aft-pressure-tank.anchor.socket-hazard-volatile",
+              "sf.render.aftermath-aft-pressure-tank.node.socket-hazard-volatile"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "ceramic": 2,
+      "mechanical": 2
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 17,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          8.499998569488525,
+          0,
+          0,
+          0,
+          0,
+          8.499998569488525,
+          0,
+          0,
+          0,
+          0,
+          8.499998569488525,
+          0,
+          0.000001430511474609375,
+          0.00014281272888183594,
+          -0.00007200241088867188,
+          1
+        ],
+        "name": "rendersfrenderaftermath-aft-pressure-tankflight-static-lane1",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.499998569488525,
+          0,
+          0,
+          0,
+          0,
+          8.499998569488525,
+          0,
+          0,
+          0,
+          0,
+          8.499998569488525,
+          0,
+          0.000001430511474609375,
+          0.00014281272888183594,
+          -0.00007200241088867188,
+          1
+        ],
+        "name": "rendersfrenderaftermath-aft-pressure-tankflight-static-lane1_1",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.499998569488525,
+          0,
+          0,
+          0,
+          0,
+          8.499998569488525,
+          0,
+          0,
+          0,
+          0,
+          8.499998569488525,
+          0,
+          0.000001430511474609375,
+          0.00014281272888183594,
+          -0.00007200241088867188,
+          1
+        ],
+        "name": "rendersfrenderaftermath-aft-pressure-tankflight-static-lane1_2",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.499998569488525,
+          0,
+          0,
+          0,
+          0,
+          8.499998569488525,
+          0,
+          0,
+          0,
+          0,
+          8.499998569488525,
+          0,
+          0.000001430511474609375,
+          0.00014281272888183594,
+          -0.00007200241088867188,
+          1
+        ],
+        "name": "rendersfrenderaftermath-aft-pressure-tankflight-static-lane1_3",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_aft_pressure_tank.glb"
+  },
+  "runtimeHash": "a2c5580c2bc598135fb301d95cb95c0904d0bfef05ac1796586941e243e42051",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          8.5,
+          6.398942358417332,
+          5.681466395029759
+        ],
+        "min": [
+          -8.49999713897705,
+          -6.3986567329595685,
+          -5.681610399851536
+        ]
+      },
+      "id": "sf.render.aftermath-aft-pressure-tank.body",
+      "nodeIds": [
+        "sf.render.aftermath-aft-pressure-tank.node.aft-pressure-tank",
+        "sf.render.aftermath-aft-pressure-tank.node.socket-hazard-volatile",
+        "sf.render.aftermath-aft-pressure-tank.node.tankbody",
+        "sf.render.aftermath-aft-pressure-tank.node.tankdome0",
+        "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear0",
+        "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear1",
+        "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear2",
+        "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear3",
+        "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear4",
+        "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear5",
+        "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear6",
+        "sf.render.aftermath-aft-pressure-tank.node.tankvalve"
+      ]
+    }
+  ]
+}

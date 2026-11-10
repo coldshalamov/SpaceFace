@@ -1,0 +1,30 @@
+floor pair 1: 3.908×
+floor pair 2: 4.104×
+floor pair 3: 3.216×
+floor pair 4: 3.367×
+floor pair 5: 3.912×
+floor pair 6: 4.254×
+floor pair 7: 3.862×
+floor pair 8: 4.341×
+floor pair 9: 3.822×
+floor pair 10: 3.917×
+floor pair 11: 3.993×
+{
+  "name": "poi-scan-all-identified-floor",
+  "medianSpeedup": 3.912,
+  "minSpeedup": 3.216,
+  "maxSpeedup": 4.341,
+  "pairs": [
+    3.908,
+    4.104,
+    3.216,
+    3.367,
+    3.912,
+    4.254,
+    3.862,
+    4.341,
+    3.822,
+    3.917,
+    3.993
+  ]
+}

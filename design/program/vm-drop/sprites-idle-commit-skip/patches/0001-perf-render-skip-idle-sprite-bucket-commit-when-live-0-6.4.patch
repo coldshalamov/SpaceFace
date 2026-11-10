@@ -1,0 +1,674 @@
+From aa3386084445cf414eff693a25a240655383d99a Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 08:33:36 -0400
+Subject: [PATCH] =?UTF-8?q?perf(render):=20skip=20idle=20sprite=20bucket?=
+ =?UTF-8?q?=20commit=20when=20live=3D=3D=3D0=20(~6.4=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Quiet settled flight still paid resetInstancedSpriteBuckets +
+commitInstancedSpriteBuckets (4 buckets × 7 bindings) every tick after
+the cloud was already empty. Latch after first idle publish; wake on
+_activateSprite. Soft-GPU fps not claimed.
+---
+ ...focused-tests-sprites-idle-commit-skip.log | 112 ++++++++++
+ .../sprites-idle-commit-skip-microbench.json  |  97 +++++++++
+ .../sprites-idle-commit-skip-microbench.mjs   | 192 ++++++++++++++++++
+ ...sprites-idle-commit-skip-rebench1.json.tmp |  13 ++
+ ...sprites-idle-commit-skip-rebench2.json.tmp |  13 ++
+ ...sprites-idle-commit-skip-rebench3.json.tmp |  13 ++
+ ...sprites-idle-commit-skip-rebench4.json.tmp |  13 ++
+ src/render/vfx.js                             |  13 +-
+ test/sprites-idle-commit-skip.test.mjs        |  94 +++++++++
+ 9 files changed, 559 insertions(+), 1 deletion(-)
+ create mode 100644 artifacts/focused-tests-sprites-idle-commit-skip.log
+ create mode 100644 artifacts/sprites-idle-commit-skip-microbench.json
+ create mode 100644 artifacts/sprites-idle-commit-skip-microbench.mjs
+ create mode 100644 artifacts/sprites-idle-commit-skip-rebench1.json.tmp
+ create mode 100644 artifacts/sprites-idle-commit-skip-rebench2.json.tmp
+ create mode 100644 artifacts/sprites-idle-commit-skip-rebench3.json.tmp
+ create mode 100644 artifacts/sprites-idle-commit-skip-rebench4.json.tmp
+ create mode 100644 test/sprites-idle-commit-skip.test.mjs
+
+diff --git a/artifacts/focused-tests-sprites-idle-commit-skip.log b/artifacts/focused-tests-sprites-idle-commit-skip.log
+new file mode 100644
+index 000000000..c25cd3058
+--- /dev/null
++++ b/artifacts/focused-tests-sprites-idle-commit-skip.log
+@@ -0,0 +1,112 @@
++TAP version 13
++#  Particle system powered by three.quarks. https://quarks.art/
++# Subtest: quiet empty sprites latch after first idle commit and skip reset+commit
++ok 1 - quiet empty sprites latch after first idle commit and skip reset+commit
++  ---
++  duration_ms: 96.893157
++  ...
++# Subtest: activateSprite dirty-wake clears idle latch then re-latches after drain
++ok 2 - activateSprite dirty-wake clears idle latch then re-latches after drain
++  ---
++  duration_ms: 30.73945
++  ...
++# Subtest: picture unchanged while latched — all four bucket meshes stay count 0
++ok 3 - picture unchanged while latched — all four bucket meshes stay count 0
++  ---
++  duration_ms: 17.428348
++  ...
++#  Particle system powered by three.quarks. https://quarks.art/
++# Subtest: discrete VFX use four role-specific batched buckets instead of per-effect Sprite objects
++ok 4 - discrete VFX use four role-specific batched buckets instead of per-effect Sprite objects
++  ---
++  duration_ms: 117.209931
++  ...
++# Subtest: pipeline warmup compiles the same four sprite-batch shaders used in gameplay
++ok 5 - pipeline warmup compiles the same four sprite-batch shaders used in gameplay
++  ---
++  duration_ms: 251.510396
++  ...
++# Subtest: batched sprite shaders preserve Three output color and tone mapping
++ok 6 - batched sprite shaders preserve Three output color and tone mapping
++  ---
++  duration_ms: 21.610595
++  ...
++# Subtest: smoke participates in performance isolation and writes far-to-near
++ok 7 - smoke participates in performance isolation and writes far-to-near
++  ---
++  duration_ms: 27.294764
++  ...
++# Subtest: allocation-free instance writes degrade safely when a dense bucket is saturated
++ok 8 - allocation-free instance writes degrade safely when a dense bucket is saturated
++  ---
++  duration_ms: 1.25751
++  ...
++#  Particle system powered by three.quarks. https://quarks.art/
++# {
++#   "ok": true,
++#   "test": "vfx-save-restore-destroy",
++#   "saveRestore": {
++#     "liveParticles": 0,
++#     "liveSprites": 0,
++#     "activeLights": 0
++#   },
++#   "normalDestroy": {
++#     "liveParticles": 15,
++#     "liveSprites": 14,
++#     "activeLights": 2
++#   },
++#   "combatReason": {
++#     "liveParticles": 15,
++#     "liveSprites": 14,
++#     "activeLights": 2
++#   }
++# }
++# Subtest: /workspace/spaceface-scratch/hillclimb-20260924h/test/vfx-save-restore-destroy.test.mjs
++ok 3 - /workspace/spaceface-scratch/hillclimb-20260924h/test/vfx-save-restore-destroy.test.mjs
++  ---
++  duration_ms: 591.635894
++  ...
++# Subtest: transient silhouette carriers occupy world-space depth instead of a camera-facing quad
++ok 10 - transient silhouette carriers occupy world-space depth instead of a camera-facing quad
++  ---
++  duration_ms: 30.056664
++  ...
++# Subtest: event progress and launch heading reach the resident GPU instance, independent of opacity
++ok 11 - event progress and launch heading reach the resident GPU instance, independent of opacity
++  ---
++  duration_ms: 4.52041
++  ...
++# Subtest: field animation and support stay bounded at saturation and invalid numeric inputs
++ok 12 - field animation and support stay bounded at saturation and invalid numeric inputs
++  ---
++  duration_ms: 3.911706
++  ...
++# Subtest: density film is an evolving bounded field, not one static mask with scrolling UVs
++ok 13 - density film is an evolving bounded field, not one static mask with scrolling UVs
++  ---
++  duration_ms: 11.011648
++  ...
++# Subtest: packed 3D film fits the portable WebGL2 dimension floor and retains every voxel
++ok 14 - packed 3D film fits the portable WebGL2 dimension floor and retains every voxel
++  ---
++  duration_ms: 35.066272
++  ...
++# Subtest: live transient pools share one density texture and do not add a back/front transparency pass
++ok 15 - live transient pools share one density texture and do not add a back/front transparency pass
++  ---
++  duration_ms: 2.208117
++  ...
++# Subtest: structural combat sheets have curved depth and independent lifetime animation
++ok 16 - structural combat sheets have curved depth and independent lifetime animation
++  ---
++  duration_ms: 4.769962
++  ...
++1..16
++# tests 16
++# suites 0
++# pass 16
++# fail 0
++# cancelled 0
++# skipped 0
++# todo 0
++# duration_ms 799.405912
+diff --git a/artifacts/sprites-idle-commit-skip-microbench.json b/artifacts/sprites-idle-commit-skip-microbench.json
+new file mode 100644
+index 000000000..6545d7cb0
+--- /dev/null
++++ b/artifacts/sprites-idle-commit-skip-microbench.json
+@@ -0,0 +1,97 @@
++{
++  "name": "sprites-idle-commit-skip",
++  "primary": "quiet-sprites-idle-commit-skip",
++  "iterations": 200000,
++  "runs": 11,
++  "buckets": 4,
++  "bindingsPerBucket": 7,
++  "pairs": [
++    {
++      "beforeMs": 33.923817,
++      "afterMs": 3.4091609999999974,
++      "speedup": 9.950781731927599,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 29.489270999999988,
++      "afterMs": 2.9071019999999947,
++      "speedup": 10.143872144837038,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 18.22244599999999,
++      "afterMs": 2.780272999999994,
++      "speedup": 6.5541930594585605,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 19.651001000000008,
++      "afterMs": 2.9638199999999983,
++      "speedup": 6.630295024664123,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 19.17766900000001,
++      "afterMs": 2.6779479999999865,
++      "speedup": 7.161329868989281,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 19.189385,
++      "afterMs": 2.6803469999999976,
++      "speedup": 7.159291315639362,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 19.243313,
++      "afterMs": 3.0097609999999975,
++      "speedup": 6.393634909881555,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 19.349384,
++      "afterMs": 3.240241999999995,
++      "speedup": 5.971586072892096,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 19.103663999999995,
++      "afterMs": 2.9985730000000075,
++      "speedup": 6.370918433534867,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 18.888242000000005,
++      "afterMs": 2.877003000000002,
++      "speedup": 6.565249323688572,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    },
++    {
++      "beforeMs": 19.47108700000001,
++      "afterMs": 2.841224000000004,
++      "speedup": 6.853062975675266,
++      "afterSkips": 200000,
++      "afterWalks": 0
++    }
++  ],
++  "median": 6.630295024664123,
++  "minSpeedup": 5.971586072892096,
++  "dirtyWake": {
++    "ok": true,
++    "quietOk": true,
++    "woke": true,
++    "relatch": true,
++    "published": 3,
++    "skipped": 4
++  }
++}
+\ No newline at end of file
+diff --git a/artifacts/sprites-idle-commit-skip-microbench.mjs b/artifacts/sprites-idle-commit-skip-microbench.mjs
+new file mode 100644
+index 000000000..6535ab32c
+--- /dev/null
++++ b/artifacts/sprites-idle-commit-skip-microbench.mjs
+@@ -0,0 +1,192 @@
++/**
++ * Primary KPI: _integrateSprites quiet path when liveSpriteCount===0.
++ * Before = resetInstancedSpriteBuckets (4× assert) + commitInstancedSpriteBuckets
++ *          (4× commitDynamicBufferOwner, 7 bindings each) every frame.
++ * After  = skip after first idle publish (spritesPublishedIdle).
++ * Soft-GPU fps not claimed. Picture unchanged (mesh.count already 0).
++ */
++import { writeFileSync } from 'node:fs';
++import { spawnSync } from 'node:child_process';
++
++const ROOT = process.cwd();
++const ITERS = 200000;
++const RUNS = 11;
++const BUCKETS = 4;
++const BINDINGS = 7;
++
++function runOnce(mode) {
++  const script = `
++import { performance } from 'node:perf_hooks';
++const BUCKETS = ${BUCKETS};
++const BINDINGS = ${BINDINGS};
++function makeOwner() {
++  return {
++    invalid: false,
++    disposed: false,
++    mesh: { count: 0 },
++    capacity: 256,
++    touched: false,
++    logicalGeneration: 0,
++    diagnostics: { activeCount: 0, pendingGeneration: 0 },
++    bindings: Array.from({ length: BINDINGS }, () => ({
++      pending: { start: 0, end: 0, capacity: 256, logicalComponents: 0 },
++      touchedSinceCommit: false,
++    })),
++  };
++}
++function assertWritable(owner) {
++  if (!owner || owner.invalid || owner.disposed) return;
++  owner._asserts = (owner._asserts || 0) + 1;
++}
++function commit(owner, activeCount) {
++  assertWritable(owner);
++  owner.mesh.count = activeCount;
++  owner.diagnostics.activeCount = activeCount;
++  if (owner.touched) owner.logicalGeneration++;
++  for (let index = 0; index < owner.bindings.length; index++) {
++    const binding = owner.bindings[index];
++    const componentLimit = Math.min(binding.pending.capacity, activeCount * 1);
++    if (binding.pending.start >= componentLimit) {
++      binding.pending.start = 0;
++      binding.pending.end = 0;
++      binding.pending.logicalComponents = 0;
++    } else if (binding.pending.end > componentLimit) {
++      binding.pending.end = componentLimit;
++    }
++    if (binding.touchedSinceCommit) {
++      binding.touchedSinceCommit = false;
++      owner.diagnostics.pendingGeneration = owner.logicalGeneration;
++    }
++  }
++  owner.touched = false;
++}
++function resetBuckets(host) {
++  for (let i = 0; i < host.owners.length; i++) {
++    assertWritable(host.owners[i]);
++    host.writeCounts[i] = 0;
++  }
++}
++function commitBuckets(host) {
++  for (let i = 0; i < host.owners.length; i++) {
++    commit(host.owners[i], host.writeCounts[i]);
++  }
++}
++function integrateBefore(host) {
++  resetBuckets(host);
++  if (host.liveSpriteCount <= 0) {
++    commitBuckets(host);
++    return;
++  }
++}
++function integrateAfter(host) {
++  if (host.liveSpriteCount <= 0) {
++    if (host.spritesPublishedIdle) { host.skips++; return; }
++    resetBuckets(host);
++    commitBuckets(host);
++    host.spritesPublishedIdle = true;
++    host.walks++;
++    return;
++  }
++  host.spritesPublishedIdle = false;
++  resetBuckets(host);
++  host.walks++;
++}
++const host = {
++  liveSpriteCount: 0,
++  spritesPublishedIdle: false,
++  walks: 0,
++  skips: 0,
++  writeCounts: new Array(BUCKETS).fill(0),
++  owners: Array.from({ length: BUCKETS }, () => makeOwner()),
++};
++const fn = ${JSON.stringify(mode)} === 'before' ? integrateBefore : integrateAfter;
++for (let i = 0; i < 3000; i++) fn(host);
++host.walks = 0; host.skips = 0;
++const t0 = performance.now();
++for (let i = 0; i < ${ITERS}; i++) fn(host);
++const ms = performance.now() - t0;
++console.log(JSON.stringify({
++  ms, live: host.liveSpriteCount,
++  count: host.owners[0].mesh.count,
++  idle: !!host.spritesPublishedIdle,
++  walks: host.walks, skips: host.skips,
++  mode: ${JSON.stringify(mode)},
++}));
++`;
++  const r = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
++    cwd: ROOT,
++    encoding: 'utf8',
++    env: process.env,
++  });
++  if (r.status !== 0) throw new Error(`child failed: ${r.stderr || r.stdout}`);
++  return JSON.parse(r.stdout.trim().split('\n').pop());
++}
++
++function wakeProof() {
++  const script = `
++let live = 0;
++let idle = false;
++let published = 0;
++let skipped = 0;
++function integrate() {
++  if (live <= 0) {
++    if (idle) { skipped++; return; }
++    published++;
++    idle = true;
++    return;
++  }
++  idle = false;
++  published++;
++}
++// quiet settle
++for (let i = 0; i < 5; i++) integrate();
++const quietOk = idle === true && published === 1 && skipped === 4;
++// dirty wake: activate sprite
++live = 1;
++idle = false; // mirror _activateSprite clearing the flag
++integrate();
++const woke = live === 1 && idle === false && published === 2;
++// drain + re-latch
++live = 0;
++integrate();
++const relatch = idle === true && published === 3;
++console.log(JSON.stringify({ ok: quietOk && woke && relatch, quietOk, woke, relatch, published, skipped }));
++`;
++  const r = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
++    cwd: ROOT,
++    encoding: 'utf8',
++  });
++  if (r.status !== 0) throw new Error(`wake failed: ${r.stderr || r.stdout}`);
++  return JSON.parse(r.stdout.trim().split('\n').pop());
++}
++
++const pairs = [];
++for (let i = 0; i < RUNS; i++) {
++  const b = runOnce('before');
++  const a = runOnce('after');
++  pairs.push({
++    beforeMs: b.ms,
++    afterMs: a.ms,
++    speedup: b.ms / a.ms,
++    afterSkips: a.skips,
++    afterWalks: a.walks,
++  });
++}
++const s = pairs.map((p) => p.speedup).sort((a, b) => a - b);
++const median = s[Math.floor(s.length / 2)];
++const minSpeedup = s[0];
++const wake = wakeProof();
++const out = {
++  name: 'sprites-idle-commit-skip',
++  primary: 'quiet-sprites-idle-commit-skip',
++  iterations: ITERS,
++  runs: RUNS,
++  buckets: BUCKETS,
++  bindingsPerBucket: BINDINGS,
++  pairs,
++  median,
++  minSpeedup,
++  dirtyWake: wake,
++};
++writeFileSync('artifacts/sprites-idle-commit-skip-microbench.json', JSON.stringify(out, null, 2));
++console.log(JSON.stringify({ median, minSpeedup, max: s[s.length - 1], dirtyWake: wake }, null, 2));
+diff --git a/artifacts/sprites-idle-commit-skip-rebench1.json.tmp b/artifacts/sprites-idle-commit-skip-rebench1.json.tmp
+new file mode 100644
+index 000000000..9319a12b0
+--- /dev/null
++++ b/artifacts/sprites-idle-commit-skip-rebench1.json.tmp
+@@ -0,0 +1,13 @@
++{
++  "median": 6.893119131272969,
++  "minSpeedup": 5.930431301402618,
++  "max": 7.478174292760195,
++  "dirtyWake": {
++    "ok": true,
++    "quietOk": true,
++    "woke": true,
++    "relatch": true,
++    "published": 3,
++    "skipped": 4
++  }
++}
+diff --git a/artifacts/sprites-idle-commit-skip-rebench2.json.tmp b/artifacts/sprites-idle-commit-skip-rebench2.json.tmp
+new file mode 100644
+index 000000000..3f66ebe72
+--- /dev/null
++++ b/artifacts/sprites-idle-commit-skip-rebench2.json.tmp
+@@ -0,0 +1,13 @@
++{
++  "median": 6.70525627821503,
++  "minSpeedup": 6.0816024137241955,
++  "max": 7.8071897664971655,
++  "dirtyWake": {
++    "ok": true,
++    "quietOk": true,
++    "woke": true,
++    "relatch": true,
++    "published": 3,
++    "skipped": 4
++  }
++}
+diff --git a/artifacts/sprites-idle-commit-skip-rebench3.json.tmp b/artifacts/sprites-idle-commit-skip-rebench3.json.tmp
+new file mode 100644
+index 000000000..a881e3855
+--- /dev/null
++++ b/artifacts/sprites-idle-commit-skip-rebench3.json.tmp
+@@ -0,0 +1,13 @@
++{
++  "median": 6.731335197919204,
++  "minSpeedup": 5.8914914361078985,
++  "max": 10.89625432536814,
++  "dirtyWake": {
++    "ok": true,
++    "quietOk": true,
++    "woke": true,
++    "relatch": true,
++    "published": 3,
++    "skipped": 4
++  }
++}
+diff --git a/artifacts/sprites-idle-commit-skip-rebench4.json.tmp b/artifacts/sprites-idle-commit-skip-rebench4.json.tmp
+new file mode 100644
+index 000000000..fa9388ff1
+--- /dev/null
++++ b/artifacts/sprites-idle-commit-skip-rebench4.json.tmp
+@@ -0,0 +1,13 @@
++{
++  "median": 6.630295024664123,
++  "minSpeedup": 5.971586072892096,
++  "max": 10.143872144837038,
++  "dirtyWake": {
++    "ok": true,
++    "quietOk": true,
++    "woke": true,
++    "relatch": true,
++    "published": 3,
++    "skipped": 4
++  }
++}
+diff --git a/src/render/vfx.js b/src/render/vfx.js
+index 477745cf2..b8d949dac 100644
+--- a/src/render/vfx.js
++++ b/src/render/vfx.js
+@@ -1999,6 +1999,9 @@ export const vfx = {
+     for (let i = 0; i < SPRITE_CAP; i++) this._freeSprites[i] = SPRITE_CAP - 1 - i;
+     this._freeSpriteCount = SPRITE_CAP;
+     this._liveSpriteCount = 0;
++    // After the first quiet reset+commit(0) across 4 sprite buckets, skip
++    // re-assert/re-commit while liveSpriteCount===0. Soft-GPU fps not claimed.
++    this._spritesPublishedIdle = false;
+ 
+     // Dedicated soft flame material slot for gaseous thrust (fx_thruster_main.jpg prepared for future use / richer shapes).
+     // Currently the overlapping soft-glow puffs + softened point cloud provide the blend; swapping maps here is a one-line follow-up.
+@@ -2770,6 +2773,7 @@ export const vfx = {
+   _activateSprite(i) {
+     this._activeSpritePos[i] = this._liveSpriteCount;
+     this._activeSprites[this._liveSpriteCount++] = i;
++    this._spritesPublishedIdle = false;
+   },
+ 
+   _retireSprite(i) {
+@@ -15120,11 +15124,18 @@ export const vfx = {
+   },
+ 
+   _integrateSprites(dt) {
+-    resetInstancedSpriteBuckets(this._spriteBatches);
+     if (this._liveSpriteCount <= 0) {
++      // Quiet settled flight: vfx.update still calls integrate when live===0.
++      // After one reset+commit(0) across 4 buckets, mesh.count is already 0 —
++      // re-assert + bindings sweep is pure CPU. Soft-GPU fps not claimed.
++      if (this._spritesPublishedIdle) return;
++      resetInstancedSpriteBuckets(this._spriteBatches);
+       commitInstancedSpriteBuckets(this._spriteBatches);
++      this._spritesPublishedIdle = true;
+       return;
+     }
++    this._spritesPublishedIdle = false;
++    resetInstancedSpriteBuckets(this._spriteBatches);
+     const st = this._spr, active = this._activeSprites;
+     const smokeOrder = this._smokeSpriteOrder;
+     let smokeCount = 0;
+diff --git a/test/sprites-idle-commit-skip.test.mjs b/test/sprites-idle-commit-skip.test.mjs
+new file mode 100644
+index 000000000..2dcac496e
+--- /dev/null
++++ b/test/sprites-idle-commit-skip.test.mjs
+@@ -0,0 +1,94 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import * as THREE from 'three';
++import { createBus } from '../src/core/eventBus.js';
++import { vfx } from '../src/render/vfx.js';
++
++function makeHarness() {
++  const scene = new THREE.Scene();
++  const state = {
++    playerId: 1,
++    entities: new Map([[1, { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 } }]]),
++    entityList: [],
++    settings: {
++      video: { particleQuality: 'high', motionReduce: false, engineTrails: true },
++      accessibility: { flashReduce: false },
++    },
++    render: { scene },
++    content: {},
++  };
++  const system = Object.create(vfx);
++  system.init({ state, bus: createBus(), helpers: {} });
++  return { scene, system };
++}
++
++function bucketCounts(system) {
++  const buckets = system._spriteBatches;
++  if (!buckets) return null;
++  return {
++    glow: buckets.glow.mesh.count,
++    ring: buckets.ring.mesh.count,
++    smoke: buckets.smoke.mesh.count,
++    combustion: buckets.combustion.mesh.count,
++    live: system._liveSpriteCount,
++    idle: !!system._spritesPublishedIdle,
++  };
++}
++
++test('quiet empty sprites latch after first idle commit and skip reset+commit', () => {
++  const { system } = makeHarness();
++  assert.equal(system._liveSpriteCount, 0);
++  assert.equal(system._spritesPublishedIdle, false);
++
++  system._integrateSprites(1 / 60);
++  const afterFirst = bucketCounts(system);
++  assert.equal(afterFirst.idle, true, 'first empty integrate publishes idle');
++  assert.equal(afterFirst.glow, 0);
++  assert.equal(afterFirst.ring, 0);
++  assert.equal(afterFirst.smoke, 0);
++  assert.equal(afterFirst.combustion, 0);
++
++  // Force a dirty mesh.count so a missed skip would republish and clear it.
++  system._spriteBatches.glow.mesh.count = 7;
++  system._integrateSprites(1 / 60);
++  const afterLatch = bucketCounts(system);
++  assert.equal(afterLatch.idle, true);
++  assert.equal(afterLatch.glow, 7,
++    'latched quiet path must not re-commit (picture already at count 0 from first publish)');
++});
++
++test('activateSprite dirty-wake clears idle latch then re-latches after drain', () => {
++  const { system } = makeHarness();
++  system._integrateSprites(1 / 60);
++  assert.equal(system._spritesPublishedIdle, true);
++
++  system._spawnSprite(0, 10, 0, 20, 0.2, 2, 5, 0.9, 0, '#ffffff', 0, 0);
++  assert.equal(system._liveSpriteCount, 1);
++  assert.equal(system._spritesPublishedIdle, false, 'activate must clear idle latch');
++
++  system._integrateSprites(1 / 60);
++  assert.equal(system._spritesPublishedIdle, false);
++  assert.ok(system._liveSpriteCount >= 1 || system._spriteBatches.glow.mesh.count
++    + system._spriteBatches.ring.mesh.count
++    + system._spriteBatches.smoke.mesh.count
++    + system._spriteBatches.combustion.mesh.count >= 1);
++
++  // Age out the sprite by integrating past life.
++  for (let i = 0; i < 400; i++) system._integrateSprites(1 / 30);
++  assert.equal(system._liveSpriteCount, 0, 'sprite must drain');
++  assert.equal(system._spritesPublishedIdle, true, 'empty path re-latches after drain');
++  const counts = bucketCounts(system);
++  assert.equal(counts.glow + counts.ring + counts.smoke + counts.combustion, 0);
++});
++
++test('picture unchanged while latched — all four bucket meshes stay count 0', () => {
++  const { system } = makeHarness();
++  system._integrateSprites(1 / 60);
++  for (let i = 0; i < 60; i++) system._integrateSprites(1 / 60);
++  const counts = bucketCounts(system);
++  assert.equal(counts.idle, true);
++  assert.equal(counts.glow, 0);
++  assert.equal(counts.ring, 0);
++  assert.equal(counts.smoke, 0);
++  assert.equal(counts.combustion, 0);
++});
+-- 
+2.47.3
+

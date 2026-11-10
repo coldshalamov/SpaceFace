@@ -1,0 +1,82 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: gas quiet-latches after first empty observe
+ok 1 - gas quiet-latches after first empty observe
+  ---
+  duration_ms: 109.204804
+  ...
+# Subtest: gas emit (liveCount) dirty-wakes the quiet latch
+ok 2 - gas emit (liveCount) dirty-wakes the quiet latch
+  ---
+  duration_ms: 28.36577
+  ...
+# Subtest: gas re-latches after bodies retire
+ok 3 - gas re-latches after bodies retire
+  ---
+  duration_ms: 27.935448
+  ...
+# Subtest: sector:enter clears gas quiet latch
+ok 4 - sector:enter clears gas quiet latch
+  ---
+  duration_ms: 30.896505
+  ...
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: pending detonations quiet-latches after first empty observe
+ok 5 - pending detonations quiet-latches after first empty observe
+  ---
+  duration_ms: 108.805554
+  ...
+# Subtest: schedule dirty-wakes the pending-detonations quiet latch
+ok 6 - schedule dirty-wakes the pending-detonations quiet latch
+  ---
+  duration_ms: 22.553118
+  ...
+# Subtest: pending detonations re-latches after drain completes
+ok 7 - pending detonations re-latches after drain completes
+  ---
+  duration_ms: 20.469005
+  ...
+# Subtest: pending detonations reset clears latch for re-observe
+ok 8 - pending detonations reset clears latch for re-observe
+  ---
+  duration_ms: 21.437995
+  ...
+# Subtest: explosion classes have distinct temporal structures and secondary pressure cues
+ok 9 - explosion classes have distinct temporal structures and secondary pressure cues
+  ---
+  duration_ms: 1.612182
+  ...
+# Subtest: authored explosion irregularity is repeatable without consuming simulation randomness
+ok 10 - authored explosion irregularity is repeatable without consuming simulation randomness
+  ---
+  duration_ms: 1.37634
+  ...
+# Subtest: bounded lifecycle emits each phase once and retires cleanly
+ok 11 - bounded lifecycle emits each phase once and retires cleanly
+  ---
+  duration_ms: 0.892493
+  ...
+# Subtest: five causal profiles have distinct frozen schedules while generic stays class-compatible
+ok 12 - five causal profiles have distinct frozen schedules while generic stays class-compatible
+  ---
+  duration_ms: 0.878143
+  ...
+# Subtest: pool capacity remains bounded under dense combat
+ok 13 - pool capacity remains bounded under dense combat
+  ---
+  duration_ms: 0.53699
+  ...
+# Subtest: invalid receipt numerics cannot poison the resident explosion pool
+ok 14 - invalid receipt numerics cannot poison the resident explosion pool
+  ---
+  duration_ms: 0.22228
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 14
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 568.839426

@@ -1,0 +1,110 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/assets/ships/parts/wholeships/wasp_production_v1.glb",
+  "out": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/wasp_production_v1",
+  "focus": [
+    1.0,
+    0.0,
+    0.4697
+  ],
+  "boundsMin": [
+    -10.0,
+    -8.0818,
+    -1.38
+  ],
+  "boundsMax": [
+    12.0,
+    8.0818,
+    2.3195
+  ],
+  "size": [
+    22.0,
+    16.1637,
+    3.6995
+  ],
+  "lightScale": 2.037,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
+      "triangles": 3560,
+      "materials": [
+        "Material_BrushedMetal_RemasterNickel"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Mechanical_RemasterOxidized",
+      "triangles": 56,
+      "materials": [
+        "Material_Mechanical_RemasterOxidized"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Mechanical_RemasterHeatCopper",
+      "triangles": 120,
+      "materials": [
+        "Material_Mechanical_RemasterHeatCopper"
+      ]
+    },
+    {
+      "name": "LOD0_Accent",
+      "triangles": 916,
+      "materials": [
+        "Material_Accent"
+      ]
+    },
+    {
+      "name": "LOD0_Canopy",
+      "triangles": 268,
+      "materials": [
+        "Material_Canopy"
+      ]
+    },
+    {
+      "name": "LOD0_Hull",
+      "triangles": 652,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_Hull_Armor",
+      "triangles": 3416,
+      "materials": [
+        "Material_Armor"
+      ]
+    },
+    {
+      "name": "LOD0_Mechanical",
+      "triangles": 5424,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Thruster",
+      "triangles": 760,
+      "materials": [
+        "Material_Thruster"
+      ]
+    },
+    {
+      "name": "LOD0_Warning",
+      "triangles": 216,
+      "materials": [
+        "Material_Warning"
+      ]
+    }
+  ],
+  "triangles": 15388,
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/wasp_production_v1/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/wasp_production_v1/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/wasp_production_v1/play_chase_close.png"
+  },
+  "clay": null,
+  "clayClose": null
+}

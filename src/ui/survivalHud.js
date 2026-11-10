@@ -1,0 +1,1043 @@
+// Survival run readout (PQ-133 / CRU-018 follow-up).
+//
+// Until this existed, a player flying a scored ten-wave run could see NOTHING about the run:
+// not which wave they were on, not how many were left, not their score, not what they had earned.
+// Every figure was already in state.run and nothing put it on the glass.
+//
+// Ownership: read-only. It never writes state.run, never emits a gameplay intent, and owns only
+// its own DOM subtree under the bottom-left contextual stack (.sf-leftcontext, uiRoot.js:1388,
+// which collapses to nothing when empty). It never touches src/ui/hud.js or styles/.
+//
+// Grammar (design/frontend/INSTRUMENT_GRAMMAR.md): 12px floor; numerals in the data face with
+// tabular-nums; labels in the subhead face; colour by ROLE token only (--sf-you gain, --sf-foe
+// threat, --sf-goal objective, --sf-calm chrome, --sf-paper copy) and never as the only channel —
+// every figure carries its own word. No animation at all, so reduced-motion needs no variant.
+
+import { SURVIVAL_RUN_WAVE_COUNT } from '../systems/survivalRun.js';
+import { waveOpeningLine } from '../systems/survivalAnnounce.js';
+import { isSwarmRuleset } from '../systems/survivalSwarm.js';
+import { circuitFor, circuitRoundFor, CIRCUIT_STAGE_COUNT, CIRCUIT_ROUNDS_PER_STAGE } from '../systems/survivalCircuit.js';
+import {
+  deathCauseText,
+  telegraphWord,
+} from '../systems/survivalResults.js';
+import { runXpForLevel } from '../core/runState.js';
+import { styleMultiplier } from '../systems/stuntCombo.js';
+import { SWARM_CHAIN_VARIED_STEP, SWARM_CHAIN_WARN_S, SWARM_CHAIN_WINDOW_S } from '../systems/swarmChain.js';
+import { resolveActionLabel } from '../systems/input.js';
+
+const STYLE_ID = 'sf-crun-css';
+/** How long an earn receipt stays on screen, in sim seconds. */
+export const EARN_RECEIPT_S = 2.6;
+
+/** Phase word the player reads. Never a phase id — 'wave_intro' is not a thing anyone says. */
+export const PHASE_WORDS = Object.freeze({
+  loadout: 'STANDBY',
+  arena_intro: 'ARENA',
+  wave_intro: 'INBOUND',
+  active: 'FIGHT',
+  cleanup: 'CLEAR',
+  draft: 'REARM',
+  refit: 'REFIT',
+  victory: 'CLEARED',
+  ended: 'LOST',
+});
+
+/**
+ * The word for a phase. 'inactive' is deliberately absent: the readout is hidden entirely then,
+ * so a word for it would be a label nobody can ever see. An unknown phase still renders as words,
+ * never as a raw snake_case id.
+ */
+export function phaseWord(phase) {
+  const word = PHASE_WORDS[phase];
+  if (word) return word;
+  return String(phase || '').replace(/_/g, ' ').toUpperCase() || 'RUN';
+}
+
+/**
+ * What KIND of wave this is, in a word. A boss wave and a chaff wave both read as "FIGHT"
+ * otherwise, which is exactly the moment a player most wants to be told which one they are in.
+ * Unknown objectives fall back to the phase word rather than inventing a label.
+ */
+export const OBJECTIVE_WORDS = Object.freeze({
+  resolve_hostiles: null,   // the ordinary case — the phase word already says FIGHT
+  elite_hunt: 'ELITE',
+  boss: 'BOSS',
+  // SWARM-08 B5 — a Circuit survive round is a timed hold, and the word is the whole rule.
+  survive: 'SURVIVE',
+  defend: 'BEACON',
+  escort: 'ESCORT',
+  nodes: 'NODES',
+  hold: 'HOLD',
+  collect: 'CORES',
+  commander: 'COMMANDER',
+  reach: 'GATE',
+});
+
+export function objectiveWord(objectiveKind) {
+  const word = OBJECTIVE_WORDS[objectiveKind];
+  return typeof word === 'string' ? word : null;
+}
+
+const MARK_GLYPHS = Object.freeze(['↑', '↗', '→', '↘', '↓', '↙', '←', '↖']);
+
+/** Overhead bearing toward a circuit ring. Empty once the ship is inside it. */
+export function circuitMarkGlyph(player, mark) {
+  if (!player || !player.pos || !mark) return '';
+  const dx = Number(mark.x) - Number(player.pos.x);
+  const dz = Number(mark.z) - Number(player.pos.z);
+  if (!Number.isFinite(dx) || !Number.isFinite(dz)) return '';
+  if (Math.hypot(dx, dz) <= (Number(mark.radius) || 0)) return '';
+  const octant = Math.round((Math.atan2(-dx, dz) / (Math.PI * 2)) * 8);
+  return MARK_GLYPHS[(octant + 8) % 8];
+}
+
+/** Arena label from the id. Data-free so a new arena needs no edit here. */
+export function arenaLabel(arenaId) {
+  if (!arenaId) return 'ARENA';
+  return String(arenaId).replace(/_/g, ' ').toUpperCase();
+}
+
+/**
+ * The variety badge beside the chain figure (INF-031). Pure: the HUD never re-derives the
+ * bonus — swarmChain's own cause/step result arrives on the `swarm:chain` event and this only
+ * words it. A varied kill reads `COLLISION +2`; a repeated one reads `GUN`. Null when there is
+ * no cause to show, so the row stays a bare number.
+ */
+export function chainCauseBadge(cause, step) {
+  if (typeof cause !== 'string' || cause.length === 0) return null;
+  const word = cause.replace(/_/g, ' ').toUpperCase();
+  if (step === SWARM_CHAIN_VARIED_STEP) return `${word} +2`;
+  return word;
+}
+
+/**
+ * Seconds left in the chain window from the kill's sim-time anchor (INF-032). Pure: the same
+ * subtraction swarmChain's lapse check runs — `expiresIn` restated from the event's `at` — so
+ * the mark agrees with the four-second window by construction. Slow time advances simTime
+ * slowly and pause freezes it, so the mark slows and freezes with the window itself. A
+ * missing anchor reads as a full window: a chain that just started owes no depletion.
+ */
+export function chainWindowRemaining(chainAt, simNow) {
+  if (!Number.isFinite(chainAt) || !Number.isFinite(simNow)) return SWARM_CHAIN_WINDOW_S;
+  return Math.max(0, chainAt + SWARM_CHAIN_WINDOW_S - simNow);
+}
+
+/** Live census for the wave: how many bodies are still out there, and how many are owed. */
+export function threatCensus(run) {
+  const planned = Number.isInteger(run && run.threatBudget) ? run.threatBudget : 0;
+  const spawned = Number.isInteger(run && run.spawnedThreat) ? run.spawnedThreat : 0;
+  const resolved = Number.isInteger(run && run.resolvedThreat) ? run.resolvedThreat : 0;
+  const alive = Math.max(0, spawned - resolved);
+  const total = Math.max(planned, spawned);
+  const remaining = Math.max(alive, total - resolved);
+  return { alive, total, remaining, resolved };
+}
+
+/** The Swarm quota tracks the full-ship cohort; Brood bodies are supplemental pressure. */
+export function threatPopulationLabel(ruleset, objective) {
+  if (!isSwarmRuleset(ruleset)) return 'THREAT';
+  return !objective || objective.population === 'ships' ? 'HOSTILE SHIPS' : 'HOSTILES';
+}
+
+/** The fitted Hero ability's live cue, using only the worker-owned HUD projection. */
+export function heroManeuverHudCue(state) {
+  if (state?.run?.kind !== 'survival' || state.mode !== 'flight') return null;
+  const player = state.player;
+  const index = Number(player?.activeShipIndex) || 0;
+  const fitted = player?.ownedShips?.[index]?.fittings
+    || state.entities?.get?.(state.playerId)?.data?.fittings || [];
+  const pinball = fitted.includes('mod_pinball_rush');
+  const boomerang = fitted.includes('mod_boomerang_run');
+  const veil = fitted.includes('mod_veil_step');
+  if (!pinball && !boomerang && !veil) return null;
+
+  const model = state.heroManeuverReadModel;
+  const mode = pinball ? 'pinball' : boomerang ? 'boomerang' : 'veil_step';
+  if (!model || model.mode !== mode) {
+    const label = pinball ? 'PINBALL RUSH' : boomerang ? 'BOOMERANG RUN' : 'VEIL STEP';
+    return { mode, status: 'blocked', text: `${label} · syncing readiness` };
+  }
+  const name = model.targetName || 'hostile lock';
+  const boost = resolveActionLabel(state, 'boost', { arrows: 'word', empty: 'unbound' });
+  const veilModel = veil ? model.veil : null;
+  const veilCue = veilModel
+    ? veilModel.phase === 'aiming'
+      ? `VEIL STEP · ${veilModel.text}`
+      : `VEIL STEP · ${boost} hold / release · ${veilModel.text}`
+    : null;
+  if (mode === 'pinball') {
+    const readiness = model.text || (model.reason
+      ? String(model.reason).replaceAll('_', ' ') : 'status unavailable');
+    const stage = model.phase === 'pinball_charge' ? `charging ${Math.round((model.charge || 0) * 1000)} ms`
+      : model.phase === 'pinball_pending' ? 'dash committing'
+        : model.phase === 'pinball_dash' ? `${model.contactCount || 0}/5 physical contacts` : null;
+    return { mode, status: model.status,
+      text: [stage ? `PINBALL RUSH · ${name} · ${stage}`
+        : `PINBALL RUSH · ${boost} hold / release · ${readiness}`, veilCue]
+        .filter(Boolean).join(' · ') };
+  }
+  if (mode === 'boomerang') {
+    const action = resolveActionLabel(state, 'bomb', { arrows: 'word', empty: 'unbound' });
+    const budget = Number.isFinite(model.energyRequired) ? ` · ${Math.ceil(model.energyRequired)} cap budget` : '';
+    const stage = model.phase === 'bank' ? `physical bank · ${model.attackCommitted ? 'bomb away' : 'bomb reserved'}`
+      : model.phase === 'return' ? `phase return · ${model.attackCommitted ? 'bomb away' : 'no bomb released'}` : null;
+    const terminal = ['complete', 'attack_region_missed', 'target_lost', 'interrupted',
+      'return_blocked', 'ordnance_refused'].includes(model.phase) ? model.text : null;
+    return { mode, status: model.status,
+      text: [stage ? `BOOMERANG RUN · ${name} · ${stage}${budget}`
+        : terminal ? `BOOMERANG RUN · ${name} · ${terminal}${budget}`
+          : `BOOMERANG RUN · ${action} start · ${model.text || model.reason || 'status unavailable'}`, veilCue]
+        .filter(Boolean).join(' · ') };
+  }
+  return { mode, status: model.status, text: veilCue || `VEIL STEP · ${boost} hold / release · ${model.text || model.reason || 'status unavailable'}` };
+}
+
+/**
+ * Player-facing clock from `run:waveProgress.remainingTicks`. The HUD never ticks this itself.
+ * Format is `0:SS` so a sixty-second wave reads 0:60 … 0:00.
+ */
+export function waveCountdownClock(remainingTicks) {
+  const ticks = Number.isInteger(remainingTicks) ? Math.max(0, remainingTicks) : 0;
+  const seconds = Math.max(0, Math.ceil(ticks / 60));
+  return `0:${String(seconds).padStart(2, '0')}`;
+}
+
+/** Elapsed fraction 0..1 from the same payload. The fill is time, never kill count. */
+export function waveElapsedFill(remainingTicks, durationTicks) {
+  const duration = Number.isInteger(durationTicks) && durationTicks > 0 ? durationTicks : 0;
+  if (duration <= 0) return 0;
+  const remaining = Number.isInteger(remainingTicks) ? Math.max(0, remainingTicks) : 0;
+  return Math.max(0, Math.min(1, (duration - remaining) / duration));
+}
+
+/** Fraction of this level's XP the player has earned, 0..1. */
+export function levelProgress(run) {
+  const xp = Number.isInteger(run && run.xp) ? run.xp : 0;
+  const level = Number.isInteger(run && run.level) && run.level >= 1 ? run.level : 1;
+  const floor = runXpForLevel(level);
+  const ceiling = runXpForLevel(level + 1);
+  if (!(ceiling > floor)) return 0;
+  const t = (xp - floor) / (ceiling - floor);
+  return t < 0 ? 0 : (t > 1 ? 1 : t);
+}
+
+/** One short line for an award. Returns null for an award with nothing worth announcing. */
+export function earnLine(award) {
+  if (!award) return null;
+  const parts = [];
+  if (award.credits > 0) parts.push(`+${award.credits.toLocaleString('en-US')} CR`);
+  if (award.score > 0) {
+    let line = `+${award.score} SCORE`;
+    // A style settlement names its acts so the player learns what paid.
+    if (award.reason === 'stunt_bank' && Array.isArray(award.bankActs)) {
+      const names = award.bankActs.filter((n) => typeof n === 'string' && n.length > 0);
+      if (names.length > 0) {
+        const shown = names.slice(0, 3).join(', ');
+        line += names.length > 3 ? ` · ${shown} +${names.length - 3}` : ` · ${shown}`;
+      }
+    } else if (award.reason === 'kill' && typeof award.causePhrase === 'string' && award.causePhrase) {
+      line += ` · ${award.causePhrase}`;
+    }
+    parts.push(line);
+  }
+  if (award.xp > 0) parts.push(`+${award.xp} XP`);
+  if (parts.length === 0) return null;
+  return parts.join('   ');
+}
+
+/**
+ * PQ-174.06: the death line on the glass — the physical cause and, when a tell was seen, the
+ * telegraph missed with its warning time. DOM-free so a check can assert it headlessly.
+ */
+export function deathLineFor(receipt, tell = null, deathSimTime = 0) {
+  const cause = deathCauseText(receipt);
+  if (tell && typeof tell === 'object' && typeof tell.kind === 'string' && tell.kind
+    && tell.attackerId != null && tell.attackerId === (receipt?.killerId ?? receipt?.attackerId)
+    && Number.isFinite(tell.simTime) && Number.isFinite(deathSimTime)
+    && deathSimTime >= tell.simTime && deathSimTime - tell.simTime <= 6) {
+    const lead = Math.max(0, Math.round((deathSimTime - tell.simTime) * 1000));
+    return `${cause} — missed ${telegraphWord(tell.kind)}, ${lead}ms warning.`;
+  }
+  return cause;
+}
+
+// toLocaleString pays the Intl machinery on every call; score/credits/kills move
+// on kill events, not ticks, and the callsites alternate — so a small bounded map,
+// not a single slot, covers ~every call.
+const _numCache = new Map();
+function num(value) {
+  const n = Number.isFinite(value) ? Math.trunc(value) : 0;
+  const hit = _numCache.get(n);
+  if (hit !== undefined) return hit;
+  const str = n.toLocaleString('en-US');
+  if (_numCache.size >= 64) _numCache.clear();
+  _numCache.set(n, str);
+  return str;
+}
+
+export const survivalHud = {
+  id: 'survivalHud',
+  name: 'survivalHud',
+
+  init(ctx) {
+    this.destroy();
+    this.state = ctx.state;
+    this.bus = ctx.bus || null;
+    this._dom = null;
+    this._last = Object.create(null);
+    this._earn = null;
+    this._earnUntil = -1;
+    this._objective = null;
+    this._objectiveKind = null;
+    this._plan = null;
+    this._planWave = null;
+    this._chain = 0;
+    this._chainBest = 0;
+    this._chainCause = null;
+    this._chainStep = 0;
+    this._chainAt = null;
+    this._waveProgress = null;
+    this._death = null;
+    this._lastTells = [];
+    this._unsubs = [];
+    if (!this.bus || typeof this.bus.on !== 'function') return;
+    this._unsubs.push(this.bus.on('run:awarded', (p) => this._onAwarded(p)));
+    this._unsubs.push(this.bus.on('run:levelUp', (p) => this._onLevelUp(p)));
+    this._unsubs.push(this.bus.on('run:started', () => {
+      this._clearEarn();
+      this._plan = null;
+      this._planWave = null;
+      this._objective = null;
+      this._objectiveKind = null;
+      this._waveProgress = null;
+      this._death = null;
+      this._lastTells = [];
+      this._chain = 0;
+      this._chainBest = 0;
+      this._chainCause = null;
+      this._chainStep = 0;
+      this._chainAt = null;
+    }));
+    this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
+    this._unsubs.push(this.bus.on('run:waveProgress', (p) => this._onWaveProgress(p)));
+    this._unsubs.push(this.bus.on('swarm:chain', (p) => this._onChain(p)));
+    this._unsubs.push(this.bus.on('swarm:chainBroken', () => this._onChainBroken()));
+    // PQ-174.06: the death line on the glass. Read-only like everything else here — it names
+    // the cause and the missed telegraph, and never emits.
+    this._unsubs.push(this.bus.on('ai:telegraph', (p) => this._onTell(p)));
+    this._unsubs.push(this.bus.on('player:death', (p) => this._onDeath(p)));
+  },
+
+  destroy() {
+    if (typeof document !== 'undefined') document.body?.classList?.remove('sf-swarm-flight');
+    this._swarmFlightClass = null;
+    for (const off of this._unsubs || []) if (typeof off === 'function') off();
+    this._unsubs = [];
+    if (this._dom && this._dom.root && this._dom.root.parentNode) {
+      this._dom.root.parentNode.removeChild(this._dom.root);
+    }
+    this._dom = null;
+  },
+
+  newGame() {
+    this._clearEarn();
+    this._waveProgress = null;
+    this._death = null;
+    this._lastTells = [];
+  },
+
+  update(dt, state) {
+    // Headless contract: this is the whole of it. Node runs the sim with no document.
+    if (typeof document === 'undefined') return;
+    const st = state || this.state;
+    if (!st) return;
+    const run = st.run;
+    const live = !!(run && run.kind === 'survival' && run.phase !== 'inactive');
+    const swarmFlight = live && run.ruleset === 'swarm' && st.mode === 'flight';
+    if (this._swarmFlightClass !== swarmFlight) {
+      this._swarmFlightClass = swarmFlight;
+      document.body?.classList?.toggle('sf-swarm-flight', swarmFlight);
+    }
+    if (!live || st.mode !== 'flight' || (st.ui && st.ui.docked)) {
+      this._hide();
+      return;
+    }
+    const dom = this._ensureDom();
+    if (!dom) return;
+    this._show(dom);
+
+    const census = threatCensus(run);
+    const swarm = isSwarmRuleset(run.ruleset);
+    const planForWave = this._planWave === run.wave ? this._plan : null;
+    const objectiveKind = planForWave ? this._objectiveKind : null;
+    const objective = objectiveWord(objectiveKind);
+    // A boss or elite wave says so; everything else reads as the phase, which already says FIGHT.
+    const fighting = run.phase === 'active' || run.phase === 'wave_intro';
+    const phase = (fighting && objective) ? objective : phaseWord(run.phase);
+    this._setText(dom.label, `CRUCIBLE · ${swarm && run.arenaId === 'helios_core'
+      ? 'RICOCHET FOUNDRY' : arenaLabel(run.arenaId)}`);
+    // A swarm run has no denominator: there is no last wave to count toward, and printing one
+    // would be a lie about when it ends. SWARM-08 B5 — a Circuit run DOES have a finite shape,
+    // so it prints the stage and the round inside it, then OVERTIME once the journey is done.
+    const circuit = swarm ? circuitFor(run) : null;
+    const circuitRound = circuit ? circuitRoundFor(run, run.wave) : null;
+    const overtime = !!(circuit && circuit.status === 'overtime');
+    this._setText(dom.waveN, swarm
+      ? circuitRound
+        ? `STAGE ${circuitRound.stage}/${CIRCUIT_STAGE_COUNT} · ROUND ${circuitRound.localRound}/${CIRCUIT_ROUNDS_PER_STAGE}`
+        : overtime
+          ? `OVERTIME · ROUND ${String(Math.max(1, run.wave || 1)).padStart(2, '0')}`
+          : `ROUND ${String(Math.max(1, run.wave || 1)).padStart(2, '0')}`
+      : `WAVE ${Math.max(1, run.wave || 1)} / ${SURVIVAL_RUN_WAVE_COUNT}`);
+    this._setText(dom.phase, phase);
+    // Second channel for the boss/elite call — the WORD changes, the colour only reinforces it.
+    this._setClass(dom.phase, 'sf-crun__phase' + (fighting && objective ? ' sf-crun__phase--hot' : ''));
+
+    const heroCue = heroManeuverHudCue(st);
+    this._setHidden(dom.hero, !heroCue);
+    if (heroCue) {
+      this._setText(dom.hero, heroCue.text);
+      this._setAttr(dom.hero, 'data-state', heroCue.status || 'blocked');
+      this._setAttr(dom.hero, 'aria-label', `Hero maneuver, ${heroCue.text}`);
+    }
+
+    // FB-025 — the wave intro is a real window: the opening line sits on the glass for the
+    // whole of it, then clears with the phase. Same pure function the announce voice speaks,
+    // so the readout and the voice can never disagree about what is coming.
+    const intro = run.phase === 'wave_intro' && planForWave
+      ? waveOpeningLine(run.wave, planForWave)
+      : null;
+    this._setHidden(dom.intro, !intro);
+    if (intro) this._setText(dom.intro, intro);
+
+    // Threat reads as a word, a bar and a figure — three channels, so forced-colors and a
+    // colour-blind reader lose nothing.
+    const showThreat = run.phase === 'active' || run.phase === 'cleanup';
+    const waveProgress = this._waveProgress?.wave === run.wave ? this._waveProgress : null;
+    const cohortBased = !!planForWave?.swarm?.killTarget || waveProgress?.completionKind === 'cohort'
+      || (!planForWave && !waveProgress && Number.isFinite(run.threatBudget) && run.threatBudget > 0);
+    if (showThreat && swarm && !cohortBased) {
+      // A swarm wave ends on the sixty-second clock published by survivalWave. The HUD renders
+      // that payload and never counts down on its own. Kills are the score, not the finish line,
+      // so they sit as a figure with no slash and no fill.
+      const progress = waveProgress;
+      const cores = progress && progress.completionKind === 'collect' && Number.isInteger(progress.total);
+      const ready = !!(progress && Number.isInteger(progress.durationTicks) && progress.durationTicks > 0);
+      this._setHidden(dom.threat, !(ready || cores));
+      if (cores) {
+        this._setText(dom.threatWord, 'CORES');
+        this._setText(dom.threatFig, `${progress.found || 0}/${progress.total}`);
+        this._setAttr(dom.threat, 'aria-label', `Cores ${progress.found || 0} of ${progress.total}`);
+      } else if (ready) {
+        const remainingTicks = Number.isInteger(progress.remainingTicks) ? Math.max(0, progress.remainingTicks) : 0;
+        const durationTicks = progress.durationTicks;
+        const clock = waveCountdownClock(remainingTicks);
+        const remainingSeconds = Math.max(0, Math.ceil(remainingTicks / 60));
+        const durationSeconds = Math.max(1, Math.ceil(durationTicks / 60));
+        // A survive round's clock is the objective itself: the wait IS the win.
+        const surviving = objectiveKind === 'survive';
+        const zoned = objectiveKind === 'hold' || objectiveKind === 'reach';
+        const planned = planForWave && planForWave.swarm && planForWave.swarm.circuit;
+        const mark = zoned
+          ? (objectiveKind === 'hold'
+            ? (planned && planned.zone) || (circuitRound && circuitRound.zone)
+            : (planned && planned.gate) || (circuitRound && circuitRound.gate))
+          : null;
+        const player = st.entities && st.entities.get && st.entities.get(st.playerId);
+        const glyph = circuitMarkGlyph(player, mark);
+        const word = zoned ? objectiveWord(objectiveKind) : (surviving ? 'SURVIVE' : 'NEXT WAVE');
+        this._setText(dom.threatWord, glyph ? `${word} ${glyph}` : word);
+        this._setText(dom.threatFig, clock);
+        this._setStyle(dom.threatFill, 'width', `${Math.round(waveElapsedFill(remainingTicks, durationTicks) * 100)}%`);
+        this._setAttr(dom.threat, 'aria-label', surviving ? `Survive ${clock}` : zoned ? `${word} ${clock}` : `Next wave in ${clock}`);
+        this._setAttr(dom.threat, 'aria-valuemin', '0');
+        this._setAttr(dom.threat, 'aria-valuenow', String(remainingSeconds));
+        this._setAttr(dom.threat, 'aria-valuemax', String(durationSeconds));
+      }
+      if (dom.killWord && dom.killFig) {
+        this._setHidden(dom.killWord, false);
+        this._setHidden(dom.killFig, false);
+        this._setText(dom.killWord, progress && progress.killWord ? progress.killWord : 'KILLS');
+        this._setText(dom.killFig, num(census.resolved));
+      }
+    } else if (showThreat) {
+      this._setHidden(dom.threat, false);
+      if (dom.killWord) this._setHidden(dom.killWord, true);
+      if (dom.killFig) this._setHidden(dom.killFig, true);
+      const populationLabel = threatPopulationLabel(run.ruleset, planForWave?.objective);
+      this._setText(dom.threatWord, populationLabel);
+      this._setText(dom.threatFig, `${census.remaining} / ${Math.max(census.total, census.remaining)}`);
+      const fill = census.total > 0 ? (census.total - census.remaining) / census.total : 1;
+      this._setStyle(dom.threatFill, 'width', `${Math.round(Math.max(0, Math.min(1, fill)) * 100)}%`);
+      this._setAttr(dom.threat, 'aria-label', `${populationLabel.toLowerCase()} remaining`);
+      this._setAttr(dom.threat, 'aria-valuenow', String(census.remaining));
+      this._setAttr(dom.threat, 'aria-valuemax', String(Math.max(census.total, census.remaining)));
+    } else {
+      this._setHidden(dom.threat, true);
+      if (dom.killWord) this._setHidden(dom.killWord, true);
+      if (dom.killFig) this._setHidden(dom.killFig, true);
+    }
+
+    // SWARM-05 §7.5 — the boss bar, beside the hostiles census. The champion's own hull
+    // fraction: a boss that took the whole room's opening still reads as a boss, and the
+    // bar empties as it dies. No champion on the field, no row — an ordinary wave never
+    // carries it.
+    const bossVitals = swarm && run.phase === 'active' && dom.boss ? this._bossVitals(st) : null;
+    if (dom.boss) {
+      this._setHidden(dom.boss, !bossVitals);
+      if (bossVitals) {
+        const pct = bossVitals.pct == null ? null : Math.max(0, Math.min(1, bossVitals.pct));
+        const bossLabel = bossVitals.name
+          ? bossVitals.name
+          : (bossVitals.count > 1 ? `BOSS ×${bossVitals.count}` : 'BOSS');
+        this._setText(dom.bossWord, bossLabel);
+        // W-COLOSSI (row 547): the bar is the parts — a score-backed colossus reads
+        // "parts remaining" (figure N/M, no percent), never its hull.
+        const parts = bossVitals.parts || null;
+        this._setText(dom.bossFig, parts
+          ? `${parts.attached}/${parts.total}`
+          : (pct == null ? '—' : `${Math.round(pct * 100)}%`));
+        this._setStyle(dom.bossFill, 'width', `${pct == null ? 0 : Math.round(pct * 100)}%`);
+        const hullWord = bossVitals.name || 'Boss';
+        this._setAttr(dom.boss, 'aria-label', parts
+          ? `${hullWord} parts remaining ${parts.attached} of ${parts.total}`
+          : (pct == null
+            ? `${hullWord} hull`
+            : `${hullWord} hull ${Math.round(pct * 100)} percent`));
+        this._setAttr(dom.boss, 'aria-valuenow', String(pct == null ? 0 : Math.round(pct * 100)));
+      }
+    }
+
+    // The chain, if the ruleset has one. A swarm run shows the chain and hides the style
+    // multiplier: they measure the same instinct — vary how you kill — and the chain is the one
+    // that says so in a number the player is already watching.
+    const chain = swarm ? this._chain : 0;
+    const showChain = swarm && chain > 0;
+    this._setHidden(dom.chainRow, !showChain);
+    if (showChain) {
+      this._setText(dom.chainFig, `${chain}`);
+      this._setText(dom.chainBest, this._chainBest > chain ? `best ${this._chainBest}` : '');
+      // The cause glyph: what the last kill arrived as, and +2 when it varied the chain.
+      const badge = chainCauseBadge(this._chainCause, this._chainStep);
+      this._setText(dom.chainCause, badge || '');
+      if (dom.chainCause) dom.chainCause.hidden = !badge;
+      const tier = chain >= 50 ? 'peak' : (chain >= 15 ? 'hot' : 'warm');
+      if (dom.chainRow.dataset.tier !== tier) dom.chainRow.dataset.tier = tier;
+      // The depletion mark: what share of the four-second window is left, from the kill's own
+      // sim-time anchor. A 2px underline, never a second panel, and the number is untouched.
+      const simNow = Number.isFinite(st.simTime) ? st.simTime : 0;
+      const remaining = chainWindowRemaining(this._chainAt, simNow);
+      const deplete = Math.max(0, Math.min(1, remaining / SWARM_CHAIN_WINDOW_S));
+      this._setStyle(dom.chainDeplete, 'width', `${Math.round(deplete * 100)}%`);
+      // The last second reads as colour plus a word — never flashing, never motion. INF-032.
+      const final = remaining <= SWARM_CHAIN_WARN_S;
+      if (final) {
+        if (dom.chainRow.dataset.urgency !== 'final') dom.chainRow.dataset.urgency = 'final';
+      } else if (dom.chainRow.dataset.urgency) {
+        delete dom.chainRow.dataset.urgency;
+      }
+      this._setAttr(dom.chainRow, 'aria-label', badge
+        ? `Kill chain ${chain}, last kill ${badge}${final ? ', ending' : ''}`
+        : `Kill chain ${chain}${final ? ', ending' : ''}`);
+    }
+
+    // Style is a live figure, not a phase readout: it decays as you repeat yourself and climbs as
+    // you vary the cause, so it belongs beside the score it is multiplying.
+    const combo=st.stunts?.combo;
+    const styleMult=combo?styleMultiplier(combo):1;
+    const showStyle=!!combo?.activeCount;
+    this._setHidden(dom.styleWord, !showStyle);
+    this._setHidden(dom.styleFig, !showStyle);
+    if (showStyle) this._setText(dom.styleFig, `${Math.floor(combo.activePoints)} pending ×${styleMult.toFixed(2)} · ${2-combo.bridges.length} links`);
+    this._setHidden(dom.line, !showStyle);
+    if(showStyle)this._setText(dom.line,combo.acts.map(a=>a.name).join(' → '));
+
+    this._setText(dom.score, num(run.score));
+    this._setText(dom.credits, num(run.credits));
+    this._setText(dom.level, `LV ${Math.max(1, run.level || 1)}`);
+    this._setStyle(dom.xpFill, 'width', `${Math.round(levelProgress(run) * 100)}%`);
+
+    const simTime = Number.isFinite(st.simTime) ? st.simTime : 0;
+    if (this._earn && simTime <= this._earnUntil) {
+      this._setHidden(dom.earn, false);
+      this._setText(dom.earn, this._earn);
+    } else {
+      // The toast is the only thing that expires. The round's HOLD or GATE word, and the
+      // arrow aimed at the ring, stay for the whole round.
+      this._earn = null;
+      this._earnUntil = -1;
+      this._setHidden(dom.earn, true);
+    }
+
+    // PQ-174.06: after a death the readout keeps the cause and the missed telegraph on the
+    // glass, beside the LOST word — a death the player cannot read is a bug report.
+    if (this._death && dom.death) {
+      this._setHidden(dom.death, false);
+      this._setText(dom.death, deathLineFor(this._death.receipt, this._killerTell(), this._death.simTime));
+      this._setAttr(dom.death, 'aria-label', 'Cause of death');
+    } else if (dom.death) {
+      this._setHidden(dom.death, true);
+    }
+  },
+
+  // ---- receipts -------------------------------------------------------------
+
+  // The killer's tell, not just the latest tell: a wave of attackers each open telegraphs, and
+  // the most recent one is rarely the one that killed you. Bounded ring mirrors
+  // resolveDeathTelegraph's backwards scan in survivalResults.js.
+  _killerTell() {
+    const receipt = this._death && this._death.receipt;
+    const killerId = receipt && (receipt.killerId ?? receipt.attackerId);
+    const tells = this._lastTells;
+    for (let i = tells.length - 1; i >= 0; i--) {
+      if (tells[i].attackerId === killerId) return tells[i];
+    }
+    return null;
+  },
+
+  _onTell(payload) {
+    if (!payload || typeof payload !== 'object') return;
+    if (typeof payload.kind !== 'string' || !payload.kind) return;
+    const st = this.state;
+    this._lastTells.push({
+      kind: payload.kind,
+      attackerId: payload.entityId ?? payload.attackerId ?? payload.actorId
+        ?? payload.sourceId ?? payload.mineId ?? payload.ownerId ?? null,
+      simTime: st && Number.isFinite(st.simTime) ? st.simTime : 0,
+    });
+    if (this._lastTells.length > 16) this._lastTells.shift();
+  },
+
+  _onDeath(payload) {
+    const st = this.state;
+    const run = st && st.run;
+    if (!run || run.kind !== 'survival') return;
+    this._death = {
+      receipt: payload && typeof payload === 'object' ? payload : null,
+      simTime: st && Number.isFinite(st.simTime) ? st.simTime : 0,
+    };
+  },
+
+  _onChain(payload) {
+    this._chain = payload && Number.isFinite(payload.chain) ? payload.chain : 0;
+    if (payload && Number.isFinite(payload.best) && payload.best > this._chainBest) {
+      this._chainBest = payload.best;
+    }
+    // The variety result, exactly as swarmChain scored it — never re-derived here. INF-031.
+    this._chainCause = payload && typeof payload.cause === 'string' ? payload.cause : null;
+    this._chainStep = payload && Number.isFinite(payload.step) ? payload.step : 0;
+    // The window anchor for the depletion mark — the same sim clock the lapse runs on. INF-032.
+    this._chainAt = payload && Number.isFinite(payload.at) ? payload.at : null;
+  },
+
+  _onChainBroken() {
+    this._chain = 0;
+    this._chainCause = null;
+    this._chainStep = 0;
+    this._chainAt = null;
+  },
+
+  _onWavePlanned(payload) {
+    const plan = payload && payload.plan;
+    // The plan is cached so the intro window can render its own opening line — the same pure
+    // function the voice speaks — for exactly as long as wave_intro lasts.
+    this._plan = plan || null;
+    this._planWave = Number.isInteger(payload?.wave) ? payload.wave
+      : (Number.isInteger(plan?.swarm?.wave) ? plan.swarm.wave : null);
+    const kind = plan && plan.objective && plan.objective.kind;
+    this._objectiveKind = kind || null;
+    this._objective = objectiveWord(kind);
+  },
+
+  _onWaveProgress(payload) {
+    // Last event wins. Missing duration is ignored so a partial payload cannot invent a clock.
+    if (!payload || typeof payload !== 'object') return;
+    const durationTicks = Number.isInteger(payload.durationTicks) && payload.durationTicks > 0
+      ? payload.durationTicks
+      : 0;
+    const cohort = payload.completionKind === 'cohort';
+    const counted = cohort || payload.completionKind === 'collect' || payload.completionKind === 'nodes'
+      || payload.completionKind === 'commander';
+    if (durationTicks <= 0 && !counted) return;
+    const remainingTicks = Number.isInteger(payload.remainingTicks) ? Math.max(0, payload.remainingTicks) : 0;
+    this._waveProgress = {
+      wave: Number.isInteger(payload.wave) ? payload.wave : 0,
+      remainingTicks,
+      durationTicks,
+      completionKind: payload.completionKind || null,
+      remaining: Number.isInteger(payload.remaining) ? Math.max(0, payload.remaining) : 0,
+      found: Number.isInteger(payload.found) ? payload.found : 0,
+      total: Number.isInteger(payload.total) ? payload.total : 0,
+      killWord: typeof payload.killWord === 'string' ? payload.killWord : null,
+    };
+  },
+
+  _onAwarded(payload) {
+    // The chain pays on every kill and has its own large readout two lines up. Letting it also
+    // drive the earn receipt would mean the receipt said "+14 SCORE" continuously and never got a
+    // chance to say the thing it exists for — that something NEW was earned.
+    if (payload && payload.reason === 'chain') return;
+    const line = earnLine(payload);
+    if (!line) return;
+    this._pushEarn(line);
+  },
+
+  _onLevelUp(payload) {
+    const level = payload && payload.level;
+    if (!Number.isInteger(level)) return;
+    this._pushEarn(`LEVEL ${level}`);
+  },
+
+  _pushEarn(text) {
+    this._earn = text;
+    const simTime = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    this._earnUntil = simTime + EARN_RECEIPT_S;
+  },
+
+  _clearEarn() {
+    this._earn = null;
+    this._earnUntil = -1;
+    this._objective = null;
+    this._objectiveKind = null;
+    this._plan = null;
+    this._chain = 0;
+    this._chainBest = 0;
+    this._chainCause = null;
+    this._chainStep = 0;
+    this._chainAt = null;
+  },
+
+  /**
+   * SWARM-05 §7.5 — the live boss census. Every champion materialized this wave wears
+   * data.swarmChampion (the mark SWARM-02 stamped for this surface), so the bar is a pure
+   * read of the entity bag: no owner publish, no run write. Pooled hull fraction across the
+   * marked bodies still standing; null when none are — the row then leaves the glass.
+   */
+  _bossVitals(state) {
+    const entities = state && state.entities;
+    if (!entities || typeof entities.values !== 'function') return null;
+    let count = 0;
+    let hull = 0;
+    let max = 0;
+    let name = null;
+    for (const entity of entities.values()) {
+      if (!entity || entity.alive === false) continue;
+      const data = entity.data;
+      const commander = data && data.circuitCommander === true;
+      if (!data || (data.swarmChampion !== true && !commander)) continue;
+      count += 1;
+      if (commander && !name) {
+        const label = data.scanLabel || data.callsign;
+        if (typeof label === 'string' && label) name = label;
+      }
+      const hullMax = Number.isFinite(entity.hullMax) ? entity.hullMax
+        : Number.isFinite(entity.data.hullMax) ? entity.data.hullMax : 0;
+      const hullNow = Number.isFinite(entity.hull) ? Math.max(0, entity.hull)
+        : Number.isFinite(entity.data.hull) ? Math.max(0, entity.data.hull) : 0;
+      if (hullMax > 0) {
+        hull += hullNow;
+        max += hullMax;
+      }
+    }
+    if (count === 0) return null;
+    // W-COLOSSI (row 547): a Colossus carries no HP bar — the bar is its parts. When a live
+    // capital-score fight backs this wave's champion, the meter reads attached-plate parts
+    // instead of hull: it drains as the player tears the boss apart, and a fully stripped
+    // colossus reads empty while its bare hull still fights. Compositional boss rounds keep
+    // the shipped hull meter — only score-backed champions have parts to count.
+    const fights = state.capitalBossEncounters && state.capitalBossEncounters.fights;
+    if (fights && typeof fights === 'object') {
+      for (const key in fights) {
+        const r = fights[key];
+        if (!r || r.terminal != null || !Array.isArray(r.plates) || !r.plates.length) continue;
+        const bossEntity = entities.get && entities.get(r.bossId);
+        const bossData = bossEntity && bossEntity.data;
+        if (!bossData || (bossData.swarmChampion !== true && bossData.circuitCommander !== true)) continue;
+        const total = r.plates.length;
+        let attached = 0;
+        for (const rec of r.plates) if (rec && rec.attached === true) attached += 1;
+        return { count, pct: total > 0 ? attached / total : null,
+          name: name || null, parts: { attached, total } };
+      }
+    }
+    return { count, pct: max > 0 ? hull / max : null, name };
+  },
+
+  // ---- DOM ------------------------------------------------------------------
+
+  _hide() {
+    if (this._dom && this._dom.root) this._setHidden(this._dom.root, true);
+  },
+
+  _show(dom) {
+    this._setHidden(dom.root, false);
+  },
+
+  _setText(node, text) {
+    if (!node) return;
+    if (this._last[node.__crunKey] === text) return;
+    this._last[node.__crunKey] = text;
+    node.textContent = text;
+  },
+
+  _setClass(node, value) {
+    if (!node) return;
+    const key = `${node.__crunKey}:class`;
+    if (this._last[key] === value) return;
+    this._last[key] = value;
+    node.className = value;
+  },
+
+  _setStyle(node, prop, value) {
+    if (!node) return;
+    const key = `${node.__crunKey}:${prop}`;
+    if (this._last[key] === value) return;
+    this._last[key] = value;
+    node.style[prop] = value;
+  },
+
+  // INF-003: the same last-written discipline for attributes and visibility. Raw
+  // setAttribute/hidden writes every frame are the readout's largest remaining repeated DOM
+  // mutation on a steady tick — the aria strings change at most once a second while the update
+  // runs at frame rate. Values are string/boolean-coerced so 0 and '0' share one slot.
+  _setAttr(node, name, value) {
+    if (!node) return;
+    const text = String(value);
+    const key = `${node.__crunKey}:attr:${name}`;
+    if (this._last[key] === text) return;
+    this._last[key] = text;
+    node.setAttribute(name, text);
+  },
+
+  _setHidden(node, value) {
+    if (!node) return;
+    const next = !!value;
+    const key = `${node.__crunKey}:hidden`;
+    if (this._last[key] === next) return;
+    this._last[key] = next;
+    node.hidden = next;
+  },
+
+  _ensureDom() {
+    if (this._dom && this._dom.root && this._dom.root.isConnected !== false) return this._dom;
+    const host = document.querySelector('.sf-leftcontext')
+      || document.getElementById('hud')
+      || document.body;
+    if (!host) return null;
+    this._injectCss();
+
+    let key = 0;
+    const make = (tag, cls, parent) => {
+      const node = document.createElement(tag);
+      if (cls) node.className = cls;
+      node.__crunKey = `k${key++}`;
+      if (parent) parent.appendChild(node);
+      return node;
+    };
+
+    const root = make('div', 'sf-crun');
+    root.setAttribute('role', 'status');
+    root.setAttribute('aria-live', 'polite');
+    root.setAttribute('aria-atomic', 'true');
+    root.setAttribute('aria-label', 'Crucible run status');
+
+    const label = make('div', 'sf-crun__label', root);
+
+    const waveRow = make('div', 'sf-crun__row', root);
+    const waveN = make('span', 'sf-crun__wave', waveRow);
+    const phase = make('span', 'sf-crun__phase', waveRow);
+
+    const hero = make('div', 'sf-crun__hero', root);
+    hero.hidden = true;
+    hero.setAttribute('aria-live', 'off');
+    hero.setAttribute('role', 'group');
+
+    // FB-025: the intro window's line — the wave's own words, on the glass only while
+    // wave_intro lasts, then cleared.
+    const intro = make('div', 'sf-crun__intro', root);
+    intro.hidden = true;
+
+    const threat = make('div', 'sf-crun__threat', root);
+    threat.setAttribute('role', 'meter');
+    threat.setAttribute('aria-valuemin', '0');
+    threat.setAttribute('aria-label', 'Hostiles remaining');
+    const threatWord = make('span', 'sf-crun__word', threat);
+    threatWord.textContent = 'THREAT';
+    const threatTrack = make('span', 'sf-crun__track', threat);
+    const threatFill = make('span', 'sf-crun__fill sf-crun__fill--foe', threatTrack);
+    const threatFig = make('span', 'sf-crun__fig', threat);
+
+    // SWARM-05 §7.5 — the boss bar. The wave's champion bodies carry the swarmChampion mark
+    // stamped at materialization (SWARM-02 left it for exactly this surface), so the readout
+    // scans the live entities and never asks an owner to publish. It rides the same
+    // word/track/figure grammar as the threat meter, and leaves when the last boss falls.
+    const boss = make('div', 'sf-crun__threat sf-crun__boss', root);
+    boss.setAttribute('role', 'meter');
+    boss.setAttribute('aria-valuemin', '0');
+    boss.setAttribute('aria-valuemax', '100');
+    boss.hidden = true;
+    const bossWord = make('span', 'sf-crun__word', boss);
+    bossWord.textContent = 'BOSS';
+    const bossTrack = make('span', 'sf-crun__track', boss);
+    const bossFill = make('span', 'sf-crun__fill sf-crun__fill--foe sf-crun__fill--boss', bossTrack);
+    const bossFig = make('span', 'sf-crun__fig', boss);
+
+    // THE CHAIN GETS ITS OWN LINE, and it is the biggest thing here.
+    //
+    // Everything else in this readout is a status you glance at between fights. The chain is the
+    // one figure a player is watching WHILE they fly, and it is the thing that makes them take the
+    // risk that makes the mode fun. It is not going in the small-figures row with the credits.
+    const chainRow = make('div', 'sf-crun__chain', root);
+    const chainWord = make('span', 'sf-crun__word', chainRow);
+    chainWord.textContent = 'CHAIN';
+    const chainFig = make('span', 'sf-crun__chainfig', chainRow);
+    const chainCause = make('span', 'sf-crun__chaincause', chainRow);
+    const chainBest = make('span', 'sf-crun__chainbest', chainRow);
+    // The window depletion mark: a 2px underline on its own flex line, reusing the threat
+    // track/fill grammar. The number above it is never touched. INF-032.
+    const chainDepleteTrack = make('span', 'sf-crun__track sf-crun__track--chain', chainRow);
+    const chainDeplete = make('span', 'sf-crun__fill sf-crun__fill--you', chainDepleteTrack);
+    chainRow.hidden = true;
+
+    const figures = make('div', 'sf-crun__row sf-crun__row--figs', root);
+    const scoreWord = make('span', 'sf-crun__word', figures);
+    scoreWord.textContent = 'SCORE';
+    const score = make('span', 'sf-crun__fig sf-crun__fig--you', figures);
+    const killWord = make('span', 'sf-crun__word', figures);
+    killWord.textContent = 'KILLS';
+    const killFig = make('span', 'sf-crun__fig', figures);
+    killWord.hidden = true;
+    killFig.hidden = true;
+    const crWord = make('span', 'sf-crun__word', figures);
+    crWord.textContent = 'CR';
+    const credits = make('span', 'sf-crun__fig sf-crun__fig--you', figures);
+    const level = make('span', 'sf-crun__fig sf-crun__fig--you', figures);
+
+    // THE STYLE MULTIPLIER, ON GLASS.
+    //
+    // survivalStyle.js has always rewarded VARIETY of kill cause — a terrain kill, an explosive
+    // kill and a direct kill in a row score far better than three of the same — and the player
+    // could never see it. In a mode whose premise is that the arena is a weapon, the number that
+    // says "using the room is worth more" has to be visible or the loop never closes. It appears
+    // only while it is above 1x, so a plain fight is not carrying a permanent "1.0x" it has not
+    // earned. The word travels with the figure: colour is never the only channel.
+    const styleWord = make('span', 'sf-crun__word', figures);
+    styleWord.textContent = 'STYLE';
+    const styleFig = make('span', 'sf-crun__fig sf-crun__fig--goal', figures);
+    styleWord.hidden = true;
+    styleFig.hidden = true;
+
+    const xpTrack = make('div', 'sf-crun__track sf-crun__track--xp', root);
+    const xpFill = make('span', 'sf-crun__fill sf-crun__fill--you', xpTrack);
+
+    const earn = make('div', 'sf-crun__earn', root);
+    earn.hidden = true;
+    const line=make('div','sf-crun__earn',root);line.hidden=true;
+
+    // PQ-174.06: the death line. Hidden until a death; the word beside the figure again.
+    const death = make('div', 'sf-crun__death', root);
+    death.hidden = true;
+    death.setAttribute('role', 'status');
+
+    host.appendChild(root);
+    this._dom = {
+      root, label, waveN, phase, hero, intro, threat, threatWord, threatFill, threatFig,
+      boss, bossWord, bossFill, bossFig,
+      chainRow, chainFig, chainCause, chainBest, chainDeplete,
+      score, killWord, killFig, credits, level, styleWord, styleFig, xpFill, earn, death, line,
+    };
+    // Rebuilt nodes reuse the same __crunKey values: drop the last-written cache so the first
+    // update repaints fresh nodes instead of trusting slots another mount wrote.
+    this._last = Object.create(null);
+    return this._dom;
+  },
+
+  _injectCss() {
+    if (document.getElementById(STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = STYLE_ID;
+    // Own lease: this block styles only .sf-crun*. It never redefines a shared selector.
+    style.textContent = `
+  /* PQ-210.05: the Crucible readout is an instrument in the comms strip, not a CSS card.
+     Parent .sf-leftcontext already supplies the machined bezel; this sheet only paints the
+     legends, lamps and channels. No overlay fill, no hairline border, no second palette. */
+  .sf-crun { display:flex; flex-direction:column; gap:6px; min-width:0;
+    padding:0; border:0; background:none; color:var(--dp-ink, var(--sf-paper)); }
+  .sf-crun__label { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-variation-settings:"wght" 720, "wdth" 62;
+    font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--dp-ink-mute, var(--sf-calm)); text-shadow:var(--dp-etch-shadow, none); }
+  .sf-crun__row { display:flex; align-items:baseline; gap:9px; }
+  .sf-crun__hero { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:12px;
+    color:var(--dp-phos, var(--sf-paper)); line-height:1.35; }
+  .sf-crun__hero[data-state="blocked"], .sf-crun__hero[data-state="hidden"] { color:var(--dp-ink-mute, var(--sf-calm)); }
+  .sf-crun__row--figs { flex-wrap:wrap; gap:4px 10px; }
+  /* The round figure is a READING — the world's count — so it reads phos, not lamp: the amber
+     leader in this panel is the chain (the one figure watched while flying), never two. */
+  .sf-crun__wave { font-family:var(--dp-face-etch, var(--sf-data-face)); font-variation-settings:"wght" 820, "wdth" 80;
+    font-weight:700; font-size:20px; font-variant-numeric:tabular-nums; letter-spacing:.04em;
+    color:var(--dp-phos, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
+  .sf-crun__phase { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-variation-settings:"wght" 720, "wdth" 68;
+    font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--dp-ink-mute, var(--sf-calm)); margin-left:auto; }
+  .sf-crun__phase--hot { color:var(--dp-danger-hot, var(--sf-foe)); }
+  /* FB-025: the intro window's opening line — a full-width sentence in the paper ink, not a
+     figure and not a word-pair, so it cannot be mistaken for a live gauge. */
+  .sf-crun__intro { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:12px;
+    letter-spacing:.02em; color:var(--dp-ink, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
+  .sf-crun__threat { display:flex; align-items:center; gap:7px; }
+  .sf-crun__word { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-variation-settings:"wght" 700, "wdth" 62;
+    font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--dp-ink-mute, var(--sf-calm)); }
+  /* A bar is a printed track with a flat lit fill (ONE_PHOTOGRAPH section 9): the track is drawn so
+     a part-spent bar reads as a gauge, not as a loose coloured slab, and the fill is one flat colour
+     that glows -- no top-lit ramp pretending to be a rounded rod. */
+  .sf-crun__track { position:relative; flex:1 1 auto; min-width:44px; height:8px; overflow:hidden;
+    border-radius:1px; background:var(--dp-rule-hi, rgb(232 226 212 / .22));
+    box-shadow:none; }
+  .sf-crun__track--xp { height:5px; }
+  /* Bloom is geometry, not a filter: the printed track + the full-saturation fill carry the lit
+     reading; no live glow shadow rides a bar whose width changes every frame. */
+  .sf-crun__fill { position:absolute; inset:0 auto 0 0; width:0; }
+  .sf-crun__fill--foe { background:var(--dp-danger, #ff5038); }
+  .sf-crun__fill--you { background:var(--dp-lamp, #f2b950); }
+  .sf-crun__fig { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:650; font-size:13px;
+    font-variant-numeric:tabular-nums; color:var(--dp-ink, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
+  .sf-crun__fig--you { color:var(--dp-ink, var(--sf-you)); }
+  .sf-crun__fig--goal { color:var(--dp-phos, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
+  /* The chain. Three channels as always — the word, the figure and its colour — so a forced-colors
+     or colour-blind reader loses nothing. No animation, so reduced-motion needs no variant. */
+  .sf-crun__chain { display:flex; align-items:baseline; flex-wrap:wrap; gap:2px 8px; }
+  .sf-crun__track--chain { flex:1 1 100%; min-width:0; height:2px; }
+  .sf-crun__chain[data-urgency="final"] .sf-crun__chainfig { color:var(--dp-danger-hot, var(--sf-foe)); }
+  .sf-crun__chainfig { font-family:var(--dp-face-etch, var(--sf-data-face)); font-variation-settings:"wght" 820, "wdth" 84;
+    font-weight:700; font-size:26px; line-height:1.05; font-variant-numeric:tabular-nums;
+    color:var(--dp-lamp-hot, var(--sf-you)); text-shadow:var(--dp-emit-lamp, none); }
+  .sf-crun__chain[data-tier="hot"] .sf-crun__chainfig { color:var(--dp-lamp-hot, var(--sf-goal, #e3a13d)); }
+  .sf-crun__chain[data-tier="peak"] .sf-crun__chainfig { color:var(--dp-danger-hot, var(--sf-foe)); }
+  .sf-crun__chainbest { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:500; font-size:12px;
+    font-variant-numeric:tabular-nums; color:var(--dp-ink-mute, var(--sf-calm)); }
+  .sf-crun__chaincause { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-weight:700; font-size:12px;
+    letter-spacing:.09em; text-transform:uppercase; font-variant-numeric:tabular-nums;
+    color:var(--dp-ink-dim, var(--sf-calm)); }
+  .sf-crun__earn { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:650; font-size:12px;
+    font-variant-numeric:tabular-nums; color:var(--dp-phos, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
+  .sf-crun__death { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:500; font-size:12px;
+    font-variant-numeric:tabular-nums; color:var(--dp-danger-hot, var(--sf-foe)); }
+  /* forced-colors strips the fills; the figure beside each bar is the surviving channel. */
+  @media (forced-colors: active) {
+    .sf-crun { border:0; background:Canvas; color:CanvasText; }
+    .sf-crun__fill { background:Highlight; forced-color-adjust:none; }
+    .sf-crun__wave, .sf-crun__chainfig, .sf-crun__chaincause, .sf-crun__fig--goal, .sf-crun__earn { color:CanvasText; text-shadow:none; }
+    .sf-crun__phase--hot, .sf-crun__death, .sf-crun__chain[data-tier="peak"] .sf-crun__chainfig,
+    .sf-crun__chain[data-urgency="final"] .sf-crun__chainfig { color:Highlight; text-shadow:none; }
+  }
+  @media (max-width: 900px) {
+    .sf-crun { min-width:0; }
+    .sf-crun__wave { font-size:16px; }
+    .sf-crun__chainfig { font-size:22px; }
+  }
+`;
+    document.head.appendChild(style);
+  },
+};

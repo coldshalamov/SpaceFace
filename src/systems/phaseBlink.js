@@ -1,0 +1,352 @@
+// Veil Step. Flight V3 calls this instead of the thruster boost when the fitted
+// utility says so (derived.phaseBlink). Hold Shift: a shadow is published on
+// entity._phaseBlink for the renderer. Release: the hull is written to that
+// shadow and physics adopts the pose on its noInterp resync. This is a pose
+// snap, not an integration — flight still does not write velocity.
+
+import { queryNearbyEntities } from '../core/spatialQuery.js';
+import {
+  PHASE_BLINK,
+  phaseBlinkCharge,
+  phaseBlinkCommitCost,
+  phaseBlinkRange,
+} from '../data/phaseBlink.js';
+
+const NEARBY = [];
+const SOLIDS = new Set(['asteroid', 'station']);
+const PHASE_RESERVATIONS = new WeakMap();
+const RETURN_OFFSETS = Object.freeze([
+  Object.freeze([0, 0]),
+  Object.freeze([12, 0]), Object.freeze([0, 12]), Object.freeze([-12, 0]), Object.freeze([0, -12]),
+  Object.freeze([24, 0]), Object.freeze([0, 24]), Object.freeze([-24, 0]), Object.freeze([0, -24]),
+  Object.freeze([18, 18]), Object.freeze([-18, 18]), Object.freeze([-18, -18]), Object.freeze([18, -18]),
+  Object.freeze([36, 0]), Object.freeze([0, 36]), Object.freeze([-36, 0]), Object.freeze([0, -36]),
+]);
+
+// The sample ring is 96. A world's center sits hundreds of units past its skin,
+// so the ring never sees the body that owns the point. Read the exclusion
+// circle off the planet entity itself.
+function planetOwnsPoint(other, entity, x, z) {
+  if (!other || other === entity || other.alive === false || other.type !== 'planet') return false;
+  if (other.collides === false) return false;
+  const ox = finite(other.pos && other.pos.x);
+  const oz = finite(other.pos && other.pos.z);
+  const bodyR = finite(other.radius, finite(other.physicsBody && other.physicsBody.radius, 0));
+  if (!(bodyR > 0)) return false;
+  const selfR = finite(entity && entity.radius, 14) * 0.55;
+  const dx = ox - x;
+  const dz = oz - z;
+  return dx * dx + dz * dz < (bodyR + selfR) * (bodyR + selfR);
+}
+
+function planetBlocks(state, entity, x, z) {
+  const list = state && state.entityList;
+  if (!Array.isArray(list)) return false;
+  for (let i = 0; i < list.length; i += 1) {
+    if (planetOwnsPoint(list[i], entity, x, z)) return true;
+  }
+  return false;
+}
+
+/** A wreck is a wall only when the spawn stamped a live collider. Marker wrecks
+ *  (no physics body, or a sensor/ghost) are scenery the hull already flies through.
+ *  Ships stay phased through — the step is how you cross a fighter, not a hulk. */
+function wreckBlocksPhase(other) {
+  if (!other || other.type !== 'wreck') return false;
+  const body = other.physicsBody;
+  if (!body || typeof body !== 'object') return false;
+  if (body.sensor === true || body.ghost === true) return false;
+  return body.shape === 'capsule' || body.shape === 'ball' || body.shape === 'cuboid'
+    || other.collides === true;
+}
+
+function finite(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function runtime(entity) {
+  return entity._phaseBlink || (entity._phaseBlink = {
+    active: false,
+    aiming: false,
+    holdT: 0,
+    x: 0,
+    z: 0,
+    rot: 0,
+    charge: 0,
+    dist: 0,
+    readyAt: 0,
+    suppressUntilRelease: false,
+    emptyTold: false,
+    energyTold: false,
+    blockedTold: false,
+  });
+}
+
+function toast(bus, text) {
+  if (bus && typeof bus.emit === 'function') {
+    bus.emit('toast', { text, kind: 'warn', ttl: 1.6 });
+  }
+}
+
+/** True when a world, a station, a rock, or a solid wreck owns this point. Ships are phased through. */
+export function phaseBlinkBlocked(state, entity, x, z) {
+  if (!state) return false;
+  if (planetBlocks(state, entity, x, z)) return true;
+  const nearby = queryNearbyEntities(state, { x, z }, 96, NEARBY) || NEARBY;
+  const selfR = finite(entity && entity.radius, 14) * 0.55;
+  for (let i = 0; i < nearby.length; i += 1) {
+    const other = nearby[i];
+    if (!other || other === entity || other.alive === false) continue;
+    if (!SOLIDS.has(other.type) && !wreckBlocksPhase(other)) continue;
+    const ox = finite(other.pos && other.pos.x);
+    const oz = finite(other.pos && other.pos.z);
+    const fallback = other.type === 'station' ? 70 : other.type === 'wreck' ? 18 : 16;
+    const rad = finite(other.radius, fallback) + selfR;
+    const dx = ox - x;
+    const dz = oz - z;
+    if (dx * dx + dz * dz < rad * rad) return true;
+  }
+  return false;
+}
+
+/**
+ * Walk the heading and stop at the last clear sample. Returns the distance
+ * the shadow is allowed to sit, which may be 0 when the hull is against a wall.
+ */
+export function phaseBlinkClearDistance(state, entity, heading, want) {
+  const fromX = finite(entity && entity.pos && entity.pos.x);
+  const fromZ = finite(entity && entity.pos && entity.pos.z);
+  const fx = Math.cos(heading);
+  const fz = Math.sin(heading);
+  const steps = 8;
+  let clear = 0;
+  for (let i = 1; i <= steps; i += 1) {
+    const d = want * (i / steps);
+    const x = fromX + fx * d;
+    const z = fromZ + fz * d;
+    if (phaseBlinkBlocked(state, entity, x, z)) break;
+    clear = d;
+  }
+  return clear;
+}
+
+/** Deterministic safe return search for a phase move that owns a previously reserved anchor. */
+export function certifyPhaseBlinkLanding(state, entity, anchor, maxDistance = 140) {
+  const ax = Number(anchor && anchor.x), az = Number(anchor && anchor.z);
+  const limit = Number(maxDistance);
+  if (!state || !entity || entity.alive === false || !Number.isFinite(ax) || !Number.isFinite(az)
+    || !Number.isFinite(limit) || limit < 0) return null;
+  for (const [dx, dz] of RETURN_OFFSETS) {
+    const x = ax + dx, z = az + dz;
+    if (Math.hypot(x - finite(entity.pos && entity.pos.x), z - finite(entity.pos && entity.pos.z)) > limit) continue;
+    if (!phaseBlinkBlocked(state, entity, x, z)) return { x, z };
+  }
+  return null;
+}
+
+/** Pay a phase return once at maneuver acceptance. The opaque token is bound to this exact hull life. */
+export function reservePhaseBlinkEnergy(entity, maxDistance, now = 0) {
+  const boost = entity && entity.boost;
+  const distance = Number(maxDistance);
+  const rt = entity ? runtime(entity) : null;
+  const clock = finite(now);
+  if (!entity || entity.alive === false || !boost || !Number.isFinite(distance) || distance < 0) return null;
+  if (clock < finite(rt?.readyAt)) return null;
+  const cost = phaseBlinkCommitCost(distance);
+  const energy = finite(boost.energy, NaN);
+  if (!Number.isFinite(energy) || energy < cost) return null;
+  const token = {};
+  PHASE_RESERVATIONS.set(token, {
+    entity,
+    life: entity.occupantGeneration,
+    cost,
+    maxDistance: distance,
+    createdAt: clock,
+  });
+  boost.energy = energy - cost;
+  return token;
+}
+
+/** Adopt a certified phase destination once. Refusal never substitutes a different pose. */
+export function commitReservedPhaseBlink(token, { entity, state, landing, bus, now = 0, source = 'phase-return' } = {}) {
+  const reservation = token && PHASE_RESERVATIONS.get(token);
+  if (!reservation) return { ok: false, reason: 'reservation_missing' };
+  PHASE_RESERVATIONS.delete(token);
+  const x = Number(landing && landing.x), z = Number(landing && landing.z);
+  const live = state && state.entities && state.entities.get && state.entities.get(entity && entity.id);
+  if (reservation.entity !== entity || entity?.alive === false || live !== entity
+    || reservation.life !== entity.occupantGeneration) return { ok: false, reason: 'actor_life_changed' };
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return { ok: false, reason: 'landing_missing' };
+  const from = { x: finite(entity.pos && entity.pos.x), z: finite(entity.pos && entity.pos.z) };
+  const dist = Math.hypot(x - from.x, z - from.z);
+  if (dist > reservation.maxDistance || phaseBlinkBlocked(state, entity, x, z)) {
+    return { ok: false, reason: 'landing_blocked' };
+  }
+  adoptPose(entity, x, z);
+  const rt = runtime(entity);
+  rt.readyAt = Math.max(finite(rt.readyAt), finite(now) + PHASE_BLINK.cooldownS);
+  if (bus && typeof bus.emit === 'function') {
+    bus.emit('ship:phaseBlink', {
+      shipId: entity.id, from, to: { x, z }, rot: finite(entity.rot), dist, source,
+    });
+    bus.emit('audio:cue', { id: 'sfx_phase_rift', gain: 0.9 });
+  }
+  return { ok: true, from, to: { x, z }, distance: dist, cost: reservation.cost };
+}
+
+/** Retire a reservation on interruption. Its accepted-start cost remains spent. */
+export function releasePhaseBlinkReservation(token) {
+  if (!token || !PHASE_RESERVATIONS.has(token)) return false;
+  PHASE_RESERVATIONS.delete(token);
+  return true;
+}
+
+function publishAim(rt, entity, state) {
+  const heading = finite(entity.rot);
+  const want = phaseBlinkRange(rt.holdT);
+  const dist = phaseBlinkClearDistance(state, entity, heading, want);
+  const fx = Math.cos(heading);
+  const fz = Math.sin(heading);
+  rt.active = dist >= 8;
+  rt.aiming = true;
+  rt.rot = heading;
+  rt.dist = dist;
+  rt.charge = phaseBlinkCharge(rt.holdT);
+  rt.x = finite(entity.pos && entity.pos.x) + fx * dist;
+  rt.z = finite(entity.pos && entity.pos.z) + fz * dist;
+}
+
+function adoptPose(entity, x, z) {
+  entity.pos.x = x;
+  entity.pos.z = z;
+  if (entity.pos.y == null || !Number.isFinite(entity.pos.y)) entity.pos.y = 0;
+  if (entity.prevPos && typeof entity.prevPos.copy === 'function') entity.prevPos.copy(entity.pos);
+  else if (entity.prevPos) {
+    entity.prevPos.x = x;
+    entity.prevPos.y = entity.pos.y || 0;
+    entity.prevPos.z = z;
+  } else {
+    entity.prevPos = { x, y: entity.pos.y || 0, z };
+  }
+  entity.flags = entity.flags || {};
+  // Physics owner copies this pose onto the body at the start of its step.
+  entity.flags.noInterp = true;
+}
+
+/**
+ * One player tick. `held` is the raw Shift key, not the autopilot's boost.
+ * Returns { busy } — true while the shadow is out, so the boost capacitor
+ * does not refill the same energy this tick is spending.
+ */
+export function stepPhaseBlink({ entity, held, dt, state, bus, now }) {
+  const rt = runtime(entity);
+  const step = Number.isFinite(dt) && dt > 0 ? dt : 0;
+  const time = Number.isFinite(now) ? now : 0;
+  const key = held === true;
+  if (!key) {
+    rt.suppressUntilRelease = false;
+    rt.emptyTold = false;
+  }
+  const boost = entity && entity.boost;
+  const cooling = time < finite(rt.readyAt);
+
+  if (rt.aiming && (!key || rt.suppressUntilRelease || cooling)) {
+    const committed = key ? false : tryCommit(rt, entity, state, bus, time, boost);
+    rt.aiming = false;
+    rt.active = false;
+    rt.holdT = 0;
+    rt.energyTold = false;
+    return { busy: false, committed };
+  }
+
+  if (!key || rt.suppressUntilRelease || cooling || !boost || !(boost.max > 0)) {
+    rt.aiming = false;
+    rt.active = false;
+    return { busy: false, committed: false };
+  }
+
+  if (!rt.aiming) {
+    if (finite(boost.energy) < PHASE_BLINK.minEnergy) {
+      if (!rt.emptyTold) {
+        rt.emptyTold = true;
+        toast(bus, 'Veil empty');
+      }
+      rt.active = false;
+      return { busy: false, committed: false };
+    }
+    rt.aiming = true;
+    rt.holdT = 0;
+    rt.blockedTold = false;
+    rt.energyTold = false;
+  }
+
+  const priorHoldT = rt.holdT;
+  rt.holdT += step;
+  publishAim(rt, entity, state);
+  const energy = Math.max(0, finite(boost.energy));
+  const afterAim = Math.max(0, energy - PHASE_BLINK.aimDrain * step);
+  if (afterAim < phaseBlinkCommitCost(rt.dist)) {
+    // Keep the last affordable shadow. A held charge must not spend the energy reserved for
+    // release, and moving it farther would turn a successful step into an unaffordable one.
+    rt.holdT = priorHoldT;
+    publishAim(rt, entity, state);
+    if (!rt.energyTold) {
+      rt.energyTold = true;
+      toast(bus, 'Veil at energy limit — release to step');
+    }
+    return { busy: true, committed: false };
+  }
+  boost.energy = afterAim;
+  return { busy: true, committed: false };
+}
+
+function tryCommit(rt, entity, state, bus, time, boost) {
+  if (!rt.active || rt.dist < PHASE_BLINK.minCommit) {
+    if (!rt.blockedTold && rt.holdT > 0.04) {
+      rt.blockedTold = true;
+      toast(bus, 'No room to step');
+    }
+    return false;
+  }
+  if (!boost) return false;
+  const cost = phaseBlinkCommitCost(rt.dist);
+  if (finite(boost.energy) < cost) {
+    if (!rt.energyTold) {
+      rt.energyTold = true;
+      toast(bus, 'Veil needs more energy — release only steps when charged');
+    }
+    return false;
+  }
+  const from = {
+    x: finite(entity.pos && entity.pos.x),
+    z: finite(entity.pos && entity.pos.z),
+  };
+  const to = { x: rt.x, z: rt.z };
+  boost.energy = Math.max(0, finite(boost.energy) - cost);
+  adoptPose(entity, to.x, to.z);
+  rt.readyAt = time + PHASE_BLINK.cooldownS;
+  rt.active = false;
+  if (bus && typeof bus.emit === 'function') {
+    bus.emit('ship:phaseBlink', {
+      shipId: entity.id,
+      from,
+      to,
+      rot: finite(entity.rot),
+      dist: rt.dist,
+    });
+    bus.emit('audio:cue', { id: 'sfx_phase_rift', gain: 0.9 });
+  }
+  return true;
+}
+
+/** Menu, dock, or a lost ship. Drops the shadow and does not commit it. */
+export function cancelPhaseBlink(entity) {
+  if (!entity) return;
+  const rt = entity._phaseBlink;
+  if (!rt) return;
+  if (rt.aiming || rt.active) rt.suppressUntilRelease = true;
+  rt.aiming = false;
+  rt.active = false;
+  rt.holdT = 0;
+}

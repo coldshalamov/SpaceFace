@@ -1,0 +1,45 @@
+# Tier: fast — measured core behaviour set. Target: under two minutes on the owner laptop.
+# One entry per line. A test path runs as `node --test <path>`; anything else is a command.
+# Keep this list behavioural: these files must fail on a real game regression, not on a
+# refactor. Drift is visible in scripts/test-tier.mjs (a missing path fails the tier).
+test/event-bus-contract.test.mjs
+test/ship-stats.test.mjs
+test/pause-save-line.test.mjs
+test/pause-freezes-ship-presentation.test.mjs
+test/pause-ship-fit.test.mjs
+test/new-game-embark-present.test.mjs
+test/new-game-seed-input.test.mjs
+test/title-continue-failure.test.mjs
+test/save-restore-atomicity.test.mjs
+test/save-import-bounds.test.mjs
+test/native-attestation-save-parity.test.mjs
+test/settings-slider-persistence.test.mjs
+test/station-services.test.mjs
+test/station-tabs-truthful.test.mjs
+test/shipworks-dock-route.test.mjs
+test/shipworks-fit-from-hold.test.mjs
+test/shipworks-worker-fit.test.mjs
+test/swarm-round-boundary.test.mjs
+test/swarm-arena-hazards.test.mjs
+test/swarm-first-throw-contact.test.mjs
+test/swarm-bank.test.mjs
+test/swarm-ladder.test.mjs
+test/swarm-playable-round.test.mjs
+test/sector-geography.test.mjs
+test/sector-membership-index.test.mjs
+test/travel-drive.test.mjs
+test/travel-lanes.test.mjs
+test/travel-latch.test.mjs
+test/travel-arrival-presentation.test.mjs
+test/trade-settlement-invariants.test.mjs
+test/target-lock-cursor-pick.test.mjs
+test/shield-restored-event.test.mjs
+test/ui-control-labels.test.mjs
+test/ui-gamepad-slider-select-nav.test.mjs
+test/ui-grammar-matrix.test.mjs
+test/weapon-clips.test.mjs
+# The Q5 guards themselves: a new source-slice anti-pattern, a drifted tier manifest, or a
+# reference record that writes on a failed run must fail the fast tier.
+test/source-slice-eval-guard.test.mjs
+test/test-tiers.test.mjs
+test/reference-append-only-safety.test.mjs

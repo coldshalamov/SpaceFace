@@ -1,0 +1,804 @@
+import { CINDERGLASS_JOB_COMBAT_PROFILE, CINDERGLASS_JOB_MOUNT_DEFINITION } from '../features/cinderglassJob/definition.js';
+// LAST_ARGUMENT_INTEGRATION_V1
+import { LAST_ARGUMENT_SUBSYSTEMS, LAST_ARGUMENT_COMBAT_PROFILE } from './lastArgumentCombat.js';
+// SG-03 canonical combat grammar. Pure data: no DOM, renderer, wall clock, or runtime imports.
+// Durations are integer simulation ticks at the SG-01 fixed step (normally 60 Hz).
+
+export const COMBAT_SCHEMA_VERSION = 1;
+
+export const GRAVITY_MARK_STATUS_ID = 'status_gravity_marked';
+// PQ-026.01: the mark is a 3× field multiplier, not a 1.9× clip into markedCap 0.95.
+// FIELD_COUPLING.markedMult / markedCap in src/data/fields.js must stay in lockstep.
+export const GRAVITY_MARK_FIELD_COUPLING = 3;
+export const MOMENTUM_SINK_STATUS_ID = 'status_momentum_sink';
+export const MOMENTUM_SINK_WEAPON_ID = 'wpn_momentum_sink_s';
+export const INERTIAL_SHUNT_WEAPON_ID = 'wpn_inertial_shunt_s';
+export const PINNED_STATUS_ID = 'status_pinned';
+
+// PQ-026.00 bungee: plant on a rock, burn away, release. The snap returns stored receding
+// speed toward the plant at ≥ 2× (margin covers Rapier rounding). Weapons.js owns the
+// planter impulse; this table is the shared tuning, not a second physics writer.
+export const MOMENTUM_SINK_BUNGEE = Object.freeze({
+  releaseSpeedMult: 2,
+  releaseSpeedMargin: 1.02,
+  deadbandSpeed: 0.25,
+  durationTicks: 240,
+  minAnchorMass: 120,
+  capitalAnchorMassMult: 8,
+});
+
+// PQ-026.02 ram plate: dump the shunter's OWN normal speed into the other hull
+// (equal-and-opposite). Relative closing is only the ram floor — dumping it
+// would reverse you into an oncoming light. Light hostiles fly; heavies shrug.
+// FEEL_CONTRACT B3: one screen is 126 WU, crossed in 1.2 s at Wasp cruise.
+export const INERTIAL_SHUNT_TUNING = Object.freeze({
+  minClosingSpeed: 40,
+  dumpVsLight: 0.95,
+  liveDumpVsLight: 1,
+  refMass: 24,
+  cooldownTicks: 45,
+  screenDepthWu: 126,
+  screenCoastS: 1.2,
+  playerStopWu: 20,
+  tumbleTorque: 14,
+  momentumTolerance: 1e-6,
+});
+export const UNMOORED_STATUS_ID = 'status_unmoored';
+export const CRYO_LOCK_STATUS_ID = 'status_cryo_lock';
+export const SHIPJACK_SHUTDOWN_STATUS_ID = 'status_shipjack_shutdown';
+
+export const COMBAT_CUE_IDS = Object.freeze([
+  'combat.action.dash.start', 'combat.action.dash.active', 'combat.action.dash.end',
+  'combat.action.attach.start', 'combat.action.attach.lock', 'combat.action.attach.end',
+  'combat.action.reel.start', 'combat.action.reel.tick', 'combat.action.reel.end',
+  'combat.action.sling.start', 'combat.action.sling.release', 'combat.action.sling.end',
+  'combat.action.cut.start', 'combat.action.cut.snap', 'combat.action.cut.end',
+  'combat.action.burst.start', 'combat.action.burst.fire', 'combat.action.burst.end',
+  'combat.action.drop.start', 'combat.action.drop.release', 'combat.action.drop.end',
+  'combat.action.cancel', 'combat.action.reject',
+  'combat.damage.shield', 'combat.damage.armor', 'combat.damage.hull', 'combat.damage.kill', 'combat.damage.charge',
+  'cruise.charging', 'cruise.engaged', 'cruise.dropped',
+  'ai.telegraph', 'ai.flee', 'ai.formation_broken',
+  'presentation.tether.attach', 'presentation.tether.break',
+  'combat.subsystem.drive.disabled', 'combat.subsystem.weapon.disabled',
+  'combat.subsystem.sensor.disabled', 'combat.subsystem.tether.disabled',
+  'combat.subsystem.power.disabled', 'combat.subsystem.clamp.disabled', 'combat.subsystem.restored',
+  'combat.status.ionized', 'combat.status.burning', 'combat.status.overheated',
+  'combat.status.scrambled', 'combat.status.gravity_marked', 'combat.status.momentum_sink',
+  'combat.status.cryo_lock', 'combat.status.goo',
+  'combat.status.shipjack_shutdown',
+  'combat.attachment.created', 'combat.attachment.broken',
+  'combat.attachment.created', 'combat.attachment.broken',
+]);
+
+export const DAMAGE_MODEL = Object.freeze({
+  version: COMBAT_SCHEMA_VERSION,
+  channelOrder: Object.freeze(['kinetic', 'thermal', 'ion', 'plasma', 'phase']),
+  shieldMultipliers: Object.freeze({ kinetic: 0.82, thermal: 1.0, ion: 1.35, plasma: 1.15, phase: 0.35 }),
+  armorMultipliers: Object.freeze({ kinetic: 0.92, thermal: 0.78, ion: 0.28, plasma: 1.20, phase: 0.55 }),
+  hullMultipliers: Object.freeze({ kinetic: 1.0, thermal: 1.0, ion: 0.55, plasma: 1.08, phase: 1.0 }),
+  // Default guns primarily kill hull. High share made starter pulse lasers take hundreds of hits
+  // because 75% of post-armor damage only chipped subsystems. EMP/disable verbs still set
+  // subsystemShare: 1.0 on the weapon packet.
+  subsystemShare: 0.35,
+  subsystemArmorMultipliers: Object.freeze({ kinetic: 0.95, thermal: 0.85, ion: 1.20, plasma: 1.05, phase: 1.0 }),
+});
+
+export const ACTION_DEFS = Object.freeze([
+  {
+    id: 'action_dash', version: 1, tags: ['movement', 'dash'],
+    phases: { startupTicks: 1, activeTicks: 1, recoveryTicks: 2 },
+    cancelWindows: [{ phase: 'recovery', fromTick: 0, toTick: 2, intoTags: ['attach'] }],
+    cooldownTicks: 8, costs: { capacitor: 8, heat: 2 },
+    target: { kind: 'none', required: false },
+    requiresCapabilities: ['drive'],
+    movement: { at: 'activeStart', kind: 'forwardImpulse', magnitude: 18 },
+    effects: [],
+    cues: { start: 'combat.action.dash.start', active: 'combat.action.dash.active', end: 'combat.action.dash.end', cancel: 'combat.action.cancel', reject: 'combat.action.reject' },
+  },
+  {
+    id: 'action_attach', version: 1, tags: ['tether', 'attach'],
+    phases: { startupTicks: 1, activeTicks: 1, recoveryTicks: 2 },
+    cancelWindows: [{ phase: 'recovery', fromTick: 0, toTick: 2, intoTags: ['reel'] }],
+    cooldownTicks: 6, costs: { capacitor: 5, heat: 1 },
+    target: {
+      kind: 'entity', required: true, maxRange: 140, hostile: false,
+      sourceSocketTag: 'massline', targetSocketTag: 'tether',
+    },
+    requiresCapabilities: ['tether'],
+    movement: null,
+    effects: [{ at: 'activeStart', type: 'createAttachment', attachmentDefId: 'attachment_massline' }],
+    cues: { start: 'combat.action.attach.start', active: 'combat.action.attach.lock', end: 'combat.action.attach.end', cancel: 'combat.action.cancel', reject: 'combat.action.reject' },
+  },
+  {
+    id: 'action_reel', version: 1, tags: ['tether', 'reel'],
+    phases: { startupTicks: 0, activeTicks: 4, recoveryTicks: 1 },
+    cancelWindows: [{ phase: 'active', fromTick: 2, toTick: 4, intoTags: ['sling', 'cut'] }],
+    cooldownTicks: 2, costs: { capacitor: 4, heat: 1 },
+    target: { kind: 'attachment', required: true, ownedByActor: true },
+    requiresCapabilities: ['tether'],
+    movement: null,
+    effects: [{ at: 'activeEachTick', type: 'reelAttachment', restLengthDelta: -4, minRestLength: 8 }],
+    cues: { start: 'combat.action.reel.start', active: 'combat.action.reel.tick', end: 'combat.action.reel.end', cancel: 'combat.action.cancel', reject: 'combat.action.reject' },
+  },
+  {
+    id: 'action_sling', version: 1, tags: ['movement', 'tether', 'sling'],
+    phases: { startupTicks: 1, activeTicks: 1, recoveryTicks: 2 },
+    cancelWindows: [{ phase: 'recovery', fromTick: 0, toTick: 2, intoTags: ['cut'] }],
+    cooldownTicks: 8, costs: { capacitor: 10, heat: 4 },
+    target: { kind: 'attachment', required: true, ownedByActor: true },
+    requiresCapabilities: ['drive', 'tether'],
+    movement: { at: 'activeStart', kind: 'attachmentTangentImpulse', magnitude: 22 },
+    effects: [],
+    cues: { start: 'combat.action.sling.start', active: 'combat.action.sling.release', end: 'combat.action.sling.end', cancel: 'combat.action.cancel', reject: 'combat.action.reject' },
+  },
+  {
+    id: 'action_cut', version: 1, tags: ['tether', 'cut'],
+    phases: { startupTicks: 0, activeTicks: 1, recoveryTicks: 1 },
+    cancelWindows: [{ phase: 'recovery', fromTick: 0, toTick: 1, intoTags: ['burst'] }],
+    cooldownTicks: 1, costs: { capacitor: 0, heat: 0 },
+    target: { kind: 'attachment', required: true, ownedByActor: true },
+    requiresCapabilities: [],
+    movement: null,
+    effects: [{ at: 'activeStart', type: 'cutAttachment', reason: 'action_cut' }],
+    cues: { start: 'combat.action.cut.start', active: 'combat.action.cut.snap', end: 'combat.action.cut.end', cancel: 'combat.action.cancel', reject: 'combat.action.reject' },
+  },
+  {
+    id: 'action_burst', version: 1, tags: ['weapon', 'burst'],
+    phases: { startupTicks: 1, activeTicks: 1, recoveryTicks: 2 },
+    cancelWindows: [],
+    cooldownTicks: 12, costs: { capacitor: 12, heat: 7 },
+    target: { kind: 'entity', required: true, maxRange: 220, hostile: true },
+    requiresCapabilities: ['weapon', 'sensor'],
+    movement: null,
+    effects: [{
+      at: 'activeStart', type: 'damage',
+      packet: {
+        channels: { kinetic: 0, thermal: 0, ion: 8, plasma: 28, phase: 0 },
+        penetration: 0.20, heat: 6,
+        statuses: [{ id: 'status_ionized', stacks: 1 }],
+      },
+    }],
+    cues: { start: 'combat.action.burst.start', active: 'combat.action.burst.fire', end: 'combat.action.burst.end', cancel: 'combat.action.cancel', reject: 'combat.action.reject' },
+  },
+  {
+    // INF-030: the mine verb the wake doctrine was written for. An NPC drift-bomb release
+    // through the shared bombs.drop seam: same physical rules (standoff behind heading, full
+    // velocity inheritance), same attribution (ownerId/team), same cooldowns and world caps as
+    // the player's own bay. The 'attack' tag keeps utility scoring honest (needs a target, pays
+    // for range); the doctrine's mine_drop phase is the only author that allows it, and the
+    // 240-tick action cooldown holds one bomb per pass even if the phase re-enters early.
+    id: 'action_drop_bomb', version: 1, tags: ['weapon', 'attack', 'deploy'],
+    phases: { startupTicks: 0, activeTicks: 1, recoveryTicks: 2 },
+    cancelWindows: [],
+    cooldownTicks: 240, costs: { capacitor: 10, heat: 4 },
+    target: { kind: 'entity', required: true, hostile: true },
+    requiresCapabilities: [],
+    movement: null,
+    effects: [{ at: 'activeStart', type: 'dropBomb', payloadId: 'bomb_goo' }],
+    cues: { start: 'combat.action.drop.start', active: 'combat.action.drop.release', end: 'combat.action.drop.end', cancel: 'combat.action.cancel', reject: 'combat.action.reject' },
+  },
+]);
+
+// Optional Adventure definition. The combat owner admits it on first use / saved status restore,
+// preserving the existing catalog and trace for runs with no BLACK FLAG interaction.
+export const SHIPJACK_SHUTDOWN_STATUS_DEF = Object.freeze({
+    id: SHIPJACK_SHUTDOWN_STATUS_ID, version: 1, tags: ['electronic', 'safe_shutdown'], durationTicks: 360,
+    stacking: { mode: 'refresh', maxStacks: 1 }, immunityTags: ['electronic_immune'],
+    effects: { capabilities: { drive: false, weapon: false }, multipliers: { movement: 0 },
+      blockedActionTags: ['weapon', 'burst', 'dash', 'sling'] },
+    interactions: [], periodic: null, cueId: 'combat.status.shipjack_shutdown',
+});
+
+export const STATUS_DEFS = Object.freeze([
+  {
+    id: 'status_tumbling', version: 1, tags: ['massline', 'control_loss'], durationTicks: 360,
+    stacking: { mode: 'refresh', maxStacks: 1 }, immunityTags: [],
+    // This status owns the active tumble fact and the canonical combat-action gate. The physical
+    // tumble system consumes Massline-owned status metadata for zero-control and RCS recovery, so
+    // SG-03 cannot spend capacitor on dash/tether/weapon verbs while the hull is uncontrolled.
+    effects: { blockedActionTags: ['dash', 'tether', 'weapon'] },
+    interactions: [], periodic: null, cueId: 'ai.formation_broken',
+  },
+  {
+    // PQ-026 Gravity Mark: the weapon earns stronger coupling to the existing field kernel. This is
+    // deliberately a response multiplier, not a mass/velocity write: flight, facing, braking, and
+    // ordinary thrust remain wholly owned by their existing systems. 3× is the well/sink pull;
+    // the kernel must not clip it back under a light body's 1.0.
+    id: GRAVITY_MARK_STATUS_ID, version: 1, tags: ['gravity', 'field_coupling'], durationTicks: 360,
+    stacking: { mode: 'refresh', maxStacks: 1 }, immunityTags: [],
+    effects: { multipliers: { fieldCoupling: GRAVITY_MARK_FIELD_COUPLING } },
+    interactions: [], periodic: null, cueId: 'combat.status.gravity_marked',
+  },
+  {
+    // PQ-026 Momentum Sink: the combat kernel still binds this status to the attacker's
+    // translational frame (the offensive damper). The player-facing bungee — plant on a rock,
+    // store receding speed, release at ≥ 2× cruise — is owned by weapons.js using
+    // MOMENTUM_SINK_BUNGEE. This definition still owns no movement/control multiplier.
+    id: MOMENTUM_SINK_STATUS_ID, version: 1, tags: ['gravity', 'momentum', 'frame_relative', 'bungee'], durationTicks: 240,
+    stacking: { mode: 'replace', maxStacks: 1 }, immunityTags: [],
+    effects: {}, interactions: [], periodic: null, cueId: 'combat.status.momentum_sink',
+  },
+  {
+    // A Well makes the body physically expensive to accelerate. The status changes only the
+    // physics owner's effective mass/inertia; it owns no velocity, input, steering, or speed rule.
+    id: PINNED_STATUS_ID, version: 1, tags: ['gravity', 'mass_response', 'pinned'], durationTicks: 90,
+    stacking: { mode: 'refresh', maxStacks: 1 }, immunityTags: [],
+    effects: { physicsResponse: { massScale: 6, inertiaScale: 6 } },
+    interactions: [{ with: UNMOORED_STATUS_ID, consumeWith: true }],
+    periodic: null, cueId: 'combat.status.gravity_marked',
+  },
+  {
+    // A Repulsor makes the body physically light enough for ordinary forces and impacts to throw.
+    // It does not add force of its own and never alters the body's controls or authored speed cap.
+    id: UNMOORED_STATUS_ID, version: 1, tags: ['gravity', 'mass_response', 'unmoored'], durationTicks: 90,
+    stacking: { mode: 'refresh', maxStacks: 1 }, immunityTags: [],
+    effects: { physicsResponse: { massScale: 0.3, inertiaScale: 0.3 } },
+    interactions: [{ with: PINNED_STATUS_ID, consumeWith: true }],
+    periodic: null, cueId: 'combat.status.gravity_marked',
+  },
+  {
+    id: 'status_ionized', version: 1, tags: ['ion'], durationTicks: 90,
+    stacking: { mode: 'refresh', maxStacks: 3 }, immunityTags: ['ion_immune'],
+    effects: { multipliers: { capRegen: 0.70 } },
+    interactions: [{ with: 'status_overheated', apply: 'status_scrambled', consumeWith: false }],
+    periodic: null, cueId: 'combat.status.ionized',
+  },
+  {
+    id: 'status_burning', version: 1, tags: ['thermal', 'damage_over_time'], durationTicks: 120,
+    stacking: { mode: 'stack', maxStacks: 3 }, immunityTags: ['thermal_immune'],
+    effects: {}, interactions: [],
+    periodic: {
+      everyTicks: 30,
+      packet: { channels: { kinetic: 0, thermal: 4, ion: 0, plasma: 0, phase: 0 }, penetration: 0, heat: 1, statuses: [] },
+    },
+    cueId: 'combat.status.burning',
+  },
+  {
+    // PQ-133.06b Cryo Lock. Catalog identity only: duration and stacks. The helm reads
+    // stacks through cryoLockControlScale. This definition never writes velocity.
+    id: CRYO_LOCK_STATUS_ID, version: 1, tags: ['thermal', 'cryo', 'control'], durationTicks: 90,
+    stacking: { mode: 'refresh', maxStacks: 3 }, immunityTags: [],
+    effects: {},
+    interactions: [],
+    periodic: null, cueId: 'combat.status.cryo_lock',
+  },
+  {
+    // Drift-bomb tarburst (src/data/bombs.js bomb_goo). The slow is PHYSICAL, not a velocity
+    // write: each stack multiplies the body's effective mass/inertia (the PINNED pipeline), so
+    // thrust degrades while momentum is preserved — the hull wallows, it never teleports slow.
+    // massScale 1.8^3 ≈ 5.8 at full stacks; a light hull under a full tarbursh handles like a
+    // heavy one. The movement multiplier additionally degrades combat-action movement, and the
+    // periodic packet is the corrosive DoT (kinetic channel: the tar abrades).
+    id: 'status_goo', version: 1, tags: ['corrosive', 'slow', 'damage_over_time'], durationTicks: 240,
+    stacking: { mode: 'stack', maxStacks: 3 }, immunityTags: [],
+    effects: { multipliers: { movement: 0.72 }, physicsResponse: { massScale: 1.8, inertiaScale: 1.8 } },
+    interactions: [], periodic: {
+      everyTicks: 30,
+      packet: { channels: { kinetic: 3, thermal: 0, ion: 0, plasma: 0, phase: 0 }, penetration: 0, heat: 0, statuses: [] },
+    },
+    cueId: 'combat.status.goo',
+  },
+  {
+    id: 'status_overheated', version: 1, tags: ['thermal'], durationTicks: 60,
+    stacking: { mode: 'refresh', maxStacks: 1 }, immunityTags: ['thermal_immune'],
+    effects: { blockedActionTags: ['weapon', 'burst'], multipliers: { heatDissipation: 0.35 } },
+    interactions: [{ with: 'status_ionized', apply: 'status_scrambled', consumeWith: false }],
+    periodic: null, cueId: 'combat.status.overheated',
+  },
+  {
+    id: 'status_scrambled', version: 1, tags: ['electronic'], durationTicks: 75,
+    stacking: { mode: 'refresh', maxStacks: 1 }, immunityTags: ['electronic_immune'],
+    effects: { capabilities: { sensor: false }, blockedActionTags: ['lock', 'sensor'] },
+    interactions: [], periodic: null, cueId: 'combat.status.scrambled',
+  },
+]);
+
+export const SUBSYSTEM_DEFS = Object.freeze([
+  ...LAST_ARGUMENT_SUBSYSTEMS,
+  {
+    id: 'subsystem_drive', version: 1, tags: ['drive'],
+    volume: { shape: 'box', space: 'normalized', center: [-0.58, 0], halfExtents: [0.28, 0.42] },
+    health: 45, armor: { flat: 2, multipliers: { kinetic: 0.9, thermal: 1.0, ion: 1.1, plasma: 1.0, phase: 1.0 } },
+    dependencies: ['subsystem_power'],
+    disabledBehavior: { capabilities: { drive: false }, multipliers: { movement: 0 }, blockedActionTags: ['dash', 'sling'] },
+    repair: { fieldRatePerTick: 0.25, dockRatePerTick: 2 }, cueId: 'combat.subsystem.drive.disabled',
+  },
+  {
+    id: 'subsystem_weapon', version: 1, tags: ['weapon'],
+    volume: { shape: 'box', space: 'normalized', center: [0.50, 0], halfExtents: [0.34, 0.36] },
+    health: 38, armor: { flat: 1, multipliers: { kinetic: 1.0, thermal: 0.9, ion: 1.0, plasma: 1.1, phase: 1.0 } },
+    dependencies: ['subsystem_power'],
+    disabledBehavior: { capabilities: { weapon: false }, blockedActionTags: ['weapon', 'burst'] },
+    repair: { fieldRatePerTick: 0.20, dockRatePerTick: 2 }, cueId: 'combat.subsystem.weapon.disabled',
+  },
+  {
+    id: 'subsystem_sensor', version: 1, tags: ['sensor'],
+    volume: { shape: 'circle', space: 'normalized', center: [0.72, 0], radius: 0.23 },
+    health: 26, armor: { flat: 0.5, multipliers: { kinetic: 1.0, thermal: 1.0, ion: 1.25, plasma: 1.0, phase: 1.0 } },
+    dependencies: ['subsystem_power'],
+    disabledBehavior: { capabilities: { sensor: false }, blockedActionTags: ['lock', 'sensor'] },
+    repair: { fieldRatePerTick: 0.30, dockRatePerTick: 2.5 }, cueId: 'combat.subsystem.sensor.disabled',
+  },
+  {
+    id: 'subsystem_tether_spool', version: 1, tags: ['tether'],
+    volume: { shape: 'circle', space: 'normalized', center: [-0.18, 0.48], radius: 0.24 },
+    health: 32, armor: { flat: 1, multipliers: { kinetic: 1.0, thermal: 0.9, ion: 1.1, plasma: 1.0, phase: 1.0 } },
+    dependencies: ['subsystem_power'],
+    disabledBehavior: {
+      capabilities: { tether: false }, blockedActionTags: ['attach', 'reel', 'sling'],
+      breakOwnedAttachments: true,
+    },
+    repair: { fieldRatePerTick: 0.25, dockRatePerTick: 2 }, cueId: 'combat.subsystem.tether.disabled',
+  },
+  {
+    id: 'subsystem_power', version: 1, tags: ['power'],
+    volume: { shape: 'circle', space: 'normalized', center: [-0.05, 0], radius: 0.30 },
+    health: 52, armor: { flat: 3, multipliers: { kinetic: 0.9, thermal: 0.9, ion: 1.25, plasma: 1.05, phase: 1.0 } },
+    dependencies: [],
+    disabledBehavior: { capabilities: { power: false }, multipliers: { capRegen: 0.20 } },
+    repair: { fieldRatePerTick: 0.10, dockRatePerTick: 1.5 }, cueId: 'combat.subsystem.power.disabled',
+  },
+  {
+    // PQ-195.08: the transport clamp — the cage bolt a carrier holds its load with. Aft-mounted,
+    // small, and the authored interception target: shooting the CLAMP (not the hull) frees the
+    // load. Disabling it breaks only the carrier's owned attachments through the ordinary
+    // subsystem machinery — the released body keeps its real momentum; nothing adds an impulse.
+    // The tug keeps its drive: a dead clamp does not strand the hauler.
+    id: 'subsystem_transport_clamp', version: 1, tags: ['transport_clamp'],
+    volume: { shape: 'box', space: 'normalized', center: [-0.72, 0], halfExtents: [0.18, 0.30] },
+    health: 34, armor: { flat: 1, multipliers: { kinetic: 1.0, thermal: 1.0, ion: 1.15, plasma: 1.0, phase: 1.0 } },
+    dependencies: ['subsystem_power'],
+    disabledBehavior: {
+      capabilities: { transport_clamp: false },
+      breakOwnedAttachments: true,
+    },
+    // Field-unrepairable by design: a clamp bolt is either whole or gone.
+    repair: { fieldRatePerTick: 0, dockRatePerTick: 2 }, cueId: 'combat.subsystem.clamp.disabled',
+  },
+  {
+    // SF20-09: the visible front clamp. Its loss releases the existing constraint only.
+    id: 'subsystem_pallet_jack_clamp', version: 1, tags: ['transport_clamp'],
+    volume: { shape: 'box', space: 'normalized', center: [.35, 0], halfExtents: [.24, .43] },
+    health: 26, armor: { flat: 0, multipliers: { kinetic: 1, thermal: 1, ion: 1.15, plasma: 1, phase: 1 } },
+    dependencies: ['subsystem_power'],
+    disabledBehavior: { capabilities: { transport_clamp: false }, breakOwnedAttachments: true },
+    repair: { fieldRatePerTick: 0, dockRatePerTick: 2 }, cueId: 'combat.subsystem.clamp.disabled',
+  },
+]);
+
+export const ATTACHMENT_DEFS = Object.freeze([
+  CINDERGLASS_JOB_MOUNT_DEFINITION,
+  {
+    id: 'attachment_snarl', version: 1,
+    sourceSocketTags: ['tether'], targetSocketTags: ['tether'],
+    ownership: { policy: 'initiator', transferable: false },
+    maxLength: 250,
+    break: { maxTension: 6500, maxImpulse: 2200, maxYank: 5000, graceTicks: 12 },
+    spring: { K: 165, zeta: 0.68, captureS: 0.22, maxStretchRatio: 0.8 },
+    limits: { maxPerOwner: 2 },
+    cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
+  },
+  {
+    id: 'attachment_massline', version: 1,
+    sourceSocketTags: ['massline'], targetSocketTags: ['tether'],
+    ownership: { policy: 'initiator', transferable: true },
+    // +25% break budget vs prior baseline (8200/165/420) — lines were snapping too readily in play.
+    break: { maxTension: 10250, maxImpulse: 206.25, maxYank: 525, graceTicks: 4 },
+    spring: { K: 170, zeta: 0.90, captureS: 0.30, maxStretchRatio: 0.72, reelSafeStretchRatio: 0.66 },
+    // Production action_attach shares the normal-play durability contract: ordinary ship/objective
+    // endpoints may load, reel, and exchange momentum, but cannot auto-break the line. Authored
+    // extreme operations opt in on an endpoint exactly as tether_standard does. SG-02 remains the
+    // momentum owner; this block owns the winch and explicit failure policy.
+    massline: { enabled: true, automaticBreakPolicy: 'extreme_load_only' },
+    limits: { maxPerOwner: 1 },
+    cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
+  },
+  {
+    // Row 484 ROCK-FLAIL: a chained link riding the massline — a wreck lashed behind the
+    // active catch so the Line ends in a flail of hulls, not a single stone. No reel, no
+    // winch block: the link is dead mass on the rope, bounded by rockCore's chain solver.
+    id: 'attachment_flail_link', version: 1,
+    sourceSocketTags: ['massline'], targetSocketTags: ['tether'],
+    ownership: { policy: 'initiator', transferable: false },
+    break: { maxTension: 14000, maxImpulse: 900, maxYank: 800, graceTicks: 6 },
+    spring: { K: 150, zeta: 0.85, captureS: 0.30, maxStretchRatio: 0.9 },
+    massline: { enabled: true, automaticBreakPolicy: 'extreme_load_only' },
+    limits: { maxPerOwner: 5 },
+    cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
+  },
+  {
+    id: 'tether_standard', version: 1,
+    sourceSocketTags: ['tether_spool'], targetSocketTags: ['tether'],
+    ownership: { policy: 'initiator', transferable: true },
+    maxLength: 390,
+    minLength: 18,
+    reelRate: 69,
+    // A healthy standard Massline is infrastructure, not a maneuver-timing consumable. Starter-ship
+    // thrust, ordinary boost, a slack catch, or a botched slingshot must not sever it. The physical
+    // envelope is ten times the previous 1.05M / 19k / 15k tune, and automatic overload breaks are
+    // disabled unless a future extreme-load endpoint (for example a station-scale or singularity
+    // operation) explicitly opts into that contract. Pilot cut and subsystem/destruction cuts are
+    // separate intentional severing paths and remain available.
+    breakTension: 10500000,
+    snapImpulseNoise: 0,
+    break: { maxTension: 10500000, maxImpulse: 190000, maxYank: 150000, graceTicks: 4, stiffness: 90, damping: 6 },
+    // The force budget was doubled previously, but the independent geometric edge stayed at 0.72x
+    // rest length and remained the real snap authority for short latches. Double that usable stretch
+    // envelope as well; the massline overload controller still cuts violent/extreme-mass loads.
+    spring: { K: 140, zeta: 0.95, captureS: 0.35, maxStretchRatio: 1.44, reelSafeStretchRatio: 1.32 },
+    // The break machinery remains available for explicitly authored future extreme-load endpoints.
+    // Normal entities do not opt in, so ordinary piloting cannot accidentally sever the line.
+    massline: { enabled: true, overloadGraceS: 1.1, automaticBreakPolicy: 'extreme_load_only' },
+    limits: { maxPerOwner: 1 },
+    cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
+  },
+  {
+    id: 'attachment_transverse_snare', version: 1,
+    sourceSocketTags: ['tether'], targetSocketTags: ['tether'],
+    ownership: { policy: 'initiator', transferable: false },
+    // A snare is deliberately expendable. It can hold a genuine crossing, but ordinary thrust
+    // and collision load can break it after the visible warning window instead of creating an
+    // invisible permanent slow field.
+    break: { maxTension: 5400, maxImpulse: 1000, maxYank: 2400, graceTicks: 6 },
+    spring: { K: 145, zeta: 0.72, captureS: 0.18, maxStretchRatio: 0.65 },
+    limits: { maxPerOwner: 1 },
+    cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
+  },
+  {
+    id: 'attachment_twin_bridle', version: 1,
+    sourceSocketTags: ['tether'], targetSocketTags: ['tether'],
+    ownership: { policy: 'initiator', transferable: false },
+    maxLength: 480,
+    // One physical rope between the two chosen bodies. There is no Massline winch block here:
+    // Twin Bridle never reels, seeks a speed, or turns the controller ship into a third endpoint.
+    break: { maxTension: 9200, maxImpulse: 1800, maxYank: 4200, graceTicks: 8 },
+    spring: { K: 110, zeta: 0.88, captureS: 0.35, maxStretchRatio: 0.75 },
+    limits: { maxPerOwner: 1 },
+    cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
+  },
+  {
+    // PQ-195.08: the transport clamp — a carrier's cage bolt, not a rope. A near-rigid cradle
+    // spring holds the load at standoff; ordinary thrust, collision load, or the load's own
+    // inertia can NEVER sever it (the break envelope is infrastructure-grade, same order as the
+    // standard line's). Release is intentional only: the clamp subsystem disabled, the carrier
+    // lost, or the owner's voluntary release at its route point. Cutting removes the constraint
+    // and nothing else — both bodies keep whatever momentum they already had.
+    id: 'attachment_transport_clamp', version: 1,
+    sourceSocketTags: ['transport_clamp'], targetSocketTags: ['tether'],
+    ownership: { policy: 'initiator', transferable: false },
+    break: { maxTension: 10500000, maxImpulse: 190000, maxYank: 150000, graceTicks: 4 },
+    spring: { K: 640, zeta: 1.15, captureS: 0.15, maxStretchRatio: 0.35 },
+    limits: { maxPerOwner: 1 },
+    cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
+  },
+  {
+    // SF-029 (PB-MASS-B): the salvage-sort clamp — a wreck's held core bolt, not a rope. The
+    // opposite contract from the transport clamp above: a DELIBERATE massline tow must tear the
+    // core free, so this clamp is the breakable end of the sort job. The envelope sits far below
+    // the player line's own budget, gives a 0.2 s sustained-load grace (a graze never shears it),
+    // and a near-rigid short spring keeps the core seated at its wreck until the pilot actually
+    // pulls. No massline block: like the snarl, this def keeps the kernel's automatic break
+    // enforcement — the tension telemetry, not a phase flag, is the physical truth of separation.
+    id: 'attachment_salvage_clamp', version: 1,
+    sourceSocketTags: ['tether'], targetSocketTags: ['tether'],
+    ownership: { policy: 'initiator', transferable: false },
+    maxLength: 40,
+    break: { maxTension: 3600, maxImpulse: 900, maxYank: 2600, graceTicks: 12 },
+    spring: { K: 220, zeta: 0.9, captureS: 0.2, maxStretchRatio: 0.6 },
+    limits: { maxPerOwner: 4 },
+    cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
+  },
+]);
+
+export const COMBAT_PROFILES = Object.freeze([
+  CINDERGLASS_JOB_COMBAT_PROFILE,
+  LAST_ARGUMENT_COMBAT_PROFILE,
+  {
+    id:'combat_profile_ceres_breaker',version:1,entityTypes:['ship'],
+    heat:{max:100,dissipationPerTick:.5},immunityTags:[],
+    subsystemIds:['subsystem_drive','subsystem_tether_spool','subsystem_power'],
+    sockets:[
+      {id:'SOCKET_Tether_Massline',tags:['tether_spool'],localPos:[-46/110,0],maxAttachments:1},
+      {id:'SOCKET_Cutter_Dock',tags:['tether'],localPos:[-46/110,30/110],maxAttachments:1},
+      {id:'socket_hull',tags:['tether'],localPos:[0,0],maxAttachments:2},
+    ],capabilities:{drive:true,weapon:false,sensor:true,tether:true,power:true},
+  },
+  {
+    id:'combat_profile_ceres_cutter_head',version:1,entityTypes:['wreck'],
+    heat:{max:0,dissipationPerTick:0},immunityTags:[],subsystemIds:[],
+    sockets:[
+      {id:'SOCKET_Mount',tags:['transport_clamp'],localPos:[-.8,0],maxAttachments:1},
+      {id:'socket_hull',tags:['tether'],localPos:[0,0],maxAttachments:1},
+    ],capabilities:{drive:true,weapon:false,sensor:false,tether:false,power:true,transport_clamp:true},
+  },
+  {
+    id:'combat_profile_ceres_cradle',version:1,entityTypes:['wreck'],
+    heat:{max:0,dissipationPerTick:0},immunityTags:[],subsystemIds:[],
+    sockets:[
+      {id:'SOCKET_Service_Head',tags:['transport_clamp'],localPos:[0,63/114],maxAttachments:1},
+      {id:'socket_hull',tags:['tether'],localPos:[0,0],maxAttachments:1},
+    ],capabilities:{drive:false,weapon:false,sensor:false,tether:false,power:true,transport_clamp:true},
+  },
+
+  {
+    id: 'combat_profile_standard_ship', version: 1, entityTypes: ['ship', 'drone'],
+    heat: { max: 100, dissipationPerTick: 0.50 },
+    immunityTags: [],
+    subsystemIds: ['subsystem_drive', 'subsystem_weapon', 'subsystem_sensor', 'subsystem_tether_spool', 'subsystem_power'],
+    sockets: [
+      // Legacy SG-03 story Massline anchor. 47-A's golden action_attach tape uses
+      // attachment_massline and depends on this fixture-era lever arm; keep player tether tuning on
+      // socket_tether_spool so SPEC3-F3 can evolve without rewriting the 47-A expected envelope.
+      { id: 'socket_massline', tags: ['massline'], localPos: [-0.25, 0.42], maxAttachments: 1 },
+      // Forward spool (radius-normalized, +X = facing). Overnight B1: 0.38→0.50 nose bias.
+      // ≥0.72 broke slingshot release energy (check-tether-gameplay); 0.50 is the safe lever.
+      { id: 'socket_tether_spool', tags: ['tether_spool'], localPos: [0.50, 0], maxAttachments: 1 },
+      { id: 'socket_hull', tags: ['tether'], localPos: [0, 0], maxAttachments: 2 },
+    ],
+    capabilities: { drive: true, weapon: true, sensor: true, tether: true, power: true },
+  },
+  {
+    id: 'combat_profile_tether_payload', version: 1, entityTypes: ['payload'],
+    heat: { max: 0, dissipationPerTick: 0 },
+    immunityTags: [],
+    subsystemIds: [],
+    sockets: [{ id: 'socket_tether_payload', tags: ['tether'], localPos: [0, 0], maxAttachments: 2 }],
+    capabilities: { drive: false, weapon: false, sensor: false, tether: false, power: false },
+  },
+  {
+    // A civic load seat can secure the finite lamp through the same native attachment owner.
+    // Opt-in only: ordinary payloads do not gain powered clamps or a drive.
+    id: 'combat_profile_lantern_hardware', version: 1, entityTypes: ['payload'],
+    heat: { max: 0, dissipationPerTick: 0 }, immunityTags: [], subsystemIds: [],
+    sockets: [
+      { id: 'socket_lantern_clamp', tags: ['transport_clamp'], localPos: [0, 0], maxAttachments: 1 },
+      { id: 'socket_lantern_tow', tags: ['tether'], localPos: [0, 0], maxAttachments: 4 },
+    ],
+    capabilities: { drive: false, weapon: false, sensor: false, tether: false, power: true, transport_clamp: true },
+  },
+  {
+    id: 'combat_profile_tether_anchor', version: 1, entityTypes: ['asteroid', 'wreck', 'pickup', 'fieldEmitter', 'masslineSnareAnchor', 'mine', 'gate'],
+    heat: { max: 0, dissipationPerTick: 0 },
+    immunityTags: [],
+    subsystemIds: [],
+    sockets: [{ id: 'socket_tether_anchor', tags: ['tether'], localPos: [0, 0], maxAttachments: 4 }],
+    capabilities: { drive: false, weapon: false, sensor: false, tether: false, power: false },
+  },
+  {
+    id: 'combat_profile_standard_station', version: 1, entityTypes: ['station'],
+    heat: { max: 200, dissipationPerTick: 0.30 },
+    immunityTags: [],
+    subsystemIds: ['subsystem_weapon', 'subsystem_sensor', 'subsystem_power'],
+    sockets: [{ id: 'socket_hull', tags: ['tether'], localPos: [0, 0], maxAttachments: 8 }],
+    capabilities: { drive: false, weapon: true, sensor: true, tether: false, power: true },
+  },
+  {
+    // PQ-195.08: a transport carrier — an ordinary ship that additionally wears its cage bolt on
+    // the aft hull. The clamp is a hittable subsystem, and its socket is the source end of the
+    // transport attachment. Explicitly opted in via entity.data.combatProfileId; ordinary ships
+    // never grow a clamp.
+    id: 'combat_profile_heist_carrier', version: 1, entityTypes: ['ship'],
+    heat: { max: 100, dissipationPerTick: 0.50 },
+    immunityTags: [],
+    subsystemIds: ['subsystem_drive', 'subsystem_weapon', 'subsystem_sensor', 'subsystem_tether_spool', 'subsystem_power', 'subsystem_transport_clamp'],
+    sockets: [
+      { id: 'socket_massline', tags: ['massline'], localPos: [-0.25, 0.42], maxAttachments: 1 },
+      { id: 'socket_tether_spool', tags: ['tether_spool'], localPos: [0.50, 0], maxAttachments: 1 },
+      { id: 'socket_hull', tags: ['tether'], localPos: [0, 0], maxAttachments: 2 },
+      { id: 'socket_transport_clamp', tags: ['transport_clamp'], localPos: [-0.62, 0], maxAttachments: 1 },
+    ],
+    capabilities: { drive: true, weapon: true, sensor: true, tether: true, power: true, transport_clamp: true },
+  },
+  {
+    id: 'combat_profile_pallet_jack', version: 1, entityTypes: ['ship'],
+    heat: { max: 100, dissipationPerTick: .5 }, immunityTags: [],
+    subsystemIds: ['subsystem_drive', 'subsystem_sensor', 'subsystem_tether_spool', 'subsystem_power', 'subsystem_pallet_jack_clamp'],
+    sockets: [
+      { id: 'socket_hull', tags: ['tether'], localPos: [0, 0], maxAttachments: 4 },
+      { id: 'socket_tether_spool', tags: ['tether_spool'], localPos: [-.5, 0], maxAttachments: 1 },
+      { id: 'socket_pallet_clamp', tags: ['transport_clamp'], localPos: [.35, 0], maxAttachments: 1 },
+    ], capabilities: { drive: true, weapon: false, sensor: true, tether: true, power: true, transport_clamp: true },
+  },
+]);
+
+export const DEFAULT_COMBAT_PROFILE_BY_TYPE = Object.freeze({
+  ship: 'combat_profile_standard_ship',
+  drone: 'combat_profile_standard_ship',
+  payload: 'combat_profile_tether_payload',
+  asteroid: 'combat_profile_tether_anchor',
+  wreck: 'combat_profile_tether_anchor',
+  pickup: 'combat_profile_tether_anchor',
+  fieldEmitter: 'combat_profile_tether_anchor',
+  masslineSnareAnchor: 'combat_profile_tether_anchor',
+  mine: 'combat_profile_tether_anchor',
+  gate: 'combat_profile_tether_anchor',
+  station: 'combat_profile_standard_station',
+});
+
+// Spec2/02 §3 juice-stack: canonical cue ids per weapon family/size so VFX/audio can map
+// player/NPC fire events to the right muzzle, projectile, and impact vocabulary.
+// C3: hit-surface audio is keyed by the surface-keyed damage receipt (vfx.js shield/armor/hull
+// branches), not by the firing gun's family — cueId is deliberately absent from these tables.
+export const WEAPON_CUE_TABLES = Object.freeze({
+  kinetic_s: Object.freeze({ muzzle: 'vfx.muzzle.kinetic_s', projectile: 'vfx.proj.kinetic_s', impact: 'vfx.impact.kinetic_s' }),
+  kinetic_m: Object.freeze({ muzzle: 'vfx.muzzle.kinetic_m', projectile: 'vfx.proj.kinetic_m', impact: 'vfx.impact.kinetic_m' }),
+  kinetic_l: Object.freeze({ muzzle: 'vfx.muzzle.kinetic_l', projectile: 'vfx.proj.kinetic_l', impact: 'vfx.impact.kinetic_l' }),
+  energy_s: Object.freeze({ muzzle: 'vfx.muzzle.energy_s', projectile: 'vfx.proj.energy_s', impact: 'vfx.impact.energy_s' }),
+  energy_m: Object.freeze({ muzzle: 'vfx.muzzle.energy_m', projectile: 'vfx.proj.energy_m', impact: 'vfx.impact.energy_m' }),
+  energy_l: Object.freeze({ muzzle: 'vfx.muzzle.energy_l', projectile: 'vfx.proj.energy_l', impact: 'vfx.impact.energy_l' }),
+  explosive_m: Object.freeze({ muzzle: 'vfx.muzzle.explosive_m', projectile: 'vfx.proj.explosive_m', impact: 'vfx.impact.explosive_m' }),
+  missile: Object.freeze({ muzzle: 'vfx.muzzle.missile', projectile: 'vfx.proj.missile', impact: 'vfx.impact.missile' }),
+});
+
+export function resolveWeaponCueTable(weaponId, weaponsArray = []) {
+  const w = weaponsArray.find((x) => x.id === weaponId);
+  if (!w) return WEAPON_CUE_TABLES.kinetic_m;
+  const dt = (w.damageType || 'kinetic').toLowerCase();
+  const size = (w.size || 'M').toLowerCase();
+  if (dt === 'explosive' || dt === 'plasma') return WEAPON_CUE_TABLES.explosive_m;
+  if (dt === 'missile' || dt === 'rocket' || dt === 'torpedo') return WEAPON_CUE_TABLES.missile;
+  const key = `${dt}_${size}`;
+  return WEAPON_CUE_TABLES[key] || WEAPON_CUE_TABLES.kinetic_m;
+}
+
+// ═══ ENEMY FIGHT-IDENTITY LAYER ═════════════════════════════════════════════
+// src/data/enemies.js owns the roster's STATS; this table owns each hull's FIGHT IDENTITY —
+// which doctrine machine the tactical AI runs for it. The audit harness
+// (scripts/lib/bench/crucibleBench.mjs --duel-audit) proved most of the roster resolves to the
+// same fight: eight hulls share `interceptor_flyby` and three share `ranged_disengager`, so a
+// Wasp, a Corsair and a lawman were the same problem with different HP. These overrides give the
+// roster the six-identity vocabulary — swarm, kiter, brawler, boarder, mine-layer,
+// shield-breaker — without touching the stat owner.
+//
+// APPLICATION (single writer): src/systems/tacticalAI.js stampManeuverIdentities() stamps the
+// override onto data.ai.combatDoctrineId ONLY when that field still equals the enemy def's own
+// stock id, so encounter scripts, ACE loadouts, and any other author who sets a doctrine always
+// outrank this table.
+
+export const ENEMY_DOCTRINE_OVERRIDES = Object.freeze({
+  // The light pack hull stops flying the generic raider flyby and runs tight synchronized pack
+  // passes (short cycles, 120 WU commit band).
+  wasp_swarmer: 'swarm_pack',
+  // FB-017: the zealot's guardian identity (escort_screen + prow plate) is declared on its own
+  // enemy row — the same single-statement rule that retired the jackal override.
+  // The jackal's area-denial identity (telegraph cue `wake_mines`, counter hint
+  // `cut_tether_or_clear_wake`) is declared on its own enemy row — no override needed.
+  // The corsair elite is the roster's shield-breaker: closes through the band, telegraphs, lands
+  // an ion/plasma lance (action_burst carries ion 8 + status_ionized), peels while the target's
+  // capacitor is scrambled. The counterplay is capacitor discipline, not DPS racing.
+  corsair_raider: 'shield_breaker',
+  // The PD hull's authored text ("screens a leader or wreck claim; shreds missiles and light
+  // craft") is an escort warden, not a third copy of the raider flyby.
+  // FB-018: the screen escort's doctrine is declared on its enemy row (escort_screen) — same
+  // single-statement rule that retired the jackal and zealot overrides.
+});
+
+// The three CAPITAL_BOSSES missions (src/data/missions.js) stamp `data.missionTag`; each boss
+// gets its own choreography doctrine so a boss kill is a STORY (hull-fraction stages, each with
+// its own telegraph cue and cadence), not one broadside loop until death.
+export const MISSION_TAG_BOSS_DOCTRINE = Object.freeze({
+  capital_boss: 'capital_broadside',
+  capital_boss_tollman: 'capital_broadside_tollman',
+  capital_boss_ala: 'capital_broadside_ala',
+});
+
+// Boss choreography stages, keyed by the boss doctrine id. Stage 0 is the opening act; each
+// later stage engages when hullFraction drops to `hullAtMost` — or, on the capital_broadside
+// line, when `turretsLost` mounts have been physically torn off. `cue` is the telegraph kind the
+// transition emits (the readable beat), fireTicks/shiftTicks/preferredRange reshape the
+// broadside cadence for that act.
+export const CAPITAL_BOSS_CHOREOGRAPHY = Object.freeze({
+  capital_broadside: Object.freeze({
+    boss: 'IRON MAW',
+    // FB-020: stages advance on destroyed turret mounts, not hull fraction. Stage index = how
+    // many `phaseAtTurretsLost` edges the hull has crossed. Edge 1 vents the authored screen and
+    // shortens the broadside cycle; edge 2 is the desperation battery — longer fire windows,
+    // tighter shifts, closer standoff.
+    stages: Object.freeze([
+      Object.freeze({ turretsLost: 0, fireTicks: 60, shiftTicks: 90, preferredRange: 260, cue: 'broadside_charge' }),
+      Object.freeze({ turretsLost: 4, fireTicks: 66, shiftTicks: 54, preferredRange: 230, cue: 'swarmer_vent' }),
+      Object.freeze({ turretsLost: 10, fireTicks: 96, shiftTicks: 42, preferredRange: 200, cue: 'broadside_desperation' }),
+    ]),
+  }),
+  capital_broadside_tollman: Object.freeze({
+    boss: 'THE TOLLMAN',
+    stages: Object.freeze([
+      Object.freeze({ hullAtMost: 1.01, fireTicks: 48, shiftTicks: 96, preferredRange: 300, cue: 'broadside_charge' }),
+      Object.freeze({ hullAtMost: 0.66, fireTicks: 120, shiftTicks: 72, preferredRange: 300, cue: 'pd_wall' }),
+      Object.freeze({ hullAtMost: 0.33, fireTicks: 54, shiftTicks: 42, preferredRange: 220, cue: 'toll_run' }),
+    ]),
+  }),
+  capital_broadside_ala: Object.freeze({
+    boss: 'ALA DREADNOUGHT',
+    stages: Object.freeze([
+      Object.freeze({ hullAtMost: 1.01, fireTicks: 72, shiftTicks: 84, preferredRange: 260, cue: 'broadside_charge' }),
+      Object.freeze({ hullAtMost: 0.66, fireTicks: 72, shiftTicks: 84, preferredRange: 240, cue: 'grave_pull' }),
+      Object.freeze({ hullAtMost: 0.33, fireTicks: 108, shiftTicks: 36, preferredRange: 190, cue: 'ashfall_enrage' }),
+    ]),
+  }),
+});
+
+// ── Encounter composition grammar ────────────────────────────────────────────
+// A wing is not a pile of hulls. Each composition declares ROLES (who presses, who flanks, who
+// denies ground, who kites) and exactly ONE twist clause — the wing's signature trick that makes
+// the same roster read as a different fight. Pure data; consumed by src/ai/squad.js
+// (SquadCommander), which picks the first matching composition for a squad deterministically and
+// seeds the twist choice from (squadId, seed) so browser/Electron/probes see the same wing.
+//
+// `identityAll` matches when EVERY doctrine-carrying member runs that doctrine id; `identityAny`
+// matches when at least one does. Rows are evaluated in order; a squad matches at most one.
+
+export const WING_COMPOSITION_GRAMMAR = Object.freeze([
+  {
+    id: 'swarm_pincer_pack',
+    when: Object.freeze({ sizeMin: 2, identityAll: 'swarm_pack' }),
+    roles: Object.freeze(['press', 'flank', 'flank', 'flank']),
+    twists: Object.freeze(['synchronized_strike']),
+  },
+  {
+    id: 'wake_denial_pair',
+    when: Object.freeze({ sizeMin: 2, identityAny: 'mine_layer_wake' }),
+    roles: Object.freeze(['area_denial', 'press', 'flank']),
+    twists: Object.freeze(['seed_the_exit']),
+  },
+  {
+    id: 'capacitor_hunt',
+    when: Object.freeze({ sizeMin: 2, identityAny: 'shield_breaker' }),
+    roles: Object.freeze(['shield_breaker', 'press', 'flank']),
+    twists: Object.freeze(['drain_then_commit']),
+  },
+  {
+    id: 'kite_and_bait',
+    when: Object.freeze({ sizeMin: 2, identityAny: 'ranged_disengager' }),
+    roles: Object.freeze(['kite', 'press', 'flank']),
+    twists: Object.freeze(['repositioning_fire']),
+  },
+  {
+    id: 'warden_screen',
+    when: Object.freeze({ sizeMin: 2, identityAny: 'escort_screen' }),
+    roles: Object.freeze(['screen', 'press', 'flank']),
+    twists: Object.freeze(['protect_the_pack']),
+  },
+  {
+    id: 'raider_wing',
+    when: Object.freeze({ sizeMin: 2 }),
+    roles: Object.freeze(['press', 'flank', 'press', 'flank']),
+    twists: Object.freeze(['synchronized_strike', 'feigned_break', 'focus_the_soft']),
+  },
+]);
+
+// One twist per wing, applied as deterministic tactic-weight modulation in squad.js. `weight`
+// entries are ADDITIVE utility deltas on the named squad tactic; `targeting` swaps the target
+// allocation sort. Anything richer is a behavior change and belongs in a doctrine, not here.
+export const TWIST_CLAUSES = Object.freeze({
+  synchronized_strike: Object.freeze({
+    summary: 'the pack commits on one beat — pincer pressure instead of a trickle of singles',
+    weights: Object.freeze({ swarm_pincer: 0.16 }),
+  }),
+  seed_the_exit: Object.freeze({
+    summary: 'the wake is the weapon — the wing presses to keep you inside the seeded lane',
+    weights: Object.freeze({ swarm_pincer: 0.08, fighting_retreat: -0.1 }),
+  }),
+  drain_then_commit: Object.freeze({
+    summary: 'bleed the capacitor first, commit only against a scrambled hull',
+    weights: Object.freeze({ contain_and_disable: 0.14 }),
+  }),
+  repositioning_fire: Object.freeze({
+    summary: 'every salvo from a new bearing — the standoff never repeats a firing solution',
+    weights: Object.freeze({ standoff_focus: 0.14 }),
+  }),
+  protect_the_pack: Object.freeze({
+    summary: 'the ward holds before the kill does — screening outguns pressing',
+    weights: Object.freeze({ hold_formation: 0.1, swarm_pincer: -0.06 }),
+  }),
+  feigned_break: Object.freeze({
+    summary: 'one hull fakes the egress to buy the flank a free pass',
+    weights: Object.freeze({ fighting_retreat: 0.08 }),
+  }),
+  focus_the_soft: Object.freeze({
+    summary: 'allocate guns to the weakest hull in reach, not the loudest threat',
+    weights: Object.freeze({}),
+    targeting: 'weakest_hull',
+  }),
+});

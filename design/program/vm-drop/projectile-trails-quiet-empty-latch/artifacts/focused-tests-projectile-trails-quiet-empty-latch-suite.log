@@ -1,0 +1,31 @@
+TAP version 13
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: projectile-trails quiet-latches on empty projectile bag
+ok 1 - projectile-trails quiet-latches on empty projectile bag
+  ---
+  duration_ms: 98.429912
+  ...
+# Subtest: entityIndexVersion dirty-wake resumes then re-latches when empty
+ok 2 - entityIndexVersion dirty-wake resumes then re-latches when empty
+  ---
+  duration_ms: 18.500892
+  ...
+# Subtest: projectile cache dirty-wake resumes without version bump
+ok 3 - projectile cache dirty-wake resumes without version bump
+  ---
+  duration_ms: 17.161747
+  ...
+# Subtest: frame update keeps latch across quiet ticks
+ok 4 - frame update keeps latch across quiet ticks
+  ---
+  duration_ms: 32.732237
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 541.722337

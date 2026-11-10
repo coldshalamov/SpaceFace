@@ -1,0 +1,127 @@
+{
+  "seed": 8008,
+  "simSeconds": 120,
+  "wallMs": 7323,
+  "metrics": {
+    "knockEventsPerMinute": 2,
+    "maxKnockDeltaVFractionOfCruise": 0.21268233539068215,
+    "headingChangeEvents": 4,
+    "barMet": false,
+    "cruiseSpeed": 95,
+    "meanSpeed": 95.05739626281184,
+    "playerMass": 18,
+    "simSeconds": 120,
+    "ticks": 7200,
+    "knockSource": "physics:impact(playerInvolved).playerDeltaV",
+    "knockFloorFractionOfCruise": 0.005,
+    "contactEvents": 4,
+    "knockEvents": 4,
+    "receiptCount": 34,
+    "maxEventTicks": 13,
+    "maxKnockDeltaV": 20.204821862114805,
+    "meanKnockDeltaV": 13.862034027664752,
+    "maxDp": 363.6867935180664,
+    "maxHeadingChangeDeg": 5.087691891385246,
+    "maxAngVelAfterKnockDegPerS": 0,
+    "velocityHeadingChangeMaxDeg": 10.454715393016057,
+    "knockFractionsOfCruise": [
+      0.203826,
+      0.212682,
+      0.06418,
+      0.102977
+    ],
+    "jitterMaxSignFlips": 0,
+    "jitterEvents": 0,
+    "measuredMaxKnockDeltaVFractionOfCruise": 0.2101903094006353,
+    "receiptVsMeasuredMaxGapFractionOfCruise": 0.00249202599004686,
+    "residualFloorP995": 0.000015066639454902008,
+    "residualMax": 0.00001534836618400038,
+    "residualFloorFractionOfCruise": 1.585962047884422e-7,
+    "rotResidualFloorP995": 0,
+    "quietRotStepMaxRad": 0.00006620985342126184,
+    "maxCommandedRotResidualDeg": 4.509442139255915,
+    "rockCount": 41,
+    "trafficCount": 3,
+    "rockSpacingWU": 300,
+    "grazePeriodS": 30,
+    "trafficPeriodS": 40,
+    "plannedGrazes": 7,
+    "plannedHeadOns": 0,
+    "headOnEvents": 0,
+    "headOnMaxDeltaVFractionOfCruise": 0,
+    "knocksPerPlannedGraze": 0.5714285714285714,
+    "minBodiesDuringWindow": 4,
+    "assertedTrafficBodies": 1,
+    "routeEndX": 12493.365234375,
+    "realPath": {
+      "backend": "rapier-dynamic",
+      "sg02Ready": true,
+      "sg02Bodies": 8,
+      "sg02DynamicBodies": 2,
+      "rapierContacts": 0,
+      "contactCaptureEnabled": true,
+      "featuresOutsideStep": {
+        "tumble": false,
+        "weaponImpulseConsequences": false
+      },
+      "physicsBackend": "rapier-dynamic",
+      "flightBackend": "v3",
+      "aiBackend": "sg06-tactical",
+      "profileId": "production"
+    }
+  },
+  "knockTrace": [
+    {
+      "tick": 2192,
+      "type": "collision:playerKnock",
+      "data": {
+        "deltaV": 19.363441212972006,
+        "deltaVFractionOfCruise": 0.2038256969786527,
+        "measuredDeltaV": 19.256415175191872,
+        "headingChangeDeg": 3.5832915557026346,
+        "eventTicks": 10,
+        "receiptCount": 10,
+        "dp": 348.54194183349614
+      }
+    },
+    {
+      "tick": 4093,
+      "type": "collision:playerKnock",
+      "data": {
+        "deltaV": 20.204821862114805,
+        "deltaVFractionOfCruise": 0.21268233539068215,
+        "measuredDeltaV": 19.968079393060354,
+        "headingChangeDeg": 1.6533543185316866,
+        "eventTicks": 13,
+        "receiptCount": 11,
+        "dp": 363.6867935180664
+      }
+    },
+    {
+      "tick": 7697,
+      "type": "collision:playerKnock",
+      "data": {
+        "deltaV": 6.09707864831995,
+        "deltaVFractionOfCruise": 0.06417977524547316,
+        "measuredDeltaV": 6.05496330899339,
+        "headingChangeDeg": 5.087691891385246,
+        "eventTicks": 7,
+        "receiptCount": 7,
+        "dp": 109.74741566975912
+      }
+    },
+    {
+      "tick": 7895,
+      "type": "collision:playerKnock",
+      "data": {
+        "deltaV": 9.782794387252242,
+        "deltaVFractionOfCruise": 0.1029767830237078,
+        "measuredDeltaV": 9.740440410924748,
+        "headingChangeDeg": 2.7495549269791852,
+        "eventTicks": 6,
+        "receiptCount": 6,
+        "dp": 176.09029897054032
+      }
+    }
+  ]
+}

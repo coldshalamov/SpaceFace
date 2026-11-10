@@ -1,0 +1,284 @@
+// Chromium/Electron WEBGL_get_program_binary cache for repeat boots.
+// Dummy mesh prewarm is illegal; this stores real linked program binaries keyed by shader source.
+//
+// The naive harvest — read LINK_STATUS immediately after linkProgram — serializes the whole
+// warmup: under KHR_parallel_shader_compile the driver link is still in flight, and the query
+// blocks the main thread until it finishes. Measured ~8 s of serialized waits across the
+// opening programs on Intel/ANGLE (PQ-033.02 boot profile, same cost class as
+// shaderLinkReporter's first-use guard). Instead each link queues a pending entry and a
+// non-blocking COMPLETION_STATUS_KHR poll drains it: harvest only happens once the driver
+// says the link finished, so the cost of getProgramBinary lands on programs already linked.
+
+import { postTaskAtBackgroundPriorityBounded } from './compilePresentSlice.js';
+
+const MEMORY = new Map();
+const shaderSources = new WeakMap();
+const programShaders = new WeakMap();
+
+// Persisted layer (boot lane, wave-1): MEMORY alone makes every cold boot replay the
+// opening-cohort links at full cost. Binaries persist to IndexedDB keyed by fnv1a(salted
+// shader sources) under a bounded ~4MB LRU, so a repeat boot on the same renderer+driver
+// replays the warm set at ~free. Hydration is async — links racing it miss the cache and
+// backfill it at harvest — but the bulk of the opening cohort lands after the ~ms read.
+const IDB_DB = 'spaceface-program-binaries';
+const IDB_STORE = 'binaries';
+const IDB_MAX_BYTES = 4 * 1024 * 1024;
+const idbMeta = new Map(); // key -> { t, size }
+let idbBytes = 0;
+let idbDb = null;
+let idbSalt = null;
+let idbOpen = false;
+
+function saltedKey(key) {
+  return `${idbSalt || ''}:${key}`;
+}
+
+function idbEvict() {
+  const doomed = [];
+  while (idbBytes > IDB_MAX_BYTES && idbMeta.size) {
+    let oldestKey = null;
+    let oldestT = Infinity;
+    for (const [key, meta] of idbMeta) {
+      if (meta.t < oldestT) { oldestT = meta.t; oldestKey = key; }
+    }
+    if (!oldestKey) break;
+    idbBytes -= idbMeta.get(oldestKey).size;
+    idbMeta.delete(oldestKey);
+    MEMORY.delete(oldestKey.slice((idbSalt || '').length + 1));
+    doomed.push(oldestKey);
+  }
+  if (!doomed.length || !idbDb) return;
+  try {
+    const tx = idbDb.transaction(IDB_STORE, 'readwrite');
+    for (const key of doomed) tx.objectStore(IDB_STORE).delete(key);
+  } catch { /* eviction is best-effort */ }
+}
+
+// One transaction per drain, not per binary — a boot burst harvests 50-150 programs and a
+// transaction each is pure housekeeping overhead.
+function idbPutBatch(entries) {
+  if (!idbDb || !entries.length) return;
+  const now = Date.now();
+  let tx = null;
+  try {
+    tx = idbDb.transaction(IDB_STORE, 'readwrite');
+  } catch { return; }
+  const store = tx.objectStore(IDB_STORE);
+  for (const { key, binary } of entries) {
+    const skey = saltedKey(key);
+    const size = binary.binary.byteLength || binary.binary.length || 0;
+    if (size <= 0 || size > IDB_MAX_BYTES) continue;
+    const prior = idbMeta.get(skey);
+    if (prior) idbBytes -= prior.size;
+    idbBytes += size;
+    idbMeta.set(skey, { t: now, size });
+    try {
+      store.put({ format: binary.format, binary: binary.binary, t: now, size }, skey);
+    } catch { /* persist is best-effort */ }
+  }
+  idbEvict();
+}
+
+function idbHydrate(gl) {
+  if (idbOpen || typeof indexedDB === 'undefined') return;
+  idbOpen = true;
+  try {
+    const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+    const renderer = String(gl.getParameter(dbg ? dbg.UNMASKED_RENDERER_WEBGL : gl.RENDERER) || '');
+    const vendor = String(gl.getParameter(dbg ? dbg.UNMASKED_VENDOR_WEBGL : gl.VENDOR) || '');
+    idbSalt = `${vendor}::${renderer}::${String(gl.getParameter(gl.VERSION) || '')}`;
+  } catch {
+    idbSalt = 'unknown';
+  }
+  let request;
+  try {
+    request = indexedDB.open(IDB_DB, 1);
+  } catch { return; }
+  request.onupgradeneeded = () => {
+    try { request.result.createObjectStore(IDB_STORE); } catch { /* exists */ }
+  };
+  request.onerror = () => { idbDb = null; };
+  request.onsuccess = () => {
+    idbDb = request.result;
+    idbDb.onclose = () => { idbDb = null; };
+    let tx;
+    try {
+      tx = idbDb.transaction(IDB_STORE, 'readonly');
+    } catch { idbDb = null; return; }
+    const staleKeys = [];
+    const cursor = tx.objectStore(IDB_STORE).openCursor();
+    cursor.onsuccess = () => {
+      const it = cursor.result;
+      if (!it) return;
+      const skey = String(it.key);
+      const rec = it.value;
+      if (rec && rec.binary && skey.startsWith(`${idbSalt}:`)) {
+        const key = skey.slice(idbSalt.length + 1);
+        if (!MEMORY.has(key)) MEMORY.set(key, { format: rec.format, binary: rec.binary });
+        const size = Number(rec.size) || rec.binary.byteLength || 0;
+        idbBytes += size;
+        idbMeta.set(skey, { t: Number(rec.t) || 0, size });
+      } else {
+        // Stale salt (renderer/driver/version moved) can never hydrate — evict it now so the
+        // store does not grow unboundedly across driver changes. The cursor runs readonly, so
+        // collect keys and delete in a follow-up tx.
+        staleKeys.push(it.key);
+      }
+      it.continue();
+    };
+    tx.oncomplete = () => {
+      if (staleKeys.length && idbDb) {
+        try {
+          const purge = idbDb.transaction(IDB_STORE, 'readwrite');
+          for (const key of staleKeys) purge.objectStore(IDB_STORE).delete(key);
+        } catch { /* purge is best-effort */ }
+      }
+      idbEvict();
+    };
+  };
+}
+
+function fnv1a(text) {
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16);
+}
+
+function programKey(program) {
+  const shaders = programShaders.get(program);
+  if (!shaders || !shaders.length) return null;
+  let src = '';
+  for (let i = 0; i < shaders.length; i++) src += shaderSources.get(shaders[i]) || '';
+  return src ? fnv1a(src) : null;
+}
+
+export function installProgramBinaryCache(gl) {
+  if (!gl || typeof gl.linkProgram !== 'function') return { ok: false, reason: 'no-gl' };
+  const ext = typeof gl.getExtension === 'function'
+    ? (gl.getExtension('WEBGL_get_program_binary') || gl.getExtension('KHR_get_program_binary'))
+    : null;
+  const canGet = typeof gl.getProgramBinary === 'function';
+  const canSet = typeof gl.programBinary === 'function';
+  if (!ext && !(canGet && canSet)) return { ok: false, reason: 'no-extension' };
+
+  if (gl.__spacefaceProgramBinaryCache) return gl.__spacefaceProgramBinaryCache;
+
+  const parallelCompile = typeof gl.getExtension === 'function'
+    ? gl.getExtension('KHR_parallel_shader_compile')
+    : null;
+  const pending = [];
+  let drainScheduled = false;
+  idbHydrate(gl);
+
+  // Harvest programs whose driver link has finished. COMPLETION_STATUS_KHR answers without
+  // blocking; a program reporting false keeps its slot for the next drain. Without the
+  // extension links are synchronous anyway, so every pending entry is already settled.
+  const drainPending = () => {
+    drainScheduled = false;
+    // Pending programs' handles died with the context — draining them now would query dead
+    // handles through the restored context (INVALID_VALUE noise). Drop the queue wholesale.
+    if (typeof gl.isContextLost === 'function' && gl.isContextLost()) {
+      pending.length = 0;
+      return;
+    }
+    const harvested = [];
+    for (let i = pending.length - 1; i >= 0; i--) {
+      const { program, key } = pending[i];
+      if (parallelCompile) {
+        let done = true;
+        try { done = gl.getProgramParameter(program, parallelCompile.COMPLETION_STATUS_KHR) === true; }
+        catch { pending.splice(i, 1); continue; }
+        if (!done) continue;
+      }
+      pending.splice(i, 1);
+      try {
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) continue;
+        const binary = gl.getProgramBinary(program);
+        if (binary && binary.binary) {
+          MEMORY.set(key, binary);
+          harvested.push({ key, binary });
+        }
+      } catch {
+        /* some drivers reject getProgramBinary until COMPLETION_STATUS */
+      }
+    }
+    idbPutBatch(harvested);
+  };
+  const scheduleDrain = () => {
+    if (drainScheduled || pending.length === 0) return;
+    drainScheduled = true;
+    // The next linkProgram call also drains, so this post only covers the tail of a
+    // burst — dispatch it at background priority so the getProgramBinary readback
+    // loop can't nest inside the compositor beat that armed it.
+    postTaskAtBackgroundPriorityBounded(drainPending);
+  };
+
+  const origShaderSource = gl.shaderSource.bind(gl);
+  const origAttach = gl.attachShader.bind(gl);
+  const origLink = gl.linkProgram.bind(gl);
+  const origDelete = typeof gl.deleteProgram === 'function' ? gl.deleteProgram.bind(gl) : null;
+
+  gl.shaderSource = (shader, source) => {
+    shaderSources.set(shader, String(source || ''));
+    return origShaderSource(shader, source);
+  };
+  gl.attachShader = (program, shader) => {
+    let list = programShaders.get(program);
+    if (!list) {
+      list = [];
+      programShaders.set(program, list);
+    }
+    list.push(shader);
+    return origAttach(program, shader);
+  };
+  gl.linkProgram = (program) => {
+    const key = programKey(program);
+    const cached = key ? MEMORY.get(key) : null;
+    if (cached && canSet && cached.binary) {
+      try {
+        gl.programBinary(program, cached.format, cached.binary);
+        if (gl.getProgramParameter(program, gl.LINK_STATUS)) return;
+      } catch {
+        /* fall through to a real link */
+      }
+    }
+    origLink(program);
+    if (key && canGet) {
+      pending.push({ program, key });
+      // No synchronous drain here: draining inside every linkProgram makes the COMPLETION_STATUS
+      // poll O(n^2) per compile burst (each a GPU-process round trip where supported). The
+      // timer drains the tail once; a cache miss for a not-yet-harvested key just links for real.
+      scheduleDrain();
+    }
+  };
+
+  // A program retired before its harvest drain (releaseProgram → deleteProgram when an aborted
+  // admission's subjects tear down) leaves its raw handle in pending. The next drain's
+  // COMPLETION_STATUS query on that dead handle answers null (GL_INVALID_VALUE "Program object
+  // expected") and — read as "still linking" — wedges the entry, re-queried by every later
+  // drain. Three passes this exact handle object to linkProgram and deleteProgram (vendored
+  // WebGLProgram.destroy), so identity eviction here removes it before any drain can query it.
+  if (origDelete) {
+    gl.deleteProgram = (program) => {
+      for (let i = pending.length - 1; i >= 0; i--) {
+        if (pending[i].program === program) pending.splice(i, 1);
+      }
+      return origDelete(program);
+    };
+  }
+
+  const installed = {
+    ok: true,
+    size: () => MEMORY.size,
+    clear: () => MEMORY.clear(),
+  };
+  gl.__spacefaceProgramBinaryCache = installed;
+  return installed;
+}
+
+export function programBinaryCacheSize() {
+  return MEMORY.size;
+}

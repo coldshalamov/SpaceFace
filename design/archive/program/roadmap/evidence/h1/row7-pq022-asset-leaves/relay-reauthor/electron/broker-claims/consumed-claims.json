@@ -1,0 +1,11 @@
+{
+  "schema": "spaceface.validation-broker-consumed-claims.v1",
+  "byClaimId": {
+    "45252-4720537cb0b09b0fb0f6d1ff": {
+      "claimPath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq022-relay-reauthor\\electron\\broker-claims\\45252-4720537cb0b09b0fb0f6d1ff.json",
+      "consumedAt": "2026-08-04T08:24:57.058Z",
+      "candidateDigest": "402de724d86c59e401a6a3435dff19774e36c5e38430ce863c20247acefb2bd0",
+      "runtimeKind": "electron"
+    }
+  }
+}

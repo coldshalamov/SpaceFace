@@ -1,0 +1,734 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import * as THREE from 'three';
+
+import * as partsLibrary from '../src/render/partsLibrary.js';
+import { ensurePerfRuntime } from '../src/core/perfRuntime.js';
+import { waitForAuthoredAssetDeadline } from '../scripts/lib/authoredAssetDeadline.mjs';
+
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+function makeStubCanvas() {
+  const context = {
+    canvas: null,
+    fillRect() {}, strokeRect() {}, clearRect() {}, fillText() {}, strokeText() {},
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {}, setTransform() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {}, arc() {}, rect() {},
+    bezierCurveTo() {}, quadraticCurveTo() {}, fill() {}, stroke() {}, drawImage() {},
+    createLinearGradient() { return { addColorStop() {} }; },
+    createRadialGradient() { return { addColorStop() {} }; },
+    createImageData(width, height) {
+      return { data: new Uint8ClampedArray(width * height * 4), width, height };
+    },
+    getImageData(_x, _y, width, height) {
+      return { data: new Uint8ClampedArray(width * height * 4), width, height };
+    },
+    putImageData() {}, measureText() { return { width: 10 }; },
+    fillStyle: '', strokeStyle: '', font: '', lineWidth: 1, globalAlpha: 1,
+  };
+  const canvas = {
+    width: 256,
+    height: 256,
+    getContext: () => context,
+    style: {},
+    addEventListener() {},
+  };
+  context.canvas = canvas;
+  return canvas;
+}
+
+function authoredFixtureRecord(url, slot) {
+  const geometry = new THREE.BoxGeometry(1, 0.5, 0.5);
+  const material = new THREE.MeshStandardMaterial({ color: 0x8090a0 });
+  return {
+    url,
+    slot,
+    assetId: url.endsWith('wholeships/kestrel.glb')
+      ? 'SF_K0_KESTREL_BORROWED_TIME_V4'
+      : 'place_station_trade_hub',
+    bounds: {
+      min: [-0.5, -0.25, -0.25],
+      max: [0.5, 0.25, 0.25],
+      size: [1, 0.5, 0.5],
+      center: [0, 0, 0],
+    },
+    primitives: [{
+      key: `${url}#fixture`,
+      name: 'LOD0_Body_Material_Hull',
+      geometry,
+      material,
+      matrix: new THREE.Matrix4(),
+      tags: Object.freeze({ lod: 'lod0', tint: 'hull' }),
+    }],
+    markers: [],
+  };
+}
+
+function fallbackShip() {
+  const root = new THREE.Group();
+  const hull = new THREE.Group();
+  hull.add(new THREE.Mesh(new THREE.BoxGeometry(1, 0.5, 0.5), new THREE.MeshBasicMaterial()));
+  root.add(hull);
+  root.userData.hull = hull;
+  return root;
+}
+
+async function flushMicrotasksUntil(predicate, message) {
+  for (let turn = 0; turn < 100; turn++) {
+    if (predicate()) return;
+    await Promise.resolve();
+  }
+  assert.fail(message);
+}
+
+// Composition may now pace itself across frames under a slice budget: work parked on a
+// yielded rAF only resumes when the harness fires the next frame, so a wait on this path
+// must pump frames the way a real browser does between turns.
+async function flushFramesUntil(predicate, scheduledFrames, message) {
+  for (let turn = 0; turn < 100; turn++) {
+    if (predicate()) return;
+    while (scheduledFrames.length) scheduledFrames.shift()(0);
+    // Paced admission drains cross real timers, not just microtasks — a bare
+    // Promise.resolve() turn can never let those callbacks fire.
+    await new Promise((resolve) => { setTimeout(resolve, 0); });
+  }
+  assert.fail(message);
+}
+
+test('authored boundary admission exposes the runtime queue seam', () => {
+  assert.equal(typeof partsLibrary.enqueueBoundaryUpgrade, 'function');
+});
+
+test('player and Helios hub outrank NPCs without waiting for queue idle', async () => {
+  const scheduledFrames = [];
+  const previousRaf = globalThis.requestAnimationFrame;
+  const previousScheduler = globalThis.scheduler;
+  globalThis.requestAnimationFrame = (callback) => {
+    scheduledFrames.push(callback);
+    return scheduledFrames.length;
+  };
+  // The pumped frame channel never yields the real event loop, so production's
+  // background-priority compose resume must join the same queue or it never runs.
+  globalThis.scheduler = {
+    postTask: (callback) => { scheduledFrames.push(callback); return scheduledFrames.length; },
+  };
+
+  try {
+    const scene = new THREE.Scene();
+    const starts = [];
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const entities = [];
+
+    const makeQueuedEntity = ({ id, type = 'ship', data = {}, isPlayer = false, nestedBoundary = false }) => {
+      const boundary = new THREE.Group();
+      boundary.userData.authoredAssetState = 'loading';
+      const publishedMesh = nestedBoundary ? new THREE.Group() : boundary;
+      if (nestedBoundary) {
+        const detailedRoot = new THREE.Group();
+        detailedRoot.add(boundary);
+        publishedMesh.add(detailedRoot);
+        Object.defineProperty(publishedMesh.userData, 'authoredAssetState', {
+          configurable: true,
+          enumerable: true,
+          get: () => boundary.userData.authoredAssetState,
+        });
+      }
+      scene.add(publishedMesh);
+      const entity = { id, type, data, isPlayer, alive: true, mesh: publishedMesh };
+      entities.push(entity);
+      partsLibrary.enqueueBoundaryUpgrade(scene, {
+        boundary,
+        entity,
+        run: async () => {
+          starts.push(id);
+          inFlight++;
+          maxInFlight = Math.max(maxInFlight, inFlight);
+          await Promise.resolve();
+          boundary.userData.authoredAssetState = 'authored';
+          inFlight--;
+        },
+      });
+      return entity;
+    };
+
+    const npcs = Array.from({ length: 12 }, (_, index) => makeQueuedEntity({ id: `npc-${index}` }));
+    const hub = makeQueuedEntity({
+      id: 'station_helios',
+      type: 'station',
+      data: { archetypeGlb: 'place_station_trade_hub' },
+      nestedBoundary: true,
+    });
+    const player = makeQueuedEntity({ id: 'player-1', isPlayer: true });
+    const state = {
+      playerId: player.id,
+      entities: new Map(entities.map((entity) => [entity.id, entity])),
+      entityList: entities,
+      world: { currentSectorId: 'sector_helios_prime' },
+    };
+
+    const runNextFrame = async () => {
+      const callback = scheduledFrames.shift();
+      assert.equal(typeof callback, 'function', 'queue must schedule its next admission frame');
+      callback(0);
+      await new Promise((resolve) => setImmediate(resolve));
+    };
+
+    await runNextFrame();
+    assert.deepEqual(starts, ['player-1']);
+    assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, false,
+      'player alone is insufficient while the critical starting hub is loading');
+
+    await runNextFrame();
+    assert.deepEqual(starts, ['player-1', 'station_helios']);
+    assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, true,
+      'critical visual readiness must become ready while ordinary NPC jobs remain queued');
+    assert.deepEqual(partsLibrary.getAuthoredUpgradeQueueStats(scene), { pending: 12, running: true });
+    assert.equal(starts.some((id) => id.startsWith('npc-')), false,
+      'no NPC loader may begin before the player and critical hub complete');
+
+    while (scheduledFrames.length > 0) await runNextFrame();
+    assert.deepEqual(starts.slice(2), npcs.map((entity) => entity.id),
+      'equal-priority NPC work must retain FIFO order');
+    assert.equal(maxInFlight, 1, 'the queue must never overlap authored decodes');
+    assert.deepEqual(partsLibrary.getAuthoredUpgradeQueueStats(scene), { pending: 0, running: false });
+    assert.equal(hub.mesh.children[0].children[0].userData.authoredAssetState, 'authored');
+  } finally {
+    if (previousRaf === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = previousRaf;
+    if (previousScheduler === undefined) delete globalThis.scheduler;
+    else globalThis.scheduler = previousScheduler;
+  }
+});
+
+test('loading admission releases the CPU slot after staging while exact GPU commits remain pending', async () => {
+  const scheduledFrames = [];
+  const previousRaf = globalThis.requestAnimationFrame;
+  const previousWindow = globalThis.window;
+  const previousDocument = globalThis.document;
+  const previousScheduler = globalThis.scheduler;
+  globalThis.requestAnimationFrame = (callback) => {
+    scheduledFrames.push(callback);
+    return scheduledFrames.length;
+  };
+  // The pumped frame channel never yields the real event loop, so production's
+  // background-priority compose resume must join the same queue or it never runs.
+  globalThis.scheduler = {
+    postTask: (callback) => { scheduledFrames.push(callback); return scheduledFrames.length; },
+  };
+  globalThis.document = {
+    createElement: (tag) => tag === 'canvas'
+      ? makeStubCanvas()
+      : { style: {}, appendChild() {}, addEventListener() {} },
+  };
+
+  const renderer = {};
+  const scene = new THREE.Scene();
+  const pipelineGates = [deferred(), deferred()];
+  const compiledRoots = [];
+  const records = new Map();
+  const loadAuthoredPart = async (url, options = {}) => {
+    if (!records.has(url)) records.set(url, authoredFixtureRecord(url, options.slot));
+    return records.get(url);
+  };
+  const player = {
+    id: 'player-loading',
+    type: 'ship',
+    isPlayer: true,
+    alive: true,
+    radius: 12,
+    data: { defId: 'ship_kestrel', sectorId: 'sector_helios_prime' },
+  };
+  const hub = {
+    id: 'station_helios',
+    type: 'station',
+    alive: true,
+    radius: 72,
+    data: {
+      stationId: 'station_helios',
+      archetypeGlb: 'place_station_trade_hub',
+      sectorId: 'sector_helios_prime',
+    },
+  };
+  const publishTouches = [];
+  const runtimeState = {
+    mode: 'loading',
+    playerId: player.id,
+    player,
+    entities: new Map([[player.id, player], [hub.id, hub]]),
+    entityList: [player, hub],
+    world: { currentSectorId: 'sector_helios_prime' },
+    render: {
+      scene,
+      compileObjectPipelines(root) {
+        const gate = pipelineGates[compiledRoots.length];
+        assert.ok(gate, 'each critical admission must receive one deferred pipeline gate');
+        compiledRoots.push(root);
+        return gate.promise;
+      },
+      touchSubjectExactTarget(root) {
+        publishTouches.push({
+          root,
+          parent: root.parent,
+          boundaryState: root.parent && root.parent.userData && root.parent.userData.authoredAssetState,
+        });
+      },
+    },
+  };
+  globalThis.window = { SF: { state: runtimeState } };
+
+  try {
+    const playerBoundary = partsLibrary.wrapShipWithAuthoredParts(player, fallbackShip(), {
+      releaseMode: true,
+      loadAuthoredPart,
+    });
+    const hubBoundary = partsLibrary.buildAuthoredStationArchetype(hub, {
+      releaseMode: true,
+      loadAuthoredPart,
+    });
+    player.mesh = playerBoundary;
+    hub.mesh = hubBoundary;
+    scene.add(playerBoundary, hubBoundary);
+
+    const hubCompletion = hubBoundary.userData.requestAuthoredUpgrade(renderer, scene);
+    const playerCompletion = playerBoundary.userData.requestAuthoredUpgrade(renderer, scene);
+    let playerCompletionSettled = false;
+    playerCompletion.then(() => { playerCompletionSettled = true; });
+
+    assert.equal(scheduledFrames.length, 1);
+    scheduledFrames.shift()(0);
+    // The flag stamps before the staged compile's resume lands the call — wait
+    // on the call itself, the same rule the hub leg below already follows.
+    await flushFramesUntil(
+      () => playerBoundary.userData.authoredAssetState === 'compiling-pipelines'
+        && compiledRoots.length >= 1,
+      scheduledFrames,
+      'the player must finish CPU composition and stage its exact pipeline promise',
+    );
+    // Loading admits two jobs concurrently, and frame-paced composition can now let the hub's
+    // pipeline stage inside the player's compose yield — staged-compile ORDER is not contract,
+    // only that both jobs and no NPC have begun their exact gate.
+    assert.ok(compiledRoots.length >= 1 && compiledRoots.length <= 2,
+      'only the serialized player and hub admissions may have staged a compile');
+    assert.equal(playerCompletionSettled, false,
+      'queue completion must remain pending until the exact authored commit');
+    assert.ok(playerBoundary.userData.authoredPipelineReady instanceof Promise);
+    // The serialized CPU slot releasing for the critical hub is proven by the hub reaching
+    // pipeline staging below — under loading's two-job concurrency it may already be admitted,
+    // in which case the queue's cadence frame is legitimately unarmed.
+    // The 'compiling-pipelines' flag is set before the staged compile's background-priority
+    // resume lands the actual compileObjectPipelines call — wait on the call itself.
+    await flushFramesUntil(
+      () => compiledRoots.length === 2,
+      scheduledFrames,
+      'the hub must reach pipeline staging before the player pipeline resolves',
+    );
+    assert.equal(hubBoundary.userData.authoredAssetState, 'compiling-pipelines');
+    assert.equal(playerBoundary.userData.authoredAssetState, 'compiling-pipelines');
+    const stagedReadiness = partsLibrary.authoredCriticalVisualReadiness(runtimeState);
+    assert.equal(stagedReadiness.pipelineReady, true);
+    assert.equal(stagedReadiness.ready, false,
+      'pipeline staging must not satisfy the final committed-authored flight gate');
+    assert.deepEqual(partsLibrary.getAuthoredUpgradeQueueStats(scene), { pending: 0, running: true });
+    assert.equal(scene.userData.authoredUpgradeDiagnostics.activeJobs, 2,
+      'both exact commits remain live diagnostics while the serialized CPU slot is free');
+
+    pipelineGates[0].resolve({ skipped: false });
+    pipelineGates[1].resolve({ skipped: false });
+    const [playerReceipt, hubReceipt] = await Promise.all([playerCompletion, hubCompletion]);
+
+    assert.equal(playerReceipt.status, 'authored');
+    assert.equal(hubReceipt.status, 'authored');
+    assert.equal(playerBoundary.userData.authoredAssetState, 'authored');
+    assert.equal(hubBoundary.userData.authoredAssetState, 'authored');
+    assert.equal(partsLibrary.authoredCriticalVisualReadiness(runtimeState).ready, true);
+    assert.deepEqual(partsLibrary.getAuthoredUpgradeQueueStats(scene), { pending: 0, running: false });
+
+    // The publish seam must re-touch each authored root on the exact target while it is
+    // attached and still pre-'authored': the pre-commit prepare ran while the root was
+    // detached, so this is where any residual program variant links — not in a presented pass.
+    const playerTouch = publishTouches.find((touch) => touch.parent === playerBoundary);
+    const hubTouch = publishTouches.find((touch) => touch.parent === hubBoundary);
+    assert.ok(playerTouch, 'the ship publish seam must run the exact-target touch');
+    assert.ok(hubTouch, 'the station publish seam must run the exact-target touch');
+    for (const touch of [playerTouch, hubTouch]) {
+      assert.notEqual(touch.boundaryState, 'authored',
+        'the touch must run inside the publish seam, before the authored state lands');
+      assert.ok(touch.parent && touch.parent.children.includes(touch.root),
+        'the touched root must be attached to its boundary — the detached pre-commit '
+        + 'touch is the hole this seam exists to close');
+    }
+  } finally {
+    if (previousRaf === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = previousRaf;
+    if (previousScheduler === undefined) delete globalThis.scheduler;
+    else globalThis.scheduler = previousScheduler;
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+    partsLibrary.invalidatePartsLibraryCaches(renderer);
+  }
+});
+
+test('post-flight admission is priority-aware, frame-staggered, and serial at composition', async () => {
+  const scheduledFrames = [];
+  const previousRaf = globalThis.requestAnimationFrame;
+  const previousWindow = globalThis.window;
+  const previousScheduler = globalThis.scheduler;
+  globalThis.requestAnimationFrame = (callback) => {
+    scheduledFrames.push(callback);
+    return scheduledFrames.length;
+  };
+  // The pumped frame channel never yields the real event loop, so production's
+  // background-priority compose resume must join the same queue or it never runs.
+  globalThis.scheduler = {
+    postTask: (callback) => { scheduledFrames.push(callback); return scheduledFrames.length; },
+  };
+
+  try {
+    const scene = new THREE.Scene();
+    const starts = [];
+    const releases = new Map();
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const player = { id: 'player', team: 0 };
+    const runtimeState = {
+      mode: 'flight',
+      playerId: player.id,
+      player: { targetId: 'selected' },
+      entities: new Map([[player.id, player]]),
+      entityList: [player],
+      settings: { video: {} },
+    };
+    const perf = ensurePerfRuntime(runtimeState);
+    perf.beginFrame(1 / 60);
+    perf.beginRenderFrame(31);
+    perf.setBackgroundJobTrackingEnabled(true);
+    globalThis.window = {
+      SF: {
+        state: runtimeState,
+      },
+    };
+
+    const enqueue = ({ id, team = 0, visible = false, estimatedBytes = 512 * 1024 * 1024 }) => {
+      const boundary = new THREE.Group();
+      boundary.visible = visible;
+      boundary.userData.authoredAssetState = 'loading';
+      scene.add(boundary);
+      const entity = { id, type: 'ship', team, alive: true, mesh: boundary, data: { defId: 'ship_wasp' } };
+      window.SF.state.entities.set(id, entity);
+      partsLibrary.enqueueBoundaryUpgrade(scene, {
+        boundary,
+        entity,
+        assetUrls: [`assets/${id}.glb`],
+        estimatedBytes,
+        run: () => new Promise((resolve) => {
+          starts.push(id);
+          inFlight++;
+          maxInFlight = Math.max(maxInFlight, inFlight);
+          releases.set(id, () => {
+            boundary.userData.authoredAssetState = 'authored';
+            inFlight--;
+            resolve();
+          });
+        }),
+      });
+    };
+
+    enqueue({ id: 'ambient' });
+    enqueue({ id: 'onscreen', visible: true });
+    enqueue({ id: 'hostile', team: 1 });
+    enqueue({ id: 'selected' });
+
+    const runNextFrame = async () => {
+      const callback = scheduledFrames.shift();
+      assert.equal(typeof callback, 'function');
+      callback(0);
+      await new Promise((resolve) => setImmediate(resolve));
+    };
+
+    await runNextFrame();
+    assert.deepEqual(starts, ['selected']);
+    assert.equal(scheduledFrames.length, 0, 'shared-library composition must remain single-flight');
+
+    const activeDiagnostics = scene.userData.authoredUpgradeDiagnostics;
+    assert.ok(activeDiagnostics, 'queue diagnostics must be published for the live probe');
+    assert.equal(activeDiagnostics.jobs[0].backgroundJobId, 1);
+    assert.deepEqual(activeDiagnostics.jobs[0].backgroundJobOrigin, {
+      displayFrameId: 1,
+      renderFrameId: 1,
+      simTick: 31,
+    });
+    assert.equal(activeDiagnostics.maxConcurrentJobs, 1);
+    assert.equal(activeDiagnostics.maxConcurrentDecode, 1,
+      'distinct asset decode remains serial alongside serial composition');
+    assert.equal(activeDiagnostics.peakActivePlannedBytes, 512 * 1024 * 1024,
+      'memory proxy must account for the single active composition plan');
+    assert.ok(activeDiagnostics.peakActivePlannedBytes < 3 * 1024 * 1024 * 1024);
+
+    releases.get('selected')();
+    await new Promise((resolve) => setImmediate(resolve));
+    await runNextFrame();
+    assert.deepEqual(starts, ['selected', 'hostile']);
+    releases.get('hostile')();
+    await new Promise((resolve) => setImmediate(resolve));
+    await runNextFrame();
+    assert.deepEqual(starts, ['selected', 'hostile', 'onscreen']);
+    releases.get('onscreen')();
+    await new Promise((resolve) => setImmediate(resolve));
+    await runNextFrame();
+    assert.deepEqual(starts, ['selected', 'hostile', 'onscreen', 'ambient']);
+
+    releases.get('ambient')();
+    await new Promise((resolve) => setImmediate(resolve));
+    while (scheduledFrames.length > 0) await runNextFrame();
+    assert.equal(maxInFlight, 1);
+    assert.deepEqual(partsLibrary.getAuthoredUpgradeQueueStats(scene), { pending: 0, running: false });
+    assert.deepEqual(
+      scene.userData.authoredUpgradeDiagnostics.jobs.map((job) => job.entityId),
+      ['selected', 'hostile', 'onscreen', 'ambient'],
+    );
+    const backgroundJobs = perf.getReport().backgroundJobs;
+    assert.deepEqual(backgroundJobs.records.map((job) => job.backgroundJobId), [1, 2, 3, 4]);
+    assert.equal(backgroundJobs.records.every((job) => job.terminal === 'authored'), true);
+  } finally {
+    if (previousRaf === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = previousRaf;
+    if (previousScheduler === undefined) delete globalThis.scheduler;
+    else globalThis.scheduler = previousScheduler;
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('a hostile inside the fight-fit envelope dequeues before dressing and a queued hub', async () => {
+  const scheduledFrames = [];
+  const previousRaf = globalThis.requestAnimationFrame;
+  const previousWindow = globalThis.window;
+  const previousScheduler = globalThis.scheduler;
+  globalThis.requestAnimationFrame = (callback) => {
+    scheduledFrames.push(callback);
+    return scheduledFrames.length;
+  };
+  // The pumped frame channel never yields the real event loop, so production's
+  // background-priority compose resume must join the same queue or it never runs.
+  globalThis.scheduler = {
+    postTask: (callback) => { scheduledFrames.push(callback); return scheduledFrames.length; },
+  };
+
+  try {
+    const scene = new THREE.Scene();
+    const starts = [];
+    const releases = new Map();
+    const completions = new Map();
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const player = { id: 'player', team: 0, pos: { x: 0, z: 0 } };
+    const runtimeState = {
+      mode: 'flight',
+      playerId: player.id,
+      player: { targetId: null },
+      entities: new Map([[player.id, player]]),
+      entityList: [player],
+      settings: { video: {} },
+      run: { kind: 'survival', phase: 'wave' },
+      world: { currentSectorId: 'sector_helios_prime', frameOrigin: { x: 0, z: 0 } },
+      camera: { liveZoom: 380, fov: 50, aspect: 16 / 9, tilt: 60, focus: { x: 0, z: 0 } },
+    };
+    globalThis.window = { SF: { state: runtimeState } };
+
+    const enqueue = ({ id, type = 'asteroid', team = 0, pos = { x: 60, z: 0 }, data = {}, options = {} }) => {
+      const boundary = new THREE.Group();
+      boundary.userData.authoredAssetState = 'loading';
+      scene.add(boundary);
+      const entity = { id, type, team, alive: true, pos, mesh: boundary, data };
+      runtimeState.entities.set(id, entity);
+      const completion = partsLibrary.enqueueBoundaryUpgrade(scene, {
+        boundary,
+        entity,
+        assetUrls: [`assets/${id}.glb`],
+        options,
+        run: () => new Promise((resolve) => {
+          starts.push(id);
+          inFlight++;
+          maxInFlight = Math.max(maxInFlight, inFlight);
+          releases.set(id, () => {
+            boundary.userData.authoredAssetState = 'authored';
+            inFlight--;
+            resolve();
+          });
+        }),
+      });
+      completions.set(id, completion);
+      return completion;
+    };
+
+    // The busy-machine flood: five dressing jobs inside the envelope, then a queued critical hub.
+    for (let index = 0; index < 5; index++) {
+      enqueue({ id: `dressing-${index}`, pos: { x: 60 + index * 10, z: 0 } });
+    }
+    enqueue({
+      id: 'station_helios',
+      type: 'station',
+      pos: { x: 300, z: 0 },
+      data: { stationId: 'station_helios', archetypeGlb: 'place_station_trade_hub' },
+    });
+    // Enqueued last, but a hostile inside the envelope outranks every dressing job and the hub.
+    enqueue({
+      id: 'hostile-1', type: 'ship', team: 1, pos: { x: 200, z: 0 },
+      data: { defId: 'ship_wasp' },
+    });
+    // Far dressing never reaches the queue while the run holds the arena.
+    const deferred = await enqueue({ id: 'station-far', type: 'station', pos: { x: 900, z: 0 } });
+    assert.equal(deferred.status, 'deferred-arena-dressing');
+    assert.equal(partsLibrary.getAuthoredUpgradeQueueStats(scene).pending, 7,
+      'the deferred station must not occupy the admission lane');
+
+    const runNextFrame = async () => {
+      const callback = scheduledFrames.shift();
+      assert.equal(typeof callback, 'function');
+      callback(0);
+      await new Promise((resolve) => setImmediate(resolve));
+    };
+
+    await runNextFrame();
+    assert.deepEqual(starts, ['hostile-1'],
+      'a hostile inside the fight-fit envelope must dequeue before dressing and a queued hub');
+
+    releases.get('hostile-1')();
+    await new Promise((resolve) => setImmediate(resolve));
+    await runNextFrame();
+    assert.deepEqual(starts, ['hostile-1', 'station_helios'],
+      'the queued critical hub still outranks ordinary dressing');
+
+    releases.get('station_helios')();
+    await new Promise((resolve) => setImmediate(resolve));
+    await runNextFrame();
+    assert.deepEqual(starts, ['hostile-1', 'station_helios', 'dressing-0']);
+
+    let dressingSettled = false;
+    completions.get('dressing-0').then(() => { dressingSettled = true; });
+
+    // One on-glass combat ship may bypass beside a non-ship job already in flight — the
+    // dressing admission is never cancelled or pre-empted, it simply runs alongside.
+    enqueue({
+      id: 'hostile-2', type: 'ship', team: 1, pos: { x: 210, z: 0 },
+      data: { defId: 'ship_wasp' },
+    });
+    while (scheduledFrames.length > 0) await runNextFrame();
+    assert.equal(starts[3], 'hostile-2',
+      'a visible hostile rides beside the in-flight non-ship admission');
+    assert.equal(inFlight, 2, 'one ship beside one non-ship is the granted overlap');
+    assert.equal(dressingSettled, false,
+      'the in-flight dressing job was never cancelled or pre-empted');
+
+    enqueue({
+      id: 'hostile-3', type: 'ship', team: 1, pos: { x: 220, z: 0 },
+      data: { defId: 'ship_wasp' },
+    });
+    while (scheduledFrames.length > 0) await runNextFrame();
+    assert.deepEqual(starts, ['hostile-1', 'station_helios', 'dressing-0', 'hostile-2'],
+      'a second ship never overlaps the ship admission already in flight');
+
+    releases.get('dressing-0')();
+    await new Promise((resolve) => setImmediate(resolve));
+    const dressingCompletion = await completions.get('dressing-0');
+    assert.equal(dressingCompletion.error, null);
+    assert.equal(dressingCompletion.status, 'authored');
+    assert.equal(dressingSettled, true);
+    while (scheduledFrames.length > 0) await runNextFrame();
+    assert.deepEqual(starts, ['hostile-1', 'station_helios', 'dressing-0', 'hostile-2'],
+      'with only a ship left in flight, the queued ship still waits');
+
+    releases.get('hostile-2')();
+    await new Promise((resolve) => setImmediate(resolve));
+    await runNextFrame();
+    assert.equal(starts[4], 'hostile-3',
+      'the waiting hostile takes the freed slot ahead of older dressing jobs');
+
+    releases.get('hostile-3')();
+    await new Promise((resolve) => setImmediate(resolve));
+    for (let index = 1; index < 5; index++) {
+      await runNextFrame();
+      assert.equal(starts[4 + index], `dressing-${index}`,
+        'equal-priority dressing retains FIFO order');
+      releases.get(`dressing-${index}`)();
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    while (scheduledFrames.length > 0) await runNextFrame();
+    assert.equal(maxInFlight, 2, 'flight admission stays serial except the bounded visible-ship bypass');
+    assert.deepEqual(partsLibrary.getAuthoredUpgradeQueueStats(scene), { pending: 0, running: false });
+
+    const visibleFarFx = enqueue({
+      id: 'opening-visible-fx',
+      type: 'fx',
+      pos: { x: 900, z: 0 },
+      data: { placeId: 'place_claim_outpost_relay' },
+      options: { admissionVisible: true },
+    });
+    await runNextFrame();
+    assert.equal(starts.at(-1), 'opening-visible-fx',
+      'an explicit opening-picture admission can settle even when the survival glass policy considers its FX dressing off-screen');
+    releases.get('opening-visible-fx')();
+    await new Promise((resolve) => setImmediate(resolve));
+    await visibleFarFx;
+    assert.deepEqual(partsLibrary.getAuthoredUpgradeQueueStats(scene), { pending: 0, running: false });
+  } finally {
+    if (previousRaf === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = previousRaf;
+    if (previousScheduler === undefined) delete globalThis.scheduler;
+    else globalThis.scheduler = previousScheduler;
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('authored deadline cannot be extended by a later diagnostic resnapshot', async () => {
+  let clock = 0;
+  let calls = 0;
+  const receipt = await waitForAuthoredAssetDeadline({
+    timeoutMs: 45,
+    pollIntervalMs: 50,
+    now: () => clock,
+    sleep: async (ms) => { clock += ms; },
+    sample: async () => {
+      calls++;
+      if (calls === 1) {
+        clock = 44;
+        return { shipCount: 12, authoredShipCount: 2 };
+      }
+      clock = 46;
+      return { shipCount: 12, authoredShipCount: 12 };
+    },
+    isReady: (snapshot) => snapshot.shipCount === 12 && snapshot.authoredShipCount === 12,
+  });
+
+  assert.equal(receipt.passed, false);
+  assert.equal(receipt.lastOnTimeSnapshot.authoredShipCount, 2,
+    'the last sample completed inside the original deadline is authoritative');
+  assert.equal(receipt.postDeadlineSnapshot.authoredShipCount, 12,
+    'later diagnostics may explain completion but cannot retroactively pass the gate');
+
+  clock = 0;
+  const onTime = await waitForAuthoredAssetDeadline({
+    timeoutMs: 45,
+    now: () => clock,
+    sleep: async (ms) => { clock += ms; },
+    sample: async () => {
+      clock = 44;
+      return { shipCount: 12, authoredShipCount: 12 };
+    },
+    isReady: (snapshot) => snapshot.shipCount === 12 && snapshot.authoredShipCount === 12,
+  });
+  assert.equal(onTime.passed, true);
+  assert.equal(onTime.passedAtMs, 44);
+});

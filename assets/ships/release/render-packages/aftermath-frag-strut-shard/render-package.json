@@ -1,0 +1,715 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.aftermath-frag-strut-shard",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "58cd0ac108dfbcfe3a53f3ba6c967235fd250dbcd06bf874d45db5c34a2e26fe",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          5.5,
+          0.34535184373540384,
+          0.43939075112082715
+        ],
+        "min": [
+          3.8815855979919434,
+          -0.8480478810278843,
+          -0.7628994607899403
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3bd72a995bb7cfe52c6535dd8b4e82a81c688aec00364174d67a3e047a9085a8",
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.strutfray-rib0.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "materialPipelineKey": "opaque",
+      "meshName": "strutFray_rib0",
+      "nodeId": "sf.render.aftermath-frag-strut-shard.mesh.strutfray-rib0",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          4.328218460083008,
+          1.4201842313579789,
+          -1.253566778418848
+        ],
+        "min": [
+          2.956183433532715,
+          0.34343382064778905,
+          -2.58557172942417
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6f5b9c5c1f8cbeb479d9c682726144e0c28ab388e1a7433c8a2cb6b953dfd4ad",
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.strutfray-rib1.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "materialPipelineKey": "opaque",
+      "meshName": "strutFray_rib1",
+      "nodeId": "sf.render.aftermath-frag-strut-shard.mesh.strutfray-rib1",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          4.734421730041504,
+          2.7467594134995674,
+          0.6243661297602049
+        ],
+        "min": [
+          3.033458709716797,
+          1.145257593374517,
+          -0.47977777851051007
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0233dde82380ffdd5c5b17dc0d8cd761fc9b42ba424ca1ba14ab0baf065837e9",
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.strutfray-rib2.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "materialPipelineKey": "opaque",
+      "meshName": "strutFray_rib2",
+      "nodeId": "sf.render.aftermath-frag-strut-shard.mesh.strutfray-rib2",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          3.40086030960083,
+          1.0197829928193527,
+          0.8775190612956711
+        ],
+        "min": [
+          -5.5,
+          -1.3763621773515182,
+          -0.9500815174266526
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8208ce595263f3a6b53040d22d9314ff64112ec7ca90160a5b503d6ea76edc67",
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.strutmain.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "materialPipelineKey": "opaque",
+      "meshName": "strutMain",
+      "nodeId": "sf.render.aftermath-frag-strut-shard.mesh.strutmain",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          1.3352937698364258,
+          -0.19975470294011433,
+          2.5855354027970465
+        ],
+        "min": [
+          -2.5869174003601074,
+          -2.74673212777125,
+          -0.16014408638316735
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1d0933b5e76afcaa844f61b1c7ab7d5a0484013c1de1933d8c07c4f4dd5a527a",
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.strutside.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "materialPipelineKey": "opaque",
+      "meshName": "strutSide",
+      "nodeId": "sf.render.aftermath-frag-strut-shard.mesh.strutside",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "id": "material:cd333b2cda5928c0c3546800",
+      "name": "Forge_ore_barge_wk_frame",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.strutfray-rib0",
+      "localTransform": [
+        0.8092072010040283,
+        0,
+        0,
+        0,
+        0,
+        0.8092072010040283,
+        0,
+        0,
+        0,
+        0,
+        0.8092072010040283,
+        0,
+        4.690792798995972,
+        -0.25134801864624023,
+        -0.16175435483455658,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "strutFray_rib0",
+      "nodeName": "strutFray_rib0",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.aftermath-frag-strut-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-strut-shard.body",
+      "worldTransform": [
+        0.8092072010040283,
+        0,
+        0,
+        0,
+        0,
+        0.8092072010040283,
+        0,
+        0,
+        0,
+        0,
+        0.8092072010040283,
+        0,
+        4.690792798995972,
+        -0.25134801864624023,
+        -0.16175435483455658,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.strutfray-rib1",
+      "localTransform": [
+        0.6860175132751465,
+        0,
+        0,
+        0,
+        0,
+        0.6860175132751465,
+        0,
+        0,
+        0,
+        0,
+        0.6860175132751465,
+        0,
+        3.6422009468078613,
+        0.8818090260028839,
+        -1.9195692539215088,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "strutFray_rib1",
+      "nodeName": "strutFray_rib1",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.aftermath-frag-strut-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-strut-shard.body",
+      "worldTransform": [
+        0.6860175132751465,
+        0,
+        0,
+        0,
+        0,
+        0.6860175132751465,
+        0,
+        0,
+        0,
+        0,
+        0.6860175132751465,
+        0,
+        3.6422009468078613,
+        0.8818090260028839,
+        -1.9195692539215088,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.strutfray-rib2",
+      "localTransform": [
+        0.8504815101623535,
+        0,
+        0,
+        0,
+        0,
+        0.8504815101623535,
+        0,
+        0,
+        0,
+        0,
+        0.8504815101623535,
+        0,
+        3.8839402198791504,
+        1.9460085034370422,
+        0.07229417562484741,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "strutFray_rib2",
+      "nodeName": "strutFray_rib2",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.aftermath-frag-strut-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-strut-shard.body",
+      "worldTransform": [
+        0.8504815101623535,
+        0,
+        0,
+        0,
+        0,
+        0.8504815101623535,
+        0,
+        0,
+        0,
+        0,
+        0.8504815101623535,
+        0,
+        3.8839402198791504,
+        1.9460085034370422,
+        0.07229417562484741,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.strutmain",
+      "localTransform": [
+        4.450430154800415,
+        0,
+        0,
+        0,
+        0,
+        4.450430154800415,
+        0,
+        0,
+        0,
+        0,
+        4.450430154800415,
+        0,
+        -1.049569845199585,
+        -0.17828959226608276,
+        -0.03628122806549072,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "strutMain",
+      "nodeName": "strutMain",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.aftermath-frag-strut-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-strut-shard.body",
+      "worldTransform": [
+        4.450430154800415,
+        0,
+        0,
+        0,
+        0,
+        4.450430154800415,
+        0,
+        0,
+        0,
+        0,
+        4.450430154800415,
+        0,
+        -1.049569845199585,
+        -0.17828959226608276,
+        -0.03628122806549072,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-strut-shard.mesh.strutside",
+      "localTransform": [
+        1.9611055850982666,
+        0,
+        0,
+        0,
+        0,
+        1.9611055850982666,
+        0,
+        0,
+        0,
+        0,
+        1.9611055850982666,
+        0,
+        -0.6258118152618408,
+        -1.4732434153556824,
+        1.2126956582069397,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "strutSide",
+      "nodeName": "strutSide",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.aftermath-frag-strut-shard.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-strut-shard.body",
+      "worldTransform": [
+        1.9611055850982666,
+        0,
+        0,
+        0,
+        0,
+        1.9611055850982666,
+        0,
+        0,
+        0,
+        0,
+        1.9611055850982666,
+        0,
+        -0.6258118152618408,
+        -1.4732434153556824,
+        1.2126956582069397,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.aftermath-frag-strut-shard.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "frag_strut_shard",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.aftermath-frag-strut-shard.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "1668e042822749e6660c1f12238206217bcffc4d7592cf6417507b4450fd1bd0"
+    },
+    "sourceGlb": {
+      "bytes": 45096,
+      "sha256": "8b54c143a4a80343614e274bfedef01c43b82cd32e81f8e8f702c2e0d0a90853",
+      "uri": "place_aftermath_frag_strut_shard.glb"
+    },
+    "sourceManifest": {
+      "bytes": 340541,
+      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 46148,
+    "sha256": "ec32caa775bae167e93c14e959f1d20e0e95bd3a38a6eda5c227be4fba9af59f",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        0.000013642864158613932,
+        -0.000018163313561636585
+      ],
+      "max": [
+        5.5,
+        2.7467594134995674,
+        2.5855354027970465
+      ],
+      "min": [
+        -5.5,
+        -2.74673212777125,
+        -2.58557172942417
+      ],
+      "size": [
+        11,
+        5.493491541270817,
+        5.171107132221216
+      ]
+    },
+    "hidden": [],
+    "legacyPart": true,
+    "markers": [],
+    "materialProfileRoles": {
+      "mechanical": 5
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 7,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.8092072010040283,
+          0,
+          0,
+          0,
+          0,
+          0.8092072010040283,
+          0,
+          0,
+          0,
+          0,
+          0.8092072010040283,
+          0,
+          4.690792798995972,
+          -0.25134801864624023,
+          -0.16175435483455658,
+          1
+        ],
+        "name": "strutFray_rib0",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.6860175132751465,
+          0,
+          0,
+          0,
+          0,
+          0.6860175132751465,
+          0,
+          0,
+          0,
+          0,
+          0.6860175132751465,
+          0,
+          3.6422009468078613,
+          0.8818090260028839,
+          -1.9195692539215088,
+          1
+        ],
+        "name": "strutFray_rib1",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.8504815101623535,
+          0,
+          0,
+          0,
+          0,
+          0.8504815101623535,
+          0,
+          0,
+          0,
+          0,
+          0.8504815101623535,
+          0,
+          3.8839402198791504,
+          1.9460085034370422,
+          0.07229417562484741,
+          1
+        ],
+        "name": "strutFray_rib2",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.450430154800415,
+          0,
+          0,
+          0,
+          0,
+          4.450430154800415,
+          0,
+          0,
+          0,
+          0,
+          4.450430154800415,
+          0,
+          -1.049569845199585,
+          -0.17828959226608276,
+          -0.03628122806549072,
+          1
+        ],
+        "name": "strutMain",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.9611055850982666,
+          0,
+          0,
+          0,
+          0,
+          1.9611055850982666,
+          0,
+          0,
+          0,
+          0,
+          1.9611055850982666,
+          0,
+          -0.6258118152618408,
+          -1.4732434153556824,
+          1.2126956582069397,
+          1
+        ],
+        "name": "strutSide",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_aftermath_frag_strut_shard.glb"
+  },
+  "runtimeHash": "e9a691d3bc860f09ea7db4c93a2582f62a65c9e8b12767324f936b3037c3618f",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          5.5,
+          2.7467594134995674,
+          2.5855354027970465
+        ],
+        "min": [
+          -5.5,
+          -2.74673212777125,
+          -2.58557172942417
+        ]
+      },
+      "id": "sf.render.aftermath-frag-strut-shard.body",
+      "nodeIds": [
+        "sf.render.aftermath-frag-strut-shard.mesh.strutfray-rib0",
+        "sf.render.aftermath-frag-strut-shard.mesh.strutfray-rib1",
+        "sf.render.aftermath-frag-strut-shard.mesh.strutfray-rib2",
+        "sf.render.aftermath-frag-strut-shard.mesh.strutmain",
+        "sf.render.aftermath-frag-strut-shard.mesh.strutside",
+        "sf.render.aftermath-frag-strut-shard.root"
+      ]
+    }
+  ]
+}

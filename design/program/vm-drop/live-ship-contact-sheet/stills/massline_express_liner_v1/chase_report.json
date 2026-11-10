@@ -1,0 +1,145 @@
+{
+  "ok": true,
+  "glb": "/workspace/spaceface/assets/ships/parts/wholeships/massline_express_liner_v1.glb",
+  "out": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/massline_express_liner_v1",
+  "focus": [
+    -0.715,
+    0.0,
+    0.0984
+  ],
+  "boundsMin": [
+    -20.85,
+    -9.48,
+    -5.47
+  ],
+  "boundsMax": [
+    19.42,
+    9.48,
+    5.6668
+  ],
+  "size": [
+    40.27,
+    18.96,
+    11.1368
+  ],
+  "lightScale": 3.7287,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_Remaster_Material_BrushedMetal_RemasterNickel",
+      "triangles": 240,
+      "materials": [
+        "Material_BrushedMetal_RemasterNickel"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Mechanical_RemasterOxidized",
+      "triangles": 28,
+      "materials": [
+        "Material_Mechanical_RemasterOxidized"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Glass_RemasterOptical",
+      "triangles": 84,
+      "materials": [
+        "Material_Glass_RemasterOptical"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Mechanical_RemasterHeatCopper",
+      "triangles": 552,
+      "materials": [
+        "Material_Mechanical_RemasterHeatCopper"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Emissive_Warm_RemasterRecess",
+      "triangles": 1320,
+      "materials": [
+        "Material_Emissive_Warm_RemasterRecess"
+      ]
+    },
+    {
+      "name": "LOD0_Remaster_Material_Hull_RemasterSeaEnamel",
+      "triangles": 660,
+      "materials": [
+        "Material_Hull_RemasterSeaEnamel"
+      ]
+    },
+    {
+      "name": "LOD0_Hull_MAT_SF_Massline_CeramicPaint_WarmIvory",
+      "triangles": 14377,
+      "materials": [
+        "MAT_SF_Massline_CeramicPaint_WarmIvory"
+      ]
+    },
+    {
+      "name": "LOD0_MAT_SF_Massline_Frame_DarkAnodized",
+      "triangles": 22972,
+      "materials": [
+        "MAT_SF_Massline_Frame_DarkAnodized"
+      ]
+    },
+    {
+      "name": "LOD0_MAT_SF_Massline_Glazing_SmokedSafety",
+      "triangles": 1836,
+      "materials": [
+        "MAT_SF_Massline_Glazing_SmokedSafety"
+      ]
+    },
+    {
+      "name": "LOD0_MAT_SF_Massline_Keel_ForgedDark",
+      "triangles": 7712,
+      "materials": [
+        "MAT_SF_Massline_Keel_ForgedDark"
+      ]
+    },
+    {
+      "name": "LOD0_MAT_SF_Massline_RefractoryHeatAlloy",
+      "triangles": 1036,
+      "materials": [
+        "MAT_SF_Massline_RefractoryHeatAlloy"
+      ]
+    },
+    {
+      "name": "LOD0_MAT_SF_Massline_ServicePrimer_Galvanized",
+      "triangles": 3152,
+      "materials": [
+        "MAT_SF_Massline_ServicePrimer_Galvanized"
+      ]
+    },
+    {
+      "name": "LOD0_MAT_SF_Massline_Throat_OxidizedDark",
+      "triangles": 3552,
+      "materials": [
+        "MAT_SF_Massline_Throat_OxidizedDark"
+      ]
+    },
+    {
+      "name": "LOD0_MAT_SF_Massline_WayfindingAmber",
+      "triangles": 116,
+      "materials": [
+        "MAT_SF_Massline_WayfindingAmber"
+      ]
+    },
+    {
+      "name": "LOD0_MAT_SF_Massline_WayfindingCyan",
+      "triangles": 556,
+      "materials": [
+        "MAT_SF_Massline_WayfindingCyan"
+      ]
+    }
+  ],
+  "triangles": 58193,
+  "stills": {
+    "play_chase.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/massline_express_liner_v1/play_chase.png",
+    "play_chase_abeam.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/massline_express_liner_v1/play_chase_abeam.png",
+    "play_chase_close.png": "/workspace/spaceface/design/program/vm-drop/live-ship-contact-sheet/stills/massline_express_liner_v1/play_chase_close.png"
+  },
+  "clay": null,
+  "clayClose": null
+}

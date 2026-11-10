@@ -1,0 +1,1027 @@
+// WANTED heat system (V2 §20b / IMPROVEMENT_IDEAS cut-list #15). Owns state.player.heat — a 0..1
+// scalar that measures how hard the law is hunting the player RIGHT NOW. Single writer (§0.6):
+// only this system mutates player.heat.
+//
+// What raises heat:
+//   - Killing a non-hostile ship (piracy) — big spike, scaled by victim class
+//   - Damaging a non-hostile ship (unprovoked attack) — small chip per hit
+//   - Getting busted smuggling contraband — medium spike per bust
+//   - A faction going aggro on you — strong signal the law noticed
+// What lowers heat:
+//   - Escaping the active search zone. Once outside the visible heat radius, WANTED drops one
+//     level every few seconds until clean; returning inside the zone resets the escape timer.
+//
+// Outputs:
+//   - player.heat (0..1) — the canonical scalar
+//   - player.heatZone — visible search zone state for the radar/HUD
+//   - heat:changed { value, level, zone } event — HUD/alerts listen to show WANTED state
+//   - The lawful "playerWanted" flag on enemies is derived downstream by combat.js at spawn time
+//     from this scalar, not written here (heat owns heat; combat owns enemy specs).
+//
+// Tunables kept conservative so a casual smuggler isn't perma-hunted, but a murderous pirate feels
+// real consequences. All clamp at 1.
+import { isRunSealed } from '../core/runSeal.js';
+import { LAWFUL_STATION_FACTIONS } from '../data/factions.js';
+import { SHIPS } from '../data/ships.js';
+
+const HEAT_MAX = 1;
+const KILL_NONHOSTILE = 0.28;      // piracy kill of a clean ship
+// Combat emits `victimClass: t.data.shipClass || t.type`. Civilian traffic commonly has no
+// authored shipClass, so its live class is the generic `ship`. Pricing that through the old
+// `default` multiplier produced 0.042 heat, which was immediately below WANTED for a clean hauler
+// kill. Authored civilian hulls use frigate/hauler/freighter while ambient traffic often emits the
+// generic ship class; all are headline piracy victims. Keep `default` conservative for genuinely
+// unclassified entity kinds.
+const KILL_CLASS_MULT = {
+  station: 1.0,
+  capital: 0.6,
+  large: 0.4,
+  ship: 0.6,
+  frigate: 0.6,
+  hauler: 0.6,
+  freighter: 0.6,
+  fighter: 0.25,
+  default: 0.15,
+};
+const HIT_NONHOSTILE = 0.012;      // chip per unprovoked hit (capped per second below)
+const HIT_CAP_PER_S = 0.06;        // so a beam doesn't max heat in one burst
+const BUST_CONTRABAND = 0.16;      // smuggling scan bust
+const FactionsAggroAdd = 0.20;     // a faction flipping hostile (the law noticed)
+
+const WANTED_THRESHOLD = 0.15;     // above this, lawful patrols hunt you (playerWanted=true)
+// How long the convicting-incident explanation can still start a new response. Past this,
+// heat and reputation stay; only the actionable index goes quiet. Strictly greater than,
+// so the record still explains on the exact boundary.
+export const ACTIONABLE_EVIDENCE_S = 120;
+// Hit-chips are suspicion, never conviction: they plateau just under WANTED so an
+// unwitnessed assault cannot mint a warrant — a validated receipt must convict.
+const HIT_SUSPICION_MAX = WANTED_THRESHOLD * 0.95;
+const HEAT_LEVEL_COUNT = 5;
+const HEAT_RADIUS_BY_LEVEL = [0, 1200, 1700, 2300, 3000, 3700];
+const HEAT_CLEAR_SECONDS_BY_LEVEL = [0, 5, 6, 7, 8, 10];
+
+// PQ-151.00 — four player-facing WANTED worlds derived from the existing 0..5 heat levels.
+// Levels stay the scalar bands heat already owns; the tier is the name the chart/HUD/world key.
+// Scan/bounty escape is leave the search zone. Nets escape is a physical checkpoint break
+// (lawSecurity emits law:wantedCheckpointBroken). Impound escape is steal the hull back
+// (or pay / work the bill at the yard). This file is still the only heat writer.
+export const WANTED_TIER = Object.freeze({
+  NONE: 'none',
+  SCAN: 'scan',
+  BOUNTY: 'bounty',
+  NETS: 'nets',
+  IMPOUND: 'impound',
+});
+const WANTED_TIER_BY_LEVEL = Object.freeze([
+  WANTED_TIER.NONE,
+  WANTED_TIER.SCAN,
+  WANTED_TIER.BOUNTY,
+  WANTED_TIER.NETS,
+  WANTED_TIER.NETS,
+  WANTED_TIER.IMPOUND,
+]);
+export const WANTED_TIER_INFO = Object.freeze({
+  [WANTED_TIER.NONE]: Object.freeze({
+    id: WANTED_TIER.NONE, label: 'clean', escape: null, playable: true,
+  }),
+  [WANTED_TIER.SCAN]: Object.freeze({
+    id: WANTED_TIER.SCAN, label: 'fine/scan', escape: 'leave_search_zone', playable: true,
+  }),
+  [WANTED_TIER.BOUNTY]: Object.freeze({
+    id: WANTED_TIER.BOUNTY, label: 'bounty/hunters', escape: 'leave_search_zone', playable: true,
+  }),
+  [WANTED_TIER.NETS]: Object.freeze({
+    id: WANTED_TIER.NETS, label: 'nets/wedges', escape: 'break_net', playable: true,
+  }),
+  [WANTED_TIER.IMPOUND]: Object.freeze({
+    id: WANTED_TIER.IMPOUND, label: 'impound/heist', escape: 'steal_ship_back', playable: true,
+  }),
+});
+
+// PQ-019B — validated law incidents, priced on the same scale as every other crime above. A
+// witnessed cargo theft sits between a contraband bust (0.16: passive smuggling, caught on a scan)
+// and a piracy kill (0.28: someone died). Openly taking lawful cargo in front of witnesses is the
+// more brazen act of the two lesser ones, but nobody was hurt.
+const THEFT_INCIDENT = 0.22;
+// A witnessed/detected collision kill is reckless endangerment, not murder: priced off the SAME
+// class-scaled murder table at a fixed fraction, so ramming a victim can never out-price shooting
+// it. (The old flat 0.12 exceeded the murder price for fighter/default/large victims — a ram was
+// the more expensive crime. At 0.5× the heaviest reckless price stays below WANTED on its own.)
+const RECKLESS_KILL_FRACTION = 0.5;
+// A validated incident of a kind this table does not price still raises SOMETHING. Silence would
+// make every future crime type free until someone remembered to add a row here.
+const INCIDENT_HEAT_DEFAULT = 0.12;
+const INCIDENT_HEAT_BY_KIND = Object.freeze({ payload_theft: THEFT_INCIDENT, vessel_theft: THEFT_INCIDENT });
+
+// Paying a posted bounty visibly cools the ledger: every credit of settled bounty quiets the
+// hunt a little, capped so a fat payoff never launders a massacre in one receipt.
+export const BOUNTY_PAID_COOL_PER_CR = 0.0004;
+export const BOUNTY_PAID_COOL_MAX = 0.5;
+
+// THE WORLD ANSWERS (T10 half) — answering a lawful mayday is something the law can see. A pod the
+// player towed to lawful custody (survivorPod's `rescued` receipt, player-answered only) cools the
+// ledger one clear step, bounded per minute so a pod farm never launders a massacre. Never for the
+// player's own wreck pod, never for a pod whose faction is not lawful, never twice for one pod id.
+export const RESCUE_COOL_PER_POD = 0.08;
+export const RESCUE_COOL_WINDOW_S = 60;
+export const RESCUE_COOL_MAX_PER_WINDOW = 0.2;
+const RESCUE_LEDGER_IDS_CAP = 48;
+
+// THE WORLD REMEMBERS (U-B) - a fixer fence's scrub (`heat:scrubRequested`): ONE heat level's worth
+// of cooling, once per fence per SCRUB_COOLDOWN_S of sim time. Impound is only ever
+// escaped by stealing the hull back, and a live nets band keeps its floor - the checkpoint has to
+// be physically broken - so a scrub never drops the pilot below level SCRUB_NETS_FLOOR_LEVEL there.
+export const SCRUB_COOL_LEVELS = 1;
+export const SCRUB_COOLDOWN_S = 3600;
+export const SCRUB_NETS_FLOOR_LEVEL = 3;
+const SCRUB_LEDGER_CAP = 12;
+
+function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+
+/**
+ * Applied-incident ids, READ without creating.
+ *
+ * The lazy split matters: `check:sim:compare` replays the golden run across a save/restore boundary,
+ * and a key that materialized in `init` would exist on one leg and not the other. No law incident is
+ * ever reported in the golden scenario, so this object is never built there.
+ */
+function appliedIncidentIds(player) {
+  const ledger = player && player.heatIncidentsApplied;
+  return ledger && typeof ledger === 'object' && !Array.isArray(ledger) ? ledger : EMPTY_LEDGER;
+}
+
+function ensureAppliedIncidentIds(player) {
+  if (!player.heatIncidentsApplied || typeof player.heatIncidentsApplied !== 'object'
+    || Array.isArray(player.heatIncidentsApplied)) {
+    player.heatIncidentsApplied = {};
+  }
+  return player.heatIncidentsApplied;
+}
+
+function appliedReportIds(player) {
+  const ledger = player && player.heatReportsApplied;
+  return ledger && typeof ledger === 'object' && !Array.isArray(ledger) ? ledger : EMPTY_LEDGER;
+}
+
+function rememberAppliedReport(player, reportId) {
+  if (!reportId) return;
+  if (!player.heatReportsApplied || typeof player.heatReportsApplied !== 'object'
+    || Array.isArray(player.heatReportsApplied)) {
+    player.heatReportsApplied = {};
+  }
+  player.heatReportsApplied[reportId] = true;
+}
+
+const EMPTY_LEDGER = Object.freeze({});
+
+// Rescue-cooling ledger lives on state.player (serialized wholesale) and is created lazily at the
+// first lawful rescue, so the golden scenario never grows the key (same split as heatIncidentsApplied).
+function rescueLedger(player) {
+  let ledger = player.heatRescueCooled;
+  if (!ledger || typeof ledger !== 'object' || Array.isArray(ledger)) {
+    ledger = player.heatRescueCooled = { ids: {}, window: [] };
+  }
+  if (!ledger.ids || typeof ledger.ids !== 'object' || Array.isArray(ledger.ids)) ledger.ids = {};
+  if (!Array.isArray(ledger.window)) ledger.window = [];
+  return ledger;
+}
+
+// Compact label coercion for the convicting-incident record: short trimmed strings only,
+// null when absent. Presentation renders what is here verbatim, so nothing may invent a
+// witness claim — absence stays absence.
+function shortText(value, max) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim().slice(0, max);
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+const SHIP_NAME_BY_ID = new Map(SHIPS.map((def) => [def && def.id, def && def.name]));
+// victimClass words that mean "unnamed thing", not a party — humanizing them would print
+// 'Ship' where the alert should say nothing at all.
+const GENERIC_AFFECTED_CLASSES = new Set(['ship', 'station', 'payload']);
+
+/** The party an incident hit as presentation may say it — a name, never the stable id
+ *  (`entity:379`, `hauler_7`, `pq077_capsule`). Returns null when nothing readable exists;
+ *  absence renders as absence, never an invented party. */
+export function incidentPartyLabel(receipt, state) {
+  if (!receipt || typeof receipt !== 'object') return null;
+  const explicit = shortText(receipt.victimLabel, 48);
+  if (explicit) return explicit;
+  const data = receipt.victimEntityId != null
+    && state && state.entities && typeof state.entities.get === 'function'
+    ? (state.entities.get(receipt.victimEntityId) || {}).data
+    : null;
+  if (data) {
+    const named = shortText(data.name, 48) || shortText(data.callsign, 48)
+      || shortText(data.ai && data.ai.name, 48) || shortText(data.trafficLabel, 48);
+    if (named) return named;
+    const defName = SHIP_NAME_BY_ID.get(data.defId);
+    if (typeof defName === 'string' && defName.length > 0) return defName;
+  }
+  const victimClass = shortText(receipt.victimClass, 48);
+  if (victimClass && !GENERIC_AFFECTED_CLASSES.has(victimClass)) {
+    return victimClass.replace(/_/g, ' ');
+  }
+  return null;
+}
+
+// Defensive copy of the convicting-incident record for the public packet. Unknown shapes
+// (old saves, foreign writers) degrade to null rather than a half-invented explanation.
+function evidenceAgePassed(record, now) {
+  if (now == null || !record) return false;
+  const at = Number(record.at);
+  const t = Number(now);
+  return Number.isFinite(at) && Number.isFinite(t) && t - at > ACTIONABLE_EVIDENCE_S;
+}
+
+function incidentSnapshot(record, now = null) {
+  if (!record || typeof record !== 'object' || Array.isArray(record)) return null;
+  if (typeof record.incidentReceiptId !== 'string' || !record.incidentReceiptId) return null;
+  if (evidenceAgePassed(record, now)) return null;
+  return {
+    kind: shortText(record.kind, 32),
+    incidentReceiptId: record.incidentReceiptId,
+    affected: shortText(record.affected, 48),
+    affectedLabel: shortText(record.affectedLabel, 48),
+    witnessCount: Number.isFinite(Number(record.witnessCount))
+      ? Math.max(0, Number(record.witnessCount) | 0) : 0,
+    jurisdiction: shortText(record.jurisdiction, 48),
+    evidenceClass: shortText(record.evidenceClass, 32),
+    at: Number.isFinite(Number(record.at)) ? Number(record.at) : 0,
+  };
+}
+
+function expireActionableEvidence(player, now) {
+  const incident = player && player.heatLastIncident;
+  if (!incident || typeof incident !== 'object') return false;
+  if (!evidenceAgePassed(incident, now)) return false;
+  player.heatLastIncident = null;
+  return true;
+}
+
+function defaultHeatZone() {
+  return {
+    active: false,
+    center: { x: 0, z: 0 },
+    radius: 0,
+    level: 0,
+    outsideS: 0,
+    clearAfterS: 0,
+    sectorId: null,
+  };
+}
+
+function heatZoneSnapshot(zone) {
+  return zone ? {
+    active: !!zone.active,
+    center: { x: zone.center.x || 0, z: zone.center.z || 0 },
+    radius: zone.radius || 0,
+    level: zone.level || 0,
+    outsideS: zone.outsideS || 0,
+    clearAfterS: zone.clearAfterS || 0,
+    sectorId: typeof zone.sectorId === 'string' && zone.sectorId ? zone.sectorId : null,
+  } : defaultHeatZone();
+}
+
+function ensureHeatZone(player) {
+  if (!player) return defaultHeatZone();
+  const zone = player.heatZone && typeof player.heatZone === 'object' ? player.heatZone : defaultHeatZone();
+  if (!zone.center || typeof zone.center !== 'object') zone.center = { x: 0, z: 0 };
+  if (typeof zone.active !== 'boolean') zone.active = false;
+  if (!Number.isFinite(zone.center.x)) zone.center.x = 0;
+  if (!Number.isFinite(zone.center.z)) zone.center.z = 0;
+  if (!Number.isFinite(zone.radius)) zone.radius = 0;
+  if (!Number.isFinite(zone.level)) zone.level = 0;
+  if (!Number.isFinite(zone.outsideS)) zone.outsideS = 0;
+  if (!Number.isFinite(zone.clearAfterS)) zone.clearAfterS = 0;
+  if (typeof zone.sectorId !== 'string' || !zone.sectorId) zone.sectorId = null;
+  player.heatZone = zone;
+  return zone;
+}
+
+function activeSectorId(state) {
+  const id = state && state.world && state.world.currentSectorId;
+  return typeof id === 'string' && id ? id : null;
+}
+
+/** The search circle when it belongs to the sector the player is in. Null after a jump. */
+export function heatZoneInCurrentSector(state) {
+  const zone = state && state.player && state.player.heatZone;
+  if (!zone || zone.active !== true) return null;
+  const here = activeSectorId(state);
+  if (zone.sectorId && here && zone.sectorId !== here) return null;
+  return zone;
+}
+
+function playerEntity(state) {
+  return state && state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+}
+
+function setZoneCenter(zone, entity, state) {
+  if (!zone || !entity || !entity.pos) return;
+  zone.center.x = entity.pos.x || 0;
+  zone.center.z = entity.pos.z || 0;
+  const here = activeSectorId(state);
+  if (here) zone.sectorId = here;
+}
+
+function outsideHeatZone(entity, zone) {
+  if (!entity || !entity.pos || !zone || !zone.active) return false;
+  const dx = entity.pos.x - zone.center.x;
+  const dz = entity.pos.z - zone.center.z;
+  return dx * dx + dz * dz > zone.radius * zone.radius;
+}
+
+function heatValueForLevel(level) {
+  if (level <= 0) return 0;
+  return Math.max(WANTED_THRESHOLD, Math.min(HEAT_MAX, level / HEAT_LEVEL_COUNT));
+}
+
+export const heat = {
+  name: 'heat',
+
+  init(ctx) {
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    this.registry = ctx.registry;
+    const player = this.state.player;
+    // NaN is 'number' — a torn scalar still normalizes clean.
+    if (player && !Number.isFinite(player.heat)) player.heat = 0;
+    if (player) {
+      ensureHeatZone(player);
+      publishWantedTier(player);
+    }
+    this._resetTransientTiming();
+
+    const bus = this.bus;
+    bus.on('wreckCourt:lawFact', payload => {
+      const verified = this.registry?.get('wreckCourt')?.verifyRulingFact?.(payload);
+      if (verified?.ok !== true || !Number.isFinite(payload.delta) || isRunSealed(this.state)) return;
+      const player = this.state.player;
+      const receipts = Array.isArray(player.courtLawReceipts) ? player.courtLawReceipts : [];
+      if (receipts.includes(payload.receiptId)) return;
+      // Court points use the same normalized WANTED writer and active sector jurisdiction.
+      this._setHeat((Number(player.heat) || 0) + Math.max(-2, Math.min(4, payload.delta)) * 0.02,
+        `Wreck Court ruling in ${verified.sectorId || this.state.world.currentSectorId}`);
+      player.courtLawReceipts = [...receipts.slice(-127), payload.receiptId];
+    });
+
+    // Kills do NOT write heat directly. lawSecurity adjudicates every player-caused kill
+    // through the same witness/jurisdiction gate as a reported theft and signs an incident
+    // receipt — the ONLY door into this writer — so an unwitnessed kill stays free and a
+    // lawful defensive kill is cleared on the law's own record, never priced here.
+    // See lawSecurity._handleKilledAdjudication + applyIncidentReceipt below.
+
+    // Unprovoked attacks: chipping a non-hostile ship's hull/shield. Capped per-second so a beam
+    // weapon can't spike heat to max instantly.
+    bus.on('combat:damage', (p) => this._onDamage(p));
+
+    // Smuggling busts: contraband found on a patrol scan. A body surrendered to the
+    // gate is the legal off-ramp — the loss of the goods is already the payment.
+    // A body on someone else's line is their bust, not yours.
+    bus.on('contraband:scanned', (p) => {
+      if (!p || !p.found) return;
+      if (p.surrendered === true) return;
+      if (p.evidenceOwnerId != null && p.evidenceOwnerId !== this.state.playerId) return;
+      this._raise(BUST_CONTRABAND, 'smuggling bust');
+    });
+
+    // The customs weir's own first-party observation: a hull crossed the gate without
+    // finishing the manifest read. The booth is the witness, so this is the same class as a
+    // smuggling bust — priced so one unread transit stays suspicion (below WANTED) while
+    // breaking a live read is the stronger evidence. Repeat runners tip over the line, and
+    // past it the existing high-sec coverage clock answers — the gate never attacks a clean
+    // hull, the hunt starts only when heat says WANTED.
+    const WEIR_BOLT_READ = 0.10;   // broke a live read — the gate kept part of the manifest
+    const WEIR_BOLT_UNREAD = 0.05; // crossed unread — the booth saw a hull flee the beam
+    bus.on('customs:weirBolt', (p) => {
+      if (!p) return;
+      this._raise(p.kind === 'read_bolt' ? WEIR_BOLT_READ : WEIR_BOLT_UNREAD, 'customs weir bolt');
+    });
+
+    // A faction going hostile is the strongest "the law noticed" signal short of a kill. The same
+    // event also announces de-escalation, which must not itself create a fresh WANTED incident.
+    bus.on('faction:aggro', (p) => {
+      if (p && p.isAggro === false) return;
+      this._raise(FactionsAggroAdd, 'faction hostile');
+    });
+
+    // These boundaries may move simTime backwards while the system instance survives. Per-burst
+    // clocks are transient and must not inherit a future timestamp into a new/restored run.
+    bus.on('game:started', () => this._resetTransientTiming());
+    bus.on('save:loaded', () => this._resetTransientTiming());
+
+    // Intentional clear (e.g. Ending A record expunge). Sole heat writer path via _setHeat.
+    bus.on('heat:clear', (p) => {
+      this._setHeat(0, (p && p.reason) || 'heat:clear');
+    });
+
+    // PQ-151.01 — breaking a posted nets-band checkpoint is the escape verb. Law names the
+    // physical fact; this listener is the only path that writes player.heat for that fact.
+    bus.on('law:wantedCheckpointBroken', (p) => this._onCheckpointBroken(p));
+
+    // PQ-151.03 — recovering the hull at the pound is the only way out of impound.
+    // Law names the physical fact; this listener is the only path that writes player.heat.
+    bus.on('law:impoundRecovered', (p) => this._onImpoundRecovered(p));
+
+    // RC-CHASE (row 462) — breaking observation of the bounty sweep is the physical escape.
+    // Law names the fact; this listener is the only path that writes player.heat for it.
+    bus.on('law:wantedSweepEscaped', (p) => this._onSweepEscaped(p));
+
+    // RC-CHASE — paying the warrant's named station sponsor settles the hunt. Law names the
+    // settlement; this listener is the only path that writes player.heat for it.
+    bus.on('law:sponsorSettled', (p) => this._onSponsorSettled(p));
+
+    // Settling the posted bounty is the honest door out of the hunt: economy owns the ledger
+    // and emits bounty:cleared; the heat owner translates the payment into visible cooling.
+    bus.on('bounty:cleared', (p) => this._onBountyPaid(p));
+
+    // THE WORLD ANSWERS (T10 half): survivorPod owns the physical rescue and signs the receipt;
+    // heat translates a player-answered lawful rescue into one bounded, once-per-pod cooling step.
+    bus.on('survivorPod:rescued', (p) => this._onPodRescued(p));
+
+    // PQ-019B: validated law incidents. Heat listens; it is never told what to write. A mission that
+    // wants a thief to become WANTED reports the crime to lawSecurity, lawSecurity validates
+    // jurisdiction and witnesses, and only an ACCEPTED receipt reaches this listener. There is
+    // therefore no mission-side heat write anywhere in the chain — the mission cannot reach
+    // player.heat even if it wants to, because the only door is a receipt it cannot sign.
+    bus.on('law:reportIncidentReceipt', (p) => this.applyIncidentReceipt(p));
+
+    // U-B: a fixer fence's scrub intent; the verdict is written onto `payload.result`.
+    bus.on('heat:scrubRequested', (p) => this._onScrubRequested(p));
+  },
+
+  /**
+   * Consume one validated law incident receipt EXACTLY ONCE, through the private `_raise` path that
+   * every other heat source already uses.
+   *
+   * Idempotence is durable: applied receipt ids live on `state.player`, which the save owner
+   * serializes wholesale (`_serializePlayer` = clonePlain(player)). A duplicate bus delivery, a
+   * replayed effect journal, or a reload followed by a retry all find the id already recorded.
+   *
+   * Returns `{ applied, reason, incidentReceiptId, delta }` so a caller's effect journal can key on
+   * the same fact this system just recorded.
+   */
+  applyIncidentReceipt(receipt) {
+    if (!receipt || typeof receipt !== 'object') {
+      return { applied: false, reason: 'no_receipt', incidentReceiptId: null, delta: 0 };
+    }
+    // Only law signs incidents. A denial, or anything that did not come from the law owner, is not
+    // an instruction to raise heat — it is the law explicitly declining to recognize a crime.
+    if (receipt.accepted !== true || receipt.source !== 'lawSecurity') {
+      return { applied: false, reason: 'not_law_validated', incidentReceiptId: null, delta: 0 };
+    }
+    if (receipt.validatedWitnessedTheft !== true && receipt.validatedCrime !== true) {
+      return { applied: false, reason: 'not_witnessed', incidentReceiptId: null, delta: 0 };
+    }
+    const incidentReceiptId = typeof receipt.incidentReceiptId === 'string'
+      && receipt.incidentReceiptId.trim().length > 0
+      ? receipt.incidentReceiptId.trim()
+      : null;
+    if (!incidentReceiptId) {
+      return { applied: false, reason: 'invalid_receipt_id', incidentReceiptId: null, delta: 0 };
+    }
+    const player = this.state && this.state.player;
+    if (!player) {
+      return { applied: false, reason: 'no_player', incidentReceiptId, delta: 0 };
+    }
+    const discovered = receipt.discovery === true
+      || receipt.evidence === 'wreck_provenance'
+      || receipt.evidenceClass === 'discovered';
+    const reportId = typeof receipt.reportId === 'string' && receipt.reportId.trim().length > 0
+      ? receipt.reportId.trim()
+      : null;
+    // Any later receipt for a report the law already priced is refused, even when the relay
+    // drops the discovered label and claims a direct witness. The explanation stays as stored.
+    if (reportId && appliedReportIds(player)[reportId]) {
+      return { applied: false, reason: 'already_applied', incidentReceiptId, delta: 0 };
+    }
+    if (appliedIncidentIds(player)[incidentReceiptId]) {
+      rememberAppliedReport(player, reportId);
+      return { applied: false, reason: 'already_applied', incidentReceiptId, delta: 0 };
+    }
+    // THE RUN SEAL (PQ-135) — same contract as _raise/_setHeat and the wreck-court listener,
+    // which checks the seal first. Refuse BEFORE the ledger write: a receipt consumed while the
+    // seal holds could never apply once the run ends — the id would read spent with no heat ever
+    // written. Refusing keeps the id unspent so a journal replay after the seal lifts still
+    // convicts.
+    if (isRunSealed(this.state)) {
+      return { applied: false, reason: 'sealed', incidentReceiptId, delta: 0 };
+    }
+
+    const delta = receipt.kind === 'lawful_kill'
+      ? KILL_NONHOSTILE * 1.3
+      : receipt.kind === 'unlawful_kill'
+        ? KILL_NONHOSTILE * killClassMultiplier(receipt.victimClass)
+        : receipt.kind === 'reckless_kill'
+          ? KILL_NONHOSTILE * killClassMultiplier(receipt.victimClass) * RECKLESS_KILL_FRACTION
+          : INCIDENT_HEAT_BY_KIND[receipt.kind] != null
+            ? INCIDENT_HEAT_BY_KIND[receipt.kind]
+            : INCIDENT_HEAT_DEFAULT;
+
+    // Record BEFORE mutating. If `_raise` ever throws, the alternative ordering would leave the
+    // incident un-recorded and a retry would double-charge; this ordering can at worst under-apply,
+    // which is the survivable failure.
+    const ledger = ensureAppliedIncidentIds(player);
+    ledger[incidentReceiptId] = true;
+    rememberAppliedReport(player, reportId);
+
+    // INF-077: remember the convicting incident in compact form so presentation can trace a
+    // heat increase to the actual accepted receipt. A discovered wreck forces zero witnesses
+    // so a relay cannot relabel hearsay as a direct sighting. Theft receipts keep their own
+    // class (null when the law did not stamp one).
+    const witnessCount = discovered ? 0
+      : (Number.isFinite(Number(receipt.witnessCount))
+        ? Math.max(0, Number(receipt.witnessCount) | 0) : 0);
+    player.heatLastIncident = {
+      kind: shortText(receipt.kind, 32),
+      incidentReceiptId,
+      affected: shortText(
+        receipt.victimStableId || receipt.victimClass || receipt.payloadStableId || null, 48),
+      // The id stays for traceability; the label is the only party the alert may print.
+      affectedLabel: shortText(incidentPartyLabel(receipt, this.state), 48),
+      witnessCount,
+      jurisdiction: shortText(receipt.stationId || null, 48),
+      evidenceClass: discovered ? 'discovered' : shortText(receipt.evidenceClass, 32),
+      at: Number.isFinite(this.state.simTime) ? this.state.simTime : 0,
+    };
+
+    this._raise(delta, `law incident (${receipt.kind})`);
+    return { applied: true, reason: null, incidentReceiptId, delta };
+  },
+
+  // Is the victim faction currently hostile to the player? If yes, the kill is legitimate combat,
+  // not piracy, and shouldn't raise heat. We read factions state defensively.
+  _victimIsHostile(factionId) {
+    const f = this.state.factions && factionId != null ? this.state.factions[factionId] : null;
+    return !!(f && f.aggro);
+  },
+
+  _receiptTargetIsHostile(payload) {
+    if (payload && typeof payload.targetHostileToPlayer === 'boolean') {
+      return payload.targetHostileToPlayer;
+    }
+    // Compatibility for older/synthetic publishers that do not yet carry canonical target truth.
+    return this._victimIsHostile(payload && payload.factionId);
+  },
+
+  _resetTransientTiming() {
+    this._lastHitT = -1e9;
+    this._lastEmit = -1e9;
+    this._burstAccrued = 0;
+  },
+
+  _onDamage(p) {
+    if (!p || p.attackerId !== this.state.playerId) return; // only the player's own attacks
+    if (!isWantedHeatVictim(this.state, p, p.targetId)) return;
+    // A lawful target still chips while hostile: a lawful unit that only turned hostile because
+    // the player fired first must not launder the rest of the assault — without the factionLawful
+    // clause the first hit would provoke retaliation and every later hit would read "self-defense"
+    // for free. (A law hunter chasing a genuinely WANTED pilot never reaches this line: that
+    // pilot's heat already sits at/above HIT_SUSPICION_MAX, which returns below.)
+    if (p.factionLawful || !this._receiptTargetIsHostile(p)) {
+      const player = this.state.player;
+      // Suspicion, never conviction: unprovoked hits can fill the ledger up to just under
+      // WANTED, but only a validated kill, theft, bust, or aggro event can convict — a beam
+      // held on a neutral in dead space cannot mint a warrant by itself.
+      if (!player || (player.heat || 0) >= HIT_SUSPICION_MAX) return;
+      const now = this.state.simTime;
+      if (now - this._lastHitT < 1.0) {
+        // within the per-second cap window: only raise if under the burst budget
+        if (this._burstAccrued >= HIT_CAP_PER_S) return;
+      } else {
+        this._burstAccrued = 0;
+      }
+      this._burstAccrued = (this._burstAccrued || 0) + HIT_NONHOSTILE;
+      this._lastHitT = now;
+      this._raise(Math.min(HIT_NONHOSTILE, Math.max(0, HIT_SUSPICION_MAX - (player.heat || 0))), 'unprovoked hit');
+    }
+  },
+
+  // Add to heat and emit a changed event (throttled to avoid spamming the HUD every chip).
+  _raise(delta, reason) {
+    const player = this.state.player;
+    if (!player) return;
+    // THE RUN SEAL (PQ-135). Heat is campaign state: it raises WANTED, and WANTED sends law hunters
+    // after the player. A Crucible run was accruing it — which both broke the run's own
+    // "nothing follows you home" promise AND pointed bounty hunters at an arena, where they would
+    // arrive as uninvited bodies competing with the wave for spawn slots.
+    if (isRunSealed(this.state)) return;
+    const before = player.heat || 0;
+    const after = clamp01(before + delta);
+    player.heat = after;
+    publishWantedTier(player);
+    if (after >= WANTED_THRESHOLD) this._refreshZone(true);
+    if (player.heat !== before) {
+      // emit immediately on every edge — threshold crossings (WANTED appearing/disappearing) and
+      // WANTED-band increases — so HUD/audio presentation reacts crisply to escalations. Only
+      // in-band chips throttle to once per ~0.4s; every _setHeat write (decay steps, clears)
+      // already force-emits via the crossed flag. Without the band clause a climb landing inside
+      // the throttle window is never emitted, and every level-keyed consumer (radar, audio alarm)
+      // stays stale until the next emit.
+      const crossed = (before < WANTED_THRESHOLD) !== (player.heat < WANTED_THRESHOLD);
+      const bandMoved = heatLevelFor(player.heat) > heatLevelFor(before);
+      const now = this.state.simTime || 0;
+      if (crossed || bandMoved || now - this._lastEmit > 0.4) {
+        this._emitChanged(reason, crossed || bandMoved, before);
+      }
+    }
+  },
+
+  update(dt, state) {
+    const player = state.player;
+    if (!player) return;
+    // The explanation expires on the sim clock even while heat itself is held, docked, or
+    // outside flight. This does not raise or clear heat, and it does not touch reputation.
+    if (expireActionableEvidence(player, state && state.simTime)) {
+      this._emitChanged('evidence expired', true);
+    }
+    const zone = ensureHeatZone(player);
+    // A torn scalar (NaN, ±Infinity, a foreign write) normalizes clean rather than
+    // riding the ledger forever — every reader keys on finite heat.
+    if (!Number.isFinite(player.heat)) player.heat = 0;
+    if (!player.heat) {
+      publishWantedTier(player);
+      this._clearZone();
+      return;
+    }
+    const level = heatLevelFor(player.heat);
+    if (level <= 0) {
+      // Suspicion residue is the ledger's memory of near-misses: hit chips banked under
+      // HIT_SUSPICION_MAX, an unread weir crossing, and partial cools all live below
+      // the WANTED gate and accumulate there until a signed clear lands. Zeroing the
+      // residue here made the plateau and the repeat-runner price unreachable — every
+      // sub-threshold write was discarded one tick later.
+      this._clearZone();
+      return;
+    }
+    if (state.mode !== 'flight') return; // frozen in menus
+    // Docked/menu time is frozen; escaping only advances in live flight.
+    const entity = playerEntity(state);
+    const docked = !!((player.flags && player.flags.docked) || (entity && entity.flags && entity.flags.docked));
+    if (docked) return;
+    this._refreshZone(false);
+    // Inactive covers "clean" and "the search circle is in another sector".
+    // Leaving the sector must not zero the escape clock or count as time outside.
+    if (!zone.active) return;
+    if (!outsideHeatZone(entity, zone)) {
+      zone.outsideS = 0;
+      return;
+    }
+    // The pound is a place, not a cone. Flying away does not drop the impound band.
+    if (wantedTierFor(player.heat) === WANTED_TIER.IMPOUND) {
+      zone.outsideS = 0;
+      return;
+    }
+    zone.outsideS += Math.max(0, dt || 0);
+    while (zone.active && zone.outsideS >= zone.clearAfterS && heatLevelFor(player.heat) > 0) {
+      zone.outsideS -= zone.clearAfterS;
+      this._dropOneLevel();
+    }
+  },
+
+  _refreshZone(recenter) {
+    const player = this.state.player;
+    if (!player) return;
+    const level = heatLevelFor(player.heat || 0);
+    const zone = ensureHeatZone(player);
+    if (level <= 0) {
+      this._clearZone();
+      return;
+    }
+    const entity = playerEntity(this.state);
+    const here = activeSectorId(this.state);
+    const away = !!(zone.sectorId && here && zone.sectorId !== here);
+    // The circle is the sector where the heat opened. A jump keeps the heat and
+    // the crime-scene center, and does not draw or escape-clock that circle here.
+    // A new wanted rise (recenter) opens the search in the sector you are in now.
+    if (away && !recenter) {
+      zone.active = false;
+      return;
+    }
+    if (recenter || (!zone.sectorId && !zone.active)) setZoneCenter(zone, entity, this.state);
+    else if (!zone.sectorId && here) zone.sectorId = here;
+    zone.active = true;
+    zone.level = level;
+    zone.radius = heatRadiusForLevel(level);
+    zone.clearAfterS = heatClearSecondsForLevel(level);
+    if (!Number.isFinite(zone.outsideS) || recenter) zone.outsideS = 0;
+  },
+
+  _onCheckpointBroken(payload) {
+    if (!payload || payload.accepted !== true || payload.source !== 'lawSecurity') return;
+    const method = payload.method;
+    if (method !== 'mass' && method !== 'speed' && method !== 'decoy') return;
+    const player = this.state && this.state.player;
+    if (!player || wantedTierFor(player.heat) !== WANTED_TIER.NETS) return;
+    // The nets band spans two levels, but the checkpoint is THE net: break_net is the tier's
+    // escape verb, so the drop always lands below the nets floor. A one-level step from the top
+    // of the band would leave the pilot inside nets and the law would post another checkpoint
+    // behind the one just broken — the escape would have changed nothing.
+    const dropTo = Math.min(heatLevelFor(player.heat) - 1, SCRUB_NETS_FLOOR_LEVEL - 1);
+    this._setHeat(dropTo <= 0 ? 0 : heatValueForLevel(dropTo), 'broke wanted net');
+  },
+
+  _onImpoundRecovered(payload) {
+    if (!payload || payload.accepted !== true || payload.source !== 'lawSecurity') return;
+    const method = payload.method;
+    if (method !== 'pay' && method !== 'work' && method !== 'steal') return;
+    const player = this.state && this.state.player;
+    if (!player || wantedTierFor(player.heat) !== WANTED_TIER.IMPOUND) return;
+    if (method === 'steal') this._dropOneLevel('stole ship back');
+    else this._setHeat(0, 'impound bill settled');
+  },
+
+  // RC-CHASE — the sweep's own escape verb: the suspect was seen by every posted sweep ship and
+  // then broke their observation for the contact window (or jumped the sector after being
+  // seen). One level drops the bounty band to scan-tier; the zone clock decays the rest.
+  _onSweepEscaped(payload) {
+    if (!payload || payload.accepted !== true || payload.source !== 'lawSecurity') return;
+    if (payload.method !== 'sweep_break') return;
+    const player = this.state && this.state.player;
+    if (!player || wantedTierFor(player.heat) !== WANTED_TIER.BOUNTY) return;
+    this._dropOneLevel('broke the sweep');
+  },
+
+  // RC-CHASE — the sponsor settlement: paying the warrant's named station ends the hunt the
+  // same way breaking a net ends nets — one tier, physically settled.
+  _onSponsorSettled(payload) {
+    if (!payload || payload.accepted !== true || payload.source !== 'lawSecurity') return;
+    if (payload.method !== 'sponsor_pay') return;
+    const player = this.state && this.state.player;
+    if (!player || wantedTierFor(player.heat) !== WANTED_TIER.BOUNTY) return;
+    this._dropOneLevel('paid the sponsor');
+  },
+
+  // Paying the bounty cools the hunt proportionally — enough to see the WANTED band drop (and
+  // release a posted warrant through the heat:changed edge), never a free wipe of the record.
+  _onBountyPaid(payload) {
+    const amount = Math.max(0, Math.round(Number(payload && payload.amount) || 0));
+    if (amount <= 0) return;
+    const player = this.state && this.state.player;
+    const before = player && Number(player.heat) || 0;
+    if (before <= 0) return;
+    const credit = Math.min(BOUNTY_PAID_COOL_MAX, amount * BOUNTY_PAID_COOL_PER_CR);
+    this._setHeat(Math.max(0, before - credit), 'bounty paid');
+    // LAW-07: report the measured cool, not the computed credit — a sealed run or a clamped
+    // write must not make the line claim heat the ledger never lost.
+    const after = player.heat || 0;
+    const cooled = Math.max(0, before - after);
+    if (cooled > 0 && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('bounty:cooled', {
+        amount, credit, cooled, before, after, cap: BOUNTY_PAID_COOL_MAX,
+      });
+    }
+  },
+
+  // Returns the cooled amount (0 when the receipt earns nothing) so tests/journals can key on it.
+  _onPodRescued(payload) {
+    const state = this.state;
+    const player = state && state.player;
+    if (!player || !payload || typeof payload !== 'object') return 0;
+    if (payload.outcome !== 'rescued' || payload.playerAnswered !== true) return 0;
+    // The player's own wreck pod is a self-rescue, never a good deed the law credits.
+    if (payload.playerWreck === true || (payload.victimId != null && payload.victimId === state.playerId)) return 0;
+    const lawful = typeof payload.factionLawful === 'boolean'
+      ? payload.factionLawful
+      : LAWFUL_STATION_FACTIONS.has(payload.factionId);
+    if (!lawful) return 0;
+    const rawId = payload.id != null ? payload.id : payload.entityId;
+    if (rawId == null) return 0;
+    const podKey = String(rawId);
+    const ledger = rescueLedger(player);
+    if (ledger.ids[podKey]) return 0;
+    ledger.ids[podKey] = true;
+    const idKeys = Object.keys(ledger.ids);
+    for (let i = 0; i < idKeys.length - RESCUE_LEDGER_IDS_CAP; i++) delete ledger.ids[idKeys[i]];
+
+    const now = state.simTime || 0;
+    // simTime may have moved backwards across a boundary: a future-dated entry is stale, not binding.
+    ledger.window = ledger.window.filter((row) => row && row.t <= now && row.t > now - RESCUE_COOL_WINDOW_S);
+    const used = ledger.window.reduce((sum, row) => sum + (Number(row.c) || 0), 0);
+    const before = Number(player.heat) || 0;
+    const credit = Math.min(RESCUE_COOL_PER_POD, Math.max(0, RESCUE_COOL_MAX_PER_WINDOW - used), before);
+    if (!(credit > 0)) return 0;
+    this._setHeat(Math.max(0, before - credit), 'rescued survivors');
+    // Report the measured cool (a sealed run or clamped write must not claim heat never lost).
+    const after = Number(player.heat) || 0;
+    const cooled = Math.max(0, before - after);
+    if (cooled <= 0) return 0;
+    ledger.window.push({ t: now, c: cooled });
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('survivorPod:heatCooled', {
+        id: podKey,
+        entityId: payload.entityId == null ? null : payload.entityId,
+        factionId: payload.factionId || null,
+        credit,
+        cooled,
+        before,
+        after,
+        cap: RESCUE_COOL_MAX_PER_WINDOW,
+        windowS: RESCUE_COOL_WINDOW_S,
+      });
+    }
+    return cooled;
+  },
+
+  // The requester (fenceDesk) charges the wallet by intent only when `payload.result.ok` is true.
+  _onScrubRequested(payload) {
+    if (!payload || typeof payload !== 'object' || typeof payload.fenceId !== 'string' || !payload.fenceId) return null;
+    const refuse = (reason) => { payload.result = { ok: false, reason, cooled: 0 }; return payload.result; };
+    const state = this.state;
+    const player = state && state.player;
+    if (!player) return refuse('no_player');
+    const before = Number(player.heat) || 0;
+    const level = heatLevelFor(before);
+    if (level < 1) return refuse('clean');
+    const tier = wantedTierFor(before);
+    if (tier === WANTED_TIER.IMPOUND) return refuse('impound');
+    const target = level - SCRUB_COOL_LEVELS;
+    if (tier === WANTED_TIER.NETS && target < SCRUB_NETS_FLOOR_LEVEL) return refuse('nets_floor');
+    const now = Number(state.simTime) || 0;
+    const ledger = player.heatScrubbed && typeof player.heatScrubbed === 'object' && !Array.isArray(player.heatScrubbed)
+      ? player.heatScrubbed : null;
+    const last = ledger ? ledger[payload.fenceId] : null;
+    // A future-dated stamp (clock moved back across a boundary) is stale, not binding.
+    if (Number.isFinite(last) && last <= now && now - last < SCRUB_COOLDOWN_S) return refuse('cooldown');
+    this._setHeat(target <= 0 ? 0 : heatValueForLevel(target), 'fence scrub');
+    const after = Number(player.heat) || 0;
+    const cooled = Math.max(0, before - after);
+    if (cooled <= 0) return refuse('sealed');
+    const stamps = ledger || (player.heatScrubbed = {});
+    stamps[payload.fenceId] = now;
+    const ids = Object.keys(stamps);
+    for (let i = 0; i < ids.length - SCRUB_LEDGER_CAP; i++) delete stamps[ids[i]];
+    payload.result = { ok: true, cooled, before, after };
+    return payload.result;
+  },
+
+  _dropOneLevel(reason = 'escaped heat radius') {
+    const player = this.state.player;
+    if (!player) return;
+    const before = player.heat || 0;
+    const beforeLevel = heatLevelFor(before);
+    const after = beforeLevel <= 1 ? 0 : heatValueForLevel(beforeLevel - 1);
+    this._setHeat(after, reason);
+  },
+
+  _setHeat(value, reason) {
+    const player = this.state.player;
+    if (!player) return;
+    // Sealed the same way as _raise. Note this also blocks the DECAY path, which is correct: a run
+    // must leave campaign heat exactly as it found it, in both directions.
+    if (isRunSealed(this.state)) return;
+    const before = player.heat || 0;
+    player.heat = clamp01(value);
+    // A fully cleared record convicts nobody: dropping the incident here keeps a later
+    // suspicion phase from wearing a stale conviction's explanation.
+    if (player.heat <= 0) player.heatLastIncident = null;
+    publishWantedTier(player);
+    if (player.heat > 0) this._refreshZone(false);
+    else this._clearZone();
+    if (player.heat !== before) this._emitChanged(reason, true, before);
+  },
+
+  _clearZone() {
+    const player = this.state.player;
+    if (!player) return;
+    const zone = ensureHeatZone(player);
+    zone.active = false;
+    zone.radius = 0;
+    zone.level = 0;
+    zone.outsideS = 0;
+    zone.clearAfterS = 0;
+    zone.sectorId = null;
+  },
+
+  /**
+   * Emit heat:changed with edge facts for presentation (GDX-A25).
+   * Single writer still owns only player.heat; this enriches the public observation packet so
+   * law/heat telegraphs can key the WANTED flip and suspicion intensity without inventing state.
+   */
+  _emitChanged(reason, force = false, previousValue = null) {
+    const now = this.state.simTime || 0;
+    if (!force && now - this._lastEmit <= 0.4) return;
+    this._lastEmit = now;
+    const player = this.state.player || {};
+    const value = player.heat || 0;
+    const prev = previousValue != null && Number.isFinite(previousValue) ? previousValue : value;
+    const wanted = value >= WANTED_THRESHOLD;
+    const wasWanted = prev >= WANTED_THRESHOLD;
+    const tierInfo = wantedTierInfo(value);
+    const packet = {
+      value,
+      previousValue: prev,
+      level: heatLevelFor(value),
+      tier: tierInfo.id,
+      escape: tierInfo.escape,
+      zone: heatZoneSnapshot(ensureHeatZone(player)),
+      reason,
+      wanted,
+      wantedCrossed: wanted !== wasWanted,
+      // The convicting incident, when a validated receipt caused the current heat. A plain
+      // snapshot (never a live reference) so presentation cannot mutate owned state.
+      incident: incidentSnapshot(player.heatLastIncident, now),
+      // 0..1 approach toward the WANTED gate. 1 at/above threshold. Presentation-only scalar.
+      suspicion: value <= 0 ? 0 : Math.min(1, value / WANTED_THRESHOLD),
+      threshold: WANTED_THRESHOLD,
+    };
+    // Band the value just left, carried so audio/VFX read the level transition off the packet
+    // instead of re-deriving it from the raw scalar. Non-enumerable: additive, and it must not
+    // leak into any clonePlain/JSON serialization of this packet.
+    Object.defineProperty(packet, 'previousLevel', {
+      value: heatLevelFor(prev), enumerable: false, writable: false, configurable: true,
+    });
+    this.bus.emit('heat:changed', packet);
+  },
+};
+
+// Exposed for combat.js / ai.js to derive the lawful playerWanted flag at spawn time and on the fly.
+export function isPlayerWanted(state) {
+  const h = state.player && state.player.heat;
+  return typeof h === 'number' ? h >= WANTED_THRESHOLD : false;
+}
+export function heatLevelFor(value) {
+  if (!Number.isFinite(value) || value < WANTED_THRESHOLD) return 0;
+  return Math.max(1, Math.min(HEAT_LEVEL_COUNT, Math.ceil(value * HEAT_LEVEL_COUNT)));
+}
+export function wantedTierFor(value) {
+  return WANTED_TIER_BY_LEVEL[heatLevelFor(value)] || WANTED_TIER.NONE;
+}
+export function wantedTierInfo(valueOrId) {
+  const id = WANTED_TIER_INFO[valueOrId] ? valueOrId : wantedTierFor(valueOrId);
+  return WANTED_TIER_INFO[id] || WANTED_TIER_INFO[WANTED_TIER.NONE];
+}
+function publishWantedTier(player) {
+  if (!player) return WANTED_TIER.NONE;
+  const info = wantedTierInfo(player.heat);
+  player.wantedTier = info.id;
+  return info.id;
+}
+export function heatRadiusForLevel(level) {
+  const i = Math.max(0, Math.min(HEAT_LEVEL_COUNT, Math.round(level || 0)));
+  return HEAT_RADIUS_BY_LEVEL[i] || 0;
+}
+export function heatClearSecondsForLevel(level) {
+  const i = Math.max(0, Math.min(HEAT_LEVEL_COUNT, Math.round(level || 0)));
+  return HEAT_CLEAR_SECONDS_BY_LEVEL[i] || 0;
+}
+export const THRESHOLD = WANTED_THRESHOLD;
+
+// WANTED heat is a crime ledger for attacking people and places, not for shooting your own
+// plates, mines, mass-seeds, or other deployed devices. Self-hits (impulse charges, whip recoil)
+// also must not mint a WANTED incident.
+const WANTED_HEAT_VICTIM_TYPES = new Set(['ship', 'drone', 'station']);
+
+function killClassMultiplier(victimClass) {
+  const cls = victimClass || 'default';
+  return KILL_CLASS_MULT[cls] != null ? KILL_CLASS_MULT[cls] : KILL_CLASS_MULT.default;
+}
+
+function isWantedHeatVictim(state, payload, victimId) {
+  if (victimId != null && state && victimId === state.playerId) return false;
+  // Onboarding's scripted target actors (the flight trainer, the gunnery buoy,
+  // the Claim Jumper and its wing) are the lesson's own target dummies — the
+  // tutorial literally orders shots at them ("Fire a short burst into the
+  // raider"), and their passive ai flags would bank permanent suspicion residue
+  // for obeying the teacher. A kill stays adjudicated by lawSecurity as ever;
+  // unprovoked-hit chips are the class that must never mint on the training
+  // hulls. Set dressing (the raid hauler, the throw rock) still prices shots —
+  // nothing in the script tells the player to fire on the bystander.
+  const victim = victimId != null && state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(victimId)
+    : null;
+  const vd = victim && victim.data;
+  if (vd && (vd.onboardingTraining === true || vd.onboardingRaid === true || vd.onboardingRaidWing === true)) return false;
+  const type = wantedHeatVictimType(state, payload, victimId);
+  if (type && !WANTED_HEAT_VICTIM_TYPES.has(type)) return false;
+  return true;
+}
+
+// `combat:damage` reuses `payload.type` for the dominant DAMAGE CHANNEL — 'kinetic', 'thermal',
+// 'ion', 'plasma', 'phase' (src/combat/damage.js:446), with the legacy alias words the channel
+// table also maps. The word never names the victim. Classify the victim from the live entity
+// record first; a payload type only counts as a victim kind when it could not be a channel word
+// (synthetic emitters that carry the entity kind, e.g. test harnesses and scripted payloads).
+const DAMAGE_CHANNEL_WORDS = new Set([
+  'kinetic', 'thermal', 'ion', 'plasma', 'phase', 'energy', 'explosive', 'emp',
+]);
+
+function wantedHeatVictimType(state, payload, victimId) {
+  const entity = victimId != null && state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(victimId)
+    : null;
+  if (entity && typeof entity.type === 'string' && entity.type) return entity.type;
+  const word = payload && typeof payload.type === 'string' && payload.type;
+  if (word && !DAMAGE_CHANNEL_WORDS.has(word)) return word;
+  return null;
+}
+// PQ-019B: exported so the owner-invariant suite prices heat from the implementation rather than
+// from a copy of it, and so tuning has one home.
+export const INCIDENT_HEAT = Object.freeze({
+  byKind: INCIDENT_HEAT_BY_KIND,
+  fallback: INCIDENT_HEAT_DEFAULT,
+  // reckless_kill is priced off the class-scaled unlawful table at this fraction, never flat.
+  recklessFraction: RECKLESS_KILL_FRACTION,
+  killBase: KILL_NONHOSTILE,
+});

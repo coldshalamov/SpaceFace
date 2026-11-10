@@ -1,0 +1,1633 @@
+// UI key router (ARCHITECTURE §5.6) — a single document keydown listener for UI-OWNED keys.
+//
+// UI owns: ESC (back/pause), map bindings, T (tech), mission log, K (codex), F1/H (help),
+//          Tab (cycle target), Backspace (free aim), P (pause), E (dock in range / undock station hub; Enter secondary dock),
+//          F5/F9 (quick save/load), cargo/comms overlays, mouse-wheel (camera zoom passthrough → camera:zoom).
+// Flight/input system owns movement+fire keys (W/A/S/D, mouse-aim, Space/LMB, RMB, Q/E, F) — NOT here.
+//
+// Routing rule: if a modal screen is open and it has a key handler, route there first
+// (ESC always = back). Otherwise translate UI-owned keys into intent events / screen pushes.
+// The UI never mutates sim state; docking sets ui.docked + emits dock:docked + pushes 'station'.
+
+import { isConfirmOpen, confirmGamepadAccept, confirmGamepadCancel } from './confirm.js';
+import { getPromptDeck } from './promptDeck.js';
+import {
+  BINDINGS,
+  flightHudFocusShortcut,
+  setPromptDevice,
+  setGamepadPromptBindings,
+  setGamepadGlyphSet,
+  getGamepadCaptureHandler,
+} from './bindings.js';
+import { resolveActionLabel, selectedWorldSiteTarget } from '../systems/input.js';
+import { resolveGamepadBindings } from '../systems/gamepad.js';
+import { MAP_FOCUS, openGalaxyMap, isMapScreenId } from './mapAuthority.js';
+import { targetDisplayName } from './targetPanel.js';
+import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
+import { resolveDockDeny } from './dockDenyBanner.js';
+import { dedupError } from '../core/warnDedup.js';
+import { createDockIntent } from '../core/dockIntent.js';
+import { activeAuthoredRace } from '../systems/racingSteer.js';
+import { isSwarmControls } from '../data/swarmControls.js';
+import { contextUiAllowed } from '../data/inputContexts.js';
+
+const DRILL_MASSLINE_DEF_IDS = new Set(['tether_standard', 'attachment_massline']);
+
+export function isUiInteractionFenced(state) {
+  return !!(state && state.ui && state.ui.fulfillmentBlackoutActive === true);
+}
+
+// Controller focus follows the composed screen, not incidental DOM order. A directional move ranks
+// only candidates that are physically in that direction, then prefers the shortest travel with a
+// penalty for cross-axis drift.
+export function spatialFocusTarget(items, active, dir) {
+  if (!active || !items.includes(active) || typeof active.getBoundingClientRect !== 'function') return null;
+  const origin = active.getBoundingClientRect();
+  const ox = origin.left + origin.width / 2;
+  const oy = origin.top + origin.height / 2;
+  const horizontal = dir === 'left' || dir === 'right';
+  const sign = dir === 'left' || dir === 'up' ? -1 : 1;
+  let best = null;
+  let bestScore = Infinity;
+  for (const candidate of items) {
+    if (candidate === active || typeof candidate.getBoundingClientRect !== 'function') continue;
+    const rect = candidate.getBoundingClientRect();
+    if (!(rect.width > 0 && rect.height > 0)) continue;
+    const dx = rect.left + rect.width / 2 - ox;
+    const dy = rect.top + rect.height / 2 - oy;
+    const primary = (horizontal ? dx : dy) * sign;
+    if (primary <= 1) continue;
+    const cross = Math.abs(horizontal ? dy : dx);
+    const overlap = horizontal
+      ? Math.max(0, Math.min(origin.bottom, rect.bottom) - Math.max(origin.top, rect.top))
+      : Math.max(0, Math.min(origin.right, rect.right) - Math.max(origin.left, rect.left));
+    const overlapBonus = overlap > 0 ? Math.min(42, overlap * 0.7) : 0;
+    const score = primary + cross * 2.35 - overlapBonus;
+    if (score < bestScore) { best = candidate; bestScore = score; }
+  }
+  return best;
+}
+
+/**
+ * The linear list an element walks, if it sits in one: the nearest ancestor marked
+ * `data-pad-linear` (a one-column menu whose banked rows break the geometry, e.g. the pause column).
+ */
+function padLinearHost(el) {
+  for (let p = el && (el.parentElement || el.parentNode); p; p = p.parentElement || p.parentNode) {
+    if (typeof p.getAttribute === 'function' && p.getAttribute('data-pad-linear') != null) return p;
+  }
+  return null;
+}
+
+/** The nearest ancestor marked `data-pad-grouped` (a two-level dial of category rows, e.g. the pause dial). */
+function padGroupedHost(el) {
+  for (let p = el && (el.parentElement || el.parentNode); p; p = p.parentElement || p.parentNode) {
+    if (typeof p.getAttribute === 'function' && p.getAttribute('data-pad-grouped') != null) return p;
+  }
+  return null;
+}
+
+// A control's category: the data-group of the row item (li) that holds it. Consecutive controls of
+// one group make one row, the same rows the grouped arc rail seats (Resume, ungrouped, is its own).
+function padGroupOf(el, host) {
+  for (let p = el; p && p !== host; p = p.parentElement || p.parentNode) {
+    const g = typeof p.getAttribute === 'function' ? p.getAttribute('data-group') : null;
+    if (g != null) return g;
+  }
+  return null;
+}
+
+/**
+ * Where a d-pad press goes from `active`. Inside a `data-pad-linear` list, Up/Down step through its
+ * items in document order (the order the list reads), so a full-width row over left-aligned banked
+ * runs cannot hand Down to whichever word happens to sit under its centre. Inside a `data-pad-grouped`
+ * list (the pause dial) the pad walks the same grid the keyboard does and the foot strip names:
+ * Up/Down step between CATEGORIES (to the row's first verb), Left/Right step verb by verb in list
+ * order. Everything else stays geometric (spatialFocusTarget), as do presses off either end.
+ */
+export function padFocusTarget(items, active, dir) {
+  if (active && items.includes(active)) {
+    const vertical = dir === 'up' || dir === 'down';
+    const step = dir === 'down' || dir === 'right' ? 1 : -1;
+    const linear = vertical ? padLinearHost(active) : null;
+    if (linear && typeof linear.contains === 'function') {
+      const run = items.filter((el) => linear.contains(el));
+      const at = run.indexOf(active);
+      // at either end of the list, fall through to geometry so the d-pad can still leave the
+      // list (e.g. Up from Resume to the tracked-contract link above the column)
+      if (at >= 0 && run[at + step]) return run[at + step];
+    }
+    const grouped = padGroupedHost(active);
+    if (grouped && typeof grouped.contains === 'function') {
+      const run = items.filter((el) => grouped.contains(el));
+      const rows = [];
+      for (const el of run) {
+        const g = padGroupOf(el, grouped);
+        const last = rows[rows.length - 1];
+        if (g != null && last && last.group === g) last.items.push(el);
+        else rows.push({ group: g, items: [el] });
+      }
+      if (vertical) {
+        const ri = rows.findIndex((row) => row.items.includes(active));
+        const row = ri >= 0 ? rows[ri + step] : null;
+        if (row) return row.items[0];
+      } else {
+        const at = run.indexOf(active);
+        if (at >= 0 && run[at + step]) return run[at + step];
+      }
+      // Left/Right end at the first and last verb, as the dial's keyboard walk does.
+      if (!vertical) return null;
+      // off the top or bottom row the press may only leave the dial (Up from Resume to the contract
+      // link): geometry back onto its own verbs would undo the grid
+      const outside = items.filter((el) => el === active || !grouped.contains(el));
+      const away = spatialFocusTarget(outside, active, dir);
+      return away && typeof away.focus === 'function' ? away : null;
+    }
+  }
+  let next = spatialFocusTarget(items, active, dir);
+  // entering a grouped dial from outside (Down from the contract link) lands on the row's first
+  // verb, not whichever verb sits under the link's centre
+  const into = (dir === 'up' || dir === 'down') && next ? padGroupedHost(next) : null;
+  if (into && !(active && typeof into.contains === 'function' && into.contains(active))) {
+    const g = padGroupOf(next, into);
+    const run = items.filter((el) => into.contains(el));
+    let at = run.indexOf(next);
+    while (g != null && at > 0 && padGroupOf(run[at - 1], into) === g) at -= 1;
+    if (at >= 0) next = run[at];
+  }
+  // the geometric fallback only ever hands focus to something that takes it
+  return next && typeof next.focus === 'function' ? next : null;
+}
+
+const PAD_WIDGET_TAG = /^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/;
+
+function isPadWidget(el) {
+  if (!el || !el.tagName) return false;
+  if (PAD_WIDGET_TAG.test(el.tagName)) return true;
+  const role = typeof el.getAttribute === 'function' ? el.getAttribute('role') : null;
+  return role === 'tab' || role === 'button' || role === 'menuitem' || role === 'option' || role === 'link';
+}
+
+function isPadFocusable(el, root) {
+  if (!el) return false;
+  if (el.disabled || el.hidden || el.inert) return false;
+  if (typeof el.getAttribute === 'function') {
+    if (el.getAttribute('aria-hidden') === 'true') return false;
+    if (el.getAttribute('aria-disabled') === 'true') return false;
+  }
+  const tabindex = typeof el.getAttribute === 'function' ? el.getAttribute('tabindex') : null;
+  // Kit words and tablists use roving tabindex: inactive siblings are tabindex=-1 so they stay
+  // out of Tab order. The D-pad is the arrow-key analog, so those widgets stay pad-focusable.
+  if (tabindex != null && Number(tabindex) < 0 && !isPadWidget(el)) return false;
+  let p = el;
+  while (p && p !== root) {
+    if (p.hidden || p.inert) return false;
+    if (p.style && p.style.display === 'none') return false;
+    if (typeof p.getAttribute === 'function' && p.getAttribute('aria-hidden') === 'true') return false;
+    p = p.parentNode;
+  }
+  return true;
+}
+
+/** Visible pad-reachable controls inside a screen root, including roving-tabindex widgets. */
+export function listGamepadFocusables(root) {
+  if (!root || typeof root.querySelectorAll !== 'function') return [];
+  return Array.from(root.querySelectorAll(
+    'button, [href], input, select, textarea, [role="tab"], [role="button"], [role="menuitem"], [tabindex]:not([tabindex="-1"])'
+  )).filter((el) => isPadFocusable(el, root));
+}
+
+// ---- pad-driven native value controls --------------------------------------------------------
+// A native slider or dropdown owns its own Left/Right. The keyboard steps it; the D-pad has to as
+// well, otherwise every volume, deadzone, text size, quality and language row is reachable but
+// unchangeable on a controller (Left/Right just hopped the highlight to another row). The value is
+// written and then `input` + `change` are dispatched in the order a browser dispatches them for an
+// arrow key, so the screen's own handlers preview and persist exactly as for a mouse drag.
+
+/** 'range' | 'select' for a native control the pad steps with Left/Right, else null. */
+export function padValueControlKind(el) {
+  if (!el || el.disabled || !el.tagName) return null;
+  const tag = String(el.tagName).toUpperCase();
+  if (tag === 'SELECT') return 'select';
+  if (tag === 'INPUT' && String(el.type || '').toLowerCase() === 'range') return 'range';
+  return null;
+}
+
+function decimalPlaces(n) {
+  if (!Number.isFinite(n)) return 0;
+  const [mantissa, exp] = String(n).split('e-');
+  const fraction = mantissa.indexOf('.') < 0 ? 0 : mantissa.length - mantissa.indexOf('.') - 1;
+  return fraction + (exp ? Number(exp) : 0);
+}
+
+function fireControlEvent(el, type) {
+  if (typeof el.dispatchEvent !== 'function') return;
+  el.dispatchEvent(typeof Event === 'function' ? new Event(type, { bubbles: true }) : { type, bubbles: true, target: el });
+}
+
+function stepRangeControl(el, dir) {
+  const min = Number.isFinite(parseFloat(el.min)) ? parseFloat(el.min) : 0;
+  const max = Number.isFinite(parseFloat(el.max)) ? parseFloat(el.max) : 100;
+  let step = parseFloat(el.step);
+  if (!(step > 0)) step = String(el.step).toLowerCase() === 'any' ? (max - min) / 100 : 1;
+  if (!(step > 0)) return false;
+  const parsed = parseFloat(el.value);
+  const from = Number.isFinite(parsed) ? parsed : min;
+  // Snap to the step grid anchored at min, then trim float drift (0.7 + 5 x 0.01 must read 0.75).
+  const slot = Math.round((from - min) / step) + (dir === 'right' ? 1 : -1);
+  const places = Math.max(decimalPlaces(step), decimalPlaces(min));
+  const next = Math.min(max, Math.max(min, Number((min + slot * step).toFixed(places))));
+  if (next === from) return false;
+  el.value = String(next);
+  // The browser may snap the write back to its own grid; only a value that really moved is a change.
+  const landed = parseFloat(el.value);
+  if (!Number.isFinite(landed) || landed === from) return false;
+  fireControlEvent(el, 'input');
+  fireControlEvent(el, 'change');
+  return true;
+}
+
+function stepSelectControl(el, dir) {
+  const options = Array.from(el.options || []);
+  if (options.length < 2) return false;
+  const delta = dir === 'right' ? 1 : -1;
+  let at = el.selectedIndex;
+  if (!Number.isInteger(at) || at < 0) at = delta > 0 ? -1 : options.length;
+  let to = at + delta;
+  while (to >= 0 && to < options.length && (options[to].disabled || options[to].hidden)) to += delta;
+  // Clamp, never wrap: holding the stick on a short list must not spin it past its ends.
+  if (to < 0 || to >= options.length) return false;
+  el.selectedIndex = to;
+  fireControlEvent(el, 'input');
+  fireControlEvent(el, 'change');
+  return true;
+}
+
+/**
+ * Step a focused native slider (by its `step`, clamped to min/max) or dropdown (previous/next
+ * enabled option, clamped) one notch left or right. True when the value moved; false for any other
+ * control, a vertical direction, or a control already at its limit.
+ */
+export function stepPadValueControl(el, dir) {
+  if (dir !== 'left' && dir !== 'right') return false;
+  const kind = padValueControlKind(el);
+  if (kind === 'range') return stepRangeControl(el, dir);
+  if (kind === 'select') return stepSelectControl(el, dir);
+  return false;
+}
+
+function sharesRow(a, b) {
+  if (typeof a.getBoundingClientRect !== 'function' || typeof b.getBoundingClientRect !== 'function') return false;
+  const ra = a.getBoundingClientRect();
+  const rb = b.getBoundingClientRect();
+  return Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top) > 0;
+}
+
+export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
+  const { state, bus } = ctx;
+  const gp = ctx.gamepad;
+  let dockInRange = false;
+  let dockStationId = null;
+  let flightHudFocus = null;
+  const unsubscribers = [];
+
+  // Gamepad UI navigation state.
+  const _nav = {
+    up: false, down: false, left: false, right: false,
+    holdT: 0,
+    repeatT: 0,
+    initialDelay: 0.36,
+    repeatDelay: 0.12,
+  };
+  // Modal pad-verb tracker (D30): raw X/Y edges + held-for duration for screens that declare
+  // `onPadButton` — screen UI like the raw d-pad read, independent of the flight action map.
+  const _padVerb = {
+    x: { held: false, heldFor: 0 },
+    y: { held: false, heldFor: 0 },
+  };
+
+  // PQ-164.01: last-used device drives prompt glyphs (bindings.js owns the presentation state).
+  // Device order is a local observation counter fed by pad/touch activity *edges* (the shared
+  // input sequence stamps) and by DOM key/pointer events — a held stick does not re-stamp, so a
+  // keyboard act during pad flight still flips the chips, and a pad edge flips them back.
+  const _deviceOrder = { kbm: 0, gamepad: -1, touch: -1 };
+  let _deviceCounter = 0;
+  let _seenPadSeq = -1;
+  let _seenTouchSeq = -1;
+  let _lastPromptDevice = 'kbm';
+  let _seenPadBindings;
+  let _seenPadGlyphSet;
+  function noteDevice(d) {
+    _deviceOrder[d] = ++_deviceCounter;
+  }
+  function syncPromptDevice() {
+    let dev = 'kbm';
+    if (_deviceOrder.gamepad > _deviceOrder.kbm && _deviceOrder.gamepad >= _deviceOrder.touch) dev = 'gamepad';
+    else if (_deviceOrder.touch > _deviceOrder.kbm) dev = 'touch';
+    setPromptDevice(dev);
+    // The pad glyph chips read the resolved map, so a remap re-labels live prompts too.
+    const custom = state && state.settings && state.settings.controls
+      && state.settings.controls.gamepad ? state.settings.controls.gamepad.bindings : undefined;
+    if (custom !== _seenPadBindings) {
+      _seenPadBindings = custom;
+      setGamepadPromptBindings(resolveGamepadBindings(state && state.settings));
+    }
+    // The face-button register follows the settings address, so a glyph-set switch re-labels
+    // live prompt chips and pad speech the same tick.
+    const glyphSet = state && state.settings && state.settings.controls
+      && state.settings.controls.gamepad ? state.settings.controls.gamepad.glyphSet : undefined;
+    if (glyphSet !== _seenPadGlyphSet) {
+      _seenPadGlyphSet = glyphSet;
+      setGamepadGlyphSet(glyphSet);
+    }
+    if (dev !== _lastPromptDevice) {
+      _lastPromptDevice = dev;
+      // Repaint a live dock prompt under the new device's glyph by re-emitting the UI-owned
+      // dock:range fact the alert layer already listens to.
+      if (dockInRange && bus && bus.emit) {
+        bus.emit('dock:range', { stationId: dockStationId, inRange: true });
+      }
+    }
+  }
+
+  // physics emits dock:range while the player is near a station
+  unsubscribers.push(bus.on('dock:range', ({ stationId, inRange }) => {
+    dockInRange = !!inRange;
+    dockStationId = inRange ? stationId : null;
+    // The dock prompt is a fact the HUD reads. The rope and the dock are different pad buttons,
+    // so a live prompt does not take the Massline press.
+    if (!state.ui) state.ui = {};
+    state.ui.dockInRange = dockInRange;
+  }));
+  unsubscribers.push(bus.on('dock:undocked', () => { /* HUD restoration handled in uiRoot */ }));
+
+  // Emit the dock intent; uiRoot's dock:docked handler owns setting ui.docked + pushing the
+  // station hub (single owner of the flight→dock transition, avoids a double-push).
+  function doDock() {
+    // A live jump owns the sector transition — docking mid-charge/mid-tunnel would leave the
+    // ui.docked latch on while the jump machine moves the hull into the next sector.
+    if (isUiInteractionFenced(state) || !dockInRange || (state.ui && state.ui.docked)) return;
+    const jumpState = state.jump && state.jump.state;
+    if (jumpState === 'CHARGING' || jumpState === 'JUMPING') return;
+    const attempt = createDockIntent(state, { stationId: dockStationId });
+    // Publish the attempt before deciding so the existing faction-voiced denial surface can explain
+    // a refusal. The same pure selector is the command gate; a banner can never be the authority.
+    bus.emit('dock:attempt', attempt);
+    if (resolveDockDeny(state, dockStationId)) return;
+    if (!state.ui) state.ui = {};
+    state.ui.activeStationTab = state.ui.activeStationTab || 'market';
+    bus.emit('dock:docked', attempt);
+    bus.emit('audio:cue', { id: 'ui_dock' });
+  }
+
+  function matchesBinding(ev, binding) {
+    const k = ev && ev.key;
+    const code = ev && ev.code;
+    const shiftMatches = !binding || binding.shift == null || !!(ev && ev.shiftKey) === !!binding.shift;
+    return !!binding && shiftMatches && (k === binding.key || k === binding.label || code === binding.code);
+  }
+
+  function allowsMissionLogShortcut(def) {
+    return !!def && (def.id === 'station' || def.id === 'pause');
+  }
+
+  function isTextEntryTarget(t) {
+    // Same contract as the sim-side gate in systems/input.js: a <select> or a [data-text-input]
+    // widget is still text entry, and a keydown bubbling out of a labelled wrapper (a <span>
+    // inside contenteditable, a node inside a [data-text-input] container) must count too.
+    // Without closest() the bubbled target is the child, not the field, so global hotkeys fire
+    // while the player is picking from a dropdown or typing in a composite widget.
+    if (!t || typeof t.closest !== 'function') return false;
+    return !!t.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""], [data-text-input]');
+  }
+
+  const flightControlSelector = 'button, summary, a[href], input, select, textarea, [role="button"], [role="tab"], [role="menuitem"], [tabindex]';
+  function flightHudControl(t) {
+    const hud = document.getElementById?.('hud');
+    if (!hud || !t || typeof hud.contains !== 'function' || !hud.contains(t)
+        || typeof t.closest !== 'function') return null;
+    const control = t.closest(flightControlSelector);
+    return control && hud.contains(control) ? control : null;
+  }
+
+  function availableFlightControl(control) {
+    if (!control || control.isConnected === false || control.disabled || control.hidden || control.inert
+        || control.getAttribute?.('aria-disabled') === 'true'
+        || Number(control.getAttribute?.('tabindex')) < 0) return false;
+    const hud = document.getElementById?.('hud');
+    if (!hud || !hud.contains?.(control)) return false;
+    for (let node = control; node && node !== hud.parentNode; node = node.parentNode) {
+      if (node.hidden || node.inert || node.getAttribute?.('aria-hidden') === 'true') return false;
+      const style = node.style;
+      if (style && (style.display === 'none' || style.visibility === 'hidden'
+          || (style.opacity != null && style.opacity !== '' && Number(style.opacity) === 0))) return false;
+    }
+    return true;
+  }
+
+  function visibleFlightControl(control) {
+    if (!availableFlightControl(control)) return false;
+    const hud = document.getElementById?.('hud');
+    for (let node = control; node && node !== hud.parentNode; node = node.parentNode) {
+      const style = typeof window.getComputedStyle === 'function' ? window.getComputedStyle(node) : null;
+      if (style && (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0)) return false;
+    }
+    return typeof control.getClientRects !== 'function' || control.getClientRects().length > 0;
+  }
+
+  function validateFlightHudFocus(checkComputedVisibility = false) {
+    if (flightHudFocus && (state.mode !== 'flight' || screenManager.isOpen()
+        || !(checkComputedVisibility ? visibleFlightControl(flightHudFocus) : availableFlightControl(flightHudFocus)))) {
+      if (document.activeElement === flightHudFocus) flightHudFocus.blur?.();
+      flightHudFocus = null;
+    } else if (flightHudFocus && document.activeElement !== flightHudFocus) {
+      flightHudFocus = null;
+    }
+  }
+  function onFlightHudResize() { if (flightHudFocus) validateFlightHudFocus(true); }
+
+  function onFlightHudFocusIn(ev) {
+    if (state.mode !== 'flight' || screenManager.isOpen() || isConfirmOpen()) return;
+    const control = flightHudControl(ev.target);
+    if (!control) return;
+    const enteredFromHud = !!flightHudControl(ev.relatedTarget);
+    flightHudFocus = control;
+    if (!enteredFromHud) {
+      // The same owner/facade handles the main and worker lanes. Drop held flight inputs before
+      // a focused button can receive Space or before a key released over it strands thrust.
+      ctx.registry?.get?.('input')?.releaseHeldControls?.('flight-hud-focus');
+    }
+  }
+
+  function onFlightHudFocusKeyDown(ev) {
+    if (state.mode !== 'flight' || screenManager.isOpen() || isConfirmOpen()
+        || isUiInteractionFenced(state) || isTextEntryTarget(ev.target)) return;
+    const control = flightHudControl(ev.target) || flightHudControl(document.activeElement);
+    const shortcut = flightHudFocusShortcut(state);
+    const focusShortcut = shortcut.available && (ev.key === shortcut.code || ev.code === shortcut.code)
+      && !!ev.ctrlKey === shortcut.ctrl && !!ev.altKey === shortcut.alt && !ev.shiftKey && !ev.metaKey;
+    if (focusShortcut && ev.repeat && control) {
+      ev.preventDefault();
+      ev.stopPropagation?.();
+      return;
+    }
+    if (focusShortcut && !ev.repeat) {
+      if (control) {
+        control.blur?.();
+        flightHudFocus = null;
+      } else {
+        const hud = document.getElementById?.('hud');
+        const target = Array.from(hud?.querySelectorAll?.(flightControlSelector) || [])
+          .find((el) => visibleFlightControl(el));
+        if (!target || typeof target.focus !== 'function') return;
+        target.focus();
+        if (document.activeElement !== target) return;
+      }
+      ev.preventDefault();
+      ev.stopPropagation?.();
+      return;
+    }
+    if (control && ev.key === 'Escape') {
+      control.blur?.();
+      flightHudFocus = null;
+      ev.preventDefault();
+      ev.stopPropagation?.();
+    }
+  }
+
+  function closeActiveModal(def) {
+    const locked = (screenManager.locked && screenManager.locked()) || (def && def.data && def.data.locked);
+    if (locked) return false; // root title / mid-transaction screens trap ESC
+    if (def && def.id === 'station') undock();
+    else screenManager.popScreen();
+    bus.emit('audio:cue', { id: 'ui_back' });
+    return true;
+  }
+
+  function onKeyDown(ev) {
+    noteDevice('kbm');
+    // Let text fields keep ordinary typing, but still honor universal modal escape below.
+    const t = ev.target;
+    const textEntry = isTextEntryTarget(t);
+
+    const key = ev.key;
+    const code = ev.code;
+    const modalOpen = screenManager.isOpen();
+
+    // Fulfillment transit is a deterministic simulation event, not a paused screen. It still owns
+    // every player-facing command surface until the boarding FSM releases the wake_pending phase.
+    if (isUiInteractionFenced(state)) { ev.preventDefault(); return; }
+
+    // If a shared confirm dialog is open (UX-2), let it own ALL keys — its own handler traps
+    // Esc/Enter/Tab. Bail here so the modal screen underneath doesn't also react to the keystroke.
+    // The dialog owns this key. Stopping it here keeps a cancel from also reaching a
+    // station or flight listener that is registered further along the same event.
+    if (isConfirmOpen()) {
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      ev.preventDefault();
+      return;
+    }
+
+    // --- if a modal is open, route to its handler, ESC = back ---
+    if (modalOpen) {
+      // Own the keydown before any close runs. popScreen clears ui-modal-open in this same
+      // turn, and the flight listener is on window — if the bubble continues, a remapped
+      // close key (Escape bound to drop a bomb) becomes a flight press as the screen goes away.
+      // Later document listeners on this node still run; the event does not continue upward.
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      bus.emit('ui:closeCargo');
+      const def = screenManager.getActiveScreenDef();
+      if (key === 'Escape') {
+        ev.preventDefault();
+        // A screen mid-gesture gets first refusal before the generic back/pop (J6): the chart's
+        // laid line / filling hold cancels here, so the first Escape undoes the player's current
+        // intention instead of losing the whole screen. Locked surfaces keep precedence — a
+        // screen that traps ESC (root title, mid-transaction) never receives the refusal.
+        const lockedNow = !!(
+          (screenManager.locked && screenManager.locked()) || (def && def.data && def.data.locked)
+        );
+        if (!lockedNow && def && typeof def.onEscape === 'function') {
+          try { if (def.onEscape(ev, ctx) === true) return; }
+          catch (e) { dedupError('uiInput.screen-escape', '[uiInput] screen onEscape error:', e); }
+        }
+        closeActiveModal(def);
+        return;
+      }
+      if (def && def.id === 'ship' && key === 'F2') {
+        ev.preventDefault();
+        if (!ev.repeat) {
+          closeActiveModal(def);
+          bus.emit('audio:cue', { id: 'ui_back' });
+        }
+        return;
+      }
+      // Map toggle (M/N) must still close the map when search (or any text field) is focused.
+      // Without this, open → autofocus/search → second M types "m" instead of toggling closed.
+      // Escape already bypasses textEntry above; treat map bindings the same on map surfaces.
+      const mapToggleWhileTyping = !!(
+        textEntry
+        && def
+        && isMapScreenId(def.id)
+        && (matchesBinding(ev, BINDINGS.starmap) || matchesBinding(ev, BINDINGS.localmap))
+      );
+      // F1 is not a text character; keep Help toggleable even from a search field.
+      const helpToggleWhileTyping = !!(textEntry && def && def.id === 'help' && key === 'F1');
+      if (textEntry && !mapToggleWhileTyping && !helpToggleWhileTyping) return;
+      // Mirror the live interact binding while docked: E docks from flight and undocks from the
+      // station hub, preserving one airlock muscle-memory action. Leave Enter alone here so focused
+      // station buttons and rail tabs keep normal keyboard activation.
+      if (def && def.id === 'station' && matchesBinding(ev, BINDINGS.dock)) {
+        ev.preventDefault();
+        // Docking can open this screen while E is still held. Only a new press is an egress intent.
+        if (ev.repeat) return;
+        undock();
+        bus.emit('audio:cue', { id: 'ui_back' });
+        return;
+      }
+      if (def && typeof def.onKey === 'function') {
+        try { if (def.onKey(ev, ctx) === true) { ev.preventDefault(); return; } }
+        catch (e) { dedupError('uiInput.screen-key', '[uiInput] screen onKey error:', e); }
+      }
+      // PQ-183.02: one key finds anything, from anywhere — over a modal screen the palette mounts
+      // inside that screen so the dossier still has a host. Runs after def.onKey so a screen that
+      // already binds `/` to its own in-context find (the chart's target search) keeps it — one
+      // key still finds, it just finds the thing the player is looking at.
+      if (matchesBinding(ev, BINDINGS.find)) {
+        ev.preventDefault();
+        bus.emit('ui:globalFind', {});
+        return;
+      }
+      // Repeat the open binding to close the same instrument (mission log already does this in
+      // onKey; maps do it above). Without this, T/K/F1 open a screen they cannot close.
+      if (def && def.id === 'techTree' && matchesBinding(ev, BINDINGS.techTree)) {
+        ev.preventDefault();
+        closeActiveModal(def);
+        return;
+      }
+      if (def && def.id === 'codex' && matchesBinding(ev, BINDINGS.codex)) {
+        ev.preventDefault();
+        closeActiveModal(def);
+        return;
+      }
+      if (def && def.id === 'help' && (key === 'F1' || key === 'h' || key === 'H')) {
+        ev.preventDefault();
+        closeActiveModal(def);
+        return;
+      }
+      // The Pause menu labels Mission Log with the live binding. Keep that promise there and in
+      // the station hub, without teaching root/title/setup modals to open an in-run objective log.
+      if (allowsMissionLogShortcut(def) && matchesBinding(ev, BINDINGS.missionLog)) {
+        ev.preventDefault();
+        screenManager.pushScreen('missionLog');
+        bus.emit('audio:cue', { id: 'ui_open' });
+        return;
+      }
+      if (def && def.id === 'station' && matchesBinding(ev, BINDINGS.codex)) {
+        ev.preventDefault();
+        screenManager.pushScreen('codex');
+        bus.emit('audio:cue', { id: 'ui_open' });
+        return;
+      }
+      // global quick-save/load still work over a modal
+      if (key === 'F5') { ev.preventDefault(); bus.emit('game:save', { slot: 'quick' }); return; }
+      if (key === 'F9') { ev.preventDefault(); bus.emit('game:load', { slot: 'quick' }); return; }
+      return;
+    }
+
+    if (textEntry) return;
+
+    // A deliberately focused flight control owns its native Tab/Enter/Space and other keys.
+    // Do not prevent their defaults; only keep document/window flight shortcuts from firing.
+    if (state.mode === 'flight' && flightHudControl(t)) {
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      return;
+    }
+
+    // --- pure flight: UI-owned global keys only (mode must be flight) ---
+    if (state.mode !== 'flight') return;
+
+    // S5 — a live Swarm run admits only its compact set on this route: Esc pause, F1/H help,
+    // Tab scoreboard, F interact. Every Adventure instrument key (maps, comms, codex, find,
+    // fleet, photo, debug overlays) is inert while the run is live.
+    if (isSwarmControls(state)) {
+      if (key === 'Escape' || key === 'p' || key === 'P') {
+        ev.preventDefault();
+        screenManager.pushScreen('pause');
+        bus.emit('audio:cue', { id: 'ui_open' });
+        return;
+      }
+      if (key === 'F1' || key === 'h' || key === 'H') {
+        ev.preventDefault();
+        screenManager.pushScreen('help');
+        return;
+      }
+      if (key === 'Tab') {
+        ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        bus.emit('swarm:scoreboardToggle', {});
+        return;
+      }
+      if ((key === 'f' || key === 'F') && !ev.repeat && dockInRange) {
+        ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        doDock();
+      }
+      return;
+    }
+
+    if (matchesBinding(ev, BINDINGS.steeringView)) {
+      if (ev.repeat || ev.shiftKey || ev.ctrlKey || ev.altKey || ev.metaKey) return;
+      ev.preventDefault();
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      bus.emit('race:toggleView', { source: 'keyboard' });
+      return;
+    }
+    if (matchesBinding(ev, BINDINGS.raceRestart)
+      && activeAuthoredRace(state)?.params?.raceMode === 'time-trial') {
+      if (ev.repeat || ev.shiftKey || ev.ctrlKey || ev.altKey || ev.metaKey) return;
+      ev.preventDefault();
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      bus.emit('race:restart', { source: 'keyboard' });
+      return;
+    }
+    if (matchesBinding(ev, BINDINGS.band)) {
+      if (!contextUiAllowed(state, 'band')) return;
+      ev.preventDefault();
+      // Consumed UI key: stopPropagation is the only suppression the window-level flight
+      // adapter honors (defaultPrevented is never inspected — see the dock case below).
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      bus.emit('band:cycle', { source: 'keyboard' });
+      return;
+    }
+
+    if (matchesBinding(ev, BINDINGS.recallObjective)) {
+      if (!contextUiAllowed(state, 'recallObjective')) return;
+      ev.preventDefault();
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      bus.emit('hud:recallObjective');
+      return;
+    }
+
+    // PQ-183.02: one key finds anything. In flight the palette mounts on #screens itself and
+    // carries the .screen marker so the dossier drawer still has a host.
+    if (matchesBinding(ev, BINDINGS.find)) {
+      if (!contextUiAllowed(state, 'find')) return;
+      ev.preventDefault();
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      bus.emit('ui:globalFind', {});
+      return;
+    }
+
+    // PRO-09: dismiss the one-voice floor pill. The arbiter owns what may be cleared (danger and
+    // the onboarding floor are protected); the key just asks.
+    if (matchesBinding(ev, BINDINGS.dismissVoice)) {
+      if (!contextUiAllowed(state, 'dismissVoice')) return;
+      ev.preventDefault();
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      bus.emit('voice:dismiss', { source: 'keyboard' });
+      return;
+    }
+
+    switch (key) {
+      case 'Escape':
+        if (shipScreenRequest.isShipScreenRequestPending?.()) {
+          ev.preventDefault();
+          if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+          shipScreenRequest.cancelShipScreenRequest?.();
+          return;
+        }
+        if (state.ui && state.ui.commsBacklogOpen) {
+          ev.preventDefault();
+          if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+          bus.emit('ui:closeComms');
+          return;
+        }
+        if (state.ui && state.ui.cargoPanelOpen) {
+          ev.preventDefault();
+          if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+          bus.emit('ui:closeCargo');
+          return;
+        }
+        // fall through to Pause when no flight overlay owns Escape
+      case 'p': case 'P':
+        ev.preventDefault();
+        screenManager.pushScreen('pause');
+        bus.emit('audio:cue', { id: 'ui_open' });
+        return;
+      // Map authority: M → galaxyMap LOCAL (near-field first); N → galaxyMap GALAXY (star chart).
+      // Legacy localmap/starmap screens remain registered for tools/checks only.
+      case BINDINGS.localmap.key:
+      case BINDINGS.localmap.label:
+        if (!contextUiAllowed(state, 'localmap')) return;
+        ev.preventDefault();
+        openGalaxyMap({ state, bus, screenManager }, { focus: MAP_FOCUS.LOCAL, source: 'keyboard' });
+        return;
+      case BINDINGS.starmap.key:
+      case BINDINGS.starmap.label:
+        if (!contextUiAllowed(state, 'starmap')) return;
+        ev.preventDefault();
+        openGalaxyMap({ state, bus, screenManager }, { focus: MAP_FOCUS.GALAXY, source: 'keyboard' });
+        return;
+      case BINDINGS.techTree.key:
+      case BINDINGS.techTree.label:
+        if (!contextUiAllowed(state, 'techTree')) return;
+        ev.preventDefault(); screenManager.pushScreen('techTree'); return;
+      case BINDINGS.missionLog.key:
+      case BINDINGS.missionLog.label:
+        if (!contextUiAllowed(state, 'missionLog')) return;
+        ev.preventDefault(); screenManager.pushScreen('missionLog'); return;
+      case BINDINGS.codex.key:
+      case 'K':
+        if (!contextUiAllowed(state, 'codex')) return;
+        ev.preventDefault(); screenManager.pushScreen('codex'); return;
+      case 'F1': case 'h': case 'H':
+        if (!contextUiAllowed(state, 'help')) return;
+        ev.preventDefault(); screenManager.pushScreen('help'); return;
+      // Target/clear are selection-only, deliberately exempt from contextUiAllowed: they never
+      // open a surface or leave the current one, they only move or clear the UI-owned target
+      // (see src/ui/AGENTS.md). A docked pilot and a map reader keep that local selection act.
+      case 'Tab':
+        ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        bus.emit('ui:cycleTarget', { dir: ev.shiftKey ? -1 : 1 });
+        return;
+      case 'Backspace':
+        ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        bus.emit('ui:clearTarget');
+        return;
+      // Dock / interact: default binding is `E` (spec §15.4), sourced from the live binding
+      // registry so the prompt and handler can never drift. Enter remains a secondary trigger.
+      case BINDINGS.dock.key:
+      case BINDINGS.dock.label:
+      case 'Enter':
+        // E is also strafe: entering range while holding it must not manufacture a dock intent.
+        // Leave repeats available to flight; a fresh press below owns the contextual action.
+        if (ev.repeat) return;
+        if (dockInRange) {
+          ev.preventDefault();
+          // preventDefault() is NOT suppression in this codebase: the window-level flight adapter
+          // (src/systems/input.js) never inspects defaultPrevented — its only gates are
+          // modalInputActive / text-entry / ui-command targets. So the dock key also reached the
+          // flight verbs, and since `strafeRight` is KeyE in both the pilot (default) and classic
+          // schemes, pressing E to dock ALSO strafed the ship right, exactly while the player was
+          // trying to hold a docking line. stopPropagation() from this document-level listener is
+          // what actually keeps the window-level one from seeing it — the same idiom claimBase uses
+          // a few cases above. No stuck-key risk: the flight adapter never sets KeyE down, so there
+          // is nothing for keyup to clear, and out of dock range this case falls through untouched
+          // so ordinary strafing is unaffected.
+          if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+          doDock();
+        }
+        return;
+      case 'F2':
+        // THE SHIP (grammar §10.5 canonical key table; build map §11.3). uiRoot owns its
+        // demand-loaded registration so a repeated F2 can cancel a still-pending open.
+        if (!contextUiAllowed(state, 'ship')) return;
+        if (ev.repeat) return;
+        ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        shipScreenRequest.toggleShipScreenRequest?.();
+        return;
+      case 'F3':
+        // THE FOOTPRINT (grammar §10.5; build map §11.12 J10). Pausing instrument, same ruling.
+        if (!contextUiAllowed(state, 'footprint')) return;
+        ev.preventDefault();
+        screenManager.pushScreen('footprint');
+        bus.emit('audio:cue', { id: 'ui_open' });
+        return;
+      case 'F4':
+        // THE RANGE (grammar §10.5 / SCREENS_B §2): pausing playable teaching box.
+        if (!contextUiAllowed(state, 'range')) return;
+        ev.preventDefault();
+        screenManager.pushScreen('range');
+        bus.emit('audio:cue', { id: 'ui_open' });
+        return;
+      case 'F7': {
+        // Collision / socket / landing-contact debug overlay toggle (graphics spec §12.5).
+        if (!contextUiAllowed(state, 'debug')) return;
+        ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        const dbg = state.render && state.render.debug;
+        if (dbg) { const on = dbg.toggle(); bus.emit('audio:cue', { id: on ? 'ui_open' : 'ui_back' }); }
+        return;
+      }
+      case BINDINGS.drill.key:
+      case BINDINGS.drill.label:
+        if (!contextUiAllowed(state, 'drill')) return;
+        // B is the rebindable contextual World Site beam while a site proxy is explicitly selected.
+        // Leave the event unconsumed for the simulation input owner; ordinary asteroid B retains
+        // the established drill-view behavior below.
+        if (selectedWorldSiteTarget(state)) return;
+        // Drill lens (V2 §7 / cut-list #27): open the ant-farm mining screen on the targeted
+        // asteroid (or the mining system's soft-locked one). Bails with a toast if no asteroid.
+        ev.preventDefault();
+        openDrill();
+        return;
+      case BINDINGS.cargo.key:
+      case BINDINGS.cargo.label:
+        if (!contextUiAllowed(state, 'cargo')) return;
+        ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        bus.emit('ui:toggleCargo');
+        return;
+      case 'o': case 'O':
+        // Auto-repeat must not strobe the contacts-strip pin: one toggle per keypress.
+        if (!contextUiAllowed(state, 'overview')) return;
+        if (ev.repeat) return;
+        ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        bus.emit('ui:toggleOverview');
+        return;
+      case BINDINGS.fleetCommand.key:
+      case BINDINGS.fleetCommand.label:
+        // Wingman command radial (Micro-Loops): pop the quick fleet-command wheel.
+        if (!contextUiAllowed(state, 'fleetCommand')) return;
+        ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        bus.emit('ui:wingmanRadial');
+        return;
+      case BINDINGS.comms.key:
+      case BINDINGS.comms.label:
+        // Comms log (narrative overlay): open the channel backlog. The feed itself
+        // streams on the left edge continuously; this opens the full searchable history.
+        if (!contextUiAllowed(state, 'comms')) return;
+        ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        bus.emit('ui:toggleComms');
+        return;
+      case BINDINGS.claimBase.key:
+      case BINDINGS.claimBase.label:
+        if (!contextUiAllowed(state, 'claimBase')) return;
+        // Claim a body (V2 §6 / M3): claim the nearest claimable POI in range, or open the Base
+        // screen for an already-claimed body to build modules / teleport. In OPEN SPACE (no claimable
+        // body) the UI router does NOT own the key — it falls through so the flight-input verb
+        // `deployBeacon` (KeyU) drops a claim beacon. Keeps the claim shortcut from firing an accidental
+        // action away from bodies (see check-claim-base-input) while preserving the beacon micro-loop.
+        if (claimOrOpenBase()) {
+          ev.preventDefault();
+          if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        }
+        return;
+      case 'F5':
+        if (!contextUiAllowed(state, 'save')) return;
+        ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        bus.emit('game:save', { slot: 'quick' });
+        return;
+      case 'F9':
+        if (!contextUiAllowed(state, 'load')) return;
+        ev.preventDefault();
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        bus.emit('game:load', { slot: 'quick' });
+        return;
+      default:
+        // '+'/'-' zoom shortcuts (camera passthrough). Once emitted the key is consumed like any
+        // other UI verb — a flight binding on it would otherwise keep double-firing.
+        if (code === 'Equal' || code === 'NumpadAdd') {
+          ev.preventDefault();
+          if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+          bus.emit('camera:zoom', { delta: -8 });
+        } else if (code === 'Minus' || code === 'NumpadSubtract') {
+          ev.preventDefault();
+          if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+          bus.emit('camera:zoom', { delta: 8 });
+        }
+        return;
+    }
+  }
+
+  function onBlackoutKeyDown(ev) {
+    if (!isUiInteractionFenced(state)) return;
+    ev.preventDefault();
+    // Capture-phase ownership is required: ScreenManager's Tab trap is registered earlier on the
+    // document bubble path, and preventDefault alone cannot stop focus or later UI command handlers.
+    if (typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
+    else if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+  }
+
+  function onBlackoutPointerEvent(ev) {
+    if (!isUiInteractionFenced(state)) return;
+    // The opaque overlay prevents ordinary hit-testing, but global/document listeners and the
+    // native context menu still observe the event path. Own it in capture phase just like keys.
+    if (typeof ev.preventDefault === 'function') ev.preventDefault();
+    if (typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
+    else if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+  }
+
+  // Resolve a drillable asteroid: player's selected target (if it's an asteroid), else the mining
+  // system's soft-locked asteroid. Checks range and triggers transition.
+  function openDrill() {
+    let astId = null;
+    let activeTether = activeAsteroidDrillTether();
+    if (activeTether) {
+      const t = state.entities && state.entities.get ? state.entities.get(activeTether.targetId) : null;
+      if (t && t.type === 'asteroid' && t.alive) astId = t.id;
+    }
+
+    // A live asteroid massline is the drill authority. Selection may change while latched, but it
+    // must not redirect B into a wreck-help toast and steal the established drill action.
+    const wreck = astId == null ? drillGuidanceWreck() : null;
+    if (wreck) {
+      const interaction = interactionProfileForEntity(wreck);
+      if (interaction.hazardous) {
+        bus.emit('toast', {
+          text: 'Hazardous reactor wreck — it explodes when its reactor timer runs out. '
+            + `${BINDINGS.drill.label} drills asteroids; hold the mining control to salvage this wreck or tow it clear.`,
+          kind: 'warn',
+          ttl: 5,
+        });
+      } else {
+        bus.emit('toast', {
+          text: `${targetDisplayName(wreck)} is salvage, not an asteroid. `
+            + `${BINDINGS.drill.label} drills asteroids; hold the mining control to salvage this wreck.`,
+          kind: 'info',
+          ttl: 4,
+        });
+      }
+      return;
+    }
+
+    const tid = state.player && state.player.targetId;
+    if (astId == null && tid != null) {
+      const t = state.entities && state.entities.get ? state.entities.get(tid) : null;
+      if (t && t.type === 'asteroid' && t.alive) astId = t.id;
+    }
+    if (astId == null) {
+      // fall back to the mining system's soft-lock
+      const mining = ctx.registry && ctx.registry.get('mining');
+      if (mining && mining._lockTargetId) {
+        const t = state.entities && state.entities.get ? state.entities.get(mining._lockTargetId) : null;
+        if (t && t.type === 'asteroid' && t.alive) astId = t.id;
+      }
+    }
+    if (astId == null) {
+      bus.emit('toast', { text: 'No asteroid targeted — target a rock and press ' + BINDINGS.drill.label + ' to drill', kind: 'warn', ttl: 3 });
+      return;
+    }
+
+    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    const ast = state.entities && state.entities.get ? state.entities.get(astId) : null;
+    if (player && player.pos && ast && ast.pos) {
+      const dx = ast.pos.x - player.pos.x;
+      const dz = ast.pos.z - player.pos.z;
+      const dist = Math.hypot(dx, dz);
+      const surfaceDist = Math.max(0, dist - (ast.radius || 0) - (player.radius || 0));
+      if (surfaceDist > 220) {
+        bus.emit('toast', { text: 'Too far to drill. Fly closer to the asteroid.', kind: 'warn', ttl: 3 });
+        return;
+      }
+    }
+
+    // --- Massline Latch Check ---
+    activeTether = activeTether && activeTether.targetId === astId ? activeTether : Object.values(state.combat?.attachments?.byId || {}).find(
+      (att) => att.state === 'active' && att.ownerId === state.playerId && att.targetId === astId && DRILL_MASSLINE_DEF_IDS.has(att.defId)
+    );
+    if (!activeTether) {
+      // Live tether binding label — never hard-code a latch key (rebinds / empty must not lie).
+      const tetherKey = resolveActionLabel(state, 'tether');
+      const latchHint = tetherKey
+        ? `Launch a tether (${tetherKey}) to lock onto the asteroid first.`
+        : 'Launch a tether to lock onto the asteroid first.';
+      bus.emit('toast', { text: `No Massline link. ${latchHint}`, kind: 'warn', ttl: 3.5 });
+      return;
+    }
+    if (activeTether.defId !== 'tether_standard') {
+      bus.emit('toast', {
+        text: 'This legacy Massline has no drill winch. Relatch with the standard Massline to drill.',
+        kind: 'warn',
+        ttl: 4,
+      });
+      return;
+    }
+
+    // Request the fixed-tick tether owner to reel and settle the approach. UI observes the owner's
+    // started/completed events for fade and screen presentation; it never moves the ship or line.
+    bus.emit('drill:approachRequested', { asteroidId: astId, attachmentId: activeTether.id });
+  }
+
+  function drillGuidanceWreck() {
+    const tid = state.player && state.player.targetId;
+    if (tid != null) {
+      const selected = state.entities && state.entities.get ? state.entities.get(tid) : null;
+      if (selected && selected.alive) {
+        const interaction = interactionProfileForEntity(selected);
+        if (interaction.salvageable) return selected;
+        if (interaction.drillable) return null;
+      }
+    }
+    for (const attachment of Object.values(state.combat?.attachments?.byId || {})) {
+      if (!attachment || attachment.state !== 'active' || attachment.ownerId !== state.playerId
+        || !DRILL_MASSLINE_DEF_IDS.has(attachment.defId)) continue;
+      const attached = state.entities && state.entities.get ? state.entities.get(attachment.targetId) : null;
+      if (attached && attached.alive && interactionProfileForEntity(attached).salvageable) return attached;
+    }
+    return null;
+  }
+
+  function activeAsteroidDrillTether() {
+    return Object.values(state.combat?.attachments?.byId || {}).find((att) => {
+      if (!att || att.state !== 'active' || att.ownerId !== state.playerId || !DRILL_MASSLINE_DEF_IDS.has(att.defId)) return false;
+      const target = state.entities && state.entities.get ? state.entities.get(att.targetId) : null;
+      return !!(target && target.type === 'asteroid' && target.alive);
+    }) || null;
+  }
+
+  // V2 §6 / M3: claim the nearest claimable body POI in range, or — if the player is near an
+  // already-claimed body — open the Base screen to build modules / teleport. Bails with a toast
+  // if no claimable POI is nearby.
+  function openClaimedBase(body, opts = {}) {
+    if (!body || !body.id) {
+      bus.emit('toast', { text: 'Claim record not ready — try again in a moment', kind: 'warn', ttl: 3 });
+      return true;
+    }
+    if (!state.ui) state.ui = {};
+    state.ui.pendingClaimBodyId = body.id;
+    if (screenManager.hasScreen && !screenManager.hasScreen('base')) {
+      bus.emit('toast', { text: 'Base screen is still loading — press ' + BINDINGS.claimBase.label + ' again in a moment', kind: 'info', ttl: 3 });
+      return true;
+    }
+    screenManager.pushScreen('base');
+    if (opts.audio !== false) bus.emit('audio:cue', { id: 'ui_open' });
+    return true;
+  }
+
+  function claimOrOpenBase() {
+    const claimsSys = ctx.registry && ctx.registry.get('claims');
+    if (!claimsSys) return false;
+    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    if (!player || !player.pos) return false;
+    const RANGE = 220;
+    // find claimable POI entities in range
+    let nearest = null, bestD = RANGE * RANGE;
+    for (const e of state.entityList || []) {
+      if (!e || !e.alive || !e.data || !e.data.poi || !e.data.claimable || !e.pos) continue;
+      const d = (e.pos.x - player.pos.x) ** 2 + (e.pos.z - player.pos.z) ** 2;
+      if (d < bestD) { bestD = d; nearest = e; }
+    }
+    if (!nearest) return false;
+    const poiDef = {
+      id: nearest.data.poiId,
+      name: nearest.data.name,
+      size: nearest.data.size || 'M',
+      pos: { x: nearest.pos.x, z: nearest.pos.z },
+    };
+    // already claimed? open the Base screen for it
+    if (claimsSys.isClaimed(poiDef.id)) {
+      return openClaimedBase(claimsSys.list().find((b) => b.poiId === poiDef.id));
+    }
+    // claim it (the system validates credits + emits feedback)
+    const claimed = claimsSys.claim(poiDef);
+    if (claimed && typeof claimed.then === 'function') {
+      // Worker lane: the rpc resolves to the new body row (or null on refusal).
+      claimed.then((body) => {
+        if (body) openClaimedBase(body, { audio: false });
+      });
+      return true;
+    }
+    if (claimed) {
+      return openClaimedBase(claimsSys.list().find((b) => b.poiId === poiDef.id), { audio: false });
+    }
+    return true;
+  }
+
+  // Emit the intent only; uiRoot's dock:undocked handler owns clearing ui.docked and popping
+  // the station hub (single owner of the dock→HUD transition, avoids a double-pop).
+  function undock() {
+    if (isUiInteractionFenced(state)) return;
+    if (!(state.ui && state.ui.docked)) { screenManager.popScreen(); return; }
+    bus.emit('dock:undocked', {});
+  }
+
+  // mouse-wheel / trackpad zoom passthrough (only in flight, not over a modal).
+  // Note: ingestTrackpadWheel and onTrackpadPointer are retired so trackpads operate as standard pointers.
+  // The wheel over a scrollable flight overlay (comms backlog, cargo list) scrolls that pane —
+  // it must not also drive the camera zoom beneath it.
+  function wheelTargetScrolls(target) {
+    for (let node = target; node && node !== document.body && node !== document.documentElement; node = node.parentElement) {
+      if (!(node.scrollHeight > node.clientHeight + 1)) continue;
+      const oy = typeof getComputedStyle === 'function' ? getComputedStyle(node).overflowY : node.style && node.style.overflowY;
+      if (oy === 'auto' || oy === 'scroll' || oy === 'overlay') return true;
+    }
+    return false;
+  }
+
+  function onWheel(ev) {
+    // Chrome/Electron reports a trackpad pinch as a Ctrl/Cmd-modified wheel. Cancel the browser's
+    // page-zoom default before the mode gates so the DOM HUD stays at its fixed viewport scale.
+    noteDevice('kbm');
+    const isPinch = !!(ev.ctrlKey || ev.metaKey);
+    if (isPinch && typeof ev.preventDefault === 'function') ev.preventDefault();
+    if (isUiInteractionFenced(state) || screenManager.isOpen() || (state.ui && state.ui.docked) || state.mode !== 'flight') return;
+    if (!isPinch && wheelTargetScrolls(ev.target)) return;
+
+    let delta = 0;
+    if (isPinch) {
+      // Proportional smooth zoom for trackpad pinch/expand gestures
+      delta = (Number(ev.deltaY) || 0) * 0.8;
+    } else {
+      // Step zoom for mouse wheel notch / 2-finger scroll
+      const currentZoom = (state.camera && state.camera.zoom) || 144;
+      const step = Math.max(16, Math.round(currentZoom * 0.08));
+      delta = Math.sign(ev.deltaY) * step;
+    }
+    if (delta !== 0) {
+      bus.emit('camera:zoom', { delta });
+    }
+  }
+
+  const blackoutPointerEvents = [
+    'pointerdown', 'pointerup', 'mousedown', 'mouseup',
+    'click', 'dblclick', 'auxclick', 'contextmenu',
+    'touchstart', 'touchend', 'wheel',
+  ];
+  document.addEventListener('keydown', onBlackoutKeyDown, true);
+  document.addEventListener('keydown', onFlightHudFocusKeyDown, true);
+  document.addEventListener('focusin', onFlightHudFocusIn);
+  window.addEventListener('resize', onFlightHudResize);
+  for (const type of blackoutPointerEvents) {
+    document.addEventListener(type, onBlackoutPointerEvent, { capture: true, passive: false });
+  }
+  document.addEventListener('keydown', onKeyDown);
+  window.addEventListener('wheel', onWheel, { passive: false });
+  const clearGamepadFocus = (ev) => {
+    document.documentElement.classList.remove('sf-gamepad-focus');
+    // A pointerdown with pointerType 'touch' is the touch overlay/screen — the user's hand, not a
+    // mouse; everything else on a pointer is the keyboard/mouse device class for prompt glyphs.
+    noteDevice(ev && ev.pointerType === 'touch' ? 'touch' : 'kbm');
+  };
+  document.addEventListener('pointerdown', clearGamepadFocus, true);
+
+  // let other modules (uiRoot Undock button) trigger an undock
+  unsubscribers.push(bus.on('ui:undock', undock));
+  unsubscribers.push(bus.on('touch:uiAction', ({ action } = {}) => { routeTouchUiAction(action); }));
+
+  // ---- gamepad UI layer -----------------------------------------------------
+
+  function getGamepadConfig() {
+    return (state.settings && state.settings.controls && state.settings.controls.gamepad) || {};
+  }
+
+  function focusableInside(root) {
+    return listGamepadFocusables(root);
+  }
+
+  function activeScreenEl() {
+    const screensRoot = document.getElementById('screens');
+    if (!screensRoot) return null;
+    const top = screenManager.top ? screenManager.top() : null;
+    if (top) {
+      const owned = screensRoot.querySelector(`[data-screen="${top}"]`);
+      if (owned && owned.style.display !== 'none') return owned;
+    }
+    for (const el of screensRoot.querySelectorAll('[data-screen]')) {
+      if (el.style.display !== 'none') return el;
+    }
+    return null;
+  }
+
+  function stationTabButtons() {
+    const root = activeScreenEl();
+    if (!root || root.dataset.screen !== 'station') return [];
+    return Array.from(root.querySelectorAll('[role="tab"][data-nav], [role="tab"][data-tab], .st-rail [data-tab]')).filter((el) => {
+      if (!el || el.disabled) return false;
+      let p = el;
+      while (p && p !== root) {
+        if (p.style && p.style.display === 'none') return false;
+        p = p.parentNode;
+      }
+      return true;
+    });
+  }
+
+  function clickStationTab(btn) {
+    if (!btn || btn.disabled) return false;
+    if (typeof btn.click === 'function') btn.click();
+    else if (typeof MouseEvent !== 'undefined') btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    else return false;
+    try { btn.focus(); } catch (e) {}
+    return true;
+  }
+
+  function cycleStationTab(dir) {
+    const tabs = stationTabButtons();
+    if (!tabs.length) return false;
+    let idx = tabs.findIndex((el) => el.classList && el.classList.contains('active'));
+    if (idx < 0) idx = tabs.findIndex((el) => el.getAttribute('aria-selected') === 'true');
+    if (idx < 0) idx = 0;
+    const next = (idx + dir + tabs.length) % tabs.length;
+    return clickStationTab(tabs[next]);
+  }
+
+  function moveFocus(dir) {
+    const root = activeScreenEl();
+    const items = focusableInside(root);
+    if (!items.length) return;
+    const active = document.activeElement;
+    document.documentElement.classList.add('sf-gamepad-focus');
+    // Tabs use roving tabindex, so inactive siblings are intentionally absent from `items`.
+    // When a pad moves horizontally from a tab, traverse its tablist directly and activate the
+    // destination; this matches keyboard ArrowLeft/ArrowRight behavior and keeps focus visible.
+    if ((dir === 'left' || dir === 'right') && active && active.getAttribute('role') === 'tab') {
+      const tablist = active.closest('[role="tablist"]');
+      const tabs = tablist ? Array.from(tablist.querySelectorAll('[role="tab"]')).filter((el) => !el.disabled) : [];
+      const tabIndex = tabs.indexOf(active);
+      if (tabIndex >= 0 && tabs.length) {
+        const delta = dir === 'left' ? -1 : 1;
+        const nextTab = tabs[(tabIndex + delta + tabs.length) % tabs.length];
+        try { nextTab.focus(); } catch (e) {}
+        if (typeof nextTab.click === 'function') nextTab.click();
+        return;
+      }
+    }
+    if (!items.includes(active)) {
+      try { items[0].focus(); } catch (e) {}
+      return;
+    }
+    // A focused native slider or dropdown owns Left/Right; Up/Down still walk away from it.
+    if ((dir === 'left' || dir === 'right') && padValueControlKind(active)) {
+      const slot = items.indexOf(active);
+      if (stepPadValueControl(active, dir)) {
+        // The change handler may rebuild the pane (Language, hardware preset). Keep the pad's place
+        // instead of letting the next press fall back to the first control on the screen.
+        if (root && typeof root.contains === 'function' && !root.contains(active)) {
+          const fresh = focusableInside(root);
+          const keep = fresh[Math.min(slot, fresh.length - 1)];
+          if (keep) { try { keep.focus(); } catch (e) {} }
+        }
+        return;
+      }
+      // At its limit the press is spent, so a slider scrubbed to its end never flings the highlight
+      // across the screen; only a control sharing this row (a compound row) may take it.
+      const mate = spatialFocusTarget(items.filter((el) => el === active || sharesRow(active, el)), active, dir);
+      if (mate) { try { mate.focus(); } catch (e) {} }
+      return;
+    }
+    const next = padFocusTarget(items, active, dir);
+    if (next) { try { next.focus(); } catch (e) {} }
+  }
+
+  function activateFocused() {
+    const root = activeScreenEl();
+    const active = document.activeElement;
+    if (!active || !root || !root.contains(active)) return;
+    document.documentElement.classList.add('sf-gamepad-focus');
+    if (typeof active.click === 'function') active.click();
+    else {
+      active.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }));
+    }
+  }
+
+  function touchActionPressed(name) {
+    const tp = ctx.touch;
+    return !!(tp && tp.isConnected && tp.isConnected() && tp.actions && tp.actions[name] && tp.actions[name].pressed);
+  }
+
+  function openScreenFromTouch(id) {
+    screenManager.pushScreen(id);
+    bus.emit('audio:cue', { id: 'ui_open' });
+  }
+
+  function openMapFromTouch(focus) {
+    openGalaxyMap({ state, bus, screenManager }, { focus, source: 'touch' });
+    bus.emit('audio:cue', { id: 'ui_open' });
+  }
+
+  function handleTouchUi() {
+    if (isUiInteractionFenced(state) || isConfirmOpen()) return;
+    if (touchActionPressed('dock')) { routeTouchUiAction('dock'); return; }
+    if (touchActionPressed('missionLog')) { routeTouchUiAction('missionLog'); return; }
+    if (touchActionPressed('localmap')) { routeTouchUiAction('localmap'); return; }
+    if (touchActionPressed('starmap')) { routeTouchUiAction('starmap'); }
+    if (touchActionPressed('pause')) { routeTouchUiAction('pause'); }
+  }
+
+  function routeTouchUiAction(action) {
+    if (isUiInteractionFenced(state) || isConfirmOpen()) return false;
+    const top = screenManager.top ? screenManager.top() : null;
+    if (screenManager.isOpen()) {
+      if (action === 'pause' && top === 'pause') {
+        screenManager.popScreen();
+        bus.emit('audio:cue', { id: 'ui_back' });
+        return true;
+      }
+      if ((action === 'starmap' || action === 'localmap') && isMapScreenId(top)) {
+        screenManager.popScreen();
+        bus.emit('audio:cue', { id: 'ui_back' });
+        return true;
+      }
+      return false;
+    }
+    if (state.mode !== 'flight') return false;
+    if (action === 'dock') {
+      if (dockInRange && !state.ui.docked) {
+        doDock();
+        return true;
+      }
+      bus.emit('toast', { text: 'No dock prompt active', kind: 'info', ttl: 2 });
+      return false;
+    }
+    // Every device path asks the SAME interface gate as the keyboard: a touch fight cannot
+    // open the chart or the codex through the overlay's own buttons.
+    if (!contextUiAllowed(state, action)) return false;
+    if (action === 'missionLog') { openScreenFromTouch('missionLog'); return true; }
+    // Touch Local / Star keep product labels on the overlay but open the unified map with focus.
+    if (action === 'localmap') { openMapFromTouch(MAP_FOCUS.LOCAL); return true; }
+    if (action === 'starmap') { openMapFromTouch(MAP_FOCUS.GALAXY); return true; }
+    if (action === 'pause') { openScreenFromTouch('pause'); return true; }
+    return false;
+  }
+
+  function handleGamepadUi(dt) {
+    if (!gp || !gp.isConnected()) return;
+    const cfg = getGamepadConfig();
+    if (cfg.enabled === false) return;
+    // PQ-164.01: while Settings captures a pad rebind, buttons route to the capture handler and
+    // nowhere else — gamepad.js keeps gp.actions inert under captureMode, so the sim merge and
+    // the UI navigation below both stay quiet for the duration.
+    const captureHandler = typeof getGamepadCaptureHandler === 'function' ? getGamepadCaptureHandler() : null;
+    gp.captureMode = !!captureHandler;
+    if (captureHandler) {
+      const presses = typeof gp.drainButtonPresses === 'function' ? gp.drainButtonPresses() : [];
+      _nav.up = _nav.down = _nav.left = _nav.right = false;
+      _nav.holdT = 0;
+      _nav.repeatT = 0;
+      for (const name of presses) {
+        try { captureHandler(name); } catch (e) { dedupError('uiInput.pad-capture', '[uiInput] pad capture error:', e); }
+      }
+      return;
+    }
+    if (typeof gp.drainButtonPresses === 'function') gp.drainButtonPresses();
+    if (isUiInteractionFenced(state)) {
+      _nav.up = _nav.down = _nav.left = _nav.right = false;
+      _nav.holdT = 0;
+      _nav.repeatT = 0;
+      return;
+    }
+
+    if (isConfirmOpen()) {
+      if (gp.actions.accept && gp.actions.accept.pressed) confirmGamepadAccept();
+      if (gp.actions.cancel && gp.actions.cancel.pressed) confirmGamepadCancel();
+      return;
+    }
+
+    const modalOpen = screenManager.isOpen();
+    const top = modalOpen && screenManager.top ? screenManager.top() : null;
+
+    // Navigation: D-pad or left stick. Use a simple repeat timer.
+    const dz = typeof cfg.deadzone === 'number' ? cfg.deadzone : 0.12;
+    const navNow = {
+      up: gp.axes.leftY < -dz,
+      down: gp.axes.leftY > dz,
+      left: gp.axes.leftX < -dz,
+      right: gp.axes.leftX > dz,
+    };
+    // D-pad overrides / extends stick navigation.
+    const dpad = gp.actions || {};
+    // d-pad buttons are not in the action map, read raw pad state via getGamepad? We don't expose
+    // raw button array, so we expose them as pseudo actions on the gamepad object for convenience.
+    // Since gamepad.js does not export dpad actions, read from the connected pad directly.
+    const rawPad = getRawPad();
+    if (rawPad) {
+      if (rawPad.buttons[12] && rawPad.buttons[12].pressed) navNow.up = true;
+      if (rawPad.buttons[13] && rawPad.buttons[13].pressed) navNow.down = true;
+      if (rawPad.buttons[14] && rawPad.buttons[14].pressed) navNow.left = true;
+      if (rawPad.buttons[15] && rawPad.buttons[15].pressed) navNow.right = true;
+    }
+
+    // Flight decision deck (promptDeck) owns the pad while a decision is live — ONE gamepad
+    // grammar consumed here, replacing the per-card polls that double-fired one press across two
+    // cards and hijacked cycleTarget as a card verb. A/B choose; d-pad/stick up-down moves the
+    // highlight. Nothing below (dock, map, cycleTarget) may fire through a live decision.
+    // A modal screen above the deck keeps input (the decision is hidden under it anyway).
+    const promptDeck = getPromptDeck();
+    if (!modalOpen && promptDeck && promptDeck.size > 0 && promptDeck.gamepadCapture(gp.actions)) {
+      let deckNav = false;
+      for (const d of ['up', 'down', 'left', 'right']) {
+        if ((d === 'up' || d === 'down') && navNow[d] && !_nav[d]) {
+          deckNav = promptDeck.gamepadNav(d) || deckNav;
+        }
+        _nav[d] = navNow[d];
+      }
+      if (deckNav) bus.emit('audio:cue', { id: 'hover' });
+      return;
+    }
+
+    if (modalOpen) {
+      const def = screenManager.getActiveScreenDef && screenManager.getActiveScreenDef();
+      if (def && def.id === 'station') {
+        if (gp.actions.tabPrev && gp.actions.tabPrev.pressed && cycleStationTab(-1)) {
+          bus.emit('ui:navigate', {});
+          bus.emit('audio:cue', { id: 'hover' });
+          return;
+        }
+        if (gp.actions.tabNext && gp.actions.tabNext.pressed && cycleStationTab(1)) {
+          bus.emit('ui:navigate', {});
+          bus.emit('audio:cue', { id: 'hover' });
+          return;
+        }
+      }
+
+      // View/Select toggles the unified map closed when it (or a legacy map surface) is topmost.
+      if (isMapScreenId(top) && gp.actions.map && gp.actions.map.pressed) {
+        screenManager.popScreen();
+        bus.emit('ui:cancel', {});
+        bus.emit('audio:cue', { id: 'ui_back' });
+        return;
+      }
+
+      // Accept / Cancel (A / B).
+      if (gp.actions.accept && gp.actions.accept.pressed) {
+        activateFocused();
+        // The audio system voices ui:confirm itself; a second ui_confirm cue here played the
+        // same sample twice on every pad accept.
+        bus.emit('ui:confirm', {});
+      }
+      if (gp.actions.cancel && gp.actions.cancel.pressed) {
+        if (def && def.id === 'station') undock();
+        else if (!screenManager.locked || !screenManager.locked()) screenManager.popScreen();
+        bus.emit('ui:cancel', {});
+        bus.emit('audio:cue', { id: 'ui_back' });
+      }
+
+      // Named pad verbs for screens that declare `onPadButton` (D30 refit footer): raw X/Y —
+      // UI-layer buttons like the d-pad read above, so a screen can offer a tap verb and a
+      // hold-to-fire verb without touching the flight action map or owning a timer.
+      if (def && typeof def.onPadButton === 'function' && rawPad) {
+        for (const [name, idx] of [['x', 2], ['y', 3]]) {
+          const down = !!(rawPad.buttons[idx] && rawPad.buttons[idx].pressed);
+          const prev = _padVerb[name];
+          const heldFor = down ? prev.heldFor + dt : 0;
+          const st = { held: down, pressed: down && !prev.held, released: !down && prev.held, heldFor };
+          if (st.held || st.released) {
+            try { def.onPadButton(name, st, ctx); } catch (e) { dedupError('uiInput.pad-button', '[uiInput] onPadButton error:', e); }
+          }
+          prev.held = down;
+          prev.heldFor = heldFor;
+        }
+      }
+
+      // Direction repeat handling.
+      let moved = false;
+      for (const d of ['up', 'down', 'left', 'right']) {
+        if (navNow[d]) {
+          if (!_nav[d]) {
+            moveFocus(d);
+            moved = true;
+            _nav.holdT = 0;
+            _nav.repeatT = 0;
+          } else {
+            _nav.holdT += dt;
+            if (_nav.holdT >= _nav.initialDelay + _nav.repeatT) {
+              _nav.repeatT += _nav.repeatDelay;
+              moveFocus(d);
+              moved = true;
+            }
+          }
+        }
+        _nav[d] = navNow[d];
+      }
+      if (moved) {
+        bus.emit('ui:navigate', {});
+        bus.emit('audio:cue', { id: 'hover' });
+      }
+    }
+
+    // Global UI actions when no modal is open (mode must be flight).
+    if (!modalOpen && state.mode === 'flight') {
+      if (gp.actions.steeringView && gp.actions.steeringView.pressed
+        && !state.ui?.docked && !state.input?.blocked && !state.render?.photoMode?.active
+        && state.entities?.get?.(state.playerId)?.alive !== false) {
+        bus.emit('race:toggleView', { source: 'gamepad' });
+      }
+      if (gp.actions.dock && gp.actions.dock.pressed && dockInRange) {
+        doDock();
+      }
+      if (gp.actions.pause && gp.actions.pause.pressed) {
+        screenManager.pushScreen('pause');
+        bus.emit('audio:cue', { id: 'ui_open' });
+      }
+      if (gp.actions.map && gp.actions.map.pressed && contextUiAllowed(state, 'map')) {
+        openGalaxyMap({ state, bus, screenManager }, { focus: MAP_FOCUS.GALAXY, source: 'gamepad' });
+        bus.emit('audio:cue', { id: 'ui_open' });
+      }
+      if (gp.actions.codex && gp.actions.codex.pressed && contextUiAllowed(state, 'codex')) {
+        screenManager.pushScreen('codex');
+      }
+      if (gp.actions.cycleTarget && gp.actions.cycleTarget.pressed) {
+        bus.emit('ui:cycleTarget', { dir: 1 });
+      }
+    }
+
+    // Start toggles pause even when the pause menu itself is open.
+    if (top === 'pause' && gp.actions.pause && gp.actions.pause.pressed) {
+      screenManager.popScreen();
+      bus.emit('audio:cue', { id: 'ui_back' });
+    }
+  }
+
+  function getRawPad() {
+    if (typeof navigator === 'undefined' || !navigator.getGamepads) return null;
+    const pads = navigator.getGamepads();
+    for (let i = 0; i < pads.length; i++) {
+      const p = pads[i];
+      if (p && p.connected) return p;
+    }
+    return null;
+  }
+
+  function tick(dt) {
+    if (flightHudFocus) validateFlightHudFocus();
+    // Gesture capture must own the sample itself. Applying this after gp.tick commits the
+    // first modifier as a solo press, and eats the first ordinary press after cancellation.
+    if (gp) gp.captureMode = !!getGamepadCaptureHandler();
+    // Poll the pad whenever a modal owns input, not only when timeScale has already dropped.
+    // A first-frame push can race the pause request; D-pad/A/B still have to land.
+    const modalOpen = !!(screenManager && screenManager.isOpen && screenManager.isOpen());
+    const menusLive = state.mode !== 'flight' || state.timeScale === 0 || modalOpen
+      || !!(state.ui && state.ui.docked);
+    if (gp && (menusLive || ctx.simLane === 'worker')) {
+      gp.tick(dt);
+    }
+    if (ctx.touch && menusLive) {
+      ctx.touch.tick(dt);
+    }
+    // PQ-164.01: fold new pad/touch activity edges into the prompt-device order. When both moved
+    // this frame, the shared input sequence decides which was truly later.
+    const padSeq = gp && Number.isFinite(gp.lastActiveSeq) ? gp.lastActiveSeq : -1;
+    const tp = ctx.touch;
+    const touchSeq = tp && Number.isFinite(tp.lastActiveSeq) ? tp.lastActiveSeq : -1;
+    if (padSeq !== _seenPadSeq && touchSeq !== _seenTouchSeq) {
+      if (padSeq < touchSeq) { noteDevice('gamepad'); noteDevice('touch'); }
+      else { noteDevice('touch'); noteDevice('gamepad'); }
+    } else if (padSeq !== _seenPadSeq) {
+      noteDevice('gamepad');
+    } else if (touchSeq !== _seenTouchSeq) {
+      noteDevice('touch');
+    }
+    _seenPadSeq = padSeq;
+    _seenTouchSeq = touchSeq;
+    syncPromptDevice();
+    handleTouchUi();
+    handleGamepadUi(dt);
+  }
+
+  return {
+    doDock, undock, tick,
+    dispose() {
+      document.removeEventListener('keydown', onBlackoutKeyDown, true);
+      document.removeEventListener('keydown', onFlightHudFocusKeyDown, true);
+      document.removeEventListener('focusin', onFlightHudFocusIn);
+      window.removeEventListener('resize', onFlightHudResize);
+      for (const type of blackoutPointerEvents) {
+        document.removeEventListener(type, onBlackoutPointerEvent, true);
+      }
+      document.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('wheel', onWheel);
+      document.removeEventListener('pointerdown', clearGamepadFocus, true);
+      for (const unsubscribe of unsubscribers.splice(0)) {
+        try { unsubscribe(); } catch (_) {}
+      }
+    },
+  };
+}

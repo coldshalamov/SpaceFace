@@ -1,0 +1,42 @@
+[
+  {
+    "assetId": "sf.render.brood-splitter",
+    "expectedContentHash": "3e401d796fd1f0150423bb52fd7ba0ba826dee2cc119ffa7c0fcb978cc87fcc2",
+    "key": "brood-splitter",
+    "metadataUrl": "assets/ships/release/render-packages/brood-splitter/render-package.json",
+    "runtimeAssetId": "SF_BROOD_SPLITTER_V01",
+    "slot": "hull",
+    "sourceSha256": "abdd19057857dac783b3cb7860d4e8dbf9ddcca5b276bbfe7e090937cc8cca6a",
+    "sourceUrl": "assets/ships/release/parts/wholeships/brood_splitter_v01.glb"
+  },
+  {
+    "assetId": "sf.render.brood-splitter-axial",
+    "expectedContentHash": "e231171a8ade31fc33f5b1bd86de7ea829552e183ddf5ef871c065d187d03f1e",
+    "key": "brood-splitter-axial",
+    "metadataUrl": "assets/ships/release/render-packages/brood-splitter-axial/render-package.json",
+    "runtimeAssetId": "SF_BROOD_SPLITTER_AXIAL_V01",
+    "slot": "hull",
+    "sourceSha256": "70b2b62318af2d3a44204d2957d65305c4ee475219c514fdf358139bc1ab19f3",
+    "sourceUrl": "assets/ships/release/parts/wholeships/brood_splitter_axial_v01.glb"
+  },
+  {
+    "assetId": "sf.render.brood-splitter-port",
+    "expectedContentHash": "9e567d4a8347efe6f4727e1a913302b4d220187a286b7912f2e5f7478d4fcbef",
+    "key": "brood-splitter-port",
+    "metadataUrl": "assets/ships/release/render-packages/brood-splitter-port/render-package.json",
+    "runtimeAssetId": "SF_BROOD_SPLITTER_PORT_V01",
+    "slot": "hull",
+    "sourceSha256": "27c5292bcccf3b37342d090722893cd7ef244e6c6c18ec7d06adc8b2399d1c27",
+    "sourceUrl": "assets/ships/release/parts/wholeships/brood_splitter_port_v01.glb"
+  },
+  {
+    "assetId": "sf.render.brood-splitter-starboard",
+    "expectedContentHash": "d6fde7060b544b32fd3da1dbd4bd67d43d07e69483d9eb59033143b517ef74b4",
+    "key": "brood-splitter-starboard",
+    "metadataUrl": "assets/ships/release/render-packages/brood-splitter-starboard/render-package.json",
+    "runtimeAssetId": "SF_BROOD_SPLITTER_STARBOARD_V01",
+    "slot": "hull",
+    "sourceSha256": "e67bb6c771845f058bb2e0a401bcaaed69a1f13e3ac6725391a59844047af533",
+    "sourceUrl": "assets/ships/release/parts/wholeships/brood_splitter_starboard_v01.glb"
+  }
+]

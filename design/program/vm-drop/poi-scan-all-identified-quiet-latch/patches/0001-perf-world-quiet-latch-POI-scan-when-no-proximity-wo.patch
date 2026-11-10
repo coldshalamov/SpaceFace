@@ -1,0 +1,304 @@
+From 348695004dfb3d778e0b704c8a066ddda0db2cf2 Mon Sep 17 00:00:00 2001
+From: coldshalamov <93robingattis@gmail.com>
+Date: Thu, 24 Sep 2026 10:59:29 -0400
+Subject: [PATCH] =?UTF-8?q?perf(world):=20quiet-latch=20POI=20scan=20when?=
+ =?UTF-8?q?=20no=20proximity=20work=20remains=20(~4=C3=97)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Fully-identified (or no proximity-scannable) sectors still walked every
+POI carrier + discovery record each tick. Latch after a probe finds zero
+proximity work; wake on sectorId, pois.length, or 0.5 s rescan. Identify
+path preserved when work remains. Soft-GPU fps not claimed.
+---
+ src/systems/world.js                          |  61 ++++++-
+ ...i-scan-all-identified-quiet-latch.test.mjs | 168 ++++++++++++++++++
+ 2 files changed, 227 insertions(+), 2 deletions(-)
+ create mode 100644 test/poi-scan-all-identified-quiet-latch.test.mjs
+
+diff --git a/src/systems/world.js b/src/systems/world.js
+index 2a86f6cb0..538e1a56a 100644
+--- a/src/systems/world.js
++++ b/src/systems/world.js
+@@ -419,6 +419,25 @@ function publishAsteroidFieldInteractQuiet(state, latched) {
+   rt.quietLatched = !!latched;
+ }
+ 
++/** Bench A/B: production default ON. Skip _tickPOIScan when no proximity work remains. */
++let POI_SCAN_ALL_IDENTIFIED_QUIET = true;
++export function setPoiScanAllIdentifiedQuietForBench(enabled) {
++  POI_SCAN_ALL_IDENTIFIED_QUIET = enabled !== false;
++}
++export function getPoiScanAllIdentifiedQuietForBench() {
++  return POI_SCAN_ALL_IDENTIFIED_QUIET !== false;
++}
++
++/** Rescan while latched (0.5 s @ 60 Hz) so newly-admitted / investigated POIs wake. */
++const POI_SCAN_ALL_IDENTIFIED_RESCAN_TICKS = 30;
++
++function publishPoiScanQuiet(state, latched) {
++  const worldState = state && state.world;
++  if (!worldState) return;
++  const rt = worldState.poiScanRuntime || (worldState.poiScanRuntime = {});
++  rt.quietLatched = !!latched;
++}
++
+ export const world = {
+   name: 'world',
+   // records/embodiment serializers already return owned trees; the remaining live overlays are
+@@ -472,6 +491,7 @@ export const world = {
+     this._hazardSet = new Set();      // hazard zone indices the player is currently inside
+     this._hazardNextSet = new Set();  // scratch set reused while computing the next frame
+     this._fieldInteractQuiet = null;  // still-player asteroid-field ram latch
++    this._poiScanQuiet = null;        // all-identified / no-proximity-work POI scan latch
+     // Floating-origin scratch (allocation-free no-shift path).
+     this._frameOriginScratch = { x: 0, z: 0 };
+     // Ensure coordinate membrane defaults exist even if state was hand-built.
+@@ -4504,8 +4524,33 @@ export const world = {
+ 
+   _tickPOIScan(state) {
+     const player = state.entities.get(state.playerId);
+-    if (!player) return;
++    if (!player) {
++      this._poiScanQuiet = null;
++      publishPoiScanQuiet(state, false);
++      return;
++    }
+     const sectorId = state.world.currentSectorId;
++    const pois = (state.world.activeSector && state.world.activeSector.pois) || [];
++    const poiCount = pois.length;
++    const tick = state.tick | 0;
++    const latchOn = POI_SCAN_ALL_IDENTIFIED_QUIET !== false;
++
++    // Quiet fully-identified (or no proximity-scannable work) sectors still walked every POI
++    // carrier + discovery record each tick. Latch after a probe finds zero proximity work;
++    // wake on sector change, pois.length, or 0.5 s rescan (covers investigated/admitted POIs).
++    if (latchOn) {
++      const quiet = this._poiScanQuiet;
++      if (quiet
++        && quiet.sectorId === sectorId
++        && quiet.poiCount === poiCount
++        && ((tick - (quiet.armedTick | 0)) < POI_SCAN_ALL_IDENTIFIED_RESCAN_TICKS)) {
++        publishPoiScanQuiet(state, true);
++        return;
++      }
++    } else if (this._poiScanQuiet) {
++      this._poiScanQuiet = null;
++    }
++
+     const disc = this._discoveryFor(sectorId);
+     const scannerTier = this._scannerTier();
+     // Weather is a pure function of (sector, player pos, sim time): evaluate once per tick, not
+@@ -4514,7 +4559,10 @@ export const world = {
+       ? weatherScanScale(sectorId, player.pos, state.simTime)
+       : 1;
+     const scanBonus = 1 + 0.25 * scannerTier;
+-    for (const p of (state.world.activeSector.pois || [])) {
++    let proximityWork = 0;
++    for (let i = 0; i < poiCount; i++) {
++      const p = pois[i];
++      if (!p) continue;
+       const ent = this._poiCarrier(p.id);
+       if (!ent || ent.alive === false) continue;
+       const rec = disc.pois[p.poiId] || (disc.pois[p.poiId] = { discovered: false, identified: false });
+@@ -4523,6 +4571,7 @@ export const world = {
+       // `signal:investigated` below is the sole path that turns the return into durable discovery.
+       if ((p.requiresActiveScan || ent.data && ent.data.requiresActiveScan) && !rec.investigated) continue;
+       if (ent.data && ent.data.requiresTriangulation && !rec.triangulated && !ent.data.anomalyTriangulated) continue;
++      proximityWork++;
+       const dx = ent.pos.x - player.pos.x, dz = ent.pos.z - player.pos.z;
+       const distSq = dx * dx + dz * dz;
+       const sr = ((ent.data && ent.data.scanRange) || SCAN_RANGE) * scanBonus * weather;
+@@ -4552,6 +4601,14 @@ export const world = {
+         }
+       }
+     }
++
++    if (latchOn && proximityWork === 0) {
++      this._poiScanQuiet = { sectorId, poiCount, armedTick: tick };
++      publishPoiScanQuiet(state, true);
++    } else {
++      this._poiScanQuiet = null;
++      publishPoiScanQuiet(state, false);
++    }
+   },
+ 
+   // =========================================================================================
+diff --git a/test/poi-scan-all-identified-quiet-latch.test.mjs b/test/poi-scan-all-identified-quiet-latch.test.mjs
+new file mode 100644
+index 000000000..cf18dee9c
+--- /dev/null
++++ b/test/poi-scan-all-identified-quiet-latch.test.mjs
+@@ -0,0 +1,168 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { createGameState } from '../src/core/gameState.js';
++import { createBus } from '../src/core/eventBus.js';
++import { core } from '../src/core/coreSystem.js';
++import {
++  world,
++  setPoiScanAllIdentifiedQuietForBench,
++  getPoiScanAllIdentifiedQuietForBench,
++} from '../src/systems/world.js';
++
++function boot({ poiCount = 8, allIdentified = true, oneUnidentified = false } = {}) {
++  const state = createGameState(42);
++  state.mode = 'flight';
++  state.meta.seed = 42;
++  const bus = createBus();
++  const helpers = {};
++  core.init({ state, bus, helpers, registry: null });
++  world.init({ state, bus, helpers, registry: null });
++  const player = helpers.spawnEntity({
++    type: 'ship',
++    pos: { x: 0, z: 0 },
++    vel: { x: 0, z: 0 },
++    radius: 8,
++    mass: 12,
++    hull: 100,
++    hullMax: 100,
++    collides: true,
++  });
++  state.playerId = player.id;
++  player.isPlayer = true;
++
++  const sectorId = 'sector_test_poi_latch';
++  state.world.currentSectorId = sectorId;
++  state.world.discovery = state.world.discovery || {};
++  state.world.discovery[sectorId] = { discovered: true, visitedCount: 1, pois: {}, fieldsDepleted: {} };
++  const pois = [];
++  for (let i = 0; i < poiCount; i++) {
++    const poiId = `poi_${i}`;
++    const id = 1000 + i;
++    const identified = allIdentified && !(oneUnidentified && i === poiCount - 1);
++    state.world.discovery[sectorId].pois[poiId] = {
++      discovered: true,
++      identified,
++      name: poiId,
++    };
++    const ent = helpers.spawnEntity({
++      type: 'beacon',
++      pos: { x: 200 + i * 40, z: 100 },
++      vel: { x: 0, z: 0 },
++      radius: 4,
++      collides: false,
++    });
++    // Force stable id used by poi row
++    // spawnEntity assigns id; re-key via poi.id matching entity
++    pois.push({ id: ent.id, poiId, type: 'beacon', name: poiId });
++    ent.data = ent.data || {};
++    ent.data.name = poiId;
++    ent.data.scanRange = 400;
++    ent.data.poi = true;
++  }
++  state.world.activeSector = {
++    id: sectorId,
++    stations: [],
++    fields: [],
++    hazards: [],
++    pois,
++    gates: [],
++  };
++  return { state, bus, helpers, player, sectorId, pois };
++}
++
++function step(state) {
++  state.tick = (state.tick | 0) + 1;
++  state.simTime = (state.simTime || 0) + 1 / 60;
++  world._tickPOIScan(state);
++  return state.world.poiScanRuntime;
++}
++
++test('all-identified quiet latch engages', () => {
++  setPoiScanAllIdentifiedQuietForBench(true);
++  assert.equal(getPoiScanAllIdentifiedQuietForBench(), true);
++  const { state } = boot({ allIdentified: true });
++  const rt1 = step(state);
++  assert.equal(rt1 && rt1.quietLatched, true, 'arms after first all-identified probe');
++  const rt2 = step(state);
++  assert.equal(rt2 && rt2.quietLatched, true, 'stays latched next tick');
++  assert.ok(world._poiScanQuiet, 'internal quiet retained');
++});
++
++test('unidentified POI prevents latch', () => {
++  setPoiScanAllIdentifiedQuietForBench(true);
++  const { state } = boot({ allIdentified: true, oneUnidentified: true });
++  const rt = step(state);
++  assert.equal(rt && rt.quietLatched, false, 'does not latch with proximity work');
++  assert.equal(world._poiScanQuiet, null);
++});
++
++test('dirty-wake on pois.length', () => {
++  setPoiScanAllIdentifiedQuietForBench(true);
++  const { state, helpers } = boot({ allIdentified: true });
++  step(state);
++  assert.equal(state.world.poiScanRuntime.quietLatched, true);
++  const ent = helpers.spawnEntity({
++    type: 'beacon',
++    pos: { x: 900, z: 900 },
++    vel: { x: 0, z: 0 },
++    radius: 4,
++    collides: false,
++  });
++  const poiId = 'poi_new';
++  state.world.discovery[state.world.currentSectorId].pois[poiId] = {
++    discovered: false,
++    identified: false,
++  };
++  ent.data = { name: poiId, scanRange: 400, poi: true };
++  state.world.activeSector.pois.push({ id: ent.id, poiId, type: 'beacon', name: poiId });
++  // Force fall-through this tick by bumping length (same tick would still be in rescan window
++  // but length mismatch wakes).
++  const rt = step(state);
++  assert.equal(rt && rt.quietLatched, false, 'wakes when new unidentified POI admitted');
++});
++
++test('dirty-wake on sector change', () => {
++  setPoiScanAllIdentifiedQuietForBench(true);
++  const { state } = boot({ allIdentified: true });
++  step(state);
++  assert.equal(state.world.poiScanRuntime.quietLatched, true);
++  state.world.currentSectorId = 'sector_other';
++  state.world.discovery.sector_other = { discovered: true, visitedCount: 1, pois: {}, fieldsDepleted: {} };
++  state.world.activeSector = {
++    id: 'sector_other',
++    stations: [],
++    fields: [],
++    hazards: [],
++    pois: [],
++    gates: [],
++  };
++  const rt = step(state);
++  // empty pois → proximityWork 0 → re-arms for new sector
++  assert.equal(rt && rt.quietLatched, true, 're-probes and arms on empty new sector');
++  assert.equal(world._poiScanQuiet.sectorId, 'sector_other');
++});
++
++test('proximity identify still works when unlatched', () => {
++  setPoiScanAllIdentifiedQuietForBench(true);
++  const { state, player, pois, helpers } = boot({ allIdentified: false, poiCount: 2 });
++  // Place player on top of first POI; push second far beyond identify radius.
++  const first = state.entities.get(pois[0].id);
++  const second = state.entities.get(pois[1].id);
++  player.pos.x = first.pos.x;
++  player.pos.z = first.pos.z;
++  second.pos.x = first.pos.x + 5000;
++  second.pos.z = first.pos.z + 5000;
++  step(state);
++  const disc = state.world.discovery[state.world.currentSectorId];
++  assert.equal(disc.pois[pois[0].poiId].identified, true, 'near POI identifies');
++  assert.equal(disc.pois[pois[1].poiId].identified, false, 'far POI stays unidentified');
++});
++
++test('bench toggle off disables latch', () => {
++  setPoiScanAllIdentifiedQuietForBench(false);
++  const { state } = boot({ allIdentified: true });
++  const rt = step(state);
++  assert.equal(rt && rt.quietLatched, false);
++  assert.equal(world._poiScanQuiet, null);
++  setPoiScanAllIdentifiedQuietForBench(true);
++});
+-- 
+2.47.3
+

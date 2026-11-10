@@ -1,0 +1,90 @@
+{
+  "name": "energy-quiet-hide-latch",
+  "primary": "quiet-hideEnergyPlumes-consecutive",
+  "iterations": 200000,
+  "runs": 11,
+  "ships": 10,
+  "families": 6,
+  "pairs": [
+    {
+      "beforeMs": 27.443605000000005,
+      "afterMs": 2.58193,
+      "speedup": 10.629104971862137,
+      "beforeFleetResets": 203001,
+      "afterFleetResets": 1
+    },
+    {
+      "beforeMs": 28.833956999999998,
+      "afterMs": 2.373906000000005,
+      "speedup": 12.146208400838086,
+      "beforeFleetResets": 203001,
+      "afterFleetResets": 1
+    },
+    {
+      "beforeMs": 27.894600999999994,
+      "afterMs": 2.526896999999998,
+      "speedup": 11.03907321905088,
+      "beforeFleetResets": 203001,
+      "afterFleetResets": 1
+    },
+    {
+      "beforeMs": 29.191106999999988,
+      "afterMs": 2.3113130000000055,
+      "speedup": 12.629664177893655,
+      "beforeFleetResets": 203001,
+      "afterFleetResets": 1
+    },
+    {
+      "beforeMs": 28.73492800000001,
+      "afterMs": 2.3355669999999975,
+      "speedup": 12.303191473419535,
+      "beforeFleetResets": 203001,
+      "afterFleetResets": 1
+    },
+    {
+      "beforeMs": 28.802273999999997,
+      "afterMs": 2.599333999999999,
+      "speedup": 11.080636039847134,
+      "beforeFleetResets": 203001,
+      "afterFleetResets": 1
+    },
+    {
+      "beforeMs": 26.876642999999987,
+      "afterMs": 2.3541429999999934,
+      "speedup": 11.416741888661845,
+      "beforeFleetResets": 203001,
+      "afterFleetResets": 1
+    },
+    {
+      "beforeMs": 33.816812,
+      "afterMs": 2.208596,
+      "speedup": 15.311452162369214,
+      "beforeFleetResets": 203001,
+      "afterFleetResets": 1
+    },
+    {
+      "beforeMs": 27.748650000000012,
+      "afterMs": 2.228847000000002,
+      "speedup": 12.449777844778035,
+      "beforeFleetResets": 203001,
+      "afterFleetResets": 1
+    },
+    {
+      "beforeMs": 28.458701999999988,
+      "afterMs": 2.420456999999999,
+      "speedup": 11.75757387964339,
+      "beforeFleetResets": 203001,
+      "afterFleetResets": 1
+    },
+    {
+      "beforeMs": 28.165958999999987,
+      "afterMs": 2.4751480000000043,
+      "speedup": 11.379504983136336,
+      "beforeFleetResets": 203001,
+      "afterFleetResets": 1
+    }
+  ],
+  "medianSpeedup": 11.758,
+  "minSpeedup": 10.629,
+  "maxSpeedup": 15.311
+}
