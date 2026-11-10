@@ -132,19 +132,6 @@
   ],
   "units": [
     {
-      "id": "inf-dying-drive",
-      "date": "2026-11-04",
-      "wf": "WF-12",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A dying ship's exhaust now says so: the bell cools toward ember and sputters on its own phase as the hull fails, from the same hull truth the smoke trail reads",
-      "fingerprint": "verb=see,subject=engine-plume-dying,sector=flight,domain=wf-12",
-      "references": [],
-      "integration": "live",
-      "commit": "a3ae485e5d6d",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-patrol-bait",
       "date": "2026-11-04",
       "wf": "WF-02",
@@ -1700,6 +1687,22 @@
       "evidence": "design/program/receipts/pl-55-killed-by-traffic.md",
       "kind": "plant",
       "player": "Get run down by a civilian ship and the Static snarks: 'Lane lights exist. Just saying.'"
+    },
+    {
+      "id": "PL-58",
+      "date": "2026-11-10",
+      "wf": "WF-13",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Plant row built as written: paid pitborn:cullSettled purse opens player.won_pit; static_77 airs once.",
+      "fingerprint": "verb=reports,subject=pit-cull-win,sector=the-static,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "86ea9fb8b546",
+      "verification": "focused_green",
+      "evidence": "design/program/receipts/pl-58-pit-win.md",
+      "kind": "plant",
+      "player": "Win a Cull run at the Pit and the Static reports it: 'Lights came up at the Pit last night.'"
     }
   ],
   "knownDefects": [
