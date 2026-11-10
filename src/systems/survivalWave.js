@@ -1534,6 +1534,8 @@ export const survivalWave = {
     const now = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
     const flare = spawn({
       type: 'beacon',
+      collides: false,
+      physicsBody: false,
       pos: { x: receipt.arrival.x, z: receipt.arrival.z },
       vel: { x: 0, z: 0 },
       radius: 5,
