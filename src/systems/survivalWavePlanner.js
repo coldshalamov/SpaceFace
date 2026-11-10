@@ -574,10 +574,24 @@ function planSwarmWave({ seed, arenaId, wave, rng, mutators, buildSummary, swarm
       characterLanded = true;
     }
   }
+  if (foundry?.id === 'break_the_guard') {
+    // A guard needs an actual ward. Reassign ONE already-owed opening seat to
+    // the just-learned Lancer, beside the Warden, rather than add a free hull.
+    const guard = packages.find(pkg => pkg.debut);
+    const donor = packages.find(pkg => !pkg.debut && pkg.enemyId === 'lancer_sniper' && pkg.count > 1)
+      || packages.find(pkg => !pkg.debut && !pkg.champion && pkg.count > 1);
+    if (guard && donor) {
+      donor.count -= 1;
+      donor.batchSize = Math.min(donor.batchSize, donor.count);
+      packages.push({ atTick: 0, gateGroup: guard.gateGroup, role: 'reach', enemyId: 'lancer_sniper',
+        count: 1, batchSize: 1, batchGapTicks: 0, staged: true, distance: 280 });
+    }
+  }
   if (foundry) {
     packages = packages.map(pkg => ({ ...pkg,
       ...(pkg.debut && Number.isInteger(foundry.debutAtTick) ? { atTick: foundry.debutAtTick } : {}),
-      readAfterTicks: pkg.champion ? 0 : pkg.debut ? foundry.debutReadTicks : foundry.shipReadTicks,
+      readAfterTicks: pkg.champion ? 0 : pkg.debut || (foundry.id === 'break_the_guard' && pkg.staged)
+        ? foundry.debutReadTicks : foundry.shipReadTicks,
     }));
   }
   const schedule = expandSchedule(packages);

@@ -844,6 +844,15 @@ export function foundryLancerIntermission(run) {
   return 'Round 7 cleared. A Lancer opens next: when it charges, strafe sideways, then close while it resets. Repair, check your Fortify ammunition, or save your purse before launch.';
 }
 
+/** The learned rail shot becomes a protected pair before the Cyst's own arrival. */
+export function foundryWardenIntermission(run) {
+  if (run?.kind !== 'survival' || run.ruleset !== 'swarm' || run.phase !== 'draft'
+    || run.wave !== 8 || (run.telemetry?.startWave || 1) > 8
+    || !swarmFoundryRound({ arenaId: run.arenaId, wave: 9,
+      mutators: run.arenaMutators, circuitRound: run.telemetry?.circuit })) return null;
+  return 'Round 8 cleared. A Warden guards the next Lancer: attack the guard or circle its screen. A glowing Cyst follows before the crowd; burst it away from your hull. Repair, check Fortify ammunition, or save your purse before launch.';
+}
+
 /** One no-admissions-promised forecast sentence shared by the Armory and Refit surfaces. */
 export function swarmNextLine(next) {
   if (!next) return '';
@@ -1532,6 +1541,7 @@ export const crucibleDraftScreen = {
       ? context.state.run.telemetry.startWave : 1;
     this._sub.textContent = foundryAftermathIntermission(context.state?.run, offers)
       ?? foundryLancerIntermission(context.state?.run)
+      ?? foundryWardenIntermission(context.state?.run)
       ?? firstSwarmIntermission(context.state?.run, offers) ?? (offers.length
       ? (wave === 0
         ? 'Fit out before round 1 — the purse is already open. Each fitting bolts onto one hardpoint of the ship you chose; a full hardpoint swaps, and the old part waits in your spares.'

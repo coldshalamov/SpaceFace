@@ -47,6 +47,7 @@
 // renderer consumes the same retained buffers through the published view.
 
 import { foundryScoreFromPlan } from '../data/swarmFoundryScore.js';
+import { planSwarmOpeningCyst } from './swarmOpeningCyst.js';
 import { isFoundryWreckKept } from '../data/swarmFoundryWreck.js';
 import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
 import { mulberry32 } from '../core/rng.js';
@@ -951,6 +952,15 @@ export function createBroodEngine(deps = {}) {
     const player = state?.entities?.get?.(state.playerId);
     const ax = finite(player?.pos?.x), az = finite(player?.pos?.z);
     const familyIndex = buildFamilyIndex();
+    // Let the guard pair speak before the second new shape. This clock counts
+    // active pilot play; waiting in the room cannot spend the Cyst's approach.
+    if (!openingVolleyAttempted && foundryScore?.cystAtTick > foundryTicks) {
+      // Approach the authored edge without spending another half-second poll.
+      // The Cyst's full six-second read must finish before the ship crowd at840.
+      nextSpawnAttemptAt = Math.min(nextSpawnAttemptAt,
+        now + Math.max(0, foundryScore.cystAtTick - foundryTicks - 1) * DT);
+      return 0;
+    }
     // Round two uses the surviving court, not an invisible ring following the pilot.
     // Check only on the first admission attempt; a missing court keeps normal arrivals.
     if (!openingVolleyAttempted) {
@@ -983,6 +993,22 @@ export function createBroodEngine(deps = {}) {
     // through to ordinary arrivals, never teleports props or delays the round.
     if (!openingVolleyAttempted) {
       openingVolleyAttempted = true;
+      const cyst = familyIndex.get('lantern_cyst'), cystMite = familyIndex.get('mite');
+      const cystScene = foundryScore?.id === 'break_the_guard' && cyst != null && cystMite != null
+        ? planSwarmOpeningCyst(state, state.run, liveWave, pendingPlan,
+          liveFamilyRadius[cyst], liveFamilyRadius[cystMite]) : null;
+      const cystSlots = [];
+      for (let i = 0; cystScene && i < CAP && cystSlots.length < 4; i++) if (!alive[i]) cystSlots.push(i);
+      if (cystScene && cystSlots.length === 4) {
+        spawnAt(cystSlots[0], cyst, cystScene.cyst.x, cystScene.cyst.z);
+        for (let i = 1; i < 4; i++) spawnAt(cystSlots[i], cystMite, cystScene.mites[i - 1].x, cystScene.mites[i - 1].z);
+        pendingPlan.find(part => part.id === 'lantern_cyst').count -= 1;
+        pendingPlan.find(part => part.id === 'mite').count -= 3;
+        openingBeat = { remaining: 6, lastTick: state.tick,
+          lives: cystSlots.map(slot => ({ slot, life: serial[slot] })) };
+        openingRamp = { remaining: 0, lastTick: state.tick, group: 0, course: cystScene.course };
+        assignMotherShares(); publish(); return 4;
+      }
       const spitter = familyIndex.get('spitter');
       const mixedMite = familyIndex.get('mite');
       const mixed = mixedMite == null || spitter == null ? null : planSwarmOpeningCrossfire(
@@ -1043,7 +1069,7 @@ export function createBroodEngine(deps = {}) {
     }
     // Admit the whole vignette atomically before the usual gate arrivals. It spends the
     // existing plan and never moves the chosen rock or an already-live brood body.
-    if (!bankPlayed && !spawnRequestedBankAttempted && foundryScore?.id !== 'slip_the_lance') {
+    if (!bankPlayed && !spawnRequestedBankAttempted && !['slip_the_lance', 'break_the_guard'].includes(foundryScore?.id)) {
       spawnRequestedBankAttempted = true;
       const layout = planSwarmBank(state, state?.run, liveWave, pendingPlan);
       const charger = familyIndex.get('charger'), spitter = familyIndex.get('spitter');
@@ -1601,7 +1627,7 @@ export function createBroodEngine(deps = {}) {
     if (!run || run.phase !== 'active' || state.mode !== 'flight') return false;
     if (foundryScore && foundryLastTick !== state.tick) {
       foundryLastTick = state.tick;
-      if (swarmPilotHasActed(state)) foundryTicks = Math.min(720, foundryTicks + 1);
+      if (swarmPilotHasActed(state)) foundryTicks = Math.min(Math.max(720, foundryScore.broodReadTicks), foundryTicks + 1);
     }
     validateOpeningCourse(state);
     if (openingBeat) {
@@ -1914,9 +1940,10 @@ export function createBroodEngine(deps = {}) {
           kill(i, 'explosive', px[i], pz[i]);
           continue;
         }
-        // lantern cyst prime fuse: the glow finished — it bursts.
+        // The family's own proximity fuse is an environmental burst. A real
+        // shot/throw still enters its existing credited damage/contact path.
         if (primeUntil[i] && simTime >= primeUntil[i]) {
-          kill(i, 'explosive', px[i], pz[i]);
+          kill(i, 'explosive', px[i], pz[i], false);
           continue;
         }
 
