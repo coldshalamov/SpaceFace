@@ -801,6 +801,8 @@ export function swarmForecastForRun(run, nextWave) {
       killTarget: swarm.killTarget,
       concurrent: swarm.concurrent,
       roster,
+      openingQuestion: typeof swarm.pack?.question === 'string' ? swarm.pack.question : null,
+      character: typeof swarm.character?.name === 'string' ? swarm.character.name : null,
       newcomer: typeof swarm.newcomer?.name === 'string' ? swarm.newcomer.name : null,
       boss: swarm.boss === true && typeof swarm.bossLabel === 'string'
         ? { label: swarm.bossLabel } : null,
@@ -819,8 +821,10 @@ export function swarmNextLine(next) {
     `clear ${next.killTarget}`,
     `room cap ${next.concurrent}`,
   ];
-  if (next.roster.length) bits.push(next.roster.join(', '));
+  if (next.openingQuestion) bits.push(next.openingQuestion);
+  else if (next.roster.length) bits.push(next.roster.join(', '));
   if (next.newcomer) bits.push(`new: ${next.newcomer}`);
+  if (next.character) bits.push(`inbound: ${next.character}`);
   if (next.specialistBrief) bits.push(`prepare: ${next.specialistBrief.threat} ${next.specialistBrief.counter}`);
   if (next.event) bits.push(`${next.event.name} — ${next.event.telegraph}`);
   if (next.boss) bits.push(`boss: ${next.boss.label}`);
