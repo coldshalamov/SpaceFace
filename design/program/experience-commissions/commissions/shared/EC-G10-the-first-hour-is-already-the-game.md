@@ -8,6 +8,21 @@
 
 **Build first:** minutes zero to ten, until a stranger smiles at minute ten.
 
+**Director's amendment, 2026-11-10** — after reading the code; see [10 — The game](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/10_THE_GAME.md), decision D6. **This replaces the minute list above.** The opening already contains the game's best moment — flinging the raider into a rock at about minute two (`src/systems/onboarding.js`) — and then buries it under ten minutes of drills and about twenty verbs. Keep its own best beats, in this order, with nothing between them:
+
+1. Spawn with the 47-A sample rock marked and one caption of premise.
+2. Twenty seconds of thrust and brake.
+3. Latch, reel, cut.
+4. Swing the rock through the derelict.
+5. The raid: fling the raider into a rock.
+6. Claimed salvage — take it or leave it; if you take it, outrun the search.
+7. Mine the sample.
+8. **The Skim as a scene.** The black-line ship takes the tow in front of you and the escorts die on screen. Today it is text about ships the player never saw (`src/systems/missionStoryOps.js`).
+9. Kessler's line, with a face.
+10. Dock at Helios into Lamps-Up. Orla's lamp is the first town job; the alloy run to Tethys — the safe trip — is the one recommended contract.
+
+Shooting drills, the extra verbs (`missingThree.js`) and the five powers (`powerSituations.js`) move to minutes fifteen to forty, one about every ninety seconds, taught by situations or at the Dione range. The title screen shows two doors, **Adventure** and **Swarm**, side by side. New game asks nothing: defaults, with Custom behind one button. The first trip is Tethys, not Ceres.
+
 ### How to build this and check your own work
 
 A shared system is finished when a town or an arena is visibly better because of it — never on its own.
