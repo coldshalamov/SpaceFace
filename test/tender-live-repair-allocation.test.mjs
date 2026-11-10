@@ -53,3 +53,39 @@ test('emergency weld stays hull-only and a replacement same-model pilot cannot c
  const before=replacement.hull;h.step(4);assert.equal(replacement.hull,before);assert.equal(h.row.service.remaining,20);assert.match(h.row.service.pauseReason,/previous hull/);
  }finally{h.close();}
 });
+
+
+test('unusable delivery amounts preserve paid work and protection for every repair priority',()=>{
+ for(const priority of ['balanced','hull','armor']) for(const rate of [0,-8,NaN]) {
+  const h=boot();try{
+   h.p.armorHp=80;
+   assert.equal(bookTenderService(h.ctx,h.row,'repair',priority).ok,true);
+   h.row.service.rate=rate;
+   h.row.service.paused=true;h.row.service.pauseReason='Waiting for usable work.';
+   const job=structuredClone(h.row.service), hull=h.p.hull, armor=h.p.armorHp;
+   const cargo=structuredClone(h.s.player.cargo.items), credits=h.s.player.credits;
+   assert.equal(h.step(1),null,`${priority} with rate ${rate}`);
+   assert.deepEqual(h.row.service,job);assert.equal(h.p.hull,hull);assert.equal(h.p.armorHp,armor);
+   assert.deepEqual(h.s.player.cargo.items,cargo);assert.equal(h.s.player.credits,credits);
+   assert.equal(h.receipts.length,0);
+   h.row.service.rate=8;
+   assert.equal(h.step(1).gained,8,'the same booking resumes when its rate becomes usable');
+   assert.equal(h.row.service.remaining,12);assert.equal(h.receipts.length,0);
+  }finally{h.close();}
+ }
+});
+
+test('nonfinite amount and nonpositive or nonfinite time never reach the repair writer',()=>{
+ const h=boot();try{
+  h.p.armorHp=80;assert.equal(bookTenderService(h.ctx,h.row,'repair','hull').ok,true);
+  for(const dt of [0,-1,NaN,Infinity,-Infinity]) {
+   const before=structuredClone(h.row.service);
+   assert.equal(h.step(dt),null);assert.deepEqual(h.row.service,before);
+   assert.equal(h.p.hull,80);assert.equal(h.p.armorHp,80);
+  }
+  h.row.service.rate=Infinity;h.row.service.remaining=Infinity;
+  const before=structuredClone(h.row.service);
+  assert.equal(h.step(1),null);assert.deepEqual(h.row.service,before);
+  assert.equal(h.p.hull,80);assert.equal(h.p.armorHp,80);assert.equal(h.receipts.length,0);
+ }finally{h.close();}
+});

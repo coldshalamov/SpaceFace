@@ -119,6 +119,7 @@ test('a genuinely completed three-way job teaches Kit to tow a safe original on 
     assert.equal(h.meeting.crews.latch.learnedMassLimit, true);
     assert.equal(h.meeting.bodies.core.claim, 'keel');
     assert.ok(h.events.some(e => e.name === 'salvageOutfits:radio' && /checked the mass/.test(e.payload.text)));
+    assert.ok(h.events.some(e => e.name === 'salvageOutfits:radio' && /called the sealed tooling rack/.test(e.payload.text)));
     const cache = entity(h, h.meeting.bodies.cache); let sawLine = false;
     assert.ok(advanceUntil(h, () => h.meeting.bodies.cache.deliveredBy === 'latch', 180, () => {
       sawLine ||= !!h.owner.physical.line(entity(h, h.meeting.crews.latch), cache);
@@ -159,5 +160,36 @@ test('a broken promise does not teach success and a learned cutter never retarge
     const memory = freshSalvageOutfits().memory; memory.latch.cheated = 1;
     const row = makeSalvageMeeting({ id:'broken', sectorId:SECTOR, anchor:ANCHOR, variant:'overreach', memory });
     assert.equal(row.crews.latch.learnedMassLimit, false);
+  } finally { h.close(); }
+});
+
+test('learned-load greeting tolerates Kit losing its target during the first radio callback', async () => {
+  const h = await boot({ start: false });
+  const id = 'test:learned:radio-retarget';
+  let retargeted = false;
+  try {
+    h.state.salvageOutfits.memory.latch.kept = 1;
+    h.bus.on('salvageOutfits:radio', () => {
+      if (retargeted) return;
+      const m = h.state.salvageOutfits.meetings[id];
+      if (!m) return;
+      retargeted = true;
+      // The player has reserved the small work. The existing retarget owner
+      // must leave a learned cutter idle instead of assigning the heavy cradle.
+      m.bodies.cache.claim = 'player'; m.bodies.frame.claim = 'player';
+      h.owner._retarget(m, m.crews.latch);
+      assert.equal(m.crews.latch.targetId, null);
+    });
+    const result = h.owner.start({ encounterId: id, sectorId: SECTOR, anchor: ANCHOR, variant: 'overreach' });
+    assert.equal(result.ok, true);
+    assert.equal(retargeted, true);
+    const m = h.state.salvageOutfits.meetings[id];
+    assert.equal(m.crews.latch.targetId, null);
+    assert.equal(m.bodies.core.claim, 'keel');
+    assert.equal(m.crews.latch.learnedMassLimit, true);
+    assert.ok(h.events.some(e => e.name === 'salvageOutfits:radio'
+      && /checking for a safe smaller load/.test(e.payload.text)));
+    assert.ok(h.events.every(e => e.name !== 'salvageOutfits:radio' || !/undefined|null/.test(e.payload.text)));
+    assert.equal(h.state.player.credits, 0);
   } finally { h.close(); }
 });
