@@ -1377,6 +1377,9 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         }
       }));
     const offModuleSold = bus.on('module:sold', () => host.domainDiffer.invalidateLeaf('player.moduleInventory'));
+    // A docked conversation is actionable even when a well-travelled captain's
+    // contact bag is on the cold cadence. Publish its choices with the receipt.
+    const offContactChanged = bus.on('stationContact:changed', () => host.domainDiffer.invalidateLeaf('player.stationContacts'));
     host.missionBoardMirrorUnsubscribe = () => {
       offBoardUpdate(); offAccepted();
       for (const off of offTerminal) off();
@@ -1389,6 +1392,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       offLotDeskAnswered();
       for (const off of offRegistryChanges) off();
       offModuleSold();
+      offContactChanged();
     };
     if (captureAll === true) {
       const origEmit = bus.emit.bind(bus);

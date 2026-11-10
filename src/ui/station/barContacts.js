@@ -1,7 +1,7 @@
 import { kesslerWeightSlipChoice, kesslerWeightSlipReply } from './massSlipConversation.js';
 import { kesslerStarterWorkChoice, kesslerStarterWorkReply } from './starterWorkdayConversation.js';
 import { kesslerFreightChoice, kesslerFreightReply } from './heliosFreightConversation.js';
-import { kesslerCeresShiftChoice, kesslerCeresShiftReply } from './ceresShiftConversation.js';
+import { kesslerCeresShiftChoice, kesslerCeresShiftReply, ceresReturnChoices } from './ceresShiftConversation.js';
 import { commodityDisplayName } from '../commodityNames.js';
 import { localizeText } from '../../localization/sourceText.js';
 // Shared station-contact data, choices, replies, and map actions.
@@ -836,7 +836,8 @@ export function generateContacts(stationId, state = {}, opts = {}) {
       const workChoice = kesslerStarterWorkChoice(state, stationId);
       const freightChoice = kesslerFreightChoice(state, stationId);
       const ceresChoice = kesslerCeresShiftChoice(state, stationId);
-      if (slipChoice || workChoice || freightChoice || ceresChoice) {
+      const ceresReturn = ceresReturnChoices(state, stationId);
+      if (slipChoice || workChoice || freightChoice || ceresChoice || ceresReturn.length) {
         const choices = getChoices(canonical.role, canonical);
         const dismissIndex = choices.findIndex((choice) => choice && choice.id === 'dismiss');
         const dismissChoice = dismissIndex >= 0 ? choices.splice(dismissIndex, 1)[0] : null;
@@ -844,6 +845,7 @@ export function generateContacts(stationId, state = {}, opts = {}) {
         if (workChoice) choices.push(workChoice);
         if (freightChoice) choices.push(freightChoice);
         if (ceresChoice) choices.push(ceresChoice);
+        choices.push(...ceresReturn);
         if (dismissChoice) choices.push(dismissChoice);
         canonical.choices = choices;
       }

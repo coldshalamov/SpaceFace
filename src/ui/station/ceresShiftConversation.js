@@ -1,3 +1,5 @@
+import { ceresReturnChoices, ceresReturnReply } from '../../story/ceresShiftReturn.js';
+export { ceresReturnChoices } from '../../story/ceresShiftReturn.js';
 const STATION = 'station_helios';
 const SITE = 'world_site_ceres_second_measure';
 const CHOICE = 'ceres_second_measure_shift';
@@ -7,10 +9,13 @@ function atDesk(state, stationId) {
 }
 
 export function kesslerCeresShiftChoice(state, stationId) {
+  if (ceresReturnChoices(state, stationId).length) return null;
   return atDesk(state, stationId) ? { id: CHOICE, label: 'Ceres yard shift?' } : null;
 }
 
 export function kesslerCeresShiftReply(state, stationId, choiceId) {
+  const returning = ceresReturnReply(state, stationId, choiceId);
+  if (returning) return returning;
   if (choiceId !== CHOICE) return null;
   if (!atDesk(state, stationId)) return { text: 'Ask me at the Helios desk; I need the current yard slip.' };
   const site = state?.sites?.worldById?.[SITE];

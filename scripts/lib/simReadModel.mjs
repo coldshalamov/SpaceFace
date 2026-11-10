@@ -893,6 +893,8 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'dockingPresentation',
   // Hail and the Ward's contact readers need a bounded account of the actual work history.
   'npcJobs.lanternWard',
+  // Kessler's return needs the current finite lift outcome, never its motion/recovery arrays.
+  'npcJobs.ceresWorkfleet.phase',
 ]);
 
 // Per-key canonical-serialization ship cap (report-only): any single mirrored
@@ -962,6 +964,7 @@ export const DOMAIN_CADENCE = Object.freeze({
   economy: 10, missions: 10, story: 10, factions: 30,
   sectorSim: 10, npcJobs: 30, 'npcJobs.revision': 1, factionPresence: 10, automation: 30,
   'npcJobs.lanternWard': 6,
+  'npcJobs.ceresWorkfleet.phase': 1,
   sites: 10,
   salvageOutfits: 10,
   cinderglassJobView: 6, cinderglassJobToken: 1, cinderglassJobPresentationReady: 1,

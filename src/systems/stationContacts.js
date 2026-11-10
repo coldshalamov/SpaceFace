@@ -14,6 +14,7 @@ import {
 } from '../data/stationContacts.js';
 import { SECTORS } from '../data/sectors.js';
 import { syncWitnessSeamVoice } from '../data/barks.js';
+import { CERES_RETURN_CONTACT, CERES_RETURN_STATION, ceresReturnChoiceAllowed, ceresReturnReply } from '../story/ceresShiftReturn.js';
 import {
   VONN_FREIGHT_CASE_VERSION,
   VONN_FREIGHT_CONTACT_ID,
@@ -382,10 +383,24 @@ export const stationContacts = {
     const bag = ensureContactBag(this.state);
     const previous = normalizeStationContactRecord(bag[contactId]);
     const choice = String(payload.choiceId || '').toLowerCase().replace(/[^a-z0-9_-]+/g, '_').slice(0, 48);
+    const ceresReceipt = accepted => {
+      if (!choice.startsWith('ceres_return_') || typeof payload.requestId !== 'string'
+        || !payload.requestId.startsWith('ceres-return:') || payload.requestId.length > 96) return;
+      this.bus.emit('comms:log', { source: 'ceres_shift_return', category: 'story', sender: 'KESSLER',
+        contactId: CERES_RETURN_CONTACT, stationId: CERES_RETURN_STATION, requestId: payload.requestId,
+        choiceId: choice, outcome: accepted ? 'accepted' : 'refused',
+        text: accepted ? ceresReturnReply(this.state, payload.stationId, choice).text
+          : 'Kessler keeps the slip open. “That answer does not match the current entry. Read it with me again before we go on.”' });
+    };
+    if (choice.startsWith('ceres_return_') && (contactId !== CERES_RETURN_CONTACT
+      || payload.stationId !== CERES_RETURN_STATION
+      || !ceresReturnChoiceAllowed(this.state, choice, payload.stationId))) { ceresReceipt(false); return; }
     const choiceFlag = choice ? `choice_${choice}` : null;
     const meaningful = choice && choice !== 'dismiss' && choice !== 'bye';
     const firstMeaningfulChoice = meaningful && !previous.flags[choiceFlag];
     const flags = { ...previous.flags };
+    if (contactId === CERES_RETURN_CONTACT && choice.startsWith('ceres_return_remember_')) flags.ceres_crew_matters = true;
+    if (contactId === CERES_RETURN_CONTACT && choice.startsWith('ceres_return_leave_')) delete flags.ceres_crew_matters;
     if (choiceFlag) flags[choiceFlag] = true;
     const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
     const vonnFreightLoss = contactId === VONN_FREIGHT_CONTACT_ID && choice === 'wrecks'
@@ -434,6 +449,7 @@ export const stationContacts = {
         this._rememberCastDeed('question.answers', item, 1);
       }
     }
+    ceresReceipt(true);
     this.bus.emit('stationContact:changed', { contactId, record: { ...next, flags: { ...next.flags } } });
   },
 
