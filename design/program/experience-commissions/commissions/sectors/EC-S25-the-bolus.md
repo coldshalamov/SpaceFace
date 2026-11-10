@@ -4,6 +4,8 @@
 
 *From the creative director, 2026-11-09. The standard, the cast and the build order are in [09 — Creative direction](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/09_CREATIVE_DIRECTION.md). Where this card and the brief below disagree on **scope or order**, the card wins. On **ids, canon and who owns which state**, the brief wins.*
 
+**Tier C — a waystation.** A landmark, one face, the toy and your mark. Small on purpose; one pass.
+
 **One line:** inside a machine that became alive, and there is still ship paint under the wall.
 
 **Landmark:** the living wall with old hull numbers showing through; a drowned hauler lying where a road should be. **Shift:** the Breath — the whole space tightens and opens on a cycle, and passages come and go with it. **Toy:** ride the breath in and out; your line can pull things out of the wall, and the wall pulls back.
