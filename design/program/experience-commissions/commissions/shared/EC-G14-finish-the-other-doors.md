@@ -1,5 +1,35 @@
 # EC-G14 — Finish the other doors — racing, practice and public mode continuity
 
+## Director's card — read this first
+
+*From the creative director, 2026-11-09. The standard, the cast and the build order are in [09 — Creative direction](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/09_CREATIVE_DIRECTION.md). Where this card and the brief below disagree on **scope or order**, the card wins. On **ids, canon and who owns which state**, the brief wins.*
+
+**What this is for:** the other ways to play live *in towns*, not only on a menu. The race starts from the Tethys bypass; practice is the Dione range; you reach them by flying there.
+
+**Build first:** the Dione range as the practice door.
+
+### How to build this and check your own work
+
+A shared system is finished when a town or an arena is visibly better because of it — never on its own.
+
+1. **Pick the one place named under "Build first"** and capture it today. That is your "before".
+2. **Use the fast look that fits:** an interface screen — `node scripts/ui-bench.mjs --shot=<id> --walk`; a behaviour — `node scripts/agent-loop.mjs sim <scenario> --trace`; a Swarm run — `npm run player-truth -- --mode=swarm --rounds=3`. Do not boot the whole game to look when one of these can show it.
+3. **After every step:** the one narrow test, then `npm run test:fast`. Never the full `npm run check` while something is red.
+4. **Boot and frames:** `node scripts/check-game-playable.mjs`, then `node scripts/check-hitch-budget.mjs --out=<file>` before and after, back to back in one sitting.
+5. **Show it in the place.** The same capture as step 1, after. Put both in the PR.
+
+**The ways agents have fooled themselves on this project. Check each before you say done.**
+- *A system nothing calls.* If no town or arena uses it yet, it is not built.
+- *A second way to do something the game already does.* Find the existing owner and extend it.
+- *Green test, nothing on screen.* Go and find it in the running game.
+- *The working folder passes and the commit does not.* Check what you committed.
+- *A reference result edited to make a check pass.* Never.
+- *"Done" on a partial.* Say what works, what does not, and what you could not look at.
+
+**How to use this card.** This card narrows the brief to the first thing worth finishing. **This PR is ready when its "Build first" slice is visibly working in the named place.** The rest of the brief follows in a second PR.
+
+---
+
 **Direct execution commission · Shared experience completion**  
 **Native parents:** `X5`, `Q2`, `Q5`, `RF-01`, `RF-02`, `RF-03`, `RF-08`  
 **Source-review baseline:** `f95de0eb1ba7560839209936afba48c7b96fe41a` · 2026-11-08  
