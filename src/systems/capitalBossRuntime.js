@@ -31,6 +31,7 @@ import { swarmLevel } from '../data/swarmMode.js';
 import { SURVIVAL_COHORT_TAG } from './waveMaterialization.js';
 import { SURVIVAL_WAVE_OWNER_PREFIX } from './survivalWave.js';
 import { swarmPilotHasActed } from './swarmSafety.js';
+import { FOUNDRY_MAW_OFFCUT, foundryWreckRound } from '../data/swarmFoundryWreck.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
 
@@ -101,6 +102,8 @@ function spawnSwarmBossChunks(context, record, boss) {
   const bossName = (boss.data && (boss.data.scanLabel || boss.data.name)) || 'capital hulk';
   const label = `${String(bossName).replace(/\s+/g, ' ').toUpperCase()} CHUNK`;
   const vel = boss.vel && Number.isFinite(boss.vel.x) ? boss.vel : { x: 0, z: 0 };
+  const offcut = foundryWreckRound(state.run)?.id === 'break_the_maw'
+    && record.encounterId === 'capital_boss_hulk' && swarmWaveOfFightId(record.fightId) === 5;
   const ids = [];
   for (let i = 0; i < count; i++) {
     const angle = roll(0, Math.PI * 2);
@@ -127,8 +130,24 @@ function spawnSwarmBossChunks(context, record, boss) {
       },
       flags: { persistent: true },
     };
+    if (offcut && i === 0) {
+      // Keep every random draw and every other original fragment unchanged. An
+      // authored native mass is required: wreck material otherwise replaces the
+      // display mass with a much heavier radius-derived body.
+      spec.radius = FOUNDRY_MAW_OFFCUT.radius;
+      spec.mass = FOUNDRY_MAW_OFFCUT.mass;
+      spec.physicsBody = { mass: spec.mass, radius: spec.radius, dynamic: true };
+      spec.data.scanLabel = 'IRON MAW OFFCUT';
+    }
     const entity = spawn(spec);
-    if (entity && entity.id != null) ids.push(entity.id);
+    if (entity && entity.id != null) {
+      ids.push(entity.id);
+      if (offcut && i === 0 && Number.isInteger(entity.occupantGeneration)) {
+        const telemetry = state.run.telemetry || (state.run.telemetry = {});
+        telemetry.foundryMawOffcut = { id: entity.id, generation: entity.occupantGeneration,
+          fightId: record.fightId };
+      }
+    }
   }
   return ids;
 }

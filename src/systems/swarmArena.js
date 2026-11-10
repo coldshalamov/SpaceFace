@@ -43,6 +43,7 @@ import { swarmOpeningTerrainStage, planSwarmOpeningTerrain } from '../data/swarm
 import { mulberry32 } from '../core/rng.js';
 import { swarmPlacementIsClear, sweptDiscsOverlap } from './swarmSafety.js';
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { isFoundryWreckKept } from '../data/swarmFoundryWreck.js';
 import { articulatedColliderRadius } from '../core/articulatedColliderBounds.js';
 import { hullEnvelopeWu, proxyOuterRadiusWu, proxyScaleFor, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
 import { OPTIC_LATTICE_SPACING } from '../combat/opticField.js';
@@ -1316,11 +1317,13 @@ export const swarmArena = {
       if (already) continue;
       const dx = entity.pos.x - anchor.x;
       const dz = entity.pos.z - anchor.z;
-      standing.push({ entity, distSq: dx * dx + dz * dz });
+      standing.push({ entity, distSq: dx * dx + dz * dz, keep: isFoundryWreckKept(state, entity) });
     }
     if (standing.length <= SWARM_WRECK_KEEP) return;
-    // Furthest first: what is released is always the wreckage nobody can see.
-    standing.sort((a, b) => b.distSq - a.distSq);
+    // The earned first-Maw offcut occupies one existing slot through round six.
+    // It is never recreated or protected from damage. Ordinary wrecks still
+    // leave furthest first, and the total retained budget stays exactly forty.
+    standing.sort((a, b) => Number(a.keep) - Number(b.keep) || b.distSq - a.distSq);
     const excess = standing.length - SWARM_WRECK_KEEP;
     let released = 0;
     for (let i = 0; i < excess; i++) {
