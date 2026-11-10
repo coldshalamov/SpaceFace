@@ -48,6 +48,12 @@ function words(value) {
   return String(value == null ? '' : value).replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+/** A whole counted chip word: "1 CREDIT", "8 CARGO UNITS" — never "1 CREDITS". */
+function counted(value, singular, plural) {
+  const v = Math.max(0, Math.floor(Number(value) || 0));
+  return `${v.toLocaleString('en-US')} ${v === 1 ? singular : plural}`;
+}
+
 function recoveryLossText(reason) {
   switch (String(reason || 'lost')) {
     case 'drive_restored': return 'Drive restored before custody transfer.';
@@ -96,7 +102,7 @@ export function recoveryCustodyView(payload, state, simTime = state && state.sim
   const activeRemaining = terminal ? null : remaining;
   const timerStatus = activeRemaining == null ? null : `${recoveryKind === 'surrendered' ? 'ESCAPE' : 'WINDOW'} ${activeRemaining} S`;
   const cargoText = recoveryKind === 'civilian_disabled' || payload.shape === 'civilian_freight_recovery'
-    ? `${cargo} CARGO` : `${credits} CREDIT CUSTODY`;
+    ? counted(cargo, 'CARGO UNIT', 'CARGO UNITS') : `${counted(credits, 'CREDIT', 'CREDITS')} CUSTODY`;
   const destinationText = destinationId ? destination.toUpperCase() : 'LAWFUL STATION';
   let flag = recoveryKind === 'civilian_disabled' ? 'CIVILIAN RECOVERY' : 'NONLETHAL CUSTODY';
   let status = timerStatus || 'OPEN';
@@ -110,8 +116,8 @@ export function recoveryCustodyView(payload, state, simTime = state && state.sim
     status = success ? 'SUCCESS' : 'LOST';
     headline = String(payload.text || (success ? 'RECOVERY TRANSFER COMPLETE' : `RECOVERY LOST - ${words(payload.outcome)}`)).toUpperCase();
     meta = [
-      `${credits} CREDITS`,
-      payload.shape === 'civilian_freight_recovery' ? `${cargo} CARGO` : null,
+      counted(credits, 'CREDIT', 'CREDITS'),
+      payload.shape === 'civilian_freight_recovery' ? counted(cargo, 'CARGO UNIT', 'CARGO UNITS') : null,
       destinationId ? destination.toUpperCase() : null,
       success ? 'OUTCOME SUCCESS' : `REASON ${words(payload.outcome).toUpperCase()}`,
     ].filter(Boolean).join(' · ');
@@ -141,13 +147,16 @@ export function recoveryCustodyView(payload, state, simTime = state && state.sim
   } else if (payload.instruction && /relatch/i.test(payload.instruction)) {
     detail = String(payload.instruction);
   } else if (recoveryKind === 'drive_disabled') {
-    detail = `Drive disabled; Massline latch and reel inside ${threshold} units, then tow to ${destination}.`;
+    // words-field-counts: the reel threshold can be one unit, in every phase that names it.
+    detail = `Drive disabled; Massline latch and reel inside ${counted(threshold, 'unit', 'units')}, then tow to ${destination}.`;
   } else {
-    const cargoClause = recoveryKind === 'civilian_disabled' ? ` ${cargo} cargo` : '';
-    detail = `Massline latch and reel inside ${threshold} units${recoveryKind === 'surrendered' ? ' before escape' : ''}, then tow${cargoClause} to ${destination}.`;
+    const cargoClause = recoveryKind === 'civilian_disabled'
+      ? ` ${counted(cargo, 'cargo unit', 'cargo units')}` : '';
+    detail = `Massline latch and reel inside ${counted(threshold, 'unit', 'units')}${recoveryKind === 'surrendered' ? ' before escape' : ''}, then tow${cargoClause} to ${destination}.`;
   }
 
-  const timerAria = activeRemaining == null ? '' : ` ${activeRemaining} seconds remaining.`;
+  const timerAria = activeRemaining == null
+    ? '' : ` ${counted(activeRemaining, 'second', 'seconds')} remaining.`;
   const announcementKey = `${receiptRecoveryId(payload)}:${terminal ? `terminal:${payload.outcome || payload.lostReason || phase}` : phase}`;
   return Object.freeze({
     source: payload,
