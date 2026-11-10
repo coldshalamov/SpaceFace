@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { createGameState } from '../src/core/gameState.js';
 import { save as saveDefinition } from '../src/save/saveSystem.js';
+import { ACHIEVEMENTS_STORAGE_KEY, parseAchievementBag } from '../src/systems/achievements.js';
 
 function vec(x = 0, z = 0) {
   return {
@@ -13,7 +14,9 @@ function vec(x = 0, z = 0) {
 }
 
 function makeHarness({
+  failFirstDeserialize = true,
   failEveryDeserialize = false,
+  failNativeRestore = false,
   failRollbackSerialize = false,
   queueTransitionOnDeserialize = false,
 } = {}) {
@@ -76,13 +79,21 @@ function makeHarness({
           return { route: 'newer-route' };
         });
       }
-      if (failEveryDeserialize || deserializeCalls === 1) throw new Error('synthetic economy restore failure');
+      if (failEveryDeserialize || (failFirstDeserialize && deserializeCalls === 1)) {
+        throw new Error('synthetic economy restore failure');
+      }
+    },
+  };
+  let nativeRestoreCalls = 0;
+  const physics = {
+    completeRestore() {
+      if (failNativeRestore && ++nativeRestoreCalls === 1) throw new Error('synthetic native restore failure');
     },
   };
   save = Object.create(saveDefinition);
   save.state = state;
   save.bus = { emit(name, payload = {}) { events.push({ name, payload }); } };
-  save.registry = { get(name) { return name === 'economy' ? economy : null; } };
+  save.registry = { get(name) { return name === 'economy' ? economy : name === 'physics' ? physics : null; } };
   save.helpers = {
     spawnEntity(spec) {
       const id = state.nextEntityId++;
@@ -107,6 +118,7 @@ function makeHarness({
   save._restoring = false;
   save._pendingRunTransition = null;
   save._restoreSequence = 0;
+  save._runEpoch = 0;
   save._lastAutosaveAt = 0;
   save._lastAutosavePlaytime = 0;
   save._rollbackCaptureActive = false;
@@ -169,6 +181,78 @@ test('mutating deserialize failure rolls back the target load and returns false'
     region: 'economy',
   });
 });
+
+function installProfileStorage(t) {
+  const previous = globalThis.localStorage;
+  const values = new Map();
+  globalThis.localStorage = {
+    getItem: key => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, String(value)),
+    removeItem: key => values.delete(key),
+  };
+  t.after(() => {
+    if (previous === undefined) delete globalThis.localStorage;
+    else globalThis.localStorage = previous;
+  });
+  return values;
+}
+
+function importedEnvelope(harness) {
+  const envelope = targetEnvelope(harness);
+  envelope.profile = { achievements: {
+    schemaVersion: 1,
+    unlocked: { into_the_crucible: { at: '2026-06-01T00:00:00.000Z' } },
+    counters: { kills: 37 },
+  } };
+  return envelope;
+}
+
+for (const lane of ['sync', 'async']) {
+  const load = (h, env) => lane === 'sync'
+    ? h.save.loadEnvelope(env, 'imported')
+    : h.save.importString(JSON.stringify(env), 'imported');
+
+  test(`${lane} import commits profile records after its world and stays additive on retry`, async t => {
+    const values = installProfileStorage(t);
+    const h = makeHarness({ failFirstDeserialize: false });
+    const envelope = importedEnvelope(h);
+    assert.equal(await load(h, envelope), true);
+    const first = parseAchievementBag(values.get(ACHIEVEMENTS_STORAGE_KEY));
+    assert.ok(first.unlocked.into_the_crucible);
+    assert.equal(first.counters.kills, 37);
+    assert.equal(h.state.economy.marker, 'target');
+    const names = h.events.map(row => row.name);
+    assert.ok(names.indexOf('save:profile-imported') > names.indexOf('save:restoreCommitted'),
+      'profile acceptance follows native world commit, not validation or save:loaded');
+    assert.equal(await load(h, envelope), true);
+    assert.deepEqual(parseAchievementBag(values.get(ACHIEVEMENTS_STORAGE_KEY)), first,
+      'retry cannot multiply achievements or counters');
+  });
+
+  test(`${lane} failed native adoption rolls back world without importing profile records`, async t => {
+    const values = installProfileStorage(t);
+    const priorBag = JSON.stringify({ schemaVersion: 1, unlocked: {}, counters: { kills: 5 } });
+    values.set(ACHIEVEMENTS_STORAGE_KEY, priorBag);
+    const h = makeHarness({ failFirstDeserialize: false, failNativeRestore: true });
+    const before = liveSnapshot(h.state);
+    assert.equal(await load(h, importedEnvelope(h)), false);
+    assert.deepEqual(liveSnapshot(h.state), before);
+    assert.equal(values.get(ACHIEVEMENTS_STORAGE_KEY), priorBag,
+      'even a failure after save:loaded must not merge an uncommitted import');
+    assert.equal(h.events.filter(row => row.name === 'save:profile-imported').length, 0);
+    assert.equal(h.events.at(-1).payload.rollback, 'restored');
+  });
+
+  test(`${lane} import superseded by a queued route cannot publish medals afterward`, async t => {
+    const values = installProfileStorage(t);
+    const h = makeHarness({ failFirstDeserialize: false, queueTransitionOnDeserialize: true });
+    assert.equal(await load(h, importedEnvelope(h)), lane === 'sync',
+      'direct slot supersession stays handled; the async import UI must not claim it imported');
+    assert.equal(h.state.fixtureRoute, 'newer-route');
+    assert.equal(values.has(ACHIEVEMENTS_STORAGE_KEY), false);
+    assert.equal(h.events.filter(row => row.name === 'save:profile-imported').length, 0);
+  });
+}
 
 test('rollback failure is fail-closed and does not recursively retry rollback', () => {
   const harness = makeHarness({ failEveryDeserialize: true });

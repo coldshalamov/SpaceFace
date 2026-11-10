@@ -74,6 +74,10 @@ function saveErrorReasonText(payload = {}) {
         ? 'Save data exceeds storage bounds — previous save kept'
         : slot + ' is too complex to load';
     case 'restoring': return 'Could not save ' + slot + ' — a load is in progress';
+    case 'temporary_session':
+      return 'Temporary flights cannot replace Adventure saves. Load or start Adventure before saving.';
+    case 'restore_prepare_failed':
+      return 'Could not load ' + slot + ' — your current flight is unchanged. Try again, or choose another save from the Save screen.';
     case 'schedule_failed':
     case 'save_worker_failed':
     case 'save_worker_timeout':
@@ -92,6 +96,13 @@ function saveErrorReasonText(payload = {}) {
       const detail = (payload && typeof payload.region === 'string' && payload.region)
         ? 'damaged ' + payload.region + ' data'
         : (payload && typeof payload.error === 'string' && payload.error ? payload.error : null);
+      const failure = detail ? 'Load failed — ' + detail + '. ' : 'Could not load ' + slot + '. ';
+      if (payload.temporarySession === true) {
+        return failure + 'Your Adventure saves are untouched. Load another save from the Save screen, or return to the main menu.';
+      }
+      if (payload.rollback === 'failed') {
+        return failure + 'The previous flight could not be restored. Your saves are untouched. Load another save from the Save screen, or return to the main menu.';
+      }
       if (!detail) return 'Save/load failed for ' + slot;
       return 'Load failed — ' + detail + '. Your save is untouched; try again, or export a backup from the Save screen.';
     }
