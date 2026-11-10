@@ -70,6 +70,7 @@ import { consumePeriodicClock, normalizePeriodicAccumulator } from '../core/peri
 import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { addCargo, removeCargo, removeSalvageBayCargo, reservedCargoQuantity, sellableCargoQuantity } from './cargo.js';
 import { ensureCommittedIntents } from './cargoCustody.js';
+import { outpostCommodity } from './outpostOperations.js';
 import {
   getCycle as getCycleCore, cycleFactorAt, maybeAdvanceRegime, createCycle,
   serializeCycles, deserializeCycles, applyCycleToMid, stockDriftTarget,
@@ -3230,25 +3231,31 @@ export const economy = {
     const intakeTarget = Math.max(1, Math.ceil(2 * (Number.isFinite(eff) ? eff : 0)));
     const stock = entry.stock;
     const operation = opts?.operation;
+    const outpost = opts?.outpost;
     const operationOwned = operation && state.automation?.drones?.includes(operation)
       && operation.shipment?.owner === `operation:${operation.id}`;
+    const outpostOwned = outpost && state.automation?.outposts?.includes(outpost)
+      && outpostCommodity(outpost) === commodityId
+      && stationInfo(state, stationId)?.sectorId === outpost.sectorId;
     if (operation && !operationOwned) return refuse('invalid_custody', stock, intakeTarget);
-    const operationQty = operationOwned
-      ? Math.max(0, Math.floor(Number(operation.shipment.items?.[commodityId]) || 0)) : null;
-    const sellable = !operationOwned && reservedCargoQuantity(state, commodityId) > 0
+    if (outpost && !outpostOwned) return refuse('invalid_custody', stock, intakeTarget);
+    const ownedCustody = operationOwned || outpostOwned;
+    const operationQty = outpostOwned ? Math.max(0, Math.floor(Number(outpost.storage) || 0))
+      : operationOwned ? Math.max(0, Math.floor(Number(operation.shipment.items?.[commodityId]) || 0)) : null;
+    const sellable = !ownedCustody && reservedCargoQuantity(state, commodityId) > 0
       ? sellableCargoQuantity(state, commodityId)
       : null;
     if (sellable !== null && (sellable <= 0 || requested > sellable)) {
       return refuse('mission_cargo_locked', stock, intakeTarget);
     }
     const headroom = Math.max(0, Math.floor(intakeTarget - stock));
-    const fillable = operationOwned ? Math.min(requested, headroom, operationQty) : sellable === null
+    const fillable = ownedCustody ? Math.min(requested, headroom, operationQty) : sellable === null
       ? Math.min(requested, headroom)
       : Math.min(requested, headroom, sellable);
     if (fillable <= 0) {
       return refuse(headroom <= 0 ? 'demand_saturation' : 'qty', stock, intakeTarget);
     }
-    const quoted = this.quote(stationId, commodityId, 'sell', fillable, { operationCustody: operationOwned === true });
+    const quoted = this.quote(stationId, commodityId, 'sell', fillable, { operationCustody: !!ownedCustody });
     if (!quoted || quoted.ok !== true) {
       return refuse((quoted && quoted.reason) || 'untraded', stock, intakeTarget);
     }
@@ -3268,6 +3275,79 @@ export const economy = {
       stock,
       intakeTarget,
     };
+  },
+
+  // The output belongs to the facility, never to the pilot hold. The receiving market bounds
+  // the quantity; the automation owner supplies its remaining income budget. Partial fills
+  // are repriced on the actual curve rather than multiplying a larger shipment's average.
+  quoteOutpostIntake(stationId, outpost, quantity, { maxCredit = 0, payoutScale = 0.8 } = {}) {
+    const good = outpostCommodity(outpost);
+    if (!good || !Number.isFinite(payoutScale) || payoutScale <= 0 || payoutScale > 1)
+      return { ok: false, reason: 'invalid_custody' };
+    const q = this.quoteAutomationIntake(stationId, good, quantity, { outpost });
+    if (!q.ok) return q;
+    const walletRoom = CREDITS_MAX - normalizeCredits(this.state.player?.credits);
+    const budget = Number.isFinite(maxCredit) ? Math.max(0, Math.floor(maxCredit)) : 0;
+    const ceiling = Math.min(walletRoom, budget);
+    const payoutFor = count => {
+      const priced = this.quote(stationId, good, 'sell', count, { operationCustody: true });
+      return priced?.ok ? { gross: priced.total, credited: Math.floor(priced.total * payoutScale) } : null;
+    };
+    let low = 0, high = q.fillable;
+    while (low < high) {
+      const mid = Math.ceil((low + high) / 2);
+      const price = payoutFor(mid);
+      if (price && price.credited <= ceiling) low = mid; else high = mid - 1;
+    }
+    const price = low > 0 ? payoutFor(low) : null;
+    if (!price || price.credited <= 0) return { ok: false,
+      reason: walletRoom <= budget ? 'credit_limit' : 'passive_limit', fillable: 0 };
+    return { ok: true, stationId, good, quantity: low, requestedQty: quantity,
+      gross: price.gross, credited: price.credited, unitPrice: price.gross / low,
+      stock: q.stock, intakeTarget: q.intakeTarget, payoutScale };
+  },
+
+  // Commit all output/stock/receipt facts before dispatching a credit event. The callback is
+  // the automation writer's no-event custody commit; economy alone changes stock and credits.
+  // A single monotonically numbered last receipt stays on the facility, not an unbounded journal.
+  executeOutpostIntake(stationId, outpost, quantity, options, commitOutput) {
+    if (!outpost || !this.state.automation?.outposts?.includes(outpost)
+      || typeof commitOutput !== 'function') return { ok: false, reason: 'invalid_custody' };
+    const sequence = options?.sequence;
+    if (!Number.isSafeInteger(sequence) || sequence < 1) return { ok: false, reason: 'invalid_intent' };
+    const prior = outpost.lastSale;
+    if (prior?.sequence === sequence) {
+      if (prior.stationId !== stationId || prior.requestedQty !== quantity) return { ok: false, reason: 'intent_conflict' };
+      return { ok: true, duplicate: true, receipt: { ...prior } };
+    }
+    if (sequence !== (outpost.saleSequence || 0) + 1) return { ok: false, reason: 'stale_intent' };
+    this._outpostIntakesInFlight ||= new WeakSet();
+    if (this._outpostIntakesInFlight.has(outpost)) return { ok: false, reason: 'intent_pending' };
+    this._outpostIntakesInFlight.add(outpost);
+    try {
+      const ownerState = this.state.economy, playerState = this.state.player;
+      const quote = this.quoteOutpostIntake(stationId, outpost, quantity, options);
+      if (!quote.ok) return quote;
+      const entry = this.state.economy.markets[stationId]?.[quote.good];
+      const def = commodityDef(this.state, quote.good);
+      if (!entry || !def || entry.stock !== quote.stock) return { ok: false, reason: 'market_changed' };
+      const receipt = { id: `outpost-sale:${outpost.id}:${sequence}`, sequence,
+        stationId, good: quote.good, requestedQty: quantity, quantity: quote.quantity,
+        gross: quote.gross, credited: quote.credited, unitPrice: quote.unitPrice,
+        simTime: this.state.simTime || 0 };
+      if (commitOutput(receipt) !== true) return { ok: false, reason: 'custody_changed' };
+      entry.stock += quote.quantity;
+      this.recomputeLivePrices(entry, def, stationId, quote.good);
+      this.recordLivePriceHistory(entry, def, stationId, quote.good);
+      this.grantCredits(quote.credited, 'automation:outpost');
+      if (this.state.economy !== ownerState || this.state.player !== playerState
+        || !this.state.automation?.outposts.includes(outpost)) return { ok: true, duplicate: false, receipt };
+      this.snapshotIntel(stationId);
+      this.bus.emit('economy:automationIntake', { ...receipt, operationId: outpost.id });
+      return { ok: true, duplicate: false, receipt };
+    } finally {
+      this._outpostIntakesInFlight.delete(outpost);
+    }
   },
 
   /** execute(stationId, cmdtyId, side, qty, opts?) -> { ok, qty, unitAvg, total, profit?, reason, duplicate? }.

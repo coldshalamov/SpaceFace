@@ -4,6 +4,12 @@
 // painting through FLY TO MAKE ONE at ≤560 tall (and phone ≤560 wide).
 //
 // Scope: `#screens > .k-screen.orr-clips` only. Selectors/IDs unchanged.
+//
+// ui-polish-426: the rail keeps its authored 380px height in every band. clips.js draws the arc
+// and the Hand in a fixed 380-tall viewBox but places the ghost plates in that same 380px space
+// as CSS pixels, so squeezing the host (min(300px, 58vh) short, min(280px, 42vh) phone) shrank
+// and recentred only the SVG: the arc and the gold Hand ran through "A KILL / SCORE A KILL".
+// The `top` lifts stay; they are what clear the readline and the lamp.
 
 import { injectOrrery } from './tokens.js';
 
@@ -34,7 +40,7 @@ ${R} > .orr-clips__actions > * { position:relative; z-index:1; }
    that cut and still mash ghost names + readout into the soft foot. Extend to ≤560 and lift
    the rail / legend so they seat above the opaque curtain. */
 @media (max-height: 560px) {
-  ${R}:has(.orr-clip__plate.is-ghost) > .orr-clips__rail { top:10% !important; height:min(300px, 58vh) !important; }
+  ${R}:has(.orr-clip__plate.is-ghost) > .orr-clips__rail { top:10% !important; }
   ${R}:has(.orr-clip__plate.is-ghost) > .orr-clips__readline {
     bottom:88px !important; z-index:3 !important;
     padding:6px 8% !important;
@@ -52,9 +58,15 @@ ${R} > .orr-clips__actions > * { position:relative; z-index:1; }
   }
 }
 
+/* ≤500 tall (801×461, 651×461): at full height the arc's crown would sit on the how-to line,
+   so the rail climbs to the top of the stage; the ghosts ride up with it. */
+@media (max-height: 500px) {
+  ${R}:has(.orr-clip__plate.is-ghost) > .orr-clips__rail { top:0 !important; }
+}
+
 /* Phone: same curtain, tighter rail so three ghosts clear the legend above FLY TO MAKE ONE. */
 @media (max-width: 560px) {
-  ${R}:has(.orr-clip__plate.is-ghost) > .orr-clips__rail { top:14% !important; height:min(280px, 42vh) !important; }
+  ${R}:has(.orr-clip__plate.is-ghost) > .orr-clips__rail { top:14% !important; }
   ${R}:has(.orr-clip__plate.is-ghost) > .orr-clips__readline {
     bottom:84px !important; flex-direction:column !important; align-items:center !important; gap:6px !important;
   }

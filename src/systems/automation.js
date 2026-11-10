@@ -45,6 +45,13 @@ import {
   shipmentUsed,
 } from './cargoCustody.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
+import { addCargo, removeCargo, sellableCargoQuantity, cargoUnitVolume } from './cargo.js';
+import { COMMODITIES } from '../data/commodities.js';
+import {
+  normalizeOutpostOperation, outpostCommodity, outpostInputCapacity, outpostInputIds,
+  outpostInputUsed, outpostLevel, outpostSaleExplanation, outpostTransferAccess,
+  outpostUpgradeCost,
+} from './outpostOperations.js';
 import {
   applyFuelShortage,
   boundDemandQty,
@@ -90,6 +97,7 @@ const compareStableId = (left, right) => {
 const DRONE_BY_ID = new Map(DRONES.map((d) => [d.id, d]));
 const TRADER_BY_ID = new Map(TRADERS.map((t) => [t.id, t]));
 const OUTPOST_BY_ID = new Map(OUTPOSTS.map((o) => [o.id, o]));
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((good) => [good.id, good]));
 const TECH_BY_ID = new Map(TECH_NODES.map((node) => [node.id, node]));
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const ASTEROID_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
@@ -1489,13 +1497,14 @@ export const automation = {
     if (tracked && tracked.alive !== false && tracked.data
       && tracked.data.automationOutpostId === o.id && !reconcile) {
       this._placeOutpostEntity(tracked, o);
+      this._syncOutpostModules(o, false, bucket);
       return tracked;
     }
     if (o.entityId != null) delete o.entityId;
 
     // Reconcile leftover live entities and dressing rows. Repeated enter/load must stay
     // idempotent and collapse a duplicate if an earlier partial transition spawned twice.
-    const live = this._collectOutpostPresence(o, bucket);
+    const live = this._collectOutpostPresence(o, bucket).filter(row => !row.data.outpostModuleIndex);
     if (live.length) {
       const canonical = tracked && live.includes(tracked) ? tracked : live[0];
       o.entityId = canonical.id;
@@ -1503,6 +1512,7 @@ export const automation = {
       for (const duplicate of live) {
         if (duplicate !== canonical) this._removeRuntimeEntity(duplicate);
       }
+      this._syncOutpostModules(o, true, bucket);
       return canonical;
     }
 
@@ -1528,22 +1538,52 @@ export const automation = {
       },
     });
     if (entity) o.entityId = entity.id;
+    this._syncOutpostModules(o, true, bucket);
     return entity || null;
+  },
+
+  _syncOutpostModules(o, reconcile, bucket) {
+    // At most two authored annexes, on the same dressing residency path as the facility.
+    // Expansion adds storage/receiver silhouettes without introducing worker physics bodies.
+    const count = outpostLevel(o) - 1;
+    const tracked = (o.moduleEntityIds || []).map(id => this._getRuntimeEntity(id)).filter(row => row?.alive !== false && row?.data?.automationOutpostId === o.id);
+    const live = reconcile ? this._collectOutpostPresence(o, bucket).filter(row => row.data.outpostModuleIndex) : tracked;
+    const keep = [];
+    const rot = this._outpostOrientation(o);
+    for (let index = 1; index <= count; index++) {
+      let row = live.find(item => item.data.outpostModuleIndex === index);
+      const side = index === 1 ? -1 : 1;
+      const pos = { x: o.pos.x + Math.cos(rot) * 92 * side, z: o.pos.z + Math.sin(rot) * 92 * side };
+      if (!row) row = insertDressingRow(this.state, {
+        type: 'fx', pos, rot, radius: 24, homeSectorId: o.sectorId,
+        data: { kind: 'automation_outpost', automationOutpostId: o.id, outpostModuleIndex: index,
+          defId: o.defId, sectorId: o.sectorId, homeSectorId: o.sectorId,
+          placeId: index === 1 ? 'place_claim_outpost_base' : 'place_claim_outpost_relay',
+          landmarkGlb: index === 1 ? 'place_claim_outpost_base' : 'place_claim_outpost_relay',
+          claimOwned: true, factionId: 'faction_player' },
+      });
+      if (row) { this._placeOutpostEntity(row, { pos }); keep.push(row); }
+    }
+    for (const row of live) if (!keep.includes(row)) this._removeRuntimeEntity(row);
+    o.moduleEntityIds = keep.map(row => row.id);
   },
 
   _releaseOutpostEntity(o, reconcile = true, bucket) {
     if (!o) return;
     const ids = new Set();
     if (o.entityId != null) ids.add(o.entityId);
+    for (const id of o.moduleEntityIds || []) ids.add(id);
     if (reconcile) {
       for (const entity of this._collectOutpostPresence(o, bucket)) ids.add(entity.id);
     }
     for (const id of ids) {
       const entity = this._getRuntimeEntity(id);
-      if (entity) this._removeRuntimeEntity(entity);
-      else dropDressingRow(this.state, id);
+      if (entity) {
+        if (entity.data?.automationOutpostId === o.id) this._removeRuntimeEntity(entity);
+      } else dropDressingRow(this.state, id);
     }
     delete o.entityId;
+    delete o.moduleEntityIds;
   },
 
   _getRuntimeEntity(id) {
@@ -2119,6 +2159,7 @@ export const automation = {
   },
 
   _produceOutpost(o, def, dt, a) {
+    if (!o.inputStock) normalizeOutpostOperation(o);
     const level = o.level || 1;
     const authoredRate = (def.outRate || 0) * Math.pow(1.6, level - 1);
     const cap = (def.storageCap || 0) * Math.pow(1.7, level - 1);
@@ -2153,6 +2194,7 @@ export const automation = {
         && g.status !== 'stranded'
         && !(hasProgram(g))
       )).length,
+      inputStored: outpostInputUsed(o),
     };
     return plan;
   },
@@ -2192,7 +2234,8 @@ export const automation = {
     const available = {};
     for (const goodId of inputIds) {
       available[goodId] = this._outpostFeedGroups(o, goodId, a)
-        .reduce((sum, g) => sum + Math.max(0, Number(g.buffer) || 0), 0);
+        .reduce((sum, g) => sum + Math.max(0, Number(g.buffer) || 0), 0)
+        + Math.max(0, Number(o.inputStock?.[goodId]) || 0);
     }
     return available;
   },
@@ -2200,6 +2243,11 @@ export const automation = {
   _consumeOutpostInputs(o, consumedByGood, a) {
     for (const goodId of Object.keys(consumedByGood || {}).sort()) {
       let remaining = Math.max(0, Number(consumedByGood[goodId]) || 0);
+      const stored = Math.min(remaining, Math.max(0, Number(o.inputStock?.[goodId]) || 0));
+      if (stored > 0) {
+        o.inputStock[goodId] = Math.max(0, o.inputStock[goodId] - stored);
+        remaining -= stored;
+      }
       for (const g of this._outpostFeedGroups(o, goodId, a)) {
         if (!(remaining > 1e-9)) break;
         const take = Math.min(Math.max(0, Number(g.buffer) || 0), remaining);
@@ -2210,18 +2258,107 @@ export const automation = {
   },
 
   _outpostAutosell(a) {
-    for (const o of a.outposts) {
+    for (const o of a.outposts.slice().sort(compareStableId)) {
+      if (this.state.automation !== a || !a.outposts.includes(o)) break;
       if (!o.autoSell) continue;
       if (o.status === 'distressed' || o.status === 'raided') continue;
-      const def = OUTPOST_BY_ID.get(o.defId) || o;
-      const sellable = o.storage || 0;
-      if (sellable <= 0) continue;
-      const income = outpostGrossValue(def, sellable, (goodId) => this._orePrice(goodId),
-        outpostStoredGoodId(o, def));
-      o.storage = 0;
-      o.storageGoodId = null;
-      if (income > 0) this.creditPassive(income, 'outpost');
+      this._sellOutpost(o);
     }
+  },
+
+  _outpostBuyers(o) {
+    return ALL_STATIONS.filter(station => station.sectorId === o.sectorId);
+  },
+
+  _selectOutpostBuyer(o, avoid = null) {
+    const econ = this._economy(), good = outpostCommodity(o);
+    const candidates = this._outpostBuyers(o).filter(station => station.id !== avoid);
+    if (!econ || !good) return candidates[0]?.id || null;
+    let best = null, bestValue = -1;
+    for (const station of candidates) {
+      const quote = econ.quoteAutomationIntake?.(station.id, good, Math.max(1, Math.floor(o.storage || 0)), { outpost: o });
+      if (quote?.ok && quote.total > bestValue) { best = station.id; bestValue = quote.total; }
+    }
+    return best || candidates[0]?.id || null;
+  },
+
+  _recordOutpostIncome(o, amount) {
+    o.totalSaleCredits = (o.totalSaleCredits || 0) + amount;
+    this.meta().totalPassiveEarnedLifetime = (this.meta().totalPassiveEarnedLifetime || 0) + amount;
+    const stats = this.state.player?.stats;
+    if (stats) stats.totalPassiveEarnedLifetime = (stats.totalPassiveEarnedLifetime || 0) + amount;
+  },
+
+  _sellOutpost(o, { efficiency = 1 } = {}) {
+    const a = this.state.automation;
+    if (!o || !a?.outposts.includes(o)) return { ok: false, reason: 'missing' };
+    if (o.status === 'distressed' || o.status === 'raided') return { ok: false, reason: o.status };
+    const def = OUTPOST_BY_ID.get(o.defId) || o;
+    if (def.retiredInto) { o.saleBlock = 'retired'; return { ok: false, reason: 'retired' }; }
+    const have = Math.max(0, Number(o.storage) || 0);
+    if (have < 1) return { ok: false, reason: 'empty' };
+    this._outpostTransfers ||= new WeakSet();
+    if (this._outpostTransfers.has(o)) return { ok: false, reason: 'busy' };
+    this._outpostTransfers.add(o);
+    try {
+      if (def.recipe?.passive) {
+        // The habitat produces a service credit buffer, not a commodity shipment. Keep its
+        // existing cap, and retain every credit the bucket cannot currently accept.
+        const econ = this._economy();
+        if (!econ?.grantCredits) { o.saleBlock = 'economy_unavailable'; return { ok: false, reason: o.saleBlock }; }
+        const scale = Math.max(0, Math.min(1, efficiency));
+        const room = Math.max(0, Number.MAX_SAFE_INTEGER - Math.floor(this.state.player?.credits || 0));
+        const payable = Math.min(Math.floor(have * scale), Math.floor(this._capBudget || 0), room);
+        if (payable <= 0) { o.saleBlock = room <= 0 ? 'credit_limit' : 'passive_limit'; return { ok: false, reason: o.saleBlock }; }
+        const sequence = (o.saleSequence || 0) + 1;
+        const receipt = { id: `outpost-service:${o.id}:${sequence}`, sequence, kind: 'service',
+          stationId: null, good: null, requestedQty: have, quantity: 0,
+          gross: payable / scale, credited: payable, simTime: this.state.simTime || 0 };
+        o.storage = Math.max(0, have - payable / scale);
+        o.saleSequence = sequence;
+        o.lastSale = receipt;
+        this._capBudget -= payable;
+        this._recordOutpostIncome(o, payable);
+        o.saleBlock = o.storage >= 1 ? 'passive_limit' : null;
+        econ.grantCredits(payable, 'automation:outpost');
+        if (this.state.automation === a && a.outposts.includes(o)) {
+          this.bus.emit('automation:incomeCredited', { amount: payable, source: 'outpost' });
+          this.bus.emit('automation:outpostsChanged', { id: o.id, action: 'sold', receipt: { ...receipt } });
+        }
+        return { ok: true, receipt };
+      }
+      const econ = this._economy();
+      if (!econ?.executeOutpostIntake) { o.saleBlock = 'economy_unavailable'; return { ok: false, reason: o.saleBlock }; }
+      if (!this._outpostBuyers(o).some(station => station.id === o.saleStationId))
+        o.saleStationId = this._selectOutpostBuyer(o);
+      if (!o.saleStationId) { o.saleBlock = 'no_buyer'; return { ok: false, reason: o.saleBlock }; }
+      const result = econ.executeOutpostIntake(o.saleStationId, o, Math.floor(have), {
+        sequence: (o.saleSequence || 0) + 1,
+        maxCredit: Math.max(0, this._capBudget || 0),
+        payoutScale: OUTPOST_AUTOSELL_MULT * Math.max(0, Math.min(1, efficiency)),
+      }, receipt => {
+        // No dispatch between custody, receipt, budget and stock commitment. Reentrant credit
+        // observers see all four settled; a save can never contain paid but unremoved output.
+        if (this.state.automation !== a || !a.outposts.includes(o) || o.storage !== have
+          || receipt.quantity > have || receipt.credited > this._capBudget) return false;
+        o.storage = Math.max(0, have - receipt.quantity);
+        if (o.storage <= 1e-9) { o.storage = 0; o.storageGoodId = null; }
+        o.saleSequence = receipt.sequence;
+        o.lastSale = { ...receipt };
+        o.totalSoldUnits = (o.totalSoldUnits || 0) + receipt.quantity;
+        o.saleBlock = o.storage >= 1 ? 'partial' : null;
+        this._capBudget = Math.max(0, this._capBudget - receipt.credited);
+        this._recordOutpostIncome(o, receipt.credited);
+        return true;
+      });
+      if (!result.ok) o.saleBlock = result.reason;
+      else if (!result.duplicate && this.state.automation === a && a.outposts.includes(o)) {
+        if (o.status === 'storage_full') o.status = 'producing';
+        this.bus.emit('automation:incomeCredited', { amount: result.receipt.credited, source: 'outpost' });
+        this.bus.emit('automation:outpostsChanged', { id: o.id, action: 'sold', receipt: { ...result.receipt } });
+      }
+      return result;
+    } finally { this._outpostTransfers.delete(o); }
   },
 
   _outpostRaids(a) {
@@ -2259,7 +2396,8 @@ export const automation = {
       return;
     }
     a.accumulators.upkeepDebt = (a.accumulators.upkeepDebt || 0) + (upkeepPerMin / 60) * dt;
-    const credits = (this.state.player && this.state.player.credits) | 0;
+    const creditBalance = Number(this.state.player?.credits);
+    const credits = Number.isFinite(creditBalance) ? Math.max(0, Math.floor(creditBalance)) : 0;
     const whole = Math.floor(a.accumulators.upkeepDebt);
     if (whole >= 1) {
       // A delivered rescue has one combined bill. Automatic upkeep must not spend the fuel
@@ -2351,7 +2489,8 @@ export const automation = {
     const candidates = [];
     for (const g of a.drones) candidates.push({ kind: 'drone', inst: g, val: (DRONE_BY_ID.get(g.defId) || {}).cost || 0, list: a.drones });
     for (const t of a.traders) candidates.push({ kind: 'trader', inst: t, val: (TRADER_BY_ID.get(t.defId) || {}).hireCost || 0, list: a.traders });
-    for (const o of a.outposts) candidates.push({ kind: 'outpost', inst: o, val: (OUTPOST_BY_ID.get(o.defId) || {}).buildCost || 0, list: a.outposts });
+    // Fixed facilities remain owned during routine shortages. They can be supplied, their
+    // arrears settled and production resumed; a grace timer must not erase a purchased place.
     if (!candidates.length) return;
     candidates.sort((x, y) => x.val - y.val);
     const pick = candidates[0];
@@ -2442,6 +2581,14 @@ export const automation = {
       case 'resumeTrader': return this.resumeTrader(p.shipId);
       case 'buildOutpost': return this.buildOutpost(p.targetRef);
       case 'decommission': return this.decommissionOutpost(p.shipId);
+      case 'supplyOutpost': return this.supplyOutpost(p.shipId);
+      case 'collectOutpost': return this.collectOutpost(p.shipId);
+      case 'recoverOutpostInputs': return this.recoverOutpostInputs(p.shipId);
+      case 'sellOutpost': return this.sellOutpost(p.shipId);
+      case 'toggleOutpostSales': return this.toggleOutpostSales(p.shipId);
+      case 'routeOutpost': return this.routeOutpost(p.shipId);
+      case 'upgradeOutpost': return this.upgradeOutpost(p.shipId);
+      case 'resumeOutpost': return this.resumeOutpost(p.shipId);
       case 'assignFleet': return this.assignFleet(p.targetRef);
       case 'releaseFleet': return this.releaseFleet(p.shipId);
       case 'orderEscort': return this.setFleetOrder(p.shipId, 'escort', p.targetRef);
@@ -2826,7 +2973,8 @@ export const automation = {
       this.toast('Research required: ' + techDisplayName('tech_outpost_charter'), 'error');
       return false;
     }
-    if (!this._charge(def.buildCost, 'build:' + defId)) return false;
+    if (this._outpostBuildInFlight) return false;
+    const a = this.state.automation;
     const id = this._allocId();
     const o = {
       id, defId, level: 1,
@@ -2836,7 +2984,18 @@ export const automation = {
       upkeepPerMin: def.upkeepPerMin, autoSell: true, raidCooldown: 0,
       status: 'producing', ratePerMin: 0,
     };
-    this.state.automation.outposts.push(o);
+    normalizeOutpostOperation(o);
+    this._outpostBuildInFlight = true;
+    let paid = false;
+    try {
+      paid = this._chargeOutpost(def.buildCost, 'build:' + defId, () => {
+        if (this.state.automation !== a) return false;
+        a.outposts.push(o);
+        return true;
+      });
+    } finally { this._outpostBuildInFlight = false; }
+    if (!paid || this.state.automation !== a || !a.outposts.includes(o)) return false;
+    o.saleStationId = this._selectOutpostBuyer(o);
     this._syncOutpostPresence(this.state.automation);
     // Enrich payload with stable defId so story/campaign sidecar can tag specialization.
     // automation remains sole outpost deployer — no second ownership system.
@@ -2850,11 +3009,191 @@ export const automation = {
     const a = this.state.automation;
     const idx = a.outposts.findIndex((o) => o.id === id);
     if (idx < 0) return false;
+    if (this._outpostTransfers?.has(a.outposts[idx])) return false;
+    if ((a.outposts[idx].storage || 0) >= 1 || outpostInputUsed(a.outposts[idx]) >= 1) {
+      this.toast('Collect the output and recover stored feedstock before decommissioning.', 'warn');
+      return false;
+    }
     this._releaseOutpostEntity(a.outposts[idx]);
     a.outposts.splice(idx, 1);
     this.bus.emit('automation:outpostsChanged', { id, action: 'decommissioned' });
     this.toast('Outpost decommissioned', 'info');
     return true;
+  },
+
+  _outpostTransfer(id, transfer) {
+    const o = this.state.automation?.outposts.find(row => row.id === id);
+    if (!o) return false;
+    if (!outpostTransferAccess(this.state, o)) {
+      this.toast('Approach your outpost within 450 m to transfer cargo.', 'info');
+      return false;
+    }
+    this._outpostTransfers ||= new WeakSet();
+    if (this._outpostTransfers.has(o)) return false;
+    this._outpostTransfers.add(o);
+    try {
+      if (!o.inputStock) normalizeOutpostOperation(o);
+      return transfer(o);
+    } finally { this._outpostTransfers.delete(o); }
+  },
+
+  supplyOutpost(id) {
+    return this._outpostTransfer(id, o => {
+      const a = this.state.automation, def = OUTPOST_BY_ID.get(o.defId) || o;
+      const ids = outpostInputIds(o, def), cap = outpostInputCapacity(o, def);
+      const ratios = def.recipe?.inputs || Object.fromEntries(ids.map(good => [good, 1]));
+      const ratioTotal = ids.reduce((sum, good) => sum + Math.max(0, Number(ratios[good]) || 0), 0);
+      let moved = 0;
+      for (const good of ids) {
+        if (this.state.automation !== a || !a.outposts.includes(o)) break;
+        // Reserve a recipe-shaped share for every input; a hold of iron cannot occupy the
+        // hydrogen/silicate bins and permanently prevent the first fuel cell from being made.
+        const binCap = Math.floor(cap * (Number(ratios[good]) || 1) / Math.max(1, ratioTotal));
+        const qty = Math.min(Math.floor(sellableCargoQuantity(this.state, good)),
+          Math.max(0, Math.floor(binCap - (o.inputStock[good] || 0))),
+          Math.max(0, Math.floor(cap - outpostInputUsed(o))));
+        if (!(qty > 0)) continue;
+        o.inputStock[good] = (o.inputStock[good] || 0) + qty;
+        const removed = removeCargo(this.state, good, qty);
+        o.inputStock[good] -= qty - removed;
+        moved += removed;
+      }
+      if (moved > 0) {
+        this.bus.emit('automation:outpostsChanged', { id: o.id, action: 'supplied', quantity: moved });
+        this.toast(`Supplied ${moved} units. The facility will use them on its next cycle.`, 'success');
+      } else this.toast('No unreserved recipe inputs fit. Bring the listed feedstock; protected cargo stays aboard.', 'info');
+      return moved > 0;
+    });
+  },
+
+  _collectOutpostGood(o, good, available, consume) {
+    const def = COMMODITY_BY_ID.get(good), cargo = this.state.player?.cargo;
+    if (!def || !cargo) return 0;
+    const free = cargo.capVolume - cargo.usedVolume;
+    const volume = cargoUnitVolume(this.state, good);
+    if (!Number.isFinite(free)) return 0;
+    const qty = Math.max(0, Math.min(Math.floor(available), volume > 0 ? Math.floor(free / volume) : Math.floor(available)));
+    if (qty <= 0) return 0;
+    consume(qty);
+    const accepted = addCargo(this.state, good, qty);
+    if (accepted !== qty) consume(accepted - qty);
+    return accepted;
+  },
+
+  collectOutpost(id) {
+    return this._outpostTransfer(id, o => {
+      const good = outpostCommodity(o);
+      if (!good) {
+        this.toast((OUTPOST_BY_ID.get(o.defId) || o).recipe?.passive
+          ? 'Habitat receipts are credits. Use Settle output to collect them.'
+          : 'Stored output is unrecognized. It remains at the facility.', 'info');
+        return false;
+      }
+      const moved = this._collectOutpostGood(o, good, o.storage, qty => { o.storage -= qty; });
+      if (moved > 0) {
+        if (o.storage <= 1e-9) { o.storage = 0; o.storageGoodId = null; }
+        if (o.status === 'storage_full') o.status = 'producing';
+        this.bus.emit('automation:outpostsChanged', { id: o.id, action: 'collected', quantity: moved });
+        this.toast(`Collected ${moved} ${COMMODITY_BY_ID.get(good)?.name || 'units'} for your hold.`, 'success');
+      } else this.toast(o.storage >= 1 ? 'Your cargo hold is full. Make room and collect again.' : 'No whole output unit is ready yet.', 'info');
+      return moved > 0;
+    });
+  },
+
+  recoverOutpostInputs(id) {
+    return this._outpostTransfer(id, o => {
+      const a = this.state.automation;
+      let moved = 0;
+      for (const good of outpostInputIds(o)) {
+        if (this.state.automation !== a || !a.outposts.includes(o)) break;
+        moved += this._collectOutpostGood(o, good, o.inputStock[good] || 0,
+          qty => { o.inputStock[good] = (o.inputStock[good] || 0) - qty; });
+      }
+      if (moved > 0) this.bus.emit('automation:outpostsChanged', { id: o.id, action: 'inputsRecovered', quantity: moved });
+      this.toast(moved > 0 ? `Recovered ${moved} feedstock units to your hold.`
+        : 'No whole feedstock units fit. Check stored inputs and free hold space.', moved > 0 ? 'success' : 'info');
+      return moved > 0;
+    });
+  },
+
+  sellOutpost(id) {
+    const o = this.state.automation?.outposts.find(row => row.id === id);
+    if (!o) return false;
+    const result = this._sellOutpost(o);
+    this.toast(result.ok ? `Output settled: +${result.receipt.credited} cr. Unsold stock stays at the facility.`
+      : result.reason === 'empty' ? 'No output is ready to settle.'
+        : o.status === 'distressed' ? 'Settle unpaid upkeep to resume this facility.'
+          : o.status === 'raided' ? 'The facility is still recovering from a raid.' : outpostSaleExplanation(o),
+    result.ok ? 'success' : 'info');
+    return result.ok;
+  },
+
+  toggleOutpostSales(id) {
+    const o = this.state.automation?.outposts.find(row => row.id === id);
+    if (!o) return false;
+    o.autoSell = !o.autoSell;
+    this.bus.emit('automation:outpostsChanged', { id, action: 'salesChanged' });
+    return true;
+  },
+
+  routeOutpost(id) {
+    const o = this.state.automation?.outposts.find(row => row.id === id);
+    if (!o || !outpostCommodity(o)) return false;
+    const next = this._selectOutpostBuyer(o, o.saleStationId);
+    if (!next) { this.toast('No other local buyer. Collect output and take it to another sector.', 'info'); return false; }
+    o.saleStationId = next;
+    o.saleBlock = null;
+    this.bus.emit('automation:outpostsChanged', { id, action: 'buyerChanged' });
+    this.toast(`Output destination: ${ALL_STATIONS.find(station => station.id === next)?.name || 'local market'}.`, 'info');
+    return true;
+  },
+
+  upgradeOutpost(id) {
+    const a = this.state.automation, o = a?.outposts.find(row => row.id === id);
+    if (!o || o.status === 'distressed' || o.status === 'raided') return false;
+    const def = OUTPOST_BY_ID.get(o.defId) || o, cost = outpostUpgradeCost(o, def);
+    if (cost == null || def.retiredInto) return false;
+    this._outpostTransfers ||= new WeakSet();
+    if (this._outpostTransfers.has(o)) return false;
+    this._outpostTransfers.add(o);
+    try {
+      if (!this._chargeOutpost(cost, 'upgrade:' + o.id, () => {
+        if (this.state.automation !== a || !a.outposts.includes(o)) return false;
+        o.level = outpostLevel(o) + 1;
+        o.storageCap = def.storageCap * Math.pow(1.7, o.level - 1);
+        o.defense = (def.defense || 0) + 15 * (o.level - 1);
+        o.upkeepPerMin = (def.upkeepPerMin || 0) * Math.pow(1.5, o.level - 1);
+        return true;
+      })) return false;
+      if (this.state.automation !== a || !a.outposts.includes(o)) return false;
+      this._syncOutpostPresence(a);
+      this.bus.emit('automation:outpostsChanged', { id, action: 'upgraded', level: o.level });
+      this.toast(`Facility expanded to level ${o.level}: more storage and throughput, higher upkeep.`, 'success');
+      return true;
+    } finally { this._outpostTransfers.delete(o); }
+  },
+
+  resumeOutpost(id) {
+    const a = this.state.automation, o = a?.outposts.find(row => row.id === id);
+    if (!o || o.status !== 'distressed') return false;
+    this._outpostTransfers ||= new WeakSet();
+    if (this._outpostTransfers.has(o)) return false;
+    this._outpostTransfers.add(o);
+    try {
+      const arrears = Math.floor(a.accumulators?.upkeepDebt || 0);
+      if (!this._chargeOutpost(arrears, 'upkeep', () => {
+        if (this.state.automation !== a || !a.outposts.includes(o)) return false;
+        if (a.accumulators) a.accumulators.upkeepDebt = Math.max(0, (a.accumulators.upkeepDebt || 0) - arrears);
+        if (a.meta) a.meta.graceTimer = 0;
+        o.status = o._prevStatus || 'producing';
+        delete o._prevStatus;
+        return true;
+      })) return false;
+      if (this.state.automation !== a || !a.outposts.includes(o)) return false;
+      this.bus.emit('automation:outpostsChanged', { id, action: 'resumed' });
+      this.toast(`Facility resumed${arrears ? ` — ${arrears} cr upkeep settled` : ''}.`, 'success');
+      return true;
+    } finally { this._outpostTransfers.delete(o); }
   },
 
   // ---- FLEET ----
@@ -3214,22 +3553,16 @@ export const automation = {
 
       // Mirror the live minute-cadence auto-sell without emitting market pressure off-screen.
       for (const o of orderedOutposts) {
+        if (this.state.automation !== a) return null;
+        if (!a.outposts.includes(o)) continue;
         if (!o.autoSell || o.status === 'distressed' || o.status === 'raided') continue;
-        const def = OUTPOST_BY_ID.get(o.defId) || o;
-        const sellable = Math.max(0, Number(o.storage) || 0);
-        if (sellable <= 0) continue;
-        outpostCr += outpostGrossValue(def, sellable, (goodId) => this._orePrice(goodId),
-          outpostStoredGoodId(o, def));
-        o.storage = 0;
-        o.storageGoodId = null;
-        if (o.status === 'storage_full') o.status = 'producing';
-        if (o.production && o.production.status === 'storage_full') {
-          o.production.status = 'producing';
-        }
+        const result = this._sellOutpost(o, { efficiency: offlineEff });
+        if (result.ok && !result.duplicate) outpostCr += result.receipt.credited;
       }
 
       networkRemainingS -= stepS;
     }
+    if (this.state.automation !== a) return null;
 
     // Realize only raw feedstock left after local production has consumed its inputs.
     for (const g of legacyDrones) {
@@ -3266,12 +3599,17 @@ export const automation = {
       t.hotness = clamp((t.hotness || 0) + HOTNESS_GAIN * Math.min(n, 8), 0, 1);
     }
 
-    const grossCr = droneCr + traderCr + outpostCr;
-    const settlement = settleOfflinePassive({ grossCr, offlineEff, capBudget });
+    // Facility receipts above already settled real output against real market intake. Only
+    // the remaining legacy workers enter the aggregate funnel; never pay those receipts twice.
+    // Unaccepted facility output is inventory, not discarded overflow or promised earnings.
+    const grossCr = droneCr + traderCr + (offlineEff > 0 ? outpostCr / offlineEff : 0);
+    const walletRoom = Math.max(0, Number.MAX_SAFE_INTEGER - Math.floor(this.state.player?.credits || 0));
+    const settlement = settleOfflinePassive({ grossCr: droneCr + traderCr, offlineEff,
+      capBudget: Math.min(this._capBudget, walletRoom) });
     this._capBudget = settlement.remainingBudget;
     // creditPassive uses the residual bucket; pass pre-scaled grossOffline so offlineEff is not applied twice.
     // We emit grantCredits ourselves here (via creditPassive) with the already-capped credited amount.
-    let credited = 0;
+    let credited = outpostCr;
     if (settlement.credited > 0) {
       // Bypass second offlineEff: feed credited amount as a hard grant through the funnel with infinite
       // remaining? No — settlement already applied the window cap. Emit grant intent only via bus.
@@ -3280,8 +3618,9 @@ export const automation = {
       const stats = this.state.player && this.state.player.stats;
       if (stats) stats.totalPassiveEarnedLifetime = (stats.totalPassiveEarnedLifetime || 0) + settlement.credited;
       this.bus.emit('automation:incomeCredited', { amount: settlement.credited, source: 'offline' });
-      credited = settlement.credited;
+      credited += settlement.credited;
     }
+    if (this.state.automation !== a) return null;
 
     // deduct upkeep for the elapsed window, clamped to available credits; distress unpaid remainder.
     // Read credits for affordability only — never write player.credits (economy is sole writer).
@@ -3292,6 +3631,7 @@ export const automation = {
     if (charge > 0) this.bus.emit('economy:chargeCredits', { amount: charge, reason: 'automation:upkeep:offline' });
     let distressed = false;
     if (unpaid > 0) {
+      a.accumulators.upkeepDebt = (a.accumulators.upkeepDebt || 0) + unpaid;
       this._distressAll(a);
       distressed = true;
       this.bus.emit('toast', { text: `Offline upkeep underpaid by ${unpaid} cr; assets distressed`, kind: 'warn', ttl: 4 });
@@ -3309,12 +3649,12 @@ export const automation = {
       passiveCapPerMin,
       capBudgetCr: capBudget,
       grossCr,
-      grossOfflineCr: settlement.grossOfflineCr,
+      grossOfflineCr: settlement.grossOfflineCr + outpostCr,
       credited,
       overflowDropped: settlement.overflowDropped,
       droneCr: droneCr * settlement.offlineEff,
       traderCr: traderCr * settlement.offlineEff,
-      outpostCr: outpostCr * settlement.offlineEff,
+      outpostCr,
       cycles,
       lost,
       upkeep,
@@ -3515,9 +3855,23 @@ export const automation = {
   _charge(amount, reason) {
     amount = Math.round(amount || 0);
     if (amount <= 0) return true;
-    if (((this.state.player && this.state.player.credits) | 0) < amount) { this.toast('Insufficient credits', 'error'); return false; }
+    if ((Number(this.state.player?.credits) || 0) < amount) { this.toast('Insufficient credits', 'error'); return false; }
     this.bus.emit('economy:chargeCredits', { amount, reason: 'automation:' + reason });
     return true;
+  },
+
+  _chargeOutpost(amount, reason, commit) {
+    amount = Math.round(amount || 0);
+    const credits = Number(this.state.player?.credits) || 0;
+    if (!Number.isSafeInteger(amount) || amount < 0 || credits < amount) {
+      this.toast('Insufficient credits. Your facility and stored goods are unchanged.', 'info');
+      return false;
+    }
+    const request = { amount, reason: 'automation:' + reason, requireFull: true,
+      expectedCredits: credits, commit, result: false };
+    this.bus.emit('economy:chargeCredits', request);
+    if (request.result !== true) this.toast('Payment was not accepted. Your facility is unchanged; try again.', 'info');
+    return request.result === true;
   },
 
   toast(text, kind) { this.bus.emit('toast', { text, kind: kind || 'info', ttl: 3 }); },
@@ -3581,7 +3935,7 @@ export const automation = {
     }
     a.traders = normalizeAutomationRecordList(a.traders, 'trader');
     a.outposts = normalizeAutomationRecordList(a.outposts, 'outpost');
-    for (const o of a.outposts) delete o.entityId;
+    for (const o of a.outposts) { delete o.entityId; delete o.moduleEntityIds; normalizeOutpostOperation(o); }
     a.fleet = normalizeAutomationRecordList(a.fleet, 'fleet');
     const sectorId = this.state && this.state.world && this.state.world.currentSectorId || null;
     for (const fs of a.fleet) {
@@ -3656,7 +4010,10 @@ export const automation = {
       }
       return { ...saved, recovery: normalizeDroneRecovery(g.recovery) };
     });
-    const outposts = a.outposts.map((o) => { const { entityId, ...rest } = o; return rest; });
+    const outposts = a.outposts.map((o) => {
+      const { entityId, moduleEntityIds, ...rest } = o;
+      return JSON.parse(JSON.stringify(rest));
+    });
     // Fleet entries carry a transient _liveId (the live wingman entity id, set by systems/wingmen.js
     // on spawn). It doesn't survive save/load (entity ids are per-session) → strip it like drone
     // entityIds so a reloaded save doesn't reference a dead/stale entity.

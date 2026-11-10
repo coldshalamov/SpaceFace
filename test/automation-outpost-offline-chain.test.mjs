@@ -1,10 +1,11 @@
 // Phase B1 — offline catch-up must run the same coarse drone -> outpost -> sale chain as presence.
-// Receipt convention under test: grossCr is pre-efficiency; droneCr/outpostCr are each efficiency-
-// scaled contributions; credited is the owner-safe grant after efficiency and the passive cap.
+// This isolated production harness deliberately has no economy owner. Facility output must
+// remain stored until a real receiving market can settle it; the companion market-loop suite
+// exercises real stock, credits, partial fills and offline receipts together.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { automation, AUTOMATION_PASSIVE_TUNING } from '../src/systems/automation.js';
+import { automation } from '../src/systems/automation.js';
 import { OUTPOSTS } from '../src/data/automation.js';
 
 const LOCAL_SECTOR = 'sector_helios_prime';
@@ -182,7 +183,7 @@ function accounting(receipt) {
 test('offline extraction feeds a local refinery before only the residual drone stock is valued', () => {
   const { state, inst } = boot();
   const iron = addDrone(state, { id: 'drone_local_iron', oreType: 'cmdty_ore_iron', buffer: 4 });
-  addOutpost(state, { id: 'refinery_local' });
+  const refinery = addOutpost(state, { id: 'refinery_local' });
 
   const receipt = catchUp(inst);
 
@@ -191,15 +192,14 @@ test('offline extraction feeds a local refinery before only the residual drone s
   const expectedResidualIron = 2;
   const expectedRefined = 5;
   const expectedDroneGross = expectedResidualIron * PRICE.cmdty_ore_iron;
-  const expectedOutpostGross = expectedRefined * PRICE.cmdty_refined_metals
-    * AUTOMATION_PASSIVE_TUNING.outpostAutosellMult;
 
   assert.equal(iron.buffer, 0, 'the residual buffer is valued only after local recipe consumption');
   assert.equal(receipt.droneCr, expectedDroneGross * receipt.offlineEff,
     'consumed feedstock must not also be credited as raw drone output');
-  assert.equal(receipt.outpostCr, expectedOutpostGross * receipt.offlineEff,
-    'offline alloys must be derived from and valued after the consumed iron');
-  assert.equal(receipt.grossCr, expectedDroneGross + expectedOutpostGross);
+  assert.equal(refinery.storage, expectedRefined,
+    'made output remains owned when no receiving economy can settle it');
+  assert.equal(receipt.outpostCr, 0, 'a reference price is not a realized sale');
+  assert.equal(receipt.grossCr, expectedDroneGross);
   assert.equal(receipt.grossOfflineCr, receipt.droneCr + receipt.outpostCr);
 });
 
@@ -217,7 +217,7 @@ test('wrong-commodity and off-sector buffers cannot feed an offline refinery', (
     buffer: 4,
     sectorId: REMOTE_SECTOR,
   });
-  addOutpost(state, { id: 'refinery_local', sectorId: LOCAL_SECTOR });
+  const refinery = addOutpost(state, { id: 'refinery_local', sectorId: LOCAL_SECTOR });
 
   const receipt = catchUp(inst);
 
@@ -227,20 +227,18 @@ test('wrong-commodity and off-sector buffers cannot feed an offline refinery', (
   const expectedRefined = (2 + 8) / 2;
   const expectedRemoteIron = 4 + 8;
   const expectedDroneGross = expectedRemoteIron * PRICE.cmdty_ore_iron;
-  const expectedOutpostGross = expectedRefined * PRICE.cmdty_refined_metals
-    * AUTOMATION_PASSIVE_TUNING.outpostAutosellMult;
-
-  assert.equal(receipt.outpostCr, expectedOutpostGross * receipt.offlineEff,
+  assert.equal(refinery.storage, expectedRefined,
     'local copper feeds the book smelt while remote iron cannot feed the refinery');
+  assert.equal(receipt.outpostCr, 0);
   assert.equal(receipt.droneCr, expectedDroneGross * receipt.offlineEff,
     'remote stock stays outside the recipe and is valued unchanged');
-  assert.equal(receipt.grossCr, expectedDroneGross + expectedOutpostGross);
+  assert.equal(receipt.grossCr, expectedDroneGross);
 });
 
 test('offline streaming extraction can feed production before the drone buffer cap', () => {
   const { state, inst } = boot();
   addDrone(state, { id: 'drone_streaming_iron', oreType: 'cmdty_ore_iron', buffer: 0 });
-  addOutpost(state, { id: 'refinery_streaming' });
+  const refinery = addOutpost(state, { id: 'refinery_streaming' });
 
   const elapsedSec = 120;
   const receipt = inst.runOfflineCatchup({ nowMs: WINDOW_START_MS + elapsedSec * 1000 });
@@ -249,14 +247,13 @@ test('offline streaming extraction can feed production before the drone buffer c
   // arrives and make 48 alloys; the drone's 60-unit storage cap must not truncate feed before the
   // refinery sees it.
   const expectedRefined = 48;
-  const expectedOutpostGross = expectedRefined * PRICE.cmdty_refined_metals
-    * AUTOMATION_PASSIVE_TUNING.outpostAutosellMult;
   assert.equal(receipt.droneCr, 0, 'all streamed iron is consumed before residual valuation');
-  assert.equal(receipt.outpostCr, Math.round(expectedOutpostGross * receipt.offlineEff));
-  assert.equal(receipt.grossCr, expectedOutpostGross);
+  assert.equal(refinery.storage, expectedRefined);
+  assert.equal(receipt.outpostCr, 0);
+  assert.equal(receipt.grossCr, 0);
 });
 
-test('long offline windows settle auto-selling production at coarse minute cadence', () => {
+test('long offline windows stop at facility capacity when no receiving owner accepts output', () => {
   const { state, inst } = boot();
   const longRange = addDrone(state, { id: 'drone_long_window', oreType: 'cmdty_ore_iron', buffer: 0 });
   longRange.fuel = 2_000;
@@ -266,15 +263,10 @@ test('long offline windows settle auto-selling production at coarse minute caden
   const elapsedSec = 20 * 60;
   const receipt = inst.runOfflineCatchup({ nowMs: WINDOW_START_MS + elapsedSec * 1000 });
 
-  // 0.8 iron/s * 1200s = 960 iron -> 480 alloys. Auto-sell clears the 300-unit storage
-  // at the existing minute cadence, so a one-shot storage clamp must not erase 180 alloys.
-  const expectedRefined = 480;
-  const expectedOutpostGross = expectedRefined * PRICE.cmdty_refined_metals
-    * AUTOMATION_PASSIVE_TUNING.outpostAutosellMult;
-  assert.equal(refinery.storage, 0);
-  assert.equal(receipt.droneCr, 0);
-  assert.equal(receipt.outpostCr, Math.round(expectedOutpostGross * receipt.offlineEff));
-  assert.equal(receipt.grossCr, expectedOutpostGross);
+  assert.equal(refinery.storage, 300, 'unpaid output is never erased to manufacture throughput');
+  assert.equal(refinery.status, 'storage_full');
+  assert.equal(refinery.saleBlock, 'economy_unavailable');
+  assert.equal(receipt.outpostCr, 0);
 });
 
 test('offline production is bounded by drone fuel and keeps an exhausted group waiting', () => {
@@ -285,22 +277,21 @@ test('offline production is bounded by drone fuel and keeps an exhausted group w
     buffer: 0,
   });
   iron.fuel = 1;
-  addOutpost(state, { id: 'refinery_fuel_bounded', autoSell: true });
+  const refinery = addOutpost(state, { id: 'refinery_fuel_bounded', autoSell: true });
 
   const elapsedSec = 120;
   const receipt = inst.runOfflineCatchup({ nowMs: WINDOW_START_MS + elapsedSec * 1000 });
 
   // Mk1 fuelRate is 1/s: one second yields 0.8 iron -> 0.4 alloys, then the group waits.
   const expectedRefined = 0.4;
-  const expectedOutpostGross = expectedRefined * PRICE.cmdty_refined_metals
-    * AUTOMATION_PASSIVE_TUNING.outpostAutosellMult;
   assert.equal(state.automation.drones.length, 1, 'fuel shortage never deletes the purchased machine');
   assert.equal(iron.status, 'stranded');
   assert.equal(iron.fuel, 0);
   assert.equal(receipt.lost, 0);
   assert.equal(receipt.droneCr, 0);
-  assert.equal(receipt.outpostCr, Math.round(expectedOutpostGross * receipt.offlineEff));
-  assert.equal(receipt.grossCr, Math.round(expectedOutpostGross));
+  assert.equal(refinery.storage, expectedRefined, 'fractional work stays banked until a whole unit can be delivered');
+  assert.equal(receipt.outpostCr, 0);
+  assert.equal(receipt.grossCr, 0);
 });
 
 test('offline upkeep accrues through a fuel-bounded drone lifetime while the machine remains', () => {
@@ -355,24 +346,23 @@ test('offline raid cooldown expires at its boundary and production resumes for r
 
   // Thirty seconds blocked, ninety seconds producing at 0.5 alloy/s.
   const expectedRefined = 45;
-  const expectedOutpostGross = expectedRefined * PRICE.cmdty_refined_metals
-    * AUTOMATION_PASSIVE_TUNING.outpostAutosellMult;
   assert.equal(refinery.raidCooldown, 0);
   assert.equal(refinery.status, 'producing');
-  assert.equal(receipt.outpostCr, expectedOutpostGross * receipt.offlineEff);
+  assert.equal(refinery.storage, expectedRefined);
+  assert.equal(receipt.outpostCr, 0);
 });
 
-test('an input-free hab hub keeps its authored passive offline output', () => {
+test('an input-free hab hub retains authored service output while the settlement owner is absent', () => {
   const { state, inst } = boot();
-  addOutpost(state, { id: 'hab_local', defId: 'outpost_habhub' });
+  const habitat = addOutpost(state, { id: 'hab_local', defId: 'outpost_habhub' });
 
   const receipt = catchUp(inst);
 
   const expectedGross = 12 * ELAPSED_SEC;
   assert.equal(receipt.droneCr, 0);
-  assert.equal(receipt.outpostCr, expectedGross * receipt.offlineEff,
-    'input-free passive recipes remain productive without fabricated feedstock');
-  assert.equal(receipt.grossCr, expectedGross);
+  assert.equal(habitat.storage, expectedGross);
+  assert.equal(receipt.outpostCr, 0, 'a missing credit owner must not consume the service buffer');
+  assert.equal(receipt.grossCr, 0);
 });
 
 test('offline chain receipts are deterministic, idempotent, and owner-safe', () => {

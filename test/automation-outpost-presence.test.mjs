@@ -79,8 +79,13 @@ function boot(seed = 73) {
       if (entity) entity.alive = false;
     },
   };
-  bus.on('economy:chargeCredits', ({ amount = 0 } = {}) => {
-    state.player.credits = Math.max(0, state.player.credits - Math.max(0, Math.round(amount)));
+  bus.on('economy:chargeCredits', (request = {}) => {
+    if (request.requireFull) {
+      if (request.expectedCredits !== state.player.credits || state.player.credits < request.amount
+        || request.commit?.() !== true) return;
+      request.result = true;
+    }
+    state.player.credits = Math.max(0, state.player.credits - Math.max(0, Math.round(request.amount || 0)));
   });
   bus.on('economy:grantCredits', ({ amount = 0 } = {}) => {
     state.player.credits += Math.max(0, Math.round(amount));
@@ -305,16 +310,16 @@ test('decommissionOutpost releases its live entity before removing the ledger re
   assert.equal(liveOutpostEntities(h, outpost.id).length, 0);
 });
 
-test('upkeep repossession releases its live outpost entity before removing the ledger record', () => {
+test('routine upkeep shortage preserves the owned outpost and its physical presence for recovery', () => {
   const h = boot();
   const outpost = seedOutpost(h);
   const entity = attachRuntimeEntity(h, outpost);
 
   h.inst._repossessOne(h.state.automation);
 
-  assert.equal(entity.alive, false, 'repossessed outpost cannot leave an orphaned place entity');
-  assert.equal(h.state.automation.outposts.some((entry) => entry.id === outpost.id), false);
-  assert.equal(liveOutpostEntities(h, outpost.id).length, 0);
+  assert.equal(entity.alive, true, 'a routine shortage must not delete the purchased facility');
+  assert.equal(h.state.automation.outposts.some((entry) => entry.id === outpost.id), true);
+  assert.equal(liveOutpostEntities(h, outpost.id).length, 1);
 });
 
 test('automation save data excludes an outpost runtime entity id', () => {
