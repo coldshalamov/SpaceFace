@@ -901,6 +901,8 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'npcJobs.ceresWorkfleet.phase',
   'ceresWinchingOffer',
   'ceresNinthMouthOffer',
+  // Fixed eight-original receipt/conversation record for the station and chart. No live poses.
+  'npcJobs.ceresNinthMouth',
 ]);
 
 // Per-key canonical-serialization ship cap (report-only): any single mirrored
@@ -973,6 +975,7 @@ export const DOMAIN_CADENCE = Object.freeze({
   'npcJobs.ceresWorkfleet.phase': 1,
   ceresWinchingOffer: 1,
   ceresNinthMouthOffer: 1,
+  'npcJobs.ceresNinthMouth': 1,
   sites: 10,
   salvageOutfits: 10,
   cinderglassJobView: 6, cinderglassJobToken: 1, cinderglassJobPresentationReady: 1,

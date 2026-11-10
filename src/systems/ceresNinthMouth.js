@@ -1,3 +1,4 @@
+import { krollArrivalLine, krollStoryScene } from '../story/ceresArrivalStory.js';
 // One finite rescue, owned by npcJobsRuntime. World owns the originals, native
 // physics owns their motion, and the prompt is only a revalidated work request.
 import { CERES_NINTH_MOUTH as CUT, worldPoint } from '../data/ceresNinthMouth.js';
@@ -19,7 +20,7 @@ const speed = e => Math.hypot(e?.vel?.x ?? Infinity, e?.vel?.z ?? Infinity);
 function fresh() {
   return { version: 1, storyId: CUT.id,
     objects: Object.fromEntries(ROLES.map(role => [role, { identity: ID(role), spawned: false, lost: false }])),
-    entered: null, rockShifted: false, rescue: null, tag: false, guide: null };
+    entered: null, rockShifted: false, rescue: null, tag: false, guide: null, conversation: { met: false, plan: null } };
 }
 function record(owner) { return owner.state.npcJobs?.ceresNinthMouth; }
 function eligible(s) {
@@ -233,7 +234,19 @@ function publish(owner, force = false) {
   }
   const status = ceresNinthMouthStatus(owner), guidance = routeGuidance(owner), choices = [];
   let detail;
-  if (rt.page === 'compact') {
+  if (rt.page === 'story') {
+    const scene = krollStoryScene(status, rt.topic, r.conversation?.plan);
+    detail = scene.detail;
+    choices.push({ id: 'story:people', label: status.status === 'rescued' ? 'And the crew?' : 'Why are you still here?' });
+    if (status.status === 'waiting') {
+      choices.push({ id: 'story:work', label: 'Talk me through the cut' });
+      choices.push({ id: 'story:barge', label: 'Start with the barge' });
+      if (CUT.lamps.some(d => body(owner, d.role) && !body(owner, d.role).data.ninthMouthInstalled))
+        choices.push({ id: 'story:lights', label: 'Start with a worklight' });
+    }
+    choices.push({ id: 'work', label: status.status === 'rescued' ? 'Check the remaining work' : 'Back to the work channel' });
+    choices.push({ id: 'close', label: 'Keep flying' });
+  } else if (rt.page === 'compact') {
     detail = guidance?.instruction || (status.status === 'rescued' ? 'One barge received. Kroll is on the berth radio.' : 'Kroll is holding the service cut for the last barge.');
     choices.push({ id: 'talk', label: 'Call the rescue berth' });
   } else {
@@ -251,7 +264,7 @@ function publish(owner, force = false) {
     const lamp = body(owner, `lamp:${i}`);
     if (!lamp || !near(owner, lamp.pos, 100)) continue;
     const installed = lamp.data.ninthMouthInstalled === true, issue = lampIssue(owner,i,installed);
-    if (rt.page === 'full' || guidance?.role === `lamp:${i}`) choices.push({
+    if (rt.page !== 'story' && (rt.page === 'full' || guidance?.role === `lamp:${i}`)) choices.push({
       id:`${installed ? 'unseat' : 'seat'}:${i}`, label:`${installed ? 'Unbolt' : 'Seat'} worklight ${i+1}`, disabled:!!issue });
   }
   if (rt.page === 'full') {
@@ -261,9 +274,11 @@ function publish(owner, force = false) {
       if (lamp && !lamp.data.ninthMouthInstalled && guidance?.role !== `lamp:${i}`)
         choices.push({id:`guide:lamp:${i}`,label:`Guide light ${i+1} · ${CUT.lamps[i].label}`});
     }
+    choices.push({id:'story',label:status.status === 'rescued' ? 'Speak with Kroll · crew home' : 'Speak with Dessa Kroll'});
     choices.push({id:'close',label:'Keep flying'});
   }
-  const headline = status.status === 'rescued' ? 'ONE BARGE HOME' : 'NINTH MOUTH · RESCUE BERTH';
+  const headline = rt.page === 'story' ? krollStoryScene(status, rt.topic, r.conversation?.plan).headline
+    : status.status === 'rescued' ? 'ONE BARGE HOME' : 'NINTH MOUTH · RESCUE BERTH';
   // A compact radio never erases the chosen route. Distinguish the moving source
   // from the destination; label source only while the pilot needs to acquire it.
   const serviceMarks = guidance ? [
@@ -272,12 +287,12 @@ function publish(owner, force = false) {
     ...(['acquire','approach','coast','intercept'].includes(guidance.stage) ? [{id:'source',label:`${guidance.stage==='coast' ? 'COASTING' : guidance.stage==='approach' ? 'SEAT HERE' : guidance.stage==='intercept' ? 'CATCH FROM BEHIND' : 'PICK UP'} · ${guidance.label}`,
       pos:guidance.pos,radius:8}] : []),
   ] : [{id:'berth',label:'Receiving apron',pos:worldPoint(CUT.berth.local),radius:CUT.berth.radius}];
-  const payload = {headline,detail,choices,serviceMarks,guidance,playerLife:p.occupantGeneration};
+  const payload = {headline,detail,choices,serviceMarks,guidance:rt.page === 'story' ? null : guidance,playerLife:p.occupantGeneration};
   // Telemetry can update without revoking a legitimate button under the cursor.
   // Changes to phase/choices/player life still revoke every prior callback.
   const signature = JSON.stringify([headline,detail,choices,p.id,p.occupantGeneration,guidance?.entityId,guidance?.entityLife]);
   if (!force && signature === rt.signature && rt.offer) {
-    rt.offer.serviceMarks=serviceMarks; rt.offer.guidance=guidance; return;
+    rt.offer.serviceMarks=serviceMarks; rt.offer.guidance=payload.guidance; return;
   }
   rt.signature=signature;
   rt.offer={...payload,id:`ninth-mouth:${++rt.sequence}`,playerId:p.id};
@@ -310,7 +325,18 @@ export function installCeresNinthMouth(owner) {
     rt.busy = true;
     try {
       if (payload.action === 'close') rt.page = 'compact';
-      else if (payload.action === 'talk') rt.page = 'full';
+      else if (payload.action === 'talk' || payload.action === 'work') rt.page = 'full';
+      else if (payload.action === 'story' || payload.action.startsWith('story:')) {
+        const r = record(owner);
+        r.conversation ||= { met: false, plan: null };
+        r.conversation.met = true;
+        const topic = payload.action.split(':')[1] || 'arrival';
+        if (topic === 'barge' || topic === 'lights') {
+          const role = topic === 'barge' ? 'barge' : CUT.lamps.find(d => body(owner, d.role) && !body(owner, d.role).data.ninthMouthInstalled)?.role;
+          if (!role || !body(owner, role)) return;
+          r.conversation.plan = topic; r.guide = role; rt.page = 'full';
+        } else { rt.topic = topic; rt.page = 'story'; }
+      }
       else if (payload.action.startsWith('guide:')) {
         const role=payload.action.slice(6);
         if (!['barge',...CUT.lamps.map(d=>d.role)].includes(role) || !body(owner,role)) return;
@@ -368,7 +394,7 @@ export function stepCeresNinthMouth(owner, dt) {
     r.rescue = { receiptId: RECEIPT, storyId: CUT.id, bargeIdentity: ID('barge'), receiverIdentity: ID('receiver'),
       count: 1, committed: true, tick: s.tick, simTime: s.simTime, approach: r.entered || 'unobserved' };
     rt.page = 'full';
-    sound(owner, 'The original barge is in the berth. Crew transfer confirmed. One barge home. The lamps are separate work.');
+    sound(owner, 'Crew transfer confirmed. One barge home. Now I can close that boat’s shift. Come to the mast if you want a word; the lamps are separate work.');
     if (record(owner) === r) owner.bus.emit('ceresNinthMouth:rescueCommitted', copy(r.rescue));
   }
   if (r.rescue && lamps === 3 && !r.tag && receiver) {
@@ -379,8 +405,7 @@ export function stepCeresNinthMouth(owner, dt) {
   const inside = near(owner, CUT.center, CUT.hearingRadius);
   if (inside && !rt.inside && speed(s.entities.get(s.playerId)) < 35) {
     rt.page = 'full'; rt.signature = ''; rt.inside = true;
-    sound(owner, r.rescue ? 'You brought that barge home. The receiving entry stays on my board.'
-      : 'One barge still inside the service cut. I am on the receiving mast. You can tow it straight out, or take the worklights in first.');
+    sound(owner, krollArrivalLine(ceresNinthMouthStatus(owner), r.conversation?.met));
   }
   if (!inside) { rt.inside = false; rt.receivedDwell = 0; }
   rt.accumulator += dt;
@@ -405,6 +430,8 @@ export function restoreCeresNinthMouth(owner, saved) {
   if (saved.version !== 1 || saved.storyId !== CUT.id) return;
   r.entered = ['lamps_seated', 'lamps_unseated'].includes(saved.entered) ? saved.entered : null;
   r.rockShifted = saved.rockShifted === true;
+  r.conversation = { met: saved.conversation?.met === true,
+    plan: ['barge', 'lights'].includes(saved.conversation?.plan) ? saved.conversation.plan : null };
   r.guide = ['barge',...CUT.lamps.map(d=>d.role)].includes(saved.guide) ? saved.guide : null;
   const q = saved.rescue;
   if (q?.receiptId === RECEIPT && q.storyId === CUT.id && q.bargeIdentity === ID('barge')

@@ -1,3 +1,4 @@
+import { ceresArrivalChartTarget, ceresArrivalMapTarget } from '../story/ceresArrivalStory.js';
 import { getCinderglassJobMapMarkers } from '../features/cinderglassJob/integration.js';
 import { getSalvageTenderMapMarkers, filterSalvageTenderMapContacts } from '../features/salvageTender/readModel.js';
 import { crackerRunWorkLoadRead, isCrackerRunWorkLoad } from './crackerRunGuidance.js';
@@ -863,6 +864,13 @@ export function pickMapTargetAt(targets, x, y) {
  */
 export function resolveMapOpenTarget(state, intent) {
   if (!intent) return null;
+  const ceresArrival = ceresArrivalMapTarget(state, intent);
+  if (ceresArrival?.kind === 'sector') {
+    const sector = sectorRecordById(state, ceresArrival.sectorId), pos = sector?.position;
+    if (!Number.isFinite(pos?.x) || !Number.isFinite(pos?.y ?? pos?.z)) return null;
+    return { ...ceresArrival, x: pos.x, y: pos.y ?? pos.z, factionId: sector.factionId, security: sector.security };
+  }
+  if (ceresArrival) return ceresArrival;
   const missionId = intent.missionId != null ? String(intent.missionId) : null;
   let stationId = intent.stationId != null ? String(intent.stationId) : null;
   let sectorId = intent.sectorId != null ? String(intent.sectorId) : null;
@@ -1100,6 +1108,13 @@ export function applyMapOpenIntentToView(view, intent, state) {
   // Mission/station intent: resolve selection target first so GALAXY can use openTarget.sectorId
   // when the intent only carries missionId (emitters usually also send sectorId; this is the hole).
   const openTarget = resolveMapOpenTarget(state, intent);
+  // This authored referral carries a global nav fix, while SYSTEM's legacy
+  // camera is sector-local. Do not add Ceres' origin a second time on adoption.
+  if (intent?.source === 'station-bar:ceres-arrival' && openTarget?.kind === 'poi'
+    && focus === MAP_FOCUS.SYSTEM && view.cams.system) {
+    view.cams.system.cx = openTarget.drawPos.x;
+    view.cams.system.cy = openTarget.drawPos.z;
+  }
 
   // Off-sector / star-chart focus: center galaxy cam on intent.sectorId or resolved openTarget.sectorId.
   const sectorId = (intent && intent.sectorId)
@@ -2400,6 +2415,8 @@ export function buildSystemModel(state, sectorId, options = {}) {
     // it; suppressing the dynamic duplicate must never suppress its authoritative activity.
     points[staticIndex] = Object.freeze({ ...points[staticIndex], ...marker });
   }
+  const ceresArrival = ceresArrivalChartTarget(state, sid);
+  if (ceresArrival) points.push(ceresArrival);
   points.push(...breakwaterChartTargets(state, sid), ...counterweightChartTargets(state, sid), ...cinderglassChartTargets(state, sid));
   // Orrin's accepted original resolves through the ordinary station target/click/course path.
   // The case reader deliberately supplies no nav state; this only gives the existing Customs
@@ -4381,7 +4398,9 @@ export const galaxyMapScreen = {
       };
     }
     const preset = framePreset(level, { playerGlobal, sectorId: sid, focusGlobal });
-    const known = level === 'galaxy' ? this._galaxyFrame() : null;
+    const referralSectors = view?.openIntent?.source === 'station-bar:ceres-arrival' && view.openTarget?.kind === 'sector'
+      ? [sid, view.openTarget.sectorId] : undefined;
+    const known = level === 'galaxy' ? this._galaxyFrame(referralSectors) : null;
     const sector = level === 'system' ? this._systemSpan() : null;
     this._camera = createMapCamera({
       focusGlobal: known ? known.focusGlobal : (focusGlobal || preset.focusGlobal),
@@ -10692,6 +10711,7 @@ _drawSystem(g, state, w, h) {
         sx: x, sy: y, radiusPx: Math.max(pointMark.pipPx, isStation || isGate ? 14 : 10), kind: p.kind, id: p.id, x: p.x, z: p.z,
         entityId: p.entityId, stationId: p.stationId, stable: p.stable || null, targetSectorId: p.targetSectorId,
         name: displayName, factionId: p.factionId,
+        sectorId: p.sectorId, drawPos: p.drawPos, poiType: p.poiType, chartNote: p.chartNote,
         mapKind: p.mapKind, stageId: p.stageId, stageLabel: p.stageLabel,
         coursePos: p.coursePos, courseLabel: p.courseLabel,
         courseArrivalRadius: p.courseArrivalRadius, statusLine: p.statusLine,
