@@ -31,6 +31,7 @@ import {
 } from '../save/sharedPlayerStore.js';
 import { hash32, wrapAngle } from '../core/rng.js';
 import { evaluateUnlocks } from './survivalUnlocks.js';
+import { isAuthoredCourseVictory } from '../data/survivalCourse.js';
 import { CRUCIBLE_WEEKLY_ROTATION } from '../data/survivalMutators.js';
 import { challengeFromRun, consumeQueuedDailyDateKey, lastQueuedDailyDateKey, normalizeMutators } from './survivalMutators.js';
 import { applyBank, buyHull, buyTrack, emptyHangar, migrateHangar } from '../data/swarmHangar.js';
@@ -1852,7 +1853,12 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
   const bank = applyBank(loaded.hangar, isPractice ? null : hangarBankInput(result, run));
   const evaluated = isPractice
     ? { unlocks: { ...(asObject(loaded.unlocks) || {}) }, newly: [] }
-    : evaluateUnlocks(loaded, result || {});
+    : evaluateUnlocks(loaded, {
+      ...(result || {}),
+      ruleset: result?.ruleset ?? run?.ruleset,
+      recordRules: recordRulesFor(result || {}, run || {}),
+      startWave: result?.startWave ?? run?.telemetry?.startWave ?? 1,
+    }, undefined, run || {});
   const compact = compactRunResult(result || {}, run || {}, evaluated.newly);
   // Invalid Circuit data remains a Circuit for isolation even though it cannot publish a
   // valid journey summary. It must never silently regain ordinary ladder/challenge authority.
@@ -1938,7 +1944,7 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
       wavesCleared: compact.wavesCleared,
       deepestWave: compact.deepestWave,
       cullPurse: bank.banked,
-      authoredVictory: compact.outcome === 'victory',
+      authoredVictory: isAuthoredCourseVictory(result || {}, run || {}),
     }, recordedAt);
   if (lineMetaEval.newly.length) {
     compact.lineMetaEarned = lineMetaEval.newly.map((row) => row.id);

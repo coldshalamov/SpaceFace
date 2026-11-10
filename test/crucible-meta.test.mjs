@@ -107,6 +107,7 @@ function resetMeta() {
 function resultFixture(overrides = {}) {
   return {
     outcome: 'defeat',
+    ruleset: 'scored',
     seed: SEED,
     arenaId: ARENA,
     wave: 10,

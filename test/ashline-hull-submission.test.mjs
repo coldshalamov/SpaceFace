@@ -15,6 +15,7 @@ const ROLES = ['Armor', 'BrushedMetal', 'Hull', 'Livery', 'Mechanical', 'Mechani
 async function fixture({ compile = () => ({ pipelines: {}, gpuResidency: {} }), families = ['ashline-rig', 'ashline-dart'] } = {}) {
   const scene = new THREE.Scene(), entities = new Map(), meshes = new Map(), records = [];
   for (const family of families) {
+    const lod = family.match(/-(lod[12])$/)?.[1] || 'lod0';
     const manifest = JSON.parse(readFileSync(`assets/ships/release/render-packages/${family}/render-package.json`));
     const ref = manifest.runtime.motionBank;
     const bytes = new TextEncoder().encode(readFileSync(ref.uri, 'utf8').replace(/\r\n/g, '\n'));
@@ -41,9 +42,9 @@ async function fixture({ compile = () => ({ pipelines: {}, gpuResidency: {} }), 
         node.geometry = new THREE.BoxGeometry(1, 1, 1);
         node.userData.spacefacePartUrl = url;
         node.userData.spacefaceTags = { ...tags.get(node.name) };
-        node.visible = !node.userData.spacefaceTags.lod || node.userData.spacefaceTags.lod === 'lod0';
+        node.visible = !node.userData.spacefaceTags.lod || node.userData.spacefaceTags.lod === lod;
         if (node.userData.nonRender || node.userData.collision) node.visible = false;
-        const roleIndex = ROLES.findIndex(role => node.name === `LOD0_MOTION_HULL_CORE_${role}`);
+        const roleIndex = ROLES.findIndex(role => node.name === `${lod.toUpperCase()}_MOTION_HULL_CORE_${role}`);
         // Distinct cold roles retain distinct uniforms; identical roles across ships may batch.
         if (roleIndex >= 0) {
           node.material.color.setRGB((roleIndex + 1) / 8, 0.3, 0.4);

@@ -98,6 +98,7 @@ import { SURVIVAL_ARENA_PHASES as CANONICAL_ARENA_PHASES } from '../data/surviva
 import { gateBearing } from './waveMaterialization.js';
 import { FOUNDRY_ARENA_ID } from './swarmArena.js';
 import { foundryPlateShape, foundryPlateProxy } from '../data/foundryPlate.js';
+import { createPlateTheft, preparePlateTheftRoom } from './foundryPlateTheft.js';
 import { foundryFurnitureProxy } from '../data/foundryFurniture.js';
 import { CINDER_ARENA_ID, planCinderInstall, stepCinderMachinery } from './cinderSluiceArena.js';
 import {
@@ -1217,6 +1218,8 @@ export const survivalArena = {
     // here, and the wave teardown removes every called body with the room.
     this._callins = createSwarmCallinsDirector(ctx);
     this._callins.init();
+    this._plateTheft = createPlateTheft(ctx);
+    this._plateTheftPlan = null;
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:modifierRecorded', (p) => this._onCallinRecorded(p)));
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
@@ -1295,6 +1298,7 @@ export const survivalArena = {
 
   newGame() {
     this._teardown('new_game');
+    this._plateTheftPlan = null;
   },
 
   diagnostics() {
@@ -1309,6 +1313,7 @@ export const survivalArena = {
       coverEncounterId: this._encounterId,
       toyIds: toys.map((toy) => toy.id),
       toyCount: toys.length,
+      plateTheft: this._plateTheft?.diagnostics() || null,
       toys: toys.map((toy) => ({
         id: toy.id,
         kind: toy.kind,
@@ -1368,6 +1373,7 @@ export const survivalArena = {
     }
     this._releaseRoundFields(st);
     if (this._swarmEvents) this._swarmEvents.update(_dt, st);
+    if (this._plateTheft) this._plateTheft.update(_dt);
     this._tickToys(_dt, st);
     this._tickPlayerSlams(st);
   },
@@ -1385,6 +1391,18 @@ export const survivalArena = {
   },
 
   _onWavePlanned(payload) {
+    const currentRun = liveSurvivalRun(this.state);
+    if (payload?.plan?.systemEvent?.id === 'foundry_plate_theft') {
+      if (!currentRun || !['wave_intro', 'active'].includes(currentRun.phase)
+        || payload.wave !== currentRun.wave) return;
+      const previous = this._plateTheftPlan;
+      if (previous && previous.token === currentRun.retireToken
+        && previous.seed === currentRun.seed) return;
+    }
+    // A replayed wave-20 receipt cannot replace the bank that the pilot moved or
+    // the escort stole. The normal next-wave/run teardown still releases it.
+    if (payload?.wave === this._wave && this._plateTheft?.diagnostics()
+      && this._plateTheftRunToken === this.state?.run?.retireToken) return;
     // Re-entrant: wave N+1 can never stack its room on top of wave N's.
     this._teardown('rearm');
     const state = this.state;
@@ -1413,6 +1431,10 @@ export const survivalArena = {
       swarmEvent: run.ruleset === 'swarm'
         ? swarmEventFor({ arenaId: run.arenaId, wave, seed })
         : null,
+    });
+    const screenGate = plan.packages?.find(pkg => pkg.enemyId === 'pd_screen_escort')?.gateGroup;
+    const contestedPlateId = preparePlateTheftRoom(install, {
+      run, plan, anchor: playerAnchor(state), bearing: gateBearing(screenGate || laneGate),
     });
 
     this._wave = wave;
@@ -1468,6 +1490,11 @@ export const survivalArena = {
     this._installCover(install.cover || run.ruleset === 'swarm', wave);
     this._installToys(install);
     this._materializeRoom(this._toys, wave);
+    if (contestedPlateId) {
+      this._plateTheftRunToken = run.retireToken;
+      this._plateTheftPlan = { token: run.retireToken, seed: run.seed };
+      this._plateTheft?.arm(this._roomSolids.get(contestedPlateId));
+    }
     if (conveyor && wave === 1) this._installConveyorWorkpiece(install.fields[0]);
     // The event director inherits the room it will spend through: the frame the install placed
     // against, and the field specs it may later surge (their authored strengths are the calm it
@@ -1622,6 +1649,7 @@ export const survivalArena = {
   // ---- teardown -------------------------------------------------------------
 
   _teardown(reason) {
+    if (this._plateTheft) this._plateTheft.clear(reason);
     // The director calms first: a surge mid-window restores authored strengths onto fields that
     // still exist, and its own pulse field unregisters before the room's ledger clears.
     if (this._swarmEvents) this._swarmEvents.teardown(reason);
@@ -2596,6 +2624,7 @@ export const survivalArena = {
     this._roomSolids = new Map();
     this._toys = [];
     this._installedFields = [];
+    this._plateTheftRunToken = null;
   },
 
   _emit(event, payload) {
