@@ -16,6 +16,7 @@ import {
   lawResponseBarkFor,
   lawStepBarkFor,
   oreFloodBarkFor,
+  stationPaBarkFor,
   patrolInterventionHailFor,
   pursuitBarkFor,
   rivalScavengerLineFor,
@@ -942,6 +943,9 @@ export const barkDirector = {
       this.bus.on('traffic:nearMiss', this._onLaneHorn);
       this._onOreFlood = (payload) => this._speakOreFlood(payload || {});
       this.bus.on('economy:oreFlood', this._onOreFlood);
+      // inf-station-pa — the station's desk calls its own routine when the pilot can see it.
+      this._onStationSideEvent = (payload) => this._speakStationPa(payload || {});
+      this.bus.on('station:sideEvent', this._onStationSideEvent);
       this._onTumbleRake = (payload) => this._speakTumbleRake(payload || {});
       this._onThrownWreck = (payload) => this._speakThrownWreck(payload || {});
       this.bus.on('combat:tumbleRake', this._onTumbleRake);
@@ -1046,6 +1050,8 @@ export const barkDirector = {
     if (this._liveHaulerRaids) this._liveHaulerRaids.clear();
     this._oreFloodKeys = null;
     this._tumbleRakeKeys = null;
+    this._stationPaKeys = null;
+    this._stationPaAt = null;
     this._laneHornBarkAt = null;
     this._laneHornDockAt = null;
     this._laneHornGrudges = null;
@@ -2446,6 +2452,64 @@ export const barkDirector = {
   },
 
   /**
+   * inf-station-pa (CH-63) — the station's desk calls its own routine. The side-event director
+   * runs the berth's day (`station:sideEvent`: a hauler on final, a patrol out of the bay, a drone
+   * on the plating...) and the renderer draws it; the station itself never spoke. One line per
+   * side event the pilot is close enough to see, in the house desk register (Dock control for a
+   * lawful house, Yardmaster otherwise — the ore-flood split), at most one per station per
+   * STATION_PA_COOLDOWN_S so a working berth sounds busy, not chattering. Silent when docked, when
+   * the station is gone or out of earshot, or when that desk has no line for the kind.
+   */
+  _speakStationPa(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.stationId == null || !payload.kind) return null;
+    if (state.mode && state.mode !== 'flight') return null;
+    const station = entityAt(state, payload.stationId);
+    if (!station || station.alive === false || station.type !== 'station' || !finitePos(station.pos)) return null;
+    const player = entityAt(state, state.playerId);
+    if (!player || player.alive === false || !finitePos(player.pos)) return null;
+    if (Math.hypot(station.pos.x - player.pos.x, station.pos.z - player.pos.z) > STATION_PA_EARSHOT_WU) return null;
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return null;
+    const now = Number(state.simTime) || 0;
+    const stationKey = String(station.id);
+    if (!this._stationPaAt) this._stationPaAt = new Map();
+    const last = this._stationPaAt.get(stationKey);
+    // A reload can rewind the sim clock: a stamp from the future is stale, never a gag.
+    if (Number.isFinite(last) && now >= last && now - last < STATION_PA_COOLDOWN_S) return null;
+    const factionId = factionFor(station);
+    const meta = FACTION_META.find((f) => f && f.id === factionId) || null;
+    const register = meta && meta.personality === 'lawful' ? 'dock_control' : 'yardmaster';
+    const seed = state.meta && state.meta.seed;
+    const eventKey = String(payload.eventId ?? `${stationKey}|${payload.kind}|${now}`);
+    if (this._stationPaKeys && this._stationPaKeys.has(eventKey)) return null;
+    const text = stationPaBarkFor(register, String(payload.kind),
+      hash32(seed == null ? 0 : seed, 'stationPa', eventKey));
+    if (!text) return null;
+    const voiceId = `barkDirector:${station.id}:station-pa`;
+    const accepted = voice.say({
+      channel: 'bark',
+      text,
+      kind: 'stationPa',
+      ttl: VOICE_TTL_S,
+      id: voiceId,
+      factionId,
+      valid: () => speakerStillLive(state, station.id),
+      register,
+    });
+    if (!accepted) return null;
+    if (!this._markNoticeKey('_stationPaKeys', eventKey)) return null;
+    this._stationPaAt.set(stationKey, now);
+    while (this._stationPaAt.size > 32) this._stationPaAt.delete(this._stationPaAt.keys().next().value);
+    const receipt = {
+      entityId: station.id, situation: 'station-pa', kind: String(payload.kind), text,
+      eventId: payload.eventId ?? null, t: now, register, factionId, voiceId,
+    };
+    this._emit('barkDirector:voice', receipt);
+    return receipt;
+  },
+
+  /**
    * THE WORLD ANSWERS C8 — a rock the player broke dumped real ore on the lane (`economy:oreFlood`).
    * ONE bark per body: the nearest working civilian hull that has not just spoken, else the local
    * station desk. The chart and the board already carry the rest, so there is no follow-up line.
@@ -3240,6 +3304,7 @@ export const barkDirector = {
       if (this._onHaulerRegroup) this.bus.off('traffic:haulerRegroup', this._onHaulerRegroup);
       if (this._onLaneHorn) this.bus.off('traffic:nearMiss', this._onLaneHorn);
       if (this._onOreFlood) this.bus.off('economy:oreFlood', this._onOreFlood);
+      if (this._onStationSideEvent) this.bus.off('station:sideEvent', this._onStationSideEvent);
       if (this._onTumbleRake) this.bus.off('combat:tumbleRake', this._onTumbleRake);
       if (this._onDriveDown) this.bus.off('combat:subsystemDisabled', this._onDriveDown);
       if (this._onDockDeed) this.bus.off('dock:docked', this._onDockDeed);
@@ -3306,6 +3371,9 @@ export const barkDirector = {
     this._onThrownWreck = null;
     this._onDockDeed = null;
     this._onDriveDown = null;
+    this._onStationSideEvent = null;
+    this._stationPaKeys = null;
+    this._stationPaAt = null;
     this._oreFloodKeys = null;
     this._tumbleRakeKeys = null;
     this._thrownWreckKeys = null;
@@ -4156,6 +4224,10 @@ function haulerForEmptyLoad(state, payload) {
 export const ORE_FLOOD_BARK_MIN_U = 8;
 export const ORE_FLOOD_SPEAKER_RADIUS_WU = 900;
 export const ORE_FLOOD_STATION_RADIUS_WU = 7000;
+/** inf-station-pa: the desk calls its routine only to a pilot inside the station's working shell. */
+export const STATION_PA_EARSHOT_WU = 3000;
+/** One routine call per station per this many sim seconds (side events fire every >= 25 s). */
+export const STATION_PA_COOLDOWN_S = 70;
 /** A hull that spoke inside this window is not asked to speak again for a world-answer receipt. */
 export const WORLD_ANSWER_SPEAKER_GAP_S = 6;
 const ORE_FLOOD_SPEAKER_ROLES = new Set(['miner', 'prospector', 'hauler', 'ore_carrier']);

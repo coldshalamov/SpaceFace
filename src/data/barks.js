@@ -2748,6 +2748,86 @@ export function oreFloodBarkFor(register, index, oreName) {
   return line.replace(/\{ore\}/g, ore);
 }
 
+// ── The station calls its own routine (CH-63 stations as places) ───────────────────────────────
+//
+// Event lines, not BARK_SITUATIONS. The station side-event director runs the berth's day — a
+// hauler on final, a patrol out of the bay, a drone on the plating, a tug on the ring, a dish
+// sweep, a dark runner, a slag pour — and draws it, but the station never said a word about its
+// own life. barkDirector speaks ONE line for a side event the pilot is close enough to see, in the
+// desk register economy.js and the ore-flood notice already split: Dock control for a lawful house,
+// Yardmaster for everyone else. A lawful desk never announces a lights-out runner — that kind has
+// only a Yardmaster line, and a missing kind is silence, never an invented line.
+export const STATION_PA_BARKS = Object.freeze({
+  dock_control: Object.freeze({
+    hauler_dock: Object.freeze([
+      'Dock control: inbound freighter on final. Keep the approach clear.',
+      'Dock control: hauler easing onto the berth line. Hold your drift off the ring.',
+    ]),
+    patrol_launch: Object.freeze([
+      'Dock control: patrol wing launching. Clear the apron.',
+      'Dock control: bay doors open, patrol outbound. Give them the lane.',
+    ]),
+    repair_drone: Object.freeze([
+      'Dock control: maintenance drone on the hull. Mind your wash near the plating.',
+      'Dock control: hull crew out on the skin this shift. Thrusters low near the ring.',
+    ]),
+    cargo_tractor: Object.freeze([
+      'Dock control: tractor towing a pod round the ring. Do not cut its line.',
+      'Dock control: cargo tug working the docking orbit. Pass astern of it.',
+    ]),
+    sensor_sweep: Object.freeze([
+      'Dock control: calibration boom slewing. Expect a ping across your scope.',
+      'Dock control: array sweep in progress. The return is ours, not yours.',
+    ]),
+    slag_pour: Object.freeze([
+      'Dock control: slag run from the crucible vents. Stay off the outbound chute.',
+      'Dock control: hot pour on the outbound lane. Do not fly the glow.',
+    ]),
+  }),
+  yardmaster: Object.freeze({
+    hauler_dock: Object.freeze([
+      'Yardmaster: freighter coming in heavy. Out of its way.',
+      'Yardmaster: hauler on the berth line. Park your drift somewhere else.',
+    ]),
+    patrol_launch: Object.freeze([
+      'Yardmaster: our guns are going out. The lane is theirs for a minute.',
+      'Yardmaster: escort launching. Don’t make them nervous.',
+    ]),
+    repair_drone: Object.freeze([
+      'Yardmaster: patch drone on the plating again. Wash low, it bills by the dent.',
+      'Yardmaster: crew’s welding the skin. Keep your exhaust to yourself.',
+    ]),
+    cargo_tractor: Object.freeze([
+      'Yardmaster: tug hauling a pod round the ring. Cut its line and you buy the pod.',
+      'Yardmaster: tractor working the orbit. Go round it.',
+    ]),
+    sensor_sweep: Object.freeze([
+      'Yardmaster: dish is swinging. If your scope blinks, that was us.',
+      'Yardmaster: array sweep running. Nothing to see, so don’t look.',
+    ]),
+    quiet_dock: Object.freeze([
+      'Yardmaster: runner coming in dark. You didn’t see it.',
+      'Yardmaster: lights-out arrival on the line. Eyes front, pilot.',
+    ]),
+    slag_pour: Object.freeze([
+      'Yardmaster: slag going out the chute. Fly the glow and you’re scrap.',
+      'Yardmaster: hot pour on the outbound. Keep clear unless you like melt.',
+    ]),
+  }),
+});
+
+/**
+ * The desk line for a side-event kind in a register, or null when that desk has nothing to say
+ * about that kind (an unknown kind, or a lawful desk asked about a dark runner).
+ */
+export function stationPaBarkFor(register, kind, index) {
+  const desk = register && Object.hasOwn(STATION_PA_BARKS, register) ? STATION_PA_BARKS[register] : null;
+  const lines = desk && kind && Object.hasOwn(desk, kind) ? desk[kind] : null;
+  if (!lines || !lines.length) return null;
+  const line = lines[pickIndex(index, lines.length)] || lines[0];
+  return typeof line === 'string' && line.length ? line : null;
+}
+
 // ── A tumbling heavy's point defence rakes its own battle line (THE WORLD ANSWERS, C10) ──────
 //
 // Spoken by a hull on the raked line (barkDirector, once per tumble episode) — the "check fire,
