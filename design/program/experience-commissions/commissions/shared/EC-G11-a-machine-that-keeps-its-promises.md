@@ -1,5 +1,53 @@
 # EC-G11 — A machine that keeps its promises — smoothness, residency and load
 
+## Director's card — read this first
+
+*From the creative director, 2026-11-09. The standard, the cast and the build order are in [09 — Creative direction](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/09_CREATIVE_DIRECTION.md). Where this card and the brief below disagree on **scope or order**, the card wins. On **ids, canon and who owns which state**, the brief wins.*
+
+**What this is for:** the game never freezes and never jumps.
+
+**What is actually wrong — read from the code on 2026-11-09, not from a status page:**
+- When a simulation step runs long, the worker **throws the lost time away** (`wholeSimBrowserWorker.js` batch cap and debt drop). The game itself then runs slow — status traces show 0.11–0.40× real time in busy scenes. The smoothing buffer (`snapshotFence.js`) can hide about a fifth of a second; after that it holds the last positions.
+- **Decorations run on a second clock.** The speed-gauge ring is a browser animation that keeps going even when the page is blocked (`speedDial.js`). Idle spins, asteroid tumble, arena dressing, the backdrop and several shader clocks advance by frame time, not by the presented time the ships use. That is precisely "the gauge spins and the ships are frozen".
+- After a long silence the picture **snaps in one frame**. That is the blip.
+- The step is slow because three-quarters of physics time is script walking every body (the solver is the small part), every tick makes about 1.5 MB of garbage, and the economy does about 50 ms of work in a single tick with its slicing switched off.
+- Not the cause: the fast shared-memory path has its headers in the dev server, the desktop app and the hosted build. It still needs one proof on a packaged desktop run.
+
+**No engine port.** The worker-plus-buffer design is sound. Two pieces get rebuilt: how a tick is scheduled, and how bodies are stored.
+
+**Build in this order. Each step has a proof an agent can run alone in under two minutes.**
+1. **A time budget for every tick.** Physics and flight always run. Economy (slicing on), tactical AI, tether play and NPC jobs take turns across ticks under a hard allowance, so the simulation never runs slower than real time. *Proof:* `node scripts/probe-sim-step.mjs` — 99th percentile at or under 12 ms, worst at or under 25 ms, no shed steps across 900 ticks of a crowded scene.
+2. **One clock on screen.** Everything in the list above advances from the presented clock, and the gauge ring's speed follows the playback rate. If anything is ever late, the whole picture slows together. *Proof:* run with `?simStall=400`; decoration time divided by presented time reads 1.0 on every frame.
+3. **Stop the per-tick garbage** — store bodies in flat columns (the first slice of E4). *Proof:* the profiler's allocation column reads 50 KB a tick or less.
+4. **Ease, never snap.** After a silence, run up to one and a half times speed for at most 300 ms. *Proof:* `?simGap=400@2500@3500` shows no frame over the movement bar.
+5. **A drawing budget on the main thread** (E7), because a slow frame there pauses the simulation through the heartbeat. *Proof:* zero heartbeat holds across a sixty-second busy route.
+
+**Director's ruling, to end the open argument in E1:** the smoothness bar is measured against the speed *shown on screen*. A collision stop is not a jump. Close that gate and move to step 1.
+
+**Done when:** ten minutes of crowded Helios and one Swarm run to round twenty, recorded on the owner's laptop, show no moment where a ship holds while anything else moves, and no jump longer than the ship.
+
+### How to build this and check your own work
+
+A shared system is finished when a town or an arena is visibly better because of it — never on its own.
+
+1. **Pick the one place named under "Build first"** and capture it today. That is your "before".
+2. **Use the fast look that fits:** an interface screen — `node scripts/ui-bench.mjs --shot=<id> --walk`; a behaviour — `node scripts/agent-loop.mjs sim <scenario> --trace`; a Swarm run — `npm run player-truth -- --mode=swarm --rounds=3`. Do not boot the whole game to look when one of these can show it.
+3. **After every step:** the one narrow test, then `npm run test:fast`. Never the full `npm run check` while something is red.
+4. **Boot and frames:** `node scripts/check-game-playable.mjs`, then `node scripts/check-hitch-budget.mjs --out=<file>` before and after, back to back in one sitting.
+5. **Show it in the place.** The same capture as step 1, after. Put both in the PR.
+
+**The ways agents have fooled themselves on this project. Check each before you say done.**
+- *A system nothing calls.* If no town or arena uses it yet, it is not built.
+- *A second way to do something the game already does.* Find the existing owner and extend it.
+- *Green test, nothing on screen.* Go and find it in the running game.
+- *The working folder passes and the commit does not.* Check what you committed.
+- *A reference result edited to make a check pass.* Never.
+- *"Done" on a partial.* Say what works, what does not, and what you could not look at.
+
+**How to use this card.** This card narrows the brief to the first thing worth finishing. **This PR is ready when its "Build first" slice is visibly working in the named place.** The rest of the brief follows in a second PR.
+
+---
+
 **Direct execution commission · Shared experience completion**  
 **Native parents:** `E1`, `E2`, `E3`, `E4`, `E5`, `E6`, `E7`, `E8`, `E9`, `E10`  
 **Source-review baseline:** `f95de0eb1ba7560839209936afba48c7b96fe41a` · 2026-11-08  
