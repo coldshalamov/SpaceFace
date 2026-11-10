@@ -253,7 +253,7 @@ export const SWARM_NEWCOMER_COUNTERS = Object.freeze({
   warden_escort: 'It shields a friend. Pop it.',
   corsair_raider: 'It duels. Throw mass, not shots.',
   customs_cutter: 'It disables. Ram it first.',
-  quiet_ghost: 'It snipes unseen. Close fast.',
+  quiet_ghost: 'It charges a rail shot, then changes flank. Strafe, then close.',
   pd_screen_escort: 'It blocks shots. Well it.',
   patrol_lawman: 'It shrugs throws. Grind it.',
   tether_control_raider: 'It ropes you. Rope it first.',

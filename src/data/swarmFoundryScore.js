@@ -11,6 +11,8 @@ const rows = [
   ['slip_the_lance', 'Slip the rail shot', 'The Lancer opens alone. When it charges, strafe sideways, then close while it resets. The crowd follows.', 480, 1, 480, 480],
   ['break_the_guard', 'Break the guard', 'A Warden guards a Lancer. Attack the guard or circle its screen; dodge the rail charge. A lone glowing Cyst follows: burst it away from your hull to scatter the pack.', 840, 1, 840, 840],
   ['reach_the_exit', 'Reach the first exit', 'The Corsair opens alone. Dodge its charged lance, then return fire as it peels away. The forecast event follows, then the crowd. Clear the round to refit, bank or extract.', 840, 1, 840, 840],
+  ['shed_the_drag', 'Shed the drag', 'A Leecher latches and slows you. Shoot it on approach, or carry it into a fast scrape against solid rock. A clear nearby surface earns a lone first approach; the crowd follows.', 720, 720, 720, 720],
+  ['turn_the_hunt', 'Turn the hunt', 'The Quiet Ghost opens alone. Strafe its charge, then close as it switches flank. A Leecher follows if a nearby scrape lane is clear; recover your speed before the crowd.', 1080, 1, 1080, 1080],
 ];
 
 export const SWARM_FOUNDRY_SCORE = Object.freeze(rows.map(([id, title, preparation,
@@ -28,6 +30,8 @@ export const SWARM_FOUNDRY_SCORE = Object.freeze(rows.map(([id, title, preparati
   ...(index === 7 ? { debutAtTick: 0 } : {}),
   ...(index === 8 ? { debutAtTick: 0, cystAtTick: 480 } : {}),
   ...(index === 9 ? { debutAtTick: 0, eventReadTicks: 480 } : {}),
+  ...(index === 10 ? { leecherAtTick: 1 } : {}),
+  ...(index === 11 ? { debutAtTick: 0, leecherAtTick: 600 } : {}),
 })));
 
 export function swarmFoundryRound({ arenaId, wave, mutators = [], circuitRound = null } = {}) {

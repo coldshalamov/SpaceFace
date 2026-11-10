@@ -47,6 +47,7 @@
 // renderer consumes the same retained buffers through the published view.
 
 import { foundryScoreFromPlan } from '../data/swarmFoundryScore.js';
+import { planSwarmOpeningLeecher } from './swarmOpeningLeecher.js';
 import { planSwarmOpeningCyst } from './swarmOpeningCyst.js';
 import { isFoundryWreckKept } from '../data/swarmFoundryWreck.js';
 import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
@@ -502,6 +503,7 @@ export function createBroodEngine(deps = {}) {
   let spawnRequestedBankAttempted = false;
   let foundryScore = null, foundryTicks = 0, foundryLastTick = null;
   let openingVolleyAttempted = false;
+  let recoveryFallback = false;
   let openingBeat = null; // three live opening lives; remainder stays in the ordinary plan
   let openingRamp = null; // bounded directional arrivals after that first decision
 
@@ -732,7 +734,7 @@ export function createBroodEngine(deps = {}) {
     bank = null;
     spawnRequestedBankAttempted = false;
     foundryScore = null; foundryTicks = 0; foundryLastTick = null;
-    openingVolleyAttempted = false;
+    openingVolleyAttempted = false; recoveryFallback = false;
     openingBeat = null;
     openingRamp = null;
     if (aliveCount > 0) { alive.fill(0); affix.fill(0); }
@@ -954,11 +956,12 @@ export function createBroodEngine(deps = {}) {
     const familyIndex = buildFamilyIndex();
     // Let the guard pair speak before the second new shape. This clock counts
     // active pilot play; waiting in the room cannot spend the Cyst's approach.
-    if (!openingVolleyAttempted && foundryScore?.cystAtTick > foundryTicks) {
+    const lessonAtTick = foundryScore?.leecherAtTick ?? foundryScore?.cystAtTick;
+    if (!openingVolleyAttempted && lessonAtTick > foundryTicks) {
       // Approach the authored edge without spending another half-second poll.
       // The Cyst's full six-second read must finish before the ship crowd at840.
       nextSpawnAttemptAt = Math.min(nextSpawnAttemptAt,
-        now + Math.max(0, foundryScore.cystAtTick - foundryTicks - 1) * DT);
+        now + Math.max(0, lessonAtTick - foundryTicks - 1) * DT);
       return 0;
     }
     // Round two uses the surviving court, not an invisible ring following the pilot.
@@ -993,6 +996,20 @@ export function createBroodEngine(deps = {}) {
     // through to ordinary arrivals, never teleports props or delays the round.
     if (!openingVolleyAttempted) {
       openingVolleyAttempted = true;
+      const leecher = familyIndex.get('leecher');
+      const scrape = foundryScore?.leecherAtTick != null && leecher != null
+        ? planSwarmOpeningLeecher(state, state.run, liveWave, pendingPlan, liveFamilyRadius[leecher]) : null;
+      const leechSlot = scrape ? findFreeSlot() : -1;
+      if (scrape && leechSlot >= 0) {
+        spawnAt(leechSlot, leecher, scrape.pos.x, scrape.pos.z);
+        pendingPlan.find(part => part.id === 'leecher').count -= 1;
+        // Only the ordinary owed life enters. Its real latch, braking and rock
+        // scrape own the outcome; the scored reserve clock owns the next pressure.
+        assignMotherShares(); publish(); return 1;
+      }
+      // A missing usable surface must not leave an empty twelve-second room.
+      // Resume finite paced Brood admission; the ship read still stays intact.
+      if (foundryScore?.leecherAtTick != null) recoveryFallback = true;
       const cyst = familyIndex.get('lantern_cyst'), cystMite = familyIndex.get('mite');
       const cystScene = foundryScore?.id === 'break_the_guard' && cyst != null && cystMite != null
         ? planSwarmOpeningCyst(state, state.run, liveWave, pendingPlan,
@@ -1069,7 +1086,7 @@ export function createBroodEngine(deps = {}) {
     }
     // Admit the whole vignette atomically before the usual gate arrivals. It spends the
     // existing plan and never moves the chosen rock or an already-live brood body.
-    if (!bankPlayed && !spawnRequestedBankAttempted && !['slip_the_lance', 'break_the_guard', 'reach_the_exit'].includes(foundryScore?.id)) {
+    if (!bankPlayed && !spawnRequestedBankAttempted && !['slip_the_lance', 'break_the_guard', 'reach_the_exit', 'shed_the_drag', 'turn_the_hunt'].includes(foundryScore?.id)) {
       spawnRequestedBankAttempted = true;
       const layout = planSwarmBank(state, state?.run, liveWave, pendingPlan);
       const charger = familyIndex.get('charger'), spitter = familyIndex.get('spitter');
@@ -1098,7 +1115,7 @@ export function createBroodEngine(deps = {}) {
       }
     }
     for (const part of pendingPlan) {
-      const readTicks = foundryScore ? Math.max(foundryScore.broodReadTicks,
+      const readTicks = foundryScore && !recoveryFallback ? Math.max(foundryScore.broodReadTicks,
         part.id === 'spore_drift' ? foundryScore.sporeReadTicks : 0) : 0;
       if (foundryTicks < readTicks) { deferred.push(part); continue; }
       const famIdx = familyIndex.get(part.id);
@@ -2603,7 +2620,18 @@ export function createBroodEngine(deps = {}) {
   // --- the leecher: latch, brake, and the shed verb the pilot already owns -------------------
 
   function stepLeecher(i, fam, dp) {
-    if (dp <= BROOD_LEECHER_LATCH_RANGE + playerRad * 0.5 && signatureRef
+    // Contact is evaluated after this tick's movement, like the plow below.
+    // A fixed half-hull reach could make a natural approach ram a large idle
+    // hull before it could latch. Fast pilot motion, including glancing rams,
+    // keeps the existing plow law; the original proximity latch is unchanged.
+    const dx = px[i] - playerX, dz = pz[i] - playerZ;
+    const distance = Math.hypot(dx, dz);
+    const contact = playerRad + liveFamilyRadius[fam];
+    const slowPilot = playerVX * playerVX + playerVZ * playerVZ
+      < BROOD_PLAYER_RAM_SPEED * BROOD_PLAYER_RAM_SPEED;
+    const latch = dp <= BROOD_LEECHER_LATCH_RANGE + playerRad * 0.5
+      || (distance <= contact && slowPilot);
+    if (latch && signatureRef
       && signatureRef.alive !== false) {
       phase[i] = BROOD_PHASE_LATCHED;
       timer[i] = 0;
@@ -2644,7 +2672,15 @@ export function createBroodEngine(deps = {}) {
       for (let r = 0; r < rockCount; r++) {
         const dx = playerX - rockX[r];
         const dz = playerZ - rockZ[r];
-        const rr = rockR[r] + playerRad;
+        // Authored rock proxies can exceed their visual/cache radius. Read the
+        // actual native contact envelope for this shed, without expanding the
+        // general Brood terrain solve or moving either participant.
+        const surface = rockEntities[r];
+        const body = surface?.physicsBody !== false && physicsBodyNativeReady(surface)
+          ? resolvePhysicsBodySpec(surface) : null;
+        const nativeRadius = body && !PHYSICS_MATERIALS[body.material]?.ghost
+          && !['sensor', 'massline_sensor'].includes(body.material) ? body.radius : 0;
+        const rr = Math.max(rockR[r], nativeRadius || 0) + playerRad;
         if (dx * dx + dz * dz <= rr * rr) {
           kill(i, 'collision', px[i], pz[i]);
           return;

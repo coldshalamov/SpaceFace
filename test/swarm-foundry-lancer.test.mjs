@@ -105,7 +105,7 @@ test('round-seven preparation is conditional and leaves other modes and checkpoi
     { arenaMutators: ['dense'] }, { telemetry: { circuit: {} } }, { telemetry: { startWave: 8 } }])
     assert.equal(foundryLancerIntermission({ ...run, ...patch }), null);
   for (const extra of [{ arenaId: 'the_hive' }, { mutators: ['heavies_only'] },
-    { circuitRound: { kind: 'survive' } }, { wave: 11 }]) assert.equal(planFor(extra).swarm.foundry, undefined);
+    { circuitRound: { kind: 'survive' } }, { wave: 13 }]) assert.equal(planFor(extra).swarm.foundry, undefined);
 });
 
 test('native Lancer charges and fires; a cue-triggered ordinary strafe beats the first rail shot', async t => {

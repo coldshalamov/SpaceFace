@@ -865,7 +865,17 @@ export function foundryFirstExitIntermission(run) {
   const purse = Number.isInteger(run.credits) && run.credits > 0 ? run.credits : 0;
   return run.phase === 'draft'
     ? `Round 10 cleared. ${purse} cr remains in your run purse. Buy only what you want to take onward, then open the exit bench to refit, bank or extract. Spending here reduces what you take home.`
-    : `First exit reached. Fit earned spares${purse > 1 ? ', bank part of your purse,' : ''} or extract. Launch round 11 to keep this run and its field going; this is not the end of Swarm.`;
+    : `First exit reached. Fit earned spares${purse > 1 ? ', bank part of your purse,' : ''} or extract. Launch round 11 to keep this run and its field going. Next, a Leecher can latch and slow you: shoot it on approach or scrape solid rock at speed. This is not the end of Swarm.`;
+}
+
+export function foundryRecoveryIntermission(run) {
+  if (run?.kind !== 'survival' || run.ruleset !== 'swarm' || run.phase !== 'draft'
+    || (run.telemetry?.startWave || 1) > run.wave
+    || !swarmFoundryRound({ arenaId: run.arenaId, wave: 12,
+      mutators: run.arenaMutators, circuitRound: run.telemetry?.circuit })) return null;
+  if (run.wave === 11) return 'Round 11 cleared. Next, the Quiet Ghost charges a rail shot, then changes flank. Strafe the charge and close during its move. A Leecher may join before the crowd: keep a solid scrape surface within reach. Repair or restock before launch.';
+  if (run.wave === 12) return 'Round 12 cleared. The recovery stretch is behind you; Swarm continues. Check repairs, ammunition and your remaining purse before round 13.';
+  return null;
 }
 
 export function swarmArmoryExitLabel(run) {
@@ -1563,6 +1573,7 @@ export const crucibleDraftScreen = {
       ?? foundryLancerIntermission(context.state?.run)
       ?? foundryWardenIntermission(context.state?.run)
       ?? foundryFirstExitIntermission(context.state?.run)
+      ?? foundryRecoveryIntermission(context.state?.run)
       ?? firstSwarmIntermission(context.state?.run, offers) ?? (offers.length
       ? (wave === 0
         ? 'Fit out before round 1 — the purse is already open. Each fitting bolts onto one hardpoint of the ship you chose; a full hardpoint swaps, and the old part waits in your spares.'
