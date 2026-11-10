@@ -4,6 +4,8 @@
 
 *From the creative director, 2026-11-09. The standard, the cast and the build order are in [09 — Creative direction](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/09_CREATIVE_DIRECTION.md). Where this card and the brief below disagree on **scope or order**, the card wins. On **ids, canon and who owns which state**, the brief wins.*
 
+**Tier A — one of the five towns.** Full recipe, finished standard. This town also holds a *weight gate* (EC-G19): something visible from the first visit that the player cannot move yet, and can once their Line Class is high enough. It moves or it does not; no lock, no level text.
+
 **One line:** a mountain with nine lit mouths, and you can get inside it.
 
 **Landmark:** the Rock — nine mouths, three wide enough for working ships, lamps vanishing into its ribs. **Shift:** the Quarry Bell. Every shift the queue of loads changes hands and the headcount board at Mouth One flips: *9 IN / 9 OUT*. **Toy:** the Bell is a real slung slab — hit it with a towed load and the whole belt hears it (and swears at you). Winch lines you can clip to and swing a load on.
