@@ -1,5 +1,45 @@
 # EC-S24 — Sedna Dark — A lit window at the edge is not a fuel pump
 
+## Director's card — read this first
+
+*From the creative director, 2026-11-09. The standard, the cast and the build order are in [09 — Creative direction](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/09_CREATIVE_DIRECTION.md). Where this card and the brief below disagree on **scope or order**, the card wins. On **ids, canon and who owns which state**, the brief wins.*
+
+**One line:** the last lit window before the dark, kept by someone honest about what it cannot do.
+
+**Landmark:** one lit window; beyond it, the dark rim and its wrecks. **Shift:** Senna reading out the names of the lost; the tanker rumor on the radio. **Toy:** lamp buoys — tow a chain of them out into the dark. They stay. Each trip pushes the lit world a little further.
+
+**Faces:** **Dustwife Senna** (canon) — *"I can fix the hull. Not the planning."* · **Bodie**, survey and repair hand — *"How far? Then double it."* · The Question, through its existing gates.
+
+**Argument:** go further, or get back. **Your mark:** your chain of lights into the dark.
+
+**First 90 seconds:** one warm window, and past it nothing at all, and a list on the wall of what the post does not have.
+
+**Build first (Slice 1):** Enough to Get Back. No hidden traps: the player always knows what is not on offer before they leave.
+
+### How to build this town and check your own work
+
+Work in this order. Each step ends with something you looked at.
+
+1. **Look first.** Arrive by the ordinary route and capture what a stranger sees today (`node scripts/capture-sector-identity.mjs` covers Helios and Ceres; for other sectors copy it for yours until the `look` tool from EC-G17 exists). Write the five Stranger Test answers for the place *as it is now* in the PR. That is your "before".
+2. **Build the toy alone**, in the no-boot simulation lab (`node scripts/agent-loop.mjs sim <scenario> --trace`), until it is fun with nothing else in the scene. The jobs lean on it.
+3. **Then faces, then the shift, then your mark** — each through the system that already owns it (contacts, broadcasts, world records). Do not start a parallel one.
+4. **After every step:** the one narrow test (`node --test test/<file>`), then `npm run test:fast`. Never run the full `npm run check` while something is red, and never use the long playthrough battery as a per-change check.
+5. **Does it still boot and fly:** `node scripts/check-game-playable.mjs`.
+6. **Did it cost frames:** `node scripts/check-hitch-budget.mjs --out=<file>` before and after, back to back in one sitting (this machine swings from 60 to 40 with background load, so a comparison across sessions means nothing).
+7. **Stranger Test:** give a fresh agent only your captures — not this file, not the code — and the five questions. Put its answers in the PR, unedited.
+
+**The ways agents have fooled themselves on this project. Check each before you say done.**
+- *Green test, nothing on screen.* The thing is defined in data and never appears in play. Go and find it in the running game.
+- *Reachable only by a flag, a debug spawn or a test fixture.* A player cannot get there. It is not built.
+- *Decoration without behaviour.* A lit window nobody is behind. A crane that does not lift.
+- *The working folder passes and the commit does not.* Commit exact paths, then check what you committed, not what is on disk.
+- *A reference result edited to make a check pass.* Never.
+- *"Done" on a partial.* Say what works, what does not, and what you could not look at.
+
+**How to use this card.** Bold names are fixed so the world stays consistent; everything else is yours to invent — decide, build, look. If an existing character already fills a face's role, keep their name and give them this want and this line. If an idea here plays badly, replace it with something that fills the same line of the Town Recipe and say so in the PR. **This PR is ready when Slice 1 passes the Stranger Test.** The brief's remaining jobs follow in a second PR on the same place.
+
+---
+
 **Direct execution commission · Sector completion**  
 **Native parents:** `W2`, `W3`, `W4`, `LW-13`  
 **Source-review baseline:** `f95de0eb1ba7560839209936afba48c7b96fe41a` · 2026-11-08  
