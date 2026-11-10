@@ -91,6 +91,8 @@ Inspect these live paths first; their presence does not establish player-route a
 - `src/systems/lawSecurity.js`
 - `src/systems/shipControlTransfer.js`
 - `src/shipjack/ownedOperations.js`
+- `src/data/sectorVisualProfiles.js` — the sector's bespoke `sector_dione_lane` rig (`dione_lane`) now lives here: cool inspection-floodlight key + warm repair fill, sparse hero-less sky inheriting the core plates.
+- `src/data/lookMoods.js` — `LOOK_MOOD_BY_PROFILE.dione_lane` binds the apron grading.
 
 ## Questions you must answer by inspecting and playing
 

@@ -432,6 +432,17 @@ const PER_SECTOR_RIGS = Object.freeze({
         lightAngle: 0.567, ringTilt: 0,
       },
     } },
+  // Dione Lane: a working apron, not a showroom — cool inspection-floodlight key with a warm
+  // repair-berth bounce off the lane floor (EC-S04's own dressing: "inspection floodlight
+  // cones and lower warm repair light"). Niner Bastion and the gate ring are the in-world
+  // landmarks, so like Sker the sky keeps only sparse rock and no hero; a customs-swept lane
+  // rolls fewer bodies than open core space and none of Helios's ring motif.
+  sector_dione_lane: { base: 'core', id: 'dione_lane',
+    lighting: { ambient: 0.14, key: 3.05, rim: 1.50, fill: 0.42, keyColor: 0xdfe9ff, fillColor: 0xc9a06e },
+    composition: {
+      planetChance: 0.14, wormholeChance: 0.04, ringChance: 0,
+      planetTypes: ['rocky'], cometInterval: [36, 84], signatureHero: null,
+    } },
 });
 
 const DERIVED_PROFILES = {};
@@ -468,6 +479,7 @@ export const PROFILE_BY_ID = new Map([
   ['sector_tethys_junction', SECTOR_VISUAL_PROFILES.tethys],
   ['sector_io_reach', SECTOR_VISUAL_PROFILES.fringe],
   ['sector_ceres_belt', SECTOR_VISUAL_PROFILES.ceres_belt],
+  ['sector_dione_lane', SECTOR_VISUAL_PROFILES.dione_lane],
   ['sector_vesta_forge', SECTOR_VISUAL_PROFILES.vesta_forge],
   ['sector_pallas_drift', SECTOR_VISUAL_PROFILES.pallas_drift],
   ['sector_sker_haven', SECTOR_VISUAL_PROFILES.sker_haven],

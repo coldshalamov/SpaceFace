@@ -83,7 +83,7 @@ test('live sectors resolve a baked sky, and the rigs inherit their family sky', 
   for (const sectorId of [
     'sector_helios_prime', 'sector_tethys_junction', 'sector_frontier_east_ridge',
     'sector_ceres_belt', 'sector_vesta_forge', 'sector_pallas_drift',
-    'sector_sker_haven', 'sector_anomaly_well',
+    'sector_sker_haven', 'sector_anomaly_well', 'sector_dione_lane',
   ]) {
     const art = resolveBackgroundSky(resolveSectorVisualProfile({ id: sectorId }));
     assert.ok(art && DEEP_SKY_PLATES[art.plate], `${sectorId} resolves no registered sky`);
@@ -102,6 +102,11 @@ test('live sectors resolve a baked sky, and the rigs inherit their family sky', 
     resolveBackgroundSky(SECTOR_VISUAL_PROFILES.pallas_drift).plate,
     'sky-fringe-tidal-filament',
     'pallas_drift inherits the fringe sky',
+  );
+  assert.equal(
+    resolveBackgroundSky(SECTOR_VISUAL_PROFILES.dione_lane).plate,
+    'sky-core-trade-constellation',
+    'dione_lane inherits the core sky',
   );
 });
 

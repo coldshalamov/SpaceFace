@@ -301,6 +301,9 @@ export const LOOK_MOOD_BY_PROFILE = deepFreeze({
   fringe: 'neon_noir',
   pallas_drift: 'cold_drift',
   sker_haven: 'sodium_yard',
+  // Dione Lane's apron is the same grammar as Sker's yard — working ground under lamps,
+  // deep blue shadow — graded by its own rig tints, not a new mood.
+  dione_lane: 'sodium_yard',
   anomaly: 'void_signal',
 });
 
