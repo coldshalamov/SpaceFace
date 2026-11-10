@@ -4,6 +4,8 @@
 
 *From the creative director, 2026-11-09. The standard, the cast and the build order are in [09 — Creative direction](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/09_CREATIVE_DIRECTION.md). Where this card and the brief below disagree on **scope or order**, the card wins. On **ids, canon and who owns which state**, the brief wins.*
 
+**Tier C — a waystation.** A landmark, one face, the toy and your mark. Small on purpose; one pass.
+
 **One line:** a market under a capsized warship, open only while the shade lasts.
 
 **Landmark:** the Roof — an upside-down hull with stalls hung from ribs that used to face the other way. **Shift:** Market Day is short. Stalls physically unfold when the shade arrives and fold when it leaves. **Toy:** bump a crate and its lid pops — you see what is really inside. Aisles of stacked surplus you can shove and restack.
