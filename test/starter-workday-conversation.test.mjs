@@ -1,3 +1,4 @@
+import { heliosCampaignChoices, heliosCampaignReply } from '../src/ui/station/heliosCampaignHandoff.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -84,7 +85,7 @@ test('the real canonical Kessler choice preserves ordinary questions and the exi
   const wireEnd = bar.indexOf('  const endingCourier =', wireStart);
   assert.ok(wireStart >= 0 && wireEnd > wireStart);
   const compose = Function(
-    'contacts', 'canonicalContactsForStation', 'kesslerWeightSlipChoice',
+    'contacts', 'canonicalContactsForStation', 'heliosCampaignChoices', 'kesslerWeightSlipChoice',
     'kesslerStarterWorkChoice', 'kesslerFreightChoice', 'kesslerCeresShiftChoice', 'getChoices', 'state', 'stationId',
     bar.slice(wireStart, wireEnd) + '; return contacts;',
   );
@@ -94,7 +95,7 @@ test('the real canonical Kessler choice preserves ordinary questions and the exi
   const slip = { id: 'weight-slip', label: 'Read my weight slip.' };
   const contacts = compose([{ id: 'generated' }], (id) => id === STATION
     ? [{ id: 'contact_station_helios_kessler', canonicalKey: 'kessler', role: 'merchant' }]
-    : [], () => slip, kesslerStarterWorkChoice, kesslerFreightChoice, kesslerCeresShiftChoice, getChoices, state, STATION);
+    : [], heliosCampaignChoices, () => slip, kesslerStarterWorkChoice, kesslerFreightChoice, kesslerCeresShiftChoice, getChoices, state, STATION);
   const kessler = contacts.find((contact) => contact.canonicalKey === 'kessler');
   assert.deepEqual(kessler.choices.map((choice) => choice.id), [
     'routes', 'market', 'weight-slip', CHOICE, 'ceres_second_measure_shift', 'dismiss',
@@ -104,7 +105,7 @@ test('the real canonical Kessler choice preserves ordinary questions and the exi
   const away = { ...state, ui: { docked: false, dockedStationId: STATION } };
   const awayContacts = compose([{ id: 'generated' }], (id) => id === STATION
     ? [{ id: 'contact_station_helios_kessler', canonicalKey: 'kessler', role: 'merchant' }]
-    : [], () => null, kesslerStarterWorkChoice, kesslerFreightChoice, kesslerCeresShiftChoice, getChoices, away, STATION);
+    : [], heliosCampaignChoices, () => null, kesslerStarterWorkChoice, kesslerFreightChoice, kesslerCeresShiftChoice, getChoices, away, STATION);
   const awayKessler = awayContacts.find((contact) => contact.canonicalKey === 'kessler');
   assert.equal((awayKessler.choices || []).some((choice) => choice.id === CHOICE), false);
 });
@@ -115,9 +116,10 @@ test('the production Kessler reply keeps weight-slip precedence and routes local
   const end = bar.indexOf('/* ── main panel export', start);
   assert.ok(start >= 0 && end > start);
   const canonical = Function(
-    'kesslerWeightSlipReply', 'kesslerStarterWorkReply', 'kesslerFreightReply', 'kesslerCeresShiftReply',
+    'heliosCampaignReply', 'kesslerWeightSlipReply', 'kesslerStarterWorkReply', 'kesslerFreightReply', 'kesslerCeresShiftReply',
     bar.slice(start, end) + '; return buildCanonicalReply;',
   )(
+    heliosCampaignReply,
     (_state, _station, id) => id === 'weight-slip' ? { text: 'original slip reply' } : null,
     kesslerStarterWorkReply,
     kesslerFreightReply,
@@ -141,7 +143,7 @@ test('the exact Kessler offer reaches the existing bar Accept + track card and m
   const makeRenderOffer = Function(
     'acceptedMissionId', 'pendingMissionOffer', 'BINDINGS', 'missionPreflight',
     'missionConsequenceSummary', 'offerWord', 'escapeHtml',
-    available + rendererSource + '; return missionOfferHtml;',
+    'const campaignHandoffAnswer = false;\n' + available + rendererSource + '; return missionOfferHtml;',
   );
   const { state, offer } = postedState(STARTER_JOBS[0]);
   const result = kesslerStarterWorkReply(state, STATION, CHOICE);

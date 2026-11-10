@@ -44,7 +44,7 @@ function render(initial) {
     mountContactPortrait: (_, contact) => portraits.push(contact),
     dressRail: noop, railKeysHint: noop, dressStage: noop, composeStage: noop,
     appendVonnFreightLossMapOffer: noop, missionOfferHtml: () => '<section data-offer="preserved">42 cr</section>',
-    firstShiftMarketHtml: () => '', frontierRumorOfferHtml: () => '', tethysRumorGuidanceHtml: () => '', dossArchiveMapOfferHtml: () => '',
+    firstShiftMarketHtml: () => '', campaignHandoffHtml: () => '', frontierRumorOfferHtml: () => '', tethysRumorGuidanceHtml: () => '', dossArchiveMapOfferHtml: () => '',
     el: { isConnected: false }, deedSession: {}, sid: () => 'station_test', tellBarDeedOnce: noop,
   };
   const state = Object.freeze({ player: Object.freeze({ credits: 42 }) });

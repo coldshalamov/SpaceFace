@@ -1,3 +1,4 @@
+import { heliosCampaignChoices, heliosCampaignReply } from './heliosCampaignHandoff.js';
 import { kesslerWeightSlipChoice, kesslerWeightSlipReply } from './massSlipConversation.js';
 import { kesslerStarterWorkChoice, kesslerStarterWorkReply } from './heliosFirstShiftConversation.js';
 import { kesslerFreightChoice, kesslerFreightReply } from './heliosFreightConversation.js';
@@ -832,14 +833,16 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   let insertAt = 1;
   for (const canonical of canonicalContactsForStation(stationId)) {
     if (canonical.canonicalKey === 'kessler') {
+      const campaignChoices = heliosCampaignChoices(state, stationId);
       const slipChoice = kesslerWeightSlipChoice(state, stationId);
       const workChoice = kesslerStarterWorkChoice(state, stationId);
       const freightChoice = kesslerFreightChoice(state, stationId);
       const ceresChoice = kesslerCeresShiftChoice(state, stationId);
-      if (slipChoice || workChoice || freightChoice || ceresChoice) {
+      if (campaignChoices.length || slipChoice || workChoice || freightChoice || ceresChoice) {
         const choices = getChoices(canonical.role, canonical);
         const dismissIndex = choices.findIndex((choice) => choice && choice.id === 'dismiss');
         const dismissChoice = dismissIndex >= 0 ? choices.splice(dismissIndex, 1)[0] : null;
+        choices.push(...campaignChoices);
         if (slipChoice) choices.push(slipChoice);
         if (workChoice) choices.push(workChoice);
         if (freightChoice) choices.push(freightChoice);
@@ -2200,6 +2203,8 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
 
   switch (contact.canonicalKey) {
     case 'kessler': {
+      const campaignReply = heliosCampaignReply(state, stationId, choiceId);
+      if (campaignReply) return campaignReply;
       const slipReply = kesslerWeightSlipReply(state, stationId, choiceId);
       if (slipReply) return slipReply;
       const workReply = kesslerStarterWorkReply(state, stationId, choiceId);

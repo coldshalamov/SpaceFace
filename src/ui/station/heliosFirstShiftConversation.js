@@ -1,3 +1,4 @@
+import { heliosCampaignStage } from './heliosCampaignHandoff.js';
 // The first shift ends at the same desk that posted it. Read canonical ticket,
 // cargo and trade receipts; never turn a conversation into a second settlement.
 import { activeOwnedShip } from '../../data/starterJobs.js';
@@ -87,7 +88,9 @@ export function kesslerStarterWorkReply(state, stationId, choiceId) {
     : state.missions?.active?.some(m => m?.status === 'active' && m.params?.starterJobId)
       ? 'Your next local ticket is still open. Track it in the Mission Log; this conversation does not settle it.'
       : 'Ask about local work again when the next posting and your fittings are ready.';
-  return { text: `${pay} ${stock} ${sold} ${next}`, firstShiftReceipt: receipt.id,
+  const campaign = heliosCampaignStage(state, stationId)
+    ? ' Kessler leaves a second file on the desk. “Ask me about 47-A when you want the other book. Another local cutting ticket will not close it.”' : '';
+  return { text: `${pay} ${stock} ${sold} ${next}${campaign}`, firstShiftReceipt: receipt.id,
     ...(original.missionOffer ? { missionOffer: original.missionOffer } : {}),
     ...(slip ? { firstShiftMarket: slip } : {}) };
 }
