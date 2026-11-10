@@ -38,6 +38,29 @@ entries with no place, no script, and not enough people in them. The other
 failure: bare `INFERENCE` following a detector score into five narrow registry
 edits, with no common sense.
 
+## 0.0 What counts — director's rule, 2026-11-09 (wins over the sections below)
+
+A third failure showed up in the November passes: of forty landed units, eighteen were small new
+features bolted on (each with its own new file and bark list), twelve were the same wording defect
+fixed one screen at a time, and none carried a before-and-after anyone could look at. The game got
+bigger, not better. So:
+
+- **INFERENCE makes what is already in the game right. It does not add features.** New places,
+  people, modes and systems belong to the commission PRs (`experience-commissions/EC-*` branches).
+- **A unit is one of three kinds.** `class` — fix one player-visible defect everywhere through a
+  shared helper or component, add the check that fails when it returns, and list it in
+  [`INFERENCE_CLASSES.md`](./INFERENCE_CLASSES.md). `finish` — make a half-working thing work
+  completely on the ordinary route. `remove` — delete noise, duplicates and unreachable content.
+- **Look before and after** with the fast tools (bench still, sim-lab trace, short player-truth
+  run) and keep both as the unit's evidence. A unit recorded `unproven` is kept and does not count
+  toward `N`.
+- **One screen at one window size is never a unit.** That defect lives in a component; fix it there.
+- **At most one new test file per unit**, and never a new bark list, audio recipe or content file.
+
+`scripts/inference-record.mjs` enforces this with `--kind`, `--player`, `--evidence` and, for a
+`class` unit, `--check`. The operator prompt [`INFERENCE_GOAL.txt`](./INFERENCE_GOAL.txt) states the
+same rule in full.
+
 ## 0. Bare `INFERENCE` — look, then rotate
 
 When the owner says **`INFERENCE`** with no number and no scope, the work is
