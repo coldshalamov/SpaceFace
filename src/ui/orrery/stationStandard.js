@@ -238,12 +238,22 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
    line. The crown beside it spans the tape and handoff rows and its extra height was shared between them, which
    pushed a one-line brief 14px down again; the handoff row is the flexible one now, so the tape and brief pack under
    the title and the whole sentence ends ~8px inside the head's visible band at 960x540. Dismiss stays on top in its own cell; the title row
-   still ends before it. */
+   still ends before it, and Dismiss sits 4px up so its frame clears the sentence's ascenders.
+   The tape row keeps its content height (a fixed 0 max, floored at min-content) and the title's second row takes only the
+   title's own second line (~28px; a taller title spills into row 1 instead), so the crown's extra height all lands in the
+   handoff row, under the brief. The rows stay intrinsic, so the crown still sizes them: a 1fr
+   handoff row was skipped by the spanning crown, which then ran its frame through the Bay screen / Station wire text on
+   Station, Bar and (scrolled) Shipworks. */
 @media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:640px) {
-  ${P} .sxb-berth.dp-frame__head { grid-template-rows:auto auto auto 1fr auto !important; }
+  ${P} .sxb-berth.dp-frame__head { grid-template-rows:auto minmax(min-content,29px) minmax(min-content,0px) auto auto !important; }
   ${P} .sxb-handoff > .sxb-next { grid-column:1 / -1 !important; }
-  ${P} .sxb-handoff > .sxb-next__x { position:relative; z-index:1; }
+  ${P} .sxb-handoff > .sxb-next__x { position:relative; top:-4px; z-index:1; }
   ${P} .sxb-handoff > .sxb-next > .sxb-next__t { max-width:calc(100% - 120px) !important; }
+}
+/* ...and on the Market at 461-500 tall the head's fold still cut the sentence (3px at 960x500, 15px at 960x461): the head's
+   rows close up (no row gap) so the brief rises into the band. */
+@media (min-width:901px) and (max-width:1100px) and (min-height:461px) and (max-height:500px) {
+  ${P}:has(#sx-panel > .sx-mkt) .sxb-berth.dp-frame__head { row-gap:0 !important; }
 }
 /* 960–1100 wide × 461–640 tall: the seven tabs (glyphs folded, 6px keys) are ~560px, so tabs, COMMS · HELP and UNDOCK
    (~860px with gaps) stand on ONE row of the 896px+ foot instead of the tab rail taking a row of its own. The row it
