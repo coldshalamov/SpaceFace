@@ -1,5 +1,39 @@
 # EC-G08 — Combat worth mastering — shared verbs and enemy character
 
+## Director's card — read this first
+
+*From the creative director, 2026-11-09. The standard, the cast and the build order are in [09 — Creative direction](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/09_CREATIVE_DIRECTION.md). Where this card and the brief below disagree on **scope or order**, the card wins. On **ids, canon and who owns which state**, the brief wins.*
+
+**What this is for:** enemies you can tell apart and describe afterwards.
+
+**The single biggest win in Swarm, found in the code on 2026-11-09:** fifteen ship types and about thirty Brood families are already authored, each with its own colour, shape, size and ability names — and almost none of it reaches the player. The look is stamped on each ship at spawn (`src/systems/waveMaterialization.js`) and **never drawn**; only the Brood renderer reads its own sheet. The ability names are **read by nothing**, so every ship still behaves the way its old built-in type did. The bestiary exists and is invisible.
+
+**Build first, in this order:** (1) the ship renderer draws the stamped colour, shape and size, so every type reads at a glance from the top-down camera; (2) each ability name does the thing it says, one type at a time, starting with the first five a new player meets; (3) pack leaders with a name, a tell and a grudge.
+
+**Proof:** a line-up still of all fifteen types in one arena where a stranger can sort them into groups without labels.
+
+### How to build this and check your own work
+
+A shared system is finished when a town or an arena is visibly better because of it — never on its own.
+
+1. **Pick the one place named under "Build first"** and capture it today. That is your "before".
+2. **Use the fast look that fits:** an interface screen — `node scripts/ui-bench.mjs --shot=<id> --walk`; a behaviour — `node scripts/agent-loop.mjs sim <scenario> --trace`; a Swarm run — `npm run player-truth -- --mode=swarm --rounds=3`. Do not boot the whole game to look when one of these can show it.
+3. **After every step:** the one narrow test, then `npm run test:fast`. Never the full `npm run check` while something is red.
+4. **Boot and frames:** `node scripts/check-game-playable.mjs`, then `node scripts/check-hitch-budget.mjs --out=<file>` before and after, back to back in one sitting.
+5. **Show it in the place.** The same capture as step 1, after. Put both in the PR.
+
+**The ways agents have fooled themselves on this project. Check each before you say done.**
+- *A system nothing calls.* If no town or arena uses it yet, it is not built.
+- *A second way to do something the game already does.* Find the existing owner and extend it.
+- *Green test, nothing on screen.* Go and find it in the running game.
+- *The working folder passes and the commit does not.* Check what you committed.
+- *A reference result edited to make a check pass.* Never.
+- *"Done" on a partial.* Say what works, what does not, and what you could not look at.
+
+**How to use this card.** This card narrows the brief to the first thing worth finishing. **This PR is ready when its "Build first" slice is visibly working in the named place.** The rest of the brief follows in a second PR.
+
+---
+
 **Direct execution commission · Shared experience completion**  
 **Native parents:** `SWARM`, `PQ-137`, `PQ-139`, `PQ-140`, `PQ-174`, `PQ-175`, `PQ-176`  
 **Source-review baseline:** `f95de0eb1ba7560839209936afba48c7b96fe41a` · 2026-11-08  
