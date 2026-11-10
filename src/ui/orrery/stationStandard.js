@@ -275,10 +275,11 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
     left:auto !important; width:100% !important; margin:0 !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) > .sxb-vital__acts { grid-area:4 / 1 !important; margin-top:0 !important; }
 }
-/* At 461-500 tall the head's fold is ~173px and the stacked cell's extra line put Repair and Rearm under it (960x461).
+/* At 461-508 tall the head's fold is ~173px and the stacked cell's extra line put Repair and Rearm under it (960x461).
    Win the 14px back (and LEDGER's Draw sits 1px under its figure, so its foot clears the fold too): the word and figure rows close to their ink (15px), the track thins to 2px with the verbs 1px under it,
-   and the credit plate above the readings loses 2px of padding top and bottom. */
-@media (min-width:960px) and (max-width:1023px) and (min-height:461px) and (max-height:500px) {
+   and the credit plate above the readings loses 2px of padding top and bottom.
+   Through 508 tall this also keeps Station/Bar HULL Insure above the fold at 960-1023 x 501-507 (it sat 3px under at 501). */
+@media (min-width:960px) and (max-width:1023px) and (min-height:461px) and (max-height:508px) {
   ${P} .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) .sxb-vital__label { min-height:15px !important; line-height:15px !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) > .sxb-vital__value { margin:0 !important; padding-top:2px !important; line-height:15px !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) .sxb-vital__track,
@@ -286,10 +287,10 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
   ${P} .sxb-crown .sxb-purse { padding-top:1px !important; padding-bottom:1px !important; }
   ${P} .sxb-crown .sxb-vitals > .sxb-vital--note > .sxb-vital__acts { margin-top:1px !important; }
 }
-/* The same compact cell on the Market and Shipworks tabs at 501-640 tall, whose heads stay short (Market 195-220px,
+/* The same compact cell on the Market and Shipworks tabs at 509-640 tall, whose heads stay short (Market 195-220px,
    Shipworks 145px): stacked at full rhythm, HULL's Insure fell 4px under the fold at Market 1000x620 and only the top
-   6px of Repair/Rearm showed on Shipworks. Station and Bar keep the full rhythm in their 40vh heads. */
-@media (min-width:960px) and (max-width:1023px) and (min-height:501px) and (max-height:640px) {
+   6px of Repair/Rearm showed on Shipworks. Station and Bar keep the full rhythm in their 40vh heads above 508. */
+@media (min-width:960px) and (max-width:1023px) and (min-height:509px) and (max-height:640px) {
   ${P}:is(:has(#sx-panel > .sx-mkt), :has(#sx-panel > .sx-sw:not([hidden]))) .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) .sxb-vital__label {
     min-height:15px !important; line-height:15px !important; }
   ${P}:is(:has(#sx-panel > .sx-mkt), :has(#sx-panel > .sx-sw:not([hidden]))) .sxb-crown .sxb-vitals > .sxb-vital:not(.sxb-vital--note) > .sxb-vital__value {

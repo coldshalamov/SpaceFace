@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "bba6bf74db47bdda0114f82d62fb9b8c6c5e4eb4fcaa176621eee79ad4028ff3",
+  "uiSourceDigest": "da91a5b25c84da6b4f19d0c602070b007b4ec7da99cf4b55b15676241c9b9865",
   "uiSourceFiles": {
     "index.html": "9675d8b65c4623cc9aa48ad94c670479f78ce1b0f2d05166fa9a52b44d509e04",
     "src/ui/accessibility.js": "56b7068f9460e7175a6d2f8d66537e67949d07db79994b918165b1d7dd7dc1a8",
@@ -254,7 +254,7 @@
     "src/ui/orrery/station-marketLayouts.js": "1927b2e1b76b9f3ca5d6866df4e8a65b7e4d024bc530c626e181f738e61f9689",
     "src/ui/orrery/station-shipworksLayouts.js": "bf6e612d18cace3f4ddfba446fab136de034dd6ac40faa77e14a3c0427928c28",
     "src/ui/orrery/stationLayouts.js": "330bb1120856bb692e35b419cf699ee009112b81591a217e9ff467a1fb0dd6a1",
-    "src/ui/orrery/stationStandard.js": "c89603a9e0cbada94be397e51da826d9bf4ff0ec8d77bc28ec0137f4ab66304c",
+    "src/ui/orrery/stationStandard.js": "789d6ce836c10f85547a3bb328f43689f91118797c8145e9b241d346ff875df1",
     "src/ui/orrery/stationTabsLayouts.js": "3f70b710993d7e78e48b8acf50fe410d7ae5eb44853c1c934af051fb88dec6c4",
     "src/ui/orrery/statisticsLayouts.js": "4c109651629b7e3a44b0938065c424f7bb4bb4962760d47854786a7001e0d228",
     "src/ui/orrery/stopDial.js": "accaa5f463c11d25101318ca203d99c3c7b476b5856c22595f94eaca085a0419",
