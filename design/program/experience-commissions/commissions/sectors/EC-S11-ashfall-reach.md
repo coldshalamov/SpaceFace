@@ -4,6 +4,8 @@
 
 *From the creative director, 2026-11-09. The standard, the cast and the build order are in [09 — Creative direction](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/09_CREATIVE_DIRECTION.md). Where this card and the brief below disagree on **scope or order**, the card wins. On **ids, canon and who owns which state**, the brief wins.*
 
+**Tier B — an outpost.** A landmark, two faces, the toy, your mark and one job. Do not build the brief's full list; the card's Slice 1 is the whole of this PR.
+
 **One line:** people living in a scar on a dead warship so big it replaces the sky.
 
 **Landmark:** armor plates crossing the screen like geology, one thin line of house lights in the scar between them. **Shift:** Water Day. The utility barge makes its run and the scar lights up window by window as power is routed. **Toy:** the surface crane rides rails across the plates and will lift your ship and load over the top; ash drifts plough, and your trail stays.
