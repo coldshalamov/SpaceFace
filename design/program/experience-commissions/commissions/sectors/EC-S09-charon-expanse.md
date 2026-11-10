@@ -4,6 +4,8 @@
 
 *From the creative director, 2026-11-09. The standard, the cast and the build order are in [09 — Creative direction](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/09_CREATIVE_DIRECTION.md). Where this card and the brief below disagree on **scope or order**, the card wins. On **ids, canon and who owns which state**, the brief wins.*
 
+**Tier B — an outpost.** A landmark, two faces, the toy, your mark and one job. Do not build the brief's full list; the card's Slice 1 is the whole of this PR.
+
 **One line:** a garden grown across dead hulls, lovely until you see what it is leaning on.
 
 **Landmark:** the Hull Garden — pale growth bridging two wrecks, windows glowing behind it. **Shift:** the Breath. The garden pulses slowly; each night-cycle it advances one visible step. **Toy:** you can shape it — your line cuts growth with a satisfying snap, and mass thrown in makes it grow a bridge exactly where you fed it.
