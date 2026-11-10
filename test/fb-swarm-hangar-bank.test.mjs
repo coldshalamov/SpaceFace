@@ -121,7 +121,7 @@ test('cash-out before a boss banks half', () => {
   const settled = settle(storage, {
     outcome: 'extracted',
     cashOut: true,
-    wavesCleared: 9,
+    wavesCleared: 4,
     credits: 100,
     runId: 'cash-before-boss',
   });

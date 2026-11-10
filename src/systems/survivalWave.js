@@ -15,6 +15,7 @@
 //
 // Never writes state.run (runSession is the sole writer) and never touches campaign economy.
 
+import { foundryScoreFromPlan } from '../data/swarmFoundryScore.js';
 import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
 import {
@@ -256,6 +257,11 @@ export const survivalWave = {
     if (!this._active) return;
 
     this._cursor += 1;
+    if (this._foundry && this.state.mode === 'flight' && this._foundryLastTick !== this.state.tick) {
+      this._foundryLastTick = this.state.tick;
+      if (swarmPilotIsActing(this.state)) noteSwarmPilotAction(this.state);
+      if (swarmPilotHasActed(this.state)) this._foundryTicks = Math.min(720, this._foundryTicks + 1);
+    }
     this._maybeReleaseOpeningLesson();
     this._dispatchDue();
     this._shapeSwarmFire();
@@ -319,6 +325,7 @@ export const survivalWave = {
       };
     }
     this._swarm = swarm;
+    this._foundry = foundryScoreFromPlan(plan, wave);
     this._circuitCores = [];
     this._coresFound = 0;
     this._placeCircuitMark();
@@ -326,6 +333,13 @@ export const survivalWave = {
     // A later Swarm wave opens the same way the first one does after its lesson: batch by batch,
     // a breath apart, so the escalation reads as packs arriving instead of one dump in 3 s.
     if (swarm && wave > 1 && !plan.openingLesson) this._spaceOpeningArrivals();
+    // Preserve the existing between-pack spacing after a foreground read. The
+    // cursor can run while the pilot waits; releasing it must not dump every
+    // overdue group at once. Debuts keep their separate authored read deadline.
+    if (this._foundry) for (const { entry } of this._pending) {
+      if (!entry.debut && !entry.champion && entry.readAfterTicks > 0)
+        entry.readAfterTicks += Math.max(0, entry.atTick || 0);
+    }
     const rules = plan.completionRules || {};
     const roles = Array.isArray(rules.blockingRoles) ? rules.blockingRoles : [];
     this._blockingRoles = new Set(roles);
@@ -1001,7 +1015,7 @@ export const survivalWave = {
       const item = this._pending[i];
       const entry = item.entry;
       const atTick = Number.isInteger(entry.atTick) ? entry.atTick : 0;
-      if (atTick > this._cursor) {
+      if (atTick > this._cursor || (this._foundry && this._foundryTicks < (entry.readAfterTicks || 0))) {
         this._pending[write++] = item;
         continue;
       }
@@ -1392,6 +1406,7 @@ export const survivalWave = {
    */
   _reinforceSwarm(run, opts = {}) {
     if (!this._swarm || !this._plan) return;
+    if (this._foundry && this._foundryTicks < this._foundry.shipReadTicks) return;
     const lesson = this._plan.openingLesson;
     if (lesson && !this._lessonReleased && Number.isFinite(lesson.holdTicks)
       && this._cursor < lesson.holdTicks) return;
@@ -2071,6 +2086,9 @@ export const survivalWave = {
     this._carriedAdmitted = 0;
     this._spawnDistance = SURVIVAL_SPAWN_DISTANCE;
     this._swarm = null;
+    this._foundry = null;
+    this._foundryTicks = 0;
+    this._foundryLastTick = null;
     this._rewardReferenceKills = 0;
     this._durationTicks = 0;
     this._waveStartedSimTime = null;

@@ -48,17 +48,17 @@ function bootAnnounce() {
   const run = createRunState({ kind: 'survival', seed: 7 });
   run.arenaId = 'helios_core';
   run.phase = 'active';
-  run.wave = 7;
+  run.wave = 19;
   state.run = run;
   survivalAnnounce.init({ state, bus, helpers: {} });
   return { state, bus, emitted };
 }
 
 test('the swarm wave opener names the scheduled Kraken before its staged seat lands', () => {
-  const heavyPlan = planFor(7);
+  const heavyPlan = planFor(19);
   assert.equal(heavyPlan.swarm.boss, false, 'a character wave is not a champion wave');
   assert.equal(heavyPlan.swarm.character.name, 'Iron Kraken');
-  const line = waveOpeningLine(7, heavyPlan);
+  const line = waveOpeningLine(19, heavyPlan);
   assert.ok(line.includes('Iron Kraken'), line);
   assert.ok(line.length < 160, `the opener stays inside the banner budget: ${line.length}`);
   const colossusPlan = planFor(31);
@@ -70,9 +70,9 @@ test('the swarm wave opener names the scheduled Kraken before its staged seat la
 
   const h = bootAnnounce();
   try {
-    h.bus.emit('run:wavePlanned', { wave: 7, plan: heavyPlan });
+    h.bus.emit('run:wavePlanned', { wave: 19, plan: heavyPlan });
     const spoken = h.emitted.filter((e) => e.event === 'voice:say' || e.event === 'alert');
-    const opener = spoken.filter((e) => e.payload.id === 'survival:w7:open');
+    const opener = spoken.filter((e) => e.payload.id === 'survival:w19:open');
     assert.equal(opener.length, 1, 'the character joins the one opener line — the wave budget is intact');
     assert.ok(opener[0].payload.text.includes('Iron Kraken'));
     assert.ok(spoken.length <= 5, `per-wave line budget holds, got ${spoken.length}`);
@@ -240,14 +240,14 @@ function waveHarness(wave = 7) {
 }
 
 test('a Kraken-sourced sink keeps the wave\'s shooters at tell volume through recovery', () => {
-  const h = waveHarness(7);
+  const h = waveHarness(19);
   try {
     for (let guard = 0; guard < 1200 && h.krakens().length === 0; guard++) h.tick();
     const boss = h.krakens()[0];
     assert.ok(boss, 'the character seat landed');
     const fight = h.state.capitalBossEncounters.fights[boss.data.ironKraken.fightId];
     assert.equal(fight.bossId, boss.id);
-    // Enough armed henchmen for the recovery cap to bind: wave 7's table is six, so the
+    // Enough armed henchmen for the recovery cap to bind: round nineteen permits at least six, so the
     // recovery budget of five releases four besides the boss, and tell volume releases two.
     for (let i = 0; i < 6; i++) {
       const henchman = { id: h.state.nextEntityId++, alive: true, type: 'ship',

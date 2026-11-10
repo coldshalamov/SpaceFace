@@ -20,6 +20,7 @@
 // survivalArena owns the installed-field ledger the surge kind needs to reach. Field slots,
 // mine caps and the teardown on rearm/ended are inherited, not re-declared.
 
+import { foundryScoreFromPlan } from '../data/swarmFoundryScore.js';
 import { mulberry32 } from '../core/rng.js';
 import { gateBearing } from './waveMaterialization.js';
 import { swarmEventFor, swarmMinorEventFor, SWARM_EVENT_BY_ID } from '../data/swarmEvents.js';
@@ -126,6 +127,8 @@ export function createSwarmEventDirector(ctx) {
 
     /** The host hands over the frame it installed with — bearings come from the same room. */
     setFrame(frame) { this._frame = frame; },
+    // The host calls this after rearm teardown, alongside the installed frame.
+    setPlan(plan, wave) { this._foundryScore = foundryScoreFromPlan(plan, wave); },
     /** The host's installed field specs — surge needs their authored strengths to overdrive. */
     setInstalledFields(specs) { this._installedFields = Array.isArray(specs) ? specs : []; },
 
@@ -147,6 +150,7 @@ export function createSwarmEventDirector(ctx) {
       const run = liveSwarmRun(state);
       if (!run || run.phase !== 'active') return;
       const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
+      if (this._foundryScore?.wave === wave && this._foundryScore.events === 'quiet') return;
       // Major band first, then the minor off-beats — the bands are disjoint by construction,
       // so the fallback can never book a second event onto an event or boss wave.
       const event = swarmEventFor({ arenaId: run.arenaId, wave, seed: run.seed })
@@ -346,6 +350,7 @@ export function createSwarmEventDirector(ctx) {
     },
 
     teardown(reason) {
+      this._foundryScore = null;
       // A wave that cleared mid-surge must calm the room, not leave it running hot.
       if (this._live) this._finishLive(this._state);
       // A wave ending mid-windup stands the wager down — the deck retires its card on the

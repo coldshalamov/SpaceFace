@@ -46,6 +46,7 @@
 // sample scratch and the kill receipt scratch are all retained; a step allocates nothing. The
 // renderer consumes the same retained buffers through the published view.
 
+import { foundryScoreFromPlan } from '../data/swarmFoundryScore.js';
 import { mulberry32 } from '../core/rng.js';
 import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { occupantGenerationOf } from '../core/entity.js';
@@ -491,6 +492,7 @@ export function createBroodEngine(deps = {}) {
   let bankPlayed = false;
   let bank = null;
   let spawnRequestedBankAttempted = false;
+  let foundryScore = null, foundryTicks = 0, foundryLastTick = null;
   let openingVolleyAttempted = false;
   let openingBeat = null; // three live opening lives; remainder stays in the ordinary plan
   let openingRamp = null; // bounded directional arrivals after that first decision
@@ -721,6 +723,7 @@ export function createBroodEngine(deps = {}) {
     if (reason === 'new_game' || reason === 'run_ended') bankPlayed = false;
     bank = null;
     spawnRequestedBankAttempted = false;
+    foundryScore = null; foundryTicks = 0; foundryLastTick = null;
     openingVolleyAttempted = false;
     openingBeat = null;
     openingRamp = null;
@@ -798,10 +801,11 @@ export function createBroodEngine(deps = {}) {
   }
 
   /** Plan the wave's cohort. Called at run:wavePlanned; spawning happens at wave start. */
-  function prepareWave(run, wave) {
+  function prepareWave(run, wave, wavePlan = null) {
     const seed = finite(run && run.seed, 1);
     const w = Math.max(1, Math.trunc(Number(wave) || 1));
     clear('wave_planned');
+    foundryScore = foundryScoreFromPlan(wavePlan, w);
     rng = mulberry32(broodStreamSeed(seed, w));
     // Late families replace mites. They do not add a second population on top of the plan.
     // The Machine folds last — the second faction spends out of what the late fold left.
@@ -943,6 +947,7 @@ export function createBroodEngine(deps = {}) {
     // Round two uses the surviving court, not an invisible ring following the pilot.
     // Check only on the first admission attempt; a missing court keeps normal arrivals.
     if (!openingVolleyAttempted) {
+      if (foundryScore) openingRamp = { remaining: 0, lastTick: state.tick, group: 0, course: null };
       const mite = familyIndex.get('mite');
       const course = mite == null ? null : planSwarmOpeningFlanks(
         state, state.run, liveWave, pendingPlan, liveFamilyRadius[mite]);
@@ -951,12 +956,12 @@ export function createBroodEngine(deps = {}) {
     }
     const deferred = [];
     let spawned = 0, groupIndex = openingRamp?.group || 0;
-    let arrivalBudget = openingRamp ? 18 : Infinity;
+    let arrivalBudget = openingRamp ? (foundryScore?.broodPacketSize || 18) : Infinity;
     const packReserved = openingRamp ? [] : null;
     if (packReserved) for (let i = 0; i < CAP; i++) if (alive[i]) {
       packReserved.push({ alive: true, pos: { x: px[i], z: pz[i] }, radius: liveFamilyRadius[family[i]] });
     }
-    if (openingRamp) openingRamp.remaining = 0.75;
+    if (openingRamp) openingRamp.remaining = foundryScore?.broodPacketGapS || 0.75;
     // The first released pack presents a real throwing lane beyond one existing
     // pocket pebble. Spend the usual mite plan; a blocked or used-up court falls
     // through to ordinary arrivals, never teleports props or delays the round.
@@ -1034,13 +1039,24 @@ export function createBroodEngine(deps = {}) {
         pendingPlan.find(part => part.id === 'spitter').count -= 1;
         bank = { first: free[0], spit: free[1], second: free[2],
           firstLife: serial[free[0]], spitLife: serial[free[1]], secondLife: serial[free[2]],
-          phase: 'first', until: now + 8, flankX: layout.flankX, flankZ: layout.flankZ,
+          phase: 'first', until: now + 8, readPending: !!foundryScore?.bankReadS, flankX: layout.flankX, flankZ: layout.flankZ,
           rockId: layout.rockId };
         bankPlayed = true;
+        if (foundryScore?.bankReadS > 0) {
+          openingBeat = { remaining: foundryScore.bankReadS, lastTick: state.tick, attackPending: true,
+            lives: free.map(slot => ({ slot, life: serial[slot] })) };
+          for (const slot of free) attackAfter[slot] = Infinity;
+          assignMotherShares();
+          publish();
+          return 3;
+        }
         spawned += 3;
       }
     }
     for (const part of pendingPlan) {
+      const readTicks = foundryScore ? Math.max(foundryScore.broodReadTicks,
+        part.id === 'spore_drift' ? foundryScore.sporeReadTicks : 0) : 0;
+      if (foundryTicks < readTicks) { deferred.push(part); continue; }
       const famIdx = familyIndex.get(part.id);
       if (famIdx == null) continue;
       let owed = 0;
@@ -1537,6 +1553,10 @@ export function createBroodEngine(deps = {}) {
   function step(state) {
     const run = liveSwarmRun(state);
     if (!run || run.phase !== 'active' || state.mode !== 'flight') return false;
+    if (foundryScore && foundryLastTick !== state.tick) {
+      foundryLastTick = state.tick;
+      if (swarmPilotHasActed(state)) foundryTicks = Math.min(720, foundryTicks + 1);
+    }
     validateOpeningCourse(state);
     if (openingBeat) {
       if (openingBeat.lastTick !== state.tick) {
@@ -1556,7 +1576,7 @@ export function createBroodEngine(deps = {}) {
         nextSpawnAttemptAt = 0;
       }
     }
-    if (openingRamp && !openingBeat && openingRamp.lastTick !== state.tick) {
+    if (openingRamp && !openingBeat && (!foundryScore || swarmPilotHasActed(state)) && openingRamp.lastTick !== state.tick) {
       openingRamp.lastTick = state.tick;
       openingRamp.remaining = Math.max(0, openingRamp.remaining - DT);
     }
@@ -2193,6 +2213,11 @@ export function createBroodEngine(deps = {}) {
 
   function advanceBank(now) {
     if (!bank) return;
+    if (bank.readPending) {
+      if (!swarmPilotHasActed(getState())) return;
+      bank.until = now + foundryScore.bankReadS;
+      bank.readPending = false;
+    }
     if (now >= bank.until) { bank = null; return; }
     const firstAlive = bankLife(bank.first, bank.firstLife);
     if (bank.phase === 'first' && (!firstAlive

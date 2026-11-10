@@ -790,7 +790,7 @@ export function swarmForecastForRun(run, nextWave) {
       || !Number.isInteger(swarm.killTarget) || swarm.killTarget <= 0
       || !Number.isInteger(swarm.concurrent) || swarm.concurrent <= 0) return null;
 
-    const authored = swarmRoundPreview({ arenaId: run.arenaId, wave: nextWave, seed: run.seed });
+    const authored = swarmRoundPreview({ arenaId: run.arenaId, wave: nextWave, seed: run.seed, plan });
     if (!authored || !authored.zone || typeof authored.zone.name !== 'string') return null;
     const roster = [...new Set((Array.isArray(swarm.roster) ? swarm.roster : [])
       .filter((entry) => entry && (Number(entry.weight) || 0) > 0)
@@ -819,7 +819,8 @@ export function swarmNextLine(next) {
     `clear ${next.killTarget}`,
     `room cap ${next.concurrent}`,
   ];
-  if (next.roster.length) bits.push(next.roster.join(', '));
+  if (next.foreground) bits.push(`${next.foreground.title}: ${next.foreground.preparation}`);
+  else if (next.roster.length) bits.push(next.roster.join(', '));
   if (next.newcomer) bits.push(`new: ${next.newcomer}`);
   if (next.specialistBrief) bits.push(`prepare: ${next.specialistBrief.threat} ${next.specialistBrief.counter}`);
   if (next.event) bits.push(`${next.event.name} — ${next.event.telegraph}`);

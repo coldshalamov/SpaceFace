@@ -31,7 +31,8 @@ import {
   swarmPlanBlock,
   swarmRosterFor,
 } from './swarmMode.js';
-import { swarmEventFor } from './swarmEvents.js';
+import { foundryScoreFromPlan, swarmFoundryRound } from './swarmFoundryScore.js';
+import { swarmEventFor, swarmMinorEventFor } from './swarmEvents.js';
 import { swarmSpecialistBriefForEnemy } from './swarmSpecialists.js';
 
 /** One zone is ten rounds; the champion rides the authored boss cadence (first at wave 5). */
@@ -319,9 +320,10 @@ export function applySwarmLadderResult(ladder, facts = {}) {
  * The armory's next-round card (§6.5): body count, archetypes, any newcomer, the event
  * card, the boss — all of it already authored on the plan. Pure: same inputs, same card.
  */
-export function swarmRoundPreview({ arenaId, wave, seed } = {}) {
+export function swarmRoundPreview({ arenaId, wave, seed, plan = null, mutators = [], circuitRound = null } = {}) {
   const w = Number.isInteger(wave) && wave > 0 ? wave : 1;
-  const block = swarmPlanBlock(w);
+  const block = plan?.swarm || swarmPlanBlock(w);
+  const foundry = plan ? foundryScoreFromPlan(plan, w) : swarmFoundryRound({ arenaId, wave: w, mutators, circuitRound });
   const zone = swarmZoneFor(w);
   const names = new Map(swarmRosterFor(w).map((entry) => [entry.enemyId, entry.name]));
   const roster = (block.roster || [])
@@ -334,10 +336,12 @@ export function swarmRoundPreview({ arenaId, wave, seed } = {}) {
   const specialistBrief = specialistEntry ? {
     ...swarmSpecialistBriefForEnemy(specialistEntry.enemyId),
   } : null;
-  const event = swarmEventFor({ arenaId, wave: w, seed });
+  const event = foundry?.events === 'quiet' ? null : (swarmEventFor({ arenaId, wave: w, seed })
+    || swarmMinorEventFor({ arenaId, wave: w, seed }));
   return {
     wave: w,
     zone,
+    foreground: foundry ? { title: foundry.title, preparation: foundry.preparation } : null,
     killTarget: block.killTarget,
     concurrent: block.concurrent,
     roster,

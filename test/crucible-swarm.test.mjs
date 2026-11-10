@@ -16,6 +16,7 @@ import {
   survivalRun,
 } from '../src/systems/survivalRun.js';
 import { survivalWave } from '../src/systems/survivalWave.js';
+import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import { SURVIVAL_COHORT_TAG, levelForWave } from '../src/systems/waveMaterialization.js';
 import {
@@ -67,6 +68,7 @@ const ENEMY_IDS = new Set(ENEMY_TYPES.map((e) => e.id));
 
 function boot(seed = SEED) {
   const state = createGameState(seed);
+  state.mode = 'flight';
   const raw = createBus();
   const emitted = [];
   const bus = {
@@ -112,6 +114,8 @@ function boot(seed = SEED) {
 function tick(h, n = 1) {
   for (let i = 0; i < n; i++) {
     h.state.simTime += DT;
+    h.state.tick += 1;
+    if (h.state.run.phase === 'active') noteSwarmPilotAction(h.state);
     survivalWave.update(DT);
     survivalRun.update(DT);
   }
@@ -172,7 +176,7 @@ test('every swarm wave names a live enemy, a legal gate and a room that is never
     assert.ok(!plan.error, `wave ${wave} plans`);
     assert.equal(plan.mode, SWARM_RULESET);
     assert.notEqual(plan.arenaPhase, 'idle', `wave ${wave} room is doing something`);
-    assert.equal(plan.arenaPhase, (swarmActFor(wave) && swarmActFor(wave).arenaPhase) || swarmArenaPhase(wave));
+    assert.equal(plan.arenaPhase, plan.swarm.foundry?.arenaPhase || (swarmActFor(wave) && swarmActFor(wave).arenaPhase) || swarmArenaPhase(wave));
     assert.ok(plan.schedule.length > 0, `wave ${wave} has an opening burst`);
     for (const entry of plan.schedule) {
       assert.ok(ENEMY_IDS.has(entry.enemyId), `${entry.enemyId} is a live archetype`);

@@ -959,7 +959,7 @@ export const swarmArena = {
     if (!run) return;
     const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
     // SWARM-07 B1 — plan the wave's Brood cohort (spawn happens when the wave goes live).
-    if (this._brood) this._brood.prepareWave(run, wave);
+    if (this._brood) this._brood.prepareWave(run, wave, payload && payload.plan);
     // B4 — the old wave's living geometry dies before the new room is even planned.
     this._hiveRelease('wave_planned');
     this._pressureWave = wave;

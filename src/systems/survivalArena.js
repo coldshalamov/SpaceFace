@@ -1397,6 +1397,7 @@ export const survivalArena = {
     if (typeof phase !== 'string' || phase.length === 0) return;
     const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
     const seed = Number.isInteger(run.seed) ? run.seed : 1;
+    if (this._swarmEvents) this._swarmEvents.setPlan(plan, wave);
 
     const laneGate = dominantGate(plan);
     const install = planArenaInstall({
