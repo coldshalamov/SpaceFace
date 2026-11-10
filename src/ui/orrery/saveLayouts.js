@@ -380,9 +380,12 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__name.sf-slot-name { letter-spacing:.04em !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .sf-slot-badge { letter-spacing:.04em; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__num { white-space:normal; }
-  /* ui-polish-451: at 360–430 wide each station is ~51–61px and a filed slot's "42,150 CR" (~58px) broke
-     under its own numeral, the CR orphaned on a second line. The figure sets on Archivo's 88 width there
-     (~51px), so it reads as one reading; a longer sum still wraps rather than running into its neighbour. */
+}
+/* ui-polish-451: at 360–399 wide each station is ~51–57px and a filed slot's "42,150 CR" (~58px) broke under
+   its own numeral, the CR orphaned on a second line. Below 400 the figure sets on Archivo's 88 width (~51px),
+   so it reads as one figure; from 400 wide the stations hold the 100-width figure and keep it. At 320–340
+   (~43–47px stations) the condensed figure still wraps its CR: the 12px type floor rules out a smaller size. */
+@media (max-width:399px) {
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row__num { font-variation-settings:"wght" 520, "wdth" 88; }
 }
 /* ui-polish-98: the stacked page at 641–790 × 461–749 (narrower and ≤460-tall windows keep their own rules) runs ~630–710px, so on a
