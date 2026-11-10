@@ -132,19 +132,6 @@
   ],
   "units": [
     {
-      "id": "inf-mine-lane-drift",
-      "date": "2026-11-02",
-      "wf": "WF-02",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "A jackal's telegraphed mine seed is placed on the drifting rock's live pose with its current velocity when the drop actually occurs.",
-      "fingerprint": "verb=seed,subject=drifting-debris-mine-lane,sector=crucible,domain=wf-02",
-      "references": [],
-      "integration": "live",
-      "commit": "f8b04d2c3ca3",
-      "verification": "focused_green"
-    },
-    {
       "id": "inf-hail-registry",
       "date": "2026-11-04",
       "wf": "WF-09",
@@ -1679,16 +1666,29 @@
       "verification": "focused_green"
     },
     {
-      "id": "inf-gun-vent-push",
+      "id": "inf-vent-press",
       "date": "2026-11-10",
       "wf": "WF-02",
       "mode": "opportunity",
       "verdict": "implemented",
-      "reason": "A crew that sees your guns vent (the post-shot heat tell) now reads weakness and pushes in, saying so on the band - the heat tell becomes an enemy decision, not just a picture.",
-      "fingerprint": "verb=pushes-on-weakness,subject=gun-vent-crew,sector=flight-combat,domain=wf-02",
+      "reason": "When your guns overheat and vent, up to three enemies already fighting you close in - the distance they hold shrinks to 55% for the vent window - and the nearest calls it on the band ('Guns are cooked! Push, push!'), one line per faction, at most one every 18 s; bosses, aces, fleeing and shoved hulls stay out.",
+      "fingerprint": "verb=presses-the-vent,subject=hostile-crew,sector=flight-combat,domain=wf-02",
       "references": [],
       "integration": "live",
       "commit": "3a2438ccc5b4",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-station-pa",
+      "date": "2026-11-10",
+      "wf": "WF-04",
+      "mode": "integration",
+      "verdict": "implemented",
+      "reason": "Flying near a station you now hear its desk call its own routine - 'Dock control: patrol wing launching' at a Concord berth, 'Yardmaster: runner coming in dark' at a den - through the existing side-event signal the desk split already owns, once per event, 70 s per station.",
+      "fingerprint": "verb=calls-the-routine,subject=station-desk,sector=station-shell,domain=wf-04",
+      "references": [],
+      "integration": "live",
+      "commit": "59288e9ca8b7",
       "verification": "focused_green"
     }
   ],
