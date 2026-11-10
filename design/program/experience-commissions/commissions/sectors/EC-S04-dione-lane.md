@@ -4,6 +4,8 @@
 
 *From the creative director, 2026-11-09. The standard, the cast and the build order are in [09 — Creative direction](https://github.com/coldshalamov/SpaceFace/blob/experience-commissions/EC-G13-integration-director/design/program/experience-commissions/09_CREATIVE_DIRECTION.md). Where this card and the brief below disagree on **scope or order**, the card wins. On **ids, canon and who owns which state**, the brief wins.*
 
+**Tier B — an outpost.** A landmark, two faces, the toy, your mark and one job. Do not build the brief's full list; the card's Slice 1 is the whole of this PR.
+
 **One line:** the navy at home — a parade ground you are allowed to watch, join, or badly misjudge.
 
 **Landmark:** the Gate Ring with a drill formation wheeling under it. **Shift:** Reveille. Every strobe in the lane syncs for ten seconds, patrols swap with reserves, the range flag turns green. **Toy:** the range drones — when the flag is green anyone may shoot or sling them, and the scoreboard is public.
